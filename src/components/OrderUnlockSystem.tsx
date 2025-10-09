@@ -105,13 +105,13 @@ export default function OrderUnlockSystem({
       const wasLocked = unlockStatus !== 'unlocked';
       setUnlockStatus('unlocked');
 
-      const unlockData = {
+      const unlockData: UnlockData = {
         socialProof: {
           platform: 'multiple',
           screenshotUploaded: Object.keys(uploadedScreenshots).length > 0,
           sharingTimestamp: Date.now()
         },
-        unlockStatus: 'unlocked',
+        unlockStatus: 'unlocked' as const,
         nextOrderDiscount: Math.min(Math.floor(totalPoints / 10), 25) // Up to 25% discount
       };
 
