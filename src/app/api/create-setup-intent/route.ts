@@ -27,13 +27,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let customerId: string = profile.stripe_customer_id || ''
+    // Type the profile data explicitly
+    const typedProfile = profile as {
+      email: string;
+      first_name: string | null;
+      last_name: string | null;
+      stripe_customer_id: string | null;
+    }
+
+    let customerId: string = typedProfile.stripe_customer_id || ''
 
     // Create Stripe customer if not exists
     if (!customerId) {
       const customer = await createCustomer(
-        profile.email,
-        `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || undefined
+        typedProfile.email,
+        `${typedProfile.first_name || ''} ${typedProfile.last_name || ''}`.trim() || undefined
       )
       customerId = customer.id
 
