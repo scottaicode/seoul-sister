@@ -3,19 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seoul Sister • The Korean Beauty Revolution • Save 73% Today</title>
-    <!-- Auto-deployment test -->
-    <meta name="description" content="The Korean beauty secret that's breaking the internet. Get authentic K-beauty at Seoul prices. Join 10,000+ girls who cracked the code.">
+    <title>Seoul Sister 🇰🇷 Save 73% on K-Beauty • Join the Revolution</title>
+    <meta name="description" content="OMG this K-beauty hack is breaking TikTok! Get authentic Korean skincare at Seoul prices. Join 15,000+ Seoul Sisters saving 70%+ 💅✨">
 
     <!-- Open Graph -->
-    <meta property="og:title" content="The Korean Beauty Hack That's Breaking TikTok">
-    <meta property="og:description" content="POV: You discover what Korean girls actually pay. $94 Sulwhasoo for $28. The girls who know, know.">
-    <meta property="og:image" content="https://i.imgur.com/seoul-sister-viral.jpg">
+    <meta property="og:title" content="This K-Beauty Price Hack is Breaking TikTok 😱">
+    <meta property="og:description" content="POV: You discover what Korean girls actually pay. $94 Sulwhasoo → $28 in Seoul. The secret they don't want you to know 👀">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1596755389378-c31d21fd1273?w=1200&h=630&fit=crop">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://seoulsister.com">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="This K-Beauty Price Hack is Breaking TikTok 😱">
+    <meta name="twitter:description" content="POV: You discover what Korean girls actually pay. $94 Sulwhasoo → $28 in Seoul.">
+    <meta name="twitter:image" content="https://images.unsplash.com/photo-1596755389378-c31d21fd1273?w=1200&h=630&fit=crop">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 
     <style>
         * {
@@ -25,27 +32,46 @@
         }
 
         :root {
-            --primary-pink: #ff1744;
-            --accent-blue: #00bcd4;
-            --gold: #ffc107;
-            --dark: #0a0a0a;
-            --dark-card: #111111;
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255, 255, 255, 0.8);
-            --text-muted: rgba(255, 255, 255, 0.6);
-            --border: rgba(255, 255, 255, 0.1);
-            --success: #4caf50;
+            /* Korean Flag Inspired */
+            --korean-red: #cd2e3a;
+            --korean-blue: #003478;
+
+            /* K-Beauty Palette */
+            --cherry-blossom: #ffb3ba;
+            --seoul-pink: #ff6b9d;
+            --mint-fresh: #a8e6cf;
+            --glass-skin: #f8f9fa;
+            --seoul-night: #1a1a2e;
+            --hanbok-white: #ffffff;
+
+            /* Gradients */
+            --korean-gradient: linear-gradient(135deg, var(--korean-red), var(--korean-blue));
+            --beauty-gradient: linear-gradient(135deg, var(--seoul-pink), var(--cherry-blossom));
+            --mint-gradient: linear-gradient(135deg, var(--mint-fresh), var(--seoul-pink));
+
+            /* UI Colors */
+            --background: #fafbfc;
+            --card-bg: var(--hanbok-white);
+            --text-primary: #2d3436;
+            --text-secondary: #636e72;
+            --text-muted: #b2bec3;
+            --border: #e9ecef;
+            --shadow: rgba(45, 52, 54, 0.1);
+            --success: #00b894;
+            --warning: #fdcb6e;
+            --danger: var(--korean-red);
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--dark);
+            font-family: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--background);
             color: var(--text-primary);
-            line-height: 1.6;
+            line-height: 1.7;
             overflow-x: hidden;
+            scroll-behavior: smooth;
         }
 
-        /* Clean Background */
+        /* Korean-Inspired Background */
         .bg-pattern {
             position: fixed;
             top: 0;
@@ -54,42 +80,80 @@
             height: 100%;
             z-index: -1;
             background:
-                radial-gradient(circle at 25% 25%, var(--primary-pink)15 0%, transparent 50%),
-                radial-gradient(circle at 75% 75%, var(--accent-blue)15 0%, transparent 50%),
-                var(--dark);
-            opacity: 0.4;
+                radial-gradient(circle at 20% 20%, rgba(255, 107, 157, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(168, 230, 207, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 50% 100%, rgba(205, 46, 58, 0.05) 0%, transparent 60%),
+                var(--background);
         }
 
-        /* Typography */
+        /* Korean Pattern Overlay */
+        .korean-pattern {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.02;
+            background-image:
+                repeating-linear-gradient(45deg, var(--korean-red) 0px, transparent 2px, transparent 10px, var(--korean-blue) 12px, transparent 14px, transparent 22px);
+        }
+
+        /* Typography System */
         .heading-xl {
-            font-size: clamp(3rem, 8vw, 6rem);
+            font-size: clamp(2.5rem, 8vw, 5rem);
             font-weight: 800;
-            line-height: 0.9;
-            letter-spacing: -0.02em;
-        }
-
-        .heading-lg {
-            font-size: clamp(2rem, 5vw, 3.5rem);
-            font-weight: 700;
             line-height: 1.1;
-        }
-
-        .heading-md {
-            font-size: clamp(1.5rem, 3vw, 2.5rem);
-            font-weight: 600;
-            line-height: 1.2;
-        }
-
-        .text-gradient {
-            background: linear-gradient(135deg, var(--primary-pink), var(--accent-blue), var(--gold));
+            letter-spacing: -0.02em;
+            background: var(--beauty-gradient);
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-size: 200% 200%;
-            animation: gradientShift 3s ease infinite;
+            animation: gradientFlow 4s ease infinite;
         }
 
-        @keyframes gradientShift {
+        .heading-lg {
+            font-size: clamp(1.75rem, 5vw, 3rem);
+            font-weight: 700;
+            line-height: 1.2;
+            color: var(--text-primary);
+        }
+
+        .heading-md {
+            font-size: clamp(1.25rem, 3vw, 2rem);
+            font-weight: 600;
+            line-height: 1.3;
+            color: var(--text-primary);
+        }
+
+        .korean-accent {
+            font-family: 'Noto Sans KR', sans-serif;
+            color: var(--korean-red);
+            font-weight: 700;
+        }
+
+        @keyframes gradientFlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .text-gradient {
+            background: var(--korean-gradient);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 200% 200%;
+            animation: koreanGradientShift 3s ease infinite;
+        }
+
+        .beauty-gradient {
+            background: var(--beauty-gradient);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        @keyframes koreanGradientShift {
             0%, 100% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
         }
@@ -109,26 +173,80 @@
             padding: 6rem 0;
         }
 
-        /* Cards */
+        /* Card System */
         .card {
-            background: var(--dark-card);
+            background: var(--card-bg);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: 20px;
             padding: 2rem;
-            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px var(--shadow);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--beauty-gradient);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
         }
 
         .card:hover {
-            border-color: var(--primary-pink);
-            transform: translateY(-2px);
+            transform: translateY(-8px);
+            box-shadow: 0 12px 40px rgba(255, 107, 157, 0.2);
+        }
+
+        .card:hover::before {
+            transform: scaleX(1);
         }
 
         .glass-card {
-            background: rgba(17, 17, 17, 0.8);
+            background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: 20px;
+            border: 1px solid rgba(255, 107, 157, 0.2);
+            border-radius: 24px;
             padding: 3rem;
+            box-shadow: 0 8px 32px rgba(255, 107, 157, 0.1);
+        }
+
+        .viral-card {
+            background: var(--card-bg);
+            border: 2px solid transparent;
+            border-radius: 24px;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.4s ease;
+        }
+
+        .viral-card::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: var(--beauty-gradient);
+            border-radius: 26px;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .viral-card:hover::before {
+            opacity: 1;
+        }
+
+        .viral-card:hover {
+            transform: scale(1.02) translateY(-4px);
+            box-shadow: 0 20px 40px rgba(255, 107, 157, 0.3);
         }
 
         /* Header */
@@ -138,8 +256,9 @@
             width: 100%;
             z-index: 1000;
             backdrop-filter: blur(20px);
-            background: rgba(10, 10, 10, 0.9);
+            background: rgba(255, 255, 255, 0.95);
             border-bottom: 1px solid var(--border);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
         }
 
         .nav {
@@ -154,23 +273,52 @@
         .logo {
             font-size: 1.5rem;
             font-weight: 800;
-            color: var(--primary-pink);
+            background: var(--korean-gradient);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             text-decoration: none;
+            position: relative;
+        }
+
+        .logo::after {
+            content: '🇰🇷';
+            margin-left: 0.5rem;
+            font-size: 1rem;
         }
 
         .viral-badge {
-            background: linear-gradient(135deg, var(--primary-pink), var(--accent-blue));
-            padding: 0.5rem 1rem;
-            border-radius: 25px;
+            background: var(--beauty-gradient);
+            padding: 0.75rem 1.25rem;
+            border-radius: 30px;
             font-size: 0.875rem;
-            font-weight: 600;
+            font-weight: 700;
             color: white;
-            animation: pulse 2s infinite;
+            box-shadow: 0 4px 15px rgba(255, 107, 157, 0.4);
+            animation: viralPulse 2s infinite;
+            position: relative;
+            overflow: hidden;
         }
 
-        @keyframes pulse {
+        .viral-badge::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes viralPulse {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.05); }
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
         }
 
         /* Hero Section */
@@ -180,7 +328,20 @@
             align-items: center;
             justify-content: center;
             text-align: center;
-            padding: 6rem 0 2rem 0;
+            padding: 8rem 0 4rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="korean" patternUnits="userSpaceOnUse" width="20" height="20"><circle cx="10" cy="10" r="1" fill="%23ff6b9d" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23korean)"/></svg>') repeat;
+            pointer-events: none;
         }
 
         .hero-content {
@@ -189,14 +350,45 @@
 
         .hero-tag {
             display: inline-block;
-            background: var(--dark-card);
-            border: 1px solid var(--primary-pink);
-            padding: 0.75rem 1.5rem;
+            background: var(--card-bg);
+            border: 2px solid var(--seoul-pink);
+            padding: 1rem 2rem;
             border-radius: 50px;
             margin-bottom: 2rem;
-            font-weight: 600;
-            color: var(--primary-pink);
-            animation: glow 2s ease-in-out infinite alternate;
+            font-weight: 700;
+            color: var(--seoul-pink);
+            box-shadow: 0 4px 20px rgba(255, 107, 157, 0.3);
+            animation: tagGlow 3s ease-in-out infinite alternate;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-tag::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--beauty-gradient);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+
+        .hero-tag:hover::before {
+            opacity: 0.1;
+        }
+
+        @keyframes tagGlow {
+            0%, 100% {
+                box-shadow: 0 4px 20px rgba(255, 107, 157, 0.3);
+                transform: scale(1);
+            }
+            50% {
+                box-shadow: 0 8px 30px rgba(255, 107, 157, 0.5);
+                transform: scale(1.02);
+            }
         }
 
         @keyframes glow {
@@ -287,45 +479,90 @@
             border: 1px solid rgba(255, 193, 7, 0.3);
         }
 
-        /* Buttons */
+        /* Korean-Inspired Button System */
         .btn {
             display: inline-block;
             padding: 1rem 2rem;
             border-radius: 50px;
-            font-weight: 600;
+            font-weight: 700;
             text-decoration: none;
             text-align: center;
             cursor: pointer;
             border: none;
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             font-size: 1rem;
+            position: relative;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn:hover::before {
+            left: 100%;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary-pink), var(--accent-blue));
+            background: var(--beauty-gradient);
             color: white;
-            box-shadow: 0 8px 25px rgba(255, 23, 68, 0.3);
+            box-shadow: 0 4px 20px rgba(255, 107, 157, 0.4);
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 35px rgba(255, 23, 68, 0.4);
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 12px 35px rgba(255, 107, 157, 0.6);
+        }
+
+        .btn-viral {
+            background: var(--korean-gradient);
+            color: white;
+            font-size: 1.1rem;
+            padding: 1.25rem 2.5rem;
+            box-shadow: 0 6px 25px rgba(205, 46, 58, 0.4);
+            animation: viralButtonPulse 3s ease infinite;
+        }
+
+        .btn-viral:hover {
+            transform: translateY(-6px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(205, 46, 58, 0.6);
+            animation: none;
+        }
+
+        @keyframes viralButtonPulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 6px 25px rgba(205, 46, 58, 0.4);
+            }
+            50% {
+                transform: scale(1.02);
+                box-shadow: 0 8px 30px rgba(205, 46, 58, 0.5);
+            }
         }
 
         .btn-lg {
-            padding: 1.25rem 3rem;
-            font-size: 1.125rem;
-            font-weight: 700;
+            padding: 1.5rem 3rem;
+            font-size: 1.2rem;
+            font-weight: 800;
         }
 
         .btn-explosive {
-            background: linear-gradient(135deg, var(--gold), var(--primary-pink));
-            color: var(--dark);
+            background: var(--mint-gradient);
+            color: white;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             position: relative;
             overflow: hidden;
+            animation: explosiveGlow 2s ease-in-out infinite alternate;
         }
 
         .btn-explosive::before {
@@ -335,7 +572,7 @@
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
             transition: left 0.6s;
         }
 
@@ -343,53 +580,104 @@
             left: 100%;
         }
 
-        /* Social Proof */
+        @keyframes explosiveGlow {
+            0%, 100% {
+                box-shadow: 0 4px 20px rgba(168, 230, 207, 0.4);
+            }
+            50% {
+                box-shadow: 0 8px 30px rgba(168, 230, 207, 0.6);
+            }
+        }
+
+        /* Viral Social Proof */
         .social-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 2rem;
             margin: 3rem 0;
         }
 
         .social-card {
-            background: var(--dark-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
+            background: var(--card-bg);
+            border: 2px solid var(--border);
+            border-radius: 20px;
             padding: 2rem;
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .social-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--beauty-gradient);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
         }
 
         .social-card:hover {
-            border-color: var(--accent-blue);
-            transform: translateY(-4px);
+            border-color: var(--seoul-pink);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 15px 40px rgba(255, 107, 157, 0.2);
+        }
+
+        .social-card:hover::before {
+            transform: scaleX(1);
         }
 
         .social-username {
             font-weight: 700;
-            color: var(--accent-blue);
-            margin-bottom: 1rem;
-            font-size: 1.1rem;
+            color: var(--seoul-pink);
+            font-size: 1rem;
         }
 
         .social-comment {
-            font-style: italic;
             margin-bottom: 1.5rem;
             line-height: 1.6;
-            color: var(--text-secondary);
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 1.05rem;
         }
 
         .social-stats {
             display: flex;
             gap: 1.5rem;
-            font-size: 0.875rem;
-            color: var(--text-muted);
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .social-stats span {
+            transition: all 0.3s ease;
+        }
+
+        .social-stats span:hover {
+            color: var(--seoul-pink);
+            transform: scale(1.1);
         }
 
         /* Problem Section */
         .problem-section {
-            background: linear-gradient(135deg, rgba(255, 23, 68, 0.05), rgba(0, 188, 212, 0.05));
+            background: linear-gradient(135deg, rgba(255, 107, 157, 0.05), rgba(168, 230, 207, 0.05));
             border-radius: 24px;
             margin: 4rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .problem-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="problem" patternUnits="userSpaceOnUse" width="30" height="30"><circle cx="15" cy="15" r="2" fill="%23ff6b9d" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23problem)"/></svg>') repeat;
+            pointer-events: none;
         }
 
         .reality-grid {
@@ -656,14 +944,16 @@
     </style>
 </head>
 <body>
-    <!-- Background Pattern -->
-    <div class="bg-pattern"></div>
+    <!-- Korean-Inspired Background -->
+    <div class="bg-pattern">
+        <div class="korean-pattern"></div>
+    </div>
 
     <!-- Header -->
     <header class="header">
         <nav class="nav">
             <a href="#" class="logo">Seoul Sister</a>
-            <div class="viral-badge">🔥 VIRAL • 2.3M VIEWS</div>
+            <div class="viral-badge">🔥 VIRAL • 4.7M VIEWS • TRENDING #1</div>
         </nav>
     </header>
 
@@ -672,84 +962,161 @@
         <div class="container">
             <div class="hero-content">
                 <div class="hero-tag">
-                    💅 THE KOREAN BEAUTY HACK TIKTOK IS OBSESSED WITH 💅
+                    🇰🇷 THE K-BEAUTY HACK THAT BROKE THE INTERNET 🇰🇷
                 </div>
 
                 <h1 class="heading-xl hero-title">
-                    POV: You Discover What <span class="text-gradient">Korean Girls</span> Actually Pay
+                    OMG... Korean Girls Pay <span class="beauty-gradient">73% Less</span> for the SAME Products
                 </h1>
 
-                <p class="hero-subtitle">
-                    While you're dropping $300 at Sephora, they're getting the SAME products for $67 in Seoul. The girls who know, know. 👀
+                <p class="hero-subtitle" style="font-size: 1.3rem; margin: 1.5rem 0; color: var(--text-secondary); max-width: 700px; margin-left: auto; margin-right: auto;">
+                    That $94 serum you just bought? <span class="korean-accent">$28 in Seoul</span>. Your $45 essence? <span class="korean-accent">$8 in Korea</span>. We're exposing the biggest beauty industry scam of 2025 💀
                 </p>
 
-                <div class="glass-card price-reveal">
-                    <h3 class="heading-md price-reveal-title">The Reality Check That Broke the Internet</h3>
+                <!-- Interactive Price Shock Calculator -->
+                <div class="viral-card price-reveal">
+                    <h3 class="heading-md price-reveal-title" style="color: var(--korean-red); margin-bottom: 1.5rem;">🚨 THE PRICE SHOCK CALCULATOR 🚨</h3>
+
+                    <div class="price-calculator">
+                        <div style="text-align: center; margin-bottom: 1.5rem;">
+                            <p style="font-size: 1.1rem; color: var(--text-secondary);">Enter any K-beauty product price from Sephora/Ulta:</p>
+                            <input type="number" class="calculator-input" placeholder="e.g., $94" id="priceInput" style="max-width: 200px; margin: 0.5rem auto; display: block;">
+                            <button onclick="calculateSavings()" class="btn btn-viral" style="margin-top: 1rem;">Show Me Seoul Price! 🇰🇷</button>
+                        </div>
+
+                        <div id="savingsReveal" class="savings-reveal">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🤯</div>
+                            <div style="font-size: 1.5rem; font-weight: 800;">You could save $<span id="savingsAmount">0</span>!</div>
+                            <div style="font-size: 1rem; margin-top: 0.5rem;">Seoul price: $<span id="seoulPrice">0</span></div>
+                            <div class="screenshot-prompt">📸 Screenshot this and share your discovery!</div>
+                        </div>
+                    </div>
 
                     <div class="price-grid">
-                        <div class="price-item">
-                            <span class="product-name">That $94 Sulwhasoo serum everyone raves about</span>
+                        <div class="price-item" onclick="animatePrice(this)">
+                            <span class="product-name">💧 Sulwhasoo First Care Activating Serum (the viral one)</span>
                             <span class="us-price">$94</span>
                             <span class="arrow">→</span>
                             <span class="seoul-price">$28</span>
                         </div>
 
-                        <div class="price-item">
-                            <span class="product-name">Your $45 Beauty of Joseon essence</span>
+                        <div class="price-item" onclick="animatePrice(this)">
+                            <span class="product-name">✨ Beauty of Joseon Glow Essence (TikTok famous)</span>
                             <span class="us-price">$45</span>
                             <span class="arrow">→</span>
                             <span class="seoul-price">$8</span>
                         </div>
 
-                        <div class="price-item">
-                            <span class="product-name">The $80 COSRX set everyone's obsessed with</span>
+                        <div class="price-item" onclick="animatePrice(this)">
+                            <span class="product-name">🌿 COSRX Snail 96 Mucin Power Essence Set</span>
                             <span class="us-price">$80</span>
                             <span class="arrow">→</span>
                             <span class="seoul-price">$23</span>
                         </div>
+
+                        <div class="price-item" onclick="animatePrice(this)">
+                            <span class="product-name">🌸 Laneige Water Sleeping Mask (Instagram viral)</span>
+                            <span class="us-price">$34</span>
+                            <span class="arrow">→</span>
+                            <span class="seoul-price">$12</span>
+                        </div>
                     </div>
 
                     <div class="savings-total">
-                        Total Savings on ONE Order: <strong>$160 💀</strong>
+                        Total Savings on ONE Order: <strong>$183 😱</strong>
+                        <div class="screenshot-prompt" style="margin-top: 1rem;">📸 SCREENSHOT THIS! Your friends need to see this scam exposed!</div>
                     </div>
                 </div>
 
-                <a href="#social" class="btn btn-primary btn-lg">Wait... show me EVERYTHING 👀</a>
+                <a href="#social" class="btn btn-explosive btn-lg" style="margin-top: 2rem;">OMG SHOW ME MORE SECRETS 🤯</a>
+
+                <div style="margin-top: 2rem; text-align: center;">
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">⬇️ Scroll to see how 15,000+ Seoul Sisters are saving thousands ⬇️</p>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- Social Proof Section -->
+    <!-- Viral Social Proof Section -->
     <section class="section" id="social">
         <div class="container">
+            <div style="text-align: center; margin-bottom: 3rem;">
+                <h2 class="heading-lg">Seoul Sisters Are Going <span class="beauty-gradient">VIRAL</span> 📱</h2>
+                <p style="font-size: 1.2rem; color: var(--text-secondary); margin-top: 1rem;">Real girls sharing their real savings (and we're living for it 😭)</p>
+            </div>
+
             <div class="social-grid">
-                <div class="social-card fade-in">
-                    <div class="social-username">@sarah.glowup</div>
-                    <div class="social-comment">"I can't believe I was paying $80 for this... I'm actually sick 🤢 But also grateful I found this"</div>
+                <div class="viral-card social-card fade-in">
+                    <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--beauty-gradient); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 1rem;">SG</div>
+                        <div>
+                            <div class="social-username">@sarah.glowup</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">2 hours ago</div>
+                        </div>
+                    </div>
+                    <div class="social-comment">"NO CAP I was spending my entire paycheck at Sephora... just calculated I could've saved $400 last month alone 😭 Seoul Sister really said 'let me expose this scam' and I'm here for it"</div>
+                    <div style="margin: 1rem 0; padding: 1rem; background: var(--mint-fresh); background: linear-gradient(135deg, rgba(168, 230, 207, 0.2), rgba(255, 107, 157, 0.1)); border-radius: 12px; text-align: center;">
+                        <div style="font-weight: 700; color: var(--success);">Monthly Savings: $400 💸</div>
+                    </div>
                     <div class="social-stats">
-                        <span>💜 47K likes</span>
-                        <span>💬 2.1K comments</span>
-                        <span>📤 8.9K shares</span>
+                        <span>❤️ 47.2K</span>
+                        <span>💬 3.1K</span>
+                        <span>🔄 18.9K</span>
+                        <span style="color: var(--korean-red); font-weight: bold;">🔥 VIRAL</span>
                     </div>
                 </div>
 
-                <div class="social-card fade-in">
-                    <div class="social-username">@skincare.addict</div>
-                    <div class="social-comment">"Korean girls were gatekeeping this WHOLE TIME and I'm not even mad... respect the hustle 👑"</div>
+                <div class="viral-card social-card fade-in">
+                    <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--korean-gradient); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 1rem;">KA</div>
+                        <div>
+                            <div class="social-username">@kbeauty.addicted</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">4 hours ago</div>
+                        </div>
+                    </div>
+                    <div class="social-comment">"POV: You realize Korean girls have been getting authentic products at ACTUAL Seoul prices while we were paying 300% markup 🤡 I'm not even mad I'm just impressed at the finesse"</div>
+                    <div style="margin: 1rem 0; padding: 1rem; background: linear-gradient(135deg, rgba(205, 46, 58, 0.1), rgba(255, 179, 186, 0.2)); border-radius: 12px; text-align: center;">
+                        <div style="font-weight: 700; color: var(--korean-red);">First Order Saved: $156 🇰🇷</div>
+                    </div>
                     <div class="social-stats">
-                        <span>💜 73K likes</span>
-                        <span>💬 5.8K comments</span>
-                        <span>📤 12.3K shares</span>
+                        <span>❤️ 73.8K</span>
+                        <span>💬 5.2K</span>
+                        <span>🔄 24.3K</span>
+                        <span style="color: var(--korean-red); font-weight: bold;">🔥 TRENDING</span>
                     </div>
                 </div>
 
-                <div class="social-card fade-in">
-                    <div class="social-username">@collegebudget</div>
-                    <div class="social-comment">"Finally luxury skincare on a Target budget. My wallet literally said thank you 🥺✨"</div>
+                <div class="viral-card social-card fade-in">
+                    <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--mint-gradient); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 1rem;">CB</div>
+                        <div>
+                            <div class="social-username">@collegebudget.queen</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">6 hours ago</div>
+                        </div>
+                    </div>
+                    <div class="social-comment">"Me: Can't afford groceries this week
+Also me: $200 skincare haul at Ulta
+
+Seoul Sister really said 'bestie let me save your credit score' and now I can afford both 😭✨"</div>
+                    <div style="margin: 1rem 0; padding: 1rem; background: linear-gradient(135deg, rgba(255, 107, 157, 0.1), rgba(168, 230, 207, 0.2)); border-radius: 12px; text-align: center;">
+                        <div style="font-weight: 700; color: var(--mint-fresh);">Credit Card: SAVED 😅</div>
+                    </div>
                     <div class="social-stats">
-                        <span>💜 92K likes</span>
-                        <span>💬 8.3K comments</span>
-                        <span>📤 15.7K shares</span>
+                        <span>❤️ 128.4K</span>
+                        <span>💬 12.8K</span>
+                        <span>🔄 41.7K</span>
+                        <span style="color: var(--korean-red); font-weight: bold;">🔥 #1 TRENDING</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 3rem;">
+                <div class="viral-card" style="display: inline-block; padding: 2rem; max-width: 600px;">
+                    <h3 style="color: var(--korean-red); margin-bottom: 1rem;">📸 Want to Join the Viral Savings Movement?</h3>
+                    <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">Share your Seoul Sister savings on social and inspire other girls to stop getting finessed!</p>
+                    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                        <button class="btn btn-viral">Share on TikTok 🎥</button>
+                        <button class="btn btn-primary">Share on Instagram 📷</button>
                     </div>
                 </div>
             </div>
@@ -1003,10 +1370,126 @@
 
         lazyElements.forEach(el => lazyObserver.observe(el));
 
+        // Interactive Price Calculator
+        function calculateSavings() {
+            const priceInput = document.getElementById('priceInput');
+            const savingsReveal = document.getElementById('savingsReveal');
+            const savingsAmount = document.getElementById('savingsAmount');
+            const seoulPrice = document.getElementById('seoulPrice');
+
+            const usPrice = parseFloat(priceInput.value);
+            if (isNaN(usPrice) || usPrice <= 0) {
+                alert('Please enter a valid price!');
+                return;
+            }
+
+            // Calculate Seoul price (approximately 30-35% of US price)
+            const seoulPriceCalc = Math.round(usPrice * 0.32);
+            const savings = usPrice - seoulPriceCalc;
+
+            savingsAmount.textContent = savings.toFixed(0);
+            seoulPrice.textContent = seoulPriceCalc.toFixed(0);
+
+            savingsReveal.classList.add('show');
+
+            // Add confetti effect
+            createConfetti();
+        }
+
+        // Price item animation
+        function animatePrice(element) {
+            element.style.transform = 'scale(1.05)';
+            element.style.background = 'linear-gradient(135deg, rgba(255, 107, 157, 0.1), rgba(168, 230, 207, 0.1))';
+
+            setTimeout(() => {
+                element.style.transform = 'scale(1)';
+                element.style.background = 'var(--card-bg)';
+            }, 300);
+
+            // Show screenshot prompt
+            const prompt = document.createElement('div');
+            prompt.className = 'screenshot-prompt';
+            prompt.textContent = '📸 Screenshot this price shock!';
+            prompt.style.position = 'fixed';
+            prompt.style.top = '50%';
+            prompt.style.left = '50%';
+            prompt.style.transform = 'translate(-50%, -50%)';
+            prompt.style.zIndex = '10000';
+            prompt.style.padding = '1rem 2rem';
+            prompt.style.borderRadius = '20px';
+
+            document.body.appendChild(prompt);
+
+            setTimeout(() => {
+                document.body.removeChild(prompt);
+            }, 2000);
+        }
+
+        // Confetti effect for price reveals
+        function createConfetti() {
+            const colors = ['#ff6b9d', '#a8e6cf', '#cd2e3a', '#003478', '#ffb3ba'];
+
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.style.position = 'fixed';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.top = '-10px';
+                confetti.style.width = '10px';
+                confetti.style.height = '10px';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.borderRadius = '50%';
+                confetti.style.zIndex = '10000';
+                confetti.style.pointerEvents = 'none';
+                confetti.style.animation = `confettiFall ${Math.random() * 3 + 2}s linear forwards`;
+
+                document.body.appendChild(confetti);
+
+                setTimeout(() => {
+                    if (document.body.contains(confetti)) {
+                        document.body.removeChild(confetti);
+                    }
+                }, 5000);
+            }
+        }
+
+        // Add confetti animation CSS
+        const confettiCSS = `
+            @keyframes confettiFall {
+                to {
+                    transform: translateY(100vh) rotate(360deg);
+                    opacity: 0;
+                }
+            }
+        `;
+
+        const style = document.createElement('style');
+        style.textContent = confettiCSS;
+        document.head.appendChild(style);
+
+        // Auto-focus price input when visible
+        const priceInput = document.getElementById('priceInput');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    setTimeout(() => {
+                        priceInput.focus();
+                    }, 500);
+                }
+            });
+        });
+        observer.observe(priceInput);
+
+        // Enter key support for calculator
+        document.getElementById('priceInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculateSavings();
+            }
+        });
+
         // Preload critical resources
         const preloadFont = document.createElement('link');
         preloadFont.rel = 'preload';
-        preloadFont.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap';
+        preloadFont.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;500;700&display=swap';
         preloadFont.as = 'style';
         document.head.appendChild(preloadFont);
     </script>
