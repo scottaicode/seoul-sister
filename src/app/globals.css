@@ -88,3 +88,21 @@ a {
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
 }
+
+.border-gradient {
+  border: 2px solid transparent;
+  background: linear-gradient(white, white) padding-box,
+              linear-gradient(135deg, var(--korean-red), var(--korean-blue)) border-box;
+}
+
+.text-korean-red {
+  color: var(--korean-red);
+}
+
+.text-korean-blue {
+  color: var(--korean-blue);
+}
+
+.bg-korean-gradient {
+  background: linear-gradient(135deg, var(--korean-red) 0%, var(--korean-blue) 100%);
+}

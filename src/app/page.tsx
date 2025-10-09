@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import ViralScreenshotGenerator from '../components/ViralScreenshotGenerator'
+import ViralCopyGenerator from '../components/ViralCopyGenerator'
+import OrderUnlockSystem from '../components/OrderUnlockSystem'
 
 interface Product {
   id: string
@@ -46,6 +49,10 @@ const featuredProducts: Product[] = [
 
 export default function HomePage() {
   const [currentProductIndex, setCurrentProductIndex] = useState(0)
+  const [showViralGenerator, setShowViralGenerator] = useState(false)
+  const [showCopyGenerator, setShowCopyGenerator] = useState(false)
+  const [showOrderUnlock, setShowOrderUnlock] = useState(false)
+  const [hasFirstOrder, setHasFirstOrder] = useState(false) // Simulate customer status
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -56,6 +63,48 @@ export default function HomePage() {
 
   const currentProduct = featuredProducts[currentProductIndex]
   const savings = currentProduct.us_price - currentProduct.seoul_price
+
+  const handleScreenshotGenerated = (imageDataUrl: string) => {
+    // Create a temporary link to download the image
+    const link = document.createElement('a')
+    link.download = 'seoul-sister-savings.png'
+    link.href = imageDataUrl
+    link.click()
+
+    // Show success message
+    alert('Your viral screenshot is ready! Share it on Instagram Stories to expose the beauty industry scam! 💋✨')
+  }
+
+  const handleCopyGenerated = (copies: any[]) => {
+    console.log('Generated viral copies:', copies)
+    // Track copy generation for analytics
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', 'viral_copy_generated', {
+        product_name: currentProduct.name_english,
+        copies_count: copies.length
+      });
+    }
+  }
+
+  const handleOrderUnlock = (unlockData: any) => {
+    console.log('Order unlocked:', unlockData)
+    // Track unlock completion for analytics
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', 'order_unlocked', {
+        unlock_status: unlockData.unlockStatus,
+        discount_earned: unlockData.nextOrderDiscount
+      });
+    }
+  }
+
+  // Simulate checking customer status (in real app, this would come from authentication/backend)
+  useEffect(() => {
+    // Check if user has placed first order (demo purposes)
+    const firstOrderDemo = localStorage.getItem('seoul-sister-first-order');
+    if (firstOrderDemo) {
+      setHasFirstOrder(true);
+    }
+  }, [])
 
   return (
     <main className="min-h-screen bg-white">
@@ -261,6 +310,161 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Viral Screenshot Generator */}
+      <section className="py-20">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900">
+              Share Your <span className="text-gradient">Seoul Sister</span> Savings
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
+              Generate a viral Instagram Story to expose the beauty industry scam and show your friends
+              how much you're saving with authentic Seoul prices! 💋
+            </p>
+
+            <button
+              onClick={() => setShowViralGenerator(!showViralGenerator)}
+              className="bg-korean-gradient hover:opacity-90 transition-opacity text-white font-bold py-4 px-8 rounded-xl text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 mb-8"
+            >
+              {showViralGenerator ? 'Hide Generator' : 'Create My Viral Story ✨'}
+            </button>
+          </div>
+
+          {showViralGenerator && (
+            <div className="max-w-4xl mx-auto">
+              <ViralScreenshotGenerator
+                savingsData={{
+                  productName: currentProduct.name_english,
+                  usPrice: currentProduct.us_price,
+                  seoulPrice: currentProduct.seoul_price + 25, // Include service fee
+                  savings: savings - 25, // Actual savings after service fee
+                  savingsPercent: ((savings - 25) / currentProduct.us_price) * 100,
+                  brand: currentProduct.brand
+                }}
+                customerName="Seoul Sister"
+                onScreenshotGenerated={handleScreenshotGenerated}
+              />
+            </div>
+          )}
+
+          <div className="text-center mt-12">
+            <p className="text-sm text-gray-500 max-w-xl mx-auto">
+              Share your screenshot on Instagram Stories and tag @seoulsister to expose the beauty industry markup!
+              Every share helps more people discover authentic Seoul prices. 🔥
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Viral Copy Generator */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900">
+              Generate <span className="text-gradient">Viral Copy</span> for Your Posts
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
+              Get platform-specific viral content to share your Seoul Sister savings and expose the beauty industry scam!
+              Perfect for Instagram, TikTok, and more. 🔥
+            </p>
+
+            <button
+              onClick={() => setShowCopyGenerator(!showCopyGenerator)}
+              className="bg-korean-gradient hover:opacity-90 transition-opacity text-white font-bold py-4 px-8 rounded-xl text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 mb-8"
+            >
+              {showCopyGenerator ? 'Hide Copy Generator' : 'Generate Viral Copy 🚀'}
+            </button>
+          </div>
+
+          {showCopyGenerator && (
+            <div className="max-w-4xl mx-auto">
+              <ViralCopyGenerator
+                savingsData={{
+                  productName: currentProduct.name_english,
+                  brand: currentProduct.brand,
+                  usPrice: currentProduct.us_price,
+                  seoulPrice: currentProduct.seoul_price + 25, // Include service fee
+                  savings: savings - 25, // Actual savings after service fee
+                  savingsPercent: ((savings - 25) / currentProduct.us_price) * 100
+                }}
+                onCopyGenerated={handleCopyGenerated}
+              />
+            </div>
+          )}
+
+          <div className="text-center mt-12">
+            <p className="text-sm text-gray-500 max-w-xl mx-auto">
+              💡 <strong>Pro Tip:</strong> Combine your viral copy with screenshot to create maximum impact posts!
+              Use different styles across platforms to reach diverse audiences. 💅
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Order Unlock System - For Existing Customers */}
+      <section className="py-20">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900">
+              Unlock Your <span className="text-gradient">Next Order</span>
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
+              Share your Seoul Sister savings to unlock future orders with exclusive discounts!
+              Help expose the beauty industry scam and earn rewards. 🔓
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
+              <button
+                onClick={() => setShowOrderUnlock(!showOrderUnlock)}
+                className="bg-korean-gradient hover:opacity-90 transition-opacity text-white font-bold py-4 px-8 rounded-xl text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+              >
+                {showOrderUnlock ? 'Hide Unlock System' : 'Access Order Unlock 🔓'}
+              </button>
+
+              {!hasFirstOrder && (
+                <button
+                  onClick={() => {
+                    localStorage.setItem('seoul-sister-first-order', 'true');
+                    setHasFirstOrder(true);
+                    alert('Demo: First order completed! Now you can access the unlock system.');
+                  }}
+                  className="bg-gray-600 hover:bg-gray-700 transition-colors text-white font-semibold py-3 px-6 rounded-xl text-sm"
+                >
+                  🎬 Demo: Simulate First Order
+                </button>
+              )}
+            </div>
+
+            {!hasFirstOrder && !showOrderUnlock && (
+              <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 max-w-md mx-auto">
+                <p className="text-sm text-yellow-800">
+                  💡 The order unlock system activates after your first Seoul Sister purchase.
+                  Use the demo button above to see how it works!
+                </p>
+              </div>
+            )}
+          </div>
+
+          {showOrderUnlock && (
+            <div className="max-w-4xl mx-auto">
+              <OrderUnlockSystem
+                customerEmail="demo@seoulsister.com"
+                orderNumber={hasFirstOrder ? 1 : 0}
+                previousSavings={savings - 25}
+                onUnlockComplete={handleOrderUnlock}
+              />
+            </div>
+          )}
+
+          <div className="text-center mt-12">
+            <p className="text-sm text-gray-500 max-w-xl mx-auto">
+              🌟 <strong>Seoul Sister Rewards:</strong> Every share helps expose the beauty industry markup
+              and earns you exclusive discounts on future orders! Join the revolution! 💪
+            </p>
           </div>
         </div>
       </section>

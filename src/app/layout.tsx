@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter, Poppins } from 'next/font/google'
 import './globals.css'
+import AnalyticsTracker from '../components/AnalyticsTracker'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -40,7 +41,25 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
+      <head>
+        {/* Google Analytics */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'GA_MEASUREMENT_ID', {
+                page_title: 'Seoul Sister - K-Beauty Revolution',
+                custom_map: {'custom_parameter_1': 'viral_mechanism'}
+              });
+            `,
+          }}
+        />
+      </head>
       <body className="antialiased bg-white text-gray-900">
+        <AnalyticsTracker />
         <div className="min-h-screen">
           {children}
         </div>
