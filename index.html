@@ -698,6 +698,37 @@
             50% { transform: translateY(-10px); }
         }
 
+        /* 12/10 Quality Button Hover Effects */
+        .btn-primary:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 20px 50px rgba(255, 215, 0, 0.6);
+            background: linear-gradient(135deg, #2a2a2a, #1d1d1f);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 12px 32px rgba(255, 215, 0, 0.7);
+            background: linear-gradient(135deg, #ffed4a, #ffd700, #e8b4a0);
+        }
+
+        /* Premium Calculator Enhanced Animations */
+        .calculator-input:focus {
+            transform: scale(1.02);
+            box-shadow: 0 0 0 6px rgba(255, 215, 0, 0.15);
+        }
+
+        /* Gold Shimmer Effect for Premium Elements */
+        .korean-luxury-shimmer {
+            background: linear-gradient(90deg, #ffd700, #ffed4a, #ffd700, #e8b4a0);
+            background-size: 300% 100%;
+            animation: goldShimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes goldShimmer {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
         /* Korean Beauty Product Showcase */
         .product-showcase {
             display: grid;
@@ -799,13 +830,13 @@
                 </div>
 
                 <div class="headline fade-in" style="margin-bottom: 2rem; color: var(--gray-500); position: relative;">
-                    POV: You discover what Seoul girls actually pay ✨<br>
-                    <span style="font-size: 0.9em; opacity: 0.8;">Luxury K-beauty at Seoul insider prices</span>
+                    POV: You discover what Seoul girls actually pay<br>
+                    <span style="font-size: 0.9em; opacity: 0.8; background: var(--korean-luxury); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Luxury K-beauty at Seoul insider prices</span>
                     <div style="position: absolute; top: -20px; right: -30px; font-size: 1.5rem; opacity: 0.7;">🇰🇷</div>
                 </div>
 
                 <div class="body-large fade-in" style="margin-bottom: 3rem; max-width: 600px; margin-left: auto; margin-right: auto; position: relative;">
-                    bestie, you're about to be SHOOK 💅 Access the same luxury K-beauty that Seoul Sisters get, without the 300% US markup. Premium quality at Seoul reality prices.
+                    You're about to access the same luxury K-beauty that Seoul insiders get, without the 300% US markup. This is premium quality at Seoul reality prices—no compromises, bestie.
                     <div style="position: absolute; top: -10px; right: -15px; font-size: 1.2rem; opacity: 0.8;">🥇</div>
                 </div>
 
@@ -814,7 +845,7 @@
                         Access Seoul Insider Prices
                     </a>
                     <a href="#calculator" class="btn btn-secondary" style="background: linear-gradient(135deg, #ffd700, #e8b4a0); color: #1d1d1f; font-weight: 700; border: 2px solid #b8860b; box-shadow: 0 4px 16px rgba(255, 215, 0, 0.5);">
-                        See Your VIP Savings ✨
+                        Calculate VIP Savings
                     </a>
                 </div>
             </div>
@@ -825,8 +856,9 @@
     <section class="section" id="calculator">
         <div class="container">
             <div class="calculator fade-in">
-                <div class="headline" style="margin-bottom: 1rem; text-align: center;">
-                    LUXURY MARKUP EXPOSED 🔍
+                <div class="headline" style="margin-bottom: 1rem; text-align: center; position: relative;">
+                    <span style="background: var(--korean-luxury); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">LUXURY MARKUP</span> EXPOSED
+                    <div style="position: absolute; top: -8px; right: 20%; font-size: 1.5rem; opacity: 0.8; filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.3));">🔍</div>
                 </div>
 
                 <div class="body" style="margin-bottom: 2rem; text-align: center; max-width: 500px; margin-left: auto; margin-right: auto;">
@@ -842,14 +874,16 @@
                            min="1">
 
                     <div>
-                        <button onclick="calculatePrice()" class="btn btn-primary" style="background: #1d1d1f; color: white; border: 2px solid #ffd700; font-weight: 700; padding: 1rem 2rem; border-radius: 24px; box-shadow: 0 4px 16px rgba(255, 215, 0, 0.4); cursor: pointer; font-size: 1rem;">
-                            EXPOSE THE MARKUP ✨
+                        <button onclick="calculatePrice()" class="btn btn-primary" style="background: linear-gradient(135deg, #1d1d1f, #2a2a2a); color: white; border: 2px solid #ffd700; font-weight: 700; padding: 1rem 2rem; border-radius: 24px; box-shadow: 0 8px 32px rgba(255, 215, 0, 0.4); cursor: pointer; font-size: 1rem; transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);">
+                            <span style="background: var(--korean-luxury); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;">EXPOSE</span> THE MARKUP
                         </button>
                     </div>
 
                     <div id="calculatorResult" class="calculator-result">
-                        <div style="font-size: 1.25rem; font-weight: 600; color: var(--premium-forest); margin-bottom: 1rem;">
-                            You just saved: $<span id="savingsAmount">0</span> bestie! 💅
+                        <div style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem;">
+                            <span style="background: var(--korean-luxury); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">You just saved:</span>
+                            <span style="color: var(--premium-forest); font-weight: 800; font-size: 1.4em;">$<span id="savingsAmount">0</span></span>
+                            <span style="font-style: italic; opacity: 0.8;">bestie</span>
                         </div>
                         <div style="color: var(--gray-600);">
                             Seoul price: $<span id="seoulPrice">0</span> •
@@ -868,12 +902,13 @@
     <section class="section" id="discover">
         <div class="container">
             <div style="text-align: center; margin-bottom: 3rem;">
-                <div class="display-medium fade-in" style="margin-bottom: 1rem;">
-                    Seoul Sisters' VIP Collection ✨
+                <div class="display-medium fade-in" style="margin-bottom: 1rem; position: relative;">
+                    Seoul Sisters' <span style="background: var(--korean-luxury); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">VIP Collection</span>
+                    <div style="position: absolute; top: -8px; right: 25%; font-size: 1.8rem; opacity: 0.8; filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.3));">✨</div>
                 </div>
                 <div class="body-large fade-in" style="max-width: 600px; margin: 0 auto;">
-                    The same luxury K-beauty brands you see on TikTok,
-                    but at Seoul reality prices (not US finesse prices) 💅
+                    The same luxury K-beauty brands you see everywhere,
+                    but at Seoul reality prices—not US markup madness
                 </div>
             </div>
 
@@ -1097,11 +1132,12 @@
     <section class="section" style="background: var(--gray-50);">
         <div class="container">
             <div style="text-align: center; margin-bottom: 3rem;">
-                <div class="display-medium fade-in" style="margin-bottom: 1rem;">
-                    Seoul Sisters Don't Play About Savings ✨
+                <div class="display-medium fade-in" style="margin-bottom: 1rem; position: relative;">
+                    The <span style="background: var(--korean-luxury); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Seoul Sister</span> Difference
+                    <div style="position: absolute; top: -8px; right: 20%; font-size: 1.8rem; opacity: 0.8; filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.3));">✨</div>
                 </div>
                 <div class="body-large fade-in">
-                    VIP access, authentic luxury, trusted by 15K+ Seoul Sisters who refuse to be finessed
+                    VIP access, authentic luxury, trusted by 15K+ Seoul Sisters who refuse industry markups
                 </div>
             </div>
 
@@ -1130,17 +1166,19 @@
     <section class="section">
         <div class="container">
             <div class="glass-card fade-in" style="text-align: center; max-width: 600px; margin: 0 auto;">
-                <div class="headline" style="margin-bottom: 1rem;">
-                    Ready to Join the Seoul Sisters? ✨
+                <div class="headline" style="margin-bottom: 1rem; position: relative;">
+                    Ready to Join the <span style="background: var(--korean-luxury); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Seoul Sisters</span>?
+                    <div style="position: absolute; top: -8px; right: 15%; font-size: 1.5rem; opacity: 0.8; filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.3));">✨</div>
                 </div>
                 <div class="body" style="margin-bottom: 2rem;">
-                    Join 15K+ Seoul Sisters who refuse to be finessed by US beauty markups.
+                    Join 15K+ Seoul Sisters who refuse industry markup manipulation.
                     Get your exclusive VIP access with a personalized Seoul consultation.
                 </div>
-                <a href="https://wa.me/1234567890?text=Hey! I just discovered Seoul Sister and I'm SHOOK by these Seoul prices 😱 Can you help me get VIP access to authentic K-beauty at Seoul prices?"
+                <a href="https://wa.me/1234567890?text=Hey! I just discovered Seoul Sister and these Seoul prices are incredible. Can you help me get VIP access to authentic K-beauty at Seoul wholesale prices?"
                    class="btn btn-primary"
-                   style="font-size: 1.125rem; padding: 1.25rem 2.5rem; background: #1d1d1f; color: white; font-weight: 700; border: 2px solid #ffd700; box-shadow: 0 8px 24px rgba(255, 215, 0, 0.4); border-radius: 24px; text-decoration: none; display: inline-block; cursor: pointer; transition: all 0.3s ease;">
-                    Get VIP Seoul Access 👑
+                   style="font-size: 1.125rem; padding: 1.25rem 2.5rem; background: linear-gradient(135deg, #1d1d1f, #2a2a2a); color: white; font-weight: 700; border: 2px solid #ffd700; box-shadow: 0 12px 36px rgba(255, 215, 0, 0.4); border-radius: 24px; text-decoration: none; display: inline-block; cursor: pointer; transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); position: relative; overflow: hidden;">
+                    <span style="background: var(--korean-luxury); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;">VIP Seoul</span> Access
+                    <div style="position: absolute; top: 50%; right: 1rem; transform: translateY(-50%); font-size: 1.3rem; filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.5));">👑</div>
                 </a>
                 <div style="margin-top: 1rem; font-size: 0.875rem; color: var(--gray-400);">
                     Free VIP consultation • No commitment • Seoul Sister exclusive access
@@ -1151,7 +1189,7 @@
 
     <!-- WhatsApp CTA -->
     <button class="whatsapp-cta"
-            onclick="window.open('https://wa.me/1234567890?text=Hey bestie! Just found Seoul Sister and these prices have me SHOOK 💅 Can you help me get VIP access to Seoul pricing?', '_blank')"
+            onclick="window.open('https://wa.me/1234567890?text=Hi! Just discovered Seoul Sister and these Seoul prices are amazing. Can you help me get VIP access to authentic K-beauty at wholesale prices?', '_blank')"
             aria-label="Chat with Seoul Sister on WhatsApp">
         💬
     </button>
