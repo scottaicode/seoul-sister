@@ -158,7 +158,7 @@
             50% { background-position: 100% 50%; }
         }
 
-        /* Layout */
+        /* Optimized Layout */
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -166,11 +166,19 @@
         }
 
         .section {
-            padding: 4rem 0;
+            padding: 2.5rem 0;
         }
 
         .section-lg {
-            padding: 6rem 0;
+            padding: 3.5rem 0;
+        }
+
+        .section-compact {
+            padding: 1.5rem 0;
+        }
+
+        .section-hero {
+            padding: 1rem 0 2rem 0;
         }
 
         /* Card System */
@@ -321,14 +329,14 @@
             100% { left: 100%; }
         }
 
-        /* Hero Section */
+        /* Optimized Hero Section */
         .hero {
-            min-height: 100vh;
+            min-height: 90vh;
             display: flex;
             align-items: center;
             justify-content: center;
             text-align: center;
-            padding: 8rem 0 4rem 0;
+            padding: 6rem 0 2rem 0;
             position: relative;
             overflow: hidden;
         }
@@ -439,8 +447,31 @@
         }
 
         .price-item:hover {
-            border-color: var(--primary-pink);
-            transform: translateX(4px);
+            border-color: var(--seoul-pink);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 157, 0.2);
+        }
+
+        .price-item::after {
+            content: '👆 Tap me';
+            position: absolute;
+            top: -25px;
+            right: 10px;
+            background: var(--korean-red);
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .price-item:hover::after {
+            opacity: 1;
+            transform: scale(1);
         }
 
         .product-name {
@@ -846,18 +877,79 @@
             position: fixed;
             bottom: 2rem;
             right: 2rem;
-            background: #25d366;
+            background: linear-gradient(135deg, #25d366, #128c7e);
             color: white;
             border: none;
             border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            font-size: 1.5rem;
+            width: 70px;
+            height: 70px;
+            font-size: 1.8rem;
             cursor: pointer;
             z-index: 1000;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 20px rgba(37, 211, 102, 0.3);
-            animation: float 3s ease-in-out infinite;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 25px rgba(37, 211, 102, 0.4);
+            animation: whatsappFloat 4s ease-in-out infinite;
+        }
+
+        .whatsapp-float::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #25d366, #128c7e);
+            z-index: -1;
+            opacity: 0.3;
+            animation: whatsappRipple 2s linear infinite;
+        }
+
+        .whatsapp-float::after {
+            content: 'Start Saving! 💸';
+            position: absolute;
+            top: -40px;
+            left: -85px;
+            background: var(--korean-red);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+            animation: floatMessage 4s ease-in-out infinite;
+            box-shadow: 0 4px 15px rgba(205, 46, 58, 0.4);
+        }
+
+        @keyframes whatsappFloat {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        @keyframes whatsappRipple {
+            0% {
+                transform: scale(1);
+                opacity: 0.4;
+            }
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        @keyframes floatMessage {
+            0%, 70%, 100% {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            15%, 55% {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         @keyframes float {
@@ -866,8 +958,14 @@
         }
 
         .whatsapp-float:hover {
-            transform: scale(1.1) translateY(-4px);
-            box-shadow: 0 8px 30px rgba(37, 211, 102, 0.5);
+            transform: scale(1.15) translateY(-8px);
+            box-shadow: 0 15px 40px rgba(37, 211, 102, 0.6);
+        }
+
+        .whatsapp-float:hover::after {
+            animation: none;
+            opacity: 1;
+            transform: translateY(0);
         }
 
         /* Responsive Design */
@@ -906,11 +1004,29 @@
             }
 
             .section {
-                padding: 3rem 0;
+                padding: 2rem 0;
             }
 
             .section-lg {
-                padding: 4rem 0;
+                padding: 2.5rem 0;
+            }
+
+            .section-compact {
+                padding: 1.5rem 0;
+            }
+
+            .whatsapp-float {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
+                bottom: 1.5rem;
+                right: 1.5rem;
+            }
+
+            .whatsapp-float::after {
+                font-size: 0.7rem;
+                left: -70px;
+                top: -35px;
             }
         }
 
@@ -993,29 +1109,29 @@
                     </div>
 
                     <div class="price-grid">
-                        <div class="price-item" onclick="animatePrice(this)">
-                            <span class="product-name">💧 Sulwhasoo First Care Activating Serum (the viral one)</span>
+                        <div class="price-item" onclick="animatePrice(this)" style="cursor: pointer; position: relative;">
+                            <span class="product-name">💧 Sulwhasoo First Care Activating Serum <span style="background: var(--korean-red); color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem; margin-left: 0.5rem;">🔥 VIRAL</span></span>
                             <span class="us-price">$94</span>
                             <span class="arrow">→</span>
                             <span class="seoul-price">$28</span>
                         </div>
 
-                        <div class="price-item" onclick="animatePrice(this)">
-                            <span class="product-name">✨ Beauty of Joseon Glow Essence (TikTok famous)</span>
+                        <div class="price-item" onclick="animatePrice(this)" style="cursor: pointer; position: relative;">
+                            <span class="product-name">✨ Beauty of Joseon Glow Essence <span style="background: var(--seoul-pink); color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem; margin-left: 0.5rem;">TIKTOK FAMOUS</span></span>
                             <span class="us-price">$45</span>
                             <span class="arrow">→</span>
                             <span class="seoul-price">$8</span>
                         </div>
 
-                        <div class="price-item" onclick="animatePrice(this)">
-                            <span class="product-name">🌿 COSRX Snail 96 Mucin Power Essence Set</span>
+                        <div class="price-item" onclick="animatePrice(this)" style="cursor: pointer; position: relative;">
+                            <span class="product-name">🌿 COSRX Snail 96 Mucin Power Essence Set <span style="background: var(--mint-fresh); color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem; margin-left: 0.5rem;">REDDIT FAVE</span></span>
                             <span class="us-price">$80</span>
                             <span class="arrow">→</span>
                             <span class="seoul-price">$23</span>
                         </div>
 
-                        <div class="price-item" onclick="animatePrice(this)">
-                            <span class="product-name">🌸 Laneige Water Sleeping Mask (Instagram viral)</span>
+                        <div class="price-item" onclick="animatePrice(this)" style="cursor: pointer; position: relative;">
+                            <span class="product-name">🌸 Laneige Water Sleeping Mask <span style="background: linear-gradient(45deg, var(--seoul-pink), var(--cherry-blossom)); color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem; margin-left: 0.5rem;">INSTA VIRAL</span></span>
                             <span class="us-price">$34</span>
                             <span class="arrow">→</span>
                             <span class="seoul-price">$12</span>
@@ -1024,34 +1140,42 @@
 
                     <div class="savings-total">
                         Total Savings on ONE Order: <strong>$183 😱</strong>
-                        <div class="screenshot-prompt" style="margin-top: 1rem;">📸 SCREENSHOT THIS! Your friends need to see this scam exposed!</div>
+                        <div class="screenshot-prompt" style="margin-top: 1rem; font-size: 1.2rem; animation: screenshotPulse 2s ease-in-out infinite; border: 2px dashed white; padding: 1rem; border-radius: 15px;">📸 SCREENSHOT THIS RIGHT NOW! 📸</div>
+                        <div style="margin-top: 0.5rem; font-size: 0.9rem; opacity: 0.9;">Your friends NEED to see this beauty industry scam exposed!</div>
                     </div>
                 </div>
 
-                <a href="#social" class="btn btn-explosive btn-lg" style="margin-top: 2rem;">OMG SHOW ME MORE SECRETS 🤯</a>
+                <a href="#social" class="btn btn-explosive btn-lg" style="margin-top: 1.5rem;">OMG SHOW ME MORE SECRETS 🤯</a>
 
-                <div style="margin-top: 2rem; text-align: center;">
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">⬇️ Scroll to see how 15,000+ Seoul Sisters are saving thousands ⬇️</p>
+                <div style="margin-top: 1rem; text-align: center;">
+                    <p style="color: var(--text-muted); font-size: 0.9rem; animation: scrollBounce 2s ease-in-out infinite;">⬇️ Scroll to see how 15,000+ Seoul Sisters are saving thousands ⬇️</p>
                 </div>
+
+                <style>
+                @keyframes scrollBounce {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-5px); }
+                }
+                </style>
             </div>
         </div>
     </section>
 
     <!-- Viral Social Proof Section -->
-    <section class="section" id="social">
+    <section class="section-compact" id="social">
         <div class="container">
-            <div style="text-align: center; margin-bottom: 3rem;">
+            <div style="text-align: center; margin-bottom: 2rem;">
                 <h2 class="heading-lg">Seoul Sisters Are Going <span class="beauty-gradient">VIRAL</span> 📱</h2>
-                <p style="font-size: 1.2rem; color: var(--text-secondary); margin-top: 1rem;">Real girls sharing their real savings (and we're living for it 😭)</p>
+                <p style="font-size: 1.2rem; color: var(--text-secondary); margin-top: 0.5rem;">Real girls sharing their real savings (and we're living for it 😭)</p>
             </div>
 
             <div class="social-grid">
                 <div class="viral-card social-card fade-in">
                     <div style="display: flex; align-items: center; margin-bottom: 1rem;">
-                        <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--beauty-gradient); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 1rem;">SG</div>
+                        <div style="width: 45px; height: 45px; border-radius: 50%; background: url('https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=100&h=100&fit=crop&crop=face') center/cover; border: 2px solid var(--seoul-pink); margin-right: 1rem;"></div>
                         <div>
-                            <div class="social-username">@sarah.glowup</div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">2 hours ago</div>
+                            <div class="social-username" style="display: flex; align-items: center; gap: 0.5rem;">@sarah.glowup <span style="background: var(--success); color: white; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 10px;">✓</span></div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">2 hours ago • 🌍 Seoul, Korea</div>
                         </div>
                     </div>
                     <div class="social-comment">"NO CAP I was spending my entire paycheck at Sephora... just calculated I could've saved $400 last month alone 😭 Seoul Sister really said 'let me expose this scam' and I'm here for it"</div>
@@ -1068,10 +1192,10 @@
 
                 <div class="viral-card social-card fade-in">
                     <div style="display: flex; align-items: center; margin-bottom: 1rem;">
-                        <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--korean-gradient); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 1rem;">KA</div>
+                        <div style="width: 45px; height: 45px; border-radius: 50%; background: url('https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face') center/cover; border: 2px solid var(--korean-red); margin-right: 1rem;"></div>
                         <div>
-                            <div class="social-username">@kbeauty.addicted</div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">4 hours ago</div>
+                            <div class="social-username" style="display: flex; align-items: center; gap: 0.5rem;">@kbeauty.addicted <span style="background: var(--korean-red); color: white; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 10px;">✓</span></div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">4 hours ago • 🇺🇸 Los Angeles, CA</div>
                         </div>
                     </div>
                     <div class="social-comment">"POV: You realize Korean girls have been getting authentic products at ACTUAL Seoul prices while we were paying 300% markup 🤡 I'm not even mad I'm just impressed at the finesse"</div>
@@ -1088,10 +1212,10 @@
 
                 <div class="viral-card social-card fade-in">
                     <div style="display: flex; align-items: center; margin-bottom: 1rem;">
-                        <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--mint-gradient); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 1rem;">CB</div>
+                        <div style="width: 45px; height: 45px; border-radius: 50%; background: url('https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=100&h=100&fit=crop&crop=face') center/cover; border: 2px solid var(--mint-fresh); margin-right: 1rem;"></div>
                         <div>
-                            <div class="social-username">@collegebudget.queen</div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">6 hours ago</div>
+                            <div class="social-username" style="display: flex; align-items: center; gap: 0.5rem;">@collegebudget.queen <span style="background: var(--mint-fresh); color: white; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 10px;">✓</span></div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">6 hours ago • 🇺🇸 Austin, TX</div>
                         </div>
                     </div>
                     <div class="social-comment">"Me: Can't afford groceries this week
@@ -1110,14 +1234,15 @@ Seoul Sister really said 'bestie let me save your credit score' and now I can af
                 </div>
             </div>
 
-            <div style="text-align: center; margin-top: 3rem;">
+            <div style="text-align: center; margin-top: 2rem;">
                 <div class="viral-card" style="display: inline-block; padding: 2rem; max-width: 600px;">
                     <h3 style="color: var(--korean-red); margin-bottom: 1rem;">📸 Want to Join the Viral Savings Movement?</h3>
                     <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">Share your Seoul Sister savings on social and inspire other girls to stop getting finessed!</p>
                     <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                        <button class="btn btn-viral">Share on TikTok 🎥</button>
-                        <button class="btn btn-primary">Share on Instagram 📷</button>
+                        <button class="btn btn-viral" onclick="shareToTikTok()">Share on TikTok 🎥</button>
+                        <button class="btn btn-primary" onclick="shareToInstagram()">Share on Instagram 📷</button>
                     </div>
+                    <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);">Join the movement • 15,247 girls saved money today 💸</div>
                 </div>
             </div>
         </div>
@@ -1251,7 +1376,7 @@ Seoul Sister really said 'bestie let me save your credit score' and now I can af
     </footer>
 
     <!-- WhatsApp Float -->
-    <button class="whatsapp-float" onclick="window.open('https://wa.me/1234567890?text=OMG I need the Seoul Sister hookup RIGHT NOW! 💄', '_blank')" aria-label="Contact us on WhatsApp">
+    <button class="whatsapp-float" onclick="window.open('https://wa.me/1234567890?text=OMG I need the Seoul Sister hookup RIGHT NOW! Just saw the price calculator and I\'m SHOOK! How do I start saving 73%25 on K-beauty? 😱🇰🇷💅', '_blank')" aria-label="Start saving with Seoul Sister on WhatsApp">
         💬
     </button>
 
@@ -1485,6 +1610,34 @@ Seoul Sister really said 'bestie let me save your credit score' and now I can af
                 calculateSavings();
             }
         });
+
+        // Social sharing functions
+        function shareToTikTok() {
+            const text = 'OMG Korean girls pay 73% LESS for the same K-beauty products! 😱 Check out Seoul Sister and see the price shock for yourself! 🇰🇷💅 #SeoulSister #KBeauty #PriceShock';
+            const url = window.location.href;
+
+            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                window.open(`https://www.tiktok.com/upload?text=${encodeURIComponent(text)}`);
+            } else {
+                navigator.clipboard.writeText(`${text} ${url}`);
+                alert('📸 TikTok post text copied to clipboard! Create your viral video now!');
+            }
+        }
+
+        function shareToInstagram() {
+            const text = 'This K-beauty price revelation is INSANE! 😱 Korean girls are paying 73% less for the SAME products we buy at Sephora. Seoul Sister is exposing the beauty industry scam! 🇰🇷✨ #SeoulSister #KBeautySecrets';
+
+            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                window.open('instagram://camera');
+                setTimeout(() => {
+                    navigator.clipboard.writeText(text);
+                    alert('📸 Caption copied! Paste it in your Instagram story!');
+                }, 1000);
+            } else {
+                navigator.clipboard.writeText(`${text} ${window.location.href}`);
+                alert('📸 Instagram post caption copied! Share your screenshot now!');
+            }
+        }
 
         // Preload critical resources
         const preloadFont = document.createElement('link');
