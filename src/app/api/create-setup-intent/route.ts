@@ -27,13 +27,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let customerId = profile.stripe_customer_id
+    let customerId: string = profile.stripe_customer_id || ''
 
     // Create Stripe customer if not exists
     if (!customerId) {
       const customer = await createCustomer(
         profile.email,
-        `${profile.first_name} ${profile.last_name}`.trim()
+        `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || undefined
       )
       customerId = customer.id
 

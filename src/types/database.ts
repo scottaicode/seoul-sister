@@ -257,6 +257,38 @@ export interface Database {
           updated_at?: string
         }
       }
+      whatsapp_messages: {
+        Row: {
+          id: string
+          phone_number: string
+          message_text: string
+          message_type: string
+          message_id: string
+          timestamp: string
+          metadata: any | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          phone_number: string
+          message_text: string
+          message_type: string
+          message_id: string
+          timestamp: string
+          metadata?: any | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          phone_number?: string
+          message_text?: string
+          message_type?: string
+          message_id?: string
+          timestamp?: string
+          metadata?: any | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
