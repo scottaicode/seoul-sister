@@ -128,7 +128,7 @@
             min-height: 100vh;
             display: flex;
             align-items: center;
-            background: var(--gray-50);
+            background: linear-gradient(135deg, var(--gray-50) 0%, var(--korean-pink) 100%);
         }
 
         /* Korean Beauty Glass Cards */
@@ -377,13 +377,22 @@
             transform: scale(1);
         }
 
-        /* Testimonials - Glossier Style */
+        /* Testimonials - Glass Morphism Style */
         .testimonial {
-            background: var(--white);
+            background: var(--glass-white);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(225, 163, 199, 0.3);
             border-radius: 16px;
             padding: 2rem;
-            border: 1px solid var(--gray-200);
             position: relative;
+            box-shadow: 0 8px 32px rgba(225, 163, 199, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .testimonial:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 48px rgba(225, 163, 199, 0.2);
+            border-color: var(--korean-pink-accent);
         }
 
         .testimonial-author {
@@ -464,7 +473,7 @@
             font-weight: 500;
         }
 
-        /* WhatsApp CTA - Premium Style */
+        /* WhatsApp CTA - Premium Style with Tooltip */
         .whatsapp-cta {
             position: fixed;
             bottom: 2rem;
@@ -488,6 +497,29 @@
         .whatsapp-cta:hover {
             transform: scale(1.1);
             box-shadow: 0 12px 32px rgba(37, 211, 102, 0.5);
+        }
+
+        .whatsapp-cta::before {
+            content: 'Get Started';
+            position: absolute;
+            top: -45px;
+            right: 0;
+            background: var(--gray-700);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            white-space: nowrap;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .whatsapp-cta:hover::before {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         /* Mobile Responsiveness */
@@ -544,18 +576,19 @@
         }
 
         .product-item {
-            background: var(--white);
+            background: linear-gradient(135deg, var(--white) 0%, var(--korean-pink) 100%);
             border-radius: 16px;
             overflow: hidden;
-            border: 1px solid var(--gray-200);
+            border: 1px solid var(--korean-pink-accent);
             transition: all 0.3s ease;
             position: relative;
         }
 
         .product-item:hover {
             transform: translateY(-4px);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 12px 32px rgba(225, 163, 199, 0.3);
             border-color: var(--korean-pink-accent);
+            background: linear-gradient(135deg, var(--white) 0%, var(--korean-blue) 100%);
         }
 
         .product-image {
@@ -782,6 +815,68 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How it Works Section -->
+    <section class="section" style="background: var(--korean-mint);">
+        <div class="container">
+            <div style="text-align: center; margin-bottom: 3rem;">
+                <div class="display-medium fade-in" style="margin-bottom: 1rem;">
+                    How Seoul Sister Works
+                </div>
+                <div class="body-large fade-in" style="max-width: 600px; margin: 0 auto;">
+                    From Seoul's trusted retailers to your door in three simple steps
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-bottom: 3rem;">
+                <div class="glass-card fade-in" style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: var(--korean-gradient); border-radius: 50%; margin: 0 auto 1.5rem; display: flex; align-items: center; justify-content: center; font-size: 2rem;">
+                        🛍️
+                    </div>
+                    <div class="headline" style="font-size: 1.25rem; margin-bottom: 1rem; color: var(--gray-700);">
+                        1. Curated Selection
+                    </div>
+                    <div class="body" style="color: var(--gray-600);">
+                        We partner with Seoul's most trusted beauty retailers, including flagship stores in Myeongdong and Hongdae, ensuring authentic products at local prices.
+                    </div>
+                </div>
+
+                <div class="glass-card fade-in" style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: var(--korean-gradient); border-radius: 50%; margin: 0 auto 1.5rem; display: flex; align-items: center; justify-content: center; font-size: 2rem;">
+                        ✈️
+                    </div>
+                    <div class="headline" style="font-size: 1.25rem; margin-bottom: 1rem; color: var(--gray-700);">
+                        2. Direct Sourcing
+                    </div>
+                    <div class="body" style="color: var(--gray-600);">
+                        Products are sourced directly from Korea with full authenticity verification. No middlemen, no markup inflation - just honest Seoul street prices.
+                    </div>
+                </div>
+
+                <div class="glass-card fade-in" style="text-align: center;">
+                    <div style="width: 80px; height: 80px; background: var(--korean-gradient); border-radius: 50%; margin: 0 auto 1.5rem; display: flex; align-items: center; justify-content: center; font-size: 2rem;">
+                        📦
+                    </div>
+                    <div class="headline" style="font-size: 1.25rem; margin-bottom: 1rem; color: var(--gray-700);">
+                        3. Premium Delivery
+                    </div>
+                    <div class="body" style="color: var(--gray-600);">
+                        Carefully packaged and shipped with tracking. Your authentic Korean beauty products arrive in perfect condition, ready to transform your routine.
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card fade-in" style="text-align: center; max-width: 600px; margin: 0 auto;">
+                <div style="font-size: 1.125rem; font-weight: 600; color: var(--premium-forest); margin-bottom: 1rem;">
+                    Authenticity Guaranteed
+                </div>
+                <div class="body" style="color: var(--gray-600);">
+                    Every product comes with authenticity verification and direct retailer receipts.
+                    If you're not completely satisfied with the quality and savings, we'll make it right.
                 </div>
             </div>
         </div>
