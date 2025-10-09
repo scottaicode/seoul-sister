@@ -107,8 +107,8 @@ const TRENDING_HASHTAGS = {
 };
 
 const ENGAGEMENT_HOOKS = {
-  shock: ['😱', '🤯', '💀', '😭', 'I'M SHOOK', 'BESTIE', 'NOT ME', 'THE AUDACITY'],
-  educational: ['📚', '💡', '🤓', 'Let me educate you', 'Here's the tea', 'Knowledge is power', 'Breaking it down'],
+  shock: ['😱', '🤯', '💀', '😭', 'I\'M SHOOK', 'BESTIE', 'NOT ME', 'THE AUDACITY'],
+  educational: ['📚', '💡', '🤓', 'Let me educate you', 'Here\'s the tea', 'Knowledge is power', 'Breaking it down'],
   relatable: ['🤡', '😅', '💸', 'Me:', 'POV:', 'When you realize', 'That moment when'],
   luxury: ['💎', '✨', '👑', 'Sophistication', 'Elegance', 'Premium', 'Luxury'],
   rebellion: ['🔥', '✊', '💪', 'REVOLUTION', 'EXPOSE', 'SCAM', 'BREAKING', 'TIRED']
