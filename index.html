@@ -208,18 +208,18 @@
 
         /* Price Comparison - Apple Style */
         .price-comparison {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
+            display: flex;
             align-items: center;
-            gap: 1rem;
-            padding: 1.5rem;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 1.25rem;
             background: linear-gradient(135deg, var(--gray-100), var(--korean-pink));
             border-radius: 16px;
             margin: 1rem 0;
             border: 2px solid var(--korean-silver);
             position: relative;
             overflow: visible;
-            min-height: 120px;
+            min-height: 100px;
         }
 
         .price-comparison::before {
@@ -636,7 +636,7 @@
             }
 
             .price-comparison {
-                grid-template-columns: 1fr;
+                flex-direction: column;
                 gap: 1rem;
                 text-align: center;
                 padding: 1rem;
@@ -645,6 +645,8 @@
             .price-us, .price-seoul {
                 min-width: auto;
                 width: 100%;
+                max-width: 280px;
+                margin: 0 auto;
             }
 
             .price-arrow {
@@ -1035,7 +1037,7 @@
                 <div class="testimonial fade-in">
                     <div class="testimonial-author">
                         <div class="testimonial-avatar">
-                            <img src="https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=100&h=100&fit=crop&crop=face" alt="Sarah">
+                            <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face" alt="Sarah K.">
                         </div>
                         <div>
                             <div class="testimonial-name">Sarah K.</div>
@@ -1135,8 +1137,9 @@
                 </div>
                 <a href="https://wa.me/1234567890?text=Hi! I'm interested in learning about authentic Korean beauty pricing through Seoul Sister. Could you help me get started?"
                    class="btn btn-primary float"
-                   style="font-size: 1.125rem; padding: 1.25rem 2.5rem; background: var(--korean-luxury); color: var(--gray-800); font-weight: 700; border: 2px solid var(--premium-gold-dark); box-shadow: 0 8px 24px rgba(255, 215, 0, 0.4);">
-                    Start Your Journey ✨
+                   style="font-size: 1.125rem; padding: 1.25rem 2.5rem; background: var(--gray-900); color: white; font-weight: 700; border: 2px solid var(--premium-gold); box-shadow: 0 8px 24px rgba(255, 215, 0, 0.4); position: relative; overflow: hidden;">
+                    <span style="position: relative; z-index: 2;">Start Your Journey</span>
+                    <span style="position: absolute; top: 50%; right: 1rem; transform: translateY(-50%); font-size: 1.5rem; color: var(--premium-gold);">✨</span>
                 </a>
                 <div style="margin-top: 1rem; font-size: 0.875rem; color: var(--gray-400);">
                     Free consultation • No commitment • Authentic pricing guaranteed
