@@ -1,12 +1,8 @@
 {
-  "buildCommand": "echo 'Build complete'",
-  "outputDirectory": ".",
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ],
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
   "headers": [
     {
       "source": "/(.*)",
