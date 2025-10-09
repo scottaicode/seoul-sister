@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seoul Sister • The Korean Beauty Revolution • Save 73% Today</title>
+    <meta name="description" content="The Korean beauty secret that's breaking the internet. Get authentic K-beauty at Seoul prices. Join 10,000+ girls who cracked the code.">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="The Korean Beauty Hack That's Breaking TikTok">
+    <meta property="og:description" content="POV: You discover what Korean girls actually pay. $94 Sulwhasoo for $28. The girls who know, know.">
+    <meta property="og:image" content="https://i.imgur.com/seoul-sister-viral.jpg">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-pink: #ff1744;
+            --accent-blue: #00bcd4;
+            --gold: #ffc107;
+            --dark: #0a0a0a;
+            --dark-card: #111111;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.8);
+            --text-muted: rgba(255, 255, 255, 0.6);
+            --border: rgba(255, 255, 255, 0.1);
+            --success: #4caf50;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Clean Background */
+        .bg-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background:
+                radial-gradient(circle at 25% 25%, var(--primary-pink)15 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, var(--accent-blue)15 0%, transparent 50%),
+                var(--dark);
+            opacity: 0.4;
+        }
+
+        /* Typography */
+        .heading-xl {
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 800;
+            line-height: 0.9;
+            letter-spacing: -0.02em;
+        }
+
+        .heading-lg {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 700;
+            line-height: 1.1;
+        }
+
+        .heading-md {
+            font-size: clamp(1.5rem, 3vw, 2.5rem);
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        .text-gradient {
+            background: linear-gradient(135deg, var(--primary-pink), var(--accent-blue), var(--gold));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 200% 200%;
+            animation: gradientShift 3s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* Layout */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .section {
+            padding: 4rem 0;
+        }
+
+        .section-lg {
+            padding: 6rem 0;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--dark-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--primary-pink);
+            transform: translateY(-2px);
+        }
+
+        .glass-card {
+            background: rgba(17, 17, 17, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 3rem;
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            background: rgba(10, 10, 10, 0.9);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary-pink);
+            text-decoration: none;
+        }
+
+        .viral-badge {
+            background: linear-gradient(135deg, var(--primary-pink), var(--accent-blue));
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 6rem 0 2rem 0;
+        }
+
+        .hero-content {
+            max-width: 900px;
+        }
+
+        .hero-tag {
+            display: inline-block;
+            background: var(--dark-card);
+            border: 1px solid var(--primary-pink);
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            margin-bottom: 2rem;
+            font-weight: 600;
+            color: var(--primary-pink);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 20px rgba(255, 23, 68, 0.3); }
+            to { box-shadow: 0 0 40px rgba(255, 23, 68, 0.6); }
+        }
+
+        .hero-title {
+            margin-bottom: 2rem;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Price Revelation */
+        .price-reveal {
+            margin: 3rem 0;
+        }
+
+        .price-reveal-title {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: var(--accent-blue);
+        }
+
+        .price-grid {
+            display: grid;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .price-item {
+            display: grid;
+            grid-template-columns: 1fr auto auto auto;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.5rem;
+            background: var(--dark-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .price-item:hover {
+            border-color: var(--primary-pink);
+            transform: translateX(4px);
+        }
+
+        .product-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .us-price {
+            font-size: 1.1rem;
+            color: #ef4444;
+            text-decoration: line-through;
+            opacity: 0.8;
+        }
+
+        .arrow {
+            font-size: 1.25rem;
+            color: var(--accent-blue);
+            font-weight: bold;
+        }
+
+        .seoul-price {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--gold);
+        }
+
+        .savings-total {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--gold);
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(255, 193, 7, 0.1);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-weight: 600;
+            text-decoration: none;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-pink), var(--accent-blue));
+            color: white;
+            box-shadow: 0 8px 25px rgba(255, 23, 68, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(255, 23, 68, 0.4);
+        }
+
+        .btn-lg {
+            padding: 1.25rem 3rem;
+            font-size: 1.125rem;
+            font-weight: 700;
+        }
+
+        .btn-explosive {
+            background: linear-gradient(135deg, var(--gold), var(--primary-pink));
+            color: var(--dark);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-explosive::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s;
+        }
+
+        .btn-explosive:hover::before {
+            left: 100%;
+        }
+
+        /* Social Proof */
+        .social-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .social-card {
+            background: var(--dark-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .social-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-4px);
+        }
+
+        .social-username {
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .social-comment {
+            font-style: italic;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        .social-stats {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        /* Problem Section */
+        .problem-section {
+            background: linear-gradient(135deg, rgba(255, 23, 68, 0.05), rgba(0, 188, 212, 0.05));
+            border-radius: 24px;
+            margin: 4rem 0;
+        }
+
+        .reality-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .reality-card {
+            background: var(--dark-card);
+            border: 1px solid rgba(255, 23, 68, 0.3);
+            border-radius: 16px;
+            padding: 2.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .reality-card:hover {
+            border-color: var(--primary-pink);
+            transform: translateY(-4px);
+        }
+
+        .reality-emoji {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            display: block;
+        }
+
+        .reality-card h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--accent-blue);
+        }
+
+        .reality-card p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Movement Stats */
+        .movement-section {
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary-pink), var(--accent-blue));
+            margin: 4rem 0;
+            border-radius: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .movement-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .movement-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .stat-label {
+            font-weight: 600;
+            opacity: 0.9;
+        }
+
+        /* Urgency Section */
+        .urgency-section {
+            text-align: center;
+        }
+
+        .urgency-container {
+            background: var(--dark-card);
+            border: 2px solid var(--primary-pink);
+            border-radius: 20px;
+            padding: 3rem;
+            animation: urgentPulse 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes urgentPulse {
+            from { box-shadow: 0 0 30px rgba(255, 23, 68, 0.3); }
+            to { box-shadow: 0 0 50px rgba(255, 23, 68, 0.6); }
+        }
+
+        .countdown-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .countdown-item {
+            text-align: center;
+        }
+
+        .countdown-number {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--primary-pink);
+            display: block;
+            margin-bottom: 0.5rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .countdown-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Final CTA */
+        .final-cta {
+            text-align: center;
+            background: linear-gradient(135deg, rgba(0, 188, 212, 0.1), rgba(255, 193, 7, 0.1));
+            border-radius: 24px;
+            margin: 4rem 0;
+        }
+
+        /* Footer */
+        .footer {
+            border-top: 1px solid var(--border);
+            padding: 3rem 0;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .footer p {
+            margin-bottom: 1rem;
+        }
+
+        /* WhatsApp Button */
+        .whatsapp-float {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: #25d366;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(37, 211, 102, 0.3);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .whatsapp-float:hover {
+            transform: scale(1.1) translateY(-4px);
+            box-shadow: 0 8px 30px rgba(37, 211, 102, 0.5);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 1rem;
+            }
+
+            .nav {
+                padding: 1rem;
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .price-item {
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+                text-align: center;
+            }
+
+            .countdown-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .social-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .reality-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .section {
+                padding: 3rem 0;
+            }
+
+            .section-lg {
+                padding: 4rem 0;
+            }
+        }
+
+        /* Smooth Animations */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Focus States */
+        .btn:focus,
+        .whatsapp-float:focus {
+            outline: 2px solid var(--accent-blue);
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Pattern -->
+    <div class="bg-pattern"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav">
+            <a href="#" class="logo">Seoul Sister</a>
+            <div class="viral-badge">🔥 VIRAL • 2.3M VIEWS</div>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-tag">
+                    💅 THE KOREAN BEAUTY HACK TIKTOK IS OBSESSED WITH 💅
+                </div>
+
+                <h1 class="heading-xl hero-title">
+                    POV: You Discover What <span class="text-gradient">Korean Girls</span> Actually Pay
+                </h1>
+
+                <p class="hero-subtitle">
+                    While you're dropping $300 at Sephora, they're getting the SAME products for $67 in Seoul. The girls who know, know. 👀
+                </p>
+
+                <div class="glass-card price-reveal">
+                    <h3 class="heading-md price-reveal-title">The Reality Check That Broke the Internet</h3>
+
+                    <div class="price-grid">
+                        <div class="price-item">
+                            <span class="product-name">That $94 Sulwhasoo serum everyone raves about</span>
+                            <span class="us-price">$94</span>
+                            <span class="arrow">→</span>
+                            <span class="seoul-price">$28</span>
+                        </div>
+
+                        <div class="price-item">
+                            <span class="product-name">Your $45 Beauty of Joseon essence</span>
+                            <span class="us-price">$45</span>
+                            <span class="arrow">→</span>
+                            <span class="seoul-price">$8</span>
+                        </div>
+
+                        <div class="price-item">
+                            <span class="product-name">The $80 COSRX set everyone's obsessed with</span>
+                            <span class="us-price">$80</span>
+                            <span class="arrow">→</span>
+                            <span class="seoul-price">$23</span>
+                        </div>
+                    </div>
+
+                    <div class="savings-total">
+                        Total Savings on ONE Order: <strong>$160 💀</strong>
+                    </div>
+                </div>
+
+                <a href="#social" class="btn btn-primary btn-lg">Wait... show me EVERYTHING 👀</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Social Proof Section -->
+    <section class="section" id="social">
+        <div class="container">
+            <div class="social-grid">
+                <div class="social-card fade-in">
+                    <div class="social-username">@sarah.glowup</div>
+                    <div class="social-comment">"I can't believe I was paying $80 for this... I'm actually sick 🤢 But also grateful I found this"</div>
+                    <div class="social-stats">
+                        <span>💜 47K likes</span>
+                        <span>💬 2.1K comments</span>
+                        <span>📤 8.9K shares</span>
+                    </div>
+                </div>
+
+                <div class="social-card fade-in">
+                    <div class="social-username">@skincare.addict</div>
+                    <div class="social-comment">"Korean girls were gatekeeping this WHOLE TIME and I'm not even mad... respect the hustle 👑"</div>
+                    <div class="social-stats">
+                        <span>💜 73K likes</span>
+                        <span>💬 5.8K comments</span>
+                        <span>📤 12.3K shares</span>
+                    </div>
+                </div>
+
+                <div class="social-card fade-in">
+                    <div class="social-username">@collegebudget</div>
+                    <div class="social-comment">"Finally luxury skincare on a Target budget. My wallet literally said thank you 🥺✨"</div>
+                    <div class="social-stats">
+                        <span>💜 92K likes</span>
+                        <span>💬 8.3K comments</span>
+                        <span>📤 15.7K shares</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="section-lg">
+        <div class="container">
+            <div class="problem-section glass-card">
+                <h2 class="heading-lg text-center fade-in">The Beauty Industry's Biggest Lie</h2>
+
+                <div class="text-center" style="margin: 2rem 0;">
+                    <h3 class="heading-md" style="color: var(--primary-pink);">Reality Check: You've Been Getting FINESSED 💸</h3>
+                </div>
+
+                <div class="reality-grid">
+                    <div class="reality-card fade-in">
+                        <span class="reality-emoji">😭</span>
+                        <h3>Your skincare budget = rent money</h3>
+                        <p>Spending $300/month on Sephora while eating ramen for dinner. The math isn't mathing, bestie.</p>
+                    </div>
+
+                    <div class="reality-card fade-in">
+                        <span class="reality-emoji">📱</span>
+                        <h3>Influenced by fake "glass skin"</h3>
+                        <p>Those influencers use $500 Korean products, not the $15 drugstore dupes they're sponsored to promote.</p>
+                    </div>
+
+                    <div class="reality-card fade-in">
+                        <span class="reality-emoji">💸</span>
+                        <h3>Finsta vs reality</h3>
+                        <p>Posting skincare hauls you can't afford, hoping nobody asks where your grocery money went.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Movement Section -->
+    <section class="section-lg">
+        <div class="container">
+            <div class="movement-section section-lg">
+                <div class="movement-content">
+                    <h2 class="heading-lg">Join the Seoul Sister Revolution</h2>
+                    <p style="font-size: 1.25rem; margin: 1rem 0 2rem; opacity: 0.9;">10,000+ Gen Z girls have already cracked the code</p>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <span class="stat-number">10K+</span>
+                            <span class="stat-label">Girls in the know</span>
+                        </div>
+
+                        <div class="stat-card">
+                            <span class="stat-number">$2.3M</span>
+                            <span class="stat-label">Saved from Sephora</span>
+                        </div>
+
+                        <div class="stat-card">
+                            <span class="stat-number">73%</span>
+                            <span class="stat-label">Average savings</span>
+                        </div>
+
+                        <div class="stat-card">
+                            <span class="stat-number">847K</span>
+                            <span class="stat-label">TikTok views</span>
+                        </div>
+                    </div>
+
+                    <p style="font-size: 1.1rem; font-weight: 600; margin-top: 2rem;">
+                        We're not just saving money. We're exposing the biggest scam in beauty. 🔥
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Urgency Section -->
+    <section class="section urgency-section">
+        <div class="container">
+            <div class="urgency-container fade-in">
+                <h3 class="heading-md" style="margin-bottom: 1rem;">⚡ October Spots Filling FAST ⚡</h3>
+                <p style="color: var(--primary-pink); font-weight: 600; margin-bottom: 2rem;">Seoul Team Capacity Alert</p>
+
+                <div class="countdown-grid">
+                    <div class="countdown-item">
+                        <span class="countdown-number" id="slotsLeft">17</span>
+                        <span class="countdown-label">Spots Left</span>
+                    </div>
+                    <div class="countdown-item">
+                        <span class="countdown-number" id="hoursLeft">24</span>
+                        <span class="countdown-label">Hours Left</span>
+                    </div>
+                    <div class="countdown-item">
+                        <span class="countdown-number" id="ordersToday">162</span>
+                        <span class="countdown-label">Orders Today</span>
+                    </div>
+                </div>
+
+                <p style="font-weight: 600; margin: 2rem 0 1rem;">Next opening: December 2024</p>
+                <p style="color: var(--text-muted);">Don't be the girl who missed out on the biggest beauty hack of 2024</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="section-lg">
+        <div class="container">
+            <div class="final-cta section-lg text-center">
+                <h2 class="heading-lg text-gradient">Ready to Break the Internet?</h2>
+                <p style="font-size: 1.25rem; margin: 2rem 0 3rem; color: var(--text-secondary); max-width: 600px; margin-left: auto; margin-right: auto;">
+                    Join the 10,000+ girls who said "f*ck Sephora prices" and never looked back
+                </p>
+
+                <a href="https://wa.me/1234567890?text=OMG I just discovered the Seoul Sister hack and I'm OBSESSED! How do I start saving 73% on K-beauty? 💅✨" class="btn btn-explosive btn-lg">
+                    🔥 I'm Ready to Expose the Scam 🔥
+                </a>
+
+                <p style="margin-top: 2rem; color: var(--text-muted);">
+                    Free consultation • No commitment • Get Seoul prices in 30 minutes
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Seoul Sister. The beauty revolution starts here.</p>
+            <p>Not affiliated with any K-beauty brands. We're the girls exposing their markup game.</p>
+        </div>
+    </footer>
+
+    <!-- WhatsApp Float -->
+    <button class="whatsapp-float" onclick="window.open('https://wa.me/1234567890?text=OMG I need the Seoul Sister hookup RIGHT NOW! 💄', '_blank')" aria-label="Contact us on WhatsApp">
+        💬
+    </button>
+
+    <script>
+        // Intersection Observer for animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        // Observe all fade-in elements
+        document.querySelectorAll('.fade-in').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Dynamic countdown
+        function updateCountdown() {
+            const slotsLeft = document.getElementById('slotsLeft');
+            const hoursLeft = document.getElementById('hoursLeft');
+            const ordersToday = document.getElementById('ordersToday');
+
+            // Simulate decreasing slots
+            if (Math.random() < 0.06) {
+                let current = parseInt(slotsLeft.textContent);
+                if (current > 3) {
+                    slotsLeft.textContent = current - 1;
+                }
+            }
+
+            // Update hours countdown
+            const now = new Date();
+            const hoursUntilMidnight = 24 - now.getHours();
+            hoursLeft.textContent = hoursUntilMidnight;
+
+            // Simulate increasing orders
+            if (Math.random() < 0.08) {
+                let current = parseInt(ordersToday.textContent);
+                ordersToday.textContent = current + 1;
+            }
+        }
+
+        setInterval(updateCountdown, 5000);
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Track engagement
+        let maxScroll = 0;
+        window.addEventListener('scroll', () => {
+            const scrollPercent = Math.round((window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100);
+            if (scrollPercent > maxScroll) {
+                maxScroll = scrollPercent;
+
+                // Trigger engagement events
+                if (maxScroll >= 25 && maxScroll < 30) {
+                    console.log('🔥 User engaged - 25% scroll depth');
+                }
+                if (maxScroll >= 50 && maxScroll < 55) {
+                    console.log('💜 User hooked - 50% scroll depth');
+                }
+                if (maxScroll >= 75 && maxScroll < 80) {
+                    console.log('⚡ User converting - 75% scroll depth');
+                }
+            }
+        });
+
+        // CTA click tracking
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('btn-primary') || e.target.classList.contains('btn-explosive')) {
+                console.log('🚀 CTA Clicked - High Intent User');
+
+                // Add conversion tracking
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'conversion', {
+                        'event_category': 'engagement',
+                        'event_label': 'cta_click',
+                        'value': 1
+                    });
+                }
+            }
+
+            if (e.target.classList.contains('whatsapp-float')) {
+                console.log('💬 WhatsApp Clicked - Ready to Convert');
+            }
+        });
+
+        // Performance optimization
+        const lazyElements = document.querySelectorAll('.card, .social-card, .reality-card');
+        const lazyObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.willChange = 'transform';
+                    lazyObserver.unobserve(entry.target);
+                }
+            });
+        });
+
+        lazyElements.forEach(el => lazyObserver.observe(el));
+
+        // Preload critical resources
+        const preloadFont = document.createElement('link');
+        preloadFont.rel = 'preload';
+        preloadFont.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap';
+        preloadFont.as = 'style';
+        document.head.appendChild(preloadFont);
+    </script>
+</body>
+</html>

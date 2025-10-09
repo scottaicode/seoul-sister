@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seoul Sister • The Korean Beauty Revolution • Viral on TikTok</title>
+    <meta name="description" content="The Korean beauty hack TikTok keeps deleting. Get authentic K-beauty at Seoul prices. Join 10,000+ girls who cracked the code.">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="The Korean Beauty Hack TikTok Keeps Deleting">
+    <meta property="og:description" content="POV: You discover what Korean girls actually pay. While you're dropping $300 at Sephora, they're getting the same for $67.">
+    <meta property="og:image" content="https://i.imgur.com/seoul-sister-viral.jpg">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+            background: #000;
+            overflow-x: hidden;
+        }
+
+        /* Viral TikTok-inspired gradient */
+        .viral-gradient {
+            background: linear-gradient(135deg,
+                #ff0050 0%,
+                #ff4081 25%,
+                #e91e63 50%,
+                #9c27b0 75%,
+                #673ab7 100%);
+            background-size: 400% 400%;
+            animation: viralPulse 3s ease infinite;
+        }
+
+        @keyframes viralPulse {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            background: rgba(0, 0, 0, 0.9);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #ff0050, #9c27b0);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+        }
+
+        .viral-badge {
+            background: rgba(255, 0, 80, 0.1);
+            border: 1px solid #ff0050;
+            color: #ff0050;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .hero-content {
+            max-width: 900px;
+            z-index: 2;
+            position: relative;
+        }
+
+        .tiktok-viral-tag {
+            display: inline-block;
+            background: rgba(255, 0, 80, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid #ff0050;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            color: #ff0050;
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            animation: viralGlow 2s ease infinite;
+        }
+
+        @keyframes viralGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 0, 80, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(255, 0, 80, 0.6); }
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-weight: 900;
+            line-height: 0.95;
+            margin-bottom: 2rem;
+            color: white;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .hero h1 .exposed {
+            background: linear-gradient(135deg, #ff0050, #ff4081);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .pov-reveal {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 2rem 0;
+            color: white;
+        }
+
+        .pov-reveal h3 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            color: #ff4081;
+        }
+
+        .price-reveal {
+            display: grid;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .price-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border-left: 4px solid #ff0050;
+        }
+
+        .product-name {
+            font-weight: 600;
+            color: white;
+        }
+
+        .price-arrow {
+            font-size: 1.5rem;
+            color: #ff0050;
+            margin: 0 1rem;
+        }
+
+        .seoul-price {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #4ade80;
+        }
+
+        .us-price {
+            text-decoration: line-through;
+            color: #ef4444;
+            margin-right: 1rem;
+        }
+
+        .mind-blown {
+            background: linear-gradient(135deg, #ff0050, #9c27b0);
+            color: white;
+            border: none;
+            padding: 1.5rem 3rem;
+            border-radius: 50px;
+            font-size: 1.3rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 15px 35px rgba(255, 0, 80, 0.4);
+            margin: 2rem 0;
+        }
+
+        .mind-blown:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 50px rgba(255, 0, 80, 0.6);
+        }
+
+        .social-explosion {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .social-proof-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 1.5rem;
+            color: white;
+            text-align: left;
+        }
+
+        .social-proof-card .username {
+            font-weight: 700;
+            color: #ff4081;
+            margin-bottom: 0.5rem;
+        }
+
+        .social-proof-card .comment {
+            font-style: italic;
+            margin-bottom: 1rem;
+        }
+
+        .social-proof-card .stats {
+            font-size: 0.9rem;
+            color: #999;
+        }
+
+        /* Problem Section */
+        .problem-section {
+            background: #000;
+            padding: 6rem 2rem;
+            position: relative;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header h2 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 900;
+            color: white;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .reality-check {
+            background: linear-gradient(135deg, #1f2937, #374151);
+            border-radius: 20px;
+            padding: 3rem;
+            margin: 3rem 0;
+            border: 1px solid #ff0050;
+        }
+
+        .reality-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .reality-card {
+            background: rgba(255, 0, 80, 0.1);
+            border: 1px solid #ff0050;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .reality-card .emoji {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .reality-card h3 {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: #ff4081;
+            margin-bottom: 1rem;
+        }
+
+        .reality-card p {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Movement Section */
+        .movement-section {
+            background: linear-gradient(135deg, #ff0050 0%, #9c27b0 100%);
+            padding: 6rem 2rem;
+            text-align: center;
+        }
+
+        .movement-section h2 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 900;
+            color: white;
+            margin-bottom: 2rem;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .movement-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .movement-stat {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .movement-stat .number {
+            font-size: 3rem;
+            font-weight: 900;
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+
+        .movement-stat .label {
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 600;
+        }
+
+        /* Urgency Section */
+        .urgency-section {
+            background: #000;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .countdown-container {
+            background: rgba(255, 0, 80, 0.1);
+            border: 2px solid #ff0050;
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 2rem 0;
+            animation: urgentPulse 1.5s ease infinite;
+        }
+
+        @keyframes urgentPulse {
+            0%, 100% { border-color: #ff0050; }
+            50% { border-color: #ff4081; }
+        }
+
+        .countdown-timer {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .countdown-item {
+            text-align: center;
+        }
+
+        .countdown-number {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #ff0050;
+            display: block;
+        }
+
+        .countdown-label {
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        /* Final CTA */
+        .final-cta {
+            background: linear-gradient(135deg, #ff0050 0%, #673ab7 100%);
+            padding: 6rem 2rem;
+            text-align: center;
+        }
+
+        .final-cta h2 {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: 900;
+            color: white;
+            margin-bottom: 2rem;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .final-cta p {
+            font-size: 1.3rem;
+            color: white;
+            margin-bottom: 3rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .explosive-cta {
+            background: rgba(255, 255, 255, 0.9);
+            color: #000;
+            border: none;
+            padding: 2rem 4rem;
+            border-radius: 50px;
+            font-size: 1.4rem;
+            font-weight: 900;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            margin: 1rem;
+        }
+
+        .explosive-cta:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .disclaimer {
+            background: #000;
+            padding: 2rem;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+
+        /* Mobile Optimizations */
+        @media (max-width: 768px) {
+            .hero {
+                padding: 1rem;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .countdown-timer {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+
+            .social-explosion {
+                grid-template-columns: 1fr;
+            }
+
+            .movement-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .reality-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Floating hearts animation */
+        .floating-hearts {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .heart {
+            position: absolute;
+            color: #ff0050;
+            font-size: 1.5rem;
+            animation: floatUp 3s linear infinite;
+            opacity: 0;
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(100vh) scale(0);
+            }
+            15% {
+                opacity: 1;
+                transform: translateY(85vh) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-10vh) scale(0);
+            }
+        }
+
+        /* WhatsApp Button */
+        .whatsapp-float {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #25d366;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 70px;
+            height: 70px;
+            font-size: 2rem;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(37, 211, 102, 0.4);
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .whatsapp-float:hover {
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating Hearts -->
+    <div class="floating-hearts" id="floatingHearts"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav">
+            <a href="#" class="logo">Seoul Sister</a>
+            <div class="viral-badge">🔥 VIRAL • 2.3M VIEWS</div>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero viral-gradient">
+        <div class="hero-content">
+            <div class="tiktok-viral-tag">
+                💅 THE KOREAN BEAUTY HACK TIKTOK KEEPS DELETING 💅
+            </div>
+
+            <h1>POV: You Discover What<br><span class="exposed">Korean Girls</span><br>Actually Pay</h1>
+
+            <div class="pov-reveal">
+                <h3>While you're dropping $300 at Sephora...</h3>
+                <h3>They're getting the SAME products for $67 in Seoul 👀</h3>
+
+                <div class="price-reveal">
+                    <div class="price-line">
+                        <span class="product-name">That $94 Sulwhasoo serum</span>
+                        <span class="price-arrow">→</span>
+                        <span><span class="us-price">$94</span><span class="seoul-price">$28</span></span>
+                    </div>
+
+                    <div class="price-line">
+                        <span class="product-name">Your $45 Beauty of Joseon essence</span>
+                        <span class="price-arrow">→</span>
+                        <span><span class="us-price">$45</span><span class="seoul-price">$8</span></span>
+                    </div>
+
+                    <div class="price-line">
+                        <span class="product-name">The $80 COSRX set everyone raves about</span>
+                        <span class="price-arrow">→</span>
+                        <span><span class="us-price">$80</span><span class="seoul-price">$23</span></span>
+                    </div>
+                </div>
+
+                <p style="font-size: 1.1rem; font-weight: 600;">The girls who know, know. And now you know too. 💀</p>
+            </div>
+
+            <a href="#movement" class="mind-blown">Wait... show me EVERYTHING 👀</a>
+
+            <div class="social-explosion">
+                <div class="social-proof-card">
+                    <div class="username">@sarah.glowup</div>
+                    <div class="comment">"I can't believe I was paying $80 for this... I'm actually sick 🤢"</div>
+                    <div class="stats">💜 47K likes • 💬 2.1K comments</div>
+                </div>
+
+                <div class="social-proof-card">
+                    <div class="username">@skincare.addict</div>
+                    <div class="comment">"Korean girls were gatekeeping this WHOLE TIME and I'm not even mad... respect 👑"</div>
+                    <div class="stats">💜 73K likes • 💬 5.8K comments</div>
+                </div>
+
+                <div class="social-proof-card">
+                    <div class="username">@collegebudget</div>
+                    <div class="comment">"Finally luxury skincare on a Target budget. My wallet said thank you 🥺"</div>
+                    <div class="stats">💜 92K likes • 💬 8.3K comments</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="problem-section">
+        <div class="container">
+            <div class="section-header">
+                <h2>The Beauty Industry's Biggest Lie</h2>
+            </div>
+
+            <div class="reality-check">
+                <h3 style="color: white; font-size: 2rem; margin-bottom: 2rem; text-align: center;">
+                    Reality Check: You've Been Getting FINESSED 💸
+                </h3>
+
+                <div class="reality-grid">
+                    <div class="reality-card">
+                        <div class="emoji">😭</div>
+                        <h3>Your skincare budget = rent money</h3>
+                        <p>Spending $300/month on Sephora while eating ramen for dinner. The math isn't mathing bestie.</p>
+                    </div>
+
+                    <div class="reality-card">
+                        <div class="emoji">📱</div>
+                        <h3>Influenced by fake "glass skin"</h3>
+                        <p>Those influencers use $500 Korean products, not the $15 drugstore dupes they're sponsored to promote.</p>
+                    </div>
+
+                    <div class="reality-card">
+                        <div class="emoji">💸</div>
+                        <h3>Finsta vs reality</h3>
+                        <p>Posting skincare hauls you can't afford, hoping nobody asks where your grocery money went.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Movement Section -->
+    <section class="movement-section" id="movement">
+        <div class="container">
+            <h2>Join the Seoul Sister Revolution</h2>
+            <p style="font-size: 1.3rem; margin-bottom: 2rem;">10,000+ Gen Z girls have already cracked the code</p>
+
+            <div class="movement-stats">
+                <div class="movement-stat">
+                    <div class="number">10K+</div>
+                    <div class="label">Girls in the know</div>
+                </div>
+
+                <div class="movement-stat">
+                    <div class="number">$2.3M</div>
+                    <div class="label">Saved from Sephora</div>
+                </div>
+
+                <div class="movement-stat">
+                    <div class="number">73%</div>
+                    <div class="label">Average savings</div>
+                </div>
+
+                <div class="movement-stat">
+                    <div class="number">847K</div>
+                    <div class="label">TikTok views</div>
+                </div>
+            </div>
+
+            <p style="font-size: 1.1rem;">We're not just saving money. We're exposing the biggest scam in beauty. 🔥</p>
+        </div>
+    </section>
+
+    <!-- Urgency Section -->
+    <section class="urgency-section">
+        <div class="container">
+            <h2 style="color: white; font-size: 2.5rem; margin-bottom: 2rem;">⚡ October Spots Filling FAST ⚡</h2>
+
+            <div class="countdown-container">
+                <p style="color: #ff0050; font-size: 1.2rem; font-weight: 700;">Seoul Team Capacity Alert</p>
+
+                <div class="countdown-timer">
+                    <div class="countdown-item">
+                        <span class="countdown-number" id="slotsLeft">23</span>
+                        <span class="countdown-label">Spots Left</span>
+                    </div>
+                    <div class="countdown-item">
+                        <span class="countdown-number" id="hoursLeft">47</span>
+                        <span class="countdown-label">Hours Left</span>
+                    </div>
+                    <div class="countdown-item">
+                        <span class="countdown-number" id="ordersToday">156</span>
+                        <span class="countdown-label">Orders Today</span>
+                    </div>
+                </div>
+
+                <p style="color: white; font-weight: 600;">Next opening: December 2024</p>
+                <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem;">Don't be the girl who missed out on the biggest beauty hack of 2024</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="final-cta">
+        <div class="container">
+            <h2>Ready to Break the Internet?</h2>
+            <p>Join the 10,000+ girls who said "f*ck Sephora prices" and never looked back</p>
+
+            <a href="https://wa.me/1234567890?text=OMG I just saw the Seoul Sister hack and I'm OBSESSED! How do I start saving? 💅" class="explosive-cta">
+                🔥 I'M READY TO EXPOSE THE SCAM 🔥
+            </a>
+
+            <p style="margin-top: 2rem; font-size: 1rem; opacity: 0.9;">Free consultation • No commitment • Get Seoul prices in 30 minutes</p>
+        </div>
+    </section>
+
+    <!-- Disclaimer -->
+    <div class="disclaimer">
+        <p>&copy; 2025 Seoul Sister. The beauty revolution starts here.</p>
+        <p>Not affiliated with any K-beauty brands. We're the girls exposing their markup game.</p>
+    </div>
+
+    <!-- WhatsApp Float -->
+    <button class="whatsapp-float" onclick="window.open('https://wa.me/1234567890?text=OMG I need the Seoul Sister hookup RIGHT NOW! 💄', '_blank')">
+        💬
+    </button>
+
+    <script>
+        // Floating hearts animation
+        function createHeart() {
+            const heart = document.createElement('div');
+            heart.className = 'heart';
+            heart.innerHTML = '💜';
+            heart.style.left = Math.random() * 100 + '%';
+            heart.style.animationDelay = Math.random() * 3 + 's';
+
+            document.getElementById('floatingHearts').appendChild(heart);
+
+            setTimeout(() => {
+                heart.remove();
+            }, 3000);
+        }
+
+        // Create hearts every 2 seconds
+        setInterval(createHeart, 2000);
+
+        // Countdown timer animation
+        function updateCountdown() {
+            const slotsLeft = document.getElementById('slotsLeft');
+            const hoursLeft = document.getElementById('hoursLeft');
+            const ordersToday = document.getElementById('ordersToday');
+
+            // Simulate decreasing slots
+            if (Math.random() < 0.1) {
+                let current = parseInt(slotsLeft.textContent);
+                if (current > 5) {
+                    slotsLeft.textContent = current - 1;
+                }
+            }
+
+            // Update hours countdown
+            const now = new Date();
+            const hoursUntilMidnight = 24 - now.getHours();
+            hoursLeft.textContent = hoursUntilMidnight;
+
+            // Simulate increasing orders
+            if (Math.random() < 0.15) {
+                let current = parseInt(ordersToday.textContent);
+                ordersToday.textContent = current + 1;
+            }
+        }
+
+        setInterval(updateCountdown, 5000);
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Track viral engagement
+        let scrollDepth = 0;
+        window.addEventListener('scroll', () => {
+            const currentDepth = Math.round((window.scrollY / document.body.scrollHeight) * 100);
+            if (currentDepth > scrollDepth) {
+                scrollDepth = currentDepth;
+
+                // Trigger engagement events
+                if (scrollDepth === 25) {
+                    console.log('🔥 User engaged - 25% scroll');
+                }
+                if (scrollDepth === 50) {
+                    console.log('💜 User hooked - 50% scroll');
+                }
+                if (scrollDepth === 75) {
+                    console.log('⚡ User converted - 75% scroll');
+                }
+            }
+        });
+
+        // Viral sharing simulation
+        function shareToSocial(platform) {
+            const url = window.location.href;
+            const text = "OMG this Korean beauty hack is insane! I've been getting scammed this whole time 😭";
+
+            switch(platform) {
+                case 'tiktok':
+                    // Simulate TikTok sharing
+                    console.log('Shared to TikTok:', text);
+                    break;
+                case 'instagram':
+                    // Simulate Instagram sharing
+                    console.log('Shared to Instagram Story:', text);
+                    break;
+                case 'twitter':
+                    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`);
+                    break;
+            }
+        }
+
+        // Add click tracking for analytics
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('mind-blown') || e.target.classList.contains('explosive-cta')) {
+                console.log('🚀 CTA Clicked - High Intent User');
+            }
+
+            if (e.target.classList.contains('whatsapp-float')) {
+                console.log('💬 WhatsApp Clicked - Ready to Convert');
+            }
+        });
+
+        // Simulate viral notifications
+        setTimeout(() => {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('Seoul Sister Viral Alert! 🔥', {
+                    body: '847 people viewed this page in the last hour',
+                    icon: '/favicon.ico'
+                });
+            }
+        }, 30000);
+    </script>
+</body>
+</html>

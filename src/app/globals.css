@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --korean-red: #CD2E3A;
+  --korean-blue: #0047A0;
+  --korean-white: #FFFFFF;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.korean-gradient {
+  background: linear-gradient(135deg, var(--korean-red) 0%, var(--korean-blue) 100%);
+}
+
+.korean-gradient-reverse {
+  background: linear-gradient(135deg, var(--korean-blue) 0%, var(--korean-red) 100%);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--korean-red) 0%, var(--korean-blue) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.mobile-optimized {
+  max-width: 390px;
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  body {
+    font-size: 14px;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.savings-highlight {
+  position: relative;
+  background: linear-gradient(135deg, rgba(205, 46, 58, 0.1) 0%, rgba(0, 71, 160, 0.1) 100%);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.savings-highlight::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(135deg, var(--korean-red), var(--korean-blue));
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+}
