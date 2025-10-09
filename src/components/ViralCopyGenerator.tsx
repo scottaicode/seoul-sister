@@ -146,9 +146,10 @@ export default function ViralCopyGenerator({
       if (platform === 'twitter') return; // Skip Twitter for now, focus on visual platforms
 
       styles.forEach(style => {
-        const templates = VIRAL_TEMPLATES[style as keyof typeof VIRAL_TEMPLATES][platform as keyof typeof VIRAL_TEMPLATES.shock];
+        const viralStyle = VIRAL_TEMPLATES[style as keyof typeof VIRAL_TEMPLATES];
+        const templates = viralStyle && platform in viralStyle ? (viralStyle as any)[platform] : [];
 
-        templates?.forEach(template => {
+        templates?.forEach((template: string) => {
           const processedText = replacePlaceholders(template);
           const platformHashtags = TRENDING_HASHTAGS[platform as keyof typeof TRENDING_HASHTAGS] || TRENDING_HASHTAGS.general;
           const styleHooks = ENGAGEMENT_HOOKS[style as keyof typeof ENGAGEMENT_HOOKS] || [];

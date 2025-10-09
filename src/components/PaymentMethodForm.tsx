@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js'
 import { supabase } from '@/lib/supabase'
+import type { Database } from '@/types/database'
 
 interface PaymentMethodFormProps {
   userId: string
@@ -64,12 +65,12 @@ export default function PaymentMethodForm({ userId, onSuccess }: PaymentMethodFo
       // }
 
       // Update user profile with Stripe customer ID
-      const { error: updateError } = await supabase
-        .from('profiles')
+      const { error: updateError } = await (supabase
+        .from('profiles') as any)
         .update({
           stripe_customer_id: customerId,
           updated_at: new Date().toISOString()
-        } as any)
+        })
         .eq('id', userId)
 
       if (updateError) {
