@@ -231,6 +231,21 @@
             font-weight: 700;
             color: var(--premium-burgundy);
             text-decoration: line-through;
+            position: relative;
+        }
+
+        .price-us .amount::after {
+            content: '😱';
+            position: absolute;
+            top: -8px;
+            right: -25px;
+            font-size: 1rem;
+            animation: shockPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes shockPulse {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(5deg); }
         }
 
         .price-arrow {
@@ -264,6 +279,21 @@
             font-size: 2rem;
             font-weight: 700;
             color: var(--premium-forest);
+            position: relative;
+        }
+
+        .price-seoul .amount::after {
+            content: '🎉';
+            position: absolute;
+            top: -8px;
+            right: -25px;
+            font-size: 1rem;
+            animation: celebratePulse 2.5s ease-in-out infinite;
+        }
+
+        @keyframes celebratePulse {
+            0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.8; }
+            50% { transform: scale(1.3) rotate(-5deg); opacity: 1; }
         }
 
         .savings-badge {
@@ -303,8 +333,8 @@
 
         .btn-primary:hover {
             background: var(--gray-600);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(29, 29, 31, 0.4);
+            transform: translateY(-4px) scale(1.05);
+            box-shadow: 0 12px 32px rgba(29, 29, 31, 0.5);
         }
 
         .btn-secondary {
@@ -314,8 +344,9 @@
         }
 
         .btn-secondary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(248, 232, 240, 0.6);
+            transform: translateY(-4px) scale(1.05);
+            box-shadow: 0 12px 32px rgba(248, 232, 240, 0.7);
+            background: linear-gradient(135deg, var(--premium-gold), var(--premium-navy));
         }
 
         /* Interactive Price Calculator */
@@ -500,26 +531,45 @@
         }
 
         .whatsapp-cta::before {
-            content: 'Get Started';
+            content: '💬 Get Started';
             position: absolute;
-            top: -45px;
-            right: 0;
-            background: var(--gray-700);
+            top: -55px;
+            right: -10px;
+            background: linear-gradient(135deg, var(--premium-navy), var(--korean-blue-accent));
             color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 500;
+            padding: 0.75rem 1.25rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
             white-space: nowrap;
             opacity: 0;
-            transform: translateY(10px);
-            transition: all 0.3s ease;
+            transform: translateY(10px) scale(0.9);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             pointer-events: none;
+            box-shadow: 0 8px 24px rgba(30, 58, 138, 0.3);
         }
 
         .whatsapp-cta:hover::before {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
+        }
+
+        .whatsapp-cta::after {
+            content: '';
+            position: absolute;
+            top: -10px;
+            right: 15px;
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid var(--premium-navy);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .whatsapp-cta:hover::after {
+            opacity: 1;
         }
 
         /* Mobile Responsiveness */
@@ -559,12 +609,34 @@
         .fade-in {
             opacity: 0;
             transform: translateY(30px);
-            transition: all 0.6s ease;
+            transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
 
         .fade-in.visible {
             opacity: 1;
             transform: translateY(0);
+        }
+
+        /* Luxurious Shimmer Effect */
+        .shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        /* Premium Floating Animation */
+        .float {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
         }
 
         /* Korean Beauty Product Showcase */
@@ -585,10 +657,16 @@
         }
 
         .product-item:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 32px rgba(225, 163, 199, 0.3);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(225, 163, 199, 0.4);
             border-color: var(--korean-pink-accent);
-            background: linear-gradient(135deg, var(--white) 0%, var(--korean-blue) 100%);
+            background: linear-gradient(135deg, var(--korean-mint) 0%, var(--korean-blue) 50%, var(--korean-peach) 100%);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .product-item:hover .product-image {
+            background: linear-gradient(135deg, var(--premium-gold), var(--premium-navy));
+            transform: scale(1.05);
         }
 
         .product-image {
@@ -659,9 +737,10 @@
                     Seoul Sister
                 </div>
 
-                <div class="headline fade-in" style="margin-bottom: 2rem; color: var(--gray-500);">
+                <div class="headline fade-in" style="margin-bottom: 2rem; color: var(--gray-500); position: relative;">
                     Authentic Korean beauty at Seoul prices.<br>
                     Experience the difference quality makes.
+                    <div style="position: absolute; top: -20px; right: -30px; font-size: 1.5rem; opacity: 0.7;">🇰🇷</div>
                 </div>
 
                 <div class="body-large fade-in" style="margin-bottom: 3rem; max-width: 600px; margin-left: auto; margin-right: auto;">
@@ -669,10 +748,10 @@
                 </div>
 
                 <div class="fade-in">
-                    <a href="#discover" class="btn btn-primary" style="margin-right: 1rem;">
+                    <a href="#discover" class="btn btn-primary float" style="margin-right: 1rem;">
                         Discover the Difference
                     </a>
-                    <a href="#calculator" class="btn btn-secondary">
+                    <a href="#calculator" class="btn btn-secondary shimmer">
                         Calculate Your Savings
                     </a>
                 </div>
@@ -997,9 +1076,9 @@
                     Start your journey with a personalized consultation.
                 </div>
                 <a href="https://wa.me/1234567890?text=Hi! I'm interested in learning about authentic Korean beauty pricing through Seoul Sister. Could you help me get started?"
-                   class="btn btn-primary"
+                   class="btn btn-primary shimmer float"
                    style="font-size: 1.125rem; padding: 1.25rem 2.5rem;">
-                    Start Your Journey
+                    Start Your Journey ✨
                 </a>
                 <div style="margin-top: 1rem; font-size: 0.875rem; color: var(--gray-400);">
                     Free consultation • No commitment • Authentic pricing guaranteed
