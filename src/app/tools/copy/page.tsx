@@ -47,8 +47,8 @@ export default function CopyGeneratorPage() {
           if (platform === 'tiktok') {
             // Extract hook and main content
             const hookMatch = content.match(/hook[:\s]+(.+?)(?:\n|$)/i)
-            const scriptMatch = content.match(/script[:\s]+(.+?)(?:hashtag|$)/is)
-            const hashtagMatch = content.match(/hashtag[s:\s]+(.+?)$/is)
+            const scriptMatch = content.match(/script[:\s]+([\s\S]+?)(?:hashtag|$)/i)
+            const hashtagMatch = content.match(/hashtag[s:\s]+([\s\S]+?)$/i)
 
             formattedContent = hookMatch ? hookMatch[1] + '\n\n' : ''
             if (scriptMatch) formattedContent += scriptMatch[1].trim() + '\n\n'
