@@ -115,101 +115,106 @@ export default function HomePage() {
   }, [])
 
   return (
-    <main className="min-h-screen bg-seoul-pearl">
-      {/* Premium Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center px-4 py-20 overflow-hidden">
-        {/* Luxury Background Pattern */}
-        <div className="absolute inset-0 bg-gradient-to-br from-seoul-cream via-white to-seoul-rose opacity-60"></div>
+    <main className="min-h-screen bg-white">
+      {/* ULTIMATE Premium Hero Section */}
+      <section className="relative min-h-screen flex items-center justify-center px-4 py-20 overflow-hidden hero-luxury-bg">
+        {/* Multi-layer Luxury Background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-seoul-rose via-seoul-pearl to-white opacity-80"></div>
         <div className="absolute inset-0">
-          <div className="absolute top-0 left-0 w-96 h-96 bg-seoul-gold opacity-10 rounded-full filter blur-3xl"></div>
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-seoul-gold-dark opacity-10 rounded-full filter blur-3xl"></div>
+          <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-seoul-gold to-transparent opacity-20 rounded-full filter blur-3xl animate-float"></div>
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-br from-seoul-pink to-transparent opacity-20 rounded-full filter blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-seoul-gold-light to-transparent opacity-10 rounded-full filter blur-3xl"></div>
         </div>
 
         <div className="relative z-10 max-w-5xl mx-auto text-center">
-          {/* Crown Icon */}
-          <div className="flex justify-center mb-6">
-            <span className="text-6xl animate-shimmer">👑</span>
+          {/* Animated Crown Icon */}
+          <div className="flex justify-center mb-8">
+            <span className="text-7xl md:text-8xl animate-float">👑</span>
           </div>
 
-          {/* Brand Name in Gold */}
-          <h1 className="font-luxury text-6xl md:text-8xl mb-8 text-seoul-gold animate-shimmer">
+          {/* MASSIVE Gold Brand Name with Ultimate Shimmer */}
+          <h1 className="font-luxury text-7xl md:text-9xl mb-10 text-gold-gradient luxury-text-shadow animate-shimmer">
             Seoul Sister
           </h1>
 
-          {/* Luxury Hook */}
-          <h2 className="text-2xl md:text-4xl font-medium text-seoul-black mb-4">
-            POV: You discover what Seoul girls actually pay
+          {/* Premium Hook with Better Contrast */}
+          <h2 className="text-3xl md:text-5xl font-medium text-luxury-black mb-6 tracking-tight">
+            POV: You discover what Seoul girls <span className="text-seoul-gold font-bold">actually</span> pay
           </h2>
 
-          {/* Premium Tagline */}
-          <p className="text-xl md:text-2xl text-gold-gradient font-medium mb-12">
+          {/* Luxury Tagline with Animation */}
+          <p className="text-2xl md:text-3xl text-gold-gradient font-bold mb-14 animate-pulse-gold">
             Luxury K-beauty at Seoul insider prices
           </p>
 
-          {/* Subtle Description */}
-          <p className="text-lg text-gray-600 mb-16 max-w-3xl mx-auto leading-relaxed">
+          {/* Premium Description */}
+          <p className="text-xl text-gray-700 mb-16 max-w-3xl mx-auto leading-relaxed font-medium">
             You're about to access the same luxury K-beauty that Seoul insiders get,
-            without the 300% US markup. This is premium quality at Seoul reality prices—no compromises, bestie.
+            without the <span className="text-korean-red font-bold">300% US markup</span>.
+            This is premium quality at Seoul reality prices—<span className="italic">no compromises, bestie.</span>
           </p>
 
-          {/* Premium CTA Buttons */}
+          {/* ULTIMATE CTA Buttons with Maximum Impact */}
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
             <Link href="/signup">
-              <button className="group relative bg-seoul-black text-white font-semibold py-5 px-10 rounded-full text-lg shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-300 overflow-hidden">
+              <button className="cta-luxury py-6 px-12 rounded-full text-xl font-bold shadow-2xl transform hover:scale-110 transition-all duration-300">
                 <span className="relative z-10">Access Seoul Insider Prices</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-seoul-gold to-seoul-gold-dark transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
               </button>
             </Link>
 
             <button
               onClick={() => setShowViralGenerator(true)}
-              className="bg-seoul-gold text-seoul-black font-semibold py-5 px-10 rounded-full text-lg luxury-shadow hover:bg-seoul-gold-dark transform hover:scale-105 transition-all duration-300"
+              className="cta-gold py-6 px-12 rounded-full text-xl animate-pulse-gold"
             >
-              Calculate VIP Savings
+              Calculate VIP Savings 💰
             </button>
           </div>
 
-          {/* Trust Indicators */}
-          <div className="flex justify-center gap-8 text-sm text-gray-600">
-            <span>✓ 15K+ Seoul Sisters</span>
-            <span>✓ $2.8M Saved</span>
-            <span>✓ 100% Authentic</span>
+          {/* Trust Indicators with Gold Accent */}
+          <div className="flex justify-center gap-8 text-base font-semibold">
+            <span className="text-gray-700">✓ <span className="text-seoul-gold">15K+</span> Seoul Sisters</span>
+            <span className="text-gray-700">✓ <span className="text-seoul-gold">$2.8M</span> Saved</span>
+            <span className="text-gray-700">✓ <span className="text-seoul-gold">100%</span> Authentic</span>
           </div>
         </div>
 
-        {/* Elegant Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-          <div className="w-8 h-12 border-2 border-seoul-gold rounded-full flex justify-center">
-            <div className="w-1 h-3 bg-seoul-gold rounded-full mt-2 animate-bounce"></div>
+        {/* Premium Scroll Indicator */}
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
+          <div className="w-10 h-14 border-3 border-seoul-gold rounded-full flex justify-center gold-glow">
+            <div className="w-2 h-4 bg-seoul-gold rounded-full mt-2"></div>
           </div>
         </div>
       </section>
 
-      {/* Luxury Markup Exposed Section */}
-      <section className="py-20 bg-white">
+      {/* DRAMATIC Luxury Markup Exposed Section */}
+      <section className="py-24 bg-gradient-to-br from-white via-seoul-pearl to-seoul-rose-deep">
         <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <span className="luxury-badge mb-4">EXPOSED</span>
-            <h2 className="text-4xl md:text-5xl font-luxury mb-6 text-seoul-black">
-              <span className="text-gold-gradient">LUXURY MARKUP</span> EXPOSED
+          <div className="text-center mb-20">
+            <div className="inline-block mb-6">
+              <span className="exposed-badge text-lg">
+                🔥 EXPOSED 🔥
+              </span>
+            </div>
+            <h2 className="text-5xl md:text-6xl font-luxury mb-8 text-luxury-black">
+              <span className="text-gold-gradient">LUXURY MARKUP</span> REVEALED
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-gray-700 max-w-2xl mx-auto font-medium">
               Enter any US beauty price to discover what Seoul Sisters actually pay.
-              No 300% markups. No beauty industry finessing. Just Seoul reality pricing.
+              <span className="block mt-2 text-korean-red font-bold">No 300% markups. No finessing. Just truth.</span>
             </p>
           </div>
 
-          {/* Interactive Price Calculator */}
+          {/* Interactive Price Calculator with DRAMA */}
           <div className="max-w-2xl mx-auto">
-            <div className="bg-gradient-to-br from-seoul-cream to-white rounded-3xl p-10 luxury-shadow">
-              <div className="mb-8">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Enter US Price (e.g., 94)
+            <div className="premium-card-bg rounded-3xl p-12 luxury-shadow transform hover:scale-105 transition-all duration-300">
+              <div className="mb-10">
+                <label className="block text-base font-bold text-gray-800 mb-4">
+                  Enter US Retail Price (e.g., $94)
                 </label>
                 <input
                   type="number"
                   placeholder="$94"
-                  className="w-full px-6 py-4 text-2xl border-2 border-seoul-gold-light rounded-xl focus:border-seoul-gold focus:outline-none transition-colors"
+                  className="w-full px-8 py-5 text-3xl font-bold border-3 border-seoul-gold rounded-2xl focus:border-seoul-gold-dark focus:outline-none transition-all duration-300 text-center bg-white shadow-inner"
                   onChange={(e) => {
                     const usPrice = parseFloat(e.target.value) || 94;
                     const seoulPrice = Math.round(usPrice * 0.3);
@@ -219,22 +224,22 @@ export default function HomePage() {
                     const resultDiv = document.getElementById('price-result');
                     if (resultDiv) {
                       resultDiv.innerHTML = `
-                        <div class="text-center space-y-4">
-                          <div class="exposed-badge mx-auto">MARKUP EXPOSED</div>
-                          <div class="grid grid-cols-2 gap-6">
-                            <div>
-                              <p class="text-sm text-gray-600 mb-1">US Retail</p>
-                              <p class="text-3xl font-bold text-gray-400 line-through">$${usPrice}</p>
+                        <div class="text-center space-y-6 animate-shimmer">
+                          <div class="exposed-badge mx-auto text-xl">💸 MARKUP EXPOSED 💸</div>
+                          <div class="grid grid-cols-2 gap-8">
+                            <div class="bg-white/50 rounded-xl p-6">
+                              <p class="text-sm font-bold text-gray-600 mb-2">US RETAIL</p>
+                              <p class="text-4xl font-bold text-gray-400 line-through">$${usPrice}</p>
                             </div>
-                            <div>
-                              <p class="text-sm text-gray-600 mb-1">Seoul + Service</p>
-                              <p class="text-3xl font-bold text-seoul-gold-dark">$${seoulPrice + 25}</p>
+                            <div class="bg-gradient-to-br from-seoul-gold-light to-white rounded-xl p-6 border-2 border-seoul-gold">
+                              <p class="text-sm font-bold text-gray-700 mb-2">SEOUL + $25</p>
+                              <p class="text-4xl font-bold text-seoul-gold-dark">$${seoulPrice + 25}</p>
                             </div>
                           </div>
-                          <div class="pt-4 border-t-2 border-seoul-gold-light">
-                            <p class="text-lg text-gray-600">You Save</p>
-                            <p class="text-5xl font-bold text-seoul-gold">${savings > 0 ? '$' + savings : '$0'}</p>
-                            <p class="text-lg text-seoul-gold-dark">${savingsPercent}% Less Than US Retail</p>
+                          <div class="pt-6 border-t-3 border-seoul-gold">
+                            <p class="text-xl font-bold text-gray-700 mb-2">YOU SAVE</p>
+                            <p class="text-6xl font-bold text-gold-gradient luxury-text-shadow">${savings > 0 ? '$' + savings : '$0'}</p>
+                            <p class="text-2xl font-bold text-korean-red mt-2">${savingsPercent}% LESS</p>
                           </div>
                         </div>
                       `;
@@ -243,87 +248,93 @@ export default function HomePage() {
                 />
               </div>
 
-              <div id="price-result" className="animate-shimmer">
-                <div className="text-center text-gray-400">
-                  Enter a price to expose the markup...
+              <div id="price-result" className="min-h-[300px] flex items-center justify-center">
+                <div className="text-center text-gray-500 text-lg">
+                  Enter a price to expose the shocking markup...
                 </div>
               </div>
 
-              <button className="w-full mt-8 bg-seoul-black text-white font-semibold py-4 rounded-xl hover:bg-gray-800 transition-colors">
-                EXPOSE THE MARKUP
+              <button className="w-full mt-8 cta-luxury py-5 rounded-2xl text-xl font-bold">
+                EXPOSE THE MARKUP NOW
               </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* VIP Collection Showcase */}
-      <section className="py-20 bg-gradient-to-br from-seoul-pearl to-white">
+      {/* PREMIUM VIP Collection Showcase */}
+      <section className="py-24 bg-gradient-to-br from-white to-seoul-pearl">
         <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-luxury mb-6">
-              Seoul Sisters' <span className="text-gold-gradient">VIP Collection</span>
+          <div className="text-center mb-20">
+            <h2 className="text-5xl md:text-6xl font-luxury mb-8">
+              Seoul Sisters' <span className="text-gold-gradient animate-shimmer">VIP Collection</span>
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              The same luxury K-beauty brands you see everywhere, but at Seoul reality prices—not US markup madness
+            <p className="text-xl text-gray-700 max-w-2xl mx-auto font-medium">
+              The same luxury K-beauty you're overpaying for, but at
+              <span className="text-seoul-gold font-bold"> Seoul reality prices</span>
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {featuredProducts.map((product) => (
               <div
                 key={product.id}
-                className="bg-white rounded-2xl p-6 luxury-shadow hover:gold-glow transition-all duration-300 transform hover:-translate-y-2"
+                className="relative premium-card-bg rounded-3xl p-8 luxury-shadow hover:gold-glow transition-all duration-300 transform hover:-translate-y-3 hover:scale-105"
                 onMouseEnter={() => setHoveredProduct(product.id)}
                 onMouseLeave={() => setHoveredProduct(null)}
               >
-                {/* Exposed Badge */}
+                {/* DRAMATIC Exposed Badge */}
                 {product.savings_percentage > 70 && (
-                  <div className="absolute -top-3 -right-3 z-10">
-                    <span className="luxury-badge">EXPOSED {product.savings_percentage.toFixed(0)}%</span>
+                  <div className="absolute -top-4 -right-4 z-10">
+                    <span className="exposed-badge">
+                      {product.savings_percentage.toFixed(0)}% EXPOSED
+                    </span>
                   </div>
                 )}
 
-                <div className="relative">
+                <div className="relative mb-6">
                   <Image
                     src={product.image_url}
                     alt={product.name_english}
                     width={200}
                     height={200}
-                    className="w-full h-48 object-cover rounded-xl mb-4"
+                    className="w-full h-52 object-cover rounded-2xl shadow-lg"
                   />
 
-                  {/* Category Badge */}
-                  <span className="absolute top-2 left-2 bg-seoul-gold text-seoul-black px-3 py-1 rounded-full text-xs font-semibold">
+                  {/* Luxury Category Badge */}
+                  <span className="absolute top-3 left-3 bg-seoul-gold text-seoul-black px-4 py-2 rounded-full text-xs font-bold uppercase shadow-lg">
                     {product.category}
                   </span>
                 </div>
 
-                <h3 className="font-semibold text-lg mb-1 text-seoul-black">{product.brand}</h3>
-                <p className="text-gray-600 text-sm mb-4">{product.name_english}</p>
+                <h3 className="font-bold text-xl mb-2 text-luxury-black">{product.brand}</h3>
+                <p className="text-gray-600 text-base mb-6">{product.name_english}</p>
 
-                {/* Price Comparison */}
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">US RETAIL</span>
-                    <span className="text-lg font-semibold line-through text-gray-400">
+                {/* Dramatic Price Display */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                    <span className="text-sm font-bold text-gray-500">US RETAIL</span>
+                    <span className="text-2xl font-bold line-through text-gray-400">
                       ${product.us_price}
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">SEOUL PRICE</span>
-                    <span className="text-xl font-bold text-seoul-gold-dark">
+                  <div className="flex justify-between items-center p-3 bg-gradient-to-r from-seoul-gold-light to-white rounded-xl border-2 border-seoul-gold">
+                    <span className="text-sm font-bold text-gray-700">SEOUL PRICE</span>
+                    <span className="text-3xl font-bold text-seoul-gold-dark">
                       ${product.seoul_price + 25}
                     </span>
                   </div>
                 </div>
 
-                {/* Hover State - Show Savings */}
+                {/* Hover State - Dramatic Savings */}
                 {hoveredProduct === product.id && (
-                  <div className="mt-4 pt-4 border-t border-seoul-gold-light text-center animate-shimmer">
-                    <p className="text-2xl font-bold text-seoul-gold">
-                      Save ${(product.us_price - product.seoul_price - 25).toFixed(0)}
+                  <div className="mt-6 pt-6 border-t-2 border-seoul-gold text-center animate-shimmer">
+                    <p className="text-3xl font-bold text-gold-gradient luxury-text-shadow">
+                      SAVE ${(product.us_price - product.seoul_price - 25).toFixed(0)}
+                    </p>
+                    <p className="text-sm font-bold text-korean-red mt-2">
+                      THAT'S {product.savings_percentage.toFixed(0)}% OFF!
                     </p>
                   </div>
                 )}
@@ -333,160 +344,166 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* How Seoul Sisters Access VIP Pricing */}
-      <section className="py-20 bg-white">
+      {/* How Seoul Sisters Access VIP Pricing - LUXURY VERSION */}
+      <section className="py-24 bg-gradient-to-br from-seoul-pearl via-white to-seoul-rose">
         <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-luxury mb-6">
-              How Seoul Sisters Access <span className="text-gold-gradient">VIP Pricing</span> 👑
+          <div className="text-center mb-20">
+            <h2 className="text-5xl md:text-6xl font-luxury mb-8">
+              How Seoul Sisters Access <span className="text-gold-gradient animate-shimmer">VIP Pricing</span> 👑
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              From Seoul's exclusive wholesale suppliers to your door - no cap, just three simple steps
+            <p className="text-xl text-gray-700 max-w-2xl mx-auto font-medium">
+              From Seoul's exclusive suppliers to your door - <span className="italic">the luxury insider route</span>
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center p-8 bg-gradient-to-br from-seoul-cream to-white rounded-2xl luxury-shadow">
-              <div className="w-20 h-20 bg-gold-gradient rounded-full flex items-center justify-center mx-auto mb-6">
-                <span className="text-3xl">🛍️</span>
+          <div className="grid md:grid-cols-3 gap-10">
+            <div className="text-center p-10 premium-card-bg rounded-3xl luxury-shadow transform hover:scale-105 transition-all duration-300">
+              <div className="w-24 h-24 bg-gold-gradient rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse-gold">
+                <span className="text-4xl">🛍️</span>
               </div>
-              <h3 className="text-xl font-semibold mb-4 text-seoul-black">1. Curated Selection</h3>
-              <p className="text-gray-600">
-                We partner with Seoul's most trusted wholesale suppliers, including verified distributors
-                in Myeongdong and Hongdae, ensuring authentic products at wholesale prices.
+              <h3 className="text-2xl font-bold mb-6 text-luxury-black">1. Curated Selection</h3>
+              <p className="text-gray-700 text-lg leading-relaxed">
+                We partner with Seoul's most exclusive wholesale suppliers in
+                <span className="font-bold"> Myeongdong & Hongdae</span>,
+                ensuring authentic luxury at wholesale prices.
               </p>
             </div>
 
-            <div className="text-center p-8 bg-gradient-to-br from-seoul-cream to-white rounded-2xl luxury-shadow">
-              <div className="w-20 h-20 bg-gold-gradient rounded-full flex items-center justify-center mx-auto mb-6">
-                <span className="text-3xl">✈️</span>
+            <div className="text-center p-10 premium-card-bg rounded-3xl luxury-shadow transform hover:scale-105 transition-all duration-300">
+              <div className="w-24 h-24 bg-gold-gradient rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse-gold">
+                <span className="text-4xl">✈️</span>
               </div>
-              <h3 className="text-xl font-semibold mb-4 text-seoul-black">2. Direct Sourcing</h3>
-              <p className="text-gray-600">
-                Products are sourced directly from Korea with full authenticity verification.
-                No middlemen, no markup inflation - just honest Seoul wholesale prices.
+              <h3 className="text-2xl font-bold mb-6 text-luxury-black">2. Direct Sourcing</h3>
+              <p className="text-gray-700 text-lg leading-relaxed">
+                Products sourced directly from Korea with
+                <span className="font-bold"> authenticity certificates</span>.
+                No middlemen. No markups. Just Seoul prices.
               </p>
             </div>
 
-            <div className="text-center p-8 bg-gradient-to-br from-seoul-cream to-white rounded-2xl luxury-shadow">
-              <div className="w-20 h-20 bg-gold-gradient rounded-full flex items-center justify-center mx-auto mb-6">
-                <span className="text-3xl">📦</span>
+            <div className="text-center p-10 premium-card-bg rounded-3xl luxury-shadow transform hover:scale-105 transition-all duration-300">
+              <div className="w-24 h-24 bg-gold-gradient rounded-full flex items-center justify-center mx-auto mb-8 animate-pulse-gold">
+                <span className="text-4xl">📦</span>
               </div>
-              <h3 className="text-xl font-semibold mb-4 text-seoul-black">3. Premium Delivery</h3>
-              <p className="text-gray-600">
-                Carefully packaged and shipped with tracking. Your authentic Korean beauty products
-                arrive in perfect condition, ready to transform your routine.
+              <h3 className="text-2xl font-bold mb-6 text-luxury-black">3. Premium Delivery</h3>
+              <p className="text-gray-700 text-lg leading-relaxed">
+                Luxury packaging with tracking. Your authentic K-beauty arrives in
+                <span className="font-bold"> perfect condition</span>,
+                ready to transform your routine.
               </p>
             </div>
           </div>
 
-          {/* Authenticity Guarantee */}
-          <div className="mt-16 text-center p-10 bg-gradient-to-r from-seoul-gold-light via-seoul-cream to-seoul-gold-light rounded-3xl">
-            <h3 className="text-2xl font-semibold mb-4 text-seoul-black">Authenticity Guaranteed</h3>
-            <p className="text-gray-700 max-w-2xl mx-auto">
-              Every product comes with authenticity verification and direct wholesale supplier receipts.
-              If you're not completely satisfied with the quality and savings, we'll make it right.
+          {/* Authenticity Guarantee - LUXURY */}
+          <div className="mt-20 text-center p-12 bg-gradient-to-r from-seoul-gold-light via-white to-seoul-gold-light rounded-3xl luxury-shadow">
+            <h3 className="text-3xl font-bold mb-6 text-luxury-black">
+              ✨ Authenticity Guaranteed ✨
+            </h3>
+            <p className="text-xl text-gray-700 max-w-2xl mx-auto leading-relaxed">
+              Every product comes with <span className="font-bold text-seoul-gold-dark">authenticity verification</span> and
+              direct wholesale receipts. If you're not completely satisfied with the quality and savings,
+              <span className="italic"> we'll make it right.</span>
             </p>
           </div>
         </div>
       </section>
 
-      {/* Seoul Sisters Share Their Wins */}
-      <section className="py-20 bg-gradient-to-br from-seoul-pearl to-white">
+      {/* Seoul Sisters Share Their Wins - DRAMATIC */}
+      <section className="py-24 bg-gradient-to-br from-white to-seoul-pearl">
         <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-luxury mb-6">
-              Seoul Sisters Share Their <span className="text-gold-gradient">Wins</span> 💋
+          <div className="text-center mb-20">
+            <h2 className="text-5xl md:text-6xl font-luxury mb-8">
+              Seoul Sisters Share Their <span className="text-gold-gradient animate-shimmer">Wins</span> 💋
             </h2>
-            <p className="text-lg text-gray-600">
-              Real Seoul Sisters, real savings, real luxury vibes
+            <p className="text-xl text-gray-700 font-medium">
+              Real Seoul Sisters, real savings, <span className="italic text-seoul-gold-dark">real luxury vibes</span>
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-10">
             {/* Testimonial 1 */}
-            <div className="bg-white rounded-2xl p-8 luxury-shadow">
-              <div className="flex items-center mb-6">
-                <div className="w-16 h-16 bg-gold-gradient rounded-full flex items-center justify-center text-white font-bold text-xl">
+            <div className="premium-card-bg rounded-3xl p-10 luxury-shadow transform hover:scale-105 transition-all duration-300">
+              <div className="flex items-center mb-8">
+                <div className="w-20 h-20 bg-gold-gradient rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-xl">
                   SK
                 </div>
-                <div className="ml-4">
-                  <p className="font-semibold text-seoul-black">Sarah K.</p>
-                  <p className="text-sm text-gray-600">Los Angeles, CA</p>
+                <div className="ml-5">
+                  <p className="font-bold text-xl text-luxury-black">Sarah K.</p>
+                  <p className="text-gray-600">Los Angeles, CA</p>
                 </div>
               </div>
-              <p className="text-gray-700 mb-6 italic">
+              <p className="text-gray-700 mb-8 italic text-lg leading-relaxed">
                 "I've been buying Korean skincare for years, but Seoul Sister opened my eyes to how much
                 I was overpaying. The quality is identical to what I got at Sephora, but at a fraction of the cost."
               </p>
-              <div className="bg-seoul-gold-light rounded-xl p-4 text-center">
-                <p className="text-sm text-gray-600">Monthly savings:</p>
-                <p className="text-2xl font-bold text-seoul-gold-dark">$240</p>
+              <div className="bg-gradient-to-r from-seoul-gold-light to-white rounded-2xl p-6 text-center border-2 border-seoul-gold">
+                <p className="text-sm font-bold text-gray-600">Monthly savings:</p>
+                <p className="text-4xl font-bold text-gold-gradient">$240</p>
               </div>
             </div>
 
             {/* Testimonial 2 */}
-            <div className="bg-white rounded-2xl p-8 luxury-shadow">
-              <div className="flex items-center mb-6">
-                <div className="w-16 h-16 bg-gold-gradient rounded-full flex items-center justify-center text-white font-bold text-xl">
+            <div className="premium-card-bg rounded-3xl p-10 luxury-shadow transform hover:scale-105 transition-all duration-300">
+              <div className="flex items-center mb-8">
+                <div className="w-20 h-20 bg-gold-gradient rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-xl">
                   ER
                 </div>
-                <div className="ml-4">
-                  <p className="font-semibold text-seoul-black">Emma R.</p>
-                  <p className="text-sm text-gray-600">New York, NY</p>
+                <div className="ml-5">
+                  <p className="font-bold text-xl text-luxury-black">Emma R.</p>
+                  <p className="text-gray-600">New York, NY</p>
                 </div>
               </div>
-              <p className="text-gray-700 mb-6 italic">
+              <p className="text-gray-700 mb-8 italic text-lg leading-relaxed">
                 "As someone who creates beauty content, authenticity matters. Seoul Sister sources directly
                 from Korea, and my followers have noticed the difference in my skin since switching."
               </p>
-              <div className="bg-seoul-gold-light rounded-xl p-4 text-center">
-                <p className="text-sm text-gray-600">First order saved:</p>
-                <p className="text-2xl font-bold text-seoul-gold-dark">$180</p>
+              <div className="bg-gradient-to-r from-seoul-gold-light to-white rounded-2xl p-6 text-center border-2 border-seoul-gold">
+                <p className="text-sm font-bold text-gray-600">First order saved:</p>
+                <p className="text-4xl font-bold text-gold-gradient">$180</p>
               </div>
             </div>
 
             {/* Testimonial 3 */}
-            <div className="bg-white rounded-2xl p-8 luxury-shadow">
-              <div className="flex items-center mb-6">
-                <div className="w-16 h-16 bg-gold-gradient rounded-full flex items-center justify-center text-white font-bold text-xl">
+            <div className="premium-card-bg rounded-3xl p-10 luxury-shadow transform hover:scale-105 transition-all duration-300">
+              <div className="flex items-center mb-8">
+                <div className="w-20 h-20 bg-gold-gradient rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-xl">
                   JM
                 </div>
-                <div className="ml-4">
-                  <p className="font-semibold text-seoul-black">Jessica M.</p>
-                  <p className="text-sm text-gray-600">Austin, TX</p>
+                <div className="ml-5">
+                  <p className="font-bold text-xl text-luxury-black">Jessica M.</p>
+                  <p className="text-gray-600">Austin, TX</p>
                 </div>
               </div>
-              <p className="text-gray-700 mb-6 italic">
+              <p className="text-gray-700 mb-8 italic text-lg leading-relaxed">
                 "I was skeptical at first, but the products arrive exactly as described. The packaging is authentic,
                 and the prices make premium skincare accessible for someone on a budget."
               </p>
-              <div className="bg-seoul-gold-light rounded-xl p-4 text-center">
-                <p className="text-sm text-gray-600">Annual savings:</p>
-                <p className="text-2xl font-bold text-seoul-gold-dark">$1,200</p>
+              <div className="bg-gradient-to-r from-seoul-gold-light to-white rounded-2xl p-6 text-center border-2 border-seoul-gold">
+                <p className="text-sm font-bold text-gray-600">Annual savings:</p>
+                <p className="text-4xl font-bold text-gold-gradient">$1,200</p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Viral Tools Section */}
-      <section className="py-20 bg-white">
+      {/* Viral Tools Section - DRAMATIC */}
+      <section className="py-24 bg-gradient-to-br from-seoul-rose via-white to-seoul-pearl">
         <div className="max-w-6xl mx-auto px-4">
           {/* Viral Screenshot Generator */}
-          <div className="mb-20">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl md:text-5xl font-luxury mb-6">
-                Create Your <span className="text-gold-gradient">Viral Story</span>
+          <div className="mb-24">
+            <div className="text-center mb-16">
+              <h2 className="text-5xl md:text-6xl font-luxury mb-8">
+                Create Your <span className="text-gold-gradient animate-shimmer">Viral Story</span>
               </h2>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              <p className="text-xl text-gray-700 max-w-2xl mx-auto font-medium">
                 Generate a luxury Instagram Story to show your Seoul Sister savings.
-                Help expose the beauty industry markup with style! 👑
+                <span className="block mt-2 text-seoul-gold-dark font-bold">Help expose the beauty industry markup with style! 👑</span>
               </p>
             </div>
 
             {showViralGenerator && (
-              <div className="max-w-4xl mx-auto mb-8">
+              <div className="max-w-4xl mx-auto mb-10 animate-shimmer">
                 <ViralScreenshotGenerator
                   savingsData={{
                     productName: currentProduct.name_english,
@@ -505,7 +522,7 @@ export default function HomePage() {
             <div className="text-center">
               <button
                 onClick={() => setShowViralGenerator(!showViralGenerator)}
-                className="bg-seoul-gold text-seoul-black font-semibold py-4 px-8 rounded-full text-lg luxury-shadow hover:bg-seoul-gold-dark transform hover:scale-105 transition-all duration-300"
+                className="cta-gold py-5 px-10 rounded-full text-xl"
               >
                 {showViralGenerator ? 'Hide Generator' : 'Create My Viral Story ✨'}
               </button>
@@ -514,18 +531,18 @@ export default function HomePage() {
 
           {/* Viral Copy Generator */}
           <div>
-            <div className="text-center mb-12">
-              <h2 className="text-4xl md:text-5xl font-luxury mb-6">
-                Generate <span className="text-gold-gradient">Viral Copy</span>
+            <div className="text-center mb-16">
+              <h2 className="text-5xl md:text-6xl font-luxury mb-8">
+                Generate <span className="text-gold-gradient animate-shimmer">Viral Copy</span>
               </h2>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              <p className="text-xl text-gray-700 max-w-2xl mx-auto font-medium">
                 Get platform-specific content to share your Seoul Sister savings.
-                Perfect for TikTok, Instagram, and more! 🔥
+                <span className="block mt-2 text-seoul-gold-dark font-bold">Perfect for TikTok, Instagram, and more! 🔥</span>
               </p>
             </div>
 
             {showCopyGenerator && (
-              <div className="max-w-4xl mx-auto mb-8">
+              <div className="max-w-4xl mx-auto mb-10 animate-shimmer">
                 <ViralCopyGenerator
                   savingsData={{
                     productName: currentProduct.name_english,
@@ -543,7 +560,7 @@ export default function HomePage() {
             <div className="text-center">
               <button
                 onClick={() => setShowCopyGenerator(!showCopyGenerator)}
-                className="bg-seoul-black text-white font-semibold py-4 px-8 rounded-full text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+                className="cta-luxury py-5 px-10 rounded-full text-xl"
               >
                 {showCopyGenerator ? 'Hide Copy Generator' : 'Generate Viral Copy 🚀'}
               </button>
@@ -552,62 +569,67 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* The Seoul Sister Difference */}
-      <section className="py-20 bg-gradient-to-br from-seoul-cream via-white to-seoul-rose">
+      {/* The Seoul Sister Difference - ULTIMATE */}
+      <section className="py-24 bg-gradient-to-br from-white via-seoul-pearl to-seoul-rose">
         <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-luxury mb-6">
-              The <span className="text-gold-gradient">Seoul Sister</span> Difference
+          <div className="text-center mb-20">
+            <h2 className="text-5xl md:text-6xl font-luxury mb-8">
+              The <span className="text-gold-gradient animate-shimmer">Seoul Sister</span> Difference
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              VIP access, authentic luxury, trusted by 15K+ Seoul Sisters who refuse industry markups
+            <p className="text-xl text-gray-700 max-w-2xl mx-auto font-medium">
+              VIP access, authentic luxury, trusted by 15K+ Seoul Sisters who
+              <span className="text-korean-red font-bold"> refuse industry markups</span>
             </p>
           </div>
 
-          <div className="grid md:grid-cols-4 gap-8 text-center">
-            <div>
-              <p className="text-5xl font-bold text-seoul-gold mb-2">15K+</p>
-              <p className="text-gray-600">Seoul Sisters</p>
+          <div className="grid md:grid-cols-4 gap-10 text-center">
+            <div className="premium-card-bg rounded-2xl p-8 luxury-shadow transform hover:scale-110 transition-all duration-300">
+              <p className="text-6xl font-bold text-gold-gradient mb-4 animate-shimmer">15K+</p>
+              <p className="text-gray-700 font-semibold text-lg">Seoul Sisters</p>
             </div>
-            <div>
-              <p className="text-5xl font-bold text-seoul-gold mb-2">$2.8M</p>
-              <p className="text-gray-600">Money Not Wasted</p>
+            <div className="premium-card-bg rounded-2xl p-8 luxury-shadow transform hover:scale-110 transition-all duration-300">
+              <p className="text-6xl font-bold text-gold-gradient mb-4 animate-shimmer">$2.8M</p>
+              <p className="text-gray-700 font-semibold text-lg">Money Not Wasted</p>
             </div>
-            <div>
-              <p className="text-5xl font-bold text-seoul-gold mb-2">73%</p>
-              <p className="text-gray-600">Markup Exposed</p>
+            <div className="premium-card-bg rounded-2xl p-8 luxury-shadow transform hover:scale-110 transition-all duration-300">
+              <p className="text-6xl font-bold text-gold-gradient mb-4 animate-shimmer">73%</p>
+              <p className="text-gray-700 font-semibold text-lg">Markup Exposed</p>
             </div>
-            <div>
-              <p className="text-5xl font-bold text-seoul-gold mb-2">4.9★</p>
-              <p className="text-gray-600">VIP Experience</p>
+            <div className="premium-card-bg rounded-2xl p-8 luxury-shadow transform hover:scale-110 transition-all duration-300">
+              <p className="text-6xl font-bold text-gold-gradient mb-4 animate-shimmer">4.9★</p>
+              <p className="text-gray-700 font-semibold text-lg">VIP Experience</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Final Premium CTA */}
+      {/* ULTIMATE Final Premium CTA */}
       <section className="py-32 bg-seoul-black text-white relative overflow-hidden">
+        {/* Animated Gold Particles */}
         <div className="absolute inset-0">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-seoul-gold opacity-10 rounded-full filter blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-seoul-gold-dark opacity-10 rounded-full filter blur-3xl"></div>
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-seoul-gold opacity-10 rounded-full filter blur-3xl animate-float"></div>
+          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-seoul-gold-dark opacity-10 rounded-full filter blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-seoul-gold opacity-5 rounded-full filter blur-3xl animate-pulse"></div>
         </div>
 
         <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-4xl md:text-5xl font-luxury mb-8">
-            Ready to Join the <span className="text-gold-gradient">Seoul Sisters</span>?
+          <h2 className="text-5xl md:text-7xl font-luxury mb-10">
+            Ready to Join the <span className="text-gold-gradient animate-shimmer">Seoul Sisters</span>?
           </h2>
-          <p className="text-xl mb-12 opacity-90 max-w-2xl mx-auto">
+          <p className="text-2xl mb-14 opacity-90 max-w-2xl mx-auto leading-relaxed">
             Join 15K+ Seoul Sisters who refuse industry markup manipulation.
             Get your exclusive VIP access with a personalized Seoul consultation.
           </p>
 
           <Link href="/signup">
-            <button className="group relative bg-seoul-gold text-seoul-black font-bold py-5 px-12 rounded-full text-lg shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-300 overflow-hidden">
-              <span className="relative z-10">VIP Seoul Access 👑</span>
+            <button className="cta-gold py-6 px-14 rounded-full text-2xl transform hover:scale-110 transition-all duration-300 animate-pulse-gold">
+              <span className="flex items-center gap-3">
+                VIP Seoul Access <span className="text-3xl">👑</span>
+              </span>
             </button>
           </Link>
 
-          <p className="mt-8 text-sm opacity-70">
+          <p className="mt-10 text-lg opacity-80">
             Free VIP consultation • No commitment • Seoul Sister exclusive access
           </p>
         </div>
