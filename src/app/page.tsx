@@ -25,7 +25,7 @@ const featuredProducts: Product[] = [
     seoul_price: 28.00,
     us_price: 94.00,
     savings_percentage: 70,
-    image_url: 'https://images.unsplash.com/photo-1617897094665-d019c0ac14f5?w=600&h=600&fit=crop',
+    image_url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600&h=600&fit=crop',
     category: 'Serum'
   },
   {
@@ -45,7 +45,7 @@ const featuredProducts: Product[] = [
     seoul_price: 23.00,
     us_price: 89.00,
     savings_percentage: 74,
-    image_url: 'https://images.unsplash.com/photo-1570194065650-d99fb4bedf0a?w=600&h=600&fit=crop',
+    image_url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&h=600&fit=crop',
     category: 'Essence'
   },
   {
@@ -209,7 +209,7 @@ export default function HomePage() {
             <div className="text-center">
               <div className="text-4xl mb-8 text-luxury-gold">01</div>
               <h3 className="text-xl mb-4 font-light text-luxury-black">Direct Sourcing</h3>
-              <p className="quality-text">
+              <p className="text-sm text-luxury-charcoal font-light leading-relaxed">
                 Partnering with Seoul's most exclusive wholesale suppliers in Myeongdong,
                 ensuring authenticity and quality.
               </p>
@@ -218,7 +218,7 @@ export default function HomePage() {
             <div className="text-center">
               <div className="text-4xl mb-8 text-luxury-gold">02</div>
               <h3 className="text-xl mb-4 font-light text-luxury-black">Authentication</h3>
-              <p className="quality-text">
+              <p className="text-sm text-luxury-charcoal font-light leading-relaxed">
                 Every product verified with authenticity certificates directly
                 from Korean manufacturers.
               </p>
@@ -227,7 +227,7 @@ export default function HomePage() {
             <div className="text-center">
               <div className="text-4xl mb-8 text-luxury-gold">03</div>
               <h3 className="text-xl mb-4 font-light text-luxury-black">Premium Delivery</h3>
-              <p className="quality-text">
+              <p className="text-sm text-luxury-charcoal font-light leading-relaxed">
                 Luxury packaging with tracking, ensuring your K-beauty arrives
                 in perfect condition.
               </p>
