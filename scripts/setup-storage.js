@@ -35,9 +35,10 @@ async function setupStorage() {
       throw listError
     }
 
-    const existingBucket = buckets?.find(b => b.name === 'product-images')
+    // Create product-images bucket
+    const existingProductBucket = buckets?.find(b => b.name === 'product-images')
 
-    if (existingBucket) {
+    if (existingProductBucket) {
       console.log('✅ product-images bucket already exists')
     } else {
       const { data, error } = await supabase
@@ -54,6 +55,28 @@ async function setupStorage() {
       }
 
       console.log('✅ Created product-images bucket')
+    }
+
+    // Create skin-analysis bucket
+    console.log('Creating skin-analysis bucket...')
+    const existingSkinBucket = buckets?.find(b => b.name === 'skin-analysis')
+
+    if (existingSkinBucket) {
+      console.log('✅ skin-analysis bucket already exists')
+    } else {
+      const { data: skinData, error: skinError } = await supabase
+        .storage
+        .createBucket('skin-analysis', {
+          public: true,
+          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+          fileSizeLimit: 10485760 // 10MB for selfies
+        })
+
+      if (skinError) {
+        console.error('Error creating skin-analysis bucket:', skinError)
+      } else {
+        console.log('✅ Created skin-analysis bucket')
+      }
     }
 
     // Set up storage policies
