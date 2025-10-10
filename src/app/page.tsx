@@ -36,7 +36,7 @@ const staticProducts: Product[] = [
     seoul_price: 8.00,
     us_price: 45.00,
     savings_percentage: 82,
-    image_url: 'https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=600&h=600&fit=crop',
+    image_url: 'https://images.unsplash.com/photo-1611080626919-7cf5a9dbab5b?w=600&h=600&fit=crop',
     category: 'Serum'
   },
   {
@@ -46,7 +46,7 @@ const staticProducts: Product[] = [
     seoul_price: 23.00,
     us_price: 89.00,
     savings_percentage: 74,
-    image_url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&h=600&fit=crop',
+    image_url: 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=600&h=600&fit=crop',
     category: 'Essence'
   },
   {
