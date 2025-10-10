@@ -1,6 +1,6 @@
 /**
  * AI-Powered Viral Content Generator
- * Uses Claude Opus 4.1 to create unique, trending content for Seoul Sister
+ * Uses Claude 3.5 Sonnet (latest) to create unique, trending content for Seoul Sister
  * Inspired by neurolink-bridge's content generation system
  */
 
@@ -95,7 +95,7 @@ Make it authentic, not salesy. Use natural Gen Z language. Create FOMO and urgen
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-3-opus-20240229',
+      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 2000,
       temperature: 0.9, // Higher for more creativity
       messages: [
@@ -127,7 +127,7 @@ async function storeGeneratedContent(
         content,
         metadata,
         generated_at: new Date().toISOString(),
-        ai_model: 'claude-3-opus',
+        ai_model: 'claude-3-5-sonnet',
         performance_metrics: {} // Track likes, shares, etc later
       })
   } catch (error) {
@@ -240,7 +240,7 @@ export async function POST(request: Request) {
         generatedContent[platform] = {
           content: aiContent,
           ai_generated: true,
-          model: 'claude-3-opus-4.1'
+          model: 'claude-3-5-sonnet-20241022'
         }
 
         // Store for learning
@@ -306,7 +306,7 @@ export async function GET() {
       customPrompt: 'Optional custom instructions'
     },
     capabilities: [
-      'AI-powered content generation with Claude Opus 4.1',
+      'AI-powered content generation with Claude 3.5 Sonnet',
       'Platform-specific optimization',
       'Trending topic integration',
       'Viral pattern recognition',
