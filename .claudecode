@@ -1,0 +1,25 @@
+# Claude Code Permissions for Seoul Sister Project
+# This file grants autonomous development permissions
+
+# File Operations
+approve: Write(**)
+approve: Edit(**)
+approve: MultiEdit(**)
+
+# Development Commands
+approve: Bash(npm:*)
+approve: Bash(npx:*)
+approve: Bash(supabase:*)
+approve: Bash(vercel:*)
+approve: Bash(git:*)
+
+# Web Scraping for Price Comparisons
+approve: WebFetch(domain:*.sephora.com)
+approve: WebFetch(domain:*.ulta.com)
+approve: WebFetch(domain:*.yesstyle.com)
+approve: WebFetch(domain:*.oliveyoung.co.kr)
+
+# Testing & Quality
+approve: Bash(npm test:*)
+approve: Bash(npm run lint:*)
+approve: Bash(npm run build:*)

@@ -10,32 +10,35 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "dev:static": "python3 -m http.server 3000",
-    "deploy": "vercel --prod"
+    "deploy": "vercel --prod",
+    "db:migrate": "node scripts/migrate-database.js",
+    "db:seed": "node scripts/migrate-database.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.9",
+    "@stripe/react-stripe-js": "^2.4.0",
+    "@stripe/stripe-js": "^2.1.11",
+    "@supabase/supabase-js": "^2.38.0",
+    "dotenv": "^17.2.3",
+    "html2canvas": "^1.4.1",
     "next": "15.0.0",
+    "playwright": "^1.40.0",
+    "qrcode-terminal": "^0.12.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@supabase/supabase-js": "^2.38.0",
-    "@stripe/stripe-js": "^2.1.11",
-    "@stripe/react-stripe-js": "^2.4.0",
     "stripe": "^14.5.0",
-    "@anthropic-ai/sdk": "^0.20.9",
-    "playwright": "^1.40.0",
-    "whatsapp-web.js": "^1.23.0",
-    "qrcode-terminal": "^0.12.0",
-    "html2canvas": "^1.4.1"
+    "whatsapp-web.js": "^1.23.0"
   },
   "devDependencies": {
-    "typescript": "^5",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "15.0.0",
     "postcss": "^8",
     "tailwindcss": "^3.3.0",
-    "eslint": "^8",
-    "eslint-config-next": "15.0.0"
+    "typescript": "^5"
   },
   "keywords": [
     "k-beauty",

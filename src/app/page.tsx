@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import ViralScreenshotGenerator from '../components/ViralScreenshotGenerator'
 import ViralCopyGenerator from '../components/ViralCopyGenerator'
+import { useProducts } from '@/hooks/useProducts'
 
 interface Product {
   id: string
@@ -17,7 +18,7 @@ interface Product {
   category: string
 }
 
-const featuredProducts: Product[] = [
+const staticProducts: Product[] = [
   {
     id: '1',
     name_english: 'First Care Activating Serum',
@@ -64,6 +65,10 @@ export default function HomePage() {
   const [currentProductIndex, setCurrentProductIndex] = useState(0)
   const [isScrolled, setIsScrolled] = useState(false)
   const [showViralTools, setShowViralTools] = useState(false)
+  const { products, loading } = useProducts(true)
+
+  // Use database products if available, otherwise fall back to static
+  const featuredProducts = products.length > 0 ? products : staticProducts
 
   useEffect(() => {
     const handleScroll = () => {

@@ -3,6 +3,14 @@
 ## Project Overview
 Seoul Sister is a viral K-beauty arbitrage business targeting Gen Z (20-30 year olds) who want authentic Korean beauty products at Seoul street prices, not inflated US retail prices. This is built as a movement to expose the beauty industry's 300-500% markup.
 
+### Claude Code Autonomous Development Mode
+**ENABLED**: Full autonomy to complete high-priority tasks without user intervention.
+- Create/modify any files needed for features
+- Set up database schemas and API endpoints
+- Implement web scraping for price comparisons
+- Build admin interfaces and dashboards
+- Optimize performance and analytics
+
 ### Core Technologies
 - **Framework**: Static HTML/CSS/JavaScript (current), Next.js 15 (future)
 - **Hosting**: Vercel with custom domain (SeoulSister.com)
