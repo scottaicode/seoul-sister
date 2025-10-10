@@ -1,14 +1,23 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Only create Supabase client if credentials are available
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+const supabase = supabaseUrl && supabaseKey
+  ? createClient(supabaseUrl, supabaseKey)
+  : null
 
 export async function POST(request: Request) {
   try {
     const event = await request.json()
+
+    // If Supabase is not configured, just log and return success
+    if (!supabase) {
+      console.log('Analytics event (Supabase not configured):', event)
+      return NextResponse.json({ success: true, message: 'Analytics logged (no database)' })
+    }
 
     // Store analytics event in database
     const { data, error } = await supabase
@@ -25,7 +34,8 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error('Error storing analytics:', error)
-      return NextResponse.json({ error: 'Failed to store event' }, { status: 500 })
+      // Don't fail the request, just log the error
+      return NextResponse.json({ success: true, warning: 'Analytics not stored' })
     }
 
     // Update aggregate metrics
@@ -34,7 +44,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Analytics error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    // Return success even on error to not break the frontend
+    return NextResponse.json({ success: true, error: 'Analytics error logged' })
   }
 }
 
@@ -43,6 +54,27 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const timeframe = searchParams.get('timeframe') || '7d'
     const metric = searchParams.get('metric')
+
+    // If Supabase is not configured, return mock data
+    if (!supabase) {
+      return NextResponse.json({
+        timeframe,
+        startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: new Date().toISOString(),
+        events: 0,
+        metrics: {
+          totalPageViews: 0,
+          uniqueSessions: 0,
+          conversionEvents: 0,
+          conversionRate: 0,
+          viralShares: 0,
+          topEvents: {},
+          deviceBreakdown: { mobile: 0, tablet: 0, desktop: 0 },
+          trafficSources: {},
+          funnelCompletion: {}
+        }
+      })
+    }
 
     // Calculate date range
     const endDate = new Date()
@@ -100,6 +132,11 @@ export async function GET(request: Request) {
 }
 
 async function updateMetrics(event: any) {
+  // Skip if Supabase is not configured
+  if (!supabase) {
+    return
+  }
+
   try {
     // Update daily metrics
     const today = new Date().toISOString().split('T')[0]
