@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import ViralScreenshotGenerator from '../components/ViralScreenshotGenerator'
+import ViralCopyGenerator from '../components/ViralCopyGenerator'
 
 interface Product {
   id: string
@@ -61,6 +63,7 @@ const featuredProducts: Product[] = [
 export default function HomePage() {
   const [currentProductIndex, setCurrentProductIndex] = useState(0)
   const [isScrolled, setIsScrolled] = useState(false)
+  const [showViralTools, setShowViralTools] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -182,11 +185,9 @@ export default function HomePage() {
                   </p>
                 </div>
 
-                {product.savings_percentage > 70 && (
-                  <span className="badge-insider">
-                    {product.savings_percentage}% INSIDER SAVINGS
-                  </span>
-                )}
+                <span className="badge-insider">
+                  {product.savings_percentage}% INSIDER SAVINGS
+                </span>
               </div>
             ))}
           </div>
@@ -336,6 +337,51 @@ export default function HomePage() {
               />
               <div id="calc-result" className="min-h-[200px] mt-8"></div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Viral Tools Section - Refined */}
+      <section className="viral-tools-section py-32">
+        <div className="luxury-container">
+          <div className="text-center mb-20">
+            <p className="text-caption mb-4">SHARE YOUR STORY</p>
+            <h2 className="heading-section text-5xl md:text-6xl mb-8">
+              Create Your Viral Moment
+            </h2>
+            <div className="gold-line mx-auto"></div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <div className="viral-tool-card text-center">
+              <h3 className="text-xl mb-4 font-light">Instagram Story Generator</h3>
+              <p className="text-sm text-gray-400 mb-8">
+                Create a luxury story showcasing your Seoul Sister savings
+              </p>
+              <Link href="/tools/screenshot">
+                <button className="btn-luxury text-xs w-full">
+                  CREATE STORY
+                </button>
+              </Link>
+            </div>
+
+            <div className="viral-tool-card text-center">
+              <h3 className="text-xl mb-4 font-light">Viral Copy Generator</h3>
+              <p className="text-sm text-gray-400 mb-8">
+                Generate platform-specific content for TikTok, Instagram, and more
+              </p>
+              <Link href="/tools/copy">
+                <button className="btn-luxury text-xs w-full">
+                  GENERATE COPY
+                </button>
+              </Link>
+            </div>
+          </div>
+
+          <div className="text-center mt-12">
+            <p className="text-sm text-gray-500">
+              Join 15K+ Seoul Sisters exposing beauty industry markups with style
+            </p>
           </div>
         </div>
       </section>

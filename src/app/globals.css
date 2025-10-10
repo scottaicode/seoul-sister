@@ -177,8 +177,9 @@ a {
   font-size: 12px;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--luxury-gray);
+  color: var(--luxury-gold);
   font-weight: 400;
+  opacity: 0.8;
 }
 
 .price-display {
@@ -268,6 +269,7 @@ a {
   font-weight: 400;
   letter-spacing: 0.2em;
   text-transform: uppercase;
+  min-height: 32px;
 }
 
 .badge-savings {
@@ -292,7 +294,8 @@ a {
   font-style: italic;
   font-weight: 300;
   line-height: 1.8;
-  color: var(--luxury-gray-light);
+  color: #FFFFFF;
+  opacity: 0.9;
 }
 
 /* Subtle Hover Effects */
@@ -370,4 +373,23 @@ a {
   color: var(--luxury-gray-light);
   max-width: 600px;
   margin: 0 auto;
+}
+
+/* Viral Tools Section */
+.viral-tools-section {
+  background: var(--luxury-black-soft);
+  border-top: 1px solid rgba(212, 165, 116, 0.1);
+  border-bottom: 1px solid rgba(212, 165, 116, 0.1);
+}
+
+.viral-tool-card {
+  background: var(--luxury-black);
+  border: 1px solid rgba(212, 165, 116, 0.2);
+  padding: 40px;
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.viral-tool-card:hover {
+  border-color: var(--luxury-gold);
+  transform: translateY(-2px);
 }
