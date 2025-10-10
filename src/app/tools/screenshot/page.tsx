@@ -33,10 +33,20 @@ export default function ScreenshotToolPage() {
 
       console.log('Products API response:', data) // Debug log
 
-      if (data.success && data.products && data.products.length > 0) {
-        setProducts(data.products)
-        setSelectedProduct(data.products[0])
-        await generateMessage(data.products[0])
+      // Handle both formats: {success: true, products: [...]} or {products: [...]} or direct array
+      let products = []
+      if (data.success && data.products) {
+        products = data.products
+      } else if (data.products) {
+        products = data.products
+      } else if (Array.isArray(data)) {
+        products = data
+      }
+
+      if (products && products.length > 0) {
+        setProducts(products)
+        setSelectedProduct(products[0])
+        await generateMessage(products[0])
       } else {
         // If API doesn't return expected format, use fallback
         throw new Error('No products returned from API')
@@ -80,7 +90,7 @@ export default function ScreenshotToolPage() {
       ]
       setProducts(fallbackProducts)
       setSelectedProduct(fallbackProducts[0])
-      setCustomMessage("Just discovered I've been overpaying by 65%! 🤯")
+      await generateMessage(fallbackProducts[0])
     } finally {
       setIsLoadingProducts(false)
     }
