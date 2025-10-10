@@ -55,7 +55,7 @@ const featuredProducts: Product[] = [
     seoul_price: 12.00,
     us_price: 34.00,
     savings_percentage: 65,
-    image_url: 'https://images.unsplash.com/photo-1605086998852-d5b8c2e4a878?w=600&h=600&fit=crop',
+    image_url: 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=600&h=600&fit=crop',
     category: 'Mask'
   }
 ]
@@ -498,7 +498,7 @@ export default function HomePage() {
 
           <div className="text-center mt-20 pt-8 border-t border-luxury-charcoal">
             <p className="text-caption">
-              © 2024 SEOUL SISTER · AUTHENTIC KOREAN BEAUTY · INSIDER ACCESS ONLY
+              © 2025 SEOUL SISTER · AUTHENTIC KOREAN BEAUTY · INSIDER ACCESS ONLY
             </p>
           </div>
         </div>
