@@ -55,7 +55,7 @@ const featuredProducts: Product[] = [
     seoul_price: 12.00,
     us_price: 34.00,
     savings_percentage: 65,
-    image_url: 'https://images.unsplash.com/photo-1608248894230-02ca6355c0b1?w=600&h=600&fit=crop',
+    image_url: 'https://images.unsplash.com/photo-1605086998852-d5b8c2e4a878?w=600&h=600&fit=crop',
     category: 'Mask'
   }
 ]
@@ -306,6 +306,7 @@ export default function HomePage() {
               <input
                 type="number"
                 placeholder="94"
+                defaultValue="94"
                 className="w-full px-6 py-4 text-3xl font-light border text-center bg-white text-black focus:outline-none transition-colors"
                 style={{borderColor: '#D4A574'}}
                 onChange={(e) => {
@@ -336,7 +337,24 @@ export default function HomePage() {
                   }
                 }}
               />
-              <div id="calc-result" className="min-h-[200px] mt-8"></div>
+              <div id="calc-result" className="min-h-[200px] mt-8">
+                <div className="text-center space-y-8 py-8">
+                  <div className="grid grid-cols-2 gap-8">
+                    <div>
+                      <p className="text-sm mb-2 font-medium tracking-widest text-gray-500">US RETAIL</p>
+                      <p className="text-3xl font-light line-through text-gray-400">$94</p>
+                    </div>
+                    <div>
+                      <p className="text-sm mb-2 font-medium tracking-widest text-luxury-gold">SEOUL SISTER</p>
+                      <p className="text-3xl font-light text-luxury-gold">$53</p>
+                    </div>
+                  </div>
+                  <div className="pt-8 border-t border-luxury-gold">
+                    <p className="text-sm mb-4 font-semibold tracking-widest text-luxury-gold">YOUR SAVINGS</p>
+                    <p className="text-6xl font-medium text-luxury-gold">$41</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
