@@ -292,8 +292,8 @@ class PerformanceMonitor {
 
       // Disable autoplay videos
       const videos = document.querySelectorAll('video[autoplay]')
-      videos.forEach((video: HTMLVideoElement) => {
-        video.removeAttribute('autoplay')
+      videos.forEach((video) => {
+        (video as HTMLVideoElement).removeAttribute('autoplay')
       })
 
       console.log('📱 Optimizing for slow connection...')

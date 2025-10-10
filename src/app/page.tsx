@@ -170,7 +170,7 @@ export default function HomePage() {
               <div key={product.id} className="product-card text-center group">
                 <div className="image-luxury mb-8 h-64 bg-luxury-black-soft">
                   <Image
-                    src={product.image_url}
+                    src={product.image_url || '/images/placeholder.png'}
                     alt={product.name_english}
                     width={400}
                     height={400}

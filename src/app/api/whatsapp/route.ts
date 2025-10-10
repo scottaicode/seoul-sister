@@ -14,19 +14,24 @@ const supabase = createClient(
 
 // WhatsApp webhook verification
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const mode = searchParams.get('hub.mode')
-  const token = searchParams.get('hub.verify_token')
-  const challenge = searchParams.get('hub.challenge')
+  try {
+    const { searchParams } = new URL(request.url)
+    const mode = searchParams.get('hub.mode')
+    const token = searchParams.get('hub.verify_token')
+    const challenge = searchParams.get('hub.challenge')
 
-  if (mode && token) {
-    if (mode === 'subscribe' && token === process.env.WHATSAPP_WEBHOOK_SECRET) {
-      console.log('WhatsApp webhook verified')
-      return new Response(challenge, { status: 200 })
+    if (mode && token) {
+      if (mode === 'subscribe' && token === process.env.WHATSAPP_WEBHOOK_SECRET) {
+        console.log('WhatsApp webhook verified')
+        return new Response(challenge || '', { status: 200 })
+      }
     }
-  }
 
-  return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  } catch (error) {
+    console.error('WhatsApp GET error:', error)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
 }
 
 // Main WhatsApp message handler

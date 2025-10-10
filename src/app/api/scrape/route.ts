@@ -61,19 +61,20 @@ export async function POST(request: Request) {
     // Process scraping results
     scrapingResults.forEach((result, index) => {
       if (result.status === 'fulfilled' && result.value) {
+        const data = result.value as any
         switch (index) {
           case 0:
-            prices.sephora = result.value.price
+            prices.sephora = data.price || null
             break
           case 1:
-            prices.ulta = result.value.price
+            prices.ulta = data.price || null
             break
           case 2:
-            prices.yesstyle = result.value.price
+            prices.yesstyle = data.price || null
             break
           case 3:
-            prices.seoul = result.value.seoul
-            prices.oliveyoung = result.value.oliveyoung
+            prices.seoul = data.seoul || null
+            prices.oliveyoung = data.oliveyoung || null
             break
         }
       }

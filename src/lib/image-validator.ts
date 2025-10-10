@@ -100,10 +100,14 @@ class ProductImageValidator {
       const contentValidation = this.validateContent(imageUrl, productCategory)
       if (!contentValidation.isValid) {
         result.isValid = false
-        result.issues.push(...contentValidation.issues)
-        result.confidence = Math.min(result.confidence, contentValidation.confidence)
+        if (contentValidation.issues) {
+          result.issues.push(...contentValidation.issues)
+        }
+        result.confidence = Math.min(result.confidence, contentValidation.confidence || 0)
       }
-      result.suggestions.push(...contentValidation.suggestions)
+      if (contentValidation.suggestions) {
+        result.suggestions.push(...contentValidation.suggestions)
+      }
 
       // AI-based content analysis (mock for now, would use real AI in production)
       const aiAnalysis = await this.analyzeImageContent(imageUrl, productCategory)
