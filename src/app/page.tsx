@@ -55,7 +55,7 @@ const featuredProducts: Product[] = [
     seoul_price: 12.00,
     us_price: 34.00,
     savings_percentage: 65,
-    image_url: 'https://images.unsplash.com/photo-1621648394224-3e9b043a8e0b?w=600&h=600&fit=crop',
+    image_url: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=600&h=600&fit=crop',
     category: 'Mask'
   }
 ]
