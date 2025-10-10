@@ -36,7 +36,7 @@ const VIRAL_PATTERNS = {
   },
   emotions: ['shocked', 'angry', 'excited', 'betrayed', 'empowered'],
   callToActions: [
-    'Save this before it's deleted',
+    'Save this before it\'s deleted',
     'Share with someone who needs this',
     'Follow for more beauty industry secrets',
     'Comment your biggest beauty scam',
