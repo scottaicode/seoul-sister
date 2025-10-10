@@ -55,7 +55,7 @@ const featuredProducts: Product[] = [
     seoul_price: 12.00,
     us_price: 34.00,
     savings_percentage: 65,
-    image_url: 'https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?w=600&h=600&fit=crop',
+    image_url: 'https://images.unsplash.com/photo-1596755389378-72bb09a9136e?w=600&h=600&fit=crop',
     category: 'Mask'
   }
 ]
@@ -291,7 +291,7 @@ export default function HomePage() {
       <section className="section-light py-32">
         <div className="luxury-container">
           <div className="text-center mb-20">
-            <p className="text-caption mb-4 text-luxury-charcoal">CALCULATE</p>
+            <p className="text-caption mb-4 text-luxury-gold">CALCULATE</p>
             <h2 className="heading-section text-5xl md:text-6xl mb-8 text-luxury-black">
               Discover Your Savings
             </h2>
@@ -299,14 +299,15 @@ export default function HomePage() {
           </div>
 
           <div className="max-w-2xl mx-auto">
-            <div className="bg-white border border-gray-200 p-12">
-              <label className="block text-caption mb-4 text-luxury-charcoal">
+            <div className="bg-white border p-12" style={{borderColor: '#D4A574'}}>
+              <label className="block text-caption mb-4 text-luxury-gold">
                 ENTER US RETAIL PRICE
               </label>
               <input
                 type="number"
                 placeholder="94"
-                className="w-full px-6 py-4 text-3xl font-light border border-gray-300 text-center bg-white text-black focus:border-luxury-gold focus:outline-none transition-colors"
+                className="w-full px-6 py-4 text-3xl font-light border text-center bg-white text-black focus:outline-none transition-colors"
+                style={{borderColor: '#D4A574'}}
                 onChange={(e) => {
                   const usPrice = parseFloat(e.target.value) || 94;
                   const seoulPrice = Math.round(usPrice * 0.3);
@@ -322,13 +323,13 @@ export default function HomePage() {
                             <p class="text-3xl font-light line-through text-gray-400">$${usPrice}</p>
                           </div>
                           <div>
-                            <p class="text-caption mb-2 text-luxury-charcoal">SEOUL SISTER</p>
-                            <p class="text-3xl font-light text-luxury-gold">$${seoulPrice + 25}</p>
+                            <p class="text-caption mb-2" style="color: #D4A574; font-weight: 500">SEOUL SISTER</p>
+                            <p class="text-3xl font-light" style="color: #D4A574">$${seoulPrice + 25}</p>
                           </div>
                         </div>
-                        <div class="pt-8 border-t border-gray-200">
-                          <p class="text-caption mb-2 text-luxury-charcoal">YOUR SAVINGS</p>
-                          <p class="text-5xl font-light text-luxury-black">$${savings > 0 ? savings : 0}</p>
+                        <div class="pt-8 border-t" style="border-color: #D4A574; opacity: 0.3">
+                          <p class="text-caption mb-2" style="color: #D4A574; font-weight: 500">YOUR SAVINGS</p>
+                          <p class="text-5xl font-light" style="color: #D4A574; font-weight: 400">$${savings > 0 ? savings : 0}</p>
                         </div>
                       </div>
                     `;
