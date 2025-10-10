@@ -55,7 +55,7 @@ const featuredProducts: Product[] = [
     seoul_price: 12.00,
     us_price: 34.00,
     savings_percentage: 65,
-    image_url: 'https://images.unsplash.com/photo-1596755389378-72bb09a9136e?w=600&h=600&fit=crop',
+    image_url: 'https://images.unsplash.com/photo-1608248894230-02ca6355c0b1?w=600&h=600&fit=crop',
     category: 'Mask'
   }
 ]
@@ -291,7 +291,7 @@ export default function HomePage() {
       <section className="section-light py-32">
         <div className="luxury-container">
           <div className="text-center mb-20">
-            <p className="text-caption mb-4 text-luxury-gold">CALCULATE</p>
+            <p className="text-sm mb-4 font-medium tracking-widest" style={{color: '#D4A574'}}>CALCULATE</p>
             <h2 className="heading-section text-5xl md:text-6xl mb-8 text-luxury-black">
               Discover Your Savings
             </h2>
@@ -300,7 +300,7 @@ export default function HomePage() {
 
           <div className="max-w-2xl mx-auto">
             <div className="bg-white border p-12" style={{borderColor: '#D4A574'}}>
-              <label className="block text-caption mb-4 text-luxury-gold">
+              <label className="block text-sm mb-4 font-medium tracking-widest" style={{color: '#D4A574'}}>
                 ENTER US RETAIL PRICE
               </label>
               <input
@@ -319,17 +319,17 @@ export default function HomePage() {
                       <div class="text-center space-y-8 py-8">
                         <div class="grid grid-cols-2 gap-8">
                           <div>
-                            <p class="text-caption mb-2 text-gray-500">US RETAIL</p>
+                            <p class="text-sm mb-2 font-medium tracking-widest" style="color: #888888">US RETAIL</p>
                             <p class="text-3xl font-light line-through text-gray-400">$${usPrice}</p>
                           </div>
                           <div>
-                            <p class="text-caption mb-2" style="color: #D4A574; font-weight: 500">SEOUL SISTER</p>
+                            <p class="text-sm mb-2 font-medium tracking-widest" style="color: #D4A574">SEOUL SISTER</p>
                             <p class="text-3xl font-light" style="color: #D4A574">$${seoulPrice + 25}</p>
                           </div>
                         </div>
-                        <div class="pt-8 border-t" style="border-color: #D4A574; opacity: 0.3">
-                          <p class="text-caption mb-2" style="color: #D4A574; font-weight: 500">YOUR SAVINGS</p>
-                          <p class="text-5xl font-light" style="color: #D4A574; font-weight: 400">$${savings > 0 ? savings : 0}</p>
+                        <div class="pt-8 border-t" style="border-color: #D4A574">
+                          <p class="text-sm mb-4 font-semibold tracking-widest" style="color: #D4A574">YOUR SAVINGS</p>
+                          <p class="text-6xl" style="color: #D4A574; font-weight: 500">$${savings > 0 ? savings : 0}</p>
                         </div>
                       </div>
                     `;
