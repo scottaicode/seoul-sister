@@ -67,8 +67,8 @@ export default function HomePage() {
   const [showViralTools, setShowViralTools] = useState(false)
   const { products, loading } = useProducts(true)
 
-  // Use database products if available, otherwise fall back to static
-  const featuredProducts = products.length > 0 ? products : staticProducts
+  // Use products from database
+  const featuredProducts = products
 
   useEffect(() => {
     const handleScroll = () => {
