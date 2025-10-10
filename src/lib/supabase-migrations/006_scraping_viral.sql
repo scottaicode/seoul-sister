@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS viral_content_history (
   platform TEXT NOT NULL, -- 'tiktok', 'instagram', 'twitter'
   content JSONB NOT NULL, -- Full generated content
   metadata JSONB, -- Product, prices, trends used
-  ai_model TEXT, -- 'claude-3-opus', 'gpt-4', etc
+  ai_model TEXT, -- 'claude-opus-4.1', 'gpt-4', etc
   performance_metrics JSONB, -- Track views, likes, shares
   generated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

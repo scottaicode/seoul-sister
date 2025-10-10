@@ -115,7 +115,7 @@ async function handleTextMessage(text: string, from: string): Promise<string> {
 
   // Use AI for general queries
   const response = await anthropic.messages.create({
-    model: 'claude-3-opus-20240229',
+    model: 'claude-opus-4-1-20250805',
     max_tokens: 500,
     messages: [
       {
@@ -145,7 +145,7 @@ async function handleImageMessage(image: any, from: string): Promise<string> {
     const base64Image = Buffer.from(imageBuffer).toString('base64')
 
     const response = await anthropic.messages.create({
-      model: 'claude-3-opus-20240229',
+      model: 'claude-opus-4-1-20250805',
       max_tokens: 1000,
       messages: [
         {
@@ -311,7 +311,7 @@ async function handlePriceCheck(query: string): Promise<string> {
 // Ingredient analysis
 async function handleIngredientCheck(query: string): Promise<string> {
   const response = await anthropic.messages.create({
-    model: 'claude-3-opus-20240229',
+    model: 'claude-opus-4-1-20250805',
     max_tokens: 300,
     messages: [
       {

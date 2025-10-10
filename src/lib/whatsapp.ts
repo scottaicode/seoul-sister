@@ -80,7 +80,7 @@ Focus on popular K-beauty brands like: Sulwhasoo, Laneige, COSRX, Beauty of Jose
 `
 
       const response = await anthropic.messages.create({
-        model: 'claude-3-sonnet-20240229',
+        model: 'claude-opus-4-1-20250805',
         max_tokens: 1000,
         messages: [{
           role: 'user',
@@ -128,7 +128,7 @@ Focus on identifying text on packaging, brand logos, and product characteristics
 `
 
       const response = await anthropic.messages.create({
-        model: 'claude-3-sonnet-20240229',
+        model: 'claude-opus-4-1-20250805',
         max_tokens: 1000,
         messages: [{
           role: 'user',

@@ -173,7 +173,7 @@ export default function SkinAnalysisAI() {
           elasticity_score: result.elasticityScore,
           brightness_score: result.brightnessScore,
           ai_confidence: result.aiConfidence,
-          ai_model_version: 'claude-3-opus',
+          ai_model_version: 'claude-opus-4.1',
           analysis_raw: result
         })
         .select()

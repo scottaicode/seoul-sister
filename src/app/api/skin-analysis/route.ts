@@ -128,7 +128,7 @@ export async function POST(request: Request) {
 
     // Analyze with Claude Vision
     const response = await anthropic.messages.create({
-      model: 'claude-3-opus-20240229',
+      model: 'claude-opus-4-1-20250805',
       max_tokens: 2000,
       messages: [
         {
@@ -243,7 +243,7 @@ async function storeAnalysisForLearning(analysis: any, imageUrl: string) {
         elasticity_score: analysis.elasticityScore,
         brightness_score: analysis.brightnessScore,
         ai_confidence: analysis.aiConfidence,
-        ai_model_version: 'claude-3-opus',
+        ai_model_version: 'claude-opus-4.1',
         analysis_raw: analysis
       })
       .select()
