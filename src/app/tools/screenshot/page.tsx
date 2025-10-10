@@ -31,26 +31,55 @@ export default function ScreenshotToolPage() {
       const response = await fetch('/api/products?featured=true')
       const data = await response.json()
 
-      if (data.success && data.products) {
+      console.log('Products API response:', data) // Debug log
+
+      if (data.success && data.products && data.products.length > 0) {
         setProducts(data.products)
-        if (data.products.length > 0) {
-          setSelectedProduct(data.products[0])
-          await generateMessage(data.products[0])
-        }
+        setSelectedProduct(data.products[0])
+        await generateMessage(data.products[0])
+      } else {
+        // If API doesn't return expected format, use fallback
+        throw new Error('No products returned from API')
       }
     } catch (error) {
       console.error('Error loading products:', error)
-      // Fallback to a single default product
-      const fallback = {
-        id: '1',
-        name_english: 'Water Sleeping Mask',
-        brand: 'LANEIGE',
-        seoul_price: 12,
-        us_price: 34,
-        savings_percentage: 65
-      }
-      setProducts([fallback])
-      setSelectedProduct(fallback)
+      // Fallback to multiple default products
+      const fallbackProducts = [
+        {
+          id: '1',
+          name_english: 'Water Sleeping Mask',
+          brand: 'LANEIGE',
+          seoul_price: 12,
+          us_price: 34,
+          savings_percentage: 65
+        },
+        {
+          id: '2',
+          name_english: 'Snail 96 Mucin Essence',
+          brand: 'COSRX',
+          seoul_price: 23,
+          us_price: 89,
+          savings_percentage: 74
+        },
+        {
+          id: '3',
+          name_english: 'Glow Deep Serum',
+          brand: 'Beauty of Joseon',
+          seoul_price: 8,
+          us_price: 45,
+          savings_percentage: 82
+        },
+        {
+          id: '4',
+          name_english: 'First Care Activating Serum',
+          brand: 'Sulwhasoo',
+          seoul_price: 28,
+          us_price: 94,
+          savings_percentage: 70
+        }
+      ]
+      setProducts(fallbackProducts)
+      setSelectedProduct(fallbackProducts[0])
       setCustomMessage("Just discovered I've been overpaying by 65%! 🤯")
     } finally {
       setIsLoadingProducts(false)
@@ -59,6 +88,11 @@ export default function ScreenshotToolPage() {
 
   const generateMessage = async (product: Product) => {
     setIsGenerating(true)
+
+    // Set a basic message immediately so there's always something showing
+    const basicMessage = `Just discovered ${product.brand} ${product.name_english} is ${product.savings_percentage}% cheaper in Seoul! 🤯`
+    setCustomMessage(basicMessage)
+
     try {
       const response = await fetch('/api/generate-viral', {
         method: 'POST',
@@ -70,9 +104,14 @@ export default function ScreenshotToolPage() {
         })
       })
 
-      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`)
+      }
 
-      if (data.success && data.content.instagram) {
+      const data = await response.json()
+      console.log('AI response:', data) // Debug log
+
+      if (data.success && data.content && data.content.instagram) {
         const content = data.content.instagram.content
 
         // Extract a short, story-appropriate message from AI content
@@ -82,32 +121,35 @@ export default function ScreenshotToolPage() {
           // Look for short, punchy lines suitable for stories
           const lines = content.split('\n').filter(line =>
             line.trim().length > 0 &&
-            line.trim().length < 80 &&
+            line.trim().length < 100 &&
             !line.startsWith('#') &&
             !line.startsWith('Follow') &&
-            !line.startsWith('Save')
+            !line.startsWith('Save') &&
+            !line.startsWith('Link')
           )
-          message = lines[0] || content.substring(0, 60) + '...'
+          message = lines[0] || content.substring(0, 80) + '...'
         } else if (content && typeof content === 'object') {
-          message = content.caption || content.hook || "Just discovered I've been overpaying!"
+          message = content.caption || content.hook || content.message || basicMessage
         }
 
         // Clean up the message
         message = message
           .replace(/\*\*/g, '') // Remove markdown bold
-          .replace(/[📍💰✨💅🤯😭]/g, '') // Remove some emojis that might not fit
+          .replace(/\[.*?\]/g, '') // Remove markdown links
+          .replace(/[📍💰✨]/g, '') // Remove some emojis that might not fit
           .trim()
 
-        setCustomMessage(message || `Just discovered ${product.brand} ${product.name_english} is ${product.savings_percentage}% cheaper in Seoul! 🤯`)
+        // Only update if we got a meaningful message
+        if (message && message.length > 10 && message !== basicMessage) {
+          setCustomMessage(message)
+        }
       } else {
-        // AI fallback with real product data
-        const savingsAmount = product.us_price - product.seoul_price
-        setCustomMessage(`Just discovered I've been overpaying by ${product.savings_percentage}%! Seoul Sister saves me $${savingsAmount} on ${product.brand} ${product.name_english} 💅`)
+        console.log('AI response not in expected format, keeping basic message')
+        // Keep the basic message we already set
       }
     } catch (error) {
       console.error('Error generating message:', error)
-      // Basic fallback
-      setCustomMessage(`Just discovered ${product.brand} ${product.name_english} is ${product.savings_percentage}% cheaper in Seoul! 🤯`)
+      // Keep the basic message we already set
     } finally {
       setIsGenerating(false)
     }
