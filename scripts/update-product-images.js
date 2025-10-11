@@ -9,37 +9,37 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-// High-quality Korean beauty product images from reliable CDN sources
+// Set products to use professional placeholders until authentic images are sourced
 const productImageUpdates = [
   {
     name_english: 'First Care Activating Serum',
     brand: 'Sulwhasoo',
-    image_url: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=600&h=600&fit=crop&auto=format&q=80',
-    high_res_url: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=1200&h=1200&fit=crop&auto=format&q=80'
+    image_url: null, // Use placeholder
+    high_res_url: null
   },
   {
     name_english: 'Glow Deep Serum',
     brand: 'Beauty of Joseon',
-    image_url: 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=600&h=600&fit=crop&auto=format&q=80',
-    high_res_url: 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=1200&h=1200&fit=crop&auto=format&q=80'
+    image_url: null, // Use placeholder
+    high_res_url: null
   },
   {
     name_english: 'Snail 96 Mucin Essence',
     brand: 'COSRX',
-    image_url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&h=600&fit=crop&auto=format&q=80',
-    high_res_url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=1200&h=1200&fit=crop&auto=format&q=80'
+    image_url: null, // Use placeholder
+    high_res_url: null
   },
   {
     name_english: 'Water Sleeping Mask',
     brand: 'Laneige',
-    image_url: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=600&h=600&fit=crop&auto=format&q=80',
-    high_res_url: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=1200&h=1200&fit=crop&auto=format&q=80'
+    image_url: null, // Use placeholder
+    high_res_url: null
   },
   {
     name_english: 'DIVE-IN Low Molecule Hyaluronic Acid Serum',
     brand: 'Torriden',
-    image_url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600&h=600&fit=crop&auto=format&q=80',
-    high_res_url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=1200&h=1200&fit=crop&auto=format&q=80'
+    image_url: null, // Use placeholder
+    high_res_url: null
   },
   {
     name_english: 'Time Revolution The First Treatment Essence',
