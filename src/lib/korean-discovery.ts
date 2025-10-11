@@ -297,8 +297,8 @@ export async function discoverKoreanProducts(limit: number = 50): Promise<Korean
               trendScore: product.trendScore || Math.random() * 100,
               ingredients: product.ingredients || []
             }))
-            .filter(p => p.koreanPrice > 0 && p.koreanPrice < 200) // Reasonable price range
-            .sort((a, b) => (b.trendScore || 0) - (a.trendScore || 0)) // Sort by trend score
+            .filter((p: KoreanProduct) => p.koreanPrice > 0 && p.koreanPrice < 200) // Reasonable price range
+            .sort((a: KoreanProduct, b: KoreanProduct) => (b.trendScore || 0) - (a.trendScore || 0)) // Sort by trend score
             .slice(0, 20) // Top 20 from each source
 
           allProducts.push(...formattedProducts)
