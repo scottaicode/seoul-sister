@@ -47,7 +47,7 @@ export default function CopyGeneratorPage() {
         ]
       }
 
-      // Enhance products with real-time scraped pricing
+      // Enhance first 4 products with real-time scraped pricing (for performance)
       const enhancedProducts = await Promise.all(
         baseProducts.slice(0, 4).map(async (product: any) => {
           try {
@@ -84,8 +84,14 @@ export default function CopyGeneratorPage() {
         })
       )
 
-      setProducts(enhancedProducts)
-      setSelectedProduct(enhancedProducts[0])
+      // Merge enhanced pricing with all products
+      const allProductsWithPricing = baseProducts.map((product: any, index: number) => {
+        // Use enhanced pricing for first 4 products, original data for the rest
+        return index < 4 ? enhancedProducts[index] : product
+      })
+
+      setProducts(allProductsWithPricing)
+      setSelectedProduct(allProductsWithPricing[0])
 
     } catch (error) {
       console.error('Error loading products with real pricing:', error)
