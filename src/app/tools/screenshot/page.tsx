@@ -31,24 +31,19 @@ export default function ScreenshotToolPage() {
       console.log('📦 Starting product loading process...')
 
       // Get all products from database
-      console.log('🔍 Fetching products from database...')
       const response = await fetch('/api/products')
-      console.log('📡 API Response status:', response.status, response.statusText)
-
       if (!response.ok) {
         throw new Error(`API failed with status ${response.status}`)
       }
 
       const data = await response.json()
-      console.log('📊 API Response data:', data)
 
       let baseProducts = []
       if (data.products && data.products.length > 0) {
         baseProducts = data.products
-        console.log(`✅ Loaded ${baseProducts.length} products from database:`, baseProducts.map((p: any) => `${p.brand} ${p.name_english}`))
+        console.log(`✅ Loaded ${baseProducts.length} products from database`)
       } else {
         console.log('⚠️ No products found in database, using fallback products')
-        // Fallback products if API fails
         baseProducts = [
           { id: '1', name_english: 'Glow Deep Serum', brand: 'Beauty of Joseon' },
           { id: '2', name_english: 'Snail 96 Mucin Essence', brand: 'COSRX' },
@@ -63,31 +58,20 @@ export default function ScreenshotToolPage() {
 
       const allProductsWithPricing = baseProducts
 
-      console.log(`🎯 Final product list ready: ${allProductsWithPricing.length} products`)
-      console.log('📋 Product list:', allProductsWithPricing.map((p: any) => `${p.brand} ${p.name_english} ($${p.seoul_price || 'N/A'} → $${p.us_price || 'N/A'})`))
-
-      // Set products and UI state IMMEDIATELY for instant responsiveness
       setProducts(allProductsWithPricing)
-      setIsLoadingProducts(false) // Make UI responsive immediately
-      console.log('✅ Products state updated with:', allProductsWithPricing.length, 'products')
-      console.log('🔍 First product in state:', allProductsWithPricing[0])
+      setSelectedProduct(allProductsWithPricing[0])
 
       if (allProductsWithPricing[0]) {
-        setSelectedProduct(allProductsWithPricing[0])
-        console.log('✅ Selected first product:', allProductsWithPricing[0].brand, allProductsWithPricing[0].name_english)
-
         // Set a basic fallback message immediately
         const fallbackMessage = `Just discovered ${allProductsWithPricing[0].brand} ${allProductsWithPricing[0].name_english} is ${allProductsWithPricing[0].savings_percentage || 50}% cheaper in Seoul! 🤯`
         setCustomMessage(fallbackMessage)
-        console.log('💬 Set basic fallback message')
 
-        // Generate AI message for first product (non-blocking, happens after UI is ready)
+        // Generate AI message for first product (non-blocking)
         setTimeout(() => {
           generateMessage(allProductsWithPricing[0]).catch((error) => {
             console.error('❌ Initial message generation failed:', error)
-            // Keep the fallback message if AI fails
           })
-        }, 500) // Increased delay to ensure UI is fully rendered and responsive
+        }, 500)
       }
 
     } catch (error) {
@@ -113,24 +97,21 @@ export default function ScreenshotToolPage() {
         }
       ]
 
-      console.log('🔄 Using fallback products:', fallbackProducts.length)
       setProducts(fallbackProducts)
-      setIsLoadingProducts(false) // Make UI responsive immediately even with fallback
       setSelectedProduct(fallbackProducts[0])
-      console.log('✅ Fallback products set, selected first product:', fallbackProducts[0].brand, fallbackProducts[0].name_english)
 
       // Set fallback message immediately
       const fallbackMessage = `Just discovered ${fallbackProducts[0].brand} ${fallbackProducts[0].name_english} is ${fallbackProducts[0].savings_percentage}% cheaper in Seoul! 🤯`
       setCustomMessage(fallbackMessage)
-      console.log('💬 Set fallback message')
 
-      // Generate AI message for fallback product (non-blocking, after UI is ready)
+      // Generate AI message for fallback product (non-blocking)
       setTimeout(() => {
         generateMessage(fallbackProducts[0]).catch((error) => {
           console.error('❌ Fallback message generation failed:', error)
-          // Keep the fallback message if AI fails
         })
       }, 500)
+    } finally {
+      setIsLoadingProducts(false)
     }
   }
 
