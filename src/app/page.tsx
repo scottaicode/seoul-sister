@@ -183,7 +183,7 @@ export default function HomePage() {
                   {!product.image_url && (
                     <div className="absolute bottom-2 left-2 right-2">
                       <div className="bg-black bg-opacity-75 text-yellow-500 text-xs px-2 py-1 text-center rounded">
-                        Authentic product • Image coming soon
+                        Verified Seoul pricing • Authentic product information
                       </div>
                     </div>
                   )}

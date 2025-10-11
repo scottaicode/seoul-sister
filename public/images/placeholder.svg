@@ -10,9 +10,9 @@
     SEOUL SISTER
   </text>
 
-  <!-- Image Not Available Text -->
-  <text x="200" y="210" text-anchor="middle" fill="#888888" font-family="sans-serif" font-size="14" font-weight="400" letter-spacing="1px">
-    IMAGE NOT AVAILABLE
+  <!-- Verified Seoul Pricing Text -->
+  <text x="200" y="200" text-anchor="middle" fill="#D4A574" font-family="sans-serif" font-size="13" font-weight="500" letter-spacing="1px">
+    VERIFIED SEOUL PRICING
   </text>
 
   <!-- Product Icon -->
@@ -20,10 +20,10 @@
   <circle cx="200" cy="250" r="8" fill="#D4A574"/>
 
   <!-- Bottom Text -->
-  <text x="200" y="290" text-anchor="middle" fill="#666666" font-family="sans-serif" font-size="12" font-weight="300" letter-spacing="1px">
+  <text x="200" y="290" text-anchor="middle" fill="#888888" font-family="sans-serif" font-size="12" font-weight="400" letter-spacing="1px">
     Authentic product information
   </text>
-  <text x="200" y="310" text-anchor="middle" fill="#666666" font-family="sans-serif" font-size="12" font-weight="300" letter-spacing="1px">
-    Image coming soon
+  <text x="200" y="310" text-anchor="middle" fill="#888888" font-family="sans-serif" font-size="12" font-weight="400" letter-spacing="1px">
+    Seoul market expertise
   </text>
 </svg>
