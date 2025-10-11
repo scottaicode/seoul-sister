@@ -283,8 +283,8 @@ export async function discoverKoreanProducts(limit: number = 50): Promise<Korean
 
           // Convert to our format
           const formattedProducts = analyzedProducts
-            .filter(p => p.name && p.brand)
-            .map(product => ({
+            .filter((p: any) => p.name && p.brand)
+            .map((product: any) => ({
               name: product.name,
               brand: product.brand,
               category: product.category || 'Skincare',
