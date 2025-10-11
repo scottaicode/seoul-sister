@@ -23,95 +23,76 @@ export default function ScreenshotToolPage() {
 
   // Load products with real scraped pricing data
   useEffect(() => {
+    // Set immediate fallback products so UI is responsive instantly
+    const immediateProducts = [
+      {
+        id: '1', name_english: 'Glow Deep Serum', brand: 'Beauty of Joseon',
+        seoul_price: 8.5, us_price: 45, savings_percentage: 82
+      },
+      {
+        id: '2', name_english: 'Snail 96 Mucin Essence', brand: 'COSRX',
+        seoul_price: 12, us_price: 89, savings_percentage: 74
+      },
+      {
+        id: '3', name_english: 'DIVE-IN Low Molecule Hyaluronic Acid Serum', brand: 'Torriden',
+        seoul_price: 18, us_price: 78, savings_percentage: 77
+      },
+      {
+        id: '4', name_english: 'First Care Activating Serum', brand: 'Sulwhasoo',
+        seoul_price: 28, us_price: 94, savings_percentage: 70
+      },
+      {
+        id: '5', name_english: 'Water Sleeping Mask', brand: 'Laneige',
+        seoul_price: 12, us_price: 34, savings_percentage: 65
+      }
+    ]
+
+    // Set products immediately for instant UI responsiveness
+    setProducts(immediateProducts)
+    setSelectedProduct(immediateProducts[0])
+    setIsLoadingProducts(false)
+
+    // Set immediate message
+    const immediateMessage = `Just discovered ${immediateProducts[0].brand} ${immediateProducts[0].name_english} is ${immediateProducts[0].savings_percentage}% cheaper in Seoul! 🤯`
+    setCustomMessage(immediateMessage)
+
+    // Load real products in background
     loadProductsWithRealPricing()
   }, [])
 
   const loadProductsWithRealPricing = async () => {
     try {
-      console.log('📦 Starting product loading process...')
+      console.log('📦 Loading enhanced product data in background...')
 
-      // Get all products from database
+      // Get all products from database in background
       const response = await fetch('/api/products')
       if (!response.ok) {
-        throw new Error(`API failed with status ${response.status}`)
+        console.log('⚠️ API failed, keeping immediate products')
+        return // Keep the immediate products
       }
 
       const data = await response.json()
-
-      let baseProducts = []
       if (data.products && data.products.length > 0) {
-        baseProducts = data.products
-        console.log(`✅ Loaded ${baseProducts.length} products from database`)
-      } else {
-        console.log('⚠️ No products found in database, using fallback products')
-        baseProducts = [
-          { id: '1', name_english: 'Glow Deep Serum', brand: 'Beauty of Joseon' },
-          { id: '2', name_english: 'Snail 96 Mucin Essence', brand: 'COSRX' },
-          { id: '3', name_english: 'First Care Activating Serum', brand: 'Sulwhasoo' },
-          { id: '4', name_english: 'Water Sleeping Mask', brand: 'Laneige' }
-        ]
-      }
+        console.log(`✅ Loaded ${data.products.length} enhanced products from database`)
 
-      // Skip expensive real-time scraping for faster loading in viral tools
-      // Use existing product data from database which already has pricing
-      console.log('⚡ Skipping real-time price scraping for faster viral tool performance')
+        // Update with full product list while preserving selected product
+        setProducts(data.products)
 
-      const allProductsWithPricing = baseProducts
+        // Keep the same selected product if it exists in the new list
+        const currentSelectedId = products.find(p => p.id === selectedProduct?.id)?.id
+        if (currentSelectedId) {
+          const matchingProduct = data.products.find(p => p.id === currentSelectedId)
+          if (matchingProduct) {
+            setSelectedProduct(matchingProduct)
+          }
+        }
 
-      setProducts(allProductsWithPricing)
-      setSelectedProduct(allProductsWithPricing[0])
-
-      if (allProductsWithPricing[0]) {
-        // Set a basic fallback message immediately
-        const fallbackMessage = `Just discovered ${allProductsWithPricing[0].brand} ${allProductsWithPricing[0].name_english} is ${allProductsWithPricing[0].savings_percentage || 50}% cheaper in Seoul! 🤯`
-        setCustomMessage(fallbackMessage)
-
-        // Generate AI message for first product (non-blocking)
-        setTimeout(() => {
-          generateMessage(allProductsWithPricing[0]).catch((error) => {
-            console.error('❌ Initial message generation failed:', error)
-          })
-        }, 500)
+        console.log('✅ Enhanced product data loaded seamlessly')
       }
 
     } catch (error) {
-      console.error('Error loading products with real pricing:', error)
-
-      // Final fallback with basic products
-      const fallbackProducts = [
-        {
-          id: '1', name_english: 'Glow Deep Serum', brand: 'Beauty of Joseon',
-          seoul_price: 8.5, us_price: 45, savings_percentage: 82
-        },
-        {
-          id: '2', name_english: 'Snail 96 Mucin Essence', brand: 'COSRX',
-          seoul_price: 12, us_price: 89, savings_percentage: 74
-        },
-        {
-          id: '3', name_english: 'First Care Activating Serum', brand: 'Sulwhasoo',
-          seoul_price: 28, us_price: 94, savings_percentage: 70
-        },
-        {
-          id: '4', name_english: 'Water Sleeping Mask', brand: 'Laneige',
-          seoul_price: 12, us_price: 34, savings_percentage: 65
-        }
-      ]
-
-      setProducts(fallbackProducts)
-      setSelectedProduct(fallbackProducts[0])
-
-      // Set fallback message immediately
-      const fallbackMessage = `Just discovered ${fallbackProducts[0].brand} ${fallbackProducts[0].name_english} is ${fallbackProducts[0].savings_percentage}% cheaper in Seoul! 🤯`
-      setCustomMessage(fallbackMessage)
-
-      // Generate AI message for fallback product (non-blocking)
-      setTimeout(() => {
-        generateMessage(fallbackProducts[0]).catch((error) => {
-          console.error('❌ Fallback message generation failed:', error)
-        })
-      }, 500)
-    } finally {
-      setIsLoadingProducts(false)
+      console.log('⚠️ Enhanced loading failed, keeping immediate products:', error)
+      // Keep immediate products that are already working
     }
   }
 
