@@ -33,7 +33,14 @@ export default function ScreenshotToolPage() {
       // Get all products from database
       console.log('🔍 Fetching products from database...')
       const response = await fetch('/api/products')
+      console.log('📡 API Response status:', response.status, response.statusText)
+
+      if (!response.ok) {
+        throw new Error(`API failed with status ${response.status}`)
+      }
+
       const data = await response.json()
+      console.log('📊 API Response data:', data)
 
       let baseProducts = []
       if (data.products && data.products.length > 0) {
@@ -60,7 +67,8 @@ export default function ScreenshotToolPage() {
       console.log('📋 Product list:', allProductsWithPricing.map((p: any) => `${p.brand} ${p.name_english} ($${p.seoul_price || 'N/A'} → $${p.us_price || 'N/A'})`))
 
       setProducts(allProductsWithPricing)
-      console.log('✅ Products state updated')
+      console.log('✅ Products state updated with:', allProductsWithPricing.length, 'products')
+      console.log('🔍 First product in state:', allProductsWithPricing[0])
 
       if (allProductsWithPricing[0]) {
         setSelectedProduct(allProductsWithPricing[0])
@@ -280,11 +288,15 @@ export default function ScreenshotToolPage() {
                   className="w-full bg-black border border-gray-700 px-4 py-3 focus:border-yellow-500 focus:outline-none"
                   disabled={isGenerating}
                 >
-                  {products.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.brand} - {product.name_english} (${product.seoul_price} → ${product.us_price})
-                    </option>
-                  ))}
+                  {(() => {
+                    console.log('🎨 Render: products state has', products.length, 'items')
+                    console.log('🎨 Render: products state:', products.map(p => `${p.brand} ${p.name_english}`))
+                    return products.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.brand} - {product.name_english} (${product.seoul_price} → ${product.us_price})
+                      </option>
+                    ))
+                  })()}
                 </select>
               </div>
 
