@@ -49,7 +49,7 @@ export default function CopyGeneratorPage() {
 
       // Enhance products with real-time scraped pricing
       const enhancedProducts = await Promise.all(
-        baseProducts.slice(0, 4).map(async (product) => {
+        baseProducts.slice(0, 4).map(async (product: any) => {
           try {
             console.log(`Scraping real prices for ${product.brand} ${product.name_english}...`)
 
