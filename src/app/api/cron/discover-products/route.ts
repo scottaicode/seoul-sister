@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     console.log('🤖 Starting automated Korean product discovery...')
 
     // Get current day for configuration
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'lowercase' }) as keyof typeof DAILY_CONFIG
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof typeof DAILY_CONFIG
     const todayConfig = DAILY_CONFIG[today] || DAILY_CONFIG.monday
 
     console.log(`📅 ${today.charAt(0).toUpperCase() + today.slice(1)} discovery: ${todayConfig.count} products (${todayConfig.focus})`)
