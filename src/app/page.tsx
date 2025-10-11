@@ -263,7 +263,7 @@ export default function HomePage() {
             <div className="gold-line mx-auto"></div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-2 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-2 md:gap-2 max-w-5xl mx-auto">
             <div className="testimonial-luxury">
               <p className="testimonial-quote mb-8">
                 "The quality is identical to what I purchased at Sephora,
@@ -323,7 +323,7 @@ export default function HomePage() {
                 type="number"
                 placeholder="94"
                 defaultValue="94"
-                className="w-full px-6 py-4 text-3xl font-light border text-center bg-white text-black focus:outline-none transition-colors"
+                className="calculator-input w-full px-6 py-4 text-3xl font-light border text-center bg-white text-black focus:outline-none"
                 style={{borderColor: '#D4A574'}}
                 onChange={(e) => {
                   const usPrice = parseFloat(e.target.value) || 94;
@@ -332,24 +332,38 @@ export default function HomePage() {
 
                   const resultDiv = document.getElementById('calc-result');
                   if (resultDiv) {
-                    resultDiv.innerHTML = `
-                      <div class="text-center space-y-8 py-8">
-                        <div class="grid grid-cols-2 gap-8">
-                          <div>
-                            <p class="text-sm mb-2 font-medium tracking-widest" style="color: #888888">US RETAIL</p>
-                            <p class="text-3xl font-light line-through text-gray-400">$${usPrice}</p>
+                    // Add animation class before updating
+                    resultDiv.style.opacity = '0.5';
+                    resultDiv.style.transform = 'scale(0.98)';
+
+                    setTimeout(() => {
+                      resultDiv.innerHTML = `
+                        <div class="text-center space-y-8 py-8">
+                          <div class="grid grid-cols-2 gap-8">
+                            <div class="calculator-price-item">
+                              <p class="text-sm mb-2 font-medium tracking-widest text-gray-500">US RETAIL</p>
+                              <p class="calculator-price text-3xl font-light line-through text-gray-400">$${usPrice}</p>
+                            </div>
+                            <div class="calculator-price-item">
+                              <p class="text-sm mb-2 font-medium tracking-widest text-luxury-gold">SEOUL SISTER</p>
+                              <p class="calculator-price text-3xl font-light text-luxury-gold">$${seoulPrice + 25}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p class="text-sm mb-2 font-medium tracking-widest" style="color: #D4A574">SEOUL SISTER</p>
-                            <p class="text-3xl font-light" style="color: #D4A574">$${seoulPrice + 25}</p>
+                          <div class="pt-8 border-t border-luxury-gold">
+                            <p class="text-sm mb-4 font-semibold tracking-widest text-luxury-gold">YOUR SAVINGS</p>
+                            <p class="calculator-savings text-6xl font-medium text-luxury-gold">$${savings > 0 ? savings : 0}</p>
+                            <div class="savings-percentage mt-2">
+                              <span class="badge-insider">${Math.round(((savings / usPrice) * 100))}% SAVED</span>
+                            </div>
                           </div>
                         </div>
-                        <div class="pt-8 border-t" style="border-color: #D4A574">
-                          <p class="text-sm mb-4 font-semibold tracking-widest" style="color: #D4A574">YOUR SAVINGS</p>
-                          <p class="text-6xl" style="color: #D4A574; font-weight: 500">$${savings > 0 ? savings : 0}</p>
-                        </div>
-                      </div>
-                    `;
+                      `;
+
+                      // Restore and animate
+                      resultDiv.style.opacity = '1';
+                      resultDiv.style.transform = 'scale(1)';
+                      resultDiv.style.transition = 'all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1)';
+                    }, 150);
                   }
                 }}
               />
@@ -426,20 +440,115 @@ export default function HomePage() {
         <div className="luxury-container">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-16 text-center">
             <div>
-              <p className="text-4xl md:text-5xl font-light text-luxury-gold mb-4">15K+</p>
+              <p className="stats-number text-4xl md:text-5xl font-light text-luxury-gold mb-4">15K+</p>
               <p className="text-caption">SEOUL SISTERS</p>
             </div>
             <div>
-              <p className="text-4xl md:text-5xl font-light text-luxury-gold mb-4">$2.8M</p>
+              <p className="stats-number text-4xl md:text-5xl font-light text-luxury-gold mb-4">$2.8M</p>
               <p className="text-caption">SAVED COLLECTIVELY</p>
             </div>
             <div>
-              <p className="text-4xl md:text-5xl font-light text-luxury-gold mb-4">73%</p>
+              <p className="stats-number text-4xl md:text-5xl font-light text-luxury-gold mb-4">73%</p>
               <p className="text-caption">AVERAGE SAVINGS</p>
             </div>
             <div>
-              <p className="text-4xl md:text-5xl font-light text-luxury-gold mb-4">4.9</p>
+              <p className="stats-number text-4xl md:text-5xl font-light text-luxury-gold mb-4">4.9</p>
               <p className="text-caption">RATING</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section - Minimal */}
+      <section className="section-light py-32">
+        <div className="luxury-container">
+          <div className="text-center mb-20">
+            <p className="text-caption mb-4 text-luxury-charcoal">FREQUENTLY ASKED</p>
+            <h2 className="heading-section text-5xl md:text-6xl mb-8 text-luxury-black">
+              Questions
+            </h2>
+            <div className="gold-line mx-auto"></div>
+          </div>
+
+          <div className="max-w-4xl mx-auto space-y-2">
+            <div className="faq-item bg-white border border-gray-200 transition-all duration-300 hover:border-luxury-gold">
+              <button className="w-full text-left p-8 focus:outline-none">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-light text-luxury-black">How do I know products are authentic?</h3>
+                  <span className="text-luxury-gold text-2xl">+</span>
+                </div>
+              </button>
+              <div className="px-8 pb-8">
+                <p className="text-luxury-charcoal leading-relaxed">
+                  Every product comes with authenticity certificates directly from Korean manufacturers.
+                  We maintain exclusive partnerships with Seoul's most trusted beauty suppliers in Myeongdong,
+                  ensuring 100% authentic products that meet Korean regulatory standards.
+                </p>
+              </div>
+            </div>
+
+            <div className="faq-item bg-white border border-gray-200 transition-all duration-300 hover:border-luxury-gold">
+              <button className="w-full text-left p-8 focus:outline-none">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-light text-luxury-black">What's included in the $25 service fee?</h3>
+                  <span className="text-luxury-gold text-2xl">+</span>
+                </div>
+              </button>
+              <div className="px-8 pb-8">
+                <p className="text-luxury-charcoal leading-relaxed">
+                  Our flat $25 fee covers Seoul sourcing, quality verification, luxury packaging,
+                  international shipping with tracking, and customs handling. No hidden fees,
+                  no percentage markups - just transparent pricing.
+                </p>
+              </div>
+            </div>
+
+            <div className="faq-item bg-white border border-gray-200 transition-all duration-300 hover:border-luxury-gold">
+              <button className="w-full text-left p-8 focus:outline-none">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-light text-luxury-black">How long does delivery take?</h3>
+                  <span className="text-luxury-gold text-2xl">+</span>
+                </div>
+              </button>
+              <div className="px-8 pb-8">
+                <p className="text-luxury-charcoal leading-relaxed">
+                  Orders are sourced and shipped from Seoul within 3-5 business days.
+                  International delivery typically takes 7-14 days with full tracking.
+                  Rush delivery options available for time-sensitive orders.
+                </p>
+              </div>
+            </div>
+
+            <div className="faq-item bg-white border border-gray-200 transition-all duration-300 hover:border-luxury-gold">
+              <button className="w-full text-left p-8 focus:outline-none">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-light text-luxury-black">Can I return or exchange products?</h3>
+                  <span className="text-luxury-gold text-2xl">+</span>
+                </div>
+              </button>
+              <div className="px-8 pb-8">
+                <p className="text-luxury-charcoal leading-relaxed">
+                  We offer a 30-day satisfaction guarantee. If you're not completely satisfied,
+                  we'll work with you on exchanges or refunds. However, due to international
+                  sourcing, we recommend checking product details carefully before ordering.
+                </p>
+              </div>
+            </div>
+
+            <div className="faq-item bg-white border border-gray-200 transition-all duration-300 hover:border-luxury-gold">
+              <button className="w-full text-left p-8 focus:outline-none">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-light text-luxury-black">Why are Seoul prices so much lower?</h3>
+                  <span className="text-luxury-gold text-2xl">+</span>
+                </div>
+              </button>
+              <div className="px-8 pb-8">
+                <p className="text-luxury-charcoal leading-relaxed">
+                  Korean beauty brands sell at wholesale prices in their home market.
+                  US retailers add 300-500% markup for import, distribution, and retail margins.
+                  Seoul Sister eliminates these middlemen, passing authentic Seoul prices to you.
+                </p>
+              </div>
             </div>
           </div>
         </div>
