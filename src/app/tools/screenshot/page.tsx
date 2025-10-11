@@ -14,87 +14,54 @@ interface Product {
 }
 
 export default function ScreenshotToolPage() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  // Use static products like the Viral Copy Generator
+  const staticProducts: Product[] = [
+    {
+      id: '1',
+      name_english: 'Glow Deep Serum',
+      brand: 'Beauty of Joseon',
+      seoul_price: 8.5,
+      us_price: 45,
+      savings_percentage: 82
+    },
+    {
+      id: '2',
+      name_english: 'Snail 96 Mucin Essence',
+      brand: 'COSRX',
+      seoul_price: 12,
+      us_price: 89,
+      savings_percentage: 74
+    },
+    {
+      id: '3',
+      name_english: 'First Care Activating Serum',
+      brand: 'Sulwhasoo',
+      seoul_price: 28,
+      us_price: 94,
+      savings_percentage: 70
+    },
+    {
+      id: '4',
+      name_english: 'Water Sleeping Mask',
+      brand: 'Laneige',
+      seoul_price: 12,
+      us_price: 34,
+      savings_percentage: 65
+    }
+  ]
+
+  const [products] = useState<Product[]>(staticProducts)
+  const [selectedProduct, setSelectedProduct] = useState<Product>(staticProducts[0])
   const [customMessage, setCustomMessage] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
-  const [isLoadingProducts, setIsLoadingProducts] = useState(true)
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const screenshotRef = useRef<HTMLDivElement>(null)
 
-  // Load products from database on mount
+  // Generate message for the default product on mount
   useEffect(() => {
-    loadProducts()
+    generateMessage(staticProducts[0])
   }, [])
 
-  const loadProducts = async () => {
-    try {
-      const response = await fetch('/api/products?featured=true')
-      const data = await response.json()
-
-      console.log('Products API response:', data) // Debug log
-
-      // Handle both formats: {success: true, products: [...]} or {products: [...]} or direct array
-      let products = []
-      if (data.success && data.products) {
-        products = data.products
-      } else if (data.products) {
-        products = data.products
-      } else if (Array.isArray(data)) {
-        products = data
-      }
-
-      if (products && products.length > 0) {
-        setProducts(products)
-        setSelectedProduct(products[0])
-        await generateMessage(products[0])
-      } else {
-        // If API doesn't return expected format, use fallback
-        throw new Error('No products returned from API')
-      }
-    } catch (error) {
-      console.error('Error loading products:', error)
-      // Fallback to multiple default products
-      const fallbackProducts = [
-        {
-          id: '1',
-          name_english: 'Water Sleeping Mask',
-          brand: 'LANEIGE',
-          seoul_price: 12,
-          us_price: 34,
-          savings_percentage: 65
-        },
-        {
-          id: '2',
-          name_english: 'Snail 96 Mucin Essence',
-          brand: 'COSRX',
-          seoul_price: 23,
-          us_price: 89,
-          savings_percentage: 74
-        },
-        {
-          id: '3',
-          name_english: 'Glow Deep Serum',
-          brand: 'Beauty of Joseon',
-          seoul_price: 8,
-          us_price: 45,
-          savings_percentage: 82
-        },
-        {
-          id: '4',
-          name_english: 'First Care Activating Serum',
-          brand: 'Sulwhasoo',
-          seoul_price: 28,
-          us_price: 94,
-          savings_percentage: 70
-        }
-      ]
-      setProducts(fallbackProducts)
-      setSelectedProduct(fallbackProducts[0])
-      await generateMessage(fallbackProducts[0])
-    } finally {
-      setIsLoadingProducts(false)
-    }
-  }
 
   const generateMessage = async (product: Product) => {
     setIsGenerating(true)
@@ -203,16 +170,6 @@ export default function ScreenshotToolPage() {
     }
   }
 
-  if (isLoadingProducts) {
-    return (
-      <main className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-pulse text-2xl mb-4">Loading products...</div>
-          <div className="text-gray-400">Fetching real data from Seoul Sister database</div>
-        </div>
-      </main>
-    )
-  }
 
   return (
     <main className="min-h-screen bg-black text-white">
