@@ -30,8 +30,8 @@ export default function CopyGeneratorPage() {
     try {
       console.log('Loading products with real-time pricing...')
 
-      // Get base products from database
-      const response = await fetch('/api/products?featured=true')
+      // Get all products from database
+      const response = await fetch('/api/products')
       const data = await response.json()
 
       let baseProducts = []
