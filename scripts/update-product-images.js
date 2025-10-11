@@ -38,8 +38,8 @@ const productImageUpdates = [
   {
     name_english: 'DIVE-IN Low Molecule Hyaluronic Acid Serum',
     brand: 'Torriden',
-    image_url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600&h=600&fit=crop&auto=format',
-    high_res_url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=1200&h=1200&fit=crop&auto=format'
+    image_url: 'https://www.ulta.com/productimages/xlarge/pimprod2035669.jpg',
+    high_res_url: 'https://www.ulta.com/productimages/xlarge/pimprod2035669.jpg'
   },
   {
     name_english: 'Time Revolution The First Treatment Essence',
