@@ -14,14 +14,14 @@ const productImageUpdates = [
   {
     name_english: 'First Care Activating Serum',
     brand: 'Sulwhasoo',
-    image_url: 'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=600&h=600&fit=crop&auto=format&q=80',
-    high_res_url: 'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=1200&h=1200&fit=crop&auto=format&q=80'
+    image_url: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=600&h=600&fit=crop&auto=format&q=80',
+    high_res_url: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=1200&h=1200&fit=crop&auto=format&q=80'
   },
   {
     name_english: 'Glow Deep Serum',
     brand: 'Beauty of Joseon',
-    image_url: 'https://images.unsplash.com/photo-1570194065650-d99fb4bedf0a?w=600&h=600&fit=crop&auto=format&q=80',
-    high_res_url: 'https://images.unsplash.com/photo-1570194065650-d99fb4bedf0a?w=1200&h=1200&fit=crop&auto=format&q=80'
+    image_url: 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=600&h=600&fit=crop&auto=format&q=80',
+    high_res_url: 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=1200&h=1200&fit=crop&auto=format&q=80'
   },
   {
     name_english: 'Snail 96 Mucin Essence',
