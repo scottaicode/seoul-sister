@@ -50,48 +50,11 @@ export default function ScreenshotToolPage() {
         ]
       }
 
-      // Enhance first 4 products with real-time scraped pricing (for performance)
-      const enhancedProducts = await Promise.all(
-        baseProducts.slice(0, 4).map(async (product: any) => {
-          try {
-            console.log(`Scraping real prices for ${product.brand} ${product.name_english}...`)
+      // Skip expensive real-time scraping for faster loading in viral tools
+      // Use existing product data from database which already has pricing
+      console.log('⚡ Skipping real-time price scraping for faster viral tool performance')
 
-            const scrapeResponse = await fetch('/api/scrape-v2', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                productName: product.name_english,
-                brand: product.brand,
-                autoUpdate: false
-              })
-            })
-
-            const scrapeData = await scrapeResponse.json()
-
-            if (scrapeData.success && scrapeData.analysis) {
-              return {
-                ...product,
-                seoul_price: scrapeData.analysis.avgKoreanPrice,
-                us_price: scrapeData.analysis.avgUSPrice,
-                savings_percentage: scrapeData.analysis.savingsPercentage,
-                real_scraped_data: scrapeData.prices // Store raw scraped data
-              }
-            } else {
-              // Use existing product data if scraping fails
-              return product
-            }
-          } catch (error) {
-            console.warn(`Failed to scrape prices for ${product.name_english}:`, error)
-            return product
-          }
-        })
-      )
-
-      // Merge enhanced pricing with all products
-      const allProductsWithPricing = baseProducts.map((product: any, index: number) => {
-        // Use enhanced pricing for first 4 products, original data for the rest
-        return index < 4 ? enhancedProducts[index] : product
-      })
+      const allProductsWithPricing = baseProducts
 
       console.log(`🎯 Final product list ready: ${allProductsWithPricing.length} products`)
       console.log('📋 Product list:', allProductsWithPricing.map((p: any) => `${p.brand} ${p.name_english} ($${p.seoul_price || 'N/A'} → $${p.us_price || 'N/A'})`))
