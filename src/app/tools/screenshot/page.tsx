@@ -38,7 +38,7 @@ export default function ScreenshotToolPage() {
       let baseProducts = []
       if (data.products && data.products.length > 0) {
         baseProducts = data.products
-        console.log(`✅ Loaded ${baseProducts.length} products from database:`, baseProducts.map(p => `${p.brand} ${p.name_english}`))
+        console.log(`✅ Loaded ${baseProducts.length} products from database:`, baseProducts.map((p: any) => `${p.brand} ${p.name_english}`))
       } else {
         console.log('⚠️ No products found in database, using fallback products')
         // Fallback products if API fails
@@ -94,7 +94,7 @@ export default function ScreenshotToolPage() {
       })
 
       console.log(`🎯 Final product list ready: ${allProductsWithPricing.length} products`)
-      console.log('📋 Product list:', allProductsWithPricing.map(p => `${p.brand} ${p.name_english} ($${p.seoul_price || 'N/A'} → $${p.us_price || 'N/A'})`))
+      console.log('📋 Product list:', allProductsWithPricing.map((p: any) => `${p.brand} ${p.name_english} ($${p.seoul_price || 'N/A'} → $${p.us_price || 'N/A'})`))
 
       setProducts(allProductsWithPricing)
       console.log('✅ Products state updated')
