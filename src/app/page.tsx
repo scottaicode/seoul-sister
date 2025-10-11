@@ -168,14 +168,25 @@ export default function HomePage() {
           <div className="product-grid">
             {featuredProducts.map((product) => (
               <div key={product.id} className="product-card text-center group">
-                <div className="image-luxury mb-8 h-64 bg-luxury-black-soft">
+                <div className="image-luxury mb-8 h-64 bg-luxury-black-soft relative">
                   <Image
-                    src={product.image_url || '/images/placeholder.png'}
-                    alt={product.name_english}
+                    src={product.image_url || '/images/placeholder.svg'}
+                    alt={product.image_url ? `${product.brand} ${product.name_english}` : `${product.brand} ${product.name_english} - Image not available`}
                     width={400}
                     height={400}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to placeholder if image fails to load
+                      e.currentTarget.src = '/images/placeholder.svg'
+                    }}
                   />
+                  {!product.image_url && (
+                    <div className="absolute bottom-2 left-2 right-2">
+                      <div className="bg-black bg-opacity-75 text-yellow-500 text-xs px-2 py-1 text-center rounded">
+                        Authentic product • Image coming soon
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <p className="text-caption mb-2">{product.brand.toUpperCase()}</p>

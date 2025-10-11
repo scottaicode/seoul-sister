@@ -79,11 +79,13 @@ export default function ScreenshotToolPage() {
         setCustomMessage(fallbackMessage)
         console.log('💬 Set basic fallback message')
 
-        // Generate message for first product without awaiting to avoid blocking
-        // (Temporarily disabled to test if this is causing the dropdown issue)
-        // generateMessage(allProductsWithPricing[0]).catch((error) => {
-        //   console.error('❌ Initial message generation failed:', error)
-        // })
+        // Generate AI message for first product (non-blocking)
+        setTimeout(() => {
+          generateMessage(allProductsWithPricing[0]).catch((error) => {
+            console.error('❌ Initial message generation failed:', error)
+            // Keep the fallback message if AI fails
+          })
+        }, 100) // Small delay to ensure UI is fully rendered
       }
 
     } catch (error) {
@@ -119,10 +121,13 @@ export default function ScreenshotToolPage() {
       setCustomMessage(fallbackMessage)
       console.log('💬 Set fallback message')
 
-      // Generate message for fallback product without awaiting (temporarily disabled)
-      // generateMessage(fallbackProducts[0]).catch((error) => {
-      //   console.error('❌ Fallback message generation failed:', error)
-      // })
+      // Generate AI message for fallback product (non-blocking)
+      setTimeout(() => {
+        generateMessage(fallbackProducts[0]).catch((error) => {
+          console.error('❌ Fallback message generation failed:', error)
+          // Keep the fallback message if AI fails
+        })
+      }, 100)
     } finally {
       setIsLoadingProducts(false)
     }
@@ -294,15 +299,11 @@ export default function ScreenshotToolPage() {
                   className="w-full bg-black border border-gray-700 px-4 py-3 focus:border-yellow-500 focus:outline-none"
                   disabled={isGenerating}
                 >
-                  {(() => {
-                    console.log('🎨 Render: products state has', products.length, 'items')
-                    console.log('🎨 Render: products state:', products.map(p => `${p.brand} ${p.name_english}`))
-                    return products.map((product) => (
-                      <option key={product.id} value={product.id}>
-                        {product.brand} - {product.name_english} (${product.seoul_price} → ${product.us_price})
-                      </option>
-                    ))
-                  })()}
+                  {products.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.brand} - {product.name_english} (${product.seoul_price} → ${product.us_price})
+                    </option>
+                  ))}
                 </select>
               </div>
 

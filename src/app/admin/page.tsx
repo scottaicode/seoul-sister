@@ -144,6 +144,68 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Real-time Analytics Section */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="bg-zinc-900/50 border border-[#D4A574]/20 p-6 rounded-lg">
+          <p className="text-xs text-[#D4A574]/60 uppercase tracking-wider mb-2">Catalog Health</p>
+          <div className="text-2xl font-light text-white mb-1">
+            {products.filter(p => p.image_url).length}/{products.length}
+          </div>
+          <p className="text-xs text-zinc-400">Products with images</p>
+        </div>
+
+        <div className="bg-zinc-900/50 border border-[#D4A574]/20 p-6 rounded-lg">
+          <p className="text-xs text-[#D4A574]/60 uppercase tracking-wider mb-2">Best Savings</p>
+          <div className="text-2xl font-light text-[#D4A574] mb-1">
+            {Math.max(...products.map(p => p.savings_percentage))}%
+          </div>
+          <p className="text-xs text-zinc-400">Maximum savings</p>
+        </div>
+
+        <div className="bg-zinc-900/50 border border-[#D4A574]/20 p-6 rounded-lg">
+          <p className="text-xs text-[#D4A574]/60 uppercase tracking-wider mb-2">Category Leaders</p>
+          <div className="text-2xl font-light text-white mb-1">
+            {Array.from(new Set(products.map(p => p.category))).length}
+          </div>
+          <p className="text-xs text-zinc-400">Unique categories</p>
+        </div>
+
+        <div className="bg-zinc-900/50 border border-[#D4A574]/20 p-6 rounded-lg">
+          <p className="text-xs text-[#D4A574]/60 uppercase tracking-wider mb-2">Avg. Seoul Price</p>
+          <div className="text-2xl font-light text-[#D4A574] mb-1">
+            ${Math.round(products.reduce((sum, p) => sum + p.seoul_price, 0) / products.length || 0)}
+          </div>
+          <p className="text-xs text-zinc-400">Average cost</p>
+        </div>
+      </div>
+
+      {/* Top Performers Section */}
+      <div className="bg-zinc-900/50 border border-[#D4A574]/20 rounded-lg p-8 mb-8">
+        <h3 className="text-lg font-light text-white mb-6">Top Seoul Sister Savings</h3>
+        <div className="space-y-4">
+          {products
+            .sort((a, b) => b.savings_percentage - a.savings_percentage)
+            .slice(0, 5)
+            .map((product, index) => (
+              <div key={product.id} className="flex items-center justify-between p-4 bg-black/20 rounded border border-[#D4A574]/10">
+                <div className="flex items-center space-x-4">
+                  <div className="w-8 h-8 bg-[#D4A574]/20 rounded-full flex items-center justify-center">
+                    <span className="text-[#D4A574] text-sm font-medium">#{index + 1}</span>
+                  </div>
+                  <div>
+                    <p className="text-white font-medium">{product.brand} {product.name_english}</p>
+                    <p className="text-xs text-zinc-400">{product.category}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[#D4A574] font-medium">{product.savings_percentage}% off</div>
+                  <div className="text-xs text-zinc-400">${product.seoul_price} → ${product.us_price}</div>
+                </div>
+              </div>
+            ))}
+        </div>
+      </div>
+
       {/* Product Management Section */}
       <div className="bg-zinc-900/50 border border-[#D4A574]/20 rounded-lg p-8">
         <div className="flex justify-between items-center mb-8">
