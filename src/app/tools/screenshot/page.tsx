@@ -66,7 +66,9 @@ export default function ScreenshotToolPage() {
       console.log(`🎯 Final product list ready: ${allProductsWithPricing.length} products`)
       console.log('📋 Product list:', allProductsWithPricing.map((p: any) => `${p.brand} ${p.name_english} ($${p.seoul_price || 'N/A'} → $${p.us_price || 'N/A'})`))
 
+      // Set products and UI state IMMEDIATELY for instant responsiveness
       setProducts(allProductsWithPricing)
+      setIsLoadingProducts(false) // Make UI responsive immediately
       console.log('✅ Products state updated with:', allProductsWithPricing.length, 'products')
       console.log('🔍 First product in state:', allProductsWithPricing[0])
 
@@ -79,13 +81,13 @@ export default function ScreenshotToolPage() {
         setCustomMessage(fallbackMessage)
         console.log('💬 Set basic fallback message')
 
-        // Generate AI message for first product (non-blocking)
+        // Generate AI message for first product (non-blocking, happens after UI is ready)
         setTimeout(() => {
           generateMessage(allProductsWithPricing[0]).catch((error) => {
             console.error('❌ Initial message generation failed:', error)
             // Keep the fallback message if AI fails
           })
-        }, 100) // Small delay to ensure UI is fully rendered
+        }, 500) // Increased delay to ensure UI is fully rendered and responsive
       }
 
     } catch (error) {
@@ -113,6 +115,7 @@ export default function ScreenshotToolPage() {
 
       console.log('🔄 Using fallback products:', fallbackProducts.length)
       setProducts(fallbackProducts)
+      setIsLoadingProducts(false) // Make UI responsive immediately even with fallback
       setSelectedProduct(fallbackProducts[0])
       console.log('✅ Fallback products set, selected first product:', fallbackProducts[0].brand, fallbackProducts[0].name_english)
 
@@ -121,15 +124,13 @@ export default function ScreenshotToolPage() {
       setCustomMessage(fallbackMessage)
       console.log('💬 Set fallback message')
 
-      // Generate AI message for fallback product (non-blocking)
+      // Generate AI message for fallback product (non-blocking, after UI is ready)
       setTimeout(() => {
         generateMessage(fallbackProducts[0]).catch((error) => {
           console.error('❌ Fallback message generation failed:', error)
           // Keep the fallback message if AI fails
         })
-      }, 100)
-    } finally {
-      setIsLoadingProducts(false)
+      }, 500)
     }
   }
 
@@ -223,13 +224,17 @@ export default function ScreenshotToolPage() {
       console.log('✅ Product found, updating selection:', product.brand, product.name_english)
       setSelectedProduct(product)
 
-      // Generate message without blocking the UI
-      generateMessage(product).catch((error) => {
-        console.error('❌ Message generation failed for product change:', error)
-        // Set a fallback message if AI fails
-        const fallbackMessage = `Just discovered ${product.brand} ${product.name_english} is ${product.savings_percentage}% cheaper in Seoul! 🤯`
-        setCustomMessage(fallbackMessage)
-      })
+      // Set immediate fallback message for instant UI response
+      const fallbackMessage = `Just discovered ${product.brand} ${product.name_english} is ${product.savings_percentage}% cheaper in Seoul! 🤯`
+      setCustomMessage(fallbackMessage)
+
+      // Generate AI message without blocking the UI (happens in background)
+      setTimeout(() => {
+        generateMessage(product).catch((error) => {
+          console.error('❌ Message generation failed for product change:', error)
+          // Keep the fallback message if AI fails
+        })
+      }, 100) // Small delay to ensure UI update happens first
     } else {
       console.warn('⚠️ Product not found:', productId)
     }
@@ -293,18 +298,24 @@ export default function ScreenshotToolPage() {
                 <label className="block text-sm font-medium mb-4 text-yellow-500">
                   SELECT PRODUCT
                 </label>
-                <select
-                  value={selectedProduct?.id || ''}
-                  onChange={(e) => handleProductChange(e.target.value)}
-                  className="w-full bg-black border border-gray-700 px-4 py-3 focus:border-yellow-500 focus:outline-none"
-                  disabled={isGenerating}
-                >
-                  {products.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.brand} - {product.name_english} (${product.seoul_price} → ${product.us_price})
-                    </option>
-                  ))}
-                </select>
+                {isLoadingProducts ? (
+                  <div className="w-full bg-black border border-gray-700 px-4 py-3 text-gray-400">
+                    Loading products...
+                  </div>
+                ) : (
+                  <select
+                    value={selectedProduct?.id || ''}
+                    onChange={(e) => handleProductChange(e.target.value)}
+                    className="w-full bg-black border border-gray-700 px-4 py-3 focus:border-yellow-500 focus:outline-none"
+                    disabled={isGenerating}
+                  >
+                    {products.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.brand} - {product.name_english} (${product.seoul_price} → ${product.us_price})
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
