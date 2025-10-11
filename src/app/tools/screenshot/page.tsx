@@ -14,53 +14,110 @@ interface Product {
 }
 
 export default function ScreenshotToolPage() {
-  // Use static products like the Viral Copy Generator
-  const staticProducts: Product[] = [
-    {
-      id: '1',
-      name_english: 'Glow Deep Serum',
-      brand: 'Beauty of Joseon',
-      seoul_price: 8.5,
-      us_price: 45,
-      savings_percentage: 82
-    },
-    {
-      id: '2',
-      name_english: 'Snail 96 Mucin Essence',
-      brand: 'COSRX',
-      seoul_price: 12,
-      us_price: 89,
-      savings_percentage: 74
-    },
-    {
-      id: '3',
-      name_english: 'First Care Activating Serum',
-      brand: 'Sulwhasoo',
-      seoul_price: 28,
-      us_price: 94,
-      savings_percentage: 70
-    },
-    {
-      id: '4',
-      name_english: 'Water Sleeping Mask',
-      brand: 'Laneige',
-      seoul_price: 12,
-      us_price: 34,
-      savings_percentage: 65
-    }
-  ]
-
-  const [products] = useState<Product[]>(staticProducts)
-  const [selectedProduct, setSelectedProduct] = useState<Product>(staticProducts[0])
+  const [products, setProducts] = useState<Product[]>([])
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [customMessage, setCustomMessage] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
-  const [isLoadingProducts, setIsLoadingProducts] = useState(false)
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true)
   const screenshotRef = useRef<HTMLDivElement>(null)
 
-  // Generate message for the default product on mount
+  // Load products with real scraped pricing data
   useEffect(() => {
-    generateMessage(staticProducts[0])
+    loadProductsWithRealPricing()
   }, [])
+
+  const loadProductsWithRealPricing = async () => {
+    try {
+      console.log('Loading products with real-time pricing...')
+
+      // Get base products from database
+      const response = await fetch('/api/products?featured=true')
+      const data = await response.json()
+
+      let baseProducts = []
+      if (data.products && data.products.length > 0) {
+        baseProducts = data.products
+      } else {
+        // Fallback products if API fails
+        baseProducts = [
+          { id: '1', name_english: 'Glow Deep Serum', brand: 'Beauty of Joseon' },
+          { id: '2', name_english: 'Snail 96 Mucin Essence', brand: 'COSRX' },
+          { id: '3', name_english: 'First Care Activating Serum', brand: 'Sulwhasoo' },
+          { id: '4', name_english: 'Water Sleeping Mask', brand: 'Laneige' }
+        ]
+      }
+
+      // Enhance products with real-time scraped pricing
+      const enhancedProducts = await Promise.all(
+        baseProducts.slice(0, 4).map(async (product) => {
+          try {
+            console.log(`Scraping real prices for ${product.brand} ${product.name_english}...`)
+
+            const scrapeResponse = await fetch('/api/scrape-v2', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                productName: product.name_english,
+                brand: product.brand,
+                autoUpdate: false
+              })
+            })
+
+            const scrapeData = await scrapeResponse.json()
+
+            if (scrapeData.success && scrapeData.analysis) {
+              return {
+                ...product,
+                seoul_price: scrapeData.analysis.avgKoreanPrice,
+                us_price: scrapeData.analysis.avgUSPrice,
+                savings_percentage: scrapeData.analysis.savingsPercentage,
+                real_scraped_data: scrapeData.prices // Store raw scraped data
+              }
+            } else {
+              // Use existing product data if scraping fails
+              return product
+            }
+          } catch (error) {
+            console.warn(`Failed to scrape prices for ${product.name_english}:`, error)
+            return product
+          }
+        })
+      )
+
+      setProducts(enhancedProducts)
+      setSelectedProduct(enhancedProducts[0])
+      await generateMessage(enhancedProducts[0])
+
+    } catch (error) {
+      console.error('Error loading products with real pricing:', error)
+
+      // Final fallback with basic products
+      const fallbackProducts = [
+        {
+          id: '1', name_english: 'Glow Deep Serum', brand: 'Beauty of Joseon',
+          seoul_price: 8.5, us_price: 45, savings_percentage: 82
+        },
+        {
+          id: '2', name_english: 'Snail 96 Mucin Essence', brand: 'COSRX',
+          seoul_price: 12, us_price: 89, savings_percentage: 74
+        },
+        {
+          id: '3', name_english: 'First Care Activating Serum', brand: 'Sulwhasoo',
+          seoul_price: 28, us_price: 94, savings_percentage: 70
+        },
+        {
+          id: '4', name_english: 'Water Sleeping Mask', brand: 'Laneige',
+          seoul_price: 12, us_price: 34, savings_percentage: 65
+        }
+      ]
+
+      setProducts(fallbackProducts)
+      setSelectedProduct(fallbackProducts[0])
+      await generateMessage(fallbackProducts[0])
+    } finally {
+      setIsLoadingProducts(false)
+    }
+  }
 
 
   const generateMessage = async (product: Product) => {
