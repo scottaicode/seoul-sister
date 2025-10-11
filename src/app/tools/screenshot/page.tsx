@@ -79,9 +79,9 @@ export default function ScreenshotToolPage() {
         setProducts(data.products)
 
         // Keep the same selected product if it exists in the new list
-        const currentSelectedId = products.find(p => p.id === selectedProduct?.id)?.id
+        const currentSelectedId = products.find((p: any) => p.id === selectedProduct?.id)?.id
         if (currentSelectedId) {
-          const matchingProduct = data.products.find(p => p.id === currentSelectedId)
+          const matchingProduct = data.products.find((p: any) => p.id === currentSelectedId)
           if (matchingProduct) {
             setSelectedProduct(matchingProduct)
           }
