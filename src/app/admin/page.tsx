@@ -15,6 +15,7 @@ interface Product {
   category: string
   in_stock: boolean
   image_url?: string
+  created_at?: string
 }
 
 export default function AdminDashboard() {
@@ -181,7 +182,7 @@ export default function AdminDashboard() {
                         <p className="text-white">{product.name_english}</p>
                         <p className="text-xs text-[#D4A574]/40">{product.category}</p>
                         {/* Trending indicator based on creation date */}
-                        {new Date(product.created_at || 0).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000 && (
+                        {product.created_at && new Date(product.created_at).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000 && (
                           <span className="inline-block text-xs bg-[#D4A574]/20 text-[#D4A574] px-2 py-1 rounded mt-1">
                             NEW
                           </span>
