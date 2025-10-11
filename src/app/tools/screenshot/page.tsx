@@ -74,13 +74,16 @@ export default function ScreenshotToolPage() {
         setSelectedProduct(allProductsWithPricing[0])
         console.log('✅ Selected first product:', allProductsWithPricing[0].brand, allProductsWithPricing[0].name_english)
 
+        // Set a basic fallback message immediately
+        const fallbackMessage = `Just discovered ${allProductsWithPricing[0].brand} ${allProductsWithPricing[0].name_english} is ${allProductsWithPricing[0].savings_percentage || 50}% cheaper in Seoul! 🤯`
+        setCustomMessage(fallbackMessage)
+        console.log('💬 Set basic fallback message')
+
         // Generate message for first product without awaiting to avoid blocking
-        generateMessage(allProductsWithPricing[0]).catch((error) => {
-          console.error('❌ Initial message generation failed:', error)
-          // Set fallback message for first product
-          const fallbackMessage = `Just discovered ${allProductsWithPricing[0].brand} ${allProductsWithPricing[0].name_english} is ${allProductsWithPricing[0].savings_percentage || 50}% cheaper in Seoul! 🤯`
-          setCustomMessage(fallbackMessage)
-        })
+        // (Temporarily disabled to test if this is causing the dropdown issue)
+        // generateMessage(allProductsWithPricing[0]).catch((error) => {
+        //   console.error('❌ Initial message generation failed:', error)
+        // })
       }
 
     } catch (error) {
@@ -111,12 +114,15 @@ export default function ScreenshotToolPage() {
       setSelectedProduct(fallbackProducts[0])
       console.log('✅ Fallback products set, selected first product:', fallbackProducts[0].brand, fallbackProducts[0].name_english)
 
-      // Generate message for fallback product without awaiting
-      generateMessage(fallbackProducts[0]).catch((error) => {
-        console.error('❌ Fallback message generation failed:', error)
-        const fallbackMessage = `Just discovered ${fallbackProducts[0].brand} ${fallbackProducts[0].name_english} is ${fallbackProducts[0].savings_percentage}% cheaper in Seoul! 🤯`
-        setCustomMessage(fallbackMessage)
-      })
+      // Set fallback message immediately
+      const fallbackMessage = `Just discovered ${fallbackProducts[0].brand} ${fallbackProducts[0].name_english} is ${fallbackProducts[0].savings_percentage}% cheaper in Seoul! 🤯`
+      setCustomMessage(fallbackMessage)
+      console.log('💬 Set fallback message')
+
+      // Generate message for fallback product without awaiting (temporarily disabled)
+      // generateMessage(fallbackProducts[0]).catch((error) => {
+      //   console.error('❌ Fallback message generation failed:', error)
+      // })
     } finally {
       setIsLoadingProducts(false)
     }
