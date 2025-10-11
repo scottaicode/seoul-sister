@@ -28,16 +28,19 @@ export default function ScreenshotToolPage() {
 
   const loadProductsWithRealPricing = async () => {
     try {
-      console.log('Loading products with real-time pricing...')
+      console.log('📦 Starting product loading process...')
 
       // Get all products from database
+      console.log('🔍 Fetching products from database...')
       const response = await fetch('/api/products')
       const data = await response.json()
 
       let baseProducts = []
       if (data.products && data.products.length > 0) {
         baseProducts = data.products
+        console.log(`✅ Loaded ${baseProducts.length} products from database:`, baseProducts.map(p => `${p.brand} ${p.name_english}`))
       } else {
+        console.log('⚠️ No products found in database, using fallback products')
         // Fallback products if API fails
         baseProducts = [
           { id: '1', name_english: 'Glow Deep Serum', brand: 'Beauty of Joseon' },
@@ -90,10 +93,24 @@ export default function ScreenshotToolPage() {
         return index < 4 ? enhancedProducts[index] : product
       })
 
+      console.log(`🎯 Final product list ready: ${allProductsWithPricing.length} products`)
+      console.log('📋 Product list:', allProductsWithPricing.map(p => `${p.brand} ${p.name_english} ($${p.seoul_price || 'N/A'} → $${p.us_price || 'N/A'})`))
+
       setProducts(allProductsWithPricing)
-      setSelectedProduct(allProductsWithPricing[0])
-      // Generate message for first product without awaiting to avoid blocking
-      generateMessage(allProductsWithPricing[0]).catch(console.error)
+      console.log('✅ Products state updated')
+
+      if (allProductsWithPricing[0]) {
+        setSelectedProduct(allProductsWithPricing[0])
+        console.log('✅ Selected first product:', allProductsWithPricing[0].brand, allProductsWithPricing[0].name_english)
+
+        // Generate message for first product without awaiting to avoid blocking
+        generateMessage(allProductsWithPricing[0]).catch((error) => {
+          console.error('❌ Initial message generation failed:', error)
+          // Set fallback message for first product
+          const fallbackMessage = `Just discovered ${allProductsWithPricing[0].brand} ${allProductsWithPricing[0].name_english} is ${allProductsWithPricing[0].savings_percentage || 50}% cheaper in Seoul! 🤯`
+          setCustomMessage(fallbackMessage)
+        })
+      }
 
     } catch (error) {
       console.error('Error loading products with real pricing:', error)
@@ -118,10 +135,17 @@ export default function ScreenshotToolPage() {
         }
       ]
 
+      console.log('🔄 Using fallback products:', fallbackProducts.length)
       setProducts(fallbackProducts)
       setSelectedProduct(fallbackProducts[0])
+      console.log('✅ Fallback products set, selected first product:', fallbackProducts[0].brand, fallbackProducts[0].name_english)
+
       // Generate message for fallback product without awaiting
-      generateMessage(fallbackProducts[0]).catch(console.error)
+      generateMessage(fallbackProducts[0]).catch((error) => {
+        console.error('❌ Fallback message generation failed:', error)
+        const fallbackMessage = `Just discovered ${fallbackProducts[0].brand} ${fallbackProducts[0].name_english} is ${fallbackProducts[0].savings_percentage}% cheaper in Seoul! 🤯`
+        setCustomMessage(fallbackMessage)
+      })
     } finally {
       setIsLoadingProducts(false)
     }
@@ -129,11 +153,19 @@ export default function ScreenshotToolPage() {
 
 
   const generateMessage = async (product: Product) => {
+    // Prevent multiple concurrent message generations
+    if (isGenerating) {
+      console.log('⏸️ Message generation already in progress, skipping')
+      return
+    }
+
+    console.log('🤖 Generating AI message for:', product.brand, product.name_english)
     setIsGenerating(true)
 
     // Set a basic message immediately so there's always something showing
-    const basicMessage = `Just discovered ${product.brand} ${product.name_english} is ${product.savings_percentage}% cheaper in Seoul! 🤯`
+    const basicMessage = `Just discovered ${product.brand} ${product.name_english} is ${product.savings_percentage || 50}% cheaper in Seoul! 🤯`
     setCustomMessage(basicMessage)
+    console.log('💬 Set basic message as fallback')
 
     try {
       const response = await fetch('/api/generate-viral', {
@@ -151,10 +183,11 @@ export default function ScreenshotToolPage() {
       }
 
       const data = await response.json()
-      console.log('AI response:', data) // Debug log
+      console.log('🔍 AI response received:', data?.success ? 'Success' : 'Failed')
 
       if (data.success && data.content && data.content.instagram) {
         const content = data.content.instagram.content
+        console.log('📝 Processing AI content...')
 
         // Extract a short, story-appropriate message from AI content
         let message = ''
@@ -184,24 +217,39 @@ export default function ScreenshotToolPage() {
         // Only update if we got a meaningful message
         if (message && message.length > 10 && message !== basicMessage) {
           setCustomMessage(message)
+          console.log('✅ AI message set successfully')
+        } else {
+          console.log('⚠️ AI message not meaningful, keeping basic message')
         }
       } else {
-        console.log('AI response not in expected format, keeping basic message')
+        console.log('⚠️ AI response not in expected format, keeping basic message')
         // Keep the basic message we already set
       }
     } catch (error) {
-      console.error('Error generating message:', error)
+      console.error('❌ Error generating message:', error)
       // Keep the basic message we already set
     } finally {
+      console.log('🏁 Message generation complete')
       setIsGenerating(false)
     }
   }
 
-  const handleProductChange = async (productId: string) => {
+  const handleProductChange = (productId: string) => {
+    console.log('🔄 Product change requested:', productId)
     const product = products.find(p => p.id === productId)
     if (product) {
+      console.log('✅ Product found, updating selection:', product.brand, product.name_english)
       setSelectedProduct(product)
-      await generateMessage(product)
+
+      // Generate message without blocking the UI
+      generateMessage(product).catch((error) => {
+        console.error('❌ Message generation failed for product change:', error)
+        // Set a fallback message if AI fails
+        const fallbackMessage = `Just discovered ${product.brand} ${product.name_english} is ${product.savings_percentage}% cheaper in Seoul! 🤯`
+        setCustomMessage(fallbackMessage)
+      })
+    } else {
+      console.warn('⚠️ Product not found:', productId)
     }
   }
 
