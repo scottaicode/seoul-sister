@@ -92,7 +92,8 @@ export default function ScreenshotToolPage() {
 
       setProducts(allProductsWithPricing)
       setSelectedProduct(allProductsWithPricing[0])
-      await generateMessage(allProductsWithPricing[0])
+      // Generate message for first product without awaiting to avoid blocking
+      generateMessage(allProductsWithPricing[0]).catch(console.error)
 
     } catch (error) {
       console.error('Error loading products with real pricing:', error)
@@ -119,7 +120,8 @@ export default function ScreenshotToolPage() {
 
       setProducts(fallbackProducts)
       setSelectedProduct(fallbackProducts[0])
-      await generateMessage(fallbackProducts[0])
+      // Generate message for fallback product without awaiting
+      generateMessage(fallbackProducts[0]).catch(console.error)
     } finally {
       setIsLoadingProducts(false)
     }
