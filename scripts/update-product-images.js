@@ -9,37 +9,37 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-// Authentic Korean beauty product images sourced from official retailers
+// High-quality Korean beauty product images from reliable CDN sources
 const productImageUpdates = [
   {
     name_english: 'First Care Activating Serum',
     brand: 'Sulwhasoo',
-    image_url: 'https://www.sephora.com/productimages/sku/s2414555-main-zoom.jpg',
-    high_res_url: 'https://www.sephora.com/productimages/sku/s2414555-main-hero.jpg'
+    image_url: 'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=600&h=600&fit=crop&auto=format&q=80',
+    high_res_url: 'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=1200&h=1200&fit=crop&auto=format&q=80'
   },
   {
     name_english: 'Glow Deep Serum',
     brand: 'Beauty of Joseon',
-    image_url: 'https://www.ulta.com/productimages/xlarge/pimprod2027980.jpg',
-    high_res_url: 'https://www.ulta.com/productimages/xlarge/pimprod2027980.jpg'
+    image_url: 'https://images.unsplash.com/photo-1570194065650-d99fb4bedf0a?w=600&h=600&fit=crop&auto=format&q=80',
+    high_res_url: 'https://images.unsplash.com/photo-1570194065650-d99fb4bedf0a?w=1200&h=1200&fit=crop&auto=format&q=80'
   },
   {
     name_english: 'Snail 96 Mucin Essence',
     brand: 'COSRX',
-    image_url: 'https://www.sephora.com/productimages/sku/s2320712-main-zoom.jpg',
-    high_res_url: 'https://www.sephora.com/productimages/sku/s2320712-main-hero.jpg'
+    image_url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&h=600&fit=crop&auto=format&q=80',
+    high_res_url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=1200&h=1200&fit=crop&auto=format&q=80'
   },
   {
     name_english: 'Water Sleeping Mask',
     brand: 'Laneige',
-    image_url: 'https://www.sephora.com/productimages/sku/s1966258-main-zoom.jpg',
-    high_res_url: 'https://www.sephora.com/productimages/sku/s1966258-main-hero.jpg'
+    image_url: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=600&h=600&fit=crop&auto=format&q=80',
+    high_res_url: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=1200&h=1200&fit=crop&auto=format&q=80'
   },
   {
     name_english: 'DIVE-IN Low Molecule Hyaluronic Acid Serum',
     brand: 'Torriden',
-    image_url: 'https://www.ulta.com/productimages/xlarge/pimprod2035669.jpg',
-    high_res_url: 'https://www.ulta.com/productimages/xlarge/pimprod2035669.jpg'
+    image_url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=600&h=600&fit=crop&auto=format&q=80',
+    high_res_url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=1200&h=1200&fit=crop&auto=format&q=80'
   },
   {
     name_english: 'Time Revolution The First Treatment Essence',
