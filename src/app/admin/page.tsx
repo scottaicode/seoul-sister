@@ -128,6 +128,12 @@ export default function AdminDashboard() {
               + Add Product
             </button>
             <Link
+              href="/admin/discovery"
+              className="block text-[#D4A574] hover:text-white transition-colors text-sm"
+            >
+              → Korean Discovery
+            </Link>
+            <Link
               href="/admin/scraper"
               className="block text-[#D4A574] hover:text-white transition-colors text-sm"
             >
@@ -174,13 +180,33 @@ export default function AdminDashboard() {
                       <div>
                         <p className="text-white">{product.name_english}</p>
                         <p className="text-xs text-[#D4A574]/40">{product.category}</p>
+                        {/* Trending indicator based on creation date */}
+                        {new Date(product.created_at || 0).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000 && (
+                          <span className="inline-block text-xs bg-[#D4A574]/20 text-[#D4A574] px-2 py-1 rounded mt-1">
+                            NEW
+                          </span>
+                        )}
+                        {product.savings_percentage > 70 && (
+                          <span className="inline-block text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded mt-1 ml-1">
+                            HOT
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="py-4 px-2 text-white/80">{product.brand}</td>
                     <td className="py-4 px-2 text-green-400">${product.seoul_price}</td>
                     <td className="py-4 px-2 text-red-400">${product.us_price}</td>
                     <td className="py-4 px-2">
-                      <span className="text-[#D4A574] font-bold">{product.savings_percentage}%</span>
+                      <span className={`font-bold ${
+                        product.savings_percentage > 70 ? 'text-green-400' :
+                        product.savings_percentage > 50 ? 'text-[#D4A574]' :
+                        'text-white'
+                      }`}>
+                        {product.savings_percentage}%
+                      </span>
+                      <p className="text-xs text-[#D4A574]/60">
+                        ${Math.round(product.us_price - product.seoul_price)} saved
+                      </p>
                     </td>
                     <td className="py-4 px-2">
                       <span className={`text-xs px-2 py-1 rounded-full ${product.in_stock ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
