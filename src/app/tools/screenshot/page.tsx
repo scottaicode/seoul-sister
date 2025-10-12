@@ -140,20 +140,50 @@ export default function ScreenshotToolPage() {
         const content = data.content.instagram.content
         console.log('📝 Processing AI content...')
 
-        // Extract a short, story-appropriate message from AI content
+        // Extract story-appropriate message from AI content
         let message = ''
 
         if (typeof content === 'string') {
-          // Look for short, punchy lines suitable for stories
-          const lines = content.split('\n').filter(line =>
-            line.trim().length > 0 &&
-            line.trim().length < 100 &&
-            !line.startsWith('#') &&
-            !line.startsWith('Follow') &&
-            !line.startsWith('Save') &&
-            !line.startsWith('Link')
-          )
-          message = lines[0] || content.substring(0, 80) + '...'
+          // For Instagram content, extract the first slide content specifically
+          if (content.includes('Slide 1:') || content.includes('**Slide 1:')) {
+            // Extract the text overlay from Slide 1
+            const slide1Match = content.match(/\*\*Slide 1[^*]*\*\*\s*([^*\n]+(?:\n[^*\n]+)*)/i)
+            if (slide1Match) {
+              message = slide1Match[1]
+                .replace(/Text overlay[^:]*:/i, '')
+                .replace(/\*[^*]*\*/g, '') // Remove italic text in asterisks
+                .replace(/"/g, '') // Remove quotes
+                .trim()
+            }
+          }
+
+          // If no slide 1 found, look for hook or punchy lines
+          if (!message) {
+            const lines = content.split('\n').filter(line => {
+              const trimmed = line.trim()
+              return trimmed.length > 0 &&
+                trimmed.length < 150 &&
+                !trimmed.startsWith('#') &&
+                !trimmed.startsWith('Follow') &&
+                !trimmed.startsWith('Save') &&
+                !trimmed.startsWith('Link') &&
+                !trimmed.startsWith('*') &&
+                !trimmed.includes('CAPTION') &&
+                !trimmed.includes('HASHTAG') &&
+                !trimmed.includes('Story Ideas')
+            })
+
+            // Find the most engaging line (contains emojis, excitement, pricing)
+            const engagingLine = lines.find(line =>
+              line.includes('$') ||
+              line.includes('POV:') ||
+              line.includes('🤯') ||
+              line.includes('😭') ||
+              line.includes('%')
+            ) || lines[0]
+
+            message = engagingLine || content.substring(0, 80) + '...'
+          }
         } else if (content && typeof content === 'object') {
           message = content.caption || content.hook || content.message || basicMessage
         }
