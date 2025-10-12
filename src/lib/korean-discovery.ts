@@ -416,7 +416,7 @@ function guessCategory(productName: string): string {
 // Helper function to generate product description
 function generateProductDescription(productName: string, brand: string): string {
   const category = guessCategory(productName)
-  const descriptions = {
+  const descriptions: Record<string, string> = {
     'Cleanser': `Gentle ${brand} cleanser for healthy, clean skin`,
     'Toner': `Hydrating ${brand} toner to prep and balance skin`,
     'Essence': `Lightweight ${brand} essence for deep hydration`,
