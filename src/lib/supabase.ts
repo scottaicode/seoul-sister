@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -9,7 +9,7 @@ let supabaseAdmin: any = null
 
 try {
   if (supabaseUrl && supabaseAnonKey) {
-    supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    supabase = createSupabaseClient<Database>(supabaseUrl, supabaseAnonKey, {
       auth: {
         autoRefreshToken: true,
         persistSession: true,
@@ -19,7 +19,7 @@ try {
 
     // Only create admin client server-side
     if (typeof window === 'undefined' && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      supabaseAdmin = createClient<Database>(
+      supabaseAdmin = createSupabaseClient<Database>(
         supabaseUrl,
         process.env.SUPABASE_SERVICE_ROLE_KEY,
         {
@@ -40,4 +40,13 @@ try {
   console.error('Failed to initialize Supabase client:', error)
 }
 
+// Export the clients
 export { supabase, supabaseAdmin }
+
+// Export a createClient function for auth components
+export const createClient = () => {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized. Check environment variables.')
+  }
+  return supabase
+}

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import ViralScreenshotGenerator from '../components/ViralScreenshotGenerator'
 import ViralCopyGenerator from '../components/ViralCopyGenerator'
+import AuthHeader from '../components/AuthHeader'
 import { useProducts } from '@/hooks/useProducts'
 
 interface Product {
@@ -89,31 +90,8 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-black text-white">
-      {/* Luxury Navigation Bar */}
-      <nav className={`nav-luxury transition-all duration-500 ${isScrolled ? 'py-4' : 'py-8'}`}>
-        <div className="luxury-container flex justify-between items-center">
-          <div className="text-2xl heading-hero text-luxury-gold tracking-wider">
-            Seoul Sister
-          </div>
-
-          <div className="flex items-center gap-12">
-            <Link href="/collection" className="link-luxury text-sm tracking-widest">
-              COLLECTION
-            </Link>
-            <Link href="/about" className="link-luxury text-sm tracking-widest">
-              ABOUT
-            </Link>
-            <Link href="/insider" className="link-luxury text-sm tracking-widest">
-              INSIDER ACCESS
-            </Link>
-            <Link href="/signup">
-              <button className="btn-luxury text-xs">
-                Join
-              </button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      {/* Authentication Header */}
+      <AuthHeader />
 
       {/* Hero Section - Refined Minimalism */}
       <section className="hero-section flex items-center justify-center relative">

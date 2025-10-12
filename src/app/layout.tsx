@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter, Poppins } from 'next/font/google'
 import './globals.css'
 import AnalyticsTracker from '../components/AnalyticsTracker'
+import { AuthProvider } from '../contexts/AuthContext'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -59,10 +60,12 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased bg-white text-gray-900">
-        <AnalyticsTracker />
-        <div className="min-h-screen">
-          {children}
-        </div>
+        <AuthProvider>
+          <AnalyticsTracker />
+          <div className="min-h-screen">
+            {children}
+          </div>
+        </AuthProvider>
       </body>
     </html>
   )
