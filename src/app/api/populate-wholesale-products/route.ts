@@ -272,9 +272,7 @@ export async function POST(request: Request) {
       ...product,
       savings_percentage: Math.round(((product.us_price - product.seoul_price) / product.us_price) * 100),
       in_stock: true,
-      popularity_score: Math.floor(Math.random() * 50) + 50, // 50-100 popularity
-      auto_update: true,
-      image_source: 'placeholder'
+      popularity_score: Math.floor(Math.random() * 50) + 50 // 50-100 popularity
     }))
 
     const { data: insertedProducts, error: insertError } = await supabase

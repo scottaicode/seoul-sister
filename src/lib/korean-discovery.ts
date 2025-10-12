@@ -530,8 +530,7 @@ export async function saveDiscoveredProducts(products: KoreanProduct[]): Promise
             korean_site_url: product.koreanUrl,
             skin_type: 'all', // Will be refined by AI later
             in_stock: true,
-            popularity_score: Math.round(product.trendScore || 50),
-            auto_update: true // Enable automatic price updates
+            popularity_score: Math.round(product.trendScore || 50)
           })
 
         if (!error) {
