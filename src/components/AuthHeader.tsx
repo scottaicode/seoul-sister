@@ -20,7 +20,7 @@ export default function AuthHeader() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <h1 className="text-2xl font-bold text-white tracking-tight">
+            <h1 className="text-2xl font-bold text-amber-400 tracking-tight">
               Seoul Sister
             </h1>
           </div>
