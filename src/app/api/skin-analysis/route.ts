@@ -226,25 +226,31 @@ async function storeAnalysisForLearning(analysis: any, imageUrl: string) {
     // Get or create user (using session for now, would use auth in production)
     const sessionId = `session_${Date.now()}`
 
-    // Store in skin_analyses table
+    // Store in photo_skin_analyses table
     const { data: storedAnalysis, error } = await supabase
-      .from('skin_analyses')
+      .from('photo_skin_analyses')
       .insert({
-        session_id: sessionId,
-        image_url: imageUrl,
-        skin_type: analysis.skinType,
-        skin_tone: analysis.skinTone,
-        age_range: analysis.ageRange,
-        concerns: analysis.concerns,
-        concern_scores: analysis.concernScores,
+        photo_url: imageUrl,
+        detected_skin_type: analysis.skinType,
+        detected_skin_tone: analysis.skinTone,
+        estimated_age_range: analysis.ageRange,
+        detected_concerns: analysis.concerns,
+        acne_score: analysis.concernScores?.acne || 0,
+        wrinkles_score: analysis.concernScores?.wrinkles || 0,
+        dark_spots_score: analysis.concernScores?.darkSpots || 0,
+        dryness_score: analysis.concernScores?.dryness || 0,
+        oiliness_score: analysis.concernScores?.oiliness || 0,
+        enlarged_pores_score: analysis.concernScores?.enlargedPores || 0,
+        redness_score: analysis.concernScores?.redness || 0,
+        dullness_score: analysis.concernScores?.dullness || 0,
         hydration_level: analysis.hydrationLevel,
         oil_level: analysis.oilLevel,
         texture_score: analysis.textureScore,
         elasticity_score: analysis.elasticityScore,
         brightness_score: analysis.brightnessScore,
-        ai_confidence: analysis.aiConfidence,
+        analysis_confidence: analysis.aiConfidence,
         ai_model_version: 'claude-opus-4.1',
-        analysis_raw: analysis
+        ai_detailed_analysis: JSON.stringify(analysis)
       })
       .select()
       .single()

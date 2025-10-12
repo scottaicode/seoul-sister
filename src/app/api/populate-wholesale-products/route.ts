@@ -291,8 +291,16 @@ export async function POST(request: Request) {
 
     // Insert wholesale products
     const productsToInsert = WHOLESALE_PRODUCTS.map(product => ({
-      ...product,
+      name_korean: product.name_korean,
+      name_english: product.name_english,
+      brand: product.brand,
+      seoul_price: product.seoul_price,
+      us_price: product.us_price,
       savings_percentage: Math.round(((product.us_price - product.seoul_price) / product.us_price) * 100),
+      category: product.category,
+      description: product.description,
+      ingredients: product.ingredients,
+      skin_type: product.skin_type,
       in_stock: true,
       popularity_score: Math.floor(Math.random() * 50) + 50 // 50-100 popularity
     }))

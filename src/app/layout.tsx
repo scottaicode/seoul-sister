@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter, Poppins } from 'next/font/google'
 import './globals.css'
 import AnalyticsTracker from '../components/AnalyticsTracker'
@@ -15,13 +15,18 @@ const poppins = Poppins({
   variable: '--font-poppins',
 })
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: '#CD2E3A',
+}
+
 export const metadata: Metadata = {
   title: 'Seoul Sister - Authentic K-Beauty at Seoul Street Prices',
   description: 'Save 40-70% on authentic Korean beauty products. Get the same products sold in Seoul at real Seoul prices, not inflated US retail prices.',
   keywords: 'korean beauty, k-beauty, seoul, skincare, cosmetics, korean products, authentic, discount',
   authors: [{ name: 'Seoul Sister' }],
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
-  themeColor: '#CD2E3A',
   openGraph: {
     title: 'Seoul Sister - Authentic K-Beauty at Seoul Street Prices',
     description: 'Save 40-70% on authentic Korean beauty products. Expose the beauty industry price gouging.',
