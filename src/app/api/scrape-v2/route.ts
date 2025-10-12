@@ -299,7 +299,8 @@ async function scrapeProductPrices(productName: string, brand: string) {
 
   // Add wholesale metadata
   for (const wholesaler of PRICING_TARGETS.korean_wholesalers) {
-    if (wholesalePricing[wholesaler.name]) {
+    const wholesalerName = wholesaler.name as keyof typeof wholesalePricing
+    if (wholesalePricing[wholesalerName]) {
       results.metadata[wholesaler.name] = {
         title: `${brand} ${productName}`,
         description: wholesaler.description,

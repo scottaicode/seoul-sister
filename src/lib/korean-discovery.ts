@@ -503,8 +503,8 @@ export async function saveDiscoveredProducts(products: KoreanProduct[]): Promise
         .single()
 
       if (!existingProduct) {
-        // Calculate estimated US price
-        const estimatedUSPrice = estimateUSPrice(
+        // Calculate estimated US price using the function from this file
+        const estimatedUSPrice = product.usPrice || estimateUSPrice(
           product.koreanPrice,
           product.category,
           product.brand
