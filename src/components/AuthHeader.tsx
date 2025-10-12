@@ -20,7 +20,7 @@ export default function AuthHeader() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <h1 className="text-2xl font-bold text-white tracking-tight">
+            <h1 className="text-2xl font-bold text-amber-400 tracking-tight">
               Seoul Sister
             </h1>
           </div>
@@ -110,7 +110,7 @@ export default function AuthHeader() {
             ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-6 py-2 rounded-lg font-semibold hover:from-amber-500 hover:to-orange-600 transition-all duration-200"
+                className="border-2 border-amber-400 text-amber-400 px-6 py-2 rounded-lg font-semibold hover:bg-amber-400 hover:text-black transition-all duration-200"
               >
                 JOIN
               </button>
