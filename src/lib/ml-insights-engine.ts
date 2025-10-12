@@ -49,10 +49,10 @@ export class MLInsightsEngine {
 
     // Calculate improvement metrics
     const improvements = {
-      hydration: this.calculateImprovement(baseline.hydration_level, latest.hydration_level),
-      brightness: this.calculateImprovement(baseline.brightness_score, latest.brightness_score),
-      acne: this.calculateImprovement(baseline.acne_score, latest.acne_score, true), // Lower is better for acne
-      wrinkles: this.calculateImprovement(baseline.wrinkles_score, latest.wrinkles_score, true)
+      hydration: this.calculateImprovement(baseline.hydration_level || 0, latest.hydration_level || 0),
+      brightness: this.calculateImprovement(baseline.brightness_score || 0, latest.brightness_score || 0),
+      acne: this.calculateImprovement(baseline.acne_score || 0, latest.acne_score || 0, true), // Lower is better for acne
+      wrinkles: this.calculateImprovement(baseline.wrinkles_score || 0, latest.wrinkles_score || 0, true)
     }
 
     const significantImprovements = Object.entries(improvements)

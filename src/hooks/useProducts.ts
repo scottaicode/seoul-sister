@@ -15,6 +15,7 @@ export interface Product {
   us_site_url?: string
   skin_type?: string
   in_stock: boolean
+  ingredients?: string // Added for AI analysis features
 }
 
 export function useProducts(featured = false) {

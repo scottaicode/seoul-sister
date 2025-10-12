@@ -95,11 +95,12 @@ async function updateReviewVoteCounts(reviewId: string): Promise<void> {
   }
 }
 
-// First, we need to create the review_votes table if it doesn't exist
-// This would typically be in a migration file
-export async function createReviewVotesTable() {
-  const { error } = await supabase.rpc('create_review_votes_table')
-  if (error) {
-    console.error('Error creating review_votes table:', error)
-  }
-}
+// Note: review_votes table needs to be created in Supabase manually
+// CREATE TABLE review_votes (
+//   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+//   review_id UUID REFERENCES product_reviews(id) ON DELETE CASCADE,
+//   user_id UUID REFERENCES user_profiles(id) ON DELETE CASCADE,
+//   vote_type VARCHAR(20) CHECK (vote_type IN ('helpful', 'not_helpful')),
+//   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+//   UNIQUE(review_id, user_id)
+// );

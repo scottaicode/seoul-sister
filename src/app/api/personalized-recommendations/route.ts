@@ -250,9 +250,9 @@ async function analyzeProductForUser(
     product_id: product.id,
     compatibility_score: Math.min(100, Math.max(0, compatibilityScore)),
     recommendation_reason: reasons.slice(0, 3), // Top 3 reasons
-    risk_factors,
-    personalized_benefits,
-    confidence_level
+    risk_factors: riskFactors,
+    personalized_benefits: personalizedBenefits,
+    confidence_level: confidenceLevel
   }
 }
 

@@ -8,6 +8,7 @@ export interface UserProfile {
   // Skin Type Classification
   skin_type?: 'oily' | 'dry' | 'combination' | 'sensitive' | 'normal'
   skin_tone?: 'light' | 'medium' | 'tan' | 'deep'
+  estimated_age_range?: '18-25' | '25-35' | '35-45' | '45+'
 
   // Primary Skin Concerns
   skin_concerns: string[]
@@ -55,6 +56,15 @@ export interface SkinAnalysisResult {
   ai_recommendation: string
   confidence_score: number // 0-100
   analysis_reasoning: string
+
+  // Skin Health Metrics (matching database schema)
+  hydration_level?: number
+  brightness_score?: number
+  acne_score?: number
+  wrinkles_score?: number
+  oil_level?: number
+  texture_score?: number
+  elasticity_score?: number
 }
 
 export interface UserProductInteraction {

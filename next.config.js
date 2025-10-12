@@ -32,8 +32,8 @@ const nextConfig = {
     removeConsole: process.env.NODE_ENV === 'production',
   },
 
-  // SWC for faster builds
-  swcMinify: true,
+  // SWC for faster builds (now default in Next.js 15)
+  // swcMinify: true, // Removed as it's deprecated in Next.js 15
 
   // Performance and security headers
   async headers() {
