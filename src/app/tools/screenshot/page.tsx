@@ -97,9 +97,9 @@ export default function ScreenshotToolPage() {
   }
 
 
-  const generateMessage = async (product: Product) => {
-    // Prevent multiple concurrent message generations
-    if (isGenerating) {
+  const generateMessage = async (product: Product, forceRegenerate = false) => {
+    // Allow forcing regeneration or prevent multiple concurrent generations
+    if (isGenerating && !forceRegenerate) {
       console.log('⏸️ Message generation already in progress, skipping')
       return
     }
@@ -111,6 +111,12 @@ export default function ScreenshotToolPage() {
     const basicMessage = `Just discovered ${product.brand} ${product.name_english} is ${product.savings_percentage || 50}% cheaper in Seoul! 🤯`
     setCustomMessage(basicMessage)
     console.log('💬 Set basic message as fallback')
+
+    // Add timeout to force reset isGenerating after 30 seconds
+    const timeoutId = setTimeout(() => {
+      console.log('⏰ AI generation timeout - forcing reset')
+      setIsGenerating(false)
+    }, 30000)
 
     try {
       const response = await fetch('/api/generate-viral', {
@@ -174,6 +180,7 @@ export default function ScreenshotToolPage() {
       console.error('❌ Error generating message:', error)
       // Keep the basic message we already set
     } finally {
+      clearTimeout(timeoutId) // Clear the timeout
       console.log('🏁 Message generation complete')
       setIsGenerating(false)
     }
@@ -190,13 +197,19 @@ export default function ScreenshotToolPage() {
       const fallbackMessage = `Just discovered ${product.brand} ${product.name_english} is ${product.savings_percentage}% cheaper in Seoul! 🤯`
       setCustomMessage(fallbackMessage)
 
-      // Generate AI message without blocking the UI (happens in background)
+      // Cancel any ongoing generation and start new one immediately
+      if (isGenerating) {
+        console.log('🔄 Cancelling previous generation for new product')
+        setIsGenerating(false)
+      }
+
+      // Generate AI message for new product (force generation even if one was running)
       setTimeout(() => {
-        generateMessage(product).catch((error) => {
+        generateMessage(product, true).catch((error) => {
           console.error('❌ Message generation failed for product change:', error)
           // Keep the fallback message if AI fails
         })
-      }, 100) // Small delay to ensure UI update happens first
+      }, 50) // Small delay to ensure state updates
     } else {
       console.warn('⚠️ Product not found:', productId)
     }
@@ -204,7 +217,8 @@ export default function ScreenshotToolPage() {
 
   const regenerateMessage = () => {
     if (selectedProduct) {
-      generateMessage(selectedProduct)
+      console.log('🔄 Force regenerating message for:', selectedProduct.brand, selectedProduct.name_english)
+      generateMessage(selectedProduct, true) // Force regeneration even if one is running
     }
   }
 
@@ -269,7 +283,6 @@ export default function ScreenshotToolPage() {
                     value={selectedProduct?.id || ''}
                     onChange={(e) => handleProductChange(e.target.value)}
                     className="w-full bg-black border border-gray-700 px-4 py-3 focus:border-yellow-500 focus:outline-none"
-                    disabled={isGenerating}
                   >
                     {products.map((product) => (
                       <option key={product.id} value={product.id}>
@@ -294,7 +307,7 @@ export default function ScreenshotToolPage() {
                   />
                   <button
                     onClick={regenerateMessage}
-                    disabled={isGenerating || !selectedProduct}
+                    disabled={!selectedProduct}
                     className="w-full bg-gray-800 text-white py-3 hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isGenerating ? 'GENERATING WITH AI...' : 'REGENERATE WITH AI'}
