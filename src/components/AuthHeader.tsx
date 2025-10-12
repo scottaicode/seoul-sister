@@ -110,7 +110,7 @@ export default function AuthHeader() {
             ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="border-2 border-white text-white px-6 py-2 rounded-lg font-semibold hover:bg-white hover:text-black transition-all duration-200"
+                className="border-2 border-amber-400 text-amber-400 px-6 py-2 rounded-lg font-semibold hover:bg-amber-400 hover:text-black transition-all duration-200"
               >
                 JOIN
               </button>
