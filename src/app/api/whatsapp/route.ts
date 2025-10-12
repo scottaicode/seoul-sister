@@ -92,6 +92,23 @@ export async function POST(request: Request) {
 async function handleTextMessage(text: string, from: string): Promise<string> {
   const lowerText = text.toLowerCase()
 
+  // Order processing commands
+  if (lowerText === 'order' || lowerText.includes('i want to order')) {
+    return await handleOrderInitiation(from)
+  }
+
+  if (lowerText === 'confirm' || lowerText.includes('confirm order')) {
+    return await handleOrderConfirmation(from)
+  }
+
+  if (lowerText === 'cancel' || lowerText.includes('cancel order')) {
+    return await handleOrderCancellation(from)
+  }
+
+  if (lowerText.includes('payment') || lowerText.includes('add card')) {
+    return await handlePaymentSetup(from)
+  }
+
   // Quick commands
   if (lowerText.includes('reorder')) {
     return await handleReorder(from)
@@ -500,4 +517,173 @@ async function downloadWhatsAppImage(mediaId: string): Promise<string> {
   // In production, use WhatsApp API to download media
   // For now, return a placeholder
   return 'https://images.unsplash.com/photo-1598440947619-2c35fc9aa908'
+}
+
+// Order processing functions
+
+async function handleOrderInitiation(from: string): Promise<string> {
+  // Get the most recent product they inquired about
+  const { data: recentInterest } = await supabase
+    .from('product_interests')
+    .select('*')
+    .eq('phone_number', from)
+    .order('timestamp', { ascending: false })
+    .limit(1)
+    .single()
+
+  if (!recentInterest) {
+    return "🛍️ **Ready to order?**\n\n" +
+           "First, send me a photo of the product you want or tell me the product name!\n\n" +
+           "I'll find the Seoul price and help you order it 📸"
+  }
+
+  // Check if they have a saved payment method
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('phone', from)
+    .single()
+
+  const hasPaymentMethod = profile?.stripe_customer_id
+
+  const productInfo = `${recentInterest.product_brand} - ${recentInterest.product_name}`
+
+  if (!hasPaymentMethod) {
+    return `🛒 **Order: ${productInfo}**\n\n` +
+           "To complete your order, I need to set up your payment method.\n\n" +
+           "Visit this secure link to add your card:\n" +
+           `${process.env.NEXT_PUBLIC_BASE_URL}/payment-setup?phone=${encodeURIComponent(from)}\n\n` +
+           "Once your payment is set up, reply 'CONFIRM' to place your order! 💳"
+  }
+
+  // Store pending order context
+  await supabase
+    .from('conversation_context')
+    .upsert({
+      phone_number: from,
+      context_type: 'pending_order',
+      context_data: {
+        product_brand: recentInterest.product_brand,
+        product_name: recentInterest.product_name,
+        category: recentInterest.category
+      },
+      expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 min expiry
+    })
+
+  return `🛒 **Ready to order: ${productInfo}**\n\n` +
+         "Reply 'CONFIRM' to place your order with your saved payment method.\n\n" +
+         "Your order will be processed immediately and shipped from Seoul! 🇰🇷✨"
+}
+
+async function handleOrderConfirmation(from: string): Promise<string> {
+  try {
+    // Get pending order context
+    const { data: context } = await supabase
+      .from('conversation_context')
+      .select('*')
+      .eq('phone_number', from)
+      .eq('context_type', 'pending_order')
+      .single()
+
+    if (!context) {
+      return "❌ **No pending order found**\n\n" +
+             "Send me a product photo first, then reply 'ORDER' to start! 📸"
+    }
+
+    // Find the product in our database
+    const { data: product } = await supabase
+      .from('products')
+      .select('*')
+      .eq('brand', context.context_data.product_brand)
+      .ilike('name_english', `%${context.context_data.product_name}%`)
+      .single()
+
+    if (!product) {
+      return "❌ **Product not found**\n\n" +
+             "Let me help you find this product. Send me a photo and I'll get the latest Seoul pricing! 📸"
+    }
+
+    // Create the order via our API
+    const orderResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phoneNumber: from,
+        productId: product.id
+      })
+    })
+
+    const orderData = await orderResponse.json()
+
+    if (!orderData.success) {
+      if (orderData.error.includes('payment')) {
+        return "💳 **Payment Required**\n\n" +
+               "I need to set up your payment method first.\n\n" +
+               "Visit this secure link to add your card:\n" +
+               `${process.env.NEXT_PUBLIC_BASE_URL}/payment-setup?phone=${encodeURIComponent(from)}\n\n` +
+               "Then reply 'CONFIRM' again to complete your order!"
+      }
+
+      return `❌ **Order Failed**\n\n${orderData.error}\n\nPlease try again or contact support.`
+    }
+
+    // Clear the pending order context
+    await supabase
+      .from('conversation_context')
+      .delete()
+      .eq('phone_number', from)
+      .eq('context_type', 'pending_order')
+
+    const order = orderData.order
+    const isPaymentSuccessful = order.payment_status === 'paid'
+
+    let message = `🎉 **Order Confirmed!**\n\n`
+    message += `📦 **${order.product_name}**\n`
+    message += `💰 **Total: $${order.total_amount}**\n\n`
+
+    if (isPaymentSuccessful) {
+      message += `✅ Payment processed successfully!\n`
+      message += `🚚 Your order will ship from Seoul within 24-48 hours\n`
+      message += `📱 Tracking info will be sent to this number\n\n`
+      message += `**Order ID:** ${order.id}\n\n`
+      message += `Thanks for choosing Seoul Sister! 🇰🇷✨`
+    } else {
+      message += `⏳ Order created - processing payment...\n`
+      message += `💳 We'll charge your saved payment method shortly\n`
+      message += `📱 You'll receive confirmation once payment is complete\n\n`
+      message += `**Order ID:** ${order.id}`
+    }
+
+    return message
+
+  } catch (error) {
+    console.error('Order confirmation error:', error)
+    return "❌ **Order processing failed**\n\n" +
+           "Something went wrong. Please try again or contact support."
+  }
+}
+
+async function handleOrderCancellation(from: string): Promise<string> {
+  // Clear any pending order context
+  await supabase
+    .from('conversation_context')
+    .delete()
+    .eq('phone_number', from)
+    .eq('context_type', 'pending_order')
+
+  return "❌ **Order cancelled**\n\n" +
+         "No worries! Send me another product photo when you're ready to shop 📸\n\n" +
+         "I'm here whenever you need authentic K-beauty at Seoul prices! 🇰🇷✨"
+}
+
+async function handlePaymentSetup(from: string): Promise<string> {
+  const paymentSetupUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/payment-setup?phone=${encodeURIComponent(from)}`
+
+  return "💳 **Payment Setup**\n\n" +
+         "Click the secure link below to add your payment method:\n\n" +
+         `${paymentSetupUrl}\n\n` +
+         "✅ Your card info is encrypted and secure\n" +
+         "🚀 Enable instant ordering for future purchases\n" +
+         "💰 Automatically charged Seoul prices\n\n" +
+         "Reply 'ORDER' after setup to start shopping!"
 }
