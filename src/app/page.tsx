@@ -197,7 +197,7 @@ export default function HomePage() {
                     US RETAIL ${product.us_price}
                   </p>
                   <p className="price-seoul text-2xl">
-                    ${product.seoul_price + 25}
+                    ${product.seoul_price.toFixed(2)}
                   </p>
                 </div>
 
