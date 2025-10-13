@@ -76,61 +76,61 @@ export default function AuthHeader() {
               <div className="relative">
                 <button
                   onClick={() => setShowDropdown(!showDropdown)}
-                  className="flex items-center space-x-2 bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg transition-colors"
+                  className="flex items-center space-x-2 bg-luxury-charcoal/50 hover:bg-luxury-charcoal/70 border border-luxury-gold/30 px-3 py-2 rounded-lg transition-colors backdrop-blur-sm"
                 >
-                  <div className="w-8 h-8 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full flex items-center justify-center">
-                    <User size={16} className="text-white" />
+                  <div className="w-8 h-8 bg-luxury-gold rounded-full flex items-center justify-center">
+                    <User size={16} className="text-black" />
                   </div>
-                  <span className="text-sm font-medium">
+                  <span className="text-sm font-medium text-white tracking-wide">
                     {userProfile?.name || user.email?.split('@')[0]}
                   </span>
-                  <ChevronDown size={16} />
+                  <ChevronDown size={16} className="text-gray-300" />
                 </button>
 
                 {showDropdown && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                    <div className="px-4 py-2 border-b border-gray-100">
-                      <p className="text-sm font-medium text-gray-900">
+                  <div className="absolute right-0 mt-2 w-64 bg-luxury-charcoal rounded-lg shadow-lg border border-luxury-gold/30 py-2 z-50 backdrop-blur-sm">
+                    <div className="px-4 py-2 border-b border-luxury-gold/20">
+                      <p className="text-sm font-medium text-white">
                         {userProfile?.name || 'User'}
                       </p>
-                      <p className="text-xs text-gray-500">{user.email}</p>
+                      <p className="text-xs text-gray-400">{user.email}</p>
                     </div>
 
                     <div className="py-1">
                       <a
-                        href="#skin-analysis"
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        href="/skin-profile"
+                        className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-luxury-gold/20 hover:text-luxury-gold transition-colors"
                       >
                         <Camera size={16} className="mr-3" />
-                        Skin Analysis
+                        Skin Profile
                       </a>
                       <a
-                        href="#recommendations"
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        href="/personalized-dashboard"
+                        className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-luxury-gold/20 hover:text-luxury-gold transition-colors"
                       >
                         <Heart size={16} className="mr-3" />
-                        My Recommendations
+                        AI Beauty Hub
                       </a>
                       <a
-                        href="#orders"
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        href="/"
+                        className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-luxury-gold/20 hover:text-luxury-gold transition-colors"
                       >
                         <ShoppingBag size={16} className="mr-3" />
-                        Orders
+                        Shop Products
                       </a>
                       <a
-                        href="#profile"
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        href="/admin/ai-features"
+                        className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-luxury-gold/20 hover:text-luxury-gold transition-colors"
                       >
                         <Settings size={16} className="mr-3" />
-                        Profile Settings
+                        Admin Portal
                       </a>
                     </div>
 
                     <div className="border-t border-gray-100 py-1">
                       <button
                         onClick={signOut}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-300 hover:bg-luxury-gold/20 hover:text-luxury-gold transition-colors"
                       >
                         <LogOut size={16} className="mr-3" />
                         Sign Out
