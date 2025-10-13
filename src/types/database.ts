@@ -289,6 +289,145 @@ export interface Database {
           created_at?: string
         }
       }
+      user_skin_profiles: {
+        Row: {
+          id: string
+          whatsapp_number: string
+          current_skin_type: string | null
+          skin_concerns: string[]
+          preferred_categories: string[]
+          last_analysis_date: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          whatsapp_number: string
+          current_skin_type?: string | null
+          skin_concerns?: string[]
+          preferred_categories?: string[]
+          last_analysis_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          whatsapp_number?: string
+          current_skin_type?: string | null
+          skin_concerns?: string[]
+          preferred_categories?: string[]
+          last_analysis_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      conversation_context: {
+        Row: {
+          id: string
+          phone_number: string
+          context_type: string
+          context_data: any | null
+          expires_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          phone_number: string
+          context_type: string
+          context_data?: any | null
+          expires_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          phone_number?: string
+          context_type?: string
+          context_data?: any | null
+          expires_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      product_interests: {
+        Row: {
+          id: string
+          phone_number: string
+          product_brand: string | null
+          product_name: string | null
+          category: string | null
+          timestamp: string
+        }
+        Insert: {
+          id?: string
+          phone_number: string
+          product_brand?: string | null
+          product_name?: string | null
+          category?: string | null
+          timestamp?: string
+        }
+        Update: {
+          id?: string
+          phone_number?: string
+          product_brand?: string | null
+          product_name?: string | null
+          category?: string | null
+          timestamp?: string
+        }
+      }
+      whatsapp_conversations: {
+        Row: {
+          id: string
+          phone_number: string
+          message_type: string | null
+          message_content: any | null
+          timestamp: string
+        }
+        Insert: {
+          id?: string
+          phone_number: string
+          message_type?: string | null
+          message_content?: any | null
+          timestamp?: string
+        }
+        Update: {
+          id?: string
+          phone_number?: string
+          message_type?: string | null
+          message_content?: any | null
+          timestamp?: string
+        }
+      }
+      whatsapp_outbound_queue: {
+        Row: {
+          id: string
+          to: string
+          message: string
+          status: string
+          attempts: number
+          last_attempt: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          to: string
+          message: string
+          status?: string
+          attempts?: number
+          last_attempt?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          to?: string
+          message?: string
+          status?: string
+          attempts?: number
+          last_attempt?: string | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

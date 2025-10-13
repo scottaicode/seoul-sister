@@ -522,6 +522,64 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* AI Features Section */}
+      <section className="section-dark py-32 border-t border-luxury-charcoal">
+        <div className="luxury-container">
+          <div className="text-center mb-20">
+            <p className="text-caption mb-4 text-luxury-gold">AI-POWERED BEAUTY</p>
+            <h2 className="heading-section text-4xl md:text-6xl mb-8 font-light">
+              Personalized Intelligence
+            </h2>
+            <div className="gold-line mx-auto mb-8"></div>
+            <p className="text-xl font-light mb-12 max-w-3xl mx-auto text-gray-300">
+              Get personalized Korean skincare recommendations based on your unique skin analysis.
+              Our AI matches you with products that work for your specific skin type and concerns.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
+            <div className="bg-luxury-charcoal/30 p-8 rounded-lg border border-luxury-charcoal">
+              <div className="text-4xl mb-4">🔬</div>
+              <h3 className="text-xl font-semibold mb-4 text-luxury-gold">AI Skin Analysis</h3>
+              <p className="text-gray-300 mb-6">
+                Upload your photo for advanced AI-powered skin analysis. Get detailed insights about your skin type, concerns, and perfect product matches.
+              </p>
+              <Link href="/skin-analysis" className="inline-block">
+                <button className="btn-luxury text-sm">START ANALYSIS</button>
+              </Link>
+            </div>
+
+            <div className="bg-luxury-charcoal/30 p-8 rounded-lg border border-luxury-charcoal">
+              <div className="text-4xl mb-4">👤</div>
+              <h3 className="text-xl font-semibold mb-4 text-luxury-gold">Personal Profile</h3>
+              <p className="text-gray-300 mb-6">
+                Create your detailed skin profile with concerns, preferences, and goals. Get increasingly accurate recommendations over time.
+              </p>
+              <Link href="/skin-profile" className="inline-block">
+                <button className="btn-luxury text-sm">CREATE PROFILE</button>
+              </Link>
+            </div>
+
+            <div className="bg-luxury-charcoal/30 p-8 rounded-lg border border-luxury-charcoal">
+              <div className="text-4xl mb-4">✨</div>
+              <h3 className="text-xl font-semibold mb-4 text-luxury-gold">Smart Dashboard</h3>
+              <p className="text-gray-300 mb-6">
+                Access your personalized beauty hub with AI recommendations, ingredient analysis, and curated product matches.
+              </p>
+              <Link href="/personalized-dashboard" className="inline-block">
+                <button className="btn-luxury text-sm">VIEW DASHBOARD</button>
+              </Link>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <p className="text-gray-400 text-sm">
+              Powered by Claude AI • Personalized for Your Unique Skin
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* FAQ Section - Minimal */}
       <section className="section-light py-32">
         <div className="luxury-container">
@@ -645,11 +703,11 @@ export default function HomePage() {
         <div className="luxury-container">
           <div className="grid md:grid-cols-4 gap-12">
             <div>
-              <h3 className="text-caption mb-6">COLLECTION</h3>
+              <h3 className="text-caption mb-6">AI FEATURES</h3>
               <div className="space-y-3">
-                <Link href="/skincare" className="link-luxury block text-sm">Skincare</Link>
-                <Link href="/makeup" className="link-luxury block text-sm">Makeup</Link>
-                <Link href="/masks" className="link-luxury block text-sm">Masks</Link>
+                <Link href="/skin-analysis" className="link-luxury block text-sm">Skin Analysis</Link>
+                <Link href="/personalized-dashboard" className="link-luxury block text-sm">Personal Dashboard</Link>
+                <Link href="/skin-profile" className="link-luxury block text-sm">Skin Profile</Link>
               </div>
             </div>
 
