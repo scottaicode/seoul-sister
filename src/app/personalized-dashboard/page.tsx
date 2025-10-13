@@ -114,7 +114,7 @@ export default function PersonalizedDashboard() {
                 <button
                   onClick={() => generateCustomRecommendations()}
                   disabled={recsLoading || !hasProfile}
-                  className="px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-luxury-gold text-black rounded-lg hover:bg-luxury-gold/90 disabled:opacity-50 disabled:cursor-not-allowed font-medium tracking-wide"
                 >
                   {recsLoading ? 'Generating...' : 'Refresh Recommendations'}
                 </button>
@@ -131,7 +131,7 @@ export default function PersonalizedDashboard() {
                   </p>
                   <button
                     onClick={() => setActiveTab('profile')}
-                    className="px-6 py-3 bg-pink-500 text-white rounded-xl hover:bg-pink-600"
+                    className="px-6 py-3 bg-luxury-gold text-black rounded-xl hover:bg-luxury-gold/90 font-medium tracking-wide"
                   >
                     Create Profile
                   </button>
@@ -146,7 +146,7 @@ export default function PersonalizedDashboard() {
                   {recommendations.map((rec: any) => {
                     const product = rec.product
                     return (
-                      <div key={rec.productId} className="bg-gray-50 rounded-xl p-6 border">
+                      <div key={rec.productId} className="bg-luxury-charcoal/10 rounded-xl p-6 border">
                         {product && (
                           <>
                             <div className="aspect-square bg-luxury-charcoal/20 rounded-lg mb-4 overflow-hidden">
@@ -161,17 +161,17 @@ export default function PersonalizedDashboard() {
                             <h3 className="font-semibold text-white mb-2">{product.name}</h3>
                             <p className="text-sm text-gray-300 mb-2">{product.brand}</p>
                             <div className="flex justify-between items-center mb-3">
-                              <span className="text-pink-600 font-bold">${product.seoul_price}</span>
-                              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                              <span className="text-luxury-gold font-bold">${product.seoul_price}</span>
+                              <span className="text-xs bg-green-900/30 text-green-400 px-2 py-1 rounded border border-green-700/30">
                                 {product.savings_percentage}% savings
                               </span>
                             </div>
                             <div className="space-y-2 mb-4">
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-medium">Match Score:</span>
-                                <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                <div className="flex-1 bg-luxury-charcoal/30 rounded-full h-2">
                                   <div
-                                    className="bg-pink-500 h-2 rounded-full"
+                                    className="bg-luxury-gold h-2 rounded-full"
                                     style={{ width: `${(rec.matchScore || 0) * 100}%` }}
                                   ></div>
                                 </div>
@@ -192,7 +192,7 @@ export default function PersonalizedDashboard() {
                             )}
                             <button
                               onClick={() => handleAnalyzeProduct(product.id)}
-                              className="w-full text-sm bg-purple-100 text-purple-700 py-2 rounded-lg hover:bg-purple-200 transition-colors"
+                              className="w-full text-sm bg-luxury-gold/20 text-luxury-gold py-2 rounded-lg hover:bg-luxury-gold/30 transition-colors border border-luxury-gold/30 font-medium"
                             >
                               Analyze Ingredients
                             </button>
@@ -248,7 +248,7 @@ export default function PersonalizedDashboard() {
               ) : analysis ? (
                 <div className="space-y-6">
                   {analysis.product && (
-                    <div className="bg-gray-50 rounded-xl p-6">
+                    <div className="bg-luxury-charcoal/10 rounded-xl p-6">
                       <h3 className="text-xl font-semibold text-white mb-2">
                         {analysis.product.name}
                       </h3>
@@ -281,7 +281,7 @@ export default function PersonalizedDashboard() {
                   )}
 
                   {analysis.analysis?.summary && (
-                    <div className="bg-gray-50 rounded-xl p-6">
+                    <div className="bg-luxury-charcoal/10 rounded-xl p-6">
                       <h4 className="text-lg font-semibold text-white mb-3">
                         Analysis Summary
                       </h4>
@@ -323,7 +323,7 @@ export default function PersonalizedDashboard() {
             </p>
             <Link
               href="/"
-              className="inline-block px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold rounded-xl hover:from-pink-600 hover:to-purple-600 transition-all shadow-lg"
+              className="inline-block px-8 py-4 bg-luxury-gold text-black font-semibold rounded-xl hover:bg-luxury-gold/90 transition-all shadow-lg tracking-wide"
             >
               Shop Korean Beauty Products
             </Link>
