@@ -751,16 +751,16 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* Floating AI Assistant Button */}
+      {/* Floating AI Assistant Button - Luxury Theme */}
       <div className="fixed bottom-6 right-6 z-50">
         <Link
           href="/personalized-dashboard"
-          className="flex items-center gap-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white px-6 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          className="flex items-center gap-3 bg-gradient-to-r from-luxury-charcoal to-black border border-luxury-gold/30 text-luxury-gold px-6 py-4 rounded-full shadow-2xl hover:shadow-luxury-gold/20 transition-all duration-300 hover:scale-105 backdrop-blur-sm"
         >
-          <div className="text-2xl">🤖</div>
+          <div className="text-2xl">✨</div>
           <div className="hidden md:block">
-            <div className="font-semibold text-sm">AI Beauty Assistant</div>
-            <div className="text-xs opacity-90">Get personalized recommendations</div>
+            <div className="font-semibold text-sm tracking-wide">AI BEAUTY ADVISOR</div>
+            <div className="text-xs opacity-75 font-light">Personalized Intelligence</div>
           </div>
         </Link>
       </div>
