@@ -27,7 +27,7 @@ const config: Config = {
           blue: '#0047A0',
         },
         luxury: {
-          gold: '#FFD700',
+          gold: '#C9A96E',
           charcoal: '#1C1C1E',
           darkCharcoal: '#0A0A0A',
         }
