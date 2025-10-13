@@ -708,6 +708,7 @@ export default function HomePage() {
                 <Link href="/skin-analysis" className="link-luxury block text-sm">Skin Analysis</Link>
                 <Link href="/personalized-dashboard" className="link-luxury block text-sm">Personal Dashboard</Link>
                 <Link href="/skin-profile" className="link-luxury block text-sm">Skin Profile</Link>
+                <Link href="/admin/ai-features" className="link-luxury block text-sm opacity-75">Admin Portal</Link>
               </div>
             </div>
 
@@ -749,6 +750,20 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+
+      {/* Floating AI Assistant Button */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <Link
+          href="/personalized-dashboard"
+          className="flex items-center gap-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white px-6 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+        >
+          <div className="text-2xl">🤖</div>
+          <div className="hidden md:block">
+            <div className="font-semibold text-sm">AI Beauty Assistant</div>
+            <div className="text-xs opacity-90">Get personalized recommendations</div>
+          </div>
+        </Link>
+      </div>
     </main>
   )
 }
