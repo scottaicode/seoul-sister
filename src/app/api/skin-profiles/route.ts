@@ -62,7 +62,9 @@ export async function POST(request: NextRequest) {
         skin_concerns: skinConcerns,
         preferred_categories: preferredCategories,
         last_analysis_date: new Date().toISOString()
-      } as any)
+      } as any, {
+        onConflict: 'whatsapp_number'
+      })
       .select()
       .single()
 

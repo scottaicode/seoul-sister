@@ -17,6 +17,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false)
 
   const supabase = createClient()
 
@@ -87,6 +88,28 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
     }
   }
 
+  const handleResendConfirmation = async () => {
+    if (!email) {
+      setError('Please enter your email address')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+      })
+      if (error) throw error
+      setShowEmailConfirmation(true)
+      setError('')
+    } catch (error: any) {
+      setError(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleGoogleAuth = async () => {
     setLoading(true)
     try {
@@ -131,6 +154,23 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         {error && (
           <div className="bg-red-900/20 border border-red-700 rounded-lg p-3 mb-4">
             <p className="text-red-400 text-sm">{error}</p>
+            {error.includes('Email not confirmed') && (
+              <button
+                onClick={handleResendConfirmation}
+                className="mt-2 text-luxury-gold hover:text-luxury-gold/80 text-sm underline"
+                disabled={loading}
+              >
+                Resend confirmation email
+              </button>
+            )}
+          </div>
+        )}
+
+        {showEmailConfirmation && (
+          <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-3 mb-4">
+            <p className="text-blue-400 text-sm">
+              ✅ Confirmation email sent! Please check your inbox and click the link to verify your account.
+            </p>
           </div>
         )}
 
