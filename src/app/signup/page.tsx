@@ -93,10 +93,10 @@ export default function SignupPage() {
               Seoul Sister
             </Link>
             <h1 className="text-2xl font-bold text-white mt-4 tracking-wide">
-              Join the Revolution
+              Premium Membership
             </h1>
             <p className="text-gray-300 mt-2 font-light">
-              Start saving 40-70% on authentic K-beauty
+              $20/month • 7-day FREE trial • Cancel anytime
             </p>
           </div>
         </div>
@@ -127,7 +127,10 @@ export default function SignupPage() {
         {/* Step 1: Account Information */}
         {step === 1 && (
           <div className="bg-luxury-charcoal/20 rounded-xl p-8 border border-luxury-gold/20 backdrop-blur-sm">
-            <h2 className="text-xl font-semibold mb-6 text-white tracking-wide">Create Your Account</h2>
+            <h2 className="text-xl font-semibold mb-2 text-white tracking-wide">Start Your Free Trial</h2>
+            <p className="text-gray-400 mb-6 text-sm">
+              7 days free, then $20/month. Full access to AI features, personalized recommendations, and Seoul wholesale pricing.
+            </p>
 
             {error && (
               <div className="bg-red-900/20 border border-red-700 text-red-400 px-4 py-3 rounded-lg mb-6">
@@ -230,13 +233,13 @@ export default function SignupPage() {
                 disabled={loading}
                 className="w-full bg-luxury-gold text-black font-semibold py-3 px-6 rounded-lg hover:bg-luxury-gold/90 transition-all disabled:opacity-50 shadow-lg tracking-wide"
               >
-                {loading ? 'Creating Account...' : 'Continue to Payment Setup'}
+                {loading ? 'Creating Account...' : 'Start Free Trial'}
               </button>
             </form>
 
             <p className="text-xs text-gray-400 text-center mt-6">
               By continuing, you agree to our Terms of Service and Privacy Policy.
-              No charges until you place an order.
+              Free for 7 days, then $20/month. Cancel anytime during trial.
             </p>
           </div>
         )}
@@ -244,10 +247,10 @@ export default function SignupPage() {
         {/* Step 2: Payment Method */}
         {step === 2 && userId && (
           <div className="bg-luxury-charcoal/20 rounded-xl p-8 border border-luxury-gold/20 backdrop-blur-sm">
-            <h2 className="text-xl font-semibold mb-6 text-white tracking-wide">Save Payment Method</h2>
+            <h2 className="text-xl font-semibold mb-6 text-white tracking-wide">Setup Payment Method</h2>
             <p className="text-gray-300 mb-6 font-light">
-              Securely save your payment method for seamless WhatsApp ordering.
-              You'll only be charged when you place an order.
+              Securely save your payment method for your subscription.
+              Your 7-day free trial starts now. You'll be charged $20/month after the trial ends.
             </p>
 
             <Elements stripe={stripePromise}>
@@ -273,16 +276,16 @@ export default function SignupPage() {
             </h2>
 
             <p className="text-gray-300 mb-8 font-light">
-              You're all set! Now you can start ordering authentic K-beauty products at Seoul prices through WhatsApp.
+              Your premium membership is active! Enjoy your 7-day free trial with full access to AI skin analysis, personalized recommendations, and Seoul wholesale pricing.
             </p>
 
             <div className="bg-luxury-gold/10 border border-luxury-gold/30 text-luxury-gold p-6 rounded-lg mb-8">
-              <h3 className="font-semibold mb-2">Next Steps:</h3>
+              <h3 className="font-semibold mb-2">Your Premium Membership Includes:</h3>
               <ol className="text-left space-y-2 text-sm">
-                <li>1. Save our WhatsApp number: +1 (555) SEOUL-1</li>
-                <li>2. Send us a screenshot or description of products you want</li>
-                <li>3. We'll find them in Seoul and quote you the real price</li>
-                <li>4. Confirm your order and we'll charge your saved payment method</li>
+                <li>1. ✨ AI-powered skin analysis and personalized recommendations</li>
+                <li>2. 📱 WhatsApp ordering with Seoul wholesale pricing (+1 555-SEOUL-1)</li>
+                <li>3. 🎯 Ingredient compatibility analysis and allergen detection</li>
+                <li>4. 🔄 Continuous updates on trending Korean beauty products</li>
               </ol>
             </div>
 

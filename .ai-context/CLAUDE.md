@@ -54,9 +54,10 @@ seoul-sister/
 - **Community**: Join 10,000+ Seoul Sisters exposing the scam
 
 ### Revenue Model
-- **Primary**: 15-20% markup on Seoul street prices + shipping
+- **Primary**: $20/month premium membership with 7-day free trial
+- **Included**: AI skin analysis, personalized recommendations, Seoul wholesale pricing access, WhatsApp ordering
 - **Secondary**: Affiliate commissions from influencer referrals
-- **Growth**: Viral TikTok/Instagram content driving organic acquisition
+- **Growth**: Viral TikTok/Instagram content driving premium subscriptions
 
 ## Technical Implementation
 
@@ -151,10 +152,11 @@ seoul-sister/
 - **Press Coverage**: Beauty blog and news mentions
 
 ### Business KPIs
-- **Monthly Revenue**: $100K month 1, $500K month 6
-- **Customer Acquisition Cost**: <$20 through viral growth
-- **Average Order Value**: $150-200 per Seoul order
-- **Customer Lifetime Value**: >$500 through repeat orders
+- **Monthly Recurring Revenue**: Target 500+ subscribers ($10K MRR) month 1, 2500+ ($50K MRR) month 6
+- **Customer Acquisition Cost**: <$15 through viral growth and 7-day free trial
+- **Monthly Churn Rate**: <5% with high-value AI features and Seoul access
+- **Customer Lifetime Value**: >$240 (12 months average retention x $20/mo)
+- **Trial Conversion Rate**: >40% free trial to paid conversion
 - **Net Promoter Score**: >70 likelihood to recommend
 
 ## Content Strategy

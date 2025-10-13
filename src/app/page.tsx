@@ -153,90 +153,61 @@ export default function HomePage() {
               without the <span style={{ color: '#d4a574' }}>300% markup</span>
             </p>
 
-            <div className="flex flex-col lg:flex-row gap-8 justify-center items-center max-w-4xl mx-auto">
-              {/* Premium Insider Access */}
-              <div className="text-center">
-                <Link href="/signup">
-                  <button style={{
-                    background: '#d4a574',
-                    color: '#000000',
-                    border: 'none',
-                    padding: '16px 48px',
-                    fontSize: '12px',
-                    fontFamily: 'Inter, sans-serif',
-                    fontWeight: '500',
-                    letterSpacing: '0.2em',
-                    textTransform: 'uppercase',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    width: '280px'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#b8956a'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#d4a574'
-                  }}>
-                    INSIDER ACCESS
-                  </button>
-                </Link>
-                <p style={{
+            {/* Single Premium Membership CTA */}
+            <div className="text-center max-w-2xl mx-auto">
+              <Link href="/signup">
+                <button style={{
+                  background: '#d4a574',
+                  color: '#000000',
+                  border: 'none',
+                  padding: '20px 60px',
+                  fontSize: '14px',
                   fontFamily: 'Inter, sans-serif',
-                  fontSize: '12px',
-                  color: '#888888',
-                  marginTop: '12px',
-                  lineHeight: '1.5',
-                  fontWeight: '300'
+                  fontWeight: '600',
+                  letterSpacing: '0.2em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  borderRadius: '4px',
+                  boxShadow: '0 8px 32px rgba(212, 165, 116, 0.3)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#b8956a'
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                  e.currentTarget.style.boxShadow = '0 12px 48px rgba(212, 165, 116, 0.4)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#d4a574'
+                  e.currentTarget.style.transform = 'translateY(0px)'
+                  e.currentTarget.style.boxShadow = '0 8px 32px rgba(212, 165, 116, 0.3)'
                 }}>
-                  Premium membership with payment setup<br/>
-                  for wholesale WhatsApp ordering
-                </p>
-              </div>
-
-              {/* Free AI Features Access */}
-              <div className="text-center">
-                <button
-                  style={{
-                    background: 'transparent',
-                    color: '#d4a574',
-                    border: '1px solid #d4a574',
-                    padding: '16px 48px',
-                    fontSize: '12px',
-                    fontFamily: 'Inter, sans-serif',
-                    fontWeight: '400',
-                    letterSpacing: '0.2em',
-                    textTransform: 'uppercase',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    width: '280px'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#d4a574'
-                    e.currentTarget.style.color = '#000000'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = '#d4a574'
-                  }}
-                  onClick={() => {
-                    const element = document.querySelector('.section-dark');
-                    if (element) {
-                      element.scrollIntoView({ behavior: 'smooth' });
-                    }
-                  }}
-                >
-                  DISCOVER MORE
+                  JOIN SEOUL SISTER
                 </button>
+              </Link>
+
+              <div style={{
+                marginTop: '24px',
+                textAlign: 'center'
+              }}>
                 <p style={{
                   fontFamily: 'Inter, sans-serif',
-                  fontSize: '12px',
-                  color: '#888888',
-                  marginTop: '12px',
-                  lineHeight: '1.5',
-                  fontWeight: '300'
+                  fontSize: '18px',
+                  color: '#d4a574',
+                  marginBottom: '8px',
+                  fontWeight: '500'
                 }}>
-                  Browse collection and explore<br/>
-                  free AI skin analysis features
+                  $20/month • 7-day FREE trial
+                </p>
+                <p style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '14px',
+                  color: '#888888',
+                  lineHeight: '1.6',
+                  fontWeight: '300',
+                  maxWidth: '480px',
+                  margin: '0 auto'
+                }}>
+                  AI skin analysis • Personalized recommendations • Wholesale Seoul pricing • WhatsApp ordering • Cancel anytime
                 </p>
               </div>
             </div>
@@ -642,15 +613,15 @@ export default function HomePage() {
             <div className="faq-item bg-white border border-gray-200 transition-all duration-300 hover:border-luxury-gold">
               <button className="w-full text-left p-8 focus:outline-none">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-light text-luxury-black">What's included in the $25 service fee?</h3>
+                  <h3 className="text-lg font-light text-luxury-black">What's included in the $20/month membership?</h3>
                   <span className="text-luxury-gold text-2xl">+</span>
                 </div>
               </button>
               <div className="px-8 pb-8">
                 <p className="text-luxury-charcoal leading-relaxed">
-                  Our flat $25 fee covers Seoul sourcing, quality verification, luxury packaging,
-                  international shipping with tracking, and customs handling. No hidden fees,
-                  no percentage markups - just transparent pricing.
+                  Your premium membership includes AI-powered skin analysis, personalized K-beauty recommendations,
+                  ingredient compatibility checking, access to Seoul wholesale pricing, WhatsApp ordering service,
+                  and continuous updates on trending Korean beauty products.
                 </p>
               </div>
             </div>
@@ -706,25 +677,33 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Final CTA - Powerful Simplicity */}
+      {/* Final CTA - Premium Membership */}
       <section className="section-dark py-32 border-t border-luxury-charcoal">
         <div className="luxury-container text-center">
           <h2 className="heading-section text-5xl md:text-7xl mb-8 font-light">
             Join Seoul Sister
           </h2>
-          <p className="text-xl font-light mb-12 max-w-2xl mx-auto">
-            Exclusive access to authentic Korean beauty at insider prices.
-            No markup. No compromise.
+          <p className="text-xl font-light mb-8 max-w-2xl mx-auto">
+            Premium membership combining AI-powered personalization with authentic Seoul wholesale access.
           </p>
+
+          <div className="mb-8">
+            <p className="text-2xl font-light text-luxury-gold mb-2">
+              $20/month with 7-day FREE trial
+            </p>
+            <p className="text-gray-400">
+              Cancel anytime • No hidden fees • Full feature access during trial
+            </p>
+          </div>
 
           <Link href="/signup">
             <button className="btn-luxury-solid text-base">
-              REQUEST INSIDER ACCESS
+              START FREE TRIAL
             </button>
           </Link>
 
           <p className="text-caption mt-8">
-            LIMITED AVAILABILITY · INVITATION ONLY
+            AI ANALYSIS • PERSONALIZED RECOMMENDATIONS • SEOUL PRICING
           </p>
         </div>
       </section>

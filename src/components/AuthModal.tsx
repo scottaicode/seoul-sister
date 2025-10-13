@@ -152,14 +152,19 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
         <div className="text-center mb-8">
           <h2 className="text-3xl font-light text-white mb-2 tracking-wide">
-            {isSignUp ? 'Join Seoul Sister' : 'Welcome Back'}
+            {isSignUp ? 'Start Your Premium Trial' : 'Welcome Back'}
           </h2>
-          <p className="text-gray-400">
+          <p className="text-gray-400 mb-2">
             {isSignUp
-              ? 'Create your free account to access AI skin analysis, personalized recommendations, and beauty insights'
-              : 'Sign in to access your personalized skin analysis and AI beauty recommendations'
+              ? '7 days free, then $20/month for full access to AI-powered skin analysis, personalized K-beauty recommendations, and Seoul wholesale pricing'
+              : 'Sign in to access your premium Seoul Sister membership features'
             }
           </p>
+          {isSignUp && (
+            <p className="text-luxury-gold text-sm font-medium">
+              Cancel anytime during your free trial
+            </p>
+          )}
         </div>
 
         {error && (
@@ -245,7 +250,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
             disabled={loading}
             className="w-full bg-luxury-gold text-black py-3 rounded-lg font-semibold hover:bg-luxury-gold/90 transition-all duration-200 disabled:opacity-50 tracking-wide shadow-lg"
           >
-            {loading ? 'Loading...' : isSignUp ? 'Create Account' : 'Sign In'}
+            {loading ? 'Loading...' : isSignUp ? 'Start Free Trial' : 'Sign In'}
           </button>
         </form>
 
@@ -278,8 +283,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
             className="text-luxury-gold hover:text-luxury-gold/80 font-medium tracking-wide"
           >
             {isSignUp
-              ? 'Already have an account? Sign in'
-              : "Don't have an account? Sign up"
+              ? 'Already have a premium membership? Sign in'
+              : "Don't have a membership? Start free trial"
             }
           </button>
         </div>

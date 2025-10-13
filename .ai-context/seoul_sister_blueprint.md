@@ -236,9 +236,10 @@ This design system is **LOCKED** and should not be deviated from. Any new featur
 3. **Tertiary**: Build exclusive community of Seoul Sisters
 
 ### Pricing Strategy
-- **Service Fee**: $25 flat fee per order
-- **Premium Membership**: Future subscription tiers
-- **Competitive Advantage**: Seoul wholesale + $25 still beats US retail by 50-70%
+- **Premium Membership**: $20/month subscription with 7-day free trial
+- **Value Included**: AI skin analysis, personalized recommendations, wholesale Seoul pricing access, WhatsApp ordering
+- **Competitive Advantage**: $20/mo + Seoul wholesale prices still beats US retail by 50-70%
+- **Trial Period**: 7 days free, then $20/mo recurring unless cancelled
 
 ---
 
