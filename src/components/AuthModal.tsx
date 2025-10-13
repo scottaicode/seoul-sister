@@ -156,8 +156,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
           </h2>
           <p className="text-gray-400">
             {isSignUp
-              ? 'Create your account to get personalized K-beauty recommendations'
-              : 'Sign in to access your personalized skin analysis'
+              ? 'Create your free account to access AI skin analysis, personalized recommendations, and beauty insights'
+              : 'Sign in to access your personalized skin analysis and AI beauty recommendations'
             }
           </p>
         </div>

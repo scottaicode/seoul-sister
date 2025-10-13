@@ -153,61 +153,92 @@ export default function HomePage() {
               without the <span style={{ color: '#d4a574' }}>300% markup</span>
             </p>
 
-            <div className="flex gap-6 justify-center">
-              <Link href="/signup">
-                <button style={{
-                  background: '#d4a574',
-                  color: '#000000',
-                  border: 'none',
-                  padding: '14px 40px',
-                  fontSize: '12px',
+            <div className="flex flex-col lg:flex-row gap-8 justify-center items-center max-w-4xl mx-auto">
+              {/* Premium Insider Access */}
+              <div className="text-center">
+                <Link href="/signup">
+                  <button style={{
+                    background: '#d4a574',
+                    color: '#000000',
+                    border: 'none',
+                    padding: '16px 48px',
+                    fontSize: '12px',
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: '500',
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    width: '280px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#b8956a'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#d4a574'
+                  }}>
+                    INSIDER ACCESS
+                  </button>
+                </Link>
+                <p style={{
                   fontFamily: 'Inter, sans-serif',
-                  fontWeight: '500',
-                  letterSpacing: '0.2em',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#b8956a'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#d4a574'
+                  fontSize: '12px',
+                  color: '#888888',
+                  marginTop: '12px',
+                  lineHeight: '1.5',
+                  fontWeight: '300'
                 }}>
-                  INSIDER ACCESS
+                  Premium membership with payment setup<br/>
+                  for wholesale WhatsApp ordering
+                </p>
+              </div>
+
+              {/* Free AI Features Access */}
+              <div className="text-center">
+                <button
+                  style={{
+                    background: 'transparent',
+                    color: '#d4a574',
+                    border: '1px solid #d4a574',
+                    padding: '16px 48px',
+                    fontSize: '12px',
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: '400',
+                    letterSpacing: '0.2em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    width: '280px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#d4a574'
+                    e.currentTarget.style.color = '#000000'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = '#d4a574'
+                  }}
+                  onClick={() => {
+                    const element = document.querySelector('.section-dark');
+                    if (element) {
+                      element.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                >
+                  DISCOVER MORE
                 </button>
-              </Link>
-              <button
-                style={{
-                  background: 'transparent',
-                  color: '#d4a574',
-                  border: '1px solid #d4a574',
-                  padding: '14px 40px',
-                  fontSize: '12px',
+                <p style={{
                   fontFamily: 'Inter, sans-serif',
-                  fontWeight: '400',
-                  letterSpacing: '0.2em',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#d4a574'
-                  e.currentTarget.style.color = '#000000'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.color = '#d4a574'
-                }}
-                onClick={() => {
-                  const element = document.querySelector('.section-dark');
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth' });
-                  }
-                }}
-              >
-                DISCOVER MORE
-              </button>
+                  fontSize: '12px',
+                  color: '#888888',
+                  marginTop: '12px',
+                  lineHeight: '1.5',
+                  fontWeight: '300'
+                }}>
+                  Browse collection and explore<br/>
+                  free AI skin analysis features
+                </p>
+              </div>
             </div>
           </div>
 
