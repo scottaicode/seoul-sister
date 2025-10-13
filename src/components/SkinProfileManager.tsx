@@ -121,7 +121,7 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-2xl p-8 border border-pink-100">
+      <div className="bg-luxury-charcoal/20 rounded-2xl p-8 border border-luxury-gold/20">
         <h2 className="text-2xl font-bold text-white mb-2">
           Your Skin Profile ✨
         </h2>
@@ -154,7 +154,7 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
                     <h3 className="text-lg font-semibold text-white mb-4">
                       🧬 Skin Type
                     </h3>
-                    <div className="text-2xl font-bold text-pink-600 capitalize mb-2">
+                    <div className="text-2xl font-bold text-luxury-gold capitalize mb-2">
                       {(profile as any).current_skin_type || 'Not specified'}
                     </div>
                     <p className="text-gray-400 text-sm">
@@ -172,7 +172,7 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
                         (profile as any).skin_concerns.map((concern: any) => (
                           <span
                             key={concern}
-                            className="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-sm capitalize"
+                            className="px-3 py-1 bg-luxury-gold/20 text-luxury-gold rounded-full text-sm capitalize border border-luxury-gold/30"
                           >
                             {concern.replace('-', ' ')}
                           </span>
@@ -193,7 +193,7 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
                       (profile as any).preferred_categories.map((category: any) => (
                         <span
                           key={category}
-                          className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm capitalize text-center"
+                          className="px-3 py-2 bg-luxury-charcoal/30 text-gray-300 rounded-lg text-sm capitalize text-center border border-luxury-gold/20"
                         >
                           {category.replace('-', ' ')}
                         </span>
