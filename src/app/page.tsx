@@ -97,31 +97,108 @@ export default function HomePage() {
       <section className="hero-section relative flex items-center justify-center">
         <div className="luxury-container text-center z-10 relative">
           <div className="animate-reveal">
-            <p className="text-caption mb-8 text-luxury-gold">
+            <p style={{
+              fontSize: '11px',
+              letterSpacing: '0.2em',
+              textTransform: 'uppercase',
+              color: '#d4a574',
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: '400',
+              marginBottom: '3rem',
+              opacity: '0.9'
+            }}>
               EXCLUSIVE ACCESS TO SEOUL'S BEAUTY SECRETS
             </p>
 
-            <h1 className="heading-hero text-6xl md:text-8xl lg:text-9xl mb-8 font-thin">
+            <h1 style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 'clamp(3.5rem, 8vw, 7rem)',
+              fontWeight: '200',
+              letterSpacing: '0.02em',
+              lineHeight: '1',
+              marginBottom: '2rem',
+              color: '#ffffff'
+            }}>
               Seoul Sister
             </h1>
 
-            <div className="gold-line mx-auto mb-12"></div>
+            <div style={{
+              width: '40px',
+              height: '1px',
+              background: '#d4a574',
+              margin: '3rem auto',
+              opacity: '0.6'
+            }}></div>
 
-            <p className="text-xl md:text-2xl font-light mb-4 max-w-3xl mx-auto leading-relaxed">
+            <p style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '20px',
+              fontWeight: '300',
+              lineHeight: '1.6',
+              marginBottom: '0.5rem',
+              color: '#ffffff',
+              opacity: '0.9'
+            }}>
               The same luxury K-beauty Seoul insiders trust,
             </p>
-            <p className="text-xl md:text-2xl font-light mb-16 max-w-3xl mx-auto leading-relaxed">
-              without the <span className="text-luxury-gold">300% markup</span>
+            <p style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '20px',
+              fontWeight: '300',
+              lineHeight: '1.6',
+              marginBottom: '4rem',
+              color: '#ffffff',
+              opacity: '0.9'
+            }}>
+              without the <span style={{ color: '#d4a574' }}>300% markup</span>
             </p>
 
             <div className="flex gap-6 justify-center">
               <Link href="/signup">
-                <button className="btn-luxury-solid">
+                <button style={{
+                  background: '#d4a574',
+                  color: '#000000',
+                  border: 'none',
+                  padding: '14px 40px',
+                  fontSize: '12px',
+                  fontFamily: 'Inter, sans-serif',
+                  fontWeight: '500',
+                  letterSpacing: '0.2em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#b8956a'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#d4a574'
+                }}>
                   INSIDER ACCESS
                 </button>
               </Link>
               <button
-                className="btn-luxury"
+                style={{
+                  background: 'transparent',
+                  color: '#d4a574',
+                  border: '1px solid #d4a574',
+                  padding: '14px 40px',
+                  fontSize: '12px',
+                  fontFamily: 'Inter, sans-serif',
+                  fontWeight: '400',
+                  letterSpacing: '0.2em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#d4a574'
+                  e.currentTarget.style.color = '#000000'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = '#d4a574'
+                }}
                 onClick={() => {
                   const element = document.querySelector('.section-dark');
                   if (element) {

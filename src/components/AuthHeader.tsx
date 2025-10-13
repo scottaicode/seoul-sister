@@ -15,44 +15,57 @@ export default function AuthHeader() {
   }
 
   return (
-    <header className="bg-black text-white relative z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <header className="absolute top-0 left-0 right-0 z-40 bg-transparent">
+      <div className="max-w-7xl mx-auto px-8 py-6">
+        <div className="flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center">
-            <h1 className="text-2xl font-bold tracking-tight" style={{
+            <h1 className="text-xl tracking-wider" style={{
               color: '#d4a574',
-              fontFamily: 'var(--font-inter)',
-              fontWeight: 'bold'
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: '400',
+              letterSpacing: '0.05em'
             }}>
               Seoul Sister
             </h1>
           </div>
 
           {/* Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <a href="#collection" className="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium" style={{
+          <nav className="hidden md:flex items-center space-x-12">
+            <a href="#collection" className="transition-colors" style={{
               color: '#888888',
-              fontFamily: 'var(--font-inter)',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}>
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '13px',
+              fontWeight: '400',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#d4a574'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}>
               COLLECTION
             </a>
-            <a href="#about" className="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium" style={{
+            <a href="#about" className="transition-colors" style={{
               color: '#888888',
-              fontFamily: 'var(--font-inter)',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}>
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '13px',
+              fontWeight: '400',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#d4a574'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}>
               ABOUT
             </a>
-            <a href="#insider-access" className="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium" style={{
+            <a href="#insider-access" className="transition-colors" style={{
               color: '#888888',
-              fontFamily: 'var(--font-inter)',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}>
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '13px',
+              fontWeight: '400',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#d4a574'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}>
               INSIDER ACCESS
             </a>
           </nav>
@@ -129,16 +142,16 @@ export default function AuthHeader() {
             ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="px-6 py-2 rounded font-medium transition-all duration-200"
+                className="px-8 py-2.5 transition-all duration-300"
                 style={{
                   border: '1px solid #d4a574',
                   color: '#d4a574',
                   backgroundColor: 'transparent',
-                  fontFamily: 'var(--font-inter)',
-                  fontWeight: '500',
-                  borderBottomColor: '#d4a574',
-                  borderBottomStyle: 'solid',
-                  borderBottomWidth: '1px'
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '13px',
+                  fontWeight: '400',
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = '#d4a574'
