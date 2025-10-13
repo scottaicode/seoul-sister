@@ -107,8 +107,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-black border border-gray-800 rounded-2xl p-8 w-full max-w-md relative">
+    <div className="fixed inset-0 bg-black bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gradient-to-b from-luxury-charcoal to-black border border-luxury-gold/30 rounded-2xl p-8 w-full max-w-md relative shadow-2xl shadow-luxury-gold/10">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
@@ -117,7 +117,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         </button>
 
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-white mb-2">
+          <h2 className="text-3xl font-light text-white mb-2 tracking-wide">
             {isSignUp ? 'Join Seoul Sister' : 'Welcome Back'}
           </h2>
           <p className="text-gray-400">
@@ -146,7 +146,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 placeholder-gray-400"
+                  className="w-full pl-10 pr-4 py-3 bg-luxury-charcoal/50 border border-luxury-gold/30 text-white rounded-lg focus:ring-2 focus:ring-luxury-gold focus:border-luxury-gold placeholder-gray-400"
                   placeholder="Your name"
                   required
                 />
@@ -164,7 +164,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 placeholder-gray-400"
+                className="w-full pl-10 pr-4 py-3 bg-luxury-charcoal/50 border border-luxury-gold/30 text-white rounded-lg focus:ring-2 focus:ring-luxury-gold focus:border-luxury-gold placeholder-gray-400"
                 placeholder="your@email.com"
                 required
               />
@@ -181,7 +181,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 placeholder-gray-400"
+                className="w-full pl-10 pr-4 py-3 bg-luxury-charcoal/50 border border-luxury-gold/30 text-white rounded-lg focus:ring-2 focus:ring-luxury-gold focus:border-luxury-gold placeholder-gray-400"
                 placeholder="Password"
                 required
                 minLength={6}
@@ -192,7 +192,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-amber-400 to-orange-500 text-white py-3 rounded-lg font-semibold hover:from-amber-500 hover:to-orange-600 transition-all duration-200 disabled:opacity-50"
+            className="w-full bg-luxury-gold text-black py-3 rounded-lg font-semibold hover:bg-luxury-gold/90 transition-all duration-200 disabled:opacity-50 tracking-wide"
           >
             {loading ? 'Loading...' : isSignUp ? 'Create Account' : 'Sign In'}
           </button>
@@ -200,17 +200,17 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
         <div className="relative mb-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-700" />
+            <div className="w-full border-t border-luxury-gold/20" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-black text-gray-400">Or continue with</span>
+            <span className="px-2 bg-gradient-to-b from-luxury-charcoal to-black text-gray-400 font-light">Or continue with</span>
           </div>
         </div>
 
         <button
           onClick={handleGoogleAuth}
           disabled={loading}
-          className="w-full border border-gray-700 bg-gray-900 text-gray-300 py-3 rounded-lg font-semibold hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full border border-luxury-gold/30 bg-luxury-charcoal/30 text-gray-300 py-3 rounded-lg font-semibold hover:bg-luxury-charcoal/50 hover:border-luxury-gold/50 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 tracking-wide"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -224,7 +224,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         <div className="text-center mt-6">
           <button
             onClick={() => setIsSignUp(!isSignUp)}
-            className="text-amber-400 hover:text-amber-300 font-medium"
+            className="text-luxury-gold hover:text-luxury-gold/80 font-medium tracking-wide"
           >
             {isSignUp
               ? 'Already have an account? Sign in'
