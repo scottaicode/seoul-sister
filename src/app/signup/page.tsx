@@ -73,17 +73,17 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 py-12 px-4">
+    <main className="min-h-screen bg-gradient-to-br from-black via-luxury-charcoal to-black py-12 px-4">
       <div className="max-w-md mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <Link href="/" className="text-2xl font-bold text-gradient">
+          <Link href="/" className="text-2xl font-bold text-white tracking-wide">
             Seoul Sister
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900 mt-4">
+          <h1 className="text-2xl font-bold text-white mt-4 tracking-wide">
             Join the Revolution
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-gray-300 mt-2 font-light">
             Start saving 40-70% on authentic K-beauty
           </p>
         </div>
@@ -92,19 +92,19 @@ export default function SignupPage() {
         <div className="flex items-center justify-center mb-8">
           <div className="flex items-center space-x-4">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-              step >= 1 ? 'bg-korean-red text-white' : 'bg-gray-200 text-gray-600'
+              step >= 1 ? 'bg-luxury-gold text-black' : 'bg-luxury-charcoal text-gray-400'
             }`}>
               1
             </div>
-            <div className={`w-16 h-1 ${step >= 2 ? 'bg-korean-red' : 'bg-gray-200'}`}></div>
+            <div className={`w-16 h-1 ${step >= 2 ? 'bg-luxury-gold' : 'bg-luxury-charcoal'}`}></div>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-              step >= 2 ? 'bg-korean-red text-white' : 'bg-gray-200 text-gray-600'
+              step >= 2 ? 'bg-luxury-gold text-black' : 'bg-luxury-charcoal text-gray-400'
             }`}>
               2
             </div>
-            <div className={`w-16 h-1 ${step >= 3 ? 'bg-korean-red' : 'bg-gray-200'}`}></div>
+            <div className={`w-16 h-1 ${step >= 3 ? 'bg-luxury-gold' : 'bg-luxury-charcoal'}`}></div>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-              step >= 3 ? 'bg-korean-red text-white' : 'bg-gray-200 text-gray-600'
+              step >= 3 ? 'bg-luxury-gold text-black' : 'bg-luxury-charcoal text-gray-400'
             }`}>
               3
             </div>
@@ -113,11 +113,11 @@ export default function SignupPage() {
 
         {/* Step 1: Account Information */}
         {step === 1 && (
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <h2 className="text-xl font-semibold mb-6 text-gray-900">Create Your Account</h2>
+          <div className="bg-luxury-charcoal/20 rounded-xl p-8 border border-luxury-gold/20 backdrop-blur-sm">
+            <h2 className="text-xl font-semibold mb-6 text-white tracking-wide">Create Your Account</h2>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+              <div className="bg-red-900/20 border border-red-700 text-red-400 px-4 py-3 rounded-lg mb-6">
                 {error}
               </div>
             )}
@@ -125,7 +125,7 @@ export default function SignupPage() {
             <form onSubmit={handleAccountCreation} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
                     First Name *
                   </label>
                   <input
@@ -134,11 +134,11 @@ export default function SignupPage() {
                     value={formData.firstName}
                     onChange={handleInputChange}
                     required
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-korean-red focus:border-transparent"
+                    className="w-full p-3 bg-luxury-charcoal/30 border border-luxury-gold/30 rounded-lg focus:ring-2 focus:ring-luxury-gold focus:border-luxury-gold text-white placeholder-gray-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
                     Last Name *
                   </label>
                   <input
@@ -147,7 +147,7 @@ export default function SignupPage() {
                     value={formData.lastName}
                     onChange={handleInputChange}
                     required
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-korean-red focus:border-transparent"
+                    className="w-full p-3 bg-luxury-charcoal/30 border border-luxury-gold/30 rounded-lg focus:ring-2 focus:ring-luxury-gold focus:border-luxury-gold text-white placeholder-gray-400"
                   />
                 </div>
               </div>
@@ -215,13 +215,13 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-korean-gradient text-white font-semibold py-3 px-6 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="w-full bg-luxury-gold text-black font-semibold py-3 px-6 rounded-lg hover:bg-luxury-gold/90 transition-all disabled:opacity-50 shadow-lg tracking-wide"
               >
                 {loading ? 'Creating Account...' : 'Continue to Payment Setup'}
               </button>
             </form>
 
-            <p className="text-xs text-gray-500 text-center mt-6">
+            <p className="text-xs text-gray-400 text-center mt-6">
               By continuing, you agree to our Terms of Service and Privacy Policy.
               No charges until you place an order.
             </p>
@@ -230,9 +230,9 @@ export default function SignupPage() {
 
         {/* Step 2: Payment Method */}
         {step === 2 && userId && (
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <h2 className="text-xl font-semibold mb-6 text-gray-900">Save Payment Method</h2>
-            <p className="text-gray-600 mb-6">
+          <div className="bg-luxury-charcoal/20 rounded-xl p-8 border border-luxury-gold/20 backdrop-blur-sm">
+            <h2 className="text-xl font-semibold mb-6 text-white tracking-wide">Save Payment Method</h2>
+            <p className="text-gray-300 mb-6 font-light">
               Securely save your payment method for seamless WhatsApp ordering.
               You'll only be charged when you place an order.
             </p>
@@ -255,15 +255,15 @@ export default function SignupPage() {
               </svg>
             </div>
 
-            <h2 className="text-2xl font-semibold mb-4 text-gray-900">
+            <h2 className="text-2xl font-semibold mb-4 text-white tracking-wide">
               Welcome to Seoul Sister!
             </h2>
 
-            <p className="text-gray-600 mb-8">
+            <p className="text-gray-300 mb-8 font-light">
               You're all set! Now you can start ordering authentic K-beauty products at Seoul prices through WhatsApp.
             </p>
 
-            <div className="bg-korean-gradient text-white p-6 rounded-lg mb-8">
+            <div className="bg-luxury-gold/10 border border-luxury-gold/30 text-luxury-gold p-6 rounded-lg mb-8">
               <h3 className="font-semibold mb-2">Next Steps:</h3>
               <ol className="text-left space-y-2 text-sm">
                 <li>1. Save our WhatsApp number: +1 (555) SEOUL-1</li>
@@ -285,7 +285,7 @@ export default function SignupPage() {
 
               <Link
                 href="/products"
-                className="block w-full bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold py-3 px-6 rounded-lg transition-colors"
+                className="block w-full bg-luxury-charcoal/30 hover:bg-luxury-charcoal/50 border border-luxury-gold/30 text-gray-300 font-semibold py-3 px-6 rounded-lg transition-colors"
               >
                 Browse Product Catalog
               </Link>
