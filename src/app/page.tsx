@@ -94,8 +94,8 @@ export default function HomePage() {
       <AuthHeader />
 
       {/* Hero Section - Refined Minimalism */}
-      <section className="hero-section flex items-center justify-center relative">
-        <div className="luxury-container text-center z-10">
+      <section className="hero-section relative flex items-center justify-center">
+        <div className="luxury-container text-center z-10 relative">
           <div className="animate-reveal">
             <p className="text-caption mb-8 text-luxury-gold">
               EXCLUSIVE ACCESS TO SEOUL'S BEAUTY SECRETS
@@ -120,7 +120,15 @@ export default function HomePage() {
                   INSIDER ACCESS
                 </button>
               </Link>
-              <button className="btn-luxury">
+              <button
+                className="btn-luxury"
+                onClick={() => {
+                  const element = document.querySelector('.section-dark');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+              >
                 DISCOVER MORE
               </button>
             </div>
