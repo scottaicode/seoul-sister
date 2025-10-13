@@ -129,7 +129,7 @@ export default function SignupPage() {
           <div className="bg-luxury-charcoal/20 rounded-xl p-8 border border-luxury-gold/20 backdrop-blur-sm">
             <h2 className="text-xl font-semibold mb-2 text-white tracking-wide">Start Your Free Trial</h2>
             <p className="text-gray-400 mb-6 text-sm">
-              7 days free, then $20/month. Full access to AI features, personalized recommendations, and Seoul wholesale pricing.
+              7 days free, then $20/month. Full access to advanced skin intelligence, personalized recommendations, and Seoul wholesale pricing.
             </p>
 
             {error && (
@@ -276,13 +276,13 @@ export default function SignupPage() {
             </h2>
 
             <p className="text-gray-300 mb-8 font-light">
-              Your premium membership is active! Enjoy your 7-day free trial with full access to AI skin analysis, personalized recommendations, and Seoul wholesale pricing.
+              Your premium membership is active! Enjoy your 7-day free trial with full access to advanced skin intelligence, personalized recommendations, and Seoul wholesale pricing.
             </p>
 
             <div className="bg-luxury-gold/10 border border-luxury-gold/30 text-luxury-gold p-6 rounded-lg mb-8">
               <h3 className="font-semibold mb-2">Your Premium Membership Includes:</h3>
               <ol className="text-left space-y-2 text-sm">
-                <li>1. ✨ AI-powered skin analysis and personalized recommendations</li>
+                <li>1. ✨ Advanced skin intelligence and personalized recommendations</li>
                 <li>2. 📱 WhatsApp ordering with Seoul wholesale pricing (+1 555-SEOUL-1)</li>
                 <li>3. 🎯 Ingredient compatibility analysis and allergen detection</li>
                 <li>4. 🔄 Continuous updates on trending Korean beauty products</li>

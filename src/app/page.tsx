@@ -207,7 +207,7 @@ export default function HomePage() {
                   maxWidth: '480px',
                   margin: '0 auto'
                 }}>
-                  AI skin analysis • Personalized recommendations • Wholesale Seoul pricing • WhatsApp ordering • Cancel anytime
+                  Advanced skin intelligence • Personalized recommendations • Wholesale Seoul pricing • WhatsApp ordering • Cancel anytime
                 </p>
               </div>
             </div>
@@ -528,23 +528,23 @@ export default function HomePage() {
       <section className="section-dark py-32 border-t border-luxury-charcoal">
         <div className="luxury-container">
           <div className="text-center mb-20">
-            <p className="text-caption mb-4 text-luxury-gold">AI-POWERED BEAUTY</p>
+            <p className="text-caption mb-4 text-luxury-gold">ADVANCED SKIN SCIENCE</p>
             <h2 className="heading-section text-4xl md:text-6xl mb-8 font-light">
               Personalized Intelligence
             </h2>
             <div className="gold-line mx-auto mb-8"></div>
             <p className="text-xl font-light mb-12 max-w-3xl mx-auto text-gray-300">
               Get personalized Korean skincare recommendations based on your unique skin analysis.
-              Our AI matches you with products that work for your specific skin type and concerns.
+              Our advanced skin intelligence matches you with products that work for your specific skin type and concerns.
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 mb-16">
             <div className="bg-luxury-charcoal/30 p-8 rounded-lg border border-luxury-charcoal">
               <div className="text-4xl mb-4">🔬</div>
-              <h3 className="text-xl font-semibold mb-4 text-luxury-gold">AI Skin Analysis</h3>
+              <h3 className="text-xl font-semibold mb-4 text-luxury-gold">Advanced Skin Analysis</h3>
               <p className="text-gray-300 mb-6">
-                Upload your photo for advanced AI-powered skin analysis. Get detailed insights about your skin type, concerns, and perfect product matches.
+                Upload your photo for advanced digital skin analysis. Get detailed insights about your skin type, concerns, and perfect product matches.
               </p>
               <Link href="/skin-analysis" className="inline-block">
                 <button className="btn-luxury text-sm">START ANALYSIS</button>
@@ -566,7 +566,7 @@ export default function HomePage() {
               <div className="text-4xl mb-4">✨</div>
               <h3 className="text-xl font-semibold mb-4 text-luxury-gold">Smart Dashboard</h3>
               <p className="text-gray-300 mb-6">
-                Access your personalized beauty hub with AI recommendations, ingredient analysis, and curated product matches.
+                Access your personalized beauty hub with smart recommendations, ingredient analysis, and curated product matches.
               </p>
               <Link href="/personalized-dashboard" className="inline-block">
                 <button className="btn-luxury text-sm">VIEW DASHBOARD</button>
@@ -576,7 +576,7 @@ export default function HomePage() {
 
           <div className="text-center">
             <p className="text-gray-400 text-sm">
-              Powered by Claude AI • Personalized for Your Unique Skin
+              Advanced Skin Science • Personalized for Your Unique Skin
             </p>
           </div>
         </div>
@@ -619,7 +619,7 @@ export default function HomePage() {
               </button>
               <div className="px-8 pb-8">
                 <p className="text-luxury-charcoal leading-relaxed">
-                  Your premium membership includes AI-powered skin analysis, personalized K-beauty recommendations,
+                  Your premium membership includes advanced skin analysis, personalized K-beauty recommendations,
                   ingredient compatibility checking, access to Seoul wholesale pricing, WhatsApp ordering service,
                   and continuous updates on trending Korean beauty products.
                 </p>
@@ -703,7 +703,7 @@ export default function HomePage() {
           </Link>
 
           <p className="text-caption mt-8">
-            AI ANALYSIS • PERSONALIZED RECOMMENDATIONS • SEOUL PRICING
+            ADVANCED ANALYSIS • PERSONALIZED RECOMMENDATIONS • SEOUL PRICING
           </p>
         </div>
       </section>

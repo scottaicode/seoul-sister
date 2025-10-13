@@ -156,7 +156,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
           </h2>
           <p className="text-gray-400 mb-2">
             {isSignUp
-              ? '7 days free, then $20/month for full access to AI-powered skin analysis, personalized K-beauty recommendations, and Seoul wholesale pricing'
+              ? '7 days free, then $20/month for full access to advanced skin intelligence, personalized K-beauty recommendations, and Seoul wholesale pricing'
               : 'Sign in to access your premium Seoul Sister membership features'
             }
           </p>
