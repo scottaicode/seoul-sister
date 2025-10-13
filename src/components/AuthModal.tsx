@@ -192,7 +192,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-luxury-gold text-black py-3 rounded-lg font-semibold hover:bg-luxury-gold/90 transition-all duration-200 disabled:opacity-50 tracking-wide"
+            className="w-full bg-luxury-gold text-black py-3 rounded-lg font-semibold hover:bg-luxury-gold/90 transition-all duration-200 disabled:opacity-50 tracking-wide shadow-lg"
           >
             {loading ? 'Loading...' : isSignUp ? 'Create Account' : 'Sign In'}
           </button>

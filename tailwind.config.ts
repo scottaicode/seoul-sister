@@ -25,6 +25,11 @@ const config: Config = {
         accent: {
           red: '#CD2E3A',
           blue: '#0047A0',
+        },
+        luxury: {
+          gold: '#FFD700',
+          charcoal: '#1C1C1E',
+          darkCharcoal: '#0A0A0A',
         }
       },
       backgroundImage: {
