@@ -31,13 +31,28 @@ export default function AuthHeader() {
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <a href="#collection" className="hover:text-amber-400 transition-colors">
+            <a href="#collection" className="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium" style={{
+              color: '#888888',
+              fontFamily: 'var(--font-inter)',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}>
               COLLECTION
             </a>
-            <a href="#about" className="hover:text-amber-400 transition-colors">
+            <a href="#about" className="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium" style={{
+              color: '#888888',
+              fontFamily: 'var(--font-inter)',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}>
               ABOUT
             </a>
-            <a href="#insider-access" className="hover:text-amber-400 transition-colors">
+            <a href="#insider-access" className="text-gray-400 hover:text-amber-400 transition-colors text-sm font-medium" style={{
+              color: '#888888',
+              fontFamily: 'var(--font-inter)',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}>
               INSIDER ACCESS
             </a>
           </nav>
