@@ -122,10 +122,10 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-2xl p-8 border border-pink-100">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">
+        <h2 className="text-2xl font-bold text-white mb-2">
           Your Skin Profile ✨
         </h2>
-        <p className="text-gray-600 mb-6">
+        <p className="text-gray-300 mb-6">
           Personalized skincare recommendations based on your unique skin needs
         </p>
 
@@ -136,8 +136,8 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
               onClick={() => setActiveSection(section.id as any)}
               className={`px-4 py-2 rounded-lg transition-all ${
                 activeSection === section.id
-                  ? 'bg-pink-500 text-white shadow-md'
-                  : 'bg-white text-gray-600 hover:bg-pink-50 border border-gray-200'
+                  ? 'bg-luxury-gold text-black shadow-md font-medium'
+                  : 'bg-luxury-charcoal/20 text-gray-300 hover:bg-luxury-charcoal/50 border border-luxury-gold/20'
               }`}
             >
               {section.label}
@@ -150,21 +150,21 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
             {profile ? (
               <>
                 <div className="grid md:grid-cols-2 gap-6">
-                  <div className="bg-white rounded-xl p-6 border border-gray-100">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20">
+                    <h3 className="text-lg font-semibold text-white mb-4">
                       🧬 Skin Type
                     </h3>
                     <div className="text-2xl font-bold text-pink-600 capitalize mb-2">
                       {(profile as any).current_skin_type || 'Not specified'}
                     </div>
-                    <p className="text-gray-500 text-sm">
+                    <p className="text-gray-400 text-sm">
                       Last updated: {(profile as any).last_analysis_date ?
                         new Date((profile as any).last_analysis_date).toLocaleDateString() : 'Never'}
                     </p>
                   </div>
 
-                  <div className="bg-white rounded-xl p-6 border border-gray-100">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20">
+                    <h3 className="text-lg font-semibold text-white mb-4">
                       🎯 Main Concerns
                     </h3>
                     <div className="flex flex-wrap gap-2">
@@ -178,14 +178,14 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
                           </span>
                         ))
                       ) : (
-                        <span className="text-gray-500">No concerns specified</span>
+                        <span className="text-gray-400">No concerns specified</span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl p-6 border border-gray-100">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20">
+                  <h3 className="text-lg font-semibold text-white mb-4">
                     💄 Preferred Product Categories
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -199,14 +199,14 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
                         </span>
                       ))
                     ) : (
-                      <span className="text-gray-500 col-span-4">No preferences specified</span>
+                      <span className="text-gray-400 col-span-4">No preferences specified</span>
                     )}
                   </div>
                 </div>
 
                 <button
                   onClick={() => setActiveSection('edit')}
-                  className="w-full bg-pink-500 text-white py-3 rounded-xl font-semibold hover:bg-pink-600 transition-colors"
+                  className="w-full bg-luxury-gold text-black py-3 rounded-xl font-semibold hover:bg-luxury-gold/90 transition-colors"
                 >
                   Update Profile
                 </button>
@@ -214,15 +214,15 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
             ) : (
               <div className="text-center py-8">
                 <div className="text-6xl mb-4">🔍</div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                <h3 className="text-lg font-semibold text-white mb-2">
                   No skin profile found
                 </h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-gray-300 mb-4">
                   Create your personalized skin profile to get better recommendations
                 </p>
                 <button
                   onClick={() => setActiveSection('edit')}
-                  className="bg-pink-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-pink-600 transition-colors"
+                  className="bg-luxury-gold text-black px-6 py-3 rounded-xl font-semibold hover:bg-luxury-gold/90 transition-colors"
                 >
                   Create Profile
                 </button>
@@ -233,8 +233,8 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
 
         {activeSection === 'edit' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-xl p-6 border border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+            <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20">
+              <h3 className="text-lg font-semibold text-white mb-4">
                 🧬 Select Your Skin Type
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -244,8 +244,8 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
                     onClick={() => setFormData(prev => ({ ...prev, currentSkinType: type }))}
                     className={`p-3 rounded-lg text-sm font-medium transition-all capitalize ${
                       formData.currentSkinType === type
-                        ? 'bg-pink-500 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-pink-100'
+                        ? 'bg-luxury-gold text-black'
+                        : 'bg-luxury-charcoal/30 text-gray-300 hover:bg-luxury-gold/20'
                     }`}
                   >
                     {type.replace('-', ' ')}
@@ -254,8 +254,8 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
               </div>
             </div>
 
-            <div className="bg-white rounded-xl p-6 border border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+            <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20">
+              <h3 className="text-lg font-semibold text-white mb-4">
                 🎯 Select Your Skin Concerns
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -265,8 +265,8 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
                     onClick={() => toggleConcern(concern)}
                     className={`p-3 rounded-lg text-sm font-medium transition-all capitalize ${
                       formData.skinConcerns.includes(concern)
-                        ? 'bg-pink-500 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-pink-100'
+                        ? 'bg-luxury-gold text-black'
+                        : 'bg-luxury-charcoal/30 text-gray-300 hover:bg-luxury-gold/20'
                     }`}
                   >
                     {concern.replace('-', ' ')}
@@ -275,8 +275,8 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
               </div>
             </div>
 
-            <div className="bg-white rounded-xl p-6 border border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+            <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20">
+              <h3 className="text-lg font-semibold text-white mb-4">
                 💄 Preferred Product Types
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -287,7 +287,7 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
                     className={`p-3 rounded-lg text-sm font-medium transition-all capitalize ${
                       formData.preferredCategories.includes(category)
                         ? 'bg-purple-500 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-purple-100'
+                        : 'bg-luxury-charcoal/30 text-gray-300 hover:bg-luxury-gold/20'
                     }`}
                   >
                     {category.replace('-', ' ')}
@@ -300,13 +300,13 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
               <button
                 onClick={saveProfile}
                 disabled={saving}
-                className="flex-1 bg-pink-500 text-white py-3 rounded-xl font-semibold hover:bg-pink-600 transition-colors disabled:opacity-50"
+                className="flex-1 bg-luxury-gold text-black py-3 rounded-xl font-semibold hover:bg-luxury-gold/90 transition-colors disabled:opacity-50"
               >
                 {saving ? 'Saving...' : 'Save Profile'}
               </button>
               <button
                 onClick={() => setActiveSection('overview')}
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors"
+                className="px-6 py-3 border border-luxury-gold/30 text-gray-300 rounded-xl font-semibold hover:bg-luxury-charcoal/30 transition-colors"
               >
                 Cancel
               </button>
@@ -315,13 +315,13 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
         )}
 
         {activeSection === 'history' && (
-          <div className="bg-white rounded-xl p-6 border border-gray-100">
+          <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20">
             <div className="text-center py-8">
               <div className="text-6xl mb-4">📈</div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              <h3 className="text-lg font-semibold text-white mb-2">
                 Analysis History Coming Soon
               </h3>
-              <p className="text-gray-600">
+              <p className="text-gray-300">
                 Track your skin journey and see how your profile evolves over time
               </p>
             </div>
