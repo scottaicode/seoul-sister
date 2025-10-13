@@ -20,7 +20,11 @@ export default function AuthHeader() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <h1 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--luxury-gold)' }}>
+            <h1 className="text-2xl font-bold tracking-tight" style={{
+              color: '#d4a574',
+              fontFamily: 'var(--font-inter)',
+              fontWeight: 'bold'
+            }}>
               Seoul Sister
             </h1>
           </div>
@@ -110,19 +114,24 @@ export default function AuthHeader() {
             ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="bg-transparent px-6 py-2 rounded font-medium transition-all duration-200"
+                className="px-6 py-2 rounded font-medium transition-all duration-200"
                 style={{
-                  border: '1px solid var(--luxury-gold)',
-                  color: 'var(--luxury-gold)',
-                  backgroundColor: 'transparent'
+                  border: '1px solid #d4a574',
+                  color: '#d4a574',
+                  backgroundColor: 'transparent',
+                  fontFamily: 'var(--font-inter)',
+                  fontWeight: '500',
+                  borderBottomColor: '#d4a574',
+                  borderBottomStyle: 'solid',
+                  borderBottomWidth: '1px'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--luxury-gold)'
-                  e.currentTarget.style.color = 'var(--luxury-black)'
+                  e.currentTarget.style.backgroundColor = '#d4a574'
+                  e.currentTarget.style.color = '#000000'
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent'
-                  e.currentTarget.style.color = 'var(--luxury-gold)'
+                  e.currentTarget.style.color = '#d4a574'
                 }}
               >
                 JOIN
