@@ -74,26 +74,39 @@ export default function AIFeaturesAdmin() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-black via-luxury-charcoal to-black">
       <div className="container mx-auto px-4 py-8">
+        {/* Header with Seoul Sister branding */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">
+          <div className="mb-6">
+            <h1 className="text-xl tracking-wider mb-4" style={{
+              color: '#C9A96E',
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: '400',
+              letterSpacing: '0.05em'
+            }}>
+              SEOUL SISTER
+            </h1>
+            <p className="text-caption mb-4 text-gray-400 tracking-widest">EXECUTIVE DASHBOARD</p>
+          </div>
+
+          <h1 className="text-4xl font-light text-white mb-4 tracking-wide">
             🤖 AI Features Admin Portal
           </h1>
-          <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-6">
+          <p className="text-lg font-light text-gray-300 max-w-3xl mx-auto mb-6">
             Manage and monitor your Seoul Sister AI-powered skin analysis and personalization system
           </p>
 
           <div className="flex justify-center gap-4 mb-6">
             <Link
               href="/personalized-dashboard"
-              className="px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600"
+              className="px-6 py-3 bg-luxury-gold text-black rounded-lg hover:bg-luxury-gold/90 font-medium tracking-wide shadow-lg transition-all"
             >
               View User Dashboard
             </Link>
             <Link
               href="/"
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              className="px-6 py-3 bg-luxury-charcoal/30 border border-luxury-gold/30 text-gray-300 rounded-lg hover:bg-luxury-charcoal/50 hover:border-luxury-gold/50 font-medium tracking-wide transition-all"
             >
               Back to Main Site
             </Link>
@@ -107,12 +120,12 @@ export default function AIFeaturesAdmin() {
               onClick={() => setActiveTab(tab.id as any)}
               className={`px-6 py-3 rounded-xl transition-all ${
                 activeTab === tab.id
-                  ? 'bg-blue-500 text-white shadow-lg'
-                  : 'bg-white text-gray-600 hover:bg-blue-50 border border-gray-200'
+                  ? 'bg-luxury-gold text-black shadow-lg font-medium'
+                  : 'bg-luxury-charcoal/30 text-gray-300 hover:bg-luxury-charcoal/50 border border-luxury-gold/20 hover:border-luxury-gold/40'
               }`}
             >
-              <div className="font-semibold">{tab.label}</div>
-              <div className="text-xs opacity-75">{tab.description}</div>
+              <div className="font-semibold tracking-wide">{tab.label}</div>
+              <div className="text-xs opacity-75 font-light">{tab.description}</div>
             </button>
           ))}
         </div>
@@ -120,84 +133,84 @@ export default function AIFeaturesAdmin() {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-white rounded-xl p-6 border border-gray-100 text-center">
-                <div className="text-3xl font-bold text-blue-600 mb-2">
+              <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20 text-center backdrop-blur-sm">
+                <div className="text-3xl font-bold text-luxury-gold mb-2">
                   {stats.totalProfiles}
                 </div>
-                <div className="text-sm text-gray-600">Total User Profiles</div>
+                <div className="text-sm text-gray-300 font-light">Total User Profiles</div>
               </div>
 
-              <div className="bg-white rounded-xl p-6 border border-gray-100 text-center">
-                <div className="text-3xl font-bold text-green-600 mb-2">
+              <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20 text-center backdrop-blur-sm">
+                <div className="text-3xl font-bold text-luxury-gold mb-2">
                   {stats.totalRecommendations}
                 </div>
-                <div className="text-sm text-gray-600">AI Recommendations Generated</div>
+                <div className="text-sm text-gray-300 font-light">AI Recommendations Generated</div>
               </div>
 
-              <div className="bg-white rounded-xl p-6 border border-gray-100 text-center">
-                <div className="text-3xl font-bold text-purple-600 mb-2">
+              <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20 text-center backdrop-blur-sm">
+                <div className="text-3xl font-bold text-luxury-gold mb-2">
                   {stats.totalAnalyses}
                 </div>
-                <div className="text-sm text-gray-600">Ingredient Analyses Completed</div>
+                <div className="text-sm text-gray-300 font-light">Ingredient Analyses Completed</div>
               </div>
 
-              <div className="bg-white rounded-xl p-6 border border-gray-100 text-center">
-                <div className="text-3xl font-bold text-pink-600 mb-2">
+              <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20 text-center backdrop-blur-sm">
+                <div className="text-3xl font-bold text-luxury-gold mb-2">
                   {stats.activeUsers}
                 </div>
-                <div className="text-sm text-gray-600">Active Users (7 days)</div>
+                <div className="text-sm text-gray-300 font-light">Active Users (7 days)</div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl p-6 border border-gray-100">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">
+            <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20 backdrop-blur-sm">
+              <h3 className="text-xl font-semibold text-white mb-4 tracking-wide">
                 🔗 Quick Access Links
               </h3>
               <div className="grid md:grid-cols-3 gap-4">
                 <Link
                   href="/personalized-dashboard"
-                  className="block p-4 bg-pink-50 rounded-lg hover:bg-pink-100 transition-colors"
+                  className="block p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg hover:bg-luxury-gold/20 transition-colors"
                 >
-                  <div className="font-semibold text-pink-700">Personal Dashboard</div>
-                  <div className="text-sm text-pink-600">Complete AI beauty hub</div>
+                  <div className="font-semibold text-luxury-gold tracking-wide">Personal Dashboard</div>
+                  <div className="text-sm text-gray-300 font-light">Complete AI beauty hub</div>
                 </Link>
                 <Link
                   href="/skin-profile"
-                  className="block p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                  className="block p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg hover:bg-luxury-gold/20 transition-colors"
                 >
-                  <div className="font-semibold text-purple-700">Skin Profile Manager</div>
-                  <div className="text-sm text-purple-600">Create and manage profiles</div>
+                  <div className="font-semibold text-luxury-gold tracking-wide">Skin Profile Manager</div>
+                  <div className="text-sm text-gray-300 font-light">Create and manage profiles</div>
                 </Link>
                 <Link
                   href="/"
-                  className="block p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                  className="block p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg hover:bg-luxury-gold/20 transition-colors"
                 >
-                  <div className="font-semibold text-blue-700">Main Website</div>
-                  <div className="text-sm text-blue-600">Korean beauty products</div>
+                  <div className="font-semibold text-luxury-gold tracking-wide">Main Website</div>
+                  <div className="text-sm text-gray-300 font-light">Korean beauty products</div>
                 </Link>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl p-6 border border-gray-100">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">
+            <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20 backdrop-blur-sm">
+              <h3 className="text-xl font-semibold text-white mb-4 tracking-wide">
                 🎯 System Health
               </h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-700">AI Recommendation Engine</span>
-                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">✅ Online</span>
+                  <span className="text-gray-300 font-light">AI Recommendation Engine</span>
+                  <span className="px-3 py-1 bg-luxury-gold/20 border border-luxury-gold/30 text-luxury-gold rounded-full text-sm font-medium">✅ Online</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Ingredient Analysis System</span>
-                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">✅ Online</span>
+                  <span className="text-gray-300 font-light">Ingredient Analysis System</span>
+                  <span className="px-3 py-1 bg-luxury-gold/20 border border-luxury-gold/30 text-luxury-gold rounded-full text-sm font-medium">✅ Online</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Database Connection</span>
-                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">✅ Connected</span>
+                  <span className="text-gray-300 font-light">Database Connection</span>
+                  <span className="px-3 py-1 bg-luxury-gold/20 border border-luxury-gold/30 text-luxury-gold rounded-full text-sm font-medium">✅ Connected</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Claude AI Integration</span>
-                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">✅ Active</span>
+                  <span className="text-gray-300 font-light">Claude AI Integration</span>
+                  <span className="px-3 py-1 bg-luxury-gold/20 border border-luxury-gold/30 text-luxury-gold rounded-full text-sm font-medium">✅ Active</span>
                 </div>
               </div>
             </div>
@@ -206,15 +219,15 @@ export default function AIFeaturesAdmin() {
 
         {activeTab === 'profiles' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-xl p-6 border border-gray-100">
+            <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20 backdrop-blur-sm">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-semibold text-gray-800">
+                <h3 className="text-xl font-semibold text-white tracking-wide">
                   User Skin Profiles ({profiles.length})
                 </h3>
                 <button
                   onClick={fetchAdminData}
                   disabled={loading}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+                  className="px-4 py-2 bg-luxury-gold text-black rounded-lg hover:bg-luxury-gold/90 disabled:opacity-50 font-medium tracking-wide"
                 >
                   {loading ? 'Refreshing...' : 'Refresh'}
                 </button>
@@ -222,48 +235,48 @@ export default function AIFeaturesAdmin() {
 
               {loading ? (
                 <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading user profiles...</p>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-luxury-gold mx-auto mb-4"></div>
+                  <p className="text-gray-300 font-light">Loading user profiles...</p>
                 </div>
               ) : profiles.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-4">WhatsApp Number</th>
-                        <th className="text-left py-3 px-4">Skin Type</th>
-                        <th className="text-left py-3 px-4">Concerns</th>
-                        <th className="text-left py-3 px-4">Created</th>
-                        <th className="text-left py-3 px-4">Last Analysis</th>
+                      <tr className="border-b border-luxury-gold/20">
+                        <th className="text-left py-3 px-4 text-gray-300 font-medium">WhatsApp Number</th>
+                        <th className="text-left py-3 px-4 text-gray-300 font-medium">Skin Type</th>
+                        <th className="text-left py-3 px-4 text-gray-300 font-medium">Concerns</th>
+                        <th className="text-left py-3 px-4 text-gray-300 font-medium">Created</th>
+                        <th className="text-left py-3 px-4 text-gray-300 font-medium">Last Analysis</th>
                       </tr>
                     </thead>
                     <tbody>
                       {profiles.map((profile) => (
-                        <tr key={profile.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-3 px-4 font-mono text-xs">{profile.whatsapp_number}</td>
+                        <tr key={profile.id} className="border-b border-luxury-gold/10 hover:bg-luxury-charcoal/30">
+                          <td className="py-3 px-4 font-mono text-xs text-gray-300">{profile.whatsapp_number}</td>
                           <td className="py-3 px-4">
-                            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                            <span className="px-2 py-1 bg-luxury-gold/20 border border-luxury-gold/30 text-luxury-gold rounded text-xs font-medium">
                               {profile.current_skin_type || 'N/A'}
                             </span>
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex flex-wrap gap-1">
                               {profile.skin_concerns?.slice(0, 3).map((concern) => (
-                                <span key={concern} className="px-2 py-1 bg-pink-100 text-pink-700 rounded text-xs">
+                                <span key={concern} className="px-2 py-1 bg-luxury-charcoal/50 border border-luxury-gold/20 text-gray-300 rounded text-xs">
                                   {concern}
                                 </span>
                               ))}
                               {profile.skin_concerns?.length > 3 && (
-                                <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                                <span className="px-2 py-1 bg-luxury-charcoal/30 text-gray-400 rounded text-xs">
                                   +{profile.skin_concerns.length - 3} more
                                 </span>
                               )}
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-gray-600">
+                          <td className="py-3 px-4 text-gray-300 font-light">
                             {new Date(profile.created_at).toLocaleDateString()}
                           </td>
-                          <td className="py-3 px-4 text-gray-600">
+                          <td className="py-3 px-4 text-gray-300 font-light">
                             {profile.last_analysis_date
                               ? new Date(profile.last_analysis_date).toLocaleDateString()
                               : 'Never'
@@ -277,10 +290,10 @@ export default function AIFeaturesAdmin() {
               ) : (
                 <div className="text-center py-12">
                   <div className="text-6xl mb-4">👥</div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                  <h3 className="text-lg font-semibold text-white mb-2 tracking-wide">
                     No User Profiles Yet
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-gray-300 font-light">
                     Users will appear here after creating skin profiles
                   </p>
                 </div>
@@ -291,60 +304,60 @@ export default function AIFeaturesAdmin() {
 
         {activeTab === 'system' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-xl p-6 border border-gray-100">
-              <h3 className="text-xl font-semibold text-gray-800 mb-6">
+            <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20 backdrop-blur-sm">
+              <h3 className="text-xl font-semibold text-white mb-6 tracking-wide">
                 🧪 API Endpoint Testing
               </h3>
               <div className="grid md:grid-cols-2 gap-4">
                 <button
                   onClick={() => testAPIEndpoint('/api/skin-profiles?whatsapp_number=%2B1234567890')}
-                  className="p-4 text-left bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                  className="p-4 text-left bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg hover:bg-luxury-gold/20 transition-colors"
                 >
-                  <div className="font-semibold text-blue-700">Test Skin Profiles API</div>
-                  <div className="text-sm text-blue-600">GET /api/skin-profiles</div>
+                  <div className="font-semibold text-luxury-gold tracking-wide">Test Skin Profiles API</div>
+                  <div className="text-sm text-gray-300 font-light">GET /api/skin-profiles</div>
                 </button>
 
                 <button
                   onClick={() => testAPIEndpoint('/api/personalized-recommendations-v2?whatsapp_number=%2B1234567890&limit=3')}
-                  className="p-4 text-left bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                  className="p-4 text-left bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg hover:bg-luxury-gold/20 transition-colors"
                 >
-                  <div className="font-semibold text-green-700">Test Recommendations API</div>
-                  <div className="text-sm text-green-600">GET /api/personalized-recommendations-v2</div>
+                  <div className="font-semibold text-luxury-gold tracking-wide">Test Recommendations API</div>
+                  <div className="text-sm text-gray-300 font-light">GET /api/personalized-recommendations-v2</div>
                 </button>
 
                 <button
                   onClick={() => testAPIEndpoint('/api/products')}
-                  className="p-4 text-left bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                  className="p-4 text-left bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg hover:bg-luxury-gold/20 transition-colors"
                 >
-                  <div className="font-semibold text-purple-700">Test Products API</div>
-                  <div className="text-sm text-purple-600">GET /api/products</div>
+                  <div className="font-semibold text-luxury-gold tracking-wide">Test Products API</div>
+                  <div className="text-sm text-gray-300 font-light">GET /api/products</div>
                 </button>
 
                 <button
                   onClick={() => testAPIEndpoint('/api/fix-skin-tables')}
-                  className="p-4 text-left bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
+                  className="p-4 text-left bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg hover:bg-luxury-gold/20 transition-colors"
                 >
-                  <div className="font-semibold text-orange-700">Test Database Schema</div>
-                  <div className="text-sm text-orange-600">POST /api/fix-skin-tables</div>
+                  <div className="font-semibold text-luxury-gold tracking-wide">Test Database Schema</div>
+                  <div className="text-sm text-gray-300 font-light">POST /api/fix-skin-tables</div>
                 </button>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl p-6 border border-gray-100">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">
+            <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20 backdrop-blur-sm">
+              <h3 className="text-xl font-semibold text-white mb-4 tracking-wide">
                 📋 cURL Examples for Testing
               </h3>
               <div className="space-y-4">
                 <div>
-                  <h4 className="font-semibold text-gray-700 mb-2">Get User Profile:</h4>
-                  <code className="block bg-gray-100 p-3 rounded text-sm overflow-x-auto">
+                  <h4 className="font-semibold text-luxury-gold mb-2 tracking-wide">Get User Profile:</h4>
+                  <code className="block bg-luxury-charcoal/50 border border-luxury-gold/20 p-3 rounded text-sm overflow-x-auto text-gray-300">
                     curl "http://localhost:3000/api/skin-profiles?whatsapp_number=%2B1234567890"
                   </code>
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-gray-700 mb-2">Create Profile:</h4>
-                  <code className="block bg-gray-100 p-3 rounded text-sm overflow-x-auto">
+                  <h4 className="font-semibold text-luxury-gold mb-2 tracking-wide">Create Profile:</h4>
+                  <code className="block bg-luxury-charcoal/50 border border-luxury-gold/20 p-3 rounded text-sm overflow-x-auto text-gray-300">
                     curl -X POST http://localhost:3000/api/skin-profiles \<br/>
                     &nbsp;&nbsp;-H "Content-Type: application/json" \<br/>
                     &nbsp;&nbsp;-d '{'{'}
@@ -356,34 +369,34 @@ export default function AIFeaturesAdmin() {
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-gray-700 mb-2">Get Recommendations:</h4>
-                  <code className="block bg-gray-100 p-3 rounded text-sm overflow-x-auto">
+                  <h4 className="font-semibold text-luxury-gold mb-2 tracking-wide">Get Recommendations:</h4>
+                  <code className="block bg-luxury-charcoal/50 border border-luxury-gold/20 p-3 rounded text-sm overflow-x-auto text-gray-300">
                     curl "http://localhost:3000/api/personalized-recommendations-v2?whatsapp_number=%2B1234567890&limit=5"
                   </code>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl p-6 border border-gray-100">
-              <h3 className="text-xl font-semibold text-gray-800 mb-4">
-                🗄️ Database Tables Status
+            <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20 backdrop-blur-sm">
+              <h3 className="text-xl font-semibold text-white mb-4 tracking-wide">
+                🗺️ Database Tables Status
               </h3>
               <div className="grid md:grid-cols-2 gap-4">
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <div className="font-semibold text-green-700">✅ user_skin_profiles</div>
-                  <div className="text-sm text-green-600">User skin data and preferences</div>
+                <div className="p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg">
+                  <div className="font-semibold text-luxury-gold tracking-wide">✅ user_skin_profiles</div>
+                  <div className="text-sm text-gray-300 font-light">User skin data and preferences</div>
                 </div>
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <div className="font-semibold text-green-700">✅ conversation_context</div>
-                  <div className="text-sm text-green-600">WhatsApp conversation state</div>
+                <div className="p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg">
+                  <div className="font-semibold text-luxury-gold tracking-wide">✅ conversation_context</div>
+                  <div className="text-sm text-gray-300 font-light">WhatsApp conversation state</div>
                 </div>
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <div className="font-semibold text-green-700">✅ product_interests</div>
-                  <div className="text-sm text-green-600">User interaction tracking</div>
+                <div className="p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg">
+                  <div className="font-semibold text-luxury-gold tracking-wide">✅ product_interests</div>
+                  <div className="text-sm text-gray-300 font-light">User interaction tracking</div>
                 </div>
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <div className="font-semibold text-green-700">✅ whatsapp_conversations</div>
-                  <div className="text-sm text-green-600">Message history</div>
+                <div className="p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg">
+                  <div className="font-semibold text-luxury-gold tracking-wide">✅ whatsapp_conversations</div>
+                  <div className="text-sm text-gray-300 font-light">Message history</div>
                 </div>
               </div>
             </div>

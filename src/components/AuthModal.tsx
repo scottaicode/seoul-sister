@@ -132,12 +132,23 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
   return (
     <div className="fixed inset-0 bg-black bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-gradient-to-b from-luxury-charcoal to-black border border-luxury-gold/30 rounded-2xl p-8 w-full max-w-md relative shadow-2xl shadow-luxury-gold/10">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
-        >
-          <X size={24} />
-        </button>
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={onClose}
+            className="flex items-center text-gray-400 hover:text-luxury-gold transition-colors"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="text-sm">Back</span>
+          </button>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            <X size={24} />
+          </button>
+        </div>
 
         <div className="text-center mb-8">
           <h2 className="text-3xl font-light text-white mb-2 tracking-wide">
