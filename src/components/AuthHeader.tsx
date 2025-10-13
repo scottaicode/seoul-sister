@@ -44,6 +44,18 @@ export default function AuthHeader() {
             onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}>
               COLLECTION
             </a>
+            <a href="/personalized-dashboard" className="transition-colors" style={{
+              color: '#888888',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '13px',
+              fontWeight: '400',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#d4a574'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}>
+              AI DASHBOARD
+            </a>
             <a href="#about" className="transition-colors" style={{
               color: '#888888',
               fontFamily: 'Inter, sans-serif',
