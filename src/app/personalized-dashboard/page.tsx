@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSkinProfile, usePersonalizedRecommendations, useIngredientAnalysis } from '@/hooks/useSkinProfile'
 import SkinProfileManager from '@/components/SkinProfileManager'
+import AuthHeader from '@/components/AuthHeader'
 import { useProducts } from '@/hooks/useProducts'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -40,7 +41,8 @@ export default function PersonalizedDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-luxury-charcoal to-black">
-      <div className="container mx-auto px-4 py-8">
+      <AuthHeader />
+      <div className="container mx-auto px-4 py-8 pt-24">
         <div className="text-center mb-8">
           <p className="text-caption mb-4 text-luxury-gold tracking-widest">AI-POWERED BEAUTY INTELLIGENCE</p>
           <h1 className="text-4xl md:text-5xl font-light text-white mb-4 tracking-wide">

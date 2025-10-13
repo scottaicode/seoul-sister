@@ -286,8 +286,8 @@ export default function SkinProfileManager({ whatsappNumber, onProfileUpdate }: 
                     onClick={() => toggleCategory(category)}
                     className={`p-3 rounded-lg text-sm font-medium transition-all capitalize ${
                       formData.preferredCategories.includes(category)
-                        ? 'bg-purple-500 text-white'
-                        : 'bg-luxury-charcoal/30 text-gray-300 hover:bg-luxury-gold/20'
+                        ? 'bg-luxury-gold text-black border border-luxury-gold'
+                        : 'bg-luxury-charcoal/30 text-gray-300 hover:bg-luxury-gold/20 border border-luxury-gold/20'
                     }`}
                   >
                     {category.replace('-', ' ')}

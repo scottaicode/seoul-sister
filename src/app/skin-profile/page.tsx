@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import SkinProfileManager from '@/components/SkinProfileManager'
+import AuthHeader from '@/components/AuthHeader'
 
 export default function SkinProfilePage() {
   const [whatsappNumber, setWhatsappNumber] = useState('')
@@ -18,7 +19,8 @@ export default function SkinProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-luxury-charcoal to-black">
-      <div className="container mx-auto px-4 py-8">
+      <AuthHeader />
+      <div className="container mx-auto px-4 py-8 pt-24">
         <div className="text-center mb-8">
           <p className="text-caption mb-4 text-luxury-gold tracking-widest">PERSONALIZED BEAUTY INTELLIGENCE</p>
           <h1 className="text-4xl md:text-5xl font-light text-white mb-4 tracking-wide">
