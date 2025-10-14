@@ -46,6 +46,15 @@ export function useAuthState() {
   useEffect(() => {
     let mounted = true
 
+    // Add timeout to prevent infinite loading (especially for Firefox)
+    const loadingTimeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.log('Auth loading timeout reached, forcing loading to false')
+        setLoading(false)
+        setInitialized(true)
+      }
+    }, 3000) // 3 second timeout
+
     // Initial check
     checkUser()
 
@@ -65,11 +74,16 @@ export function useAuthState() {
         if (event === 'SIGNED_OUT') {
           setUser(null)
         }
+
+        // Ensure loading is set to false after any auth change
+        setLoading(false)
+        setInitialized(true)
       }
     )
 
     return () => {
       mounted = false
+      clearTimeout(loadingTimeout)
       subscription.unsubscribe()
     }
   }, [checkUser])
@@ -111,9 +125,9 @@ export function useAuthState() {
 
   return {
     user,
-    loading: loading && !initialized,
+    loading: loading || !initialized,
     signOut,
     refresh,
-    isAuthenticated: !!user
+    isAuthenticated: !!user && initialized
   }
 }

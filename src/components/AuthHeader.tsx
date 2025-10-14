@@ -19,6 +19,13 @@ export default function AuthHeader() {
   useEffect(() => {
     setMounted(true)
     refresh()
+
+    // Failsafe timeout to ensure component renders even if auth is slow
+    const mountTimeout = setTimeout(() => {
+      setMounted(true)
+    }, 2000)
+
+    return () => clearTimeout(mountTimeout)
   }, [])
 
   // Close dropdown when clicking outside
@@ -115,7 +122,9 @@ export default function AuthHeader() {
 
           {/* Auth Section */}
           <div className="flex items-center space-x-4">
-            {!mounted || loading ? (
+            {!mounted ? (
+              <div className="w-8 h-8 border-2 border-[#d4a574]/30 border-t-[#d4a574] rounded-full animate-spin"></div>
+            ) : loading ? (
               <div className="w-8 h-8 border-2 border-[#d4a574]/30 border-t-[#d4a574] rounded-full animate-spin"></div>
             ) : isAuthenticated ? (
               <div className="relative" ref={dropdownRef}>
