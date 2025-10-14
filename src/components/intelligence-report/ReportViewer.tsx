@@ -275,37 +275,37 @@ export default function ReportViewer({ reportId, isPremium = false }: ReportView
               className="space-y-6"
             >
               {report?.trendingDiscoveries.map((product, idx) => (
-                  <div key={idx} className="bg-[#0A0A0A] border border-[#D4A574]/20 rounded-lg p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-4 mb-3">
-                          <span className="text-3xl font-light text-[#D4A574]">#{idx + 1}</span>
-                          <div>
-                            <h3 className="text-xl font-light">{product.productName}</h3>
-                            <p className="text-gray-400 text-sm">{product.brand} · {product.category}</p>
-                          </div>
-                        </div>
-                        <p className="text-gray-300 mb-4">{product.whyTrending}</p>
-                        <div className="flex items-center space-x-6 text-sm">
-                          <span className="text-gray-400">
-                            Source: <span className="text-[#D4A574]">{product.discoverySource}</span>
-                          </span>
-                          <span className="text-gray-400">
-                            Mentions: <span className="text-[#D4A574]">{product.socialMentions.toLocaleString()}</span>
-                          </span>
+                <div key={idx} className="bg-[#0A0A0A] border border-[#D4A574]/20 rounded-lg p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-4 mb-3">
+                        <span className="text-3xl font-light text-[#D4A574]">#{idx + 1}</span>
+                        <div>
+                          <h3 className="text-xl font-light">{product.productName}</h3>
+                          <p className="text-gray-400 text-sm">{product.brand} · {product.category}</p>
                         </div>
                       </div>
-                      <div className="text-right ml-6">
-                        <div className="mb-2">
-                          <p className="text-xs text-gray-400 uppercase tracking-wider">Trend Score</p>
-                          <p className="text-2xl font-light text-[#D4A574]">{product.trendScore}</p>
-                        </div>
-                        <div className="px-3 py-1 bg-green-500/20 text-green-400 text-sm rounded">
-                          Save {product.savingsPercentage}%
-                        </div>
+                      <p className="text-gray-300 mb-4">{product.whyTrending}</p>
+                      <div className="flex items-center space-x-6 text-sm">
+                        <span className="text-gray-400">
+                          Source: <span className="text-[#D4A574]">{product.discoverySource}</span>
+                        </span>
+                        <span className="text-gray-400">
+                          Mentions: <span className="text-[#D4A574]">{product.socialMentions.toLocaleString()}</span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right ml-6">
+                      <div className="mb-2">
+                        <p className="text-xs text-gray-400 uppercase tracking-wider">Trend Score</p>
+                        <p className="text-2xl font-light text-[#D4A574]">{product.trendScore}</p>
+                      </div>
+                      <div className="px-3 py-1 bg-green-500/20 text-green-400 text-sm rounded">
+                        Save {product.savingsPercentage}%
                       </div>
                     </div>
                   </div>
+                </div>
                 ))
             </motion.div>
           )}
