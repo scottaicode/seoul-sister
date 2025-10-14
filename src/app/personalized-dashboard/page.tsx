@@ -2,37 +2,35 @@
 
 import { useState, useEffect } from 'react'
 import { useSkinProfile, usePersonalizedRecommendations, useIngredientAnalysis } from '@/hooks/useSkinProfile'
+import { useAuthenticatedUser } from '@/hooks/useAuthenticatedUser'
 import SkinProfileManager from '@/components/SkinProfileManager'
 import AuthHeader from '@/components/AuthHeader'
 import { useProducts } from '@/hooks/useProducts'
-import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import Image from 'next/image'
 
 export default function PersonalizedDashboard() {
-  const [whatsappNumber, setWhatsappNumber] = useState('')
   const [activeTab, setActiveTab] = useState<'profile' | 'recommendations' | 'analysis'>('profile')
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
+  const {
+    profile: userProfile,
+    skinProfile: userSkinProfile,
+    whatsappNumber,
+    loading: userLoading,
+    isAuthenticated,
+    updateProfile
+  } = useAuthenticatedUser()
 
-  const { refreshAuth } = useAuth()
-  const { profile, loading: profileLoading, hasProfile } = useSkinProfile(whatsappNumber)
-  const { recommendations, loading: recsLoading, generateCustomRecommendations } = usePersonalizedRecommendations(whatsappNumber)
+  const { profile: skinProfileData, loading: profileLoading, hasProfile } = useSkinProfile(whatsappNumber || undefined)
+  const { recommendations, loading: recsLoading, generateCustomRecommendations } = usePersonalizedRecommendations(whatsappNumber || undefined)
   const { analysis, loading: analysisLoading, analyzeIngredients } = useIngredientAnalysis()
   const { products } = useProducts()
 
-  // Refresh auth state when component mounts to fix display issues
-  useEffect(() => {
-    refreshAuth()
-  }, [])
 
-  useEffect(() => {
-    const storedNumber = localStorage.getItem('whatsapp_number') || '+1234567890'
-    setWhatsappNumber(storedNumber)
-  }, [])
-
-  const handlePhoneNumberChange = (number: string) => {
-    setWhatsappNumber(number)
-    localStorage.setItem('whatsapp_number', number)
+  const handlePhoneNumberChange = async (number: string) => {
+    if (userProfile && updateProfile) {
+      await updateProfile({ whatsapp_number: number })
+    }
   }
 
   const handleAnalyzeProduct = async (productId: string) => {
@@ -61,36 +59,59 @@ export default function PersonalizedDashboard() {
             for your unique skin needs.
           </p>
 
-          <div className="flex justify-center items-center gap-4 mb-6">
-            <label className="text-sm font-medium text-luxury-gold tracking-wide">WhatsApp Number:</label>
-            <input
-              type="text"
-              value={whatsappNumber}
-              onChange={(e) => handlePhoneNumberChange(e.target.value)}
-              placeholder="+1234567890"
-              className="px-4 py-2 bg-luxury-charcoal/50 border border-luxury-gold/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 text-white placeholder-gray-400"
-            />
+          {!isAuthenticated ? (
+            <div className="bg-luxury-charcoal/20 rounded-2xl p-8 border border-luxury-gold/20 text-center mb-8">
+              <div className="text-6xl mb-4">🔐</div>
+              <h3 className="text-xl font-semibold text-white mb-2">
+                Sign In Required
+              </h3>
+              <p className="text-gray-300 mb-6">
+                Please sign in to access your personalized AI beauty dashboard
+              </p>
+              <Link
+                href="/"
+                className="inline-block px-8 py-4 bg-luxury-gold text-black font-semibold rounded-xl hover:bg-luxury-gold/90 transition-all shadow-lg tracking-wide"
+              >
+                Go to Home & Sign In
+              </Link>
+            </div>
+          ) : (
+            <div className="flex justify-center items-center gap-4 mb-6">
+              <label className="text-sm font-medium text-luxury-gold tracking-wide">WhatsApp Number:</label>
+              <input
+                type="text"
+                value={whatsappNumber || ''}
+                onChange={(e) => handlePhoneNumberChange(e.target.value)}
+                placeholder="+1234567890"
+                className="px-4 py-2 bg-luxury-charcoal/50 border border-luxury-gold/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-gold/50 text-white placeholder-gray-400"
+              />
+              {userLoading && (
+                <div className="w-4 h-4 border-2 border-luxury-gold/30 border-t-luxury-gold rounded-full animate-spin"></div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {isAuthenticated && (
+          <div className="flex flex-wrap justify-center gap-3 mb-8">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`px-6 py-3 rounded-xl transition-all ${
+                  activeTab === tab.id
+                    ? 'bg-luxury-gold text-black shadow-lg font-medium'
+                    : 'bg-luxury-charcoal/30 text-gray-300 hover:bg-luxury-charcoal/50 border border-luxury-gold/20 hover:border-luxury-gold/40'
+                }`}
+              >
+                <div className="font-semibold tracking-wide">{tab.label}</div>
+                <div className="text-xs opacity-75 font-light">{tab.description}</div>
+              </button>
+            ))}
           </div>
-        </div>
+        )}
 
-        <div className="flex flex-wrap justify-center gap-3 mb-8">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`px-6 py-3 rounded-xl transition-all ${
-                activeTab === tab.id
-                  ? 'bg-luxury-gold text-black shadow-lg font-medium'
-                  : 'bg-luxury-charcoal/30 text-gray-300 hover:bg-luxury-charcoal/50 border border-luxury-gold/20 hover:border-luxury-gold/40'
-              }`}
-            >
-              <div className="font-semibold tracking-wide">{tab.label}</div>
-              <div className="text-xs opacity-75 font-light">{tab.description}</div>
-            </button>
-          ))}
-        </div>
-
-        {activeTab === 'profile' && (
+        {isAuthenticated && activeTab === 'profile' && (
           <div>
             {whatsappNumber ? (
               <SkinProfileManager
@@ -113,7 +134,7 @@ export default function PersonalizedDashboard() {
           </div>
         )}
 
-        {activeTab === 'recommendations' && (
+        {isAuthenticated && activeTab === 'recommendations' && (
           <div className="space-y-6">
             <div className="bg-luxury-charcoal/20 rounded-2xl p-6 border border-luxury-gold/20">
               <div className="flex justify-between items-center mb-6">
@@ -226,7 +247,7 @@ export default function PersonalizedDashboard() {
           </div>
         )}
 
-        {activeTab === 'analysis' && (
+        {isAuthenticated && activeTab === 'analysis' && (
           <div className="space-y-6">
             <div className="bg-luxury-charcoal/20 rounded-2xl p-6 border border-luxury-gold/20">
               <h2 className="text-2xl font-bold text-white mb-6">

@@ -17,45 +17,48 @@ export function createBrowserClient() {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      storage: {
-        // Use localStorage with fallback to cookies for Firefox
+      storage: typeof window !== 'undefined' ? {
         getItem: (key: string) => {
-          if (typeof window === 'undefined') {
+          try {
+            // Try localStorage first
+            const item = window.localStorage.getItem(key)
+            if (item) return item
+
+            // Fallback to cookies for Firefox
+            const cookies = document.cookie.split('; ')
+            const cookie = cookies.find(c => c.startsWith(`${key}=`))
+            return cookie ? decodeURIComponent(cookie.split('=')[1]) : null
+          } catch (error) {
+            console.warn('Storage getItem error:', error)
             return null
           }
-
-          // Try localStorage first
-          const item = window.localStorage.getItem(key)
-          if (item) return item
-
-          // Fallback to cookies for Firefox
-          const cookies = document.cookie.split('; ')
-          const cookie = cookies.find(c => c.startsWith(`${key}=`))
-          return cookie ? decodeURIComponent(cookie.split('=')[1]) : null
         },
         setItem: (key: string, value: string) => {
-          if (typeof window === 'undefined') {
-            return
+          try {
+            // Set in localStorage
+            window.localStorage.setItem(key, value)
+
+            // Also set as cookie for Firefox
+            const isFirefox = navigator.userAgent.toLowerCase().includes('firefox')
+            if (isFirefox) {
+              document.cookie = `${key}=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=None; Secure`
+            }
+          } catch (error) {
+            console.warn('Storage setItem error:', error)
           }
-
-          // Set in localStorage
-          window.localStorage.setItem(key, value)
-
-          // Also set as cookie for Firefox with SameSite=Lax
-          document.cookie = `${key}=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax`
         },
         removeItem: (key: string) => {
-          if (typeof window === 'undefined') {
-            return
+          try {
+            // Remove from localStorage
+            window.localStorage.removeItem(key)
+
+            // Remove cookie
+            document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`
+          } catch (error) {
+            console.warn('Storage removeItem error:', error)
           }
-
-          // Remove from localStorage
-          window.localStorage.removeItem(key)
-
-          // Remove cookie
-          document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
         }
-      }
+      } : undefined
     }
   })
 

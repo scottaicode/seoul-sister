@@ -12,7 +12,18 @@ export function useAuthState() {
   const checkUser = useCallback(async () => {
     try {
       const supabase = createBrowserClient()
-      const { data: { session }, error } = await supabase.auth.getSession()
+
+      // Set a timeout for Firefox compatibility
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Session check timeout')), 5000)
+      )
+
+      const sessionPromise = supabase.auth.getSession()
+
+      const { data: { session }, error } = await Promise.race([
+        sessionPromise,
+        timeoutPromise
+      ]) as any
 
       if (error) {
         console.error('Error getting session:', error)
