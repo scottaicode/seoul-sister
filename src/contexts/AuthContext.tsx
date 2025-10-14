@@ -51,47 +51,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
+    console.log('Signing out...')
+
     try {
-      console.log('Signing out...')
-
-      // Immediately clear local state
-      setUser(null)
-      setUserProfile(null)
-
-      // Clear only auth-related localStorage items
-      const keysToRemove = []
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)
-        if (key && (key.includes('supabase') || key.includes('auth') || key.includes('whatsapp_number'))) {
-          keysToRemove.push(key)
-        }
+      // Use Supabase's built-in signout which handles everything properly
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Supabase signout error:', error)
       }
-      keysToRemove.forEach(key => localStorage.removeItem(key))
-
-      // Try Supabase signout (don't wait for it)
-      supabase.auth.signOut().catch((err: any) => console.log('Supabase signout error:', err))
-
-      // Force immediate redirect
-      setTimeout(() => {
-        window.location.replace('/')
-      }, 100)
-
     } catch (error) {
-      console.error('Error signing out:', error)
-      // Force logout regardless of error
-      setUser(null)
-      setUserProfile(null)
-      // Clear only auth-related localStorage items
-      const keysToRemove = []
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)
-        if (key && (key.includes('supabase') || key.includes('auth') || key.includes('whatsapp_number'))) {
-          keysToRemove.push(key)
-        }
-      }
-      keysToRemove.forEach(key => localStorage.removeItem(key))
-      window.location.replace('/')
+      console.error('Error during signout:', error)
     }
+
+    // Clear local state
+    setUser(null)
+    setUserProfile(null)
+
+    // Navigate to home page (let Supabase handle the cleanup)
+    window.location.href = '/'
   }
 
   useEffect(() => {
@@ -118,6 +95,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
+      console.log('Auth state change:', event, session?.user?.email)
+
       if (session?.user) {
         setUser(session.user)
         // Load profile in background, don't block
