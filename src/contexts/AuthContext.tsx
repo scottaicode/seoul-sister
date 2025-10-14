@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
-import type { User } from '@supabase/supabase-js'
+import type { User, AuthChangeEvent, Session } from '@supabase/supabase-js'
 import type { UserProfile } from '@/types/user'
 
 interface AuthContextType {
@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Setup auth state listener
-    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       if (isCancelled) return
 
       // Only handle SIGNED_IN and SIGNED_OUT events to avoid unnecessary updates
