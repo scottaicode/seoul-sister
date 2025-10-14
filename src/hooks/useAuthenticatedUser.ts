@@ -51,9 +51,8 @@ export function useAuthenticatedUser() {
       return
     }
 
-    // Prevent infinite loading if profile already exists
-    if (profile && profile.id === user.id) {
-      setLoading(false)
+    // Prevent infinite loading if profile already exists and loading is already false
+    if (profile && profile.id === user.id && !loading) {
       return
     }
 
@@ -73,6 +72,8 @@ export function useAuthenticatedUser() {
         .single()
 
       console.log('fetchUserProfile: Profile fetch result', { userProfile, profileError })
+
+      let currentProfile = userProfile
 
       if (profileError) {
         // If profile doesn't exist, create one
@@ -95,19 +96,52 @@ export function useAuthenticatedUser() {
             throw createError
           }
           console.log('fetchUserProfile: New profile created', newProfile)
-          setProfile(newProfile)
+          currentProfile = newProfile
         } else {
           console.error('fetchUserProfile: Profile fetch error', profileError)
           throw profileError
         }
       } else {
         console.log('fetchUserProfile: Setting existing profile', userProfile)
-        setProfile(userProfile)
       }
 
-      // Fetch skin profile if WhatsApp number exists
-      const currentProfile = userProfile || profile
-      if (currentProfile && currentProfile.whatsapp_number) {
+      // If no WhatsApp number in profile, try to find it from user_skin_profiles
+      if (currentProfile && !currentProfile.whatsapp_number) {
+        console.log('fetchUserProfile: No WhatsApp in profile, checking user_skin_profiles')
+
+        // Try to find existing skin profile linked to this user's email
+        const { data: existingSkinProfiles, error: skinSearchError } = await supabase
+          .from('user_skin_profiles')
+          .select('*')
+          .limit(1)
+
+        if (!skinSearchError && existingSkinProfiles && existingSkinProfiles.length > 0) {
+          const existingSkinProfile = existingSkinProfiles[0]
+          console.log('fetchUserProfile: Found existing skin profile', existingSkinProfile)
+
+          // Update the main profile with the WhatsApp number from skin profile
+          const { data: updatedProfile, error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              whatsapp_number: existingSkinProfile.whatsapp_number,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', user.id)
+            .select()
+            .single()
+
+          if (!updateError && updatedProfile) {
+            console.log('fetchUserProfile: Profile updated with WhatsApp number', updatedProfile)
+            currentProfile = updatedProfile
+            setSkinProfile(existingSkinProfile)
+          }
+        }
+      }
+
+      setProfile(currentProfile)
+
+      // Fetch skin profile if WhatsApp number exists and we haven't already set it
+      if (currentProfile && currentProfile.whatsapp_number && !skinProfile) {
         console.log('fetchUserProfile: Fetching skin profile for WhatsApp', currentProfile.whatsapp_number)
         const { data: skinProfileData, error: skinError } = await supabase
           .from('user_skin_profiles')
@@ -123,7 +157,7 @@ export function useAuthenticatedUser() {
         } else {
           console.log('fetchUserProfile: No skin profile found')
         }
-      } else {
+      } else if (!currentProfile?.whatsapp_number) {
         console.log('fetchUserProfile: No WhatsApp number in profile')
       }
 
@@ -134,7 +168,7 @@ export function useAuthenticatedUser() {
     } finally {
       setLoading(false)
     }
-  }, [user, isAuthenticated, profile])
+  }, [user, isAuthenticated])
 
   const updateProfile = useCallback(async (updates: Partial<UserProfile>) => {
     if (!user || !profile) return null
@@ -246,8 +280,11 @@ export function useAuthenticatedUser() {
   }, [profile])
 
   useEffect(() => {
-    fetchUserProfile()
-  }, [fetchUserProfile])
+    if (user && isAuthenticated) {
+      console.log('useAuthenticatedUser: User changed, fetching profile for:', user.id)
+      fetchUserProfile()
+    }
+  }, [fetchUserProfile, user, isAuthenticated])
 
   return {
     profile,
