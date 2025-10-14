@@ -11,6 +11,7 @@ interface AuthContextType {
   loading: boolean
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
+  refreshAuth: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -53,6 +54,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
   }, [user, fetchUserProfile])
+
+  const refreshAuth = useCallback(async () => {
+    try {
+      const { data: { session }, error } = await supabaseClient.auth.getSession()
+
+      if (session?.user && mountedRef.current) {
+        setUser(session.user)
+        const profile = await fetchUserProfile(session.user.id)
+        if (mountedRef.current) {
+          setUserProfile(profile)
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing auth:', error)
+    }
+  }, [fetchUserProfile])
 
   const signOut = useCallback(async () => {
     try {
@@ -152,6 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     signOut,
     refreshProfile,
+    refreshAuth,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

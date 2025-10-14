@@ -5,6 +5,7 @@ import { useSkinProfile, usePersonalizedRecommendations, useIngredientAnalysis }
 import SkinProfileManager from '@/components/SkinProfileManager'
 import AuthHeader from '@/components/AuthHeader'
 import { useProducts } from '@/hooks/useProducts'
+import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -13,10 +14,16 @@ export default function PersonalizedDashboard() {
   const [activeTab, setActiveTab] = useState<'profile' | 'recommendations' | 'analysis'>('profile')
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
 
+  const { refreshAuth } = useAuth()
   const { profile, loading: profileLoading, hasProfile } = useSkinProfile(whatsappNumber)
   const { recommendations, loading: recsLoading, generateCustomRecommendations } = usePersonalizedRecommendations(whatsappNumber)
   const { analysis, loading: analysisLoading, analyzeIngredients } = useIngredientAnalysis()
   const { products } = useProducts()
+
+  // Refresh auth state when component mounts to fix display issues
+  useEffect(() => {
+    refreshAuth()
+  }, [])
 
   useEffect(() => {
     const storedNumber = localStorage.getItem('whatsapp_number') || '+1234567890'

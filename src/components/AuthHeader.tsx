@@ -1,15 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import AuthModal from './AuthModal'
 import { User, ChevronDown, Camera, Heart, ShoppingBag, Settings, LogOut } from 'lucide-react'
 
 export default function AuthHeader() {
-  const { user, userProfile, signOut } = useAuth()
+  const { user, userProfile, signOut, loading } = useAuth()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+
+  // Add debugging to see what's happening with auth state
+  useEffect(() => {
+    console.log('AuthHeader: user state changed:', {
+      user: user?.email,
+      userProfile: userProfile?.name,
+      loading,
+      url: window.location.href
+    })
+  }, [user, userProfile, loading])
 
   const handleAuthSuccess = (user: any) => {
     console.log('User authenticated:', user)
@@ -93,7 +103,9 @@ export default function AuthHeader() {
 
           {/* Auth Section */}
           <div className="flex items-center space-x-4">
-            {user ? (
+            {loading ? (
+              <div className="w-8 h-8 border-2 border-luxury-gold/30 border-t-luxury-gold rounded-full animate-spin"></div>
+            ) : user ? (
               <div className="relative">
                 <button
                   onClick={() => setShowDropdown(!showDropdown)}
