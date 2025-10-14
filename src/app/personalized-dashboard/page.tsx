@@ -5,8 +5,6 @@ import { useSkinProfile, usePersonalizedRecommendations, useIngredientAnalysis }
 import SkinProfileManager from '@/components/SkinProfileManager'
 import AuthHeader from '@/components/AuthHeader'
 import { useProducts } from '@/hooks/useProducts'
-import { useAuth } from '@/contexts/AuthContext'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -15,19 +13,10 @@ export default function PersonalizedDashboard() {
   const [activeTab, setActiveTab] = useState<'profile' | 'recommendations' | 'analysis'>('profile')
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
 
-  const { user, loading: authLoading } = useAuth()
-  const router = useRouter()
   const { profile, loading: profileLoading, hasProfile } = useSkinProfile(whatsappNumber)
   const { recommendations, loading: recsLoading, generateCustomRecommendations } = usePersonalizedRecommendations(whatsappNumber)
   const { analysis, loading: analysisLoading, analyzeIngredients } = useIngredientAnalysis()
   const { products } = useProducts()
-
-  // Redirect to homepage if not authenticated
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/')
-    }
-  }, [user, authLoading, router])
 
   useEffect(() => {
     const storedNumber = localStorage.getItem('whatsapp_number') || '+1234567890'
@@ -49,23 +38,6 @@ export default function PersonalizedDashboard() {
     { id: 'recommendations', label: '✨ Recommendations', description: 'Personalized product matches' },
     { id: 'analysis', label: '🔬 Ingredient Analysis', description: 'Safety and compatibility check' }
   ]
-
-  // Show loading while checking authentication
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-black via-luxury-charcoal to-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-luxury-gold mx-auto mb-4"></div>
-          <p className="text-white">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Don't render anything if not authenticated (will redirect)
-  if (!user) {
-    return null
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-luxury-charcoal to-black">

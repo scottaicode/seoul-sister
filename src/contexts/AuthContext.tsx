@@ -56,36 +56,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
-      // Clear local state immediately
+      // Use Supabase's signout
+      await supabaseClient.auth.signOut()
+
+      // Clear local state
       setUser(null)
       setUserProfile(null)
-      setLoading(false)
 
-      // Clear any localStorage data that might persist auth state
-      if (typeof window !== 'undefined') {
-        // Clear all localStorage entries that might contain auth data
-        const keysToRemove = []
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i)
-          if (key && (key.includes('supabase') || key.includes('auth') || key.includes('session'))) {
-            keysToRemove.push(key)
-          }
-        }
-        keysToRemove.forEach(key => localStorage.removeItem(key))
-
-        // Also clear sessionStorage
-        sessionStorage.clear()
-      }
-
-      // Use Supabase's signout with scope: 'global' to clear all sessions
-      await supabaseClient.auth.signOut({ scope: 'global' })
-
-      // Force a complete page reload to ensure clean state
-      window.location.replace('/')
+      // Navigate to home page
+      window.location.href = '/'
     } catch (error) {
       console.error('Error during signout:', error)
-      // Even if there's an error, force redirect
-      window.location.replace('/')
+      // Even if there's an error, still navigate away
+      window.location.href = '/'
     }
   }, [])
 
@@ -123,8 +106,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       if (isCancelled) return
 
-      // Only handle SIGNED_IN and SIGNED_OUT events to avoid unnecessary updates
+      // Be more conservative about state changes to prevent accidental logouts
       if (event === 'SIGNED_OUT') {
+        // Only clear state if it's an explicit signout, not a session refresh
         if (mountedRef.current) {
           setUser(null)
           setUserProfile(null)
@@ -139,6 +123,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           })
         }
+      } else if (session?.user && mountedRef.current) {
+        // Session exists, preserve the user state
+        setUser(session.user)
       }
 
       if (mountedRef.current) {
