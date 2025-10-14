@@ -12,59 +12,135 @@ export default function AuthHeader() {
   const [showDropdown, setShowDropdown] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
 
-  // Try to use context, but fallback to direct checks if context fails
+  // Try to use context, but fallback to direct checks if context fails or has no user
   let user, userProfile, signOut, loading
+  let usingFallback = false
+
   try {
     const authContext = useAuth()
-    user = authContext.user
-    userProfile = authContext.userProfile
-    signOut = authContext.signOut
-    loading = authContext.loading
-    console.log('🎯 AuthHeader: Context working:', { hasUser: !!user, loading })
+    // Use context if it has a user, otherwise use fallback
+    if (authContext.user) {
+      user = authContext.user
+      userProfile = authContext.userProfile
+      signOut = authContext.signOut
+      loading = authContext.loading
+      console.log('🎯 AuthHeader: Using context with user:', authContext.user.email)
+    } else {
+      // Context exists but no user, use fallback
+      user = authState.user
+      userProfile = authState.userProfile
+      loading = authState.loading
+      usingFallback = true
+      signOut = async () => {
+        console.log('Fallback signout - clearing session')
+        try {
+          const { createClient } = await import('@/lib/supabase')
+          const supabase = createClient()
+          await supabase.auth.signOut()
+          setAuthState({ user: null, userProfile: null, loading: false })
+          window.location.href = '/'
+        } catch (error) {
+          console.log('Signout error:', error)
+          window.location.href = '/'
+        }
+      }
+      console.log('🎯 AuthHeader: Context has no user, using fallback:', { hasUser: !!user })
+    }
   } catch (error) {
-    console.log('🎯 AuthHeader: Context failed, using fallback:', error)
+    console.log('🎯 AuthHeader: Context failed completely, using fallback:', error)
     user = authState.user
     userProfile = authState.userProfile
     loading = authState.loading
+    usingFallback = true
     signOut = async () => {
-      console.log('Fallback signout')
-      window.location.href = '/'
+      console.log('Fallback signout after context error')
+      try {
+        const { createClient } = await import('@/lib/supabase')
+        const supabase = createClient()
+        await supabase.auth.signOut()
+        setAuthState({ user: null, userProfile: null, loading: false })
+        window.location.href = '/'
+      } catch (error) {
+        console.log('Signout error:', error)
+        window.location.href = '/'
+      }
     }
   }
 
-  // Direct auth check if context isn't working
+  // Direct auth check - run more aggressively
   useEffect(() => {
-    if (!user && typeof window !== 'undefined') {
-      console.log('🎯 AuthHeader: Doing direct auth check')
+    console.log('🎯 AuthHeader: Running auth check, user:', !!user)
+    if (typeof window !== 'undefined') {
       const checkAuth = async () => {
         try {
           const { createClient } = await import('@/lib/supabase')
           const supabase = createClient()
           const { data: { session } } = await supabase.auth.getSession()
+          console.log('🎯 AuthHeader: Session check result:', {
+            hasSession: !!session,
+            hasUser: !!session?.user,
+            email: session?.user?.email
+          })
+
           if (session?.user) {
-            console.log('🎯 AuthHeader: Direct auth found user:', session.user.email)
+            console.log('🎯 AuthHeader: Found user session, updating state')
             setAuthState({
               user: session.user,
-              userProfile: { name: session.user.email?.split('@')[0] || 'User' },
+              userProfile: { name: session.user.email?.split('@')[0] || 'User', email: session.user.email },
               loading: false
             })
           } else {
+            console.log('🎯 AuthHeader: No user session found')
             setAuthState({ user: null, userProfile: null, loading: false })
           }
         } catch (err) {
-          console.log('🎯 AuthHeader: Direct auth failed:', err)
+          console.log('🎯 AuthHeader: Auth check error:', err)
           setAuthState({ user: null, userProfile: null, loading: false })
         }
       }
       checkAuth()
     }
-  }, [user])
+  }, []) // Run on every component mount
+
+  // Also run auth check when URL changes
+  useEffect(() => {
+    const handleRouteChange = () => {
+      console.log('🎯 AuthHeader: Route changed, rechecking auth')
+      if (typeof window !== 'undefined') {
+        setTimeout(() => {
+          const checkAuth = async () => {
+            try {
+              const { createClient } = await import('@/lib/supabase')
+              const supabase = createClient()
+              const { data: { session } } = await supabase.auth.getSession()
+              if (session?.user) {
+                setAuthState({
+                  user: session.user,
+                  userProfile: { name: session.user.email?.split('@')[0] || 'User', email: session.user.email },
+                  loading: false
+                })
+              }
+            } catch (err) {
+              console.log('🎯 AuthHeader: Route auth check failed:', err)
+            }
+          }
+          checkAuth()
+        }, 100)
+      }
+    }
+
+    // Listen for route changes
+    window.addEventListener('popstate', handleRouteChange)
+    return () => window.removeEventListener('popstate', handleRouteChange)
+  }, [])
 
   console.log('🎯 AuthHeader: Final state:', {
     hasUser: !!user,
     userEmail: user?.email,
     loading,
-    profileName: userProfile?.name
+    profileName: userProfile?.name,
+    usingFallback,
+    fallbackUser: authState.user?.email
   })
 
   // Add debugging to see what's happening with auth state
