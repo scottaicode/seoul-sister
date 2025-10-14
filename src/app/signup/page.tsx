@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { getStripe } from '@/lib/stripe'
 import { Elements } from '@stripe/react-stripe-js'
 import PaymentMethodForm from '@/components/PaymentMethodForm'
@@ -30,6 +30,7 @@ export default function SignupPage() {
 
     try {
       // Sign up with Supabase Auth
+      const supabase = createClient()
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: generateTemporaryPassword(), // We'll use magic links later

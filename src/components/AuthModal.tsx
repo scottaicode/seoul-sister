@@ -44,21 +44,16 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         if (data.user) {
           // Create user profile
           const { error: profileError } = await supabase
-            .from('user_profiles')
+            .from('profiles')
             .insert({
               id: data.user.id,
               email: data.user.email,
-              name: name,
-              skin_concerns: [],
-              ingredient_allergies: [],
-              preferred_ingredients: [],
-              ingredients_to_avoid: [],
-              price_range_min: 0,
-              price_range_max: 100,
-              product_history: {},
-              skin_analysis_history: {},
-              recommendation_feedback: {}
-            })
+              first_name: name.split(' ')[0] || name,
+              last_name: name.split(' ').slice(1).join(' ') || null,
+              total_savings: 0,
+              order_count: 0,
+              viral_shares_count: 0
+            } as any)
 
           if (profileError) {
             console.error('Profile creation error:', profileError)

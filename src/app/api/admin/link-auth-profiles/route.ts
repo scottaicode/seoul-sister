@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       try {
         // Delete old profile record if it exists (with different ID)
         await supabaseAdmin
-          .from('user_profiles')
+          .from('profiles')
           .delete()
           .eq('email', authUser.email)
           .neq('id', authUser.id)
@@ -38,16 +38,19 @@ export async function POST(request: NextRequest) {
         const profileData = {
           id: authUser.id,
           email: authUser.email,
-          name: authUser.email === 'baileydonmartin@gmail.com' ? 'Bailey Don Martin' :
-                authUser.email === 'vibetrendai@gmail.com' ? 'VibeTrend AI Admin' : 'Test User',
-          subscription_status: authUser.email === 'test@email.com' ? 'bypass_test' : 'bypass_admin',
-          bypass_subscription: true,
+          first_name: authUser.email === 'baileydonmartin@gmail.com' ? 'Bailey Don' :
+                     authUser.email === 'vibetrendai@gmail.com' ? 'VibeTrend AI' : 'Test',
+          last_name: authUser.email === 'baileydonmartin@gmail.com' ? 'Martin' :
+                     authUser.email === 'vibetrendai@gmail.com' ? 'Admin' : 'User',
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          total_savings: 0,
+          order_count: 0,
+          viral_shares_count: 0
         }
 
         const { data: profile, error: profileError } = await supabaseAdmin
-          .from('user_profiles')
+          .from('profiles')
           .upsert(profileData)
           .select()
           .single()
@@ -85,7 +88,6 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error linking auth profiles:', error)
     return NextResponse.json(
       { error: 'Failed to link auth profiles', details: String(error) },
       { status: 500 }
@@ -106,7 +108,7 @@ export async function GET() {
 
       if (authUser) {
         const { data: profile } = await supabaseAdmin
-          .from('user_profiles')
+          .from('profiles')
           .select('*')
           .eq('id', authUser.id)
           .single()
@@ -116,8 +118,8 @@ export async function GET() {
           auth_id: authUser.id,
           profile_exists: !!profile,
           profile_id_matches: profile?.id === authUser.id,
-          bypass_status: profile?.bypass_subscription,
-          subscription_status: profile?.subscription_status
+          first_name: profile?.first_name,
+          last_name: profile?.last_name
         })
       } else {
         results.push({
@@ -133,7 +135,6 @@ export async function GET() {
     })
 
   } catch (error) {
-    console.error('Error checking link status:', error)
     return NextResponse.json(
       { error: 'Failed to check link status', details: String(error) },
       { status: 500 }

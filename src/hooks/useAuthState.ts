@@ -17,7 +17,6 @@ export function useAuthState() {
       const { data: { session }, error } = await supabase.auth.getSession()
 
       if (error) {
-        console.error('Error getting session:', error)
         setUser(null)
       } else if (session?.user) {
         setUser(session.user)
@@ -25,17 +24,13 @@ export function useAuthState() {
         // Try to refresh session if no session found
         const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
 
-        if (refreshError) {
-          console.warn('Session refresh failed:', refreshError)
-          setUser(null)
-        } else if (refreshedSession?.user) {
+        if (refreshedSession?.user) {
           setUser(refreshedSession.user)
         } else {
           setUser(null)
         }
       }
     } catch (error) {
-      console.error('Error checking session:', error)
       setUser(null)
     } finally {
       setLoading(false)
@@ -49,7 +44,6 @@ export function useAuthState() {
     // Add timeout to prevent infinite loading (especially for Firefox)
     const loadingTimeout = setTimeout(() => {
       if (mounted && loading) {
-        console.log('Auth loading timeout reached, forcing loading to false')
         setLoading(false)
         setInitialized(true)
       }
@@ -114,7 +108,6 @@ export function useAuthState() {
         window.location.href = '/'
       }
     } catch (error) {
-      console.error('Error signing out:', error)
       window.location.href = '/'
     }
   }

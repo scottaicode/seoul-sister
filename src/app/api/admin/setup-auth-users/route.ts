@@ -76,21 +76,20 @@ export async function POST(request: NextRequest) {
 
         // Update or create user profile with auth ID
         const { data: profile, error: profileError } = await supabaseAdmin
-          .from('user_profiles')
+          .from('profiles')
           .upsert({
             id: authUser.user.id,
             email: user.email,
-            name: user.name,
-            subscription_status: user.subscription_status,
-            bypass_subscription: user.bypass_subscription,
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            total_savings: 0,
+            order_count: 0,
+            viral_shares_count: 0
           })
           .select()
           .single()
 
         if (profileError) {
-          console.error(`Profile error for ${user.email}:`, profileError)
           results.push({
             email: user.email,
             status: 'auth_created_profile_error',
@@ -107,7 +106,6 @@ export async function POST(request: NextRequest) {
         }
 
       } catch (error) {
-        console.error(`Error processing ${user.email}:`, error)
         results.push({
           email: user.email,
           status: 'error',
@@ -123,7 +121,6 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error setting up auth users:', error)
     return NextResponse.json(
       { error: 'Failed to setup auth users', details: String(error) },
       { status: 500 }
@@ -145,7 +142,7 @@ export async function GET() {
     const profiles = []
     for (const authUser of bypassAuthUsers) {
       const { data: profile } = await supabaseAdmin
-        .from('user_profiles')
+        .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .single()
@@ -165,7 +162,6 @@ export async function GET() {
     })
 
   } catch (error) {
-    console.error('Error fetching auth users:', error)
     return NextResponse.json(
       { error: 'Failed to fetch auth users', details: String(error) },
       { status: 500 }

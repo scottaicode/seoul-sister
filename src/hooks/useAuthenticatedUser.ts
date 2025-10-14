@@ -62,8 +62,6 @@ export function useAuthenticatedUser() {
     try {
       const supabase = createBrowserClient() as any
 
-      console.log('fetchUserProfile: Fetching profile for user', user.id)
-
       // Fetch user profile
       const { data: userProfile, error: profileError } = await supabase
         .from('profiles')
@@ -71,14 +69,11 @@ export function useAuthenticatedUser() {
         .eq('id', user.id)
         .single()
 
-      console.log('fetchUserProfile: Profile fetch result', { userProfile, profileError })
-
       let currentProfile = userProfile
 
       if (profileError) {
         // If profile doesn't exist, create one
         if (profileError.code === 'PGRST116') {
-          console.log('fetchUserProfile: Creating new profile for user', user.id)
           const { data: newProfile, error: createError } = await supabase
             .from('profiles')
             .insert({
@@ -92,23 +87,16 @@ export function useAuthenticatedUser() {
             .single()
 
           if (createError) {
-            console.error('fetchUserProfile: Error creating profile', createError)
             throw createError
           }
-          console.log('fetchUserProfile: New profile created', newProfile)
           currentProfile = newProfile
         } else {
-          console.error('fetchUserProfile: Profile fetch error', profileError)
           throw profileError
         }
-      } else {
-        console.log('fetchUserProfile: Setting existing profile', userProfile)
       }
 
       // If no WhatsApp number in profile, try to find it from user_skin_profiles
       if (currentProfile && !currentProfile.whatsapp_number) {
-        console.log('fetchUserProfile: No WhatsApp in profile, checking user_skin_profiles')
-
         // Try to find existing skin profile linked to this user's email
         const { data: existingSkinProfiles, error: skinSearchError } = await supabase
           .from('user_skin_profiles')
@@ -117,7 +105,6 @@ export function useAuthenticatedUser() {
 
         if (!skinSearchError && existingSkinProfiles && existingSkinProfiles.length > 0) {
           const existingSkinProfile = existingSkinProfiles[0]
-          console.log('fetchUserProfile: Found existing skin profile', existingSkinProfile)
 
           // Update the main profile with the WhatsApp number from skin profile
           const { data: updatedProfile, error: updateError } = await supabase
@@ -131,7 +118,6 @@ export function useAuthenticatedUser() {
             .single()
 
           if (!updateError && updatedProfile) {
-            console.log('fetchUserProfile: Profile updated with WhatsApp number', updatedProfile)
             currentProfile = updatedProfile
             setSkinProfile(existingSkinProfile)
           }
@@ -142,29 +128,20 @@ export function useAuthenticatedUser() {
 
       // Fetch skin profile if WhatsApp number exists and we haven't already set it
       if (currentProfile && currentProfile.whatsapp_number && !skinProfile) {
-        console.log('fetchUserProfile: Fetching skin profile for WhatsApp', currentProfile.whatsapp_number)
         const { data: skinProfileData, error: skinError } = await supabase
           .from('user_skin_profiles')
           .select('*')
           .eq('whatsapp_number', currentProfile.whatsapp_number)
           .single()
 
-        if (skinError && skinError.code !== 'PGRST116') {
-          console.warn('fetchUserProfile: Error fetching skin profile:', skinError)
-        } else if (skinProfileData) {
-          console.log('fetchUserProfile: Skin profile found', skinProfileData)
+        if (!skinError && skinProfileData) {
           setSkinProfile(skinProfileData)
-        } else {
-          console.log('fetchUserProfile: No skin profile found')
         }
-      } else if (!currentProfile?.whatsapp_number) {
-        console.log('fetchUserProfile: No WhatsApp number in profile')
       }
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch user profile'
       setError(errorMessage)
-      console.error('fetchUserProfile: Error:', err)
     } finally {
       setLoading(false)
     }
@@ -175,8 +152,6 @@ export function useAuthenticatedUser() {
 
     try {
       const supabase = createBrowserClient() as any
-
-      console.log('updateProfile: Updating profile with', updates)
 
       const { data, error } = await supabase
         .from('profiles')
@@ -189,29 +164,22 @@ export function useAuthenticatedUser() {
         .single()
 
       if (error) {
-        console.error('updateProfile: Error updating profile', error)
         throw error
       }
 
-      console.log('updateProfile: Profile updated successfully', data)
       setProfile(data)
 
       // If WhatsApp number was updated, refetch skin profile
       if (updates.whatsapp_number && data.whatsapp_number) {
-        console.log('updateProfile: WhatsApp number updated, fetching skin profile')
         const { data: skinProfileData, error: skinError } = await supabase
           .from('user_skin_profiles')
           .select('*')
           .eq('whatsapp_number', data.whatsapp_number)
           .single()
 
-        if (skinError && skinError.code !== 'PGRST116') {
-          console.warn('updateProfile: Error fetching skin profile after WhatsApp update:', skinError)
-        } else if (skinProfileData) {
-          console.log('updateProfile: Skin profile found after WhatsApp update', skinProfileData)
+        if (!skinError && skinProfileData) {
           setSkinProfile(skinProfileData)
         } else {
-          console.log('updateProfile: No skin profile found after WhatsApp update')
           setSkinProfile(null)
         }
       }
@@ -220,7 +188,6 @@ export function useAuthenticatedUser() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update profile'
       setError(errorMessage)
-      console.error('updateProfile: Error:', err)
       return null
     }
   }, [user, profile])
@@ -274,14 +241,12 @@ export function useAuthenticatedUser() {
       return result
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update skin profile')
-      console.error('Error updating skin profile:', err)
       return null
     }
   }, [profile])
 
   useEffect(() => {
     if (user && isAuthenticated) {
-      console.log('useAuthenticatedUser: User changed, fetching profile for:', user.id)
       fetchUserProfile()
     }
   }, [fetchUserProfile, user, isAuthenticated])

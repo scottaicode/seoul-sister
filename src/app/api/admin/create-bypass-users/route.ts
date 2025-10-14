@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
 
     // Define bypass users
     const bypassUsers = [
@@ -35,48 +44,31 @@ export async function POST(request: NextRequest) {
     for (const user of bypassUsers) {
       // Check if user exists
       const { data: existingUser } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('id, email')
         .eq('email', user.email)
         .single()
 
       if (existingUser) {
-        // Update existing user
-        const { data: updatedUser, error } = await supabase
-          .from('user_profiles')
-          .update({
-            subscription_status: user.subscription_status,
-            bypass_subscription: user.bypass_subscription,
-            updated_at: new Date().toISOString()
-          })
-          .eq('email', user.email)
-          .select()
-          .single()
-
-        if (error) {
-          console.error(`Error updating user ${user.email}:`, error)
-          results.push({ email: user.email, status: 'error', error: error.message })
-        } else {
-          results.push({ email: user.email, status: 'updated', data: updatedUser })
-        }
+        // User already exists, skip
+        results.push({ email: user.email, status: 'exists', data: existingUser })
       } else {
-        // Create new user
+        // Create new user with only valid fields
         const { data: newUser, error } = await supabase
-          .from('user_profiles')
+          .from('profiles')
           .insert({
             id: user.id,
             email: user.email,
-            name: user.name,
-            subscription_status: user.subscription_status,
-            bypass_subscription: user.bypass_subscription,
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
+            updated_at: new Date().toISOString(),
+            total_savings: 0,
+            order_count: 0,
+            viral_shares_count: 0
+          } as any)
           .select()
           .single()
 
         if (error) {
-          console.error(`Error creating user ${user.email}:`, error)
           results.push({ email: user.email, status: 'error', error: error.message })
         } else {
           results.push({ email: user.email, status: 'created', data: newUser })
@@ -91,7 +83,6 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error creating bypass users:', error)
     return NextResponse.json(
       { error: 'Failed to create bypass users', details: String(error) },
       { status: 500 }
@@ -102,13 +93,22 @@ export async function POST(request: NextRequest) {
 // GET endpoint to check existing bypass users
 export async function GET() {
   try {
-    const supabase = createClient()
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
 
     const { data: bypassUsers, error } = await supabase
-      .from('user_profiles')
-      .select('id, email, name, subscription_status, bypass_subscription, created_at, updated_at')
-      .or('bypass_subscription.eq.true,subscription_status.eq.bypass_admin,subscription_status.eq.bypass_test')
+      .from('profiles')
+      .select('id, email, first_name, last_name, created_at, updated_at')
       .order('created_at', { ascending: false })
+      .limit(10)
 
     if (error) {
       throw error
@@ -121,7 +121,6 @@ export async function GET() {
     })
 
   } catch (error) {
-    console.error('Error fetching bypass users:', error)
     return NextResponse.json(
       { error: 'Failed to fetch bypass users', details: String(error) },
       { status: 500 }

@@ -1,12 +1,8 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react'
-
-// Add immediate client-side debug
-if (typeof window !== 'undefined') {
-  console.log('🌐 AuthContext: Client-side script loaded')
-}
 import { createClient } from '@/lib/supabase'
+import { handleAuthError, AuthenticationError } from '@/lib/auth-utils'
 import type { User, AuthChangeEvent, Session } from '@supabase/supabase-js'
 import type { UserProfile } from '@/types/user'
 
@@ -14,9 +10,11 @@ interface AuthContextType {
   user: User | null
   userProfile: UserProfile | null
   loading: boolean
+  error: string | null
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
   refreshAuth: () => Promise<void>
+  clearError: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -28,6 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const mountedRef = useRef(true)
   const authListenerRef = useRef<any>(null)
 
@@ -35,7 +34,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (mountedRef.current && loading) {
-        console.log('Auth timeout reached, forcing loading to false')
         setLoading(false)
       }
     }, 5000)
@@ -47,17 +45,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const { data, error } = await supabaseClient
-        .from('user_profiles')
+        .from('profiles')
         .select('*')
         .eq('id', userId)
         .single()
 
       if (error) {
-        return null
+        throw new AuthenticationError('Failed to fetch user profile', error.code, error)
       }
 
       return data
-    } catch (error) {
+    } catch (err) {
+      const authError = handleAuthError(err)
+      if (mountedRef.current) {
+        setError(authError.message)
+      }
       return null
     }
   }, [])
@@ -75,6 +77,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data: { session }, error } = await supabaseClient.auth.getSession()
 
+      if (error) {
+        throw new AuthenticationError('Failed to get session', error.message)
+      }
+
       if (session?.user && mountedRef.current) {
         setUser(session.user)
         const profile = await fetchUserProfile(session.user.id)
@@ -91,9 +97,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (mountedRef.current) {
         setLoading(false)
       }
-    } catch (error) {
-      console.error('Error refreshing auth:', error)
+    } catch (err) {
+      const authError = handleAuthError(err)
       if (mountedRef.current) {
+        setError(authError.message)
         setLoading(false)
       }
     }
@@ -101,17 +108,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
-      // Use Supabase's signout
-      await supabaseClient.auth.signOut()
+      const { error } = await supabaseClient.auth.signOut()
+
+      if (error) {
+        throw new AuthenticationError('Failed to sign out', error.message)
+      }
 
       // Clear local state
       setUser(null)
       setUserProfile(null)
+      setError(null)
 
       // Navigate to home page
       window.location.href = '/'
-    } catch (error) {
-      console.error('Error during signout:', error)
+    } catch (err) {
+      const authError = handleAuthError(err)
+      setError(authError.message)
       // Even if there's an error, still navigate away
       window.location.href = '/'
     }
@@ -121,30 +133,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isCancelled = false
 
     const initializeAuth = async () => {
-      console.log('InitializeAuth called at', window.location.pathname)
       try {
         // Get initial session - refresh it to ensure it's current
         const { data: { session }, error } = await supabaseClient.auth.getSession()
-        console.log('InitializeAuth: Session check result:', {
-          hasUser: !!session?.user,
-          email: session?.user?.email,
-          error
-        })
+
+        if (error) {
+          throw new AuthenticationError('Failed to initialize auth session', error.message)
+        }
 
         if (isCancelled) return
 
         if (session?.user && mountedRef.current) {
-          console.log('InitializeAuth: Setting user state for', session.user.email)
           setUser(session.user)
           // Load profile in background
           fetchUserProfile(session.user.id).then(profile => {
             if (mountedRef.current && !isCancelled) {
-              console.log('InitializeAuth: Profile loaded for', session.user.email)
               setUserProfile(profile)
             }
           })
         } else {
-          console.log('InitializeAuth: No user found, clearing state')
           if (mountedRef.current) {
             setUser(null)
             setUserProfile(null)
@@ -152,12 +159,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (mountedRef.current) {
-          console.log('InitializeAuth: Setting loading to false')
           setLoading(false)
         }
-      } catch (error) {
-        console.error('InitializeAuth error:', error)
+      } catch (err) {
+        const authError = handleAuthError(err)
         if (mountedRef.current) {
+          setError(authError.message)
           setLoading(false)
         }
       }
@@ -165,24 +172,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Setup auth state listener
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-      console.log('Auth state change:', {
-        event,
-        hasUser: !!session?.user,
-        email: session?.user?.email,
-        path: window.location.pathname
-      })
       if (isCancelled) return
 
       // Be more conservative about state changes to prevent accidental logouts
       if (event === 'SIGNED_OUT') {
-        console.log('Auth: User signed out, clearing state')
         // Only clear state if it's an explicit signout, not a session refresh
         if (mountedRef.current) {
           setUser(null)
           setUserProfile(null)
         }
       } else if (event === 'SIGNED_IN' && session?.user) {
-        console.log('Auth: User signed in, updating state for', session.user.email)
         if (mountedRef.current) {
           setUser(session.user)
           // Load profile in background
@@ -193,7 +192,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           })
         }
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-        console.log('Auth: Token refreshed, maintaining user state for', session.user.email)
         // Token refresh - keep user logged in
         if (mountedRef.current && !user) {
           setUser(session.user)
@@ -204,13 +202,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           })
         }
       } else if (session?.user && mountedRef.current) {
-        console.log('Auth: Session exists, preserving user state for', session.user.email)
         // Session exists, preserve the user state
         setUser(session.user)
       }
 
       if (mountedRef.current) {
-        console.log('Auth listener: Setting loading to false')
         setLoading(false)
       }
     })
@@ -228,13 +224,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
+
   const value = {
     user,
     userProfile,
     loading,
+    error,
     signOut,
     refreshProfile,
     refreshAuth,
+    clearError,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
@@ -242,11 +244,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
-  console.log('🔍 useAuth: Hook called, context:', {
-    contextExists: !!context,
-    hasUser: !!context?.user,
-    loading: context?.loading
-  })
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider')
   }
