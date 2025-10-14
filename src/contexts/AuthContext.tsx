@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.clear()
 
       // Try Supabase signout (don't wait for it)
-      supabase.auth.signOut().catch(err => console.log('Supabase signout error:', err))
+      supabase.auth.signOut().catch((err: any) => console.log('Supabase signout error:', err))
 
       // Force immediate redirect
       setTimeout(() => {
