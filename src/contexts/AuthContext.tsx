@@ -58,8 +58,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null)
       setUserProfile(null)
 
-      // Clear localStorage
-      localStorage.clear()
+      // Clear only auth-related localStorage items
+      const keysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && (key.includes('supabase') || key.includes('auth') || key.includes('whatsapp_number'))) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key))
 
       // Try Supabase signout (don't wait for it)
       supabase.auth.signOut().catch((err: any) => console.log('Supabase signout error:', err))
@@ -74,7 +81,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Force logout regardless of error
       setUser(null)
       setUserProfile(null)
-      localStorage.clear()
+      // Clear only auth-related localStorage items
+      const keysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && (key.includes('supabase') || key.includes('auth') || key.includes('whatsapp_number'))) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key))
       window.location.replace('/')
     }
   }
