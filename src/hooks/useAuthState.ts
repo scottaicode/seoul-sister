@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase'
+import { useState, useEffect, useCallback } from 'react'
+import { createBrowserClient } from '@/lib/supabase-browser'
 import type { User, AuthChangeEvent, Session } from '@supabase/supabase-js'
 
 export function useAuthState() {
@@ -9,95 +9,84 @@ export function useAuthState() {
   const [loading, setLoading] = useState(true)
   const [initialized, setInitialized] = useState(false)
 
-  useEffect(() => {
-    const supabase = createClient()
-    let mounted = true
+  const checkUser = useCallback(async () => {
+    try {
+      const supabase = createBrowserClient()
+      const { data: { session }, error } = await supabase.auth.getSession()
 
-    // Set a timeout to prevent infinite loading
-    const timeout = setTimeout(() => {
-      if (mounted && loading) {
-        console.log('useAuthState: Timeout reached, forcing initialization')
-        setLoading(false)
-        setInitialized(true)
+      if (error) {
+        console.error('Error getting session:', error)
+        setUser(null)
+      } else if (session?.user) {
+        setUser(session.user)
+      } else {
+        setUser(null)
       }
-    }, 3000) // 3 second timeout
-
-    const checkUser = async () => {
-      try {
-        // Check for existing session
-        const { data: { session }, error } = await supabase.auth.getSession()
-
-        if (error) {
-          console.error('useAuthState: Error getting session:', error)
-        }
-
-        if (mounted) {
-          console.log('useAuthState: Session check:', {
-            hasSession: !!session,
-            email: session?.user?.email,
-            path: window.location.pathname
-          })
-
-          if (session?.user) {
-            setUser(session.user)
-            // Also store in localStorage for quick access
-            localStorage.setItem('auth_user_email', session.user.email || '')
-            localStorage.setItem('auth_user_id', session.user.id)
-          } else {
-            setUser(null)
-            localStorage.removeItem('auth_user_email')
-            localStorage.removeItem('auth_user_id')
-          }
-
-          setLoading(false)
-          setInitialized(true)
-          clearTimeout(timeout)
-        }
-      } catch (error) {
-        console.error('useAuthState: Error checking session:', error)
-        if (mounted) {
-          setLoading(false)
-          setInitialized(true)
-          clearTimeout(timeout)
-        }
-      }
+    } catch (error) {
+      console.error('Error checking session:', error)
+      setUser(null)
+    } finally {
+      setLoading(false)
+      setInitialized(true)
     }
+  }, [])
+
+  useEffect(() => {
+    let mounted = true
 
     // Initial check
     checkUser()
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-      console.log('useAuthState: Auth state changed:', event, session?.user?.email)
+    // Set up auth listener
+    const supabase = createBrowserClient()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event: AuthChangeEvent, session: Session | null) => {
+        if (!mounted) return
 
-      if (mounted) {
         if (session?.user) {
           setUser(session.user)
-          localStorage.setItem('auth_user_email', session.user.email || '')
-          localStorage.setItem('auth_user_id', session.user.id)
         } else {
           setUser(null)
-          localStorage.removeItem('auth_user_email')
-          localStorage.removeItem('auth_user_id')
+        }
+
+        // Special handling for sign out
+        if (event === 'SIGNED_OUT') {
+          setUser(null)
         }
       }
-    })
+    )
 
     return () => {
       mounted = false
       subscription.unsubscribe()
-      clearTimeout(timeout)
     }
-  }, [])
+  }, [checkUser])
 
   const signOut = async () => {
-    const supabase = createClient()
     try {
+      const supabase = createBrowserClient()
       await supabase.auth.signOut()
       setUser(null)
-      localStorage.removeItem('auth_user_email')
-      localStorage.removeItem('auth_user_id')
-      window.location.href = '/'
+
+      // Clear all auth-related storage
+      if (typeof window !== 'undefined') {
+        // Clear localStorage
+        const keysToRemove = Object.keys(localStorage).filter(key =>
+          key.startsWith('sb-') || key.includes('supabase')
+        )
+        keysToRemove.forEach(key => localStorage.removeItem(key))
+
+        // Clear cookies
+        document.cookie.split(';').forEach(cookie => {
+          const [name] = cookie.split('=')
+          if (name.trim().startsWith('sb-') || name.includes('supabase')) {
+            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+          }
+        })
+
+        // Redirect to home
+        window.location.href = '/'
+      }
     } catch (error) {
       console.error('Error signing out:', error)
       window.location.href = '/'
@@ -105,21 +94,7 @@ export function useAuthState() {
   }
 
   const refresh = async () => {
-    const supabase = createClient()
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        setUser(session.user)
-        localStorage.setItem('auth_user_email', session.user.email || '')
-        localStorage.setItem('auth_user_id', session.user.id)
-      } else {
-        setUser(null)
-        localStorage.removeItem('auth_user_email')
-        localStorage.removeItem('auth_user_id')
-      }
-    } catch (error) {
-      console.error('Error refreshing auth:', error)
-    }
+    await checkUser()
   }
 
   return {

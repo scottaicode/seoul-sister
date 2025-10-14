@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuthState } from '@/hooks/useAuthState'
 import AuthModal from './AuthModal'
 import { User, ChevronDown, Camera, Heart, ShoppingBag, Settings, LogOut } from 'lucide-react'
@@ -10,43 +10,43 @@ export default function AuthHeader() {
   const [showDropdown, setShowDropdown] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Use the direct auth state hook
   const { user, loading, signOut, refresh, isAuthenticated } = useAuthState()
 
-  // Simple user display name
   const displayName = user?.email?.split('@')[0] || 'User'
 
-  // Mark component as mounted and refresh auth
   useEffect(() => {
     setMounted(true)
     refresh()
   }, [])
 
-  // Debug auth state
+  // Close dropdown when clicking outside
   useEffect(() => {
-    console.log('AuthHeader: Auth state:', {
-      isAuthenticated,
-      user: user?.email,
-      loading,
-      path: window.location.pathname
-    })
-  }, [user, loading, isAuthenticated])
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showDropdown])
 
   const handleAuthSuccess = (user: any) => {
-    console.log('User authenticated:', user)
+    refresh()
   }
 
   const handleSignOut = async () => {
     setSigningOut(true)
     setShowDropdown(false)
-
-    // Don't wait for the signOut promise, let it handle redirect
-    signOut()
+    await signOut()
   }
 
   return (
-    <header className="absolute top-0 left-0 right-0 z-40 bg-transparent">
+    <header className="absolute top-0 left-0 right-0 z-50 bg-transparent">
       <div className="max-w-7xl mx-auto px-8 py-6">
         <div className="flex items-center justify-between">
           {/* Logo */}
@@ -116,70 +116,88 @@ export default function AuthHeader() {
           {/* Auth Section */}
           <div className="flex items-center space-x-4">
             {!mounted || loading ? (
-              <div className="w-8 h-8 border-2 border-luxury-gold/30 border-t-luxury-gold rounded-full animate-spin"></div>
+              <div className="w-8 h-8 border-2 border-[#d4a574]/30 border-t-[#d4a574] rounded-full animate-spin"></div>
             ) : isAuthenticated ? (
-              <div className="relative">
+              <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setShowDropdown(!showDropdown)}
-                  className="flex items-center space-x-2 bg-luxury-charcoal/50 hover:bg-luxury-charcoal/70 border border-luxury-gold/30 px-3 py-2 rounded-lg transition-colors backdrop-blur-sm"
+                  className="flex items-center space-x-2 bg-black/50 hover:bg-black/70 border border-[#d4a574]/30 px-3 py-2 rounded-lg transition-colors backdrop-blur-sm"
                 >
-                  <div className="w-8 h-8 bg-luxury-gold rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-[#d4a574] rounded-full flex items-center justify-center">
                     <User size={16} className="text-black" />
                   </div>
                   <span className="text-sm font-medium text-white tracking-wide">
                     {displayName}
                   </span>
-                  <ChevronDown size={16} className="text-gray-300" />
+                  <ChevronDown
+                    size={16}
+                    className={`text-gray-300 transition-transform ${showDropdown ? 'rotate-180' : ''}`}
+                  />
                 </button>
 
                 {showDropdown && (
-                  <div className="absolute right-0 mt-2 w-64 bg-luxury-charcoal rounded-lg shadow-lg border border-luxury-gold/30 py-2 z-50 backdrop-blur-sm">
-                    <div className="px-4 py-2 border-b border-luxury-gold/20">
+                  <div className="absolute right-0 mt-2 w-64 bg-black/95 rounded-lg shadow-xl border border-[#d4a574]/30 overflow-hidden backdrop-blur-xl"
+                       style={{ zIndex: 9999 }}>
+                    <div className="px-4 py-3 border-b border-[#d4a574]/20">
                       <p className="text-sm font-medium text-white">
                         {displayName}
                       </p>
-                      <p className="text-xs text-gray-400">{user?.email}</p>
+                      <p className="text-xs text-gray-400 truncate">{user?.email}</p>
                     </div>
 
                     <div className="py-1">
                       <a
                         href="/skin-profile"
-                        className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-luxury-gold/20 hover:text-luxury-gold transition-colors"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
+                        onClick={() => setShowDropdown(false)}
                       >
-                        <Camera size={16} className="mr-3" />
-                        Skin Profile
+                        <div className="flex items-center">
+                          <Camera size={16} className="mr-3" />
+                          Skin Profile
+                        </div>
                       </a>
                       <a
                         href="/personalized-dashboard"
-                        className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-luxury-gold/20 hover:text-luxury-gold transition-colors"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
+                        onClick={() => setShowDropdown(false)}
                       >
-                        <Heart size={16} className="mr-3" />
-                        AI Beauty Hub
+                        <div className="flex items-center">
+                          <Heart size={16} className="mr-3" />
+                          AI Beauty Hub
+                        </div>
                       </a>
                       <a
                         href="/"
-                        className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-luxury-gold/20 hover:text-luxury-gold transition-colors"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
+                        onClick={() => setShowDropdown(false)}
                       >
-                        <ShoppingBag size={16} className="mr-3" />
-                        Shop Products
+                        <div className="flex items-center">
+                          <ShoppingBag size={16} className="mr-3" />
+                          Shop Products
+                        </div>
                       </a>
                       <a
                         href="/admin/ai-features"
-                        className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-luxury-gold/20 hover:text-luxury-gold transition-colors"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
+                        onClick={() => setShowDropdown(false)}
                       >
-                        <Settings size={16} className="mr-3" />
-                        Admin Portal
+                        <div className="flex items-center">
+                          <Settings size={16} className="mr-3" />
+                          Admin Portal
+                        </div>
                       </a>
                     </div>
 
-                    <div className="border-t border-luxury-gold/20 py-1">
+                    <div className="border-t border-[#d4a574]/20">
                       <button
                         onClick={handleSignOut}
                         disabled={signingOut}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-300 hover:bg-luxury-gold/20 hover:text-luxury-gold transition-colors disabled:opacity-50"
+                        className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors disabled:opacity-50"
                       >
-                        <LogOut size={16} className="mr-3" />
-                        {signingOut ? 'Signing out...' : 'Sign Out'}
+                        <div className="flex items-center">
+                          <LogOut size={16} className="mr-3" />
+                          {signingOut ? 'Signing out...' : 'Sign Out'}
+                        </div>
                       </button>
                     </div>
                   </div>
@@ -221,14 +239,6 @@ export default function AuthHeader() {
         onClose={() => setShowAuthModal(false)}
         onSuccess={handleAuthSuccess}
       />
-
-      {/* Backdrop for dropdown */}
-      {showDropdown && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setShowDropdown(false)}
-        />
-      )}
     </header>
   )
 }
