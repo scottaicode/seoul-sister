@@ -18,13 +18,9 @@ export default function AuthHeader() {
   const handleSignOut = async () => {
     setSigningOut(true)
     setShowDropdown(false)
-    try {
-      await signOut()
-    } catch (error) {
-      console.error('Logout error:', error)
-    } finally {
-      setSigningOut(false)
-    }
+
+    // Don't wait for the signOut promise, let it handle redirect
+    signOut()
   }
 
   return (

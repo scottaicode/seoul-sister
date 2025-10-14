@@ -53,17 +53,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       console.log('Signing out...')
-      await supabase.auth.signOut()
+
+      // Immediately clear local state
       setUser(null)
       setUserProfile(null)
-      // Force page reload to clear any cached state
-      window.location.href = '/'
+
+      // Clear localStorage
+      localStorage.clear()
+
+      // Try Supabase signout (don't wait for it)
+      supabase.auth.signOut().catch(err => console.log('Supabase signout error:', err))
+
+      // Force immediate redirect
+      setTimeout(() => {
+        window.location.replace('/')
+      }, 100)
+
     } catch (error) {
       console.error('Error signing out:', error)
-      // Force logout even if API fails
+      // Force logout regardless of error
       setUser(null)
       setUserProfile(null)
-      window.location.href = '/'
+      localStorage.clear()
+      window.location.replace('/')
     }
   }
 
