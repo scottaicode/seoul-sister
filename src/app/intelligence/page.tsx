@@ -17,7 +17,7 @@ export default async function IntelligencePage() {
 async function checkPremiumAccess(): Promise<boolean> {
   try {
     // Get auth token from headers
-    const headersList = headers();
+    const headersList = await headers();
     const authorization = headersList.get('authorization');
 
     if (!authorization) {
