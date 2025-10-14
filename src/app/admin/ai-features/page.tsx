@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import AuthHeader from '@/components/AuthHeader'
+import { ArrowLeft } from 'lucide-react'
 
 interface AdminStats {
   totalProfiles: number
@@ -75,18 +77,24 @@ export default function AIFeaturesAdmin() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-luxury-charcoal to-black">
-      <div className="container mx-auto px-4 py-8">
+      {/* Authentication Header */}
+      <AuthHeader />
+
+      <div className="container mx-auto px-4 pt-24 pb-8">
+        {/* Back button at the top */}
+        <div className="mb-6">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 px-4 py-2 text-gray-300 hover:text-luxury-gold transition-colors"
+          >
+            <ArrowLeft size={20} />
+            <span className="font-medium">Back to Main Site</span>
+          </Link>
+        </div>
+
         {/* Header with Seoul Sister branding */}
         <div className="text-center mb-8">
           <div className="mb-6">
-            <h1 className="text-xl tracking-wider mb-4" style={{
-              color: '#C9A96E',
-              fontFamily: 'Inter, sans-serif',
-              fontWeight: '400',
-              letterSpacing: '0.05em'
-            }}>
-              SEOUL SISTER
-            </h1>
             <p className="text-caption mb-4 text-gray-400 tracking-widest">EXECUTIVE DASHBOARD</p>
           </div>
 
@@ -103,12 +111,6 @@ export default function AIFeaturesAdmin() {
               className="px-6 py-3 bg-luxury-gold text-black rounded-lg hover:bg-luxury-gold/90 font-medium tracking-wide shadow-lg transition-all"
             >
               View User Dashboard
-            </Link>
-            <Link
-              href="/"
-              className="px-6 py-3 bg-luxury-charcoal/30 border border-luxury-gold/30 text-gray-300 rounded-lg hover:bg-luxury-charcoal/50 hover:border-luxury-gold/50 font-medium tracking-wide transition-all"
-            >
-              Back to Main Site
             </Link>
           </div>
         </div>

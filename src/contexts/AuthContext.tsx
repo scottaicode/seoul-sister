@@ -31,13 +31,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const mountedRef = useRef(true)
   const authListenerRef = useRef<any>(null)
 
-  // Simple timeout failsafe - 3 seconds max
+  // Simple timeout failsafe - 5 seconds max
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (mountedRef.current && loading) {
+        console.log('Auth timeout reached, forcing loading to false')
         setLoading(false)
       }
-    }, 3000)
+    }, 5000)
     return () => clearTimeout(timeout)
   }, [])
 
@@ -120,21 +121,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isCancelled = false
 
     const initializeAuth = async () => {
-      console.log('InitializeAuth called')
+      console.log('InitializeAuth called at', window.location.pathname)
       try {
-        // Get initial session
+        // Get initial session - refresh it to ensure it's current
         const { data: { session }, error } = await supabaseClient.auth.getSession()
-        console.log('InitializeAuth: Session check result:', { hasUser: !!session?.user, error })
+        console.log('InitializeAuth: Session check result:', {
+          hasUser: !!session?.user,
+          email: session?.user?.email,
+          error
+        })
 
         if (isCancelled) return
 
         if (session?.user && mountedRef.current) {
-          console.log('InitializeAuth: Setting user state')
+          console.log('InitializeAuth: Setting user state for', session.user.email)
           setUser(session.user)
           // Load profile in background
           fetchUserProfile(session.user.id).then(profile => {
             if (mountedRef.current && !isCancelled) {
-              console.log('InitializeAuth: Profile loaded')
+              console.log('InitializeAuth: Profile loaded for', session.user.email)
               setUserProfile(profile)
             }
           })
@@ -160,7 +165,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Setup auth state listener
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
-      console.log('Auth state change:', { event, hasUser: !!session?.user })
+      console.log('Auth state change:', {
+        event,
+        hasUser: !!session?.user,
+        email: session?.user?.email,
+        path: window.location.pathname
+      })
       if (isCancelled) return
 
       // Be more conservative about state changes to prevent accidental logouts
@@ -172,7 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUserProfile(null)
         }
       } else if (event === 'SIGNED_IN' && session?.user) {
-        console.log('Auth: User signed in, updating state')
+        console.log('Auth: User signed in, updating state for', session.user.email)
         if (mountedRef.current) {
           setUser(session.user)
           // Load profile in background
@@ -182,8 +192,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           })
         }
+      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        console.log('Auth: Token refreshed, maintaining user state for', session.user.email)
+        // Token refresh - keep user logged in
+        if (mountedRef.current && !user) {
+          setUser(session.user)
+          fetchUserProfile(session.user.id).then(profile => {
+            if (mountedRef.current && !isCancelled) {
+              setUserProfile(profile)
+            }
+          })
+        }
       } else if (session?.user && mountedRef.current) {
-        console.log('Auth: Session exists, preserving user state')
+        console.log('Auth: Session exists, preserving user state for', session.user.email)
         // Session exists, preserve the user state
         setUser(session.user)
       }

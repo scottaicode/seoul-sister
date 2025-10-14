@@ -38,48 +38,54 @@ export default function AuthHeader() {
     }
   }
 
-  // Simple one-time auth check on component mount
+  // Enhanced auth check on component mount and when navigating
   useEffect(() => {
-    if (!user && typeof window !== 'undefined') {
-      const checkAuth = async () => {
-        try {
-          const { createClient } = await import('@/lib/supabase')
-          const supabase = createClient()
-          const { data: { session } } = await supabase.auth.getSession()
+    const checkAuth = async () => {
+      try {
+        const { createClient } = await import('@/lib/supabase')
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
 
-          if (session?.user) {
-            setFallbackAuth({
-              user: session.user,
-              userProfile: {
-                name: session.user.email?.split('@')[0] || 'User',
-                email: session.user.email
-              }
-            })
-          }
-        } catch (error) {
-          // Silently fail - not critical
+        console.log('AuthHeader: Auth check on mount/navigation:', {
+          hasSession: !!session,
+          email: session?.user?.email,
+          path: window.location.pathname
+        })
+
+        if (session?.user && !user) {
+          console.log('AuthHeader: Found session but no user in context, setting fallback')
+          setFallbackAuth({
+            user: session.user,
+            userProfile: {
+              name: session.user.email?.split('@')[0] || 'User',
+              email: session.user.email
+            }
+          })
+        } else if (!session && fallbackAuth) {
+          console.log('AuthHeader: No session found, clearing fallback')
+          setFallbackAuth(null)
         }
+      } catch (error) {
+        console.error('AuthHeader: Auth check error:', error)
       }
+    }
 
+    // Always check auth on mount and when path changes
+    if (typeof window !== 'undefined') {
       checkAuth()
     }
-  }, [user]) // Only run when user changes
+  }, [user, fallbackAuth?.user?.id]) // Check when user changes
 
   // Add debugging to see what's happening with auth state
   useEffect(() => {
-    console.log('AuthHeader: user state changed:', {
-      user: user?.email,
-      userProfile: userProfile?.name,
+    console.log('AuthHeader: Auth state update:', {
+      user: user?.email || fallbackAuth?.user?.email,
+      userProfile: userProfile?.name || fallbackAuth?.userProfile?.name,
       loading,
-      hasUser: !!user,
+      hasUser: !!user || !!fallbackAuth?.user,
       url: window.location.href
     })
-
-    // Force loading to false if we have a user but loading is stuck
-    if (user && loading) {
-      console.log('AuthHeader: User exists but loading is stuck, this should not happen')
-    }
-  }, [user, userProfile, loading])
+  }, [user, userProfile, loading, fallbackAuth])
 
   const handleAuthSuccess = (user: any) => {
     console.log('User authenticated:', user)
@@ -163,9 +169,9 @@ export default function AuthHeader() {
 
           {/* Auth Section */}
           <div className="flex items-center space-x-4">
-            {loading ? (
+            {loading && !user && !fallbackAuth?.user ? (
               <div className="w-8 h-8 border-2 border-luxury-gold/30 border-t-luxury-gold rounded-full animate-spin"></div>
-            ) : user ? (
+            ) : (user || fallbackAuth?.user) ? (
               <div className="relative">
                 <button
                   onClick={() => setShowDropdown(!showDropdown)}
@@ -175,7 +181,7 @@ export default function AuthHeader() {
                     <User size={16} className="text-black" />
                   </div>
                   <span className="text-sm font-medium text-white tracking-wide">
-                    {userProfile?.name || user.email?.split('@')[0]}
+                    {userProfile?.name || fallbackAuth?.userProfile?.name || user?.email?.split('@')[0] || fallbackAuth?.user?.email?.split('@')[0]}
                   </span>
                   <ChevronDown size={16} className="text-gray-300" />
                 </button>
@@ -184,9 +190,9 @@ export default function AuthHeader() {
                   <div className="absolute right-0 mt-2 w-64 bg-luxury-charcoal rounded-lg shadow-lg border border-luxury-gold/30 py-2 z-50 backdrop-blur-sm">
                     <div className="px-4 py-2 border-b border-luxury-gold/20">
                       <p className="text-sm font-medium text-white">
-                        {userProfile?.name || 'User'}
+                        {userProfile?.name || fallbackAuth?.userProfile?.name || 'User'}
                       </p>
-                      <p className="text-xs text-gray-400">{user.email}</p>
+                      <p className="text-xs text-gray-400">{user?.email || fallbackAuth?.user?.email}</p>
                     </div>
 
                     <div className="py-1">
