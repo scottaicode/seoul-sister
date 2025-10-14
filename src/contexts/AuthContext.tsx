@@ -56,25 +56,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
-      // Clear auth listener first to prevent unwanted events
-      if (authListenerRef.current) {
-        authListenerRef.current.unsubscribe()
-        authListenerRef.current = null
-      }
-
       // Clear local state immediately
       setUser(null)
       setUserProfile(null)
+      setLoading(false)
 
-      // Use Supabase's signout
-      await supabaseClient.auth.signOut()
+      // Clear any localStorage data that might persist auth state
+      if (typeof window !== 'undefined') {
+        // Clear all localStorage entries that might contain auth data
+        const keysToRemove = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && (key.includes('supabase') || key.includes('auth') || key.includes('session'))) {
+            keysToRemove.push(key)
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key))
 
-      // Navigate to home page
-      window.location.href = '/'
+        // Also clear sessionStorage
+        sessionStorage.clear()
+      }
+
+      // Use Supabase's signout with scope: 'global' to clear all sessions
+      await supabaseClient.auth.signOut({ scope: 'global' })
+
+      // Force a complete page reload to ensure clean state
+      window.location.replace('/')
     } catch (error) {
       console.error('Error during signout:', error)
-      // Even if there's an error, still navigate away
-      window.location.href = '/'
+      // Even if there's an error, force redirect
+      window.location.replace('/')
     }
   }, [])
 
