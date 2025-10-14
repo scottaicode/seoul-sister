@@ -35,7 +35,7 @@ export default function PersonalizedDashboard() {
 
   const handleAnalyzeProduct = async (productId: string) => {
     setSelectedProductId(productId)
-    await analyzeIngredients(productId, whatsappNumber)
+    await analyzeIngredients(productId, whatsappNumber || undefined)
   }
 
   const tabs = [

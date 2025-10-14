@@ -3,10 +3,37 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuthState } from '@/hooks/useAuthState'
 import { createBrowserClient } from '@/lib/supabase-browser'
-import type { Database } from '@/types/database'
 
-type UserProfile = Database['public']['Tables']['profiles']['Row']
-type UserSkinProfile = Database['public']['Tables']['user_skin_profiles']['Row']
+type UserProfile = {
+  id: string
+  email: string
+  whatsapp_number: string | null
+  stripe_customer_id: string | null
+  korean_preferences: any | null
+  created_at: string
+  updated_at: string
+  first_name: string | null
+  last_name: string | null
+  phone: string | null
+  instagram_handle: string | null
+  referral_code: string | null
+  referred_by: string | null
+  total_savings: number
+  order_count: number
+  viral_shares_count: number
+  last_order_date: string | null
+}
+
+type UserSkinProfile = {
+  id: string
+  whatsapp_number: string
+  current_skin_type: string | null
+  skin_concerns: string[]
+  preferred_categories: string[]
+  last_analysis_date: string | null
+  created_at: string
+  updated_at: string
+}
 
 export function useAuthenticatedUser() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -28,7 +55,7 @@ export function useAuthenticatedUser() {
     setError(null)
 
     try {
-      const supabase = createBrowserClient()
+      const supabase = createBrowserClient() as any
 
       // Fetch user profile
       const { data: userProfile, error: profileError } = await supabase
@@ -45,8 +72,6 @@ export function useAuthenticatedUser() {
             .insert({
               id: user.id,
               email: user.email || '',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
               total_savings: 0,
               order_count: 0,
               viral_shares_count: 0
@@ -66,11 +91,12 @@ export function useAuthenticatedUser() {
       }
 
       // Fetch skin profile if WhatsApp number exists
-      if (userProfile?.whatsapp_number) {
+      const currentProfile = userProfile || profile
+      if (currentProfile && currentProfile.whatsapp_number) {
         const { data: skinProfileData, error: skinError } = await supabase
           .from('user_skin_profiles')
           .select('*')
-          .eq('whatsapp_number', userProfile.whatsapp_number)
+          .eq('whatsapp_number', currentProfile.whatsapp_number)
           .single()
 
         if (skinError && skinError.code !== 'PGRST116') {
@@ -92,14 +118,14 @@ export function useAuthenticatedUser() {
     if (!user || !profile) return null
 
     try {
-      const supabase = createBrowserClient()
+      const supabase = createBrowserClient() as any
 
       const { data, error } = await supabase
         .from('profiles')
         .update({
           ...updates,
           updated_at: new Date().toISOString()
-        })
+        } as any)
         .eq('id', user.id)
         .select()
         .single()
@@ -121,7 +147,7 @@ export function useAuthenticatedUser() {
     if (!profile?.whatsapp_number) return null
 
     try {
-      const supabase = createBrowserClient()
+      const supabase = createBrowserClient() as any
 
       // Try to update existing skin profile
       const { data: existingProfile } = await supabase
