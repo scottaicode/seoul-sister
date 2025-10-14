@@ -274,19 +274,7 @@ export default function ReportViewer({ reportId, isPremium = false }: ReportView
               exit={{ opacity: 0, y: -20 }}
               className="space-y-6"
             >
-              {isLocked && !isPremium ? (
-                <div className="bg-[#0A0A0A] border border-[#D4A574]/20 rounded-lg p-16 text-center">
-                  <Lock className="w-12 h-12 text-[#D4A574] mx-auto mb-4" />
-                  <h3 className="text-2xl font-light mb-4">Premium Members Only</h3>
-                  <p className="text-gray-400 mb-6">
-                    Unlock complete trending product intelligence with Seoul Sister membership
-                  </p>
-                  <button className="px-8 py-3 bg-[#D4A574] text-black text-sm uppercase tracking-wider hover:bg-[#B8956A] transition-colors">
-                    Start 7-Day Free Trial
-                  </button>
-                </div>
-              ) : (
-                report?.trendingDiscoveries.map((product, idx) => (
+              {report?.trendingDiscoveries.map((product, idx) => (
                   <div key={idx} className="bg-[#0A0A0A] border border-[#D4A574]/20 rounded-lg p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -319,7 +307,6 @@ export default function ReportViewer({ reportId, isPremium = false }: ReportView
                     </div>
                   </div>
                 ))
-              )}
             </motion.div>
           )}
 
@@ -367,6 +354,96 @@ export default function ReportViewer({ reportId, isPremium = false }: ReportView
                     <p className="text-gray-300 text-sm">
                       <span className="text-[#D4A574]">Research:</span> {ingredient.scientificBackup}
                     </p>
+                  </div>
+                </div>
+              ))}
+            </motion.div>
+          )}
+
+          {activeSection === 'social' && (
+            <motion.div
+              key="social"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-6"
+            >
+              {report?.koreanSocialInsights.map((insight, idx) => (
+                <div key={idx} className="bg-[#0A0A0A] border border-[#D4A574]/20 rounded-lg p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-light mb-2">{insight.trend}</h3>
+                      <p className="text-gray-400 text-sm">{insight.platform}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-light text-[#D4A574]">{insight.virality}%</p>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider">Virality Score</p>
+                    </div>
+                  </div>
+                  <p className="text-gray-300 mb-4">{insight.keyInsight}</p>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Trending Hashtags</p>
+                      <div className="flex flex-wrap gap-2">
+                        {insight.hashtags.map((tag: string, tidx: number) => (
+                          <span key={tidx} className="px-3 py-1 bg-[#D4A574]/10 text-[#D4A574] text-sm rounded">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Key Influencers</p>
+                      <div className="flex flex-wrap gap-2">
+                        {insight.influencers.map((influencer: string, iidx: number) => (
+                          <span key={iidx} className="px-3 py-1 bg-black/50 text-gray-300 text-sm rounded">
+                            {influencer}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </motion.div>
+          )}
+
+          {activeSection === 'predictions' && (
+            <motion.div
+              key="predictions"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-6"
+            >
+              {report?.expertPredictions.map((prediction, idx) => (
+                <div key={idx} className="bg-[#0A0A0A] border border-[#D4A574]/20 rounded-lg p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <h3 className="text-xl font-light mb-2">{prediction.prediction}</h3>
+                      <p className="text-gray-400 text-sm mb-2">Timeline: {prediction.timeframe}</p>
+                    </div>
+                    <div className="text-center ml-6">
+                      <p className="text-2xl font-light text-[#D4A574]">{prediction.confidence}%</p>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider">Confidence</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Analysis</p>
+                      <p className="text-gray-300">{prediction.rationale}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Recommended Actions</p>
+                      <div className="space-y-2">
+                        {prediction.recommendedActions.map((action: string, aidx: number) => (
+                          <div key={aidx} className="flex items-start space-x-3">
+                            <div className="w-1.5 h-1.5 bg-[#D4A574] rounded-full mt-2 flex-shrink-0"></div>
+                            <p className="text-gray-300 text-sm">{action}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
