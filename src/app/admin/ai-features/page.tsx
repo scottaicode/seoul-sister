@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import AuthHeader from '@/components/AuthHeader'
 import { ArrowLeft } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface AdminStats {
   totalProfiles: number
@@ -31,8 +32,10 @@ export default function AIFeaturesAdmin() {
   const [profiles, setProfiles] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'overview' | 'profiles' | 'system'>('overview')
+  const { refreshAuth } = useAuth()
 
   useEffect(() => {
+    refreshAuth()
     fetchAdminData()
   }, [])
 

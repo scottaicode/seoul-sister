@@ -10,50 +10,42 @@ export default function AuthHeader() {
   const [showDropdown, setShowDropdown] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [fallbackAuth, setFallbackAuth] = useState<{user: any, userProfile: any} | null>(null)
+  const [authInitialized, setAuthInitialized] = useState(false)
 
-  // Simple fallback approach - try context, fall back to direct auth check
-  let user, userProfile, signOut, loading
+  // Always use the auth context
+  const authContext = useAuth()
+  const { user: contextUser, userProfile: contextProfile, signOut, loading: contextLoading, refreshAuth } = authContext
 
-  try {
-    const authContext = useAuth()
-    user = authContext.user || fallbackAuth?.user
-    userProfile = authContext.userProfile || fallbackAuth?.userProfile
-    signOut = authContext.signOut
-    loading = authContext.loading
-  } catch (error) {
-    // Context failed, use fallback
-    user = fallbackAuth?.user
-    userProfile = fallbackAuth?.userProfile
-    loading = false
-    signOut = async () => {
-      try {
-        const { createClient } = await import('@/lib/supabase')
-        const supabase = createClient()
-        await supabase.auth.signOut()
-        setFallbackAuth(null)
-        window.location.href = '/'
-      } catch (error) {
-        window.location.href = '/'
-      }
-    }
-  }
+  // Use context values primarily, fallback only if context fails
+  const user = contextUser || fallbackAuth?.user
+  const userProfile = contextProfile || fallbackAuth?.userProfile
+  const loading = authInitialized ? false : contextLoading
 
-  // Enhanced auth check on component mount and when navigating
+  // Force refresh auth on component mount to ensure state is current
   useEffect(() => {
-    const checkAuth = async () => {
+    const initAuth = async () => {
+      console.log('AuthHeader: Initializing auth check')
+
+      // First, refresh the auth context
+      if (refreshAuth) {
+        await refreshAuth()
+      }
+
+      // Then check for session directly as fallback
       try {
         const { createClient } = await import('@/lib/supabase')
         const supabase = createClient()
         const { data: { session } } = await supabase.auth.getSession()
 
-        console.log('AuthHeader: Auth check on mount/navigation:', {
+        console.log('AuthHeader: Direct session check:', {
           hasSession: !!session,
           email: session?.user?.email,
+          contextUser: contextUser?.email,
           path: window.location.pathname
         })
 
-        if (session?.user && !user) {
-          console.log('AuthHeader: Found session but no user in context, setting fallback')
+        if (session?.user && !contextUser) {
+          console.log('AuthHeader: Found session but no context user, setting fallback')
           setFallbackAuth({
             user: session.user,
             userProfile: {
@@ -61,31 +53,33 @@ export default function AuthHeader() {
               email: session.user.email
             }
           })
-        } else if (!session && fallbackAuth) {
-          console.log('AuthHeader: No session found, clearing fallback')
+        } else if (!session && !contextUser) {
+          console.log('AuthHeader: No session or context user found')
           setFallbackAuth(null)
         }
       } catch (error) {
-        console.error('AuthHeader: Auth check error:', error)
+        console.error('AuthHeader: Session check error:', error)
       }
+
+      setAuthInitialized(true)
     }
 
-    // Always check auth on mount and when path changes
-    if (typeof window !== 'undefined') {
-      checkAuth()
-    }
-  }, [user, fallbackAuth?.user?.id]) // Check when user changes
+    initAuth()
+  }, []) // Only run once on mount
 
   // Add debugging to see what's happening with auth state
   useEffect(() => {
     console.log('AuthHeader: Auth state update:', {
-      user: user?.email || fallbackAuth?.user?.email,
-      userProfile: userProfile?.name || fallbackAuth?.userProfile?.name,
+      contextUser: contextUser?.email,
+      fallbackUser: fallbackAuth?.user?.email,
+      finalUser: user?.email,
+      userProfile: userProfile?.name,
       loading,
-      hasUser: !!user || !!fallbackAuth?.user,
+      authInitialized,
+      hasUser: !!user,
       url: window.location.href
     })
-  }, [user, userProfile, loading, fallbackAuth])
+  }, [contextUser, fallbackAuth, user, userProfile, loading, authInitialized])
 
   const handleAuthSuccess = (user: any) => {
     console.log('User authenticated:', user)

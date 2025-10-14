@@ -7,6 +7,7 @@ import ViralScreenshotGenerator from '../components/ViralScreenshotGenerator'
 import ViralCopyGenerator from '../components/ViralCopyGenerator'
 import AuthHeader from '../components/AuthHeader'
 import { useProducts } from '@/hooks/useProducts'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface Product {
   id: string
@@ -67,9 +68,15 @@ export default function HomePage() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [showViralTools, setShowViralTools] = useState(false)
   const { products, loading } = useProducts(true)
+  const { refreshAuth } = useAuth()
 
   // Use products from database
   const featuredProducts = products
+
+  // Refresh auth state when homepage loads
+  useEffect(() => {
+    refreshAuth()
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => {
