@@ -188,6 +188,18 @@ export default function AuthHeader() {
                         </div>
                       </a>
                       <a
+                        href="/premium"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <div className="flex items-center">
+                          <svg className="w-4 h-4 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M12 2L2 7v10c0 5.55 3.84 9.74 9 9 5.16-.74 9-4.45 9-9V7l-10-5z"/>
+                          </svg>
+                          Premium Dashboard
+                        </div>
+                      </a>
+                      <a
                         href="/intelligence"
                         className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
                         onClick={() => setShowDropdown(false)}

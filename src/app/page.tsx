@@ -798,6 +798,100 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Premium Intelligence Platform Section */}
+      <section className="section-dark py-32 border-t border-luxury-charcoal">
+        <div className="luxury-container">
+          <div className="text-center mb-20">
+            <p className="text-caption mb-4 text-luxury-gold">PREMIUM INTELLIGENCE PLATFORM</p>
+            <h2 className="heading-section text-5xl md:text-7xl mb-8 font-light">
+              Beyond Reports
+            </h2>
+            <p className="text-xl font-light max-w-3xl mx-auto text-gray-300">
+              Your complete Korean beauty intelligence ecosystem with real-time price tracking,
+              AI recommendations, and exclusive Seoul supplier access.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-12 mb-16">
+            <div className="text-center p-8 border border-luxury-gold/20 hover:border-luxury-gold/40 transition-all duration-300 hover:transform hover:scale-105">
+              <div className="text-5xl mb-6">🔍</div>
+              <h3 className="text-xl font-light mb-4 text-luxury-gold">Real-Time Price Intelligence</h3>
+              <p className="text-gray-400 mb-6">
+                Automated daily price tracking across 8+ major retailers. Never overpay for Korean beauty again.
+              </p>
+              <div className="space-y-2 text-sm text-gray-500">
+                <p>• Sephora, YesStyle, Olive Young tracking</p>
+                <p>• Deal alerts & price drop notifications</p>
+                <p>• True cost calculations with shipping</p>
+              </div>
+            </div>
+
+            <div className="text-center p-8 border border-luxury-gold/20 hover:border-luxury-gold/40 transition-all duration-300 hover:transform hover:scale-105">
+              <div className="text-5xl mb-6">🧠</div>
+              <h3 className="text-xl font-light mb-4 text-luxury-gold">AI Skin Analysis & Matching</h3>
+              <p className="text-gray-400 mb-6">
+                Advanced AI analyzes your skin profile and matches you with perfect Korean beauty products.
+              </p>
+              <div className="space-y-2 text-sm text-gray-500">
+                <p>• Personalized product recommendations</p>
+                <p>• Ingredient compatibility analysis</p>
+                <p>• Custom routine building</p>
+              </div>
+            </div>
+
+            <div className="text-center p-8 border border-luxury-gold/20 hover:border-luxury-gold/40 transition-all duration-300 hover:transform hover:scale-105">
+              <div className="text-5xl mb-6">🇰🇷</div>
+              <h3 className="text-xl font-light mb-4 text-luxury-gold">Seoul Supplier Access</h3>
+              <p className="text-gray-400 mb-6">
+                Direct connections to verified Korean suppliers for wholesale pricing and group buying opportunities.
+              </p>
+              <div className="space-y-2 text-sm text-gray-500">
+                <p>• Verified Seoul supplier directory</p>
+                <p>• Group buying coordination</p>
+                <p>• WhatsApp concierge service</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-luxury-charcoal/30 to-black/50 rounded-lg border border-luxury-gold/20 p-12 text-center backdrop-blur-sm">
+            <h3 className="text-3xl md:text-4xl font-light mb-6">
+              Complete Intelligence Platform
+            </h3>
+            <div className="grid md:grid-cols-4 gap-8 mb-12">
+              <div>
+                <div className="text-3xl font-light text-luxury-gold mb-2">$45</div>
+                <p className="text-sm text-gray-400">Perceived Value</p>
+              </div>
+              <div>
+                <div className="text-3xl font-light text-luxury-gold mb-2">8+</div>
+                <p className="text-sm text-gray-400">Retailers Tracked</p>
+              </div>
+              <div>
+                <div className="text-3xl font-light text-luxury-gold mb-2">24/7</div>
+                <p className="text-sm text-gray-400">Price Monitoring</p>
+              </div>
+              <div>
+                <div className="text-3xl font-light text-luxury-gold mb-2">70%</div>
+                <p className="text-sm text-gray-400">Average Savings</p>
+              </div>
+            </div>
+
+            <p className="text-2xl font-light text-luxury-gold mb-4">
+              $20/month • 7-day FREE trial
+            </p>
+            <p className="text-gray-400 mb-8">
+              Cancel anytime • Full feature access during trial • Pays for itself with first purchase
+            </p>
+
+            <Link href="/premium">
+              <button className="btn-luxury-solid text-base px-12 py-4">
+                ACCESS PREMIUM DASHBOARD
+              </button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Final CTA - Premium Membership */}
       <section className="section-dark py-32 border-t border-luxury-charcoal">
         <div className="luxury-container text-center">

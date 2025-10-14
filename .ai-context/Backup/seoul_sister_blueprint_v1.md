@@ -231,66 +231,15 @@ This design system is **LOCKED** and should not be deviated from. Any new featur
 ## 📊 Business Model
 
 ### Value Proposition
-1. **Primary**: AI-Powered Korean Beauty Intelligence Platform with Real-Time Price Intelligence
-2. **Secondary**: Daily Deal Discovery Engine across 8+ major K-beauty retailers
-3. **Tertiary**: Wholesale Access Coordination & Personalized AI Recommendations
-4. **Community**: Exclusive Seoul Sisters insider access
+1. **Primary**: Save 70%+ on authentic K-beauty through Seoul sourcing
+2. **Secondary**: Expose beauty industry price gouging (300% markup)
+3. **Tertiary**: Build exclusive community of Seoul Sisters
 
-### Premium Membership Model ($20/Month with 7-Day Free Trial)
-
-#### **CORE VALUE STACK** ($45 perceived value for $20 membership = 56% savings)
-
-**1. Daily Intelligence Reports** ($8 value)
-- Bloomberg Terminal-quality Korean beauty market analysis
-- Trending product discoveries with Seoul vs US pricing
-- Ingredient analysis and scientific research
-- Expert predictions and market insights
-- Social media trend tracking from Korean platforms
-
-**2. Real-Time Price Comparison Engine** ($15 value)
-- Automated daily scraping of 8+ major K-beauty retailers
-- Morning deal alerts with biggest savings first
-- Price drop notifications and restock alerts
-- True cost calculations including shipping
-- Personal watchlist tracking for specific products
-- Historical price charts and seasonal trends
-
-**3. AI Skin Analysis & Personalized Recommendations** ($5 value)
-- Advanced skin type and concern analysis
-- Ingredient compatibility screening
-- Custom routine building
-- Product matching based on individual skin needs
-- Allergen detection and avoidance
-
-**4. Wholesale Access Coordination** ($7 value)
-- Verified Seoul supplier connections
-- Group buying opportunities for bulk pricing
-- Direct supplier contact information
-- Negotiated member-only pricing
-- Ordering coordination (no inventory/shipping handling)
-
-**5. WhatsApp Personal Shopping Concierge** ($5 value)
-- One-on-one skin consultations
-- Product recommendations and ordering assistance
-- Order tracking and customer support
-- Exclusive member-only product access
-
-**6. Early Access Korean Launch Intelligence** ($3 value)
-- 3-6 months advance notice of new Korean products
-- Launch date predictions and availability alerts
-- Trend forecasting before US market adoption
-
-**7. Ingredient Intelligence Database** ($2 value)
-- Comprehensive INCI ingredient analysis
-- Compatibility scoring between products
-- Scientific research backing for ingredients
-- Trending ingredient alerts from Korean market
-
-#### **COMPETITIVE POSITIONING**
-- **Above**: Traditional subscription boxes ($15-37/month for physical products)
-- **Below**: High-end beauty consultation services ($50-100/month)
-- **Unique Angle**: Intelligence-first platform vs product-first competitors
-- **Value Proof**: Members save $50-200/month through better deal discovery alone
+### Pricing Strategy
+- **Premium Membership**: $20/month subscription with 7-day free trial
+- **Value Included**: AI skin analysis, personalized recommendations, wholesale Seoul pricing access, WhatsApp ordering
+- **Competitive Advantage**: $20/mo + Seoul wholesale prices still beats US retail by 50-70%
+- **Trial Period**: 7 days free, then $20/mo recurring unless cancelled
 
 ---
 
@@ -338,15 +287,6 @@ testimonials (id, customer_id, before_price, after_price, social_proof)
 - ✅ Comprehensive product database with 13+ authentic Korean beauty products
 - ✅ Automated scheduling via Vercel Cron (daily at 6 AM UTC)
 - ✅ Fallback to curated database when APIs unavailable
-
-### Premium Intelligence Platform (NEW FOCUS)
-- 🔄 Daily Intelligence Reports for premium members
-- 🔄 Real-Time Price Comparison Engine across 8+ retailers
-- 🔄 AI Skin Analysis & Personalized Recommendations
-- 🔄 Wholesale Access Coordination (dropship model)
-- 🔄 WhatsApp Personal Shopping Concierge
-- 🔄 Korean Launch Intelligence & Trend Forecasting
-- 🔄 Ingredient Compatibility Database
 
 ### Viral Tools (PRODUCTION READY)
 - ✅ Instagram Story Generator → Fully functional with all products displayed
@@ -483,28 +423,26 @@ git push origin feature/your-feature-name
 - Mobile optimization
 - Basic analytics
 
-### Phase 2: Intelligence Platform Foundation (Current - Next 60 Days)
-- ✅ Enhanced Intelligence Reports (Bloomberg Terminal-quality)
-- 🔄 Real-Time Price Comparison Engine (8+ retailers)
-- 🔄 AI Skin Analysis & Recommendation System
-- 🔄 Premium Membership Infrastructure ($20/month)
-- 🔄 Personal Watchlist & Deal Alerts
-- 🔄 WhatsApp Concierge Integration
+### Phase 2: Growth (Current)
+- Enhanced viral tools
+- Email marketing integration
+- Advanced analytics
+- Influencer partnerships
+- SEO optimization
 
-### Phase 3: Advanced AI & Wholesale Access (60-120 Days)
-- 🔄 Ingredient Compatibility Engine
-- 🔄 Korean Supplier Partnership Network
-- 🔄 Group Buying Coordination System
-- 🔄 Advanced Trend Forecasting AI
-- 🔄 Mobile App for Premium Members
-- 🔄 Affiliate Revenue Optimization
+### Phase 3: Scale (Next Quarter)
+- Full e-commerce platform
+- Subscription service
+- Mobile app
+- International expansion
+- AI personalization
 
-### Phase 4: Market Leadership (120+ Days)
-- 🔄 Industry-standard intelligence platform
-- 🔄 Korean beauty market influence
-- 🔄 Professional beauty industry adoption
-- 🔄 Multiple revenue streams (subscriptions + affiliates + partnerships)
-- 🔄 International expansion opportunities
+### Phase 4: Dominance (6-12 months)
+- Market leader position
+- Multiple revenue streams
+- Global operations
+- Brand partnerships
+- Exit opportunities
 
 ---
 
