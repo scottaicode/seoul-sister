@@ -14,57 +14,25 @@ export default function SkinProfilePage() {
   const { user } = useAuth()
 
   useEffect(() => {
-    const loadUserPhone = async () => {
-      if (user) {
-        // Clear old global localStorage entry
-        localStorage.removeItem('whatsapp_number')
+    if (user) {
+      // Clear old global localStorage entry
+      localStorage.removeItem('whatsapp_number')
 
-        // Try to get phone from user profile first
-        try {
-          const response = await fetch('/api/user/profile')
-          if (response.ok) {
-            const profile = await response.json()
-            if (profile.phone) {
-              setWhatsappNumber(profile.phone)
-              setLoading(false)
-              return
-            }
-          }
-        } catch (error) {
-          console.log('Could not load user profile')
-        }
-
-        // Fallback to user-specific localStorage
-        const userSpecificKey = `whatsapp_number_${user.id}`
-        const storedNumber = localStorage.getItem(userSpecificKey) || ''
-        setWhatsappNumber(storedNumber)
-      }
-      setLoading(false)
+      // Use user-specific localStorage only
+      const userSpecificKey = `whatsapp_number_${user.id}`
+      const storedNumber = localStorage.getItem(userSpecificKey) || ''
+      setWhatsappNumber(storedNumber)
     }
-
-    loadUserPhone()
+    setLoading(false)
   }, [user])
 
-  const handlePhoneNumberChange = async (number: string) => {
+  const handlePhoneNumberChange = (number: string) => {
     setWhatsappNumber(number)
 
     if (user) {
       // Store in user-specific localStorage
       const userSpecificKey = `whatsapp_number_${user.id}`
       localStorage.setItem(userSpecificKey, number)
-
-      // Also try to update user profile
-      try {
-        await fetch('/api/user/profile', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ phone: number }),
-        })
-      } catch (error) {
-        console.log('Could not update user profile')
-      }
     }
   }
 
