@@ -164,19 +164,6 @@ export default function HomePage() {
 
             {/* Two Button Layout with Professional Styling */}
             <div className="text-center max-w-3xl mx-auto relative">
-              {/* Vertical Line */}
-              <div style={{
-                position: 'absolute',
-                left: '50%',
-                top: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '1px',
-                height: '80px',
-                background: '#d4a574',
-                opacity: '0.6',
-                zIndex: '1'
-              }}></div>
-
               {/* Button Container */}
               <div className="flex flex-col sm:flex-row gap-8 sm:gap-16 items-center justify-center">
                 <Link href="/signup">
@@ -237,6 +224,15 @@ export default function HomePage() {
                   </button>
                 </Link>
               </div>
+
+              {/* Faint Vertical Line Below Buttons */}
+              <div style={{
+                width: '1px',
+                height: '60px',
+                background: '#d4a574',
+                opacity: '0.4',
+                margin: '3rem auto 0',
+              }}></div>
 
             </div>
           </div>
