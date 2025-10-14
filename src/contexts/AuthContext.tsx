@@ -20,12 +20,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const supabaseClient = createClient()
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  console.log('🚀 AuthProvider: Component initialized')
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const mountedRef = useRef(true)
   const authListenerRef = useRef<any>(null)
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Debug state changes
+  useEffect(() => {
+    console.log('🔄 AuthProvider: State changed:', {
+      hasUser: !!user,
+      userEmail: user?.email,
+      loading,
+      profileName: userProfile?.name
+    })
+  }, [user, userProfile, loading])
 
   // Failsafe: Force loading to false after 5 seconds
   useEffect(() => {
@@ -234,6 +245,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
+  console.log('🔍 useAuth: Hook called, context:', {
+    contextExists: !!context,
+    hasUser: !!context?.user,
+    loading: context?.loading
+  })
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider')
   }

@@ -6,10 +6,18 @@ import AuthModal from './AuthModal'
 import { User, ChevronDown, Camera, Heart, ShoppingBag, Settings, LogOut } from 'lucide-react'
 
 export default function AuthHeader() {
+  console.log('🎯 AuthHeader: Component rendering')
   const { user, userProfile, signOut, loading } = useAuth()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+
+  console.log('🎯 AuthHeader: Current state:', {
+    hasUser: !!user,
+    userEmail: user?.email,
+    loading,
+    profileName: userProfile?.name
+  })
 
   // Add debugging to see what's happening with auth state
   useEffect(() => {
