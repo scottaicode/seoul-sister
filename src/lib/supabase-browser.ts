@@ -38,11 +38,12 @@ export function createBrowserClient() {
             // Set in localStorage
             window.localStorage.setItem(key, value)
 
-            // Also set as cookie for Firefox
-            const isFirefox = navigator.userAgent.toLowerCase().includes('firefox')
-            if (isFirefox) {
-              document.cookie = `${key}=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=None; Secure`
-            }
+            // Always set as cookie for better persistence
+            const isSecure = window.location.protocol === 'https:'
+            const cookieOptions = isSecure
+              ? `${key}=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=None; Secure`
+              : `${key}=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax`
+            document.cookie = cookieOptions
           } catch (error) {
             console.warn('Storage setItem error:', error)
           }

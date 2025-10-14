@@ -51,6 +51,12 @@ export function useAuthenticatedUser() {
       return
     }
 
+    // Prevent infinite loading if profile already exists
+    if (profile && profile.id === user.id) {
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -112,7 +118,7 @@ export function useAuthenticatedUser() {
     } finally {
       setLoading(false)
     }
-  }, [user, isAuthenticated])
+  }, [user, isAuthenticated, profile])
 
   const updateProfile = useCallback(async (updates: Partial<UserProfile>) => {
     if (!user || !profile) return null

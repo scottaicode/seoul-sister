@@ -13,17 +13,8 @@ export function useAuthState() {
     try {
       const supabase = createBrowserClient()
 
-      // Set a timeout for Firefox compatibility
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Session check timeout')), 5000)
-      )
-
-      const sessionPromise = supabase.auth.getSession()
-
-      const { data: { session }, error } = await Promise.race([
-        sessionPromise,
-        timeoutPromise
-      ]) as any
+      // First try to get session immediately
+      const { data: { session }, error } = await supabase.auth.getSession()
 
       if (error) {
         console.error('Error getting session:', error)
@@ -31,7 +22,17 @@ export function useAuthState() {
       } else if (session?.user) {
         setUser(session.user)
       } else {
-        setUser(null)
+        // Try to refresh session if no session found
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+
+        if (refreshError) {
+          console.warn('Session refresh failed:', refreshError)
+          setUser(null)
+        } else if (refreshedSession?.user) {
+          setUser(refreshedSession.user)
+        } else {
+          setUser(null)
+        }
       }
     } catch (error) {
       console.error('Error checking session:', error)

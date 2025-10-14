@@ -283,6 +283,35 @@ a {
   border-bottom: 1px solid rgba(212, 165, 116, 0.1);
 }
 
+/* Fix for layout overlap issues */
+body {
+  overflow-x: hidden;
+}
+
+/* Ensure proper spacing for elements */
+.min-h-screen {
+  position: relative;
+  z-index: 1;
+}
+
+/* Fix header z-index conflicts */
+header {
+  position: relative;
+  z-index: 50;
+}
+
+/* Ensure proper stacking context */
+.luxury-container {
+  position: relative;
+  z-index: 2;
+}
+
+/* Fix any dropdown z-index issues */
+.dropdown-menu,
+[role="menu"] {
+  z-index: 9999 !important;
+}
+
 /* Luxury Badge */
 .badge-insider {
   display: inline-block;
