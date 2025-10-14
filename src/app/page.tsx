@@ -237,9 +237,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="scroll-indicator">
-            <div className="scroll-line"></div>
-          </div>
         </div>
       </section>
 
