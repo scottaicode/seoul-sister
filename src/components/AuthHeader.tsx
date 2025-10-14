@@ -9,32 +9,61 @@ export default function AuthHeader() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+  const [fallbackAuth, setFallbackAuth] = useState<{user: any, userProfile: any} | null>(null)
 
   // Simple fallback approach - try context, fall back to direct auth check
   let user, userProfile, signOut, loading
 
   try {
     const authContext = useAuth()
-    user = authContext.user
-    userProfile = authContext.userProfile
+    user = authContext.user || fallbackAuth?.user
+    userProfile = authContext.userProfile || fallbackAuth?.userProfile
     signOut = authContext.signOut
     loading = authContext.loading
   } catch (error) {
-    // Context failed, use simple defaults
-    user = null
-    userProfile = null
+    // Context failed, use fallback
+    user = fallbackAuth?.user
+    userProfile = fallbackAuth?.userProfile
     loading = false
     signOut = async () => {
       try {
         const { createClient } = await import('@/lib/supabase')
         const supabase = createClient()
         await supabase.auth.signOut()
+        setFallbackAuth(null)
         window.location.href = '/'
       } catch (error) {
         window.location.href = '/'
       }
     }
   }
+
+  // Simple one-time auth check on component mount
+  useEffect(() => {
+    if (!user && typeof window !== 'undefined') {
+      const checkAuth = async () => {
+        try {
+          const { createClient } = await import('@/lib/supabase')
+          const supabase = createClient()
+          const { data: { session } } = await supabase.auth.getSession()
+
+          if (session?.user) {
+            setFallbackAuth({
+              user: session.user,
+              userProfile: {
+                name: session.user.email?.split('@')[0] || 'User',
+                email: session.user.email
+              }
+            })
+          }
+        } catch (error) {
+          // Silently fail - not critical
+        }
+      }
+
+      checkAuth()
+    }
+  }, [user]) // Only run when user changes
 
   // Add debugging to see what's happening with auth state
   useEffect(() => {
