@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthState } from '@/hooks/useAuthState'
 import AuthModal from './AuthModal'
 import { User, ChevronDown, Camera, Heart, ShoppingBag, Settings, LogOut } from 'lucide-react'
 
@@ -9,77 +9,27 @@ export default function AuthHeader() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
-  const [fallbackAuth, setFallbackAuth] = useState<{user: any, userProfile: any} | null>(null)
-  const [authInitialized, setAuthInitialized] = useState(false)
 
-  // Always use the auth context
-  const authContext = useAuth()
-  const { user: contextUser, userProfile: contextProfile, signOut, loading: contextLoading, refreshAuth } = authContext
+  // Use the direct auth state hook
+  const { user, loading, signOut, refresh, isAuthenticated } = useAuthState()
 
-  // Use context values primarily, fallback only if context fails
-  const user = contextUser || fallbackAuth?.user
-  const userProfile = contextProfile || fallbackAuth?.userProfile
-  const loading = authInitialized ? false : contextLoading
+  // Simple user display name
+  const displayName = user?.email?.split('@')[0] || 'User'
 
-  // Force refresh auth on component mount to ensure state is current
+  // Refresh auth on mount to ensure current state
   useEffect(() => {
-    const initAuth = async () => {
-      console.log('AuthHeader: Initializing auth check')
+    refresh()
+  }, [])
 
-      // First, refresh the auth context
-      if (refreshAuth) {
-        await refreshAuth()
-      }
-
-      // Then check for session directly as fallback
-      try {
-        const { createClient } = await import('@/lib/supabase')
-        const supabase = createClient()
-        const { data: { session } } = await supabase.auth.getSession()
-
-        console.log('AuthHeader: Direct session check:', {
-          hasSession: !!session,
-          email: session?.user?.email,
-          contextUser: contextUser?.email,
-          path: window.location.pathname
-        })
-
-        if (session?.user && !contextUser) {
-          console.log('AuthHeader: Found session but no context user, setting fallback')
-          setFallbackAuth({
-            user: session.user,
-            userProfile: {
-              name: session.user.email?.split('@')[0] || 'User',
-              email: session.user.email
-            }
-          })
-        } else if (!session && !contextUser) {
-          console.log('AuthHeader: No session or context user found')
-          setFallbackAuth(null)
-        }
-      } catch (error) {
-        console.error('AuthHeader: Session check error:', error)
-      }
-
-      setAuthInitialized(true)
-    }
-
-    initAuth()
-  }, []) // Only run once on mount
-
-  // Add debugging to see what's happening with auth state
+  // Debug auth state
   useEffect(() => {
-    console.log('AuthHeader: Auth state update:', {
-      contextUser: contextUser?.email,
-      fallbackUser: fallbackAuth?.user?.email,
-      finalUser: user?.email,
-      userProfile: userProfile?.name,
+    console.log('AuthHeader: Auth state:', {
+      isAuthenticated,
+      user: user?.email,
       loading,
-      authInitialized,
-      hasUser: !!user,
-      url: window.location.href
+      path: window.location.pathname
     })
-  }, [contextUser, fallbackAuth, user, userProfile, loading, authInitialized])
+  }, [user, loading, isAuthenticated])
 
   const handleAuthSuccess = (user: any) => {
     console.log('User authenticated:', user)
@@ -163,9 +113,9 @@ export default function AuthHeader() {
 
           {/* Auth Section */}
           <div className="flex items-center space-x-4">
-            {loading && !user && !fallbackAuth?.user ? (
+            {loading ? (
               <div className="w-8 h-8 border-2 border-luxury-gold/30 border-t-luxury-gold rounded-full animate-spin"></div>
-            ) : (user || fallbackAuth?.user) ? (
+            ) : isAuthenticated ? (
               <div className="relative">
                 <button
                   onClick={() => setShowDropdown(!showDropdown)}
@@ -175,7 +125,7 @@ export default function AuthHeader() {
                     <User size={16} className="text-black" />
                   </div>
                   <span className="text-sm font-medium text-white tracking-wide">
-                    {userProfile?.name || fallbackAuth?.userProfile?.name || user?.email?.split('@')[0] || fallbackAuth?.user?.email?.split('@')[0]}
+                    {displayName}
                   </span>
                   <ChevronDown size={16} className="text-gray-300" />
                 </button>
@@ -184,9 +134,9 @@ export default function AuthHeader() {
                   <div className="absolute right-0 mt-2 w-64 bg-luxury-charcoal rounded-lg shadow-lg border border-luxury-gold/30 py-2 z-50 backdrop-blur-sm">
                     <div className="px-4 py-2 border-b border-luxury-gold/20">
                       <p className="text-sm font-medium text-white">
-                        {userProfile?.name || fallbackAuth?.userProfile?.name || 'User'}
+                        {displayName}
                       </p>
-                      <p className="text-xs text-gray-400">{user?.email || fallbackAuth?.user?.email}</p>
+                      <p className="text-xs text-gray-400">{user?.email}</p>
                     </div>
 
                     <div className="py-1">
