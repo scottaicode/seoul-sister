@@ -13,10 +13,23 @@ export function useAuthState() {
     const supabase = createClient()
     let mounted = true
 
+    // Set a timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.log('useAuthState: Timeout reached, forcing initialization')
+        setLoading(false)
+        setInitialized(true)
+      }
+    }, 3000) // 3 second timeout
+
     const checkUser = async () => {
       try {
         // Check for existing session
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { session }, error } = await supabase.auth.getSession()
+
+        if (error) {
+          console.error('useAuthState: Error getting session:', error)
+        }
 
         if (mounted) {
           console.log('useAuthState: Session check:', {
@@ -38,12 +51,14 @@ export function useAuthState() {
 
           setLoading(false)
           setInitialized(true)
+          clearTimeout(timeout)
         }
       } catch (error) {
         console.error('useAuthState: Error checking session:', error)
         if (mounted) {
           setLoading(false)
           setInitialized(true)
+          clearTimeout(timeout)
         }
       }
     }
@@ -71,6 +86,7 @@ export function useAuthState() {
     return () => {
       mounted = false
       subscription.unsubscribe()
+      clearTimeout(timeout)
     }
   }, [])
 
@@ -108,7 +124,7 @@ export function useAuthState() {
 
   return {
     user,
-    loading: !initialized || loading,
+    loading: loading && !initialized,
     signOut,
     refresh,
     isAuthenticated: !!user

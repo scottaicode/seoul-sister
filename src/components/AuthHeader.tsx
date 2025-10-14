@@ -9,6 +9,7 @@ export default function AuthHeader() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   // Use the direct auth state hook
   const { user, loading, signOut, refresh, isAuthenticated } = useAuthState()
@@ -16,8 +17,9 @@ export default function AuthHeader() {
   // Simple user display name
   const displayName = user?.email?.split('@')[0] || 'User'
 
-  // Refresh auth on mount to ensure current state
+  // Mark component as mounted and refresh auth
   useEffect(() => {
+    setMounted(true)
     refresh()
   }, [])
 
@@ -113,7 +115,7 @@ export default function AuthHeader() {
 
           {/* Auth Section */}
           <div className="flex items-center space-x-4">
-            {loading ? (
+            {!mounted || loading ? (
               <div className="w-8 h-8 border-2 border-luxury-gold/30 border-t-luxury-gold rounded-full animate-spin"></div>
             ) : isAuthenticated ? (
               <div className="relative">
