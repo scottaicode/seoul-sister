@@ -130,11 +130,11 @@ export default function HomePage() {
             </h1>
 
             <div style={{
-              width: '40px',
+              width: '60px',
               height: '1px',
               background: '#d4a574',
               margin: '3rem auto',
-              opacity: '0.6'
+              opacity: '0.8'
             }}></div>
 
             <p style={{
@@ -160,59 +160,119 @@ export default function HomePage() {
               without the <span style={{ color: '#d4a574' }}>300% markup</span>
             </p>
 
-            {/* Single Premium Membership CTA */}
-            <div className="text-center max-w-2xl mx-auto">
-              <Link href="/signup">
-                <button style={{
+            {/* Two Button Layout with Professional Styling */}
+            <div className="text-center max-w-3xl mx-auto relative">
+              {/* Vertical Line */}
+              <div style={{
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '1px',
+                height: '80px',
+                background: '#d4a574',
+                opacity: '0.6',
+                zIndex: '1'
+              }}></div>
+
+              {/* Button Container */}
+              <div className="flex flex-col sm:flex-row gap-8 sm:gap-16 items-center justify-center">
+                <Link href="/signup">
+                  <button style={{
+                    background: '#d4a574',
+                    color: '#000000',
+                    border: 'none',
+                    padding: '18px 50px',
+                    fontSize: '13px',
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: '600',
+                    letterSpacing: '0.15em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    borderRadius: '0px',
+                    minWidth: '200px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#b8956a'
+                    e.currentTarget.style.transform = 'translateY(-1px)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#d4a574'
+                    e.currentTarget.style.transform = 'translateY(0px)'
+                  }}>
+                    INSIDER ACCESS
+                  </button>
+                </Link>
+
+                <Link href="#process">
+                  <button style={{
+                    background: 'transparent',
+                    color: '#d4a574',
+                    border: '1px solid #d4a574',
+                    padding: '18px 50px',
+                    fontSize: '13px',
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: '600',
+                    letterSpacing: '0.15em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    borderRadius: '0px',
+                    minWidth: '200px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#d4a574'
+                    e.currentTarget.style.color = '#000000'
+                    e.currentTarget.style.transform = 'translateY(-1px)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = '#d4a574'
+                    e.currentTarget.style.transform = 'translateY(0px)'
+                  }}>
+                    DISCOVER MORE
+                  </button>
+                </Link>
+              </div>
+
+              {/* Horizontal Lines */}
+              <div style={{
+                position: 'relative',
+                marginTop: '3rem'
+              }}>
+                <div style={{
+                  width: '100px',
+                  height: '1px',
                   background: '#d4a574',
-                  color: '#000000',
-                  border: 'none',
-                  padding: '20px 60px',
-                  fontSize: '14px',
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: '600',
-                  letterSpacing: '0.2em',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  borderRadius: '4px',
-                  boxShadow: '0 8px 32px rgba(212, 165, 116, 0.3)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#b8956a'
-                  e.currentTarget.style.transform = 'translateY(-2px)'
-                  e.currentTarget.style.boxShadow = '0 12px 48px rgba(212, 165, 116, 0.4)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#d4a574'
-                  e.currentTarget.style.transform = 'translateY(0px)'
-                  e.currentTarget.style.boxShadow = '0 8px 32px rgba(212, 165, 116, 0.3)'
-                }}>
-                  JOIN SEOUL SISTER
-                </button>
-              </Link>
+                  margin: '0 auto',
+                  opacity: '0.6'
+                }}></div>
+              </div>
 
               <div style={{
-                marginTop: '24px',
+                marginTop: '2rem',
                 textAlign: 'center'
               }}>
                 <p style={{
                   fontFamily: 'Inter, sans-serif',
-                  fontSize: '18px',
+                  fontSize: '14px',
                   color: '#d4a574',
                   marginBottom: '8px',
-                  fontWeight: '500'
+                  fontWeight: '500',
+                  letterSpacing: '0.1em'
                 }}>
                   $20/month • 7-day FREE trial
                 </p>
                 <p style={{
                   fontFamily: 'Inter, sans-serif',
-                  fontSize: '14px',
+                  fontSize: '13px',
                   color: '#888888',
                   lineHeight: '1.6',
                   fontWeight: '300',
-                  maxWidth: '480px',
-                  margin: '0 auto'
+                  maxWidth: '500px',
+                  margin: '0 auto',
+                  letterSpacing: '0.02em'
                 }}>
                   Advanced skin intelligence • Personalized recommendations • Wholesale Seoul pricing • WhatsApp ordering • Cancel anytime
                 </p>
@@ -283,7 +343,7 @@ export default function HomePage() {
       </section>
 
       {/* The Process - Clean Steps */}
-      <section className="section-light py-32">
+      <section id="process" className="section-light py-32">
         <div className="luxury-container">
           <div className="text-center mb-20">
             <p className="text-caption mb-4 text-luxury-charcoal">THE PROCESS</p>
