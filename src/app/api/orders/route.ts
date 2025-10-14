@@ -48,11 +48,15 @@ export async function POST(request: Request) {
       customerName
     )
 
-    // Check if user has active subscription
+    // Check if user has active subscription or bypass privileges
     const hasActiveSubscription = customerProfile.subscription_status === 'active' ||
                                  customerProfile.subscription_status === 'trialing'
 
-    if (!hasActiveSubscription) {
+    const isBypassUser = customerProfile.bypass_subscription === true ||
+                        customerProfile.subscription_status === 'bypass_admin' ||
+                        customerProfile.subscription_status === 'bypass_test'
+
+    if (!hasActiveSubscription && !isBypassUser) {
       return NextResponse.json({
         error: 'Active subscription required',
         message: 'Please subscribe to Seoul Sister Premium to place orders at wholesale prices.',

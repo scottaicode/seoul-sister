@@ -547,9 +547,13 @@ async function handleOrderInitiation(from: string): Promise<string> {
   const hasActiveSubscription = profile?.subscription_status === 'active' ||
                                profile?.subscription_status === 'trialing'
 
+  const isBypassUser = profile?.bypass_subscription === true ||
+                      profile?.subscription_status === 'bypass_admin' ||
+                      profile?.subscription_status === 'bypass_test'
+
   const productInfo = `${recentInterest.product_brand} - ${recentInterest.product_name}`
 
-  if (!hasActiveSubscription) {
+  if (!hasActiveSubscription && !isBypassUser) {
     return `🛒 **Order: ${productInfo}**\n\n` +
            "To order at Seoul wholesale prices, you need Seoul Sister Premium ($20/month).\n\n" +
            "Visit this link to start your 7-day FREE trial:\n" +
