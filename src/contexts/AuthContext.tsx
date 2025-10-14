@@ -30,14 +30,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', userId)
         .single()
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching user profile:', error)
+      if (error) {
+        // Don't block authentication for profile errors
+        console.log('Profile not found or error:', error.message)
         return null
       }
 
       return data
     } catch (error) {
-      console.error('Error fetching user profile:', error)
+      console.log('Error fetching user profile:', error)
       return null
     }
   }
@@ -62,15 +63,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
 
-      if (session?.user) {
-        setUser(session.user)
-        const profile = await fetchUserProfile(session.user.id)
-        setUserProfile(profile)
+        if (session?.user) {
+          setUser(session.user)
+          // Don't wait for profile - load it in background
+          fetchUserProfile(session.user.id).then(setUserProfile)
+        }
+      } catch (error) {
+        console.log('Error getting initial session:', error)
+      } finally {
+        setLoading(false)
       }
-
-      setLoading(false)
     }
 
     getInitialSession()
@@ -81,8 +86,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
       if (session?.user) {
         setUser(session.user)
-        const profile = await fetchUserProfile(session.user.id)
-        setUserProfile(profile)
+        // Load profile in background, don't block
+        fetchUserProfile(session.user.id).then(setUserProfile)
       } else {
         setUser(null)
         setUserProfile(null)
