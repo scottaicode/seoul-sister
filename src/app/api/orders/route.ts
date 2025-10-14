@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { stripe, createCustomer, chargeCustomer } from '@/lib/stripe-server'
-import { SERVICE_FEE } from '@/lib/stripe'
+import { stripe, createCustomer } from '@/lib/stripe-server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,10 +37,9 @@ export async function POST(request: Request) {
       }, { status: 404 })
     }
 
-    // Calculate total amount
+    // For subscription model, orders are included in monthly subscription
     const productPrice = product.seoul_price
-    const serviceFee = SERVICE_FEE
-    const totalAmount = productPrice + serviceFee
+    const totalAmount = productPrice
 
     // Get or create customer profile
     let customerProfile = await getOrCreateCustomerProfile(
@@ -50,20 +48,16 @@ export async function POST(request: Request) {
       customerName
     )
 
-    // Create or get Stripe customer
-    if (!customerProfile.stripe_customer_id) {
-      const stripeCustomer = await createCustomer(
-        customerProfile.email || `${phoneNumber}@seoulsister.temp`,
-        customerProfile.name || `Customer ${phoneNumber.slice(-4)}`
-      )
+    // Check if user has active subscription
+    const hasActiveSubscription = customerProfile.subscription_status === 'active' ||
+                                 customerProfile.subscription_status === 'trialing'
 
-      // Update profile with Stripe customer ID
-      await supabase
-        .from('user_profiles')
-        .update({ stripe_customer_id: stripeCustomer.id })
-        .eq('id', customerProfile.id)
-
-      customerProfile.stripe_customer_id = stripeCustomer.id
+    if (!hasActiveSubscription) {
+      return NextResponse.json({
+        error: 'Active subscription required',
+        message: 'Please subscribe to Seoul Sister Premium to place orders at wholesale prices.',
+        subscriptionRequired: true
+      }, { status: 402 })
     }
 
     // Create order in database
@@ -74,13 +68,12 @@ export async function POST(request: Request) {
         product_id: productId,
         product_name: `${product.brand} - ${product.name_english}`,
         seoul_price: productPrice,
-        service_fee: serviceFee,
         total_amount: totalAmount,
-        status: 'pending',
+        status: 'confirmed',
         whatsapp_conversation_id: phoneNumber,
         quantity: 1,
         shipping_address: shippingAddress,
-        notes: `Order from WhatsApp: ${phoneNumber}`,
+        notes: `Order from WhatsApp: ${phoneNumber} (Seoul Sister Premium subscriber)`,
       })
       .select()
       .single()
@@ -92,36 +85,8 @@ export async function POST(request: Request) {
       }, { status: 500 })
     }
 
-    // Process payment if customer has saved payment method
-    let paymentResult = null
-    try {
-      if (customerProfile.stripe_customer_id) {
-        paymentResult = await chargeCustomer(
-          customerProfile.stripe_customer_id,
-          totalAmount,
-          `Seoul Sister Order: ${product.brand} - ${product.name_english}`
-        )
-
-        // Update order with payment information
-        await supabase
-          .from('orders')
-          .update({
-            status: 'confirmed',
-            stripe_payment_intent_id: paymentResult.id,
-          })
-          .eq('id', order.id)
-      }
-    } catch (paymentError) {
-      console.error('Payment processing error:', paymentError)
-      // Keep order as pending, will retry payment or ask for new payment method
-      await supabase
-        .from('orders')
-        .update({
-          status: 'payment_failed',
-          notes: `${order.notes || ''}\nPayment failed: ${paymentError}`
-        })
-        .eq('id', order.id)
-    }
+    // For subscription model, no per-order payment needed
+    // Orders are covered under the monthly subscription
 
     // Log successful order for analytics
     await supabase
@@ -142,11 +107,11 @@ export async function POST(request: Request) {
         product_name: order.product_name,
         total_amount: order.total_amount,
         status: order.status,
-        payment_status: paymentResult ? 'paid' : 'pending'
+        payment_status: 'included_in_subscription'
       },
       customer: {
         id: customerProfile.id,
-        has_payment_method: !!customerProfile.stripe_customer_id
+        subscription_status: customerProfile.subscription_status
       }
     })
 

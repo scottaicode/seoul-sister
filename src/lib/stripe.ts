@@ -34,4 +34,4 @@ export const formatAmountForStripe = (amount: number, currency: string): number 
   return zeroDecimalCurrency ? amount : Math.round(amount * 100)
 }
 
-export const SERVICE_FEE = 25.00 // $25 flat service fee
+export const MONTHLY_SUBSCRIPTION_PRICE = 20.00 // $20/month subscription

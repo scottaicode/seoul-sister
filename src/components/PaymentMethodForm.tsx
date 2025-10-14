@@ -126,7 +126,7 @@ export default function PaymentMethodForm({ userId, onSuccess }: PaymentMethodFo
           </svg>
           <div className="text-sm">
             <p className="font-medium">Your payment method is secure</p>
-            <p className="mt-1">We use Stripe to securely store your payment information. You'll only be charged when you place an order through WhatsApp.</p>
+            <p className="mt-1">We use Stripe to securely store your payment information. Your 7-day free trial starts now. After the trial, you'll be charged $20/month for your premium membership. Cancel anytime.</p>
           </div>
         </div>
       </div>
@@ -136,12 +136,12 @@ export default function PaymentMethodForm({ userId, onSuccess }: PaymentMethodFo
         disabled={!stripe || loading}
         className="w-full bg-korean-gradient text-white font-semibold py-3 px-6 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
       >
-        {loading ? 'Saving Payment Method...' : 'Save Payment Method'}
+        {loading ? 'Starting Free Trial...' : 'Start 7-Day Free Trial'}
       </button>
 
       <p className="text-xs text-gray-500 text-center">
-        By saving your payment method, you agree to our Terms of Service.
-        You can update or remove your payment method at any time.
+        By starting your free trial, you agree to our Terms of Service.
+        Free for 7 days, then $20/month. Cancel anytime during your trial.
       </p>
     </form>
   )

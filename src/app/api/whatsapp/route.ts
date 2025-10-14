@@ -544,16 +544,17 @@ async function handleOrderInitiation(from: string): Promise<string> {
     .eq('phone', from)
     .single()
 
-  const hasPaymentMethod = profile?.stripe_customer_id
+  const hasActiveSubscription = profile?.subscription_status === 'active' ||
+                               profile?.subscription_status === 'trialing'
 
   const productInfo = `${recentInterest.product_brand} - ${recentInterest.product_name}`
 
-  if (!hasPaymentMethod) {
+  if (!hasActiveSubscription) {
     return `🛒 **Order: ${productInfo}**\n\n` +
-           "To complete your order, I need to set up your payment method.\n\n" +
-           "Visit this secure link to add your card:\n" +
-           `${process.env.NEXT_PUBLIC_BASE_URL}/payment-setup?phone=${encodeURIComponent(from)}\n\n` +
-           "Once your payment is set up, reply 'CONFIRM' to place your order! 💳"
+           "To order at Seoul wholesale prices, you need Seoul Sister Premium ($20/month).\n\n" +
+           "Visit this link to start your 7-day FREE trial:\n" +
+           `${process.env.NEXT_PUBLIC_BASE_URL}/signup?phone=${encodeURIComponent(from)}\n\n` +
+           "✨ Get unlimited orders at Seoul prices + AI skin analysis! 🇰🇷"
   }
 
   // Store pending order context
@@ -571,7 +572,7 @@ async function handleOrderInitiation(from: string): Promise<string> {
     })
 
   return `🛒 **Ready to order: ${productInfo}**\n\n` +
-         "Reply 'CONFIRM' to place your order with your saved payment method.\n\n" +
+         "Reply 'CONFIRM' to place your order (included in your Seoul Sister Premium subscription).\n\n" +
          "Your order will be processed immediately and shipped from Seoul! 🇰🇷✨"
 }
 
@@ -616,12 +617,12 @@ async function handleOrderConfirmation(from: string): Promise<string> {
     const orderData = await orderResponse.json()
 
     if (!orderData.success) {
-      if (orderData.error.includes('payment')) {
-        return "💳 **Payment Required**\n\n" +
-               "I need to set up your payment method first.\n\n" +
-               "Visit this secure link to add your card:\n" +
-               `${process.env.NEXT_PUBLIC_BASE_URL}/payment-setup?phone=${encodeURIComponent(from)}\n\n` +
-               "Then reply 'CONFIRM' again to complete your order!"
+      if (orderData.subscriptionRequired) {
+        return "🔒 **Seoul Sister Premium Required**\n\n" +
+               "Get unlimited orders at Seoul wholesale prices!\n\n" +
+               "Visit this link to start your 7-day FREE trial:\n" +
+               `${process.env.NEXT_PUBLIC_BASE_URL}/signup?phone=${encodeURIComponent(from)}\n\n` +
+               "✨ $20/month for unlimited orders + AI skin analysis! 🇰🇷"
       }
 
       return `❌ **Order Failed**\n\n${orderData.error}\n\nPlease try again or contact support.`
@@ -635,24 +636,15 @@ async function handleOrderConfirmation(from: string): Promise<string> {
       .eq('context_type', 'pending_order')
 
     const order = orderData.order
-    const isPaymentSuccessful = order.payment_status === 'paid'
 
     let message = `🎉 **Order Confirmed!**\n\n`
     message += `📦 **${order.product_name}**\n`
-    message += `💰 **Total: $${order.total_amount}**\n\n`
-
-    if (isPaymentSuccessful) {
-      message += `✅ Payment processed successfully!\n`
-      message += `🚚 Your order will ship from Seoul within 24-48 hours\n`
-      message += `📱 Tracking info will be sent to this number\n\n`
-      message += `**Order ID:** ${order.id}\n\n`
-      message += `Thanks for choosing Seoul Sister! 🇰🇷✨`
-    } else {
-      message += `⏳ Order created - processing payment...\n`
-      message += `💳 We'll charge your saved payment method shortly\n`
-      message += `📱 You'll receive confirmation once payment is complete\n\n`
-      message += `**Order ID:** ${order.id}`
-    }
+    message += `💰 **Seoul Price: $${order.total_amount}**\n\n`
+    message += `✅ Included in your Seoul Sister Premium subscription!\n`
+    message += `🚚 Your order will ship from Seoul within 24-48 hours\n`
+    message += `📱 Tracking info will be sent to this number\n\n`
+    message += `**Order ID:** ${order.id}\n\n`
+    message += `Thanks for being a Seoul Sister Premium member! 🇰🇷✨`
 
     return message
 
@@ -677,13 +669,15 @@ async function handleOrderCancellation(from: string): Promise<string> {
 }
 
 async function handlePaymentSetup(from: string): Promise<string> {
-  const paymentSetupUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/payment-setup?phone=${encodeURIComponent(from)}`
+  const signupUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/signup?phone=${encodeURIComponent(from)}`
 
-  return "💳 **Payment Setup**\n\n" +
-         "Click the secure link below to add your payment method:\n\n" +
-         `${paymentSetupUrl}\n\n` +
-         "✅ Your card info is encrypted and secure\n" +
-         "🚀 Enable instant ordering for future purchases\n" +
-         "💰 Automatically charged Seoul prices\n\n" +
-         "Reply 'ORDER' after setup to start shopping!"
+  return "✨ **Seoul Sister Premium**\n\n" +
+         "Get unlimited orders at Seoul wholesale prices!\n\n" +
+         `Click here to start your 7-day FREE trial:\n${signupUrl}\n\n` +
+         "🎯 What you get:\n" +
+         "• Unlimited orders at Seoul prices\n" +
+         "• AI skin analysis & recommendations\n" +
+         "• Instant WhatsApp ordering\n" +
+         "• Premium member support\n\n" +
+         "Only $20/month after 7-day free trial! 🇰🇷"
 }

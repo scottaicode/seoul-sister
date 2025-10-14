@@ -5,6 +5,10 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   typescript: true,
 })
 
+// Seoul Sister Premium Membership Price ID
+// This should be created in Stripe Dashboard: $20/month recurring
+export const SEOUL_SISTER_PRICE_ID = process.env.STRIPE_PRICE_ID || 'price_seoul_sister_monthly'
+
 export const createCustomer = async (email: string, name?: string) => {
   try {
     const customer = await stripe.customers.create({
@@ -98,6 +102,63 @@ export const getCustomerPaymentMethods = async (customerId: string) => {
     return paymentMethods.data
   } catch (error) {
     console.error('Error getting payment methods:', error)
+    throw error
+  }
+}
+
+export const createSubscription = async (customerId: string, priceId: string, trialDays: number = 7) => {
+  try {
+    const subscription = await stripe.subscriptions.create({
+      customer: customerId,
+      items: [{
+        price: priceId,
+      }],
+      trial_period_days: trialDays,
+      payment_behavior: 'default_incomplete',
+      payment_settings: { save_default_payment_method: 'on_subscription' },
+      expand: ['latest_invoice.payment_intent'],
+      metadata: {
+        source: 'seoul-sister-premium'
+      }
+    })
+    return subscription
+  } catch (error) {
+    console.error('Error creating subscription:', error)
+    throw error
+  }
+}
+
+export const getSubscription = async (subscriptionId: string) => {
+  try {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+    return subscription
+  } catch (error) {
+    console.error('Error retrieving subscription:', error)
+    throw error
+  }
+}
+
+export const cancelSubscription = async (subscriptionId: string) => {
+  try {
+    const subscription = await stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: true
+    })
+    return subscription
+  } catch (error) {
+    console.error('Error canceling subscription:', error)
+    throw error
+  }
+}
+
+export const getCustomerSubscriptions = async (customerId: string) => {
+  try {
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'all',
+    })
+    return subscriptions.data
+  } catch (error) {
+    console.error('Error getting customer subscriptions:', error)
     throw error
   }
 }
