@@ -228,7 +228,7 @@ export default function HomePage() {
               {/* Faint Vertical Line Below Buttons */}
               <div style={{
                 width: '1px',
-                height: '60px',
+                height: '15px',
                 background: '#d4a574',
                 opacity: '0.4',
                 margin: '3rem auto 0',
