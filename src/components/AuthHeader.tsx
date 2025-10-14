@@ -7,12 +7,60 @@ import { User, ChevronDown, Camera, Heart, ShoppingBag, Settings, LogOut } from 
 
 export default function AuthHeader() {
   console.log('🎯 AuthHeader: Component rendering')
-  const { user, userProfile, signOut, loading } = useAuth()
+  const [authState, setAuthState] = useState<{user: any, userProfile: any, loading: boolean}>({ user: null, userProfile: null, loading: true })
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
 
-  console.log('🎯 AuthHeader: Current state:', {
+  // Try to use context, but fallback to direct checks if context fails
+  let user, userProfile, signOut, loading
+  try {
+    const authContext = useAuth()
+    user = authContext.user
+    userProfile = authContext.userProfile
+    signOut = authContext.signOut
+    loading = authContext.loading
+    console.log('🎯 AuthHeader: Context working:', { hasUser: !!user, loading })
+  } catch (error) {
+    console.log('🎯 AuthHeader: Context failed, using fallback:', error)
+    user = authState.user
+    userProfile = authState.userProfile
+    loading = authState.loading
+    signOut = async () => {
+      console.log('Fallback signout')
+      window.location.href = '/'
+    }
+  }
+
+  // Direct auth check if context isn't working
+  useEffect(() => {
+    if (!user && typeof window !== 'undefined') {
+      console.log('🎯 AuthHeader: Doing direct auth check')
+      const checkAuth = async () => {
+        try {
+          const { createClient } = await import('@/lib/supabase')
+          const supabase = createClient()
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.user) {
+            console.log('🎯 AuthHeader: Direct auth found user:', session.user.email)
+            setAuthState({
+              user: session.user,
+              userProfile: { name: session.user.email?.split('@')[0] || 'User' },
+              loading: false
+            })
+          } else {
+            setAuthState({ user: null, userProfile: null, loading: false })
+          }
+        } catch (err) {
+          console.log('🎯 AuthHeader: Direct auth failed:', err)
+          setAuthState({ user: null, userProfile: null, loading: false })
+        }
+      }
+      checkAuth()
+    }
+  }, [user])
+
+  console.log('🎯 AuthHeader: Final state:', {
     hasUser: !!user,
     userEmail: user?.email,
     loading,

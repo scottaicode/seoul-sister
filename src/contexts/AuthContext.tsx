@@ -1,6 +1,11 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react'
+
+// Add immediate client-side debug
+if (typeof window !== 'undefined') {
+  console.log('🌐 AuthContext: Client-side script loaded')
+}
 import { createClient } from '@/lib/supabase'
 import type { User, AuthChangeEvent, Session } from '@supabase/supabase-js'
 import type { UserProfile } from '@/types/user'
