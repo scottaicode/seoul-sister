@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
         return {
           ...report,
-          categories: categories?.map(c => c.report_categories?.slug).filter(Boolean) || []
+          categories: categories?.map((c: any) => c.report_categories?.slug).filter(Boolean) || []
         };
       })
     );
