@@ -9,9 +9,22 @@ export default function AuthHeader() {
   const { user, userProfile, signOut } = useAuth()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
 
   const handleAuthSuccess = (user: any) => {
     console.log('User authenticated:', user)
+  }
+
+  const handleSignOut = async () => {
+    setSigningOut(true)
+    setShowDropdown(false)
+    try {
+      await signOut()
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      setSigningOut(false)
+    }
   }
 
   return (
@@ -139,13 +152,14 @@ export default function AuthHeader() {
                       </a>
                     </div>
 
-                    <div className="border-t border-gray-100 py-1">
+                    <div className="border-t border-luxury-gold/20 py-1">
                       <button
-                        onClick={signOut}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-300 hover:bg-luxury-gold/20 hover:text-luxury-gold transition-colors"
+                        onClick={handleSignOut}
+                        disabled={signingOut}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-300 hover:bg-luxury-gold/20 hover:text-luxury-gold transition-colors disabled:opacity-50"
                       >
                         <LogOut size={16} className="mr-3" />
-                        Sign Out
+                        {signingOut ? 'Signing out...' : 'Sign Out'}
                       </button>
                     </div>
                   </div>

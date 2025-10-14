@@ -52,11 +52,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      console.log('Signing out...')
       await supabase.auth.signOut()
       setUser(null)
       setUserProfile(null)
+      // Force page reload to clear any cached state
+      window.location.href = '/'
     } catch (error) {
       console.error('Error signing out:', error)
+      // Force logout even if API fails
+      setUser(null)
+      setUserProfile(null)
+      window.location.href = '/'
     }
   }
 
