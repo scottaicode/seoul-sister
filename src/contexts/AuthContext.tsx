@@ -25,6 +25,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const mountedRef = useRef(true)
   const authListenerRef = useRef<any>(null)
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Failsafe: Force loading to false after 5 seconds
+  useEffect(() => {
+    if (loading) {
+      loadingTimeoutRef.current = setTimeout(() => {
+        console.log('Auth loading timeout - forcing loading to false')
+        if (mountedRef.current) {
+          setLoading(false)
+        }
+      }, 5000)
+    } else {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+        loadingTimeoutRef.current = null
+      }
+    }
+
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+      }
+    }
+  }, [loading])
 
   const fetchUserProfile = useCallback(async (userId: string) => {
     if (!mountedRef.current) return null
@@ -56,18 +80,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, fetchUserProfile])
 
   const refreshAuth = useCallback(async () => {
+    console.log('RefreshAuth called - setting loading to false')
     try {
       const { data: { session }, error } = await supabaseClient.auth.getSession()
 
       if (session?.user && mountedRef.current) {
+        console.log('RefreshAuth: User found, updating state')
         setUser(session.user)
         const profile = await fetchUserProfile(session.user.id)
         if (mountedRef.current) {
           setUserProfile(profile)
         }
+      } else {
+        console.log('RefreshAuth: No user found')
+        if (mountedRef.current) {
+          setUser(null)
+          setUserProfile(null)
+        }
+      }
+
+      // Always ensure loading is set to false
+      if (mountedRef.current) {
+        setLoading(false)
       }
     } catch (error) {
       console.error('Error refreshing auth:', error)
+      if (mountedRef.current) {
+        setLoading(false)
+      }
     }
   }, [fetchUserProfile])
 
@@ -93,26 +133,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isCancelled = false
 
     const initializeAuth = async () => {
+      console.log('InitializeAuth called')
       try {
         // Get initial session
         const { data: { session }, error } = await supabaseClient.auth.getSession()
+        console.log('InitializeAuth: Session check result:', { hasUser: !!session?.user, error })
 
         if (isCancelled) return
 
         if (session?.user && mountedRef.current) {
+          console.log('InitializeAuth: Setting user state')
           setUser(session.user)
           // Load profile in background
           fetchUserProfile(session.user.id).then(profile => {
             if (mountedRef.current && !isCancelled) {
+              console.log('InitializeAuth: Profile loaded')
               setUserProfile(profile)
             }
           })
+        } else {
+          console.log('InitializeAuth: No user found, clearing state')
+          if (mountedRef.current) {
+            setUser(null)
+            setUserProfile(null)
+          }
         }
 
         if (mountedRef.current) {
+          console.log('InitializeAuth: Setting loading to false')
           setLoading(false)
         }
       } catch (error) {
+        console.error('InitializeAuth error:', error)
         if (mountedRef.current) {
           setLoading(false)
         }
@@ -121,16 +173,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Setup auth state listener
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
+      console.log('Auth state change:', { event, hasUser: !!session?.user })
       if (isCancelled) return
 
       // Be more conservative about state changes to prevent accidental logouts
       if (event === 'SIGNED_OUT') {
+        console.log('Auth: User signed out, clearing state')
         // Only clear state if it's an explicit signout, not a session refresh
         if (mountedRef.current) {
           setUser(null)
           setUserProfile(null)
         }
       } else if (event === 'SIGNED_IN' && session?.user) {
+        console.log('Auth: User signed in, updating state')
         if (mountedRef.current) {
           setUser(session.user)
           // Load profile in background
@@ -141,11 +196,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           })
         }
       } else if (session?.user && mountedRef.current) {
+        console.log('Auth: Session exists, preserving user state')
         // Session exists, preserve the user state
         setUser(session.user)
       }
 
       if (mountedRef.current) {
+        console.log('Auth listener: Setting loading to false')
         setLoading(false)
       }
     })

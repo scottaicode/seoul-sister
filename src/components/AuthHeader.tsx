@@ -17,8 +17,14 @@ export default function AuthHeader() {
       user: user?.email,
       userProfile: userProfile?.name,
       loading,
+      hasUser: !!user,
       url: window.location.href
     })
+
+    // Force loading to false if we have a user but loading is stuck
+    if (user && loading) {
+      console.log('AuthHeader: User exists but loading is stuck, this should not happen')
+    }
   }, [user, userProfile, loading])
 
   const handleAuthSuccess = (user: any) => {
