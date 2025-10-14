@@ -85,10 +85,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Extract client secret safely - latest_invoice can be string or object
+    let clientSecret: string | null = null
+    if (subscription.latest_invoice && typeof subscription.latest_invoice === 'object') {
+      const invoice = subscription.latest_invoice as any
+      clientSecret = invoice.payment_intent?.client_secret || null
+    }
+
     return NextResponse.json({
       subscription,
       customerId,
-      client_secret: subscription.latest_invoice?.payment_intent?.client_secret
+      client_secret: clientSecret
     })
 
   } catch (error) {
