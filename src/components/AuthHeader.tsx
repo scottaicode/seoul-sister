@@ -94,6 +94,18 @@ export default function AuthHeader() {
             onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}>
               AI DASHBOARD
             </a>
+            <a href="/intelligence" className="transition-colors" style={{
+              color: '#888888',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '13px',
+              fontWeight: '400',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#d4a574'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}>
+              INTELLIGENCE
+            </a>
             <a href="#about" className="transition-colors" style={{
               color: '#888888',
               fontFamily: 'Inter, sans-serif',
@@ -173,6 +185,18 @@ export default function AuthHeader() {
                         <div className="flex items-center">
                           <Heart size={16} className="mr-3" />
                           AI Beauty Hub
+                        </div>
+                      </a>
+                      <a
+                        href="/intelligence"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <div className="flex items-center">
+                          <svg className="w-4 h-4 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M9 19c-5 0-8-3-8-6s3-6 8-6c2 0 4 1 6 3l-2 2h4V8l-2 2C15 8 12 6 9 6c-6 0-10 4-10 8s4 8 10 8h8v-2H9z"/>
+                          </svg>
+                          Intelligence Reports
                         </div>
                       </a>
                       <a

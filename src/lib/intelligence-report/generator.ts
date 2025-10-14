@@ -119,9 +119,9 @@ export class IntelligenceReportGenerator {
   private getFallbackTrends() {
     return {
       products: [
-        { name: 'Beauty of Joseon Relief Sun', brand: 'Beauty of Joseon', seoulPrice: 12000, usPrice: 18 },
-        { name: 'COSRX Snail 96 Mucin Power Essence', brand: 'COSRX', seoulPrice: 23000, usPrice: 29 },
-        { name: 'Innisfree Green Tea Seed Serum', brand: 'Innisfree', seoulPrice: 27000, usPrice: 35 }
+        { name: 'Beauty of Joseon Relief Sun', brand: 'Beauty of Joseon', seoulPrice: 12, usPrice: 18 },
+        { name: 'COSRX Snail 96 Mucin Power Essence', brand: 'COSRX', seoulPrice: 23, usPrice: 29 },
+        { name: 'Innisfree Green Tea Seed Serum', brand: 'Innisfree', seoulPrice: 27, usPrice: 35 }
       ],
       ingredients: ['Centella Asiatica', 'Snail Mucin', 'Niacinamide', 'Rice Water'],
       trends: ['Glass Skin', '7-Skin Method', 'Slugging', 'Double Cleansing']

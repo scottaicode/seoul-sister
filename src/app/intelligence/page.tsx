@@ -40,13 +40,32 @@ async function checkPremiumAccess(): Promise<boolean> {
     // Check user session
     const { data: { user }, error } = await supabase.auth.getUser();
 
-    if (error || !user) {
+    if (error || !user?.email) {
       return false;
     }
 
-    // Check premium status (you would implement this based on your subscription logic)
-    // For now, we'll return true for authenticated users
-    return true;
+    // Admin accounts and test user with free access
+    const privilegedUsers = [
+      'vibetrendai@gmail.com',
+      'baileydonmartin@gmail.com',
+      'test@email.com'
+    ];
+
+    if (privilegedUsers.includes(user.email)) {
+      return true;
+    }
+
+    // For other users, check if they have an active subscription
+    // Since you mentioned all users are either paying subs or just browsing,
+    // we'll check for a subscription record in your database
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('status')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .single();
+
+    return !!subscription;
   } catch (error) {
     console.error('Error checking premium access:', error);
     return false;

@@ -603,6 +603,106 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Daily Intelligence Reports Section */}
+      <section className="section-dark py-32 border-t border-luxury-charcoal">
+        <div className="luxury-container">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+              <div>
+                <p className="text-caption mb-4 text-luxury-gold">EXCLUSIVE INTELLIGENCE</p>
+                <h2 className="heading-section text-4xl md:text-5xl mb-6 font-light">
+                  Daily Seoul Beauty Reports
+                </h2>
+                <div className="gold-line mb-8"></div>
+
+                <p className="text-xl font-light mb-8 text-gray-300 leading-relaxed">
+                  Wake up to premium intelligence on trending Korean products, ingredient breakthroughs,
+                  and social media insights. Bloomberg Terminal-quality analysis delivered daily to premium members.
+                </p>
+
+                <div className="space-y-6 mb-8">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-2 h-2 bg-luxury-gold rounded-full mt-3 flex-shrink-0"></div>
+                    <div>
+                      <h4 className="text-lg font-medium text-luxury-gold mb-2">Trending Product Discovery</h4>
+                      <p className="text-gray-400">
+                        AI-powered analysis of Seoul's hottest products with exact wholesale pricing and savings calculations.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-4">
+                    <div className="w-2 h-2 bg-luxury-gold rounded-full mt-3 flex-shrink-0"></div>
+                    <div>
+                      <h4 className="text-lg font-medium text-luxury-gold mb-2">Ingredient Intelligence</h4>
+                      <p className="text-gray-400">
+                        Scientific analysis of breakthrough Korean ingredients with research backing and compatibility insights.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-4">
+                    <div className="w-2 h-2 bg-luxury-gold rounded-full mt-3 flex-shrink-0"></div>
+                    <div>
+                      <h4 className="text-lg font-medium text-luxury-gold mb-2">Social Media Trends</h4>
+                      <p className="text-gray-400">
+                        Real-time monitoring of Korean beauty platforms with viral trend predictions and influencer insights.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <Link href="/intelligence">
+                  <button className="btn-luxury-solid text-sm px-8 py-4">
+                    ACCESS TODAY'S REPORT
+                  </button>
+                </Link>
+              </div>
+
+              <div className="relative">
+                <div className="bg-gradient-to-br from-luxury-charcoal/50 to-black/80 rounded-lg border border-luxury-gold/20 p-8 backdrop-blur-sm">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <p className="text-luxury-gold text-sm uppercase tracking-wider mb-1">TODAY'S INTELLIGENCE</p>
+                      <h3 className="text-xl font-light">Seoul Beauty Report</h3>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-light text-luxury-gold">1,243</p>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider">Views</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 mb-6">
+                    <div className="bg-black/30 rounded p-4 border border-luxury-gold/10">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-luxury-gold">#1 Trending</span>
+                        <span className="text-xs text-green-400">Save 73%</span>
+                      </div>
+                      <h4 className="text-sm font-medium mb-1">Relief Sun: Rice + Probiotics</h4>
+                      <p className="text-xs text-gray-400">Beauty of Joseon • Viral for 12 weeks straight</p>
+                    </div>
+
+                    <div className="bg-black/30 rounded p-4 border border-luxury-gold/10">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-luxury-gold">Hero Ingredient</span>
+                        <span className="text-xs text-luxury-gold">98% Popularity</span>
+                      </div>
+                      <h4 className="text-sm font-medium mb-1">Centella Asiatica</h4>
+                      <p className="text-xs text-gray-400">23 peer-reviewed studies • Anti-inflammatory</p>
+                    </div>
+                  </div>
+
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500 mb-2">PREMIUM MEMBERS ONLY</p>
+                    <div className="w-full h-1 bg-gradient-to-r from-luxury-gold/20 via-luxury-gold to-luxury-gold/20 rounded"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FAQ Section - Minimal */}
       <section className="section-light py-32">
         <div className="luxury-container">
