@@ -101,7 +101,9 @@ export default function HomePage() {
       <AuthHeader />
 
       {/* Hero Section - Refined Minimalism */}
-      <section className="hero-section relative flex items-center justify-center">
+      <section className="hero-section relative flex items-center justify-center" style={{
+        borderBottom: '1px solid rgba(212, 165, 116, 0.2)'
+      }}>
         <div className="luxury-container text-center z-10 relative">
           <div className="animate-reveal">
             <p style={{
@@ -236,47 +238,6 @@ export default function HomePage() {
                 </Link>
               </div>
 
-              {/* Horizontal Lines */}
-              <div style={{
-                position: 'relative',
-                marginTop: '3rem'
-              }}>
-                <div style={{
-                  width: '100px',
-                  height: '1px',
-                  background: '#d4a574',
-                  margin: '0 auto',
-                  opacity: '0.6'
-                }}></div>
-              </div>
-
-              <div style={{
-                marginTop: '2rem',
-                textAlign: 'center'
-              }}>
-                <p style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: '14px',
-                  color: '#d4a574',
-                  marginBottom: '8px',
-                  fontWeight: '500',
-                  letterSpacing: '0.1em'
-                }}>
-                  $20/month • 7-day FREE trial
-                </p>
-                <p style={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: '13px',
-                  color: '#888888',
-                  lineHeight: '1.6',
-                  fontWeight: '300',
-                  maxWidth: '500px',
-                  margin: '0 auto',
-                  letterSpacing: '0.02em'
-                }}>
-                  Advanced skin intelligence • Personalized recommendations • Wholesale Seoul pricing • WhatsApp ordering • Cancel anytime
-                </p>
-              </div>
             </div>
           </div>
 
