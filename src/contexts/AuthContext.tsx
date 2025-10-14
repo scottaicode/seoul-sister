@@ -75,12 +75,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session
     const getInitialSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        console.log('Getting initial session...')
+        const { data: { session }, error } = await supabase.auth.getSession()
+        console.log('Initial session result:', session?.user?.email, error)
 
         if (session?.user) {
+          console.log('Setting user from initial session:', session.user.email)
           setUser(session.user)
           // Don't wait for profile - load it in background
-          fetchUserProfile(session.user.id).then(setUserProfile)
+          fetchUserProfile(session.user.id).then(profile => {
+            console.log('Profile loaded:', profile?.name)
+            setUserProfile(profile)
+          })
+        } else {
+          console.log('No initial session found')
         }
       } catch (error) {
         console.log('Error getting initial session:', error)
@@ -95,13 +103,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
-      console.log('Auth state change:', event, session?.user?.email)
+      console.log('🔑 Auth state change:', event, session?.user?.email || 'no user')
 
-      if (session?.user) {
+      if (event === 'SIGNED_OUT') {
+        console.log('User was signed out - clearing state')
+        setUser(null)
+        setUserProfile(null)
+      } else if (session?.user) {
+        console.log('Setting user from auth change:', session.user.email)
         setUser(session.user)
         // Load profile in background, don't block
-        fetchUserProfile(session.user.id).then(setUserProfile)
+        fetchUserProfile(session.user.id).then(profile => {
+          console.log('Profile loaded from auth change:', profile?.name)
+          setUserProfile(profile)
+        })
       } else {
+        console.log('No session in auth change - clearing state')
         setUser(null)
         setUserProfile(null)
       }
