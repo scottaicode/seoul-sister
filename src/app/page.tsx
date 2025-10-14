@@ -814,7 +814,9 @@ export default function HomePage() {
 
           <div className="grid lg:grid-cols-3 gap-12 mb-16">
             <div className="text-center p-8 border border-luxury-gold/20 hover:border-luxury-gold/40 transition-all duration-300 hover:transform hover:scale-105">
-              <div className="text-5xl mb-6">🔍</div>
+              <div className="w-16 h-16 mx-auto mb-6 border border-luxury-gold rounded-full flex items-center justify-center">
+                <div className="w-2 h-2 bg-luxury-gold rounded-full"></div>
+              </div>
               <h3 className="text-xl font-light mb-4 text-luxury-gold">Real-Time Price Intelligence</h3>
               <p className="text-gray-400 mb-6">
                 Automated daily price tracking across 8+ major retailers. Never overpay for Korean beauty again.
@@ -827,7 +829,9 @@ export default function HomePage() {
             </div>
 
             <div className="text-center p-8 border border-luxury-gold/20 hover:border-luxury-gold/40 transition-all duration-300 hover:transform hover:scale-105">
-              <div className="text-5xl mb-6">🧠</div>
+              <div className="w-16 h-16 mx-auto mb-6 border border-luxury-gold rounded-full flex items-center justify-center">
+                <div className="w-2 h-2 bg-luxury-gold rounded-full"></div>
+              </div>
               <h3 className="text-xl font-light mb-4 text-luxury-gold">AI Skin Analysis & Matching</h3>
               <p className="text-gray-400 mb-6">
                 Advanced AI analyzes your skin profile and matches you with perfect Korean beauty products.
@@ -840,7 +844,9 @@ export default function HomePage() {
             </div>
 
             <div className="text-center p-8 border border-luxury-gold/20 hover:border-luxury-gold/40 transition-all duration-300 hover:transform hover:scale-105">
-              <div className="text-5xl mb-6">🇰🇷</div>
+              <div className="w-16 h-16 mx-auto mb-6 border border-luxury-gold rounded-full flex items-center justify-center">
+                <div className="w-2 h-2 bg-luxury-gold rounded-full"></div>
+              </div>
               <h3 className="text-xl font-light mb-4 text-luxury-gold">Seoul Supplier Access</h3>
               <p className="text-gray-400 mb-6">
                 Direct connections to verified Korean suppliers for wholesale pricing and group buying opportunities.
