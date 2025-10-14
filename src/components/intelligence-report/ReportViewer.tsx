@@ -306,7 +306,7 @@ export default function ReportViewer({ reportId, isPremium = false }: ReportView
                     </div>
                   </div>
                 </div>
-                ))
+              ))}
             </motion.div>
           )}
 
