@@ -25,46 +25,21 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const supabaseClient = createClient()
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  console.log('🚀 AuthProvider: Component initialized')
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const mountedRef = useRef(true)
   const authListenerRef = useRef<any>(null)
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Debug state changes
+  // Simple timeout failsafe - 3 seconds max
   useEffect(() => {
-    console.log('🔄 AuthProvider: State changed:', {
-      hasUser: !!user,
-      userEmail: user?.email,
-      loading,
-      profileName: userProfile?.name
-    })
-  }, [user, userProfile, loading])
-
-  // Failsafe: Force loading to false after 5 seconds
-  useEffect(() => {
-    if (loading) {
-      loadingTimeoutRef.current = setTimeout(() => {
-        console.log('Auth loading timeout - forcing loading to false')
-        if (mountedRef.current) {
-          setLoading(false)
-        }
-      }, 5000)
-    } else {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current)
-        loadingTimeoutRef.current = null
+    const timeout = setTimeout(() => {
+      if (mountedRef.current && loading) {
+        setLoading(false)
       }
-    }
-
-    return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current)
-      }
-    }
-  }, [loading])
+    }, 3000)
+    return () => clearTimeout(timeout)
+  }, [])
 
   const fetchUserProfile = useCallback(async (userId: string) => {
     if (!mountedRef.current) return null
@@ -96,26 +71,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, fetchUserProfile])
 
   const refreshAuth = useCallback(async () => {
-    console.log('RefreshAuth called - setting loading to false')
     try {
       const { data: { session }, error } = await supabaseClient.auth.getSession()
 
       if (session?.user && mountedRef.current) {
-        console.log('RefreshAuth: User found, updating state')
         setUser(session.user)
         const profile = await fetchUserProfile(session.user.id)
         if (mountedRef.current) {
           setUserProfile(profile)
         }
       } else {
-        console.log('RefreshAuth: No user found')
         if (mountedRef.current) {
           setUser(null)
           setUserProfile(null)
         }
       }
 
-      // Always ensure loading is set to false
       if (mountedRef.current) {
         setLoading(false)
       }
