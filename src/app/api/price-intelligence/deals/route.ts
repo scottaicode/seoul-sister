@@ -44,7 +44,7 @@ export async function GET(request: Request) {
       'torriden-dive-in-serum': { name: 'DIVE-IN Low Molecule Hyaluronic Acid Serum', brand: 'Torriden', category: 'skincare' }
     };
 
-    const dealsWithProducts = (deals || []).map((deal) => {
+    const dealsWithProducts = (deals || []).map((deal: any) => {
       const product = productMap[deal.product_id] || { name: 'Korean Beauty Product', brand: 'K-Beauty', category: 'skincare' };
       return {
         ...deal,
@@ -138,7 +138,7 @@ async function getTopDealCategories(deals: any[]): Promise<any[]> {
     'torriden-dive-in-serum': { category: 'skincare' }
   };
 
-  deals.forEach(deal => {
+  deals.forEach((deal: any) => {
     const product = productMap[deal.product_id] || { category: 'skincare' };
     const category = product.category;
 
@@ -160,7 +160,7 @@ async function getTopDealCategories(deals: any[]): Promise<any[]> {
 function getDealsByRetailer(deals: any[]): any[] {
   const retailerMap = new Map();
 
-  deals.forEach(deal => {
+  deals.forEach((deal: any) => {
     const retailerName = deal.price_retailers?.name || 'Unknown';
     const current = retailerMap.get(retailerName) || { count: 0, totalSavings: 0 };
     retailerMap.set(retailerName, {
@@ -177,7 +177,7 @@ function getDealsByRetailer(deals: any[]): any[] {
 function getDealTrends(deals: any[]): any[] {
   const dateMap = new Map();
 
-  deals.forEach(deal => {
+  deals.forEach((deal: any) => {
     const date = deal.deal_date;
     const current = dateMap.get(date) || { count: 0, avgSavings: 0 };
     dateMap.set(date, {
