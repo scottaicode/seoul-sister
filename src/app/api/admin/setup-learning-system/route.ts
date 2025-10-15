@@ -137,14 +137,9 @@ export async function POST(request: Request) {
       `CREATE INDEX IF NOT EXISTS idx_intelligence_report_sections_report ON intelligence_report_sections(report_id, order_index)`,
     ];
 
-    // Execute schema creation queries
-    for (const query of schemaQueries) {
-      const { error } = await supabase.rpc('exec_sql', { sql: query });
-      if (error) {
-        console.error('Schema creation error:', error);
-        // Continue with other queries even if one fails
-      }
-    }
+    // Note: Schema creation is handled by Supabase migrations or manual SQL execution
+    // The tables are expected to be created via the Supabase dashboard or migrations
+    console.log('Learning system schema should be applied via Supabase dashboard using apply-learning-schema.sql');
 
     // Insert sample intelligence report
     const { data: reportData, error: reportError } = await supabase
