@@ -1,7 +1,7 @@
 'use client';
 
-import { useUser } from '@supabase/auth-helpers-react';
 import { useCallback, useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase';
 
 interface BehaviorTrackingContext {
   authenticityScore?: number;
@@ -33,9 +33,18 @@ interface UseBehaviorTrackingReturn {
 }
 
 export function useBehaviorTracking(): UseBehaviorTrackingReturn {
-  const user = useUser();
+  const [user, setUser] = useState<any>(null);
   const [sessionId] = useState(() => generateSessionId());
   const [startTime, setStartTime] = useState<number | null>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
+  }, []);
 
   // Generate session ID for anonymous tracking
   function generateSessionId(): string {
@@ -173,8 +182,17 @@ export function useAuthenticityFeedback() {
 
 // Hook for community verification
 export function useCommunityVerification() {
-  const user = useUser();
+  const [user, setUser] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
+  }, []);
 
   const submitCommunityVerification = useCallback(async (
     reportId: string,

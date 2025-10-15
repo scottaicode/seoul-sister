@@ -263,9 +263,9 @@ export async function GET(request: Request) {
         retailerStats,
         summary: {
           totalViews: retailerStats.length,
-          clickThroughRate: retailerStats.filter(s => s.clicked_through).length / retailerStats.length,
-          purchaseRate: retailerStats.filter(s => s.purchase_confirmed).length / retailerStats.length,
-          authenticityReports: retailerStats.filter(s => s.reported_authentic || s.reported_counterfeit).length
+          clickThroughRate: retailerStats.filter((s: any) => s.clicked_through).length / retailerStats.length,
+          purchaseRate: retailerStats.filter((s: any) => s.purchase_confirmed).length / retailerStats.length,
+          authenticityReports: retailerStats.filter((s: any) => s.reported_authentic || s.reported_counterfeit).length
         }
       });
     }

@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     }
 
     // Insert community verification
-    const { data: verification, error: insertError } = await supabase
+    const { data: verification, error: insertError } = await (supabase as any)
       .from('community_verifications')
       .insert({
         user_id: userId,
@@ -115,7 +115,7 @@ export async function GET(request: Request) {
         return await getReportVerifications(supabase, reportId);
 
       case 'get_pending_reports':
-        return await getPendingReports(supabase, userId);
+        return await getPendingReports(supabase, userId || undefined);
 
       case 'get_consensus':
         if (!reportId) {
@@ -133,7 +133,7 @@ export async function GET(request: Request) {
             error: 'userId is required for get_user_contributions'
           }, { status: 400 });
         }
-        return await getUserContributions(supabase, userId);
+        return await getUserContributions(supabase, userId!);
 
       default:
         return NextResponse.json({
@@ -259,13 +259,7 @@ async function calculateCommunityConsensus(supabase: any, reportId: string) {
 async function getReportVerifications(supabase: any, reportId: string) {
   const { data: verifications, error } = await supabase
     .from('community_verifications')
-    .select(`
-      *,
-      auth.users (
-        id,
-        email
-      )
-    `)
+    .select('*')
     .eq('target_report_id', reportId)
     .order('created_at', { ascending: false });
 
@@ -278,8 +272,14 @@ async function getReportVerifications(supabase: any, reportId: string) {
   return NextResponse.json({
     success: true,
     verifications: verifications.map((v: any) => ({
-      ...v,
-      user_email: v.auth?.users?.email?.substring(0, 3) + '***' // Privacy protection
+      id: v.id,
+      agrees_with_report: v.agrees_with_report,
+      expertise_level: v.expertise_level,
+      confidence: v.confidence,
+      additional_notes: v.additional_notes,
+      has_similar_experience: v.has_similar_experience,
+      created_at: v.created_at,
+      user_id_masked: v.user_id?.substring(0, 8) + '***' // Privacy protection
     })),
     consensus,
     total_verifications: verifications.length
