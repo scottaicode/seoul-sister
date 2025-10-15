@@ -4,11 +4,12 @@ import ReportDetailView from '@/components/intelligence-report/ReportDetailView'
 import { headers } from 'next/headers';
 
 interface ReportPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export async function generateMetadata({ params }: ReportPageProps) {
-  const report = await getReport(params.id);
+  const { id } = await params;
+  const report = await getReport(id);
 
   if (!report) {
     return {
@@ -24,8 +25,9 @@ export async function generateMetadata({ params }: ReportPageProps) {
 }
 
 export default async function ReportDetailPage({ params }: ReportPageProps) {
+  const { id } = await params;
   const isPremium = await checkPremiumAccess();
-  const report = await getReport(params.id);
+  const report = await getReport(id);
 
   if (!report) {
     notFound();
