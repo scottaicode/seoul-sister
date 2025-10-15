@@ -203,36 +203,36 @@ function calculateAuthenticityScore(retailer: any, price: number, productName: s
     });
   }
 
-  // Determine risk level and visual indicators
+  // Determine risk level and visual indicators - luxury design
   let riskLevel = 'MODERATE';
-  let riskColor = '#F59E0B'; // yellow
-  let icon = '⚠️';
+  let riskColor = '#F59E0B'; // amber
+  let iconType = 'warning';
   let recommendation = 'VERIFY CAREFULLY';
 
   if (score >= 90) {
     riskLevel = 'VERIFIED';
-    riskColor = '#10B981'; // green
-    icon = '✅';
+    riskColor = '#D4AF37'; // luxury gold
+    iconType = 'verified';
     recommendation = 'VERIFIED AUTHENTIC';
   } else if (score >= 80) {
     riskLevel = 'TRUSTED';
-    riskColor = '#10B981'; // green
-    icon = '🛡️';
+    riskColor = '#10B981'; // emerald
+    iconType = 'trusted';
     recommendation = 'TRUSTED RETAILER';
   } else if (score >= 65) {
     riskLevel = 'CAUTION';
-    riskColor = '#F59E0B'; // yellow
-    icon = '⚠️';
+    riskColor = '#F59E0B'; // amber
+    iconType = 'warning';
     recommendation = 'PROCEED WITH CAUTION';
   } else if (score >= 45) {
     riskLevel = 'HIGH_RISK';
     riskColor = '#F97316'; // orange
-    icon = '🚨';
+    iconType = 'danger';
     recommendation = 'HIGH COUNTERFEIT RISK';
   } else {
     riskLevel = 'AVOID';
     riskColor = '#DC2626'; // red
-    icon = '❌';
+    iconType = 'blocked';
     recommendation = 'AVOID - LIKELY COUNTERFEIT';
   }
 
@@ -240,7 +240,7 @@ function calculateAuthenticityScore(retailer: any, price: number, productName: s
     score: Math.min(100, Math.max(0, score)),
     riskLevel,
     riskColor,
-    icon,
+    iconType,
     recommendation,
     factors,
     lastUpdated: new Date().toISOString()

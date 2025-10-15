@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, ExternalLink, TrendingDown, Clock, Star, Shield } from 'lucide-react';
 import AuthenticityGuide from './AuthenticityGuide';
+import AuthenticityIcon from './AuthenticityIcon';
 
 interface DealDetailModalProps {
   deal: any;
@@ -180,7 +181,11 @@ export default function DealDetailModal({ deal, isOpen, onClose }: DealDetailMod
                           </h4>
                           {comparison.authenticity && (
                             <div className="flex items-center gap-2">
-                              <span className="text-lg">{comparison.authenticity.icon}</span>
+                              <AuthenticityIcon
+                                iconType={comparison.authenticity.iconType}
+                                riskColor={comparison.authenticity.riskColor}
+                                size={18}
+                              />
                               <span
                                 className="px-2 py-1 text-xs uppercase tracking-wider font-medium rounded"
                                 style={{
@@ -210,13 +215,13 @@ export default function DealDetailModal({ deal, isOpen, onClose }: DealDetailMod
                           )}
                         </div>
                         {comparison.authenticity && comparison.authenticity.riskLevel === 'CAUTION' && (
-                          <p className="text-xs text-yellow-400 mt-1">
-                            ⚠️ {comparison.authenticity.recommendation}
+                          <p className="text-xs mt-1" style={{ color: comparison.authenticity.riskColor }}>
+                            {comparison.authenticity.recommendation}
                           </p>
                         )}
                         {comparison.authenticity && (comparison.authenticity.riskLevel === 'HIGH_RISK' || comparison.authenticity.riskLevel === 'AVOID') && (
-                          <p className="text-xs text-red-400 mt-1">
-                            🚨 {comparison.authenticity.recommendation}
+                          <p className="text-xs mt-1" style={{ color: comparison.authenticity.riskColor }}>
+                            {comparison.authenticity.recommendation}
                           </p>
                         )}
                       </div>

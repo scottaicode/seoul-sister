@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Shield, AlertTriangle, XCircle, CheckCircle, Info } from 'lucide-react';
+import AuthenticityIcon from './AuthenticityIcon';
 
 interface AuthenticityGuideProps {
   isOpen: boolean;
@@ -15,8 +16,8 @@ export default function AuthenticityGuide({ isOpen, onClose }: AuthenticityGuide
     {
       level: 'VERIFIED',
       score: '90-100',
-      icon: '✅',
-      color: '#10B981',
+      iconType: 'verified',
+      color: '#D4AF37',
       description: 'Official authorized retailers with guaranteed authenticity',
       examples: ['YesStyle', 'StyleKorean', 'Olive Young Global'],
       recommendation: 'Safe to purchase - these retailers have direct brand partnerships'
@@ -24,7 +25,7 @@ export default function AuthenticityGuide({ isOpen, onClose }: AuthenticityGuide
     {
       level: 'TRUSTED',
       score: '80-89',
-      icon: '🛡️',
+      iconType: 'trusted',
       color: '#10B981',
       description: 'Established retailers with strong authenticity policies',
       examples: ['Sephora', 'Ulta', 'Official brand stores'],
@@ -33,7 +34,7 @@ export default function AuthenticityGuide({ isOpen, onClose }: AuthenticityGuide
     {
       level: 'CAUTION',
       score: '65-79',
-      icon: '⚠️',
+      iconType: 'warning',
       color: '#F59E0B',
       description: 'Marketplaces requiring seller verification',
       examples: ['Amazon (verify seller)', 'Target online'],
@@ -42,7 +43,7 @@ export default function AuthenticityGuide({ isOpen, onClose }: AuthenticityGuide
     {
       level: 'HIGH_RISK',
       score: '45-64',
-      icon: '🚨',
+      iconType: 'danger',
       color: '#F97316',
       description: 'Platforms with known counterfeit issues',
       examples: ['Unknown sellers', 'Unverified marketplaces'],
@@ -51,7 +52,7 @@ export default function AuthenticityGuide({ isOpen, onClose }: AuthenticityGuide
     {
       level: 'AVOID',
       score: '0-44',
-      icon: '❌',
+      iconType: 'blocked',
       color: '#DC2626',
       description: 'High-risk platforms with frequent counterfeits',
       examples: ['AliExpress', 'DHgate', 'Wish'],
@@ -118,7 +119,11 @@ export default function AuthenticityGuide({ isOpen, onClose }: AuthenticityGuide
                 >
                   <div className="flex items-start gap-4">
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl">{level.icon}</span>
+                      <AuthenticityIcon
+                        iconType={level.iconType}
+                        riskColor={level.color}
+                        size={24}
+                      />
                       <div>
                         <div className="flex items-center gap-3 mb-2">
                           <span
