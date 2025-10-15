@@ -1,6 +1,18 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 
+interface PriceDataInsert {
+  product_id: string;
+  retailer_id: string;
+  current_price: number;
+  original_price?: number;
+  currency: string;
+  in_stock: boolean;
+  retailer_product_name: string;
+  shipping_cost: number;
+  total_cost: number;
+}
+
 export async function GET() {
   return await seedComprehensiveData();
 }
@@ -38,7 +50,7 @@ async function seedComprehensiveData() {
     ];
 
     // Comprehensive price data for each product across all retailers
-    const allPriceData = [];
+    const allPriceData: PriceDataInsert[] = [];
 
     for (const productId of products) {
       // YesStyle - Korean specialist (often best prices)
@@ -130,7 +142,7 @@ async function seedComprehensiveData() {
     }
 
     // Clear existing price data first
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await (supabase as any)
       .from('product_prices')
       .delete()
       .in('product_id', products);
@@ -140,7 +152,7 @@ async function seedComprehensiveData() {
     }
 
     // Insert comprehensive price data
-    const { data: pricesData, error: pricesError } = await supabase
+    const { data: pricesData, error: pricesError } = await (supabase as any)
       .from('product_prices')
       .insert(allPriceData)
       .select();
