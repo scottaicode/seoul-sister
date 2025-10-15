@@ -16,10 +16,10 @@ export async function POST(request: Request) {
     } = body;
 
     // Validate required fields
-    if (!productId || !retailerId || !action) {
+    if (!productId || !action) {
       return NextResponse.json({
         success: false,
-        error: 'Missing required fields: productId, retailerId, action'
+        error: 'Missing required fields: productId, action'
       }, { status: 400 });
     }
 
@@ -78,12 +78,12 @@ async function trackDealView(supabase: any, params: any) {
       user_id: userId,
       session_id: sessionId,
       product_id: productId,
-      retailer_id: retailerId,
+      retailer_id: retailerId || null, // Handle string retailer IDs
       authenticity_score_shown: context?.authenticityScore || null,
       price_shown: context?.price || null,
       was_best_deal: context?.isBestDeal || false,
       risk_level_shown: context?.riskLevel || null,
-      time_spent_viewing: 0 // Will be updated on subsequent actions
+      time_spent_viewing: context?.timeSpent || 0
     });
 
   if (error) {
@@ -94,10 +94,10 @@ async function trackDealView(supabase: any, params: any) {
 async function trackClickThrough(supabase: any, params: any) {
   const { userId, sessionId, productId, retailerId, context } = params;
 
-  // Update existing record or create new one
+  // Insert click-through event as a new record
   const { error } = await supabase
     .from('user_purchase_decisions')
-    .upsert({
+    .insert({
       user_id: userId,
       session_id: sessionId,
       product_id: productId,
@@ -107,11 +107,7 @@ async function trackClickThrough(supabase: any, params: any) {
       authenticity_score_shown: context?.authenticityScore || null,
       price_shown: context?.price || null,
       was_best_deal: context?.isBestDeal || false,
-      risk_level_shown: context?.riskLevel || null,
-      updated_at: new Date().toISOString()
-    }, {
-      onConflict: 'user_id,product_id,retailer_id',
-      ignoreDuplicates: false
+      risk_level_shown: context?.riskLevel || null
     });
 
   if (error) {
@@ -122,17 +118,16 @@ async function trackClickThrough(supabase: any, params: any) {
 async function trackAuthenticityGuideView(supabase: any, params: any) {
   const { userId, sessionId, productId, retailerId } = params;
 
-  // Update the viewed_authenticity_guide flag
+  // Insert a new record for authenticity guide view
   const { error } = await supabase
     .from('user_purchase_decisions')
-    .update({
-      viewed_authenticity_guide: true,
-      updated_at: new Date().toISOString()
-    })
-    .match({
+    .insert({
       user_id: userId,
+      session_id: sessionId,
       product_id: productId,
-      retailer_id: retailerId
+      retailer_id: retailerId,
+      viewed_authenticity_guide: true,
+      time_spent_viewing: 0
     });
 
   if (error) {
