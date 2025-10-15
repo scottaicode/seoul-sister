@@ -1,9 +1,5 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { TrendingUp, Users, MessageCircle, AlertTriangle, Sparkles } from 'lucide-react';
-
 interface RedditCommunityInsight {
   trendTerm: string;
   trendType: string;
@@ -54,33 +50,32 @@ export default function RedditCommunityInsights({ insights, communityTrends }: R
 
   const getCommunityTrendIcon = (type: string) => {
     switch (type) {
-      case 'viral': return <Sparkles className="h-4 w-4 text-red-500" />;
-      case 'emerging': return <TrendingUp className="h-4 w-4 text-yellow-500" />;
-      case 'declining': return <AlertTriangle className="h-4 w-4 text-gray-500" />;
-      default: return <MessageCircle className="h-4 w-4 text-blue-500" />;
+      case 'viral': return '✨';
+      case 'emerging': return '📈';
+      case 'declining': return '⚠️';
+      default: return '💬';
     }
   };
 
   if (!insights?.length && !communityTrends?.length) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Reddit Community Intelligence
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="bg-white border border-gray-200 rounded-lg">
+        <div className="p-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            👥 Reddit Community Intelligence
+          </h2>
+        </div>
+        <div className="p-4">
           <div className="text-center py-8 text-gray-500">
-            <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <div className="text-4xl mb-4">💬</div>
             <p className="text-lg font-medium">Building Community Intelligence</p>
             <p className="text-sm">Reddit data will appear here as the system learns from Korean beauty communities</p>
             <div className="mt-4 text-xs bg-blue-50 text-blue-700 px-3 py-2 rounded-lg inline-block">
               🤖 AI-powered trend discovery running every 4 hours
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
@@ -88,27 +83,26 @@ export default function RedditCommunityInsights({ insights, communityTrends }: R
     <div className="space-y-6">
       {/* Community Trends Overview */}
       {communityTrends?.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Viral Community Trends
-            </CardTitle>
+        <div className="bg-white border border-gray-200 rounded-lg">
+          <div className="p-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              📈 Viral Community Trends
+            </h3>
             <p className="text-sm text-gray-600">High-velocity trends from Korean beauty communities</p>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div className="p-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {communityTrends.map((trend, index) => (
                 <div
                   key={index}
-                  className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    {getCommunityTrendIcon(trend.type)}
+                    <span className="text-lg">{getCommunityTrendIcon(trend.type)}</span>
                     <h4 className="font-semibold capitalize">{trend.term}</h4>
-                    <Badge variant="outline" className="text-xs">
+                    <span className="text-xs border border-gray-300 px-2 py-1 rounded">
                       {trend.type}
-                    </Badge>
+                    </span>
                   </div>
 
                   <div className="space-y-2 text-sm">
@@ -135,21 +129,20 @@ export default function RedditCommunityInsights({ insights, communityTrends }: R
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Detailed Reddit Insights */}
       {insights?.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Reddit Community Insights
-            </CardTitle>
+        <div className="bg-white border border-gray-200 rounded-lg">
+          <div className="p-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              👥 Reddit Community Insights
+            </h3>
             <p className="text-sm text-gray-600">AI-analyzed trends from Korean beauty discussions</p>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div className="p-4">
             <div className="space-y-4">
               {insights.map((insight, index) => (
                 <div
@@ -167,18 +160,18 @@ export default function RedditCommunityInsights({ insights, communityTrends }: R
                             {insight.trendTerm}
                           </h3>
                           {insight.koreanOrigin && (
-                            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                            <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1 rounded">
                               🇰🇷 Korean Origin
-                            </Badge>
+                            </span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="secondary" className="text-xs">
+                          <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
                             {insight.trendType}
-                          </Badge>
-                          <Badge className={`text-xs ${getTrendStatusColor(insight.trendStatus)}`}>
+                          </span>
+                          <span className={`text-xs px-2 py-1 rounded ${getTrendStatusColor(insight.trendStatus)}`}>
                             {insight.trendStatus}
-                          </Badge>
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -228,17 +221,17 @@ export default function RedditCommunityInsights({ insights, communityTrends }: R
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Community Recommendations</h4>
                     <div className="flex flex-wrap gap-2">
                       {insight.communityRecommendations.map((rec, idx) => (
-                        <Badge key={idx} variant="outline" className="text-xs">
+                        <span key={idx} className="text-xs border border-gray-300 px-2 py-1 rounded">
                           {rec}
-                        </Badge>
+                        </span>
                       ))}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );

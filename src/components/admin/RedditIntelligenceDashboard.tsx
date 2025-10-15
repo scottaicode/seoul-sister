@@ -1,10 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { TrendingUp, MessageSquare, Users, Zap, RefreshCw, Eye } from 'lucide-react';
 
 interface RedditTrend {
   id: string;
@@ -80,11 +76,11 @@ export default function RedditIntelligenceDashboard() {
 
   const getTrendStatusColor = (status: string) => {
     switch (status) {
-      case 'trending': return 'bg-red-100 text-red-800';
-      case 'emerging': return 'bg-yellow-100 text-yellow-800';
-      case 'stable': return 'bg-green-100 text-green-800';
-      case 'declining': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-blue-100 text-blue-800';
+      case 'trending': return 'bg-red-100 text-red-800 border border-red-200';
+      case 'emerging': return 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+      case 'stable': return 'bg-green-100 text-green-800 border border-green-200';
+      case 'declining': return 'bg-gray-100 text-gray-600 border border-gray-200';
+      default: return 'bg-blue-100 text-blue-800 border border-blue-200';
     }
   };
 
@@ -112,7 +108,7 @@ export default function RedditIntelligenceDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -120,105 +116,91 @@ export default function RedditIntelligenceDashboard() {
           <p className="text-gray-600">Live trends from Korean beauty communities</p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
+          <button
             onClick={runManualUpdate}
             disabled={refreshing}
-            className="gap-2"
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
           >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <span className={refreshing ? 'animate-spin' : ''}>🔄</span>
             {refreshing ? 'Updating...' : 'Refresh'}
-          </Button>
+          </button>
         </div>
       </div>
 
       {/* Stats Overview */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Trends</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.total}</div>
-              <p className="text-xs text-muted-foreground">
-                {timeframe} timeframe
-              </p>
-            </CardContent>
-          </Card>
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-600">Active Trends</span>
+              <span className="text-gray-400">📈</span>
+            </div>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-gray-500">{timeframe} timeframe</p>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Trending Status</CardTitle>
-              <Zap className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {stats.by_status.trending || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Hot trends right now
-              </p>
-            </CardContent>
-          </Card>
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-600">Trending Status</span>
+              <span className="text-gray-400">⚡</span>
+            </div>
+            <div className="text-2xl font-bold text-red-600">
+              {stats.by_status.trending || 0}
+            </div>
+            <p className="text-xs text-gray-500">Hot trends right now</p>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Korean Origin</CardTitle>
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-600">Korean Origin</span>
               <span className="text-lg">🇰🇷</span>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {trends.filter(t => t.korean_origin).length}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Verified K-beauty terms
-              </p>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="text-2xl font-bold text-blue-600">
+              {trends.filter(t => t.korean_origin).length}
+            </div>
+            <p className="text-xs text-gray-500">Verified K-beauty terms</p>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">AI Confidence</CardTitle>
-              <Eye className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {Math.round((trends.reduce((acc, t) => acc + t.ai_confidence, 0) / trends.length) * 100)}%
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Average accuracy
-              </p>
-            </CardContent>
-          </Card>
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-600">AI Confidence</span>
+              <span className="text-gray-400">👁</span>
+            </div>
+            <div className="text-2xl font-bold text-green-600">
+              {trends.length > 0 ? Math.round((trends.reduce((acc, t) => acc + t.ai_confidence, 0) / trends.length) * 100) : 0}%
+            </div>
+            <p className="text-xs text-gray-500">Average accuracy</p>
+          </div>
         </div>
       )}
 
       {/* Timeframe Selector */}
       <div className="flex gap-2">
         {['24h', '7d', '30d', '90d'].map((period) => (
-          <Button
+          <button
             key={period}
-            variant={timeframe === period ? 'default' : 'outline'}
-            size="sm"
             onClick={() => setTimeframe(period)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+              timeframe === period
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
           >
             {period}
-          </Button>
+          </button>
         ))}
       </div>
 
       {/* Trends List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Live Reddit Trends</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="bg-white border border-gray-200 rounded-lg">
+        <div className="p-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold">Live Reddit Trends</h3>
+        </div>
+        <div className="p-4">
           <div className="space-y-4">
             {trends.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <div className="text-4xl mb-4">💬</div>
                 <p>No trends found for the selected timeframe</p>
                 <p className="text-sm">Try running a manual refresh or check a different timeframe</p>
               </div>
@@ -226,7 +208,7 @@ export default function RedditIntelligenceDashboard() {
               trends.map((trend) => (
                 <div
                   key={trend.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-center gap-4">
                     <div className="text-2xl">
@@ -244,12 +226,12 @@ export default function RedditIntelligenceDashboard() {
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="secondary" className="text-xs">
+                        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
                           {trend.trend_type}
-                        </Badge>
-                        <Badge className={`text-xs ${getTrendStatusColor(trend.trend_status)}`}>
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded ${getTrendStatusColor(trend.trend_status)}`}>
                           {trend.trend_status}
-                        </Badge>
+                        </span>
                         <span className="text-xs text-gray-500">
                           {trend.mention_count} mentions
                         </span>
@@ -274,8 +256,8 @@ export default function RedditIntelligenceDashboard() {
               ))
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
