@@ -20,7 +20,6 @@ export async function GET(request: Request) {
           country
         )
       `)
-      .eq('deal_date', dealDate)
       .gte('savings_percentage', minSavings)
       .order('deal_score', { ascending: false })
       .limit(limit);

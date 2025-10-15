@@ -44,6 +44,10 @@ export default function PremiumDashboard() {
       const deals = await dealsResponse.json();
       const reports = await reportsResponse.json();
 
+      // Debug: Log the API responses
+      console.log('Deals API Response:', deals);
+      console.log('Reports API Response:', reports);
+
       // Use live data with fallback to compelling demonstration data
       const liveDeals = deals.deals && deals.deals.length > 0 ? deals.deals : [
         {
