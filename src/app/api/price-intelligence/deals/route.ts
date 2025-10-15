@@ -54,9 +54,10 @@ export async function GET(request: Request) {
 
     const summary = {
       totalDeals: dealsWithProducts.length,
-      avgSavingsPercentage: dealsWithProducts.reduce((sum, deal) => sum + deal.savings_percentage, 0) / dealsWithProducts.length,
-      totalSavingsAmount: dealsWithProducts.reduce((sum, deal) => sum + deal.savings_amount, 0),
-      topRetailers: [...new Set(dealsWithProducts.map(deal => deal.price_retailers?.name))].slice(0, 5)
+      avgSavingsPercentage: dealsWithProducts.length > 0 ?
+        dealsWithProducts.reduce((sum: number, deal: any) => sum + deal.savings_percentage, 0) / dealsWithProducts.length : 0,
+      totalSavingsAmount: dealsWithProducts.reduce((sum: number, deal: any) => sum + deal.savings_amount, 0),
+      topRetailers: [...new Set(dealsWithProducts.map((deal: any) => deal.price_retailers?.name))].slice(0, 5)
     };
 
     return NextResponse.json({
@@ -102,9 +103,9 @@ export async function POST(request: Request) {
     // Calculate analytics
     const analytics = {
       totalDealsAvailable: userDeals?.length || 0,
-      totalPotentialSavings: userDeals?.reduce((sum, deal) => sum + deal.savings_amount, 0) || 0,
+      totalPotentialSavings: userDeals?.reduce((sum: number, deal: any) => sum + deal.savings_amount, 0) || 0,
       avgSavingsPercentage: userDeals?.length ?
-        userDeals.reduce((sum, deal) => sum + deal.savings_percentage, 0) / userDeals.length : 0,
+        userDeals.reduce((sum: number, deal: any) => sum + deal.savings_percentage, 0) / userDeals.length : 0,
       topCategories: await getTopDealCategories(userDeals || []),
       dealsByRetailer: getDealsByRetailer(userDeals || []),
       dealTrends: getDealTrends(userDeals || [])
@@ -146,7 +147,7 @@ async function getTopDealCategories(deals: any[]): Promise<any[]> {
       const current = categoryMap.get(category) || { count: 0, totalSavings: 0 };
       categoryMap.set(category, {
         count: current.count + 1,
-        totalSavings: current.totalSavings + deal.savings_amount
+        totalSavings: current.totalSavings + (deal.savings_amount || 0)
       });
     }
   });
@@ -165,7 +166,7 @@ function getDealsByRetailer(deals: any[]): any[] {
     const current = retailerMap.get(retailerName) || { count: 0, totalSavings: 0 };
     retailerMap.set(retailerName, {
       count: current.count + 1,
-      totalSavings: current.totalSavings + deal.savings_amount
+      totalSavings: current.totalSavings + (deal.savings_amount || 0)
     });
   });
 
@@ -183,8 +184,8 @@ function getDealTrends(deals: any[]): any[] {
     dateMap.set(date, {
       count: current.count + 1,
       avgSavings: current.count > 0 ?
-        (current.avgSavings * current.count + deal.savings_percentage) / (current.count + 1) :
-        deal.savings_percentage
+        (current.avgSavings * current.count + (deal.savings_percentage || 0)) / (current.count + 1) :
+        (deal.savings_percentage || 0)
     });
   });
 
