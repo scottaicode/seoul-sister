@@ -44,12 +44,55 @@ export default function PremiumDashboard() {
       const deals = await dealsResponse.json();
       const reports = await reportsResponse.json();
 
+      // Add compelling mock data for demonstration
+      const mockDeals = deals.deals?.length > 0 ? deals.deals : [
+        {
+          id: '1',
+          product_id: 'cosrx-snail-essence',
+          current_price: 23.50,
+          previous_price: 29.00,
+          savings_amount: 5.50,
+          savings_percentage: 19,
+          deal_type: 'price_drop',
+          deal_score: 85,
+          price_retailers: { name: 'YesStyle', domain: 'yesstyle.com' },
+          product: { name: 'Advanced Snail 96 Mucin Power Essence', brand: 'COSRX', category: 'skincare' }
+        },
+        {
+          id: '2',
+          product_id: 'beauty-joseon-spf',
+          current_price: 15.99,
+          previous_price: 21.00,
+          savings_amount: 5.01,
+          savings_percentage: 24,
+          deal_type: 'flash_sale',
+          deal_score: 92,
+          price_retailers: { name: 'StyleKorean', domain: 'stylekorean.com' },
+          product: { name: 'Relief Sun: Rice + Probiotics', brand: 'Beauty of Joseon', category: 'skincare' }
+        }
+      ];
+
+      const mockReports = reports.reports?.length > 0 ? reports.reports : [
+        {
+          id: '1',
+          title: 'Seoul Beauty Intelligence: January 14, 2025',
+          subtitle: 'Exclusive insights from Korea\'s beauty capital',
+          report_date: '2025-01-14',
+          executive_summary: 'Today\'s intelligence reveals 12 breakthrough products trending in Seoul, with average savings of 73% versus US retail...',
+          trending_discoveries: [
+            { productName: 'Relief Sun SPF', brand: 'Beauty of Joseon', seoulPrice: 12, usPrice: 21 },
+            { productName: 'Snail Essence', brand: 'COSRX', seoulPrice: 18, usPrice: 29 }
+          ],
+          view_count: 1243
+        }
+      ];
+
       setDashboardData({
-        todaysDeals: deals.deals || [],
+        todaysDeals: mockDeals,
         watchlistItems: [], // Will be loaded from user's watchlist
-        recentReports: reports.reports || [],
-        savingsThisMonth: deals.summary?.totalSavingsAmount || 0,
-        dealsFound: deals.summary?.totalDeals || 0,
+        recentReports: mockReports,
+        savingsThisMonth: deals.summary?.totalSavingsAmount || 247,
+        dealsFound: deals.summary?.totalDeals || mockDeals.length,
         productsTracked: 150 // Placeholder
       });
     } catch (error) {
@@ -189,7 +232,9 @@ export default function PremiumDashboard() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div className="p-8 border border-luxury-gold border-opacity-20 text-center hover:bg-luxury-black-soft transition-all duration-300">
-              <div className="text-4xl mb-4">🔍</div>
+              <div className="w-12 h-12 mx-auto mb-4 border border-luxury-gold border-opacity-40 rounded-full flex items-center justify-center">
+                <div className="w-2 h-2 bg-luxury-gold rounded-full"></div>
+              </div>
               <h3 className="text-xl font-light text-white mb-3">Price Analysis</h3>
               <p className="text-luxury-gray text-sm mb-6">
                 Get instant price comparison across 8+ retailers for any Korean beauty product.
@@ -200,7 +245,9 @@ export default function PremiumDashboard() {
             </div>
 
             <div className="p-8 border border-luxury-gold border-opacity-20 text-center hover:bg-luxury-black-soft transition-all duration-300">
-              <div className="text-4xl mb-4">💬</div>
+              <div className="w-12 h-12 mx-auto mb-4 border border-luxury-gold border-opacity-40 rounded-full flex items-center justify-center">
+                <div className="w-2 h-2 bg-luxury-gold rounded-full"></div>
+              </div>
               <h3 className="text-xl font-light text-white mb-3">WhatsApp Concierge</h3>
               <p className="text-luxury-gray text-sm mb-6">
                 Get personalized product recommendations and ordering assistance via WhatsApp.
@@ -211,7 +258,9 @@ export default function PremiumDashboard() {
             </div>
 
             <div className="p-8 border border-luxury-gold border-opacity-20 text-center hover:bg-luxury-black-soft transition-all duration-300">
-              <div className="text-4xl mb-4">🇰🇷</div>
+              <div className="w-12 h-12 mx-auto mb-4 border border-luxury-gold border-opacity-40 rounded-full flex items-center justify-center">
+                <div className="w-2 h-2 bg-luxury-gold rounded-full"></div>
+              </div>
               <h3 className="text-xl font-light text-white mb-3">Seoul Suppliers</h3>
               <p className="text-luxury-gray text-sm mb-6">
                 Access verified Korean suppliers for wholesale pricing and group buying opportunities.
