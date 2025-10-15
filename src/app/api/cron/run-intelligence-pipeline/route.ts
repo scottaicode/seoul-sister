@@ -74,7 +74,36 @@ export async function GET(request: NextRequest) {
       console.error('❌ Behavior learning failed:', error);
     }
 
-    // 3. Update Community Verification Scores
+    // 3. Reddit K-Beauty Intelligence Pipeline (NEW!)
+    try {
+      console.log('🗣️ Running Reddit K-beauty intelligence pipeline...');
+      const redditResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/reddit-intelligence/run-pipeline`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'authorization': `Bearer ${process.env.CRON_SECRET}`
+        }
+      });
+
+      if (redditResponse.ok) {
+        const redditData = await redditResponse.json();
+        results.pipeline_runs.push({
+          step: 'reddit_intelligence',
+          success: true,
+          data: redditData.results
+        });
+        results.total_discoveries += redditData.results.newKeywords || 0;
+        results.total_updates += redditData.results.trendsUpdated || 0;
+        console.log(`✅ Reddit intelligence: ${redditData.results.postsScraped} posts analyzed, ${redditData.results.newKeywords} keywords discovered`);
+      } else {
+        throw new Error('Reddit intelligence pipeline failed');
+      }
+    } catch (error) {
+      results.errors.push(`Reddit intelligence error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('❌ Reddit intelligence failed:', error);
+    }
+
+    // 4. Update Community Verification Scores
     try {
       console.log('👥 Processing community verifications...');
       const communityResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/learning/community-verification`, {
@@ -97,7 +126,7 @@ export async function GET(request: NextRequest) {
       console.error('❌ Community verification failed:', error);
     }
 
-    // 4. Generate Fresh Intelligence Report (only once per day)
+    // 5. Generate Fresh Intelligence Report (only once per day)
     try {
       const hour = new Date().getHours();
       if (hour === 6) { // 6 AM Seoul time - fresh morning intelligence
@@ -127,7 +156,7 @@ export async function GET(request: NextRequest) {
       console.error('❌ Intelligence report failed:', error);
     }
 
-    // 5. Self-Improvement: Analyze Performance and Adjust Parameters
+    // 6. Self-Improvement: Analyze Performance and Adjust Parameters
     try {
       console.log('🔄 Running self-improvement analysis...');
       const improvementResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/learning/dynamic-scoring`, {

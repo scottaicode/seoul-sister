@@ -28,6 +28,10 @@
       "schedule": "0 */2 * * *"
     },
     {
+      "path": "/api/reddit-intelligence/run-pipeline",
+      "schedule": "0 */4 * * *"
+    },
+    {
       "path": "/api/cron/scrape-prices",
       "schedule": "0 5 * * *"
     },

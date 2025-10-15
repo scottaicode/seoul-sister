@@ -95,16 +95,18 @@ interface ViralTrend {
 export class IntelligenceReportGenerator {
   private async fetchKoreanTrends(): Promise<any> {
     try {
-      // Fetch live Korean beauty data from our intelligence APIs
-      const [productsResponse, ingredientsResponse, socialResponse] = await Promise.all([
+      // Fetch live Korean beauty data from our intelligence APIs including Reddit
+      const [productsResponse, ingredientsResponse, socialResponse, redditResponse] = await Promise.all([
         supabase.from('products').select('*').order('seoul_price', { ascending: true }).limit(10),
         supabase.from('trending_ingredients').select('*').order('trend_score', { ascending: false }).limit(8),
-        supabase.from('social_beauty_trends').select('*').order('mention_count', { ascending: false }).limit(5)
+        supabase.from('social_beauty_trends').select('*').order('mention_count', { ascending: false }).limit(5),
+        supabase.from('reddit_kbeauty_trends').select('*').order('velocity_score', { ascending: false }).limit(10)
       ]);
 
       const products = productsResponse.data || [];
       const ingredients = ingredientsResponse.data || [];
       const socialTrends = socialResponse.data || [];
+      const redditTrends = redditResponse.data || [];
 
       // Format the data for report generation
       return {
@@ -129,6 +131,16 @@ export class IntelligenceReportGenerator {
           mentions: s.mention_count,
           growthRate: s.growth_rate_percentage,
           hashtags: s.hashtags || []
+        })),
+        redditTrends: redditTrends.map((r: any) => ({
+          term: r.trend_term,
+          type: r.trend_type,
+          mentions: r.mention_count,
+          velocity: r.velocity_score,
+          status: r.trend_status,
+          korean: r.korean_origin,
+          confidence: r.ai_confidence,
+          subreddits: r.subreddits || []
         })),
         lastUpdated: new Date().toISOString()
       };
