@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, ExternalLink, TrendingDown, Clock, Star, Shield } from 'lucide-react';
 import AuthenticityGuide from './AuthenticityGuide';
 import AuthenticityIcon from './AuthenticityIcon';
+import { useBehaviorTracking } from '@/hooks/useBehaviorTracking';
 
 interface DealDetailModalProps {
   deal: any;
@@ -18,11 +19,41 @@ export default function DealDetailModal({ deal, isOpen, onClose }: DealDetailMod
   const [error, setError] = useState<string | null>(null);
   const [showAuthenticityGuide, setShowAuthenticityGuide] = useState(false);
 
+  // Behavior tracking for competitive moat
+  const { trackDealView, trackClickThrough, trackAuthenticityGuideView, startTimer, stopTimer } = useBehaviorTracking();
+
   useEffect(() => {
     if (isOpen && deal?.product_id) {
       loadPriceComparison();
+
+      // Track deal view with initial context
+      trackDealView(deal.product_id, deal.retailer_id || 'unknown', {
+        authenticityScore: deal.authenticity_score || 0,
+        price: deal.current_price || 0,
+        isBestDeal: deal.is_best_deal || false,
+        riskLevel: deal.risk_level || 'MODERATE'
+      });
+
+      // Start timer for time tracking
+      startTimer();
     }
-  }, [isOpen, deal?.product_id]);
+
+    // Track time spent when modal closes
+    return () => {
+      if (isOpen && deal?.product_id) {
+        const timeSpent = stopTimer();
+        if (timeSpent > 5) { // Only track if user spent meaningful time (>5 seconds)
+          trackDealView(deal.product_id, deal.retailer_id || 'unknown', {
+            timeSpent,
+            authenticityScore: deal.authenticity_score || 0,
+            price: deal.current_price || 0,
+            isBestDeal: deal.is_best_deal || false,
+            riskLevel: deal.risk_level || 'MODERATE'
+          });
+        }
+      }
+    };
+  }, [isOpen, deal?.product_id, trackDealView, startTimer, stopTimer]);
 
   const loadPriceComparison = async () => {
     if (!deal?.product_id) return;
@@ -126,7 +157,11 @@ export default function DealDetailModal({ deal, isOpen, onClose }: DealDetailMod
                 <h3 className="text-xl font-light text-white">Live Price Comparison</h3>
               </div>
               <button
-                onClick={() => setShowAuthenticityGuide(true)}
+                onClick={() => {
+                  setShowAuthenticityGuide(true);
+                  // Track authenticity guide view
+                  trackAuthenticityGuideView(deal.product_id, deal.retailer_id || 'unknown');
+                }}
                 className="flex items-center gap-2 text-luxury-gold text-sm uppercase tracking-wider hover:text-white transition-colors duration-300 border border-luxury-gold border-opacity-30 px-3 py-2 hover:border-opacity-100"
               >
                 <Shield size={16} />
@@ -259,6 +294,16 @@ export default function DealDetailModal({ deal, isOpen, onClose }: DealDetailMod
                         href={comparison.url}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={() => {
+                          // Track click-through behavior
+                          trackClickThrough(deal.product_id, comparison.retailer_id || 'unknown', {
+                            authenticityScore: comparison.authenticity_score || 0,
+                            price: comparison.price || 0,
+                            isBestDeal: comparison.is_best_deal || false,
+                            riskLevel: comparison.risk_level || 'MODERATE',
+                            timeSpent: stopTimer()
+                          });
+                        }}
                         className={`inline-flex items-center gap-2 text-luxury-gold text-sm uppercase tracking-wider hover:text-white transition-colors duration-300 border border-luxury-gold border-opacity-30 px-4 py-2 hover:border-opacity-100 ${
                           !comparison.inStock ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
                         }`}
