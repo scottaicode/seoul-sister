@@ -95,23 +95,45 @@ interface ViralTrend {
 export class IntelligenceReportGenerator {
   private async fetchKoreanTrends(): Promise<any> {
     try {
-      const response = await fetch('/api/korean-trends', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sources: ['olive-young', 'hwahae', 'naver-beauty'],
-          limit: 10
-        })
-      });
+      // Fetch live Korean beauty data from our intelligence APIs
+      const [productsResponse, ingredientsResponse, socialResponse] = await Promise.all([
+        supabase.from('products').select('*').order('seoul_price', { ascending: true }).limit(10),
+        supabase.from('trending_ingredients').select('*').order('trend_score', { ascending: false }).limit(8),
+        supabase.from('social_beauty_trends').select('*').order('mention_count', { ascending: false }).limit(5)
+      ]);
 
-      if (!response.ok) {
-        console.error('Failed to fetch Korean trends');
-        return this.getFallbackTrends();
-      }
+      const products = productsResponse.data || [];
+      const ingredients = ingredientsResponse.data || [];
+      const socialTrends = socialResponse.data || [];
 
-      return await response.json();
+      // Format the data for report generation
+      return {
+        products: products.map((p: any) => ({
+          name: p.name_english || p.name,
+          brand: p.brand,
+          seoulPrice: p.seoul_price || 15,
+          usPrice: p.us_price || 25,
+          category: p.category,
+          description: p.description,
+          trending: true
+        })),
+        ingredients: ingredients.map((i: any) => ({
+          name: i.ingredient_name,
+          trendScore: i.trend_score,
+          weeklyGrowth: i.weekly_growth_percentage,
+          source: i.data_source
+        })),
+        socialTrends: socialTrends.map((s: any) => ({
+          name: s.trend_name,
+          platform: s.platform,
+          mentions: s.mention_count,
+          growthRate: s.growth_rate_percentage,
+          hashtags: s.hashtags || []
+        })),
+        lastUpdated: new Date().toISOString()
+      };
     } catch (error) {
-      console.error('Error fetching Korean trends:', error);
+      console.error('Error fetching live Korean trends:', error);
       return this.getFallbackTrends();
     }
   }
