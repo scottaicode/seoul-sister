@@ -152,6 +152,44 @@ function getSampleReport() {
           virality_score: 94,
           total_mentions: 450000
         }
+      },
+      {
+        id: 'section-4',
+        section_type: 'reddit_community_insights',
+        title: 'Reddit Community Intelligence',
+        content: `
+          <p>Our AI-powered Reddit analysis reveals emerging trends from Korean beauty communities before they hit mainstream:</p>
+          <h4>🔥 Viral Community Trends</h4>
+          <ul>
+            <li><strong>Skin Cycling with Korean Products</strong> - 2,450 mentions across r/AsianBeauty, emerging fast</li>
+            <li><strong>K-Beauty Dupes for Western Products</strong> - 89% confidence score, viral on r/SkincareAddiction</li>
+            <li><strong>Fermented Essence Layering</strong> - Korean origin verified, 95% confidence</li>
+          </ul>
+
+          <h4>📊 Community Insights</h4>
+          <p>Analysis of 15,000+ Reddit discussions shows users are increasingly seeking:</p>
+          <ul>
+            <li>Budget-friendly K-beauty alternatives (340% increase in mentions)</li>
+            <li>Ingredient transparency in Korean brands (250% growth)</li>
+            <li>Seasonal K-beauty routines adapted for non-Korean climates</li>
+          </ul>
+
+          <h4>⚡ Business Opportunities</h4>
+          <p>Community analysis suggests high demand for:</p>
+          <ul>
+            <li>Curated K-beauty starter sets for Reddit-discovered trends</li>
+            <li>Educational content bridging Korean and Western skincare approaches</li>
+            <li>Community-verified authentic K-beauty sourcing</li>
+          </ul>
+        `,
+        order_index: 4,
+        metadata: {
+          reddit_mentions: 15847,
+          ai_confidence: 92,
+          trending_subreddits: ['AsianBeauty', 'SkincareAddiction', 'KoreanBeauty'],
+          emerging_trends: 5,
+          viral_trends: 2
+        }
       }
     ]
   };

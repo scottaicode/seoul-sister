@@ -125,6 +125,7 @@ export default function IntelligenceReportWidget({ reports, showAll = false }: I
                   <span>🔥 {report.trending_discoveries?.length || 0} PRODUCTS</span>
                   <span>🧪 INGREDIENT ANALYSIS</span>
                   <span>📱 SOCIAL INSIGHTS</span>
+                  <span>🗣️ REDDIT INTELLIGENCE</span>
                 </div>
                 <Link
                   href={`/intelligence/${report.id}`}

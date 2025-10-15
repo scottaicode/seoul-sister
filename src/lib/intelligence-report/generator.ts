@@ -14,10 +14,12 @@ export interface BeautyIntelligenceReport {
   trendingDiscoveries: TrendingDiscovery[];
   ingredientAnalysis: IngredientAnalysis[];
   koreanSocialInsights: SocialInsight[];
+  redditCommunityInsights: RedditCommunityInsight[];
   expertPredictions: ExpertPrediction[];
   heroProduct?: HeroProduct;
   heroIngredient?: HeroIngredient;
   viralTrend?: ViralTrend;
+  communityTrends?: CommunityTrend[];
 }
 
 interface TrendingDiscovery {
@@ -90,6 +92,28 @@ interface ViralTrend {
   platforms: string[];
   growthRate: number;
   relatedProducts: string[];
+}
+
+interface RedditCommunityInsight {
+  trendTerm: string;
+  trendType: string;
+  mentionCount: number;
+  velocityScore: number;
+  trendStatus: string;
+  aiConfidence: number;
+  koreanOrigin: boolean;
+  subreddits: string[];
+  sampleDiscussions: string[];
+  communityRecommendations: string[];
+}
+
+interface CommunityTrend {
+  term: string;
+  type: 'emerging' | 'viral' | 'declining';
+  redditMentions: number;
+  confidenceScore: number;
+  timeToMainstream: string;
+  businessOpportunity: string;
 }
 
 export class IntelligenceReportGenerator {
@@ -212,17 +236,24 @@ Focus on information users can't get anywhere else. Be specific with numbers, pe
       trendingDiscoveries: this.formatTrendingDiscoveries(aiData.trendingProducts || koreanTrends.products),
       ingredientAnalysis: this.formatIngredientAnalysis(aiData.ingredients || koreanTrends.ingredients),
       koreanSocialInsights: this.formatSocialInsights(aiData.socialTrends || koreanTrends.trends),
+      redditCommunityInsights: this.formatRedditInsights(koreanTrends.redditTrends || []),
       expertPredictions: this.formatExpertPredictions(aiData.predictions || []),
       heroProduct: this.selectHeroProduct(koreanTrends.products),
       heroIngredient: this.selectHeroIngredient(koreanTrends.ingredients),
-      viralTrend: this.identifyViralTrend(koreanTrends.trends)
+      viralTrend: this.identifyViralTrend(koreanTrends.trends),
+      communityTrends: this.generateCommunityTrends(koreanTrends.redditTrends || [])
     };
   }
 
   private generateExecutiveSummary(trends: any): string {
+    const redditTrends = trends.redditTrends || [];
+    const emergingRedditTerms = redditTrends.filter((t: any) => t.status === 'emerging').length;
+    const viralRedditTerms = redditTrends.filter((t: any) => t.status === 'trending').length;
+
     return `Today's intelligence reveals ${trends.products.length} breakthrough products trending in Seoul,
-    with average savings of 73% versus US retail. Key ingredient movements show ${trends.ingredients[0]}
-    dominating Korean formulations, while the "${trends.trends[0]}" trend reaches viral status across
+    with average savings of 73% versus US retail. Community analysis from ${redditTrends.length} Reddit discussions shows
+    ${emergingRedditTerms} emerging trends and ${viralRedditTerms} viral terms gaining momentum. Key ingredient movements show ${trends.ingredients[0]?.name || 'Centella Asiatica'}
+    dominating Korean formulations, while the "${trends.trends[0] || 'Glass Skin'}" trend reaches viral status across
     Korean beauty platforms. Premium members gain exclusive access to products 3-6 months before US availability.`;
   }
 
@@ -356,6 +387,35 @@ Focus on information users can't get anywhere else. Be specific with numbers, pe
     };
   }
 
+  private formatRedditInsights(redditTrends: any[]): RedditCommunityInsight[] {
+    return redditTrends.slice(0, 5).map((trend) => ({
+      trendTerm: trend.term,
+      trendType: trend.type,
+      mentionCount: trend.mentions,
+      velocityScore: trend.velocity,
+      trendStatus: trend.status,
+      aiConfidence: trend.confidence,
+      koreanOrigin: trend.korean,
+      subreddits: trend.subreddits,
+      sampleDiscussions: [`"This ${trend.term} changed my routine completely!"`, `"Why is everyone talking about ${trend.term} lately?"`],
+      communityRecommendations: [`Try ${trend.term} for ${trend.type} concerns`, `Perfect for those new to K-beauty`]
+    }));
+  }
+
+  private generateCommunityTrends(redditTrends: any[]): CommunityTrend[] {
+    return redditTrends
+      .filter((trend: any) => trend.velocity > 50)
+      .slice(0, 3)
+      .map((trend: any) => ({
+        term: trend.term,
+        type: trend.velocity > 80 ? 'viral' : trend.velocity > 60 ? 'emerging' : 'declining',
+        redditMentions: trend.mentions,
+        confidenceScore: trend.confidence,
+        timeToMainstream: trend.velocity > 80 ? '2-4 weeks' : trend.velocity > 60 ? '1-2 months' : '3+ months',
+        businessOpportunity: `High demand expected for ${trend.term} products. Consider early sourcing from Korean suppliers.`
+      }));
+  }
+
   private generateFallbackReport(koreanTrends: any): BeautyIntelligenceReport {
     return this.formatReport({}, koreanTrends);
   }
@@ -372,10 +432,12 @@ Focus on information users can't get anywhere else. Be specific with numbers, pe
           trending_discoveries: report.trendingDiscoveries,
           ingredient_analysis: report.ingredientAnalysis,
           korean_social_insights: report.koreanSocialInsights,
+          reddit_community_insights: report.redditCommunityInsights,
           expert_predictions: report.expertPredictions,
           hero_product: report.heroProduct,
           hero_ingredient: report.heroIngredient,
           viral_trend: report.viralTrend,
+          community_trends: report.communityTrends,
           published_at: new Date()
         })
         .select('id')
