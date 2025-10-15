@@ -84,7 +84,7 @@ export async function POST() {
 
     const { data: dealsData, error: dealsError } = await supabase
       .from('daily_deals')
-      .insert(sampleDeals)
+      .insert(sampleDeals as any)
       .select();
 
     if (dealsError) {
@@ -141,7 +141,7 @@ export async function POST() {
 
     const { data: pricesData, error: pricesError } = await supabase
       .from('product_prices')
-      .insert(samplePrices)
+      .insert(samplePrices as any)
       .select();
 
     if (pricesError) {
