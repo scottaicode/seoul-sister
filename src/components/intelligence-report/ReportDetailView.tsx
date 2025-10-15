@@ -23,7 +23,7 @@ interface Report {
   author: string;
   category: string;
   tags: string[];
-  featured_image_url?: string;
+  featured_image_url?: string | null;
   reading_time_minutes: number;
   intelligence_report_sections: ReportSection[];
 }
