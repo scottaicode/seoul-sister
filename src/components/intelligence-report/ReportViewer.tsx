@@ -174,6 +174,14 @@ export default function ReportViewer({ reportId, isPremium = false }: ReportView
               <p className="text-gray-400 text-sm mt-2">
                 {report?.subtitle}
               </p>
+              <div className="flex items-center space-x-4 mt-4">
+                <a
+                  href={`/intelligence/${report?.id}`}
+                  className="inline-flex items-center px-4 py-2 bg-[#D4A574]/10 text-[#D4A574] text-sm border border-[#D4A574]/20 rounded-lg hover:bg-[#D4A574]/20 transition-colors"
+                >
+                  View Detailed Report
+                </a>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-center">
