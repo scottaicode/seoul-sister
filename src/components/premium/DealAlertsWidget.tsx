@@ -1,5 +1,8 @@
 'use client';
 
+import { useState } from 'react';
+import DealDetailModal from './DealDetailModal';
+
 interface Deal {
   id: string;
   product_id: string;
@@ -27,7 +30,20 @@ interface DealAlertsWidgetProps {
 }
 
 export default function DealAlertsWidget({ deals, showAll = false }: DealAlertsWidgetProps) {
+  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const displayDeals = showAll ? deals : deals.slice(0, 5);
+
+  const handleViewDeal = (deal: Deal) => {
+    setSelectedDeal(deal);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedDeal(null);
+  };
 
   return (
     <div className="bg-luxury-black-soft border border-luxury-gold border-opacity-20 p-8">
@@ -120,7 +136,10 @@ export default function DealAlertsWidget({ deals, showAll = false }: DealAlertsW
                        deal.deal_score >= 60 ? 'GOOD DEAL' : 'FAIR'}
                     </span>
                   </div>
-                  <button className="text-luxury-gold text-sm uppercase tracking-wider hover:text-white transition-colors duration-300 border border-luxury-gold border-opacity-30 px-4 py-2 hover:border-opacity-100">
+                  <button
+                    onClick={() => handleViewDeal(deal)}
+                    className="text-luxury-gold text-sm uppercase tracking-wider hover:text-white transition-colors duration-300 border border-luxury-gold border-opacity-30 px-4 py-2 hover:border-opacity-100"
+                  >
                     VIEW DEAL →
                   </button>
                 </div>
@@ -158,6 +177,13 @@ export default function DealAlertsWidget({ deals, showAll = false }: DealAlertsW
           </div>
         </div>
       </div>
+
+      {/* Deal Detail Modal */}
+      <DealDetailModal
+        deal={selectedDeal}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+      />
     </div>
   );
 }
