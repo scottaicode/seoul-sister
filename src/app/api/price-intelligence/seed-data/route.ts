@@ -15,10 +15,13 @@ export async function POST() {
       return NextResponse.json({ error: 'Failed to fetch retailers' }, { status: 500 });
     }
 
-    const yesStyleId = retailers?.find((r: any) => r.name === 'YesStyle')?.id;
-    const styleKoreanId = retailers?.find((r: any) => r.name === 'StyleKorean')?.id;
-    const oliveYoungId = retailers?.find((r: any) => r.name === 'Olive Young Global')?.id;
-    const sephoraId = retailers?.find((r: any) => r.name === 'Sephora')?.id;
+    // Type the retailers array properly
+    const retailerList = (retailers as any[]) || [];
+
+    const yesStyleId = retailerList.find((r: any) => r.name === 'YesStyle')?.id;
+    const styleKoreanId = retailerList.find((r: any) => r.name === 'StyleKorean')?.id;
+    const oliveYoungId = retailerList.find((r: any) => r.name === 'Olive Young Global')?.id;
+    const sephoraId = retailerList.find((r: any) => r.name === 'Sephora')?.id;
 
     // Insert sample deal data
     const sampleDeals = [
