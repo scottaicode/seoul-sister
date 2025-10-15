@@ -1,13 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { createClient } from '@/lib/supabase';
 
 export async function GET(request: Request) {
   try {
+    const supabase = createClient();
     const { searchParams } = new URL(request.url);
     const dealDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
     const minSavings = parseInt(searchParams.get('minSavings') || '15');
@@ -83,6 +79,7 @@ export async function GET(request: Request) {
 // Get deal analytics for premium members
 export async function POST(request: Request) {
   try {
+    const supabase = createClient();
     const body = await request.json();
     const { userId, startDate, endDate } = body;
 
