@@ -142,7 +142,7 @@ export async function POST(request: Request) {
     console.log('Learning system schema should be applied via Supabase dashboard using apply-learning-schema.sql');
 
     // Insert sample intelligence report
-    const { data: reportData, error: reportError } = await supabase
+    const { data: reportData, error: reportError } = await (supabase as any)
       .from('intelligence_reports')
       .upsert({
         id: '00000000-0000-0000-0000-000000000001',
@@ -184,7 +184,7 @@ export async function POST(request: Request) {
       }
     ];
 
-    const { data: sectionsData, error: sectionsError } = await supabase
+    const { data: sectionsData, error: sectionsError } = await (supabase as any)
       .from('intelligence_report_sections')
       .upsert(sampleSections, {
         onConflict: 'report_id,section_type'

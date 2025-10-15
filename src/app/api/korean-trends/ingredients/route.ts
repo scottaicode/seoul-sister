@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     }
 
     // Insert or update trending ingredient
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('trending_ingredients')
       .upsert({
         ingredient_name,

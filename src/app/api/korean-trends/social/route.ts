@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     }
 
     // Insert or update social trend
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('social_beauty_trends')
       .upsert({
         trend_name,
