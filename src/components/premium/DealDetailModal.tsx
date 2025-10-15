@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, ExternalLink, TrendingDown, Clock, Star } from 'lucide-react';
 
 interface DealDetailModalProps {
@@ -10,49 +10,43 @@ interface DealDetailModalProps {
 }
 
 export default function DealDetailModal({ deal, isOpen, onClose }: DealDetailModalProps) {
-  if (!isOpen || !deal) return null;
+  const [priceComparisons, setPriceComparisons] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock price comparison data for the specific product
-  const priceComparisons = [
-    {
-      retailer: deal.price_retailers?.name || 'YesStyle',
-      price: deal.current_price,
-      originalPrice: deal.previous_price,
-      inStock: true,
-      shippingCost: 7.99,
-      totalCost: deal.current_price + 7.99,
-      url: `https://${deal.price_retailers?.domain || 'yesstyle.com'}/product/${deal.product_id}`,
-      isBestDeal: true
-    },
-    {
-      retailer: 'Sephora',
-      price: deal.previous_price,
-      inStock: true,
-      shippingCost: 5.95,
-      totalCost: deal.previous_price + 5.95,
-      url: `https://sephora.com/product/${deal.product_id}`,
-      isBestDeal: false
-    },
-    {
-      retailer: 'Amazon',
-      price: deal.current_price + 3.00,
-      inStock: true,
-      shippingCost: 0,
-      totalCost: deal.current_price + 3.00,
-      url: `https://amazon.com/dp/${deal.product_id}`,
-      isBestDeal: false
-    },
-    {
-      retailer: 'StyleKorean',
-      price: deal.current_price + 1.50,
-      originalPrice: deal.previous_price + 2.00,
-      inStock: false,
-      shippingCost: 6.99,
-      totalCost: deal.current_price + 1.50 + 6.99,
-      url: `https://stylekorean.com/product/${deal.product_id}`,
-      isBestDeal: false
+  useEffect(() => {
+    if (isOpen && deal?.product_id) {
+      loadPriceComparison();
     }
-  ].sort((a, b) => a.totalCost - b.totalCost);
+  }, [isOpen, deal?.product_id]);
+
+  const loadPriceComparison = async () => {
+    if (!deal?.product_id) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/price-intelligence/product-comparison?productId=${deal.product_id}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setPriceComparisons(data.priceComparisons || []);
+        setAnalytics(data.analytics || null);
+      } else {
+        setError(data.error || 'Failed to load price comparison');
+        console.error('Price comparison API error:', data.error);
+      }
+    } catch (err) {
+      console.error('Error loading price comparison:', err);
+      setError('Failed to load price comparison data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen || !deal) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-80 backdrop-blur-sm">
@@ -125,11 +119,36 @@ export default function DealDetailModal({ deal, isOpen, onClose }: DealDetailMod
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-6">
               <TrendingDown className="text-luxury-gold" size={24} />
-              <h3 className="text-xl font-light text-white">Price Comparison</h3>
+              <h3 className="text-xl font-light text-white">Live Price Comparison</h3>
             </div>
 
+            {loading && (
+              <div className="text-center py-8">
+                <div className="w-8 h-8 border-2 border-luxury-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-luxury-gray text-sm">Loading live prices...</p>
+              </div>
+            )}
+
+            {error && (
+              <div className="text-center py-8">
+                <p className="text-red-400 text-sm mb-4">{error}</p>
+                <button
+                  onClick={loadPriceComparison}
+                  className="text-luxury-gold text-sm uppercase tracking-wider hover:text-white transition-colors"
+                >
+                  RETRY
+                </button>
+              </div>
+            )}
+
+            {!loading && !error && priceComparisons.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-luxury-gray text-sm">No price data available for this product.</p>
+              </div>
+            )}
+
             <div className="space-y-4">
-              {priceComparisons.map((comparison, index) => (
+              {!loading && priceComparisons.map((comparison, index) => (
                 <div
                   key={index}
                   className={`border p-6 transition-all duration-300 ${
@@ -204,35 +223,37 @@ export default function DealDetailModal({ deal, isOpen, onClose }: DealDetailMod
           </div>
 
           {/* Deal Insights */}
-          <div className="border border-luxury-gold border-opacity-20 bg-luxury-black p-6">
-            <h3 className="text-xl font-light text-white mb-4">Deal Intelligence</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-              <div>
-                <div className="text-luxury-gold text-2xl font-light">
-                  {priceComparisons.filter(p => p.inStock).length}/{priceComparisons.length}
+          {analytics && !loading && (
+            <div className="border border-luxury-gold border-opacity-20 bg-luxury-black p-6">
+              <h3 className="text-xl font-light text-white mb-4">Live Price Intelligence</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                <div>
+                  <div className="text-luxury-gold text-2xl font-light">
+                    {analytics.inStockRetailers}/{analytics.totalRetailers}
+                  </div>
+                  <p className="text-luxury-gray text-xs uppercase tracking-wider">
+                    RETAILERS IN STOCK
+                  </p>
                 </div>
-                <p className="text-luxury-gray text-xs uppercase tracking-wider">
-                  RETAILERS IN STOCK
-                </p>
-              </div>
-              <div>
-                <div className="text-luxury-gold text-2xl font-light">
-                  ${(Math.max(...priceComparisons.map(p => p.totalCost)) - Math.min(...priceComparisons.filter(p => p.inStock).map(p => p.totalCost))).toFixed(2)}
+                <div>
+                  <div className="text-luxury-gold text-2xl font-light">
+                    ${analytics.priceDifference?.toFixed(2)}
+                  </div>
+                  <p className="text-luxury-gray text-xs uppercase tracking-wider">
+                    PRICE DIFFERENCE
+                  </p>
                 </div>
-                <p className="text-luxury-gray text-xs uppercase tracking-wider">
-                  PRICE DIFFERENCE
-                </p>
-              </div>
-              <div>
-                <div className="text-luxury-gold text-2xl font-light">
-                  {Math.round((1 - Math.min(...priceComparisons.filter(p => p.inStock).map(p => p.totalCost)) / Math.max(...priceComparisons.map(p => p.totalCost))) * 100)}%
+                <div>
+                  <div className="text-luxury-gold text-2xl font-light">
+                    {analytics.maxSavingsPercentage}%
+                  </div>
+                  <p className="text-luxury-gray text-xs uppercase tracking-wider">
+                    MAX SAVINGS
+                  </p>
                 </div>
-                <p className="text-luxury-gray text-xs uppercase tracking-wider">
-                  MAX SAVINGS
-                </p>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
