@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, ExternalLink, TrendingDown, Clock, Star } from 'lucide-react';
+import { X, ExternalLink, TrendingDown, Clock, Star, Shield } from 'lucide-react';
+import AuthenticityGuide from './AuthenticityGuide';
 
 interface DealDetailModalProps {
   deal: any;
@@ -14,6 +15,7 @@ export default function DealDetailModal({ deal, isOpen, onClose }: DealDetailMod
   const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAuthenticityGuide, setShowAuthenticityGuide] = useState(false);
 
   useEffect(() => {
     if (isOpen && deal?.product_id) {
@@ -117,9 +119,18 @@ export default function DealDetailModal({ deal, isOpen, onClose }: DealDetailMod
 
           {/* Price Comparison */}
           <div className="mb-8">
-            <div className="flex items-center gap-3 mb-6">
-              <TrendingDown className="text-luxury-gold" size={24} />
-              <h3 className="text-xl font-light text-white">Live Price Comparison</h3>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <TrendingDown className="text-luxury-gold" size={24} />
+                <h3 className="text-xl font-light text-white">Live Price Comparison</h3>
+              </div>
+              <button
+                onClick={() => setShowAuthenticityGuide(true)}
+                className="flex items-center gap-2 text-luxury-gold text-sm uppercase tracking-wider hover:text-white transition-colors duration-300 border border-luxury-gold border-opacity-30 px-3 py-2 hover:border-opacity-100"
+              >
+                <Shield size={16} />
+                AUTHENTICITY GUIDE
+              </button>
             </div>
 
             {loading && (
@@ -163,17 +174,51 @@ export default function DealDetailModal({ deal, isOpen, onClose }: DealDetailMod
                         <span className="text-luxury-gold text-lg">🏪</span>
                       </div>
                       <div>
-                        <h4 className="text-white font-light text-lg">
-                          {comparison.retailer}
+                        <div className="flex items-center gap-3 mb-2">
+                          <h4 className="text-white font-light text-lg">
+                            {comparison.retailer}
+                          </h4>
+                          {comparison.authenticity && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{comparison.authenticity.icon}</span>
+                              <span
+                                className="px-2 py-1 text-xs uppercase tracking-wider font-medium rounded"
+                                style={{
+                                  backgroundColor: `${comparison.authenticity.riskColor}20`,
+                                  color: comparison.authenticity.riskColor,
+                                  border: `1px solid ${comparison.authenticity.riskColor}40`
+                                }}
+                              >
+                                {comparison.authenticity.riskLevel}
+                              </span>
+                            </div>
+                          )}
                           {comparison.isBestDeal && (
-                            <span className="ml-3 bg-luxury-gold text-black px-2 py-1 text-xs uppercase tracking-wider font-medium">
+                            <span className="bg-luxury-gold text-black px-2 py-1 text-xs uppercase tracking-wider font-medium">
                               BEST DEAL
                             </span>
                           )}
-                        </h4>
-                        <p className={`text-sm ${comparison.inStock ? 'text-luxury-gold' : 'text-red-400'}`}>
-                          {comparison.inStock ? '✓ In Stock' : '✗ Out of Stock'}
-                        </p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <p className={`text-sm ${comparison.inStock ? 'text-luxury-gold' : 'text-red-400'}`}>
+                            {comparison.inStock ? '✓ In Stock' : '✗ Out of Stock'}
+                          </p>
+                          {comparison.authenticity && (
+                            <p className="text-xs text-luxury-gray">
+                              Authenticity: {comparison.authenticity.score}/100
+                            </p>
+                          )}
+                        </div>
+                        {comparison.authenticity && comparison.authenticity.riskLevel === 'CAUTION' && (
+                          <p className="text-xs text-yellow-400 mt-1">
+                            ⚠️ {comparison.authenticity.recommendation}
+                          </p>
+                        )}
+                        {comparison.authenticity && (comparison.authenticity.riskLevel === 'HIGH_RISK' || comparison.authenticity.riskLevel === 'AVOID') && (
+                          <p className="text-xs text-red-400 mt-1">
+                            🚨 {comparison.authenticity.recommendation}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -256,6 +301,12 @@ export default function DealDetailModal({ deal, isOpen, onClose }: DealDetailMod
           )}
         </div>
       </div>
+
+      {/* Authenticity Guide Modal */}
+      <AuthenticityGuide
+        isOpen={showAuthenticityGuide}
+        onClose={() => setShowAuthenticityGuide(false)}
+      />
     </div>
   );
 }
