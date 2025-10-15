@@ -35,21 +35,22 @@ export async function GET(request: Request) {
       throw new Error(`Failed to fetch deals: ${error.message}`);
     }
 
-    // Get product information for each deal
-    const dealsWithProducts = await Promise.all(
-      (deals || []).map(async (deal) => {
-        const { data: product } = await supabase
-          .from('products')
-          .select('name, brand, image_url, category')
-          .eq('id', deal.product_id)
-          .single();
+    // Get product information for each deal - using mock data until products table is created
+    const productMap: Record<string, any> = {
+      'cosrx-snail-essence': { name: 'Advanced Snail 96 Mucin Power Essence', brand: 'COSRX', category: 'skincare' },
+      'beauty-joseon-spf': { name: 'Relief Sun: Rice + Probiotics SPF50+ PA++++', brand: 'Beauty of Joseon', category: 'skincare' },
+      'innisfree-green-tea-serum': { name: 'Green Tea Seed Hyaluronic Serum', brand: 'Innisfree', category: 'skincare' },
+      'some-by-mi-bye-bye-toner': { name: 'Bye Bye Blackhead Wonder Miracle Toner', brand: 'Some By Mi', category: 'skincare' },
+      'torriden-dive-in-serum': { name: 'DIVE-IN Low Molecule Hyaluronic Acid Serum', brand: 'Torriden', category: 'skincare' }
+    };
 
-        return {
-          ...deal,
-          product: product || { name: 'Unknown Product', brand: 'Unknown' }
-        };
-      })
-    );
+    const dealsWithProducts = (deals || []).map((deal) => {
+      const product = productMap[deal.product_id] || { name: 'Korean Beauty Product', brand: 'K-Beauty', category: 'skincare' };
+      return {
+        ...deal,
+        product
+      };
+    });
 
     const summary = {
       totalDeals: dealsWithProducts.length,
@@ -128,21 +129,27 @@ export async function POST(request: Request) {
 async function getTopDealCategories(deals: any[]): Promise<any[]> {
   const categoryMap = new Map();
 
-  for (const deal of deals) {
-    const { data: product } = await supabase
-      .from('products')
-      .select('category')
-      .eq('id', deal.product_id)
-      .single();
+  // Use the same product mapping for consistency
+  const productMap: Record<string, any> = {
+    'cosrx-snail-essence': { category: 'skincare' },
+    'beauty-joseon-spf': { category: 'skincare' },
+    'innisfree-green-tea-serum': { category: 'skincare' },
+    'some-by-mi-bye-bye-toner': { category: 'skincare' },
+    'torriden-dive-in-serum': { category: 'skincare' }
+  };
 
-    if (product?.category) {
-      const current = categoryMap.get(product.category) || { count: 0, totalSavings: 0 };
-      categoryMap.set(product.category, {
+  deals.forEach(deal => {
+    const product = productMap[deal.product_id] || { category: 'skincare' };
+    const category = product.category;
+
+    if (category) {
+      const current = categoryMap.get(category) || { count: 0, totalSavings: 0 };
+      categoryMap.set(category, {
         count: current.count + 1,
         totalSavings: current.totalSavings + deal.savings_amount
       });
     }
-  }
+  });
 
   return Array.from(categoryMap.entries())
     .map(([category, data]) => ({ category, ...data }))
