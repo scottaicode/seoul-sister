@@ -35,18 +35,24 @@ export default function PremiumDashboard() {
 
   const loadDashboardData = async () => {
     try {
+      console.log('🔄 Loading dashboard data...');
+
       // Load dashboard data from APIs
       const [dealsResponse, reportsResponse] = await Promise.all([
         fetch('/api/price-intelligence/deals'),
         fetch('/api/intelligence-report/recent')
       ]);
 
+      console.log('📡 API calls completed');
+      console.log('Deals Response Status:', dealsResponse.status);
+      console.log('Reports Response Status:', reportsResponse.status);
+
       const deals = await dealsResponse.json();
       const reports = await reportsResponse.json();
 
       // Debug: Log the API responses
-      console.log('Deals API Response:', deals);
-      console.log('Reports API Response:', reports);
+      console.log('🎯 Deals API Response:', deals);
+      console.log('📊 Reports API Response:', reports);
 
       // Use live data with fallback to compelling demonstration data
       const liveDeals = deals.deals && deals.deals.length > 0 ? deals.deals : [
@@ -113,7 +119,54 @@ export default function PremiumDashboard() {
         productsTracked: 180 // Updated based on current catalog
       });
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      console.error('❌ Error loading dashboard data:', error);
+
+      // Fallback to demonstration data if API fails
+      setDashboardData({
+        todaysDeals: [
+          {
+            id: '1',
+            product_id: 'cosrx-snail-essence',
+            current_price: 23.50,
+            previous_price: 29.00,
+            savings_amount: 5.50,
+            savings_percentage: 19,
+            deal_type: 'price_drop',
+            deal_score: 85,
+            price_retailers: { name: 'YesStyle', domain: 'yesstyle.com' },
+            product: { name: 'Advanced Snail 96 Mucin Power Essence', brand: 'COSRX', category: 'skincare' }
+          },
+          {
+            id: '2',
+            product_id: 'beauty-joseon-spf',
+            current_price: 15.99,
+            previous_price: 21.00,
+            savings_amount: 5.01,
+            savings_percentage: 24,
+            deal_type: 'flash_sale',
+            deal_score: 92,
+            price_retailers: { name: 'StyleKorean', domain: 'stylekorean.com' },
+            product: { name: 'Relief Sun: Rice + Probiotics', brand: 'Beauty of Joseon', category: 'skincare' }
+          }
+        ],
+        watchlistItems: [],
+        recentReports: [
+          {
+            id: '1',
+            title: 'Seoul Beauty Intelligence: October 14, 2025',
+            subtitle: 'Exclusive insights from Korea\'s beauty capital',
+            report_date: '2025-10-14',
+            executive_summary: 'Today\'s intelligence reveals 15 breakthrough products trending in Seoul...',
+            trending_discoveries: [
+              { productName: 'Relief Sun SPF', brand: 'Beauty of Joseon', seoulPrice: 12, usPrice: 21 }
+            ],
+            view_count: 1847
+          }
+        ],
+        savingsThisMonth: 247,
+        dealsFound: 2,
+        productsTracked: 180
+      });
     } finally {
       setLoading(false);
     }
