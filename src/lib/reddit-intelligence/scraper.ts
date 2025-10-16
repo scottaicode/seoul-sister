@@ -48,18 +48,73 @@ export class RedditKBeautyIntelligence {
     'AsianSkincare'
   ];
 
-  private readonly apiBase = 'https://www.reddit.com';
+  private readonly apiBase = 'https://oauth.reddit.com';
+  private readonly authBase = 'https://www.reddit.com/api/v1';
+  private accessToken: string | null = null;
+  private tokenExpiry: number = 0;
+
+  private async authenticate(): Promise<void> {
+    // Check if we have a valid token
+    if (this.accessToken && Date.now() < this.tokenExpiry) {
+      return;
+    }
+
+    try {
+      console.log('🔐 Authenticating with Reddit API...');
+
+      const credentials = Buffer.from(
+        `${process.env.REDDIT_CLIENT_ID}:${process.env.REDDIT_CLIENT_SECRET}`
+      ).toString('base64');
+
+      const response = await fetch(`${this.authBase}/access_token`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${credentials}`,
+          'User-Agent': 'Seoul-Sister-Intelligence/1.0 (Korean Beauty Trend Analysis)',
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          grant_type: 'client_credentials'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Reddit OAuth failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      this.accessToken = data.access_token;
+      this.tokenExpiry = Date.now() + (data.expires_in * 1000) - 60000; // 1 minute buffer
+
+      console.log('✅ Reddit API authentication successful');
+    } catch (error) {
+      console.error('❌ Reddit authentication failed:', error);
+      // Fallback to public API
+      this.accessToken = null;
+    }
+  }
 
   async scrapeKBeautyPosts(subreddit: string, limit: number = 25): Promise<RedditPost[]> {
     try {
-      const url = `${this.apiBase}/r/${subreddit}/hot.json?limit=${limit}`;
-      console.log(`🔍 Scraping r/${subreddit}...`);
+      // Authenticate first
+      await this.authenticate();
 
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Seoul-Sister-Intelligence/1.0 (Korean Beauty Trend Analysis)'
-        }
-      });
+      // Use OAuth API if authenticated, otherwise fallback to public JSON
+      const url = this.accessToken
+        ? `${this.apiBase}/r/${subreddit}/hot?limit=${Math.min(limit, 100)}`
+        : `https://www.reddit.com/r/${subreddit}/hot.json?limit=${limit}`;
+
+      console.log(`🔍 Scraping r/${subreddit} with ${this.accessToken ? 'OAuth API' : 'public JSON'}...`);
+
+      const headers: Record<string, string> = {
+        'User-Agent': 'Seoul-Sister-Intelligence/1.0 (Korean Beauty Trend Analysis)'
+      };
+
+      if (this.accessToken) {
+        headers['Authorization'] = `Bearer ${this.accessToken}`;
+      }
+
+      const response = await fetch(url, { headers });
 
       if (!response.ok) {
         throw new Error(`Reddit API responded with status: ${response.status}`);
@@ -68,11 +123,14 @@ export class RedditKBeautyIntelligence {
       const data = await response.json();
       const posts: RedditPost[] = [];
 
-      for (const postData of data.data.children) {
-        const post = postData.data;
+      // Handle both OAuth and public API response formats
+      const children = data.data?.children || data.children || [];
 
-        // Filter for K-beauty relevant content
-        if (this.isKBeautyRelevant(post.title, post.selftext)) {
+      for (const postData of children) {
+        const post = postData.data || postData;
+
+        // Enhanced K-beauty relevance filtering
+        if (await this.isKBeautyRelevantEnhanced(post.title, post.selftext || '', post.subreddit)) {
           posts.push({
             id: post.id,
             subreddit: post.subreddit,
@@ -112,6 +170,49 @@ export class RedditKBeautyIntelligence {
     ];
 
     return kbeautyKeywords.some(keyword => text.includes(keyword));
+  }
+
+  private async isKBeautyRelevantEnhanced(title: string, content: string, subreddit: string): boolean {
+    // First check basic relevance
+    if (this.isKBeautyRelevant(title, content)) {
+      return true;
+    }
+
+    // Enhanced detection for specific subreddits
+    const text = `${title} ${content}`.toLowerCase();
+
+    // K-beauty specific subreddits - everything is potentially relevant
+    const kbeautySubreddits = ['asianbeauty', 'koreanbeauty', 'kbeauty'];
+    if (kbeautySubreddits.includes(subreddit.toLowerCase())) {
+      return true;
+    }
+
+    // Advanced Korean brand detection
+    const koreanBrands = [
+      'cosrx', 'beauty of joseon', 'innisfree', 'etude house', 'laneige',
+      'missha', 'skinfood', 'tony moly', 'the face shop', 'amore pacific',
+      'sulwhasoo', 'hera', 'iope', 'mamonde', 'banila co', 'klairs',
+      'purito', 'some by mi', 'torriden', 'isntree', 'round lab',
+      'dr jart', 'goodal', 'romand', 'peripera', '3ce', 'heimish'
+    ];
+
+    // Advanced ingredient detection
+    const koreanIngredients = [
+      'centella', 'snail', 'ginseng', 'rice', 'bamboo', 'green tea',
+      'fermented', 'galactomyces', 'bifida', 'propolis', 'honey',
+      'black tea', 'ceramide', 'peptide', 'cica'
+    ];
+
+    // Advanced technique detection
+    const koreanTechniques = [
+      'glass skin', 'honey skin', 'cloudless skin', 'dewy skin',
+      'double cleansing', 'oil cleansing', '7-skin method', '10-step',
+      'layering', 'patting', 'essence first', 'skip care'
+    ];
+
+    // Check all categories
+    const allKeywords = [...koreanBrands, ...koreanIngredients, ...koreanTechniques];
+    return allKeywords.some(keyword => text.includes(keyword));
   }
 
   async analyzeWithAI(post: RedditPost): Promise<KBeautyAnalysis> {
@@ -394,24 +495,27 @@ Respond in JSON format:
     newKeywords: number;
     insights: number;
   }> {
-    console.log('🇰🇷 Starting Reddit K-beauty intelligence pipeline...');
+    console.log('🇰🇷 Starting enhanced Reddit K-beauty intelligence pipeline...');
 
     let totalPosts = 0;
     let totalTrends = 0;
     let newKeywords: string[] = [];
 
-    // Scrape all K-beauty subreddits
+    // Scrape all K-beauty subreddits with enhanced limits
     for (const subreddit of this.kbeautySubreddits) {
       try {
-        const posts = await this.scrapeKBeautyPosts(subreddit, 25);
+        // Use higher limits with OAuth authentication
+        const limit = this.accessToken ? 50 : 25;
+        const posts = await this.scrapeKBeautyPosts(subreddit, limit);
 
         for (const post of posts) {
           const analysis = await this.analyzeWithAI(post);
           await this.storePost(post, analysis);
           totalPosts++;
 
-          // Add small delay to be respectful to Reddit API
-          await new Promise(resolve => setTimeout(resolve, 100));
+          // Reduced delay for OAuth requests (higher rate limits)
+          const delay = this.accessToken ? 50 : 100;
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
       } catch (error) {
         console.error(`❌ Error processing r/${subreddit}:`, error);
@@ -445,8 +549,129 @@ Respond in JSON format:
     return count || 0;
   }
 
+  async getPostComments(subreddit: string, postId: string): Promise<any[]> {
+    try {
+      if (!this.accessToken) {
+        console.log('⚠️ No OAuth token - skipping comment analysis');
+        return [];
+      }
+
+      await this.authenticate();
+
+      const url = `${this.apiBase}/r/${subreddit}/comments/${postId}?limit=50&sort=top`;
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+          'User-Agent': 'Seoul-Sister-Intelligence/1.0 (Korean Beauty Trend Analysis)'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Comments API failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Extract comments (second element in response array)
+      const comments = data[1]?.data?.children || [];
+
+      return comments.map((comment: any) => ({
+        id: comment.data.id,
+        body: comment.data.body,
+        score: comment.data.score,
+        author: comment.data.author,
+        created_utc: new Date(comment.data.created_utc * 1000)
+      }));
+
+    } catch (error) {
+      console.error('❌ Error fetching comments:', error);
+      return [];
+    }
+  }
+
+  async analyzeHighEngagementPosts(): Promise<void> {
+    try {
+      console.log('🔥 Analyzing high-engagement posts for deeper insights...');
+
+      // Get top posts from last 24 hours with high engagement
+      const { data: highEngagementPosts } = await supabase
+        .from('reddit_kbeauty_posts')
+        .select('post_id, subreddit, title, score, num_comments')
+        .gte('created_utc', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .gt('score', 10)
+        .gt('num_comments', 5)
+        .order('score', { ascending: false })
+        .limit(10);
+
+      if (!highEngagementPosts) return;
+
+      for (const post of highEngagementPosts) {
+        try {
+          const comments = await this.getPostComments(post.subreddit, post.post_id);
+
+          if (comments.length > 0) {
+            // Analyze comments for additional insights
+            const commentText = comments.map(c => c.body).join(' ');
+            const additionalKeywords = this.extractKeywordsFromText(commentText);
+
+            // Store additional keywords discovered from comments
+            for (const keyword of additionalKeywords) {
+              await supabase
+                .from('reddit_kbeauty_keywords')
+                .upsert({
+                  keyword: keyword.term,
+                  keyword_type: keyword.type,
+                  discovery_method: 'comment_analysis',
+                  mention_frequency: keyword.frequency,
+                  korean_verified: keyword.korean_origin,
+                  ai_notes: `Discovered in comments of high-engagement post: ${post.title}`
+                }, { onConflict: 'keyword' });
+            }
+          }
+
+          // Small delay to be respectful
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } catch (error) {
+          console.error(`❌ Error analyzing post ${post.post_id}:`, error);
+        }
+      }
+
+      console.log('✅ High-engagement post analysis complete');
+    } catch (error) {
+      console.error('❌ Error in high-engagement analysis:', error);
+    }
+  }
+
+  private extractKeywordsFromText(text: string): Array<{term: string, type: string, frequency: number, korean_origin: boolean}> {
+    // Simple keyword extraction - could be enhanced with NLP
+    const words = text.toLowerCase().match(/\b\w+\b/g) || [];
+    const wordCounts: {[key: string]: number} = {};
+
+    words.forEach(word => {
+      if (word.length > 3) {
+        wordCounts[word] = (wordCounts[word] || 0) + 1;
+      }
+    });
+
+    const koreanBrands = ['cosrx', 'innisfree', 'laneige', 'missha', 'sulwhasoo'];
+    const koreanIngredients = ['centella', 'snail', 'ginseng', 'galactomyces'];
+
+    return Object.entries(wordCounts)
+      .filter(([word, count]) => count >= 2)
+      .map(([word, count]) => ({
+        term: word,
+        type: koreanBrands.includes(word) ? 'brand' :
+              koreanIngredients.includes(word) ? 'ingredient' : 'general',
+        frequency: count,
+        korean_origin: koreanBrands.includes(word) || koreanIngredients.includes(word)
+      }))
+      .slice(0, 10); // Top 10 keywords
+  }
+
   private async generateInsights(): Promise<number> {
-    // This will be expanded to generate actionable business insights
-    return 0;
+    // Enhanced insights generation
+    await this.analyzeHighEngagementPosts();
+    return 1;
   }
 }
