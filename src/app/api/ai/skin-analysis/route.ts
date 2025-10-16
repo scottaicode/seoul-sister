@@ -300,7 +300,7 @@ async function generateProductRecommendations(analysis: SkinAnalysis, userId: st
       if (product.key_ingredients) {
         const productIngredients = product.key_ingredients.map((ing: string) => ing.toLowerCase())
         const compatibleCount = analysis.compatibleIngredients.filter(ing =>
-          productIngredients.some(prodIng => prodIng.includes(ing))
+          productIngredients.some((prodIng: string) => prodIng.includes(ing))
         ).length
         score += compatibleCount * 2
       }
