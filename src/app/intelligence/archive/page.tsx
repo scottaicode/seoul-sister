@@ -7,6 +7,13 @@ import { Calendar, TrendingUp, Lock, Search, Filter } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { usePremiumStatus } from '@/hooks/usePremiumStatus';
 
+interface ReportCategory {
+  slug: string;
+  name: string;
+  icon: string;
+  color: string;
+}
+
 interface ReportSummary {
   id: string;
   report_date: string;
@@ -15,7 +22,7 @@ interface ReportSummary {
   executive_summary: string;
   view_count: number;
   save_count: number;
-  categories: string[];
+  categories: ReportCategory[];
 }
 
 export default function ReportArchivePage() {
@@ -44,7 +51,12 @@ export default function ReportArchivePage() {
 
       if (response.ok) {
         const data = await response.json();
-        setReports(data.reports || getSampleArchive());
+        // Use real reports if available, otherwise fall back to samples
+        if (data.reports && data.reports.length > 0) {
+          setReports(data.reports);
+        } else {
+          setReports(getSampleArchive());
+        }
       } else {
         setReports(getSampleArchive());
       }
@@ -72,7 +84,11 @@ export default function ReportArchivePage() {
         executive_summary: `Intelligence report featuring ${5 - (i % 3)} trending products, ${3 + (i % 2)} ingredient analyses, and viral trends from Korean social media.`,
         view_count: Math.floor(Math.random() * 5000) + 500,
         save_count: Math.floor(Math.random() * 200) + 20,
-        categories: ['trending', 'ingredients', 'social'].slice(0, 2 + (i % 2))
+        categories: [
+          { slug: 'trending', name: 'Trending', icon: '🔥', color: '#FF6B6B' },
+          { slug: 'ingredients', name: 'Ingredients', icon: '🧪', color: '#4ECDC4' },
+          { slug: 'social', name: 'Social Media', icon: '📱', color: '#45B7D1' }
+        ].slice(0, 2 + (i % 2))
       });
     }
 
@@ -82,7 +98,8 @@ export default function ReportArchivePage() {
   const filteredReports = reports.filter(report => {
     const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          report.executive_summary.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || report.categories.includes(selectedCategory);
+    const matchesCategory = selectedCategory === 'all' ||
+                           report.categories.some(cat => cat.slug === selectedCategory);
     return matchesSearch && matchesCategory;
   });
 
@@ -187,7 +204,7 @@ export default function ReportArchivePage() {
                 transition={{ delay: index * 0.05 }}
                 className="relative"
               >
-                <Link href={isLocked ? '/membership' : `/intelligence/reports/${report.id}`}>
+                <Link href={isLocked ? '/membership' : `/intelligence/${report.id}`}>
                   <div className={`bg-[#0A0A0A] border border-[#D4A574]/20 rounded-lg p-6 hover:bg-[#1A1A1A] transition-all ${
                     isLocked ? 'opacity-60' : ''
                   }`}>
@@ -218,10 +235,16 @@ export default function ReportArchivePage() {
                     <div className="flex flex-wrap gap-2">
                       {report.categories.map((cat) => (
                         <span
-                          key={cat}
-                          className="px-2 py-1 bg-[#D4A574]/10 text-[#D4A574] text-xs uppercase tracking-wider rounded"
+                          key={cat.slug}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs uppercase tracking-wider rounded"
+                          style={{
+                            backgroundColor: `${cat.color}10`,
+                            color: cat.color,
+                            border: `1px solid ${cat.color}30`
+                          }}
                         >
-                          {cat}
+                          <span>{cat.icon}</span>
+                          {cat.name}
                         </span>
                       ))}
                     </div>
