@@ -243,7 +243,7 @@ Respond in JSON format:
       // Get recent posts for trend analysis
       const { data: recentPosts } = await supabase
         .from('reddit_kbeauty_posts')
-        .select('detected_brands, detected_ingredients, detected_products, score, created_utc')
+        .select('post_id, detected_brands, detected_ingredients, detected_products, score, created_utc')
         .gte('created_utc', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
 
       if (!recentPosts) return;
