@@ -1,12 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AutonomousEngagementEngine } from '@/lib/ai-lead-hunter/autonomous-engagement-engine';
 
+// Check if system is enabled
+async function checkSystemStatus() {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/admin/lead-hunter-control`);
+    const data = await response.json();
+    return data.system_status?.enabled || false;
+  } catch (error) {
+    console.error('Error checking system status:', error);
+    return false; // Default to disabled for safety
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { action = 'run_full_cycle', days = 7 } = await request.json();
 
-    console.log(`🚀 Starting Autonomous AI Lead Hunter: ${action}`);
+    console.log(`🚀 AI Lead Hunter Request: ${action}`);
 
+    // Check if system is enabled (except for test_system)
+    if (action !== 'test_system') {
+      const systemEnabled = await checkSystemStatus();
+      if (!systemEnabled) {
+        console.log('🚫 AI Lead Hunter system is DISABLED - no engagement will occur');
+        return NextResponse.json({
+          success: false,
+          message: 'AI Lead Hunter system is currently disabled',
+          status: 'disabled',
+          safety_notice: 'System disabled for safety. Enable through admin portal when Seoul Sister website is production-ready.',
+          admin_portal: '/admin/lead-hunter'
+        });
+      }
+    }
+
+    console.log(`✅ System enabled - proceeding with ${action}`);
     const engine = new AutonomousEngagementEngine();
 
     switch (action) {
