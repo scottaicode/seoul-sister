@@ -199,7 +199,7 @@ export class AutonomousEngagementEngine {
       status: 'active',
       conversation_data: {
         opportunity,
-        cultural_response,
+        cultural_response: culturalResponse,
         started_at: new Date().toISOString()
       },
       messages: [],
