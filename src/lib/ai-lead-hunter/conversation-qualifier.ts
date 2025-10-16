@@ -182,8 +182,8 @@ export class ConversationQualifier {
       purchase_intent,
       seoul_sister_fit,
       engagement_quality,
-      response_indicators,
-      conversation_signals,
+      response_indicators: responseIndicators,
+      conversation_signals: conversationSignals,
       lead_scoring: {
         demographic_fit: this.calculateDemographicFit(responseIndicators, conversationSignals),
         interest_alignment: (authenticity_interest + cultural_interest) / 2,
