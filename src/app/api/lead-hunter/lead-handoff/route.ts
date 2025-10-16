@@ -10,6 +10,7 @@ interface LeadHandoff {
   id: number;
   username: string;
   lead_type: string;
+  intent_level: string;
   conversation_context: string;
   qualification_data: any;
   handoff_notes: string;
