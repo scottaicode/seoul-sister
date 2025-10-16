@@ -8,10 +8,10 @@ const supabase = createClient(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const reportId = params.id;
+    const { id: reportId } = await params;
 
     // Get current view count first
     const { data: currentReport } = await supabase
