@@ -253,7 +253,7 @@ export default function ReportDetailView({ report, isPremium }: ReportDetailView
             Access more exclusive Korean beauty intelligence, market analysis, and insider discoveries.
           </p>
           <Link
-            href="/intelligence"
+            href="/intelligence/archive"
             className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 text-black font-medium rounded-lg hover:from-yellow-500 hover:to-yellow-400 transition-all"
           >
             View All Reports
