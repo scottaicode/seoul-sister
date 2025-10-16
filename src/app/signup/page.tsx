@@ -15,7 +15,8 @@ export default function SignupPage() {
     lastName: '',
     phone: '',
     instagramHandle: '',
-    referralCode: ''
+    referralCode: '',
+    agreeToTerms: false
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -27,6 +28,12 @@ export default function SignupPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
+
+    if (!formData.agreeToTerms) {
+      setError('You must agree to the Terms of Service and Privacy Policy to continue.')
+      setLoading(false)
+      return
+    }
 
     try {
       // Sign up with Supabase Auth
@@ -67,9 +74,10 @@ export default function SignupPage() {
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [name]: type === 'checkbox' ? checked : value
     }))
   }
 
@@ -229,9 +237,31 @@ export default function SignupPage() {
                 />
               </div>
 
+              <div className="flex items-start space-x-3 p-4 bg-luxury-charcoal/20 border border-luxury-gold/20 rounded-lg">
+                <input
+                  type="checkbox"
+                  name="agreeToTerms"
+                  checked={formData.agreeToTerms}
+                  onChange={handleInputChange}
+                  required
+                  className="w-4 h-4 mt-1 text-luxury-gold bg-luxury-charcoal/50 border-luxury-gold/30 rounded focus:ring-luxury-gold/50 focus:ring-2"
+                />
+                <div className="text-sm text-gray-300 font-light">
+                  I agree to the{' '}
+                  <Link href="/terms" target="_blank" className="text-luxury-gold hover:text-luxury-gold/80 underline">
+                    Terms of Service
+                  </Link>
+                  {' '}and{' '}
+                  <Link href="/privacy" target="_blank" className="text-luxury-gold hover:text-luxury-gold/80 underline">
+                    Privacy Policy
+                  </Link>
+                  . I understand that my 7-day free trial will automatically convert to a $20/month subscription unless canceled.
+                </div>
+              </div>
+
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !formData.agreeToTerms}
                 className="w-full bg-luxury-gold text-black font-semibold py-3 px-6 rounded-lg hover:bg-luxury-gold/90 transition-all disabled:opacity-50 shadow-lg tracking-wide"
               >
                 {loading ? 'Creating Account...' : 'Start Free Trial'}
@@ -239,7 +269,6 @@ export default function SignupPage() {
             </form>
 
             <p className="text-xs text-gray-400 text-center mt-6">
-              By continuing, you agree to our Terms of Service and Privacy Policy.
               Free for 7 days, then $20/month. Cancel anytime during trial.
             </p>
           </div>

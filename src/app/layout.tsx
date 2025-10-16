@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, Poppins } from 'next/font/google'
 import './globals.css'
 import AnalyticsTracker from '../components/AnalyticsTracker'
+import CookieConsent from '../components/CookieConsent'
 import { AuthProvider } from '../contexts/AuthContext'
 
 const inter = Inter({
@@ -70,6 +71,7 @@ export default function RootLayout({
           <div className="min-h-screen">
             {children}
           </div>
+          <CookieConsent />
         </AuthProvider>
       </body>
     </html>

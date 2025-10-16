@@ -955,6 +955,7 @@ export default function HomePage() {
             <div>
               <h3 className="text-caption mb-6">SUPPORT</h3>
               <div className="space-y-3">
+                <Link href="/support" className="link-luxury block text-sm">Support Center</Link>
                 <Link href="/contact" className="link-luxury block text-sm">Contact</Link>
                 <Link href="/faq" className="link-luxury block text-sm">FAQ</Link>
                 <Link href="/shipping" className="link-luxury block text-sm">Shipping</Link>
@@ -975,6 +976,17 @@ export default function HomePage() {
           </div>
 
           <div className="text-center mt-20 pt-8 border-t border-luxury-charcoal">
+            <div className="flex flex-wrap justify-center gap-6 mb-6">
+              <Link href="/privacy" className="text-sm text-gray-400 hover:text-luxury-gold transition-colors">
+                Privacy Policy
+              </Link>
+              <Link href="/terms" className="text-sm text-gray-400 hover:text-luxury-gold transition-colors">
+                Terms of Service
+              </Link>
+              <Link href="/support" className="text-sm text-gray-400 hover:text-luxury-gold transition-colors">
+                Support
+              </Link>
+            </div>
             <p className="text-caption">
               © 2025 SEOUL SISTER · AUTHENTIC KOREAN BEAUTY · INSIDER ACCESS ONLY
             </p>
