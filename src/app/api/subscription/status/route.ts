@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       profile = data
     } else if (phoneNumber) {
       const { data } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('*')
         .eq('phone', phoneNumber)
         .single()
@@ -85,13 +85,13 @@ export async function GET(request: NextRequest) {
       }
 
       if (userId) {
-        await supabase
-          .from('profiles')
+        await (supabase
+          .from('profiles') as any)
           .update(updateData)
           .eq('id', userId)
       } else {
-        await supabase
-          .from('user_profiles')
+        await (supabase
+          .from('profiles') as any)
           .update(updateData)
           .eq('phone', phoneNumber)
       }
@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
           quickProfile = data
         } else if (phoneNumber) {
           const { data } = await supabase
-            .from('user_profiles')
+            .from('profiles')
             .select('subscription_status, trial_end, current_period_end')
             .eq('phone', phoneNumber)
             .single()

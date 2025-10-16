@@ -20,6 +20,12 @@ export interface Database {
           order_count: number
           viral_shares_count: number
           last_order_date: string | null
+          stripe_subscription_id: string | null
+          subscription_status: string | null
+          trial_end: string | null
+          current_period_start: string | null
+          current_period_end: string | null
+          cancel_at_period_end: boolean | null
         }
         Insert: {
           id?: string
@@ -39,6 +45,12 @@ export interface Database {
           order_count?: number
           viral_shares_count?: number
           last_order_date?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
+          trial_end?: string | null
+          current_period_start?: string | null
+          current_period_end?: string | null
+          cancel_at_period_end?: boolean | null
         }
         Update: {
           id?: string
@@ -58,6 +70,12 @@ export interface Database {
           order_count?: number
           viral_shares_count?: number
           last_order_date?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
+          trial_end?: string | null
+          current_period_start?: string | null
+          current_period_end?: string | null
+          cancel_at_period_end?: boolean | null
         }
       }
       products: {

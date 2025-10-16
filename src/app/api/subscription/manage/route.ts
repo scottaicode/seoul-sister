@@ -83,21 +83,28 @@ async function createUserSubscription(userId?: string, phoneNumber?: string, ema
       profile = data
     } else if (phoneNumber) {
       const { data } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('*')
         .eq('phone', phoneNumber)
         .single()
       profile = data
 
       if (!profile && email) {
-        // Create new user_profiles entry
-        const { data: newProfile, error } = await supabase
-          .from('user_profiles')
+        // Create new profiles entry
+        const profileId = crypto.randomUUID()
+        const { data: newProfile, error } = await (supabase
+          .from('profiles') as any)
           .insert({
-            phone: phoneNumber,
+            id: profileId,
             email: email,
-            name: name
-          })
+            phone: phoneNumber,
+            first_name: name,
+            total_savings: 0,
+            order_count: 0,
+            viral_shares_count: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          } as any)
           .select()
           .single()
 
@@ -140,9 +147,9 @@ async function createUserSubscription(userId?: string, phoneNumber?: string, ema
       // Update profile with customer ID
       const updateData = { stripe_customer_id: customerId }
       if (userId) {
-        await supabase.from('profiles').update(updateData).eq('id', userId)
+        await (supabase.from('profiles') as any).update(updateData).eq('id', userId)
       } else {
-        await supabase.from('user_profiles').update(updateData).eq('id', profile.id)
+        await (supabase.from('profiles') as any).update(updateData).eq('id', profile.id)
       }
     }
 
@@ -161,9 +168,9 @@ async function createUserSubscription(userId?: string, phoneNumber?: string, ema
     }
 
     if (userId) {
-      await supabase.from('profiles').update(subscriptionData).eq('id', userId)
+      await (supabase.from('profiles') as any).update(subscriptionData).eq('id', userId)
     } else {
-      await supabase.from('user_profiles').update(subscriptionData).eq('id', profile.id)
+      await (supabase.from('profiles') as any).update(subscriptionData).eq('id', profile.id)
     }
 
     // Extract client secret for payment setup
@@ -197,10 +204,10 @@ async function cancelUserSubscription(userId?: string, phoneNumber?: string) {
     let profile: any = null
 
     if (userId) {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
+      const { data } = await (supabase.from('profiles') as any).select('*').eq('id', userId).single()
       profile = data
     } else if (phoneNumber) {
-      const { data } = await supabase.from('user_profiles').select('*').eq('phone', phoneNumber).single()
+      const { data } = await (supabase.from('profiles') as any).select('*').eq('phone', phoneNumber).single()
       profile = data
     }
 
@@ -222,9 +229,9 @@ async function cancelUserSubscription(userId?: string, phoneNumber?: string) {
     }
 
     if (userId) {
-      await supabase.from('profiles').update(updateData).eq('id', userId)
+      await (supabase.from('profiles') as any).update(updateData).eq('id', userId)
     } else {
-      await supabase.from('user_profiles').update(updateData).eq('id', profile.id)
+      await (supabase.from('profiles') as any).update(updateData).eq('id', profile.id)
     }
 
     const periodEnd = new Date(updatedSubscription.current_period_end * 1000)
@@ -250,10 +257,10 @@ async function reactivateUserSubscription(userId?: string, phoneNumber?: string)
     let profile: any = null
 
     if (userId) {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
+      const { data } = await (supabase.from('profiles') as any).select('*').eq('id', userId).single()
       profile = data
     } else if (phoneNumber) {
-      const { data } = await supabase.from('user_profiles').select('*').eq('phone', phoneNumber).single()
+      const { data } = await (supabase.from('profiles') as any).select('*').eq('phone', phoneNumber).single()
       profile = data
     }
 
@@ -277,9 +284,9 @@ async function reactivateUserSubscription(userId?: string, phoneNumber?: string)
     }
 
     if (userId) {
-      await supabase.from('profiles').update(updateData).eq('id', userId)
+      await (supabase.from('profiles') as any).update(updateData).eq('id', userId)
     } else {
-      await supabase.from('user_profiles').update(updateData).eq('id', profile.id)
+      await (supabase.from('profiles') as any).update(updateData).eq('id', profile.id)
     }
 
     return NextResponse.json({
@@ -303,10 +310,10 @@ async function getBillingInfo(userId?: string, phoneNumber?: string) {
     let profile: any = null
 
     if (userId) {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
+      const { data } = await (supabase.from('profiles') as any).select('*').eq('id', userId).single()
       profile = data
     } else if (phoneNumber) {
-      const { data } = await supabase.from('user_profiles').select('*').eq('phone', phoneNumber).single()
+      const { data } = await (supabase.from('profiles') as any).select('*').eq('phone', phoneNumber).single()
       profile = data
     }
 
@@ -377,10 +384,10 @@ async function updatePaymentMethod(userId?: string, phoneNumber?: string, paymen
     let profile: any = null
 
     if (userId) {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
+      const { data } = await (supabase.from('profiles') as any).select('*').eq('id', userId).single()
       profile = data
     } else if (phoneNumber) {
-      const { data } = await supabase.from('user_profiles').select('*').eq('phone', phoneNumber).single()
+      const { data } = await (supabase.from('profiles') as any).select('*').eq('phone', phoneNumber).single()
       profile = data
     }
 

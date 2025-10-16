@@ -155,16 +155,32 @@ Thank you! 💕`
           </div>
 
           <PremiumGate
-            feature="AI Skin Analysis"
-            description="Upload a photo to get personalized skincare recommendations powered by AI"
-            benefits={[
-              'AI-powered skin type analysis',
-              'Personalized ingredient recommendations',
-              'Compatible K-beauty product suggestions',
-              'Skin concern identification and tracking',
-              'Progress monitoring over time'
-            ]}
-          />
+            featureName="AI Skin Analysis"
+            showUpgradePrompt={true}
+          >
+            <div className="bg-luxury-charcoal/20 rounded-xl p-8 border border-luxury-gold/20 backdrop-blur-sm text-center">
+              <h3 className="text-xl font-semibold text-white mb-4 tracking-wide">
+                🔬 AI Skin Analysis
+              </h3>
+              <p className="text-gray-300 font-light mb-6">
+                Upload a photo to get personalized skincare recommendations powered by AI
+              </p>
+              <div className="grid grid-cols-1 gap-3 mb-6">
+                {[
+                  'AI-powered skin type analysis',
+                  'Personalized ingredient recommendations',
+                  'Compatible K-beauty product suggestions',
+                  'Skin concern identification and tracking',
+                  'Progress monitoring over time'
+                ].map((benefit, index) => (
+                  <div key={index} className="flex items-center space-x-2 p-3 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg">
+                    <span className="text-luxury-gold">✨</span>
+                    <span className="text-white font-light">{benefit}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </PremiumGate>
         </div>
       </div>
     )
