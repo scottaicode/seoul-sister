@@ -272,7 +272,7 @@ function generateSampleTrendingMetrics(reportId: string) {
   const regions = ['Seoul', 'Busan', 'Incheon', 'Daegu', 'Daejeon', 'Gwangju'];
   const platforms = ['Instagram', 'TikTok', 'YouTube', 'Naver Blog'];
 
-  const metrics = [];
+  const metrics: any[] = [];
 
   // Generate product metrics
   products.slice(0, 6).forEach((product, index) => {
