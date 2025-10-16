@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from 'axios'
+// Using fetch API instead of axios to avoid external dependencies
 
 export interface WhatsAppMessage {
   to: string
@@ -42,7 +42,7 @@ export interface OrderRequest {
 }
 
 class WhatsAppBusinessClient {
-  private client: AxiosInstance
+  private baseURL: string
   private phoneNumberId: string
   private accessToken: string
   private webhookVerifyToken: string
@@ -51,32 +51,38 @@ class WhatsAppBusinessClient {
     this.phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || ''
     this.accessToken = process.env.WHATSAPP_ACCESS_TOKEN || ''
     this.webhookVerifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || ''
-
-    this.client = axios.create({
-      baseURL: `https://graph.facebook.com/v18.0/${this.phoneNumberId}`,
-      headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
-        'Content-Type': 'application/json'
-      }
-    })
+    this.baseURL = `https://graph.facebook.com/v18.0/${this.phoneNumberId}`
   }
 
   async sendMessage(message: WhatsAppMessage): Promise<{ success: boolean; messageId?: string; error?: string }> {
     try {
       console.log(`📱 Sending WhatsApp message to ${message.to}`)
 
-      const response = await this.client.post('/messages', message)
+      const response = await fetch(`${this.baseURL}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(message)
+      })
 
-      console.log('✅ WhatsApp message sent successfully:', response.data)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Failed to send message')
+      }
+
+      console.log('✅ WhatsApp message sent successfully:', data)
       return {
         success: true,
-        messageId: response.data.messages[0]?.id
+        messageId: data.messages[0]?.id
       }
     } catch (error: any) {
-      console.error('❌ Failed to send WhatsApp message:', error.response?.data || error.message)
+      console.error('❌ Failed to send WhatsApp message:', error.message)
       return {
         success: false,
-        error: error.response?.data?.error?.message || error.message
+        error: error.message
       }
     }
   }
