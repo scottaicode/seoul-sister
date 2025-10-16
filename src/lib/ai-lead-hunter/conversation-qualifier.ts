@@ -122,7 +122,7 @@ export class ConversationQualifier {
         qualified: scores.overall_score >= this.QUALIFICATION_THRESHOLDS.minimum_qualification_score,
         lead_quality: leadQuality,
         qualification_score: scores.overall_score,
-        handoff_recommendation,
+        handoff_recommendation: handoffRecommendation,
         lead_profile: leadProfile,
         next_actions: this.generateNextActions(leadQuality, handoffRecommendation, leadProfile),
         confidence_level: confidenceLevel
