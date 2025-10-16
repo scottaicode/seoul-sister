@@ -134,7 +134,7 @@ export class SkinAnalysisEngine {
         },
         body: JSON.stringify({
           prompt,
-          model: 'claude-opus-4.1'
+          model: 'claude-opus-4-1-20250805'
         }),
       })
 

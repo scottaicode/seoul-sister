@@ -127,7 +127,7 @@ async function storeGeneratedContent(
         content,
         metadata,
         generated_at: new Date().toISOString(),
-        ai_model: 'claude-opus-4.1',
+        ai_model: 'claude-opus-4-1-20250805',
         performance_metrics: {} // Track likes, shares, etc later
       })
   } catch (error) {
@@ -240,7 +240,7 @@ export async function POST(request: Request) {
         generatedContent[platform] = {
           content: aiContent,
           ai_generated: true,
-          model: 'claude-opus-4.1'
+          model: 'claude-opus-4-1-20250805'
         }
 
         // Store for learning

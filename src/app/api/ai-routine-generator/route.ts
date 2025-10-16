@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       routine: generatedRoutine,
       generation_metadata: {
-        model: 'claude-opus-4.1',
+        model: 'claude-opus-4-1-20250805',
         confidence: 0.9,
         generation_time: new Date().toISOString()
       }
@@ -59,7 +59,7 @@ async function generateAIRoutine(
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-opus-4-1-20250805',
         max_tokens: 2000,
         temperature: 0.3,
         messages: [

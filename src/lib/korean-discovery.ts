@@ -220,7 +220,7 @@ async function analyzeKoreanTrends(products: any[], source: string) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-opus-4-1-20250805',
         max_tokens: 4000,
         messages: [{
           role: 'user',
