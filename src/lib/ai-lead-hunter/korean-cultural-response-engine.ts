@@ -331,10 +331,25 @@ export class KoreanCulturalResponseEngine {
 
   private async trackResponseUsage(category: string, effectiveness: number): Promise<void> {
     try {
+      // First get current usage count
+      const { data: currentData, error: fetchError } = await supabase
+        .from('korean_cultural_responses')
+        .select('usage_count')
+        .eq('category', category)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error fetching current usage count:', fetchError);
+        return;
+      }
+
+      const currentUsageCount = currentData?.usage_count || 0;
+
+      // Update with incremented usage count
       await supabase
         .from('korean_cultural_responses')
         .update({
-          usage_count: supabase.raw('usage_count + 1'),
+          usage_count: currentUsageCount + 1,
           engagement_effectiveness: effectiveness,
           last_used: new Date().toISOString()
         })
