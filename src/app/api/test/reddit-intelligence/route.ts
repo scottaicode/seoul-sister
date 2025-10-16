@@ -9,8 +9,12 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🧪 Manual test trigger for Reddit intelligence pipeline...');
 
+    // Determine the base URL
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    console.log('📡 Using base URL:', baseUrl);
+
     // Trigger the Reddit intelligence pipeline
-    const pipelineResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/reddit-intelligence/run-pipeline`, {
+    const pipelineResponse = await fetch(`${baseUrl}/api/reddit-intelligence/run-pipeline`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -23,10 +27,12 @@ export async function GET(request: NextRequest) {
       pipelineResult = await pipelineResponse.json();
     } else {
       console.error('Pipeline response not ok:', pipelineResponse.status);
+      const errorText = await pipelineResponse.text();
+      console.error('Pipeline error response:', errorText);
     }
 
     // Fetch current Reddit trends
-    const trendsResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/reddit-intelligence/trends?timeframe=7d&limit=10`);
+    const trendsResponse = await fetch(`${baseUrl}/api/reddit-intelligence/trends?timeframe=7d&limit=10`);
 
     let trendsData = null;
     if (trendsResponse.ok) {
