@@ -171,7 +171,7 @@ export default function AIFeaturesAdmin() {
               <h3 className="text-xl font-semibold text-white mb-4 tracking-wide">
                 🔗 Quick Access Links
               </h3>
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Link
                   href="/personalized-dashboard"
                   className="block p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg hover:bg-luxury-gold/20 transition-colors"
@@ -185,6 +185,13 @@ export default function AIFeaturesAdmin() {
                 >
                   <div className="font-semibold text-luxury-gold tracking-wide">Skin Profile Manager</div>
                   <div className="text-sm text-gray-300 font-light">Create and manage profiles</div>
+                </Link>
+                <Link
+                  href="/admin/lead-hunter"
+                  className="block p-4 bg-gradient-to-r from-red-500/20 to-orange-500/20 border border-red-400/40 rounded-lg hover:from-red-500/30 hover:to-orange-500/30 transition-all"
+                >
+                  <div className="font-semibold text-red-300 tracking-wide">🇰🇷 AI Lead Hunter</div>
+                  <div className="text-sm text-gray-300 font-light">Autonomous lead generation</div>
                 </Link>
                 <Link
                   href="/"
