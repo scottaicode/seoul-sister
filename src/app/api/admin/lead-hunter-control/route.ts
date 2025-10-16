@@ -164,7 +164,7 @@ async function logAdminAction(action: string) {
   }
 }
 
-// Export system config for other modules to check
-export function getSystemConfig() {
+// System config getter function (not exported from route)
+function getSystemConfig() {
   return systemConfig;
 }
