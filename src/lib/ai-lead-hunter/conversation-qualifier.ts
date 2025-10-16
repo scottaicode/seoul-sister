@@ -169,7 +169,7 @@ export class ConversationQualifier {
     const authenticity_interest = this.calculateAuthenticityInterest(responseIndicators, combinedUserText);
     const price_sensitivity = this.calculatePriceSensitivity(responseIndicators, combinedUserText);
     const cultural_interest = this.calculateCulturalInterest(responseIndicators, conversationSignals);
-    const product_sophistication = this.calculateProductSophistication(conversationSignals, combinedUserText);
+    const product_sophistication = this.calculateProductSophistication(conversationSignals, combinedUserText, responseIndicators);
     const purchase_intent = this.calculatePurchaseIntent(responseIndicators, conversationSignals);
     const seoul_sister_fit = this.calculateSeoulSisterFit(authenticity_interest, price_sensitivity, cultural_interest);
     const engagement_quality = this.calculateEngagementQuality(conversationSignals, responseIndicators);
@@ -221,7 +221,7 @@ export class ConversationQualifier {
     return Math.min(score, 1.0);
   }
 
-  private calculateProductSophistication(signals: any, text: string): number {
+  private calculateProductSophistication(signals: any, text: string, indicators: any): number {
     let score = 0;
     if (signals.demonstrates_expertise) score += 0.4;
     if (indicators.mentions_current_routine) score += 0.2;
