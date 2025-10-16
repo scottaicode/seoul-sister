@@ -172,7 +172,7 @@ export class RedditKBeautyIntelligence {
     return kbeautyKeywords.some(keyword => text.includes(keyword));
   }
 
-  private async isKBeautyRelevantEnhanced(title: string, content: string, subreddit: string): boolean {
+  private async isKBeautyRelevantEnhanced(title: string, content: string, subreddit: string): Promise<boolean> {
     // First check basic relevance
     if (this.isKBeautyRelevant(title, content)) {
       return true;
