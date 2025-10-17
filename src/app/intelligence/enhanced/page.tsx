@@ -113,7 +113,7 @@ export default function EnhancedIntelligencePage() {
 
       console.log(`📊 Running ${tierNames[tier as keyof typeof tierNames]} monitoring cycle`)
 
-      const response = await fetch(`/api/intelligence/schedule?tier=${tier}`, {
+      const response = await fetch(`/api/intelligence/quick?tier=${tier}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
