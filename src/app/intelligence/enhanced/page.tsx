@@ -14,6 +14,8 @@ export default function EnhancedIntelligencePage() {
   const [isRunning, setIsRunning] = useState(false)
   const [lastRunResult, setLastRunResult] = useState<any>(null)
   const [userProfile, setUserProfile] = useState<any>(null)
+  const [latestContent, setLatestContent] = useState<any[]>([])
+  const [isLoadingContent, setIsLoadingContent] = useState(false)
 
   // Fetch user profile to check subscription status
   useEffect(() => {
@@ -36,6 +38,26 @@ export default function EnhancedIntelligencePage() {
 
   // Admin check based on subscription status - bypass_admin grants admin access
   const isAdmin = userProfile?.subscription_status === 'bypass_admin'
+
+  // Fetch latest AI-processed content
+  useEffect(() => {
+    const fetchLatestContent = async () => {
+      setIsLoadingContent(true)
+      try {
+        const response = await fetch('/api/intelligence/latest')
+        if (response.ok) {
+          const data = await response.json()
+          setLatestContent(data.content || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch latest content:', error)
+      } finally {
+        setIsLoadingContent(false)
+      }
+    }
+
+    fetchLatestContent()
+  }, [lastRunResult]) // Refresh after running intelligence cycle
 
   // Debug logging
   console.log('🔍 Admin Check Debug:', {
@@ -347,98 +369,162 @@ export default function EnhancedIntelligencePage() {
                 </div>
               </div>
 
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <div className="bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-medium text-white">@ponysmakeup Featured Products</h4>
-                    <span className="text-luxury-gold text-sm">Live</span>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">COSRX Snail 96 Mucin</span>
-                      <span className="text-green-400 text-xs">45K likes</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">Beauty of Joseon Relief Sun</span>
-                      <span className="text-green-400 text-xs">39K likes</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">Round Lab Birch Juice Pad</span>
-                      <span className="text-green-400 text-xs">52K likes</span>
-                    </div>
-                  </div>
+              {/* AI-Processed Content Display */}
+              {isLoadingContent ? (
+                <div className="bg-luxury-charcoal/20 border border-luxury-gold/20 rounded-lg p-8 text-center">
+                  <div className="text-luxury-gold">🤖 Loading AI-Processed Content...</div>
+                  <div className="text-gray-400 text-sm mt-2">Fetching latest intelligence insights</div>
                 </div>
+              ) : latestContent.length > 0 ? (
+                <div className="space-y-6">
+                  <h4 className="text-white font-medium text-lg mb-4">🧠 Latest AI-Processed Korean Beauty Intelligence</h4>
 
-                <div className="bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-medium text-white">Key Hashtags</h4>
-                    <span className="text-luxury-gold text-sm">Trending</span>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">#kbeauty</span>
-                      <span className="text-blue-400 text-xs">3 posts</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">#glassskin</span>
-                      <span className="text-purple-400 text-xs">Viral</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">#koreanbeauty</span>
-                      <span className="text-green-400 text-xs">Seoul trending</span>
-                    </div>
-                  </div>
-                </div>
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    {latestContent.slice(0, 6).map((content, index) => (
+                      <div key={content.id} className="bg-luxury-charcoal/20 border border-luxury-gold/20 rounded-lg p-6">
+                        {/* Platform & Author Info */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-luxury-gold text-sm font-medium">@{content.authorHandle}</span>
+                            <span className="text-gray-400 text-xs">• {content.platform}</span>
+                          </div>
+                          <span className="text-green-400 text-xs">Score: {content.intelligenceScore || 'N/A'}</span>
+                        </div>
 
-                <div className="bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-medium text-white">Seoul vs US Pricing</h4>
-                    <span className="text-luxury-gold text-sm">Real-time</span>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">COSRX Essence</span>
-                      <span className="text-green-400 text-xs">$18.50 → $25</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">Beauty of Joseon</span>
-                      <span className="text-green-400 text-xs">$12 → $18</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">Round Lab Pads</span>
-                      <span className="text-green-400 text-xs">$15 → $22</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                        {/* AI Summary */}
+                        {content.aiSummary && (
+                          <div className="mb-4">
+                            <div className="text-white text-sm font-medium mb-2">🤖 AI Summary:</div>
+                            <p className="text-gray-300 text-sm mb-2">{content.aiSummary.summary}</p>
 
-              {/* Recent @ponysmakeup Posts */}
-              <div className="mt-8 bg-luxury-charcoal/20 border border-luxury-gold/20 rounded-lg p-6">
-                <h4 className="text-white font-medium mb-4">Latest @ponysmakeup Beauty Insights</h4>
-                <div className="space-y-4">
-                  <div className="border-l-2 border-luxury-gold/30 pl-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <p className="text-gray-300 text-sm">💫 "Beauty of Joseon Relief Sun is trending in Seoul right now! Perfect dewy Korean look with SPF 50+"</p>
-                      <span className="text-gray-400 text-xs">4d ago</span>
-                    </div>
-                    <div className="text-xs text-gray-400">38,920 likes • 892 comments • #beautyofjoseon #koreansunscreen</div>
-                  </div>
-                  <div className="border-l-2 border-luxury-gold/30 pl-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <p className="text-gray-300 text-sm">🌟 "COSRX Snail 96 Mucin Power Essence! This has been my holy grail for glass skin"</p>
-                      <span className="text-gray-400 text-xs">2d ago</span>
-                    </div>
-                    <div className="text-xs text-gray-400">45,230 likes • 1,250 comments • #glassskin #cosrx #snailmucin</div>
-                  </div>
-                  <div className="border-l-2 border-luxury-gold/30 pl-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <p className="text-gray-300 text-sm">🔥 "Round Lab Birch Juice Moisturizing Pad - secret to hydrated Seoul skin! Used by 9/10 Korean beauty editors"</p>
-                      <span className="text-gray-400 text-xs">6d ago</span>
-                    </div>
-                    <div className="text-xs text-gray-400">52,100 likes • 1,680 comments • #roundlab #birchjuice #hydration</div>
+                            {/* Key Insights */}
+                            {content.aiSummary.keyInsights?.length > 0 && (
+                              <div className="mb-2">
+                                <div className="text-gray-400 text-xs mb-1">Key Insights:</div>
+                                <div className="flex flex-wrap gap-1">
+                                  {content.aiSummary.keyInsights.slice(0, 3).map((insight, i) => (
+                                    <span key={i} className="text-blue-400 text-xs bg-blue-500/10 px-2 py-1 rounded">
+                                      {insight}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Product Mentions */}
+                            {content.aiSummary.productMentions?.length > 0 && (
+                              <div className="mb-2">
+                                <div className="text-gray-400 text-xs mb-1">Products Mentioned:</div>
+                                <div className="flex flex-wrap gap-1">
+                                  {content.aiSummary.productMentions.slice(0, 3).map((product, i) => (
+                                    <span key={i} className="text-green-400 text-xs bg-green-500/10 px-2 py-1 rounded">
+                                      {product}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Korean Beauty Terms */}
+                            {content.aiSummary.koreanBeautyTerms?.length > 0 && (
+                              <div className="mb-2">
+                                <div className="text-gray-400 text-xs mb-1">Korean Beauty Terms:</div>
+                                <div className="flex flex-wrap gap-1">
+                                  {content.aiSummary.koreanBeautyTerms.slice(0, 3).map((term, i) => (
+                                    <span key={i} className="text-luxury-gold text-xs bg-luxury-gold/10 px-2 py-1 rounded">
+                                      {term}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Transcript Preview */}
+                        {content.transcriptText && (
+                          <div className="mb-4">
+                            <div className="text-white text-sm font-medium mb-2">📝 Transcript:</div>
+                            <p className="text-gray-300 text-xs italic">{content.transcriptText}</p>
+                          </div>
+                        )}
+
+                        {/* Metrics & URL */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex space-x-4 text-xs text-gray-400">
+                            {content.metrics.likes && (
+                              <span>❤️ {content.metrics.likes.toLocaleString()}</span>
+                            )}
+                            {content.metrics.comments && (
+                              <span>💬 {content.metrics.comments.toLocaleString()}</span>
+                            )}
+                            {content.metrics.views && (
+                              <span>👁️ {content.metrics.views.toLocaleString()}</span>
+                            )}
+                          </div>
+                          {content.url && (
+                            <a
+                              href={content.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-luxury-gold hover:text-luxury-gold/80 text-xs transition-colors"
+                            >
+                              View Post →
+                            </a>
+                          )}
+                        </div>
+
+                        {/* Timestamp */}
+                        <div className="mt-3 pt-3 border-t border-gray-600 text-xs text-gray-500">
+                          Published: {new Date(content.publishedAt).toLocaleDateString()} •
+                          Scraped: {new Date(content.scrapedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-luxury-charcoal/20 border border-orange-500/20 rounded-lg p-8 text-center">
+                  <div className="text-orange-400">⚠️ No AI-Processed Content Available</div>
+                  <div className="text-gray-400 text-sm mt-2">Run an intelligence cycle to populate with real data</div>
+                </div>
+              )}
+
+              {/* Additional AI Content Summary */}
+              {latestContent.length > 6 && (
+                <div className="mt-8 bg-luxury-charcoal/20 border border-luxury-gold/20 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-white font-medium">📊 Recent Intelligence Summary</h4>
+                    <span className="text-luxury-gold text-sm">{latestContent.length} items processed</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div className="bg-luxury-gold/10 border border-luxury-gold/30 rounded p-3">
+                      <div className="text-white font-medium mb-1">🏆 Top Scoring Content</div>
+                      <div className="text-gray-300 text-xs">
+                        {latestContent
+                          .filter(c => c.intelligenceScore)
+                          .sort((a, b) => (b.intelligenceScore || 0) - (a.intelligenceScore || 0))
+                          .slice(0, 3)
+                          .map(c => `@${c.authorHandle} (${c.intelligenceScore})`)
+                          .join(', ')}
+                      </div>
+                    </div>
+                    <div className="bg-purple-500/10 border border-purple-500/30 rounded p-3">
+                      <div className="text-white font-medium mb-1">📱 Platform Distribution</div>
+                      <div className="text-gray-300 text-xs">
+                        Instagram: {latestContent.filter(c => c.platform === 'instagram').length} •
+                        TikTok: {latestContent.filter(c => c.platform === 'tiktok').length}
+                      </div>
+                    </div>
+                    <div className="bg-blue-500/10 border border-blue-500/30 rounded p-3">
+                      <div className="text-white font-medium mb-1">🎬 Transcribed Videos</div>
+                      <div className="text-gray-300 text-xs">
+                        {latestContent.filter(c => c.transcriptText).length} out of {latestContent.length} with transcripts
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-8 text-center">
                 {isAdmin ? (
