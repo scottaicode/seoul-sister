@@ -11,6 +11,46 @@ import { useAuth } from '@/contexts/AuthContext'
 export default function EnhancedIntelligencePage() {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<'dashboard' | 'trends' | 'alerts'>('dashboard')
+  const [isRunning, setIsRunning] = useState(false)
+  const [lastRunResult, setLastRunResult] = useState<any>(null)
+
+  const runIntelligenceCycle = async () => {
+    setIsRunning(true)
+    try {
+      console.log('🚀 Triggering @ponysmakeup intelligence cycle...')
+
+      const response = await fetch('/api/intelligence/monitor', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          influencers: [
+            { handle: 'ponysmakeup', platform: 'instagram' }
+          ],
+          maxContentPerInfluencer: 15,
+          includeTranscription: true,
+          generateTrendReport: true
+        })
+      })
+
+      const result = await response.json()
+      setLastRunResult(result)
+
+      if (result.success) {
+        console.log('✅ Intelligence cycle completed:', result.data.summary)
+        alert(`🎉 Intelligence cycle completed!\n\nScraped: ${result.data.summary.contentScraped} posts\nInfluencers: ${result.data.summary.influencersMonitored}\nTrends: ${result.data.summary.trendsIdentified}`)
+      } else {
+        console.error('❌ Intelligence cycle failed:', result.error)
+        alert(`❌ Intelligence cycle failed: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('❌ Error running intelligence cycle:', error)
+      alert(`❌ Error: ${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+      setIsRunning(false)
+    }
+  }
 
   // For Seoul Sister's $20/month model, all logged-in users get full access
   if (!user) {
@@ -263,8 +303,12 @@ export default function EnhancedIntelligencePage() {
               </div>
 
               <div className="mt-8 text-center">
-                <button className="px-6 py-3 bg-luxury-gold hover:bg-luxury-gold/90 text-black rounded-lg font-medium transition-all">
-                  Run Intelligence Cycle
+                <button
+                  onClick={() => runIntelligenceCycle()}
+                  disabled={isRunning}
+                  className="px-6 py-3 bg-luxury-gold hover:bg-luxury-gold/90 text-black rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isRunning ? 'Running Analysis...' : 'Run Intelligence Cycle'}
                 </button>
                 <p className="text-gray-400 text-sm mt-2">
                   Analyze latest Seoul influencer content and update trend predictions
