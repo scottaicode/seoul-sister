@@ -16,31 +16,19 @@ export async function POST(request: NextRequest) {
 
     // Step 2: Create sample intelligence data (simulating real processing)
     const sampleContent = influencers.map((influencer, index) => ({
-      id: `sim_${Date.now()}_${index}`,
+      platform_post_id: `sim_${Date.now()}_${index}`,
       platform: influencer.platform,
-      author_handle: influencer.handle,
-      url: `https://${influencer.platform}.com/${influencer.handle}/posts/sample`,
-      caption: `Sample Korean beauty content from @${influencer.handle} - featuring trending products and Seoul skincare tips`,
+      content_type: 'post',
+      post_url: `https://${influencer.platform}.com/${influencer.handle}/posts/sample_${index}`,
+      caption: `Sample Korean beauty content from @${influencer.handle} - featuring trending products and Seoul skincare tips. Today I'm sharing the latest from Seoul's beauty scene with authentic K-beauty recommendations.`,
+      hashtags: ['kbeauty', 'glassskin', 'koreanbeauty', 'seoul', 'skincare'],
+      mentions: [influencer.handle],
+      view_count: Math.floor(Math.random() * 200000) + 10000,
       like_count: Math.floor(Math.random() * 50000) + 5000,
       comment_count: Math.floor(Math.random() * 2000) + 100,
-      view_count: Math.floor(Math.random() * 200000) + 10000,
+      share_count: Math.floor(Math.random() * 500) + 50,
       published_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-      scraped_at: new Date().toISOString(),
-      intelligence_score: Math.floor(Math.random() * 50) + 50, // 50-100
-      priority_level: index < 2 ? 'high' : index < 4 ? 'medium' : 'low',
-      transcript_text: influencer.specialty.includes('skincare')
-        ? 'This Korean skincare routine focuses on hydration and gentle ingredients like hyaluronic acid and ceramides for healthy Seoul-style glass skin.'
-        : 'Today I\'m sharing my favorite Korean makeup look using trending products from Seoul beauty brands for that perfect dewy finish.',
-      ai_summary: {
-        summary: `AI analysis of @${influencer.handle}'s content reveals trending Korean beauty insights`,
-        keyInsights: ['Korean skincare trending', 'Glass skin technique', 'Seoul beauty routine'],
-        productMentions: ['COSRX Snail Essence', 'Beauty of Joseon Relief Sun', 'Round Lab Birch Juice'],
-        koreanBeautyTerms: ['glass skin', 'skincare routine', 'K-beauty'],
-        mainPoints: ['Trending products analysis', 'Seoul beauty techniques', 'Ingredient recommendations'],
-        sentimentScore: 0.8,
-        intelligenceValue: 'High commercial potential for featured products',
-        viewerValueProp: 'Authentic Korean beauty recommendations from Seoul experts'
-      }
+      scraped_at: new Date().toISOString()
     }))
 
     console.log(`📊 Generated ${sampleContent.length} sample content pieces`)
@@ -50,13 +38,13 @@ export async function POST(request: NextRequest) {
       try {
         // Clear old sample data for this tier
         await supabaseAdmin
-          .from('beauty_intelligence_reports')
+          .from('influencer_content')
           .delete()
-          .like('id', 'sim_%')
+          .like('platform_post_id', 'sim_%')
 
         // Insert new sample data
         const { data: insertedData } = await supabaseAdmin
-          .from('beauty_intelligence_reports')
+          .from('influencer_content')
           .insert(sampleContent)
           .select()
 
@@ -128,8 +116,8 @@ export async function GET(request: NextRequest) {
     let recentData = []
     if (supabaseAdmin) {
       const { data } = await supabaseAdmin
-        .from('beauty_intelligence_reports')
-        .select('id, platform, author_handle, scraped_at, intelligence_score')
+        .from('influencer_content')
+        .select('id, platform, mentions, scraped_at, like_count')
         .order('scraped_at', { ascending: false })
         .limit(10)
 
