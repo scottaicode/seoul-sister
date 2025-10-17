@@ -1,26 +1,45 @@
-// TODO: Install apify-client properly once npm cache issues are resolved
-// import { ApifyApi } from 'apify-client'
-
-// Mock ApifyClient for build compatibility
-interface MockApifyClient {
-  actor: (actorId: string) => {
-    call: (input: any) => Promise<{ defaultDatasetId?: string }>
-  }
-  dataset: (datasetId: string) => {
-    listItems: () => Promise<{ items: any[] }>
-  }
+// Dynamic import to handle package availability
+let ApifyApi: any
+try {
+  ApifyApi = require('apify-client').ApifyApi
+} catch (error) {
+  console.warn('apify-client not available, using API fetch implementation')
+  ApifyApi = null
 }
 
-class MockApifyApi implements MockApifyClient {
-  constructor(config: { token: string }) {
-    console.log('Mock Apify client initialized with token:', config.token?.substring(0, 8) + '...')
+type ApifyClient = any
+
+interface ApifyConfig {
+  apiKey: string
+}
+
+// Direct API implementation when package is not available
+class ApifyAPIImplementation {
+  private token: string
+  private baseURL = 'https://api.apify.com/v2'
+
+  constructor(token: string) {
+    this.token = token
   }
 
   actor(actorId: string) {
     return {
       call: async (input: any) => {
-        console.log(`Mock Apify actor ${actorId} called with input:`, input)
-        return { defaultDatasetId: 'mock-dataset-id' }
+        const response = await fetch(`${this.baseURL}/acts/${actorId}/runs`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(input)
+        })
+
+        if (!response.ok) {
+          throw new Error(`Apify API error: ${response.status}`)
+        }
+
+        const data = await response.json()
+        return { defaultDatasetId: data.data?.defaultDatasetId }
       }
     }
   }
@@ -28,17 +47,21 @@ class MockApifyApi implements MockApifyClient {
   dataset(datasetId: string) {
     return {
       listItems: async () => {
-        console.log(`Mock dataset ${datasetId} listItems called`)
-        return { items: [] }
+        const response = await fetch(`${this.baseURL}/datasets/${datasetId}/items`, {
+          headers: {
+            'Authorization': `Bearer ${this.token}`
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error(`Apify Dataset API error: ${response.status}`)
+        }
+
+        const items = await response.json()
+        return { items: Array.isArray(items) ? items : [] }
       }
     }
   }
-}
-
-type ApifyClient = MockApifyClient
-
-interface ApifyConfig {
-  apiKey: string
 }
 
 interface InfluencerContent {
@@ -70,7 +93,12 @@ export class ApifyInfluencerMonitor {
   private apify: ApifyClient
 
   constructor(config: ApifyConfig) {
-    this.apify = new MockApifyApi({ token: config.apiKey })
+    if (ApifyApi) {
+      this.apify = new ApifyApi({ token: config.apiKey })
+    } else {
+      // Use direct API calls when package not available
+      this.apify = new ApifyAPIImplementation(config.apiKey)
+    }
   }
 
   /**
