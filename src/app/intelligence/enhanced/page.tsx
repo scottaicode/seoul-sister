@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Zap, TrendingUp, Globe, Brain } from 'lucide-react'
 import AuthHeader from '@/components/AuthHeader'
@@ -13,14 +13,29 @@ export default function EnhancedIntelligencePage() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'trends' | 'alerts'>('dashboard')
   const [isRunning, setIsRunning] = useState(false)
   const [lastRunResult, setLastRunResult] = useState<any>(null)
+  const [userProfile, setUserProfile] = useState<any>(null)
 
-  // Admin check - only admins can trigger intelligence cycles
-  const isAdmin = user?.email === 'glowframeal@gmail.com' ||
-                  user?.email === 'scottaicode@gmail.com' ||
-                  user?.email === 'vibetrendai@gmail.com' ||
-                  user?.email?.includes('admin') ||
-                  user?.email?.includes('scott') ||
-                  user?.email?.includes('vibe')
+  // Fetch user profile to check subscription status
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user?.email) return
+
+      try {
+        const response = await fetch('/api/user/profile')
+        if (response.ok) {
+          const profile = await response.json()
+          setUserProfile(profile)
+        }
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error)
+      }
+    }
+
+    fetchUserProfile()
+  }, [user?.email])
+
+  // Admin check based on subscription status - bypass_admin grants admin access
+  const isAdmin = userProfile?.subscription_status === 'bypass_admin'
 
   // Regular users see view-only dashboard with auto-updated intelligence
 
