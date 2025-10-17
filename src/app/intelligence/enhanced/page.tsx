@@ -427,7 +427,7 @@ export default function EnhancedIntelligencePage() {
                             <p className="text-gray-300 text-sm mb-2">{content.aiSummary.summary}</p>
 
                             {/* Key Insights */}
-                            {content.aiSummary.keyInsights?.length > 0 && (
+                            {content.aiSummary.keyInsights && content.aiSummary.keyInsights.length > 0 && (
                               <div className="mb-2">
                                 <div className="text-gray-400 text-xs mb-1">Key Insights:</div>
                                 <div className="flex flex-wrap gap-1">
@@ -441,7 +441,7 @@ export default function EnhancedIntelligencePage() {
                             )}
 
                             {/* Product Mentions */}
-                            {content.aiSummary.productMentions?.length > 0 && (
+                            {content.aiSummary.productMentions && content.aiSummary.productMentions.length > 0 && (
                               <div className="mb-2">
                                 <div className="text-gray-400 text-xs mb-1">Products Mentioned:</div>
                                 <div className="flex flex-wrap gap-1">
@@ -455,7 +455,7 @@ export default function EnhancedIntelligencePage() {
                             )}
 
                             {/* Korean Beauty Terms */}
-                            {content.aiSummary.koreanBeautyTerms?.length > 0 && (
+                            {content.aiSummary.koreanBeautyTerms && content.aiSummary.koreanBeautyTerms.length > 0 && (
                               <div className="mb-2">
                                 <div className="text-gray-400 text-xs mb-1">Korean Beauty Terms:</div>
                                 <div className="flex flex-wrap gap-1">
