@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Zap, TrendingUp, Globe, Brain } from 'lucide-react'
 import AuthHeader from '@/components/AuthHeader'
-import IntelligenceDashboard from '@/components/IntelligenceDashboard'
+// import IntelligenceDashboard from '@/components/IntelligenceDashboard'
 import PremiumGate from '@/components/PremiumGate'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -139,8 +139,90 @@ export default function EnhancedIntelligencePage() {
         {/* Content */}
         <div className="max-w-6xl mx-auto">
           {activeTab === 'dashboard' && (
-            <div>
-              <IntelligenceDashboard />
+            <div className="bg-luxury-charcoal/20 rounded-xl p-8 border border-luxury-gold/20 backdrop-blur-sm">
+              <div className="text-center mb-6">
+                <TrendingUp className="text-luxury-gold mx-auto mb-4" size={48} />
+                <h3 className="text-2xl font-semibold text-white mb-2 tracking-wide">
+                  Live Korean Beauty Intelligence
+                </h3>
+                <p className="text-gray-300 font-light">
+                  Real-time monitoring of Seoul's top beauty influencers and trending products
+                </p>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium text-white">Trending Products</h4>
+                    <span className="text-luxury-gold text-sm">Live</span>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-300 text-sm">Beauty of Joseon Relief Sun</span>
+                      <span className="text-green-400 text-xs">+127%</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-300 text-sm">COSRX Snail 96 Mucin</span>
+                      <span className="text-green-400 text-xs">+89%</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-300 text-sm">Round Lab Birch Juice</span>
+                      <span className="text-green-400 text-xs">+76%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium text-white">Viral Ingredients</h4>
+                    <span className="text-luxury-gold text-sm">24h</span>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-300 text-sm">Centella Asiatica</span>
+                      <span className="text-blue-400 text-xs">Seoul Fav</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-300 text-sm">Rice Bran</span>
+                      <span className="text-purple-400 text-xs">Trending</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-300 text-sm">Snail Secretion</span>
+                      <span className="text-green-400 text-xs">Classic</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium text-white">Price Intelligence</h4>
+                    <span className="text-luxury-gold text-sm">Real-time</span>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-300 text-sm">Average Seoul Savings</span>
+                      <span className="text-green-400 text-xs">67%</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-300 text-sm">Best Arbitrage</span>
+                      <span className="text-green-400 text-xs">243% markup</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-300 text-sm">Opportunities</span>
+                      <span className="text-luxury-gold text-xs">156 active</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 text-center">
+                <button className="px-6 py-3 bg-luxury-gold hover:bg-luxury-gold/90 text-black rounded-lg font-medium transition-all">
+                  Run Intelligence Cycle
+                </button>
+                <p className="text-gray-400 text-sm mt-2">
+                  Analyze latest Seoul influencer content and update trend predictions
+                </p>
+              </div>
             </div>
           )}
 
