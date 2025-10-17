@@ -115,18 +115,15 @@ export class ApifyInfluencerMonitor {
     try {
       console.log(`🔍 Starting Instagram scrape for @${username}`)
 
+      // Simplified input for free-tier compatibility
       const input = {
-        username: [username],
-        resultsType: 'posts',
-        resultsLimit: options.maxPosts || 20,
-        includeStories: options.includeStories || false,
-        includeReels: options.includeReels || true,
-        searchType: 'user',
-        addParentData: false
+        usernames: [username],
+        resultsLimit: options.maxPosts || 10, // Lower limit for free tier
+        resultsType: 'posts'
       }
 
-      // Use Instagram Scraper actor
-      const run = await this.apify.actor('shu8hvrXbJbY3Eb9W').call(input)
+      // Use free-tier Instagram Scraper actor (more compatible with free accounts)
+      const run = await this.apify.actor('apify/instagram-scraper').call(input)
 
       if (!run.defaultDatasetId) {
         throw new Error('No dataset ID returned from Apify')
@@ -182,16 +179,14 @@ export class ApifyInfluencerMonitor {
     try {
       console.log(`🔍 Starting TikTok scrape for @${username}`)
 
+      // Simplified input for free-tier compatibility
       const input = {
         profiles: [username],
-        resultsPerPage: options.maxPosts || 20,
-        shouldDownloadCovers: false,
-        shouldDownloadVideos: false,
-        shouldDownloadSubtitles: true // Important for transcription later
+        resultsPerPage: options.maxPosts || 10
       }
 
-      // Use TikTok Scraper actor
-      const run = await this.apify.actor('clockworks/free-tiktok-scraper').call(input)
+      // Use official TikTok scraper for better free-tier compatibility
+      const run = await this.apify.actor('apify/tiktok-scraper').call(input)
 
       if (!run.defaultDatasetId) {
         throw new Error('No dataset ID returned from Apify')
@@ -357,7 +352,7 @@ export class ApifyInfluencerMonitor {
       searchType: 'hashtag'
     }
 
-    const run = await this.apify.actor('shu8hvrXbJbY3Eb9W').call(input)
+    const run = await this.apify.actor('apify/instagram-scraper').call(input)
     const dataset = await this.apify.dataset(run.defaultDatasetId!).listItems()
 
     const processedData: InfluencerContent[] = dataset.items.map((item: any) => ({
@@ -393,7 +388,7 @@ export class ApifyInfluencerMonitor {
       shouldDownloadSubtitles: true
     }
 
-    const run = await this.apify.actor('clockworks/free-tiktok-scraper').call(input)
+    const run = await this.apify.actor('apify/tiktok-scraper').call(input)
     const dataset = await this.apify.dataset(run.defaultDatasetId!).listItems()
 
     const processedData: InfluencerContent[] = dataset.items.map((item: any) => ({
