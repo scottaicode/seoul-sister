@@ -54,7 +54,7 @@ export class SupaDataTranscriptionService {
       console.log(`🎬 Starting transcription for: ${request.videoUrl}`)
 
       // Use the correct SupaData API endpoint from documentation
-      const response = await fetch(`${this.baseUrl}/video`, {
+      const response = await fetch(`${this.baseUrl}/transcript`, {
         method: 'POST',
         headers: {
           'x-api-key': this.apiKey, // Use x-api-key header as shown in docs
@@ -62,13 +62,9 @@ export class SupaDataTranscriptionService {
         },
         body: JSON.stringify({
           url: request.videoUrl, // Use 'url' field as per SupaData API
-          language: request.language || 'auto',
-          format: request.outputFormat || 'text',
-          timestamps: request.includeTimestamps || false,
-          speakers: request.speakerIdentification || false,
-          // Korean beauty specific optimizations
-          domain: 'beauty',
-          custom_vocabulary: KOREAN_BEAUTY_VOCABULARY
+          lang: request.language || 'auto',
+          text: request.outputFormat === 'text' || true,
+          mode: 'auto' // Use auto mode to try native first, fallback to generate
         })
       })
 
@@ -79,21 +75,21 @@ export class SupaDataTranscriptionService {
 
       const data = await response.json()
 
-      // Check if transcription is processing asynchronously
-      if (data.status === 'processing') {
-        return await this.pollTranscriptionStatus(data.transcription_id)
+      // Check if transcription is processing asynchronously (returns jobId)
+      if (data.jobId) {
+        return await this.pollTranscriptionStatus(data.jobId)
       }
 
       console.log(`✅ Transcription completed for: ${request.videoUrl}`)
 
       return {
         success: true,
-        transcriptionId: data.transcription_id,
-        text: data.text,
-        language: data.detected_language,
-        confidence: data.confidence_score,
-        processingTime: data.processing_time_ms,
-        timestamps: data.timestamps || undefined
+        transcriptionId: data.jobId,
+        text: data.content,
+        language: data.lang,
+        confidence: 0.95, // Default confidence for successful transcriptions
+        processingTime: undefined,
+        timestamps: data.content && Array.isArray(data.content) ? data.content : undefined
       }
 
     } catch (error) {
