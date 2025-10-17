@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         const { data: insertedData, error: insertError } = await supabaseAdmin
           .from('influencer_content')
           .insert(sampleContent as any) // Type assertion to bypass strict typing issues
-          .select()
+          .select() as { data: any[] | null, error: any }
 
         if (insertError) {
           console.error('❌ Database insert error:', insertError)
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
 
         // Store additional AI analysis in separate table if needed
         if (insertedData && insertedData.length > 0) {
-          const aiAnalysisData = insertedData.map((content, index) => ({
+          const aiAnalysisData = insertedData.map((content: any, index: number) => ({
             content_id: content.id,
             transcript_text: content.hashtags?.includes('skincare')
               ? 'This Korean skincare routine focuses on hydration and gentle ingredients like hyaluronic acid and ceramides for healthy Seoul-style glass skin.'
