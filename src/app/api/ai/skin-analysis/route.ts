@@ -56,12 +56,11 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔬 Starting AI skin analysis for user ${userId}`)
 
-    // Check if user has premium subscription
-    const hasSubscription = await checkPremiumSubscription(userId)
-    if (!hasSubscription) {
+    // For Seoul Sister's $20/month model, all authenticated users get access
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Premium subscription required for AI skin analysis' },
-        { status: 403 }
+        { error: 'User authentication required' },
+        { status: 401 }
       )
     }
 
@@ -127,28 +126,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function checkPremiumSubscription(userId: string): Promise<boolean> {
-  try {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('subscription_status, trial_end, current_period_end')
-      .eq('id', userId)
-      .single()
-
-    if (!profile) return false
-
-    const now = new Date()
-    const hasActiveSubscription = ['active', 'trialing'].includes(profile.subscription_status)
-    const trialValid = profile.trial_end && new Date(profile.trial_end) > now
-    const subscriptionValid = profile.current_period_end && new Date(profile.current_period_end) > now
-
-    return hasActiveSubscription && (trialValid || subscriptionValid)
-
-  } catch (error) {
-    console.error('Error checking subscription:', error)
-    return false
-  }
-}
+// Removed checkPremiumSubscription - Seoul Sister uses simple $20/month model with full access for authenticated users
 
 async function uploadPhotoToStorage(file: File, userId: string): Promise<string> {
   try {
