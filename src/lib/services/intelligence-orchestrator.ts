@@ -2,6 +2,15 @@ import { createClient } from '@supabase/supabase-js'
 import { createApifyMonitor, getDefaultKoreanInfluencers } from './apify-service'
 import { createSupaDataService, extractVideoUrls } from './supadata-service'
 import { createAITrendAnalyzer, prepareContentForAnalysis } from './ai-trend-analyzer'
+import { ContentManager } from './content-manager'
+import {
+  KOREAN_BEAUTY_INFLUENCERS,
+  TIKTOK_VALIDATION_INFLUENCERS,
+  getAllMonitoredInfluencers,
+  getInfluencersBySchedule,
+  getInfluencersByTier,
+  MONITORING_SCHEDULE
+} from '../config/korean-influencers'
 
 interface IntelligenceConfig {
   supabaseUrl: string
@@ -31,6 +40,7 @@ export class KoreanBeautyIntelligenceOrchestrator {
   private apifyMonitor: any
   private supaDataService: any
   private aiAnalyzer: any
+  private contentManager: ContentManager
   private config: IntelligenceConfig
 
   constructor(config: IntelligenceConfig) {
@@ -39,59 +49,100 @@ export class KoreanBeautyIntelligenceOrchestrator {
     this.apifyMonitor = createApifyMonitor()
     this.supaDataService = createSupaDataService()
     this.aiAnalyzer = createAITrendAnalyzer()
+    this.contentManager = new ContentManager()
   }
 
   /**
-   * Run a complete intelligence gathering cycle
+   * Run a complete intelligence gathering cycle using premium 12-influencer strategy
    */
   async runIntelligenceCycle(options: {
     influencers?: Array<{ handle: string; platform: 'instagram' | 'tiktok' }>
     maxContentPerInfluencer?: number
     includeTranscription?: boolean
     generateTrendReport?: boolean
+    tier?: 'mega' | 'rising' | 'niche' | 'all'
+    scheduleSlot?: 'morning' | 'afternoon' | 'evening' | 'all'
   } = {}): Promise<MonitoringResult> {
     const startTime = Date.now()
 
     try {
-      console.log('🚀 Starting Korean Beauty Intelligence Cycle')
+      console.log('🚀 Starting Premium Korean Beauty Intelligence Cycle')
 
-      // Step 1: Get influencers to monitor
-      const influencersToMonitor = options.influencers || getDefaultKoreanInfluencers()
+      // Step 1: Get influencers to monitor using tier-based strategy
+      const influencersToMonitor = await this.getInfluencersForMonitoring(options)
+      console.log(`👥 Monitoring ${influencersToMonitor.length} influencers across ${new Set(influencersToMonitor.map(i => i.tier)).size} tiers`)
 
-      // Step 2: Scrape content from influencers
-      console.log('📱 Scraping influencer content...')
-      const scrapingResult = await this.apifyMonitor.monitorInfluencers(
-        influencersToMonitor.map(inf => ({
-          ...inf,
-          maxPosts: options.maxContentPerInfluencer || 10
-        }))
-      )
+      // Step 2: Filter and prioritize content using ContentManager
+      console.log('🔍 Pre-filtering content to avoid duplicates...')
+      const influencerConfig = influencersToMonitor.map(inf => ({
+        handle: inf.handle,
+        platform: inf.platform,
+        maxPosts: inf.maxPosts || options.maxContentPerInfluencer || 15
+      }))
+
+      // Step 3: Scrape content from influencers with premium actors
+      console.log('📱 Scraping influencer content with premium actors...')
+      const scrapingResult = await this.apifyMonitor.monitorInfluencers(influencerConfig)
 
       if (!scrapingResult.totalResults.length) {
         throw new Error('No content scraped from influencers')
       }
 
-      // Step 3: Save scraped content to database
-      console.log('💾 Saving content to database...')
-      const savedContent = await this.saveContentToDatabase(scrapingResult.totalResults)
+      // Step 4: Smart content filtering and deduplication
+      console.log('🧠 Applying intelligent content filtering...')
+      const filteredContent = await this.contentManager.filterContentForProcessing(
+        scrapingResult.totalResults,
+        { hours: 48 } // Only process content from last 48 hours
+      )
 
-      // Step 4: Extract and transcribe videos (if enabled)
+      if (!filteredContent.length) {
+        console.log('⚠️  All content was filtered out (likely duplicates or too old)')
+        return {
+          success: true,
+          summary: {
+            influencersMonitored: influencersToMonitor.length,
+            contentScraped: 0,
+            videosTranscribed: 0,
+            trendsIdentified: 0,
+            processingTimeMs: Date.now() - startTime
+          }
+        }
+      }
+
+      // Step 5: Calculate Seoul Sister Intelligence Scores
+      console.log('⭐ Calculating Seoul Sister Intelligence Scores...')
+      const scoredContent = await this.scoreAndPrioritizeContent(filteredContent, influencersToMonitor)
+
+      // Step 6: Save scraped content to database with intelligence tracking
+      console.log('💾 Saving content to database with intelligence scores...')
+      const savedContent = await this.saveContentToDatabase(scoredContent)
+
+      // Step 7: Mark content as processed to prevent future duplicates
+      console.log('🔄 Updating content tracking database...')
+      await this.markContentAsProcessed(savedContent)
+
+      // Step 8: Extract and transcribe videos (if enabled)
       let transcriptionResults: any[] = []
       if (options.includeTranscription !== false) {
         console.log('🎬 Processing video transcriptions...')
         transcriptionResults = await this.processVideoTranscriptions(savedContent)
       }
 
-      // Step 5: Generate AI trend analysis (if enabled)
+      // Step 9: Cross-platform trend validation
+      console.log('🔗 Running cross-platform trend validation...')
+      const crossPlatformInsights = await this.runCrossPlatformValidation(savedContent, influencersToMonitor)
+
+      // Step 10: Generate AI trend analysis (if enabled)
       let trendAnalysis = null
       if (options.generateTrendReport !== false) {
-        console.log('🤖 Generating AI trend analysis...')
-        trendAnalysis = await this.generateTrendAnalysis(savedContent, transcriptionResults)
+        console.log('🤖 Generating AI trend analysis with cross-platform insights...')
+        trendAnalysis = await this.generateTrendAnalysis(savedContent, transcriptionResults, crossPlatformInsights)
       }
 
       const processingTime = Date.now() - startTime
 
-      console.log(`✅ Intelligence cycle completed in ${processingTime}ms`)
+      console.log(`✅ Premium Intelligence cycle completed in ${processingTime}ms`)
+      console.log(`📊 Results: ${savedContent.length} content pieces, ${transcriptionResults.length} transcriptions, ${trendAnalysis?.emergingTrends?.length || 0} trends`)
 
       const result: MonitoringResult = {
         success: true,
@@ -111,7 +162,7 @@ export class KoreanBeautyIntelligenceOrchestrator {
       return result
 
     } catch (error) {
-      console.error('❌ Intelligence cycle failed:', error)
+      console.error('❌ Premium Intelligence cycle failed:', error)
       return {
         success: false,
         summary: {
@@ -267,6 +318,175 @@ export class KoreanBeautyIntelligenceOrchestrator {
     }
   }
 
+  /**
+   * Get influencers for monitoring based on tier and schedule preferences
+   */
+  private async getInfluencersForMonitoring(options: {
+    tier?: 'mega' | 'rising' | 'niche' | 'all'
+    scheduleSlot?: 'morning' | 'afternoon' | 'evening' | 'all'
+  }): Promise<any[]> {
+    let influencers = []
+
+    if (options.tier && options.tier !== 'all') {
+      influencers = getInfluencersByTier(options.tier)
+    } else if (options.scheduleSlot && options.scheduleSlot !== 'all') {
+      influencers = getInfluencersBySchedule(options.scheduleSlot)
+    } else {
+      // Use all 12 Korean beauty influencers + TikTok validation set
+      influencers = getAllMonitoredInfluencers()
+    }
+
+    // Update last scraped timestamp for selected influencers
+    influencers.forEach(inf => {
+      inf.lastScraped = new Date().toISOString()
+    })
+
+    return influencers
+  }
+
+  /**
+   * Score and prioritize content using Seoul Sister Intelligence algorithm
+   */
+  private async scoreAndPrioritizeContent(content: any[], influencers: any[]): Promise<any[]> {
+    const scoredContent = []
+
+    for (const item of content) {
+      try {
+        // Find influencer data for authority scoring
+        const influencerData = influencers.find(inf =>
+          inf.handle === item.authorHandle && inf.platform === item.platform
+        )
+
+        if (!influencerData) continue
+
+        // Calculate time since posting
+        const publishedAt = new Date(item.publishedAt)
+        const hoursAgo = (Date.now() - publishedAt.getTime()) / (1000 * 60 * 60)
+
+        // Calculate Seoul Sister Intelligence Score
+        const contentScore = this.contentManager.calculateContentScore(
+          item,
+          influencerData,
+          { hoursAgo }
+        )
+
+        // Add score to content item
+        const scoredItem = {
+          ...item,
+          intelligenceScore: contentScore.total_score,
+          priorityLevel: contentScore.priority_level,
+          scoreBreakdown: {
+            engagementVelocity: contentScore.engagement_velocity,
+            influencerAuthority: contentScore.influencer_authority,
+            contentRichness: contentScore.content_richness,
+            trendNovelty: contentScore.trend_novelty
+          }
+        }
+
+        scoredContent.push(scoredItem)
+      } catch (error) {
+        console.error('❌ Failed to score content item:', error)
+        // Include unscored content with default values
+        scoredContent.push({
+          ...item,
+          intelligenceScore: 0,
+          priorityLevel: 'low',
+          scoreBreakdown: null
+        })
+      }
+    }
+
+    // Sort by intelligence score (highest first)
+    return scoredContent.sort((a, b) => b.intelligenceScore - a.intelligenceScore)
+  }
+
+  /**
+   * Mark content as processed to prevent future duplicates
+   */
+  private async markContentAsProcessed(content: any[]): Promise<void> {
+    for (const item of content) {
+      try {
+        await this.contentManager.markContentAsProcessed({
+          post_id: item.platform_post_id || item.postId,
+          platform: item.platform,
+          influencer_handle: item.authorHandle,
+          scraped_at: new Date().toISOString(),
+          engagement_score: item.like_count + (item.comment_count * 10),
+          content_hash: this.generateContentHash(item),
+          virality_score: item.intelligenceScore || 0,
+          trend_signals: item.hashtags || []
+        })
+      } catch (error) {
+        console.error('❌ Failed to mark content as processed:', error)
+      }
+    }
+  }
+
+  /**
+   * Run cross-platform trend validation
+   */
+  private async runCrossPlatformValidation(content: any[], influencers: any[]): Promise<any> {
+    try {
+      // Group content by platform
+      const instagramContent = content.filter(c => c.platform === 'instagram')
+      const tiktokContent = content.filter(c => c.platform === 'tiktok')
+
+      // Find common hashtags across platforms
+      const instagramHashtags = new Set(
+        instagramContent.flatMap(c => c.hashtags || [])
+      )
+      const tiktokHashtags = new Set(
+        tiktokContent.flatMap(c => c.hashtags || [])
+      )
+
+      const crossPlatformTags = [...instagramHashtags].filter(tag =>
+        tiktokHashtags.has(tag)
+      )
+
+      // Find influencers active on both platforms
+      const dualPlatformInfluencers = influencers.filter(inf => {
+        const handle = inf.handle
+        return influencers.some(other =>
+          other.handle === handle && other.platform !== inf.platform
+        )
+      })
+
+      // Calculate cross-platform validation score
+      const validationScore = Math.min(100,
+        (crossPlatformTags.length * 10) +
+        (dualPlatformInfluencers.length * 5)
+      )
+
+      return {
+        crossPlatformHashtags: crossPlatformTags,
+        dualPlatformInfluencers: dualPlatformInfluencers.map(inf => inf.handle),
+        validationScore,
+        platformDistribution: {
+          instagram: instagramContent.length,
+          tiktok: tiktokContent.length
+        },
+        trendConsistency: crossPlatformTags.length > 0 ? 'high' : 'low'
+      }
+    } catch (error) {
+      console.error('❌ Cross-platform validation failed:', error)
+      return {
+        crossPlatformHashtags: [],
+        dualPlatformInfluencers: [],
+        validationScore: 0,
+        platformDistribution: { instagram: 0, tiktok: 0 },
+        trendConsistency: 'unknown'
+      }
+    }
+  }
+
+  /**
+   * Generate content hash for duplicate detection
+   */
+  private generateContentHash(content: any): string {
+    const hashString = `${content.authorHandle}-${content.caption?.substring(0, 100) || ''}-${content.publishedAt}`
+    return Buffer.from(hashString).toString('base64').substring(0, 32)
+  }
+
   private async saveContentToDatabase(content: any[]): Promise<any[]> {
     const savedContent: any[] = []
 
@@ -299,23 +519,28 @@ export class KoreanBeautyIntelligenceOrchestrator {
           currentInfluencer = newInfluencer
         }
 
-        // Save content
+        // Save content with intelligence scoring data
         const { data: savedItem } = await this.supabase
           .from('influencer_content')
           .upsert({
             influencer_id: currentInfluencer.id,
-            platform_post_id: item.postId,
+            platform_post_id: item.postId || item.platform_post_id,
             platform: item.platform,
             post_url: item.url,
             caption: item.caption,
             hashtags: item.hashtags,
             mentions: item.mentions,
-            media_urls: item.mediaUrls,
-            view_count: item.metrics.views,
-            like_count: item.metrics.likes,
-            comment_count: item.metrics.comments,
-            share_count: item.metrics.shares,
-            published_at: item.publishedAt
+            media_urls: item.mediaUrls || item.media_urls,
+            view_count: item.metrics?.views || item.view_count,
+            like_count: item.metrics?.likes || item.like_count,
+            comment_count: item.metrics?.comments || item.comment_count,
+            share_count: item.metrics?.shares || item.share_count,
+            published_at: item.publishedAt,
+            intelligence_score: item.intelligenceScore || 0,
+            priority_level: item.priorityLevel || 'low',
+            content_richness: item.scoreBreakdown?.contentRichness || 0,
+            trend_novelty: item.scoreBreakdown?.trendNovelty || 0,
+            scraped_at: new Date().toISOString()
           }, {
             onConflict: 'platform_post_id,platform'
           })
@@ -389,7 +614,7 @@ export class KoreanBeautyIntelligenceOrchestrator {
     return transcriptions
   }
 
-  private async generateTrendAnalysis(content: any[], transcriptions: any[]): Promise<any> {
+  private async generateTrendAnalysis(content: any[], transcriptions: any[], crossPlatformInsights?: any): Promise<any> {
     try {
       const analysisInput = prepareContentForAnalysis(content, transcriptions)
 

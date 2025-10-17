@@ -115,15 +115,23 @@ export class ApifyInfluencerMonitor {
     try {
       console.log(`🔍 Starting Instagram scrape for @${username}`)
 
-      // Simplified input for free-tier compatibility
+      // Premium input with full feature access
       const input = {
-        usernames: [username],
-        resultsLimit: options.maxPosts || 10, // Lower limit for free tier
-        resultsType: 'posts'
+        username: [username],
+        resultsType: 'posts',
+        resultsLimit: options.maxPosts || 30, // Higher limit for premium
+        includeStories: options.includeStories || false,
+        includeReels: options.includeReels || true,
+        searchType: 'user',
+        addParentData: true, // Get rich metadata
+        proxyConfiguration: {
+          useApifyProxy: true,
+          apifyProxyGroups: ['RESIDENTIAL']
+        }
       }
 
-      // Use free-tier Instagram Scraper actor (more compatible with free accounts)
-      const run = await this.apify.actor('apify/instagram-scraper').call(input)
+      // Use premium Instagram Scraper actor with residential proxy access
+      const run = await this.apify.actor('shu8hvrXbJbY3Eb9W').call(input)
 
       if (!run.defaultDatasetId) {
         throw new Error('No dataset ID returned from Apify')
@@ -179,14 +187,22 @@ export class ApifyInfluencerMonitor {
     try {
       console.log(`🔍 Starting TikTok scrape for @${username}`)
 
-      // Simplified input for free-tier compatibility
+      // Premium TikTok input with enhanced features
       const input = {
         profiles: [username],
-        resultsPerPage: options.maxPosts || 10
+        resultsPerPage: options.maxPosts || 25,
+        shouldDownloadCovers: false,
+        shouldDownloadVideos: false,
+        shouldDownloadSubtitles: true, // For transcription analysis
+        proxyConfiguration: {
+          useApifyProxy: true,
+          apifyProxyGroups: ['RESIDENTIAL'],
+          apifyProxyCountry: 'KR' // Korean proxies for better content relevance
+        }
       }
 
-      // Use official TikTok scraper for better free-tier compatibility
-      const run = await this.apify.actor('apify/tiktok-scraper').call(input)
+      // Use premium TikTok scraper with enhanced capabilities
+      const run = await this.apify.actor('clockworks/tiktok-scraper').call(input)
 
       if (!run.defaultDatasetId) {
         throw new Error('No dataset ID returned from Apify')
