@@ -37,6 +37,14 @@ export default function EnhancedIntelligencePage() {
   // Admin check based on subscription status - bypass_admin grants admin access
   const isAdmin = userProfile?.subscription_status === 'bypass_admin'
 
+  // Debug logging
+  console.log('🔍 Admin Check Debug:', {
+    userEmail: user?.email,
+    userProfile,
+    subscriptionStatus: userProfile?.subscription_status,
+    isAdmin
+  })
+
   // Regular users see view-only dashboard with auto-updated intelligence
 
   const runPremiumIntelligenceCycle = async (tier: string = 'all') => {
