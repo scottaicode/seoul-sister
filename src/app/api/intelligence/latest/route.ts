@@ -1,6 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 
+interface BeautyIntelligenceReport {
+  id: string
+  platform: string
+  author_handle: string
+  url: string
+  caption: string | null
+  like_count: number | null
+  comment_count: number | null
+  view_count: number | null
+  published_at: string
+  scraped_at: string
+  intelligence_score: number | null
+  priority_level: string | null
+  transcript_text: string | null
+  ai_summary: {
+    summary: string
+    keyInsights?: string[]
+    productMentions?: string[]
+    trendSignals?: string[]
+    koreanBeautyTerms?: string[]
+    mainPoints?: string[]
+    sentimentScore?: number
+    intelligenceValue?: string
+    viewerValueProp?: string
+  } | null
+}
+
 export async function GET(request: NextRequest) {
   try {
     if (!supabaseAdmin) {
@@ -15,7 +42,7 @@ export async function GET(request: NextRequest) {
         ai_summary
       `)
       .order('scraped_at', { ascending: false })
-      .limit(20)
+      .limit(20) as { data: BeautyIntelligenceReport[] | null, error: any }
 
     if (error) {
       console.error('Failed to fetch latest content:', error)
