@@ -59,6 +59,55 @@ export default function PersonalizedDashboard() {
             for your unique skin needs.
           </p>
 
+          {/* Korean Beauty Intelligence Feature */}
+          {isAuthenticated && (
+            <div className="max-w-4xl mx-auto mb-8">
+              <div className="bg-luxury-charcoal/20 rounded-2xl p-6 border border-luxury-gold/20 backdrop-blur-sm">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="text-center md:text-left">
+                    <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+                      <span className="text-2xl">🇰🇷</span>
+                      <h3 className="text-xl font-semibold text-white tracking-wide">
+                        Seoul Sister Intelligence
+                      </h3>
+                      <span className="text-xs bg-luxury-gold/20 text-luxury-gold px-2 py-1 rounded-full">
+                        NEW
+                      </span>
+                    </div>
+                    <p className="text-gray-300 font-light mb-4">
+                      Real-time Korean beauty trends 3-6 months before they hit the US market
+                    </p>
+                    <div className="flex flex-wrap justify-center md:justify-start gap-2 text-xs">
+                      <span className="bg-luxury-gold/10 text-luxury-gold px-2 py-1 rounded">
+                        🤖 AI Trend Analysis
+                      </span>
+                      <span className="bg-luxury-gold/10 text-luxury-gold px-2 py-1 rounded">
+                        📱 Influencer Monitoring
+                      </span>
+                      <span className="bg-luxury-gold/10 text-luxury-gold px-2 py-1 rounded">
+                        💰 Price Intelligence
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    <Link
+                      href="/intelligence/enhanced"
+                      className="px-6 py-3 bg-luxury-gold text-black rounded-xl hover:bg-luxury-gold/90 transition-all font-medium tracking-wide text-center"
+                    >
+                      Enhanced Intelligence Dashboard
+                    </Link>
+                    <Link
+                      href="/skin-analysis"
+                      className="px-6 py-3 bg-luxury-charcoal/50 text-gray-300 border border-luxury-gold/30 rounded-xl hover:bg-luxury-charcoal/70 transition-all font-medium tracking-wide text-center"
+                    >
+                      AI Skin Analysis
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {!isAuthenticated ? (
             <div className="bg-luxury-charcoal/20 rounded-2xl p-8 border border-luxury-gold/20 text-center mb-8">
               <div className="text-6xl mb-4">🔐</div>

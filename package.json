@@ -19,6 +19,7 @@
     "@stripe/react-stripe-js": "^2.4.0",
     "@stripe/stripe-js": "^2.1.11",
     "@supabase/supabase-js": "^2.38.0",
+    "apify-client": "^2.7.1",
     "date-fns": "^3.6.0",
     "dotenv": "^17.2.3",
     "framer-motion": "^10.18.0",
