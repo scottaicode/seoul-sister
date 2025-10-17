@@ -102,9 +102,17 @@ export async function POST(request: NextRequest) {
       } catch (dbError) {
         console.error('❌ Database operation failed:', dbError)
         console.error('❌ Detailed error:', JSON.stringify(dbError, null, 2))
+        console.error('❌ Sample content structure:', JSON.stringify(sampleContent[0], null, 2))
 
-        // Continue without database storage for now - return success with simulated data
-        console.log('⚠️ Continuing without database storage - using simulated data response')
+        // Return the actual error so we can debug it
+        return NextResponse.json({
+          success: false,
+          error: 'Database storage failed - detailed logging enabled',
+          dbError: dbError instanceof Error ? dbError.message : String(dbError),
+          sampleDataStructure: sampleContent[0],
+          note: 'This error will help us fix the database schema mismatch',
+          timestamp: new Date().toISOString()
+        }, { status: 500 })
       }
     }
 
