@@ -20,20 +20,35 @@ export async function GET(request: NextRequest) {
       .eq('email', email)
       .single()
 
-    if (profileError) {
+    if (profileError && profileError.code !== 'PGRST116') {
+      // PGRST116 is "not found" - we'll handle that below
       console.error('Failed to fetch user profile:', profileError)
-      return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Database error' }, { status: 500 })
+    }
+
+    // If no profile found, return default profile with email
+    if (!profile) {
+      return NextResponse.json({
+        id: null,
+        email: email,
+        name: null,
+        subscription_status: null,
+        trial_end: null,
+        current_period_start: null,
+        created_at: null,
+        updated_at: null
+      })
     }
 
     return NextResponse.json({
-      id: profile.id,
-      email: profile.email,
-      name: profile.name,
-      subscription_status: profile.subscription_status,
-      trial_end: profile.trial_end,
-      current_period_start: profile.current_period_start,
-      created_at: profile.created_at,
-      updated_at: profile.updated_at
+      id: profile?.id || null,
+      email: profile?.email || email,
+      name: profile?.name || null,
+      subscription_status: profile?.subscription_status || null,
+      trial_end: profile?.trial_end || null,
+      current_period_start: profile?.current_period_start || null,
+      created_at: profile?.created_at || null,
+      updated_at: profile?.updated_at || null
     })
 
   } catch (error) {
