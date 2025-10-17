@@ -14,6 +14,11 @@ export default function EnhancedIntelligencePage() {
   const [isRunning, setIsRunning] = useState(false)
   const [lastRunResult, setLastRunResult] = useState<any>(null)
 
+  // Admin check - only admins can trigger intelligence cycles
+  const isAdmin = user?.email === 'glowframeal@gmail.com' || user?.email?.includes('admin')
+
+  // Regular users see view-only dashboard with auto-updated intelligence
+
   const runPremiumIntelligenceCycle = async (tier: string = 'all') => {
     setIsRunning(true)
     try {
@@ -228,13 +233,19 @@ export default function EnhancedIntelligencePage() {
                       <span className="text-luxury-gold">2.1M</span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => runPremiumIntelligenceCycle('mega')}
-                    disabled={isRunning}
-                    className="w-full mt-3 px-3 py-2 bg-luxury-gold/20 hover:bg-luxury-gold/30 text-luxury-gold rounded text-xs font-medium transition-all disabled:opacity-50"
-                  >
-                    {isRunning ? 'Running...' : 'Monitor Mega'}
-                  </button>
+                  {isAdmin ? (
+                    <button
+                      onClick={() => runPremiumIntelligenceCycle('mega')}
+                      disabled={isRunning}
+                      className="w-full mt-3 px-3 py-2 bg-luxury-gold/20 hover:bg-luxury-gold/30 text-luxury-gold rounded text-xs font-medium transition-all disabled:opacity-50"
+                    >
+                      {isRunning ? 'Running...' : 'Monitor Mega'}
+                    </button>
+                  ) : (
+                    <div className="w-full mt-3 px-3 py-2 bg-luxury-gold/10 text-luxury-gold/60 rounded text-xs font-medium text-center">
+                      Auto-Updated
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-luxury-charcoal/30 border border-purple-500/20 rounded-lg p-4">
@@ -261,13 +272,19 @@ export default function EnhancedIntelligencePage() {
                       <span className="text-purple-400">450K</span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => runPremiumIntelligenceCycle('rising')}
-                    disabled={isRunning}
-                    className="w-full mt-3 px-3 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded text-xs font-medium transition-all disabled:opacity-50"
-                  >
-                    {isRunning ? 'Running...' : 'Monitor Rising'}
-                  </button>
+                  {isAdmin ? (
+                    <button
+                      onClick={() => runPremiumIntelligenceCycle('rising')}
+                      disabled={isRunning}
+                      className="w-full mt-3 px-3 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded text-xs font-medium transition-all disabled:opacity-50"
+                    >
+                      {isRunning ? 'Running...' : 'Monitor Rising'}
+                    </button>
+                  ) : (
+                    <div className="w-full mt-3 px-3 py-2 bg-purple-500/10 text-purple-400/60 rounded text-xs font-medium text-center">
+                      Auto-Updated
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-luxury-charcoal/30 border border-blue-500/20 rounded-lg p-4">
@@ -294,13 +311,19 @@ export default function EnhancedIntelligencePage() {
                       <span className="text-blue-400">280K</span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => runPremiumIntelligenceCycle('niche')}
-                    disabled={isRunning}
-                    className="w-full mt-3 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded text-xs font-medium transition-all disabled:opacity-50"
-                  >
-                    {isRunning ? 'Running...' : 'Monitor Niche'}
-                  </button>
+                  {isAdmin ? (
+                    <button
+                      onClick={() => runPremiumIntelligenceCycle('niche')}
+                      disabled={isRunning}
+                      className="w-full mt-3 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded text-xs font-medium transition-all disabled:opacity-50"
+                    >
+                      {isRunning ? 'Running...' : 'Monitor Niche'}
+                    </button>
+                  ) : (
+                    <div className="w-full mt-3 px-3 py-2 bg-blue-500/10 text-blue-400/60 rounded text-xs font-medium text-center">
+                      Auto-Updated
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -398,21 +421,35 @@ export default function EnhancedIntelligencePage() {
               </div>
 
               <div className="mt-8 text-center">
-                <div className="space-y-3">
-                  <button
-                    onClick={() => runPremiumIntelligenceCycle('all')}
-                    disabled={isRunning}
-                    className="px-8 py-4 bg-luxury-gold hover:bg-luxury-gold/90 text-black rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed text-lg"
-                  >
-                    {isRunning ? 'Running Premium Analysis...' : '🚀 Run Full Intelligence Cycle'}
-                  </button>
-                  <p className="text-gray-400 text-sm">
-                    Monitor all 12 influencers across Instagram + TikTok with premium features
-                  </p>
-                  <div className="text-xs text-gray-500 max-w-2xl mx-auto">
-                    ✨ Includes: Intelligence scoring • Cross-platform validation • Duplicate prevention • Video transcription • Premium Apify actors
+                {isAdmin ? (
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => runPremiumIntelligenceCycle('all')}
+                      disabled={isRunning}
+                      className="px-8 py-4 bg-luxury-gold hover:bg-luxury-gold/90 text-black rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+                    >
+                      {isRunning ? 'Running Premium Analysis...' : '🚀 Run Full Intelligence Cycle'}
+                    </button>
+                    <p className="text-gray-400 text-sm">
+                      Monitor all 12 influencers across Instagram + TikTok with premium features
+                    </p>
+                    <div className="text-xs text-gray-500 max-w-2xl mx-auto">
+                      ✨ Includes: Intelligence scoring • Cross-platform validation • Duplicate prevention • Video transcription • Premium Apify actors
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="px-8 py-4 bg-luxury-gold/20 text-luxury-gold rounded-lg font-semibold text-lg border border-luxury-gold/30">
+                      🤖 Intelligence Auto-Updates Every 6 Hours
+                    </div>
+                    <p className="text-gray-400 text-sm">
+                      Premium intelligence runs automatically - no manual triggers needed
+                    </p>
+                    <div className="text-xs text-gray-500 max-w-2xl mx-auto">
+                      ✨ Always fresh: Intelligence scoring • Cross-platform validation • Trend analysis • Video insights
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Cross-Platform Validation */}
