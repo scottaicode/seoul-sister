@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-
-    // Get the current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!supabaseAdmin) {
+      return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
 
-    // Fetch user profile from user_profiles table
-    const { data: profile, error: profileError } = await supabase
+    // Get email from query params (passed from client)
+    const email = request.nextUrl.searchParams.get('email')
+    if (!email) {
+      return NextResponse.json({ error: 'Email parameter required' }, { status: 400 })
+    }
+
+    // Fetch user profile from user_profiles table using admin client
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('user_profiles')
       .select('*')
-      .eq('email', user.email)
+      .eq('email', email)
       .single()
 
     if (profileError) {

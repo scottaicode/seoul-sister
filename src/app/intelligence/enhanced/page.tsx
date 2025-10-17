@@ -21,7 +21,7 @@ export default function EnhancedIntelligencePage() {
       if (!user?.email) return
 
       try {
-        const response = await fetch('/api/user/profile')
+        const response = await fetch(`/api/user/profile?email=${encodeURIComponent(user.email)}`)
         if (response.ok) {
           const profile = await response.json()
           setUserProfile(profile)
