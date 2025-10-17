@@ -8,13 +8,42 @@ import AuthHeader from '@/components/AuthHeader'
 import PremiumGate from '@/components/PremiumGate'
 import { useAuth } from '@/contexts/AuthContext'
 
+interface ProcessedContent {
+  id: string
+  platform: string
+  authorHandle: string
+  url: string
+  caption: string
+  metrics: {
+    likes: number | null
+    comments: number | null
+    views: number | null
+  }
+  publishedAt: string
+  scrapedAt: string
+  intelligenceScore: number | null
+  priorityLevel: string | null
+  aiSummary: {
+    summary: string
+    keyInsights?: string[]
+    productMentions?: string[]
+    trendSignals?: string[]
+    koreanBeautyTerms?: string[]
+    mainPoints?: string[]
+    sentimentScore?: number
+    intelligenceValue?: string
+    viewerValueProp?: string
+  } | null
+  transcriptText: string | null
+}
+
 export default function EnhancedIntelligencePage() {
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<'dashboard' | 'trends' | 'alerts'>('dashboard')
   const [isRunning, setIsRunning] = useState(false)
   const [lastRunResult, setLastRunResult] = useState<any>(null)
   const [userProfile, setUserProfile] = useState<any>(null)
-  const [latestContent, setLatestContent] = useState<any[]>([])
+  const [latestContent, setLatestContent] = useState<ProcessedContent[]>([])
   const [isLoadingContent, setIsLoadingContent] = useState(false)
 
   // Fetch user profile to check subscription status
@@ -380,7 +409,7 @@ export default function EnhancedIntelligencePage() {
                   <h4 className="text-white font-medium text-lg mb-4">🧠 Latest AI-Processed Korean Beauty Intelligence</h4>
 
                   <div className="grid gap-6 lg:grid-cols-2">
-                    {latestContent.slice(0, 6).map((content, index) => (
+                    {latestContent.slice(0, 6).map((content: ProcessedContent, index: number) => (
                       <div key={content.id} className="bg-luxury-charcoal/20 border border-luxury-gold/20 rounded-lg p-6">
                         {/* Platform & Author Info */}
                         <div className="flex items-center justify-between mb-3">
@@ -402,7 +431,7 @@ export default function EnhancedIntelligencePage() {
                               <div className="mb-2">
                                 <div className="text-gray-400 text-xs mb-1">Key Insights:</div>
                                 <div className="flex flex-wrap gap-1">
-                                  {content.aiSummary.keyInsights.slice(0, 3).map((insight, i) => (
+                                  {content.aiSummary.keyInsights.slice(0, 3).map((insight: string, i: number) => (
                                     <span key={i} className="text-blue-400 text-xs bg-blue-500/10 px-2 py-1 rounded">
                                       {insight}
                                     </span>
@@ -416,7 +445,7 @@ export default function EnhancedIntelligencePage() {
                               <div className="mb-2">
                                 <div className="text-gray-400 text-xs mb-1">Products Mentioned:</div>
                                 <div className="flex flex-wrap gap-1">
-                                  {content.aiSummary.productMentions.slice(0, 3).map((product, i) => (
+                                  {content.aiSummary.productMentions.slice(0, 3).map((product: string, i: number) => (
                                     <span key={i} className="text-green-400 text-xs bg-green-500/10 px-2 py-1 rounded">
                                       {product}
                                     </span>
@@ -430,7 +459,7 @@ export default function EnhancedIntelligencePage() {
                               <div className="mb-2">
                                 <div className="text-gray-400 text-xs mb-1">Korean Beauty Terms:</div>
                                 <div className="flex flex-wrap gap-1">
-                                  {content.aiSummary.koreanBeautyTerms.slice(0, 3).map((term, i) => (
+                                  {content.aiSummary.koreanBeautyTerms.slice(0, 3).map((term: string, i: number) => (
                                     <span key={i} className="text-luxury-gold text-xs bg-luxury-gold/10 px-2 py-1 rounded">
                                       {term}
                                     </span>
@@ -502,24 +531,24 @@ export default function EnhancedIntelligencePage() {
                       <div className="text-white font-medium mb-1">🏆 Top Scoring Content</div>
                       <div className="text-gray-300 text-xs">
                         {latestContent
-                          .filter(c => c.intelligenceScore)
+                          .filter((c: ProcessedContent) => c.intelligenceScore)
                           .sort((a, b) => (b.intelligenceScore || 0) - (a.intelligenceScore || 0))
                           .slice(0, 3)
-                          .map(c => `@${c.authorHandle} (${c.intelligenceScore})`)
+                          .map((c: ProcessedContent) => `@${c.authorHandle} (${c.intelligenceScore})`)
                           .join(', ')}
                       </div>
                     </div>
                     <div className="bg-purple-500/10 border border-purple-500/30 rounded p-3">
                       <div className="text-white font-medium mb-1">📱 Platform Distribution</div>
                       <div className="text-gray-300 text-xs">
-                        Instagram: {latestContent.filter(c => c.platform === 'instagram').length} •
-                        TikTok: {latestContent.filter(c => c.platform === 'tiktok').length}
+                        Instagram: {latestContent.filter((c: ProcessedContent) => c.platform === 'instagram').length} •
+                        TikTok: {latestContent.filter((c: ProcessedContent) => c.platform === 'tiktok').length}
                       </div>
                     </div>
                     <div className="bg-blue-500/10 border border-blue-500/30 rounded p-3">
                       <div className="text-white font-medium mb-1">🎬 Transcribed Videos</div>
                       <div className="text-gray-300 text-xs">
-                        {latestContent.filter(c => c.transcriptText).length} out of {latestContent.length} with transcripts
+                        {latestContent.filter((c: ProcessedContent) => c.transcriptText).length} out of {latestContent.length} with transcripts
                       </div>
                     </div>
                   </div>
