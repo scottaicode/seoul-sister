@@ -103,6 +103,16 @@ export default function EnhancedIntelligencePage() {
     try {
       console.log(`🚀 Triggering Premium Korean Beauty Intelligence - Tier: ${tier}...`)
 
+      // Show which tier is being triggered
+      const tierNames = {
+        mega: 'Mega-Influencers (4 accounts)',
+        rising: 'Rising Stars (4 accounts)',
+        niche: 'Niche Experts (4 accounts)',
+        all: 'All Tiers (12 accounts)'
+      }
+
+      console.log(`📊 Running ${tierNames[tier as keyof typeof tierNames]} monitoring cycle`)
+
       const response = await fetch(`/api/intelligence/schedule?tier=${tier}`, {
         method: 'POST',
         headers: {
@@ -114,27 +124,37 @@ export default function EnhancedIntelligencePage() {
       setLastRunResult(result)
 
       if (result.success) {
-        console.log('✅ Premium intelligence cycle completed:', result.data.summary)
-        const summary = result.data.summary
+        console.log('✅ Premium intelligence cycle completed:', result.data?.summary)
+        const summary = result.data?.summary || {}
         alert(`🎉 Premium Intelligence Completed!\n\n` +
               `Strategy: ${tier} tier monitoring\n` +
-              `Influencers: ${summary.influencersMonitored}\n` +
-              `Content: ${summary.contentScraped} posts\n` +
-              `Transcriptions: ${summary.videosTranscribed}\n` +
-              `Trends: ${summary.trendsIdentified}\n` +
-              `Processing: ${(summary.processingTimeMs / 1000).toFixed(1)}s\n\n` +
+              `Influencers: ${summary.influencersMonitored || 0}\n` +
+              `Content: ${summary.contentScraped || 0} posts\n` +
+              `Transcriptions: ${summary.videosTranscribed || 0}\n` +
+              `Trends: ${summary.trendsIdentified || 0}\n` +
+              `Processing: ${((summary.processingTimeMs || 0) / 1000).toFixed(1)}s\n\n` +
               `✨ Premium Features Enabled:\n` +
               `• Intelligence Scoring\n` +
               `• Duplicate Prevention\n` +
               `• Cross-Platform Validation\n` +
               `• Premium Apify Actors`)
       } else {
-        console.error('❌ Premium intelligence cycle failed:', result.error)
-        alert(`❌ Premium Intelligence Failed: ${result.error}`)
+        console.error('❌ Premium intelligence cycle failed:', result.error || result.details)
+
+        // Provide more helpful error messages
+        let errorMessage = result.error || result.details || 'Unknown error occurred'
+        if (errorMessage.includes('Apify')) {
+          errorMessage += '\n\n💡 This may be due to Apify API configuration. Check the Network tab for more details.'
+        }
+        if (errorMessage.includes('Supabase')) {
+          errorMessage += '\n\n💡 This may be due to database connectivity issues.'
+        }
+
+        alert(`❌ Premium Intelligence Failed: ${errorMessage}`)
       }
     } catch (error) {
       console.error('❌ Error running premium intelligence cycle:', error)
-      alert(`❌ Error: ${error instanceof Error ? error.message : String(error)}`)
+      alert(`❌ Network Error: ${error instanceof Error ? error.message : String(error)}\n\n💡 Check the browser console and Network tab for more details.`)
     } finally {
       setIsRunning(false)
     }

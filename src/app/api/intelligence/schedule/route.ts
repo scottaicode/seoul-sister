@@ -20,6 +20,21 @@ export async function POST(request: NextRequest) {
     console.log(`🕒 Starting scheduled Korean Beauty Intelligence cycle - Tier: ${tier}`)
 
     const orchestrator = createIntelligenceOrchestrator()
+    console.log(`✅ Intelligence orchestrator created successfully`)
+
+    // Validate tier parameter
+    const validTiers = ['mega', 'rising', 'niche', 'all']
+    if (!validTiers.includes(tier)) {
+      return NextResponse.json(
+        { error: `Invalid tier: ${tier}. Must be one of: ${validTiers.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
+    console.log(`📊 Tier-specific configuration:`)
+    console.log(`   - Tier: ${tier}`)
+    console.log(`   - Max content per influencer: ${tier === 'mega' ? 20 : tier === 'rising' ? 15 : 10}`)
+    console.log(`   - Generate trend report: ${tier === 'mega'}`)
 
     // Run tier-specific intelligence cycle based on schedule
     const result = await orchestrator.runIntelligenceCycle({
@@ -28,6 +43,13 @@ export async function POST(request: NextRequest) {
       maxContentPerInfluencer: tier === 'mega' ? 20 : tier === 'rising' ? 15 : 10,
       includeTranscription: true,
       generateTrendReport: tier === 'mega' // Only generate full report for mega-influencers
+    })
+
+    console.log(`📈 Intelligence cycle result:`, {
+      success: result.success,
+      influencersMonitored: result.summary?.influencersMonitored,
+      contentScraped: result.summary?.contentScraped,
+      error: result.error
     })
 
     if (!result.success) {
