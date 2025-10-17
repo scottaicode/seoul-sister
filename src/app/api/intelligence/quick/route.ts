@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if we have recent data
-    let recentData = []
+    let recentData: any[] = []
     if (supabaseAdmin) {
       const { data } = await supabaseAdmin
         .from('influencer_content')
