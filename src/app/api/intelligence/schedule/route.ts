@@ -3,25 +3,30 @@ import { createIntelligenceOrchestrator } from '@/lib/services/intelligence-orch
 
 export async function POST(request: NextRequest) {
   try {
-    // Verify this is an internal/cron request
+    // Verify this is an internal/cron request (Vercel cron jobs are authenticated automatically)
+    const isVercelCron = request.headers.get('user-agent')?.includes('vercel')
     const authHeader = request.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET || 'seoul-sister-intelligence-2024'
+    const cronSecret = process.env.CRON_SECRET
 
-    if (authHeader !== `Bearer ${cronSecret}`) {
+    if (!isVercelCron && authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('🕒 Starting scheduled Korean Beauty Intelligence cycle...')
+    // Get tier from query params for scheduled runs
+    const { searchParams } = new URL(request.url)
+    const tier = searchParams.get('tier') as 'mega' | 'rising' | 'niche' || 'all'
+
+    console.log(`🕒 Starting scheduled Korean Beauty Intelligence cycle - Tier: ${tier}`)
 
     const orchestrator = createIntelligenceOrchestrator()
 
-    // Run full intelligence cycle (all tiers)
+    // Run tier-specific intelligence cycle based on schedule
     const result = await orchestrator.runIntelligenceCycle({
-      tier: 'all',
+      tier,
       scheduleSlot: 'all',
-      maxContentPerInfluencer: 15,
+      maxContentPerInfluencer: tier === 'mega' ? 20 : tier === 'rising' ? 15 : 10,
       includeTranscription: true,
-      generateTrendReport: true
+      generateTrendReport: tier === 'mega' // Only generate full report for mega-influencers
     })
 
     if (!result.success) {
@@ -41,10 +46,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Scheduled Korean beauty intelligence cycle completed',
+      message: `Scheduled Korean beauty intelligence cycle completed - ${tier} tier`,
       data: result,
       timestamp: new Date().toISOString(),
-      nextRun: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString() // 6 hours from now
+      tier,
+      nextTierRun: tier === 'mega' ? 'rising at 2:00 PM KST' :
+                   tier === 'rising' ? 'niche at 10:00 PM KST' :
+                   'mega at 6:30 AM KST tomorrow'
     })
 
   } catch (error) {

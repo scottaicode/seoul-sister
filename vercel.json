@@ -46,6 +46,18 @@
     {
       "path": "/api/cron/generate-report",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/intelligence/schedule?tier=mega",
+      "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/intelligence/schedule?tier=rising",
+      "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/intelligence/schedule?tier=niche",
+      "schedule": "0 22 * * *"
     }
   ]
 }
