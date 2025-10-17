@@ -44,42 +44,40 @@ export async function POST(request: NextRequest) {
     }
 
     if (testType === 'apify') {
-      // Test basic Apify connection
+      // Test Apify scraping with premium actor
       try {
-        const apiKey = process.env.APIFY_API_KEY
+        const { createApifyMonitor } = await import('@/lib/services/apify-service')
+        const monitor = createApifyMonitor()
 
-        if (!apiKey) {
-          throw new Error('APIFY_API_KEY not configured')
-        }
+        // Test premium Instagram scraping with a known influencer
+        const testInfluencer = data.influencer || 'ponysmakeup'
+        console.log(`🔍 Testing Apify premium scraping for @${testInfluencer}`)
 
-        // Test basic Apify API connectivity
-        const response = await fetch('https://api.apify.com/v2/acts', {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`
-          }
+        const result = await monitor.scrapeInstagramInfluencer(testInfluencer, {
+          maxPosts: 5,
+          includeReels: true
         })
 
-        if (!response.ok) {
-          throw new Error(`Apify API returned ${response.status}: ${response.statusText}`)
-        }
-
-        const data = await response.json()
-
         return NextResponse.json({
-          success: true,
-          service: 'Apify',
-          testType: 'api_connectivity',
-          availableActors: data.data?.length || 0,
-          message: 'Apify API connectivity test successful'
+          success: result.success,
+          service: 'Apify Premium',
+          testType: 'instagram_scraping',
+          influencer: testInfluencer,
+          totalScraped: result.totalScraped,
+          sampleData: result.data.slice(0, 2), // Return first 2 posts as sample
+          error: result.error,
+          message: result.success
+            ? `Successfully scraped ${result.totalScraped} posts from @${testInfluencer}`
+            : `Failed to scrape from @${testInfluencer}: ${result.error}`
         })
 
       } catch (error) {
-        console.error('Apify test failed:', error)
+        console.error('Apify scraping test failed:', error)
         return NextResponse.json({
           success: false,
           service: 'Apify',
           error: error instanceof Error ? error.message : String(error),
-          message: 'Apify API test failed'
+          message: 'Apify scraping test failed'
         }, { status: 500 })
       }
     }
