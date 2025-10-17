@@ -52,19 +52,11 @@ export default function EnhancedIntelligencePage() {
     try {
       console.log(`🚀 Triggering Premium Korean Beauty Intelligence - Tier: ${tier}...`)
 
-      const response = await fetch('/api/intelligence/premium', {
+      const response = await fetch(`/api/intelligence/schedule?tier=${tier}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          tier, // 'mega', 'rising', 'niche', or 'all'
-          scheduleSlot: 'all',
-          maxContentPerInfluencer: 15,
-          includeTranscription: true,
-          generateTrendReport: true,
-          enableCrossPlatformValidation: true
-        })
+        }
       })
 
       const result = await response.json()

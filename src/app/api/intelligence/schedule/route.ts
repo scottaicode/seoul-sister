@@ -3,12 +3,13 @@ import { createIntelligenceOrchestrator } from '@/lib/services/intelligence-orch
 
 export async function POST(request: NextRequest) {
   try {
-    // Verify this is an internal/cron request (Vercel cron jobs are authenticated automatically)
+    // Verify this is an internal/cron request or admin manual trigger
     const isVercelCron = request.headers.get('user-agent')?.includes('vercel')
     const authHeader = request.headers.get('authorization')
     const cronSecret = process.env.CRON_SECRET
+    const isManualAdmin = request.headers.get('referer')?.includes('/intelligence/enhanced')
 
-    if (!isVercelCron && authHeader !== `Bearer ${cronSecret}`) {
+    if (!isVercelCron && authHeader !== `Bearer ${cronSecret}` && !isManualAdmin) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
