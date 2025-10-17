@@ -15,7 +15,10 @@ export default function EnhancedIntelligencePage() {
   const [lastRunResult, setLastRunResult] = useState<any>(null)
 
   // Admin check - only admins can trigger intelligence cycles
-  const isAdmin = user?.email === 'glowframeal@gmail.com' || user?.email?.includes('admin')
+  const isAdmin = user?.email === 'glowframeal@gmail.com' ||
+                  user?.email === 'scottaicode@gmail.com' ||
+                  user?.email?.includes('admin') ||
+                  user?.email?.includes('scott')
 
   // Regular users see view-only dashboard with auto-updated intelligence
 

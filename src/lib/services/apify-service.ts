@@ -115,22 +115,25 @@ export class ApifyInfluencerMonitor {
     try {
       console.log(`🔍 Starting Instagram scrape for @${username}`)
 
-      // Premium input with full feature access
+      // Premium actor input configuration - using your paid subscription
       const input = {
-        username: [username],
-        resultsType: 'posts',
-        resultsLimit: options.maxPosts || 30, // Higher limit for premium
+        usernames: [username], // Note: premium actor uses 'usernames' not 'username'
+        resultsLimit: options.maxPosts || 30,
         includeStories: options.includeStories || false,
         includeReels: options.includeReels || true,
-        searchType: 'user',
-        addParentData: true, // Get rich metadata
+        extendOutputFunction: `async ({ data }) => {
+          return {
+            ...data,
+            scrapedAt: new Date().toISOString()
+          };
+        }`,
         proxyConfiguration: {
           useApifyProxy: true,
           apifyProxyGroups: ['RESIDENTIAL']
         }
       }
 
-      // Use premium Instagram Scraper actor with residential proxy access
+      // Use your premium Instagram Scraper actor that you're paying for
       const run = await this.apify.actor('shu8hvrXbJbY3Eb9W').call(input)
 
       if (!run.defaultDatasetId) {
