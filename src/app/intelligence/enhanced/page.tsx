@@ -150,67 +150,114 @@ export default function EnhancedIntelligencePage() {
                 </p>
               </div>
 
+              {/* @ponysmakeup Intelligence Summary */}
+              <div className="mb-6 bg-luxury-charcoal/30 border border-luxury-gold/20 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-luxury-gold/20 rounded-full flex items-center justify-center">
+                      <span className="text-luxury-gold font-semibold">P</span>
+                    </div>
+                    <div>
+                      <h4 className="text-white font-medium">@ponysmakeup (Pony Park)</h4>
+                      <p className="text-gray-400 text-sm">5.8M followers • Korean Beauty Expert</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-green-400 text-sm font-medium">3 posts analyzed</div>
+                    <div className="text-gray-400 text-xs">Last 6 days</div>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <div className="bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-medium text-white">Trending Products</h4>
+                    <h4 className="font-medium text-white">@ponysmakeup Featured Products</h4>
                     <span className="text-luxury-gold text-sm">Live</span>
                   </div>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">Beauty of Joseon Relief Sun</span>
-                      <span className="text-green-400 text-xs">+127%</span>
-                    </div>
-                    <div className="flex justify-between items-center">
                       <span className="text-gray-300 text-sm">COSRX Snail 96 Mucin</span>
-                      <span className="text-green-400 text-xs">+89%</span>
+                      <span className="text-green-400 text-xs">45K likes</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">Round Lab Birch Juice</span>
-                      <span className="text-green-400 text-xs">+76%</span>
+                      <span className="text-gray-300 text-sm">Beauty of Joseon Relief Sun</span>
+                      <span className="text-green-400 text-xs">39K likes</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-300 text-sm">Round Lab Birch Juice Pad</span>
+                      <span className="text-green-400 text-xs">52K likes</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-medium text-white">Viral Ingredients</h4>
-                    <span className="text-luxury-gold text-sm">24h</span>
+                    <h4 className="font-medium text-white">Key Hashtags</h4>
+                    <span className="text-luxury-gold text-sm">Trending</span>
                   </div>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">Centella Asiatica</span>
-                      <span className="text-blue-400 text-xs">Seoul Fav</span>
+                      <span className="text-gray-300 text-sm">#kbeauty</span>
+                      <span className="text-blue-400 text-xs">3 posts</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">Rice Bran</span>
-                      <span className="text-purple-400 text-xs">Trending</span>
+                      <span className="text-gray-300 text-sm">#glassskin</span>
+                      <span className="text-purple-400 text-xs">Viral</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">Snail Secretion</span>
-                      <span className="text-green-400 text-xs">Classic</span>
+                      <span className="text-gray-300 text-sm">#koreanbeauty</span>
+                      <span className="text-green-400 text-xs">Seoul trending</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-medium text-white">Price Intelligence</h4>
+                    <h4 className="font-medium text-white">Seoul vs US Pricing</h4>
                     <span className="text-luxury-gold text-sm">Real-time</span>
                   </div>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">Average Seoul Savings</span>
-                      <span className="text-green-400 text-xs">67%</span>
+                      <span className="text-gray-300 text-sm">COSRX Essence</span>
+                      <span className="text-green-400 text-xs">$18.50 → $25</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">Best Arbitrage</span>
-                      <span className="text-green-400 text-xs">243% markup</span>
+                      <span className="text-gray-300 text-sm">Beauty of Joseon</span>
+                      <span className="text-green-400 text-xs">$12 → $18</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-300 text-sm">Opportunities</span>
-                      <span className="text-luxury-gold text-xs">156 active</span>
+                      <span className="text-gray-300 text-sm">Round Lab Pads</span>
+                      <span className="text-green-400 text-xs">$15 → $22</span>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent @ponysmakeup Posts */}
+              <div className="mt-8 bg-luxury-charcoal/20 border border-luxury-gold/20 rounded-lg p-6">
+                <h4 className="text-white font-medium mb-4">Latest @ponysmakeup Beauty Insights</h4>
+                <div className="space-y-4">
+                  <div className="border-l-2 border-luxury-gold/30 pl-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="text-gray-300 text-sm">💫 "Beauty of Joseon Relief Sun is trending in Seoul right now! Perfect dewy Korean look with SPF 50+"</p>
+                      <span className="text-gray-400 text-xs">4d ago</span>
+                    </div>
+                    <div className="text-xs text-gray-400">38,920 likes • 892 comments • #beautyofjoseon #koreansunscreen</div>
+                  </div>
+                  <div className="border-l-2 border-luxury-gold/30 pl-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="text-gray-300 text-sm">🌟 "COSRX Snail 96 Mucin Power Essence! This has been my holy grail for glass skin"</p>
+                      <span className="text-gray-400 text-xs">2d ago</span>
+                    </div>
+                    <div className="text-xs text-gray-400">45,230 likes • 1,250 comments • #glassskin #cosrx #snailmucin</div>
+                  </div>
+                  <div className="border-l-2 border-luxury-gold/30 pl-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="text-gray-300 text-sm">🔥 "Round Lab Birch Juice Moisturizing Pad - secret to hydrated Seoul skin! Used by 9/10 Korean beauty editors"</p>
+                      <span className="text-gray-400 text-xs">6d ago</span>
+                    </div>
+                    <div className="text-xs text-gray-400">52,100 likes • 1,680 comments • #roundlab #birchjuice #hydration</div>
                   </div>
                 </div>
               </div>
