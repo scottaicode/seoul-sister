@@ -14,44 +14,96 @@ export async function POST(request: NextRequest) {
 
     console.log(`👥 Selected ${influencers.length} influencers for ${tier} tier`)
 
-    // Step 2: Create sample intelligence data (simulating real processing)
+    // Step 2: Create properly structured content for influencer_content table
     const sampleContent = influencers.map((influencer, index) => ({
+      // Required fields based on table structure
+      influencer_id: null, // Will be handled by the system or we can create influencer records first
       platform_post_id: `sim_${Date.now()}_${index}`,
       platform: influencer.platform,
       content_type: 'post',
       post_url: `https://${influencer.platform}.com/${influencer.handle}/posts/sample_${index}`,
-      caption: `Sample Korean beauty content from @${influencer.handle} - featuring trending products and Seoul skincare tips. Today I'm sharing the latest from Seoul's beauty scene with authentic K-beauty recommendations.`,
+      caption: `Sample Korean beauty content from @${influencer.handle} - featuring trending products and Seoul skincare tips. Today I'm sharing the latest from Seoul's beauty scene with authentic K-beauty recommendations. #kbeauty #glassskin #koreanbeauty #seoul #skincare`,
+
+      // Arrays for hashtags and mentions
       hashtags: ['kbeauty', 'glassskin', 'koreanbeauty', 'seoul', 'skincare'],
       mentions: [influencer.handle],
+      media_urls: [`https://example.com/media/${index}.jpg`],
+
+      // Engagement metrics
       view_count: Math.floor(Math.random() * 200000) + 10000,
       like_count: Math.floor(Math.random() * 50000) + 5000,
       comment_count: Math.floor(Math.random() * 2000) + 100,
       share_count: Math.floor(Math.random() * 500) + 50,
+
+      // Timestamps - using proper database timestamp format
       published_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-      scraped_at: new Date().toISOString()
+      scraped_at: new Date().toISOString(),
+      created_at: new Date().toISOString()
     }))
 
     console.log(`📊 Generated ${sampleContent.length} sample content pieces`)
 
-    // Step 3: Save to database for display
+    // Step 3: Store content in database following best practices
     if (supabaseAdmin) {
       try {
-        // Clear old sample data for this tier
+        console.log(`💾 Storing ${sampleContent.length} content pieces in influencer_content table...`)
+
+        // Clear old simulation data first
         await supabaseAdmin
           .from('influencer_content')
           .delete()
           .like('platform_post_id', 'sim_%')
 
-        // Insert new sample data
-        const { data: insertedData } = await supabaseAdmin
+        console.log(`🗑️ Cleared previous simulation data`)
+
+        // Insert new content data
+        const { data: insertedData, error: insertError } = await supabaseAdmin
           .from('influencer_content')
           .insert(sampleContent)
           .select()
 
-        console.log(`💾 Saved ${insertedData?.length || 0} items to database`)
+        if (insertError) {
+          console.error('❌ Database insert error:', insertError)
+          throw insertError
+        }
+
+        console.log(`✅ Successfully stored ${insertedData?.length || 0} content items in database`)
+
+        // Store additional AI analysis in separate table if needed
+        if (insertedData && insertedData.length > 0) {
+          const aiAnalysisData = insertedData.map((content, index) => ({
+            content_id: content.id,
+            transcript_text: content.hashtags?.includes('skincare')
+              ? 'This Korean skincare routine focuses on hydration and gentle ingredients like hyaluronic acid and ceramides for healthy Seoul-style glass skin.'
+              : 'Today I\'m sharing my favorite Korean makeup look using trending products from Seoul beauty brands for that perfect dewy finish.',
+            language: 'ko',
+            confidence_score: 85 + Math.floor(Math.random() * 15), // 85-99%
+            processing_status: 'completed',
+            processing_completed_at: new Date().toISOString(),
+            created_at: new Date().toISOString()
+          }))
+
+          // Try to store transcription data
+          try {
+            const { data: transcriptionData } = await supabaseAdmin
+              .from('content_transcriptions')
+              .insert(aiAnalysisData)
+              .select()
+
+            console.log(`📝 Added transcription data for ${transcriptionData?.length || 0} items`)
+          } catch (transcriptionError) {
+            console.log(`⚠️ Transcription table not available, continuing without it`)
+          }
+        }
+
       } catch (dbError) {
-        console.error('Database operation failed:', dbError)
-        // Continue execution even if DB fails
+        console.error('❌ Database operation failed:', dbError)
+        return NextResponse.json({
+          success: false,
+          error: 'Database storage failed',
+          details: dbError instanceof Error ? dbError.message : String(dbError),
+          timestamp: new Date().toISOString()
+        }, { status: 500 })
       }
     }
 
@@ -75,7 +127,18 @@ export async function POST(request: NextRequest) {
           platform: inf.platform,
           tier: inf.tier
         })),
-        contentSample: sampleContent.slice(0, 2), // Show first 2 as preview
+        contentSample: sampleContent.slice(0, 2).map(content => ({
+          platform: content.platform,
+          platform_post_id: content.platform_post_id,
+          caption: content.caption?.substring(0, 100) + '...',
+          hashtags: content.hashtags,
+          engagement: {
+            likes: content.like_count,
+            comments: content.comment_count,
+            views: content.view_count
+          },
+          published_at: content.published_at
+        })), // Show first 2 as preview with proper structure
         insights: {
           topHashtags: ['#kbeauty', '#glassskin', '#koreanbeauty'],
           trendingProducts: ['COSRX Snail Essence', 'Beauty of Joseon Relief Sun'],
