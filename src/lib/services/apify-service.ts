@@ -115,26 +115,41 @@ export class ApifyInfluencerMonitor {
     try {
       console.log(`🔍 Starting Instagram scrape for @${username}`)
 
-      // Premium actor input configuration - using your paid subscription
-      const input = {
-        usernames: [username], // Note: premium actor uses 'usernames' not 'username'
-        resultsLimit: options.maxPosts || 30,
-        includeStories: options.includeStories || false,
-        includeReels: options.includeReels || true,
-        extendOutputFunction: `async ({ data }) => {
-          return {
-            ...data,
-            scrapedAt: new Date().toISOString()
-          };
-        }`,
-        proxyConfiguration: {
-          useApifyProxy: true,
-          apifyProxyGroups: ['RESIDENTIAL']
-        }
-      }
+      // Try premium actor first, fallback to basic if needed
+      let run: any
+      let usedPremium = false
 
-      // Use your premium Instagram Scraper actor that you're paying for
-      const run = await this.apify.actor('shu8hvrXbJbY3Eb9W').call(input)
+      try {
+        // Premium actor configuration (try first)
+        const premiumInput = {
+          usernames: [username],
+          resultsLimit: options.maxPosts || 30,
+          includeStories: options.includeStories || false,
+          includeReels: options.includeReels || true,
+          proxyConfiguration: {
+            useApifyProxy: true,
+            apifyProxyGroups: ['RESIDENTIAL']
+          }
+        }
+
+        console.log(`🔄 Attempting premium actor for @${username}`)
+        run = await this.apify.actor('shu8hvrXbJbY3Eb9W').call(premiumInput)
+        usedPremium = true
+        console.log(`✅ Premium actor successful for @${username}`)
+      } catch (premiumError) {
+        console.log(`⚠️ Premium actor failed, trying basic: ${premiumError}`)
+
+        // Fallback to basic actor with working configuration
+        const basicInput = {
+          username: [username], // Basic actor uses 'username'
+          resultsType: 'posts',
+          resultsLimit: options.maxPosts || 20,
+          searchType: 'user'
+        }
+
+        run = await this.apify.actor('apify/instagram-scraper').call(basicInput)
+        console.log(`✅ Basic actor successful for @${username}`)
+      }
 
       if (!run.defaultDatasetId) {
         throw new Error('No dataset ID returned from Apify')
@@ -159,7 +174,7 @@ export class ApifyInfluencerMonitor {
         authorHandle: username
       }))
 
-      console.log(`✅ Instagram scrape completed: ${processedData.length} posts from @${username}`)
+      console.log(`✅ Instagram scrape completed: ${processedData.length} posts from @${username} (${usedPremium ? 'Premium' : 'Basic'} actor)`)
 
       return {
         success: true,

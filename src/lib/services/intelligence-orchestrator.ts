@@ -3,6 +3,7 @@ import { createApifyMonitor, getDefaultKoreanInfluencers } from './apify-service
 import { createSupaDataService, extractVideoUrls } from './supadata-service'
 import { createAITrendAnalyzer, prepareContentForAnalysis } from './ai-trend-analyzer'
 import { ContentManager } from './content-manager'
+import { createAIContentSummarizer } from './ai-content-summarizer'
 import {
   KOREAN_BEAUTY_INFLUENCERS,
   TIKTOK_VALIDATION_INFLUENCERS,
@@ -41,6 +42,7 @@ export class KoreanBeautyIntelligenceOrchestrator {
   private supaDataService: any
   private aiAnalyzer: any
   private contentManager: ContentManager
+  private aiSummarizer: any
   private config: IntelligenceConfig
 
   constructor(config: IntelligenceConfig) {
@@ -50,6 +52,7 @@ export class KoreanBeautyIntelligenceOrchestrator {
     this.supaDataService = createSupaDataService()
     this.aiAnalyzer = createAITrendAnalyzer()
     this.contentManager = new ContentManager()
+    this.aiSummarizer = createAIContentSummarizer()
   }
 
   /**
@@ -113,26 +116,30 @@ export class KoreanBeautyIntelligenceOrchestrator {
       console.log('⭐ Calculating Seoul Sister Intelligence Scores...')
       const scoredContent = await this.scoreAndPrioritizeContent(filteredContent, influencersToMonitor)
 
-      // Step 6: Save scraped content to database with intelligence tracking
-      console.log('💾 Saving content to database with intelligence scores...')
-      const savedContent = await this.saveContentToDatabase(scoredContent)
+      // Step 6: Generate AI content summaries for high-value content
+      console.log('🤖 Generating AI content summaries...')
+      const contentWithSummaries = await this.generateContentSummaries(scoredContent)
 
-      // Step 7: Mark content as processed to prevent future duplicates
+      // Step 7: Save scraped content to database with intelligence tracking
+      console.log('💾 Saving content to database with intelligence scores...')
+      const savedContent = await this.saveContentToDatabase(contentWithSummaries)
+
+      // Step 8: Mark content as processed to prevent future duplicates
       console.log('🔄 Updating content tracking database...')
       await this.markContentAsProcessed(savedContent)
 
-      // Step 8: Extract and transcribe videos (if enabled)
+      // Step 9: Extract and transcribe videos (if enabled)
       let transcriptionResults: any[] = []
       if (options.includeTranscription !== false) {
         console.log('🎬 Processing video transcriptions...')
         transcriptionResults = await this.processVideoTranscriptions(savedContent)
       }
 
-      // Step 9: Cross-platform trend validation
+      // Step 10: Cross-platform trend validation
       console.log('🔗 Running cross-platform trend validation...')
       const crossPlatformInsights = await this.runCrossPlatformValidation(savedContent, influencersToMonitor)
 
-      // Step 10: Generate AI trend analysis (if enabled)
+      // Step 11: Generate AI trend analysis (if enabled)
       let trendAnalysis = null
       if (options.generateTrendReport !== false) {
         console.log('🤖 Generating AI trend analysis with cross-platform insights...')
@@ -480,6 +487,67 @@ export class KoreanBeautyIntelligenceOrchestrator {
   }
 
   /**
+   * Generate AI content summaries for premium hybrid approach
+   */
+  private async generateContentSummaries(content: any[]): Promise<any[]> {
+    try {
+      // Only summarize high and medium priority content to save API costs
+      const highValueContent = content.filter(item =>
+        item.priorityLevel === 'high' || item.priorityLevel === 'medium'
+      )
+
+      if (highValueContent.length === 0) {
+        console.log('📝 No high-value content to summarize')
+        return content
+      }
+
+      console.log(`📝 Generating AI summaries for ${highValueContent.length} high-value content pieces`)
+
+      // Prepare content for AI summarization
+      const contentForSummary = highValueContent.map(item => ({
+        platform: item.platform,
+        authorHandle: item.authorHandle,
+        caption: item.caption || '',
+        hashtags: item.hashtags || [],
+        metrics: {
+          likes: item.metrics?.likes || item.like_count || 0,
+          comments: item.metrics?.comments || item.comment_count || 0,
+          views: item.metrics?.views || item.view_count || 0
+        },
+        publishedAt: item.publishedAt,
+        transcriptText: item.transcriptText || undefined,
+        mediaUrls: item.mediaUrls || item.media_urls || []
+      }))
+
+      // Generate AI summaries
+      const summaries = await this.aiSummarizer.batchSummarizeContent(contentForSummary)
+
+      // Merge summaries back into content
+      const contentWithSummaries = content.map(item => {
+        const summaryIndex = highValueContent.findIndex(hvc =>
+          hvc.postId === item.postId && hvc.platform === item.platform
+        )
+
+        if (summaryIndex >= 0 && summaries[summaryIndex]) {
+          return {
+            ...item,
+            aiSummary: summaries[summaryIndex]
+          }
+        }
+
+        return item
+      })
+
+      console.log(`✅ AI summaries generated for ${summaries.length} content pieces`)
+      return contentWithSummaries
+
+    } catch (error) {
+      console.error('❌ Content summarization failed:', error)
+      return content // Return original content if summarization fails
+    }
+  }
+
+  /**
    * Generate content hash for duplicate detection
    */
   private generateContentHash(content: any): string {
@@ -540,6 +608,7 @@ export class KoreanBeautyIntelligenceOrchestrator {
             priority_level: item.priorityLevel || 'low',
             content_richness: item.scoreBreakdown?.contentRichness || 0,
             trend_novelty: item.scoreBreakdown?.trendNovelty || 0,
+            ai_summary: item.aiSummary || null,
             scraped_at: new Date().toISOString()
           }, {
             onConflict: 'platform_post_id,platform'
