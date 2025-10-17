@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
             `${item.hashtags?.length || 0} relevant beauty hashtags identified`
           ],
           productMentions: ['COSRX Snail Essence', 'Beauty of Joseon Relief Sun', 'Round Lab Birch Juice', 'Laneige Water Bank'],
-          koreanBeautyTerms: item.hashtags?.filter(tag =>
+          koreanBeautyTerms: item.hashtags?.filter((tag: string) =>
             ['kbeauty', 'glassskin', 'koreanbeauty', 'seoul', 'skincare', 'makeup'].includes(tag.toLowerCase())
           ) || [],
           mainPoints: [
