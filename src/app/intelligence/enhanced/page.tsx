@@ -149,6 +149,16 @@ export default function EnhancedIntelligencePage() {
             Next-generation Korean beauty intelligence powered by real-time AI monitoring
             of top Seoul influencers and predictive trend analysis
           </p>
+
+          {/* Debug Admin Status */}
+          <div className="mt-4 p-3 bg-red-900/20 border border-red-500/30 rounded-lg text-left max-w-md mx-auto">
+            <div className="text-xs text-red-300">
+              <div><strong>Debug Info:</strong></div>
+              <div>User Email: {user?.email || 'Not loaded'}</div>
+              <div>Is Admin: {isAdmin ? 'YES' : 'NO'}</div>
+              <div>User Object: {user ? 'Loaded' : 'Not loaded'}</div>
+            </div>
+          </div>
         </div>
 
         {/* Navigation Tabs */}
