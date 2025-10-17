@@ -139,7 +139,8 @@ Thank you! 💕`
     setError(null)
   }
 
-  if (!canAccessPremium) {
+  // For Seoul Sister's $20/month model, all logged-in users get full access
+  if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-black via-luxury-charcoal to-black">
         <AuthHeader />

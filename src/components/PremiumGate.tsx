@@ -52,7 +52,8 @@ export default function PremiumGate({
     )
   }
 
-  if (hasAccess || canAccessPremium) {
+  // For Seoul Sister's $20/month model, all logged-in users get full access
+  if (hasAccess || canAccessPremium || user) {
     return <>{children}</>
   }
 
