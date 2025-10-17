@@ -280,6 +280,8 @@ export class KoreanBeautyIntelligenceOrchestrator {
           .eq('platform', item.platform)
           .single()
 
+        let currentInfluencer = influencer
+
         if (!influencer) {
           // Create influencer record
           const { data: newInfluencer } = await this.supabase
@@ -294,13 +296,14 @@ export class KoreanBeautyIntelligenceOrchestrator {
             .single()
 
           if (!newInfluencer) continue
+          currentInfluencer = newInfluencer
         }
 
         // Save content
         const { data: savedItem } = await this.supabase
           .from('influencer_content')
           .upsert({
-            influencer_id: influencer?.id || newInfluencer.id,
+            influencer_id: currentInfluencer.id,
             platform_post_id: item.postId,
             platform: item.platform,
             post_url: item.url,
@@ -406,7 +409,7 @@ export class KoreanBeautyIntelligenceOrchestrator {
           trending_products: analysis.productIntelligence,
           trending_ingredients: analysis.ingredientSpotlight,
           emerging_trends: analysis.emergingTrends,
-          key_insights: analysis.actionableInsights.map(i => i.insight),
+          key_insights: analysis.actionableInsights.map((i: any) => i.insight),
           market_predictions: analysis.marketPredictions.trendsToWatch,
           total_content_analyzed: content.length,
           total_influencers_monitored: new Set(content.map(c => c.influencer_id)).size,
