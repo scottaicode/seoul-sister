@@ -14,12 +14,37 @@ export async function POST(request: NextRequest) {
 
     console.log(`👥 Selected ${influencers.length} influencers for ${tier} tier`)
 
-    // Step 2: Create properly structured content for influencer_content table
+    // Step 2: Get influencer IDs from database
+    const { data: dbInfluencers, error: influencerError } = await supabaseAdmin
+      .from('korean_influencers')
+      .select('id, handle, platform')
+      .in('handle', influencers.map(inf => inf.handle))
+
+    if (influencerError) {
+      console.error('❌ Failed to get influencer IDs:', influencerError)
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to fetch influencer data from database',
+        details: influencerError.message
+      }, { status: 500 })
+    }
+
+    // Step 3: Create properly structured content for influencer_content table
     const sampleContent = influencers.map((influencer, index) => {
+      // Find the corresponding database influencer
+      const dbInfluencer = dbInfluencers?.find(db =>
+        db.handle === influencer.handle && db.platform === influencer.platform
+      )
+
+      if (!dbInfluencer) {
+        console.warn(`⚠️ No database record found for ${influencer.handle} on ${influencer.platform}`)
+        return null
+      }
+
       const baseData = {
+        influencer_id: dbInfluencer.id, // Required field from database schema
         platform_post_id: `sim_${Date.now()}_${index}`,
         platform: influencer.platform as string,
-        content_type: 'post' as string,
         post_url: `https://${influencer.platform}.com/${influencer.handle}/posts/sample_${index}`,
         caption: `Sample Korean beauty content from @${influencer.handle} - featuring trending products and Seoul skincare tips. Today I'm sharing the latest from Seoul's beauty scene with authentic K-beauty recommendations. #kbeauty #glassskin #koreanbeauty #seoul #skincare`,
 
@@ -36,17 +61,23 @@ export async function POST(request: NextRequest) {
 
         // Timestamps - using proper database timestamp format
         published_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-        scraped_at: new Date().toISOString()
+        scraped_at: new Date().toISOString(),
+
+        // Intelligence scoring fields (matching database schema)
+        intelligence_score: (Math.random() * 40 + 60).toFixed(2), // 60-100
+        priority_level: ['high', 'medium', 'low'][Math.floor(Math.random() * 3)] as 'high' | 'medium' | 'low',
+        content_richness: (Math.random() * 30 + 70).toFixed(2), // 70-100
+        trend_novelty: (Math.random() * 50 + 50).toFixed(2), // 50-100
+        engagement_velocity: (Math.random() * 40 + 60).toFixed(2), // 60-100
+        influencer_authority: (Math.random() * 20 + 80).toFixed(2) // 80-100
       }
 
-      // Only include influencer_id if it's not required or we have a valid one
-      // For now, omit it since it may be optional or auto-handled
       return baseData
-    })
+    }).filter(Boolean) // Remove null entries
 
     console.log(`📊 Generated ${sampleContent.length} sample content pieces`)
 
-    // Step 3: Store content in database following best practices
+    // Step 4: Store content in database following best practices
     if (supabaseAdmin) {
       try {
         console.log(`💾 Storing ${sampleContent.length} content pieces in influencer_content table...`)
@@ -76,14 +107,13 @@ export async function POST(request: NextRequest) {
         if (insertedData && insertedData.length > 0) {
           const aiAnalysisData = insertedData.map((content: any, index: number) => ({
             content_id: content.id,
+            video_url: content.media_urls?.[0] || `https://example.com/video/${index}.mp4`,
             transcript_text: content.hashtags?.includes('skincare')
               ? 'This Korean skincare routine focuses on hydration and gentle ingredients like hyaluronic acid and ceramides for healthy Seoul-style glass skin.'
               : 'Today I\'m sharing my favorite Korean makeup look using trending products from Seoul beauty brands for that perfect dewy finish.',
             language: 'ko',
-            confidence_score: 85 + Math.floor(Math.random() * 15), // 85-99%
-            processing_status: 'completed',
-            processing_completed_at: new Date().toISOString(),
-            created_at: new Date().toISOString()
+            confidence_score: (85 + Math.floor(Math.random() * 15)) / 100, // 0.85-0.99
+            processing_status: 'completed'
           }))
 
           // Try to store transcription data
@@ -116,7 +146,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Step 4: Return success with realistic processing simulation
+    // Step 5: Return success with realistic processing simulation
     const processingTime = 2000 + Math.random() * 3000 // 2-5 seconds
 
     return NextResponse.json({
