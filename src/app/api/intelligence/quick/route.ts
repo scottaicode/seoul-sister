@@ -74,16 +74,18 @@ export async function POST(request: NextRequest) {
     console.log(`🎬 Found ${videoUrls.length} videos for transcription`)
 
     // Step 5: Real video transcription (if videos found)
-    let transcriptionResults: any[] = []
+    let transcriptionResults: any = { results: [] }
     if (videoUrls.length > 0) {
       try {
-        transcriptionResults = await supaDataService.transcribeVideoBatch(
+        const transcriptionResponse = await supaDataService.transcribeVideoBatch(
           videoUrls,
           { language: 'auto', outputFormat: 'text' }
         )
-        console.log(`✅ Transcribed ${transcriptionResults.results?.filter(r => r.transcription.success).length || 0} videos`)
+        transcriptionResults = transcriptionResponse
+        console.log(`✅ Transcribed ${transcriptionResults.results?.filter((r: any) => r.transcription.success).length || 0} videos`)
       } catch (error) {
         console.warn(`⚠️ Video transcription failed, continuing without transcripts:`, error)
+        transcriptionResults = { results: [] }
       }
     }
 
@@ -100,7 +102,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Find matching transcription if available
-      const matchingTranscription = transcriptionResults.results?.find(tr =>
+      const matchingTranscription = transcriptionResults.results?.find((tr: any) =>
         post.mediaUrls.some(url => tr.videoUrl === url) && tr.transcription.success
       )
 
@@ -206,7 +208,7 @@ export async function POST(request: NextRequest) {
           dbError: dbError instanceof Error ? dbError.message : String(dbError),
           realDataStructure: realContent[0] || null,
           apifyResults: monitoringResult.summary,
-          transcriptionResults: transcriptionResults.length,
+          transcriptionResults: transcriptionResults.results?.length || 0,
           note: 'This error shows real API integration issues to fix',
           timestamp: new Date().toISOString()
         }, { status: 500 })
@@ -222,7 +224,7 @@ export async function POST(request: NextRequest) {
         summary: {
           influencersMonitored: influencers.length,
           contentScraped: realContent.length,
-          videosTranscribed: transcriptionResults.results?.filter(r => r.transcription.success).length || 0,
+          videosTranscribed: transcriptionResults.results?.filter((r: any) => r.transcription.success).length || 0,
           trendsIdentified: monitoringResult.summary.totalPosts > 0 ? 5 : 0,
           processingTimeMs: processingTime,
           realDataUsed: true,
@@ -235,31 +237,31 @@ export async function POST(request: NextRequest) {
           platform: inf.platform,
           tier: inf.tier
         })),
-        contentSample: realContent.slice(0, 2).map(content => ({
-          platform: content.platform,
-          platform_post_id: content.platform_post_id,
-          caption: content.caption?.substring(0, 100) + '...',
-          hashtags: content.hashtags,
-          mentions: content.mentions,
+        contentSample: realContent.slice(0, 2).filter(Boolean).map(content => ({
+          platform: content!.platform,
+          platform_post_id: content!.platform_post_id,
+          caption: content!.caption?.substring(0, 100) + '...',
+          hashtags: content!.hashtags,
+          mentions: content!.mentions,
           engagement: {
-            likes: content.like_count,
-            comments: content.comment_count,
-            views: content.view_count,
-            shares: content.share_count
+            likes: content!.like_count,
+            comments: content!.comment_count,
+            views: content!.view_count,
+            shares: content!.share_count
           },
-          published_at: content.published_at,
-          transcript: content.transcript_text ? content.transcript_text.substring(0, 150) + '...' : null,
+          published_at: content!.published_at,
+          transcript: content!.transcript_text ? content!.transcript_text.substring(0, 150) + '...' : null,
           ai_analysis: {
-            summary: `REAL Korean beauty intelligence from @${content.mentions?.[0] || 'unknown'} scraped from live Instagram`,
-            score: parseFloat(content.intelligence_score)
+            summary: `REAL Korean beauty intelligence from @${content!.mentions?.[0] || 'unknown'} scraped from live Instagram`,
+            score: parseFloat(content!.intelligence_score)
           }
         })),
         insights: {
-          topHashtags: [...new Set(realContent.flatMap(c => c.hashtags).slice(0, 5))],
+          topHashtags: [...new Set(realContent.filter(Boolean).flatMap(c => c!.hashtags).slice(0, 5))],
           trendingProducts: ['COSRX Snail Essence', 'Beauty of Joseon Relief Sun', 'Anua Heartleaf Toner'],
           averageEngagement: realContent.length > 0 ?
-            Math.floor(realContent.reduce((acc, c) => acc + (c.like_count || 0), 0) / realContent.length) : 0,
-          videoTranscripts: transcriptionResults.results?.filter(r => r.transcription.success).length || 0
+            Math.floor(realContent.filter(Boolean).reduce((acc, c) => acc + (c!.like_count || 0), 0) / realContent.filter(Boolean).length) : 0,
+          videoTranscripts: transcriptionResults.results?.filter((r: any) => r.transcription.success).length || 0
         }
       },
       timestamp: new Date().toISOString(),
