@@ -26,7 +26,10 @@ export async function POST(request: NextRequest) {
     const { data: dbInfluencers, error: influencerError } = await supabaseAdmin
       .from('korean_influencers')
       .select('id, handle, platform')
-      .in('handle', influencers.map(inf => inf.handle))
+      .in('handle', influencers.map(inf => inf.handle)) as {
+        data: Array<{id: string, handle: string, platform: string}> | null,
+        error: any
+      }
 
     if (influencerError) {
       console.error('❌ Failed to get influencer IDs:', influencerError)
