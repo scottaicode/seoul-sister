@@ -38,3 +38,22 @@ yarn-error.log*
 # Temporary files
 *.tmp
 *.log
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Cache directories
+.npm
+.yarn/cache
+.cache/
+
+# Large files that could cause memory issues
+*.zip
+*.tar.gz
+*.mp4
+*.mov
+*.avi
+
+# OS files
+Thumbs.db

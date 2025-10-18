@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
           platform: inf.platform,
           tier: inf.tier
         })),
-        contentSample: sampleContent.slice(0, 2).map(content => ({
+        contentSample: sampleContent.slice(0, 2).map(content => content ? ({
           platform: content.platform,
           platform_post_id: content.platform_post_id,
           caption: content.caption?.substring(0, 100) + '...',
@@ -190,14 +190,14 @@ export async function POST(request: NextRequest) {
           },
           published_at: content.published_at,
           ai_analysis: {
-            summary: `Korean beauty intelligence from @${content.mentions?.[0]} reveals trending products`,
+            summary: `Korean beauty intelligence from @${content.mentions?.[0] || 'unknown'} reveals trending products`,
             score: Math.floor(Math.random() * 50) + 50
           }
-        })), // Show first 2 as preview with proper structure
+        }) : null).filter(Boolean), // Show first 2 as preview with proper structure
         insights: {
           topHashtags: ['#kbeauty', '#glassskin', '#koreanbeauty'],
           trendingProducts: ['COSRX Snail Essence', 'Beauty of Joseon Relief Sun'],
-          averageEngagement: Math.floor(sampleContent.reduce((acc, c) => acc + (c.like_count || 0), 0) / sampleContent.length)
+          averageEngagement: Math.floor(sampleContent.reduce((acc, c) => acc + ((c?.like_count) || 0), 0) / sampleContent.length)
         }
       },
       timestamp: new Date().toISOString(),
