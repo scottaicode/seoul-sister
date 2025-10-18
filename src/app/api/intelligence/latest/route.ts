@@ -43,6 +43,124 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch content' }, { status: 500 })
     }
 
+    // If no real content in database, provide demo content for testing
+    if (!content || content.length === 0) {
+      console.log('📝 No database content found, providing demo Korean beauty intelligence')
+
+      const demoContent = [
+        {
+          id: 'demo_pony_1',
+          platform: 'instagram',
+          authorHandle: 'ponysmakeup',
+          url: 'https://instagram.com/p/demo_pony_1',
+          caption: '[DEMO] Today I\'m sharing my favorite Korean skincare routine that gives me the perfect glass skin! This 10-step routine includes double cleansing, essence layering, and the best Korean serums I discovered in Seoul.',
+          hashtags: ['kbeauty', 'glassskin', 'koreanbeauty', 'seoul', 'skincare'],
+          metrics: { likes: 45230, comments: 1892, views: 156742, shares: 823 },
+          publishedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+          scrapedAt: new Date().toISOString(),
+          aiSummary: {
+            summary: 'Korean beauty intelligence from @ponysmakeup reveals trending Seoul skincare techniques and glass skin methodology',
+            keyInsights: [
+              'Glass skin technique gaining massive popularity',
+              'Double cleansing method essential for Korean routines',
+              'Essence layering creates dewy finish',
+              'Seoul beauty standards influencing global trends'
+            ],
+            productMentions: ['COSRX Snail Essence', 'Beauty of Joseon Relief Sun', 'Laneige Water Bank', 'Innisfree Green Tea Cleanser'],
+            koreanBeautyTerms: ['kbeauty', 'glassskin', 'koreanbeauty', 'seoul', 'skincare'],
+            mainPoints: [
+              'Authentic Korean skincare routine demonstration',
+              'Product recommendations from Seoul experts',
+              'Glass skin technique tutorial',
+              'Korean beauty philosophy explanation'
+            ],
+            sentimentScore: 0.94,
+            intelligenceValue: 'High commercial potential - 45K likes indicate strong engagement with Seoul beauty content',
+            viewerValueProp: 'Learn authentic Korean beauty secrets from Seoul-based influencer'
+          },
+          transcriptText: 'Hi everyone! Today I\'m sharing my authentic Korean skincare routine that I learned during my time in Seoul. This glass skin technique has been trending all over Korea and I\'m so excited to share these tips with you. First, we start with the double cleanse method using a gentle oil cleanser, then a water-based cleanser. Next, I apply this amazing Korean essence that\'s been viral in Seoul - it contains hyaluronic acid and niacinamide for that perfect dewy finish. The key to Korean beauty is layering lightweight products and never skipping sunscreen.',
+          transcriptionConfidence: 0.97,
+          processingStatus: 'completed'
+        },
+        {
+          id: 'demo_ssin_1',
+          platform: 'instagram',
+          authorHandle: 'ssin_makeup',
+          url: 'https://instagram.com/p/demo_ssin_1',
+          caption: '[DEMO] Korean makeup tutorial using trending Seoul beauty products! Today I\'m creating the perfect dewy Korean look with products I bought in Myeongdong.',
+          hashtags: ['koreanmakeup', 'dewy', 'kbeauty', 'seoul', 'makeup'],
+          metrics: { likes: 32156, comments: 1204, views: 89432, shares: 445 },
+          publishedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago
+          scrapedAt: new Date().toISOString(),
+          aiSummary: {
+            summary: 'Korean makeup intelligence from @ssin_makeup showcases trending Seoul makeup techniques and dewy finish products',
+            keyInsights: [
+              'Dewy finish dominating Korean makeup trends',
+              'Myeongdong shopping district product discoveries',
+              'Natural Korean makeup philosophy',
+              'Cushion foundation techniques trending'
+            ],
+            productMentions: ['Cushion Foundation', 'Korean Tint', 'Highlighter Stick', 'Setting Mist'],
+            koreanBeautyTerms: ['koreanmakeup', 'dewy', 'kbeauty', 'seoul', 'makeup'],
+            mainPoints: [
+              'Korean makeup tutorial with authentic products',
+              'Dewy finish technique demonstration',
+              'Myeongdong shopping insights',
+              'Natural Korean beauty approach'
+            ],
+            sentimentScore: 0.89,
+            intelligenceValue: 'Strong engagement - 32K likes show high interest in Korean makeup tutorials',
+            viewerValueProp: 'Master the trendy Korean dewy makeup look with Seoul-sourced products'
+          },
+          transcriptText: 'Hey beauties! I just got back from an amazing shopping trip in Myeongdong and I have to share these incredible Korean makeup products with you. Today we\'re creating that perfect dewy Korean look that\'s been all over Instagram. I\'ll show you the cushion foundation technique that Korean makeup artists use, plus this amazing tint that gives you that natural flush.',
+          transcriptionConfidence: 0.94,
+          processingStatus: 'completed'
+        },
+        {
+          id: 'demo_directorpi_1',
+          platform: 'instagram',
+          authorHandle: 'directorpi',
+          url: 'https://instagram.com/p/demo_directorpi_1',
+          caption: '[DEMO] Breaking down the science behind Korean skincare ingredients! Today analyzing why snail mucin and centella asiatica are so effective in Korean beauty routines.',
+          hashtags: ['skincarescience', 'kbeauty', 'ingredients', 'korean', 'education'],
+          metrics: { likes: 28945, comments: 892, views: 67234, shares: 334 },
+          publishedAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
+          scrapedAt: new Date().toISOString(),
+          aiSummary: {
+            summary: 'Korean skincare science analysis from @directorpi explains trending Korean beauty ingredients and their effectiveness',
+            keyInsights: [
+              'Snail mucin scientific benefits validated',
+              'Centella asiatica anti-inflammatory properties',
+              'Korean ingredient innovation leadership',
+              'Evidence-based Korean skincare approach'
+            ],
+            productMentions: ['Snail Mucin Essence', 'Centella Serum', 'Korean Chemical Exfoliant', 'Barrier Repair Cream'],
+            koreanBeautyTerms: ['skincarescience', 'kbeauty', 'ingredients', 'korean', 'education'],
+            mainPoints: [
+              'Scientific analysis of Korean beauty ingredients',
+              'Evidence-based skincare education',
+              'Korean innovation in cosmetic science',
+              'Ingredient effectiveness explanation'
+            ],
+            sentimentScore: 0.91,
+            intelligenceValue: 'Educational content with strong authority - 29K likes for science-based approach',
+            viewerValueProp: 'Understand the science behind effective Korean skincare ingredients'
+          },
+          transcriptText: 'Let\'s talk about the science behind some of the most popular Korean skincare ingredients. Snail mucin contains glycolic acid, hyaluronic acid, and proteins that help with skin repair and hydration. Centella asiatica has been used in traditional Korean medicine for centuries and modern research shows its powerful anti-inflammatory properties. This is why Korean skincare is so effective - it combines traditional wisdom with modern science.',
+          transcriptionConfidence: 0.96,
+          processingStatus: 'completed'
+        }
+      ]
+
+      return NextResponse.json({
+        success: true,
+        content: demoContent,
+        totalItems: demoContent.length,
+        lastUpdate: new Date().toISOString(),
+        note: 'Demo Korean beauty intelligence content for dashboard testing'
+      })
+    }
+
     // Process the content with proper database relationships
     const processedContent = content?.map(item => {
       const transcription = item.content_transcriptions?.[0] // Get first transcription if available

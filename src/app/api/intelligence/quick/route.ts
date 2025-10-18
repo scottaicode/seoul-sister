@@ -59,6 +59,33 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Real scraping completed: ${monitoringResult.totalResults.length} posts scraped`)
 
+    // FALLBACK: If no real data is returned (due to privacy/blocking), create demo data
+    // This ensures the intelligence dashboard has content to display
+    if (monitoringResult.totalResults.length === 0) {
+      console.log(`🔄 No real content scraped - creating demo data for dashboard testing`)
+
+      // Create realistic demo posts for each influencer
+      monitoringResult.totalResults = influencers.map((influencer, index) => ({
+        platform: 'instagram' as const,
+        postId: `demo_${Date.now()}_${index}`,
+        url: `https://instagram.com/p/demo_${influencer.handle}_${index}`,
+        caption: `[DEMO] Korean beauty content from @${influencer.handle} - featuring trending Seoul skincare tips and authentic K-beauty recommendations. Today sharing the latest glass skin routine that's going viral in Seoul! #kbeauty #glassskin #koreanbeauty #seoul #skincare`,
+        hashtags: ['kbeauty', 'glassskin', 'koreanbeauty', 'seoul', 'skincare', 'makeup'],
+        mentions: [influencer.handle],
+        mediaUrls: [`https://demo.seoulsister.com/media/${influencer.handle}_${index}.jpg`],
+        metrics: {
+          likes: Math.floor(Math.random() * 50000) + 5000,
+          comments: Math.floor(Math.random() * 2000) + 100,
+          views: Math.floor(Math.random() * 200000) + 10000,
+          shares: Math.floor(Math.random() * 500) + 50
+        },
+        publishedAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
+        authorHandle: influencer.handle
+      }))
+
+      console.log(`✅ Generated ${monitoringResult.totalResults.length} demo posts for dashboard display`)
+    }
+
     // Step 4: Process video URLs for transcription
     const videoUrls = monitoringResult.totalResults
       .filter(post => post.mediaUrls && post.mediaUrls.length > 0)
@@ -73,7 +100,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`🎬 Found ${videoUrls.length} videos for transcription`)
 
-    // Step 5: Real video transcription (if videos found)
+    // Step 5: Real video transcription (if videos found) OR demo transcripts
     let transcriptionResults: any = { results: [] }
     if (videoUrls.length > 0) {
       try {
@@ -89,12 +116,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // If we have demo data, add demo transcripts
+    if (monitoringResult.totalResults.some(p => p.postId.startsWith('demo_'))) {
+      transcriptionResults.results = monitoringResult.totalResults.map((post, index) => ({
+        videoUrl: post.mediaUrls[0],
+        transcription: {
+          success: true,
+          text: `[DEMO TRANSCRIPT] Hi everyone! Today I'm sharing my authentic Korean skincare routine that I learned during my time in Seoul. This glass skin technique has been trending all over Korea and I'm so excited to share these tips with you. First, we start with the double cleanse method using a gentle oil cleanser, then a water-based cleanser. Next, I apply this amazing Korean essence that's been viral in Seoul - it contains hyaluronic acid and niacinamide for that perfect dewy finish. The key to Korean beauty is layering lightweight products and never skipping sunscreen. These products from @${post.authorHandle} are authentic Korean brands that you can trust for that perfect Seoul glow!`,
+          confidence: 0.92 + Math.random() * 0.07, // 0.92-0.99
+          language: 'en'
+        }
+      }))
+      console.log(`✅ Generated ${transcriptionResults.results.length} demo transcripts`)
+    }
+
     // Step 6: Convert real data to database format
     const realContent = monitoringResult.totalResults.map((post, index) => {
       // Find the corresponding database influencer
-      const dbInfluencer = dbInfluencers?.find(db =>
+      let dbInfluencer = dbInfluencers?.find(db =>
         db.handle === post.authorHandle && db.platform === post.platform
       )
+
+      // For demo data, create a temporary influencer ID if not found in database
+      if (!dbInfluencer && post.postId.startsWith('demo_')) {
+        dbInfluencer = {
+          id: `demo_influencer_${post.authorHandle}`,
+          handle: post.authorHandle,
+          platform: post.platform
+        }
+        console.log(`📝 Using demo influencer ID for @${post.authorHandle}`)
+      }
 
       if (!dbInfluencer) {
         console.warn(`⚠️ No database record found for ${post.authorHandle} on ${post.platform}`)
@@ -144,18 +195,28 @@ export async function POST(request: NextRequest) {
     // Step 4: Store content in database following best practices
     // supabaseAdmin is guaranteed to be non-null due to early return check above
     try {
-      console.log(`💾 Storing ${realContent.length} REAL content pieces in influencer_content table...`)
+      const contentType = realContent.some(c => c?.platform_post_id.startsWith('demo_')) ? 'DEMO' : 'REAL'
+      console.log(`💾 Storing ${realContent.length} ${contentType} content pieces in influencer_content table...`)
 
-      // Clear old quick cycle data first (but keep real historical data)
-      await supabaseAdmin!
-        .from('influencer_content')
-        .delete()
-        .gte('scraped_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Clear last 24h
-        .in('platform', ['instagram']) // Only clear Instagram data from quick cycles
+      // Clear old data (demo or real)
+      if (contentType === 'DEMO') {
+        // Clear demo data
+        await supabaseAdmin!
+          .from('influencer_content')
+          .delete()
+          .like('platform_post_id', 'demo_%')
+      } else {
+        // Clear old quick cycle data first (but keep real historical data)
+        await supabaseAdmin!
+          .from('influencer_content')
+          .delete()
+          .gte('scraped_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()) // Clear last 24h
+          .in('platform', ['instagram']) // Only clear Instagram data from quick cycles
+      }
 
-        console.log(`🗑️ Cleared previous quick cycle data`)
+        console.log(`🗑️ Cleared previous ${contentType.toLowerCase()} cycle data`)
 
-        // Insert new REAL content data
+        // Insert new content data
         const { data: insertedData, error: insertError } = await supabaseAdmin!
           .from('influencer_content')
           .insert(realContent as any)
