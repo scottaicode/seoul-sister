@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const tier = searchParams.get('tier') || 'mega'
 
-    console.log(`🚀 Quick Intelligence Cycle - Tier: ${tier}`)
+    console.log(`🚀 Quick Intelligence Cycle - Tier: ${tier} (v2.0)`)
 
     // Step 1: Get influencers for this tier
     const { getInfluencersByTier } = await import('@/lib/config/korean-influencers')
