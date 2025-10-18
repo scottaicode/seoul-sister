@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Zap, TrendingUp, Globe, Brain } from 'lucide-react'
+import { ArrowLeft, Zap, TrendingUp, Globe, Brain, ChevronDown, ChevronUp } from 'lucide-react'
 import AuthHeader from '@/components/AuthHeader'
 // import IntelligenceDashboard from '@/components/IntelligenceDashboard'
 import PremiumGate from '@/components/PremiumGate'
@@ -35,6 +35,8 @@ interface ProcessedContent {
     viewerValueProp?: string
   } | null
   transcriptText: string | null
+  transcriptionConfidence?: number
+  processingStatus?: string
 }
 
 export default function EnhancedIntelligencePage() {
@@ -45,6 +47,7 @@ export default function EnhancedIntelligencePage() {
   const [userProfile, setUserProfile] = useState<any>(null)
   const [latestContent, setLatestContent] = useState<ProcessedContent[]>([])
   const [isLoadingContent, setIsLoadingContent] = useState(false)
+  const [expandedTranscripts, setExpandedTranscripts] = useState<Set<string>>(new Set())
 
   // Fetch user profile to check subscription status
   useEffect(() => {
@@ -95,6 +98,17 @@ export default function EnhancedIntelligencePage() {
     subscriptionStatus: userProfile?.subscription_status,
     isAdmin
   })
+
+  // Toggle transcript expansion
+  const toggleTranscript = (contentId: string) => {
+    const newExpanded = new Set(expandedTranscripts)
+    if (newExpanded.has(contentId)) {
+      newExpanded.delete(contentId)
+    } else {
+      newExpanded.add(contentId)
+    }
+    setExpandedTranscripts(newExpanded)
+  }
 
   // Regular users see view-only dashboard with auto-updated intelligence
 
@@ -490,11 +504,42 @@ export default function EnhancedIntelligencePage() {
                           </div>
                         )}
 
-                        {/* Transcript Preview */}
+                        {/* Expandable Transcript */}
                         {content.transcriptText && (
                           <div className="mb-4">
-                            <div className="text-white text-sm font-medium mb-2">📝 Transcript:</div>
-                            <p className="text-gray-300 text-xs italic">{content.transcriptText}</p>
+                            <button
+                              onClick={() => toggleTranscript(content.id)}
+                              className="flex items-center justify-between w-full text-left text-white text-sm font-medium mb-2 hover:text-luxury-gold transition-colors"
+                            >
+                              <span>📝 Transcript</span>
+                              {expandedTranscripts.has(content.id) ? (
+                                <ChevronUp size={16} className="text-luxury-gold" />
+                              ) : (
+                                <ChevronDown size={16} className="text-gray-400" />
+                              )}
+                            </button>
+
+                            {expandedTranscripts.has(content.id) ? (
+                              <div className="bg-black/30 border border-luxury-gold/20 rounded-lg p-4">
+                                <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
+                                  {content.transcriptText}
+                                </p>
+                                {content.transcriptionConfidence && (
+                                  <div className="mt-3 pt-3 border-t border-gray-600">
+                                    <span className="text-xs text-gray-400">
+                                      Confidence: {(content.transcriptionConfidence * 100).toFixed(1)}%
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-gray-300 text-xs italic">
+                                {content.transcriptText.length > 120
+                                  ? content.transcriptText.substring(0, 120) + '...'
+                                  : content.transcriptText
+                                } <span className="text-luxury-gold cursor-pointer" onClick={() => toggleTranscript(content.id)}>Read more</span>
+                              </p>
+                            )}
                           </div>
                         )}
 
