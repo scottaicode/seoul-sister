@@ -15,6 +15,14 @@ export async function POST(request: NextRequest) {
     console.log(`👥 Selected ${influencers.length} influencers for ${tier} tier`)
 
     // Step 2: Get influencer IDs from database
+    if (!supabaseAdmin) {
+      return NextResponse.json({
+        success: false,
+        error: 'Database connection not available',
+        details: 'Supabase admin client is not configured'
+      }, { status: 500 })
+    }
+
     const { data: dbInfluencers, error: influencerError } = await supabaseAdmin
       .from('korean_influencers')
       .select('id, handle, platform')
@@ -78,20 +86,20 @@ export async function POST(request: NextRequest) {
     console.log(`📊 Generated ${sampleContent.length} sample content pieces`)
 
     // Step 4: Store content in database following best practices
-    if (supabaseAdmin) {
-      try {
-        console.log(`💾 Storing ${sampleContent.length} content pieces in influencer_content table...`)
+    // supabaseAdmin is guaranteed to be non-null due to early return check above
+    try {
+      console.log(`💾 Storing ${sampleContent.length} content pieces in influencer_content table...`)
 
-        // Clear old simulation data first
-        await supabaseAdmin
-          .from('influencer_content')
-          .delete()
-          .like('platform_post_id', 'sim_%')
+      // Clear old simulation data first
+      await supabaseAdmin!
+        .from('influencer_content')
+        .delete()
+        .like('platform_post_id', 'sim_%')
 
         console.log(`🗑️ Cleared previous simulation data`)
 
         // Insert new content data with proper typing
-        const { data: insertedData, error: insertError } = await supabaseAdmin
+        const { data: insertedData, error: insertError } = await supabaseAdmin!
           .from('influencer_content')
           .insert(sampleContent as any) // Type assertion to bypass strict typing issues
           .select() as { data: any[] | null, error: any }
@@ -118,7 +126,7 @@ export async function POST(request: NextRequest) {
 
           // Try to store transcription data
           try {
-            const { data: transcriptionData } = await supabaseAdmin
+            const { data: transcriptionData } = await supabaseAdmin!
               .from('content_transcriptions')
               .insert(aiAnalysisData as any) // Type assertion for flexibility
               .select()
@@ -144,7 +152,6 @@ export async function POST(request: NextRequest) {
           timestamp: new Date().toISOString()
         }, { status: 500 })
       }
-    }
 
     // Step 5: Return success with realistic processing simulation
     const processingTime = 2000 + Math.random() * 3000 // 2-5 seconds
