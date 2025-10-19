@@ -46,35 +46,49 @@ export function usePremiumStatus(): PremiumStatus {
         return;
       }
 
-      // Check subscription status in database
-      const { data: subscription, error: subError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
+      // Check subscription status in profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('stripe_subscription_id, subscription_status, trial_end, current_period_end, cancel_at_period_end')
+        .eq('id', user.id)
         .single();
 
-      if (subError || !subscription) {
-        // No subscription found - check if user is in trial period
+      if (profileError || !profile) {
+        // No profile found - check if user is in trial period
         const trialStatus = await checkTrialStatus(user);
         setStatus({
           isPremium: trialStatus.isTrialing,
           isTrialing: trialStatus.isTrialing,
           trialEndsAt: trialStatus.trialEndsAt,
-          subscriptionStatus: 'trialing',
+          subscriptionStatus: trialStatus.isTrialing ? 'trialing' : null,
+          loading: false
+        });
+        return;
+      }
+
+      // If no subscription ID, check trial status
+      if (!profile.stripe_subscription_id) {
+        const trialStatus = await checkTrialStatus(user);
+        setStatus({
+          isPremium: trialStatus.isTrialing,
+          isTrialing: trialStatus.isTrialing,
+          trialEndsAt: trialStatus.trialEndsAt,
+          subscriptionStatus: trialStatus.isTrialing ? 'trialing' : null,
           loading: false
         });
         return;
       }
 
       // Determine premium status based on subscription
-      const isPremium = subscription.status === 'active' || subscription.status === 'trialing';
-      const isTrialing = subscription.status === 'trialing';
+      const status = profile.subscription_status as 'active' | 'trialing' | 'canceled' | 'expired' | null;
+      const isPremium = status === 'active' || status === 'trialing';
+      const isTrialing = status === 'trialing';
 
       setStatus({
         isPremium,
         isTrialing,
-        trialEndsAt: isTrialing ? new Date(subscription.trial_end) : undefined,
-        subscriptionStatus: subscription.status,
+        trialEndsAt: isTrialing && profile.trial_end ? new Date(profile.trial_end) : undefined,
+        subscriptionStatus: status,
         loading: false
       });
     } catch (error) {

@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     }
 
     const query = supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('*')
 
     if (email) {
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user already exists
     const { data: existingUser } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('id')
       .eq('email', body.email)
       .single()
@@ -82,10 +82,10 @@ export async function POST(request: NextRequest) {
 
     // Create new user profile
     const { data, error } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .insert([{
         email: body.email,
-        name: body.name,
+        first_name: body.name,
         skin_type: body.skin_type,
         skin_tone: body.skin_tone,
         skin_concerns: body.skin_concerns || [],
@@ -133,7 +133,7 @@ export async function PUT(request: NextRequest) {
     const updateData: Partial<UserProfile> = {}
 
     // Only include fields that are provided
-    if (body.name !== undefined) updateData.name = body.name
+    if (body.name !== undefined) updateData.first_name = body.name
     if (body.skin_type !== undefined) updateData.skin_type = body.skin_type
     if (body.skin_tone !== undefined) updateData.skin_tone = body.skin_tone
     if (body.skin_concerns !== undefined) updateData.skin_concerns = body.skin_concerns
@@ -147,7 +147,7 @@ export async function PUT(request: NextRequest) {
     if (body.time_commitment !== undefined) updateData.time_commitment = body.time_commitment
 
     const { data, error } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .update(updateData)
       .eq('id', body.id)
       .select()
@@ -187,7 +187,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { error } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .delete()
       .eq('id', userId)
 

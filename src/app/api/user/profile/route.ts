@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 interface UserProfile {
   id: string
   email: string
-  name: string | null
+  first_name: string | null
   subscription_status: string | null
   trial_end: string | null
   current_period_start: string | null
@@ -24,10 +24,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Email parameter required' }, { status: 400 })
     }
 
-    // Fetch user profile from user_profiles table using admin client
+    // Fetch user profile from profiles table using admin client
     const { data: profile, error: profileError } = await supabaseAdmin
-      .from('user_profiles')
-      .select('id, email, name, subscription_status, trial_end, current_period_start, created_at, updated_at')
+      .from('profiles')
+      .select('id, email, first_name, subscription_status, trial_end, current_period_start, created_at, updated_at')
       .eq('email', email)
       .single() as { data: UserProfile | null, error: any }
 
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       id: profile.id,
       email: profile.email,
-      name: profile.name,
+      name: profile.first_name,
       subscription_status: profile.subscription_status,
       trial_end: profile.trial_end,
       current_period_start: profile.current_period_start,

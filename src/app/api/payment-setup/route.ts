@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
     // Get or create customer profile
     let { data: profile } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('*')
       .eq('phone', phoneNumber)
       .single()
@@ -28,11 +28,11 @@ export async function POST(request: Request) {
     if (!profile) {
       // Create new profile
       const { data: newProfile, error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .insert({
           phone: phoneNumber,
           email: email,
-          name: name,
+          first_name: name,
         })
         .select()
         .single()
@@ -59,11 +59,11 @@ export async function POST(request: Request) {
 
       // Update profile with Stripe customer ID
       await supabase
-        .from('user_profiles')
+        .from('profiles')
         .update({
           stripe_customer_id: stripeCustomerId,
           email: email || profile.email,
-          name: name || profile.name
+          first_name: name || profile.first_name
         })
         .eq('id', profile.id)
     }
@@ -106,7 +106,7 @@ export async function GET(request: Request) {
 
     // Get customer profile
     const { data: profile } = await supabase
-      .from('user_profiles')
+      .from('profiles')
       .select('*')
       .eq('phone', phoneNumber)
       .single()

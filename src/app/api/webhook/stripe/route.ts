@@ -75,8 +75,8 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleSubscriptionCreated(supabase: any, subscription: Stripe.Subscription) {
-  await supabase
-    .from('user_profiles')
+  const { error } = await supabase
+    .from('profiles')
     .update({
       stripe_subscription_id: subscription.id,
       subscription_status: subscription.status,
@@ -87,12 +87,17 @@ async function handleSubscriptionCreated(supabase: any, subscription: Stripe.Sub
     })
     .eq('stripe_customer_id', subscription.customer)
 
+  if (error) {
+    console.error('Error updating profile for subscription created:', error)
+    throw error
+  }
+
   console.log(`Subscription created: ${subscription.id}`)
 }
 
 async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Subscription) {
-  await supabase
-    .from('user_profiles')
+  const { error } = await supabase
+    .from('profiles')
     .update({
       subscription_status: subscription.status,
       trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
@@ -103,12 +108,17 @@ async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Sub
     })
     .eq('stripe_customer_id', subscription.customer)
 
+  if (error) {
+    console.error('Error updating profile for subscription updated:', error)
+    throw error
+  }
+
   console.log(`Subscription updated: ${subscription.id}`)
 }
 
 async function handleSubscriptionDeleted(supabase: any, subscription: Stripe.Subscription) {
-  await supabase
-    .from('user_profiles')
+  const { error } = await supabase
+    .from('profiles')
     .update({
       stripe_subscription_id: null,
       subscription_status: 'canceled',
@@ -120,18 +130,28 @@ async function handleSubscriptionDeleted(supabase: any, subscription: Stripe.Sub
     })
     .eq('stripe_customer_id', subscription.customer)
 
+  if (error) {
+    console.error('Error updating profile for subscription deleted:', error)
+    throw error
+  }
+
   console.log(`Subscription deleted: ${subscription.id}`)
 }
 
 async function handlePaymentSucceeded(supabase: any, invoice: Stripe.Invoice) {
   if (invoice.subscription) {
-    await supabase
-      .from('user_profiles')
+    const { error } = await supabase
+      .from('profiles')
       .update({
         subscription_status: 'active',
         updated_at: new Date().toISOString()
       })
       .eq('stripe_subscription_id', invoice.subscription)
+
+    if (error) {
+      console.error('Error updating profile for payment succeeded:', error)
+      throw error
+    }
 
     console.log(`Payment succeeded for subscription: ${invoice.subscription}`)
   }
@@ -139,13 +159,18 @@ async function handlePaymentSucceeded(supabase: any, invoice: Stripe.Invoice) {
 
 async function handlePaymentFailed(supabase: any, invoice: Stripe.Invoice) {
   if (invoice.subscription) {
-    await supabase
-      .from('user_profiles')
+    const { error } = await supabase
+      .from('profiles')
       .update({
         subscription_status: 'past_due',
         updated_at: new Date().toISOString()
       })
       .eq('stripe_subscription_id', invoice.subscription)
+
+    if (error) {
+      console.error('Error updating profile for payment failed:', error)
+      throw error
+    }
 
     console.log(`Payment failed for subscription: ${invoice.subscription}`)
   }
