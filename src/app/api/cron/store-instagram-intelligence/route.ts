@@ -4,14 +4,19 @@ export async function GET(request: NextRequest) {
   try {
     console.log('⏰ Starting scheduled Instagram intelligence storage pipeline...')
 
-    // Verify cron secret for security
+    // Verify authorization header for Vercel Cron or use secret parameter for external cron
+    const authHeader = request.headers.get('authorization')
     const { searchParams } = new URL(request.url)
     const cronSecret = searchParams.get('secret')
 
-    if (cronSecret !== process.env.CRON_SECRET) {
-      console.error('❌ Invalid cron secret provided')
+    // Allow Vercel Cron (has Bearer token) or manual triggers with secret
+    const isVercelCron = authHeader?.startsWith('Bearer ')
+    const isAuthorizedSecret = cronSecret && cronSecret === process.env.CRON_SECRET
+
+    if (!isVercelCron && !isAuthorizedSecret) {
+      console.error('❌ Unauthorized cron request')
       return NextResponse.json(
-        { error: 'Unauthorized - Invalid cron secret' },
+        { error: 'Unauthorized - Invalid credentials' },
         { status: 401 }
       )
     }

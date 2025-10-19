@@ -248,8 +248,8 @@ export default function EnhancedIntelligencePage() {
             🇰🇷 Enhanced Seoul Sister Intelligence
           </h1>
           <p className="text-lg font-light text-gray-300 max-w-3xl mx-auto">
-            Next-generation Korean beauty intelligence powered by real-time AI monitoring
-            of top Seoul influencers and predictive trend analysis
+            Next-generation Korean beauty intelligence with daily automated collection
+            from top Seoul influencers and AI-powered trend analysis
           </p>
         </div>
 
@@ -640,10 +640,10 @@ export default function EnhancedIntelligencePage() {
                 ) : (
                   <div className="space-y-3">
                     <div className="px-8 py-4 bg-luxury-gold/20 text-luxury-gold rounded-lg font-semibold text-lg border border-luxury-gold/30">
-                      🤖 Intelligence Available On-Demand
+                      🤖 Daily Intelligence Collection at 9 AM Pacific
                     </div>
                     <p className="text-gray-400 text-sm">
-                      Run premium intelligence analysis whenever you need the latest trends
+                      Fresh Korean beauty intelligence automatically collected daily and stored for analysis
                     </p>
                     <div className="text-xs text-gray-500 max-w-2xl mx-auto">
                       ✨ Always fresh: Intelligence scoring • Cross-platform validation • Trend analysis • Video insights
