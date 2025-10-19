@@ -102,10 +102,14 @@ export async function POST(request: NextRequest) {
     }> = {}
 
     content.forEach(post => {
-      const engagement = (post.like_count || 0) + (post.comment_count || 0)
-      const handle = (post.korean_influencers as any)?.handle || 'unknown'
+      const engagement = ((post as any).like_count || 0) + ((post as any).comment_count || 0)
+      const influencerData = (post as any).korean_influencers
+      let handle = 'unknown'
+      if (influencerData && influencerData.handle) {
+        handle = influencerData.handle
+      }
 
-      post.hashtags?.forEach(hashtag => {
+      (post as any).hashtags?.forEach((hashtag: any) => {
         if (!hashtagStats[hashtag]) {
           hashtagStats[hashtag] = {
             frequency: 0,
@@ -141,8 +145,12 @@ export async function POST(request: NextRequest) {
     }> = {}
 
     content.forEach(post => {
-      const handle = (post.korean_influencers as any)?.handle || 'unknown'
-      const engagement = (post.like_count || 0) + (post.comment_count || 0)
+      const influencerData = (post as any).korean_influencers
+      let handle = 'unknown'
+      if (influencerData && influencerData.handle) {
+        handle = influencerData.handle
+      }
+      const engagement = ((post as any).like_count || 0) + ((post as any).comment_count || 0)
 
       if (!influencerStats[handle]) {
         influencerStats[handle] = {
@@ -153,14 +161,14 @@ export async function POST(request: NextRequest) {
       }
       influencerStats[handle].posts.push(post)
       influencerStats[handle].totalEngagement += engagement
-      influencerStats[handle].hashtags.push(...(post.hashtags || []))
+      influencerStats[handle].hashtags.push(...((post as any).hashtags || []))
     })
 
     const influencerPerformance = Object.entries(influencerStats)
       .map(([handle, stats]) => {
         const topPost = stats.posts.reduce((top, post) => {
-          const engagement = (post.like_count || 0) + (post.comment_count || 0)
-          const topEngagement = (top.like_count || 0) + (top.comment_count || 0)
+          const engagement = ((post as any).like_count || 0) + ((post as any).comment_count || 0)
+          const topEngagement = ((top as any).like_count || 0) + ((top as any).comment_count || 0)
           return engagement > topEngagement ? post : top
         })
 
@@ -174,9 +182,9 @@ export async function POST(request: NextRequest) {
           totalPosts: stats.posts.length,
           averageEngagement: Math.round(stats.totalEngagement / stats.posts.length),
           topPerformingPost: {
-            id: topPost.id,
-            engagement: (topPost.like_count || 0) + (topPost.comment_count || 0),
-            caption: topPost.caption?.substring(0, 100) + '...' || ''
+            id: (topPost as any).id,
+            engagement: ((topPost as any).like_count || 0) + ((topPost as any).comment_count || 0),
+            caption: (topPost as any).caption?.substring(0, 100) + '...' || ''
           },
           trendingHashtags: Object.entries(hashtagFreq)
             .sort(([,a], [,b]) => b - a)
@@ -187,17 +195,17 @@ export async function POST(request: NextRequest) {
       .sort((a, b) => b.averageEngagement - a.averageEngagement)
 
     // 3. Engagement Pattern Analysis
-    const allEngagements = content.map(post => (post.like_count || 0) + (post.comment_count || 0))
-    const averageLikes = Math.round(content.reduce((sum, post) => sum + (post.like_count || 0), 0) / content.length)
-    const averageComments = Math.round(content.reduce((sum, post) => sum + (post.comment_count || 0), 0) / content.length)
+    const allEngagements = content.map(post => ((post as any).like_count || 0) + ((post as any).comment_count || 0))
+    const averageLikes = Math.round(content.reduce((sum, post) => sum + ((post as any).like_count || 0), 0) / content.length)
+    const averageComments = Math.round(content.reduce((sum, post) => sum + ((post as any).comment_count || 0), 0) / content.length)
     const highPerformingThreshold = Math.round(allEngagements.reduce((sum, eng) => sum + eng, 0) / allEngagements.length * 1.5)
 
     const topPerformingPosts = content
       .map(post => ({
-        id: post.id,
-        handle: (post.korean_influencers as any)?.handle || 'unknown',
-        engagement: (post.like_count || 0) + (post.comment_count || 0),
-        publishedAt: post.published_at
+        id: (post as any).id,
+        handle: (post as any).korean_influencers?.['handle'] || 'unknown',
+        engagement: ((post as any).like_count || 0) + ((post as any).comment_count || 0),
+        publishedAt: (post as any).published_at
       }))
       .sort((a, b) => b.engagement - a.engagement)
       .slice(0, 10)
@@ -207,12 +215,16 @@ export async function POST(request: NextRequest) {
     const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000)
     const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 
-    const postsLast24h = content.filter(post => new Date(post.published_at) > last24h).length
-    const postsLast7d = content.filter(post => new Date(post.published_at) > last7d).length
+    const postsLast24h = content.filter(post => new Date((post as any).published_at) > last24h).length
+    const postsLast7d = content.filter(post => new Date((post as any).published_at) > last7d).length
 
     const influencerPostCounts: Record<string, number> = {}
     content.forEach(post => {
-      const handle = (post.korean_influencers as any)?.handle || 'unknown'
+      const influencerData = (post as any).korean_influencers
+      let handle = 'unknown'
+      if (influencerData && influencerData.handle) {
+        handle = influencerData.handle
+      }
       influencerPostCounts[handle] = (influencerPostCounts[handle] || 0) + 1
     })
     const mostActiveInfluencer = Object.entries(influencerPostCounts)
@@ -226,16 +238,16 @@ export async function POST(request: NextRequest) {
 
     const termAnalysis = koreanBeautyTerms.map(term => {
       const relevantPosts = content.filter(post =>
-        post.caption?.toLowerCase().includes(term.toLowerCase()) ||
-        post.hashtags?.some(tag => tag.toLowerCase().includes(term.toLowerCase()))
+        (post as any).caption?.toLowerCase().includes(term.toLowerCase()) ||
+        (post as any).hashtags?.some((tag: any) => tag.toLowerCase().includes(term.toLowerCase()))
       )
 
       const totalEngagement = relevantPosts.reduce((sum, post) =>
-        sum + (post.like_count || 0) + (post.comment_count || 0), 0
+        sum + ((post as any).like_count || 0) + ((post as any).comment_count || 0), 0
       )
 
       const associatedHashtags = Array.from(new Set(
-        relevantPosts.flatMap(post => post.hashtags || [])
+        relevantPosts.flatMap(post => (post as any).hashtags || [])
       )).slice(0, 5)
 
       return {
@@ -273,11 +285,11 @@ export async function POST(request: NextRequest) {
       analysis: trendAnalysis,
       metadata: {
         totalPostsAnalyzed: content.length,
-        uniqueInfluencers: new Set(content.map(p => (p.korean_influencers as any)?.handle)).size,
+        uniqueInfluencers: new Set(content.map(p => (p as any).korean_influencers?.['handle'])).size,
         analysisTimestamp: new Date().toISOString(),
         dataTimeRange: {
-          earliest: content[content.length - 1]?.published_at,
-          latest: content[0]?.published_at
+          earliest: (content[content.length - 1] as any)?.published_at,
+          latest: (content[0] as any)?.published_at
         }
       }
     })

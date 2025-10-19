@@ -329,7 +329,7 @@ export default function TrendAnalysisTab({ latestContent }: TrendAnalysisTabProp
             </p>
             <div className="text-xs text-gray-400">
               Posts analyzed: {latestContent.length} •
-              Video content: {latestContent.filter(c => c.transcriptText).length} •
+              Video content: {latestContent.filter(c => (c as any).transcriptText).length} •
               Platforms: {new Set(latestContent.map(c => c.platform)).size}
             </div>
           </div>

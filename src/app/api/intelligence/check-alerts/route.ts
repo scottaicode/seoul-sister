@@ -106,19 +106,19 @@ export async function POST(request: NextRequest) {
 
     // Check each piece of content against all alerts
     for (const post of content) {
-      const handle = (post.korean_influencers as any)?.handle || 'unknown'
-      const engagement = (post.like_count || 0) + (post.comment_count || 0)
-      const hashtags = post.hashtags || []
+      const handle = ((post as any).korean_influencers as any)?.handle || 'unknown'
+      const engagement = ((post as any).like_count || 0) + ((post as any).comment_count || 0)
+      const hashtags = (post as any).hashtags || []
 
       for (const alert of alerts) {
         let isTriggered = false
         let triggerReason = ''
         let triggerValue: number | string = ''
 
-        switch (alert.alert_type) {
+        switch ((alert as any).alert_type) {
           case 'new_content':
             // Alert for new content from specific influencer
-            if (handle === alert.target_value) {
+            if (handle === (alert as any).target_value) {
               isTriggered = true
               triggerReason = `New post from @${handle}`
               triggerValue = handle
@@ -127,30 +127,30 @@ export async function POST(request: NextRequest) {
 
           case 'hashtag_trend':
             // Alert for posts containing specific hashtag
-            if (hashtags.some((tag: string) => tag.toLowerCase() === alert.target_value.toLowerCase())) {
+            if (hashtags.some((tag: string) => tag.toLowerCase() === (alert as any).target_value.toLowerCase())) {
               isTriggered = true
-              triggerReason = `Post contains hashtag #${alert.target_value}`
-              triggerValue = alert.target_value
+              triggerReason = `Post contains hashtag #${(alert as any).target_value}`
+              triggerValue = (alert as any).target_value
             }
             break
 
           case 'engagement_threshold':
             // Alert for posts exceeding engagement threshold
-            if (alert.threshold && engagement >= alert.threshold) {
+            if ((alert as any).threshold && engagement >= (alert as any).threshold) {
               isTriggered = true
-              triggerReason = `High engagement: ${engagement.toLocaleString()} (threshold: ${alert.threshold.toLocaleString()})`
+              triggerReason = `High engagement: ${engagement.toLocaleString()} (threshold: ${(alert as any).threshold.toLocaleString()})`
               triggerValue = engagement
             }
             break
 
           case 'korean_beauty_term':
             // Alert for posts mentioning specific Korean beauty terms
-            const caption = post.caption?.toLowerCase() || ''
-            const term = alert.target_value.toLowerCase()
+            const caption = (post as any).caption?.toLowerCase() || ''
+            const term = (alert as any).target_value.toLowerCase()
             if (caption.includes(term) || hashtags.some((tag: string) => tag.toLowerCase().includes(term))) {
               isTriggered = true
-              triggerReason = `Post mentions Korean beauty term: ${alert.target_value}`
-              triggerValue = alert.target_value
+              triggerReason = `Post mentions Korean beauty term: ${(alert as any).target_value}`
+              triggerValue = (alert as any).target_value
             }
             break
         }
@@ -160,19 +160,19 @@ export async function POST(request: NextRequest) {
           const { data: existingTrigger } = await supabaseAdmin
             .from('intelligence_alert_triggers')
             .select('id')
-            .eq('alert_id', alert.id)
-            .eq('content_id', post.id)
+            .eq('alert_id', (alert as any).id)
+            .eq('content_id', (post as any).id)
             .single()
 
           if (!existingTrigger) {
             alertMatches.push({
-              alertId: alert.id,
-              contentId: post.id,
+              alertId: (alert as any).id,
+              contentId: (post as any).id,
               triggerReason,
               triggerValue,
-              userEmail: alert.email,
-              alertType: alert.alert_type,
-              targetValue: alert.target_value
+              userEmail: (alert as any).email,
+              alertType: (alert as any).alert_type,
+              targetValue: (alert as any).target_value
             })
           }
         }
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
     for (const match of alertMatches) {
       try {
         // Store alert trigger
-        const { error: triggerError } = await supabaseAdmin
+        const { error: triggerError } = await (supabaseAdmin as any)
           .from('intelligence_alert_triggers')
           .insert([{
             alert_id: match.alertId,
@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
         triggersStored++
 
         // Update last_triggered timestamp for the alert
-        await supabaseAdmin
+        await (supabaseAdmin as any)
           .from('intelligence_alerts')
           .update({ last_triggered: new Date().toISOString() })
           .eq('id', match.alertId)
@@ -305,13 +305,13 @@ export async function GET(request: NextRequest) {
 
     // Calculate statistics
     const totalAlerts = alertStats?.length || 0
-    const activeAlerts = alertStats?.filter(a => a.is_active).length || 0
+    const activeAlerts = alertStats?.filter((a: any) => a.is_active).length || 0
     const alertsByType = alertStats?.reduce((acc, alert) => {
-      acc[alert.alert_type] = (acc[alert.alert_type] || 0) + 1
+      acc[(alert as any).alert_type] = (acc[(alert as any).alert_type] || 0) + 1
       return acc
     }, {} as Record<string, number>) || {}
 
-    const triggersLast24h = recentTriggers?.filter(t =>
+    const triggersLast24h = recentTriggers?.filter((t: any) =>
       new Date(t.triggered_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
     ).length || 0
 

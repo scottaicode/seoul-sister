@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Globe, Bell, Plus, Trash2, Toggle, AlertTriangle, Check, X } from 'lucide-react'
+import { Globe, Bell, Plus, Trash2, ToggleLeft, AlertTriangle, Check, X } from 'lucide-react'
 
 interface ProcessedContent {
   id: string
@@ -46,7 +46,7 @@ export default function AlertsTab({ latestContent, userEmail }: AlertsTabProps) 
 
   // Form state
   const [newAlert, setNewAlert] = useState({
-    alertType: 'new_content' as const,
+    alertType: 'new_content' as string,
     targetValue: '',
     threshold: ''
   })
@@ -281,10 +281,10 @@ export default function AlertsTab({ latestContent, userEmail }: AlertsTabProps) 
 
             <div>
               <label className="block text-gray-300 text-sm mb-2">
-                {newAlert.alertType === 'new_content' && 'Influencer Handle (without @)'}
-                {newAlert.alertType === 'hashtag_trend' && 'Hashtag (without #)'}
-                {newAlert.alertType === 'engagement_threshold' && 'Minimum Engagement Count'}
-                {newAlert.alertType === 'korean_beauty_term' && 'Korean Beauty Term'}
+                {newAlert.alertType === 'new_content' ? 'Influencer Handle (without @)' :
+                 newAlert.alertType === 'hashtag_trend' ? 'Hashtag (without #)' :
+                 newAlert.alertType === 'engagement_threshold' ? 'Minimum Engagement Count' :
+                 newAlert.alertType === 'korean_beauty_term' ? 'Korean Beauty Term' : ''}
               </label>
               <input
                 type={newAlert.alertType === 'engagement_threshold' ? 'number' : 'text'}
@@ -300,7 +300,7 @@ export default function AlertsTab({ latestContent, userEmail }: AlertsTabProps) 
                   newAlert.alertType === 'new_content' ? 'ponysmakeup' :
                   newAlert.alertType === 'hashtag_trend' ? 'kbeauty' :
                   newAlert.alertType === 'engagement_threshold' ? '10000' :
-                  'glass skin'
+                  newAlert.alertType === 'korean_beauty_term' ? 'glass skin' : ''
                 }
                 className="w-full px-3 py-2 bg-luxury-charcoal border border-luxury-gold/30 rounded text-white focus:outline-none focus:border-luxury-gold"
               />
@@ -356,7 +356,7 @@ export default function AlertsTab({ latestContent, userEmail }: AlertsTabProps) 
                           : 'bg-gray-600/20 text-gray-400 hover:bg-gray-600/30'
                       }`}
                     >
-                      <Toggle size={16} />
+                      <ToggleLeft size={16} />
                     </button>
                     <button
                       onClick={() => deleteAlert(alert.id)}

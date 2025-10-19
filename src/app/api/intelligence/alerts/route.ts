@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user's alert configurations
-    const { data: alerts, error: alertsError } = await supabaseAdmin
+    const { data: alerts, error: alertsError } = await (supabaseAdmin as any)
       .from('intelligence_alerts')
       .select('*')
       .eq('email', email)
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get recent alert triggers for this user
-    const { data: triggers, error: triggersError } = await supabaseAdmin
+    const { data: triggers, error: triggersError } = await (supabaseAdmin as any)
       .from('intelligence_alert_triggers')
       .select(`
         *,
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
       alerts: alerts || [],
       recentTriggers: triggers || [],
       totalAlerts: alerts?.length || 0,
-      activeAlerts: alerts?.filter(a => a.is_active).length || 0
+      activeAlerts: alerts?.filter((a: any) => a.is_active).length || 0
     })
 
   } catch (error) {
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if alert already exists
-    const { data: existingAlert } = await supabaseAdmin
+    const { data: existingAlert } = await (supabaseAdmin as any)
       .from('intelligence_alerts')
       .select('id')
       .eq('email', email)
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new alert
-    const { data: newAlert, error: insertError } = await supabaseAdmin
+    const { data: newAlert, error: insertError } = await (supabaseAdmin as any)
       .from('intelligence_alerts')
       .insert([{
         user_id: email, // Using email as user_id for now
@@ -180,7 +180,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Verify ownership
-    const { data: existingAlert, error: checkError } = await supabaseAdmin
+    const { data: existingAlert, error: checkError } = await (supabaseAdmin as any)
       .from('intelligence_alerts')
       .select('*')
       .eq('id', id)
@@ -201,7 +201,7 @@ export async function PUT(request: NextRequest) {
     if (isActive !== undefined) updateData.is_active = isActive
 
     // Update alert
-    const { data: updatedAlert, error: updateError } = await supabaseAdmin
+    const { data: updatedAlert, error: updateError } = await (supabaseAdmin as any)
       .from('intelligence_alerts')
       .update(updateData)
       .eq('id', id)
@@ -252,7 +252,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete alert (with ownership check)
-    const { error: deleteError } = await supabaseAdmin
+    const { error: deleteError } = await (supabaseAdmin as any)
       .from('intelligence_alerts')
       .delete()
       .eq('id', id)
