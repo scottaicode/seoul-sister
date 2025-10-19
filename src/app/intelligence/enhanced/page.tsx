@@ -279,7 +279,7 @@ export default function EnhancedIntelligencePage() {
             >
               <div className="flex items-center space-x-2">
                 <Zap size={18} />
-                <span>AI Predictions</span>
+                <span>Data Analysis</span>
               </div>
             </button>
             <button
@@ -292,7 +292,7 @@ export default function EnhancedIntelligencePage() {
             >
               <div className="flex items-center space-x-2">
                 <Globe size={18} />
-                <span>Smart Alerts</span>
+                <span>Alerts Setup</span>
               </div>
             </button>
           </div>
@@ -652,22 +652,27 @@ export default function EnhancedIntelligencePage() {
                 )}
               </div>
 
-              {/* Cross-Platform Validation */}
+              {/* Data Collection Status */}
               <div className="mt-8 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20 rounded-lg p-6">
                 <div className="text-center mb-4">
-                  <h4 className="text-white font-medium mb-2">🔗 Cross-Platform Trend Validation</h4>
+                  <h4 className="text-white font-medium mb-2">📊 Collection Status</h4>
                   <p className="text-gray-300 text-sm">
-                    Premium intelligence validates trends across Instagram and TikTok using dual-platform influencers
+                    Current status of daily automated Instagram data collection from Korean beauty influencers
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <div className="bg-gradient-to-r from-pink-500/20 to-purple-500/20 rounded p-3">
-                    <div className="font-medium text-white mb-1">📱 Instagram + TikTok</div>
-                    <div className="text-gray-300">@ponysmakeup, @ssinnim7, @jellacosmetic</div>
+                    <div className="font-medium text-white mb-1">📱 Data Sources</div>
+                    <div className="text-gray-300">
+                      {latestContent.length > 0 ?
+                        `${new Set(latestContent.map(c => c.platform)).size} platform(s), ${new Set(latestContent.map(c => c.authorHandle)).size} influencers` :
+                        '12 Instagram influencers configured'
+                      }
+                    </div>
                   </div>
                   <div className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded p-3">
-                    <div className="font-medium text-white mb-1">🎯 Validation Score</div>
-                    <div className="text-gray-300">Real-time cross-platform trend consistency</div>
+                    <div className="font-medium text-white mb-1">🎯 Collection Schedule</div>
+                    <div className="text-gray-300">Daily at 9 AM Pacific via Vercel Cron</div>
                   </div>
                 </div>
               </div>
@@ -679,65 +684,77 @@ export default function EnhancedIntelligencePage() {
               <div className="mb-6">
                 <Zap className="text-luxury-gold mx-auto mb-4" size={48} />
                 <h3 className="text-2xl font-semibold text-white mb-2 tracking-wide">
-                  AI Market Predictions
+                  Data Analysis Dashboard
                 </h3>
                 <p className="text-gray-300 font-light">
-                  Next-generation predictions powered by Claude Opus 4.1 and real-time Seoul monitoring
+                  Real-time analysis of collected Instagram data from Korean beauty influencers
                 </p>
               </div>
 
-              <div className="grid gap-4 text-left">
-                <div className="p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-medium text-white">Cica (Centella Asiatica) Revival 2.0</h4>
-                    <span className="text-luxury-gold text-sm">3-4 months</span>
+              {latestContent.length > 0 ? (
+                <div className="grid gap-4 text-left">
+                  <div className="p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-medium text-white">Top Hashtags Analysis</h4>
+                      <span className="text-luxury-gold text-sm">Last 24h</span>
+                    </div>
+                    <p className="text-gray-300 text-sm mb-2">
+                      Analysis of hashtags from {latestContent.length} collected posts across {new Set(latestContent.map(c => c.authorHandle)).size} influencers
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {Array.from(new Set(latestContent.flatMap(c => c.hashtags || []))).slice(0, 8).map((hashtag, i) => (
+                        <span key={i} className="text-xs bg-luxury-gold/20 text-luxury-gold px-2 py-1 rounded">
+                          #{hashtag}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <p className="text-gray-300 text-sm mb-2">
-                    Our AI detected renewed interest in advanced centella formulations among Seoul influencers,
-                    indicating a second wave evolution beyond basic cica products.
-                  </p>
-                  <div className="text-xs text-gray-400">
-                    AI Confidence: 87% • Sources: 156 mentions across 23 influencers • Trend Score: 94/100
-                  </div>
-                </div>
 
-                <div className="p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-medium text-white">Fermented Rice Water Essence Revolution</h4>
-                    <span className="text-luxury-gold text-sm">2-3 months</span>
+                  <div className="p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-medium text-white">Engagement Patterns</h4>
+                      <span className="text-luxury-gold text-sm">Real Data</span>
+                    </div>
+                    <p className="text-gray-300 text-sm mb-2">
+                      Average engagement across tracked influencers with video content analysis
+                    </p>
+                    <div className="text-xs text-gray-400">
+                      Posts analyzed: {latestContent.length} •
+                      Video content: {latestContent.filter(c => c.transcriptText).length} •
+                      Platforms: {new Set(latestContent.map(c => c.platform)).size}
+                    </div>
                   </div>
-                  <p className="text-gray-300 text-sm mb-2">
-                    Traditional Korean fermented rice water is being modernized with probiotics and peptides,
-                    creating next-generation essence formulations detected by our Seoul monitoring system.
-                  </p>
-                  <div className="text-xs text-gray-400">
-                    AI Confidence: 92% • Sources: 203 mentions across 31 influencers • Video Analysis: 45 transcripts
-                  </div>
-                </div>
 
-                <div className="p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-medium text-white">"Water Skin" Movement (Glass Skin Evolution)</h4>
-                    <span className="text-luxury-gold text-sm">4-6 months</span>
-                  </div>
-                  <p className="text-gray-300 text-sm mb-2">
-                    Our AI trend analysis identified the emergence of "Water Skin" (물피부) among Gen Z Korean influencers,
-                    representing an evolution from glass skin to more natural, hydrated-looking finish.
-                  </p>
-                  <div className="text-xs text-gray-400">
-                    AI Confidence: 79% • Sources: 89 mentions across 18 influencers • Cultural Analysis: Deep dive
+                  <div className="p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-medium text-white">Active Influencer Monitoring</h4>
+                      <span className="text-luxury-gold text-sm">Live Status</span>
+                    </div>
+                    <p className="text-gray-300 text-sm mb-2">
+                      Currently tracking {new Set(latestContent.map(c => c.authorHandle)).size} active influencers with recent content
+                    </p>
+                    <div className="text-xs text-gray-400">
+                      Most recent: {latestContent[0] ? new Date(latestContent[0].publishedAt).toLocaleDateString() : 'N/A'} •
+                      Collection active since: Daily 9 AM Pacific schedule
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-8 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+                  <div className="text-orange-400 mb-2">⚠️ No Data Available</div>
+                  <p className="text-gray-300 text-sm">
+                    Data analysis will be available after the next daily collection cycle (9 AM Pacific)
+                  </p>
+                </div>
+              )}
 
               <div className="mt-6 p-4 bg-luxury-charcoal/30 border border-luxury-gold/20 rounded-lg">
                 <div className="text-sm text-gray-400 mb-2">
-                  🚀 Premium Intelligence Architecture
+                  📊 Data Collection Status
                 </div>
                 <div className="text-white text-sm">
-                  Our premium system combines 12-influencer tier-based monitoring, premium Apify actors with residential proxies,
-                  SupaData video transcription, cross-platform validation, Seoul Sister Intelligence Scoring, and Claude Opus 4.1 analysis
-                  to deliver 3-6 month advance intelligence on Korean beauty trends with 99.9% accuracy.
+                  Daily automated collection from 12 Korean beauty influencers at 9 AM Pacific.
+                  Data includes posts, engagement metrics, hashtags, and video transcriptions stored in Supabase database.
                 </div>
               </div>
             </div>
@@ -748,61 +765,63 @@ export default function EnhancedIntelligencePage() {
               <div className="mb-6">
                 <Globe className="text-luxury-gold mx-auto mb-4" size={48} />
                 <h3 className="text-2xl font-semibold text-white mb-2 tracking-wide">
-                  Smart Trend Alerts
+                  Alert Configuration
                 </h3>
                 <p className="text-gray-300 font-light">
-                  AI-powered personalized alerts based on your skin profile and Korean beauty preferences
+                  Set up alerts for new content from tracked Korean beauty influencers
                 </p>
               </div>
 
               <div className="space-y-4 text-left">
                 <div className="p-4 bg-luxury-gold/5 border border-luxury-gold/20 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-medium text-white">Dry Skin Seoul Solutions</h4>
-                    <span className="text-green-400 text-sm">Active • AI Enhanced</span>
+                    <h4 className="font-medium text-white">New Content Alerts</h4>
+                    <span className="text-gray-400 text-sm">Coming Soon</span>
                   </div>
                   <p className="text-gray-300 text-sm mb-2">
-                    Advanced AI monitoring for dry skin-focused products trending in Seoul, with ingredient
-                    compatibility analysis and price arbitrage detection.
+                    Get notified when new content is collected from your favorite Korean beauty influencers
+                    during the daily 9 AM Pacific collection cycle.
                   </p>
                   <div className="text-xs text-gray-400">
-                    Last triggered: 2 days ago • "Polyglutamic Acid + Ceramide combinations trending in Seoul"
+                    Will track new posts from: {new Set(latestContent.map(c => c.authorHandle)).size} active influencers
                   </div>
                 </div>
 
                 <div className="p-4 bg-luxury-gold/5 border border-luxury-gold/20 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-medium text-white">Anti-Aging Innovation Tracker</h4>
-                    <span className="text-green-400 text-sm">Active • Video AI</span>
+                    <h4 className="font-medium text-white">Hashtag Monitoring</h4>
+                    <span className="text-gray-400 text-sm">Coming Soon</span>
                   </div>
                   <p className="text-gray-300 text-sm mb-2">
-                    Video transcription analysis of Korean beauty experts discussing breakthrough
-                    anti-aging ingredients and formulation techniques.
+                    Monitor specific hashtags and beauty terms in collected content to identify
+                    emerging trends in Korean beauty conversations.
                   </p>
                   <div className="text-xs text-gray-400">
-                    Last triggered: 5 days ago • "Bakuchiol + Peptide synergy discussed in 12 Seoul beauty videos"
+                    Current hashtags being tracked: {Array.from(new Set(latestContent.flatMap(c => c.hashtags || []))).length} unique tags
                   </div>
                 </div>
 
                 <div className="p-4 bg-luxury-gold/5 border border-luxury-gold/20 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-medium text-white">Seoul Price Intelligence</h4>
-                    <span className="text-green-400 text-sm">Active • Arbitrage AI</span>
+                    <h4 className="font-medium text-white">Engagement Thresholds</h4>
+                    <span className="text-gray-400 text-sm">Coming Soon</span>
                   </div>
                   <p className="text-gray-300 text-sm mb-2">
-                    Real-time monitoring of Seoul vs US price gaps for products matching your preferences,
-                    with automatic arbitrage opportunity alerts.
+                    Set engagement thresholds to be alerted when posts exceed specific like/comment counts,
+                    indicating viral content or trending topics.
                   </p>
                   <div className="text-xs text-gray-400">
-                    Last triggered: 1 week ago • "Beauty of Joseon Relief Sun 73% markup opportunity detected"
+                    Current data available for threshold analysis from {latestContent.length} posts
                   </div>
                 </div>
               </div>
 
-              <div className="mt-6">
-                <button className="px-6 py-3 bg-luxury-gold hover:bg-luxury-gold/90 text-black rounded-lg font-medium transition-all">
-                  Configure Smart Alerts
-                </button>
+              <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <div className="text-blue-400 text-sm mb-2">🔧 Alert System Status</div>
+                <p className="text-gray-300 text-sm">
+                  Alert functionality will be built on top of the existing daily data collection system.
+                  Data infrastructure is ready - alert triggers are in development.
+                </p>
               </div>
             </div>
           )}
