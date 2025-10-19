@@ -640,10 +640,10 @@ export default function EnhancedIntelligencePage() {
                 ) : (
                   <div className="space-y-3">
                     <div className="px-8 py-4 bg-luxury-gold/20 text-luxury-gold rounded-lg font-semibold text-lg border border-luxury-gold/30">
-                      🤖 Intelligence Auto-Updates Every 6 Hours
+                      🤖 Intelligence Available On-Demand
                     </div>
                     <p className="text-gray-400 text-sm">
-                      Premium intelligence runs automatically - no manual triggers needed
+                      Run premium intelligence analysis whenever you need the latest trends
                     </p>
                     <div className="text-xs text-gray-500 max-w-2xl mx-auto">
                       ✨ Always fresh: Intelligence scoring • Cross-platform validation • Trend analysis • Video insights
