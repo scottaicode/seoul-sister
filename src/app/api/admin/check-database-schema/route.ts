@@ -9,17 +9,7 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 Checking database schema for Korean beauty intelligence tables...')
 
-    // Check if korean_influencers table exists and get its structure
-    const { data: influencersTableInfo, error: influencersError } = await supabaseAdmin
-      .rpc('get_table_structure', { table_name: 'korean_influencers' })
-      .single()
-
-    // Check if influencer_content table exists and get its structure
-    const { data: contentTableInfo, error: contentError } = await supabaseAdmin
-      .rpc('get_table_structure', { table_name: 'influencer_content' })
-      .single()
-
-    // If RPC doesn't exist, try direct table queries
+    // Use direct table queries to check schema
     let influencersExists = false
     let contentExists = false
     let influencersColumns: any[] = []

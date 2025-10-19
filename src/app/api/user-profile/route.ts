@@ -133,7 +133,7 @@ export async function PUT(request: NextRequest) {
     const updateData: Partial<UserProfile> = {}
 
     // Only include fields that are provided
-    if (body.name !== undefined) updateData.first_name = body.name
+    if (body.name !== undefined) (updateData as any).first_name = body.name
     if (body.skin_type !== undefined) updateData.skin_type = body.skin_type
     if (body.skin_tone !== undefined) updateData.skin_tone = body.skin_tone
     if (body.skin_concerns !== undefined) updateData.skin_concerns = body.skin_concerns
