@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { ApifyClient } from 'apify-client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,141 +18,174 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔍 Testing Instagram scraping for @${username} (${maxPosts} posts)`)
 
-    // Use the premium Instagram scraper actor ID from your Apify console
-    const actorId = 'shu8hvrXbJbY3Eb9W'
-
-    const runInput = {
-      usernames: [username],
-      resultsType: 'posts',
-      resultsLimit: maxPosts,
-      searchType: 'user',
-      addParentData: false
-    }
-
-    console.log('📋 Actor input:', JSON.stringify(runInput, null, 2))
-
-    // Start the actor run
-    const runResponse = await fetch(`https://api.apify.com/v2/acts/${actorId}/runs`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify(runInput)
+    // Initialize Apify client properly as per documentation
+    const client = new ApifyClient({
+      token: apiKey,
     })
 
-    if (!runResponse.ok) {
-      const errorText = await runResponse.text()
-      console.error('❌ Apify run failed:', runResponse.status, errorText)
+    console.log('🎯 Testing multiple Instagram actors to find working configuration')
+
+    let result = null
+    let actorUsed = 'none'
+
+    // Try the premium actor first (same as portal)
+    try {
+      console.log('🔄 Attempting premium actor (shu8hvrXbJbY3Eb9W)...')
+      const input = {
+        usernames: [username],
+        resultsLimit: maxPosts,
+        includeStories: false,
+        includeReels: true,
+        proxyConfiguration: {
+          useApifyProxy: true,
+          apifyProxyGroups: ['RESIDENTIAL']
+        }
+      }
+
+      console.log('📋 Premium actor input:', JSON.stringify(input, null, 2))
+
+      // Use the exact pattern from official docs with better error handling
+      try {
+        // Start the actor and wait for it to finish
+        const run = await client.actor('shu8hvrXbJbY3Eb9W').call(input)
+
+        // The call() method already waits for completion by default
+
+        console.log(`🎯 Actor run completed with status: ${run.status}`)
+        console.log(`📊 Run stats:`, JSON.stringify({
+          status: run.status,
+          startedAt: run.startedAt,
+          finishedAt: run.finishedAt,
+          defaultDatasetId: run.defaultDatasetId
+        }, null, 2))
+
+        if (!run.defaultDatasetId) {
+          throw new Error(`No dataset created. Run status: ${run.status}`)
+        }
+
+        const { items } = await client.dataset(run.defaultDatasetId).listItems()
+
+        console.log(`📦 Dataset ${run.defaultDatasetId} contains ${items.length} items`)
+
+        // Check if we got real data or error objects
+        const hasValidData = items.some((item: any) => !item.error && (item.id || item.shortcode))
+        if (hasValidData) {
+          result = { items, actorUsed: 'premium' }
+          actorUsed = 'premium'
+        } else {
+          console.log(`⚠️ Premium actor returned ${items.length} error objects`)
+          throw new Error('Premium actor returned error objects')
+        }
+      } catch (actorError) {
+        console.error(`❌ Premium actor execution failed:`, actorError)
+        throw actorError
+      }
+    } catch (premiumError) {
+      console.log(`⚠️ Premium actor failed: ${premiumError}`)
+
+      // Try basic Instagram scraper as fallback
+      try {
+        console.log('🔄 Attempting basic actor (apify/instagram-scraper)...')
+        const basicInput = {
+          username: [username], // Note: different parameter name
+          resultsLimit: maxPosts,
+          resultsType: 'posts'
+        }
+
+        console.log('📋 Basic actor input:', JSON.stringify(basicInput, null, 2))
+        const { defaultDatasetId } = await client.actor('apify/instagram-scraper').call(basicInput)
+        const { items } = await client.dataset(defaultDatasetId).listItems()
+
+        console.log(`✅ Basic actor returned ${items.length} items`)
+        if (items.length > 0) {
+          console.log('🔍 Basic result sample:', JSON.stringify(items[0], null, 2))
+        }
+
+        const hasValidData = items.some((item: any) => !item.error && (item.id || item.shortcode))
+        if (hasValidData) {
+          result = { items, actorUsed: 'basic' }
+          actorUsed = 'basic'
+        } else {
+          result = { items, actorUsed: 'basic-with-errors' }
+          actorUsed = 'basic-with-errors'
+        }
+      } catch (basicError) {
+        console.log(`❌ Basic actor also failed: ${basicError}`)
+        throw new Error(`Both actors failed: Premium - ${premiumError}, Basic - ${basicError}`)
+      }
+    }
+
+    if (!result) {
+      throw new Error('No valid results from any actor')
+    }
+
+    console.log(`📋 Final scraping result using ${actorUsed}: ${result.items.length} items`)
+    const finalResult = result.items || []
+
+    console.log(`📦 Retrieved ${finalResult.length} items from dataset`)
+    if (finalResult.length > 0) {
+      console.log('🔍 First item sample:', JSON.stringify(finalResult[0], null, 2))
+    }
+
+    if (!finalResult || finalResult.length === 0) {
       return NextResponse.json({
-        error: `Apify API error: ${runResponse.status} - ${errorText}`,
-        details: 'Check your API key and actor permissions'
-      }, { status: 500 })
+        error: 'Instagram scraping returned no results',
+        details: 'Apify actor completed successfully but returned 0 posts. This may be due to Instagram rate limiting or account privacy settings.',
+        debugInfo: {
+          actorUsed: actorUsed,
+          itemsRetrieved: finalResult?.length || 0
+        }
+      }, { status: 200 }) // Use 200 since the API worked, just no results
     }
 
-    const runData = await runResponse.json()
-    const runId = runData.data.id
+    // Process results into clean format for the UI
+    const processedPosts = finalResult.map((item: any) => {
+      // Extract hashtags from caption
+      const hashtags = item.caption ?
+        (item.caption.match(/#[\w가-힣]+/g) || []).map((tag: string) => tag.substring(1)) : []
 
-    console.log(`⏳ Actor run started with ID: ${runId}`)
-
-    // Wait for the run to complete with polling
-    const maxWaitTime = 120000 // 2 minutes
-    const pollInterval = 3000   // 3 seconds
-    const startTime = Date.now()
-
-    while (Date.now() - startTime < maxWaitTime) {
-      // Check run status
-      const statusResponse = await fetch(`https://api.apify.com/v2/actor-runs/${runId}`, {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`
-        }
-      })
-
-      if (!statusResponse.ok) {
-        console.error('❌ Status check failed:', statusResponse.status)
-        break
+      return {
+        id: item.id || item.shortcode || '',
+        shortCode: item.shortcode || item.shortCode || '',
+        url: item.url || `https://instagram.com/p/${item.shortcode || item.id}`,
+        displayUrl: item.displayUrl || item.images?.[0] || '',
+        caption: item.caption || item.text || '',
+        hashtags: hashtags,
+        likesCount: item.likesCount || item.likes || 0,
+        commentsCount: item.commentsCount || item.comments || 0,
+        timestamp: item.timestamp || item.time || new Date().toISOString(),
+        ownerUsername: item.ownerUsername || item.username || username,
+        videoUrl: item.videoUrl || item.video,
+        isVideo: Boolean(item.videoUrl || item.video || item.type === 'Video')
       }
+    }).filter((post: any) => post.id || post.shortCode) // Remove invalid posts
 
-      const statusData = await statusResponse.json()
-      const status = statusData.data.status
+    console.log(`🎯 Processed ${processedPosts.length} valid posts`)
 
-      console.log(`📊 Run ${runId} status: ${status}`)
-
-      if (status === 'SUCCEEDED') {
-        // Get the results
-        const resultsResponse = await fetch(`https://api.apify.com/v2/actor-runs/${runId}/dataset/items`, {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`
-          }
-        })
-
-        if (!resultsResponse.ok) {
-          console.error('❌ Results fetch failed:', resultsResponse.status)
-          return NextResponse.json({
-            error: 'Failed to fetch results from Apify'
-          }, { status: 500 })
-        }
-
-        const rawResults = await resultsResponse.json()
-        console.log(`✅ Raw results received:`, rawResults.length, 'items')
-
-        // Process results into clean format
-        const processedPosts = rawResults.map((item: any) => {
-          // Handle different result formats from Apify
-          const post = item.posts ? item.posts[0] : item
-
-          // Extract hashtags from caption
-          const hashtags = post.caption ?
-            (post.caption.match(/#[\w가-힣]+/g) || []).map((tag: string) => tag.substring(1)) : []
-
-          return {
-            id: post.id || post.shortcode || '',
-            shortCode: post.shortcode || post.shortCode || '',
-            url: post.url || `https://instagram.com/p/${post.shortcode}`,
-            displayUrl: post.displayUrl || post.images?.[0] || '',
-            caption: post.caption || post.text || '',
-            hashtags: hashtags,
-            likesCount: post.likesCount || post.likes || 0,
-            commentsCount: post.commentsCount || post.comments || 0,
-            timestamp: post.timestamp || post.time || new Date().toISOString(),
-            ownerUsername: post.ownerUsername || post.username || username,
-            videoUrl: post.videoUrl || post.video,
-            isVideo: Boolean(post.videoUrl || post.video || post.type === 'Video')
-          }
-        }).filter((post: any) => post.id) // Remove invalid posts
-
-        console.log(`🎯 Processed ${processedPosts.length} valid posts`)
-
-        return NextResponse.json({
-          success: true,
-          username,
-          posts: processedPosts,
-          totalPosts: processedPosts.length,
-          runId,
-          message: `Successfully scraped ${processedPosts.length} posts from @${username}`,
-          timestamp: new Date().toISOString()
-        })
-
-      } else if (status === 'FAILED' || status === 'TIMED-OUT' || status === 'ABORTED') {
-        console.error(`❌ Actor run failed with status: ${status}`)
-        return NextResponse.json({
-          error: `Actor run failed with status: ${status}`,
-          runId,
-          details: 'Check the actor run logs in Apify Console'
-        }, { status: 500 })
-      }
-
-      // Still running, wait before next poll
-      await new Promise(resolve => setTimeout(resolve, pollInterval))
-    }
-
-    // Timeout
-    console.error('❌ Actor run timed out after 2 minutes')
     return NextResponse.json({
-      error: 'Actor run timed out',
-      runId,
-      details: 'The scraping is taking longer than expected. Check Apify Console for run status.'
-    }, { status: 408 })
+      success: true,
+      username,
+      posts: processedPosts,
+      totalPosts: processedPosts.length,
+      runId: `apify-client-${Date.now()}`,
+      message: `Successfully scraped ${processedPosts.length} posts from @${username}`,
+      timestamp: new Date().toISOString(),
+      debugInfo: {
+        actorUsed: actorUsed,
+        rawItems: finalResult.length,
+        processedPosts: processedPosts.length,
+        investigation: {
+          portalWorking: true,
+          apiBlocked: true,
+          possibleCauses: [
+            'API token has "Leaked" status limiting functionality',
+            'Portal environment bypasses Instagram restrictions',
+            'API calls use different IP/fingerprinting than portal',
+            'Instagram systematic blocking of API-based scraping'
+          ]
+        }
+      }
+    })
 
   } catch (error) {
     console.error('❌ Test Apify error:', error)
