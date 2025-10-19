@@ -271,7 +271,37 @@ export async function POST(request: NextRequest) {
     const influencerIds = [...new Set(contentToStore.map(c => c.influencer_id))]
     // Note: Influencer timestamp updates skipped due to type constraints
 
-    // Step 7: Return comprehensive results
+    // Step 7: Check alerts for newly stored content
+    let alertsTriggered = 0
+    if (insertedContent && insertedContent.length > 0) {
+      try {
+        console.log('🔔 Checking alerts for newly stored content...')
+        const contentIds = insertedContent.map((content: any) => content.id)
+
+        const alertResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/api/intelligence/check-alerts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contentIds,
+            checkAll: false
+          })
+        })
+
+        if (alertResponse.ok) {
+          const alertResult = await alertResponse.json()
+          alertsTriggered = alertResult.alertsTriggered || 0
+          console.log(`🔔 Alert check completed: ${alertsTriggered} alerts triggered`)
+        } else {
+          console.warn('⚠️ Alert checking failed, continuing pipeline')
+        }
+      } catch (alertError) {
+        console.warn('⚠️ Alert checking failed:', alertError)
+      }
+    }
+
+    // Step 8: Return comprehensive results
     return NextResponse.json({
       success: true,
       message: 'Instagram data successfully stored in Supabase',
@@ -282,7 +312,8 @@ export async function POST(request: NextRequest) {
         postsStoredInDatabase: insertedContent?.length || 0,
         transcriptionRecordsCreated: transcriptionsStored,
         unmatchedInfluencers: unmatchedPosts.length,
-        influencersUpdated: influencerIds.length
+        influencersUpdated: influencerIds.length,
+        alertsTriggered
       },
       dataOverview: {
         platforms: ['instagram'],

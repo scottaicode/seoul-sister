@@ -120,20 +120,20 @@ export class ApifyInfluencerMonitor {
       let usedPremium = false
 
       try {
-        // Premium actor configuration (try first)
+        // Use the exact actor configuration that we know works from your console
+        // RB9HEZitC8hlUXAha is the actor ID shown in your Apify console
         const premiumInput = {
           usernames: [username],
-          resultsLimit: options.maxPosts || 30,
-          includeStories: options.includeStories || false,
-          includeReels: options.includeReels || true,
-          proxyConfiguration: {
-            useApifyProxy: true,
-            apifyProxyGroups: ['RESIDENTIAL']
-          }
+          resultsType: 'posts',
+          resultsLimit: options.maxPosts || 20,
+          searchType: 'user',
+          addParentData: false
         }
 
         console.log(`🔄 Attempting premium actor for @${username}`)
-        run = await this.apify.actor('shu8hvrXbJbY3Eb9W').call(premiumInput)
+        console.log(`📋 Actor input:`, JSON.stringify(premiumInput, null, 2))
+
+        run = await this.apify.actor('RB9HEZitC8hlUXAha').call(premiumInput)
         usedPremium = true
         console.log(`✅ Premium actor successful for @${username}`)
       } catch (premiumError) {
@@ -157,22 +157,57 @@ export class ApifyInfluencerMonitor {
 
       const dataset = await this.apify.dataset(run.defaultDatasetId).listItems()
 
-      const processedData: InfluencerContent[] = dataset.items.map((item: any) => ({
-        platform: 'instagram' as const,
-        postId: item.id || item.shortCode,
-        url: item.url || `https://instagram.com/p/${item.shortCode}`,
-        caption: item.caption || '',
-        hashtags: this.extractHashtags(item.caption || ''),
-        mentions: this.extractMentions(item.caption || ''),
-        mediaUrls: this.extractMediaUrls(item),
-        metrics: {
-          likes: item.likesCount || 0,
-          comments: item.commentsCount || 0,
-          views: item.videoViewCount || item.videoPlayCount
-        },
-        publishedAt: item.timestamp || item.takenAt,
-        authorHandle: username
-      }))
+      console.log(`📦 Retrieved ${dataset.items?.length || 0} items from dataset`)
+
+      // Debug: Log first item to see structure
+      if (dataset.items && dataset.items.length > 0) {
+        console.log(`🔍 First item sample:`, JSON.stringify(dataset.items[0], null, 2))
+      }
+
+      // Filter out error objects and empty items
+      const validItems = dataset.items?.filter((item: any) => {
+        // Check for error objects
+        if (item?.error || item?.errorDescription) {
+          console.log(`⚠️ Skipping error item:`, item.error || item.errorDescription)
+          return false
+        }
+
+        // Check for valid content
+        const hasContent = item?.caption || item?.alt || item?.url
+        if (!hasContent) {
+          console.log(`⚠️ Skipping item without content:`, Object.keys(item || {}))
+          return false
+        }
+
+        return true
+      }) || []
+
+      console.log(`✅ Found ${validItems.length} valid items after filtering`)
+
+      const processedData: InfluencerContent[] = validItems.map((item: any) => {
+        // Handle different data structures from different Apify actors
+        const caption = item.caption || item.alt || ''
+        const postId = item.id || item.shortCode || `${Date.now()}_${Math.random()}`
+        const likesCount = item.likesCount || 0
+        const commentsCount = item.commentsCount || item.commentsCount || 0
+
+        return {
+          platform: 'instagram' as const,
+          postId,
+          url: item.url || `https://instagram.com/p/${postId}`,
+          caption,
+          hashtags: this.extractHashtags(caption),
+          mentions: this.extractMentions(caption),
+          mediaUrls: this.extractMediaUrls(item),
+          metrics: {
+            likes: likesCount,
+            comments: commentsCount,
+            views: item.videoViewCount || item.videoPlayCount || item.viewCount
+          },
+          publishedAt: item.timestamp || item.takenAt || new Date().toISOString(),
+          authorHandle: username
+        }
+      })
 
       console.log(`✅ Instagram scrape completed: ${processedData.length} posts from @${username} (${usedPremium ? 'Premium' : 'Basic'} actor)`)
 
@@ -451,28 +486,54 @@ export class ApifyInfluencerMonitor {
   }
 
   private extractHashtags(text: string): string[] {
-    const hashtagRegex = /#[\w가-힣]+/g
-    return text.match(hashtagRegex) || []
+    if (!text) return []
+
+    // Extract hashtags from text, handling both English and Korean characters
+    const hashtagRegex = /#[\w가-힣_-]+/g
+    const hashtags = text.match(hashtagRegex) || []
+
+    // Clean up hashtags (remove # and convert to lowercase)
+    return hashtags.map(tag => tag.slice(1).toLowerCase())
   }
 
   private extractMentions(text: string): string[] {
-    const mentionRegex = /@[\w가-힣]+/g
-    return text.match(mentionRegex) || []
+    if (!text) return []
+
+    // Extract mentions from text, handling both English and Korean characters
+    const mentionRegex = /@[\w가-힣_.-]+/g
+    const mentions = text.match(mentionRegex) || []
+
+    // Clean up mentions (remove @ symbol)
+    return mentions.map(mention => mention.slice(1))
   }
 
   private extractMediaUrls(item: any): string[] {
     const urls: string[] = []
 
+    // Handle different media URL fields from various Apify actors
     if (item.displayUrl) urls.push(item.displayUrl)
     if (item.videoUrl) urls.push(item.videoUrl)
-    if (item.sidecarChildren) {
+    if (item.url && item.url.includes('instagram.com')) urls.push(item.url)
+
+    // Handle sidecar/carousel posts
+    if (item.sidecarChildren && Array.isArray(item.sidecarChildren)) {
       item.sidecarChildren.forEach((child: any) => {
         if (child.displayUrl) urls.push(child.displayUrl)
         if (child.videoUrl) urls.push(child.videoUrl)
       })
     }
 
-    return urls
+    // Handle multiple media formats
+    if (item.images && Array.isArray(item.images)) {
+      urls.push(...item.images)
+    }
+
+    if (item.videos && Array.isArray(item.videos)) {
+      urls.push(...item.videos)
+    }
+
+    // Remove duplicates and filter out invalid URLs
+    return [...new Set(urls)].filter(url => url && typeof url === 'string')
   }
 }
 

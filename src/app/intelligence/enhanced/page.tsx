@@ -6,6 +6,8 @@ import { ArrowLeft, Zap, TrendingUp, Globe, Brain, ChevronDown, ChevronUp } from
 import AuthHeader from '@/components/AuthHeader'
 // import IntelligenceDashboard from '@/components/IntelligenceDashboard'
 import PremiumGate from '@/components/PremiumGate'
+import TrendAnalysisTab from '@/components/TrendAnalysisTab'
+import AlertsTab from '@/components/AlertsTab'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface ProcessedContent {
@@ -682,150 +684,11 @@ export default function EnhancedIntelligencePage() {
           )}
 
           {activeTab === 'trends' && (
-            <div className="bg-luxury-charcoal/20 rounded-xl p-8 border border-luxury-gold/20 backdrop-blur-sm text-center">
-              <div className="mb-6">
-                <Zap className="text-luxury-gold mx-auto mb-4" size={48} />
-                <h3 className="text-2xl font-semibold text-white mb-2 tracking-wide">
-                  Data Analysis Dashboard
-                </h3>
-                <p className="text-gray-300 font-light">
-                  Real-time analysis of collected Instagram data from Korean beauty influencers
-                </p>
-              </div>
-
-              {latestContent.length > 0 ? (
-                <div className="grid gap-4 text-left">
-                  <div className="p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium text-white">Top Hashtags Analysis</h4>
-                      <span className="text-luxury-gold text-sm">Last 24h</span>
-                    </div>
-                    <p className="text-gray-300 text-sm mb-2">
-                      Analysis of hashtags from {latestContent.length} collected posts across {new Set(latestContent.map(c => c.authorHandle)).size} influencers
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {Array.from(new Set(latestContent.flatMap(c => c.hashtags || []))).slice(0, 8).map((hashtag, i) => (
-                        <span key={i} className="text-xs bg-luxury-gold/20 text-luxury-gold px-2 py-1 rounded">
-                          #{hashtag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium text-white">Engagement Patterns</h4>
-                      <span className="text-luxury-gold text-sm">Real Data</span>
-                    </div>
-                    <p className="text-gray-300 text-sm mb-2">
-                      Average engagement across tracked influencers with video content analysis
-                    </p>
-                    <div className="text-xs text-gray-400">
-                      Posts analyzed: {latestContent.length} •
-                      Video content: {latestContent.filter(c => c.transcriptText).length} •
-                      Platforms: {new Set(latestContent.map(c => c.platform)).size}
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-luxury-gold/10 border border-luxury-gold/30 rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium text-white">Active Influencer Monitoring</h4>
-                      <span className="text-luxury-gold text-sm">Live Status</span>
-                    </div>
-                    <p className="text-gray-300 text-sm mb-2">
-                      Currently tracking {new Set(latestContent.map(c => c.authorHandle)).size} active influencers with recent content
-                    </p>
-                    <div className="text-xs text-gray-400">
-                      Most recent: {latestContent[0] ? new Date(latestContent[0].publishedAt).toLocaleDateString() : 'N/A'} •
-                      Collection active since: Daily 9 AM Pacific schedule
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-8 bg-orange-500/10 border border-orange-500/20 rounded-lg">
-                  <div className="text-orange-400 mb-2">⚠️ No Data Available</div>
-                  <p className="text-gray-300 text-sm">
-                    Data analysis will be available after the next daily collection cycle (9 AM Pacific)
-                  </p>
-                </div>
-              )}
-
-              <div className="mt-6 p-4 bg-luxury-charcoal/30 border border-luxury-gold/20 rounded-lg">
-                <div className="text-sm text-gray-400 mb-2">
-                  📊 Data Collection Status
-                </div>
-                <div className="text-white text-sm">
-                  Daily automated collection from 12 Korean beauty influencers at 9 AM Pacific.
-                  Data includes posts, engagement metrics, hashtags, and video transcriptions stored in Supabase database.
-                </div>
-              </div>
-            </div>
+            <TrendAnalysisTab latestContent={latestContent} />
           )}
 
           {activeTab === 'alerts' && (
-            <div className="bg-luxury-charcoal/20 rounded-xl p-8 border border-luxury-gold/20 backdrop-blur-sm text-center">
-              <div className="mb-6">
-                <Globe className="text-luxury-gold mx-auto mb-4" size={48} />
-                <h3 className="text-2xl font-semibold text-white mb-2 tracking-wide">
-                  Alert Configuration
-                </h3>
-                <p className="text-gray-300 font-light">
-                  Set up alerts for new content from tracked Korean beauty influencers
-                </p>
-              </div>
-
-              <div className="space-y-4 text-left">
-                <div className="p-4 bg-luxury-gold/5 border border-luxury-gold/20 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-medium text-white">New Content Alerts</h4>
-                    <span className="text-gray-400 text-sm">Coming Soon</span>
-                  </div>
-                  <p className="text-gray-300 text-sm mb-2">
-                    Get notified when new content is collected from your favorite Korean beauty influencers
-                    during the daily 9 AM Pacific collection cycle.
-                  </p>
-                  <div className="text-xs text-gray-400">
-                    Will track new posts from: {new Set(latestContent.map(c => c.authorHandle)).size} active influencers
-                  </div>
-                </div>
-
-                <div className="p-4 bg-luxury-gold/5 border border-luxury-gold/20 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-medium text-white">Hashtag Monitoring</h4>
-                    <span className="text-gray-400 text-sm">Coming Soon</span>
-                  </div>
-                  <p className="text-gray-300 text-sm mb-2">
-                    Monitor specific hashtags and beauty terms in collected content to identify
-                    emerging trends in Korean beauty conversations.
-                  </p>
-                  <div className="text-xs text-gray-400">
-                    Current hashtags being tracked: {Array.from(new Set(latestContent.flatMap(c => c.hashtags || []))).length} unique tags
-                  </div>
-                </div>
-
-                <div className="p-4 bg-luxury-gold/5 border border-luxury-gold/20 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-medium text-white">Engagement Thresholds</h4>
-                    <span className="text-gray-400 text-sm">Coming Soon</span>
-                  </div>
-                  <p className="text-gray-300 text-sm mb-2">
-                    Set engagement thresholds to be alerted when posts exceed specific like/comment counts,
-                    indicating viral content or trending topics.
-                  </p>
-                  <div className="text-xs text-gray-400">
-                    Current data available for threshold analysis from {latestContent.length} posts
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                <div className="text-blue-400 text-sm mb-2">🔧 Alert System Status</div>
-                <p className="text-gray-300 text-sm">
-                  Alert functionality will be built on top of the existing daily data collection system.
-                  Data infrastructure is ready - alert triggers are in development.
-                </p>
-              </div>
-            </div>
+            <AlertsTab latestContent={latestContent} userEmail={user?.email} />
           )}
         </div>
 
