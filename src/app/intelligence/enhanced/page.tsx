@@ -14,10 +14,12 @@ interface ProcessedContent {
   authorHandle: string
   url: string
   caption: string
+  hashtags?: string[]
   metrics: {
     likes: number | null
     comments: number | null
     views: number | null
+    shares: number | null
   }
   publishedAt: string
   scrapedAt: string
