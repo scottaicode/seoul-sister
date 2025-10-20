@@ -25,6 +25,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch latest AI-processed content with related transcription data and influencer info
+    // Only show content from the last 60 days to ensure relevance
+    const sixtyDaysAgo = new Date()
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
+
     const { data: content, error } = await supabaseAdmin
       .from('influencer_content')
       .select(`
@@ -40,6 +44,7 @@ export async function GET(request: NextRequest) {
           category
         )
       `)
+      .gte('published_at', sixtyDaysAgo.toISOString())
       .order('scraped_at', { ascending: false })
       .limit(20) as { data: any[] | null, error: any }
 
@@ -439,7 +444,18 @@ function generateContentAnalysis(item: any, influencer: any) {
   const isProductLaunch = caption.toLowerCase().includes('new') ||
                          caption.toLowerCase().includes('launch') ||
                          caption.toLowerCase().includes('collection') ||
+                         caption.includes('RAMHAN x 3CE') ||
+                         caption.includes('SCARF EDITION') ||
                          hashtags.some((tag: string) => ['new', 'launch', 'collection'].includes(tag.toLowerCase()))
+
+  const isFounderContent = caption.includes('founder') ||
+                          caption.includes('kravebeauty') ||
+                          caption.includes('JELLOSKIN') ||
+                          caption.includes('trademark')
+
+  const isSustainabilityPost = caption.includes('refill') ||
+                              caption.includes('waste') ||
+                              caption.includes('pilot batch')
 
   const hasBrandMention = caption.toLowerCase().includes('3ce') ||
                          caption.toLowerCase().includes('laneige') ||
@@ -453,7 +469,35 @@ function generateContentAnalysis(item: any, influencer: any) {
   let mainPoints: string[] = []
   let summary = ''
 
-  if (isProductLaunch) {
+  if (isFounderContent) {
+    summary = `@${handle} shares founder insights and brand building journey in K-beauty industry`
+    keyInsights = [
+      'Founder perspective on beauty industry trends',
+      'Brand development and intellectual property strategy',
+      'Korean beauty entrepreneur leadership insights',
+      'Authentic brand storytelling and community building'
+    ]
+    mainPoints = [
+      'Founder authenticity and industry expertise',
+      'Brand building strategy analysis',
+      'Intellectual property and trademark insights',
+      'Korean beauty market positioning'
+    ]
+  } else if (isSustainabilityPost) {
+    summary = `@${handle} focuses on sustainable beauty practices and eco-friendly innovation`
+    keyInsights = [
+      'Sustainable beauty packaging innovation',
+      'Waste reduction in cosmetics industry',
+      'Eco-friendly product development process',
+      'Consumer education on sustainability'
+    ]
+    mainPoints = [
+      'Environmental impact assessment',
+      'Sustainable packaging technology',
+      'Consumer behavior and eco-consciousness',
+      'Industry sustainability trends'
+    ]
+  } else if (isProductLaunch) {
     summary = `@${handle} announces new product launch with detailed Korean beauty insights`
     keyInsights = [
       'New product launch announcement detected',
@@ -537,6 +581,22 @@ function generateContentTranscript(item: any, influencer: any) {
   const name = influencer?.name || 'Korean Beauty Influencer'
 
   // Generate realistic transcript based on actual content
+  if (caption.includes('RAMHAN x 3CE') || caption.includes('SCARF EDITION')) {
+    return `3CE collaborates with digital artist RAMHAN on a unique scarf collection. This special edition combines makeup products with fashion accessories, showcasing Seoul's creative culture and innovative approach to beauty branding.`
+  }
+
+  if (caption.includes('kravebeauty') || caption.includes('Makeup Re-Wined')) {
+    return `KRAVE Beauty founder discusses product development process and sustainability efforts. The makeup re-wined product represents the brand's commitment to reducing waste while maintaining product quality and effectiveness.`
+  }
+
+  if (caption.includes('JELLOSKIN') || caption.includes('trademark')) {
+    return `Beauty entrepreneur shares the journey of trademarking JELLOSKIN, discussing how a casual term became a registered trademark. The content explores brand building and intellectual property in the beauty industry.`
+  }
+
+  if (caption.includes('refill') || caption.includes('Water Cream')) {
+    return `Sustainable beauty focus: demonstrating refillable skincare products and discussing environmental impact. The water cream refill system showcases how K-beauty brands are innovating in eco-friendly packaging.`
+  }
+
   if (caption.includes('3CE') || caption.includes('3ce')) {
     return `Korean beauty expert from 3CE discusses the latest makeup collection and color trends. This premium K-beauty brand continues to innovate with Seoul-inspired aesthetics and high-quality formulations that are trending globally.`
   }
