@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    const authenticIds = authenticInfluencerIds?.map(inf => inf.id) || []
+    const authenticIds = authenticInfluencerIds?.map((inf: any) => inf.id) || []
     console.log(`✅ Found ${authenticIds.length} authentic influencer IDs`)
 
     // Get count of content before cleanup
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
       .from('influencer_content')
       .select('id')
 
-    const contentIds = remainingContentIds?.map(c => c.id) || []
+    const contentIds = remainingContentIds?.map((c: any) => c.id) || []
 
     // Clean up transcriptions that reference deleted content
     const { error: transcriptionCleanupError } = await supabaseAdmin
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
         remainingContent: finalContent?.map(c => ({
           handle: (c as any).korean_influencers?.handle,
           name: (c as any).korean_influencers?.name,
-          caption: c.caption?.substring(0, 50) + '...'
+          caption: (c as any).caption?.substring(0, 50) + '...'
         })) || []
       },
       cleanup: {

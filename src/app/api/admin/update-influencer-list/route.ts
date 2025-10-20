@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     let addedCount = 0
     for (const influencer of newInfluencers) {
-      const { error } = await supabaseAdmin
+      const { error } = await (supabaseAdmin as any)
         .from('korean_influencers')
         .upsert(influencer, {
           onConflict: 'handle,platform'
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
         added: newInfluencers.map(i => i.handle),
         totalAdded: addedCount
       },
-      finalList: finalInfluencers?.map(i => ({
+      finalList: finalInfluencers?.map((i: any) => ({
         handle: i.handle,
         name: i.name,
         tier: i.tier,

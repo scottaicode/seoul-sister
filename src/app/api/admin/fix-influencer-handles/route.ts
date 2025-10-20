@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       if (influencer.oldHandle !== influencer.newHandle) {
         console.log(`🔄 Updating ${influencer.oldHandle} -> ${influencer.newHandle}`)
 
-        const { error } = await supabaseAdmin
+        const { error } = await (supabaseAdmin as any)
           .from('korean_influencers')
           .update({
             handle: influencer.newHandle,
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: `Updated ${updatesCount} influencer handles to match Apify configuration`,
       apifyInfluencers: correctInfluencers.map(i => i.newHandle),
-      databaseInfluencers: finalInfluencers?.map(i => i.handle) || [],
+      databaseInfluencers: finalInfluencers?.map((i: any) => i.handle) || [],
       updatedCount: updatesCount,
       totalInfluencers: finalInfluencers?.length || 0
     })
