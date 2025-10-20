@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+// Updated for Korean beauty intelligence deployment
 const nextConfig = {
   // React strict mode for better development
   reactStrictMode: true,
