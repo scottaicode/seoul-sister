@@ -404,19 +404,19 @@ export default function EnhancedIntelligencePage() {
                   </div>
                   <div className="space-y-2 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-300">@seoul_skincare</span>
+                      <span className="text-gray-300">@glowwithava</span>
                       <span className="text-blue-400">180K</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-300">@kbeauty_science</span>
+                      <span className="text-gray-300">@jamesjiunhee</span>
                       <span className="text-blue-400">150K</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-300">@koreanbeauty_amanda</span>
+                      <span className="text-gray-300">@innisfreeofficial</span>
                       <span className="text-blue-400">320K</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-300">@beautytokyo_seoul</span>
+                      <span className="text-gray-300">@sulwhasoo_official</span>
                       <span className="text-blue-400">280K</span>
                     </div>
                   </div>
