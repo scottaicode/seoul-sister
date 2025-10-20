@@ -21,7 +21,7 @@ interface StoredInfluencerContent {
   influencer_id: string
   platform_post_id: string
   platform: string
-  content_type?: string
+  // content_type?: string // Temporarily removed until schema is updated
   post_url: string | null
   caption: string | null
   hashtags: string[] | null
@@ -58,43 +58,39 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Step 1: Fetch scheduled Instagram data from Apify
-    console.log('📥 Fetching scheduled Instagram data from Apify...')
+    // Step 1: Fetch ALL scheduled Instagram data from Apify using our enhanced endpoint
+    console.log('📥 Fetching ALL scheduled Instagram data from Apify...')
 
-    const client = new ApifyClient({ token: apiKey })
-    const actorId = 'apify/instagram-api-scraper'
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'
+    const body = await request.json().catch(() => ({}))
+    const mode = body.mode || 'daily' // 'daily' for new posts only, 'backfill' for historical data
+    const scheduledResponse = await fetch(`${baseUrl}/api/apify/fetch-scheduled?mode=${mode}`)
 
-    const runs = await client.actor(actorId).runs().list({
-      status: 'SUCCEEDED',
-      limit: 3, // Last 3 successful runs
-      desc: true
-    })
-
-    if (!runs.items.length) {
+    if (!scheduledResponse.ok) {
       return NextResponse.json({
         success: false,
-        error: 'No recent Apify runs found',
-        recommendation: 'Check if scheduled Instagram scraping is running'
+        error: 'Failed to fetch scheduled data',
+        recommendation: 'Check if fetch-scheduled endpoint is working'
       }, { status: 404 })
     }
 
-    // Get data from the most recent run
-    const latestRun = runs.items[0]
-    console.log(`🎯 Using latest run: ${latestRun.id} from ${latestRun.finishedAt}`)
+    const scheduledData = await scheduledResponse.json()
+    const rawInstagramData = scheduledData.posts || []
+    console.log(`📦 Retrieved ${rawInstagramData.length} raw items from ALL Apify datasets`)
+    console.log(`📊 Data source: ${scheduledData.sourceInfo?.totalRuns || 0} Apify runs combined`)
 
-    if (!latestRun.defaultDatasetId) {
-      return NextResponse.json({
-        success: false,
-        error: 'Latest run has no dataset',
-        runId: latestRun.id
-      }, { status: 404 })
-    }
+    // Filter and process valid Instagram posts, removing duplicates by post ID
+    const uniqueRawData = rawInstagramData.reduce((acc: any[], item: any) => {
+      const postId = item.id || item.shortcode || `${item.ownerUsername}_${Date.now()}`
+      if (!acc.some(existing => existing.id === postId || existing.shortcode === postId)) {
+        acc.push(item)
+      }
+      return acc
+    }, [])
 
-    const { items: rawInstagramData } = await client.dataset(latestRun.defaultDatasetId).listItems()
-    console.log(`📦 Retrieved ${rawInstagramData.length} raw items from Apify dataset`)
+    console.log(`🔄 Deduplicated ${rawInstagramData.length} items to ${uniqueRawData.length} unique posts`)
 
-    // Filter and process valid Instagram posts
-    const validPosts: InstagramPost[] = rawInstagramData
+    const validPosts: InstagramPost[] = uniqueRawData
       .filter((item: any) => item.caption && !item.error && item.ownerUsername)
       .map((item: any) => ({
         id: item.id || item.shortcode || `${item.ownerUsername}_${Date.now()}`,
@@ -157,12 +153,12 @@ export async function POST(request: NextRequest) {
       // Extract mentions from caption
       const mentions = extractMentions(post.caption)
 
-      // Prepare content for database storage (matching working structure)
+      // Prepare content for database storage (excluding content_type temporarily until schema is updated)
       contentToStore.push({
         influencer_id: (matchedInfluencer as any).id,
         platform_post_id: post.id,
         platform: 'instagram',
-        content_type: post.isVideo ? 'video' : 'image',
+        // content_type: post.isVideo ? 'video' : 'image', // Temporarily commented out until schema is fixed
         post_url: post.url,
         caption: post.caption,
         hashtags: post.hashtags,
@@ -317,10 +313,10 @@ export async function POST(request: NextRequest) {
       },
       dataOverview: {
         platforms: ['instagram'],
-        contentTypes: contentToStore.reduce((acc, c) => {
-          acc[c.content_type!] = (acc[c.content_type!] || 0) + 1
-          return acc
-        }, {} as Record<string, number>),
+        // contentTypes: contentToStore.reduce((acc, c) => {
+        //   acc[c.content_type!] = (acc[c.content_type!] || 0) + 1
+        //   return acc
+        // }, {} as Record<string, number>), // Temporarily disabled until schema is updated
         topHashtags: getTopHashtags(contentToStore),
         dateRange: {
           earliest: contentToStore.reduce((earliest, c) =>
@@ -356,7 +352,7 @@ export async function GET(request: NextRequest) {
     // Get current content statistics
     const { data: contentStats } = await supabaseAdmin
       .from('influencer_content')
-      .select('platform, content_type, created_at')
+      .select('platform, created_at')
       .order('created_at', { ascending: false })
       .limit(100)
 
@@ -376,7 +372,6 @@ export async function GET(request: NextRequest) {
         totalContent: contentStats?.length || 0,
         recentContent: contentStats?.slice(0, 10).map((c: any) => ({
           platform: c.platform,
-          type: c.content_type,
           created: c.created_at
         })) || [],
         trackedInfluencers: influencerStats?.length || 0,

@@ -3,6 +3,9 @@ import { ApifyClient } from 'apify-client'
 
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url)
+    const mode = searchParams.get('mode') || 'daily' // 'daily' or 'backfill'
+
     const apiKey = process.env.APIFY_API_KEY
     if (!apiKey) {
       return NextResponse.json({
@@ -10,7 +13,7 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
-    console.log('🔍 Fetching scheduled Korean beauty intelligence from Apify datasets')
+    console.log(`🔍 Fetching scheduled Korean beauty intelligence from Apify datasets (${mode} mode)`)
 
     const client = new ApifyClient({
       token: apiKey,
@@ -18,9 +21,10 @@ export async function GET(request: NextRequest) {
 
     // Get recent runs from our scheduled Instagram API Scraper
     const actorId = 'apify/instagram-api-scraper'
+    const runLimit = mode === 'backfill' ? 5 : 1 // Backfill: 5 runs, Daily: 1 run
     const runs = await client.actor(actorId).runs().list({
       status: 'SUCCEEDED',
-      limit: 5, // Last 5 successful runs
+      limit: runLimit,
       desc: true // Most recent first
     })
 
@@ -34,24 +38,36 @@ export async function GET(request: NextRequest) {
       }, { status: 404 })
     }
 
-    // Fetch data from the most recent successful run
-    const latestRun = runs.items[0]
-    console.log(`🎯 Using latest run: ${latestRun.id} from ${latestRun.finishedAt}`)
+    // Fetch data from ALL recent successful runs to capture complete dataset
+    let allItems: any[] = []
+    const runDetails: any[] = []
 
-    if (!latestRun.defaultDatasetId) {
-      return NextResponse.json({
-        success: false,
-        error: 'Latest run has no dataset',
-        runId: latestRun.id
-      }, { status: 404 })
+    for (const run of runs.items) {
+      console.log(`🎯 Processing run: ${run.id} from ${run.finishedAt}`)
+
+      if (!run.defaultDatasetId) {
+        console.warn(`⚠️ Run ${run.id} has no dataset, skipping`)
+        continue
+      }
+
+      try {
+        const { items } = await client.dataset(run.defaultDatasetId).listItems()
+        allItems.push(...items)
+        runDetails.push({
+          runId: run.id,
+          finishedAt: run.finishedAt,
+          itemCount: items.length
+        })
+        console.log(`📦 Retrieved ${items.length} items from run ${run.id}`)
+      } catch (error) {
+        console.error(`❌ Failed to fetch data from run ${run.id}:`, error)
+      }
     }
 
-    // Fetch the actual Korean beauty content from the dataset
-    const { items } = await client.dataset(latestRun.defaultDatasetId).listItems()
-    console.log(`📦 Retrieved ${items.length} items from scheduled run`)
+    console.log(`📦 Retrieved ${allItems.length} total items from ${runDetails.length} successful runs`)
 
     // Process the real Instagram data into Seoul Sister format
-    const processedPosts = items
+    const processedPosts = allItems
       .filter((item: any) => item.caption && !item.error) // Filter out error objects
       .map((item: any) => {
         // Extract hashtags from caption
@@ -75,7 +91,7 @@ export async function GET(request: NextRequest) {
           platform: 'instagram',
           sourceType: 'scheduled_scraping',
           scrapedAt: new Date().toISOString(),
-          runId: latestRun.id
+          runId: 'multi_run_combined'
         }
       })
 
@@ -109,10 +125,9 @@ export async function GET(request: NextRequest) {
       koreanBeautyPosts: koreanPosts.length,
       lastUpdate: new Date().toISOString(),
       sourceInfo: {
-        runId: latestRun.id,
-        runFinishedAt: latestRun.finishedAt,
-        datasetId: latestRun.defaultDatasetId,
-        sourceType: 'scheduled_apify_scraping'
+        totalRuns: runDetails.length,
+        runs: runDetails,
+        sourceType: 'scheduled_apify_scraping_multi_run'
       },
       influencerStats,
       message: `Successfully fetched ${processedPosts.length} fresh Korean beauty posts from scheduled scraping`,
