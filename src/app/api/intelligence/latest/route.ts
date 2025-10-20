@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Database unavailable' }, { status: 500 })
     }
 
-    // Fetch latest AI-processed content with related transcription data
+    // Fetch latest AI-processed content with related transcription data and influencer info
     const { data: content, error } = await supabaseAdmin
       .from('influencer_content')
       .select(`
@@ -33,6 +33,11 @@ export async function GET(request: NextRequest) {
           transcript_text,
           confidence_score,
           processing_status
+        ),
+        korean_influencers (
+          name,
+          handle,
+          category
         )
       `)
       .order('scraped_at', { ascending: false })
@@ -332,11 +337,13 @@ export async function GET(request: NextRequest) {
     // Process the content with proper database relationships
     const processedContent = content?.map(item => {
       const transcription = item.content_transcriptions?.[0] // Get first transcription if available
+      const influencer = item.korean_influencers // Get the linked influencer data
 
       return {
         id: item.id,
         platform: item.platform,
-        authorHandle: item.mentions?.[0] || 'unknown_influencer',
+        authorHandle: influencer?.handle || 'unknown_influencer',
+        authorName: influencer?.name || 'Korean Beauty Influencer',
         url: item.post_url,
         caption: item.caption?.substring(0, 200) + (item.caption && item.caption.length > 200 ? '...' : ''),
         hashtags: item.hashtags || [],
@@ -351,14 +358,14 @@ export async function GET(request: NextRequest) {
         contentType: item.content_type,
         // Real AI analysis based on stored data
         aiSummary: {
-          summary: `Korean beauty intelligence analysis from @${item.mentions?.[0] || 'Seoul influencer'} reveals trending products and authentic K-beauty techniques`,
+          summary: `Korean beauty intelligence analysis from @${influencer?.handle || 'Seoul influencer'} reveals trending products and authentic K-beauty techniques`,
           keyInsights: [
             'Korean skincare routines trending globally',
             'Glass skin technique gaining popularity',
             'Seoul beauty standards influencing markets',
             `${item.hashtags?.length || 0} relevant beauty hashtags identified`
           ],
-          productMentions: ['COSRX Snail Essence', 'Beauty of Joseon Relief Sun', 'Round Lab Birch Juice', 'Laneige Water Bank'],
+          productMentions: extractProductMentions(item.caption || ''),
           koreanBeautyTerms: item.hashtags?.filter((tag: string) =>
             ['kbeauty', 'glassskin', 'koreanbeauty', 'seoul', 'skincare', 'makeup'].includes(tag.toLowerCase())
           ) || [],
