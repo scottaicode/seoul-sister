@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🌅 Daily 9:10 AM Pacific Instagram storage cron job started')
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://seoulsister.com'
 
     // Store only new posts from the latest daily run (economic approach)
     const storageResponse = await fetch(`${baseUrl}/api/intelligence/store-instagram-data`, {

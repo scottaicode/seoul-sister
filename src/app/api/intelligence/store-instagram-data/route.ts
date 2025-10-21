@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     // Step 1: Fetch ALL scheduled Instagram data from Apify using our enhanced endpoint
     console.log('📥 Fetching ALL scheduled Instagram data from Apify...')
 
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://seoulsister.com'
     const body = await request.json().catch(() => ({}))
     const mode = body.mode || 'daily' // 'daily' for new posts only, 'backfill' for historical data
     const scheduledResponse = await fetch(`${baseUrl}/api/apify/fetch-scheduled?mode=${mode}`)
