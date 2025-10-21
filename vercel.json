@@ -25,13 +25,11 @@
   "crons": [
     {
       "path": "/api/intelligence/schedule?tier=all",
-      "schedule": "0 16 * * *",
-      "description": "Daily Korean beauty intelligence scraping - 9:00 AM Pacific"
+      "schedule": "0 16 * * *"
     },
     {
       "path": "/api/cron/daily-instagram-storage",
-      "schedule": "10 16 * * *",
-      "description": "Store fresh Instagram data - 9:10 AM Pacific"
+      "schedule": "10 16 * * *"
     }
   ]
 }
