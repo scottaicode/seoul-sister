@@ -31,18 +31,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`📊 Tier-specific configuration:`)
-    console.log(`   - Tier: ${tier}`)
-    console.log(`   - Max content per influencer: ${tier === 'mega' ? 20 : tier === 'rising' ? 15 : 10}`)
-    console.log(`   - Generate trend report: ${tier === 'mega'}`)
+    // Set parameters for unified daily scraping
+    const maxContentPerInfluencer = tier === 'all' ? 15 :
+                                   tier === 'mega' ? 20 :
+                                   tier === 'rising' ? 15 : 10
+    const generateTrendReport = tier === 'all' || tier === 'mega'
 
-    // Run tier-specific intelligence cycle based on schedule
+    console.log(`📊 Intelligence cycle configuration:`)
+    console.log(`   - Tier: ${tier}`)
+    console.log(`   - Max content per influencer: ${maxContentPerInfluencer}`)
+    console.log(`   - Generate trend report: ${generateTrendReport}`)
+
+    // Run intelligence cycle for all influencers
     const result = await orchestrator.runIntelligenceCycle({
       tier,
       scheduleSlot: 'all',
-      maxContentPerInfluencer: tier === 'mega' ? 20 : tier === 'rising' ? 15 : 10,
+      maxContentPerInfluencer,
       includeTranscription: true,
-      generateTrendReport: tier === 'mega' // Only generate full report for mega-influencers
+      generateTrendReport
     })
 
     console.log(`📈 Intelligence cycle result:`, {
@@ -67,15 +73,20 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Scheduled intelligence cycle completed successfully`)
     console.log(`📊 Results: ${result.summary.influencersMonitored} influencers, ${result.summary.contentScraped} content pieces`)
 
+    const nextRunMessage = tier === 'all'
+      ? 'Next run: Tomorrow at 9:00 AM Pacific (16:00 UTC)'
+      : tier === 'mega' ? 'rising at 2:00 PM KST' :
+        tier === 'rising' ? 'niche at 10:00 PM KST' :
+        'mega at 6:30 AM KST tomorrow'
+
     return NextResponse.json({
       success: true,
-      message: `Scheduled Korean beauty intelligence cycle completed - ${tier} tier`,
+      message: `Daily Korean beauty intelligence cycle completed successfully`,
       data: result,
       timestamp: new Date().toISOString(),
       tier,
-      nextTierRun: tier === 'mega' ? 'rising at 2:00 PM KST' :
-                   tier === 'rising' ? 'niche at 10:00 PM KST' :
-                   'mega at 6:30 AM KST tomorrow'
+      schedule: 'Once daily at 9:00 AM Pacific (16:00 UTC)',
+      nextRun: nextRunMessage
     })
 
   } catch (error) {

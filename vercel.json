@@ -24,48 +24,14 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/run-intelligence-pipeline",
-      "schedule": "0 */2 * * *"
-    },
-    {
-      "path": "/api/reddit-intelligence/run-pipeline",
-      "schedule": "0 */4 * * *"
-    },
-    {
-      "path": "/api/cron/scrape-prices",
-      "schedule": "0 5 * * *"
-    },
-    {
-      "path": "/api/price-intelligence/scrape",
-      "schedule": "0 5 * * *"
-    },
-    {
-      "path": "/api/cron/discover-products",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/generate-report",
-      "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/intelligence/schedule?tier=mega",
-      "schedule": "30 6 * * *"
-    },
-    {
-      "path": "/api/intelligence/schedule?tier=rising",
-      "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/intelligence/schedule?tier=niche",
-      "schedule": "0 22 * * *"
-    },
-    {
-      "path": "/api/cron/store-instagram-intelligence",
-      "schedule": "0 16 * * *"
+      "path": "/api/intelligence/schedule?tier=all",
+      "schedule": "0 16 * * *",
+      "description": "Daily Korean beauty intelligence scraping - 9:00 AM Pacific"
     },
     {
       "path": "/api/cron/daily-instagram-storage",
-      "schedule": "10 17 * * *"
+      "schedule": "10 16 * * *",
+      "description": "Store fresh Instagram data - 9:10 AM Pacific"
     }
   ]
 }
