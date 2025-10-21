@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     // Get tier from query params for scheduled runs
     const { searchParams } = new URL(request.url)
-    const tier = searchParams.get('tier') as 'mega' | 'rising' | 'niche' || 'all'
+    const tier = (searchParams.get('tier') || 'all') as 'mega' | 'rising' | 'niche' | 'all'
 
     console.log(`🕒 Starting scheduled Korean Beauty Intelligence cycle - Tier: ${tier}`)
 
