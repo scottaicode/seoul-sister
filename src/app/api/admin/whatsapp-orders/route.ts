@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const limit = parseInt(searchParams.get('limit') || '50')
 
-    let query = supabaseAdmin
+    let query = (supabaseAdmin as any)
       .from('whatsapp_orders')
       .select(`
         *,
@@ -38,18 +38,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Get order statistics
-    const { data: stats } = await supabaseAdmin
+    const { data: stats } = await (supabaseAdmin as any)
       .from('whatsapp_orders')
       .select('status, quote_amount')
 
     const orderStats = {
       total: stats?.length || 0,
-      pending: stats?.filter(o => o.status === 'pending').length || 0,
-      confirmed: stats?.filter(o => o.status === 'confirmed').length || 0,
-      processing: stats?.filter(o => o.status === 'processing').length || 0,
-      shipped: stats?.filter(o => o.status === 'shipped').length || 0,
-      delivered: stats?.filter(o => o.status === 'delivered').length || 0,
-      total_value: stats?.reduce((sum, o) => sum + (o.quote_amount || 0), 0) || 0
+      pending: stats?.filter((o: any) => o.status === 'pending').length || 0,
+      confirmed: stats?.filter((o: any) => o.status === 'confirmed').length || 0,
+      processing: stats?.filter((o: any) => o.status === 'processing').length || 0,
+      shipped: stats?.filter((o: any) => o.status === 'shipped').length || 0,
+      delivered: stats?.filter((o: any) => o.status === 'delivered').length || 0,
+      total_value: stats?.reduce((sum: number, o: any) => sum + (o.quote_amount || 0), 0) || 0
     }
 
     return NextResponse.json({
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     if (quoteDetails) updateData.quote_details = quoteDetails
     if (trackingNumber) updateData.tracking_number = trackingNumber
 
-    const { data: updatedOrder, error } = await supabaseAdmin
+    const { data: updatedOrder, error } = await (supabaseAdmin as any)
       .from('whatsapp_orders')
       .update(updateData)
       .eq('id', orderId)
@@ -139,7 +139,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Order ID required' }, { status: 400 })
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await (supabaseAdmin as any)
       .from('whatsapp_orders')
       .delete()
       .eq('id', orderId)

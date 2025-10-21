@@ -75,7 +75,7 @@ I'll curate the perfect K-beauty haul for you! âœ¨`
 
   // Log the conversation
   if (supabaseAdmin) {
-    await supabaseAdmin
+    await (supabaseAdmin as any)
       .from('whatsapp_conversations')
       .insert({
         phone_number: phoneNumber,
@@ -162,7 +162,7 @@ Need something else? Send me another product! ğŸ“¸`
 
   // Log the conversation
   if (supabaseAdmin) {
-    await supabaseAdmin
+    await (supabaseAdmin as any)
       .from('whatsapp_conversations')
       .insert([
         {
@@ -219,7 +219,7 @@ Need to modify your order? Reply within 2 hours. Questions? I'm here to help! ğŸ
 
   // Log the order
   if (supabaseAdmin) {
-    await supabaseAdmin
+    await (supabaseAdmin as any)
       .from('whatsapp_orders')
       .insert({
         phone_number: phoneNumber,
@@ -230,7 +230,7 @@ Need to modify your order? Reply within 2 hours. Questions? I'm here to help! ğŸ
         quote_amount: 33.00
       })
 
-    await supabaseAdmin
+    await (supabaseAdmin as any)
       .from('whatsapp_conversations')
       .insert([
         {
