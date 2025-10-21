@@ -100,7 +100,8 @@ export async function GET(request: NextRequest) {
                 authorHandle: influencer?.handle || 'unknown_influencer',
                 authorName: influencer?.name || 'Korean Beauty Influencer',
                 url: item.post_url,
-                caption: item.caption?.substring(0, 200) + (item.caption && item.caption.length > 200 ? '...' : ''),
+                caption: item.caption || '', // Full caption without truncation
+                captionPreview: item.caption?.substring(0, 200) + (item.caption && item.caption.length > 200 ? '...' : ''),
                 hashtags: item.hashtags || [],
                 metrics: {
                   likes: item.like_count || 0,

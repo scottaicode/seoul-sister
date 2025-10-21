@@ -16,6 +16,7 @@ interface ProcessedContent {
   authorHandle: string
   url: string
   caption: string
+  captionPreview?: string
   hashtags?: string[]
   metrics: {
     likes: number | null
@@ -504,6 +505,48 @@ export default function EnhancedIntelligencePage() {
                                   ))}
                                 </div>
                               </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Full Instagram Post Caption */}
+                        {content.caption && (
+                          <div className="mb-4">
+                            <button
+                              onClick={() => toggleTranscript(`caption-${content.id}`)}
+                              className="flex items-center justify-between w-full text-left text-white text-sm font-medium mb-2 hover:text-luxury-gold transition-colors"
+                            >
+                              <span>📱 Original Post Caption</span>
+                              {expandedTranscripts.has(`caption-${content.id}`) ? (
+                                <ChevronUp size={16} className="text-luxury-gold" />
+                              ) : (
+                                <ChevronDown size={16} className="text-gray-400" />
+                              )}
+                            </button>
+
+                            {expandedTranscripts.has(`caption-${content.id}`) ? (
+                              <div className="bg-black/30 border border-luxury-gold/20 rounded-lg p-4">
+                                <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
+                                  {content.caption}
+                                </p>
+                                <div className="mt-3 pt-3 border-t border-gray-600 flex items-center justify-between">
+                                  <span className="text-xs text-gray-400">
+                                    Caption length: {content.caption.length} characters
+                                  </span>
+                                  {content.hashtags && content.hashtags.length > 0 && (
+                                    <span className="text-xs text-luxury-gold">
+                                      {content.hashtags.length} hashtags
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-gray-300 text-xs italic">
+                                {content.caption.length > 120
+                                  ? content.caption.substring(0, 120) + '...'
+                                  : content.caption
+                                } <span className="text-luxury-gold cursor-pointer">View full post</span>
+                              </p>
                             )}
                           </div>
                         )}

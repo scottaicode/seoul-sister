@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ApifyClient } from 'apify-client'
 import { supabaseAdmin } from '@/lib/supabase'
+import { supadataService } from '@/lib/services/supadata-transcription'
 
 interface InstagramPost {
   id: string
@@ -177,9 +178,15 @@ export async function POST(request: NextRequest) {
         priority_level: Math.max(0, post.likesCount) > 10000 ? 'high' :
                        Math.max(0, post.likesCount) > 1000 ? 'medium' : 'low',
         content_richness: ([post.displayUrl, post.videoUrl].filter(Boolean).length * 20 + Math.max(0, post.caption.length) / 10).toFixed(2),
-        trend_novelty: (post.hashtags.filter(tag =>
-          ['kbeauty', 'koreanbeauty', 'glassskin', 'skincare'].includes(tag.toLowerCase())
-        ).length * 15 + 50).toFixed(2),
+        trend_novelty: (post.hashtags.filter(tag => {
+          const lowerTag = tag.toLowerCase()
+          const englishKBeauty = ['kbeauty', 'koreanbeauty', 'glassskin', 'skincare', 'kcosmetics', 'koreanmakeup'].includes(lowerTag)
+          const koreanBeauty = tag.includes('뷰티') || tag.includes('화장품') || tag.includes('스킨케어') ||
+                              tag.includes('메이크업') || tag.includes('마스크') || tag.includes('에센스') ||
+                              tag.includes('크림') || tag.includes('세럼') || tag.includes('클렌징') ||
+                              tag.includes('물광') || tag.includes('글래스스킨')
+          return englishKBeauty || koreanBeauty
+        }).length * 15 + 50).toFixed(2),
         engagement_velocity: Math.min(100, Math.max(0, (Math.max(0, post.likesCount) + Math.max(0, post.commentsCount)) / 100)).toFixed(2),
         influencer_authority: (Math.log10(Math.max(1, post.likesCount + 1)) * 10 + 50).toFixed(2)
       })
@@ -219,31 +226,70 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Successfully stored ${insertedContent?.length || 0} content items`)
 
-    // Step 5: Process video transcriptions for video content
+    // Step 5: Process video transcriptions for video content using Supadata API
     const videoContent = contentToStore.filter(content =>
-      content.media_urls?.some(url => url?.includes('video') || url?.includes('.mp4'))
+      content.media_urls?.some(url => url?.includes('video') || url?.includes('.mp4') || url?.includes('reel'))
     )
 
     let transcriptionsStored = 0
     if (videoContent.length > 0) {
-      console.log(`🎬 Processing ${videoContent.length} videos for transcription...`)
+      console.log(`🎬 Processing ${videoContent.length} videos for Supadata transcription...`)
 
       try {
-        const transcriptionData = videoContent.map(content => {
+        const transcriptionPromises = videoContent.map(async content => {
           const insertedItem = insertedContent?.find((ic: any) => ic.platform_post_id === content.platform_post_id)
           const videoUrl = content.media_urls?.find(url => url?.includes('video') || url?.includes('.mp4')) || content.media_urls?.[0]
+          const postUrl = content.post_url
 
-          if (!(insertedItem as any)?.id || !videoUrl) return null
+          if (!(insertedItem as any)?.id || (!videoUrl && !postUrl)) return null
 
-          return {
-            content_id: (insertedItem as any).id,
-            video_url: videoUrl,
-            transcript_text: `[Korean beauty content from @${content.mentions?.[0] || 'influencer'}: ${content.caption?.substring(0, 100) || 'Korean beauty content'}]`,
-            language: 'ko',
-            confidence_score: 0.85,
-            processing_status: 'pending'
+          try {
+            // Use Supadata to get real transcription
+            const transcriptionResult = await supadataService.processKoreanBeautyVideo({
+              videoUrl: postUrl || videoUrl || '', // Prefer Instagram post URL for better results
+              contentId: (insertedItem as any).id,
+              platform: 'instagram',
+              influencerHandle: content.mentions?.[0] || 'unknown'
+            })
+
+            if (transcriptionResult.success) {
+              console.log(`✅ Supadata transcription successful for ${content.platform_post_id}`)
+              return {
+                content_id: (insertedItem as any).id,
+                video_url: postUrl || videoUrl,
+                transcript_text: transcriptionResult.transcriptText || `[Korean beauty content from video]`,
+                language: transcriptionResult.language,
+                confidence_score: transcriptionResult.confidence,
+                processing_status: 'completed',
+                beauty_keywords: transcriptionResult.beautyKeywords,
+                transcript_segments: transcriptionResult.segments
+              }
+            } else {
+              console.warn(`⚠️ Supadata transcription failed for ${content.platform_post_id}: ${transcriptionResult.error}`)
+              // Fallback to placeholder
+              return {
+                content_id: (insertedItem as any).id,
+                video_url: postUrl || videoUrl,
+                transcript_text: `[Korean beauty content from @${content.mentions?.[0] || 'influencer'}: ${content.caption?.substring(0, 100) || 'Korean beauty content'}]`,
+                language: 'ko',
+                confidence_score: 0.3, // Lower confidence for fallback
+                processing_status: 'fallback'
+              }
+            }
+          } catch (error) {
+            console.warn(`⚠️ Video transcription error for ${content.platform_post_id}:`, error)
+            return {
+              content_id: (insertedItem as any).id,
+              video_url: postUrl || videoUrl,
+              transcript_text: `[Korean beauty content from @${content.mentions?.[0] || 'influencer'}: ${content.caption?.substring(0, 100) || 'Korean beauty content'}]`,
+              language: 'ko',
+              confidence_score: 0.2, // Lower confidence for error case
+              processing_status: 'error'
+            }
           }
-        }).filter(Boolean)
+        })
+
+        const transcriptionData = (await Promise.all(transcriptionPromises)).filter(Boolean)
 
         if (transcriptionData.length > 0) {
           const { data: transcriptions, error: transcriptionError } = await supabaseAdmin
@@ -253,7 +299,8 @@ export async function POST(request: NextRequest) {
 
           if (!transcriptionError) {
             transcriptionsStored = transcriptions?.length || 0
-            console.log(`📝 Created ${transcriptionsStored} transcription records`)
+            const successfulTranscriptions = transcriptionData.filter(t => t?.processing_status === 'completed').length
+            console.log(`📝 Created ${transcriptionsStored} transcription records (${successfulTranscriptions} via Supadata)`)
           } else {
             console.warn('Transcription table may need schema updates:', transcriptionError)
           }
@@ -401,7 +448,8 @@ export async function GET(request: NextRequest) {
 // Helper functions
 function extractHashtags(caption: string): string[] {
   if (!caption) return []
-  const hashtagRegex = /#[\w가-힣]+/g
+  // Enhanced regex to capture Korean characters, numbers, and underscores in hashtags
+  const hashtagRegex = /#[가-힣\w_]+/g
   const matches = caption.match(hashtagRegex) || []
   return matches.map(tag => tag.substring(1)) // Remove # symbol
 }
