@@ -27,9 +27,11 @@ export class SupadataTranscriptionService {
   constructor() {
     const apiKey = process.env.SUPADATA_API_KEY
     if (!apiKey) {
+      console.warn('⚠️ SUPADATA_API_KEY environment variable not found')
       throw new Error('SUPADATA_API_KEY environment variable is required')
     }
     this.apiKey = apiKey
+    console.log('✅ Supadata service initialized with API key')
   }
 
   async transcribeInstagramReel(instagramUrl: string): Promise<SupadataResponse> {

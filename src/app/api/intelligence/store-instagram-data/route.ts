@@ -232,7 +232,18 @@ export async function POST(request: NextRequest) {
     const videoContent = contentToStore.filter(content => {
       const hasVideoUrl = content.media_urls?.some(url => {
         if (!url) return false
-        const isVideoUrl = url.includes('video') || url.includes('.mp4') || url.includes('reel') || url.includes('instagram.f') && url.includes('.mp4')
+
+        // Enhanced video detection for Instagram CDN URLs
+        const isVideoUrl =
+          url.includes('.mp4') ||                                    // Direct .mp4 files
+          url.includes('video') ||                                   // URL contains 'video'
+          url.includes('reel') ||                                    // Instagram reels
+          (url.includes('instagram') && url.includes('.mp4')) ||     // Instagram CDN .mp4
+          (url.includes('fbcdn.net') && url.includes('.mp4')) ||     // Facebook CDN .mp4
+          (url.includes('cdninstagram.com') && url.includes('.mp4')) || // Instagram CDN .mp4
+          url.includes('/v/t16/') ||                                 // Instagram video path identifier
+          url.includes('dst-mp4')                                    // Instagram video format parameter
+
         if (isVideoUrl) {
           console.log(`🎬 Video detected for @${content.platform_post_id}: ${url.substring(0, 100)}...`)
         }
@@ -257,12 +268,16 @@ export async function POST(request: NextRequest) {
 
           try {
             // Use Supadata to get real transcription
+            console.log(`🔗 Calling Supadata for ${content.platform_post_id} with URL: ${(postUrl || videoUrl || '').substring(0, 100)}...`)
+
             const transcriptionResult = await supadataService.processKoreanBeautyVideo({
               videoUrl: postUrl || videoUrl || '', // Prefer Instagram post URL for better results
               contentId: (insertedItem as any).id,
               platform: 'instagram',
               influencerHandle: content.mentions?.[0] || 'unknown'
             })
+
+            console.log(`📊 Supadata result for ${content.platform_post_id}: success=${transcriptionResult.success}, error=${transcriptionResult.error}`)
 
             if (transcriptionResult.success) {
               console.log(`✅ Supadata transcription successful for ${content.platform_post_id}`)
@@ -272,9 +287,8 @@ export async function POST(request: NextRequest) {
                 transcript_text: transcriptionResult.transcriptText || `[Korean beauty content from video]`,
                 language: transcriptionResult.language,
                 confidence_score: transcriptionResult.confidence,
-                processing_status: 'completed',
-                beauty_keywords: transcriptionResult.beautyKeywords,
-                transcript_segments: transcriptionResult.segments
+                processing_status: 'completed'
+                // Note: Removed beauty_keywords and transcript_segments that may not exist in schema
               }
             } else {
               console.warn(`⚠️ Supadata transcription failed for ${content.platform_post_id}: ${transcriptionResult.error}`)
