@@ -530,9 +530,16 @@ export default function EnhancedIntelligencePage() {
                                   {content.caption}
                                 </p>
                                 <div className="mt-3 pt-3 border-t border-gray-600 flex items-center justify-between">
-                                  <span className="text-xs text-gray-400">
-                                    Caption length: {content.caption.length} characters
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-400">
+                                      Caption length: {content.caption.length} characters
+                                    </span>
+                                    {content.caption.length >= 200 && (
+                                      <span className="text-xs text-yellow-400 bg-yellow-500/10 px-2 py-1 rounded">
+                                        May be truncated by data source
+                                      </span>
+                                    )}
+                                  </div>
                                   {content.hashtags && content.hashtags.length > 0 && (
                                     <span className="text-xs text-luxury-gold">
                                       {content.hashtags.length} hashtags
@@ -541,12 +548,23 @@ export default function EnhancedIntelligencePage() {
                                 </div>
                               </div>
                             ) : (
-                              <p className="text-gray-300 text-xs italic">
-                                {content.caption.length > 120
-                                  ? content.caption.substring(0, 120) + '...'
-                                  : content.caption
-                                } <span className="text-luxury-gold cursor-pointer">View full post</span>
-                              </p>
+                              <div
+                                className="cursor-pointer hover:bg-luxury-gold/5 p-2 rounded transition-colors"
+                                onClick={() => toggleTranscript(`caption-${content.id}`)}
+                              >
+                                <p className="text-gray-300 text-xs italic">
+                                  {content.caption.length > 120
+                                    ? content.caption.substring(0, 120) + '...'
+                                    : content.caption
+                                  }
+                                </p>
+                                <div className="mt-2 flex items-center gap-2">
+                                  <span className="text-luxury-gold text-xs underline font-medium">Click to view full Instagram post</span>
+                                  <svg className="w-3 h-3 text-luxury-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </div>
+                              </div>
                             )}
                           </div>
                         )}
