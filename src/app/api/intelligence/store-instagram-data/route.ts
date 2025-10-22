@@ -227,9 +227,21 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Successfully stored ${insertedContent?.length || 0} content items`)
 
     // Step 5: Process video transcriptions for video content using Supadata API
-    const videoContent = contentToStore.filter(content =>
-      content.media_urls?.some(url => url?.includes('video') || url?.includes('.mp4') || url?.includes('reel'))
-    )
+    console.log(`🔍 Checking ${contentToStore.length} content items for videos...`)
+
+    const videoContent = contentToStore.filter(content => {
+      const hasVideoUrl = content.media_urls?.some(url => {
+        if (!url) return false
+        const isVideoUrl = url.includes('video') || url.includes('.mp4') || url.includes('reel') || url.includes('instagram.f') && url.includes('.mp4')
+        if (isVideoUrl) {
+          console.log(`🎬 Video detected for @${content.platform_post_id}: ${url.substring(0, 100)}...`)
+        }
+        return isVideoUrl
+      })
+      return hasVideoUrl
+    })
+
+    console.log(`🎬 Found ${videoContent.length} videos out of ${contentToStore.length} total content items`)
 
     let transcriptionsStored = 0
     if (videoContent.length > 0) {
