@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Zap, TrendingUp, Globe, Brain, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowLeft, Zap, TrendingUp, Globe, Brain } from 'lucide-react'
 import AuthHeader from '@/components/AuthHeader'
 // import IntelligenceDashboard from '@/components/IntelligenceDashboard'
 import PremiumGate from '@/components/PremiumGate'
@@ -52,7 +52,6 @@ export default function EnhancedIntelligencePage() {
   const [userProfile, setUserProfile] = useState<any>(null)
   const [latestContent, setLatestContent] = useState<ProcessedContent[]>([])
   const [isLoadingContent, setIsLoadingContent] = useState(false)
-  const [expandedTranscripts, setExpandedTranscripts] = useState<Set<string>>(new Set())
 
   // Fetch user profile to check subscription status
   useEffect(() => {
@@ -104,16 +103,6 @@ export default function EnhancedIntelligencePage() {
     isAdmin
   })
 
-  // Toggle transcript expansion
-  const toggleTranscript = (contentId: string) => {
-    const newExpanded = new Set(expandedTranscripts)
-    if (newExpanded.has(contentId)) {
-      newExpanded.delete(contentId)
-    } else {
-      newExpanded.add(contentId)
-    }
-    setExpandedTranscripts(newExpanded)
-  }
 
   // Regular users see view-only dashboard with auto-updated intelligence
 
@@ -512,18 +501,9 @@ export default function EnhancedIntelligencePage() {
                         {/* Full Instagram Post Caption */}
                         {content.caption && (
                           <div className="mb-4">
-                            <button
-                              onClick={() => toggleTranscript(`caption-${content.id}`)}
-                              className="flex items-center justify-between w-full text-left text-white text-sm font-medium mb-2 hover:text-luxury-gold transition-colors"
-                            >
-                              <span>📱 Original Post Caption</span>
-                              {expandedTranscripts.has(`caption-${content.id}`) ? (
-                                <ChevronUp size={16} className="text-luxury-gold" />
-                              ) : (
-                                <ChevronDown size={16} className="text-gray-400" />
-                              )}
-                            </button>
-
+                            <div className="text-white text-sm font-medium mb-2">
+                              📱 Original Post Caption
+                            </div>
                             <div className="bg-black/30 border border-luxury-gold/20 rounded-lg p-4">
                               <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
                                 {content.caption}
@@ -544,21 +524,12 @@ export default function EnhancedIntelligencePage() {
                           </div>
                         )}
 
-                        {/* Expandable Transcript */}
+                        {/* Full Video Transcript */}
                         {content.transcriptText && (
                           <div className="mb-4">
-                            <button
-                              onClick={() => toggleTranscript(content.id)}
-                              className="flex items-center justify-between w-full text-left text-white text-sm font-medium mb-2 hover:text-luxury-gold transition-colors"
-                            >
-                              <span>📝 Transcript</span>
-                              {expandedTranscripts.has(content.id) ? (
-                                <ChevronUp size={16} className="text-luxury-gold" />
-                              ) : (
-                                <ChevronDown size={16} className="text-gray-400" />
-                              )}
-                            </button>
-
+                            <div className="text-white text-sm font-medium mb-2">
+                              📝 Transcript
+                            </div>
                             <div className="bg-black/30 border border-luxury-gold/20 rounded-lg p-4">
                               <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
                                 {content.transcriptText}
