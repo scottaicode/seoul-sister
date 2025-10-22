@@ -169,7 +169,7 @@ export async function GET(request: NextRequest) {
               platform: 'instagram',
               authorHandle: post.ownerUsername,
               url: post.url,
-              caption: post.caption.substring(0, 200) + (post.caption.length > 200 ? '...' : ''),
+              caption: post.caption || '', // Full caption without truncation
               hashtags: post.hashtags || [],
               metrics: {
                 likes: post.likesCount || 0,
@@ -351,7 +351,7 @@ export async function GET(request: NextRequest) {
         authorHandle: influencer?.handle || 'unknown_influencer',
         authorName: influencer?.name || 'Korean Beauty Influencer',
         url: item.post_url,
-        caption: item.caption?.substring(0, 200) + (item.caption && item.caption.length > 200 ? '...' : ''),
+        caption: item.caption || '', // Full caption without truncation
         hashtags: item.hashtags || [],
         metrics: {
           likes: item.like_count || 0,
