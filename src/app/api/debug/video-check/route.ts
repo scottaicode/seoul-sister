@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       caption: item.caption ? item.caption.substring(0, 50) + '...' : null
     }))
 
-    const videosFound = videoAnalysis.filter(item => item.hasVideoUrl || item.hasVideo)
+    const videosFound = videoAnalysis.filter((item: any) => item.hasVideoUrl || item.hasVideo)
     const totalVideos = videosFound.length
 
     console.log(`🎬 Found ${totalVideos} items with video URLs out of ${rawInstagramData.length} total`)
@@ -48,8 +48,8 @@ export async function GET(request: NextRequest) {
         caption: item.caption ? item.caption.substring(0, 50) + '...' : null
       }))
 
-    const processedVideos = validPosts.filter(post =>
-      post.media_urls?.some(url => url?.includes('video') || url?.includes('.mp4') || url?.includes('reel'))
+    const processedVideos = validPosts.filter((post: any) =>
+      post.media_urls?.some((url: string) => url?.includes('video') || url?.includes('.mp4') || url?.includes('reel'))
     )
 
     console.log(`🔄 After processing: ${processedVideos.length} videos detected from ${validPosts.length} valid posts`)
