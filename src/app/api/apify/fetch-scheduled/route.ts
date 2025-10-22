@@ -67,33 +67,64 @@ export async function GET(request: NextRequest) {
     console.log(`📦 Retrieved ${allItems.length} total items from ${runDetails.length} successful runs`)
 
     // Process the real Instagram data into Seoul Sister format
+    // Handle both old and new Apify data structures
     const processedPosts = allItems
-      .filter((item: any) => item.caption && !item.error) // Filter out error objects
-      .map((item: any) => {
-        // Extract hashtags from caption
-        const hashtags = item.caption ?
-          (item.caption.match(/#[\w가-힣]+/g) || []).map((tag: string) => tag.substring(1)) : []
-
-        return {
-          id: item.id || item.shortcode || `apify_${Date.now()}_${Math.random()}`,
-          shortCode: item.shortcode || item.shortCode || '',
-          url: item.url || `https://instagram.com/p/${item.shortcode || item.id}`,
-          displayUrl: item.displayUrl || item.images?.[0] || '',
-          caption: item.caption || item.text || '',
-          hashtags: hashtags,
-          likesCount: item.likesCount || item.likes || 0,
-          commentsCount: item.commentsCount || item.comments || 0,
-          timestamp: item.timestamp || item.time || new Date().toISOString(),
-          ownerUsername: item.ownerUsername || item.username || 'korean_beauty_influencer',
-          videoUrl: item.videoUrl || item.video,
-          isVideo: Boolean(item.videoUrl || item.video || item.type === 'Video'),
-          // Enhanced Korean beauty metadata
-          platform: 'instagram',
-          sourceType: 'scheduled_scraping',
-          scrapedAt: new Date().toISOString(),
-          runId: 'multi_run_combined'
+      .filter((item: any) => {
+        // Filter for items that have either caption or are posts/profiles with content
+        return (item.caption && !item.error) || // Old format
+               (item.posts && Array.isArray(item.posts)) || // New format with posts array
+               (item.latestPosts && Array.isArray(item.latestPosts)) // New format variation
+      })
+      .flatMap((item: any) => {
+        // Handle new enhanced scraper format
+        if (item.posts && Array.isArray(item.posts)) {
+          return item.posts.map((post: any) => processPost(post, item))
+        } else if (item.latestPosts && Array.isArray(item.latestPosts)) {
+          return item.latestPosts.map((post: any) => processPost(post, item))
+        } else {
+          // Handle old format
+          return [processPost(item, null)]
         }
       })
+      .filter(Boolean) // Remove null/undefined items
+
+    function processPost(post: any, profile: any) {
+      if (!post.caption && !post.text) return null // Skip items without content
+
+      // Extract hashtags from caption
+      const caption = post.caption || post.text || ''
+      const hashtags = caption ?
+        (caption.match(/#[\w가-힣]+/g) || []).map((tag: string) => tag.substring(1)) : []
+
+      return {
+        id: post.id || post.shortcode || `apify_${Date.now()}_${Math.random()}`,
+        shortCode: post.shortcode || post.shortCode || '',
+        url: post.url || `https://instagram.com/p/${post.shortcode || post.id}`,
+        displayUrl: post.displayUrl || post.images?.[0] || '',
+        caption: caption,
+        hashtags: hashtags,
+        likesCount: post.likesCount || post.likes || 0,
+        commentsCount: post.commentsCount || post.comments || 0,
+        timestamp: post.timestamp || post.time || new Date().toISOString(),
+        ownerUsername: post.ownerUsername || post.username || profile?.username || 'korean_beauty_influencer',
+        videoUrl: post.videoUrl || post.video,
+        isVideo: Boolean(post.videoUrl || post.video || post.type === 'Video'),
+        // Enhanced metadata from new scraper
+        profile: profile ? {
+          biography: profile.biography,
+          businessCategory: profile.businessCategoryName,
+          externalUrl: profile.externalUrl,
+          followersCount: profile.followersCount,
+          followingCount: profile.followingCount,
+          postsCount: profile.postsCount
+        } : null,
+        // Standard metadata
+        platform: 'instagram',
+        sourceType: 'scheduled_scraping',
+        scrapedAt: new Date().toISOString(),
+        runId: 'multi_run_combined'
+      }
+    }
 
     console.log(`✅ Processed ${processedPosts.length} valid Korean beauty posts`)
 
