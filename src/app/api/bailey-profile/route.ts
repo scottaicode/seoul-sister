@@ -14,41 +14,79 @@ export async function POST(request: NextRequest) {
     // Get or create user (for now using WhatsApp number or email)
     const userId = profile.id || `temp_${Date.now()}`
 
-    // Prepare the enhanced profile data
+    // Prepare the enhanced profile data for the existing table structure
     const enhancedProfileData = {
-      whatsapp_number: profile.email || `user_${Date.now()}@seoul-sister.com`,
-      age: profile.age,
-      birth_date: profile.birthDate,
-      location_city: profile.location?.city,
-      location_state: profile.location?.state,
-      location_country: profile.location?.country || 'US',
-      climate_type: profile.location?.climate,
-      ethnicity: profile.ethnicity,
-      lifestyle_factors: profile.lifestyle || {},
-      current_medications: profile.medical?.currentMedications || [],
-      medical_conditions: profile.medical?.medicalConditions || [],
-      skincare_goals: profile.goals?.secondary || [],
-      routine_commitment_level: profile.goals?.commitment,
-      budget_range: profile.preferences?.budgetRange,
-
-      // Skin profile
+      // Core fields that exist in user_skin_profiles
       current_skin_type: profile.skin?.type,
-      skin_concerns: profile.skin?.concerns || [],
-      preferred_categories: profile.preferences?.texturePreferences || [],
+      current_concerns: profile.skin?.concerns || [],
+      current_routine: {
+        commitment: profile.goals?.commitment,
+        timeline: profile.goals?.timeline,
+        budget: profile.preferences?.budgetRange
+      },
 
-      // Store full profile as JSON for flexibility
-      ai_analysis: {
-        fullProfile: profile,
-        createdAt: new Date().toISOString(),
+      // Store comprehensive Bailey data in existing JSONB fields
+      ingredient_preferences: {
+        avoid: profile.preferences?.avoidIngredients || [],
+        preferClean: profile.preferences?.preferClean || false,
+        preferKBeauty: profile.preferences?.preferKBeauty || false,
+        preferFragranceFree: profile.preferences?.preferFragranceFree || false,
+        preferCrueltyFree: profile.preferences?.preferCrueltyFree || false
+      },
+
+      texture_preferences: profile.preferences?.texturePreferences || [],
+      routine_complexity_preference: profile.goals?.commitment || 'moderate',
+
+      // Store full Bailey profile in a structured way
+      skin_type_history: [{
+        recorded_at: new Date().toISOString(),
+        type: profile.skin?.type,
+        condition: profile.skin?.currentCondition,
+        concerns: profile.skin?.concerns || [],
+        age: profile.age,
+        location: profile.location,
+        lifestyle: profile.lifestyle,
+        medical: profile.medical,
+        goals: profile.goals,
+        ethnicity: profile.ethnicity,
         version: '1.0-bailey'
-      }
+      }]
     }
 
-    // Check if profile exists
+    // First, let's try to get an existing demo user from profiles table
+    const { data: demoUsers } = await supabase
+      .from('profiles')
+      .select('id')
+      .limit(1)
+
+    let demoUserId = null
+    if (demoUsers && demoUsers.length > 0) {
+      demoUserId = demoUsers[0].id
+    } else {
+      // Create a demo user profile if none exists
+      const { data: newUser, error: userError } = await supabase
+        .from('profiles')
+        .insert({
+          email: profile.email || `demo_${Date.now()}@seoul-sister.com`,
+          full_name: profile.name || 'Bailey Demo User',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select('id')
+        .single()
+
+      if (userError) {
+        console.error('Error creating demo user:', userError)
+        return NextResponse.json({ error: 'Failed to create user profile' }, { status: 500 })
+      }
+      demoUserId = newUser.id
+    }
+
+    // Check if profile exists for this user
     const { data: existingProfile } = await supabase
       .from('user_skin_profiles')
       .select('*')
-      .eq('whatsapp_number', enhancedProfileData.whatsapp_number)
+      .eq('user_id', demoUserId)
       .single()
 
     let result
@@ -56,15 +94,27 @@ export async function POST(request: NextRequest) {
       // Update existing profile
       result = await supabase
         .from('user_skin_profiles')
-        .update(enhancedProfileData)
-        .eq('whatsapp_number', enhancedProfileData.whatsapp_number)
+        .update({
+          ...enhancedProfileData,
+          updated_at: new Date().toISOString(),
+          total_analyses: (existingProfile.total_analyses || 0) + 1,
+          last_analysis_date: new Date().toISOString()
+        })
+        .eq('user_id', demoUserId)
         .select()
         .single()
     } else {
       // Create new profile
       result = await supabase
         .from('user_skin_profiles')
-        .insert(enhancedProfileData)
+        .insert({
+          user_id: demoUserId,
+          ...enhancedProfileData,
+          total_analyses: 1,
+          last_analysis_date: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
         .select()
         .single()
     }
