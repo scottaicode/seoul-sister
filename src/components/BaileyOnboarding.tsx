@@ -100,39 +100,39 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 py-12 px-4">
+    <div className="min-h-screen bg-black py-12 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-light text-gray-800">Let's Get To Know You</h2>
-            <span className="text-sm text-gray-600">{step} of {totalSteps}</span>
+            <h2 className="text-2xl font-light text-white">Let's Get To Know You</h2>
+            <span className="text-sm text-gray-400">{step} of {totalSteps}</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-gray-800 rounded-full h-2">
             <div
-              className="bg-gradient-to-r from-pink-400 to-purple-400 h-2 rounded-full transition-all duration-500"
+              className="bg-gradient-to-r from-[#d4a574] to-[#f4c794] h-2 rounded-full transition-all duration-500"
               style={{ width: `${(step / totalSteps) * 100}%` }}
             />
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-gray-900/50 border border-[#d4a574]/20 rounded-2xl shadow-xl p-8 backdrop-blur-sm">
           {/* Step 1: Basic Info */}
           {step === 1 && (
             <div className="space-y-6 animate-fadeIn">
               <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-gradient-to-r from-pink-200 to-purple-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Sparkles className="w-10 h-10 text-purple-600" />
+                <div className="w-20 h-20 bg-gradient-to-r from-[#d4a574]/20 to-[#f4c794]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Sparkles className="w-10 h-10 text-[#d4a574]" />
                 </div>
-                <h3 className="text-2xl font-semibold text-gray-800 mb-2">Welcome to Your Skin Journey</h3>
-                <p className="text-gray-600">Every individual has unique skin. Let's understand yours.</p>
+                <h3 className="text-2xl font-semibold text-white mb-2">Welcome to Your Skin Journey</h3>
+                <p className="text-gray-400">Every individual has unique skin. Let's understand yours.</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Your Name</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Your Name</label>
                 <input
                   type="text"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574] focus:border-[#d4a574]"
                   placeholder="Enter your name"
                   value={profile.name || ''}
                   onChange={(e) => updateProfile({ name: e.target.value })}
@@ -140,10 +140,10 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Age</label>
                 <input
                   type="number"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574] focus:border-[#d4a574]"
                   placeholder="Your age affects your skincare needs"
                   value={profile.age || ''}
                   onChange={(e) => updateProfile({ age: parseInt(e.target.value) })}
@@ -152,10 +152,10 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ethnicity (Optional)</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Ethnicity (Optional)</label>
                 <input
                   type="text"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574] focus:border-[#d4a574]"
                   placeholder="Helps us understand your skin better"
                   value={profile.ethnicity || ''}
                   onChange={(e) => updateProfile({ ethnicity: e.target.value })}
@@ -168,19 +168,19 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
           {step === 2 && (
             <div className="space-y-6 animate-fadeIn">
               <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-gradient-to-r from-blue-200 to-green-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MapPin className="w-10 h-10 text-blue-600" />
+                <div className="w-20 h-20 bg-gradient-to-r from-[#d4a574]/20 to-[#f4c794]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <MapPin className="w-10 h-10 text-[#d4a574]" />
                 </div>
-                <h3 className="text-2xl font-semibold text-gray-800 mb-2">Where Do You Live?</h3>
-                <p className="text-gray-600">Your environment greatly affects your skin's needs</p>
+                <h3 className="text-2xl font-semibold text-white mb-2">Where Do You Live?</h3>
+                <p className="text-gray-400">Your environment greatly affects your skin's needs</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">City</label>
                   <input
                     type="text"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574]"
                     placeholder="Your city"
                     value={profile.location?.city || ''}
                     onChange={(e) => updateProfile({
@@ -189,10 +189,10 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">State</label>
                   <input
                     type="text"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574]"
                     placeholder="Your state"
                     value={profile.location?.state || ''}
                     onChange={(e) => updateProfile({
@@ -203,9 +203,9 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Climate Type</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Climate Type</label>
                 <select
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574]"
                   value={profile.location?.climate || ''}
                   onChange={(e) => updateProfile({
                     location: { ...profile.location, climate: e.target.value } as any
@@ -224,15 +224,15 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Humidity Level</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Humidity Level</label>
                 <div className="grid grid-cols-3 gap-3">
                   {['low', 'moderate', 'high'].map((level) => (
                     <button
                       key={level}
                       className={`py-3 px-4 rounded-lg border-2 transition-all ${
                         profile.location?.humidity === level
-                          ? 'border-purple-500 bg-purple-50 text-purple-700'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
+                          : 'border-gray-700 hover:border-[#d4a574]/50'
                       }`}
                       onClick={() => updateProfile({
                         location: { ...profile.location, humidity: level } as any
@@ -250,23 +250,23 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
           {step === 3 && (
             <div className="space-y-6 animate-fadeIn">
               <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-gradient-to-r from-green-200 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Heart className="w-10 h-10 text-green-600" />
+                <div className="w-20 h-20 bg-gradient-to-r from-[#d4a574]/20 to-[#f4c794]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Heart className="w-10 h-10 text-[#d4a574]" />
                 </div>
-                <h3 className="text-2xl font-semibold text-gray-800 mb-2">Your Lifestyle</h3>
-                <p className="text-gray-600">Your habits directly impact your skin health</p>
+                <h3 className="text-2xl font-semibold text-white mb-2">Your Lifestyle</h3>
+                <p className="text-gray-400">Your habits directly impact your skin health</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Do you smoke?</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Do you smoke?</label>
                 <div className="grid grid-cols-4 gap-2">
                   {['never', 'former', 'occasional', 'regular'].map((status) => (
                     <button
                       key={status}
                       className={`py-2 px-3 rounded-lg border-2 text-sm transition-all ${
                         profile.lifestyle?.smokingStatus === status
-                          ? 'border-purple-500 bg-purple-50 text-purple-700'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
+                          : 'border-gray-700 hover:border-[#d4a574]/50'
                       }`}
                       onClick={() => updateProfile({
                         lifestyle: { ...profile.lifestyle, smokingStatus: status } as any
@@ -279,15 +279,15 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Exercise Frequency</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Exercise Frequency</label>
                 <div className="grid grid-cols-2 gap-2">
                   {['sedentary', '1-2x/week', '3-4x/week', 'daily'].map((freq) => (
                     <button
                       key={freq}
                       className={`py-3 px-4 rounded-lg border-2 transition-all ${
                         profile.lifestyle?.exerciseFrequency === freq
-                          ? 'border-purple-500 bg-purple-50 text-purple-700'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
+                          : 'border-gray-700 hover:border-[#d4a574]/50'
                       }`}
                       onClick={() => updateProfile({
                         lifestyle: { ...profile.lifestyle, exerciseFrequency: freq } as any
@@ -300,15 +300,15 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Water Intake</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Water Intake</label>
                 <div className="grid grid-cols-2 gap-2">
                   {['insufficient', 'moderate', 'adequate', 'excellent'].map((intake) => (
                     <button
                       key={intake}
                       className={`py-3 px-4 rounded-lg border-2 transition-all ${
                         profile.lifestyle?.waterIntake === intake
-                          ? 'border-purple-500 bg-purple-50 text-purple-700'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
+                          : 'border-gray-700 hover:border-[#d4a574]/50'
                       }`}
                       onClick={() => updateProfile({
                         lifestyle: { ...profile.lifestyle, waterIntake: intake } as any
@@ -322,15 +322,15 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Sleep Quality</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Sleep Quality</label>
                 <div className="grid grid-cols-4 gap-2">
                   {['poor', 'fair', 'good', 'excellent'].map((quality) => (
                     <button
                       key={quality}
                       className={`py-2 px-3 rounded-lg border-2 text-sm transition-all ${
                         profile.lifestyle?.sleepQuality === quality
-                          ? 'border-purple-500 bg-purple-50 text-purple-700'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
+                          : 'border-gray-700 hover:border-[#d4a574]/50'
                       }`}
                       onClick={() => updateProfile({
                         lifestyle: { ...profile.lifestyle, sleepQuality: quality } as any
@@ -343,9 +343,9 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Diet Type</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Diet Type</label>
                 <select
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574]"
                   value={profile.lifestyle?.diet?.type || 'standard'}
                   onChange={(e) => updateProfile({
                     lifestyle: {
@@ -369,19 +369,19 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
           {step === 4 && (
             <div className="space-y-6 animate-fadeIn">
               <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-gradient-to-r from-red-200 to-pink-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Heart className="w-10 h-10 text-red-600" />
+                <div className="w-20 h-20 bg-gradient-to-r from-[#d4a574]/20 to-[#f4c794]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Heart className="w-10 h-10 text-[#d4a574]" />
                 </div>
-                <h3 className="text-2xl font-semibold text-gray-800 mb-2">Medical Information</h3>
-                <p className="text-gray-600">Helps us avoid conflicts and provide safe recommendations</p>
+                <h3 className="text-2xl font-semibold text-white mb-2">Medical Information</h3>
+                <p className="text-gray-400">Helps us avoid conflicts and provide safe recommendations</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Current Medications (especially Accutane, tretinoin, etc.)
                 </label>
                 <textarea
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574]"
                   rows={3}
                   placeholder="List any medications you're taking, separated by commas"
                   value={profile.medical?.currentMedications?.join(', ') || ''}
@@ -400,9 +400,9 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Allergies</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Allergies</label>
                 <textarea
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574]"
                   rows={2}
                   placeholder="List any allergies, especially to skincare ingredients"
                   value={profile.medical?.allergies?.join(', ') || ''}
@@ -418,11 +418,11 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Hormone Status (Optional)
                 </label>
                 <select
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574]"
                   value={profile.medical?.hormoneStatus || ''}
                   onChange={(e) => updateProfile({
                     medical: { ...profile.medical, hormoneStatus: e.target.value } as any
@@ -446,23 +446,23 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
           {step === 5 && (
             <div className="space-y-6 animate-fadeIn">
               <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-gradient-to-r from-purple-200 to-pink-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Sparkles className="w-10 h-10 text-purple-600" />
+                <div className="w-20 h-20 bg-gradient-to-r from-[#d4a574]/20 to-[#f4c794]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Sparkles className="w-10 h-10 text-[#d4a574]" />
                 </div>
-                <h3 className="text-2xl font-semibold text-gray-800 mb-2">Your Skin Type</h3>
-                <p className="text-gray-600">Understanding your skin is the foundation</p>
+                <h3 className="text-2xl font-semibold text-white mb-2">Your Skin Type</h3>
+                <p className="text-gray-400">Understanding your skin is the foundation</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Skin Type</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Skin Type</label>
                 <div className="grid grid-cols-2 gap-2">
                   {['oily', 'dry', 'combination', 'sensitive', 'normal'].map((type) => (
                     <button
                       key={type}
                       className={`py-3 px-4 rounded-lg border-2 transition-all ${
                         profile.skin?.type === type
-                          ? 'border-purple-500 bg-purple-50 text-purple-700'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
+                          : 'border-gray-700 hover:border-[#d4a574]/50'
                       }`}
                       onClick={() => updateProfile({
                         skin: { ...profile.skin, type: type } as any
@@ -475,7 +475,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Skin Concerns</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Skin Concerns</label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     'acne', 'blackheads', 'large-pores', 'oiliness',
@@ -487,8 +487,8 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                       key={concern}
                       className={`py-2 px-3 rounded-lg border-2 text-sm transition-all ${
                         profile.skin?.concerns?.includes(concern)
-                          ? 'border-purple-500 bg-purple-50 text-purple-700'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
+                          : 'border-gray-700 hover:border-[#d4a574]/50'
                       }`}
                       onClick={() => {
                         const concerns = profile.skin?.concerns || []
@@ -509,15 +509,15 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Current Skin Condition</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Current Skin Condition</label>
                 <div className="grid grid-cols-4 gap-2">
                   {['poor', 'fair', 'good', 'excellent'].map((condition) => (
                     <button
                       key={condition}
                       className={`py-2 px-3 rounded-lg border-2 text-sm transition-all ${
                         profile.skin?.currentCondition === condition
-                          ? 'border-purple-500 bg-purple-50 text-purple-700'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
+                          : 'border-gray-700 hover:border-[#d4a574]/50'
                       }`}
                       onClick={() => updateProfile({
                         skin: { ...profile.skin, currentCondition: condition } as any
@@ -535,19 +535,19 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
           {step === 6 && (
             <div className="space-y-6 animate-fadeIn">
               <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-gradient-to-r from-yellow-200 to-orange-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Target className="w-10 h-10 text-orange-600" />
+                <div className="w-20 h-20 bg-gradient-to-r from-[#d4a574]/20 to-[#f4c794]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Target className="w-10 h-10 text-[#d4a574]" />
                 </div>
-                <h3 className="text-2xl font-semibold text-gray-800 mb-2">Your Goals</h3>
-                <p className="text-gray-600">What do you want to achieve with your skincare?</p>
+                <h3 className="text-2xl font-semibold text-white mb-2">Your Goals</h3>
+                <p className="text-gray-400">What do you want to achieve with your skincare?</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Why are you looking to improve your skincare?
                 </label>
                 <textarea
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574]"
                   rows={3}
                   placeholder="Tell us your main skincare goal..."
                   value={profile.goals?.primary || ''}
@@ -558,15 +558,15 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Timeline</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Timeline</label>
                 <div className="grid grid-cols-2 gap-2">
                   {['1-month', '3-months', '6-months', '1-year'].map((timeline) => (
                     <button
                       key={timeline}
                       className={`py-3 px-4 rounded-lg border-2 transition-all ${
                         profile.goals?.timeline === timeline
-                          ? 'border-purple-500 bg-purple-50 text-purple-700'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
+                          : 'border-gray-700 hover:border-[#d4a574]/50'
                       }`}
                       onClick={() => updateProfile({
                         goals: { ...profile.goals, timeline: timeline } as any
@@ -579,15 +579,15 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Commitment Level</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Commitment Level</label>
                 <div className="grid grid-cols-3 gap-2">
                   {['minimal', 'moderate', 'dedicated'].map((level) => (
                     <button
                       key={level}
                       className={`py-3 px-4 rounded-lg border-2 transition-all ${
                         profile.goals?.commitment === level
-                          ? 'border-purple-500 bg-purple-50 text-purple-700'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
+                          : 'border-gray-700 hover:border-[#d4a574]/50'
                       }`}
                       onClick={() => updateProfile({
                         goals: { ...profile.goals, commitment: level } as any
@@ -606,20 +606,20 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
           {step === 7 && (
             <div className="space-y-6 animate-fadeIn">
               <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-gradient-to-r from-indigo-200 to-purple-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Camera className="w-10 h-10 text-indigo-600" />
+                <div className="w-20 h-20 bg-gradient-to-r from-[#d4a574]/20 to-[#f4c794]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Camera className="w-10 h-10 text-[#d4a574]" />
                 </div>
-                <h3 className="text-2xl font-semibold text-gray-800 mb-2">Current Routine</h3>
-                <p className="text-gray-600">Do you have a skincare routine already?</p>
+                <h3 className="text-2xl font-semibold text-white mb-2">Current Routine</h3>
+                <p className="text-gray-400">Do you have a skincare routine already?</p>
               </div>
 
               <div className="space-y-4">
                 <button
-                  className="w-full py-4 px-6 rounded-xl border-2 border-dashed border-gray-300 hover:border-purple-400 transition-all"
+                  className="w-full py-4 px-6 rounded-xl border-2 border-dashed border-gray-700 hover:border-[#d4a574] transition-all"
                   onClick={() => {/* Will implement photo upload */}}
                 >
                   <Camera className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm text-gray-600">Take photos of your current products</p>
+                  <p className="text-sm text-gray-400">Take photos of your current products</p>
                   <p className="text-xs text-gray-400 mt-1">We'll analyze ingredients and compatibility</p>
                 </button>
 
@@ -628,11 +628,11 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                 </div>
 
                 <button
-                  className="w-full py-4 px-6 rounded-xl bg-purple-50 hover:bg-purple-100 transition-all"
+                  className="w-full py-4 px-6 rounded-xl bg-[#d4a574]/10 hover:bg-[#d4a574]/20 transition-all"
                   onClick={() => nextStep()}
                 >
-                  <p className="text-purple-700 font-medium">I don't have a routine yet</p>
-                  <p className="text-xs text-purple-600 mt-1">We'll help you build one from scratch</p>
+                  <p className="text-[#d4a574] font-medium">I don't have a routine yet</p>
+                  <p className="text-xs text-[#d4a574]/80 mt-1">We'll help you build one from scratch</p>
                 </button>
               </div>
             </div>
@@ -642,23 +642,23 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
           {step === 8 && (
             <div className="space-y-6 animate-fadeIn">
               <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-gradient-to-r from-teal-200 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Sparkles className="w-10 h-10 text-teal-600" />
+                <div className="w-20 h-20 bg-gradient-to-r from-[#d4a574]/20 to-[#f4c794]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Sparkles className="w-10 h-10 text-[#d4a574]" />
                 </div>
-                <h3 className="text-2xl font-semibold text-gray-800 mb-2">Your Preferences</h3>
-                <p className="text-gray-600">Let's personalize your recommendations</p>
+                <h3 className="text-2xl font-semibold text-white mb-2">Your Preferences</h3>
+                <p className="text-gray-400">Let's personalize your recommendations</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Budget Range</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Budget Range</label>
                 <div className="grid grid-cols-2 gap-2">
                   {(['budget', 'mid-range', 'luxury', 'no-limit'] as const).map((range) => (
                     <button
                       key={range}
                       className={`py-3 px-4 rounded-lg border-2 transition-all ${
                         profile.preferences?.budgetRange === range
-                          ? 'border-purple-500 bg-purple-50 text-purple-700'
-                          : 'border-gray-300 hover:border-gray-400'
+                          ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
+                          : 'border-gray-700 hover:border-[#d4a574]/50'
                       }`}
                       onClick={() => updateProfile({
                         preferences: {
@@ -680,7 +680,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Product Preferences</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Product Preferences</label>
                 <div className="space-y-2">
                   {[
                     { key: 'preferClean', label: 'Clean Beauty' },
@@ -691,7 +691,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                     <label key={key} className="flex items-center space-x-3">
                       <input
                         type="checkbox"
-                        className="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                        className="w-5 h-5 text-[#d4a574] border-gray-600 bg-gray-800 rounded focus:ring-[#d4a574]"
                         checked={profile.preferences?.[key as keyof typeof profile.preferences] as boolean || false}
                         onChange={(e) => updateProfile({
                           preferences: {
@@ -708,18 +708,18 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                           }
                         })}
                       />
-                      <span className="text-gray-700">{label}</span>
+                      <span className="text-gray-300">{label}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Ingredients to Avoid
                 </label>
                 <textarea
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574]"
                   rows={2}
                   placeholder="List any ingredients you want to avoid"
                   value={profile.preferences?.avoidIngredients?.join(', ') || ''}
@@ -745,7 +745,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
             {step > 1 && (
               <button
                 onClick={prevStep}
-                className="flex items-center space-x-2 px-6 py-3 text-gray-600 hover:text-gray-800 transition-all"
+                className="flex items-center space-x-2 px-6 py-3 text-gray-400 hover:text-white transition-all"
               >
                 <ChevronLeft className="w-5 h-5" />
                 <span>Back</span>
@@ -754,7 +754,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
 
             <button
               onClick={nextStep}
-              className="ml-auto flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all transform hover:scale-105"
+              className="ml-auto flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-[#d4a574] to-[#f4c794] text-black rounded-lg hover:from-[#c49660] hover:to-[#e4b680] transition-all transform hover:scale-105"
             >
               <span>{step === totalSteps ? 'Complete' : 'Next'}</span>
               <ChevronRight className="w-5 h-5" />
@@ -763,7 +763,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
         </div>
 
         {/* Bailey's Note */}
-        <p className="text-center text-xs text-gray-500 mt-6">
+        <p className="text-center text-xs text-gray-400 mt-6">
           Designed with care by Bailey to understand your unique skin journey
         </p>
       </div>
