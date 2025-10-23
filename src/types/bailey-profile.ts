@@ -6,7 +6,7 @@ export interface BaileyUserProfile {
   id: string
   email: string
   name?: string
-  age: number
+  age: string | number // Support both age ranges and numbers
   birthDate: Date
   ethnicity?: string
 

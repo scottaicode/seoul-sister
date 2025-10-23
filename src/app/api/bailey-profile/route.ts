@@ -133,13 +133,28 @@ async function generateBaileyRecommendations(
   }
 
   // Age-specific recommendations (Bailey's wisdom)
-  if (profile.age && profile.age < 25) {
+  const getAgeNumber = (age: string | number): number => {
+    if (typeof age === 'number') return age
+    if (typeof age === 'string') {
+      if (age === '13-17') return 15
+      if (age === '18-24') return 21
+      if (age === '25-34') return 29
+      if (age === '35-44') return 39
+      if (age === '45-54') return 49
+      if (age === '55-64') return 59
+      if (age === '65+') return 70
+    }
+    return 25 // default
+  }
+
+  const ageNum = profile.age ? getAgeNumber(profile.age) : 25
+  if (ageNum < 25) {
     recommendations.specialConsiderations.push({
       type: 'prevention-focus',
       reason: 'Focus on prevention and establishing good habits',
       suggestions: ['Sunscreen daily', 'Gentle retinol introduction', 'Antioxidant serums']
     })
-  } else if (profile.age && profile.age >= 35) {
+  } else if (ageNum >= 35) {
     recommendations.specialConsiderations.push({
       type: 'anti-aging-focus',
       reason: 'Target existing concerns while preventing further damage',

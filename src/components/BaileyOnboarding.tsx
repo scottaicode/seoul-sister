@@ -140,26 +140,46 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Age</label>
-                <input
-                  type="number"
+                <label className="block text-sm font-medium text-gray-300 mb-2">Age Range</label>
+                <select
                   className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574] focus:border-[#d4a574]"
-                  placeholder="Your age affects your skincare needs"
                   value={profile.age || ''}
-                  onChange={(e) => updateProfile({ age: parseInt(e.target.value) })}
-                />
-                <p className="text-xs text-gray-500 mt-1">An 18-year-old needs different care than a 55-year-old</p>
+                  onChange={(e) => updateProfile({ age: e.target.value })}
+                >
+                  <option value="">Select your age range</option>
+                  <option value="13-17">13-17</option>
+                  <option value="18-24">18-24</option>
+                  <option value="25-34">25-34</option>
+                  <option value="35-44">35-44</option>
+                  <option value="45-54">45-54</option>
+                  <option value="55-64">55-64</option>
+                  <option value="65+">65+</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Different ages need different skincare approaches</p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Ethnicity (Optional)</label>
-                <input
-                  type="text"
+                <select
                   className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574] focus:border-[#d4a574]"
-                  placeholder="Helps us understand your skin better"
                   value={profile.ethnicity || ''}
                   onChange={(e) => updateProfile({ ethnicity: e.target.value })}
-                />
+                >
+                  <option value="">Select your ethnicity (optional)</option>
+                  <option value="East Asian">East Asian</option>
+                  <option value="Southeast Asian">Southeast Asian</option>
+                  <option value="South Asian">South Asian</option>
+                  <option value="Black/African">Black/African</option>
+                  <option value="Hispanic/Latino">Hispanic/Latino</option>
+                  <option value="Middle Eastern">Middle Eastern</option>
+                  <option value="Native American">Native American</option>
+                  <option value="White/Caucasian">White/Caucasian</option>
+                  <option value="Pacific Islander">Pacific Islander</option>
+                  <option value="Mixed/Multiracial">Mixed/Multiracial</option>
+                  <option value="Other">Other</option>
+                  <option value="Prefer not to say">Prefer not to say</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Helps us understand your skin's unique characteristics</p>
               </div>
             </div>
           )}
