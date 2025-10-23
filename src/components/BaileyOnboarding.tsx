@@ -252,7 +252,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                       className={`py-3 px-4 rounded-lg border-2 transition-all ${
                         profile.location?.humidity === level
                           ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
-                          : 'border-gray-700 hover:border-[#d4a574]/50'
+                          : 'border-gray-600 bg-gray-800/50 text-gray-300 hover:border-[#d4a574] hover:bg-gray-700'
                       }`}
                       onClick={() => updateProfile({
                         location: { ...profile.location, humidity: level } as any
@@ -286,7 +286,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                       className={`py-2 px-3 rounded-lg border-2 text-sm transition-all ${
                         profile.lifestyle?.smokingStatus === status
                           ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
-                          : 'border-gray-700 hover:border-[#d4a574]/50'
+                          : 'border-gray-600 bg-gray-800/50 text-gray-300 hover:border-[#d4a574] hover:bg-gray-700'
                       }`}
                       onClick={() => updateProfile({
                         lifestyle: { ...profile.lifestyle, smokingStatus: status } as any
@@ -307,7 +307,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                       className={`py-3 px-4 rounded-lg border-2 transition-all ${
                         profile.lifestyle?.exerciseFrequency === freq
                           ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
-                          : 'border-gray-700 hover:border-[#d4a574]/50'
+                          : 'border-gray-600 bg-gray-800/50 text-gray-300 hover:border-[#d4a574] hover:bg-gray-700'
                       }`}
                       onClick={() => updateProfile({
                         lifestyle: { ...profile.lifestyle, exerciseFrequency: freq } as any
@@ -328,7 +328,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                       className={`py-3 px-4 rounded-lg border-2 transition-all ${
                         profile.lifestyle?.waterIntake === intake
                           ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
-                          : 'border-gray-700 hover:border-[#d4a574]/50'
+                          : 'border-gray-600 bg-gray-800/50 text-gray-300 hover:border-[#d4a574] hover:bg-gray-700'
                       }`}
                       onClick={() => updateProfile({
                         lifestyle: { ...profile.lifestyle, waterIntake: intake } as any
@@ -350,7 +350,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                       className={`py-2 px-3 rounded-lg border-2 text-sm transition-all ${
                         profile.lifestyle?.sleepQuality === quality
                           ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
-                          : 'border-gray-700 hover:border-[#d4a574]/50'
+                          : 'border-gray-600 bg-gray-800/50 text-gray-300 hover:border-[#d4a574] hover:bg-gray-700'
                       }`}
                       onClick={() => updateProfile({
                         lifestyle: { ...profile.lifestyle, sleepQuality: quality } as any
@@ -482,7 +482,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                       className={`py-3 px-4 rounded-lg border-2 transition-all ${
                         profile.skin?.type === type
                           ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
-                          : 'border-gray-700 hover:border-[#d4a574]/50'
+                          : 'border-gray-600 bg-gray-800/50 text-gray-300 hover:border-[#d4a574] hover:bg-gray-700'
                       }`}
                       onClick={() => updateProfile({
                         skin: { ...profile.skin, type: type } as any
@@ -508,7 +508,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                       className={`py-2 px-3 rounded-lg border-2 text-sm transition-all ${
                         profile.skin?.concerns?.includes(concern)
                           ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
-                          : 'border-gray-700 hover:border-[#d4a574]/50'
+                          : 'border-gray-600 bg-gray-800/50 text-gray-300 hover:border-[#d4a574] hover:bg-gray-700'
                       }`}
                       onClick={() => {
                         const concerns = profile.skin?.concerns || []
@@ -537,7 +537,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                       className={`py-2 px-3 rounded-lg border-2 text-sm transition-all ${
                         profile.skin?.currentCondition === condition
                           ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
-                          : 'border-gray-700 hover:border-[#d4a574]/50'
+                          : 'border-gray-600 bg-gray-800/50 text-gray-300 hover:border-[#d4a574] hover:bg-gray-700'
                       }`}
                       onClick={() => updateProfile({
                         skin: { ...profile.skin, currentCondition: condition } as any
@@ -586,7 +586,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                       className={`py-3 px-4 rounded-lg border-2 transition-all ${
                         profile.goals?.timeline === timeline
                           ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
-                          : 'border-gray-700 hover:border-[#d4a574]/50'
+                          : 'border-gray-600 bg-gray-800/50 text-gray-300 hover:border-[#d4a574] hover:bg-gray-700'
                       }`}
                       onClick={() => updateProfile({
                         goals: { ...profile.goals, timeline: timeline } as any
@@ -607,7 +607,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                       className={`py-3 px-4 rounded-lg border-2 transition-all ${
                         profile.goals?.commitment === level
                           ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
-                          : 'border-gray-700 hover:border-[#d4a574]/50'
+                          : 'border-gray-600 bg-gray-800/50 text-gray-300 hover:border-[#d4a574] hover:bg-gray-700'
                       }`}
                       onClick={() => updateProfile({
                         goals: { ...profile.goals, commitment: level } as any
@@ -678,7 +678,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                       className={`py-3 px-4 rounded-lg border-2 transition-all ${
                         profile.preferences?.budgetRange === range
                           ? 'border-[#d4a574] bg-[#d4a574]/10 text-[#d4a574]'
-                          : 'border-gray-700 hover:border-[#d4a574]/50'
+                          : 'border-gray-600 bg-gray-800/50 text-gray-300 hover:border-[#d4a574] hover:bg-gray-700'
                       }`}
                       onClick={() => updateProfile({
                         preferences: {
