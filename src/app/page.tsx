@@ -68,7 +68,7 @@ export default function HomePage() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [showViralTools, setShowViralTools] = useState(false)
   const { products, loading } = useProducts(true)
-  const { refreshAuth } = useAuth()
+  const { refreshAuth, user } = useAuth()
 
   // Use products from database
   const featuredProducts = products
@@ -166,7 +166,7 @@ export default function HomePage() {
             <div className="text-center max-w-3xl mx-auto relative">
               {/* Button Container */}
               <div className="flex flex-col sm:flex-row gap-8 sm:gap-16 items-center justify-center">
-                <Link href="/signup">
+                <Link href={user ? "/bailey-onboarding" : "/signup"}>
                   <button style={{
                     background: '#d4a574',
                     color: '#000000',
@@ -562,35 +562,35 @@ export default function HomePage() {
 
           <div className="grid md:grid-cols-3 gap-8 mb-16">
             <div className="bg-luxury-charcoal/30 p-8 rounded-lg border border-luxury-charcoal">
-              <div className="text-4xl mb-4">🔬</div>
-              <h3 className="text-xl font-semibold mb-4 text-luxury-gold">Advanced Skin Analysis</h3>
+              <div className="text-4xl mb-4">👩‍🔬</div>
+              <h3 className="text-xl font-semibold mb-4 text-luxury-gold">Bailey's Comprehensive Profile</h3>
               <p className="text-gray-300 mb-6">
-                Upload your photo for advanced digital skin analysis. Get detailed insights about your skin type, concerns, and perfect product matches.
+                Complete Bailey's 8-step onboarding covering lifestyle, environment, medical factors, and goals for truly personalized skincare intelligence.
               </p>
-              <Link href="/skin-analysis" className="inline-block">
-                <button className="btn-luxury text-sm">START ANALYSIS</button>
+              <Link href="/bailey-onboarding" className="inline-block">
+                <button className="btn-luxury text-sm">START BAILEY PROFILE</button>
               </Link>
             </div>
 
             <div className="bg-luxury-charcoal/30 p-8 rounded-lg border border-luxury-charcoal">
-              <div className="text-4xl mb-4">👤</div>
-              <h3 className="text-xl font-semibold mb-4 text-luxury-gold">Personal Profile</h3>
+              <div className="text-4xl mb-4">📸</div>
+              <h3 className="text-xl font-semibold mb-4 text-luxury-gold">Product & Routine Analysis</h3>
               <p className="text-gray-300 mb-6">
-                Create your detailed skin profile with concerns, preferences, and goals. Get increasingly accurate recommendations over time.
+                Upload photos of products or your entire routine for AI-powered ingredient analysis, compatibility checking, and optimization suggestions.
               </p>
-              <Link href="/skin-profile" className="inline-block">
-                <button className="btn-luxury text-sm">CREATE PROFILE</button>
+              <Link href="/bailey-features?feature=product-scanner" className="inline-block">
+                <button className="btn-luxury text-sm">ANALYZE PRODUCTS</button>
               </Link>
             </div>
 
             <div className="bg-luxury-charcoal/30 p-8 rounded-lg border border-luxury-charcoal">
-              <div className="text-4xl mb-4">✨</div>
-              <h3 className="text-xl font-semibold mb-4 text-luxury-gold">Smart Dashboard</h3>
+              <div className="text-4xl mb-4">🔍</div>
+              <h3 className="text-xl font-semibold mb-4 text-luxury-gold">Smart Shopping Tools</h3>
               <p className="text-gray-300 mb-6">
-                Access your personalized beauty hub with smart recommendations, ingredient analysis, and curated product matches.
+                Barcode scanning for price comparison, duplicate detection, progress tracking, and irritation analysis - all powered by Bailey's expertise.
               </p>
-              <Link href="/personalized-dashboard" className="inline-block">
-                <button className="btn-luxury text-sm">VIEW DASHBOARD</button>
+              <Link href="/bailey-features" className="inline-block">
+                <button className="btn-luxury text-sm">EXPLORE FEATURES</button>
               </Link>
             </div>
           </div>

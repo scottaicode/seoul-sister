@@ -59,6 +59,93 @@ export default function PersonalizedDashboard() {
             for your unique skin needs.
           </p>
 
+          {/* Bailey's AI Features Section */}
+          {isAuthenticated && (
+            <div className="max-w-6xl mx-auto mb-8">
+              <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-2xl p-6 border border-purple-500/20 backdrop-blur-sm">
+                <div className="text-center mb-6">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <span className="text-2xl">👩‍🔬</span>
+                    <h3 className="text-2xl font-bold text-white tracking-wide">
+                      Bailey's AI Features
+                    </h3>
+                    <span className="text-xs bg-pink-500/20 text-pink-400 px-2 py-1 rounded-full">
+                      PERSONALIZED
+                    </span>
+                  </div>
+                  <p className="text-gray-300 font-light">
+                    Comprehensive skincare intelligence powered by Bailey's expertise
+                  </p>
+                </div>
+
+                <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  <Link
+                    href="/bailey-onboarding"
+                    className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-xl p-4 hover:scale-105 transition-all text-center group"
+                  >
+                    <div className="text-3xl mb-2">👤</div>
+                    <div className="text-sm font-medium text-white mb-1">Complete Profile</div>
+                    <div className="text-xs text-gray-400">Bailey onboarding</div>
+                  </Link>
+
+                  <Link
+                    href="/bailey-features?feature=product-scanner"
+                    className="bg-gradient-to-br from-green-500/20 to-blue-500/20 border border-green-500/30 rounded-xl p-4 hover:scale-105 transition-all text-center group"
+                  >
+                    <div className="text-3xl mb-2">📸</div>
+                    <div className="text-sm font-medium text-white mb-1">Product Scanner</div>
+                    <div className="text-xs text-gray-400">Ingredient analysis</div>
+                  </Link>
+
+                  <Link
+                    href="/bailey-features?feature=routine-analyzer"
+                    className="bg-gradient-to-br from-yellow-500/20 to-green-500/20 border border-yellow-500/30 rounded-xl p-4 hover:scale-105 transition-all text-center group"
+                  >
+                    <div className="text-3xl mb-2">📊</div>
+                    <div className="text-sm font-medium text-white mb-1">Routine Analyzer</div>
+                    <div className="text-xs text-gray-400">Compatibility check</div>
+                  </Link>
+
+                  <Link
+                    href="/bailey-features?feature=barcode-scanner"
+                    className="bg-gradient-to-br from-orange-500/20 to-red-500/20 border border-orange-500/30 rounded-xl p-4 hover:scale-105 transition-all text-center group"
+                  >
+                    <div className="text-3xl mb-2">📱</div>
+                    <div className="text-sm font-medium text-white mb-1">Barcode Scanner</div>
+                    <div className="text-xs text-gray-400">Price comparison</div>
+                  </Link>
+
+                  <Link
+                    href="/bailey-features?feature=progress-tracking"
+                    className="bg-gradient-to-br from-teal-500/20 to-green-500/20 border border-teal-500/30 rounded-xl p-4 hover:scale-105 transition-all text-center group"
+                  >
+                    <div className="text-3xl mb-2">📅</div>
+                    <div className="text-sm font-medium text-white mb-1">Progress Tracking</div>
+                    <div className="text-xs text-gray-400">Weekly analysis</div>
+                  </Link>
+
+                  <Link
+                    href="/bailey-features?feature=irritation-analysis"
+                    className="bg-gradient-to-br from-red-500/20 to-pink-500/20 border border-red-500/30 rounded-xl p-4 hover:scale-105 transition-all text-center group"
+                  >
+                    <div className="text-3xl mb-2">⚠️</div>
+                    <div className="text-sm font-medium text-white mb-1">Irritation Analysis</div>
+                    <div className="text-xs text-gray-400">AI diagnosis</div>
+                  </Link>
+                </div>
+
+                <div className="text-center mt-6">
+                  <Link
+                    href="/bailey-features"
+                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all font-medium tracking-wide"
+                  >
+                    Explore All Bailey Features →
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Korean Beauty Intelligence Feature */}
           {isAuthenticated && (
             <div className="max-w-4xl mx-auto mb-8">

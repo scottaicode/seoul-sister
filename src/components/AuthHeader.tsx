@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuthState } from '@/hooks/useAuthState'
 import AuthModal from './AuthModal'
-import { User, ChevronDown, Camera, Heart, ShoppingBag, Settings, LogOut } from 'lucide-react'
+import { User, ChevronDown, Camera, Heart, ShoppingBag, Settings, LogOut, Scan, BarChart3, Zap, Calendar, AlertTriangle } from 'lucide-react'
 
 export default function AuthHeader() {
   const [showAuthModal, setShowAuthModal] = useState(false)
@@ -167,6 +167,85 @@ export default function AuthHeader() {
                     </div>
 
                     <div className="py-1">
+                      {/* Bailey's AI Features Section */}
+                      <div className="px-4 py-2 text-xs font-semibold text-[#d4a574] uppercase tracking-wider border-b border-[#d4a574]/10">
+                        Bailey's AI Features
+                      </div>
+                      <a
+                        href="/bailey-onboarding"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <div className="flex items-center">
+                          <User size={16} className="mr-3" />
+                          Complete Skin Profile
+                        </div>
+                      </a>
+                      <a
+                        href="/bailey-features?feature=product-scanner"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <div className="flex items-center">
+                          <Camera size={16} className="mr-3" />
+                          Product Photo Scanner
+                        </div>
+                      </a>
+                      <a
+                        href="/bailey-features?feature=routine-analyzer"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <div className="flex items-center">
+                          <BarChart3 size={16} className="mr-3" />
+                          Routine Analyzer
+                        </div>
+                      </a>
+                      <a
+                        href="/bailey-features?feature=barcode-scanner"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <div className="flex items-center">
+                          <Scan size={16} className="mr-3" />
+                          Barcode Scanner
+                        </div>
+                      </a>
+                      <a
+                        href="/bailey-features?feature=progress-tracking"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <div className="flex items-center">
+                          <Calendar size={16} className="mr-3" />
+                          Progress Tracking
+                        </div>
+                      </a>
+                      <a
+                        href="/bailey-features?feature=irritation-analysis"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <div className="flex items-center">
+                          <AlertTriangle size={16} className="mr-3" />
+                          Irritation Analysis
+                        </div>
+                      </a>
+                      <a
+                        href="/bailey-features?feature=gradual-introduction"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <div className="flex items-center">
+                          <Zap size={16} className="mr-3" />
+                          Gradual Introduction
+                        </div>
+                      </a>
+
+                      {/* Existing Features Section */}
+                      <div className="px-4 py-2 text-xs font-semibold text-[#d4a574] uppercase tracking-wider border-b border-[#d4a574]/10 mt-2">
+                        Platform Features
+                      </div>
                       <a
                         href="/skin-profile"
                         className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
@@ -174,7 +253,7 @@ export default function AuthHeader() {
                       >
                         <div className="flex items-center">
                           <Camera size={16} className="mr-3" />
-                          Skin Profile
+                          Basic Skin Profile
                         </div>
                       </a>
                       <a
