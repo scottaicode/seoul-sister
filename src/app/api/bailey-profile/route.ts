@@ -97,9 +97,9 @@ async function generateBaileyRecommendations(
   // Bailey's intelligent recommendation logic
   const recommendations = {
     routineType: determineRoutineType(profile),
-    priorityProducts: [],
-    avoidProducts: [],
-    specialConsiderations: [],
+    priorityProducts: [] as string[],
+    avoidProducts: [] as string[],
+    specialConsiderations: [] as any[],
     introductionPlan: null as any
   }
 
@@ -117,7 +117,7 @@ async function generateBaileyRecommendations(
 
   // Climate-specific recommendations (Bailey's insight)
   if (profile.location?.climate === 'dry' || profile.location?.humidity === 'low') {
-    recommendations.specialConsiderations.push({
+    (recommendations.specialConsiderations as any[]).push({
       type: 'hydration-boost',
       reason: 'Your dry climate requires extra hydration',
       suggestions: ['Add hyaluronic acid serum', 'Use heavier night cream', 'Consider humidifier']
@@ -125,7 +125,7 @@ async function generateBaileyRecommendations(
   }
 
   if (profile.location?.climate === 'tropical' || profile.location?.humidity === 'high') {
-    recommendations.specialConsiderations.push({
+    (recommendations.specialConsiderations as any[]).push({
       type: 'humidity-control',
       reason: 'High humidity requires lighter formulations',
       suggestions: ['Gel-based moisturizers', 'Oil-free sunscreen', 'Clay masks weekly']
@@ -199,7 +199,9 @@ async function generateBaileyRecommendations(
       },
       week4: {
         products: ['optimize-routine'],
-        notes: 'Evaluate what's working, adjust as needed'
+        morning: ['gentle cleanser', 'toner', 'serum', 'moisturizer', 'sunscreen'],
+        evening: ['gentle cleanser', 'toner', 'serum', 'moisturizer'],
+        notes: 'Evaluate what is working, adjust as needed'
       }
     }
   }

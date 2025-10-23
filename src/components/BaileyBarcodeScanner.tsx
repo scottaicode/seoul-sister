@@ -5,7 +5,8 @@ import { Scan, ShoppingCart, TrendingDown, AlertCircle, Check, X, DollarSign, St
 import dynamic from 'next/dynamic'
 
 // Dynamically import barcode scanner to avoid SSR issues
-const BarcodeScanner = dynamic(() => import('react-qr-barcode-scanner'), { ssr: false })
+// @ts-ignore - Package will be installed later
+const BarcodeScanner = dynamic(() => import('react-qr-barcode-scanner' as any), { ssr: false })
 
 interface BarcodeScannerProps {
   userId?: string

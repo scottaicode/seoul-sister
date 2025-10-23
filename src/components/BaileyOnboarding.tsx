@@ -11,27 +11,83 @@ interface OnboardingProps {
 export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
   const [step, setStep] = useState(1)
   const [profile, setProfile] = useState<Partial<BaileyUserProfile>>({
-    skin: { concerns: [] },
-    lifestyle: {
-      diet: { type: 'standard', dairyConsumption: false, sugarIntake: 'moderate', processedFoods: 'sometimes' }
+    skin: {
+      type: 'normal',
+      tone: 'medium',
+      concerns: [],
+      sensitivities: [],
+      currentCondition: 'good'
     },
-    medical: { currentMedications: [], allergies: [], medicalConditions: [] },
-    goals: { secondary: [] },
-    preferences: { avoidIngredients: [], texturePreferences: [] }
+    lifestyle: {
+      smokingStatus: 'never',
+      alcoholConsumption: 'moderate',
+      exerciseFrequency: '3-4x/week',
+      sleepHours: 7,
+      sleepQuality: 'good',
+      stressLevel: 'moderate',
+      waterIntake: 'adequate',
+      diet: { type: 'standard', dairyConsumption: false, sugarIntake: 'moderate', processedFoods: 'sometimes' },
+      sunExposure: 'moderate',
+      screenTime: 8,
+      outdoorTime: 2
+    },
+    medical: {
+      currentMedications: [],
+      allergies: [],
+      medicalConditions: []
+    },
+    goals: {
+      primary: '',
+      secondary: [],
+      timeline: '3-months',
+      commitment: 'moderate',
+      willingToInvest: false
+    },
+    preferences: {
+      budgetRange: 'mid-range',
+      preferClean: false,
+      preferKBeauty: false,
+      preferFragranceFree: false,
+      preferCrueltyFree: false,
+      avoidIngredients: [],
+      texturePreferences: []
+    }
   })
 
   const totalSteps = 8
 
   const updateProfile = (updates: Partial<BaileyUserProfile>) => {
-    setProfile(prev => ({
-      ...prev,
-      ...updates,
-      skin: { ...prev.skin, ...updates.skin },
-      lifestyle: { ...prev.lifestyle, ...updates.lifestyle },
-      medical: { ...prev.medical, ...updates.medical },
-      goals: { ...prev.goals, ...updates.goals },
-      preferences: { ...prev.preferences, ...updates.preferences }
-    }))
+    setProfile(prev => {
+      const newProfile = { ...prev }
+
+      // Simple properties
+      if (updates.name !== undefined) newProfile.name = updates.name
+      if (updates.age !== undefined) newProfile.age = updates.age
+      if (updates.ethnicity !== undefined) newProfile.ethnicity = updates.ethnicity
+      if (updates.location !== undefined) newProfile.location = updates.location
+      if (updates.birthDate !== undefined) newProfile.birthDate = updates.birthDate
+      if (updates.email !== undefined) newProfile.email = updates.email
+      if (updates.id !== undefined) newProfile.id = updates.id
+
+      // Complex properties - merge with existing
+      if (updates.skin) {
+        newProfile.skin = { ...prev.skin, ...updates.skin }
+      }
+      if (updates.lifestyle) {
+        newProfile.lifestyle = { ...prev.lifestyle, ...updates.lifestyle }
+      }
+      if (updates.medical) {
+        newProfile.medical = { ...prev.medical, ...updates.medical }
+      }
+      if (updates.goals) {
+        newProfile.goals = { ...prev.goals, ...updates.goals }
+      }
+      if (updates.preferences) {
+        newProfile.preferences = { ...prev.preferences, ...updates.preferences }
+      }
+
+      return newProfile
+    })
   }
 
   const nextStep = () => {
@@ -332,7 +388,9 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                   onChange={(e) => updateProfile({
                     medical: {
                       ...profile.medical,
-                      currentMedications: e.target.value.split(',').map(m => m.trim()).filter(m => m)
+                      currentMedications: e.target.value.split(',').map(m => m.trim()).filter(m => m),
+                      allergies: profile.medical?.allergies || [],
+                      medicalConditions: profile.medical?.medicalConditions || []
                     }
                   })}
                 />
@@ -351,7 +409,9 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                   onChange={(e) => updateProfile({
                     medical: {
                       ...profile.medical,
-                      allergies: e.target.value.split(',').map(a => a.trim()).filter(a => a)
+                      currentMedications: profile.medical?.currentMedications || [],
+                      allergies: e.target.value.split(',').map(a => a.trim()).filter(a => a),
+                      medicalConditions: profile.medical?.medicalConditions || []
                     }
                   })}
                 />
@@ -592,7 +652,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Budget Range</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {['budget', 'mid-range', 'luxury', 'no-limit'].map((range) => (
+                  {(['budget', 'mid-range', 'luxury', 'no-limit'] as const).map((range) => (
                     <button
                       key={range}
                       className={`py-3 px-4 rounded-lg border-2 transition-all ${
@@ -601,7 +661,16 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                           : 'border-gray-300 hover:border-gray-400'
                       }`}
                       onClick={() => updateProfile({
-                        preferences: { ...profile.preferences, budgetRange: range } as any
+                        preferences: {
+                          ...profile.preferences,
+                          budgetRange: range,
+                          preferClean: profile.preferences?.preferClean || false,
+                          preferKBeauty: profile.preferences?.preferKBeauty || false,
+                          preferFragranceFree: profile.preferences?.preferFragranceFree || false,
+                          preferCrueltyFree: profile.preferences?.preferCrueltyFree || false,
+                          avoidIngredients: profile.preferences?.avoidIngredients || [],
+                          texturePreferences: profile.preferences?.texturePreferences || []
+                        }
                       })}
                     >
                       {range.replace('-', ' ')}
@@ -625,7 +694,18 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                         className="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                         checked={profile.preferences?.[key as keyof typeof profile.preferences] as boolean || false}
                         onChange={(e) => updateProfile({
-                          preferences: { ...profile.preferences, [key]: e.target.checked }
+                          preferences: {
+                            ...profile.preferences,
+                            [key]: e.target.checked,
+                            budgetRange: profile.preferences?.budgetRange || 'mid-range',
+                            preferClean: profile.preferences?.preferClean || false,
+                            preferKBeauty: profile.preferences?.preferKBeauty || false,
+                            preferFragranceFree: profile.preferences?.preferFragranceFree || false,
+                            preferCrueltyFree: profile.preferences?.preferCrueltyFree || false,
+                            avoidIngredients: profile.preferences?.avoidIngredients || [],
+                            texturePreferences: profile.preferences?.texturePreferences || [],
+                            ...{ [key]: e.target.checked }
+                          }
                         })}
                       />
                       <span className="text-gray-700">{label}</span>
@@ -646,7 +726,13 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                   onChange={(e) => updateProfile({
                     preferences: {
                       ...profile.preferences,
-                      avoidIngredients: e.target.value.split(',').map(i => i.trim()).filter(i => i)
+                      budgetRange: profile.preferences?.budgetRange || 'mid-range',
+                      preferClean: profile.preferences?.preferClean || false,
+                      preferKBeauty: profile.preferences?.preferKBeauty || false,
+                      preferFragranceFree: profile.preferences?.preferFragranceFree || false,
+                      preferCrueltyFree: profile.preferences?.preferCrueltyFree || false,
+                      avoidIngredients: e.target.value.split(',').map(i => i.trim()).filter(i => i),
+                      texturePreferences: profile.preferences?.texturePreferences || []
                     }
                   })}
                 />

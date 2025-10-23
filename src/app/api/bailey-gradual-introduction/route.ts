@@ -264,10 +264,10 @@ function generatePersonalizedInstructions(
   userProfile: any
 ) {
   const instructions = {
-    general: [],
-    skinTypeSpecific: [],
-    medicationWarnings: [],
-    lifestyleAdaptations: []
+    general: [] as string[],
+    skinTypeSpecific: [] as string[],
+    medicationWarnings: [] as string[],
+    lifestyleAdaptations: [] as string[]
   }
 
   // General instructions (Bailey's wisdom)
