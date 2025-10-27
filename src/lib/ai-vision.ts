@@ -159,27 +159,73 @@ Return as structured JSON with extracted text only - no analysis yet.`
       return createMockAnalysis(request)
     }
 
-    // STEP 1: Vision extraction with Claude Sonnet 4
-    const visionResponse = await fetch('/api/ai/claude-vision', {
+    // STEP 1: Vision extraction with Claude Sonnet 4 (direct API call)
+    console.log('🔍 Starting Claude Sonnet 4 vision analysis...')
+
+    // Clean base64 data (remove data URL prefix if present)
+    let cleanBase64 = request.imageBase64
+    if (request.imageBase64.startsWith('data:')) {
+      cleanBase64 = request.imageBase64.split(',')[1]
+    }
+
+    // Determine media type
+    let mediaType = 'image/jpeg'
+    if (request.imageType) {
+      if (request.imageType.includes('png')) mediaType = 'image/png'
+      else if (request.imageType.includes('webp')) mediaType = 'image/webp'
+      else if (request.imageType.includes('gif')) mediaType = 'image/gif'
+    }
+
+    const visionResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        image: request.imageBase64,
-        prompt: visionPrompt,
-        maxTokens: 2000,
-        imageType: request.imageType || 'image/jpeg' // Use provided type or default to JPEG
+        model: 'claude-3-5-sonnet-20241022', // Vision-capable model
+        max_tokens: 2000,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: mediaType,
+                  data: cleanBase64
+                }
+              },
+              {
+                type: 'text',
+                text: visionPrompt
+              }
+            ]
+          }
+        ]
       })
     })
 
     if (!visionResponse.ok) {
-      console.warn(`⚠️ Vision API failed: ${visionResponse.statusText}, using mock analysis`)
+      const error = await visionResponse.text()
+      console.warn(`⚠️ Vision API failed: ${visionResponse.statusText} - ${error}`)
       return createMockAnalysis(request)
     }
 
     const visionResult = await visionResponse.json()
-    const extractedData = JSON.parse(visionResult.content)
+    console.log('✅ Claude Sonnet 4 vision completed')
+
+    // Extract text content from Claude's response
+    let extractedData
+    try {
+      const textContent = visionResult.content[0].text
+      extractedData = JSON.parse(textContent)
+    } catch (parseError) {
+      console.warn('⚠️ Failed to parse vision result as JSON, using raw text')
+      extractedData = { rawText: visionResult.content[0].text }
+    }
 
     // STEP 2: Deep analysis with Claude Opus 4.1 (Maximum Intelligence)
     const analysisPrompt = `You are Seoul Sister's world-class AI beauty expert powered by Claude Opus 4.1, the most advanced AI model available. You have unmatched expertise in Korean skincare, ingredient science, and personalized beauty recommendations.
@@ -203,26 +249,44 @@ ANALYSIS REQUIREMENTS:
 Return your analysis in the exact JSON format specified earlier, leveraging Claude Opus 4.1's maximum intelligence for unprecedented accuracy and insight.`
 
     // Call Claude Opus 4.1 for maximum intelligence analysis
-    const analysisResponse = await fetch('/api/ai/claude-opus', {
+    console.log('🧠 Starting Claude Opus 4.1 deep analysis...')
+    const analysisResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        prompt: analysisPrompt,
-        maxTokens: 4000,
-        context: 'Seoul Sister Premium AI Product Analysis'
+        model: 'claude-3-opus-20240229', // Use Claude Opus for maximum intelligence
+        max_tokens: 4000,
+        messages: [
+          {
+            role: 'user',
+            content: analysisPrompt
+          }
+        ]
       })
     })
 
     if (!analysisResponse.ok) {
+      const error = await analysisResponse.text()
+      console.warn(`⚠️ Claude Opus analysis failed: ${analysisResponse.statusText} - ${error}`)
       throw new Error(`Claude Opus analysis failed: ${analysisResponse.statusText}`)
     }
 
     const analysisResult = await analysisResponse.json()
+    console.log('✅ Claude Opus 4.1 analysis completed')
 
     // Parse the Claude Opus 4.1 analysis
-    const analysis: ProductAnalysisResult = JSON.parse(analysisResult.content)
+    let analysis: ProductAnalysisResult
+    try {
+      const textContent = analysisResult.content[0].text
+      analysis = JSON.parse(textContent)
+    } catch (parseError) {
+      console.warn('⚠️ Failed to parse Opus result as JSON, falling back to mock')
+      return createMockAnalysis(request)
+    }
 
     // Add metadata about AI models used
     analysis.aiMetadata = {
