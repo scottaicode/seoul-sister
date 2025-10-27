@@ -47,6 +47,7 @@ export interface BaileyUserProfile {
     currentMedications: string[]
     skinMedications?: string[] // Specifically for Accutane, tretinoin, etc.
     allergies: string[]
+    allergiesText?: string // Raw text input for allergies
     medicalConditions: string[]
     hormoneStatus?: 'regular' | 'irregular' | 'pregnancy' | 'menopause' | 'birth-control'
     lastDermatologistVisit?: Date

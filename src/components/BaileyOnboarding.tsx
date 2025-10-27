@@ -513,17 +513,19 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                 <textarea
                   className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574]"
                   rows={2}
-                  placeholder="List any allergies, especially to skincare ingredients"
-                  value={profile.medical?.allergies?.join(', ') || ''}
+                  placeholder="List any allergies, separate with commas (e.g., fragrance, parabens, nuts)"
+                  value={profile.medical?.allergiesText || ''}
                   onChange={(e) => updateProfile({
                     medical: {
                       ...profile.medical,
                       currentMedications: profile.medical?.currentMedications || [],
+                      allergiesText: e.target.value,
                       allergies: e.target.value ? e.target.value.split(',').map(a => a.trim()).filter(a => a) : [],
                       medicalConditions: profile.medical?.medicalConditions || []
                     }
                   })}
                 />
+                <p className="text-xs text-gray-500 mt-1">Use commas to separate multiple allergies</p>
               </div>
 
               <div>

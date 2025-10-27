@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
     // Prepare AI analysis request
     const analysisRequest = {
       imageBase64: base64Image,
+      imageType: image.type, // Pass the actual MIME type
       userProfile: parsedUserProfile ? {
         skinType: parsedUserProfile.skinType || 'normal',
         concerns: parsedUserProfile.concerns || [],
@@ -36,10 +37,40 @@ export async function POST(request: NextRequest) {
 
     // Use specialized Korean beauty analysis if indicated
     let analysis
-    if (analysisType === 'korean-beauty' || parsedMetadata.koreanProduct) {
-      analysis = await analyzeKoreanBeautyProduct(analysisRequest)
-    } else {
-      analysis = await analyzeProductWithAI(analysisRequest)
+    try {
+      console.log('🔄 Starting AI analysis with:', {
+        analysisType,
+        hasUserProfile: !!parsedUserProfile,
+        imageSize: bytes.byteLength
+      })
+
+      if (analysisType === 'korean-beauty' || parsedMetadata.koreanProduct) {
+        console.log('🇰🇷 Using Korean beauty analysis')
+        analysis = await analyzeKoreanBeautyProduct(analysisRequest)
+      } else {
+        console.log('🌍 Using general AI analysis')
+        analysis = await analyzeProductWithAI(analysisRequest)
+      }
+
+      console.log('✅ AI analysis completed:', {
+        productName: analysis.productName,
+        confidence: analysis.confidence
+      })
+    } catch (aiError) {
+      console.error('❌ AI analysis failed:', aiError)
+
+      // Return a fallback response instead of crashing
+      return NextResponse.json({
+        success: false,
+        error: 'AI analysis temporarily unavailable',
+        fallback: {
+          productName: 'Product Analysis Pending',
+          brand: 'Unknown',
+          category: 'unknown',
+          message: 'Our AI is currently processing. Please try again in a moment.',
+          confidence: 0
+        }
+      }, { status: 202 }) // 202 Accepted but processing
     }
 
     // Enhanced ingredient compatibility analysis

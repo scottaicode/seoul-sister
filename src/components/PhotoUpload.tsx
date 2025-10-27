@@ -122,10 +122,10 @@ export default function PhotoUpload({
     <div className="space-y-6">
       <div className="text-center mb-6">
         <h3 className="text-xl font-semibold text-white mb-2 tracking-wide">
-          📸 Upload Your Photo
+          📦 Upload Product Photo
         </h3>
         <p className="text-gray-300 font-light">
-          Take or upload a clear photo of your face for AI skin analysis
+          Take or upload a clear photo of your skincare product for AI analysis
         </p>
       </div>
 
@@ -142,10 +142,10 @@ export default function PhotoUpload({
         onDrop={handleDrop}
       >
         <div className="space-y-4">
-          <div className="text-4xl mb-4">📷</div>
+          <div className="text-4xl mb-4">📦</div>
           <div>
             <p className="text-lg font-medium text-white mb-2">
-              Drag and drop your photo here
+              Drag and drop your product photo here
             </p>
             <p className="text-gray-400 text-sm font-light">
               or use the buttons below
@@ -158,7 +158,7 @@ export default function PhotoUpload({
               className="flex items-center justify-center gap-2 px-6 py-3 bg-[#d4a574] hover:bg-[#d4a574]/90 text-black rounded-lg font-medium transition-all"
             >
               <Camera size={20} />
-              Take Photo
+              Take Product Photo
             </button>
 
             <button
@@ -191,13 +191,13 @@ export default function PhotoUpload({
 
       {/* Upload Guidelines */}
       <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-4">
-        <h4 className="font-medium text-blue-300 mb-2 tracking-wide">📋 Photo Guidelines</h4>
+        <h4 className="font-medium text-blue-300 mb-2 tracking-wide">📋 Product Photo Guidelines</h4>
         <ul className="text-blue-200 text-sm space-y-1 font-light">
-          <li>• Face should be well-lit and clearly visible</li>
-          <li>• Remove makeup for best analysis results</li>
-          <li>• Look directly at the camera</li>
+          <li>• Product should be well-lit and clearly visible</li>
+          <li>• Include the ingredient list if possible</li>
+          <li>• Show the product name and brand clearly</li>
           <li>• Use natural lighting when possible</li>
-          <li>• Include your full face in the frame</li>
+          <li>• Avoid shadows covering important text</li>
         </ul>
       </div>
     </div>
@@ -207,10 +207,10 @@ export default function PhotoUpload({
     <div className="space-y-6">
       <div className="text-center mb-6">
         <h3 className="text-xl font-semibold text-white mb-2 tracking-wide">
-          📝 Review Your Photo
+          📝 Review Product Photo
         </h3>
         <p className="text-gray-300 font-light">
-          Make sure your photo is clear and well-lit
+          Make sure your product photo is clear and text is readable
         </p>
       </div>
 
@@ -254,15 +254,20 @@ export default function PhotoUpload({
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Focus Area
+            Product Type
           </label>
           <select
             value={metadata.skinArea}
             onChange={(e) => setMetadata(prev => ({ ...prev, skinArea: e.target.value as any }))}
             className="w-full p-3 bg-gray-800/30 border border-[#d4a574]/30 rounded-lg focus:ring-2 focus:ring-[#d4a574] focus:border-[#d4a574] text-white"
           >
-            <option value="face">Full face</option>
-            <option value="specific_concern">Specific skin concern</option>
+            <option value="cleanser">Cleanser</option>
+            <option value="toner">Toner/Essence</option>
+            <option value="serum">Serum/Treatment</option>
+            <option value="moisturizer">Moisturizer</option>
+            <option value="sunscreen">Sunscreen</option>
+            <option value="mask">Mask</option>
+            <option value="other">Other</option>
           </select>
         </div>
 
