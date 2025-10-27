@@ -83,6 +83,19 @@ export interface BaileyUserProfile {
     brandPreferences?: string[]
     avoidIngredients: string[]
   }
+
+  // Current Routine (if any)
+  currentRoutine?: {
+    hasRoutine: boolean
+    products: {
+      name: string
+      brand: string
+      category: string
+      ingredients: string[]
+      analysis?: any
+      imageUrl?: string
+    }[]
+  }
 }
 
 export interface CurrentRoutineProduct {

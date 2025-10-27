@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ChevronRight, ChevronLeft, MapPin, Heart, Sparkles, Camera, Target } from 'lucide-react'
 import { BaileyUserProfile } from '@/types/bailey-profile'
+import PhotoUpload from './PhotoUpload'
 
 interface OnboardingProps {
   onComplete: (profile: Partial<BaileyUserProfile>) => void
@@ -10,6 +11,9 @@ interface OnboardingProps {
 
 export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
   const [step, setStep] = useState(1)
+  const [showPhotoUpload, setShowPhotoUpload] = useState(false)
+  const [uploadedPhotos, setUploadedPhotos] = useState<{ file: File; metadata: any }[]>([])
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [profile, setProfile] = useState<Partial<BaileyUserProfile>>({
     skin: {
       type: 'normal',
@@ -93,6 +97,91 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
   const nextStep = () => {
     if (step < totalSteps) setStep(step + 1)
     else onComplete(profile)
+  }
+
+  const handlePhotoCapture = async (file: File, metadata: any) => {
+    setIsAnalyzing(true)
+    try {
+      // Add the photo to our collection
+      setUploadedPhotos(prev => [...prev, { file, metadata }])
+
+      // Create FormData for the AI analysis
+      const formData = new FormData()
+      formData.append('image', file)
+      formData.append('metadata', JSON.stringify({
+        ...metadata,
+        koreanProduct: true, // Prefer Korean beauty analysis
+        captureContext: 'bailey-onboarding-routine'
+      }))
+      formData.append('analysisType', 'korean-beauty')
+
+      // Include user profile for personalized analysis
+      const userProfileForAI = {
+        skinType: profile.skin?.type || 'normal',
+        concerns: profile.skin?.concerns || [],
+        sensitivities: profile.skin?.sensitivities || [],
+        currentProducts: profile.currentRoutine?.products?.map(p => p.name) || [],
+        age: profile.age,
+        location: profile.location,
+        preferences: profile.preferences
+      }
+      formData.append('userProfile', JSON.stringify(userProfileForAI))
+
+      // Call the AI-powered product analysis API
+      const response = await fetch('/api/product-analysis', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+
+        if (result.success && result.analysis) {
+          // Add the comprehensive AI analysis to the profile
+          updateProfile({
+            currentRoutine: {
+              hasRoutine: true,
+              products: [
+                ...(profile.currentRoutine?.products || []),
+                {
+                  name: result.productName || 'Unknown Product',
+                  brand: result.brand || 'Unknown Brand',
+                  category: result.category || 'Unknown',
+                  ingredients: result.ingredients?.map((ing: any) => ing.name) || [],
+                  analysis: {
+                    ...result.analysis,
+                    aiPowered: true,
+                    analysisDate: new Date().toISOString(),
+                    confidence: result.analysis.confidence,
+                    scores: result.analysis.scores,
+                    personalized: result.analysis.personalized,
+                    safety: result.analysis.safety
+                  },
+                  imageUrl: URL.createObjectURL(file)
+                }
+              ]
+            }
+          })
+
+          console.log('✅ Claude Opus 4.1 Analysis Complete:', {
+            product: result.productName,
+            aiModel: 'Claude Opus 4.1 + Claude Sonnet 4 Vision',
+            overallScore: result.analysis.scores?.overall,
+            compatibility: result.analysis.scores?.compatibility,
+            recommendations: result.analysis.personalized?.recommendations
+          })
+        } else {
+          console.warn('⚠️ AI analysis failed, using fallback')
+        }
+      } else {
+        console.error('❌ Product analysis API failed:', response.status)
+      }
+    } catch (error) {
+      console.error('Error analyzing product photo:', error)
+    } finally {
+      setIsAnalyzing(false)
+      setShowPhotoUpload(false)
+    }
   }
 
   const prevStep = () => {
@@ -636,7 +725,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
               <div className="space-y-4">
                 <button
                   className="w-full py-4 px-6 rounded-xl border-2 border-dashed border-gray-700 hover:border-[#d4a574] transition-all"
-                  onClick={() => {/* Will implement photo upload */}}
+                  onClick={() => setShowPhotoUpload(true)}
                 >
                   <Camera className="w-8 h-8 mx-auto mb-2 text-gray-400" />
                   <p className="text-sm text-gray-400">Take photos of your current products</p>
@@ -654,7 +743,53 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                   <p className="text-[#d4a574] font-medium">I don't have a routine yet</p>
                   <p className="text-xs text-[#d4a574]/80 mt-1">We'll help you build one from scratch</p>
                 </button>
+
+                {/* Show uploaded products */}
+                {uploadedPhotos.length > 0 && (
+                  <div className="mt-6 space-y-3">
+                    <h4 className="text-sm font-medium text-gray-300">Uploaded Products:</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {uploadedPhotos.map((photo, index) => (
+                        <div key={index} className="relative">
+                          <img
+                            src={URL.createObjectURL(photo.file)}
+                            alt={`Product ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg border border-gray-600"
+                          />
+                          <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center text-xs text-white">
+                            Analyzing...
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Photo Upload Modal */}
+              {showPhotoUpload && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                  <div className="bg-black rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+                    <div className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-white">Upload Product Photo</h3>
+                        <button
+                          onClick={() => setShowPhotoUpload(false)}
+                          className="text-gray-400 hover:text-white"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <PhotoUpload
+                        onPhotoCapture={handlePhotoCapture}
+                        isAnalyzing={isAnalyzing}
+                        maxFileSize={5}
+                        acceptedFormats={['image/jpeg', 'image/png', 'image/webp']}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

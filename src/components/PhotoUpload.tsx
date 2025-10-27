@@ -133,8 +133,8 @@ export default function PhotoUpload({
       <div
         className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all ${
           dragActive
-            ? 'border-luxury-gold bg-luxury-gold/10'
-            : 'border-luxury-gold/30 hover:border-luxury-gold/60'
+            ? 'border-[#d4a574] bg-[#d4a574]/10'
+            : 'border-[#d4a574]/30 hover:border-[#d4a574]/60'
         }`}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
@@ -155,7 +155,7 @@ export default function PhotoUpload({
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
             <button
               onClick={() => cameraInputRef.current?.click()}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-luxury-gold hover:bg-luxury-gold/90 text-black rounded-lg font-medium transition-all"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-[#d4a574] hover:bg-[#d4a574]/90 text-black rounded-lg font-medium transition-all"
             >
               <Camera size={20} />
               Take Photo
@@ -163,7 +163,7 @@ export default function PhotoUpload({
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-luxury-charcoal/50 hover:bg-luxury-charcoal/70 text-gray-300 border border-luxury-gold/30 rounded-lg font-medium transition-all"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-800/50 hover:bg-gray-800/70 text-gray-300 border border-[#d4a574]/30 rounded-lg font-medium transition-all"
             >
               <Upload size={20} />
               Upload File
@@ -216,7 +216,7 @@ export default function PhotoUpload({
 
       {/* Photo Preview */}
       <div className="relative">
-        <div className="aspect-square max-w-md mx-auto rounded-xl overflow-hidden border border-luxury-gold/30">
+        <div className="aspect-square max-w-md mx-auto rounded-xl overflow-hidden border border-[#d4a574]/30">
           {preview && (
             <img
               src={preview}
@@ -243,7 +243,7 @@ export default function PhotoUpload({
           <select
             value={metadata.lighting}
             onChange={(e) => setMetadata(prev => ({ ...prev, lighting: e.target.value as any }))}
-            className="w-full p-3 bg-luxury-charcoal/30 border border-luxury-gold/30 rounded-lg focus:ring-2 focus:ring-luxury-gold focus:border-luxury-gold text-white"
+            className="w-full p-3 bg-gray-800/30 border border-[#d4a574]/30 rounded-lg focus:ring-2 focus:ring-[#d4a574] focus:border-[#d4a574] text-white"
           >
             <option value="natural">Natural daylight</option>
             <option value="indoor">Indoor lighting</option>
@@ -259,7 +259,7 @@ export default function PhotoUpload({
           <select
             value={metadata.skinArea}
             onChange={(e) => setMetadata(prev => ({ ...prev, skinArea: e.target.value as any }))}
-            className="w-full p-3 bg-luxury-charcoal/30 border border-luxury-gold/30 rounded-lg focus:ring-2 focus:ring-luxury-gold focus:border-luxury-gold text-white"
+            className="w-full p-3 bg-gray-800/30 border border-[#d4a574]/30 rounded-lg focus:ring-2 focus:ring-[#d4a574] focus:border-[#d4a574] text-white"
           >
             <option value="face">Full face</option>
             <option value="specific_concern">Specific skin concern</option>
@@ -274,7 +274,7 @@ export default function PhotoUpload({
             value={metadata.notes || ''}
             onChange={(e) => setMetadata(prev => ({ ...prev, notes: e.target.value }))}
             placeholder="Any specific concerns or areas to focus on..."
-            className="w-full p-3 bg-luxury-charcoal/30 border border-luxury-gold/30 rounded-lg focus:ring-2 focus:ring-luxury-gold focus:border-luxury-gold text-white placeholder-gray-400"
+            className="w-full p-3 bg-gray-800/30 border border-[#d4a574]/30 rounded-lg focus:ring-2 focus:ring-[#d4a574] focus:border-[#d4a574] text-white placeholder-gray-400"
             rows={3}
           />
         </div>
@@ -284,7 +284,7 @@ export default function PhotoUpload({
       <div className="flex gap-3">
         <button
           onClick={handleRetake}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-luxury-charcoal/50 hover:bg-luxury-charcoal/70 text-gray-300 border border-luxury-gold/30 rounded-lg font-medium transition-all"
+          className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-800/50 hover:bg-gray-800/70 text-gray-300 border border-[#d4a574]/30 rounded-lg font-medium transition-all"
         >
           <RotateCcw size={20} />
           Retake
@@ -293,7 +293,7 @@ export default function PhotoUpload({
         <button
           onClick={handleConfirm}
           disabled={!currentFile}
-          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-luxury-gold hover:bg-luxury-gold/90 text-black rounded-lg font-medium transition-all disabled:opacity-50"
+          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-[#d4a574] hover:bg-[#d4a574]/90 text-black rounded-lg font-medium transition-all disabled:opacity-50"
         >
           <Check size={20} />
           Analyze Photo
@@ -304,8 +304,8 @@ export default function PhotoUpload({
 
   const renderAnalyzingStep = () => (
     <div className="text-center py-8">
-      <div className="inline-flex items-center justify-center w-16 h-16 bg-luxury-gold/20 border border-luxury-gold/30 rounded-full mb-6">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-luxury-gold"></div>
+      <div className="inline-flex items-center justify-center w-16 h-16 bg-[#d4a574]/20 border border-[#d4a574]/30 rounded-full mb-6">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d4a574]"></div>
       </div>
       <h3 className="text-xl font-semibold text-white mb-2 tracking-wide">
         🔬 Analyzing Your Skin
@@ -321,14 +321,14 @@ export default function PhotoUpload({
 
   if (isAnalyzing) {
     return (
-      <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20 backdrop-blur-sm">
+      <div className="bg-gray-800/20 rounded-xl p-6 border border-[#d4a574]/20 backdrop-blur-sm">
         {renderAnalyzingStep()}
       </div>
     )
   }
 
   return (
-    <div className="bg-luxury-charcoal/20 rounded-xl p-6 border border-luxury-gold/20 backdrop-blur-sm">
+    <div className="bg-gray-800/20 rounded-xl p-6 border border-[#d4a574]/20 backdrop-blur-sm">
       {step === 'upload' && renderUploadStep()}
       {step === 'review' && renderReviewStep()}
     </div>
