@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({
           product: {
-            ...product,
+            ...(product as any),
             bestPrice: (product as any).best_price_found || (product as any).seoul_price || 0,
             bestRetailer: (product as any).best_retailer || 'Seoul Sister',
             savingsAmount: ((product as any).us_price || 0) - ((product as any).best_price_found || (product as any).seoul_price || 0),
