@@ -9,6 +9,7 @@ interface PhotoUploadProps {
   maxFileSize?: number // in MB
   acceptedFormats?: string[]
   isAnalyzing?: boolean
+  analysisType?: 'product' | 'skin' | 'irritation' // New: specify what type of analysis
 }
 
 interface PhotoMetadata {
@@ -33,7 +34,8 @@ export default function PhotoUpload({
   onAnalysisComplete,
   maxFileSize = 10,
   acceptedFormats = ['image/jpeg', 'image/png', 'image/webp'],
-  isAnalyzing = false
+  isAnalyzing = false,
+  analysisType = 'product' // Default to product analysis
 }: PhotoUploadProps) {
   const [dragActive, setDragActive] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
@@ -118,14 +120,61 @@ export default function PhotoUpload({
     if (cameraInputRef.current) cameraInputRef.current.value = ''
   }
 
+  // Dynamic content based on analysis type
+  const getAnalysisContent = () => {
+    switch (analysisType) {
+      case 'skin':
+        return {
+          title: '📸 Upload Skin Photo',
+          description: 'Take or upload a clear photo of your face for AI skin analysis',
+          icon: '📸',
+          guidelines: [
+            '• Face should be well-lit and clearly visible',
+            '• Use natural lighting when possible',
+            '• Remove makeup for best analysis',
+            '• Keep face centered in the frame',
+            '• Avoid shadows on your face'
+          ]
+        }
+      case 'irritation':
+        return {
+          title: '🔍 Upload Irritation Photo',
+          description: 'Take or upload a clear photo of the affected skin area',
+          icon: '🔍',
+          guidelines: [
+            '• Affected area should be well-lit and clearly visible',
+            '• Use natural lighting when possible',
+            '• Take close-up photo of the irritated area',
+            '• Avoid shadows covering the affected skin',
+            '• Include surrounding healthy skin for comparison'
+          ]
+        }
+      default: // 'product'
+        return {
+          title: '📦 Upload Product Photo',
+          description: 'Take or upload a clear photo of your skincare product for AI analysis',
+          icon: '📦',
+          guidelines: [
+            '• Product should be well-lit and clearly visible',
+            '• Include the ingredient list if possible',
+            '• Show the product name and brand clearly',
+            '• Use natural lighting when possible',
+            '• Avoid shadows covering important text'
+          ]
+        }
+    }
+  }
+
+  const content = getAnalysisContent()
+
   const renderUploadStep = () => (
     <div className="space-y-6">
       <div className="text-center mb-6">
         <h3 className="text-xl font-semibold text-white mb-2 tracking-wide">
-          📦 Upload Product Photo
+          {content.title}
         </h3>
         <p className="text-gray-300 font-light">
-          Take or upload a clear photo of your skincare product for AI analysis
+          {content.description}
         </p>
       </div>
 
@@ -142,10 +191,10 @@ export default function PhotoUpload({
         onDrop={handleDrop}
       >
         <div className="space-y-4">
-          <div className="text-4xl mb-4">📦</div>
+          <div className="text-4xl mb-4">{content.icon}</div>
           <div>
             <p className="text-lg font-medium text-white mb-2">
-              Drag and drop your product photo here
+              Drag and drop your {analysisType === 'product' ? 'product' : analysisType === 'skin' ? 'face' : 'skin'} photo here
             </p>
             <p className="text-gray-400 text-sm font-light">
               or use the buttons below
@@ -158,7 +207,7 @@ export default function PhotoUpload({
               className="flex items-center justify-center gap-2 px-6 py-3 bg-[#d4a574] hover:bg-[#d4a574]/90 text-black rounded-lg font-medium transition-all"
             >
               <Camera size={20} />
-              Take Product Photo
+              Take {analysisType === 'product' ? 'Product' : analysisType === 'skin' ? 'Face' : 'Skin'} Photo
             </button>
 
             <button
@@ -191,13 +240,11 @@ export default function PhotoUpload({
 
       {/* Upload Guidelines */}
       <div className="bg-blue-500/10 border border-blue-400/30 rounded-lg p-4">
-        <h4 className="font-medium text-blue-300 mb-2 tracking-wide">📋 Product Photo Guidelines</h4>
+        <h4 className="font-medium text-blue-300 mb-2 tracking-wide">📋 Photo Guidelines</h4>
         <ul className="text-blue-200 text-sm space-y-1 font-light">
-          <li>• Product should be well-lit and clearly visible</li>
-          <li>• Include the ingredient list if possible</li>
-          <li>• Show the product name and brand clearly</li>
-          <li>• Use natural lighting when possible</li>
-          <li>• Avoid shadows covering important text</li>
+          {content.guidelines.map((guideline, index) => (
+            <li key={index}>{guideline}</li>
+          ))}
         </ul>
       </div>
     </div>
@@ -207,10 +254,15 @@ export default function PhotoUpload({
     <div className="space-y-6">
       <div className="text-center mb-6">
         <h3 className="text-xl font-semibold text-white mb-2 tracking-wide">
-          📝 Review Product Photo
+          📝 Review {analysisType === 'product' ? 'Product' : analysisType === 'skin' ? 'Face' : 'Skin'} Photo
         </h3>
         <p className="text-gray-300 font-light">
-          Make sure your product photo is clear and text is readable
+          {analysisType === 'product'
+            ? 'Make sure your product photo is clear and text is readable'
+            : analysisType === 'skin'
+            ? 'Make sure your face photo is clear and well-lit'
+            : 'Make sure the affected area is clearly visible'
+          }
         </p>
       </div>
 
@@ -254,20 +306,41 @@ export default function PhotoUpload({
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Product Type
+            {analysisType === 'product' ? 'Product Type' : analysisType === 'skin' ? 'Photo Type' : 'Affected Area'}
           </label>
           <select
             value={metadata.skinArea}
             onChange={(e) => setMetadata(prev => ({ ...prev, skinArea: e.target.value as any }))}
             className="w-full p-3 bg-gray-800/30 border border-[#d4a574]/30 rounded-lg focus:ring-2 focus:ring-[#d4a574] focus:border-[#d4a574] text-white"
           >
-            <option value="cleanser">Cleanser</option>
-            <option value="toner">Toner/Essence</option>
-            <option value="serum">Serum/Treatment</option>
-            <option value="moisturizer">Moisturizer</option>
-            <option value="sunscreen">Sunscreen</option>
-            <option value="mask">Mask</option>
-            <option value="other">Other</option>
+            {analysisType === 'product' ? (
+              <>
+                <option value="cleanser">Cleanser</option>
+                <option value="toner">Toner/Essence</option>
+                <option value="serum">Serum/Treatment</option>
+                <option value="moisturizer">Moisturizer</option>
+                <option value="sunscreen">Sunscreen</option>
+                <option value="mask">Mask</option>
+                <option value="other">Other</option>
+              </>
+            ) : analysisType === 'skin' ? (
+              <>
+                <option value="face">Full Face</option>
+                <option value="forehead">Forehead</option>
+                <option value="cheeks">Cheeks</option>
+                <option value="nose">Nose</option>
+                <option value="chin">Chin</option>
+                <option value="around-eyes">Around Eyes</option>
+              </>
+            ) : (
+              <>
+                <option value="face">Face</option>
+                <option value="neck">Neck</option>
+                <option value="hands">Hands</option>
+                <option value="arms">Arms</option>
+                <option value="other">Other Area</option>
+              </>
+            )}
           </select>
         </div>
 
@@ -313,10 +386,15 @@ export default function PhotoUpload({
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d4a574]"></div>
       </div>
       <h3 className="text-xl font-semibold text-white mb-2 tracking-wide">
-        🔬 Analyzing Your Skin
+        🔬 {analysisType === 'product' ? 'Analyzing Your Product' : analysisType === 'skin' ? 'Analyzing Your Skin' : 'Analyzing Skin Irritation'}
       </h3>
       <p className="text-gray-300 font-light mb-4">
-        Our AI is examining your photo to provide personalized recommendations
+        {analysisType === 'product'
+          ? 'Our AI is examining your product to analyze ingredients and compatibility'
+          : analysisType === 'skin'
+          ? 'Our AI is examining your skin to provide personalized recommendations'
+          : 'Our AI is analyzing the irritation to identify causes and treatments'
+        }
       </p>
       <div className="text-sm text-gray-400">
         This may take 10-30 seconds...

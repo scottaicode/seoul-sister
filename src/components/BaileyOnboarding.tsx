@@ -787,6 +787,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                         isAnalyzing={isAnalyzing}
                         maxFileSize={5}
                         acceptedFormats={['image/jpeg', 'image/png', 'image/webp']}
+                        analysisType="product"
                       />
                     </div>
                   </div>
