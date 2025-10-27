@@ -408,7 +408,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                   onChange={(e) => updateProfile({
                     medical: {
                       ...profile.medical,
-                      currentMedications: e.target.value.split(',').map(m => m.trim()).filter(m => m),
+                      currentMedications: e.target.value ? e.target.value.split(',').map(m => m.trim()).filter(m => m) : [],
                       allergies: profile.medical?.allergies || [],
                       medicalConditions: profile.medical?.medicalConditions || []
                     }
@@ -430,7 +430,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                     medical: {
                       ...profile.medical,
                       currentMedications: profile.medical?.currentMedications || [],
-                      allergies: e.target.value.split(',').map(a => a.trim()).filter(a => a),
+                      allergies: e.target.value ? e.target.value.split(',').map(a => a.trim()).filter(a => a) : [],
                       medicalConditions: profile.medical?.medicalConditions || []
                     }
                   })}
@@ -751,7 +751,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                       preferKBeauty: profile.preferences?.preferKBeauty || false,
                       preferFragranceFree: profile.preferences?.preferFragranceFree || false,
                       preferCrueltyFree: profile.preferences?.preferCrueltyFree || false,
-                      avoidIngredients: e.target.value.split(',').map(i => i.trim()).filter(i => i),
+                      avoidIngredients: e.target.value ? e.target.value.split(',').map(i => i.trim()).filter(i => i) : [],
                       texturePreferences: profile.preferences?.texturePreferences || []
                     }
                   })}
