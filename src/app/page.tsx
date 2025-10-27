@@ -13,7 +13,7 @@ interface Product {
   id: string
   name_english: string
   brand: string
-  best_price: number
+  best_price_found: number
   us_price: number
   savings_percentage: number
   best_retailer: string
@@ -26,7 +26,7 @@ const staticProducts: Product[] = [
     id: '1',
     name_english: 'First Care Activating Serum',
     brand: 'Sulwhasoo',
-    best_price: 28.00,
+    best_price_found: 28.00,
     best_retailer: 'YesStyle',
     us_price: 94.00,
     savings_percentage: 70,
@@ -37,7 +37,7 @@ const staticProducts: Product[] = [
     id: '2',
     name_english: 'Glow Deep Serum',
     brand: 'Beauty of Joseon',
-    best_price: 8.00,
+    best_price_found: 8.00,
     best_retailer: 'Olive Young Global',
     us_price: 45.00,
     savings_percentage: 82,
@@ -48,7 +48,7 @@ const staticProducts: Product[] = [
     id: '3',
     name_english: 'Snail 96 Mucin Essence',
     brand: 'COSRX',
-    best_price: 23.00,
+    best_price_found: 23.00,
     best_retailer: 'iHerb K-Beauty',
     us_price: 89.00,
     savings_percentage: 74,
@@ -59,7 +59,7 @@ const staticProducts: Product[] = [
     id: '4',
     name_english: 'Water Sleeping Mask',
     brand: 'Laneige',
-    best_price: 12.00,
+    best_price_found: 12.00,
     best_retailer: 'Sephora',
     us_price: 34.00,
     savings_percentage: 65,
@@ -288,7 +288,7 @@ export default function HomePage() {
                     US RETAIL ${product.us_price}
                   </p>
                   <p className="price-seoul text-2xl">
-                    ${product.best_price?.toFixed(2) || product.best_price_found?.toFixed(2) || '0.00'}
+                    ${product.best_price_found?.toFixed(2) || '0.00'}
                   </p>
                 </div>
 
