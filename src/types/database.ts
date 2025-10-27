@@ -84,7 +84,9 @@ export interface Database {
           name_korean: string
           name_english: string
           brand: string
-          seoul_price: number
+          seoul_price: number // Deprecated - use best_price_found
+          best_price_found: number
+          best_retailer: string
           us_price: number
           savings_percentage: number
           category: string
@@ -98,15 +100,19 @@ export interface Database {
           updated_at: string
           in_stock: boolean
           popularity_score: number
+          price_last_updated: string
+          price_comparison: any | null
         }
         Insert: {
           id?: string
           name_korean: string
           name_english: string
           brand: string
-          seoul_price: number
+          seoul_price?: number // Deprecated
+          best_price_found: number
+          best_retailer: string
           us_price: number
-          savings_percentage: number
+          savings_percentage?: number
           category: string
           description?: string | null
           image_url?: string | null
@@ -118,13 +124,17 @@ export interface Database {
           updated_at?: string
           in_stock?: boolean
           popularity_score?: number
+          price_last_updated?: string
+          price_comparison?: any | null
         }
         Update: {
           id?: string
           name_korean?: string
           name_english?: string
           brand?: string
-          seoul_price?: number
+          seoul_price?: number // Deprecated
+          best_price_found?: number
+          best_retailer?: string
           us_price?: number
           savings_percentage?: number
           category?: string
@@ -138,6 +148,8 @@ export interface Database {
           updated_at?: string
           in_stock?: boolean
           popularity_score?: number
+          price_last_updated?: string
+          price_comparison?: any | null
         }
       }
       orders: {
@@ -444,6 +456,187 @@ export interface Database {
           attempts?: number
           last_attempt?: string | null
           created_at?: string
+        }
+      }
+      retailer_trust_scores: {
+        Row: {
+          id: string
+          retailer_name: string
+          authenticity_score: number
+          shipping_score: number
+          customer_service_score: number
+          overall_trust_rating: number
+          total_reviews: number
+          last_updated: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          retailer_name: string
+          authenticity_score?: number
+          shipping_score?: number
+          customer_service_score?: number
+          overall_trust_rating?: number
+          total_reviews?: number
+          last_updated?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          retailer_name?: string
+          authenticity_score?: number
+          shipping_score?: number
+          customer_service_score?: number
+          overall_trust_rating?: number
+          total_reviews?: number
+          last_updated?: string
+          created_at?: string
+        }
+      }
+      price_tracking_history: {
+        Row: {
+          id: string
+          product_id: string
+          retailer: string
+          price: number
+          currency: string
+          availability: boolean
+          shipping_cost: number | null
+          total_cost: number | null
+          promotion_info: string | null
+          tracked_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          retailer: string
+          price: number
+          currency?: string
+          availability?: boolean
+          shipping_cost?: number | null
+          total_cost?: number | null
+          promotion_info?: string | null
+          tracked_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          retailer?: string
+          price?: number
+          currency?: string
+          availability?: boolean
+          shipping_cost?: number | null
+          total_cost?: number | null
+          promotion_info?: string | null
+          tracked_at?: string
+          created_at?: string
+        }
+      }
+      affiliate_links: {
+        Row: {
+          id: string
+          product_id: string
+          retailer: string
+          affiliate_url: string
+          direct_url: string
+          commission_rate: number
+          is_active: boolean
+          click_count: number
+          conversion_count: number
+          total_revenue: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          retailer: string
+          affiliate_url: string
+          direct_url: string
+          commission_rate?: number
+          is_active?: boolean
+          click_count?: number
+          conversion_count?: number
+          total_revenue?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          retailer?: string
+          affiliate_url?: string
+          direct_url?: string
+          commission_rate?: number
+          is_active?: boolean
+          click_count?: number
+          conversion_count?: number
+          total_revenue?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      deal_alerts: {
+        Row: {
+          id: string
+          user_id: string
+          product_id: string
+          target_price: number | null
+          alert_when_available: boolean
+          alert_on_any_discount: boolean
+          is_active: boolean
+          last_triggered: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          product_id: string
+          target_price?: number | null
+          alert_when_available?: boolean
+          alert_on_any_discount?: boolean
+          is_active?: boolean
+          last_triggered?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          product_id?: string
+          target_price?: number | null
+          alert_when_available?: boolean
+          alert_on_any_discount?: boolean
+          is_active?: boolean
+          last_triggered?: string | null
+          created_at?: string
+        }
+      }
+      wishlists: {
+        Row: {
+          id: string
+          user_id: string
+          product_id: string
+          added_at: string
+          notes: string | null
+          priority: number
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          product_id: string
+          added_at?: string
+          notes?: string | null
+          priority?: number
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          product_id?: string
+          added_at?: string
+          notes?: string | null
+          priority?: number
         }
       }
     }

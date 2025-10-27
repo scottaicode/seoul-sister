@@ -5,7 +5,9 @@ export interface Product {
   name_korean: string
   name_english: string
   brand: string
-  seoul_price: number
+  seoul_price?: number // Deprecated - for backward compatibility
+  best_price_found: number
+  best_retailer: string
   us_price: number
   savings_percentage: number
   category: string
@@ -16,6 +18,8 @@ export interface Product {
   skin_type?: string
   in_stock: boolean
   ingredients?: string // Added for AI analysis features
+  price_last_updated?: string
+  price_comparison?: any
 }
 
 export function useProducts(featured = false) {
@@ -49,7 +53,9 @@ export function useProducts(featured = false) {
             name_korean: '코스알엑스 달팽이 96 뮤신 파워 에센스',
             name_english: 'Snail 96 Mucin Power Essence',
             brand: 'COSRX',
-            seoul_price: 7.50,
+            best_price_found: 7.50,
+            best_retailer: 'YesStyle',
+            seoul_price: 7.50, // backward compat
             us_price: 89.00,
             savings_percentage: 92,
             category: 'Essence',
@@ -61,7 +67,9 @@ export function useProducts(featured = false) {
             name_korean: '조선미녀 글로우 딥 세럼',
             name_english: 'Glow Deep Serum',
             brand: 'Beauty of Joseon',
-            seoul_price: 5.80,
+            best_price_found: 5.80,
+            best_retailer: 'Olive Young Global',
+            seoul_price: 5.80, // backward compat
             us_price: 45.00,
             savings_percentage: 87,
             category: 'Serum',
@@ -73,7 +81,9 @@ export function useProducts(featured = false) {
             name_korean: '토리든 다이브인 로우 몰레큘 히알루론산 세럼',
             name_english: 'DIVE-IN Low Molecule Hyaluronic Acid Serum',
             brand: 'Torriden',
-            seoul_price: 10.30,
+            best_price_found: 10.30,
+            best_retailer: 'YesStyle',
+            seoul_price: 10.30, // backward compat
             us_price: 78.00,
             savings_percentage: 87,
             category: 'Serum',
@@ -85,7 +95,9 @@ export function useProducts(featured = false) {
             name_korean: '라네즈 워터 슬리핑 마스크',
             name_english: 'Water Sleeping Mask',
             brand: 'Laneige',
-            seoul_price: 8.20,
+            best_price_found: 8.20,
+            best_retailer: 'Sephora',
+            seoul_price: 8.20, // backward compat
             us_price: 34.00,
             savings_percentage: 76,
             category: 'Mask',
