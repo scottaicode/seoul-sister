@@ -82,14 +82,14 @@ export async function generateAffiliateLink(
   const supabase = createClient()
   await supabase
     .from('affiliate_links')
-    .upsert({
+    .upsert([{
       product_id: productId,
       retailer,
       affiliate_url: affiliateUrl,
       direct_url: directUrl,
       commission_rate: program.commissionRate,
       is_active: true,
-    })
+    }] as any)
     .select()
     .single()
 

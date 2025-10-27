@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
 
         const { data: trackingEntry, error: trackingError } = await supabase
           .from('price_tracking_history')
-          .insert({
+          .insert([{
             product_id: productId,
             retailer,
             price,
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
             total_cost: price + (shipping || 0),
             promotion_info: promotion,
             availability: true,
-          })
+          }] as any)
           .select()
           .single()
 
@@ -202,14 +202,14 @@ export async function POST(request: NextRequest) {
         const { targetPrice, alertOnDiscount, alertWhenAvailable } = data
         const { data: alert, error: alertError } = await supabase
           .from('deal_alerts')
-          .upsert({
+          .upsert([{
             user_id: userId,
             product_id: productId,
             target_price: targetPrice,
             alert_on_any_discount: alertOnDiscount || false,
             alert_when_available: alertWhenAvailable || false,
             is_active: true,
-          })
+          }] as any)
           .select()
           .single()
 
@@ -234,12 +234,12 @@ export async function POST(request: NextRequest) {
         const { notes, priority } = data
         const { data: wishlistItem, error: wishlistError } = await supabase
           .from('wishlists')
-          .upsert({
+          .upsert([{
             user_id: userId,
             product_id: productId,
             notes,
             priority: priority || 0,
-          })
+          }] as any)
           .select()
           .single()
 
