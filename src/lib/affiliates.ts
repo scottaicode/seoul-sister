@@ -112,7 +112,8 @@ export async function trackAffiliateClick(
     .single()
 
   if (link) {
-    const { error } = await supabase
+    // Type assertion needed for tables that don't exist yet
+    const { error } = await (supabase as any)
       .from('affiliate_links')
       .update({
         click_count: ((link as any).click_count || 0) + 1,
