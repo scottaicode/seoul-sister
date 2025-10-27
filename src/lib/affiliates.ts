@@ -1,5 +1,6 @@
 // Affiliate tracking and commission management
 import { createClient } from './supabase'
+import type { PriceTrackingHistory, AffiliateLink, RetailerTrustScore } from '@/types/supabase-extended'
 
 // Retailer affiliate programs configuration
 export const AFFILIATE_PROGRAMS = {
@@ -89,7 +90,7 @@ export async function generateAffiliateLink(
       direct_url: directUrl,
       commission_rate: program.commissionRate,
       is_active: true,
-    }] as any)
+    }])
     .select()
     .single()
 
@@ -112,8 +113,7 @@ export async function trackAffiliateClick(
     .single()
 
   if (link) {
-    // Type assertion needed for tables that don't exist yet
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from('affiliate_links')
       .update({
         click_count: ((link as any).click_count || 0) + 1,
