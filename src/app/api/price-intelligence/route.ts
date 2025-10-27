@@ -38,9 +38,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
           product,
           comparisons,
-          lowestPrice: comparisons[0]?.totalCost || product.best_price_found,
-          highestPrice: comparisons[comparisons.length - 1]?.totalCost || product.us_price,
-          averagePrice: comparisons.reduce((sum, c) => sum + c.totalCost, 0) / comparisons.length || product.best_price_found,
+          lowestPrice: comparisons[0]?.totalCost || (product as any).best_price_found || (product as any).seoul_price || 0,
+          highestPrice: comparisons[comparisons.length - 1]?.totalCost || (product as any).us_price || 0,
+          averagePrice: comparisons.length > 0 ? comparisons.reduce((sum, c) => sum + c.totalCost, 0) / comparisons.length : ((product as any).best_price_found || (product as any).seoul_price || 0),
         })
 
       case 'best-deal':
@@ -123,13 +123,13 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
           product: {
             ...product,
-            bestPrice: product.best_price_found,
-            bestRetailer: product.best_retailer,
-            savingsAmount: product.us_price - product.best_price_found,
-            savingsPercentage: Math.round(((product.us_price - product.best_price_found) / product.us_price) * 100),
+            bestPrice: (product as any).best_price_found || (product as any).seoul_price || 0,
+            bestRetailer: (product as any).best_retailer || 'Seoul Sister',
+            savingsAmount: ((product as any).us_price || 0) - ((product as any).best_price_found || (product as any).seoul_price || 0),
+            savingsPercentage: (product as any).us_price ? Math.round((((product as any).us_price - ((product as any).best_price_found || (product as any).seoul_price || 0)) / (product as any).us_price) * 100) : 0,
           },
           retailers,
-          lastUpdated: product.price_last_updated,
+          lastUpdated: (product as any).price_last_updated || (product as any).updated_at || new Date().toISOString(),
         })
     }
   } catch (error) {
