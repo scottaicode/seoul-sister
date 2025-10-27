@@ -39,11 +39,13 @@ CREATE TABLE IF NOT EXISTS price_tracking_history (
   total_cost DECIMAL(10, 2),
   promotion_info TEXT,
   tracked_at TIMESTAMPTZ DEFAULT NOW(),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  INDEX idx_price_tracking_product (product_id),
-  INDEX idx_price_tracking_retailer (retailer),
-  INDEX idx_price_tracking_date (tracked_at DESC)
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Create indexes for price tracking history
+CREATE INDEX IF NOT EXISTS idx_price_tracking_product ON price_tracking_history(product_id);
+CREATE INDEX IF NOT EXISTS idx_price_tracking_retailer ON price_tracking_history(retailer);
+CREATE INDEX IF NOT EXISTS idx_price_tracking_date ON price_tracking_history(tracked_at DESC);
 
 -- Step 5: Create affiliate links table
 CREATE TABLE IF NOT EXISTS affiliate_links (
