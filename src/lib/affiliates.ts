@@ -154,7 +154,7 @@ export async function getBestAffiliateDeal(productId: string) {
     return null
   }
 
-  const bestPrice = priceHistory[0]
+  const bestPrice = priceHistory[0] as any
   const retailer = bestPrice.retailer as RetailerName
   const program = AFFILIATE_PROGRAMS[retailer]
 
@@ -177,7 +177,7 @@ export async function getBestAffiliateDeal(productId: string) {
   return {
     ...bestPrice,
     affiliateUrl: affiliateLink?.affiliate_url,
-    commission: calculatePotentialEarnings(bestPrice.price, retailer),
+    commission: await calculatePotentialEarnings(bestPrice.price, retailer),
     program: program.programName,
   }
 }
