@@ -105,7 +105,7 @@ export default function SignupPage() {
               Premium Membership
             </h1>
             <p className="text-gray-300 mt-2 font-light">
-              $20/month • 7-day FREE trial • Cancel anytime
+              $8/month • 7-day FREE trial • Cancel anytime
             </p>
           </div>
         </div>
@@ -138,7 +138,7 @@ export default function SignupPage() {
           <div className="bg-luxury-charcoal/20 rounded-xl p-8 border border-luxury-gold/20 backdrop-blur-sm">
             <h2 className="text-xl font-semibold mb-2 text-white tracking-wide">Start Your Free Trial</h2>
             <p className="text-gray-400 mb-6 text-sm">
-              7 days free, then $20/month. Full access to advanced skin intelligence, personalized recommendations, and Seoul wholesale pricing.
+              7 days free, then $8/month. Full access to AI beauty advisor, price intelligence, and personalized recommendations.
             </p>
 
             {error && (
@@ -255,7 +255,7 @@ export default function SignupPage() {
                   <Link href="/privacy" target="_blank" className="text-luxury-gold hover:text-luxury-gold/80 underline">
                     Privacy Policy
                   </Link>
-                  . I understand that my 7-day free trial will automatically convert to a $20/month subscription unless canceled.
+                  . I understand that my 7-day free trial will automatically convert to an $8/month subscription unless canceled.
                 </div>
               </div>
 
@@ -269,7 +269,7 @@ export default function SignupPage() {
             </form>
 
             <p className="text-xs text-gray-400 text-center mt-6">
-              Free for 7 days, then $20/month. Cancel anytime during trial.
+              Free for 7 days, then $8/month. Cancel anytime during trial.
             </p>
           </div>
         )}
@@ -280,7 +280,7 @@ export default function SignupPage() {
             <h2 className="text-xl font-semibold mb-6 text-white tracking-wide">Setup Payment Method</h2>
             <p className="text-gray-300 mb-6 font-light">
               Securely save your payment method for your subscription.
-              Your 7-day free trial starts now. You'll be charged $20/month after the trial ends.
+              Your 7-day free trial starts now. You'll be charged $8/month after the trial ends.
             </p>
 
             <Elements stripe={stripePromise}>

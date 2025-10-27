@@ -13,9 +13,10 @@ interface Product {
   id: string
   name_english: string
   brand: string
-  seoul_price: number
+  best_price: number
   us_price: number
   savings_percentage: number
+  best_retailer: string
   image_url: string
   category: string
 }
@@ -25,7 +26,8 @@ const staticProducts: Product[] = [
     id: '1',
     name_english: 'First Care Activating Serum',
     brand: 'Sulwhasoo',
-    seoul_price: 28.00,
+    best_price: 28.00,
+    best_retailer: 'YesStyle',
     us_price: 94.00,
     savings_percentage: 70,
     image_url: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=600&h=600&fit=crop',
@@ -35,7 +37,8 @@ const staticProducts: Product[] = [
     id: '2',
     name_english: 'Glow Deep Serum',
     brand: 'Beauty of Joseon',
-    seoul_price: 8.00,
+    best_price: 8.00,
+    best_retailer: 'Olive Young Global',
     us_price: 45.00,
     savings_percentage: 82,
     image_url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&h=600&fit=crop',
@@ -45,7 +48,8 @@ const staticProducts: Product[] = [
     id: '3',
     name_english: 'Snail 96 Mucin Essence',
     brand: 'COSRX',
-    seoul_price: 23.00,
+    best_price: 23.00,
+    best_retailer: 'iHerb K-Beauty',
     us_price: 89.00,
     savings_percentage: 74,
     image_url: 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=600&h=600&fit=crop',
@@ -116,7 +120,7 @@ export default function HomePage() {
               marginBottom: '3rem',
               opacity: '0.9'
             }}>
-              EXCLUSIVE ACCESS TO SEOUL'S BEAUTY SECRETS
+              AI-POWERED KOREAN BEAUTY INTELLIGENCE
             </p>
 
             <h1 style={{
@@ -148,7 +152,7 @@ export default function HomePage() {
               color: '#ffffff',
               opacity: '0.9'
             }}>
-              The same luxury K-beauty Seoul insiders trust,
+              Find the best K-beauty deals with AI intelligence,
             </p>
             <p style={{
               fontFamily: 'Inter, sans-serif',
@@ -159,7 +163,7 @@ export default function HomePage() {
               color: '#ffffff',
               opacity: '0.9'
             }}>
-              without the <span style={{ color: '#d4a574' }}>300% markup</span>
+              across <span style={{ color: '#d4a574' }}>all trusted retailers</span>
             </p>
 
             {/* Two Button Layout with Professional Styling */}
@@ -363,7 +367,7 @@ export default function HomePage() {
                 </div>
                 <div className="text-right">
                   <p className="text-caption">MONTHLY SAVINGS</p>
-                  <p className="text-2xl text-luxury-gold font-light">$240</p>
+                  <p className="text-2xl text-luxury-gold font-light">$96</p>
                 </div>
               </div>
             </div>
@@ -734,7 +738,7 @@ export default function HomePage() {
             <div className="faq-item bg-white border border-gray-200 transition-all duration-300 hover:border-luxury-gold">
               <button className="w-full text-left p-8 focus:outline-none">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-light text-luxury-black">What's included in the $20/month membership?</h3>
+                  <h3 className="text-lg font-light text-luxury-black">What's included in the $8/month membership?</h3>
                   <span className="text-luxury-gold text-2xl">+</span>
                 </div>
               </button>
@@ -883,15 +887,15 @@ export default function HomePage() {
             </div>
 
             <p className="text-2xl font-light text-luxury-gold mb-4">
-              $20/month • 7-day FREE trial
+              $8/month • 7-day FREE trial
             </p>
             <p className="text-gray-400 mb-8">
-              Cancel anytime • Full feature access during trial • Pays for itself with first purchase
+              Cancel anytime • Full AI features during trial • Find deals worth 10x your subscription
             </p>
 
-            <Link href="/premium">
+            <Link href="/dashboard">
               <button className="btn-luxury-solid text-base px-12 py-4">
-                ACCESS PREMIUM DASHBOARD
+                ACCESS AI BEAUTY ADVISOR
               </button>
             </Link>
           </div>
@@ -905,15 +909,15 @@ export default function HomePage() {
             Join Seoul Sister
           </h2>
           <p className="text-xl font-light mb-8 max-w-2xl mx-auto">
-            Premium membership combining AI-powered personalization with authentic Seoul wholesale access.
+            AI-powered beauty intelligence that finds the best deals across all trusted K-beauty retailers.
           </p>
 
           <div className="mb-8">
             <p className="text-2xl font-light text-luxury-gold mb-2">
-              $20/month with 7-day FREE trial
+              $8/month with 7-day FREE trial
             </p>
             <p className="text-gray-400">
-              Cancel anytime • No hidden fees • Full feature access during trial
+              Cancel anytime • No hidden fees • Full AI features during trial
             </p>
           </div>
 
@@ -924,7 +928,7 @@ export default function HomePage() {
           </Link>
 
           <p className="text-caption mt-8">
-            ADVANCED ANALYSIS • PERSONALIZED RECOMMENDATIONS • SEOUL PRICING
+            ADVANCED AI ANALYSIS • PRICE INTELLIGENCE • RETAILER TRUST SCORES
           </p>
         </div>
       </section>

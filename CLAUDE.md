@@ -4,20 +4,20 @@
 Korean beauty e-commerce platform with AI-powered skin analysis and personalized recommendations.
 
 ## Current Status
-✅ Authentic Korean wholesale pricing implemented
+✅ AI-powered price tracking across major retailers
 ✅ Comprehensive INCI ingredient data added to all products
-✅ Database populated with 22 wholesale Korean beauty products
+✅ Database populated with 22 Korean beauty products with price tracking
 ✅ AI Instagram Story Generator functional
 ✅ Automated trending product discovery configured
 
 ## Premium Membership Business Model
 
-### PRICING: $20/MONTH WITH 7-DAY FREE TRIAL
+### PRICING: $8/MONTH WITH 7-DAY FREE TRIAL
 
-Seoul Sister has evolved into a premium membership platform offering:
+Seoul Sister is an AI-powered beauty intelligence aggregator offering:
 - **AI-Powered Skin Analysis**: Advanced personalized recommendations
-- **Seoul Wholesale Access**: Authentic Korean beauty at insider prices
-- **WhatsApp Ordering**: Personal shopping service with luxury experience
+- **Price Intelligence**: Find the best deals across all major retailers
+- **Smart Shopping Assistant**: AI-powered deal finder with retailer trust scores
 - **Ingredient Intelligence**: Compatibility analysis and allergen detection
 - **Trending Product Alerts**: First access to viral Korean beauty discoveries
 
@@ -65,6 +65,6 @@ The AI assistant has complete freedom to:
 - Users can create profiles with skin type/concerns
 - AI recommends products based on individual skin needs
 - Ingredient analysis prevents incompatible product suggestions
-- Seamless integration with existing wholesale product catalog
+- Seamless integration with affiliate partners and price tracking systems
 
 **Proceed with full development autonomy to transform this into an intelligent, personalized Korean beauty platform.**
