@@ -59,7 +59,8 @@ const staticProducts: Product[] = [
     id: '4',
     name_english: 'Water Sleeping Mask',
     brand: 'Laneige',
-    seoul_price: 12.00,
+    best_price: 12.00,
+    best_retailer: 'Sephora',
     us_price: 34.00,
     savings_percentage: 65,
     image_url: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=600&h=600&fit=crop',
@@ -273,7 +274,7 @@ export default function HomePage() {
                   {!product.image_url && (
                     <div className="absolute bottom-2 left-2 right-2">
                       <div className="bg-black bg-opacity-75 text-yellow-500 text-xs px-2 py-1 text-center rounded">
-                        Verified Seoul pricing • Authentic product information
+                        Best price found • Verified retailers
                       </div>
                     </div>
                   )}
@@ -287,7 +288,7 @@ export default function HomePage() {
                     US RETAIL ${product.us_price}
                   </p>
                   <p className="price-seoul text-2xl">
-                    ${product.seoul_price.toFixed(2)}
+                    ${product.best_price?.toFixed(2) || product.best_price_found?.toFixed(2) || '0.00'}
                   </p>
                 </div>
 
