@@ -115,9 +115,9 @@ export async function trackAffiliateClick(
     await supabase
       .from('affiliate_links')
       .update({
-        click_count: (link.click_count || 0) + 1,
+        click_count: ((link as any).click_count || 0) + 1,
         updated_at: new Date().toISOString()
-      })
+      } as any)
       .eq('product_id', productId)
       .eq('retailer', retailer)
   }
