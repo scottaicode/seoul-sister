@@ -65,14 +65,15 @@ export async function GET(request: NextRequest) {
         }
 
         // Group by retailer for charting
-        const historyByRetailer = priceHistory.reduce((acc, record) => {
-          if (!acc[record.retailer]) {
-            acc[record.retailer] = []
+        const historyByRetailer = (priceHistory || []).reduce((acc: Record<string, any[]>, record: any) => {
+          const retailer = record.retailer || 'Unknown'
+          if (!acc[retailer]) {
+            acc[retailer] = []
           }
-          acc[record.retailer].push({
+          acc[retailer].push({
             date: record.tracked_at,
-            price: record.price,
-            totalCost: record.total_cost || record.price,
+            price: record.price || 0,
+            totalCost: record.total_cost || record.price || 0,
           })
           return acc
         }, {} as Record<string, any[]>)
@@ -81,9 +82,9 @@ export async function GET(request: NextRequest) {
           product,
           history: historyByRetailer,
           priceRange: {
-            min: Math.min(...priceHistory.map(h => h.price)),
-            max: Math.max(...priceHistory.map(h => h.price)),
-            current: product.best_price_found,
+            min: priceHistory && priceHistory.length > 0 ? Math.min(...priceHistory.map((h: any) => h.price || 0)) : 0,
+            max: priceHistory && priceHistory.length > 0 ? Math.max(...priceHistory.map((h: any) => h.price || 0)) : 0,
+            current: (product as any).best_price_found || (product as any).seoul_price || 0,
           },
         })
 
