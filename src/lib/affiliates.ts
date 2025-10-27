@@ -184,14 +184,7 @@ export async function compareRetailerPrices(productId: string) {
   // Get latest prices from all retailers
   const { data: prices } = await supabase
     .from('price_tracking_history')
-    .select(`
-      *,
-      retailer_trust_scores!inner(
-        overall_trust_rating,
-        authenticity_score,
-        shipping_score
-      )
-    `)
+    .select('*')
     .eq('product_id', productId)
     .gte('tracked_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()) // Last 7 days
     .order('price', { ascending: true })
@@ -200,11 +193,22 @@ export async function compareRetailerPrices(productId: string) {
     return []
   }
 
+  // Get trust scores for retailers
+  const { data: trustScores } = await supabase
+    .from('retailer_trust_scores')
+    .select('*')
+
+  const trustScoreMap = (trustScores || []).reduce((acc: any, score: any) => {
+    acc[score.retailer_name] = score
+    return acc
+  }, {})
+
   // Enhance with affiliate information
   const comparisons = await Promise.all(
-    prices.map(async (price) => {
+    prices.map(async (price: any) => {
       const retailer = price.retailer as RetailerName
       const program = AFFILIATE_PROGRAMS[retailer]
+      const trustScore = trustScoreMap[price.retailer] || {}
 
       const { data: affiliateLink } = await supabase
         .from('affiliate_links')
@@ -219,8 +223,8 @@ export async function compareRetailerPrices(productId: string) {
         shipping: price.shipping_cost || 0,
         totalCost: price.total_cost || price.price + (price.shipping_cost || 0),
         availability: price.availability,
-        trustScore: price.retailer_trust_scores?.overall_trust_rating || 0,
-        authenticityScore: price.retailer_trust_scores?.authenticity_score || 0,
+        trustScore: trustScore.overall_trust_rating || 0,
+        authenticityScore: trustScore.authenticity_score || 0,
         affiliateUrl: affiliateLink?.affiliate_url,
         commission: program ? (price.price * program.commissionRate) / 100 : 0,
         lastUpdated: price.tracked_at,
