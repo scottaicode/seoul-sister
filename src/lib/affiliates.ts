@@ -112,14 +112,18 @@ export async function trackAffiliateClick(
     .single()
 
   if (link) {
-    await supabase
+    const { error } = await supabase
       .from('affiliate_links')
       .update({
         click_count: ((link as any).click_count || 0) + 1,
         updated_at: new Date().toISOString()
-      } as any)
+      })
       .eq('product_id', productId)
       .eq('retailer', retailer)
+
+    if (error) {
+      console.error('Failed to update click count:', error)
+    }
   }
 }
 
