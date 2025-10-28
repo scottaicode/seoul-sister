@@ -70,7 +70,7 @@ export default function AuthHeader() {
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-12">
-            <a href="#collection" className="transition-colors" style={{
+            <a href="/" className="transition-colors" style={{
               color: '#888888',
               fontFamily: 'Inter, sans-serif',
               fontSize: '13px',
@@ -80,9 +80,9 @@ export default function AuthHeader() {
             }}
             onMouseEnter={(e) => e.currentTarget.style.color = '#d4a574'}
             onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}>
-              COLLECTION
+              HOME
             </a>
-            <a href="/personalized-dashboard" className="transition-colors" style={{
+            <a href="/dashboard" className="transition-colors" style={{
               color: '#888888',
               fontFamily: 'Inter, sans-serif',
               fontSize: '13px',
@@ -92,9 +92,9 @@ export default function AuthHeader() {
             }}
             onMouseEnter={(e) => e.currentTarget.style.color = '#d4a574'}
             onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}>
-              AI DASHBOARD
+              DASHBOARD
             </a>
-            <a href="/intelligence" className="transition-colors" style={{
+            <a href="/intelligence/enhanced" className="transition-colors" style={{
               color: '#888888',
               fontFamily: 'Inter, sans-serif',
               fontSize: '13px',
@@ -104,9 +104,9 @@ export default function AuthHeader() {
             }}
             onMouseEnter={(e) => e.currentTarget.style.color = '#d4a574'}
             onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}>
-              INTELLIGENCE
+              TRENDING
             </a>
-            <a href="#about" className="transition-colors" style={{
+            <a href="/billing" className="transition-colors" style={{
               color: '#888888',
               fontFamily: 'Inter, sans-serif',
               fontSize: '13px',
@@ -116,9 +116,9 @@ export default function AuthHeader() {
             }}
             onMouseEnter={(e) => e.currentTarget.style.color = '#d4a574'}
             onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}>
-              ABOUT
+              PRICING
             </a>
-            <a href="#insider-access" className="transition-colors" style={{
+            <a href="/support" className="transition-colors" style={{
               color: '#888888',
               fontFamily: 'Inter, sans-serif',
               fontSize: '13px',
@@ -128,7 +128,7 @@ export default function AuthHeader() {
             }}
             onMouseEnter={(e) => e.currentTarget.style.color = '#d4a574'}
             onMouseLeave={(e) => e.currentTarget.style.color = '#888888'}>
-              INSIDER ACCESS
+              SUPPORT
             </a>
           </nav>
 
@@ -167,20 +167,59 @@ export default function AuthHeader() {
                     </div>
 
                     <div className="py-1">
-                      {/* Bailey's AI Features Section */}
+                      {/* Main Dashboard Access */}
+                      <a
+                        href="/dashboard"
+                        className="block px-4 py-3 text-sm font-medium bg-[#d4a574]/10 text-[#d4a574] hover:bg-[#d4a574]/20 transition-colors border-b border-[#d4a574]/10"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <div className="flex items-center">
+                          <svg className="w-4 h-4 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+                          </svg>
+                          My Dashboard
+                        </div>
+                      </a>
+
+                      {/* Core Features */}
                       <div className="px-4 py-2 text-xs font-semibold text-[#d4a574] uppercase tracking-wider border-b border-[#d4a574]/10">
-                        Bailey's AI Features
+                        Core Features
                       </div>
                       <a
-                        href="/bailey-onboarding"
+                        href="/dashboard?tab=advisor"
                         className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
                         onClick={() => setShowDropdown(false)}
                       >
                         <div className="flex items-center">
                           <User size={16} className="mr-3" />
-                          Complete Skin Profile
+                          AI Beauty Advisor
                         </div>
                       </a>
+                      <a
+                        href="/dashboard?tab=intelligence"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <div className="flex items-center">
+                          <BarChart3 size={16} className="mr-3" />
+                          Price Intelligence
+                        </div>
+                      </a>
+                      <a
+                        href="/dashboard?tab=shopping"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <div className="flex items-center">
+                          <ShoppingBag size={16} className="mr-3" />
+                          Smart Shopping
+                        </div>
+                      </a>
+
+                      {/* Quick Actions */}
+                      <div className="px-4 py-2 text-xs font-semibold text-[#d4a574] uppercase tracking-wider border-b border-[#d4a574]/10 mt-2">
+                        Quick Actions
+                      </div>
                       <a
                         href="/bailey-features?feature=product-scanner"
                         className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
@@ -188,106 +227,7 @@ export default function AuthHeader() {
                       >
                         <div className="flex items-center">
                           <Camera size={16} className="mr-3" />
-                          Product Photo Scanner
-                        </div>
-                      </a>
-                      <a
-                        href="/bailey-features?feature=routine-analyzer"
-                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center">
-                          <BarChart3 size={16} className="mr-3" />
-                          Routine Analyzer
-                        </div>
-                      </a>
-                      <a
-                        href="/bailey-features?feature=barcode-scanner"
-                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center">
-                          <Scan size={16} className="mr-3" />
-                          Barcode Scanner
-                        </div>
-                      </a>
-                      <a
-                        href="/bailey-features?feature=progress-tracking"
-                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center">
-                          <Calendar size={16} className="mr-3" />
-                          Progress Tracking
-                        </div>
-                      </a>
-                      <a
-                        href="/bailey-features?feature=irritation-analysis"
-                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center">
-                          <AlertTriangle size={16} className="mr-3" />
-                          Irritation Analysis
-                        </div>
-                      </a>
-                      <a
-                        href="/bailey-features?feature=gradual-introduction"
-                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center">
-                          <Zap size={16} className="mr-3" />
-                          Gradual Introduction
-                        </div>
-                      </a>
-
-                      {/* Existing Features Section */}
-                      <div className="px-4 py-2 text-xs font-semibold text-[#d4a574] uppercase tracking-wider border-b border-[#d4a574]/10 mt-2">
-                        Platform Features
-                      </div>
-                      <a
-                        href="/skin-profile"
-                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center">
-                          <Camera size={16} className="mr-3" />
-                          Basic Skin Profile
-                        </div>
-                      </a>
-                      <a
-                        href="/personalized-dashboard"
-                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center">
-                          <Heart size={16} className="mr-3" />
-                          AI Beauty Hub
-                        </div>
-                      </a>
-                      <a
-                        href="/premium"
-                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center">
-                          <svg className="w-4 h-4 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path d="M12 2L2 7v10c0 5.55 3.84 9.74 9 9 5.16-.74 9-4.45 9-9V7l-10-5z"/>
-                          </svg>
-                          Premium Dashboard
-                        </div>
-                      </a>
-                      <a
-                        href="/intelligence"
-                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <div className="flex items-center">
-                          <svg className="w-4 h-4 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path d="M9 19c-5 0-8-3-8-6s3-6 8-6c2 0 4 1 6 3l-2 2h4V8l-2 2C15 8 12 6 9 6c-6 0-10 4-10 8s4 8 10 8h8v-2H9z"/>
-                          </svg>
-                          Intelligence Reports
+                          Scan Product
                         </div>
                       </a>
                       <a
@@ -299,17 +239,19 @@ export default function AuthHeader() {
                           <svg className="w-4 h-4 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                           </svg>
-                          🇰🇷 Enhanced Intelligence
+                          Trending Now
                         </div>
                       </a>
                       <a
-                        href="/"
+                        href="/billing"
                         className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
                         onClick={() => setShowDropdown(false)}
                       >
                         <div className="flex items-center">
-                          <ShoppingBag size={16} className="mr-3" />
-                          Shop Products
+                          <svg className="w-4 h-4 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M12 2L2 7v10c0 5.55 3.84 9.74 9 9 5.16-.74 9-4.45 9-9V7l-10-5z"/>
+                          </svg>
+                          Subscription
                         </div>
                       </a>
                       <a
