@@ -143,42 +143,42 @@ export default function UnifiedDashboard() {
           {/* Seoul Intelligence Tab */}
           {activeTab === 'intelligence' && (
             <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-gray-900/50 border border-luxury-gold/20 rounded-lg p-6">
-                <h3 className="text-xl font-light mb-4 text-luxury-gold">Korean Beauty Trends</h3>
+              <div className="bg-black/40 border border-[#d4a574]/20 rounded-lg p-6 hover:border-[#d4a574]/40 hover:bg-black/60 transition-all backdrop-blur-sm">
+                <h3 className="text-xl font-light mb-4 text-[#d4a574]">Korean Beauty Trends</h3>
                 <p className="text-gray-400 mb-4">
                   Real-time analysis of trending products, ingredients, and techniques from Seoul
                 </p>
-                <a href="/intelligence/enhanced" className="text-luxury-gold hover:underline">
+                <a href="/intelligence/enhanced" className="text-[#d4a574] hover:text-[#d4a574]/80 transition-colors font-light">
                   View Intelligence Dashboard →
                 </a>
               </div>
 
-              <div className="bg-gray-900/50 border border-luxury-gold/20 rounded-lg p-6">
-                <h3 className="text-xl font-light mb-4 text-luxury-gold">Influencer Monitoring</h3>
+              <div className="bg-black/40 border border-[#d4a574]/20 rounded-lg p-6 hover:border-[#d4a574]/40 hover:bg-black/60 transition-all backdrop-blur-sm">
+                <h3 className="text-xl font-light mb-4 text-[#d4a574]">Influencer Monitoring</h3>
                 <p className="text-gray-400 mb-4">
                   Track what Korean beauty influencers are using and recommending
                 </p>
-                <a href="/intelligence/enhanced" className="text-luxury-gold hover:underline">
+                <a href="/intelligence/enhanced" className="text-[#d4a574] hover:text-[#d4a574]/80 transition-colors font-light">
                   Monitor Influencers →
                 </a>
               </div>
 
-              <div className="bg-gray-900/50 border border-luxury-gold/20 rounded-lg p-6">
-                <h3 className="text-xl font-light mb-4 text-luxury-gold">Ingredient Trends</h3>
+              <div className="bg-black/40 border border-[#d4a574]/20 rounded-lg p-6 hover:border-[#d4a574]/40 hover:bg-black/60 transition-all backdrop-blur-sm">
+                <h3 className="text-xl font-light mb-4 text-[#d4a574]">Ingredient Trends</h3>
                 <p className="text-gray-400 mb-4">
                   Discover emerging ingredients before they hit mainstream markets
                 </p>
-                <a href="/intelligence/enhanced" className="text-luxury-gold hover:underline">
+                <a href="/intelligence/enhanced" className="text-[#d4a574] hover:text-[#d4a574]/80 transition-colors font-light">
                   Explore Ingredients →
                 </a>
               </div>
 
-              <div className="bg-gray-900/50 border border-luxury-gold/20 rounded-lg p-6">
-                <h3 className="text-xl font-light mb-4 text-luxury-gold">Viral Products</h3>
+              <div className="bg-black/40 border border-[#d4a574]/20 rounded-lg p-6 hover:border-[#d4a574]/40 hover:bg-black/60 transition-all backdrop-blur-sm">
+                <h3 className="text-xl font-light mb-4 text-[#d4a574]">Viral Products</h3>
                 <p className="text-gray-400 mb-4">
                   Early access to products going viral in Korea
                 </p>
-                <a href="/intelligence/enhanced" className="text-luxury-gold hover:underline">
+                <a href="/intelligence/enhanced" className="text-[#d4a574] hover:text-[#d4a574]/80 transition-colors font-light">
                   See Viral Products →
                 </a>
               </div>
@@ -189,8 +189,8 @@ export default function UnifiedDashboard() {
           {activeTab === 'shopping' && (
             <div className="space-y-8">
               {/* Price Comparison Widget */}
-              <div className="bg-gray-900/50 border border-luxury-gold/20 rounded-lg p-8">
-                <h3 className="text-2xl font-light mb-6 text-luxury-gold">
+              <div className="bg-black/40 border border-[#d4a574]/20 rounded-lg p-8 hover:bg-black/60 transition-all backdrop-blur-sm">
+                <h3 className="text-2xl font-light mb-6 text-[#d4a574]">
                   <DollarSign className="inline-block w-6 h-6 mr-2" />
                   Price Intelligence
                 </h3>
@@ -200,28 +200,28 @@ export default function UnifiedDashboard() {
 
                 <div className="grid md:grid-cols-3 gap-4 mb-6">
                   <div className="text-center">
-                    <div className="text-3xl font-light text-luxury-gold mb-2">15+</div>
+                    <div className="text-3xl font-light text-[#d4a574] mb-2">15+</div>
                     <p className="text-sm text-gray-400">Retailers Tracked</p>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-light text-luxury-gold mb-2">24/7</div>
+                    <div className="text-3xl font-light text-[#d4a574] mb-2">24/7</div>
                     <p className="text-sm text-gray-400">Price Monitoring</p>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-light text-luxury-gold mb-2">70%</div>
+                    <div className="text-3xl font-light text-[#d4a574] mb-2">70%</div>
                     <p className="text-sm text-gray-400">Max Savings Found</p>
                   </div>
                 </div>
 
-                <button className="w-full bg-luxury-gold text-black py-3 rounded hover:bg-luxury-gold/90 transition-colors">
+                <button className="w-full bg-[#d4a574] text-black py-3 rounded hover:bg-[#d4a574]/90 transition-colors font-light">
                   <Search className="inline-block w-5 h-5 mr-2" />
                   Search for Product Deals
                 </button>
               </div>
 
               {/* Retailer Trust Scores */}
-              <div className="bg-gray-900/50 border border-luxury-gold/20 rounded-lg p-8">
-                <h3 className="text-2xl font-light mb-6 text-luxury-gold">
+              <div className="bg-black/40 border border-[#d4a574]/20 rounded-lg p-8 hover:bg-black/60 transition-all backdrop-blur-sm">
+                <h3 className="text-2xl font-light mb-6 text-[#d4a574]">
                   <Star className="inline-block w-6 h-6 mr-2" />
                   Trusted Retailers
                 </h3>
@@ -235,12 +235,12 @@ export default function UnifiedDashboard() {
               </div>
 
               {/* Deal Alerts */}
-              <div className="bg-gray-900/50 border border-luxury-gold/20 rounded-lg p-8">
-                <h3 className="text-2xl font-light mb-6 text-luxury-gold">Recent Deal Alerts</h3>
+              <div className="bg-black/40 border border-[#d4a574]/20 rounded-lg p-8 hover:bg-black/60 transition-all backdrop-blur-sm">
+                <h3 className="text-2xl font-light mb-6 text-[#d4a574]">Recent Deal Alerts</h3>
                 <p className="text-gray-400 mb-4">
                   Products from your wishlist that dropped in price
                 </p>
-                <button className="text-luxury-gold hover:underline">
+                <button className="text-[#d4a574] hover:text-[#d4a574]/80 transition-colors font-light">
                   Set up deal alerts →
                 </button>
               </div>
@@ -268,11 +268,11 @@ function FeatureCard({
 }) {
   return (
     <a href={href} className="block group">
-      <div className="bg-gray-900/50 border border-luxury-gold/20 rounded-lg p-6 hover:border-luxury-gold/40 transition-all">
-        <div className={`w-12 h-12 bg-gradient-to-r ${color} rounded-full flex items-center justify-center mb-4 text-white`}>
+      <div className="bg-black/40 border border-[#d4a574]/20 rounded-lg p-6 hover:border-[#d4a574]/40 transition-all hover:bg-black/60 backdrop-blur-sm">
+        <div className="w-12 h-12 bg-[#d4a574]/10 border border-[#d4a574]/30 rounded-lg flex items-center justify-center mb-4 text-[#d4a574] group-hover:bg-[#d4a574]/20 transition-all">
           {icon}
         </div>
-        <h3 className="text-lg font-light mb-2 group-hover:text-luxury-gold transition-colors">
+        <h3 className="text-lg font-light mb-2 text-white group-hover:text-[#d4a574] transition-colors">
           {title}
         </h3>
         <p className="text-sm text-gray-400">
@@ -287,15 +287,15 @@ function FeatureCard({
 function RetailerScore({ name, score }: { name: string; score: number }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-gray-300">{name}</span>
+      <span className="text-gray-300 font-light">{name}</span>
       <div className="flex items-center gap-2">
         <div className="w-32 bg-gray-800 rounded-full h-2 overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-luxury-gold to-luxury-gold/60"
+            className="h-full bg-gradient-to-r from-[#d4a574] to-[#d4a574]/60"
             style={{ width: `${score}%` }}
           />
         </div>
-        <span className="text-luxury-gold text-sm">{score}%</span>
+        <span className="text-[#d4a574] text-sm font-light">{score}%</span>
       </div>
     </div>
   )
