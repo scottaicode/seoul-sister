@@ -1,5 +1,5 @@
 // Re-export the generated database types
-export { Database } from './database-generated'
+export type { Database } from './database-generated'
 
 // Legacy interface for backward compatibility
 export interface LegacyDatabase {

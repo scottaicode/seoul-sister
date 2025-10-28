@@ -113,8 +113,8 @@ export async function trackAffiliateClick(
     .single()
 
   if (link) {
-    const { error } = await supabase
-      .from('affiliate_links')
+    const { error } = await (supabase
+      .from('affiliate_links') as any)
       .update({
         click_count: ((link as any).click_count || 0) + 1,
         updated_at: new Date().toISOString()
@@ -176,7 +176,7 @@ export async function getBestAffiliateDeal(productId: string) {
 
   return {
     ...bestPrice,
-    affiliateUrl: affiliateLink?.affiliate_url,
+    affiliateUrl: (affiliateLink as any)?.affiliate_url,
     commission: await calculatePotentialEarnings(bestPrice.price, retailer),
     program: program.programName,
   }
@@ -230,7 +230,7 @@ export async function compareRetailerPrices(productId: string) {
         availability: price.availability,
         trustScore: trustScore.overall_trust_rating || 0,
         authenticityScore: trustScore.authenticity_score || 0,
-        affiliateUrl: affiliateLink?.affiliate_url,
+        affiliateUrl: (affiliateLink as any)?.affiliate_url,
         commission: program ? (price.price * program.commissionRate) / 100 : 0,
         lastUpdated: price.tracked_at,
         promotions: price.promotion_info,
