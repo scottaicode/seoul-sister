@@ -28,6 +28,15 @@ export default function UnifiedDashboard() {
     }
   }, [user, loading, router])
 
+  // Handle URL parameters for tab switching
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const tab = urlParams.get('tab')
+    if (tab && ['advisor', 'intelligence', 'shopping'].includes(tab)) {
+      setActiveTab(tab as 'advisor' | 'intelligence' | 'shopping')
+    }
+  }, [])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -92,6 +101,11 @@ export default function UnifiedDashboard() {
       {/* Tab Content */}
       <section className="py-12">
         <div className="max-w-7xl mx-auto px-8">
+          {/* Debug - show active tab */}
+          <div className="mb-4 text-center text-gray-400 text-sm">
+            Active Tab: {activeTab}
+          </div>
+
           {/* AI Beauty Advisor Tab */}
           {activeTab === 'advisor' && (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
