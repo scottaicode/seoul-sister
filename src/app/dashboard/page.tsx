@@ -43,7 +43,7 @@ export default function UnifiedDashboard() {
       <AuthHeader />
 
       {/* Dashboard Header */}
-      <section className="border-b border-luxury-gold/20 py-8">
+      <section className="border-b border-luxury-gold/20 py-8 pt-24">
         <div className="max-w-7xl mx-auto px-8">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-light mb-2">Welcome back, {user.email?.split('@')[0]}</h1>
