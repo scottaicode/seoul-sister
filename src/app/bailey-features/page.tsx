@@ -107,21 +107,21 @@ function BaileyFeaturesContent() {
         return (
           <div className="space-y-8">
             <div className="text-center">
-              <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Camera className="w-10 h-10 text-white" />
+              <div className="w-20 h-20 bg-[#d4a574]/10 border border-[#d4a574]/30 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <Camera className="w-10 h-10 text-[#d4a574]" />
               </div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">Product Photo Scanner</h2>
-              <p className="text-gray-600 max-w-2xl mx-auto">
+              <h2 className="text-3xl font-light text-white mb-2">Product Photo Scanner</h2>
+              <p className="text-gray-400 max-w-2xl mx-auto">
                 Upload a photo of any skincare product to get AI-powered ingredient analysis,
                 cleanliness scoring, and personalized compatibility assessment.
               </p>
             </div>
 
-            <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-8">
+            <div className="bg-black/40 border border-[#d4a574]/20 rounded-lg p-8 backdrop-blur-sm">
               <div className="text-center">
                 <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <label htmlFor="product-upload" className="cursor-pointer">
-                  <span className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors inline-block">
+                  <span className="bg-[#d4a574] text-black px-6 py-3 rounded-lg hover:bg-[#d4a574]/90 transition-colors inline-block font-light">
                     Upload Product Photo
                   </span>
                   <input
@@ -137,16 +137,16 @@ function BaileyFeaturesContent() {
                     }}
                   />
                 </label>
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-sm text-gray-400 mt-2">
                   Take a clear photo of the product label showing ingredients
                 </p>
               </div>
             </div>
 
             {uploading && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-                <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-blue-700">Analyzing product ingredients...</p>
+              <div className="bg-[#d4a574]/10 border border-[#d4a574]/30 rounded-lg p-6 text-center">
+                <div className="animate-spin w-8 h-8 border-4 border-[#d4a574]/30 border-t-[#d4a574] rounded-full mx-auto mb-4"></div>
+                <p className="text-[#d4a574]">Analyzing product ingredients...</p>
               </div>
             )}
 
@@ -473,7 +473,7 @@ function BaileyFeaturesContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
+    <div className="min-h-screen bg-black text-white">
       <AuthHeader />
 
       <div className="pt-24 pb-12">
@@ -498,10 +498,10 @@ function BaileyFeaturesContent() {
 export default function BaileyFeaturesPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-purple-300 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading Bailey's features...</p>
+          <div className="w-16 h-16 border-4 border-[#d4a574]/30 border-t-[#d4a574] rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading Bailey's features...</p>
         </div>
       </div>
     }>
