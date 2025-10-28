@@ -46,7 +46,7 @@ interface ProcessedContent {
 
 export default function EnhancedIntelligencePage() {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'trends' | 'alerts'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'trends' | 'influencers' | 'ingredients' | 'viral' | 'alerts'>('dashboard')
   const [isRunning, setIsRunning] = useState(false)
   const [lastRunResult, setLastRunResult] = useState<any>(null)
   const [userProfile, setUserProfile] = useState<any>(null)
@@ -94,6 +94,23 @@ export default function EnhancedIntelligencePage() {
 
     fetchLatestContent()
   }, [lastRunResult]) // Refresh after running intelligence cycle
+
+  // Handle URL fragments for navigation
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1) // Remove the #
+      if (['trends', 'influencers', 'ingredients', 'viral'].includes(hash)) {
+        setActiveTab(hash as any)
+      }
+    }
+
+    // Set initial tab based on hash
+    handleHashChange()
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
 
   // Debug logging
   console.log('🔍 Admin Check Debug:', {
@@ -249,44 +266,83 @@ export default function EnhancedIntelligencePage() {
 
         {/* Navigation Tabs */}
         <div className="flex justify-center mb-8">
-          <div className="inline-flex bg-luxury-charcoal/30 border border-luxury-gold/20 rounded-lg p-1">
+          <div className="inline-flex bg-luxury-charcoal/30 border border-luxury-gold/20 rounded-lg p-1 flex-wrap">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`px-6 py-2 rounded-md font-medium transition-all ${
+              className={`px-4 py-2 rounded-md font-medium transition-all text-sm ${
                 activeTab === 'dashboard'
                   ? 'bg-luxury-gold text-black'
                   : 'text-gray-300 hover:text-white'
               }`}
             >
               <div className="flex items-center space-x-2">
-                <TrendingUp size={18} />
+                <TrendingUp size={16} />
                 <span>Live Intelligence</span>
               </div>
             </button>
             <button
-              onClick={() => setActiveTab('trends')}
-              className={`px-6 py-2 rounded-md font-medium transition-all ${
+              onClick={() => { setActiveTab('trends'); window.location.hash = 'trends'; }}
+              className={`px-4 py-2 rounded-md font-medium transition-all text-sm ${
                 activeTab === 'trends'
                   ? 'bg-luxury-gold text-black'
                   : 'text-gray-300 hover:text-white'
               }`}
             >
               <div className="flex items-center space-x-2">
-                <Zap size={18} />
-                <span>Data Analysis</span>
+                <TrendingUp size={16} />
+                <span>Trends</span>
+              </div>
+            </button>
+            <button
+              onClick={() => { setActiveTab('influencers'); window.location.hash = 'influencers'; }}
+              className={`px-4 py-2 rounded-md font-medium transition-all text-sm ${
+                activeTab === 'influencers'
+                  ? 'bg-luxury-gold text-black'
+                  : 'text-gray-300 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Brain size={16} />
+                <span>Influencers</span>
+              </div>
+            </button>
+            <button
+              onClick={() => { setActiveTab('ingredients'); window.location.hash = 'ingredients'; }}
+              className={`px-4 py-2 rounded-md font-medium transition-all text-sm ${
+                activeTab === 'ingredients'
+                  ? 'bg-luxury-gold text-black'
+                  : 'text-gray-300 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Zap size={16} />
+                <span>Ingredients</span>
+              </div>
+            </button>
+            <button
+              onClick={() => { setActiveTab('viral'); window.location.hash = 'viral'; }}
+              className={`px-4 py-2 rounded-md font-medium transition-all text-sm ${
+                activeTab === 'viral'
+                  ? 'bg-luxury-gold text-black'
+                  : 'text-gray-300 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Globe size={16} />
+                <span>Viral</span>
               </div>
             </button>
             <button
               onClick={() => setActiveTab('alerts')}
-              className={`px-6 py-2 rounded-md font-medium transition-all ${
+              className={`px-4 py-2 rounded-md font-medium transition-all text-sm ${
                 activeTab === 'alerts'
                   ? 'bg-luxury-gold text-black'
                   : 'text-gray-300 hover:text-white'
               }`}
             >
               <div className="flex items-center space-x-2">
-                <Globe size={18} />
-                <span>Alerts Setup</span>
+                <Globe size={16} />
+                <span>Alerts</span>
               </div>
             </button>
           </div>
@@ -682,7 +738,217 @@ export default function EnhancedIntelligencePage() {
           )}
 
           {activeTab === 'trends' && (
-            <TrendAnalysisTab latestContent={latestContent} />
+            <div className="bg-luxury-charcoal/20 rounded-xl p-8 border border-luxury-gold/20 backdrop-blur-sm">
+              <div className="text-center mb-6">
+                <TrendingUp className="text-luxury-gold mx-auto mb-4" size={48} />
+                <h3 className="text-2xl font-semibold text-white mb-2 tracking-wide">
+                  Korean Beauty Trends Analysis
+                </h3>
+                <p className="text-gray-300 font-light">
+                  Real-time analysis of trending products, ingredients, and techniques from Seoul
+                </p>
+              </div>
+              <TrendAnalysisTab latestContent={latestContent} />
+            </div>
+          )}
+
+          {activeTab === 'influencers' && (
+            <div className="bg-luxury-charcoal/20 rounded-xl p-8 border border-luxury-gold/20 backdrop-blur-sm">
+              <div className="text-center mb-6">
+                <Brain className="text-luxury-gold mx-auto mb-4" size={48} />
+                <h3 className="text-2xl font-semibold text-white mb-2 tracking-wide">
+                  Influencer Monitoring
+                </h3>
+                <p className="text-gray-300 font-light">
+                  Track what Korean beauty influencers are using and recommending
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-luxury-charcoal/30 border border-luxury-gold/20 rounded-lg p-6">
+                  <h4 className="text-luxury-gold font-medium mb-4">Mega-Influencers</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-300">@ponysmakeup</span>
+                      <span className="text-luxury-gold text-sm">5.8M followers</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-300">@ssin_makeup</span>
+                      <span className="text-luxury-gold text-sm">3.2M followers</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-300">@directorpi</span>
+                      <span className="text-luxury-gold text-sm">2.8M followers</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-luxury-charcoal/30 border border-luxury-gold/20 rounded-lg p-6">
+                  <h4 className="text-luxury-gold font-medium mb-4">Rising Stars</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-300">@jihyoo</span>
+                      <span className="text-luxury-gold text-sm">800K followers</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-300">@gothamista</span>
+                      <span className="text-luxury-gold text-sm">650K followers</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-300">@hangguk_kr</span>
+                      <span className="text-luxury-gold text-sm">450K followers</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-luxury-charcoal/30 border border-luxury-gold/20 rounded-lg p-6">
+                  <h4 className="text-luxury-gold font-medium mb-4">Recent Activity</h4>
+                  <div className="space-y-3 text-sm">
+                    <div className="text-gray-300">
+                      <span className="text-luxury-gold">@ponysmakeup</span> mentioned new Sulwhasoo essence
+                    </div>
+                    <div className="text-gray-300">
+                      <span className="text-luxury-gold">@jihyoo</span> featured glass skin routine
+                    </div>
+                    <div className="text-gray-300">
+                      <span className="text-luxury-gold">@ssin_makeup</span> reviewed Laneige products
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'ingredients' && (
+            <div className="bg-luxury-charcoal/20 rounded-xl p-8 border border-luxury-gold/20 backdrop-blur-sm">
+              <div className="text-center mb-6">
+                <Zap className="text-luxury-gold mx-auto mb-4" size={48} />
+                <h3 className="text-2xl font-semibold text-white mb-2 tracking-wide">
+                  Ingredient Intelligence
+                </h3>
+                <p className="text-gray-300 font-light">
+                  Discover emerging ingredients before they hit mainstream markets
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-luxury-charcoal/30 border border-luxury-gold/20 rounded-lg p-6">
+                  <h4 className="text-luxury-gold font-medium mb-4">Trending Ingredients</h4>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="text-white font-medium">Centella Asiatica</div>
+                        <div className="text-gray-400 text-sm">Anti-inflammatory powerhouse</div>
+                      </div>
+                      <div className="text-luxury-gold text-sm">↑ 320%</div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="text-white font-medium">Snail Secretion</div>
+                        <div className="text-gray-400 text-sm">Regenerative properties</div>
+                      </div>
+                      <div className="text-luxury-gold text-sm">↑ 285%</div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="text-white font-medium">Ginseng Extract</div>
+                        <div className="text-gray-400 text-sm">Anti-aging boost</div>
+                      </div>
+                      <div className="text-luxury-gold text-sm">↑ 240%</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-luxury-charcoal/30 border border-luxury-gold/20 rounded-lg p-6">
+                  <h4 className="text-luxury-gold font-medium mb-4">Emerging Discoveries</h4>
+                  <div className="space-y-4">
+                    <div className="border-l-2 border-luxury-gold/30 pl-4">
+                      <div className="text-white font-medium">Bakuchiol</div>
+                      <div className="text-gray-400 text-sm">Natural retinol alternative gaining momentum in Seoul beauty circles</div>
+                    </div>
+                    <div className="border-l-2 border-luxury-gold/30 pl-4">
+                      <div className="text-white font-medium">Fermented Rice Water</div>
+                      <div className="text-gray-400 text-sm">Traditional Korean brightening ingredient making a comeback</div>
+                    </div>
+                    <div className="border-l-2 border-luxury-gold/30 pl-4">
+                      <div className="text-white font-medium">Sea Buckthorn</div>
+                      <div className="text-gray-400 text-sm">Vitamin C powerhouse trending in K-beauty formulations</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'viral' && (
+            <div className="bg-luxury-charcoal/20 rounded-xl p-8 border border-luxury-gold/20 backdrop-blur-sm">
+              <div className="text-center mb-6">
+                <Globe className="text-luxury-gold mx-auto mb-4" size={48} />
+                <h3 className="text-2xl font-semibold text-white mb-2 tracking-wide">
+                  Viral Products Intelligence
+                </h3>
+                <p className="text-gray-300 font-light">
+                  Early access to products going viral in Korea before they hit international markets
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="bg-luxury-charcoal/30 border border-luxury-gold/20 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-luxury-gold font-medium">This Week's Viral</h4>
+                    <div className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded">HOT</div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-white font-medium">COSRX Snail 96 Mucin</div>
+                      <div className="text-gray-400 text-sm">2.3M views on TikTok</div>
+                      <div className="text-luxury-gold text-sm">↑ 1,240% mentions</div>
+                    </div>
+                    <div>
+                      <div className="text-white font-medium">Beauty of Joseon Glow Serum</div>
+                      <div className="text-gray-400 text-sm">1.8M Instagram posts</div>
+                      <div className="text-luxury-gold text-sm">↑ 980% mentions</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-luxury-charcoal/30 border border-luxury-gold/20 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-luxury-gold font-medium">Rising Fast</h4>
+                    <div className="text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded">TRENDING</div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="text-white font-medium">Torriden DIVE-IN Serum</div>
+                      <div className="text-gray-400 text-sm">Early Seoul adoption</div>
+                      <div className="text-luxury-gold text-sm">↑ 340% growth</div>
+                    </div>
+                    <div>
+                      <div className="text-white font-medium">Anua Heartleaf Toner</div>
+                      <div className="text-gray-400 text-sm">Influencer favorite</div>
+                      <div className="text-luxury-gold text-sm">↑ 280% growth</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-luxury-charcoal/30 border border-luxury-gold/20 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-luxury-gold font-medium">Watch List</h4>
+                    <div className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">MONITOR</div>
+                  </div>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <div className="text-white font-medium">Secret Korean launches</div>
+                      <div className="text-gray-400">Pre-viral detection active</div>
+                    </div>
+                    <div>
+                      <div className="text-white font-medium">Limited edition drops</div>
+                      <div className="text-gray-400">Early access monitoring</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           {activeTab === 'alerts' && (

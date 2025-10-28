@@ -34,42 +34,36 @@ function BaileyFeaturesContent() {
       name: 'Product Photo Scanner',
       icon: Camera,
       description: 'AI-powered ingredient analysis and cleanliness scoring',
-      color: 'from-blue-500 to-purple-500'
     },
     {
       id: 'routine-analyzer',
       name: 'Routine Analyzer',
       icon: BarChart3,
       description: 'Analyze product compatibility and layering order',
-      color: 'from-green-500 to-blue-500'
     },
     {
       id: 'barcode-scanner',
       name: 'Barcode Scanner',
       icon: Scan,
       description: 'In-store price comparison and duplicate detection',
-      color: 'from-orange-500 to-red-500'
     },
     {
       id: 'progress-tracking',
       name: 'Progress Tracking',
       icon: Calendar,
       description: 'Weekly skin analysis and improvement tracking',
-      color: 'from-teal-500 to-green-500'
     },
     {
       id: 'irritation-analysis',
       name: 'Irritation Analysis',
       icon: AlertTriangle,
       description: 'AI diagnosis of skin reactions and treatment plans',
-      color: 'from-red-500 to-pink-500'
     },
     {
       id: 'gradual-introduction',
       name: 'Gradual Introduction',
       icon: Zap,
       description: 'Week-by-week product introduction plans',
-      color: 'from-purple-500 to-pink-500'
     }
   ]
 
@@ -151,21 +145,21 @@ function BaileyFeaturesContent() {
             )}
 
             {uploadResult && (
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h3 className="text-xl font-semibold mb-4">Analysis Results</h3>
+              <div className="bg-black/60 rounded-lg border border-[#d4a574]/20 p-6">
+                <h3 className="text-xl font-light mb-4 text-[#d4a574]">Analysis Results</h3>
                 {uploadResult.error ? (
                   <p className="text-red-600">{uploadResult.error}</p>
                 ) : (
                   <div className="space-y-4">
                     {uploadResult.productName && (
                       <div>
-                        <h4 className="font-medium text-gray-800">Product Identified:</h4>
-                        <p className="text-gray-600">{uploadResult.productName}</p>
+                        <h4 className="font-medium text-white">Product Identified:</h4>
+                        <p className="text-gray-400">{uploadResult.productName}</p>
                       </div>
                     )}
                     {uploadResult.cleanlinessScore && (
                       <div>
-                        <h4 className="font-medium text-gray-800">Cleanliness Score:</h4>
+                        <h4 className="font-medium text-white">Cleanliness Score:</h4>
                         <div className="flex items-center space-x-2">
                           <div className="w-32 bg-gray-200 rounded-full h-3">
                             <div
@@ -179,8 +173,8 @@ function BaileyFeaturesContent() {
                     )}
                     {uploadResult.baileyAnalysis && (
                       <div>
-                        <h4 className="font-medium text-gray-800">Bailey's Analysis:</h4>
-                        <p className="text-gray-600">{uploadResult.baileyAnalysis}</p>
+                        <h4 className="font-medium text-white">Bailey's Analysis:</h4>
+                        <p className="text-gray-400">{uploadResult.baileyAnalysis}</p>
                       </div>
                     )}
                   </div>
@@ -194,19 +188,19 @@ function BaileyFeaturesContent() {
         return (
           <div className="space-y-8">
             <div className="text-center">
-              <div className="w-20 h-20 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-20 h-20 bg-[#d4a574]/10 border border-[#d4a574]/30 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <Scan className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">Barcode Scanner</h2>
-              <p className="text-gray-600 max-w-2xl mx-auto">
+              <h2 className="text-3xl font-light text-white mb-2">Barcode Scanner</h2>
+              <p className="text-gray-400 max-w-2xl mx-auto">
                 Scan product barcodes while shopping to compare prices across retailers,
                 check for duplicates in your collection, and get Bailey's buying advice.
               </p>
             </div>
 
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-xl font-semibold mb-4">Barcode Scanner</h3>
-              <p className="text-gray-600 mb-4">
+            <div className="bg-black/60 rounded-lg border border-[#d4a574]/20 p-6">
+              <h3 className="text-xl font-light mb-4 text-[#d4a574]">Barcode Scanner</h3>
+              <p className="text-gray-400 mb-4">
                 Barcode scanning feature is being prepared. Check back soon for in-store price comparison and duplicate detection.
               </p>
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
@@ -225,18 +219,18 @@ function BaileyFeaturesContent() {
               <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <BarChart3 className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">Routine Analyzer</h2>
-              <p className="text-gray-600 max-w-2xl mx-auto">
+              <h2 className="text-3xl font-light text-white mb-2">Routine Analyzer</h2>
+              <p className="text-gray-400 max-w-2xl mx-auto">
                 Upload photos of your current skincare routine to get comprehensive analysis
                 on product compatibility, layering order, and optimization suggestions.
               </p>
             </div>
 
-            <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-8">
+            <div className="bg-black/60 rounded-lg border-2 border-dashed border-[#d4a574]/30 p-8">
               <div className="text-center">
                 <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <label htmlFor="routine-upload" className="cursor-pointer">
-                  <span className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors inline-block">
+                  <span className="bg-[#d4a574] text-black px-6 py-3 rounded-lg hover:bg-[#d4a574]/90 transition-colors inline-block font-light">
                     Upload Routine Photos
                   </span>
                   <input
@@ -254,7 +248,7 @@ function BaileyFeaturesContent() {
                     }}
                   />
                 </label>
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-sm text-gray-400 mt-2">
                   Upload photos of all products in your current routine
                 </p>
               </div>
@@ -268,15 +262,15 @@ function BaileyFeaturesContent() {
             )}
 
             {uploadResult && (
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h3 className="text-xl font-semibold mb-4">Routine Analysis</h3>
+              <div className="bg-black/60 rounded-lg border border-[#d4a574]/20 p-6">
+                <h3 className="text-xl font-light mb-4 text-[#d4a574]">Routine Analysis</h3>
                 {uploadResult.error ? (
                   <p className="text-red-600">{uploadResult.error}</p>
                 ) : (
                   <div className="space-y-4">
                     {uploadResult.routineScore && (
                       <div>
-                        <h4 className="font-medium text-gray-800">Overall Routine Score:</h4>
+                        <h4 className="font-medium text-white">Overall Routine Score:</h4>
                         <div className="flex items-center space-x-2">
                           <div className="w-32 bg-gray-200 rounded-full h-3">
                             <div
@@ -290,8 +284,8 @@ function BaileyFeaturesContent() {
                     )}
                     {uploadResult.baileyAnalysis && (
                       <div>
-                        <h4 className="font-medium text-gray-800">Bailey's Routine Analysis:</h4>
-                        <p className="text-gray-600">{uploadResult.baileyAnalysis}</p>
+                        <h4 className="font-medium text-white">Bailey's Routine Analysis:</h4>
+                        <p className="text-gray-400">{uploadResult.baileyAnalysis}</p>
                       </div>
                     )}
                   </div>
@@ -305,21 +299,21 @@ function BaileyFeaturesContent() {
         return (
           <div className="space-y-8">
             <div className="text-center">
-              <div className="w-20 h-20 bg-gradient-to-r from-teal-500 to-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Calendar className="w-10 h-10 text-white" />
+              <div className="w-20 h-20 bg-[#d4a574]/10 border border-[#d4a574]/30 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-10 h-10 text-[#d4a574]" />
               </div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">Progress Tracking</h2>
-              <p className="text-gray-600 max-w-2xl mx-auto">
+              <h2 className="text-3xl font-light text-white mb-2">Progress Tracking</h2>
+              <p className="text-gray-400 max-w-2xl mx-auto">
                 Take weekly progress photos to track skin improvements, detect purging phases,
                 and get Bailey's analysis of your skincare journey.
               </p>
             </div>
 
-            <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-8">
+            <div className="bg-black/60 rounded-lg border-2 border-dashed border-[#d4a574]/30 p-8">
               <div className="text-center">
                 <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <label htmlFor="progress-upload" className="cursor-pointer">
-                  <span className="bg-teal-500 text-white px-6 py-3 rounded-lg hover:bg-teal-600 transition-colors inline-block">
+                  <span className="bg-[#d4a574] text-black px-6 py-3 rounded-lg hover:bg-[#d4a574]/90 transition-colors inline-block font-light">
                     Upload Progress Photo
                   </span>
                   <input
@@ -335,16 +329,16 @@ function BaileyFeaturesContent() {
                     }}
                   />
                 </label>
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-sm text-gray-400 mt-2">
                   Take a clear selfie in consistent lighting
                 </p>
               </div>
             </div>
 
             {uploading && (
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-6 text-center">
-                <div className="animate-spin w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-teal-700">Analyzing skin progress...</p>
+              <div className="bg-black/40 border border-[#d4a574]/20 rounded-lg p-6 text-center">
+                <div className="animate-spin w-8 h-8 border-4 border-[#d4a574] border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-[#d4a574]">Analyzing skin progress...</p>
               </div>
             )}
           </div>
@@ -354,21 +348,21 @@ function BaileyFeaturesContent() {
         return (
           <div className="space-y-8">
             <div className="text-center">
-              <div className="w-20 h-20 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="w-10 h-10 text-white" />
+              <div className="w-20 h-20 bg-[#d4a574]/10 border border-[#d4a574]/30 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-10 h-10 text-[#d4a574]" />
               </div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">Irritation Analysis</h2>
-              <p className="text-gray-600 max-w-2xl mx-auto">
+              <h2 className="text-3xl font-light text-white mb-2">Irritation Analysis</h2>
+              <p className="text-gray-400 max-w-2xl mx-auto">
                 Upload photos of skin irritation or reactions to get AI diagnosis,
                 identify potential causes, and receive Bailey's treatment recommendations.
               </p>
             </div>
 
-            <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-8">
+            <div className="bg-black/60 rounded-lg border-2 border-dashed border-[#d4a574]/30 p-8">
               <div className="text-center">
                 <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <label htmlFor="irritation-upload" className="cursor-pointer">
-                  <span className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors inline-block">
+                  <span className="bg-[#d4a574] text-black px-6 py-3 rounded-lg hover:bg-[#d4a574]/90 transition-colors inline-block font-light">
                     Upload Irritation Photo
                   </span>
                   <input
@@ -384,16 +378,16 @@ function BaileyFeaturesContent() {
                     }}
                   />
                 </label>
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-sm text-gray-400 mt-2">
                   Photo of the affected skin area in good lighting
                 </p>
               </div>
             </div>
 
             {uploading && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-                <div className="animate-spin w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-red-700">Analyzing skin irritation...</p>
+              <div className="bg-black/40 border border-[#d4a574]/20 rounded-lg p-6 text-center">
+                <div className="animate-spin w-8 h-8 border-4 border-[#d4a574] border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-[#d4a574]">Analyzing skin irritation...</p>
               </div>
             )}
           </div>
@@ -403,22 +397,22 @@ function BaileyFeaturesContent() {
         return (
           <div className="space-y-8">
             <div className="text-center">
-              <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Zap className="w-10 h-10 text-white" />
+              <div className="w-20 h-20 bg-[#d4a574]/10 border border-[#d4a574]/30 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <Zap className="w-10 h-10 text-[#d4a574]" />
               </div>
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">Gradual Introduction</h2>
-              <p className="text-gray-600 max-w-2xl mx-auto">
+              <h2 className="text-3xl font-light text-white mb-2">Gradual Introduction</h2>
+              <p className="text-gray-400 max-w-2xl mx-auto">
                 Get personalized week-by-week plans for safely introducing new products
                 to your routine, with purging predictions and Bailey's guidance.
               </p>
             </div>
 
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-xl font-semibold mb-4">Create Introduction Plan</h3>
-              <p className="text-gray-600 mb-4">
+            <div className="bg-black/60 rounded-lg border border-[#d4a574]/20 p-6">
+              <h3 className="text-xl font-light mb-4 text-[#d4a574]">Create Introduction Plan</h3>
+              <p className="text-gray-400 mb-4">
                 Complete your Bailey profile first to generate personalized introduction plans.
               </p>
-              <a href="/bailey-onboarding" className="bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 transition-colors inline-block">
+              <a href="/bailey-onboarding" className="bg-[#d4a574] text-black px-6 py-3 rounded-lg hover:bg-[#d4a574]/90 transition-colors inline-block font-light">
                 Complete Bailey Profile
               </a>
             </div>
@@ -429,11 +423,11 @@ function BaileyFeaturesContent() {
         return (
           <div className="space-y-8">
             <div className="text-center">
-              <div className="w-20 h-20 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <User className="w-10 h-10 text-white" />
+              <div className="w-20 h-20 bg-[#d4a574]/10 border border-[#d4a574]/30 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <User className="w-10 h-10 text-[#d4a574]" />
               </div>
-              <h1 className="text-4xl font-bold text-gray-800 mb-2">Bailey's AI Features</h1>
-              <p className="text-gray-600 max-w-2xl mx-auto">
+              <h1 className="text-4xl font-light text-white mb-2">Bailey's AI Features</h1>
+              <p className="text-gray-400 max-w-2xl mx-auto">
                 Your comprehensive skincare intelligence platform. Choose a feature below to get started with Bailey's personalized analysis.
               </p>
             </div>
@@ -445,25 +439,25 @@ function BaileyFeaturesContent() {
                   <div
                     key={feature.id}
                     onClick={() => setSelectedFeature(feature.id)}
-                    className="bg-white rounded-lg border border-gray-200 p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-105"
+                    className="bg-black/60 rounded-lg border border-[#d4a574]/20 p-6 cursor-pointer hover:shadow-lg transition-all hover:scale-105"
                   >
-                    <div className={`w-16 h-16 bg-gradient-to-r ${feature.color} rounded-full flex items-center justify-center mb-4`}>
-                      <IconComponent className="w-8 h-8 text-white" />
+                    <div className="w-16 h-16 bg-[#d4a574]/10 border border-[#d4a574]/30 rounded-lg flex items-center justify-center mb-4">
+                      <IconComponent className="w-8 h-8 text-[#d4a574]" />
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">{feature.name}</h3>
-                    <p className="text-gray-600 text-sm">{feature.description}</p>
+                    <h3 className="text-xl font-light text-white mb-2">{feature.name}</h3>
+                    <p className="text-gray-400 text-sm">{feature.description}</p>
                   </div>
                 )
               })}
             </div>
 
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200 p-6">
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Getting Started</h3>
-              <p className="text-gray-600 mb-4">
+            <div className="bg-black/40 border border-[#d4a574]/20 rounded-lg p-6">
+              <h3 className="text-xl font-light text-[#d4a574] mb-2">Getting Started</h3>
+              <p className="text-gray-400 mb-4">
                 For the most personalized experience, complete your comprehensive Bailey profile first.
                 This enables all features to provide tailored recommendations based on your unique skin needs.
               </p>
-              <a href="/bailey-onboarding" className="bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 transition-colors inline-block">
+              <a href="/bailey-onboarding" className="bg-[#d4a574] text-black px-6 py-3 rounded-lg hover:bg-[#d4a574]/90 transition-colors inline-block font-light">
                 Complete Bailey Profile
               </a>
             </div>
@@ -481,7 +475,7 @@ function BaileyFeaturesContent() {
           {selectedFeature !== 'overview' && (
             <button
               onClick={() => setSelectedFeature('overview')}
-              className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 mb-8 transition-colors"
+              className="flex items-center space-x-2 text-gray-400 hover:text-white mb-8 transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
               <span>Back to Features</span>
