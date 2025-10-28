@@ -101,11 +101,6 @@ export default function UnifiedDashboard() {
       {/* Tab Content */}
       <section className="py-12">
         <div className="max-w-7xl mx-auto px-8">
-          {/* Debug - show active tab */}
-          <div className="mb-4 text-center text-gray-400 text-sm">
-            Active Tab: {activeTab}
-          </div>
-
           {/* AI Beauty Advisor Tab */}
           {activeTab === 'advisor' && (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -162,8 +157,8 @@ export default function UnifiedDashboard() {
                 <p className="text-gray-400 mb-4">
                   Real-time analysis of trending products, ingredients, and techniques from Seoul
                 </p>
-                <a href="/intelligence/enhanced" className="text-[#d4a574] hover:text-[#d4a574]/80 transition-colors font-light">
-                  View Intelligence Dashboard →
+                <a href="/intelligence/enhanced#trends" className="text-[#d4a574] hover:text-[#d4a574]/80 transition-colors font-light">
+                  View Trending Analysis →
                 </a>
               </div>
 
@@ -172,7 +167,7 @@ export default function UnifiedDashboard() {
                 <p className="text-gray-400 mb-4">
                   Track what Korean beauty influencers are using and recommending
                 </p>
-                <a href="/intelligence/enhanced" className="text-[#d4a574] hover:text-[#d4a574]/80 transition-colors font-light">
+                <a href="/intelligence/enhanced#influencers" className="text-[#d4a574] hover:text-[#d4a574]/80 transition-colors font-light">
                   Monitor Influencers →
                 </a>
               </div>
@@ -182,7 +177,7 @@ export default function UnifiedDashboard() {
                 <p className="text-gray-400 mb-4">
                   Discover emerging ingredients before they hit mainstream markets
                 </p>
-                <a href="/intelligence/enhanced" className="text-[#d4a574] hover:text-[#d4a574]/80 transition-colors font-light">
+                <a href="/intelligence/enhanced#ingredients" className="text-[#d4a574] hover:text-[#d4a574]/80 transition-colors font-light">
                   Explore Ingredients →
                 </a>
               </div>
@@ -192,7 +187,7 @@ export default function UnifiedDashboard() {
                 <p className="text-gray-400 mb-4">
                   Early access to products going viral in Korea
                 </p>
-                <a href="/intelligence/enhanced" className="text-[#d4a574] hover:text-[#d4a574]/80 transition-colors font-light">
+                <a href="/intelligence/enhanced#viral" className="text-[#d4a574] hover:text-[#d4a574]/80 transition-colors font-light">
                   See Viral Products →
                 </a>
               </div>
