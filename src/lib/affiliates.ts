@@ -90,7 +90,7 @@ export async function generateAffiliateLink(
       direct_url: directUrl,
       commission_rate: program.commissionRate,
       is_active: true,
-    }])
+    }] as any)
     .select()
     .single()
 
