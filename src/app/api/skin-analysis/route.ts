@@ -200,8 +200,8 @@ export async function POST(request: Request) {
       recommendations
     }
 
-    // Store for continuous learning
-    await storeAnalysisForLearning(completeAnalysis, imageUrl)
+    // Store for continuous learning and progress tracking
+    await storeAnalysisForLearning(completeAnalysis, imageUrl, 'user_id_placeholder')
 
     return NextResponse.json(completeAnalysis)
 
@@ -220,16 +220,14 @@ export async function POST(request: Request) {
   }
 }
 
-// Store analysis for machine learning improvements
-async function storeAnalysisForLearning(analysis: any, imageUrl: string) {
+// Store analysis for machine learning improvements and progress tracking
+async function storeAnalysisForLearning(analysis: any, imageUrl: string, userId?: string) {
   try {
-    // Get or create user (using session for now, would use auth in production)
-    const sessionId = `session_${Date.now()}`
-
-    // Store in photo_skin_analyses table
+    // Store in photo_skin_analyses table with user ID for progress tracking
     const { data: storedAnalysis, error } = await supabase
       .from('photo_skin_analyses')
       .insert({
+        user_id: userId || null,
         photo_url: imageUrl,
         detected_skin_type: analysis.skinType,
         detected_skin_tone: analysis.skinTone,
@@ -237,10 +235,10 @@ async function storeAnalysisForLearning(analysis: any, imageUrl: string) {
         detected_concerns: analysis.concerns,
         acne_score: analysis.concernScores?.acne || 0,
         wrinkles_score: analysis.concernScores?.wrinkles || 0,
-        dark_spots_score: analysis.concernScores?.darkSpots || 0,
+        dark_spots_score: analysis.concernScores?.dark_spots || 0,
         dryness_score: analysis.concernScores?.dryness || 0,
         oiliness_score: analysis.concernScores?.oiliness || 0,
-        enlarged_pores_score: analysis.concernScores?.enlargedPores || 0,
+        enlarged_pores_score: analysis.concernScores?.enlarged_pores || 0,
         redness_score: analysis.concernScores?.redness || 0,
         dullness_score: analysis.concernScores?.dullness || 0,
         hydration_level: analysis.hydrationLevel,
@@ -250,22 +248,131 @@ async function storeAnalysisForLearning(analysis: any, imageUrl: string) {
         brightness_score: analysis.brightnessScore,
         analysis_confidence: analysis.aiConfidence,
         ai_model_version: 'claude-opus-4.1',
-        ai_detailed_analysis: JSON.stringify(analysis)
+        ai_detailed_analysis: JSON.stringify(analysis),
+        primary_recommendations: analysis.primaryRecommendations || [],
+        improvement_areas: analysis.detailedAnalysis ? [analysis.detailedAnalysis] : []
       })
       .select()
       .single()
 
     if (error) {
       console.error('Error storing analysis:', error)
-      return
+      return null
     }
 
     // Update aggregated insights for pattern learning
     await updateAggregatedInsights(analysis)
 
+    // Calculate progress if user has previous analyses
+    if (userId && userId !== 'user_id_placeholder') {
+      await calculateUserProgress(userId, storedAnalysis.id)
+    }
+
+    return storedAnalysis
+
   } catch (error) {
     console.error('Error in learning storage:', error)
+    return null
   }
+}
+
+// Calculate progress between analyses for premium users
+async function calculateUserProgress(userId: string, currentAnalysisId: string) {
+  try {
+    // Get user's previous analyses
+    const { data: previousAnalyses } = await supabase
+      .from('photo_skin_analyses')
+      .select('*')
+      .eq('user_id', userId)
+      .neq('id', currentAnalysisId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (!previousAnalyses || previousAnalyses.length === 0) {
+      // This is the user's first analysis - mark as baseline
+      await supabase
+        .from('photo_skin_analyses')
+        .update({ is_baseline: true })
+        .eq('id', currentAnalysisId)
+      return
+    }
+
+    const previousAnalysis = previousAnalyses[0]
+    const { data: currentAnalysis } = await supabase
+      .from('photo_skin_analyses')
+      .select('*')
+      .eq('id', currentAnalysisId)
+      .single()
+
+    if (!currentAnalysis) return
+
+    // Calculate improvement scores
+    const improvementMetrics = {
+      hydration_improvement: calculateImprovement(previousAnalysis.hydration_level, currentAnalysis.hydration_level),
+      acne_improvement: calculateImprovement(previousAnalysis.acne_score, currentAnalysis.acne_score, true), // Lower is better
+      brightness_improvement: calculateImprovement(previousAnalysis.brightness_score, currentAnalysis.brightness_score),
+      texture_improvement: calculateImprovement(previousAnalysis.texture_score, currentAnalysis.texture_score),
+      overall_improvement: 0
+    }
+
+    // Calculate overall improvement score
+    const improvements = Object.values(improvementMetrics).filter(score => score !== 0)
+    improvementMetrics.overall_improvement = improvements.length > 0
+      ? improvements.reduce((sum, score) => sum + score, 0) / improvements.length
+      : 0
+
+    // Update current analysis with progress data
+    await supabase
+      .from('photo_skin_analyses')
+      .update({
+        previous_analysis_id: previousAnalysis.id,
+        improvement_notes: generateProgressNotes(improvementMetrics)
+      })
+      .eq('id', currentAnalysisId)
+
+  } catch (error) {
+    console.error('Error calculating user progress:', error)
+  }
+}
+
+function calculateImprovement(previousScore: number, currentScore: number, lowerIsBetter = false): number {
+  if (!previousScore || !currentScore) return 0
+
+  const change = currentScore - previousScore
+  const percentChange = (change / previousScore) * 100
+
+  // For metrics where lower is better (like acne), invert the calculation
+  return lowerIsBetter ? -percentChange : percentChange
+}
+
+function generateProgressNotes(improvements: any): string {
+  const notes = []
+
+  if (improvements.hydration_improvement > 10) {
+    notes.push("🌟 Significant hydration improvement!")
+  } else if (improvements.hydration_improvement > 5) {
+    notes.push("💧 Hydration levels are improving")
+  }
+
+  if (improvements.acne_improvement > 15) {
+    notes.push("✨ Major acne reduction!")
+  } else if (improvements.acne_improvement > 5) {
+    notes.push("🎯 Acne concerns are decreasing")
+  }
+
+  if (improvements.brightness_improvement > 10) {
+    notes.push("☀️ Skin brightness is significantly improved!")
+  }
+
+  if (improvements.texture_improvement > 10) {
+    notes.push("🎨 Skin texture is much smoother!")
+  }
+
+  if (notes.length === 0) {
+    notes.push("📊 Continue your routine for best results")
+  }
+
+  return notes.join(" ")
 }
 
 // Update aggregated insights for better future predictions
