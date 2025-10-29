@@ -375,7 +375,7 @@ async function checkForDeals(userId: string) {
     .eq('is_active', true)
 
   // Generate personalized deal recommendations
-  const personalizedDeals = await generatePersonalizedDeals(profile, trackedProducts)
+  const personalizedDeals = await generatePersonalizedDeals(profile, trackedProducts || [])
 
   return NextResponse.json({
     personalizedDeals,
@@ -407,9 +407,9 @@ function generateMockPriceHistory(productId: string) {
   return history
 }
 
-function generatePersonalizedDeals(profile: any, trackedProducts: any[]) {
+function generatePersonalizedDeals(profile: any, trackedProducts: any[]): any[] {
   // Simulate AI-generated personalized deals based on skin profile
-  const deals = []
+  const deals: any[] = []
 
   if (profile?.skin_concerns?.includes('acne')) {
     deals.push({
