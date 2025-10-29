@@ -47,7 +47,8 @@ export default function GoalsSettings({ profile, onUpdate }: GoalsSettingsProps)
 
   const handleArrayChange = (field: string, value: string) => {
     const [parent, child] = field.split('.')
-    const currentArray = formData[parent as keyof typeof formData][child as keyof typeof formData.goals] as string[]
+    const parentObj = formData[parent as keyof typeof formData] as any
+    const currentArray = (parentObj[child] || []) as string[]
     const newArray = currentArray.includes(value)
       ? currentArray.filter(item => item !== value)
       : [...currentArray, value]
