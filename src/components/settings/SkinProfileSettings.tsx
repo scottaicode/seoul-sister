@@ -12,22 +12,22 @@ interface SkinProfileSettingsProps {
 export default function SkinProfileSettings({ profile, onUpdate }: SkinProfileSettingsProps) {
   const [formData, setFormData] = useState({
     skin: {
-      type: profile?.skin?.type || '',
-      tone: profile?.skin?.tone || '',
+      type: profile?.skin?.type || 'normal' as 'oily' | 'dry' | 'combination' | 'sensitive' | 'normal' | 'mature',
+      tone: profile?.skin?.tone || 'medium' as 'fair' | 'light' | 'medium' | 'olive' | 'tan' | 'deep',
       sensitivities: profile?.skin?.sensitivities || [],
       concerns: profile?.skin?.concerns || [],
-      currentCondition: profile?.skin?.currentCondition || ''
+      currentCondition: profile?.skin?.currentCondition || 'good' as 'excellent' | 'good' | 'fair' | 'poor'
     }
   })
 
   useEffect(() => {
     setFormData({
       skin: {
-        type: profile?.skin?.type || '',
-        tone: profile?.skin?.tone || '',
+        type: profile?.skin?.type || 'normal' as 'oily' | 'dry' | 'combination' | 'sensitive' | 'normal' | 'mature',
+        tone: profile?.skin?.tone || 'medium' as 'fair' | 'light' | 'medium' | 'olive' | 'tan' | 'deep',
         sensitivities: profile?.skin?.sensitivities || [],
         concerns: profile?.skin?.concerns || [],
-        currentCondition: profile?.skin?.currentCondition || ''
+        currentCondition: profile?.skin?.currentCondition || 'good' as 'excellent' | 'good' | 'fair' | 'poor'
       }
     })
   }, [profile])
@@ -36,9 +36,12 @@ export default function SkinProfileSettings({ profile, onUpdate }: SkinProfileSe
     setFormData(prev => {
       const updated = { ...prev }
       const [parent, child] = field.split('.')
-      updated[parent as keyof typeof updated] = {
-        ...(updated[parent as keyof typeof updated] as object),
-        [child]: value
+
+      if (parent === 'skin') {
+        updated.skin = {
+          ...updated.skin,
+          [child]: value
+        }
       }
       return updated
     })

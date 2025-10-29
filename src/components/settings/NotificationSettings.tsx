@@ -12,28 +12,28 @@ interface NotificationSettingsProps {
 export default function NotificationSettings({ profile, onUpdate }: NotificationSettingsProps) {
   const [formData, setFormData] = useState({
     notifications: {
-      emailUpdates: profile?.notifications?.emailUpdates || true,
-      productRecommendations: profile?.notifications?.productRecommendations || true,
-      routineReminders: profile?.notifications?.routineReminders || false,
-      progressCheckIns: profile?.notifications?.progressCheckIns || true,
-      newProductAlerts: profile?.notifications?.newProductAlerts || false,
-      saleNotifications: profile?.notifications?.saleNotifications || true,
-      weeklyTips: profile?.notifications?.weeklyTips || true,
-      frequency: profile?.notifications?.frequency || 'weekly'
+      emailUpdates: profile?.notifications?.emailUpdates ?? true as boolean,
+      productRecommendations: profile?.notifications?.productRecommendations ?? true as boolean,
+      routineReminders: profile?.notifications?.routineReminders ?? false as boolean,
+      progressCheckIns: profile?.notifications?.progressCheckIns ?? true as boolean,
+      newProductAlerts: profile?.notifications?.newProductAlerts ?? false as boolean,
+      saleNotifications: profile?.notifications?.saleNotifications ?? true as boolean,
+      weeklyTips: profile?.notifications?.weeklyTips ?? true as boolean,
+      frequency: profile?.notifications?.frequency || 'weekly' as 'daily' | 'weekly' | 'bi-weekly' | 'monthly' | 'minimal'
     }
   })
 
   useEffect(() => {
     setFormData({
       notifications: {
-        emailUpdates: profile?.notifications?.emailUpdates ?? true,
-        productRecommendations: profile?.notifications?.productRecommendations ?? true,
-        routineReminders: profile?.notifications?.routineReminders ?? false,
-        progressCheckIns: profile?.notifications?.progressCheckIns ?? true,
-        newProductAlerts: profile?.notifications?.newProductAlerts ?? false,
-        saleNotifications: profile?.notifications?.saleNotifications ?? true,
-        weeklyTips: profile?.notifications?.weeklyTips ?? true,
-        frequency: profile?.notifications?.frequency || 'weekly'
+        emailUpdates: profile?.notifications?.emailUpdates ?? true as boolean,
+        productRecommendations: profile?.notifications?.productRecommendations ?? true as boolean,
+        routineReminders: profile?.notifications?.routineReminders ?? false as boolean,
+        progressCheckIns: profile?.notifications?.progressCheckIns ?? true as boolean,
+        newProductAlerts: profile?.notifications?.newProductAlerts ?? false as boolean,
+        saleNotifications: profile?.notifications?.saleNotifications ?? true as boolean,
+        weeklyTips: profile?.notifications?.weeklyTips ?? true as boolean,
+        frequency: profile?.notifications?.frequency || 'weekly' as 'daily' | 'weekly' | 'bi-weekly' | 'monthly' | 'minimal'
       }
     })
   }, [profile])
@@ -42,9 +42,12 @@ export default function NotificationSettings({ profile, onUpdate }: Notification
     setFormData(prev => {
       const updated = { ...prev }
       const [parent, child] = field.split('.')
-      updated[parent as keyof typeof updated] = {
-        ...(updated[parent as keyof typeof updated] as object),
-        [child]: value
+
+      if (parent === 'notifications') {
+        updated.notifications = {
+          ...updated.notifications,
+          [child]: value
+        }
       }
       return updated
     })

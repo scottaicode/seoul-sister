@@ -13,11 +13,12 @@ export default function MedicalSettings({ profile, onUpdate }: MedicalSettingsPr
   const [formData, setFormData] = useState({
     medical: {
       currentMedications: profile?.medical?.currentMedications || [],
-      medicalConditions: profile?.medical?.medicalConditions || [],
+      skinMedications: profile?.medical?.skinMedications || [],
       allergies: profile?.medical?.allergies || [],
-      isPregnant: profile?.medical?.isPregnant || false,
-      isBreastfeeding: profile?.medical?.isBreastfeeding || false,
-      hormonalChanges: profile?.medical?.hormonalChanges || ''
+      allergiesText: profile?.medical?.allergiesText || '',
+      medicalConditions: profile?.medical?.medicalConditions || [],
+      hormoneStatus: profile?.medical?.hormoneStatus || 'regular' as 'regular' | 'irregular' | 'pregnancy' | 'menopause' | 'birth-control',
+      lastDermatologistVisit: profile?.medical?.lastDermatologistVisit || undefined
     }
   })
 
@@ -29,11 +30,12 @@ export default function MedicalSettings({ profile, onUpdate }: MedicalSettingsPr
     setFormData({
       medical: {
         currentMedications: profile?.medical?.currentMedications || [],
-        medicalConditions: profile?.medical?.medicalConditions || [],
+        skinMedications: profile?.medical?.skinMedications || [],
         allergies: profile?.medical?.allergies || [],
-        isPregnant: profile?.medical?.isPregnant || false,
-        isBreastfeeding: profile?.medical?.isBreastfeeding || false,
-        hormonalChanges: profile?.medical?.hormonalChanges || ''
+        allergiesText: profile?.medical?.allergiesText || '',
+        medicalConditions: profile?.medical?.medicalConditions || [],
+        hormoneStatus: profile?.medical?.hormoneStatus || 'regular' as 'regular' | 'irregular' | 'pregnancy' | 'menopause' | 'birth-control',
+        lastDermatologistVisit: profile?.medical?.lastDermatologistVisit || undefined
       }
     })
   }, [profile])
@@ -42,9 +44,12 @@ export default function MedicalSettings({ profile, onUpdate }: MedicalSettingsPr
     setFormData(prev => {
       const updated = { ...prev }
       const [parent, child] = field.split('.')
-      updated[parent as keyof typeof updated] = {
-        ...(updated[parent as keyof typeof updated] as object),
-        [child]: value
+
+      if (parent === 'medical') {
+        updated.medical = {
+          ...updated.medical,
+          [child]: value
+        }
       }
       return updated
     })
@@ -66,10 +71,6 @@ export default function MedicalSettings({ profile, onUpdate }: MedicalSettingsPr
     const newArray = currentArray.filter((_, i) => i !== index)
     handleInputChange(`medical.${field}`, newArray)
   }
-
-  const hormonalChangeOptions = [
-    'none', 'menstrual-cycle', 'menopause', 'pcos', 'thyroid-issues', 'other'
-  ]
 
   const commonMedications = [
     'Birth Control Pills', 'Accutane/Isotretinoin', 'Antibiotics', 'Retinoids (Prescription)',
@@ -105,28 +106,29 @@ export default function MedicalSettings({ profile, onUpdate }: MedicalSettingsPr
       <div className="bg-black/40 border border-[#d4a574]/20 rounded-lg p-6">
         <h3 className="text-lg font-medium text-[#d4a574] mb-4 flex items-center">
           <Stethoscope className="w-5 h-5 mr-2" />
-          Pregnancy & Breastfeeding
+          Hormonal Status
         </h3>
         <div className="space-y-4">
-          <label className="flex items-center space-x-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.medical.isPregnant}
-              onChange={(e) => handleInputChange('medical.isPregnant', e.target.checked)}
-              className="rounded border-gray-600 text-[#d4a574] focus:ring-[#d4a574] focus:ring-offset-0"
-            />
-            <span className="text-gray-300">Currently pregnant</span>
-          </label>
-          <label className="flex items-center space-x-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.medical.isBreastfeeding}
-              onChange={(e) => handleInputChange('medical.isBreastfeeding', e.target.checked)}
-              className="rounded border-gray-600 text-[#d4a574] focus:ring-[#d4a574] focus:ring-offset-0"
-            />
-            <span className="text-gray-300">Currently breastfeeding</span>
-          </label>
-          {(formData.medical.isPregnant || formData.medical.isBreastfeeding) && (
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Hormone Status
+            </label>
+            <select
+              value={formData.medical.hormoneStatus}
+              onChange={(e) => handleInputChange('medical.hormoneStatus', e.target.value)}
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574] focus:border-[#d4a574] transition-colors"
+            >
+              <option value="regular">Regular cycles</option>
+              <option value="irregular">Irregular cycles</option>
+              <option value="pregnancy">Pregnancy</option>
+              <option value="menopause">Menopause</option>
+              <option value="birth-control">Birth control</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Hormonal changes significantly affect skin condition
+            </p>
+          </div>
+          {(formData.medical.hormoneStatus === 'pregnancy' || formData.medical.hormoneStatus === 'menopause') && (
             <p className="text-sm text-yellow-400 bg-yellow-400/10 border border-yellow-400/20 rounded p-3">
               Bailey will exclude pregnancy-unsafe ingredients like retinoids and certain acids
             </p>
@@ -134,32 +136,6 @@ export default function MedicalSettings({ profile, onUpdate }: MedicalSettingsPr
         </div>
       </div>
 
-      {/* Hormonal Changes */}
-      <div className="bg-black/40 border border-[#d4a574]/20 rounded-lg p-6">
-        <h3 className="text-lg font-medium text-[#d4a574] mb-4">Hormonal Changes</h3>
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Current Hormonal Status
-          </label>
-          <select
-            value={formData.medical.hormonalChanges}
-            onChange={(e) => handleInputChange('medical.hormonalChanges', e.target.value)}
-            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574] focus:border-[#d4a574] transition-colors"
-          >
-            <option value="">Select if applicable</option>
-            {hormonalChangeOptions.map(option => (
-              <option key={option} value={option}>
-                {option.split('-').map(word =>
-                  word.charAt(0).toUpperCase() + word.slice(1)
-                ).join(' ')}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-gray-500 mt-1">
-            Hormonal changes can significantly affect skin behavior
-          </p>
-        </div>
-      </div>
 
       {/* Current Medications */}
       <div className="bg-black/40 border border-[#d4a574]/20 rounded-lg p-6">
@@ -327,7 +303,7 @@ export default function MedicalSettings({ profile, onUpdate }: MedicalSettingsPr
       </div>
 
       {/* AI Safety Insights */}
-      {(formData.medical.currentMedications.length > 0 || formData.medical.isPregnant || formData.medical.allergies.length > 0) && (
+      {(formData.medical.currentMedications.length > 0 || formData.medical.hormoneStatus === 'pregnancy' || formData.medical.allergies.length > 0) && (
         <div className="bg-[#d4a574]/5 border border-[#d4a574]/20 rounded-lg p-6">
           <h3 className="text-lg font-medium text-[#d4a574] mb-4">Bailey's Safety Analysis</h3>
           <div className="space-y-3 text-sm">
@@ -342,7 +318,7 @@ export default function MedicalSettings({ profile, onUpdate }: MedicalSettingsPr
                 </p>
               </div>
             )}
-            {(formData.medical.isPregnant || formData.medical.isBreastfeeding) && (
+            {(formData.medical.hormoneStatus === 'pregnancy') && (
               <div className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-yellow-400 rounded-full mt-2"></div>
                 <p className="text-gray-300">

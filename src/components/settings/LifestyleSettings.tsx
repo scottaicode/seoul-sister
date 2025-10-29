@@ -12,26 +12,48 @@ interface LifestyleSettingsProps {
 export default function LifestyleSettings({ profile, onUpdate }: LifestyleSettingsProps) {
   const [formData, setFormData] = useState({
     lifestyle: {
-      exerciseFrequency: profile?.lifestyle?.exerciseFrequency || '',
-      sleepDuration: profile?.lifestyle?.sleepDuration || '',
-      stressLevel: profile?.lifestyle?.stressLevel || '',
-      waterIntake: profile?.lifestyle?.waterIntake || '',
-      dietType: profile?.lifestyle?.dietType || '',
-      smokingStatus: profile?.lifestyle?.smokingStatus || '',
-      alcoholConsumption: profile?.lifestyle?.alcoholConsumption || ''
+      exerciseFrequency: profile?.lifestyle?.exerciseFrequency || 'sedentary' as 'sedentary' | '1-2x/week' | '3-4x/week' | 'daily',
+      exerciseType: profile?.lifestyle?.exerciseType || [],
+      sleepHours: profile?.lifestyle?.sleepHours || 7,
+      sleepQuality: profile?.lifestyle?.sleepQuality || 'good' as 'poor' | 'fair' | 'good' | 'excellent',
+      stressLevel: profile?.lifestyle?.stressLevel || 'moderate' as 'low' | 'moderate' | 'high' | 'very-high',
+      waterIntake: profile?.lifestyle?.waterIntake || 'moderate' as 'insufficient' | 'moderate' | 'adequate' | 'excellent',
+      smokingStatus: profile?.lifestyle?.smokingStatus || 'never' as 'never' | 'former' | 'occasional' | 'regular',
+      alcoholConsumption: profile?.lifestyle?.alcoholConsumption || 'none' as 'none' | 'occasional' | 'moderate' | 'frequent',
+      diet: {
+        type: profile?.lifestyle?.diet?.type || 'standard' as 'standard' | 'vegetarian' | 'vegan' | 'keto' | 'paleo' | 'other',
+        dairyConsumption: profile?.lifestyle?.diet?.dairyConsumption || false,
+        sugarIntake: profile?.lifestyle?.diet?.sugarIntake || 'moderate' as 'low' | 'moderate' | 'high',
+        processedFoods: profile?.lifestyle?.diet?.processedFoods || 'sometimes' as 'rarely' | 'sometimes' | 'often'
+      },
+      sunExposure: profile?.lifestyle?.sunExposure || 'moderate' as 'minimal' | 'moderate' | 'high',
+      screenTime: profile?.lifestyle?.screenTime || 8,
+      occupation: profile?.lifestyle?.occupation || '',
+      outdoorTime: profile?.lifestyle?.outdoorTime || 1
     }
   })
 
   useEffect(() => {
     setFormData({
       lifestyle: {
-        exerciseFrequency: profile?.lifestyle?.exerciseFrequency || '',
-        sleepDuration: profile?.lifestyle?.sleepDuration || '',
-        stressLevel: profile?.lifestyle?.stressLevel || '',
-        waterIntake: profile?.lifestyle?.waterIntake || '',
-        dietType: profile?.lifestyle?.dietType || '',
-        smokingStatus: profile?.lifestyle?.smokingStatus || '',
-        alcoholConsumption: profile?.lifestyle?.alcoholConsumption || ''
+        exerciseFrequency: profile?.lifestyle?.exerciseFrequency || 'sedentary' as 'sedentary' | '1-2x/week' | '3-4x/week' | 'daily',
+        exerciseType: profile?.lifestyle?.exerciseType || [],
+        sleepHours: profile?.lifestyle?.sleepHours || 7,
+        sleepQuality: profile?.lifestyle?.sleepQuality || 'good' as 'poor' | 'fair' | 'good' | 'excellent',
+        stressLevel: profile?.lifestyle?.stressLevel || 'moderate' as 'low' | 'moderate' | 'high' | 'very-high',
+        waterIntake: profile?.lifestyle?.waterIntake || 'moderate' as 'insufficient' | 'moderate' | 'adequate' | 'excellent',
+        smokingStatus: profile?.lifestyle?.smokingStatus || 'never' as 'never' | 'former' | 'occasional' | 'regular',
+        alcoholConsumption: profile?.lifestyle?.alcoholConsumption || 'none' as 'none' | 'occasional' | 'moderate' | 'frequent',
+        diet: {
+          type: profile?.lifestyle?.diet?.type || 'standard' as 'standard' | 'vegetarian' | 'vegan' | 'keto' | 'paleo' | 'other',
+          dairyConsumption: profile?.lifestyle?.diet?.dairyConsumption || false,
+          sugarIntake: profile?.lifestyle?.diet?.sugarIntake || 'moderate' as 'low' | 'moderate' | 'high',
+          processedFoods: profile?.lifestyle?.diet?.processedFoods || 'sometimes' as 'rarely' | 'sometimes' | 'often'
+        },
+        sunExposure: profile?.lifestyle?.sunExposure || 'moderate' as 'minimal' | 'moderate' | 'high',
+        screenTime: profile?.lifestyle?.screenTime || 8,
+        occupation: profile?.lifestyle?.occupation || '',
+        outdoorTime: profile?.lifestyle?.outdoorTime || 1
       }
     })
   }, [profile])
@@ -39,10 +61,21 @@ export default function LifestyleSettings({ profile, onUpdate }: LifestyleSettin
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => {
       const updated = { ...prev }
-      const [parent, child] = field.split('.')
-      updated[parent as keyof typeof updated] = {
-        ...(updated[parent as keyof typeof updated] as object),
-        [child]: value
+      const parts = field.split('.')
+
+      if (parts[0] === 'lifestyle' && parts.length === 2) {
+        updated.lifestyle = {
+          ...updated.lifestyle,
+          [parts[1]]: value
+        }
+      } else if (parts[0] === 'lifestyle' && parts[1] === 'diet' && parts.length === 3) {
+        updated.lifestyle = {
+          ...updated.lifestyle,
+          diet: {
+            ...updated.lifestyle.diet,
+            [parts[2]]: value
+          }
+        }
       }
       return updated
     })
@@ -50,23 +83,23 @@ export default function LifestyleSettings({ profile, onUpdate }: LifestyleSettin
   }
 
   const exerciseOptions = [
-    'none', 'light', 'moderate', 'intense', 'athlete-level'
+    'sedentary', '1-2x/week', '3-4x/week', 'daily'
   ]
 
-  const sleepOptions = [
-    'less-than-5', '5-6', '6-7', '7-8', '8-9', 'more-than-9'
+  const sleepQualityOptions = [
+    'poor', 'fair', 'good', 'excellent'
   ]
 
   const stressLevels = [
-    'very-low', 'low', 'moderate', 'high', 'very-high'
+    'low', 'moderate', 'high', 'very-high'
   ]
 
   const waterIntakeOptions = [
-    'insufficient', 'adequate', 'excellent'
+    'insufficient', 'moderate', 'adequate', 'excellent'
   ]
 
   const dietTypes = [
-    'standard', 'vegetarian', 'vegan', 'keto', 'mediterranean', 'low-carb', 'high-protein'
+    'standard', 'vegetarian', 'vegan', 'keto', 'paleo', 'other'
   ]
 
   const smokingOptions = [
@@ -74,7 +107,7 @@ export default function LifestyleSettings({ profile, onUpdate }: LifestyleSettin
   ]
 
   const alcoholOptions = [
-    'never', 'rarely', 'social', 'moderate', 'frequent'
+    'none', 'occasional', 'moderate', 'frequent'
   ]
 
   return (
@@ -105,9 +138,10 @@ export default function LifestyleSettings({ profile, onUpdate }: LifestyleSettin
               <option value="">Select exercise frequency</option>
               {exerciseOptions.map(option => (
                 <option key={option} value={option}>
-                  {option.split('-').map(word =>
-                    word.charAt(0).toUpperCase() + word.slice(1)
-                  ).join(' ')}
+                  {option === 'sedentary' ? 'Sedentary (minimal exercise)' :
+                   option === '1-2x/week' ? '1-2 times per week' :
+                   option === '3-4x/week' ? '3-4 times per week' :
+                   option === 'daily' ? 'Daily exercise' : option}
                 </option>
               ))}
             </select>
@@ -117,24 +151,40 @@ export default function LifestyleSettings({ profile, onUpdate }: LifestyleSettin
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Sleep Duration (hours per night)
+              Sleep Hours (per night)
             </label>
-            <select
-              value={formData.lifestyle.sleepDuration}
-              onChange={(e) => handleInputChange('lifestyle.sleepDuration', e.target.value)}
+            <input
+              type="number"
+              min="4"
+              max="12"
+              value={formData.lifestyle.sleepHours}
+              onChange={(e) => handleInputChange('lifestyle.sleepHours', parseInt(e.target.value))}
               className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574] focus:border-[#d4a574] transition-colors"
-            >
-              <option value="">Select sleep duration</option>
-              {sleepOptions.map(option => (
-                <option key={option} value={option}>
-                  {option.replace('-', ' to ').replace('than-', 'than ')} hours
-                </option>
-              ))}
-            </select>
+            />
             <p className="text-xs text-gray-500 mt-1">
-              Sleep quality affects skin regeneration and appearance
+              Adequate sleep (7-9 hours) is crucial for skin repair
             </p>
           </div>
+        </div>
+        <div className="mt-6">
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Sleep Quality
+          </label>
+          <select
+            value={formData.lifestyle.sleepQuality}
+            onChange={(e) => handleInputChange('lifestyle.sleepQuality', e.target.value)}
+            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574] focus:border-[#d4a574] transition-colors"
+          >
+            <option value="">Select sleep quality</option>
+            {sleepQualityOptions.map(option => (
+              <option key={option} value={option}>
+                {option.charAt(0).toUpperCase() + option.slice(1)}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            Sleep quality affects skin regeneration and appearance
+          </p>
         </div>
       </div>
 
@@ -157,9 +207,8 @@ export default function LifestyleSettings({ profile, onUpdate }: LifestyleSettin
               <option value="">Select stress level</option>
               {stressLevels.map(level => (
                 <option key={level} value={level}>
-                  {level.split('-').map(word =>
-                    word.charAt(0).toUpperCase() + word.slice(1)
-                  ).join(' ')}
+                  {level === 'very-high' ? 'Very High' :
+                   level.charAt(0).toUpperCase() + level.slice(1)}
                 </option>
               ))}
             </select>
@@ -181,7 +230,8 @@ export default function LifestyleSettings({ profile, onUpdate }: LifestyleSettin
                 <option key={option} value={option}>
                   {option.charAt(0).toUpperCase() + option.slice(1)} (
                   {option === 'insufficient' && 'less than 6 glasses'}
-                  {option === 'adequate' && '6-8 glasses'}
+                  {option === 'moderate' && '6-7 glasses'}
+                  {option === 'adequate' && '8 glasses'}
                   {option === 'excellent' && 'more than 8 glasses'}
                   )
                 </option>
@@ -205,16 +255,14 @@ export default function LifestyleSettings({ profile, onUpdate }: LifestyleSettin
             Primary Diet Type
           </label>
           <select
-            value={formData.lifestyle.dietType}
-            onChange={(e) => handleInputChange('lifestyle.dietType', e.target.value)}
+            value={formData.lifestyle.diet.type}
+            onChange={(e) => handleInputChange('lifestyle.diet.type', e.target.value)}
             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574] focus:border-[#d4a574] transition-colors"
           >
             <option value="">Select diet type</option>
             {dietTypes.map(diet => (
               <option key={diet} value={diet}>
-                {diet.split('-').map(word =>
-                  word.charAt(0).toUpperCase() + word.slice(1)
-                ).join(' ')}
+                {diet.charAt(0).toUpperCase() + diet.slice(1)}
               </option>
             ))}
           </select>
@@ -263,7 +311,10 @@ export default function LifestyleSettings({ profile, onUpdate }: LifestyleSettin
               <option value="">Select alcohol consumption</option>
               {alcoholOptions.map(option => (
                 <option key={option} value={option}>
-                  {option.charAt(0).toUpperCase() + option.slice(1)}
+                  {option === 'none' ? 'None' :
+                   option === 'occasional' ? 'Occasional (1-2 drinks/week)' :
+                   option === 'moderate' ? 'Moderate (3-7 drinks/week)' :
+                   option === 'frequent' ? 'Frequent (8+ drinks/week)' : option}
                 </option>
               ))}
             </select>
@@ -306,12 +357,12 @@ export default function LifestyleSettings({ profile, onUpdate }: LifestyleSettin
                 </p>
               </div>
             ) : null}
-            {formData.lifestyle.exerciseFrequency === 'intense' || formData.lifestyle.exerciseFrequency === 'athlete-level' ? (
+            {formData.lifestyle.exerciseFrequency === 'daily' ? (
               <div className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-[#d4a574] rounded-full mt-2"></div>
                 <p className="text-gray-300">
                   <span className="text-[#d4a574] font-medium">Active Lifestyle:</span>
-                  Frequent exercise requires gentle, non-comedogenic products that won't clog pores during sweating.
+                  Daily exercise requires gentle, non-comedogenic products that won't clog pores during sweating.
                 </p>
               </div>
             ) : null}

@@ -12,7 +12,7 @@ interface PreferencesSettingsProps {
 export default function PreferencesSettings({ profile, onUpdate }: PreferencesSettingsProps) {
   const [formData, setFormData] = useState({
     preferences: {
-      budgetRange: profile?.preferences?.budgetRange || '',
+      budgetRange: profile?.preferences?.budgetRange || 'mid-range' as 'budget' | 'mid-range' | 'luxury' | 'ultra-luxury' | 'no-limit',
       preferClean: profile?.preferences?.preferClean || false,
       preferKBeauty: profile?.preferences?.preferKBeauty || false,
       preferFragranceFree: profile?.preferences?.preferFragranceFree || false,
@@ -27,7 +27,7 @@ export default function PreferencesSettings({ profile, onUpdate }: PreferencesSe
   useEffect(() => {
     setFormData({
       preferences: {
-        budgetRange: profile?.preferences?.budgetRange || '',
+        budgetRange: profile?.preferences?.budgetRange || 'mid-range' as 'budget' | 'mid-range' | 'luxury' | 'ultra-luxury' | 'no-limit',
         preferClean: profile?.preferences?.preferClean || false,
         preferKBeauty: profile?.preferences?.preferKBeauty || false,
         preferFragranceFree: profile?.preferences?.preferFragranceFree || false,
@@ -42,9 +42,12 @@ export default function PreferencesSettings({ profile, onUpdate }: PreferencesSe
     setFormData(prev => {
       const updated = { ...prev }
       const [parent, child] = field.split('.')
-      updated[parent as keyof typeof updated] = {
-        ...(updated[parent as keyof typeof updated] as object),
-        [child]: value
+
+      if (parent === 'preferences') {
+        updated.preferences = {
+          ...updated.preferences,
+          [child]: value
+        }
       }
       return updated
     })

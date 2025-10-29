@@ -55,7 +55,7 @@ export interface BaileyUserProfile {
 
   // Skin Profile
   skin: {
-    type: 'oily' | 'dry' | 'combination' | 'sensitive' | 'normal'
+    type: 'oily' | 'dry' | 'combination' | 'sensitive' | 'normal' | 'mature'
     tone: 'fair' | 'light' | 'medium' | 'olive' | 'tan' | 'deep'
     undertone?: 'cool' | 'warm' | 'neutral'
     concerns: string[] // From Bailey's list
@@ -74,7 +74,7 @@ export interface BaileyUserProfile {
 
   // Preferences
   preferences: {
-    budgetRange: 'budget' | 'mid-range' | 'luxury' | 'no-limit'
+    budgetRange: 'budget' | 'mid-range' | 'luxury' | 'ultra-luxury' | 'no-limit'
     monthlyBudget?: number
     preferClean: boolean
     preferKBeauty: boolean
@@ -96,6 +96,18 @@ export interface BaileyUserProfile {
       analysis?: any
       imageUrl?: string
     }[]
+  }
+
+  // Notification Preferences
+  notifications?: {
+    emailUpdates: boolean
+    productRecommendations: boolean
+    routineReminders: boolean
+    progressCheckIns: boolean
+    newProductAlerts: boolean
+    saleNotifications: boolean
+    weeklyTips: boolean
+    frequency: 'daily' | 'weekly' | 'bi-weekly' | 'monthly' | 'minimal'
   }
 }
 

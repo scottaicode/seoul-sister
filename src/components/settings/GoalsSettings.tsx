@@ -14,8 +14,8 @@ export default function GoalsSettings({ profile, onUpdate }: GoalsSettingsProps)
     goals: {
       primary: profile?.goals?.primary || '',
       secondary: profile?.goals?.secondary || [],
-      timeline: profile?.goals?.timeline || '',
-      commitment: profile?.goals?.commitment || '',
+      timeline: profile?.goals?.timeline || '3-months' as '1-month' | '3-months' | '6-months' | '1-year',
+      commitment: profile?.goals?.commitment || 'moderate' as 'minimal' | 'moderate' | 'dedicated',
       willingToInvest: profile?.goals?.willingToInvest || false
     }
   })
@@ -25,8 +25,8 @@ export default function GoalsSettings({ profile, onUpdate }: GoalsSettingsProps)
       goals: {
         primary: profile?.goals?.primary || '',
         secondary: profile?.goals?.secondary || [],
-        timeline: profile?.goals?.timeline || '',
-        commitment: profile?.goals?.commitment || '',
+        timeline: profile?.goals?.timeline || '3-months' as '1-month' | '3-months' | '6-months' | '1-year',
+        commitment: profile?.goals?.commitment || 'moderate' as 'minimal' | 'moderate' | 'dedicated',
         willingToInvest: profile?.goals?.willingToInvest || false
       }
     })
@@ -36,9 +36,17 @@ export default function GoalsSettings({ profile, onUpdate }: GoalsSettingsProps)
     setFormData(prev => {
       const updated = { ...prev }
       const [parent, child] = field.split('.')
-      updated[parent as keyof typeof updated] = {
-        ...(updated[parent as keyof typeof updated] as object),
-        [child]: value
+
+      if (parent === 'goals') {
+        updated.goals = {
+          ...updated.goals,
+          [child]: value
+        }
+      } else {
+        (updated as any)[parent] = {
+          ...(updated as any)[parent],
+          [child]: value
+        }
       }
       return updated
     })
@@ -47,13 +55,15 @@ export default function GoalsSettings({ profile, onUpdate }: GoalsSettingsProps)
 
   const handleArrayChange = (field: string, value: string) => {
     const [parent, child] = field.split('.')
-    const parentObj = formData[parent as keyof typeof formData] as any
-    const currentArray = (parentObj[child] || []) as string[]
-    const newArray = currentArray.includes(value)
-      ? currentArray.filter(item => item !== value)
-      : [...currentArray, value]
 
-    handleInputChange(field, newArray)
+    if (parent === 'goals' && child === 'secondary') {
+      const currentArray = formData.goals.secondary || []
+      const newArray = currentArray.includes(value)
+        ? currentArray.filter(item => item !== value)
+        : [...currentArray, value]
+
+      handleInputChange(field, newArray)
+    }
   }
 
   const primaryGoals = [
@@ -68,11 +78,11 @@ export default function GoalsSettings({ profile, onUpdate }: GoalsSettingsProps)
   ]
 
   const timelines = [
-    '1-month', '3-months', '6-months', '12-months', 'long-term'
+    '1-month', '3-months', '6-months', '1-year'
   ]
 
   const commitmentLevels = [
-    'minimal', 'moderate', 'dedicated', 'enthusiast'
+    'minimal', 'moderate', 'dedicated'
   ]
 
   return (
@@ -161,12 +171,11 @@ export default function GoalsSettings({ profile, onUpdate }: GoalsSettingsProps)
               <option value="">Select timeline</option>
               {timelines.map(timeline => (
                 <option key={timeline} value={timeline}>
-                  {timeline.replace('-', ' ').replace('term', ' term')}
+                  {timeline.replace('-', ' ')}
                   {timeline === '1-month' && ' (quick improvements)'}
                   {timeline === '3-months' && ' (noticeable changes)'}
                   {timeline === '6-months' && ' (significant transformation)'}
-                  {timeline === '12-months' && ' (complete skin renewal)'}
-                  {timeline === 'long-term' && ' (ongoing maintenance)'}
+                  {timeline === '1-year' && ' (complete skin renewal)'}
                 </option>
               ))}
             </select>
@@ -189,8 +198,7 @@ export default function GoalsSettings({ profile, onUpdate }: GoalsSettingsProps)
                   {level.charAt(0).toUpperCase() + level.slice(1)}
                   {level === 'minimal' && ' (2-3 steps, 5 min/day)'}
                   {level === 'moderate' && ' (4-5 steps, 10 min/day)'}
-                  {level === 'dedicated' && ' (6-8 steps, 15 min/day)'}
-                  {level === 'enthusiast' && ' (10+ steps, 20+ min/day)'}
+                  {level === 'dedicated' && ' (6+ steps, 15+ min/day)'}
                 </option>
               ))}
             </select>
@@ -267,8 +275,7 @@ export default function GoalsSettings({ profile, onUpdate }: GoalsSettingsProps)
                 <span className="text-[#d4a574] font-medium">Routine Complexity:</span>
                 {formData.goals.commitment === 'minimal' && ' Simple 3-step routine focusing on essentials only'}
                 {formData.goals.commitment === 'moderate' && ' Balanced 5-step routine with targeted treatments'}
-                {formData.goals.commitment === 'dedicated' && ' Comprehensive routine with specialized products'}
-                {formData.goals.commitment === 'enthusiast' && ' Full Korean beauty experience with advanced techniques'}
+                {formData.goals.commitment === 'dedicated' && ' Comprehensive routine with specialized products and advanced techniques'}
               </p>
             </div>
             {formData.goals.timeline && (
@@ -279,8 +286,7 @@ export default function GoalsSettings({ profile, onUpdate }: GoalsSettingsProps)
                   {formData.goals.timeline === '1-month' && ' Initial hydration and texture improvements'}
                   {formData.goals.timeline === '3-months' && ' Noticeable improvement in primary concern'}
                   {formData.goals.timeline === '6-months' && ' Significant transformation and skin renewal'}
-                  {formData.goals.timeline === '12-months' && ' Complete skin transformation with optimal health'}
-                  {formData.goals.timeline === 'long-term' && ' Ongoing maintenance and prevention focus'}
+                  {formData.goals.timeline === '1-year' && ' Complete skin transformation with optimal health and long-term maintenance'}
                 </p>
               </div>
             )}

@@ -19,8 +19,8 @@ export default function UserProfileSettings({ profile, onUpdate, userEmail }: Us
       city: profile?.location?.city || '',
       state: profile?.location?.state || '',
       country: profile?.location?.country || 'United States',
-      climate: profile?.location?.climate || '',
-      humidity: profile?.location?.humidity || ''
+      climate: profile?.location?.climate || 'temperate' as 'tropical' | 'dry' | 'temperate' | 'continental' | 'polar',
+      humidity: profile?.location?.humidity || 'moderate' as 'low' | 'moderate' | 'high'
     }
   })
 
@@ -36,8 +36,8 @@ export default function UserProfileSettings({ profile, onUpdate, userEmail }: Us
         city: profile?.location?.city || '',
         state: profile?.location?.state || '',
         country: profile?.location?.country || 'United States',
-        climate: profile?.location?.climate || '',
-        humidity: profile?.location?.humidity || ''
+        climate: profile?.location?.climate || 'temperate' as 'tropical' | 'dry' | 'temperate' | 'continental' | 'polar',
+        humidity: profile?.location?.humidity || 'moderate' as 'low' | 'moderate' | 'high'
       }
     })
     setHasChanges(false)
@@ -48,9 +48,11 @@ export default function UserProfileSettings({ profile, onUpdate, userEmail }: Us
       const updated = { ...prev }
       if (field.includes('.')) {
         const [parent, child] = field.split('.')
-        updated[parent as keyof typeof updated] = {
-          ...(updated[parent as keyof typeof updated] as object),
-          [child]: value
+        if (parent === 'location') {
+          updated.location = {
+            ...updated.location,
+            [child]: value
+          }
         }
       } else {
         updated[field as keyof typeof updated] = value
