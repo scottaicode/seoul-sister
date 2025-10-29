@@ -121,8 +121,16 @@ function calculateProgressInsights(analyses: any[]) {
   }
 
   // Identify improvement areas
-  const improvementAreas = []
-  const concerningTrends = []
+  const improvementAreas: Array<{
+    metric: string
+    improvement: number
+    message: string
+  }> = []
+  const concerningTrends: Array<{
+    metric: string
+    decline: number
+    message: string
+  }> = []
 
   Object.entries(changes).forEach(([metric, change]) => {
     if (change > 15) {
