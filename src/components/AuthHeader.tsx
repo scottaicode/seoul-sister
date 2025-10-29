@@ -255,6 +255,16 @@ export default function AuthHeader() {
                         </div>
                       </a>
                       <a
+                        href="/settings"
+                        className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <div className="flex items-center">
+                          <Settings size={16} className="mr-3" />
+                          Account Settings
+                        </div>
+                      </a>
+                      <a
                         href="/admin/ai-features"
                         className="block px-4 py-2.5 text-sm text-gray-300 hover:bg-[#d4a574]/20 hover:text-[#d4a574] transition-colors"
                         onClick={() => setShowDropdown(false)}

@@ -20,7 +20,7 @@ import {
 export default function UnifiedDashboard() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'advisor' | 'intelligence' | 'shopping'>('advisor')
+  const [activeTab, setActiveTab] = useState<'overview' | 'advisor' | 'intelligence' | 'shopping'>('overview')
 
   useEffect(() => {
     if (!loading && !user) {
@@ -34,6 +34,9 @@ export default function UnifiedDashboard() {
     const tab = urlParams.get('tab')
     if (tab && ['advisor', 'intelligence', 'shopping'].includes(tab)) {
       setActiveTab(tab as 'advisor' | 'intelligence' | 'shopping')
+    } else if (!tab) {
+      // No tab parameter means show overview (My Dashboard)
+      setActiveTab('overview')
     }
   }, [])
 
@@ -59,48 +62,98 @@ export default function UnifiedDashboard() {
             <p className="text-gray-400">Your AI-powered beauty intelligence hub</p>
           </div>
 
-          {/* Tab Navigation */}
-          <div className="flex justify-center gap-8">
-            <button
-              onClick={() => setActiveTab('advisor')}
-              className={`px-6 py-3 font-light transition-all ${
-                activeTab === 'advisor'
-                  ? 'text-luxury-gold border-b-2 border-luxury-gold'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              <Brain className="inline-block w-5 h-5 mr-2" />
-              AI Beauty Advisor
-            </button>
-            <button
-              onClick={() => setActiveTab('intelligence')}
-              className={`px-6 py-3 font-light transition-all ${
-                activeTab === 'intelligence'
-                  ? 'text-luxury-gold border-b-2 border-luxury-gold'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              <TrendingUp className="inline-block w-5 h-5 mr-2" />
-              Seoul Intelligence
-            </button>
-            <button
-              onClick={() => setActiveTab('shopping')}
-              className={`px-6 py-3 font-light transition-all ${
-                activeTab === 'shopping'
-                  ? 'text-luxury-gold border-b-2 border-luxury-gold'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              <ShoppingBag className="inline-block w-5 h-5 mr-2" />
-              Smart Shopping
-            </button>
-          </div>
+          {/* Tab Navigation - Only show when not on overview */}
+          {activeTab !== 'overview' && (
+            <div className="flex justify-center gap-8">
+              <button
+                onClick={() => setActiveTab('advisor')}
+                className={`px-6 py-3 font-light transition-all ${
+                  activeTab === 'advisor'
+                    ? 'text-luxury-gold border-b-2 border-luxury-gold'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <Brain className="inline-block w-5 h-5 mr-2" />
+                AI Beauty Advisor
+              </button>
+              <button
+                onClick={() => setActiveTab('intelligence')}
+                className={`px-6 py-3 font-light transition-all ${
+                  activeTab === 'intelligence'
+                    ? 'text-luxury-gold border-b-2 border-luxury-gold'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <TrendingUp className="inline-block w-5 h-5 mr-2" />
+                Seoul Intelligence
+              </button>
+              <button
+                onClick={() => setActiveTab('shopping')}
+                className={`px-6 py-3 font-light transition-all ${
+                  activeTab === 'shopping'
+                    ? 'text-luxury-gold border-b-2 border-luxury-gold'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <ShoppingBag className="inline-block w-5 h-5 mr-2" />
+                Smart Shopping
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
       {/* Tab Content */}
       <section className="py-12">
         <div className="max-w-7xl mx-auto px-8">
+          {/* Dashboard Overview */}
+          {activeTab === 'overview' && (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <FeatureCard
+                icon={<Camera />}
+                title="Product Scanner"
+                description="AI-powered ingredient analysis and compatibility checking"
+                href="/bailey-features?feature=product-scanner"
+                color="from-blue-500 to-purple-500"
+              />
+              <FeatureCard
+                icon={<BarChart3 />}
+                title="Routine Analyzer"
+                description="Optimize your skincare routine with AI recommendations"
+                href="/bailey-features?feature=routine-analyzer"
+                color="from-green-500 to-blue-500"
+              />
+              <FeatureCard
+                icon={<Calendar />}
+                title="Progress Tracking"
+                description="Monitor your skin improvements over time"
+                href="/bailey-features?feature=progress-tracking"
+                color="from-teal-500 to-green-500"
+              />
+              <FeatureCard
+                icon={<AlertTriangle />}
+                title="Irritation Analysis"
+                description="AI diagnosis of skin reactions and treatment plans"
+                href="/bailey-features?feature=irritation-analysis"
+                color="from-red-500 to-pink-500"
+              />
+              <FeatureCard
+                icon={<Brain />}
+                title="Skin Profile"
+                description="Complete AI skin analysis and personalized recommendations"
+                href="/bailey-onboarding"
+                color="from-purple-500 to-pink-500"
+              />
+              <FeatureCard
+                icon={<Star />}
+                title="AI Recommendations"
+                description="Personalized product suggestions based on your skin"
+                href="/skin-analysis"
+                color="from-amber-500 to-orange-500"
+              />
+            </div>
+          )}
+
           {/* AI Beauty Advisor Tab */}
           {activeTab === 'advisor' && (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

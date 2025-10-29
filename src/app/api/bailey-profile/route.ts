@@ -14,79 +14,22 @@ export async function POST(request: NextRequest) {
     // Get or create user (for now using WhatsApp number or email)
     const userId = profile.id || `temp_${Date.now()}`
 
-    // Prepare the enhanced profile data for the existing table structure
-    const enhancedProfileData = {
-      // Core fields that exist in user_skin_profiles
-      current_skin_type: profile.skin?.type,
-      current_concerns: profile.skin?.concerns || [],
-      current_routine: {
-        commitment: profile.goals?.commitment,
-        timeline: profile.goals?.timeline,
-        budget: profile.preferences?.budgetRange
-      },
-
-      // Store comprehensive Bailey data in existing JSONB fields
-      ingredient_preferences: {
-        avoid: profile.preferences?.avoidIngredients || [],
-        preferClean: profile.preferences?.preferClean || false,
-        preferKBeauty: profile.preferences?.preferKBeauty || false,
-        preferFragranceFree: profile.preferences?.preferFragranceFree || false,
-        preferCrueltyFree: profile.preferences?.preferCrueltyFree || false
-      },
-
-      texture_preferences: profile.preferences?.texturePreferences || [],
-      routine_complexity_preference: profile.goals?.commitment || 'moderate',
-
-      // Store full Bailey profile in a structured way
-      skin_type_history: [{
-        recorded_at: new Date().toISOString(),
-        type: profile.skin?.type,
-        condition: profile.skin?.currentCondition,
-        concerns: profile.skin?.concerns || [],
-        age: profile.age,
-        location: profile.location,
-        lifestyle: profile.lifestyle,
-        medical: profile.medical,
-        goals: profile.goals,
-        ethnicity: profile.ethnicity,
-        version: '1.0-bailey'
-      }]
+    // Prepare the profile data for the existing user_skin_profiles table structure
+    const profileData = {
+      // Map to actual fields that exist in user_skin_profiles table
+      current_skin_type: profile.skin?.type || null,
+      skin_concerns: profile.skin?.concerns || [],
+      preferred_categories: profile.preferences?.texturePreferences || []
     }
 
-    // First, let's try to get an existing demo user from profiles table
-    const { data: demoUsers } = await supabase
-      .from('profiles')
-      .select('id')
-      .limit(1)
-
-    let demoUserId = null
-    if (demoUsers && demoUsers.length > 0) {
-      demoUserId = demoUsers[0].id
-    } else {
-      // Create a demo user profile if none exists
-      const { data: newUser, error: userError } = await supabase
-        .from('profiles')
-        .insert({
-          email: profile.email || `demo_${Date.now()}@seoul-sister.com`,
-          full_name: profile.name || 'Bailey Demo User',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select('id')
-        .single()
-
-      if (userError) {
-        console.error('Error creating demo user:', userError)
-        return NextResponse.json({ error: 'Failed to create user profile' }, { status: 500 })
-      }
-      demoUserId = newUser.id
-    }
+    // Use email or create a demo WhatsApp number for the profile
+    const whatsappNumber = profile.email || `demo_${Date.now()}@bailey.app`
 
     // Check if profile exists for this user
     const { data: existingProfile } = await supabase
       .from('user_skin_profiles')
       .select('*')
-      .eq('user_id', demoUserId)
+      .eq('whatsapp_number', whatsappNumber)
       .single()
 
     let result
@@ -95,12 +38,11 @@ export async function POST(request: NextRequest) {
       result = await supabase
         .from('user_skin_profiles')
         .update({
-          ...enhancedProfileData,
+          ...profileData,
           updated_at: new Date().toISOString(),
-          total_analyses: (existingProfile.total_analyses || 0) + 1,
           last_analysis_date: new Date().toISOString()
         })
-        .eq('user_id', demoUserId)
+        .eq('whatsapp_number', whatsappNumber)
         .select()
         .single()
     } else {
@@ -108,9 +50,8 @@ export async function POST(request: NextRequest) {
       result = await supabase
         .from('user_skin_profiles')
         .insert({
-          user_id: demoUserId,
-          ...enhancedProfileData,
-          total_analyses: 1,
+          whatsapp_number: whatsappNumber,
+          ...profileData,
           last_analysis_date: new Date().toISOString(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -124,8 +65,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save profile' }, { status: 500 })
     }
 
-    // Generate initial recommendations based on Bailey's comprehensive profile
-    const recommendations = await generateBaileyRecommendations(profile, result.data)
+    // Generate initial recommendations based on Bailey's profile
+    const recommendations = generateBaileyRecommendations(profile)
 
     return NextResponse.json({
       success: true,
@@ -140,9 +81,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function generateBaileyRecommendations(
-  profile: Partial<BaileyUserProfile>,
-  savedProfile: any
+function generateBaileyRecommendations(
+  profile: Partial<BaileyUserProfile>
 ) {
   // Bailey's intelligent recommendation logic
   const recommendations = {
@@ -242,32 +182,30 @@ async function generateBaileyRecommendations(
   }
 
   // Create gradual introduction plan (Bailey's wisdom about starting slow)
-  if (!savedProfile.has_routine) {
-    recommendations.introductionPlan = {
-      week1: {
-        products: ['gentle-cleanser'],
-        morning: ['rinse with water', 'moisturizer', 'sunscreen'],
-        evening: ['gentle cleanser', 'moisturizer'],
-        notes: 'Start simple to establish habit'
-      },
-      week2: {
-        products: ['add-toner'],
-        morning: ['gentle cleanser', 'toner', 'moisturizer', 'sunscreen'],
-        evening: ['gentle cleanser', 'toner', 'moisturizer'],
-        notes: 'Introduce hydrating toner'
-      },
-      week3: {
-        products: ['add-serum'],
-        morning: ['gentle cleanser', 'toner', 'serum', 'moisturizer', 'sunscreen'],
-        evening: ['gentle cleanser', 'toner', 'serum', 'moisturizer'],
-        notes: 'Add targeted treatment serum'
-      },
-      week4: {
-        products: ['optimize-routine'],
-        morning: ['gentle cleanser', 'toner', 'serum', 'moisturizer', 'sunscreen'],
-        evening: ['gentle cleanser', 'toner', 'serum', 'moisturizer'],
-        notes: 'Evaluate what is working, adjust as needed'
-      }
+  recommendations.introductionPlan = {
+    week1: {
+      products: ['gentle-cleanser'],
+      morning: ['rinse with water', 'moisturizer', 'sunscreen'],
+      evening: ['gentle cleanser', 'moisturizer'],
+      notes: 'Start simple to establish habit'
+    },
+    week2: {
+      products: ['add-toner'],
+      morning: ['gentle cleanser', 'toner', 'moisturizer', 'sunscreen'],
+      evening: ['gentle cleanser', 'toner', 'moisturizer'],
+      notes: 'Introduce hydrating toner'
+    },
+    week3: {
+      products: ['add-serum'],
+      morning: ['gentle cleanser', 'toner', 'serum', 'moisturizer', 'sunscreen'],
+      evening: ['gentle cleanser', 'toner', 'serum', 'moisturizer'],
+      notes: 'Add targeted treatment serum'
+    },
+    week4: {
+      products: ['optimize-routine'],
+      morning: ['gentle cleanser', 'toner', 'serum', 'moisturizer', 'sunscreen'],
+      evening: ['gentle cleanser', 'toner', 'serum', 'moisturizer'],
+      notes: 'Evaluate what is working, adjust as needed'
     }
   }
 

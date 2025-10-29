@@ -877,9 +877,9 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                   Ingredients to Avoid
                 </label>
                 <textarea
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574]"
-                  rows={2}
-                  placeholder="List any ingredients you want to avoid"
+                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 text-white rounded-lg focus:ring-2 focus:ring-[#d4a574] resize-none"
+                  rows={3}
+                  placeholder="e.g. retinol, salicylic acid, fragrance (separate with commas)"
                   value={profile.preferences?.avoidIngredients?.join(', ') || ''}
                   onChange={(e) => updateProfile({
                     preferences: {
@@ -894,6 +894,7 @@ export default function BaileyOnboarding({ onComplete }: OnboardingProps) {
                     }
                   })}
                 />
+                <p className="text-xs text-gray-500 mt-1">Separate multiple ingredients with commas</p>
               </div>
             </div>
           )}
