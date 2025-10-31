@@ -12,7 +12,10 @@
     "dev:static": "python3 -m http.server 3000",
     "deploy": "vercel --prod",
     "db:migrate": "node scripts/migrate-database.js",
-    "db:seed": "node scripts/migrate-database.js"
+    "db:seed": "node scripts/migrate-database.js",
+    "generate-secrets": "node scripts/generate-secrets.js",
+    "security:check": "npm audit",
+    "security:fix": "npm audit fix"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.20.9",

@@ -1,13 +1,17 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { withRateLimit, rateLimitPresets } from '@/lib/rate-limiter'
+import { withAuth, authPresets } from '@/lib/auth-middleware'
+import { withErrorHandling, DatabaseError } from '@/lib/error-handler'
+import { Database } from '@/types/database'
 
-const supabase = createClient(
+const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function GET(request: Request) {
-  try {
+export const GET = withRateLimit(
+  withErrorHandling(async (request: NextRequest) => {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
     const featured = searchParams.get('featured')
@@ -29,35 +33,32 @@ export async function GET(request: Request) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Error fetching products:', error)
-      return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 })
+      throw new DatabaseError('fetch products', error)
     }
 
     return NextResponse.json({ products: data || [] })
-  } catch (error) {
-    console.error('Unexpected error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
-}
+  }),
+  rateLimitPresets.public
+)
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json()
+export const POST = withAuth(
+  withRateLimit(
+    withErrorHandling(async (request: NextRequest) => {
+      const body = await request.json()
 
-    const { data, error } = await supabase
-      .from('products')
-      .insert([body])
-      .select()
-      .single()
+      const { data, error } = await supabase
+        .from('products')
+        .insert([body])
+        .select()
+        .single()
 
-    if (error) {
-      console.error('Error creating product:', error)
-      return NextResponse.json({ error: 'Failed to create product' }, { status: 500 })
-    }
+      if (error) {
+        throw new DatabaseError('create product', error)
+      }
 
-    return NextResponse.json({ product: data })
-  } catch (error) {
-    console.error('Unexpected error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
-}
+      return NextResponse.json({ product: data })
+    }),
+    rateLimitPresets.api
+  ),
+  authPresets.admin
+)

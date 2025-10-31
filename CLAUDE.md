@@ -12,7 +12,8 @@ Korean beauty e-commerce platform with AI-powered skin analysis and personalized
 
 ## Premium Membership Business Model
 
-### PRICING: $8/MONTH WITH 7-DAY FREE TRIAL
+### PRICING: $24.99/MONTH (PREMIUM TIER) WITH 14-DAY FREE TRIAL
+### TIERED OPTIONS: STARTER ($14.99) | PREMIUM ($24.99) | ELITE ($44.99)
 
 Seoul Sister is an AI-powered beauty intelligence aggregator offering:
 - **AI-Powered Skin Analysis**: Advanced personalized recommendations
