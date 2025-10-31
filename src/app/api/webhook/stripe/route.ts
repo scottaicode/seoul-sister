@@ -1,72 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { headers } from 'next/headers'
-import { stripe } from '@/lib/stripe-server'
-import { createClient } from '@/lib/supabase'
 import Stripe from 'stripe'
+import { createClient } from '@supabase/supabase-js'
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2023-10-16'
+})
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
-  const headersList = await headers()
-  const signature = headersList.get('stripe-signature')!
+  const sig = request.headers.get('stripe-signature')!
 
   let event: Stripe.Event
 
   try {
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
-  } catch (err: any) {
-    console.error('Webhook signature verification failed.', err.message)
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+    event = stripe.webhooks.constructEvent(
+      body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET!
+    )
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err)
+    return NextResponse.json(
+      { error: 'Invalid signature' },
+      { status: 400 }
+    )
   }
-
-  const supabase = createClient()
 
   try {
     switch (event.type) {
       case 'customer.subscription.created':
-        {
-          const subscription = event.data.object as Stripe.Subscription
-          await handleSubscriptionCreated(supabase, subscription)
-        }
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription
+        await handleSubscriptionUpdate(subscription)
         break
+      }
 
-      case 'customer.subscription.updated':
-        {
-          const subscription = event.data.object as Stripe.Subscription
-          await handleSubscriptionUpdated(supabase, subscription)
-        }
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as Stripe.Subscription
+        await handleSubscriptionCancellation(subscription)
         break
+      }
 
-      case 'customer.subscription.deleted':
-        {
-          const subscription = event.data.object as Stripe.Subscription
-          await handleSubscriptionDeleted(supabase, subscription)
-        }
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as Stripe.Invoice
+        await handleSuccessfulPayment(invoice)
         break
+      }
 
-      case 'invoice.payment_succeeded':
-        {
-          const invoice = event.data.object as Stripe.Invoice
-          await handlePaymentSucceeded(supabase, invoice)
-        }
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice
+        await handleFailedPayment(invoice)
         break
-
-      case 'invoice.payment_failed':
-        {
-          const invoice = event.data.object as Stripe.Invoice
-          await handlePaymentFailed(supabase, invoice)
-        }
-        break
+      }
 
       default:
-        console.log(`Unhandled event type ${event.type}`)
+        console.log(`Unhandled event type: ${event.type}`)
     }
 
     return NextResponse.json({ received: true })
-
   } catch (error) {
-    console.error('Error processing webhook:', error)
+    console.error('Webhook processing error:', error)
     return NextResponse.json(
       { error: 'Webhook processing failed' },
       { status: 500 }
@@ -74,104 +72,82 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleSubscriptionCreated(supabase: any, subscription: Stripe.Subscription) {
-  const { error } = await supabase
-    .from('profiles')
-    .update({
-      stripe_subscription_id: subscription.id,
-      subscription_status: subscription.status,
-      trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .eq('stripe_customer_id', subscription.customer)
+async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
+  const userId = subscription.metadata.userId
 
-  if (error) {
-    console.error('Error updating profile for subscription created:', error)
-    throw error
+  if (!userId) {
+    console.error('No userId in subscription metadata')
+    return
   }
 
-  console.log(`Subscription created: ${subscription.id}`)
-}
-
-async function handleSubscriptionUpdated(supabase: any, subscription: Stripe.Subscription) {
-  const { error } = await supabase
-    .from('profiles')
-    .update({
-      subscription_status: subscription.status,
-      trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-      cancel_at_period_end: subscription.cancel_at_period_end,
-      updated_at: new Date().toISOString()
-    })
-    .eq('stripe_customer_id', subscription.customer)
-
-  if (error) {
-    console.error('Error updating profile for subscription updated:', error)
-    throw error
+  const updates = {
+    stripe_subscription_id: subscription.id,
+    subscription_status: subscription.status,
+    current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+    current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+    cancel_at_period_end: subscription.cancel_at_period_end,
+    trial_end: subscription.trial_end
+      ? new Date(subscription.trial_end * 1000).toISOString()
+      : null
   }
 
-  console.log(`Subscription updated: ${subscription.id}`)
+  const { error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', userId)
+
+  if (error) {
+    console.error('Failed to update subscription in database:', error)
+  }
 }
 
-async function handleSubscriptionDeleted(supabase: any, subscription: Stripe.Subscription) {
+async function handleSubscriptionCancellation(subscription: Stripe.Subscription) {
+  const userId = subscription.metadata.userId
+
+  if (!userId) {
+    console.error('No userId in subscription metadata')
+    return
+  }
+
   const { error } = await supabase
     .from('profiles')
     .update({
-      stripe_subscription_id: null,
       subscription_status: 'canceled',
-      trial_end: null,
-      current_period_start: null,
-      current_period_end: null,
-      cancel_at_period_end: false,
-      updated_at: new Date().toISOString()
+      cancel_at_period_end: true
     })
-    .eq('stripe_customer_id', subscription.customer)
+    .eq('id', userId)
 
   if (error) {
-    console.error('Error updating profile for subscription deleted:', error)
-    throw error
-  }
-
-  console.log(`Subscription deleted: ${subscription.id}`)
-}
-
-async function handlePaymentSucceeded(supabase: any, invoice: Stripe.Invoice) {
-  if (invoice.subscription) {
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        subscription_status: 'active',
-        updated_at: new Date().toISOString()
-      })
-      .eq('stripe_subscription_id', invoice.subscription)
-
-    if (error) {
-      console.error('Error updating profile for payment succeeded:', error)
-      throw error
-    }
-
-    console.log(`Payment succeeded for subscription: ${invoice.subscription}`)
+    console.error('Failed to update cancellation in database:', error)
   }
 }
 
-async function handlePaymentFailed(supabase: any, invoice: Stripe.Invoice) {
-  if (invoice.subscription) {
-    const { error } = await supabase
+async function handleSuccessfulPayment(invoice: Stripe.Invoice) {
+  // Log successful payment
+  console.log(`Payment successful for invoice ${invoice.id}`)
+
+  // Could send a receipt email here
+}
+
+async function handleFailedPayment(invoice: Stripe.Invoice) {
+  const customerId = invoice.customer as string
+
+  // Get user from customer ID
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, email')
+    .eq('stripe_customer_id', customerId)
+    .single()
+
+  if (profile) {
+    // Update subscription status
+    await supabase
       .from('profiles')
-      .update({
-        subscription_status: 'past_due',
-        updated_at: new Date().toISOString()
-      })
-      .eq('stripe_subscription_id', invoice.subscription)
+      .update({ subscription_status: 'past_due' })
+      .eq('id', profile.id)
 
-    if (error) {
-      console.error('Error updating profile for payment failed:', error)
-      throw error
-    }
-
-    console.log(`Payment failed for subscription: ${invoice.subscription}`)
+    // Send payment failed notification
+    console.log(`Payment failed for user ${profile.id}`)
+    // Would send email notification in production
   }
 }
