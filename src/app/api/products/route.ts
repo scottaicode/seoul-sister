@@ -48,7 +48,7 @@ export const POST = withAuth(
 
       const { data, error } = await supabase
         .from('products')
-        .insert([body])
+        .insert(body)
         .select()
         .single()
 

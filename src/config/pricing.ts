@@ -89,12 +89,12 @@ export function calculateServiceFee(productPrice: number): number {
 }
 
 export function getSubscriptionPrice(): string {
-  const { price, currency } = PRICING_CONFIG.subscription.monthly
+  const { price, currency } = PRICING_CONFIG.subscription.premium
   return `${currency} ${price}/month`
 }
 
 export function getTrialEndDate(startDate: Date = new Date()): Date {
   const endDate = new Date(startDate)
-  endDate.setDate(endDate.getDate() + PRICING_CONFIG.subscription.monthly.trialDays)
+  endDate.setDate(endDate.getDate() + PRICING_CONFIG.subscription.premium.trialDays)
   return endDate
 }

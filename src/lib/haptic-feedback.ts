@@ -142,8 +142,8 @@ export class HapticFeedback {
     if (!this.capabilities.canVibrate()) return
 
     const vibrationPattern = typeof pattern === 'string'
-      ? HapticPatterns[pattern]
-      : pattern
+      ? [...HapticPatterns[pattern]]  // Convert readonly to mutable
+      : [...pattern]  // Convert to mutable array
 
     const adjustedPattern = this.adjustPattern(vibrationPattern, intensity || this.intensity)
 
@@ -168,7 +168,7 @@ export class HapticFeedback {
   /**
    * Adjust pattern intensity
    */
-  private adjustPattern(pattern: number[], intensity: HapticIntensity): number[] {
+  private adjustPattern(pattern: readonly number[], intensity: HapticIntensity): number[] {
     if (intensity === HapticIntensity.ADAPTIVE) {
       // Use device/user preference
       intensity = this.getAdaptiveIntensity()
