@@ -4,9 +4,8 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { Database } from '@/types/database'
 
-const supabase = createClient<Database>(
+const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -44,7 +43,7 @@ export class RecommendationEngine {
       .from('user_skin_profiles')
       .select('*')
       .eq('whatsapp_number', userId)
-      .single()
+      .single() as any
 
     if (profile) {
       this.userProfile = {
@@ -61,7 +60,7 @@ export class RecommendationEngine {
     userId: string,
     category?: string,
     limit: number = 12
-  ): Promise<Product[]> {
+  ): Promise<any[]> {
     await this.loadUserProfile(userId)
 
     // Fetch all products
@@ -71,26 +70,26 @@ export class RecommendationEngine {
       query = query.eq('category', category)
     }
 
-    const { data: products } = await query
+    const { data: products } = await query as any
 
     if (!products || products.length === 0) {
       return []
     }
 
     // Score each product
-    const scoredProducts = products.map(product => ({
+    const scoredProducts = products.map((product: any) => ({
       product,
       score: this.calculateRecommendationScore(product)
     }))
 
     // Sort by score and return top products
     return scoredProducts
-      .sort((a, b) => b.score.score - a.score.score)
+      .sort((a: any, b: any) => b.score.score - a.score.score)
       .slice(0, limit)
-      .map(item => item.product)
+      .map((item: any) => item.product)
   }
 
-  private calculateRecommendationScore(product: Product): RecommendationScore {
+  private calculateRecommendationScore(product: any): RecommendationScore {
     const reasons: string[] = []
     let score = 0
 
@@ -103,7 +102,7 @@ export class RecommendationEngine {
 
     // Skin type compatibility (0-30 points)
     if (product.skin_type) {
-      const skinTypes = product.skin_type.toLowerCase().split(',').map(s => s.trim())
+      const skinTypes = product.skin_type.toLowerCase().split(',').map((s: any) => s.trim())
       if (skinTypes.includes(this.userProfile.skinType.toLowerCase())) {
         score += 30
         reasons.push('Perfect for your skin type')
@@ -143,7 +142,7 @@ export class RecommendationEngine {
     return { productId: product.id, score, reasons }
   }
 
-  private matchConcerns(product: Product, concerns: string[]): number {
+  private matchConcerns(product: any, concerns: string[]): number {
     const concernKeywords: Record<string, string[]> = {
       'acne': ['acne', 'blemish', 'breakout', 'salicylic', 'bha', 'tea tree'],
       'aging': ['anti-aging', 'wrinkle', 'fine line', 'retinol', 'peptide', 'collagen'],
@@ -181,23 +180,23 @@ export class RecommendationEngine {
     return problematic.some(ingredient => lowerIngredients.includes(ingredient))
   }
 
-  async getTrendingProducts(limit: number = 8): Promise<Product[]> {
+  async getTrendingProducts(limit: number = 8): Promise<any[]> {
     const { data } = await supabase
       .from('products')
       .select('*')
       .order('popularity_score', { ascending: false })
-      .limit(limit)
+      .limit(limit) as any
 
     return data || []
   }
 
-  async getSimilarProducts(productId: string, limit: number = 6): Promise<Product[]> {
+  async getSimilarProducts(productId: string, limit: number = 6): Promise<any[]> {
     // Get the reference product
     const { data: referenceProduct } = await supabase
       .from('products')
       .select('*')
       .eq('id', productId)
-      .single()
+      .single() as any
 
     if (!referenceProduct) return []
 
@@ -209,18 +208,18 @@ export class RecommendationEngine {
       .neq('id', productId)
       .gte('best_price_found', referenceProduct.best_price_found * 0.7)
       .lte('best_price_found', referenceProduct.best_price_found * 1.3)
-      .limit(limit)
+      .limit(limit) as any
 
     return similarProducts || []
   }
 
-  async getComplementaryProducts(productId: string): Promise<Product[]> {
+  async getComplementaryProducts(productId: string): Promise<any[]> {
     // Get the reference product
     const { data: referenceProduct } = await supabase
       .from('products')
       .select('*')
       .eq('id', productId)
-      .single()
+      .single() as any
 
     if (!referenceProduct) return []
 
@@ -245,7 +244,7 @@ export class RecommendationEngine {
       .select('*')
       .in('category', complementaryCategories)
       .order('popularity_score', { ascending: false })
-      .limit(4)
+      .limit(4) as any
 
     return complementaryProducts || []
   }

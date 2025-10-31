@@ -19,9 +19,15 @@ const STRIPE_PRICE_IDS = {
   elite: process.env.STRIPE_ELITE_PRICE_ID || 'price_elite'
 }
 
+type SubscriptionTier = 'starter' | 'premium' | 'elite'
+
 export async function POST(request: NextRequest) {
   try {
-    const { userId, tier = 'premium', email } = await request.json()
+    const { userId, tier = 'premium', email } = await request.json() as {
+      userId: string
+      tier?: SubscriptionTier
+      email: string
+    }
 
     if (!userId || !email) {
       return NextResponse.json(
@@ -29,6 +35,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Validate tier
+    const validTiers: SubscriptionTier[] = ['starter', 'premium', 'elite']
+    const selectedTier: SubscriptionTier = validTiers.includes(tier as SubscriptionTier) ? tier as SubscriptionTier : 'premium'
 
     // Get or create Stripe customer
     let customerId: string
@@ -66,23 +76,23 @@ export async function POST(request: NextRequest) {
       payment_method_types: ['card'],
       line_items: [
         {
-          price: STRIPE_PRICE_IDS[tier as keyof typeof STRIPE_PRICE_IDS],
+          price: STRIPE_PRICE_IDS[selectedTier],
           quantity: 1
         }
       ],
       mode: 'subscription',
       subscription_data: {
-        trial_period_days: PRICING_CONFIG.subscription[tier as keyof typeof PRICING_CONFIG.subscription].trialDays,
+        trial_period_days: PRICING_CONFIG.subscription[selectedTier].trialDays,
         metadata: {
           userId,
-          tier
+          tier: selectedTier
         }
       },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/subscription/cancelled`,
       metadata: {
         userId,
-        tier
+        tier: selectedTier
       }
     })
 
