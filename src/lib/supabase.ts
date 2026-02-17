@@ -1,43 +1,18 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import { Database } from '@/types/database'
+import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-let supabase: ReturnType<typeof createSupabaseClient<Database>> | null = null
-let supabaseAdmin: ReturnType<typeof createSupabaseClient<Database>> | null = null
-
-if (supabaseUrl && supabaseAnonKey) {
-  supabase = createSupabaseClient<Database>(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true
-    }
-  })
-
-  // Only create admin client server-side
-  if (typeof window === 'undefined' && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    supabaseAdmin = createSupabaseClient<Database>(
-      supabaseUrl,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    )
-  }
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables')
 }
 
-// Export the clients
-export { supabase, supabaseAdmin }
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Export a createClient function for auth components
-export const createClient = () => {
-  if (!supabase) {
-    throw new Error('Supabase client not initialized. Check environment variables.')
+export function getServiceClient() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!serviceKey) {
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY')
   }
-  return supabase
+  return createClient(supabaseUrl!, serviceKey)
 }

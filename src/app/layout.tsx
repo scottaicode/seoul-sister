@@ -1,44 +1,65 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Poppins } from 'next/font/google'
+import { AuthProvider } from '@/contexts/AuthContext'
 import './globals.css'
-import AnalyticsTracker from '../components/AnalyticsTracker'
-import CookieConsent from '../components/CookieConsent'
-import { AuthProvider } from '../contexts/AuthContext'
 
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
+  display: 'swap',
 })
 
 const poppins = Poppins({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
+  weight: ['400', '500', '600', '700'],
   variable: '--font-poppins',
+  display: 'swap',
 })
+
+export const metadata: Metadata = {
+  title: {
+    default: 'Seoul Sister - K-Beauty Intelligence',
+    template: '%s | Seoul Sister',
+  },
+  description:
+    'The world\'s first English-language K-beauty intelligence platform. AI-powered label scanning, routine building, counterfeit detection, and personalized skincare advice.',
+  keywords: [
+    'K-beauty',
+    'Korean skincare',
+    'ingredient analysis',
+    'skincare routine',
+    'glass skin',
+    'Korean beauty',
+    'beauty intelligence',
+  ],
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://seoulsister.com',
+    siteName: 'Seoul Sister',
+    title: 'Seoul Sister - K-Beauty Intelligence',
+    description:
+      'AI-powered K-beauty intelligence. Scan Korean labels, build personalized routines, detect counterfeits.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Seoul Sister - K-Beauty Intelligence',
+    description:
+      'AI-powered K-beauty intelligence. Scan Korean labels, build personalized routines, detect counterfeits.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+}
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#CD2E3A',
-}
-
-export const metadata: Metadata = {
-  title: 'Seoul Sister - Authentic K-Beauty at Seoul Street Prices',
-  description: 'Save 40-70% on authentic Korean beauty products. Get the same products sold in Seoul at real Seoul prices, not inflated US retail prices.',
-  keywords: 'korean beauty, k-beauty, seoul, skincare, cosmetics, korean products, authentic, discount',
-  authors: [{ name: 'Seoul Sister' }],
-  openGraph: {
-    title: 'Seoul Sister - Authentic K-Beauty at Seoul Street Prices',
-    description: 'Save 40-70% on authentic Korean beauty products. Expose the beauty industry price gouging.',
-    type: 'website',
-    locale: 'en_US',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Seoul Sister - K-Beauty at Real Seoul Prices',
-    description: 'Save 40-70% on authentic Korean beauty products',
-  },
+  userScalable: false,
+  themeColor: '#D4A574',
 }
 
 export default function RootLayout({
@@ -49,29 +70,17 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
       <head>
-        {/* Google Analytics */}
-        <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', 'GA_MEASUREMENT_ID', {
-                page_title: 'Seoul Sister - K-Beauty Revolution',
-                custom_map: {'custom_parameter_1': 'viral_mechanism'}
-              });
-            `,
-          }}
-        />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Seoul Sister" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="msapplication-TileColor" content="#D4A574" />
       </head>
-      <body className="antialiased bg-white text-gray-900">
+      <body className="font-sans antialiased">
         <AuthProvider>
-          <AnalyticsTracker />
-          <div className="min-h-screen">
-            {children}
-          </div>
-          <CookieConsent />
+          {children}
         </AuthProvider>
       </body>
     </html>

@@ -1,1017 +1,324 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
-import ViralScreenshotGenerator from '../components/ViralScreenshotGenerator'
-import ViralCopyGenerator from '../components/ViralCopyGenerator'
-import AuthHeader from '../components/AuthHeader'
-import { useProducts } from '@/hooks/useProducts'
-import { useAuth } from '@/contexts/AuthContext'
+import { motion } from 'framer-motion'
+import {
+  Camera, Layers, ShieldCheck, Search, Sparkles, Users,
+  ScanLine, Brain, ListOrdered, Check, Star, ArrowRight
+} from 'lucide-react'
+import PricingCards from '@/components/pricing/PricingCards'
+import TryYuriSection from '@/components/widget/TryYuriSection'
+import YuriBubble from '@/components/widget/YuriBubble'
 
-interface Product {
-  id: string
-  name_english: string
-  brand: string
-  best_price_found: number
-  us_price: number
-  savings_percentage: number
-  best_retailer: string
-  image_url: string
-  category: string
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
 }
 
-const staticProducts: Product[] = [
-  {
-    id: '1',
-    name_english: 'First Care Activating Serum',
-    brand: 'Sulwhasoo',
-    best_price_found: 28.00,
-    best_retailer: 'YesStyle',
-    us_price: 94.00,
-    savings_percentage: 70,
-    image_url: 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=600&h=600&fit=crop',
-    category: 'Serum'
-  },
-  {
-    id: '2',
-    name_english: 'Glow Deep Serum',
-    brand: 'Beauty of Joseon',
-    best_price_found: 8.00,
-    best_retailer: 'Olive Young Global',
-    us_price: 45.00,
-    savings_percentage: 82,
-    image_url: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=600&h=600&fit=crop',
-    category: 'Serum'
-  },
-  {
-    id: '3',
-    name_english: 'Snail 96 Mucin Essence',
-    brand: 'COSRX',
-    best_price_found: 23.00,
-    best_retailer: 'iHerb K-Beauty',
-    us_price: 89.00,
-    savings_percentage: 74,
-    image_url: 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=600&h=600&fit=crop',
-    category: 'Essence'
-  },
-  {
-    id: '4',
-    name_english: 'Water Sleeping Mask',
-    brand: 'Laneige',
-    best_price_found: 12.00,
-    best_retailer: 'Sephora',
-    us_price: 34.00,
-    savings_percentage: 65,
-    image_url: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=600&h=600&fit=crop',
-    category: 'Mask'
-  }
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.1 } },
+}
+
+const features = [
+  { icon: Camera, title: 'Korean Label Decoder', desc: 'Point your camera at any Korean label for instant ingredient translation and safety scoring.', badge: 'badge-pink' },
+  { icon: Sparkles, title: 'AI Beauty Advisor', desc: 'Yuri — your personal AI beauty advisor backed by 6 specialist agents and your full skin profile.', badge: 'badge-blue' },
+  { icon: Users, title: 'Community Reviews', desc: 'Reviews filtered by skin type, Fitzpatrick scale, age, and concern — not just star ratings.', badge: 'badge-pink' },
+  { icon: ShieldCheck, title: 'Counterfeit Detection', desc: 'Spot fakes before you buy with AI-powered packaging analysis and crowdsourced signals.', badge: 'badge-blue' },
+  { icon: Search, title: 'Price Comparison', desc: 'Compare prices across Korea and US retailers — know exactly what you should be paying.', badge: 'badge-pink' },
+  { icon: Layers, title: 'Trend Discovery', desc: 'What\'s trending in Seoul right now? From PDRN serums to centella — stay ahead.', badge: 'badge-blue' },
 ]
 
-export default function HomePage() {
-  const [currentProductIndex, setCurrentProductIndex] = useState(0)
-  const [isScrolled, setIsScrolled] = useState(false)
-  const [showViralTools, setShowViralTools] = useState(false)
-  const { products, loading } = useProducts(true)
-  const { refreshAuth, user } = useAuth()
+const steps = [
+  { icon: ScanLine, step: '01', title: 'Scan or Search', desc: 'Camera scan a Korean label or search 10,000+ products.' },
+  { icon: Brain, step: '02', title: 'Get AI Intelligence', desc: 'Yuri and her specialist agents decode ingredients, flag conflicts, and check authenticity.' },
+  { icon: ListOrdered, step: '03', title: 'Build Your Routine', desc: 'Add to your personalized routine with layering order, timing, and skin cycling schedule.' },
+]
 
-  // Use products from database
-  const featuredProducts = products
+const stats = [
+  { value: '10,000+', label: 'Products Tracked' },
+  { value: '30+', label: 'K-Beauty Brands' },
+  { value: '6', label: 'AI Specialists' },
+  { value: '55+', label: 'Ingredients Decoded' },
+]
 
-  // Refresh auth state when homepage loads
-  useEffect(() => {
-    refreshAuth()
-  }, [])
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 100)
-    }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentProductIndex((prev) => (prev + 1) % featuredProducts.length)
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const currentProduct = featuredProducts[currentProductIndex]
-
+export default function LandingPage() {
   return (
-    <main className="min-h-screen bg-black text-white">
-      {/* Authentication Header */}
-      <AuthHeader />
+    <div className="min-h-screen bg-seoul-cream font-sans">
 
-      {/* Hero Section - Refined Minimalism */}
-      <section className="hero-section relative flex items-center justify-center" style={{
-        borderBottom: '1px solid rgba(212, 165, 116, 0.2)'
-      }}>
-        <div className="luxury-container text-center z-10 relative">
-          <div className="animate-reveal">
-            <p style={{
-              fontSize: '11px',
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-              color: '#d4a574',
-              fontFamily: 'Inter, sans-serif',
-              fontWeight: '400',
-              marginBottom: '3rem',
-              opacity: '0.9'
-            }}>
-              AI-POWERED KOREAN BEAUTY INTELLIGENCE
-            </p>
-
-            <h1 style={{
-              fontFamily: 'Inter, sans-serif',
-              fontSize: 'clamp(3.5rem, 8vw, 7rem)',
-              fontWeight: '200',
-              letterSpacing: '0.02em',
-              lineHeight: '1',
-              marginBottom: '2rem',
-              color: '#ffffff'
-            }}>
-              Seoul Sister
-            </h1>
-
-            <div style={{
-              width: '60px',
-              height: '1px',
-              background: '#d4a574',
-              margin: '3rem auto',
-              opacity: '0.8'
-            }}></div>
-
-            <p style={{
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '20px',
-              fontWeight: '300',
-              lineHeight: '1.6',
-              marginBottom: '0.5rem',
-              color: '#ffffff',
-              opacity: '0.9'
-            }}>
-              Find the best K-beauty deals with AI intelligence,
-            </p>
-            <p style={{
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '20px',
-              fontWeight: '300',
-              lineHeight: '1.6',
-              marginBottom: '4rem',
-              color: '#ffffff',
-              opacity: '0.9'
-            }}>
-              across <span style={{ color: '#d4a574' }}>all trusted retailers</span>
-            </p>
-
-            {/* Two Button Layout with Professional Styling */}
-            <div className="text-center max-w-3xl mx-auto relative">
-              {/* Button Container */}
-              <div className="flex flex-col sm:flex-row gap-8 sm:gap-16 items-center justify-center">
-                <Link href={user ? "/bailey-onboarding" : "/signup"}>
-                  <button style={{
-                    background: '#d4a574',
-                    color: '#000000',
-                    border: 'none',
-                    padding: '18px 50px',
-                    fontSize: '13px',
-                    fontFamily: 'Inter, sans-serif',
-                    fontWeight: '600',
-                    letterSpacing: '0.15em',
-                    textTransform: 'uppercase',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    borderRadius: '0px',
-                    minWidth: '200px'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#b8956a'
-                    e.currentTarget.style.transform = 'translateY(-1px)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#d4a574'
-                    e.currentTarget.style.transform = 'translateY(0px)'
-                  }}>
-                    INSIDER ACCESS
-                  </button>
-                </Link>
-
-                <Link href="#process">
-                  <button style={{
-                    background: 'transparent',
-                    color: '#d4a574',
-                    border: '1px solid #d4a574',
-                    padding: '18px 50px',
-                    fontSize: '13px',
-                    fontFamily: 'Inter, sans-serif',
-                    fontWeight: '600',
-                    letterSpacing: '0.15em',
-                    textTransform: 'uppercase',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    borderRadius: '0px',
-                    minWidth: '200px'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#d4a574'
-                    e.currentTarget.style.color = '#000000'
-                    e.currentTarget.style.transform = 'translateY(-1px)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = '#d4a574'
-                    e.currentTarget.style.transform = 'translateY(0px)'
-                  }}>
-                    DISCOVER MORE
-                  </button>
-                </Link>
-              </div>
-
-              {/* Faint Vertical Line Below Buttons */}
-              <div style={{
-                width: '1px',
-                height: '15px',
-                background: '#d4a574',
-                opacity: '0.4',
-                margin: '3rem auto 0',
-              }}></div>
-
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* Product Showcase - Grid Layout */}
-      <section className="section-dark py-32">
-        <div className="luxury-container">
-          <div className="text-center mb-20">
-            <p className="text-caption mb-4">CURATED COLLECTION</p>
-            <h2 className="heading-section text-5xl md:text-6xl mb-8">
-              Insider Pricing Revealed
-            </h2>
-            <div className="gold-line mx-auto"></div>
-          </div>
-
-          <div className="product-grid">
-            {featuredProducts.map((product) => (
-              <div key={product.id} className="product-card text-center group">
-                <div className="image-luxury mb-8 h-64 bg-luxury-black-soft relative">
-                  <Image
-                    src={product.image_url || '/images/placeholder.svg'}
-                    alt={product.image_url ? `${product.brand} ${product.name_english}` : `${product.brand} ${product.name_english} - Image not available`}
-                    width={400}
-                    height={400}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      // Fallback to placeholder if image fails to load
-                      e.currentTarget.src = '/images/placeholder.svg'
-                    }}
-                  />
-                  {!product.image_url && (
-                    <div className="absolute bottom-2 left-2 right-2">
-                      <div className="bg-black bg-opacity-75 text-yellow-500 text-xs px-2 py-1 text-center rounded">
-                        Best price found • Verified retailers
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <p className="text-caption mb-2">{product.brand.toUpperCase()}</p>
-                <h3 className="text-lg mb-6 font-light">{product.name_english}</h3>
-
-                <div className="space-y-2 mb-8">
-                  <p className="price-original text-sm">
-                    US RETAIL ${product.us_price}
-                  </p>
-                  <p className="price-seoul text-2xl">
-                    ${product.best_price_found?.toFixed(2) || '0.00'}
-                  </p>
-                </div>
-
-                <span className="badge-insider">
-                  {product.savings_percentage}% INSIDER SAVINGS
-                </span>
-              </div>
+      {/* Navigation */}
+      <nav className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-white/50 shadow-glass">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <span className="font-display font-bold text-xl text-seoul-charcoal tracking-tight">
+            Seoul Sister
+          </span>
+          <div className="hidden md:flex items-center gap-6">
+            {[
+              { label: 'Features', href: '#features' },
+              { label: 'Try Yuri', href: '#try-yuri' },
+              { label: 'Pricing', href: '#pricing' },
+            ].map((link) => (
+              <Link key={link.label} href={link.href} className="nav-link">
+                {link.label}
+              </Link>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* The Process - Clean Steps */}
-      <section id="process" className="section-light py-32">
-        <div className="luxury-container">
-          <div className="text-center mb-20">
-            <p className="text-caption mb-4 text-luxury-charcoal">THE PROCESS</p>
-            <h2 className="heading-section text-5xl md:text-6xl mb-8 text-luxury-black">
-              From Seoul to Your Door
-            </h2>
-            <div className="gold-line mx-auto"></div>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-16 max-w-5xl mx-auto">
-            <div className="text-center">
-              <div className="text-4xl mb-8 text-luxury-gold">01</div>
-              <h3 className="text-xl mb-4 font-light text-luxury-black">Direct Sourcing</h3>
-              <p className="text-sm text-luxury-charcoal font-light leading-relaxed">
-                Partnering with Seoul's most exclusive wholesale suppliers in Myeongdong,
-                ensuring authenticity and quality.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="text-4xl mb-8 text-luxury-gold">02</div>
-              <h3 className="text-xl mb-4 font-light text-luxury-black">Authentication</h3>
-              <p className="text-sm text-luxury-charcoal font-light leading-relaxed">
-                Every product verified with authenticity certificates directly
-                from Korean manufacturers.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="text-4xl mb-8 text-luxury-gold">03</div>
-              <h3 className="text-xl mb-4 font-light text-luxury-black">Premium Delivery</h3>
-              <p className="text-sm text-luxury-charcoal font-light leading-relaxed">
-                Luxury packaging with tracking, ensuring your K-beauty arrives
-                in perfect condition.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials - Refined */}
-      <section className="section-dark py-32">
-        <div className="luxury-container">
-          <div className="text-center mb-20">
-            <p className="text-caption mb-4">TESTIMONIALS</p>
-            <h2 className="heading-section text-5xl md:text-6xl mb-8">
-              Seoul Sisters Speak
-            </h2>
-            <div className="gold-line mx-auto"></div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-2 md:gap-2 max-w-5xl mx-auto">
-            <div className="testimonial-luxury">
-              <p className="testimonial-quote mb-8">
-                "The quality is identical to what I purchased at Sephora,
-                but at a fraction of the cost. Seoul Sister opened my eyes
-                to the reality of beauty industry markups."
-              </p>
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="font-light">Sarah K.</p>
-                  <p className="text-caption">LOS ANGELES</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-caption">MONTHLY SAVINGS</p>
-                  <p className="text-2xl text-luxury-gold font-light">$96</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="testimonial-luxury">
-              <p className="testimonial-quote mb-8">
-                "As a beauty content creator, authenticity matters.
-                Seoul Sister sources directly from Korea, and the
-                difference in my skin has been remarkable."
-              </p>
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="font-light">Emma R.</p>
-                  <p className="text-caption">NEW YORK</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-caption">FIRST ORDER SAVED</p>
-                  <p className="text-2xl text-luxury-gold font-light">$180</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Calculator Section - Minimalist */}
-      <section className="section-light py-32">
-        <div className="luxury-container">
-          <div className="text-center mb-20">
-            <p className="text-sm mb-4 font-medium tracking-widest" style={{color: '#D4A574'}}>CALCULATE</p>
-            <h2 className="heading-section text-5xl md:text-6xl mb-8 text-luxury-black">
-              Discover Your Savings
-            </h2>
-            <div className="gold-line mx-auto"></div>
-          </div>
-
-          <div className="max-w-2xl mx-auto">
-            <div className="bg-white border p-12" style={{borderColor: '#D4A574'}}>
-              <label className="block text-sm mb-4 font-medium tracking-widest" style={{color: '#D4A574'}}>
-                ENTER US RETAIL PRICE
-              </label>
-              <input
-                type="number"
-                placeholder="94"
-                defaultValue="94"
-                className="calculator-input w-full px-6 py-4 text-3xl font-light border text-center bg-white text-black focus:outline-none"
-                style={{borderColor: '#D4A574'}}
-                onChange={(e) => {
-                  const usPrice = parseFloat(e.target.value) || 94;
-                  const seoulPrice = Math.round(usPrice * 0.3);
-                  const savings = usPrice - seoulPrice - 25;
-
-                  const resultDiv = document.getElementById('calc-result');
-                  if (resultDiv) {
-                    // Add animation class before updating
-                    resultDiv.style.opacity = '0.5';
-                    resultDiv.style.transform = 'scale(0.98)';
-
-                    setTimeout(() => {
-                      resultDiv.innerHTML = `
-                        <div class="text-center space-y-8 py-8">
-                          <div class="grid grid-cols-2 gap-8">
-                            <div class="calculator-price-item">
-                              <p class="text-sm mb-2 font-medium tracking-widest text-gray-500">US RETAIL</p>
-                              <p class="calculator-price text-3xl font-light line-through text-gray-400">$${usPrice}</p>
-                            </div>
-                            <div class="calculator-price-item">
-                              <p class="text-sm mb-2 font-medium tracking-widest text-luxury-gold">SEOUL SISTER</p>
-                              <p class="calculator-price text-3xl font-light text-luxury-gold">$${seoulPrice + 25}</p>
-                            </div>
-                          </div>
-                          <div class="pt-8 border-t border-luxury-gold">
-                            <p class="text-sm mb-4 font-semibold tracking-widest text-luxury-gold">YOUR SAVINGS</p>
-                            <p class="calculator-savings text-6xl font-medium text-luxury-gold">$${savings > 0 ? savings : 0}</p>
-                            <div class="savings-percentage mt-2">
-                              <span class="badge-insider">${Math.round(((savings / usPrice) * 100))}% SAVED</span>
-                            </div>
-                          </div>
-                        </div>
-                      `;
-
-                      // Restore and animate
-                      resultDiv.style.opacity = '1';
-                      resultDiv.style.transform = 'scale(1)';
-                      resultDiv.style.transition = 'all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1)';
-                    }, 150);
-                  }
-                }}
-              />
-              <div id="calc-result" className="min-h-[200px] mt-8">
-                <div className="text-center space-y-8 py-8">
-                  <div className="grid grid-cols-2 gap-8">
-                    <div>
-                      <p className="text-sm mb-2 font-medium tracking-widest text-gray-500">US RETAIL</p>
-                      <p className="text-3xl font-light line-through text-gray-400">$94</p>
-                    </div>
-                    <div>
-                      <p className="text-sm mb-2 font-medium tracking-widest text-luxury-gold">SEOUL SISTER</p>
-                      <p className="text-3xl font-light text-luxury-gold">$53</p>
-                    </div>
-                  </div>
-                  <div className="pt-8 border-t border-luxury-gold">
-                    <p className="text-sm mb-4 font-semibold tracking-widest text-luxury-gold">YOUR SAVINGS</p>
-                    <p className="text-6xl font-medium text-luxury-gold">$41</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Viral Tools Section - Refined */}
-      <section className="viral-tools-section py-32">
-        <div className="luxury-container">
-          <div className="text-center mb-20">
-            <p className="text-caption mb-4">SHARE YOUR STORY</p>
-            <h2 className="heading-section text-5xl md:text-6xl mb-8">
-              Create Your Viral Moment
-            </h2>
-            <div className="gold-line mx-auto"></div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <div className="viral-tool-card text-center">
-              <h3 className="text-xl mb-4 font-light">Instagram Story Generator</h3>
-              <p className="text-sm text-gray-400 mb-8">
-                Create a luxury story showcasing your Seoul Sister savings
-              </p>
-              <Link href="/tools/screenshot">
-                <button className="btn-luxury text-xs w-full">
-                  CREATE STORY
-                </button>
-              </Link>
-            </div>
-
-            <div className="viral-tool-card text-center">
-              <h3 className="text-xl mb-4 font-light">Viral Copy Generator</h3>
-              <p className="text-sm text-gray-400 mb-8">
-                Generate platform-specific content for TikTok, Instagram, and more
-              </p>
-              <Link href="/tools/copy">
-                <button className="btn-luxury text-xs w-full">
-                  GENERATE COPY
-                </button>
-              </Link>
-            </div>
-          </div>
-
-          <div className="text-center mt-12">
-            <p className="text-sm text-gray-500">
-              Join 15K+ Seoul Sisters exposing beauty industry markups with style
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section - Clean Numbers */}
-      <section className="section-dark py-32">
-        <div className="luxury-container">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-16 text-center">
-            <div>
-              <p className="stats-number text-4xl md:text-5xl font-light text-luxury-gold mb-4">15K+</p>
-              <p className="text-caption">SEOUL SISTERS</p>
-            </div>
-            <div>
-              <p className="stats-number text-4xl md:text-5xl font-light text-luxury-gold mb-4">$2.8M</p>
-              <p className="text-caption">SAVED COLLECTIVELY</p>
-            </div>
-            <div>
-              <p className="stats-number text-4xl md:text-5xl font-light text-luxury-gold mb-4">73%</p>
-              <p className="text-caption">AVERAGE SAVINGS</p>
-            </div>
-            <div>
-              <p className="stats-number text-4xl md:text-5xl font-light text-luxury-gold mb-4">4.9</p>
-              <p className="text-caption">RATING</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* AI Features Section */}
-      <section className="section-dark py-32 border-t border-luxury-charcoal">
-        <div className="luxury-container">
-          <div className="text-center mb-20">
-            <p className="text-caption mb-4 text-luxury-gold">ADVANCED SKIN SCIENCE</p>
-            <h2 className="heading-section text-4xl md:text-6xl mb-8 font-light">
-              Personalized Intelligence
-            </h2>
-            <div className="gold-line mx-auto mb-8"></div>
-            <p className="text-xl font-light mb-12 max-w-3xl mx-auto text-gray-300">
-              Get personalized Korean skincare recommendations based on your unique skin analysis.
-              Our advanced skin intelligence matches you with products that work for your specific skin type and concerns.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8 mb-16">
-            <div className="bg-luxury-charcoal/30 p-8 rounded-lg border border-luxury-charcoal">
-              <div className="text-4xl mb-4">👩‍🔬</div>
-              <h3 className="text-xl font-semibold mb-4 text-luxury-gold">Bailey's Comprehensive Profile</h3>
-              <p className="text-gray-300 mb-6">
-                Complete Bailey's 8-step onboarding covering lifestyle, environment, medical factors, and goals for truly personalized skincare intelligence.
-              </p>
-              <Link href="/bailey-onboarding" className="inline-block">
-                <button className="btn-luxury text-sm">START BAILEY PROFILE</button>
-              </Link>
-            </div>
-
-            <div className="bg-luxury-charcoal/30 p-8 rounded-lg border border-luxury-charcoal">
-              <div className="text-4xl mb-4">📸</div>
-              <h3 className="text-xl font-semibold mb-4 text-luxury-gold">Product & Routine Analysis</h3>
-              <p className="text-gray-300 mb-6">
-                Upload photos of products or your entire routine for AI-powered ingredient analysis, compatibility checking, and optimization suggestions.
-              </p>
-              <Link href="/bailey-features?feature=product-scanner" className="inline-block">
-                <button className="btn-luxury text-sm">ANALYZE PRODUCTS</button>
-              </Link>
-            </div>
-
-            <div className="bg-luxury-charcoal/30 p-8 rounded-lg border border-luxury-charcoal">
-              <div className="text-4xl mb-4">🔍</div>
-              <h3 className="text-xl font-semibold mb-4 text-luxury-gold">Smart Shopping Tools</h3>
-              <p className="text-gray-300 mb-6">
-                Barcode scanning for price comparison, duplicate detection, progress tracking, and irritation analysis - all powered by Bailey's expertise.
-              </p>
-              <Link href="/bailey-features" className="inline-block">
-                <button className="btn-luxury text-sm">EXPLORE FEATURES</button>
-              </Link>
-            </div>
-          </div>
-
-          <div className="text-center">
-            <p className="text-gray-400 text-sm">
-              Advanced Skin Science • Personalized for Your Unique Skin
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Daily Intelligence Reports Section */}
-      <section className="section-dark py-32 border-t border-luxury-charcoal">
-        <div className="luxury-container">
-          <div className="max-w-6xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-16 items-center">
-              <div>
-                <p className="text-caption mb-4 text-luxury-gold">EXCLUSIVE INTELLIGENCE</p>
-                <h2 className="heading-section text-4xl md:text-5xl mb-6 font-light">
-                  Daily Seoul Beauty Reports
-                </h2>
-                <div className="gold-line mb-8"></div>
-
-                <p className="text-xl font-light mb-8 text-gray-300 leading-relaxed">
-                  Wake up to premium intelligence on trending Korean products, ingredient breakthroughs,
-                  and social media insights. Bloomberg Terminal-quality analysis delivered daily to premium members.
-                </p>
-
-                <div className="space-y-6 mb-8">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-2 h-2 bg-luxury-gold rounded-full mt-3 flex-shrink-0"></div>
-                    <div>
-                      <h4 className="text-lg font-medium text-luxury-gold mb-2">Trending Product Discovery</h4>
-                      <p className="text-gray-400">
-                        AI-powered analysis of Seoul's hottest products with exact wholesale pricing and savings calculations.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-4">
-                    <div className="w-2 h-2 bg-luxury-gold rounded-full mt-3 flex-shrink-0"></div>
-                    <div>
-                      <h4 className="text-lg font-medium text-luxury-gold mb-2">Ingredient Intelligence</h4>
-                      <p className="text-gray-400">
-                        Scientific analysis of breakthrough Korean ingredients with research backing and compatibility insights.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-4">
-                    <div className="w-2 h-2 bg-luxury-gold rounded-full mt-3 flex-shrink-0"></div>
-                    <div>
-                      <h4 className="text-lg font-medium text-luxury-gold mb-2">Social Media Trends</h4>
-                      <p className="text-gray-400">
-                        Real-time monitoring of Korean beauty platforms with viral trend predictions and influencer insights.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <Link href="/intelligence">
-                  <button className="btn-luxury-solid text-sm px-8 py-4">
-                    ACCESS TODAY'S REPORT
-                  </button>
-                </Link>
-              </div>
-
-              <div className="relative">
-                <div className="bg-gradient-to-br from-luxury-charcoal/50 to-black/80 rounded-lg border border-luxury-gold/20 p-8 backdrop-blur-sm">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <p className="text-luxury-gold text-sm uppercase tracking-wider mb-1">TODAY'S INTELLIGENCE</p>
-                      <h3 className="text-xl font-light">Seoul Beauty Report</h3>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-light text-luxury-gold">1,243</p>
-                      <p className="text-xs text-gray-400 uppercase tracking-wider">Views</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 mb-6">
-                    <div className="bg-black/30 rounded p-4 border border-luxury-gold/10">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-luxury-gold">#1 Trending</span>
-                        <span className="text-xs text-green-400">Save 73%</span>
-                      </div>
-                      <h4 className="text-sm font-medium mb-1">Relief Sun: Rice + Probiotics</h4>
-                      <p className="text-xs text-gray-400">Beauty of Joseon • Viral for 12 weeks straight</p>
-                    </div>
-
-                    <div className="bg-black/30 rounded p-4 border border-luxury-gold/10">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-luxury-gold">Hero Ingredient</span>
-                        <span className="text-xs text-luxury-gold">98% Popularity</span>
-                      </div>
-                      <h4 className="text-sm font-medium mb-1">Centella Asiatica</h4>
-                      <p className="text-xs text-gray-400">23 peer-reviewed studies • Anti-inflammatory</p>
-                    </div>
-                  </div>
-
-                  <div className="text-center">
-                    <p className="text-xs text-gray-500 mb-2">PREMIUM MEMBERS ONLY</p>
-                    <div className="w-full h-1 bg-gradient-to-r from-luxury-gold/20 via-luxury-gold to-luxury-gold/20 rounded"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ Section - Minimal */}
-      <section className="section-light py-32">
-        <div className="luxury-container">
-          <div className="text-center mb-20">
-            <p className="text-caption mb-4 text-luxury-charcoal">FREQUENTLY ASKED</p>
-            <h2 className="heading-section text-5xl md:text-6xl mb-8 text-luxury-black">
-              Questions
-            </h2>
-            <div className="gold-line mx-auto"></div>
-          </div>
-
-          <div className="max-w-4xl mx-auto space-y-2">
-            <div className="faq-item bg-white border border-gray-200 transition-all duration-300 hover:border-luxury-gold">
-              <button className="w-full text-left p-8 focus:outline-none">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-light text-luxury-black">How do I know products are authentic?</h3>
-                  <span className="text-luxury-gold text-2xl">+</span>
-                </div>
-              </button>
-              <div className="px-8 pb-8">
-                <p className="text-luxury-charcoal leading-relaxed">
-                  Every product comes with authenticity certificates directly from Korean manufacturers.
-                  We maintain exclusive partnerships with Seoul's most trusted beauty suppliers in Myeongdong,
-                  ensuring 100% authentic products that meet Korean regulatory standards.
-                </p>
-              </div>
-            </div>
-
-            <div className="faq-item bg-white border border-gray-200 transition-all duration-300 hover:border-luxury-gold">
-              <button className="w-full text-left p-8 focus:outline-none">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-light text-luxury-black">What's included in the $8/month membership?</h3>
-                  <span className="text-luxury-gold text-2xl">+</span>
-                </div>
-              </button>
-              <div className="px-8 pb-8">
-                <p className="text-luxury-charcoal leading-relaxed">
-                  Your premium membership includes advanced skin analysis, personalized K-beauty recommendations,
-                  ingredient compatibility checking, access to Seoul wholesale pricing, WhatsApp ordering service,
-                  and continuous updates on trending Korean beauty products.
-                </p>
-              </div>
-            </div>
-
-            <div className="faq-item bg-white border border-gray-200 transition-all duration-300 hover:border-luxury-gold">
-              <button className="w-full text-left p-8 focus:outline-none">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-light text-luxury-black">How long does delivery take?</h3>
-                  <span className="text-luxury-gold text-2xl">+</span>
-                </div>
-              </button>
-              <div className="px-8 pb-8">
-                <p className="text-luxury-charcoal leading-relaxed">
-                  Orders are sourced and shipped from Seoul within 3-5 business days.
-                  International delivery typically takes 7-14 days with full tracking.
-                  Rush delivery options available for time-sensitive orders.
-                </p>
-              </div>
-            </div>
-
-            <div className="faq-item bg-white border border-gray-200 transition-all duration-300 hover:border-luxury-gold">
-              <button className="w-full text-left p-8 focus:outline-none">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-light text-luxury-black">Can I return or exchange products?</h3>
-                  <span className="text-luxury-gold text-2xl">+</span>
-                </div>
-              </button>
-              <div className="px-8 pb-8">
-                <p className="text-luxury-charcoal leading-relaxed">
-                  We offer a 30-day satisfaction guarantee. If you're not completely satisfied,
-                  we'll work with you on exchanges or refunds. However, due to international
-                  sourcing, we recommend checking product details carefully before ordering.
-                </p>
-              </div>
-            </div>
-
-            <div className="faq-item bg-white border border-gray-200 transition-all duration-300 hover:border-luxury-gold">
-              <button className="w-full text-left p-8 focus:outline-none">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-light text-luxury-black">Why are Seoul prices so much lower?</h3>
-                  <span className="text-luxury-gold text-2xl">+</span>
-                </div>
-              </button>
-              <div className="px-8 pb-8">
-                <p className="text-luxury-charcoal leading-relaxed">
-                  Korean beauty brands sell at wholesale prices in their home market.
-                  US retailers add 300-500% markup for import, distribution, and retail margins.
-                  Seoul Sister eliminates these middlemen, passing authentic Seoul prices to you.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Premium Intelligence Platform Section */}
-      <section className="section-dark py-32 border-t border-luxury-charcoal">
-        <div className="luxury-container">
-          <div className="text-center mb-20">
-            <p className="text-caption mb-4 text-luxury-gold">PREMIUM INTELLIGENCE PLATFORM</p>
-            <h2 className="heading-section text-5xl md:text-7xl mb-8 font-light">
-              Beyond Reports
-            </h2>
-            <p className="text-xl font-light max-w-3xl mx-auto text-gray-300">
-              Your complete Korean beauty intelligence ecosystem with real-time price tracking,
-              AI recommendations, and exclusive Seoul supplier access.
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-3 gap-12 mb-16">
-            <div className="text-center p-8 border border-luxury-gold/20 hover:border-luxury-gold/40 transition-all duration-300 hover:transform hover:scale-105">
-              <div className="w-16 h-16 mx-auto mb-6 border border-luxury-gold rounded-full flex items-center justify-center">
-                <div className="w-2 h-2 bg-luxury-gold rounded-full"></div>
-              </div>
-              <h3 className="text-xl font-light mb-4 text-luxury-gold">Real-Time Price Intelligence</h3>
-              <p className="text-gray-400 mb-6">
-                Automated daily price tracking across 8+ major retailers. Never overpay for Korean beauty again.
-              </p>
-              <div className="space-y-2 text-sm text-gray-500">
-                <p>• Sephora, YesStyle, Olive Young tracking</p>
-                <p>• Deal alerts & price drop notifications</p>
-                <p>• True cost calculations with shipping</p>
-              </div>
-            </div>
-
-            <div className="text-center p-8 border border-luxury-gold/20 hover:border-luxury-gold/40 transition-all duration-300 hover:transform hover:scale-105">
-              <div className="w-16 h-16 mx-auto mb-6 border border-luxury-gold rounded-full flex items-center justify-center">
-                <div className="w-2 h-2 bg-luxury-gold rounded-full"></div>
-              </div>
-              <h3 className="text-xl font-light mb-4 text-luxury-gold">AI Skin Analysis & Matching</h3>
-              <p className="text-gray-400 mb-6">
-                Advanced AI analyzes your skin profile and matches you with perfect Korean beauty products.
-              </p>
-              <div className="space-y-2 text-sm text-gray-500">
-                <p>• Personalized product recommendations</p>
-                <p>• Ingredient compatibility analysis</p>
-                <p>• Custom routine building</p>
-              </div>
-            </div>
-
-            <div className="text-center p-8 border border-luxury-gold/20 hover:border-luxury-gold/40 transition-all duration-300 hover:transform hover:scale-105">
-              <div className="w-16 h-16 mx-auto mb-6 border border-luxury-gold rounded-full flex items-center justify-center">
-                <div className="w-2 h-2 bg-luxury-gold rounded-full"></div>
-              </div>
-              <h3 className="text-xl font-light mb-4 text-luxury-gold">Seoul Supplier Access</h3>
-              <p className="text-gray-400 mb-6">
-                Direct connections to verified Korean suppliers for wholesale pricing and group buying opportunities.
-              </p>
-              <div className="space-y-2 text-sm text-gray-500">
-                <p>• Verified Seoul supplier directory</p>
-                <p>• Group buying coordination</p>
-                <p>• WhatsApp concierge service</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-r from-luxury-charcoal/30 to-black/50 rounded-lg border border-luxury-gold/20 p-12 text-center backdrop-blur-sm">
-            <h3 className="text-3xl md:text-4xl font-light mb-6">
-              Complete Intelligence Platform
-            </h3>
-            <div className="grid md:grid-cols-4 gap-8 mb-12">
-              <div>
-                <div className="text-3xl font-light text-luxury-gold mb-2">$45</div>
-                <p className="text-sm text-gray-400">Perceived Value</p>
-              </div>
-              <div>
-                <div className="text-3xl font-light text-luxury-gold mb-2">8+</div>
-                <p className="text-sm text-gray-400">Retailers Tracked</p>
-              </div>
-              <div>
-                <div className="text-3xl font-light text-luxury-gold mb-2">24/7</div>
-                <p className="text-sm text-gray-400">Price Monitoring</p>
-              </div>
-              <div>
-                <div className="text-3xl font-light text-luxury-gold mb-2">70%</div>
-                <p className="text-sm text-gray-400">Average Savings</p>
-              </div>
-            </div>
-
-            <p className="text-2xl font-light text-luxury-gold mb-4">
-              $8/month • 7-day FREE trial
-            </p>
-            <p className="text-gray-400 mb-8">
-              Cancel anytime • Full AI features during trial • Find deals worth 10x your subscription
-            </p>
-
-            <Link href="/dashboard">
-              <button className="btn-luxury-solid text-base px-12 py-4">
-                ACCESS AI BEAUTY ADVISOR
-              </button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA - Premium Membership */}
-      <section className="section-dark py-32 border-t border-luxury-charcoal">
-        <div className="luxury-container text-center">
-          <h2 className="heading-section text-5xl md:text-7xl mb-8 font-light">
-            Join Seoul Sister
-          </h2>
-          <p className="text-xl font-light mb-8 max-w-2xl mx-auto">
-            AI-powered beauty intelligence that finds the best deals across all trusted K-beauty retailers.
-          </p>
-
-          <div className="mb-8">
-            <p className="text-2xl font-light text-luxury-gold mb-2">
-              $8/month with 7-day FREE trial
-            </p>
-            <p className="text-gray-400">
-              Cancel anytime • No hidden fees • Full AI features during trial
-            </p>
-          </div>
-
-          <Link href="/signup">
-            <button className="btn-luxury-solid text-base">
-              START FREE TRIAL
-            </button>
+          <Link href="/register" className="glass-button-primary text-sm py-2 px-5">
+            Get Started
           </Link>
+        </div>
+      </nav>
 
-          <p className="text-caption mt-8">
-            ADVANCED AI ANALYSIS • PRICE INTELLIGENCE • RETAILER TRUST SCORES
-          </p>
+      {/* Hero */}
+      <section className="bg-hero-gradient pt-20 pb-24 px-4 overflow-hidden">
+        <div className="max-w-4xl mx-auto text-center">
+          <motion.div variants={stagger} initial="hidden" animate="show">
+            <motion.div variants={fadeUp}>
+              <span className="badge-pink mb-4 inline-block">World&apos;s First English K-Beauty Intelligence Platform</span>
+            </motion.div>
+            <motion.h1 variants={fadeUp} className="font-display font-bold text-4xl md:text-6xl text-seoul-charcoal leading-tight mb-6">
+              K-Beauty Intelligence,
+              <br />
+              <span className="text-gradient">Powered by AI</span>
+            </motion.h1>
+            <motion.p variants={fadeUp} className="text-seoul-soft text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+              Your AI-powered guide to Korean skincare — personalized routines, real ingredients, verified products.
+            </motion.p>
+            <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/register" className="glass-button-primary text-base py-3 px-8">
+                Start Free
+              </Link>
+              <Link href="#features" className="glass-button text-base py-3 px-8 text-seoul-charcoal">
+                See How It Works
+              </Link>
+            </motion.div>
+          </motion.div>
+
+          {/* Glass product scan preview */}
+          <motion.div
+            initial={{ opacity: 0, y: 32 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.8 }}
+            className="mt-16 mx-auto max-w-sm animate-float"
+          >
+            <div className="glass-card p-6 text-left shadow-glass-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-gold to-glass-500 flex items-center justify-center">
+                  <Camera className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-seoul-charcoal">Scanning label...</p>
+                  <p className="text-xs text-seoul-soft">COSRX Advanced Snail 96</p>
+                </div>
+                <span className="ml-auto badge-blue animate-pulse-soft">Live</span>
+              </div>
+              <div className="space-y-2">
+                {[
+                  { name: 'Snail Secretion Filtrate', score: 96, color: 'bg-glass-400' },
+                  { name: 'Sodium Hyaluronate', score: 88, color: 'bg-glass-400' },
+                  { name: 'Allantoin', score: 92, color: 'bg-glass-400' },
+                ].map((ing) => (
+                  <div key={ing.name} className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-seoul-charcoal">{ing.name}</p>
+                      <div className="h-1 bg-seoul-pearl rounded-full mt-1">
+                        <div className={`h-1 ${ing.color} rounded-full`} style={{ width: `${ing.score}%` }} />
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold text-glass-600">{ing.score}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-xs text-glass-600 font-medium">No conflicts with your routine</p>
+            </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Footer - Minimal */}
-      <footer className="section-dark py-16 border-t border-luxury-charcoal">
-        <div className="luxury-container">
-          <div className="grid md:grid-cols-4 gap-12">
-            <div>
-              <h3 className="text-caption mb-6">AI FEATURES</h3>
-              <div className="space-y-3">
-                <Link href="/skin-analysis" className="link-luxury block text-sm">Skin Analysis</Link>
-                <Link href="/personalized-dashboard" className="link-luxury block text-sm">Personal Dashboard</Link>
-                <Link href="/skin-profile" className="link-luxury block text-sm">Skin Profile</Link>
-                <Link href="/admin/ai-features" className="link-luxury block text-sm opacity-75">Admin Portal</Link>
-              </div>
-            </div>
+      {/* Features */}
+      <section id="features" className="py-20 px-4 bg-seoul-gradient">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="section-heading mb-3">Six Reasons K-Beauty Lovers Stay</h2>
+            <p className="section-subheading mx-auto">From label to routine to community — intelligence at every step.</p>
+          </div>
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-80px' }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+          >
+            {features.map(({ icon: Icon, title, desc, badge }) => (
+              <motion.div key={title} variants={fadeUp} className="glass-card p-6 hover:shadow-glass-lg transition-shadow duration-300">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-seoul-blush to-glass-100 flex items-center justify-center mb-4">
+                  <Icon className="w-5 h-5 text-rose-gold" />
+                </div>
+                <h3 className="font-display font-semibold text-base text-seoul-charcoal mb-2">{title}</h3>
+                <p className="text-seoul-soft text-sm leading-relaxed">{desc}</p>
+                <span className={`${badge} mt-4 inline-block`}>AI-powered</span>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
 
-            <div>
-              <h3 className="text-caption mb-6">ABOUT</h3>
-              <div className="space-y-3">
-                <Link href="/story" className="link-luxury block text-sm">Our Story</Link>
-                <Link href="/authenticity" className="link-luxury block text-sm">Authenticity</Link>
-                <Link href="/process" className="link-luxury block text-sm">Process</Link>
-              </div>
-            </div>
+      {/* How It Works */}
+      <section className="py-20 px-4 bg-seoul-cream">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="section-heading mb-3">How It Works</h2>
+          <p className="section-subheading mx-auto mb-12">Three steps from curiosity to confident skin.</p>
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-60px' }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-8"
+          >
+            {steps.map(({ icon: Icon, step, title, desc }) => (
+              <motion.div key={step} variants={fadeUp} className="flex flex-col items-center text-center">
+                <div className="relative mb-5">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-seoul-pink to-glass-100 flex items-center justify-center shadow-glow-pink">
+                    <Icon className="w-7 h-7 text-rose-gold" />
+                  </div>
+                  <span className="absolute -top-2 -right-2 text-xs font-bold text-rose-gold bg-white rounded-full w-6 h-6 flex items-center justify-center shadow-glass">{step}</span>
+                </div>
+                <h3 className="font-display font-semibold text-seoul-charcoal mb-2">{title}</h3>
+                <p className="text-seoul-soft text-sm leading-relaxed">{desc}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
 
-            <div>
-              <h3 className="text-caption mb-6">SUPPORT</h3>
-              <div className="space-y-3">
-                <Link href="/support" className="link-luxury block text-sm">Support Center</Link>
-                <Link href="/contact" className="link-luxury block text-sm">Contact</Link>
-                <Link href="/faq" className="link-luxury block text-sm">FAQ</Link>
-                <Link href="/shipping" className="link-luxury block text-sm">Shipping</Link>
-              </div>
-            </div>
+      {/* Try Yuri - Layer 2 */}
+      <TryYuriSection />
 
-            <div>
-              <h3 className="text-caption mb-6">INSIDER ACCESS</h3>
-              <p className="text-sm text-gray-400 mb-6">
-                Join 15K+ Seoul Sisters accessing authentic K-beauty at insider prices.
-              </p>
-              <Link href="/signup">
-                <button className="btn-luxury text-xs w-full">
-                  JOIN NOW
-                </button>
-              </Link>
-            </div>
+      {/* Social Proof */}
+      <section className="py-20 px-4 bg-seoul-cream">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="section-heading mb-3">Trusted by K-Beauty Enthusiasts</h2>
+            <p className="section-subheading mx-auto">The intelligence platform built for ingredient-literate skincare lovers.</p>
           </div>
 
-          <div className="text-center mt-20 pt-8 border-t border-luxury-charcoal">
-            <div className="flex flex-wrap justify-center gap-6 mb-6">
-              <Link href="/privacy" className="text-sm text-gray-400 hover:text-luxury-gold transition-colors">
-                Privacy Policy
+          {/* Stats */}
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-40px' }}
+            className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-12"
+          >
+            {stats.map(({ value, label }) => (
+              <motion.div key={label} variants={fadeUp} className="glass-card p-5 text-center">
+                <p className="text-2xl md:text-3xl font-bold text-gradient">{value}</p>
+                <p className="text-xs text-seoul-soft mt-1">{label}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* Testimonials */}
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-40px' }}
+            className="grid grid-cols-1 md:grid-cols-2 gap-5"
+          >
+            {[
+              {
+                quote: 'Yuri caught a retinol-AHA conflict in my routine I\'d been ignoring for months. My skin barrier has never been better.',
+                name: 'Maya K.',
+                skin: 'Combination skin, Fitzpatrick III',
+              },
+              {
+                quote: 'I saved $40 on my Sulwhasoo by finding the same key ingredients in a $12 alternative. Budget Optimizer is unreal.',
+                name: 'Lily C.',
+                skin: 'Dry skin, Fitzpatrick II',
+              },
+            ].map((t) => (
+              <motion.div key={t.name} variants={fadeUp} className="glass-card p-6">
+                <div className="flex gap-1 mb-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} className="w-4 h-4 text-rose-gold fill-current" />
+                  ))}
+                </div>
+                <p className="text-sm text-seoul-charcoal leading-relaxed mb-4">
+                  &ldquo;{t.quote}&rdquo;
+                </p>
+                <div>
+                  <p className="text-xs font-semibold text-seoul-charcoal">{t.name}</p>
+                  <p className="text-xs text-seoul-soft">{t.skin}</p>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="py-20 px-4 bg-seoul-gradient">
+        <div className="max-w-6xl mx-auto text-center">
+          <h2 className="section-heading mb-3">Simple, Transparent Pricing</h2>
+          <p className="section-subheading mx-auto mb-12">Start free. Go Pro when you&apos;re ready for the full intelligence suite.</p>
+          <PricingCards />
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="py-20 px-4 bg-hero-gradient">
+        <motion.div
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true }}
+          variants={fadeUp}
+          className="max-w-2xl mx-auto text-center"
+        >
+          <h2 className="font-display font-bold text-3xl md:text-4xl text-seoul-charcoal mb-4">
+            Start Your K-Beauty Journey
+          </h2>
+          <p className="text-seoul-soft text-base md:text-lg mb-8 leading-relaxed">
+            Join the community of ingredient-literate K-beauty lovers who make smarter skincare decisions.
+          </p>
+          <Link
+            href="/register"
+            className="inline-flex items-center gap-2 glass-button-primary text-base py-3.5 px-10"
+          >
+            Create Free Account <ArrowRight className="w-4 h-4" />
+          </Link>
+          <p className="text-xs text-seoul-soft mt-4">No credit card required. Free tier is free forever.</p>
+        </motion.div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-white/60 backdrop-blur-md border-t border-white/50 py-12 px-4">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div>
+            <span className="font-display font-bold text-lg text-seoul-charcoal">Seoul Sister</span>
+            <p className="text-xs text-seoul-soft mt-1">The world&apos;s first English K-beauty intelligence platform.</p>
+          </div>
+          <div className="flex gap-6 text-sm">
+            {[
+              { label: 'Features', href: '#features' },
+              { label: 'Try Yuri', href: '#try-yuri' },
+              { label: 'Pricing', href: '#pricing' },
+            ].map((link) => (
+              <Link key={link.label} href={link.href} className="nav-link">
+                {link.label}
               </Link>
-              <Link href="/terms" className="text-sm text-gray-400 hover:text-luxury-gold transition-colors">
-                Terms of Service
-              </Link>
-              <Link href="/support" className="text-sm text-gray-400 hover:text-luxury-gold transition-colors">
-                Support
-              </Link>
-            </div>
-            <p className="text-caption">
-              © 2025 SEOUL SISTER · AUTHENTIC KOREAN BEAUTY · INSIDER ACCESS ONLY
-            </p>
+            ))}
+          </div>
+          <div className="flex gap-4 text-xs text-seoul-soft">
+            <Link href="/privacy" className="hover:text-seoul-charcoal transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-seoul-charcoal transition-colors">Terms</Link>
           </div>
         </div>
+        <p className="text-center text-xs text-seoul-soft/60 mt-8">&copy; 2026 Seoul Sister. All rights reserved.</p>
       </footer>
 
-      {/* Floating AI Assistant Button - Luxury Theme */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <Link
-          href="/personalized-dashboard"
-          className="flex items-center gap-3 bg-gradient-to-r from-luxury-charcoal to-black border border-luxury-gold/30 text-luxury-gold px-6 py-4 rounded-full shadow-2xl hover:shadow-luxury-gold/20 transition-all duration-300 hover:scale-105 backdrop-blur-sm"
-        >
-          <div className="text-2xl">✨</div>
-          <div className="hidden md:block">
-            <div className="font-semibold text-sm tracking-wide">AI BEAUTY ADVISOR</div>
-            <div className="text-xs opacity-75 font-light">Personalized Intelligence</div>
-          </div>
-        </Link>
-      </div>
-    </main>
+      {/* Layer 1: Floating Yuri Bubble */}
+      <YuriBubble />
+    </div>
   )
 }

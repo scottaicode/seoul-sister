@@ -1,84 +1,113 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { handleApiError } from '@/lib/utils/error-handler'
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
-    const { data, error } = await supabase
-      .from('products')
+
+    if (!id || !/^[0-9a-f-]{36}$/.test(id)) {
+      return NextResponse.json({ error: 'Invalid product ID' }, { status: 400 })
+    }
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+
+    // Fetch product
+    const { data: product, error: productError } = await supabase
+      .from('ss_products')
       .select('*')
       .eq('id', id)
       .single()
 
-    if (error) {
-      console.error('Error fetching product:', error)
+    if (productError || !product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ product: data })
-  } catch (error) {
-    console.error('Unexpected error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
-}
+    // Fetch ingredients with details (joined via ss_product_ingredients)
+    const { data: productIngredients, error: ingredientsError } = await supabase
+      .from('ss_product_ingredients')
+      .select(`
+        position,
+        concentration_pct,
+        ingredient:ss_ingredients (
+          id,
+          name_inci,
+          name_en,
+          name_ko,
+          function,
+          description,
+          safety_rating,
+          comedogenic_rating,
+          is_fragrance,
+          is_active,
+          common_concerns
+        )
+      `)
+      .eq('product_id', id)
+      .order('position', { ascending: true })
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id: paramId } = await params
-    const body = await request.json()
-
-    // Remove id from body to prevent conflicts
-    const { id, ...updateData } = body
-
-    const { data, error } = await supabase
-      .from('products')
-      .update(updateData)
-      .eq('id', paramId)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error updating product:', error)
-      return NextResponse.json({ error: 'Failed to update product' }, { status: 500 })
+    if (ingredientsError) {
+      console.error('Error fetching ingredients:', ingredientsError)
     }
 
-    return NextResponse.json({ product: data })
-  } catch (error) {
-    console.error('Unexpected error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
-}
+    // Fetch prices from retailers
+    const { data: prices, error: pricesError } = await supabase
+      .from('ss_product_prices')
+      .select(`
+        price_usd,
+        price_krw,
+        url,
+        in_stock,
+        last_checked,
+        retailer:ss_retailers (
+          id,
+          name,
+          website,
+          country,
+          trust_score,
+          ships_international,
+          affiliate_program
+        )
+      `)
+      .eq('product_id', id)
+      .order('price_usd', { ascending: true })
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .eq('id', id)
-
-    if (error) {
-      console.error('Error deleting product:', error)
-      return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 })
+    if (pricesError) {
+      console.error('Error fetching prices:', pricesError)
     }
 
-    return NextResponse.json({ success: true })
+    // Fetch reviews summary
+    const { data: reviews, error: reviewsError } = await supabase
+      .from('ss_reviews')
+      .select('rating, reaction')
+      .eq('product_id', id)
+
+    if (reviewsError) {
+      console.error('Error fetching reviews:', reviewsError)
+    }
+
+    const reviewSummary = reviews && reviews.length > 0
+      ? {
+          count: reviews.length,
+          avg_rating: reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length,
+          holy_grail_count: reviews.filter(r => r.reaction === 'holy_grail').length,
+          broke_me_out_count: reviews.filter(r => r.reaction === 'broke_me_out').length,
+        }
+      : null
+
+    return NextResponse.json({
+      product,
+      ingredients: productIngredients ?? [],
+      prices: prices ?? [],
+      review_summary: reviewSummary,
+    })
   } catch (error) {
-    console.error('Unexpected error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return handleApiError(error)
   }
 }
