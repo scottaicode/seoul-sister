@@ -7,7 +7,7 @@ import {
   getMessageCount,
   setMessageCount,
   MAX_FREE_MESSAGES,
-} from '@/lib/utils/widget-cookies'
+} from '@/lib/utils/widget-session'
 
 /** Lightweight markdown: **bold**, *italic*, `- ` list items, paragraph spacing */
 function renderMarkdown(text: string) {
