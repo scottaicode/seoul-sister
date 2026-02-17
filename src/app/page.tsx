@@ -1,10 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Camera, Layers, ShieldCheck, Search, Sparkles, Users,
-  ScanLine, Brain, ListOrdered, Check, Star, ArrowRight
+  ScanLine, Brain, ListOrdered, Check, Star, ArrowRight,
+  Menu, X
 } from 'lucide-react'
 import PricingCards from '@/components/pricing/PricingCards'
 import TryYuriSection from '@/components/widget/TryYuriSection'
@@ -42,7 +44,15 @@ const stats = [
   { value: '55+', label: 'Ingredients Decoded' },
 ]
 
+const navLinks = [
+  { label: 'Features', href: '#features' },
+  { label: 'Try Yuri', href: '#try-yuri' },
+  { label: 'Pricing', href: '#pricing' },
+]
+
 export default function LandingPage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
     <div className="min-h-screen bg-seoul-dark font-sans">
 
@@ -53,20 +63,56 @@ export default function LandingPage() {
             Seoul Sister
           </span>
           <div className="hidden md:flex items-center gap-6">
-            {[
-              { label: 'Features', href: '#features' },
-              { label: 'Try Yuri', href: '#try-yuri' },
-              { label: 'Pricing', href: '#pricing' },
-            ].map((link) => (
+            {navLinks.map((link) => (
               <Link key={link.label} href={link.href} className="nav-link">
                 {link.label}
               </Link>
             ))}
           </div>
-          <Link href="/register" className="glass-button-primary text-sm py-2 px-5">
-            Get Started
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/register" className="glass-button-primary text-sm py-2 px-5">
+              Get Started
+            </Link>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden w-10 h-10 rounded-lg flex items-center justify-center hover:bg-white/5 transition-colors"
+              aria-label="Toggle menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? (
+                <X className="w-5 h-5 text-white/70" />
+              ) : (
+                <Menu className="w-5 h-5 text-white/70" />
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile dropdown menu */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="md:hidden overflow-hidden border-t border-white/5"
+            >
+              <div className="px-4 py-3 flex flex-col gap-1">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="py-2.5 px-3 text-sm text-white/60 hover:text-gold hover:bg-white/5 rounded-lg transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
       {/* Hero */}

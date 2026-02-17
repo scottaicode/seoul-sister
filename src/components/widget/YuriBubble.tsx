@@ -168,7 +168,7 @@ export default function YuriBubble() {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-gold to-gold-light text-seoul-dark shadow-glow-gold flex items-center justify-center hover:shadow-glow-gold-lg hover:scale-105 transition-all duration-300 group"
+            className="fixed bottom-4 right-4 md:bottom-5 md:right-5 z-50 w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-gold to-gold-light text-seoul-dark shadow-glow-gold flex items-center justify-center hover:shadow-glow-gold-lg hover:scale-105 transition-all duration-300 group"
             aria-label="Chat with Yuri"
           >
             <MessageCircle className="w-6 h-6" />
@@ -187,7 +187,7 @@ export default function YuriBubble() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-5 right-5 z-50 w-[calc(100vw-2.5rem)] max-w-[400px] h-[500px] md:h-[500px] max-h-[calc(100vh-6rem)] rounded-2xl overflow-hidden bg-seoul-card/95 backdrop-blur-xl border border-white/10 shadow-glow-gold flex flex-col"
+            className="fixed bottom-4 right-4 md:bottom-5 md:right-5 z-50 w-[calc(100vw-2rem)] max-w-[400px] h-[70vh] md:h-[500px] max-h-[calc(100vh-6rem)] rounded-2xl overflow-hidden bg-seoul-card/95 backdrop-blur-xl border border-white/10 shadow-glow-gold flex flex-col"
           >
             {/* Header */}
             <div className="flex items-center gap-3 px-4 py-3 bg-gold/5 border-b border-white/10">

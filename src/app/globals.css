@@ -129,3 +129,10 @@
     display: none;
   }
 }
+
+/* Yuri bubble safe zone — prevent fixed widget from covering tappable footer content on mobile */
+@media (max-width: 767px) {
+  footer {
+    padding-bottom: 5rem;
+  }
+}
