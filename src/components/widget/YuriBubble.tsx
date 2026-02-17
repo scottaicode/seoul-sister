@@ -7,6 +7,30 @@ import { motion, AnimatePresence } from 'framer-motion'
 const COOKIE_KEY = 'yuri_widget_session'
 const MAX_FREE_MESSAGES = 5
 
+/** Lightweight markdown: **bold**, *italic*, and `- ` list items */
+function renderMarkdown(text: string) {
+  return text.split('\n').map((line, i) => {
+    const isList = line.trimStart().startsWith('- ')
+    const content = isList ? line.replace(/^\s*-\s*/, '') : line
+
+    const parts = content.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/).map((seg, j) => {
+      if (seg.startsWith('**') && seg.endsWith('**')) {
+        return <strong key={j} className="font-semibold text-white">{seg.slice(2, -2)}</strong>
+      }
+      if (seg.startsWith('*') && seg.endsWith('*')) {
+        return <em key={j}>{seg.slice(1, -1)}</em>
+      }
+      return seg
+    })
+
+    if (isList) {
+      return <li key={i} className="ml-3 list-disc list-inside">{parts}</li>
+    }
+    if (line.trim() === '') return <br key={i} />
+    return <span key={i}>{parts}{i < text.split('\n').length - 1 ? ' ' : ''}</span>
+  })
+}
+
 interface WidgetMessage {
   id: string
   role: 'user' | 'assistant'
@@ -252,7 +276,7 @@ export default function YuriBubble() {
                         : 'bg-white/5 border border-white/10 text-white/80'
                     }`}
                   >
-                    {msg.content}
+                    {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
                     {msg.isStreaming && (
                       <span className="inline-block w-1 h-3 bg-gold/60 animate-pulse ml-0.5 align-middle" />
                     )}

@@ -7,6 +7,31 @@ import { motion } from 'framer-motion'
 const COOKIE_KEY = 'yuri_widget_session'
 const MAX_FREE_MESSAGES = 5
 
+/** Lightweight markdown: **bold**, *italic*, and `- ` list items */
+function renderMarkdown(text: string) {
+  return text.split('\n').map((line, i) => {
+    const isList = line.trimStart().startsWith('- ')
+    const content = isList ? line.replace(/^\s*-\s*/, '') : line
+
+    // Replace **bold** and *italic*
+    const parts = content.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/).map((seg, j) => {
+      if (seg.startsWith('**') && seg.endsWith('**')) {
+        return <strong key={j} className="font-semibold text-white">{seg.slice(2, -2)}</strong>
+      }
+      if (seg.startsWith('*') && seg.endsWith('*')) {
+        return <em key={j}>{seg.slice(1, -1)}</em>
+      }
+      return seg
+    })
+
+    if (isList) {
+      return <li key={i} className="ml-3 list-disc list-inside">{parts}</li>
+    }
+    if (line.trim() === '') return <br key={i} />
+    return <span key={i}>{parts}{i < text.split('\n').length - 1 ? ' ' : ''}</span>
+  })
+}
+
 interface TryYuriMessage {
   id: string
   role: 'user' | 'assistant'
@@ -38,15 +63,19 @@ export default function TryYuriSection() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [messageCount, setMessageCountState] = useState(0)
   const [showLive, setShowLive] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setMessageCountState(getMessageCount())
   }, [])
 
+  // Scroll within the chat container, not the page
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const container = messagesContainerRef.current
+    if (container) {
+      container.scrollTop = container.scrollHeight
+    }
   }, [messages])
 
   const isAtLimit = messageCount >= MAX_FREE_MESSAGES
@@ -191,14 +220,14 @@ export default function TryYuriSection() {
 
           {/* Live messages */}
           {showLive && (
-            <div className="space-y-3 mb-6 max-h-[300px] overflow-y-auto scrollbar-hide">
+            <div ref={messagesContainerRef} className="space-y-3 mb-6 max-h-[400px] overflow-y-auto scrollbar-hide">
               {messages.map((msg) => (
                 <div
                   key={msg.id}
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed ${
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       msg.role === 'user'
                         ? 'bg-gradient-to-br from-gold to-gold-light text-seoul-dark'
                         : 'bg-white/5 border border-white/10 text-white/80'
@@ -210,7 +239,7 @@ export default function TryYuriSection() {
                         <p className="font-semibold text-gold">Yuri</p>
                       </div>
                     )}
-                    {msg.content}
+                    {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
                     {msg.isStreaming && (
                       <span className="inline-block w-1 h-3 bg-gold/60 animate-pulse ml-0.5 align-middle" />
                     )}
@@ -234,8 +263,6 @@ export default function TryYuriSection() {
                   </a>
                 </div>
               )}
-
-              <div ref={messagesEndRef} />
             </div>
           )}
 
