@@ -143,7 +143,7 @@ export default function TryYuriSection() {
   )
 
   return (
-    <section className="py-20 px-4 bg-hero-gradient" id="try-yuri">
+    <section className="py-20 px-4 bg-seoul-darker" id="try-yuri">
       <div className="max-w-4xl mx-auto">
         <motion.div
           initial="hidden"
@@ -152,9 +152,9 @@ export default function TryYuriSection() {
           variants={fadeUp}
           className="text-center mb-8"
         >
-          <span className="badge-pink mb-3 inline-block">AI Beauty Advisor</span>
+          <span className="badge-gold mb-3 inline-block">AI Beauty Advisor</span>
           <h2 className="section-heading mb-3">
-            Try Yuri <span className="text-rose-gold">(유리)</span>
+            Try Yuri <span className="text-gold">(유리)</span>
           </h2>
           <p className="section-subheading mx-auto">
             Ask her anything about Korean skincare — no signup required.
@@ -166,22 +166,22 @@ export default function TryYuriSection() {
           whileInView="show"
           viewport={{ once: true, margin: '-40px' }}
           variants={fadeUp}
-          className="glass-card p-6 md:p-8 shadow-glass-xl"
+          className="dark-card-gold p-6 md:p-8 shadow-glow-gold"
         >
           {/* Demo conversation (pre-populated, always visible) */}
           {!showLive && (
             <div className="space-y-3 mb-6">
               <div className="flex justify-end">
-                <div className="max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed bg-gradient-to-br from-rose-gold to-glass-500 text-white">
-                  <p className="font-semibold mb-1 opacity-70">Visitor</p>
+                <div className="max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed bg-gradient-to-br from-gold to-gold-light text-seoul-dark">
+                  <p className="font-semibold mb-1 opacity-60">Visitor</p>
                   Is the COSRX Snail Mucin I bought on Amazon real? The texture feels different.
                 </div>
               </div>
               <div className="flex justify-start">
-                <div className="max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed bg-white/80 border border-white/50 text-seoul-charcoal shadow-glass">
+                <div className="max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed bg-white/5 border border-white/10 text-white/80">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <Sparkles className="w-3 h-3 text-rose-gold" />
-                    <p className="font-semibold text-rose-gold">Yuri</p>
+                    <Sparkles className="w-3 h-3 text-gold" />
+                    <p className="font-semibold text-gold">Yuri</p>
                   </div>
                   Great question! Here&apos;s what to check: 1) The holographic sticker on the box should shift colors when tilted — fakes often have a static print. 2) Real COSRX has a subtle honey-like scent, not fragrance-free. 3) Check the batch code on the bottom — I can verify it if you share a photo. Amazon has had counterfeit issues with this product specifically. Want me to walk you through a full authenticity check?
                 </div>
@@ -200,30 +200,30 @@ export default function TryYuriSection() {
                   <div
                     className={`max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed ${
                       msg.role === 'user'
-                        ? 'bg-gradient-to-br from-rose-gold to-glass-500 text-white'
-                        : 'bg-white/80 border border-white/50 text-seoul-charcoal shadow-glass'
+                        ? 'bg-gradient-to-br from-gold to-gold-light text-seoul-dark'
+                        : 'bg-white/5 border border-white/10 text-white/80'
                     }`}
                   >
                     {msg.role === 'assistant' && (
                       <div className="flex items-center gap-1.5 mb-1">
-                        <Sparkles className="w-3 h-3 text-rose-gold" />
-                        <p className="font-semibold text-rose-gold">Yuri</p>
+                        <Sparkles className="w-3 h-3 text-gold" />
+                        <p className="font-semibold text-gold">Yuri</p>
                       </div>
                     )}
                     {msg.content}
                     {msg.isStreaming && (
-                      <span className="inline-block w-1 h-3 bg-rose-gold/60 animate-pulse ml-0.5 align-middle" />
+                      <span className="inline-block w-1 h-3 bg-gold/60 animate-pulse ml-0.5 align-middle" />
                     )}
                   </div>
                 </div>
               ))}
 
               {isAtLimit && (
-                <div className="bg-gradient-to-br from-seoul-blush/30 to-glass-100/30 rounded-2xl p-4 border border-white/50 text-center">
-                  <p className="text-xs text-seoul-charcoal font-medium mb-1">
+                <div className="bg-gold/5 rounded-2xl p-4 border border-gold/20 text-center">
+                  <p className="text-xs text-white font-medium mb-1">
                     Want the full Yuri experience?
                   </p>
-                  <p className="text-xs text-seoul-soft mb-3">
+                  <p className="text-xs text-white/40 mb-3">
                     Sign up for free to get unlimited conversations, personalized routines, and all 6 specialist agents.
                   </p>
                   <a
@@ -255,13 +255,13 @@ export default function TryYuriSection() {
                 }}
                 placeholder="Ask Yuri anything about K-beauty..."
                 disabled={isStreaming}
-                className="flex-1 glass-input text-sm py-3 px-4"
+                className="dark-input flex-1 text-sm py-3 px-4"
                 aria-label="Ask Yuri a question"
               />
               <button
                 onClick={() => sendMessage(input)}
                 disabled={isStreaming || !input.trim()}
-                className="flex-shrink-0 w-11 h-11 rounded-xl bg-gradient-to-br from-rose-gold to-rose-light text-white flex items-center justify-center transition-all hover:shadow-glass disabled:opacity-40"
+                className="flex-shrink-0 w-11 h-11 rounded-xl bg-gradient-to-br from-gold to-gold-light text-seoul-dark flex items-center justify-center transition-all hover:shadow-glow-gold disabled:opacity-40"
                 aria-label="Send"
               >
                 {isStreaming ? (
@@ -275,7 +275,7 @@ export default function TryYuriSection() {
 
           {/* Remaining counter */}
           {!isAtLimit && showLive && (
-            <p className="text-center text-[10px] text-seoul-soft/60 mt-2">
+            <p className="text-center text-[10px] text-white/30 mt-2">
               {MAX_FREE_MESSAGES - messageCount} free message{MAX_FREE_MESSAGES - messageCount !== 1 ? 's' : ''} remaining
             </p>
           )}

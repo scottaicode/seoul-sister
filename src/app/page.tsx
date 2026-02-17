@@ -21,11 +21,11 @@ const stagger = {
 }
 
 const features = [
-  { icon: Camera, title: 'Korean Label Decoder', desc: 'Point your camera at any Korean label for instant ingredient translation and safety scoring.', badge: 'badge-pink' },
+  { icon: Camera, title: 'Korean Label Decoder', desc: 'Point your camera at any Korean label for instant ingredient translation and safety scoring.', badge: 'badge-gold' },
   { icon: Sparkles, title: 'AI Beauty Advisor', desc: 'Yuri — your personal AI beauty advisor backed by 6 specialist agents and your full skin profile.', badge: 'badge-blue' },
-  { icon: Users, title: 'Community Reviews', desc: 'Reviews filtered by skin type, Fitzpatrick scale, age, and concern — not just star ratings.', badge: 'badge-pink' },
+  { icon: Users, title: 'Community Reviews', desc: 'Reviews filtered by skin type, Fitzpatrick scale, age, and concern — not just star ratings.', badge: 'badge-gold' },
   { icon: ShieldCheck, title: 'Counterfeit Detection', desc: 'Spot fakes before you buy with AI-powered packaging analysis and crowdsourced signals.', badge: 'badge-blue' },
-  { icon: Search, title: 'Price Comparison', desc: 'Compare prices across Korea and US retailers — know exactly what you should be paying.', badge: 'badge-pink' },
+  { icon: Search, title: 'Price Comparison', desc: 'Compare prices across Korea and US retailers — know exactly what you should be paying.', badge: 'badge-gold' },
   { icon: Layers, title: 'Trend Discovery', desc: 'What\'s trending in Seoul right now? From PDRN serums to centella — stay ahead.', badge: 'badge-blue' },
 ]
 
@@ -44,12 +44,12 @@ const stats = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-seoul-cream font-sans">
+    <div className="min-h-screen bg-seoul-dark font-sans">
 
       {/* Navigation */}
-      <nav className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-white/50 shadow-glass">
+      <nav className="sticky top-0 z-40 bg-seoul-dark/80 backdrop-blur-md border-b border-white/5">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <span className="font-display font-bold text-xl text-seoul-charcoal tracking-tight">
+          <span className="font-display font-bold text-xl text-white tracking-tight">
             Seoul Sister
           </span>
           <div className="hidden md:flex items-center gap-6">
@@ -70,25 +70,29 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="bg-hero-gradient pt-20 pb-24 px-4 overflow-hidden">
-        <div className="max-w-4xl mx-auto text-center">
+      <section className="relative bg-hero-gradient pt-20 pb-24 px-4 overflow-hidden">
+        {/* Gold glow effect */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-gold/8 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-20 right-1/4 w-[300px] h-[300px] bg-gold/5 rounded-full blur-[100px] pointer-events-none" />
+
+        <div className="relative max-w-4xl mx-auto text-center">
           <motion.div variants={stagger} initial="hidden" animate="show">
             <motion.div variants={fadeUp}>
-              <span className="badge-pink mb-4 inline-block">World&apos;s First English K-Beauty Intelligence Platform</span>
+              <span className="badge-gold mb-4 inline-block">World&apos;s First English K-Beauty Intelligence Platform</span>
             </motion.div>
-            <motion.h1 variants={fadeUp} className="font-display font-bold text-4xl md:text-6xl text-seoul-charcoal leading-tight mb-6">
+            <motion.h1 variants={fadeUp} className="font-display font-bold text-4xl md:text-6xl lg:text-7xl text-white leading-tight mb-6">
               K-Beauty Intelligence,
               <br />
               <span className="text-gradient">Powered by AI</span>
             </motion.h1>
-            <motion.p variants={fadeUp} className="text-seoul-soft text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+            <motion.p variants={fadeUp} className="text-white/50 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
               Your AI-powered guide to Korean skincare — personalized routines, real ingredients, verified products.
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/register" className="glass-button-primary text-base py-3 px-8">
                 Start Free
               </Link>
-              <Link href="#features" className="glass-button text-base py-3 px-8 text-seoul-charcoal">
+              <Link href="#features" className="dark-button-outline text-base py-3 px-8">
                 See How It Works
               </Link>
             </motion.div>
@@ -101,42 +105,42 @@ export default function LandingPage() {
             transition={{ delay: 0.4, duration: 0.8 }}
             className="mt-16 mx-auto max-w-sm animate-float"
           >
-            <div className="glass-card p-6 text-left shadow-glass-xl">
+            <div className="dark-card-gold p-6 text-left shadow-glow-gold">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-gold to-glass-500 flex items-center justify-center">
-                  <Camera className="w-4 h-4 text-white" />
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center">
+                  <Camera className="w-4 h-4 text-seoul-dark" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-seoul-charcoal">Scanning label...</p>
-                  <p className="text-xs text-seoul-soft">COSRX Advanced Snail 96</p>
+                  <p className="text-xs font-medium text-white">Scanning label...</p>
+                  <p className="text-xs text-white/40">COSRX Advanced Snail 96</p>
                 </div>
-                <span className="ml-auto badge-blue animate-pulse-soft">Live</span>
+                <span className="ml-auto badge-gold animate-pulse-soft">Live</span>
               </div>
               <div className="space-y-2">
                 {[
-                  { name: 'Snail Secretion Filtrate', score: 96, color: 'bg-glass-400' },
-                  { name: 'Sodium Hyaluronate', score: 88, color: 'bg-glass-400' },
-                  { name: 'Allantoin', score: 92, color: 'bg-glass-400' },
+                  { name: 'Snail Secretion Filtrate', score: 96 },
+                  { name: 'Sodium Hyaluronate', score: 88 },
+                  { name: 'Allantoin', score: 92 },
                 ].map((ing) => (
                   <div key={ing.name} className="flex items-center gap-3">
                     <div className="flex-1">
-                      <p className="text-xs font-medium text-seoul-charcoal">{ing.name}</p>
-                      <div className="h-1 bg-seoul-pearl rounded-full mt-1">
-                        <div className={`h-1 ${ing.color} rounded-full`} style={{ width: `${ing.score}%` }} />
+                      <p className="text-xs font-medium text-white/80">{ing.name}</p>
+                      <div className="h-1 bg-white/5 rounded-full mt-1">
+                        <div className="h-1 bg-gradient-to-r from-gold to-gold-light rounded-full" style={{ width: `${ing.score}%` }} />
                       </div>
                     </div>
-                    <span className="text-xs font-semibold text-glass-600">{ing.score}</span>
+                    <span className="text-xs font-semibold text-gold">{ing.score}</span>
                   </div>
                 ))}
               </div>
-              <p className="mt-3 text-xs text-glass-600 font-medium">No conflicts with your routine</p>
+              <p className="mt-3 text-xs text-gold/70 font-medium">No conflicts with your routine</p>
             </div>
           </motion.div>
         </div>
       </section>
 
       {/* Features */}
-      <section id="features" className="py-20 px-4 bg-seoul-gradient">
+      <section id="features" className="py-20 px-4 bg-seoul-darker">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="section-heading mb-3">Six Reasons K-Beauty Lovers Stay</h2>
@@ -150,12 +154,12 @@ export default function LandingPage() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
           >
             {features.map(({ icon: Icon, title, desc, badge }) => (
-              <motion.div key={title} variants={fadeUp} className="glass-card p-6 hover:shadow-glass-lg transition-shadow duration-300">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-seoul-blush to-glass-100 flex items-center justify-center mb-4">
-                  <Icon className="w-5 h-5 text-rose-gold" />
+              <motion.div key={title} variants={fadeUp} className="dark-card p-6 hover:border-gold/20 transition-all duration-300">
+                <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center mb-4">
+                  <Icon className="w-5 h-5 text-gold" />
                 </div>
-                <h3 className="font-display font-semibold text-base text-seoul-charcoal mb-2">{title}</h3>
-                <p className="text-seoul-soft text-sm leading-relaxed">{desc}</p>
+                <h3 className="font-display font-semibold text-base text-white mb-2">{title}</h3>
+                <p className="text-white/40 text-sm leading-relaxed">{desc}</p>
                 <span className={`${badge} mt-4 inline-block`}>AI-powered</span>
               </motion.div>
             ))}
@@ -164,7 +168,7 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section className="py-20 px-4 bg-seoul-cream">
+      <section className="py-20 px-4 bg-seoul-dark">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="section-heading mb-3">How It Works</h2>
           <p className="section-subheading mx-auto mb-12">Three steps from curiosity to confident skin.</p>
@@ -178,13 +182,13 @@ export default function LandingPage() {
             {steps.map(({ icon: Icon, step, title, desc }) => (
               <motion.div key={step} variants={fadeUp} className="flex flex-col items-center text-center">
                 <div className="relative mb-5">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-seoul-pink to-glass-100 flex items-center justify-center shadow-glow-pink">
-                    <Icon className="w-7 h-7 text-rose-gold" />
+                  <div className="w-16 h-16 rounded-2xl bg-gold/10 flex items-center justify-center shadow-glow-gold">
+                    <Icon className="w-7 h-7 text-gold" />
                   </div>
-                  <span className="absolute -top-2 -right-2 text-xs font-bold text-rose-gold bg-white rounded-full w-6 h-6 flex items-center justify-center shadow-glass">{step}</span>
+                  <span className="absolute -top-2 -right-2 text-xs font-bold text-seoul-dark bg-gold rounded-full w-6 h-6 flex items-center justify-center">{step}</span>
                 </div>
-                <h3 className="font-display font-semibold text-seoul-charcoal mb-2">{title}</h3>
-                <p className="text-seoul-soft text-sm leading-relaxed">{desc}</p>
+                <h3 className="font-display font-semibold text-white mb-2">{title}</h3>
+                <p className="text-white/40 text-sm leading-relaxed">{desc}</p>
               </motion.div>
             ))}
           </motion.div>
@@ -195,7 +199,7 @@ export default function LandingPage() {
       <TryYuriSection />
 
       {/* Social Proof */}
-      <section className="py-20 px-4 bg-seoul-cream">
+      <section className="py-20 px-4 bg-seoul-dark">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="section-heading mb-3">Trusted by K-Beauty Enthusiasts</h2>
@@ -211,9 +215,9 @@ export default function LandingPage() {
             className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-12"
           >
             {stats.map(({ value, label }) => (
-              <motion.div key={label} variants={fadeUp} className="glass-card p-5 text-center">
+              <motion.div key={label} variants={fadeUp} className="dark-card-gold p-5 text-center">
                 <p className="text-2xl md:text-3xl font-bold text-gradient">{value}</p>
-                <p className="text-xs text-seoul-soft mt-1">{label}</p>
+                <p className="text-xs text-white/40 mt-1">{label}</p>
               </motion.div>
             ))}
           </motion.div>
@@ -238,18 +242,18 @@ export default function LandingPage() {
                 skin: 'Dry skin, Fitzpatrick II',
               },
             ].map((t) => (
-              <motion.div key={t.name} variants={fadeUp} className="glass-card p-6">
+              <motion.div key={t.name} variants={fadeUp} className="dark-card p-6">
                 <div className="flex gap-1 mb-3">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className="w-4 h-4 text-rose-gold fill-current" />
+                    <Star key={i} className="w-4 h-4 text-gold fill-current" />
                   ))}
                 </div>
-                <p className="text-sm text-seoul-charcoal leading-relaxed mb-4">
+                <p className="text-sm text-white/70 leading-relaxed mb-4">
                   &ldquo;{t.quote}&rdquo;
                 </p>
                 <div>
-                  <p className="text-xs font-semibold text-seoul-charcoal">{t.name}</p>
-                  <p className="text-xs text-seoul-soft">{t.skin}</p>
+                  <p className="text-xs font-semibold text-white">{t.name}</p>
+                  <p className="text-xs text-white/40">{t.skin}</p>
                 </div>
               </motion.div>
             ))}
@@ -258,7 +262,7 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-20 px-4 bg-seoul-gradient">
+      <section id="pricing" className="py-20 px-4 bg-seoul-darker">
         <div className="max-w-6xl mx-auto text-center">
           <h2 className="section-heading mb-3">Simple, Transparent Pricing</h2>
           <p className="section-subheading mx-auto mb-12">Start free. Go Pro when you&apos;re ready for the full intelligence suite.</p>
@@ -267,18 +271,20 @@ export default function LandingPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-20 px-4 bg-hero-gradient">
+      <section className="relative py-20 px-4 bg-seoul-dark overflow-hidden">
+        {/* Gold glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] bg-gold/6 rounded-full blur-[100px] pointer-events-none" />
         <motion.div
           initial="hidden"
           whileInView="show"
           viewport={{ once: true }}
           variants={fadeUp}
-          className="max-w-2xl mx-auto text-center"
+          className="relative max-w-2xl mx-auto text-center"
         >
-          <h2 className="font-display font-bold text-3xl md:text-4xl text-seoul-charcoal mb-4">
+          <h2 className="font-display font-bold text-3xl md:text-4xl text-white mb-4">
             Start Your K-Beauty Journey
           </h2>
-          <p className="text-seoul-soft text-base md:text-lg mb-8 leading-relaxed">
+          <p className="text-white/40 text-base md:text-lg mb-8 leading-relaxed">
             Join the community of ingredient-literate K-beauty lovers who make smarter skincare decisions.
           </p>
           <Link
@@ -287,16 +293,16 @@ export default function LandingPage() {
           >
             Create Free Account <ArrowRight className="w-4 h-4" />
           </Link>
-          <p className="text-xs text-seoul-soft mt-4">No credit card required. Free tier is free forever.</p>
+          <p className="text-xs text-white/30 mt-4">No credit card required. Free tier is free forever.</p>
         </motion.div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-white/60 backdrop-blur-md border-t border-white/50 py-12 px-4">
+      <footer className="bg-seoul-darker border-t border-white/5 py-12 px-4">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
-            <span className="font-display font-bold text-lg text-seoul-charcoal">Seoul Sister</span>
-            <p className="text-xs text-seoul-soft mt-1">The world&apos;s first English K-beauty intelligence platform.</p>
+            <span className="font-display font-bold text-lg text-white">Seoul Sister</span>
+            <p className="text-xs text-white/30 mt-1">The world&apos;s first English K-beauty intelligence platform.</p>
           </div>
           <div className="flex gap-6 text-sm">
             {[
@@ -309,12 +315,12 @@ export default function LandingPage() {
               </Link>
             ))}
           </div>
-          <div className="flex gap-4 text-xs text-seoul-soft">
-            <Link href="/privacy" className="hover:text-seoul-charcoal transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-seoul-charcoal transition-colors">Terms</Link>
+          <div className="flex gap-4 text-xs text-white/30">
+            <Link href="/privacy" className="hover:text-gold transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-gold transition-colors">Terms</Link>
           </div>
         </div>
-        <p className="text-center text-xs text-seoul-soft/60 mt-8">&copy; 2026 Seoul Sister. All rights reserved.</p>
+        <p className="text-center text-xs text-white/20 mt-8">&copy; 2026 Seoul Sister. All rights reserved.</p>
       </footer>
 
       {/* Layer 1: Floating Yuri Bubble */}

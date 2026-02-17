@@ -6,6 +6,13 @@
   :root {
     --glass-blue: #A8D8EA;
     --rose-gold: #D4A574;
+    --gold: #C9A55C;
+    --gold-light: #D4B87A;
+    --seoul-dark: #0D0D0F;
+    --seoul-darker: #111114;
+    --seoul-card: #1A1A1E;
+    --seoul-card-border: #2A2A2E;
+    /* Legacy vars kept for app interior compatibility */
     --seoul-pink: #F5E6E0;
     --seoul-blush: #FADADD;
     --seoul-cream: #FFF8F0;
@@ -22,11 +29,21 @@
   }
 
   ::selection {
-    background-color: rgba(168, 216, 234, 0.3);
+    background-color: rgba(201, 165, 92, 0.3);
   }
 }
 
 @layer components {
+  /* ── Dark landing page card ── */
+  .dark-card {
+    @apply bg-seoul-card/80 backdrop-blur-md rounded-2xl border border-seoul-card-border shadow-glass;
+  }
+
+  .dark-card-gold {
+    @apply bg-seoul-card/80 backdrop-blur-md rounded-2xl border border-gold/20 shadow-glass;
+  }
+
+  /* ── Legacy glass cards (used in app interior) ── */
   .glass-card {
     @apply bg-white/70 backdrop-blur-md rounded-2xl border border-white/50 shadow-glass;
   }
@@ -43,8 +60,8 @@
 
   .glass-button-primary {
     @apply px-6 py-3 rounded-full font-medium transition-all duration-300
-           bg-gradient-to-r from-rose-gold to-glass-500 text-white shadow-glass
-           hover:shadow-glass-lg hover:brightness-110 active:scale-[0.98];
+           bg-gradient-to-r from-gold to-gold-light text-seoul-dark shadow-glass
+           hover:shadow-glow-gold hover:brightness-110 active:scale-[0.98];
   }
 
   .glass-input {
@@ -54,16 +71,30 @@
            placeholder:text-seoul-soft/50 transition-all duration-200;
   }
 
+  /* ── Dark landing page variants ── */
+  .dark-button-outline {
+    @apply px-6 py-3 rounded-full font-medium transition-all duration-300
+           bg-transparent border border-white/20 text-white/90
+           hover:border-gold/40 hover:text-gold active:scale-[0.98];
+  }
+
+  .dark-input {
+    @apply w-full px-4 py-3 rounded-xl bg-white/5 backdrop-blur-sm
+           border border-white/10 text-white
+           focus:outline-none focus:ring-2 focus:ring-gold/30 focus:border-gold/40
+           placeholder:text-white/30 transition-all duration-200;
+  }
+
   .section-heading {
-    @apply text-2xl md:text-3xl font-display font-bold text-seoul-charcoal;
+    @apply text-2xl md:text-3xl font-display font-bold text-white;
   }
 
   .section-subheading {
-    @apply text-seoul-soft text-base md:text-lg max-w-2xl;
+    @apply text-seoul-muted text-base md:text-lg max-w-2xl;
   }
 
   .nav-link {
-    @apply text-seoul-charcoal/70 hover:text-seoul-charcoal font-medium
+    @apply text-white/60 hover:text-gold font-medium
            transition-colors duration-200 text-sm;
   }
 
@@ -71,18 +102,23 @@
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
 
-  .badge-pink {
-    @apply badge bg-seoul-blush text-rose-dark;
+  .badge-gold {
+    @apply badge bg-gold/15 text-gold-light border border-gold/20;
   }
 
   .badge-blue {
-    @apply badge bg-glass-100 text-glass-700;
+    @apply badge bg-glass-500/10 text-glass-500 border border-glass-500/20;
+  }
+
+  /* Legacy badge kept for compatibility */
+  .badge-pink {
+    @apply badge bg-gold/15 text-gold-light border border-gold/20;
   }
 }
 
 @layer utilities {
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-rose-gold to-glass-600;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-gold to-gold-light;
   }
 
   .scrollbar-hide {

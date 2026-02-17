@@ -168,11 +168,11 @@ export default function YuriBubble() {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-rose-gold to-glass-500 text-white shadow-glass-lg flex items-center justify-center hover:shadow-glass-xl hover:scale-105 transition-all duration-300 group"
+            className="fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-gold to-gold-light text-seoul-dark shadow-glow-gold flex items-center justify-center hover:shadow-glow-gold-lg hover:scale-105 transition-all duration-300 group"
             aria-label="Chat with Yuri"
           >
             <MessageCircle className="w-6 h-6" />
-            <span className="absolute -top-10 right-0 bg-white/95 backdrop-blur-sm text-seoul-charcoal text-xs font-medium px-3 py-1.5 rounded-full shadow-glass whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <span className="absolute -top-10 right-0 bg-seoul-card text-white text-xs font-medium px-3 py-1.5 rounded-full shadow-glass whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/10">
               Ask me about K-beauty
             </span>
           </motion.button>
@@ -187,25 +187,25 @@ export default function YuriBubble() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-5 right-5 z-50 w-[calc(100vw-2.5rem)] max-w-[400px] h-[500px] md:h-[500px] max-h-[calc(100vh-6rem)] rounded-2xl overflow-hidden bg-white/95 backdrop-blur-xl border border-white/50 shadow-glass-xl flex flex-col"
+            className="fixed bottom-5 right-5 z-50 w-[calc(100vw-2.5rem)] max-w-[400px] h-[500px] md:h-[500px] max-h-[calc(100vh-6rem)] rounded-2xl overflow-hidden bg-seoul-card/95 backdrop-blur-xl border border-white/10 shadow-glow-gold flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-rose-gold/10 to-glass-100/50 border-b border-white/50">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-gold to-glass-500 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-white" />
+            <div className="flex items-center gap-3 px-4 py-3 bg-gold/5 border-b border-white/10">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-seoul-dark" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-seoul-charcoal">
-                  Yuri <span className="text-rose-gold">(유리)</span>
+                <p className="text-sm font-semibold text-white">
+                  Yuri <span className="text-gold">(유리)</span>
                 </p>
-                <p className="text-xs text-seoul-soft">K-Beauty Advisor</p>
+                <p className="text-xs text-white/40">K-Beauty Advisor</p>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="w-8 h-8 rounded-full hover:bg-white/50 flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-full hover:bg-white/5 flex items-center justify-center transition-colors"
                 aria-label="Close chat"
               >
-                <X className="w-4 h-4 text-seoul-soft" />
+                <X className="w-4 h-4 text-white/40" />
               </button>
             </div>
 
@@ -213,13 +213,13 @@ export default function YuriBubble() {
             <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide">
               {messages.length === 0 && (
                 <div className="text-center py-8">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-rose-gold/20 to-glass-100 flex items-center justify-center mx-auto mb-3">
-                    <Sparkles className="w-6 h-6 text-rose-gold" />
+                  <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center mx-auto mb-3">
+                    <Sparkles className="w-6 h-6 text-gold" />
                   </div>
-                  <p className="text-sm font-medium text-seoul-charcoal mb-1">
+                  <p className="text-sm font-medium text-white mb-1">
                     Hi! I&apos;m Yuri
                   </p>
-                  <p className="text-xs text-seoul-soft max-w-[240px] mx-auto leading-relaxed">
+                  <p className="text-xs text-white/40 max-w-[240px] mx-auto leading-relaxed">
                     Ask me anything about Korean skincare — ingredients, routines, trending products, or authenticity.
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2 justify-center">
@@ -231,7 +231,7 @@ export default function YuriBubble() {
                       <button
                         key={q}
                         onClick={() => sendMessage(q)}
-                        className="text-xs px-3 py-1.5 rounded-full bg-seoul-blush/50 text-rose-dark hover:bg-seoul-blush transition-colors"
+                        className="text-xs px-3 py-1.5 rounded-full bg-gold/10 text-gold-light hover:bg-gold/20 transition-colors border border-gold/20"
                       >
                         {q}
                       </button>
@@ -248,13 +248,13 @@ export default function YuriBubble() {
                   <div
                     className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
                       msg.role === 'user'
-                        ? 'bg-gradient-to-br from-rose-gold to-glass-500 text-white'
-                        : 'bg-white/80 border border-white/50 text-seoul-charcoal shadow-glass'
+                        ? 'bg-gradient-to-br from-gold to-gold-light text-seoul-dark'
+                        : 'bg-white/5 border border-white/10 text-white/80'
                     }`}
                   >
                     {msg.content}
                     {msg.isStreaming && (
-                      <span className="inline-block w-1 h-3 bg-rose-gold/60 animate-pulse ml-0.5 align-middle" />
+                      <span className="inline-block w-1 h-3 bg-gold/60 animate-pulse ml-0.5 align-middle" />
                     )}
                   </div>
                 </div>
@@ -262,11 +262,11 @@ export default function YuriBubble() {
 
               {/* Conversion prompt when at limit */}
               {isAtLimit && (
-                <div className="bg-gradient-to-br from-seoul-blush/30 to-glass-100/30 rounded-2xl p-4 border border-white/50 text-center">
-                  <p className="text-xs text-seoul-charcoal font-medium mb-1">
+                <div className="bg-gold/5 rounded-2xl p-4 border border-gold/20 text-center">
+                  <p className="text-xs text-white font-medium mb-1">
                     I could help you so much more with a skin profile!
                   </p>
-                  <p className="text-xs text-seoul-soft mb-3">
+                  <p className="text-xs text-white/40 mb-3">
                     Create your free account for unlimited Yuri, personalized routines, and 6 specialist agents.
                   </p>
                   <a
@@ -283,7 +283,7 @@ export default function YuriBubble() {
 
             {/* Input */}
             {!isAtLimit && (
-              <div className="flex items-end gap-2 p-3 border-t border-white/50 bg-white/60">
+              <div className="flex items-end gap-2 p-3 border-t border-white/10 bg-seoul-card/80">
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -292,13 +292,13 @@ export default function YuriBubble() {
                   placeholder="Ask about K-beauty..."
                   disabled={isStreaming}
                   rows={1}
-                  className="flex-1 resize-none text-sm py-2 px-3 rounded-xl bg-white/70 border border-white/50 focus:outline-none focus:ring-2 focus:ring-glass-500/30 placeholder:text-seoul-soft/50"
+                  className="flex-1 resize-none text-sm py-2 px-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-gold/30 placeholder:text-white/30"
                   aria-label="Message Yuri"
                 />
                 <button
                   onClick={() => sendMessage(input)}
                   disabled={isStreaming || !input.trim()}
-                  className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-rose-gold to-rose-light text-white flex items-center justify-center transition-all hover:shadow-glass disabled:opacity-40"
+                  className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-gold to-gold-light text-seoul-dark flex items-center justify-center transition-all hover:shadow-glow-gold disabled:opacity-40"
                   aria-label="Send"
                 >
                   {isStreaming ? (
@@ -313,7 +313,7 @@ export default function YuriBubble() {
             {/* Message counter */}
             {!isAtLimit && messages.length > 0 && (
               <div className="px-4 pb-2 text-center">
-                <p className="text-[10px] text-seoul-soft/60">
+                <p className="text-[10px] text-white/30">
                   {remainingMessages} free message{remainingMessages !== 1 ? 's' : ''} remaining
                 </p>
               </div>

@@ -59,7 +59,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#D4A574',
+  themeColor: '#0D0D0F',
 }
 
 export default function RootLayout({
@@ -76,7 +76,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Seoul Sister" />
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="msapplication-TileColor" content="#D4A574" />
+        <meta name="msapplication-TileColor" content="#0D0D0F" />
       </head>
       <body className="font-sans antialiased">
         <AuthProvider>
