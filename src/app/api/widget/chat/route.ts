@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
         try {
           const response = await anthropic.messages.create({
             model: MODELS.primary,
-            max_tokens: 500,
+            max_tokens: 600,
             system: YURI_WIDGET_SYSTEM,
             messages,
             stream: true,
