@@ -3,7 +3,8 @@ import { z } from 'zod'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { checkRateLimit } from '@/lib/utils/rate-limiter'
 
-const WIDGET_RATE_LIMIT = 10 // max messages per IP per day
+const MAX_FREE_MESSAGES = 5
+const WIDGET_RATE_LIMIT = 10 // generous IP limit (multiple users behind same IP)
 const WIDGET_RATE_WINDOW = 24 * 60 * 60 * 1000 // 24 hours in ms
 
 const widgetSchema = z.object({
@@ -76,6 +77,16 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const parsed = widgetSchema.parse(body)
+
+    // Server-side message limit: count user messages in history + current
+    const userMessageCount =
+      (parsed.history || []).filter((m) => m.role === 'user').length + 1
+    if (userMessageCount > MAX_FREE_MESSAGES) {
+      return new Response(
+        JSON.stringify({ error: 'Free message limit reached. Create an account for unlimited access.' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
 
     const anthropic = getAnthropicClient()
 

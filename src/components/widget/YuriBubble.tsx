@@ -106,7 +106,8 @@ export default function YuriBubble() {
         })
 
         if (!response.ok || !response.body) {
-          throw new Error('Failed to get response')
+          const errBody = await response.json().catch(() => null)
+          throw new Error(errBody?.error || 'Failed to get response')
         }
 
         const reader = response.body.getReader()

@@ -108,7 +108,10 @@ export default function TryYuriSection() {
           body: JSON.stringify({ message: trimmed, history }),
         })
 
-        if (!response.ok || !response.body) throw new Error('Request failed')
+        if (!response.ok || !response.body) {
+          const errBody = await response.json().catch(() => null)
+          throw new Error(errBody?.error || 'Request failed')
+        }
 
         const reader = response.body.getReader()
         const decoder = new TextDecoder()
