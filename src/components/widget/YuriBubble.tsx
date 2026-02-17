@@ -7,9 +7,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 const COOKIE_KEY = 'yuri_widget_session'
 const MAX_FREE_MESSAGES = 5
 
-/** Lightweight markdown: **bold**, *italic*, and `- ` list items */
+/** Lightweight markdown: **bold**, *italic*, `- ` list items, paragraph spacing */
 function renderMarkdown(text: string) {
-  return text.split('\n').map((line, i) => {
+  const lines = text.split('\n')
+  return lines.map((line, i) => {
     const isList = line.trimStart().startsWith('- ')
     const content = isList ? line.replace(/^\s*-\s*/, '') : line
 
@@ -26,8 +27,8 @@ function renderMarkdown(text: string) {
     if (isList) {
       return <li key={i} className="ml-3 list-disc list-inside">{parts}</li>
     }
-    if (line.trim() === '') return <br key={i} />
-    return <span key={i}>{parts}{i < text.split('\n').length - 1 ? ' ' : ''}</span>
+    if (line.trim() === '') return <div key={i} className="h-2" />
+    return <span key={i}>{parts}{i < lines.length - 1 ? ' ' : ''}</span>
   })
 }
 
