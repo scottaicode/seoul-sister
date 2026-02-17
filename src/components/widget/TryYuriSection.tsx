@@ -3,9 +3,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Sparkles, Send, Loader2, ArrowRight } from 'lucide-react'
 import { motion } from 'framer-motion'
-
-const COOKIE_KEY = 'yuri_widget_session'
-const MAX_FREE_MESSAGES = 5
+import {
+  getMessageCount,
+  setMessageCount,
+  MAX_FREE_MESSAGES,
+} from '@/lib/utils/widget-cookies'
 
 /** Lightweight markdown: **bold**, *italic*, `- ` list items, paragraph spacing */
 function renderMarkdown(text: string) {
@@ -14,7 +16,6 @@ function renderMarkdown(text: string) {
     const isList = line.trimStart().startsWith('- ')
     const content = isList ? line.replace(/^\s*-\s*/, '') : line
 
-    // Replace **bold** and *italic*
     const parts = content.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/).map((seg, j) => {
       if (seg.startsWith('**') && seg.endsWith('**')) {
         return <strong key={j} className="font-semibold text-white">{seg.slice(2, -2)}</strong>
@@ -40,19 +41,6 @@ interface TryYuriMessage {
   isStreaming?: boolean
 }
 
-function getMessageCount(): number {
-  if (typeof document === 'undefined') return 0
-  const match = document.cookie
-    .split('; ')
-    .find((c) => c.startsWith(`${COOKIE_KEY}=`))
-  return match ? parseInt(match.split('=')[1], 10) || 0 : 0
-}
-
-function setMessageCount(count: number) {
-  const expires = new Date(Date.now() + 86400000).toUTCString()
-  document.cookie = `${COOKIE_KEY}=${count};expires=${expires};path=/;SameSite=Lax`
-}
-
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
   show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
@@ -64,6 +52,7 @@ export default function TryYuriSection() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [messageCount, setMessageCountState] = useState(0)
   const [showLive, setShowLive] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -86,6 +75,7 @@ export default function TryYuriSection() {
       if (!text.trim() || isStreaming || isAtLimit) return
 
       const trimmed = text.trim()
+      setError(null)
       setShowLive(true)
       const newCount = messageCount + 1
       setMessageCount(newCount)
@@ -163,8 +153,13 @@ export default function TryYuriSection() {
             }
           }
         }
-      } catch {
+      } catch (err) {
         setMessages((prev) => prev.filter((m) => !m.isStreaming))
+        setError(
+          err instanceof Error && err.message.includes('Rate limit')
+            ? 'Too many requests. Please try again later.'
+            : 'Something went wrong. Please try again.'
+        )
       } finally {
         setIsStreaming(false)
       }
@@ -264,6 +259,13 @@ export default function TryYuriSection() {
                   </a>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Error banner */}
+          {error && (
+            <div className="mb-3 px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20">
+              <p className="text-xs text-red-400 text-center">{error}</p>
             </div>
           )}
 

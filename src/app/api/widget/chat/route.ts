@@ -1,6 +1,10 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
+import { checkRateLimit } from '@/lib/utils/rate-limiter'
+
+const WIDGET_RATE_LIMIT = 10 // max messages per IP per day
+const WIDGET_RATE_WINDOW = 24 * 60 * 60 * 1000 // 24 hours in ms
 
 const widgetSchema = z.object({
   message: z.string().min(1).max(2000),
@@ -50,6 +54,26 @@ Think: "cool older sister who works at Amorepacific in Seoul." Confident, warm, 
  */
 export async function POST(request: NextRequest) {
   try {
+    // Server-side IP rate limiting (10 messages/IP/day)
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      'unknown'
+    const rateCheck = checkRateLimit(`widget:${ip}`, WIDGET_RATE_LIMIT, WIDGET_RATE_WINDOW)
+    if (!rateCheck.allowed) {
+      console.warn(`[widget/chat] Rate limit hit for IP ${ip}`)
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': String(Math.ceil(rateCheck.resetIn / 1000)),
+          },
+        }
+      )
+    }
+
     const body = await request.json()
     const parsed = widgetSchema.parse(body)
 
@@ -94,6 +118,7 @@ export async function POST(request: NextRequest) {
         } catch (err) {
           const msg =
             err instanceof Error ? err.message : 'Stream error'
+          console.error(`[widget/chat] Stream error for IP ${ip}:`, err)
           const errorData = JSON.stringify({ type: 'error', message: msg })
           controller.enqueue(encoder.encode(`data: ${errorData}\n\n`))
           controller.close()
@@ -109,6 +134,9 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
+    if (!(error instanceof z.ZodError)) {
+      console.error('[widget/chat] Request error:', error)
+    }
     const message =
       error instanceof z.ZodError
         ? 'Invalid request'

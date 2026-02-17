@@ -110,6 +110,7 @@ export async function POST(request: NextRequest) {
           controller.enqueue(encoder.encode(`data: ${meta}\n\n`))
           controller.close()
         } catch (err) {
+          console.error(`[yuri/chat] Stream error for user ${user.id}, conv ${conversationId}:`, err)
           const errMsg =
             err instanceof AppError
               ? err.message
@@ -131,6 +132,9 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
+    if (!(error instanceof z.ZodError)) {
+      console.error('[yuri/chat] Request error:', error)
+    }
     const message =
       error instanceof z.ZodError
         ? 'Invalid request'

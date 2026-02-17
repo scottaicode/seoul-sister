@@ -3,9 +3,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { MessageCircle, X, Send, Loader2, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-
-const COOKIE_KEY = 'yuri_widget_session'
-const MAX_FREE_MESSAGES = 5
+import {
+  getMessageCount,
+  setMessageCount,
+  MAX_FREE_MESSAGES,
+} from '@/lib/utils/widget-cookies'
 
 /** Lightweight markdown: **bold**, *italic*, `- ` list items, paragraph spacing */
 function renderMarkdown(text: string) {
@@ -39,26 +41,13 @@ interface WidgetMessage {
   isStreaming?: boolean
 }
 
-function getMessageCount(): number {
-  if (typeof document === 'undefined') return 0
-  const match = document.cookie
-    .split('; ')
-    .find((c) => c.startsWith(`${COOKIE_KEY}=`))
-  return match ? parseInt(match.split('=')[1], 10) || 0 : 0
-}
-
-function setMessageCount(count: number) {
-  // Cookie expires in 24 hours
-  const expires = new Date(Date.now() + 86400000).toUTCString()
-  document.cookie = `${COOKIE_KEY}=${count};expires=${expires};path=/;SameSite=Lax`
-}
-
 export default function YuriBubble() {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<WidgetMessage[]>([])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [messageCount, setMessageCountState] = useState(0)
+  const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -83,6 +72,7 @@ export default function YuriBubble() {
       if (!text.trim() || isStreaming || isAtLimit) return
 
       const trimmed = text.trim()
+      setError(null)
       const newCount = messageCount + 1
       setMessageCount(newCount)
       setMessageCountState(newCount)
@@ -162,8 +152,13 @@ export default function YuriBubble() {
             }
           }
         }
-      } catch {
+      } catch (err) {
         setMessages((prev) => prev.filter((m) => !m.isStreaming))
+        setError(
+          err instanceof Error && err.message.includes('Rate limit')
+            ? 'Too many requests. Please try again later.'
+            : 'Something went wrong. Please try again.'
+        )
       } finally {
         setIsStreaming(false)
       }
@@ -306,6 +301,13 @@ export default function YuriBubble() {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Error banner */}
+            {error && (
+              <div className="px-3 py-2 bg-red-500/10 border-t border-red-500/20">
+                <p className="text-[11px] text-red-400 text-center">{error}</p>
+              </div>
+            )}
+
             {/* Input */}
             {!isAtLimit && (
               <div className="flex items-end gap-2 p-3 border-t border-white/10 bg-seoul-card/80">
@@ -350,16 +352,8 @@ export default function YuriBubble() {
   )
 }
 
-/**
- * Increments the shared widget message count from outside (e.g., Layer 2 TryYuriSection).
- */
-export function incrementWidgetMessageCount(): number {
-  const current = getMessageCount()
-  const next = current + 1
-  setMessageCount(next)
-  return next
-}
-
-export function getRemainingWidgetMessages(): number {
-  return MAX_FREE_MESSAGES - getMessageCount()
-}
+// Re-export shared utilities for backwards compatibility
+export {
+  incrementWidgetMessageCount,
+  getRemainingWidgetMessages,
+} from '@/lib/utils/widget-cookies'

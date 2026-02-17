@@ -143,6 +143,7 @@ export async function POST(request: NextRequest) {
               controller.enqueue(encoder.encode(`data: ${done}\n\n`))
               controller.close()
             } catch (err) {
+              console.error(`[yuri/onboarding] Start stream error for user ${user.id}:`, err)
               const errMsg = err instanceof Error ? err.message : 'Stream error'
               const errorData = JSON.stringify({ type: 'error', message: errMsg })
               controller.enqueue(encoder.encode(`data: ${errorData}\n\n`))
@@ -247,6 +248,7 @@ export async function POST(request: NextRequest) {
             controller.enqueue(encoder.encode(`data: ${done}\n\n`))
             controller.close()
           } catch (err) {
+            console.error(`[yuri/onboarding] Message stream error for user ${user.id}:`, err)
             const errMsg = err instanceof Error ? err.message : 'Stream error'
             const errorData = JSON.stringify({ type: 'error', message: errMsg })
             controller.enqueue(encoder.encode(`data: ${errorData}\n\n`))
@@ -301,6 +303,9 @@ export async function POST(request: NextRequest) {
 
     return Response.json({ error: 'Unknown action' }, { status: 400 })
   } catch (error) {
+    if (!(error instanceof z.ZodError)) {
+      console.error('[yuri/onboarding] Request error:', error)
+    }
     const message =
       error instanceof z.ZodError
         ? 'Invalid request'
@@ -333,7 +338,8 @@ async function extractAndUpdate(
     await updateOnboardingProgress(userId, merged, capturedFields, percentage, isComplete)
 
     return { percentage, isComplete, capturedFields }
-  } catch {
+  } catch (err) {
+    console.error(`[yuri/onboarding] Extraction error for user ${userId}:`, err)
     return null
   }
 }
