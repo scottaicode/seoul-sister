@@ -33,12 +33,12 @@ function PasswordStrengthBar({ password }: { password: string }) {
           <div
             key={i}
             className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
-              i <= strength ? current.color : 'bg-seoul-soft/20'
+              i <= strength ? current.color : 'bg-white/10'
             }`}
           />
         ))}
       </div>
-      <p className="text-xs text-seoul-soft">{current.label} password</p>
+      <p className="text-xs text-white/40">{current.label} password</p>
     </div>
   )
 }
@@ -89,23 +89,23 @@ export default function RegisterPage() {
     <div className="w-full max-w-md">
       {/* Logo / Brand */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-rose-gold to-glass-500 shadow-glow-pink mb-4">
-          <Sparkles className="w-7 h-7 text-white" />
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-gold to-gold-light shadow-glow-gold mb-4">
+          <Sparkles className="w-7 h-7 text-seoul-dark" />
         </div>
         <h1 className="font-display text-2xl font-bold text-gradient">Seoul Sister</h1>
-        <p className="text-seoul-soft text-sm mt-1">K-Beauty Intelligence Platform</p>
+        <p className="text-white/40 text-sm mt-1">K-Beauty Intelligence Platform</p>
       </div>
 
-      {/* Glass Card */}
-      <div className="glass-card p-8">
-        <h2 className="section-heading text-center mb-2">Join Seoul Sister</h2>
-        <p className="text-seoul-soft text-sm text-center mb-8">
+      {/* Dark Card */}
+      <div className="dark-card-gold p-8">
+        <h2 className="text-xl font-bold text-white text-center mb-2">Join Seoul Sister</h2>
+        <p className="text-white/40 text-sm text-center mb-8">
           Create your free account and start your K-beauty journey
         </p>
 
         {/* Error Banner */}
         {error && (
-          <div className="flex items-start gap-3 p-4 mb-6 rounded-xl bg-red-50/80 border border-red-200/60 text-red-700">
+          <div className="flex items-start gap-3 p-4 mb-6 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
             <p className="text-sm leading-snug">{error}</p>
           </div>
@@ -116,12 +116,12 @@ export default function RegisterPage() {
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-seoul-charcoal mb-1.5"
+              className="block text-sm font-medium text-white/70 mb-1.5"
             >
               Email Address
             </label>
             <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-seoul-soft/60 pointer-events-none" />
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
               <input
                 id="email"
                 type="email"
@@ -130,7 +130,7 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="glass-input pl-10"
+                className="dark-input pl-10"
                 disabled={isLoading}
               />
             </div>
@@ -140,12 +140,12 @@ export default function RegisterPage() {
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-seoul-charcoal mb-1.5"
+              className="block text-sm font-medium text-white/70 mb-1.5"
             >
               Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-seoul-soft/60 pointer-events-none" />
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
               <input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
@@ -154,13 +154,13 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Create a strong password"
-                className="glass-input pl-10 pr-11"
+                className="dark-input pl-10 pr-11"
                 disabled={isLoading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-seoul-soft/60 hover:text-seoul-charcoal transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                 tabIndex={-1}
               >
@@ -178,12 +178,12 @@ export default function RegisterPage() {
           <div>
             <label
               htmlFor="confirmPassword"
-              className="block text-sm font-medium text-seoul-charcoal mb-1.5"
+              className="block text-sm font-medium text-white/70 mb-1.5"
             >
               Confirm Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-seoul-soft/60 pointer-events-none" />
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
               <input
                 id="confirmPassword"
                 type={showConfirm ? 'text' : 'password'}
@@ -192,7 +192,7 @@ export default function RegisterPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Repeat your password"
-                className={`glass-input pl-10 pr-11 ${
+                className={`dark-input pl-10 pr-11 ${
                   confirmPassword.length > 0
                     ? passwordsMatch
                       ? 'ring-2 ring-green-400/40 border-green-400/50'
@@ -203,12 +203,12 @@ export default function RegisterPage() {
               />
               <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
                 {confirmPassword.length > 0 && passwordsMatch && (
-                  <Check className="w-4 h-4 text-green-500" />
+                  <Check className="w-4 h-4 text-green-400" />
                 )}
                 <button
                   type="button"
                   onClick={() => setShowConfirm((prev) => !prev)}
-                  className="text-seoul-soft/60 hover:text-seoul-charcoal transition-colors"
+                  className="text-white/30 hover:text-white transition-colors"
                   aria-label={showConfirm ? 'Hide password' : 'Show password'}
                   tabIndex={-1}
                 >
@@ -230,7 +230,7 @@ export default function RegisterPage() {
           >
             {isLoading ? (
               <>
-                <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                <span className="inline-block w-4 h-4 border-2 border-seoul-dark/40 border-t-seoul-dark rounded-full animate-spin" />
                 Creating account...
               </>
             ) : (
@@ -240,17 +240,17 @@ export default function RegisterPage() {
         </form>
 
         {/* Free tier note */}
-        <p className="text-xs text-center text-seoul-soft mt-4">
+        <p className="text-xs text-center text-white/30 mt-4">
           Free forever -- no credit card required
         </p>
 
         {/* Divider */}
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-seoul-soft/20" />
+            <div className="w-full border-t border-white/10" />
           </div>
           <div className="relative flex justify-center">
-            <span className="px-3 bg-white/70 text-xs text-seoul-soft">
+            <span className="px-3 bg-seoul-card text-xs text-white/40">
               Already have an account?
             </span>
           </div>
@@ -259,20 +259,20 @@ export default function RegisterPage() {
         {/* Login Link */}
         <Link
           href="/login"
-          className="glass-button w-full flex items-center justify-center gap-2 text-sm text-seoul-charcoal"
+          className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-full font-medium text-sm text-white/70 transition-all duration-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white active:scale-[0.98]"
         >
           Sign in instead
         </Link>
       </div>
 
       {/* Footer note */}
-      <p className="text-center text-xs text-seoul-soft mt-6">
+      <p className="text-center text-xs text-white/30 mt-6">
         By joining you agree to our{' '}
-        <Link href="/terms" className="underline hover:text-seoul-charcoal transition-colors">
+        <Link href="/terms" className="underline hover:text-white/60 transition-colors">
           Terms
         </Link>{' '}
         and{' '}
-        <Link href="/privacy" className="underline hover:text-seoul-charcoal transition-colors">
+        <Link href="/privacy" className="underline hover:text-white/60 transition-colors">
           Privacy Policy
         </Link>
       </p>
