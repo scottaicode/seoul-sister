@@ -20,7 +20,8 @@ VALUES
   (gen_random_uuid(), 'YesStyle',     'https://www.yesstyle.com',      'Hong Kong',   85, true),
   (gen_random_uuid(), 'Stylevana',    'https://www.stylevana.com',     'Hong Kong',   82, true),
   (gen_random_uuid(), 'Amazon',       'https://www.amazon.com',        'USA',         70, true),
-  (gen_random_uuid(), 'iHerb',        'https://www.iherb.com',         'USA',         80, true);
+  (gen_random_uuid(), 'iHerb',        'https://www.iherb.com',         'USA',         80, true)
+ON CONFLICT (name) DO NOTHING;
 
 
 -- ============================================================
