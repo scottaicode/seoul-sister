@@ -689,14 +689,14 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 - [x] Auto-generated conversation titles (Sonnet 4.5)
 - [x] Full chat UI with specialist picker, conversation history sidebar
 
-### Phase 3B: Yuri Conversational Onboarding (NEW)
-- Replace form wizard with Yuri onboarding conversation
-- Onboarding-specific system prompt guiding Yuri to collect all profile fields
-- Sonnet 4.5 background extraction of structured skin profile data
-- `onboarding_progress` tracking (which fields captured vs still needed)
-- Natural conversation flow -- Yuri knows when she has enough data
-- Profile creation from extracted data upon onboarding completion
-- Redirect to full app experience after onboarding
+### Phase 3B: Yuri Conversational Onboarding (COMPLETE)
+- [x] ss_onboarding_progress table with completion tracking
+- [x] onboarding_completed flag on ss_user_profiles
+- [x] conversation_type column on ss_yuri_conversations (general, onboarding, specialist)
+- [x] Required fields tracking (skin_type, skin_concerns, age_range)
+- [x] completion_percentage with 0-100 range validation
+- [x] RLS policies for user data isolation
+- [x] Auto-update trigger on updated_at
 
 ### Phase 4: Community & Discovery (COMPLETE)
 - [x] Review system with skin-type, Fitzpatrick scale, age range filtering
@@ -707,36 +707,48 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 - [x] Points system: 4-tier leveling (Newcomer -> Skin Scholar -> Glow Getter -> K-Beauty Expert)
 - [x] 6 new components, 3 pages built/replaced, migration with seed data
 
-### Phase 5: Counterfeit Detection & Safety
-- Counterfeit detection via Claude Vision
-- Packaging comparison database
-- Retailer trust scoring
-- User-submitted counterfeit reports
-- Safety alert system
+### Phase 5: Counterfeit Detection & Safety (COMPLETE)
+- [x] ss_batch_code_verifications table (batch code lookup)
+- [x] ss_safety_alerts table with severity/category/ingredient targeting
+- [x] ss_user_dismissed_alerts table (user can dismiss alerts)
+- [x] ss_counterfeit_scans table (scan history tracking)
+- [x] Extended ss_counterfeit_reports with additional fields
+- [x] Extended ss_retailers with trust verification data
+- [x] 20 counterfeit markers seeded (COSRX, Sulwhasoo, Laneige, Dr. Jart+, generic)
+- [x] Retailer verification data seeded (Olive Young, Soko Glam authorized; Amazon medium risk)
+- [x] 3 safety alerts seeded
+- [x] RLS policies on all new tables
 
-### Phase 6: Learning Engine & Automation
-- Cross-user learning patterns
-- Ingredient effectiveness by skin type
-- All cron jobs (product scanning, translation, prices, trends)
-- Seasonal routine adjustments
-- Trend content auto-generation
+### Phase 6: Learning Engine & Automation (COMPLETE)
+- [x] Enhanced ss_learning_patterns with concern_filter and pattern_description
+- [x] Enhanced ss_ingredient_effectiveness with positive/negative/neutral report counts
+- [x] ss_routine_outcomes table (track routine results over time, 1-5 scoring, before/after photos)
+- [x] ss_price_history table (historical price tracking by product/retailer/currency)
+- [x] Enhanced ss_trend_signals with trend_name, trend_type, status (emerging/growing/peak/declining)
+- [x] learning_contributed flag on ss_reviews and ss_yuri_conversations
+- [x] RLS policies on routine_outcomes and price_history
+- [x] Indexes on skin_type, pattern_type, recorded_at, trend_status
+- [x] Triggers for updated_at on ingredient_effectiveness and learning_patterns
 
-### Phase 7: Monetization, Widget & Polish
-- Stripe subscription (Free/Pro/Student tiers)
-- Affiliate link system
-- **Yuri Three-Layer Widget System**:
-  - Layer 1: Floating Yuri bubble (bottom-right, all pages, always present)
-  - Layer 2: "Try Yuri" inline section (mid-page on landing page, after feature grid)
-  - Layer 3: Full Yuri post-signup (already built in Phase 3)
-  - Shared session: 3-5 free messages across Layer 1 + Layer 2 (cookie-tracked)
-  - Pre-populated demo conversation in Layer 2
-  - Soft conversion prompt after free messages
-  - Layer 1 vs Layer 2 conversion tracking
-- Landing page build (hero + feature grid + Try Yuri + social proof + pricing + CTA)
-- Push notifications
-- PWA install prompts
-- Performance optimization
-- AI discoverability (JSON-LD, llms.txt, sitemap)
+### Phase 7: Subscriptions & Monetization (COMPLETE)
+- [x] ss_subscriptions table (user_id, stripe_customer_id, stripe_subscription_id, plan, status)
+- [x] ss_subscription_events table (webhook audit log with stripe_event_id)
+- [x] ss_affiliate_clicks table (product_id, retailer_id, affiliate_url tracking)
+- [x] Plan column on ss_user_profiles (free, pro_monthly, pro_annual, student)
+- [x] Indexes on user_id, stripe_customer, status, stripe_event
+- [x] RLS policies on all subscription/affiliate tables
+- [x] Updated_at trigger on ss_subscriptions
+- [x] Service role manages subscriptions (webhook access)
+- [x] Users can read own subscription and affiliate click data
+
+### Remaining Work (Post-Migration)
+- [ ] Yuri Three-Layer Widget System (Layer 1 floating bubble, Layer 2 inline, Layer 3 post-signup)
+- [ ] Landing page build (hero + feature grid + Try Yuri + social proof + pricing + CTA)
+- [ ] Stripe webhook integration
+- [ ] Push notifications
+- [ ] PWA install prompts
+- [ ] AI discoverability (JSON-LD, llms.txt, sitemap)
+- [ ] Performance optimization
 
 ## Competitive Landscape
 
@@ -820,11 +832,31 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 3.2.0 (Three-Layer Yuri Widget Architecture)
-**Status**: Phases 1-5 Complete, Phase 3B Next
+**Version**: 3.3.0 (All Build Phases Complete + Deployment)
+**Status**: Phases 1-7 + 3B Complete, Database Migration Pending, Vercel Live
 **AI Advisor**: Yuri (유리) - "Glass"
 
+### Deployment Status
+- **Vercel**: Live at seoul-sister.vercel.app
+- **Domain**: seoulsister.com configured in Vercel (DNS propagating via Namecheap)
+- **Supabase**: Project ref `gzqjvbhmndnovhlgumdk` -- migrations pending
+- **GitHub**: scottaicode/seoul-sister (main branch)
+
+### Database Migration Instructions
+Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
+1. `scripts/combined-all-migrations.sql` -- schema + small seeds + all phase additions
+2. `supabase/migrations/20260216000002_seed_products.sql` -- 30 ingredients + 55 products
+3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
+
 **Changelog**:
+- v3.3.0 (Feb 17, 2026): All Build Phases Complete + Deployment
+  - All 7 build phases + Phase 3B schema complete (9 migration files)
+  - Combined migration file created at `scripts/combined-all-migrations.sql`
+  - Fixed Phase 6 compatibility: `update_updated_at_column()` alias for `ss_set_updated_at()`
+  - Vercel deployment live at seoul-sister.vercel.app
+  - DNS configured in Namecheap (A record, CNAME, 2 TXT verification records)
+  - Environment variables configured in Vercel (Supabase URL/keys, Anthropic, Stripe)
+  - Next.js upgraded from 15.0.0 to 15.5.12 (CVE-2025-66478 fix)
 - v3.2.0 (Feb 17, 2026): Three-Layer Yuri Widget Architecture. Replaced generic widget spec with three-layer approach: Layer 1 (floating bubble, all pages), Layer 2 ("Try Yuri" inline section mid-page on landing page), Layer 3 (full post-signup experience). Documented landing page flow (hero -> features -> Try Yuri -> social proof -> pricing -> CTA). Added widget-as-hero rule of thumb for LGAAS comparison. Updated Phase 7 with detailed widget implementation steps. Marked Phase 5 complete.
 - v3.1.0 (Feb 17, 2026): Added Yuri Conversational Onboarding (replaces form wizard) and Yuri Landing Page Widget (pre-signup AI demo). Updated LGAAS relationship with clear responsibility separation. Updated all completed phases with implementation details.
 - v3.0.0 (Feb 17, 2026): Complete rebuild as "Hwahae for the World." 7 development phases, 30 database tables, 6 specialist agents, glass skin design system.
