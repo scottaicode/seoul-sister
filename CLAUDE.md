@@ -747,24 +747,17 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 - [x] Dark + gold design theme (Seoul-inspired aesthetic)
 - [x] Mobile hamburger menu + widget overlap fixes
 - [x] Yuri persona rewrite (20-year Korean industry veteran voice across all touchpoints)
-- [ ] **Widget Lead Generation & Conversation Memory** (HIGH PRIORITY)
-  - Currently: Widget is stateless. Conversations are streamed and forgotten. No database storage,
-    no visitor tracking, no email capture. Cookie only tracks message count (5 free, 24hr expiry).
-  - Needed:
-    - `ss_widget_sessions` table: session_id, visitor_fingerprint, ip_hash, started_at, message_count
-    - `ss_widget_messages` table: session_id, role, content, created_at (store actual conversations)
-    - `ss_widget_prospects` table: session_id, email (captured at free message limit), skin_concerns
-      (extracted from conversation), conversion_status, created_at
-    - Email capture prompt at end of 5 free messages (before "Create Free Account" CTA)
-    - AI conversation memory generation after meaningful exchanges (3+ messages) -- extract skin type,
-      concerns, products discussed, intent signals (same pattern as LGAAS widget-helpers.js)
-    - Returning visitor recognition (via cookie/fingerprint) with memory from past conversations
-    - Yuri references past conversation: "Last time you asked about snail mucin -- did you end up trying it?"
-    - Analytics: which questions visitors ask most, conversion rate by question type, which Yuri
-      responses correlate with signup
-  - Architecture reference: LGAAS `utils/widget-helpers.js` (conversation memory), `api/widget-conversation.js`
-    (prospect tracking, trust signals, touchpoints), `scripts/004-widget-and-trust-tables.sql`
-  - This is the single highest-impact feature for converting anonymous visitors to registered users
+- [ ] **Widget Email Capture** (FUTURE CONSIDERATION)
+  - Currently: Widget is stateless. Cookie tracks message count (5 free, 24hr expiry). At limit,
+    shows "Create Free Account" CTA. No email capture, no conversation storage.
+  - Lightweight first step (when traffic justifies it): Add an email input field at the message
+    limit alongside the signup CTA. Lower friction than full account creation. Store in a simple
+    `ss_widget_emails` table. No full session tracking or memory needed at this stage.
+  - Full lead gen & conversation memory (only if data shows returning visitors bouncing without
+    converting): Session storage, AI memory, returning visitor recognition. See LGAAS patterns
+    (`utils/widget-helpers.js`, `api/widget-conversation.js`) for architecture reference.
+  - Note: Making the anonymous widget too personalized (memory, recognition) can reduce signup
+    motivation. The 5-message limit + signup CTA is the correct conversion architecture for now.
 - [ ] Stripe webhook integration
 - [ ] Push notifications
 - [ ] PWA install prompts
