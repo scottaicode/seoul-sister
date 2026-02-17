@@ -742,8 +742,29 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 - [x] Users can read own subscription and affiliate click data
 
 ### Remaining Work (Post-Migration)
-- [ ] Yuri Three-Layer Widget System (Layer 1 floating bubble, Layer 2 inline, Layer 3 post-signup)
-- [ ] Landing page build (hero + feature grid + Try Yuri + social proof + pricing + CTA)
+- [x] Yuri Three-Layer Widget System (Layer 1 floating bubble, Layer 2 inline, Layer 3 post-signup)
+- [x] Landing page build (hero + feature grid + Try Yuri + social proof + pricing + CTA)
+- [x] Dark + gold design theme (Seoul-inspired aesthetic)
+- [x] Mobile hamburger menu + widget overlap fixes
+- [x] Yuri persona rewrite (20-year Korean industry veteran voice across all touchpoints)
+- [ ] **Widget Lead Generation & Conversation Memory** (HIGH PRIORITY)
+  - Currently: Widget is stateless. Conversations are streamed and forgotten. No database storage,
+    no visitor tracking, no email capture. Cookie only tracks message count (5 free, 24hr expiry).
+  - Needed:
+    - `ss_widget_sessions` table: session_id, visitor_fingerprint, ip_hash, started_at, message_count
+    - `ss_widget_messages` table: session_id, role, content, created_at (store actual conversations)
+    - `ss_widget_prospects` table: session_id, email (captured at free message limit), skin_concerns
+      (extracted from conversation), conversion_status, created_at
+    - Email capture prompt at end of 5 free messages (before "Create Free Account" CTA)
+    - AI conversation memory generation after meaningful exchanges (3+ messages) -- extract skin type,
+      concerns, products discussed, intent signals (same pattern as LGAAS widget-helpers.js)
+    - Returning visitor recognition (via cookie/fingerprint) with memory from past conversations
+    - Yuri references past conversation: "Last time you asked about snail mucin -- did you end up trying it?"
+    - Analytics: which questions visitors ask most, conversion rate by question type, which Yuri
+      responses correlate with signup
+  - Architecture reference: LGAAS `utils/widget-helpers.js` (conversation memory), `api/widget-conversation.js`
+    (prospect tracking, trust signals, touchpoints), `scripts/004-widget-and-trust-tables.sql`
+  - This is the single highest-impact feature for converting anonymous visitors to registered users
 - [ ] Stripe webhook integration
 - [ ] Push notifications
 - [ ] PWA install prompts
