@@ -22,18 +22,23 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      await signIn(email, password)
+      const session = await signIn(email, password)
 
       // Check if onboarding is completed
-      const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession()
-      if (session) {
-        const profileRes = await fetch('/api/auth/profile', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        })
-        const profileData = await profileRes.json()
-        if (!profileData.profile || !profileData.profile.onboarding_completed) {
-          router.push('/onboarding')
-          return
+      if (session?.access_token) {
+        try {
+          const profileRes = await fetch('/api/auth/profile', {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          })
+          if (profileRes.ok) {
+            const profileData = await profileRes.json()
+            if (!profileData.profile || !profileData.profile.onboarding_completed) {
+              router.push('/onboarding')
+              return
+            }
+          }
+        } catch {
+          // Profile check failed — proceed to dashboard rather than blocking login
         }
       }
 

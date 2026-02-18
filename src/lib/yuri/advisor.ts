@@ -96,9 +96,12 @@ type ContentBlock = ImageBlock | TextBlock
 type ApiMessage = { role: 'user' | 'assistant'; content: string | ContentBlock[] }
 
 /**
- * Parse a data URL into base64 source for Claude, or fall back to URL source.
+ * Parse a data URL into base64 source for Claude.
+ * Only accepts data: URLs (base64) and https: URLs from trusted image hosts.
+ * Rejects all other URLs to prevent SSRF.
  */
-function imageUrlToBlock(url: string): ImageBlock {
+function imageUrlToBlock(url: string): ImageBlock | null {
+  // Base64 data URL — always allowed
   const dataUrlMatch = url.match(/^data:(image\/(?:jpeg|png|webp|gif));base64,(.+)$/)
   if (dataUrlMatch) {
     return {
@@ -106,17 +109,30 @@ function imageUrlToBlock(url: string): ImageBlock {
       source: { type: 'base64', media_type: dataUrlMatch[1], data: dataUrlMatch[2] },
     }
   }
-  return { type: 'image', source: { type: 'url', url } }
+  // Only allow HTTPS URLs from known image hosts
+  try {
+    const parsed = new URL(url)
+    const trustedHosts = ['images.unsplash.com', 'supabase.co', 'storage.googleapis.com']
+    if (parsed.protocol === 'https:' && trustedHosts.some((h) => parsed.hostname.endsWith(h))) {
+      return { type: 'image', source: { type: 'url', url } }
+    }
+  } catch {
+    // Invalid URL
+  }
+  return null
 }
 
 function messagesToApiFormat(messages: YuriMessage[]): ApiMessage[] {
   return messages.map((m) => {
     if (m.role === 'user' && m.image_urls && m.image_urls.length > 0) {
-      const content: ContentBlock[] = [
-        ...m.image_urls.map(imageUrlToBlock),
-        { type: 'text', text: m.content },
-      ]
-      return { role: m.role, content }
+      const imageBlocks = m.image_urls.map(imageUrlToBlock).filter((b): b is ImageBlock => b !== null)
+      if (imageBlocks.length > 0) {
+        const content: ContentBlock[] = [
+          ...imageBlocks,
+          { type: 'text', text: m.content },
+        ]
+        return { role: m.role, content }
+      }
     }
     return { role: m.role, content: m.content }
   })
@@ -198,11 +214,16 @@ export async function* streamAdvisorResponse(
 
   // Add current user message with optional images
   if (imageUrls.length > 0) {
-    const content: ContentBlock[] = [
-      ...imageUrls.map(imageUrlToBlock),
-      { type: 'text', text: message },
-    ]
-    apiMessages.push({ role: 'user', content })
+    const imageBlocks = imageUrls.map(imageUrlToBlock).filter((b): b is ImageBlock => b !== null)
+    if (imageBlocks.length > 0) {
+      const content: ContentBlock[] = [
+        ...imageBlocks,
+        { type: 'text', text: message },
+      ]
+      apiMessages.push({ role: 'user', content })
+    } else {
+      apiMessages.push({ role: 'user', content: message })
+    }
   } else {
     apiMessages.push({ role: 'user', content: message })
   }
@@ -294,9 +315,15 @@ Return ONLY valid JSON.`,
 
   try {
     const text = block.text.trim()
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) return
-    const insightData = JSON.parse(jsonMatch[0])
+    // Try direct parse first, fall back to regex extraction
+    let insightData: Record<string, unknown>
+    try {
+      insightData = JSON.parse(text)
+    } catch {
+      const jsonMatch = text.match(/\{[\s\S]*?\}(?=[^}]*$)/)
+      if (!jsonMatch) return
+      insightData = JSON.parse(jsonMatch[0])
+    }
     await saveSpecialistInsight(conversationId, specialistType, insightData)
   } catch {
     // Extraction failed; non-critical

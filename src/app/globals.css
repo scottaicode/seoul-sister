@@ -128,6 +128,10 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  .pb-safe {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
 }
 
 /* Yuri bubble safe zone — prevent fixed widget from covering tappable footer content on mobile */

@@ -185,7 +185,7 @@ export function calculateOnboardingProgress(
 
   const missingRequired = REQUIRED_FIELDS.filter((f) => {
     if (f === 'skin_concerns') {
-      return !extracted.skin_concerns || extracted.skin_concerns.length < 2
+      return !extracted.skin_concerns || extracted.skin_concerns.length < 1
     }
     return !capturedFields[f]
   })

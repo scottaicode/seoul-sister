@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
+import { requireAuth } from '@/lib/auth'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 
 const SCAN_SYSTEM_PROMPT = `You are Yuri's Korean Label Decoder specialist. You analyze Korean beauty product labels photographed by users.
@@ -43,6 +44,8 @@ Respond in JSON format:
 
 export async function POST(request: NextRequest) {
   try {
+    await requireAuth(request)
+
     const contentType = request.headers.get('content-type') || ''
 
     let imageBase64: string
@@ -97,12 +100,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse the JSON from Claude's response
-    const jsonMatch = textContent.text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      throw new AppError('Failed to parse analysis result', 500)
+    let analysis: Record<string, unknown>
+    try {
+      analysis = JSON.parse(textContent.text.trim())
+    } catch {
+      const jsonMatch = textContent.text.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        throw new AppError('Failed to parse analysis result', 500)
+      }
+      analysis = JSON.parse(jsonMatch[0])
     }
-
-    const analysis = JSON.parse(jsonMatch[0])
 
     // Try to match against existing products in our database
     const supabase = createClient(

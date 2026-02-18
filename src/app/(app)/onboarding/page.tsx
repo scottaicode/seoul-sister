@@ -430,6 +430,7 @@ export default function OnboardingPage() {
           onSend={sendMessage}
           disabled={isStreaming}
           placeholder="Tell Yuri about your skin..."
+          showImageUpload={false}
         />
       </div>
 

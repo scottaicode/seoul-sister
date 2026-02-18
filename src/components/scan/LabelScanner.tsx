@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
+import { supabase } from '@/lib/supabase'
 import {
   Camera,
   Upload,
@@ -113,9 +114,13 @@ export default function LabelScanner() {
     setError(null)
 
     try {
+      const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch('/api/scan', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` }),
+        },
         body: JSON.stringify({ image }),
       })
 

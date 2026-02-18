@@ -8,6 +8,7 @@ interface ChatInputProps {
   onSend: (message: string, imageUrls?: string[]) => void
   disabled?: boolean
   placeholder?: string
+  showImageUpload?: boolean
 }
 
 const MAX_IMAGES = 4
@@ -16,6 +17,7 @@ export default function ChatInput({
   onSend,
   disabled = false,
   placeholder = 'Ask Yuri anything about K-beauty...',
+  showImageUpload = true,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
   const [pendingImages, setPendingImages] = useState<string[]>([])
@@ -124,24 +126,28 @@ export default function ChatInput({
       {/* Input row */}
       <div className="flex items-end gap-2 p-3">
         {/* Image upload button */}
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={disabled || pendingImages.length >= MAX_IMAGES || isCompressing}
-          className="flex-shrink-0 w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center transition-all duration-200 hover:bg-gold/10 hover:border-gold/30 disabled:opacity-30 disabled:cursor-not-allowed"
-          aria-label="Attach image"
-        >
-          <ImagePlus className="w-4.5 h-4.5 text-white/50" strokeWidth={1.75} />
-        </button>
+        {showImageUpload && (
+          <>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={disabled || pendingImages.length >= MAX_IMAGES || isCompressing}
+              className="flex-shrink-0 w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center transition-all duration-200 hover:bg-gold/10 hover:border-gold/30 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Attach image"
+            >
+              <ImagePlus className="w-4.5 h-4.5 text-white/50" strokeWidth={1.75} />
+            </button>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          multiple
-          onChange={handleFileSelect}
-          className="hidden"
-          aria-hidden="true"
-        />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              onChange={handleFileSelect}
+              className="hidden"
+              aria-hidden="true"
+            />
+          </>
+        )}
 
         <textarea
           ref={textareaRef}
