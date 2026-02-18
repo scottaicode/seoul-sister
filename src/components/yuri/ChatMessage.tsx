@@ -10,35 +10,31 @@ interface ChatMessageProps {
 }
 
 /**
- * Render markdown-light formatting:
- * - **bold** -> <strong>
- * - *italic* -> <em>
- * - `code` -> <code>
- * - Bullet lists (- item)
- * - Newlines -> <br />
+ * Render markdown formatting for Yuri's responses:
+ * - # / ## / ### headings
+ * - **bold**, *italic*, `code`
+ * - Bullet lists (- item, * item)
+ * - Numbered lists (1. item)
+ * - > blockquotes
+ * - --- horizontal rules
+ * - | tables (mobile-responsive)
+ * - Blank lines as spacing
  */
 function formatContent(content: string): React.ReactNode[] {
   const lines = content.split('\n')
   const elements: React.ReactNode[] = []
   let listItems: string[] = []
+  let numberedItems: string[] = []
+  let blockquoteLines: string[] = []
+  let tableRows: string[][] = []
+  let tableAlignRow = -1
 
-  function flushList() {
-    if (listItems.length > 0) {
-      elements.push(
-        <ul key={`list-${elements.length}`} className="list-disc list-inside space-y-1 my-2">
-          {listItems.map((item, i) => (
-            <li key={i}>{formatInline(item)}</li>
-          ))}
-        </ul>
-      )
-      listItems = []
-    }
-  }
+  let keyIdx = 0
+  const nextKey = () => `el-${keyIdx++}`
 
+  // ── Inline formatting ──────────────────────────────────────────────
   function formatInline(text: string): React.ReactNode {
-    // Process bold, italic, code inline markers
     const parts: React.ReactNode[] = []
-    // Simple regex-based inline formatting
     const regex = /(\*\*(.+?)\*\*)|(\*(.+?)\*)|(`(.+?)`)/g
     let lastIndex = 0
     let match: RegExpExecArray | null
@@ -53,10 +49,7 @@ function formatContent(content: string): React.ReactNode[] {
         parts.push(<em key={match.index}>{match[4]}</em>)
       } else if (match[6]) {
         parts.push(
-          <code
-            key={match.index}
-            className="bg-white/10 px-1.5 py-0.5 rounded text-[13px] font-mono text-gold-light"
-          >
+          <code key={match.index} className="bg-white/10 px-1.5 py-0.5 rounded text-[13px] font-mono text-gold-light">
             {match[6]}
           </code>
         )
@@ -69,48 +62,184 @@ function formatContent(content: string): React.ReactNode[] {
     return parts.length > 0 ? parts : text
   }
 
-  for (const line of lines) {
-    const trimmed = line.trim()
-
-    // Heading (## or ###)
-    if (trimmed.startsWith('### ')) {
-      flushList()
+  // ── Flush accumulators ──────────────────────────────────────────────
+  function flushList() {
+    if (listItems.length > 0) {
       elements.push(
-        <h4 key={elements.length} className="font-display font-semibold text-sm text-white mt-3 mb-1">
+        <ul key={nextKey()} className="list-disc list-inside space-y-1 my-2">
+          {listItems.map((item, i) => (
+            <li key={i}>{formatInline(item)}</li>
+          ))}
+        </ul>
+      )
+      listItems = []
+    }
+  }
+
+  function flushNumberedList() {
+    if (numberedItems.length > 0) {
+      elements.push(
+        <ol key={nextKey()} className="list-decimal list-inside space-y-1 my-2">
+          {numberedItems.map((item, i) => (
+            <li key={i}>{formatInline(item)}</li>
+          ))}
+        </ol>
+      )
+      numberedItems = []
+    }
+  }
+
+  function flushBlockquote() {
+    if (blockquoteLines.length > 0) {
+      elements.push(
+        <blockquote key={nextKey()} className="border-l-2 border-gold/40 pl-3 my-2 text-white/60 italic">
+          {blockquoteLines.map((line, i) => (
+            <p key={i} className="my-0.5 leading-relaxed">{formatInline(line)}</p>
+          ))}
+        </blockquote>
+      )
+      blockquoteLines = []
+    }
+  }
+
+  function flushTable() {
+    if (tableRows.length === 0) return
+
+    // Find header and data rows (skip alignment row)
+    const header = tableRows[0]
+    const dataRows = tableRows.filter((_, i) => i !== 0 && i !== tableAlignRow)
+
+    elements.push(
+      <div key={nextKey()} className="overflow-x-auto my-3 -mx-1 px-1 scrollbar-hide">
+        <table className="w-full text-xs border-collapse">
+          <thead>
+            <tr className="border-b border-white/15">
+              {header.map((cell, i) => (
+                <th key={i} className="text-left font-semibold text-white py-1.5 px-2 whitespace-nowrap">
+                  {formatInline(cell.trim())}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {dataRows.map((row, ri) => (
+              <tr key={ri} className="border-b border-white/5">
+                {row.map((cell, ci) => (
+                  <td key={ci} className="py-1.5 px-2 text-white/70 whitespace-nowrap">
+                    {formatInline(cell.trim())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+    tableRows = []
+    tableAlignRow = -1
+  }
+
+  function flushAll() {
+    flushList()
+    flushNumberedList()
+    flushBlockquote()
+    flushTable()
+  }
+
+  // ── Main line parser ────────────────────────────────────────────────
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim()
+
+    // Table row: starts and ends with | or has multiple |
+    const isTableRow = /^\|(.+)\|$/.test(trimmed)
+    const isAlignRow = /^\|[\s:|-]+\|$/.test(trimmed)
+
+    if (isTableRow) {
+      // Flush non-table accumulators before starting table
+      if (tableRows.length === 0) {
+        flushList()
+        flushNumberedList()
+        flushBlockquote()
+      }
+      const cells = trimmed.slice(1, -1).split('|')
+      if (isAlignRow) {
+        tableAlignRow = tableRows.length
+      }
+      tableRows.push(cells)
+      continue
+    }
+
+    // If we were accumulating table rows and hit a non-table line, flush
+    if (tableRows.length > 0) {
+      flushTable()
+    }
+
+    // Horizontal rule
+    if (/^-{3,}$/.test(trimmed) || /^\*{3,}$/.test(trimmed)) {
+      flushAll()
+      elements.push(<hr key={nextKey()} className="border-white/10 my-3" />)
+      continue
+    }
+
+    // Headings (# ## ###)
+    if (trimmed.startsWith('### ')) {
+      flushAll()
+      elements.push(
+        <h4 key={nextKey()} className="font-display font-semibold text-sm text-white mt-3 mb-1">
           {formatInline(trimmed.slice(4))}
         </h4>
       )
     } else if (trimmed.startsWith('## ')) {
-      flushList()
+      flushAll()
       elements.push(
-        <h3 key={elements.length} className="font-display font-semibold text-base text-white mt-3 mb-1">
+        <h3 key={nextKey()} className="font-display font-semibold text-base text-white mt-3 mb-1">
           {formatInline(trimmed.slice(3))}
         </h3>
       )
-    } else if (/^[-*] /.test(trimmed)) {
-      listItems.push(trimmed.slice(2))
-    } else if (/^\d+\. /.test(trimmed)) {
-      flushList()
-      // Numbered list items
+    } else if (trimmed.startsWith('# ')) {
+      flushAll()
       elements.push(
-        <div key={elements.length} className="my-0.5">
-          {formatInline(trimmed)}
-        </div>
+        <h2 key={nextKey()} className="font-display font-bold text-lg text-white mt-3 mb-1">
+          {formatInline(trimmed.slice(2))}
+        </h2>
       )
-    } else if (trimmed === '') {
+    }
+    // Blockquote
+    else if (trimmed.startsWith('> ')) {
       flushList()
-      elements.push(<div key={elements.length} className="h-2" />)
-    } else {
+      flushNumberedList()
+      blockquoteLines.push(trimmed.slice(2))
+    }
+    // Unordered list
+    else if (/^[-*] /.test(trimmed)) {
+      flushNumberedList()
+      flushBlockquote()
+      listItems.push(trimmed.slice(2))
+    }
+    // Numbered list
+    else if (/^\d+\. /.test(trimmed)) {
       flushList()
+      flushBlockquote()
+      const numMatch = trimmed.match(/^\d+\.\s+(.*)$/)
+      numberedItems.push(numMatch ? numMatch[1] : trimmed)
+    }
+    // Blank line
+    else if (trimmed === '') {
+      flushAll()
+      elements.push(<div key={nextKey()} className="h-2" />)
+    }
+    // Regular paragraph
+    else {
+      flushAll()
       elements.push(
-        <p key={elements.length} className="my-0.5 leading-relaxed">
+        <p key={nextKey()} className="my-0.5 leading-relaxed">
           {formatInline(trimmed)}
         </p>
       )
     }
   }
 
-  flushList()
+  flushAll()
   return elements
 }
 
