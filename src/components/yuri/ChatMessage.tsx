@@ -149,6 +149,21 @@ function ChatMessageComponent({ message }: ChatMessageProps) {
           </div>
         )}
 
+        {/* Images */}
+        {message.image_urls && message.image_urls.length > 0 && (
+          <div className={`flex flex-wrap gap-2 ${message.content ? 'mb-2' : ''}`}>
+            {message.image_urls.map((url, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={url}
+                alt={`Shared image ${i + 1}`}
+                className="max-w-[200px] max-h-[200px] rounded-lg object-cover border border-white/10"
+              />
+            ))}
+          </div>
+        )}
+
         {/* Content */}
         <div
           className={`text-sm ${

@@ -9,7 +9,7 @@ import type { SpecialistType } from '@/types/database'
 const chatSchema = z.object({
   message: z.string().min(1).max(10000),
   conversation_id: z.string().uuid().optional(),
-  image_urls: z.array(z.string().url()).max(4).optional(),
+  image_urls: z.array(z.string().min(1)).max(4).optional(),
   specialist_type: z
     .enum([
       'ingredient_analyst',

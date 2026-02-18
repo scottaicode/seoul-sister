@@ -90,13 +90,36 @@ function buildSystemPrompt(
 // Convert DB messages to Claude API format
 // ---------------------------------------------------------------------------
 
-function messagesToApiFormat(
-  messages: YuriMessage[]
-): Array<{ role: 'user' | 'assistant'; content: string }> {
-  return messages.map((m) => ({
-    role: m.role,
-    content: m.content,
-  }))
+type ImageBlock = { type: 'image'; source: { type: 'base64'; media_type: string; data: string } | { type: 'url'; url: string } }
+type TextBlock = { type: 'text'; text: string }
+type ContentBlock = ImageBlock | TextBlock
+type ApiMessage = { role: 'user' | 'assistant'; content: string | ContentBlock[] }
+
+/**
+ * Parse a data URL into base64 source for Claude, or fall back to URL source.
+ */
+function imageUrlToBlock(url: string): ImageBlock {
+  const dataUrlMatch = url.match(/^data:(image\/(?:jpeg|png|webp|gif));base64,(.+)$/)
+  if (dataUrlMatch) {
+    return {
+      type: 'image',
+      source: { type: 'base64', media_type: dataUrlMatch[1], data: dataUrlMatch[2] },
+    }
+  }
+  return { type: 'image', source: { type: 'url', url } }
+}
+
+function messagesToApiFormat(messages: YuriMessage[]): ApiMessage[] {
+  return messages.map((m) => {
+    if (m.role === 'user' && m.image_urls && m.image_urls.length > 0) {
+      const content: ContentBlock[] = [
+        ...m.image_urls.map(imageUrlToBlock),
+        { type: 'text', text: m.content },
+      ]
+      return { role: m.role, content }
+    }
+    return { role: m.role, content: m.content }
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -174,26 +197,15 @@ export async function* streamAdvisorResponse(
   const apiMessages = messagesToApiFormat(conversationHistory)
 
   // Add current user message with optional images
-  const currentMessageContent: Array<
-    | { type: 'text'; text: string }
-    | { type: 'image'; source: { type: 'url'; url: string } }
-  > = []
-
   if (imageUrls.length > 0) {
-    for (const url of imageUrls) {
-      currentMessageContent.push({
-        type: 'image',
-        source: { type: 'url', url },
-      })
-    }
+    const content: ContentBlock[] = [
+      ...imageUrls.map(imageUrlToBlock),
+      { type: 'text', text: message },
+    ]
+    apiMessages.push({ role: 'user', content })
+  } else {
+    apiMessages.push({ role: 'user', content: message })
   }
-
-  currentMessageContent.push({ type: 'text', text: message })
-
-  apiMessages.push({
-    role: 'user',
-    content: imageUrls.length > 0 ? (currentMessageContent as unknown as string) : message,
-  })
 
   // 5. Save user message to DB
   await saveMessage(conversationId, 'user', message, specialistType, imageUrls)
@@ -206,10 +218,8 @@ export async function* streamAdvisorResponse(
     model: MODELS.primary,
     max_tokens: 2048,
     system: systemPrompt,
-    messages: apiMessages as Array<{
-      role: 'user' | 'assistant'
-      content: string
-    }>,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    messages: apiMessages as any,
   })
 
   for await (const event of stream) {

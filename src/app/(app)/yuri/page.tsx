@@ -44,8 +44,8 @@ export default function YuriPage() {
   }, [messages])
 
   const handleSend = useCallback(
-    (message: string) => {
-      sendMessage(message)
+    (message: string, imageUrls?: string[]) => {
+      sendMessage(message, { imageUrls })
     },
     [sendMessage]
   )
