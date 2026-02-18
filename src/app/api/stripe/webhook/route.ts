@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getStripeClient, planFromStripePriceId } from '@/lib/stripe'
+import { getStripeClient, planFromStripePriceId, type TierKey } from '@/lib/stripe'
 import { getServiceClient } from '@/lib/supabase'
 import type Stripe from 'stripe'
+
+/** Map full plan key to the ss_subscriptions.tier column value */
+function planToTier(plan: TierKey): string {
+  if (plan === 'pro_monthly' || plan === 'pro_annual') return 'pro'
+  return plan // 'free' | 'student'
+}
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
@@ -77,7 +83,7 @@ export async function POST(request: NextRequest) {
               user_id: userId,
               stripe_customer_id: customerId,
               stripe_subscription_id: subscriptionId,
-              plan,
+              tier: planToTier(plan),
               status: 'active',
               current_period_start: new Date(
                 subscription.current_period_start * 1000
@@ -118,7 +124,7 @@ export async function POST(request: NextRequest) {
               user_id: userId,
               stripe_customer_id: customerId,
               stripe_subscription_id: subscription.id,
-              plan,
+              tier: planToTier(plan),
               status: subscription.status === 'active' ? 'active'
                 : subscription.status === 'past_due' ? 'past_due'
                 : subscription.status === 'trialing' ? 'trialing'
