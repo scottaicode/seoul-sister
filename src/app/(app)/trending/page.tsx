@@ -32,19 +32,23 @@ export default function TrendingPage() {
   const [loading, setLoading] = useState(true)
   const [sourceFilter, setSourceFilter] = useState('')
   const [activeTab, setActiveTab] = useState<'trending' | 'tiktok'>('trending')
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchTrending() {
       setLoading(true)
+      setError(null)
       try {
         const params = new URLSearchParams()
         if (sourceFilter) params.set('source', sourceFilter)
         params.set('limit', '20')
 
         const res = await fetch(`/api/trending?${params.toString()}`)
+        if (!res.ok) throw new Error('Failed to load trends')
         const data = await res.json()
         setTrending(data.trending ?? [])
       } catch {
+        setError('Failed to load trending products. Please try again.')
         setTrending([])
       } finally {
         setLoading(false)
@@ -111,7 +115,17 @@ export default function TrendingPage() {
           </div>
 
           {/* Trending list */}
-          {loading ? (
+          {error ? (
+            <div className="glass-card p-6 text-center">
+              <p className="text-sm text-red-400 mb-3">{error}</p>
+              <button
+                onClick={() => setSourceFilter(sourceFilter)}
+                className="text-xs text-gold-light hover:text-gold transition-colors"
+              >
+                Try again
+              </button>
+            </div>
+          ) : loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-gold" />
             </div>

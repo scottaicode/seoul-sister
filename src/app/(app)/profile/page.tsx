@@ -183,12 +183,14 @@ export default function ProfilePage() {
                 </p>
               </div>
               {(profile.plan === 'free' || !profile.plan) && (
-                <Link
+                <a
                   href="/#pricing"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-xs font-medium text-gold-light hover:text-gold transition-colors"
                 >
                   Upgrade
-                </Link>
+                </a>
               )}
             </div>
           </div>

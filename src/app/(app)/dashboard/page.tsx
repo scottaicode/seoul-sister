@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   Camera,
@@ -10,6 +10,7 @@ import {
   Sparkles,
   ChevronRight,
   Lightbulb,
+  Loader2,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import EmptyState from '@/components/ui/EmptyState'
@@ -30,32 +31,35 @@ function getGreeting() {
   return 'Good evening'
 }
 
-const PLACEHOLDER_TRENDING: TrendingProduct[] = [
-  {
-    id: '1',
-    name: 'Centella Blemish Serum',
-    brand: 'COSRX',
-    category: 'Serum',
-    trendSignal: 'Viral on TikTok',
-    rating: 4.8,
-  },
-  {
-    id: '2',
-    name: 'PDRN Recovery Ampoule',
-    brand: 'Dr. Jart+',
-    category: 'Ampoule',
-    trendSignal: 'Trending in Seoul',
-    rating: 4.7,
-  },
-  {
-    id: '3',
-    name: 'Glass Skin Essence',
-    brand: 'Laneige',
-    category: 'Essence',
-    trendSignal: 'Top rated this week',
-    rating: 4.6,
-  },
-]
+function useTrendingProducts() {
+  const [trending, setTrending] = useState<TrendingProduct[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch('/api/trending?limit=3')
+        const data = await res.json()
+        const items = (data.trending ?? []).map((t: Record<string, unknown>) => ({
+          id: (t.product as Record<string, unknown>)?.id ?? t.product_id,
+          name: (t.product as Record<string, unknown>)?.name_en ?? 'Unknown Product',
+          brand: (t.product as Record<string, unknown>)?.brand_en ?? '',
+          category: (t.product as Record<string, unknown>)?.category ?? '',
+          trendSignal: `${t.source ?? 'Trending'} · ${t.mention_count ?? 0} mentions`,
+          rating: (t.product as Record<string, unknown>)?.average_rating ?? null,
+        }))
+        setTrending(items)
+      } catch {
+        setTrending([])
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  return { trending, loading }
+}
 
 // ---------------------------------------------------------------------------
 // Page
@@ -63,6 +67,7 @@ const PLACEHOLDER_TRENDING: TrendingProduct[] = [
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const { trending, loading: trendingLoading } = useTrendingProducts()
 
   const displayName = useMemo(() => {
     if (!user) return null
@@ -179,11 +184,21 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        <div className="flex flex-col gap-3">
-          {PLACEHOLDER_TRENDING.map((product) => (
-            <TrendingProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        {trendingLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-gold/40" />
+          </div>
+        ) : trending.length === 0 ? (
+          <div className="glass-card p-4 text-center">
+            <p className="text-sm text-white/40">No trending products yet. Check back soon!</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {trending.map((product) => (
+              <TrendingProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Recent Scans */}

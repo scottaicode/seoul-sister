@@ -8,8 +8,11 @@ import {
   User,
   CreditCard,
   Shield,
+  FileText,
+  Trash2,
   ChevronRight,
   Loader2,
+  AlertTriangle,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -63,6 +66,9 @@ export default function SettingsPage() {
   const { user, signOut } = useAuth()
   const router = useRouter()
   const [loggingOut, setLoggingOut] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   async function handleSignOut() {
     setLoggingOut(true)
@@ -71,6 +77,27 @@ export default function SettingsPage() {
       router.replace('/login')
     } catch {
       setLoggingOut(false)
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession()
+      const res = await fetch('/api/account/delete', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error || 'Failed to delete account')
+      }
+      await signOut()
+      router.replace('/login')
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete account')
+      setDeleting(false)
     }
   }
 
@@ -102,7 +129,7 @@ export default function SettingsPage() {
           icon={CreditCard}
           label="Subscription"
           description="Manage your plan and billing"
-          href="/#pricing"
+          href="/profile"
         />
       </div>
 
@@ -118,6 +145,60 @@ export default function SettingsPage() {
           label="Privacy Policy"
           href="/privacy"
         />
+        <SettingsRow
+          icon={FileText}
+          label="Terms of Service"
+          href="/terms"
+        />
+      </div>
+
+      {/* Danger Zone */}
+      <div className="glass-card overflow-hidden">
+        <div className="px-5 pt-4 pb-2">
+          <h2 className="font-display font-semibold text-xs text-white/40 uppercase tracking-wider">
+            Danger Zone
+          </h2>
+        </div>
+        {showDeleteConfirm ? (
+          <div className="p-4 space-y-3">
+            <div className="flex items-start gap-2 bg-red-500/10 rounded-xl p-3">
+              <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+              <div className="text-xs">
+                <p className="text-red-400 font-medium">This action is permanent</p>
+                <p className="text-white/40 mt-1">
+                  All your data will be deleted: skin profile, conversations, reviews, routines, scans, and your account. This cannot be undone.
+                </p>
+              </div>
+            </div>
+            {deleteError && (
+              <p className="text-xs text-red-400 bg-red-500/10 p-2 rounded-lg">{deleteError}</p>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="flex-1 text-xs py-2 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="flex-1 text-xs py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Yes, Delete My Account'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <SettingsRow
+            icon={Trash2}
+            label="Delete Account"
+            description="Permanently delete all your data"
+            onClick={() => setShowDeleteConfirm(true)}
+            danger
+          />
+        )}
       </div>
 
       {/* Sign Out */}

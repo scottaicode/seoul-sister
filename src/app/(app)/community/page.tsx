@@ -36,9 +36,11 @@ export default function CommunityPage() {
   const [filters, setFilters] = useState<Filters>({})
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [userPoints, setUserPoints] = useState(0)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchReviews = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const params = new URLSearchParams()
       params.set('page', String(page))
@@ -50,12 +52,14 @@ export default function CommunityPage() {
       if (filters.sort_by) params.set('sort_by', filters.sort_by)
 
       const res = await fetch(`/api/reviews?${params.toString()}`)
+      if (!res.ok) throw new Error('Failed to load reviews')
       const data = await res.json()
 
       setReviews(data.reviews ?? [])
       setTotalPages(data.total_pages ?? 1)
       setTotal(data.total ?? 0)
     } catch {
+      setError('Failed to load reviews. Please try again.')
       setReviews([])
     } finally {
       setLoading(false)
@@ -129,7 +133,17 @@ export default function CommunityPage() {
       )}
 
       {/* Reviews list */}
-      {loading ? (
+      {error ? (
+        <div className="glass-card p-6 text-center">
+          <p className="text-sm text-red-400 mb-3">{error}</p>
+          <button
+            onClick={fetchReviews}
+            className="text-xs text-gold-light hover:text-gold transition-colors"
+          >
+            Try again
+          </button>
+        </div>
+      ) : loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-gold" />
         </div>

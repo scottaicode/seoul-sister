@@ -29,10 +29,10 @@ export default function VerifyPage() {
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col gap-1">
-        <h1 className="font-display font-bold text-2xl text-seoul-charcoal">
+        <h1 className="font-display font-bold text-2xl text-white section-heading">
           Authenticity Check
         </h1>
-        <p className="text-seoul-soft text-sm">
+        <p className="text-white/40 text-sm">
           Verify your K-beauty products are genuine with AI-powered detection.
         </p>
       </div>
@@ -48,8 +48,8 @@ export default function VerifyPage() {
             onClick={() => setActiveTab(id)}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 ${
               activeTab === id
-                ? 'bg-gradient-to-r from-rose-gold to-rose-light text-white shadow-sm'
-                : 'text-seoul-soft hover:text-seoul-charcoal hover:bg-seoul-pearl/50'
+                ? 'bg-white/10 text-white shadow-sm'
+                : 'text-white/40 hover:text-white hover:bg-white/5'
             }`}
           >
             <Icon className="w-3.5 h-3.5" />
@@ -64,8 +64,8 @@ export default function VerifyPage() {
         {activeTab === 'scan' && (
           <div className="space-y-4 animate-fade-in">
             <div className="glass-card p-3">
-              <p className="text-xs text-seoul-soft leading-relaxed">
-                <strong className="text-seoul-charcoal">How it works:</strong> Photograph the product packaging, label, or batch code. Our AI analyzes fonts, print quality, regulatory markings, and known counterfeit indicators to assess authenticity.
+              <p className="text-xs text-white/50 leading-relaxed">
+                <strong className="text-white/80">How it works:</strong> Photograph the product packaging, label, or batch code. Our AI analyzes fonts, print quality, regulatory markings, and known counterfeit indicators to assess authenticity.
               </p>
             </div>
             <CounterfeitScanner />
@@ -75,8 +75,8 @@ export default function VerifyPage() {
         {activeTab === 'batch' && (
           <div className="space-y-4 animate-fade-in">
             <div className="glass-card p-3">
-              <p className="text-xs text-seoul-soft leading-relaxed">
-                <strong className="text-seoul-charcoal">Batch Code Decoder:</strong> Enter the batch code stamped on your product. We decode the manufacture date, expiry, and factory location to verify the code matches the brand&apos;s known format.
+              <p className="text-xs text-white/50 leading-relaxed">
+                <strong className="text-white/80">Batch Code Decoder:</strong> Enter the batch code stamped on your product. We decode the manufacture date, expiry, and factory location to verify the code matches the brand&apos;s known format.
               </p>
             </div>
             <BatchCodeChecker />

@@ -51,6 +51,52 @@ export async function POST(request: NextRequest) {
 
   try {
     switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session
+        const userId = session.metadata?.user_id
+        if (!userId || session.mode !== 'subscription') break
+
+        const customerId =
+          typeof session.customer === 'string'
+            ? session.customer
+            : session.customer?.id
+
+        // Retrieve the subscription to get plan details
+        const subscriptionId =
+          typeof session.subscription === 'string'
+            ? session.subscription
+            : (session.subscription as Stripe.Subscription)?.id
+
+        if (subscriptionId && customerId) {
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+          const priceId = subscription.items.data[0]?.price?.id
+          const plan = priceId ? planFromStripePriceId(priceId) : 'free'
+
+          await supabase.from('ss_subscriptions').upsert(
+            {
+              user_id: userId,
+              stripe_customer_id: customerId,
+              stripe_subscription_id: subscriptionId,
+              plan,
+              status: 'active',
+              current_period_start: new Date(
+                subscription.current_period_start * 1000
+              ).toISOString(),
+              current_period_end: new Date(
+                subscription.current_period_end * 1000
+              ).toISOString(),
+            },
+            { onConflict: 'user_id' }
+          )
+
+          await supabase
+            .from('ss_user_profiles')
+            .update({ plan })
+            .eq('user_id', userId)
+        }
+        break
+      }
+
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription
