@@ -146,7 +146,7 @@ export default function YuriPage() {
 
       {/* Error banner */}
       {error && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-100 text-red-700 text-sm">
+        <div className="flex items-center gap-2 px-4 py-2 bg-red-500/10 border-b border-red-500/20 text-red-400 text-sm">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span className="flex-1 truncate">{error}</span>
           <button onClick={clearError} aria-label="Dismiss error">
@@ -176,15 +176,15 @@ export default function YuriPage() {
           <div className="max-w-2xl mx-auto flex flex-col items-center justify-center h-full gap-8 animate-fade-in">
             {/* Yuri avatar */}
             <div className="flex flex-col items-center gap-3">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center">
-                <Sparkles className="w-7 h-7 text-white" strokeWidth={1.75} />
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center shadow-glow-gold">
+                <Sparkles className="w-7 h-7 text-seoul-dark" strokeWidth={1.75} />
               </div>
               <div className="text-center">
                 <h2 className="font-display font-bold text-xl text-white">
                   Meet Yuri
                 </h2>
                 <p className="text-sm text-white/40 mt-1 max-w-xs">
-                  Your AI beauty advisor backed by 6 specialist agents. Ask me anything about K-beauty.
+                  Your personal K-beauty advisor — ask me anything.
                 </p>
               </div>
             </div>
@@ -209,7 +209,7 @@ export default function YuriPage() {
                     onClick={() =>
                       handleSuggestedPrompt(prompt.text, prompt.specialist)
                     }
-                    className="glass-card px-4 py-3 text-left text-sm text-white transition-all duration-300 hover:border-gold/20"
+                    className="glass-card px-4 py-3 text-left text-sm text-white/70 transition-all duration-300 border-l-2 border-l-gold/30 hover:border-l-gold/60 hover:bg-white/[0.07] hover:text-white"
                   >
                     {prompt.text}
                   </button>
