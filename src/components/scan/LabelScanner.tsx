@@ -36,10 +36,19 @@ interface ScanAnalysis {
   warnings: string[]
 }
 
+interface IngredientConflict {
+  scanned_ingredient: string
+  routine_ingredient: string
+  severity: string
+  description: string
+  recommendation: string
+}
+
 interface ScanResult {
   success: boolean
   analysis: ScanAnalysis
   product_match: { id: string; name_en: string; brand_en: string } | null
+  conflicts: IngredientConflict[]
 }
 
 function SafetyScoreRing({ score }: { score: number }) {
@@ -313,6 +322,37 @@ export default function LabelScanner() {
               <ul className="flex flex-col gap-1.5">
                 {result.analysis.warnings.map((w, i) => (
                   <li key={i} className="text-xs text-amber-700">{w}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Routine Conflicts */}
+          {result.conflicts?.length > 0 && (
+            <div className="glass-card p-4 border-red-500/30 bg-red-500/5">
+              <h3 className="font-display font-semibold text-sm text-red-400 mb-2 flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4" />
+                Routine Conflicts ({result.conflicts.length})
+              </h3>
+              <ul className="flex flex-col gap-3">
+                {result.conflicts.map((c, i) => (
+                  <li key={i} className="text-xs">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${
+                        c.severity === 'high' ? 'bg-red-400' : c.severity === 'medium' ? 'bg-amber-400' : 'bg-yellow-400'
+                      }`} />
+                      <span className="font-medium text-white">
+                        {c.scanned_ingredient} + {c.routine_ingredient}
+                      </span>
+                      <span className={`text-[10px] uppercase font-bold ${
+                        c.severity === 'high' ? 'text-red-400' : c.severity === 'medium' ? 'text-amber-400' : 'text-yellow-400'
+                      }`}>
+                        {c.severity}
+                      </span>
+                    </div>
+                    <p className="text-white/50 mb-1">{c.description}</p>
+                    <p className="text-gold-light">{c.recommendation}</p>
+                  </li>
                 ))}
               </ul>
             </div>

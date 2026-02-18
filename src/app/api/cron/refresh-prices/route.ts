@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
+import { verifyCronAuth } from '@/lib/utils/cron-auth'
 
 // POST /api/cron/refresh-prices
 // Weekly: Check retailer prices for tracked products, update ss_price_history
 // Secured with CRON_SECRET header
 export async function POST(request: Request) {
   try {
-    const cronSecret = request.headers.get('x-cron-secret')
-    if (cronSecret !== process.env.CRON_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authError = verifyCronAuth(request)
+    if (authError) return authError
 
     const db = getServiceClient()
     let pricesRecorded = 0

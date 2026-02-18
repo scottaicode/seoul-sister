@@ -260,6 +260,15 @@ export const SPECIALISTS: Record<SpecialistType, SpecialistConfig> = {
  * Route a user message to the most relevant specialist based on keyword matching.
  * Returns null if no specialist is strongly matched (general Yuri handles it).
  */
+/** Match keyword with word boundaries to avoid partial substring matches */
+function containsKeyword(text: string, keyword: string): boolean {
+  // Multi-word keywords: use simple includes (already specific enough)
+  if (keyword.includes(' ')) return text.includes(keyword)
+  // Single-word keywords: use word boundary regex
+  const pattern = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`)
+  return pattern.test(text)
+}
+
 export function detectSpecialist(message: string): SpecialistType | null {
   const lower = message.toLowerCase()
   let bestMatch: SpecialistType | null = null
@@ -267,7 +276,7 @@ export function detectSpecialist(message: string): SpecialistType | null {
 
   for (const [type, config] of Object.entries(SPECIALISTS)) {
     const score = config.triggerKeywords.reduce((acc, keyword) => {
-      return acc + (lower.includes(keyword) ? 1 : 0)
+      return acc + (containsKeyword(lower, keyword) ? 1 : 0)
     }, 0)
 
     if (score > bestScore && score >= 2) {
@@ -280,7 +289,7 @@ export function detectSpecialist(message: string): SpecialistType | null {
   if (!bestMatch) {
     for (const [type, config] of Object.entries(SPECIALISTS)) {
       const hasStrongSignal = config.triggerKeywords.some(
-        (kw) => lower.includes(kw) && kw.length > 5
+        (kw) => containsKeyword(lower, kw) && kw.length > 5
       )
       if (hasStrongSignal) {
         bestMatch = type as SpecialistType

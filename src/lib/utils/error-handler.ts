@@ -21,8 +21,13 @@ export function handleApiError(error: unknown): NextResponse {
   }
 
   if (error instanceof AppError) {
+    // Don't expose internal error details for 500s
+    const safeMessage = error.statusCode >= 500 ? 'Internal server error' : error.message
+    if (error.statusCode >= 500) {
+      console.error('AppError 5xx:', error.message)
+    }
     return NextResponse.json(
-      { error: error.message, code: error.code },
+      { error: safeMessage, code: error.code },
       { status: error.statusCode }
     )
   }

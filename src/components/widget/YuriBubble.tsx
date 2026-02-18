@@ -7,6 +7,7 @@ import {
   getMessageCount,
   setMessageCount,
   MAX_FREE_MESSAGES,
+  onMessageCountChange,
 } from '@/lib/utils/widget-session'
 
 /** Lightweight markdown: **bold**, *italic*, `- ` list items, paragraph spacing */
@@ -41,9 +42,30 @@ interface WidgetMessage {
   isStreaming?: boolean
 }
 
+const SESSION_MESSAGES_KEY = 'yuri_widget_messages'
+
+function loadSessionMessages(): WidgetMessage[] {
+  if (typeof sessionStorage === 'undefined') return []
+  try {
+    const raw = sessionStorage.getItem(SESSION_MESSAGES_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+
+function saveSessionMessages(msgs: WidgetMessage[]) {
+  if (typeof sessionStorage === 'undefined') return
+  try {
+    // Only save completed messages (not streaming)
+    sessionStorage.setItem(
+      SESSION_MESSAGES_KEY,
+      JSON.stringify(msgs.filter((m) => !m.isStreaming))
+    )
+  } catch { /* storage full */ }
+}
+
 export default function YuriBubble() {
   const [isOpen, setIsOpen] = useState(false)
-  const [messages, setMessages] = useState<WidgetMessage[]>([])
+  const [messages, setMessages] = useState<WidgetMessage[]>(loadSessionMessages)
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [messageCount, setMessageCountState] = useState(0)
@@ -53,7 +75,14 @@ export default function YuriBubble() {
 
   useEffect(() => {
     setMessageCountState(getMessageCount())
+    // Sync count across tabs
+    return onMessageCountChange((count) => setMessageCountState(count))
   }, [])
+
+  // Persist messages to sessionStorage whenever they change
+  useEffect(() => {
+    saveSessionMessages(messages)
+  }, [messages])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -73,9 +102,6 @@ export default function YuriBubble() {
 
       const trimmed = text.trim()
       setError(null)
-      const newCount = messageCount + 1
-      setMessageCount(newCount)
-      setMessageCountState(newCount)
 
       const userMsg: WidgetMessage = {
         id: `u-${Date.now()}`,
@@ -153,6 +179,10 @@ export default function YuriBubble() {
             }
           }
         }
+        // Increment count only after successful stream
+        const newCount = messageCount + 1
+        setMessageCount(newCount)
+        setMessageCountState(newCount)
       } catch (err) {
         setMessages((prev) => prev.filter((m) => !m.isStreaming))
         setError(

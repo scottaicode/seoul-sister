@@ -85,3 +85,23 @@ export function incrementWidgetMessageCount(): number {
 export function getRemainingWidgetMessages(): number {
   return Math.max(0, MAX_FREE_MESSAGES - getMessageCount())
 }
+
+/**
+ * Subscribe to cross-tab changes to the widget message counter.
+ * When another tab increments the counter, this callback fires.
+ * Returns an unsubscribe function.
+ */
+export function onMessageCountChange(callback: (count: number) => void): () => void {
+  if (!isClient()) return () => {}
+
+  function handler(e: StorageEvent) {
+    if (e.key !== STORAGE_KEY || !e.newValue) return
+    try {
+      const session: WidgetSession = JSON.parse(e.newValue)
+      callback(session.count)
+    } catch { /* ignore */ }
+  }
+
+  window.addEventListener('storage', handler)
+  return () => window.removeEventListener('storage', handler)
+}

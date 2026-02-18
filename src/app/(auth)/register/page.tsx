@@ -54,6 +54,7 @@ export default function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [verificationSent, setVerificationSent] = useState(false)
 
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword
 
@@ -74,8 +75,13 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
-      await signUp(email, password)
-      router.push('/onboarding')
+      const result = await signUp(email, password)
+      // If Supabase returns a user but no session, email confirmation is required
+      if (result.user && !result.session) {
+        setVerificationSent(true)
+      } else {
+        router.push('/onboarding')
+      }
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Failed to create account. Please try again.'
@@ -83,6 +89,27 @@ export default function RegisterPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (verificationSent) {
+    return (
+      <div className="w-full max-w-md text-center">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-gold to-gold-light shadow-glow-gold mb-4">
+          <Mail className="w-7 h-7 text-seoul-dark" />
+        </div>
+        <h2 className="font-display text-xl font-bold text-white mb-2">Check your email</h2>
+        <p className="text-white/50 text-sm mb-6 max-w-sm mx-auto">
+          We sent a verification link to <span className="text-white font-medium">{email}</span>.
+          Click it to activate your account, then come back to start your K-beauty journey.
+        </p>
+        <Link
+          href="/login"
+          className="glass-button-primary inline-flex items-center gap-2 px-6"
+        >
+          Go to Login
+        </Link>
+      </div>
+    )
   }
 
   return (

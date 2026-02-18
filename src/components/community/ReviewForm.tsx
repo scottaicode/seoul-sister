@@ -47,6 +47,15 @@ export default function ReviewForm({ productId, productName, onSubmit, onCancel 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const hasUnsavedContent = rating > 0 || title.trim() !== '' || body.trim() !== ''
+
+  function handleCancel() {
+    if (hasUnsavedContent) {
+      if (!window.confirm('You have unsaved changes. Discard your review?')) return
+    }
+    onCancel()
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -90,7 +99,7 @@ export default function ReviewForm({ productId, productName, onSubmit, onCancel 
         </h3>
         <button
           type="button"
-          onClick={onCancel}
+          onClick={handleCancel}
           className="p-1.5 rounded-lg hover:bg-seoul-pearl transition-colors"
         >
           <X className="w-4 h-4 text-seoul-soft" />

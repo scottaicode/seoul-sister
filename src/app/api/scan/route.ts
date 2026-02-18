@@ -44,7 +44,7 @@ Respond in JSON format:
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAuth(request)
+    const user = await requireAuth(request)
 
     const contentType = request.headers.get('content-type') || ''
 
@@ -131,10 +131,109 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Check for ingredient conflicts against user's current routine
+    let conflicts: Array<{
+      scanned_ingredient: string
+      routine_ingredient: string
+      severity: string
+      description: string
+      recommendation: string
+    }> = []
+
+    try {
+      const ingredients = analysis.ingredients as Array<{ name_inci: string }> | undefined
+      if (ingredients?.length) {
+        // Look up scanned INCI names in our ingredient database
+        const inciNames = ingredients.map((i: { name_inci: string }) => i.name_inci)
+        const { data: matchedIngredients } = await supabase
+          .from('ss_ingredients')
+          .select('id, name_inci')
+          .in('name_inci', inciNames)
+
+        if (matchedIngredients?.length) {
+          const scannedIds = matchedIngredients.map((i) => i.id)
+
+          // Get ingredients from the user's active routine
+          const { data: routineIngredients } = await supabase
+            .from('ss_user_routines')
+            .select(`
+              id,
+              ss_routine_products (
+                ss_product_ingredients:product_id (
+                  ingredient_id
+                )
+              )
+            `)
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+
+          const routineIngredientIds = new Set<string>()
+          if (routineIngredients) {
+            for (const routine of routineIngredients) {
+              const products = routine.ss_routine_products as Array<{
+                ss_product_ingredients: Array<{ ingredient_id: string }>
+              }> | null
+              if (products) {
+                for (const product of products) {
+                  const pIngredients = product.ss_product_ingredients
+                  if (Array.isArray(pIngredients)) {
+                    for (const pi of pIngredients) {
+                      routineIngredientIds.add(pi.ingredient_id)
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          if (routineIngredientIds.size > 0) {
+            const routineIds = Array.from(routineIngredientIds)
+
+            // Check conflicts in both directions
+            const { data: foundConflicts } = await supabase
+              .from('ss_ingredient_conflicts')
+              .select('ingredient_a_id, ingredient_b_id, severity, description, recommendation')
+              .or(
+                scannedIds.map((sid) =>
+                  routineIds.map((rid) =>
+                    `and(ingredient_a_id.eq.${sid},ingredient_b_id.eq.${rid}),and(ingredient_a_id.eq.${rid},ingredient_b_id.eq.${sid})`
+                  ).join(',')
+                ).join(',')
+              )
+
+            if (foundConflicts?.length) {
+              // Map ingredient IDs back to names
+              const allIds = new Set([
+                ...scannedIds,
+                ...routineIds,
+              ])
+              const { data: allNames } = await supabase
+                .from('ss_ingredients')
+                .select('id, name_inci')
+                .in('id', Array.from(allIds))
+
+              const nameMap = new Map(allNames?.map((n) => [n.id, n.name_inci]) ?? [])
+
+              conflicts = foundConflicts.map((c) => ({
+                scanned_ingredient: nameMap.get(c.ingredient_a_id) ?? nameMap.get(c.ingredient_b_id) ?? 'Unknown',
+                routine_ingredient: nameMap.get(c.ingredient_b_id) ?? nameMap.get(c.ingredient_a_id) ?? 'Unknown',
+                severity: c.severity,
+                description: c.description,
+                recommendation: c.recommendation,
+              }))
+            }
+          }
+        }
+      }
+    } catch {
+      // Conflict detection is non-critical — don't fail the scan
+    }
+
     return NextResponse.json({
       success: true,
       analysis,
       product_match: productMatch,
+      conflicts,
     })
   } catch (error) {
     return handleApiError(error)
