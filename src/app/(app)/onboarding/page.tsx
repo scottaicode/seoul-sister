@@ -13,6 +13,7 @@ export default function OnboardingPage() {
   const [messages, setMessages] = useState<ChatMessageType[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  // progress tracked internally for completion detection only
   const [progress, setProgress] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(null)
@@ -377,21 +378,14 @@ export default function OnboardingPage() {
               <h1 className="font-display text-base font-semibold text-white">
                 Meet Yuri
               </h1>
-              <p className="text-xs text-white/40">Building your skin profile</p>
+              <p className="text-xs text-white/40">Your K-beauty advisor</p>
             </div>
           </div>
 
-          {/* Progress indicator */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-gold to-gold-light transition-all duration-700 ease-out"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <span className="text-xs text-white/40 font-medium">{progress}%</span>
-            </div>
+          {/* Subtle status dot — no numeric progress */}
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-gold/60 animate-pulse" />
+            <span className="text-xs text-white/30">Listening</span>
           </div>
         </div>
       </div>
@@ -405,10 +399,10 @@ export default function OnboardingPage() {
 
           {/* Completion prompt */}
           {isComplete && !isStreaming && (
-            <div className="flex justify-center py-4">
+            <div className="flex justify-center py-6">
               <button
                 onClick={handleComplete}
-                className="glass-button-primary flex items-center gap-2 px-6 py-3 text-sm font-medium"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-br from-gold to-gold-light text-seoul-dark text-sm font-semibold shadow-glow-gold hover:shadow-glow-gold-lg hover:scale-[1.02] transition-all duration-200"
               >
                 <Sparkles className="w-4 h-4" />
                 See My Personalized Recommendations

@@ -18,7 +18,7 @@ export default function BottomNav() {
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-t border-white/50 shadow-glass pb-safe">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-seoul-dark/90 backdrop-blur-md border-t border-white/10 pb-safe">
       <div className="flex items-center justify-around px-2 py-2">
         {navItems.map(({ label, href, icon: Icon }) => {
           const active = isActive(href)
@@ -31,13 +31,13 @@ export default function BottomNav() {
             >
               <Icon
                 className={`w-5 h-5 transition-colors duration-200 ${
-                  active ? 'text-rose-gold' : 'text-seoul-soft'
+                  active ? 'text-gold' : 'text-white/35'
                 }`}
                 strokeWidth={active ? 2.5 : 2}
               />
               <span
                 className={`text-[10px] font-medium transition-colors duration-200 ${
-                  active ? 'text-rose-gold' : 'text-seoul-soft'
+                  active ? 'text-gold' : 'text-white/35'
                 }`}
               >
                 {label}

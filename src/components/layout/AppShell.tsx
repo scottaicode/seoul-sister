@@ -7,7 +7,7 @@ interface AppShellProps {
 
 export default function AppShell({ children }: AppShellProps) {
   return (
-    <div className="min-h-screen bg-seoul-cream">
+    <div className="min-h-screen bg-seoul-darker">
       <Header />
       <main className="pt-0 pb-20 md:pb-0">
         {children}

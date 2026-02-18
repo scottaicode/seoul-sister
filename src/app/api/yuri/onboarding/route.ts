@@ -210,35 +210,31 @@ export async function POST(request: NextRequest) {
             // Save assistant response
             await saveMessage(progress.conversation_id!, 'assistant', fullResponse, null)
 
-            // Fire-and-forget: extract skin profile data in background
+            // Extract skin profile data (awaited so progress event reaches client)
             const allMessages = [
               ...history.map((m) => ({ role: m.role, content: m.content })),
               { role: 'user' as const, content: parsed.message },
               { role: 'assistant' as const, content: fullResponse },
             ]
 
-            // Non-blocking extraction
-            extractAndUpdate(user.id, allMessages, progress.skin_profile_data as ExtractedSkinProfile)
-              .then((result) => {
-                // If extraction result is available before stream closes, include it
-                // Otherwise it will be picked up on next request
-                if (result) {
-                  const progressEvent = JSON.stringify({
-                    type: 'progress',
-                    percentage: result.percentage,
-                    is_complete: result.isComplete,
-                    extracted_fields: result.capturedFields,
-                  })
-                  try {
-                    controller.enqueue(encoder.encode(`data: ${progressEvent}\n\n`))
-                  } catch {
-                    // Stream may already be closed
-                  }
-                }
-              })
-              .catch(() => {
-                // Extraction failure is non-critical
-              })
+            try {
+              const result = await extractAndUpdate(
+                user.id,
+                allMessages,
+                progress.skin_profile_data as ExtractedSkinProfile
+              )
+              if (result) {
+                const progressEvent = JSON.stringify({
+                  type: 'progress',
+                  percentage: result.percentage,
+                  is_complete: result.isComplete,
+                  extracted_fields: result.capturedFields,
+                })
+                controller.enqueue(encoder.encode(`data: ${progressEvent}\n\n`))
+              }
+            } catch {
+              // Extraction failure is non-critical — continue to done event
+            }
 
             // Send done event
             const done = JSON.stringify({

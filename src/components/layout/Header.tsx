@@ -23,13 +23,13 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-white/70 backdrop-blur-md border-b border-white/50 shadow-glass">
+      <header className="sticky top-0 z-50 bg-seoul-dark/90 backdrop-blur-md border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
-              <Sparkles className="w-5 h-5 text-rose-gold" />
-              <span className="font-display font-bold text-xl text-gradient">
+              <Sparkles className="w-5 h-5 text-gold" />
+              <span className="font-display font-bold text-xl bg-gradient-to-r from-gold to-gold-light bg-clip-text text-transparent">
                 Seoul Sister
               </span>
             </Link>
@@ -40,10 +40,10 @@ export default function Header() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`nav-link transition-colors duration-200 ${
+                  className={`text-sm transition-colors duration-200 ${
                     isActive(link.href)
-                      ? 'text-rose-gold font-semibold'
-                      : 'text-seoul-charcoal/70 hover:text-seoul-charcoal'
+                      ? 'text-gold font-semibold'
+                      : 'text-white/50 hover:text-white/80'
                   }`}
                 >
                   {link.label}
@@ -55,23 +55,23 @@ export default function Header() {
             <div className="flex items-center gap-3">
               <Link
                 href="/profile"
-                className="flex items-center justify-center w-9 h-9 rounded-full bg-white/80 border border-white/50 shadow-glass hover:shadow-glass-lg transition-all duration-200"
+                className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 border border-white/10 hover:bg-white/15 transition-all duration-200"
                 aria-label="Profile"
               >
-                <User className="w-4 h-4 text-seoul-charcoal/70" />
+                <User className="w-4 h-4 text-white/60" />
               </Link>
 
               {/* Mobile menu button */}
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen((prev) => !prev)}
-                className="md:hidden flex items-center justify-center w-9 h-9 rounded-full bg-white/80 border border-white/50 shadow-glass hover:shadow-glass-lg transition-all duration-200"
+                className="md:hidden flex items-center justify-center w-9 h-9 rounded-full bg-white/10 border border-white/10 hover:bg-white/15 transition-all duration-200"
                 aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
               >
                 {mobileMenuOpen ? (
-                  <X className="w-4 h-4 text-seoul-charcoal" />
+                  <X className="w-4 h-4 text-white" />
                 ) : (
-                  <Menu className="w-4 h-4 text-seoul-charcoal" />
+                  <Menu className="w-4 h-4 text-white" />
                 )}
               </button>
             </div>
@@ -84,12 +84,12 @@ export default function Header() {
         <div className="fixed inset-0 z-40 md:hidden">
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setMobileMenuOpen(false)}
           />
 
           {/* Menu panel */}
-          <div className="absolute top-16 left-0 right-0 bg-white/90 backdrop-blur-lg border-b border-white/50 shadow-glass-lg animate-slide-down">
+          <div className="absolute top-16 left-0 right-0 bg-seoul-card/95 backdrop-blur-lg border-b border-white/10 animate-slide-down">
             <nav className="flex flex-col py-4 px-4 gap-1">
               {navLinks.map((link) => (
                 <Link
@@ -98,8 +98,8 @@ export default function Header() {
                   onClick={() => setMobileMenuOpen(false)}
                   className={`px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
                     isActive(link.href)
-                      ? 'bg-seoul-blush text-rose-gold'
-                      : 'text-seoul-charcoal/70 hover:bg-seoul-pearl hover:text-seoul-charcoal'
+                      ? 'bg-gold/15 text-gold'
+                      : 'text-white/50 hover:bg-white/5 hover:text-white/80'
                   }`}
                 >
                   {link.label}
