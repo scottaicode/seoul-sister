@@ -53,7 +53,7 @@ export default function ProductFilters({
       {/* Search bar */}
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-seoul-soft/60" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
           <input
             type="text"
             placeholder="Search products, brands..."
@@ -64,7 +64,7 @@ export default function ProductFilters({
           {query && (
             <button
               onClick={() => onQueryChange('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-seoul-soft/60 hover:text-seoul-charcoal"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -74,8 +74,8 @@ export default function ProductFilters({
           onClick={onToggleFilters}
           className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
             showFilters || category
-              ? 'bg-rose-gold text-white shadow-glass'
-              : 'glass-card text-seoul-charcoal hover:shadow-glass-lg'
+              ? 'bg-gold text-white'
+              : 'glass-card text-white'
           }`}
         >
           <SlidersHorizontal className="w-4 h-4" />
@@ -88,14 +88,14 @@ export default function ProductFilters({
         <div className="glass-card p-4 flex flex-col gap-4 animate-slide-down">
           {/* Categories */}
           <div>
-            <p className="text-xs font-medium text-seoul-charcoal mb-2">Category</p>
+            <p className="text-xs font-medium text-white mb-2">Category</p>
             <div className="flex flex-wrap gap-1.5">
               <button
                 onClick={() => onCategoryChange('')}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
                   !category
-                    ? 'bg-rose-gold text-white'
-                    : 'bg-seoul-pearl text-seoul-soft hover:bg-seoul-blush'
+                    ? 'bg-gold text-white'
+                    : 'bg-white/5 text-white/40 hover:bg-gold/10'
                 }`}
               >
                 All
@@ -106,8 +106,8 @@ export default function ProductFilters({
                   onClick={() => onCategoryChange(cat.value === category ? '' : cat.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
                     category === cat.value
-                      ? 'bg-rose-gold text-white'
-                      : 'bg-seoul-pearl text-seoul-soft hover:bg-seoul-blush'
+                      ? 'bg-gold text-white'
+                      : 'bg-white/5 text-white/40 hover:bg-gold/10'
                   }`}
                 >
                   {cat.label}
@@ -118,7 +118,7 @@ export default function ProductFilters({
 
           {/* Sort */}
           <div>
-            <p className="text-xs font-medium text-seoul-charcoal mb-2">Sort by</p>
+            <p className="text-xs font-medium text-white mb-2">Sort by</p>
             <div className="flex flex-wrap gap-1.5">
               {SORT_OPTIONS.map((opt) => (
                 <button
@@ -127,7 +127,7 @@ export default function ProductFilters({
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
                     sortBy === opt.value
                       ? 'bg-glass-500 text-white'
-                      : 'bg-seoul-pearl text-seoul-soft hover:bg-glass-100'
+                      : 'bg-white/5 text-white/40 hover:bg-glass-100'
                   }`}
                 >
                   {opt.label}

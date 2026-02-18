@@ -67,16 +67,16 @@ export default function ReviewFilters({ filters, onChange }: ReviewFiltersProps)
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-seoul-soft" />
-          <span className="text-sm font-medium text-seoul-charcoal">Filter Reviews</span>
+          <Filter className="w-4 h-4 text-white/40" />
+          <span className="text-sm font-medium text-white">Filter Reviews</span>
           {activeCount > 0 && (
-            <span className="badge-pink text-[10px]">{activeCount} active</span>
+            <span className="bg-gold/10 text-gold-light border border-gold/20 rounded-full text-[10px] px-2 py-0.5">{activeCount} active</span>
           )}
         </div>
         {activeCount > 0 && (
           <button
             onClick={clearAll}
-            className="flex items-center gap-1 text-xs text-seoul-soft hover:text-seoul-charcoal transition-colors"
+            className="flex items-center gap-1 text-xs text-white/40 hover:text-white transition-colors"
           >
             <X className="w-3 h-3" />
             Clear all
@@ -178,7 +178,7 @@ export default function ReviewFilters({ filters, onChange }: ReviewFiltersProps)
 function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start gap-2">
-      <span className="text-[10px] text-seoul-soft w-16 flex-shrink-0 pt-1.5 text-right">
+      <span className="text-[10px] text-white/40 w-16 flex-shrink-0 pt-1.5 text-right">
         {label}
       </span>
       <div className="flex flex-wrap gap-1">{children}</div>
@@ -201,7 +201,7 @@ function FilterChip({
       className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-all duration-200 ${
         active
           ? 'bg-glass-100 text-glass-700 border border-glass-300'
-          : 'bg-white/50 text-seoul-soft border border-white/30 hover:bg-seoul-pearl'
+          : 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10'
       }`}
     >
       {label}

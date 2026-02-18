@@ -17,7 +17,7 @@ const sourceLabels: Record<string, { label: string; color: string }> = {
   tiktok: { label: 'TikTok', color: 'bg-black text-white' },
   reddit: { label: 'Reddit', color: 'bg-orange-100 text-orange-700' },
   instagram: { label: 'Instagram', color: 'bg-purple-100 text-purple-700' },
-  korean_market: { label: 'Seoul', color: 'bg-seoul-blush text-rose-dark' },
+  korean_market: { label: 'Seoul', color: 'bg-gold/10 text-gold' },
 }
 
 function formatMentions(count: number): string {
@@ -46,10 +46,10 @@ export default function TrendingCard({
   return (
     <Link
       href={`/products/${product.id}`}
-      className="glass-card p-4 flex gap-3 hover:shadow-glass-lg transition-all duration-300 group"
+      className="glass-card p-4 flex gap-3 transition-all duration-300 group"
     >
       {/* Product image */}
-      <div className="flex-shrink-0 w-16 h-16 rounded-xl bg-seoul-pearl flex items-center justify-center overflow-hidden relative">
+      <div className="flex-shrink-0 w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden relative">
         {product.image_url ? (
           <img
             src={product.image_url}
@@ -57,7 +57,7 @@ export default function TrendingCard({
             className="w-full h-full object-cover rounded-xl"
           />
         ) : (
-          <Package className="w-6 h-6 text-rose-gold/50" strokeWidth={1.5} />
+          <Package className="w-6 h-6 text-gold/50" strokeWidth={1.5} />
         )}
         {/* Trend score flame */}
         {trendScore >= 80 && (
@@ -73,18 +73,18 @@ export default function TrendingCard({
           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${sourceInfo.color}`}>
             {sourceInfo.label}
           </span>
-          <span className="flex items-center gap-0.5 text-[10px] text-rose-dark font-medium">
+          <span className="flex items-center gap-0.5 text-[10px] text-gold font-medium">
             <TrendingUp className="w-2.5 h-2.5" />
             {trendScore}
           </span>
         </div>
 
-        <p className="font-display font-semibold text-sm text-seoul-charcoal truncate group-hover:text-rose-dark transition-colors">
+        <p className="font-display font-semibold text-sm text-white truncate group-hover:text-gold transition-colors">
           {product.name_en}
         </p>
-        <p className="text-[10px] text-seoul-soft">{product.brand_en}</p>
+        <p className="text-[10px] text-white/40">{product.brand_en}</p>
 
-        <div className="flex items-center gap-3 text-[10px] text-seoul-soft">
+        <div className="flex items-center gap-3 text-[10px] text-white/40">
           <span className="flex items-center gap-0.5">
             <MessageSquare className="w-2.5 h-2.5" />
             {formatMentions(mentionCount)} mentions
@@ -101,13 +101,13 @@ export default function TrendingCard({
       {/* Price + rating */}
       <div className="flex flex-col items-end justify-center flex-shrink-0 gap-1">
         {product.price_usd && (
-          <span className="font-display font-bold text-sm text-seoul-charcoal">
+          <span className="font-display font-bold text-sm text-white">
             ${Number(product.price_usd).toFixed(0)}
           </span>
         )}
         {product.rating_avg && (
-          <span className="flex items-center gap-0.5 text-[10px] text-seoul-soft">
-            <Star className="w-2.5 h-2.5 fill-rose-gold text-rose-gold" />
+          <span className="flex items-center gap-0.5 text-[10px] text-white/40">
+            <Star className="w-2.5 h-2.5 fill-gold text-gold" />
             {Number(product.rating_avg).toFixed(1)}
           </span>
         )}

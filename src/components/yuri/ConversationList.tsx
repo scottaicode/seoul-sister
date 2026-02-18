@@ -28,23 +28,23 @@ export default function ConversationList({
   }, [onLoad])
 
   return (
-    <div className="flex flex-col h-full bg-white/90 backdrop-blur-md">
+    <div className="flex flex-col h-full bg-white/10 backdrop-blur-md">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-seoul-pearl">
+      <div className="flex items-center justify-between p-4 border-b border-white/10">
         <button
           onClick={onClose}
-          className="flex items-center gap-1 text-sm text-seoul-soft hover:text-seoul-charcoal transition-colors"
+          className="flex items-center gap-1 text-sm text-white/40 hover:text-white transition-colors"
           aria-label="Close conversation list"
         >
           <ChevronLeft className="w-4 h-4" />
           Back
         </button>
-        <h2 className="font-display font-semibold text-sm text-seoul-charcoal">
+        <h2 className="font-display font-semibold text-sm text-white">
           Conversations
         </h2>
         <button
           onClick={onNew}
-          className="flex items-center gap-1 text-sm text-rose-gold hover:text-rose-dark transition-colors"
+          className="flex items-center gap-1 text-sm text-gold hover:text-gold transition-colors"
           aria-label="New conversation"
         >
           <Plus className="w-4 h-4" />
@@ -56,12 +56,12 @@ export default function ConversationList({
       <div className="flex-1 overflow-y-auto">
         {conversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-8 text-center">
-            <MessageCircle className="w-10 h-10 text-seoul-soft/40 mb-3" strokeWidth={1.5} />
-            <p className="text-sm text-seoul-soft">No conversations yet</p>
-            <p className="text-xs text-seoul-soft/60 mt-1">Start chatting with Yuri!</p>
+            <MessageCircle className="w-10 h-10 text-white/30 mb-3" strokeWidth={1.5} />
+            <p className="text-sm text-white/40">No conversations yet</p>
+            <p className="text-xs text-white/30 mt-1">Start chatting with Yuri!</p>
           </div>
         ) : (
-          <ul className="divide-y divide-seoul-pearl">
+          <ul className="divide-y divide-white/10">
             {conversations.map((conv) => {
               const isActive = conv.id === currentConversationId
               return (
@@ -71,13 +71,13 @@ export default function ConversationList({
                       onSelect(conv.id)
                       onClose()
                     }}
-                    className={`w-full text-left px-4 py-3 transition-colors duration-200 hover:bg-seoul-pearl/50 ${
-                      isActive ? 'bg-seoul-blush/30' : ''
+                    className={`w-full text-left px-4 py-3 transition-colors duration-200 hover:bg-white/5 ${
+                      isActive ? 'bg-gold/10' : ''
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-sm text-seoul-charcoal truncate">
+                        <p className="font-medium text-sm text-white truncate">
                           {conv.title || 'New conversation'}
                         </p>
                         {conv.specialist_type && (
@@ -87,12 +87,12 @@ export default function ConversationList({
                         )}
                       </div>
                       <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                        <span className="text-[10px] text-seoul-soft">
+                        <span className="text-[10px] text-white/40">
                           {formatDistanceToNow(new Date(conv.updated_at), {
                             addSuffix: true,
                           })}
                         </span>
-                        <span className="text-[10px] text-seoul-soft/60">
+                        <span className="text-[10px] text-white/30">
                           {conv.message_count} msg{conv.message_count !== 1 ? 's' : ''}
                         </span>
                       </div>

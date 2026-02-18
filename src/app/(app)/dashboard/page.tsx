@@ -12,7 +12,7 @@ import {
   Flame,
   Star,
   Package,
-  Brain,
+  Lightbulb,
   Beaker,
   Zap,
   BarChart3,
@@ -269,7 +269,7 @@ function YuriInsightsWidget() {
   if (insights.length === 0) {
     return (
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-center">
-        <Brain className="w-8 h-8 text-gold/30 mx-auto mb-2" strokeWidth={1.5} />
+        <Lightbulb className="w-8 h-8 text-gold/30 mx-auto mb-2" strokeWidth={1.5} />
         <p className="font-display font-semibold text-sm text-white">
           Yuri is learning
         </p>
@@ -303,11 +303,47 @@ function SkinProfileWidget() {
     if (!user) return
     async function load() {
       try {
+        // Check if profile exists
         const { data } = await supabase
           .from('ss_user_profiles')
           .select('skin_type, skin_concerns, climate, onboarding_completed')
           .eq('user_id', user!.id)
           .maybeSingle()
+
+        if (data?.onboarding_completed) {
+          setProfile(data as SkinProfile)
+          setLoading(false)
+          return
+        }
+
+        // Profile missing or not complete — try to auto-finalize from onboarding
+        const session = await supabase.auth.getSession()
+        const token = session.data.session?.access_token
+        if (token) {
+          const res = await fetch('/api/yuri/onboarding', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ action: 'start_onboarding' }),
+          })
+          if (res.ok) {
+            const onboardingData = await res.json()
+            if (onboardingData.status === 'completed') {
+              // Finalization ran — re-fetch profile
+              const { data: refreshed } = await supabase
+                .from('ss_user_profiles')
+                .select('skin_type, skin_concerns, climate, onboarding_completed')
+                .eq('user_id', user!.id)
+                .maybeSingle()
+              setProfile(refreshed as SkinProfile | null)
+              setLoading(false)
+              return
+            }
+          }
+        }
+
         setProfile(data as SkinProfile | null)
       } catch {
         // Non-critical
@@ -496,7 +532,7 @@ export default function DashboardPage() {
       <section>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Brain className="w-4 h-4 text-gold" strokeWidth={1.75} />
+            <Lightbulb className="w-4 h-4 text-gold" strokeWidth={1.75} />
             <h2 className="font-display font-semibold text-base text-white">
               Yuri&apos;s Insights
             </h2>

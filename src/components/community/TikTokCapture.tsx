@@ -55,10 +55,10 @@ export default function TikTokCapture() {
             <span className="text-white text-xs font-bold">TT</span>
           </div>
           <div>
-            <h3 className="font-display font-semibold text-sm text-seoul-charcoal">
+            <h3 className="font-display font-semibold text-sm text-white">
               TikTok Moment Capture
             </h3>
-            <p className="text-[10px] text-seoul-soft">
+            <p className="text-[10px] text-white/40">
               Just saw a product on TikTok? Search it here for instant analysis.
             </p>
           </div>
@@ -66,7 +66,7 @@ export default function TikTokCapture() {
 
         <form onSubmit={handleSearch} className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-seoul-soft" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
             <input
               type="text"
               value={query}
@@ -93,13 +93,13 @@ export default function TikTokCapture() {
       {/* Results */}
       {loading && (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-rose-gold" />
+          <Loader2 className="w-6 h-6 animate-spin text-gold" />
         </div>
       )}
 
       {!loading && searched && results.length === 0 && (
         <div className="glass-card p-6 text-center">
-          <p className="text-sm text-seoul-soft">
+          <p className="text-sm text-white/40">
             No products found for &ldquo;{query}&rdquo;. Try different keywords.
           </p>
         </div>
@@ -107,7 +107,7 @@ export default function TikTokCapture() {
 
       {!loading && results.length > 0 && (
         <div className="space-y-3">
-          <p className="text-xs text-seoul-soft">
+          <p className="text-xs text-white/40">
             Found {results.length} product{results.length !== 1 ? 's' : ''} matching your search
           </p>
 
@@ -115,11 +115,11 @@ export default function TikTokCapture() {
             <Link
               key={product.id}
               href={`/products/${product.id}`}
-              className="glass-card p-4 space-y-3 block hover:shadow-glass-lg transition-all duration-300"
+              className="glass-card p-4 space-y-3 block transition-all duration-300"
             >
               <div className="flex gap-3">
                 {/* Image */}
-                <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-seoul-pearl flex items-center justify-center overflow-hidden">
+                <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden">
                   {product.image_url ? (
                     <img
                       src={product.image_url}
@@ -127,32 +127,32 @@ export default function TikTokCapture() {
                       className="w-full h-full object-cover rounded-xl"
                     />
                   ) : (
-                    <Package className="w-5 h-5 text-rose-gold/50" />
+                    <Package className="w-5 h-5 text-gold/50" />
                   )}
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-display font-semibold text-sm text-seoul-charcoal truncate">
+                  <p className="font-display font-semibold text-sm text-white truncate">
                     {product.name_en}
                   </p>
-                  <p className="text-[10px] text-seoul-soft">{product.brand_en}</p>
+                  <p className="text-[10px] text-white/40">{product.brand_en}</p>
 
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {product.rating_avg && (
                       <span className="flex items-center gap-0.5 text-[10px]">
-                        <Star className="w-2.5 h-2.5 fill-rose-gold text-rose-gold" />
+                        <Star className="w-2.5 h-2.5 fill-gold text-gold" />
                         {Number(product.rating_avg).toFixed(1)}
                       </span>
                     )}
                     {product.trending && (
-                      <span className="flex items-center gap-0.5 text-[10px] text-rose-dark font-medium">
+                      <span className="flex items-center gap-0.5 text-[10px] text-gold font-medium">
                         <TrendingUp className="w-2.5 h-2.5" />
                         Trending ({product.trending.trend_score})
                       </span>
                     )}
                     {product.price_usd && (
-                      <span className="text-[10px] font-semibold text-seoul-charcoal">
+                      <span className="text-[10px] font-semibold text-white">
                         ${Number(product.price_usd).toFixed(0)}
                       </span>
                     )}
@@ -162,12 +162,12 @@ export default function TikTokCapture() {
 
               {/* Review summary if available */}
               {product.review_summary && product.review_summary.count > 0 && (
-                <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-white/30">
-                  <span className="text-[10px] text-seoul-soft">
+                <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-white/10">
+                  <span className="text-[10px] text-white/40">
                     {product.review_summary.count} reviews
                   </span>
                   {product.review_summary.holy_grail_count > 0 && (
-                    <span className="inline-flex items-center gap-0.5 badge-pink text-[10px]">
+                    <span className="inline-flex items-center gap-0.5 bg-gold/10 text-gold-light border border-gold/20 rounded-full text-[10px] px-2 py-0.5">
                       <Sparkles className="w-2.5 h-2.5" />
                       {product.review_summary.holy_grail_count} Holy Grail
                     </span>

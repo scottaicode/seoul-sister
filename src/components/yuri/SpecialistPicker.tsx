@@ -72,7 +72,7 @@ export default function SpecialistPicker({ onSelect }: SpecialistPickerProps) {
         <button
           key={type}
           onClick={() => onSelect(type)}
-          className="glass-card p-3 flex flex-col items-start gap-2 hover:shadow-glass-lg transition-all duration-300 group text-left"
+          className="glass-card p-3 flex flex-col items-start gap-2 transition-all duration-300 group text-left"
         >
           <div
             className={`w-8 h-8 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center transition-transform duration-200 group-hover:scale-110`}
@@ -80,10 +80,10 @@ export default function SpecialistPicker({ onSelect }: SpecialistPickerProps) {
             <Icon className="w-4 h-4 text-white" strokeWidth={2} />
           </div>
           <div>
-            <p className="font-display font-semibold text-xs text-seoul-charcoal">
+            <p className="font-display font-semibold text-xs text-white">
               {label}
             </p>
-            <p className="text-[10px] text-seoul-soft leading-snug mt-0.5">
+            <p className="text-[10px] text-white/40 leading-snug mt-0.5">
               {shortDesc}
             </p>
           </div>

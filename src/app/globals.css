@@ -43,32 +43,32 @@
     @apply bg-seoul-card/80 backdrop-blur-md rounded-2xl border border-gold/20 shadow-glass;
   }
 
-  /* ── Legacy glass cards (used in app interior) ── */
+  /* ── Glass cards (dark Seoul theme) ── */
   .glass-card {
-    @apply bg-white/70 backdrop-blur-md rounded-2xl border border-white/50 shadow-glass;
+    @apply bg-white/5 backdrop-blur-md rounded-2xl border border-white/10;
   }
 
   .glass-card-strong {
-    @apply bg-white/90 backdrop-blur-lg rounded-2xl border border-white/60 shadow-glass-lg;
+    @apply bg-white/10 backdrop-blur-lg rounded-2xl border border-white/15;
   }
 
   .glass-button {
     @apply px-6 py-3 rounded-full font-medium transition-all duration-300
-           bg-white/80 backdrop-blur-sm border border-white/50 shadow-glass
-           hover:shadow-glass-lg hover:bg-white/90 active:scale-[0.98];
+           bg-white/10 backdrop-blur-sm border border-white/10 text-white
+           hover:bg-white/15 hover:border-white/20 active:scale-[0.98];
   }
 
   .glass-button-primary {
     @apply px-6 py-3 rounded-full font-medium transition-all duration-300
-           bg-gradient-to-r from-gold to-gold-light text-seoul-dark shadow-glass
+           bg-gradient-to-r from-gold to-gold-light text-seoul-dark
            hover:shadow-glow-gold hover:brightness-110 active:scale-[0.98];
   }
 
   .glass-input {
-    @apply w-full px-4 py-3 rounded-xl bg-white/60 backdrop-blur-sm
-           border border-white/50 shadow-glass
-           focus:outline-none focus:ring-2 focus:ring-glass-500/30 focus:border-glass-500/50
-           placeholder:text-seoul-soft/50 transition-all duration-200;
+    @apply w-full px-4 py-3 rounded-xl bg-white/5 backdrop-blur-sm
+           border border-white/10 text-white
+           focus:outline-none focus:ring-2 focus:ring-gold/30 focus:border-gold/40
+           placeholder:text-white/30 transition-all duration-200;
   }
 
   /* ── Dark landing page variants ── */

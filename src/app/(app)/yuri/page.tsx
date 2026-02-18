@@ -82,7 +82,7 @@ export default function YuriPage() {
     return (
       <div className="flex items-center justify-center h-full p-6">
         <div className="text-center">
-          <p className="text-seoul-soft">Please sign in to chat with Yuri.</p>
+          <p className="text-white/40">Please sign in to chat with Yuri.</p>
         </div>
       </div>
     )
@@ -116,28 +116,28 @@ export default function YuriPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-white/80 backdrop-blur-md border-b border-white/50 flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 bg-white/10 backdrop-blur-md border-b border-white/10 flex-shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowHistory(true)}
-            className="w-8 h-8 rounded-full bg-seoul-pearl flex items-center justify-center hover:bg-seoul-blush transition-colors"
+            className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-gold/10 transition-colors"
             aria-label="Conversation history"
           >
-            <History className="w-4 h-4 text-seoul-soft" />
+            <History className="w-4 h-4 text-white/40" />
           </button>
           <div>
-            <h1 className="font-display font-semibold text-base text-seoul-charcoal flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-rose-gold" />
+            <h1 className="font-display font-semibold text-base text-white flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-gold" />
               Yuri
             </h1>
-            <p className="text-[10px] text-seoul-soft">AI Beauty Advisor</p>
+            <p className="text-[10px] text-white/40">AI Beauty Advisor</p>
           </div>
         </div>
 
         {hasMessages && (
           <button
             onClick={() => startNewConversation()}
-            className="text-xs text-rose-gold font-medium hover:text-rose-dark transition-colors"
+            className="text-xs text-gold font-medium hover:text-gold transition-colors"
           >
             New chat
           </button>
@@ -176,14 +176,14 @@ export default function YuriPage() {
           <div className="max-w-2xl mx-auto flex flex-col items-center justify-center h-full gap-8 animate-fade-in">
             {/* Yuri avatar */}
             <div className="flex flex-col items-center gap-3">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-rose-gold to-rose-light flex items-center justify-center shadow-glass">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center">
                 <Sparkles className="w-7 h-7 text-white" strokeWidth={1.75} />
               </div>
               <div className="text-center">
-                <h2 className="font-display font-bold text-xl text-seoul-charcoal">
+                <h2 className="font-display font-bold text-xl text-white">
                   Meet Yuri
                 </h2>
-                <p className="text-sm text-seoul-soft mt-1 max-w-xs">
+                <p className="text-sm text-white/40 mt-1 max-w-xs">
                   Your AI beauty advisor backed by 6 specialist agents. Ask me anything about K-beauty.
                 </p>
               </div>
@@ -191,7 +191,7 @@ export default function YuriPage() {
 
             {/* Specialist quick-start */}
             <div className="w-full">
-              <p className="text-xs text-seoul-soft text-center mb-3 font-medium uppercase tracking-wide">
+              <p className="text-xs text-white/40 text-center mb-3 font-medium uppercase tracking-wide">
                 Talk to a specialist
               </p>
               <SpecialistPicker onSelect={handleSpecialistSelect} />
@@ -199,7 +199,7 @@ export default function YuriPage() {
 
             {/* Suggested prompts */}
             <div className="w-full">
-              <p className="text-xs text-seoul-soft text-center mb-3 font-medium uppercase tracking-wide">
+              <p className="text-xs text-white/40 text-center mb-3 font-medium uppercase tracking-wide">
                 Or try asking
               </p>
               <div className="flex flex-col gap-2">
@@ -209,7 +209,7 @@ export default function YuriPage() {
                     onClick={() =>
                       handleSuggestedPrompt(prompt.text, prompt.specialist)
                     }
-                    className="glass-card px-4 py-3 text-left text-sm text-seoul-charcoal hover:shadow-glass-lg transition-all duration-300 hover:border-rose-gold/20"
+                    className="glass-card px-4 py-3 text-left text-sm text-white transition-all duration-300 hover:border-gold/20"
                   >
                     {prompt.text}
                   </button>

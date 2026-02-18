@@ -19,7 +19,7 @@ interface ReviewCardProps {
 }
 
 const reactionLabels: Record<string, { label: string; color: string; icon: typeof Sparkles }> = {
-  holy_grail: { label: 'Holy Grail', color: 'bg-seoul-blush text-rose-dark', icon: Sparkles },
+  holy_grail: { label: 'Holy Grail', color: 'bg-gold/10 text-gold', icon: Sparkles },
   good: { label: 'Good', color: 'bg-green-100 text-green-700', icon: ThumbsUp },
   okay: { label: 'Okay', color: 'bg-gray-100 text-gray-600', icon: Clock },
   bad: { label: 'Bad', color: 'bg-orange-100 text-orange-700', icon: ThumbsDown },
@@ -55,8 +55,8 @@ export default function ReviewCard({ review, showProduct = false, onVote }: Revi
     <div className="glass-card p-4 space-y-3">
       {/* Product info (for community feed) */}
       {showProduct && review.product && (
-        <div className="flex items-center gap-2 pb-2 border-b border-white/30">
-          <div className="w-8 h-8 rounded-lg bg-seoul-pearl flex items-center justify-center overflow-hidden flex-shrink-0">
+        <div className="flex items-center gap-2 pb-2 border-b border-white/10">
+          <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden flex-shrink-0">
             {review.product.image_url ? (
               <img
                 src={review.product.image_url}
@@ -64,14 +64,14 @@ export default function ReviewCard({ review, showProduct = false, onVote }: Revi
                 className="w-full h-full object-cover"
               />
             ) : (
-              <Sparkles className="w-3.5 h-3.5 text-rose-gold/50" />
+              <Sparkles className="w-3.5 h-3.5 text-gold/50" />
             )}
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-seoul-charcoal truncate">
+            <p className="text-xs font-semibold text-white truncate">
               {review.product.name_en}
             </p>
-            <p className="text-[10px] text-seoul-soft">{review.product.brand_en}</p>
+            <p className="text-[10px] text-white/40">{review.product.brand_en}</p>
           </div>
         </div>
       )}
@@ -86,7 +86,7 @@ export default function ReviewCard({ review, showProduct = false, onVote }: Revi
                 key={i}
                 className={`w-3.5 h-3.5 ${
                   i < review.rating
-                    ? 'fill-rose-gold text-rose-gold'
+                    ? 'fill-gold text-gold'
                     : 'text-gray-200'
                 }`}
               />
@@ -110,14 +110,14 @@ export default function ReviewCard({ review, showProduct = false, onVote }: Revi
         </div>
 
         {review.title && (
-          <h3 className="font-display font-semibold text-sm text-seoul-charcoal">
+          <h3 className="font-display font-semibold text-sm text-white">
             {review.title}
           </h3>
         )}
       </div>
 
       {/* Review body */}
-      <p className="text-sm text-seoul-charcoal/80 leading-relaxed">{review.body}</p>
+      <p className="text-sm text-white/60 leading-relaxed">{review.body}</p>
 
       {/* Reviewer profile badges */}
       <div className="flex items-center gap-1.5 flex-wrap">
@@ -135,7 +135,7 @@ export default function ReviewCard({ review, showProduct = false, onVote }: Revi
           <span className="badge-blue text-[10px]">{review.age_range}</span>
         )}
         {review.usage_duration && (
-          <span className="inline-flex items-center gap-0.5 text-[10px] text-seoul-soft">
+          <span className="inline-flex items-center gap-0.5 text-[10px] text-white/40">
             <Clock className="w-2.5 h-2.5" />
             Used {review.usage_duration}
           </span>
@@ -145,19 +145,19 @@ export default function ReviewCard({ review, showProduct = false, onVote }: Revi
       {/* Skin concerns */}
       {review.skin_concerns && review.skin_concerns.length > 0 && (
         <div className="flex items-center gap-1 flex-wrap">
-          <span className="text-[10px] text-seoul-soft">Concerns:</span>
+          <span className="text-[10px] text-white/40">Concerns:</span>
           {review.skin_concerns.map((c) => (
-            <span key={c} className="badge-pink text-[10px]">{c}</span>
+            <span key={c} className="bg-gold/10 text-gold-light border border-gold/20 rounded-full text-[10px] px-2 py-0.5">{c}</span>
           ))}
         </div>
       )}
 
       {/* Footer: time + helpful */}
-      <div className="flex items-center justify-between pt-2 border-t border-white/30">
-        <span className="text-[10px] text-seoul-soft">{timeAgo}</span>
+      <div className="flex items-center justify-between pt-2 border-t border-white/10">
+        <span className="text-[10px] text-white/40">{timeAgo}</span>
 
         <div className="flex items-center gap-3">
-          <span className="text-[10px] text-seoul-soft">
+          <span className="text-[10px] text-white/40">
             {review.helpful_count > 0 && `${review.helpful_count} found helpful`}
           </span>
           <div className="flex items-center gap-1">
@@ -166,7 +166,7 @@ export default function ReviewCard({ review, showProduct = false, onVote }: Revi
               className={`p-1.5 rounded-lg transition-all duration-200 ${
                 helpfulState === true
                   ? 'bg-green-100 text-green-600'
-                  : 'hover:bg-seoul-pearl text-seoul-soft'
+                  : 'hover:bg-white/5 text-white/40'
               }`}
               aria-label="Helpful"
             >
@@ -177,7 +177,7 @@ export default function ReviewCard({ review, showProduct = false, onVote }: Revi
               className={`p-1.5 rounded-lg transition-all duration-200 ${
                 helpfulState === false
                   ? 'bg-red-100 text-red-600'
-                  : 'hover:bg-seoul-pearl text-seoul-soft'
+                  : 'hover:bg-white/5 text-white/40'
               }`}
               aria-label="Not helpful"
             >

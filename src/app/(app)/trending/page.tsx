@@ -57,22 +57,22 @@ export default function TrendingPage() {
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col gap-1">
-        <h1 className="font-display font-semibold text-2xl text-seoul-charcoal section-heading">
+        <h1 className="font-display font-semibold text-2xl text-white section-heading">
           Trending in Korea
         </h1>
-        <p className="text-seoul-soft text-sm">
+        <p className="text-white/40 text-sm">
           Emerging ingredients, viral products, and market movements before they hit the US.
         </p>
       </div>
 
       {/* Tab switcher */}
-      <div className="flex gap-1 bg-seoul-pearl rounded-xl p-1">
+      <div className="flex gap-1 bg-white/5 rounded-xl p-1">
         <button
           onClick={() => setActiveTab('trending')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
             activeTab === 'trending'
-              ? 'bg-white shadow-glass text-seoul-charcoal'
-              : 'text-seoul-soft hover:text-seoul-charcoal'
+              ? 'bg-white/10 text-white'
+              : 'text-white/40 hover:text-white'
           }`}
         >
           <TrendingUp className="w-4 h-4" />
@@ -82,8 +82,8 @@ export default function TrendingPage() {
           onClick={() => setActiveTab('tiktok')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
             activeTab === 'tiktok'
-              ? 'bg-white shadow-glass text-seoul-charcoal'
-              : 'text-seoul-soft hover:text-seoul-charcoal'
+              ? 'bg-white/10 text-white'
+              : 'text-white/40 hover:text-white'
           }`}
         >
           <span className="w-4 h-4 rounded bg-black text-white text-[8px] font-bold flex items-center justify-center">TT</span>
@@ -102,7 +102,7 @@ export default function TrendingPage() {
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 ${
                   sourceFilter === value
                     ? 'bg-glass-100 text-glass-700 border border-glass-300'
-                    : 'bg-white/50 text-seoul-soft border border-white/30 hover:bg-seoul-pearl'
+                    : 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10'
                 }`}
               >
                 {label}
@@ -113,7 +113,7 @@ export default function TrendingPage() {
           {/* Trending list */}
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-rose-gold" />
+              <Loader2 className="w-6 h-6 animate-spin text-gold" />
             </div>
           ) : trending.length === 0 ? (
             <EmptyState

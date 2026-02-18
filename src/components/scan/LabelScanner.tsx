@@ -56,7 +56,7 @@ function SafetyScoreRing({ score }: { score: number }) {
           stroke="currentColor"
           strokeWidth="6"
           fill="none"
-          className="text-seoul-pearl"
+          className="text-white/5"
         />
         <circle
           cx="40" cy="40" r={radius}
@@ -71,7 +71,7 @@ function SafetyScoreRing({ score }: { score: number }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="font-display font-bold text-xl" style={{ color }}>{score}</span>
-        <span className="text-[9px] text-seoul-soft">Safety</span>
+        <span className="text-[9px] text-white/40">Safety</span>
       </div>
     </div>
   )
@@ -147,16 +147,16 @@ export default function LabelScanner() {
         {/* Camera capture */}
         <button
           onClick={() => cameraInputRef.current?.click()}
-          className="glass-card-strong p-8 flex flex-col items-center gap-4 hover:shadow-glass-lg transition-all duration-300 border-dashed border-2 border-rose-gold/30 group"
+          className="glass-card-strong p-8 flex flex-col items-center gap-4 transition-all duration-300 border-dashed border-2 border-gold/30 group"
         >
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-gold to-rose-light flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-gold to-gold-light flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
             <Camera className="w-8 h-8 text-white" strokeWidth={1.5} />
           </div>
           <div className="text-center">
-            <p className="font-display font-semibold text-base text-seoul-charcoal">
+            <p className="font-display font-semibold text-base text-white">
               Scan with Camera
             </p>
-            <p className="text-xs text-seoul-soft mt-1">
+            <p className="text-xs text-white/40 mt-1">
               Point at any Korean beauty product label
             </p>
           </div>
@@ -174,16 +174,16 @@ export default function LabelScanner() {
         {/* Upload from gallery */}
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="glass-card p-4 flex items-center gap-3 hover:shadow-glass-lg transition-all duration-300"
+          className="glass-card p-4 flex items-center gap-3 transition-all duration-300"
         >
-          <div className="w-10 h-10 rounded-xl bg-seoul-pearl flex items-center justify-center">
-            <Upload className="w-5 h-5 text-rose-gold" strokeWidth={1.5} />
+          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
+            <Upload className="w-5 h-5 text-gold" strokeWidth={1.5} />
           </div>
           <div className="text-left">
-            <p className="font-display font-semibold text-sm text-seoul-charcoal">
+            <p className="font-display font-semibold text-sm text-white">
               Upload Photo
             </p>
-            <p className="text-xs text-seoul-soft">Choose from your gallery</p>
+            <p className="text-xs text-white/40">Choose from your gallery</p>
           </div>
         </button>
 
@@ -213,7 +213,7 @@ export default function LabelScanner() {
         <img
           src={image}
           alt="Product label"
-          className="w-full max-h-64 object-contain bg-seoul-pearl"
+          className="w-full max-h-64 object-contain bg-white/5"
         />
         <button
           onClick={resetScan}
@@ -237,11 +237,11 @@ export default function LabelScanner() {
       {/* Scanning state */}
       {scanning && (
         <div className="glass-card p-6 flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-rose-gold" />
-          <p className="font-display font-semibold text-sm text-seoul-charcoal">
+          <Loader2 className="w-8 h-8 animate-spin text-gold" />
+          <p className="font-display font-semibold text-sm text-white">
             Analyzing Korean label...
           </p>
-          <p className="text-xs text-seoul-soft">
+          <p className="text-xs text-white/40">
             Reading text, identifying ingredients, checking safety
           </p>
         </div>
@@ -261,18 +261,18 @@ export default function LabelScanner() {
           <div className="glass-card-strong p-4 flex items-start gap-3">
             <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-display font-bold text-base text-seoul-charcoal">
+              <p className="font-display font-bold text-base text-white">
                 {result.analysis.product_name_en}
               </p>
               {result.analysis.product_name_ko && (
-                <p className="text-sm text-seoul-soft">{result.analysis.product_name_ko}</p>
+                <p className="text-sm text-white/40">{result.analysis.product_name_ko}</p>
               )}
-              <p className="text-sm text-seoul-soft">{result.analysis.brand}</p>
+              <p className="text-sm text-white/40">{result.analysis.brand}</p>
               <span className="badge-blue text-[10px] mt-1 inline-block">{result.analysis.category}</span>
               {result.product_match && (
                 <a
                   href={`/products/${result.product_match.id}`}
-                  className="block mt-2 text-xs text-rose-gold hover:text-rose-dark font-medium"
+                  className="block mt-2 text-xs text-gold hover:text-gold font-medium"
                 >
                   View in our database &rarr;
                 </a>
@@ -284,12 +284,12 @@ export default function LabelScanner() {
           {/* Key highlights */}
           {result.analysis.key_highlights.length > 0 && (
             <div className="glass-card p-4">
-              <h3 className="font-display font-semibold text-sm text-seoul-charcoal mb-2">
+              <h3 className="font-display font-semibold text-sm text-white mb-2">
                 Key Highlights
               </h3>
               <ul className="flex flex-col gap-1.5">
                 {result.analysis.key_highlights.map((h, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-seoul-charcoal">
+                  <li key={i} className="flex items-start gap-2 text-xs text-white">
                     <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0 mt-0.5" />
                     {h}
                   </li>
@@ -315,7 +315,7 @@ export default function LabelScanner() {
 
           {/* Ingredients */}
           <div className="flex flex-col gap-2">
-            <h3 className="font-display font-semibold text-sm text-seoul-charcoal">
+            <h3 className="font-display font-semibold text-sm text-white">
               Ingredients ({result.analysis.ingredients.length})
             </h3>
             {(showAllIngredients
@@ -326,15 +326,15 @@ export default function LabelScanner() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-seoul-pearl flex items-center justify-center text-[10px] font-bold text-seoul-soft flex-shrink-0">
+                      <span className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-bold text-white/40 flex-shrink-0">
                         {idx + 1}
                       </span>
-                      <p className="font-medium text-sm text-seoul-charcoal truncate">
+                      <p className="font-medium text-sm text-white truncate">
                         {ing.name_en}
                       </p>
                     </div>
-                    <p className="text-[11px] text-seoul-soft mt-0.5 ml-7">{ing.name_inci}</p>
-                    <p className="text-[11px] text-seoul-soft ml-7">{ing.function}</p>
+                    <p className="text-[11px] text-white/40 mt-0.5 ml-7">{ing.name_inci}</p>
+                    <p className="text-[11px] text-white/40 ml-7">{ing.function}</p>
                   </div>
                   <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium ${
                     ing.safety_rating >= 4 ? 'bg-green-100 text-green-700' :
@@ -356,7 +356,7 @@ export default function LabelScanner() {
             {result.analysis.ingredients.length > 8 && (
               <button
                 onClick={() => setShowAllIngredients(!showAllIngredients)}
-                className="flex items-center justify-center gap-1 py-2 text-xs font-medium text-rose-gold hover:text-rose-dark transition-colors duration-200"
+                className="flex items-center justify-center gap-1 py-2 text-xs font-medium text-gold hover:text-gold transition-colors duration-200"
               >
                 {showAllIngredients ? (
                   <>Show less <ChevronUp className="w-3.5 h-3.5" /></>

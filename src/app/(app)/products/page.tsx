@@ -57,10 +57,10 @@ export default function ProductsPage() {
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col gap-1">
-        <h1 className="font-display font-bold text-2xl text-seoul-charcoal">
+        <h1 className="font-display font-bold text-2xl text-white">
           Product Database
         </h1>
-        <p className="text-seoul-soft text-sm">
+        <p className="text-white/40 text-sm">
           {total > 0 ? `${total} K-beauty products` : 'Explore K-beauty products'} with full ingredient analysis.
         </p>
       </div>
@@ -106,17 +106,17 @@ export default function ProductsPage() {
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-4 py-2 rounded-xl text-sm font-medium glass-card hover:shadow-glass-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+            className="px-4 py-2 rounded-xl text-sm font-medium glass-card disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
           >
             Previous
           </button>
-          <span className="text-sm text-seoul-soft px-3">
+          <span className="text-sm text-white/40 px-3">
             {page} of {totalPages}
           </span>
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="px-4 py-2 rounded-xl text-sm font-medium glass-card hover:shadow-glass-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+            className="px-4 py-2 rounded-xl text-sm font-medium glass-card disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
           >
             Next
           </button>

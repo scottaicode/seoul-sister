@@ -87,10 +87,10 @@ export default function CommunityPage() {
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col gap-1">
-        <h1 className="font-display font-semibold text-2xl text-seoul-charcoal section-heading">
+        <h1 className="font-display font-semibold text-2xl text-white section-heading">
           Community
         </h1>
-        <p className="text-seoul-soft text-sm">
+        <p className="text-white/40 text-sm">
           Reviews filtered by skin type, Fitzpatrick scale, and concern. Find people like you.
         </p>
       </div>
@@ -100,8 +100,8 @@ export default function CommunityPage() {
 
       {/* Stats bar */}
       <div className="flex items-center gap-4 text-sm">
-        <span className="text-seoul-soft">
-          <span className="font-semibold text-seoul-charcoal">{total}</span> reviews
+        <span className="text-white/40">
+          <span className="font-semibold text-white">{total}</span> reviews
         </span>
       </div>
 
@@ -110,18 +110,18 @@ export default function CommunityPage() {
         onClick={() => setFiltersOpen(!filtersOpen)}
         className="glass-card p-3 w-full flex items-center justify-between text-sm"
       >
-        <span className="font-medium text-seoul-charcoal flex items-center gap-2">
+        <span className="font-medium text-white flex items-center gap-2">
           Filter by skin type, age, Fitzpatrick scale
           {Object.values(filters).filter(Boolean).length > 0 && (
-            <span className="badge-pink text-[10px]">
+            <span className="bg-gold/10 text-gold-light border border-gold/20 rounded-full text-[10px] px-2 py-0.5">
               {Object.values(filters).filter(Boolean).length} active
             </span>
           )}
         </span>
         {filtersOpen ? (
-          <ChevronUp className="w-4 h-4 text-seoul-soft" />
+          <ChevronUp className="w-4 h-4 text-white/40" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-seoul-soft" />
+          <ChevronDown className="w-4 h-4 text-white/40" />
         )}
       </button>
 
@@ -134,7 +134,7 @@ export default function CommunityPage() {
       {/* Reviews list */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-rose-gold" />
+          <Loader2 className="w-6 h-6 animate-spin text-gold" />
         </div>
       ) : reviews.length === 0 ? (
         <EmptyState
@@ -169,7 +169,7 @@ export default function CommunityPage() {
               >
                 Previous
               </button>
-              <span className="text-xs text-seoul-soft">
+              <span className="text-xs text-white/40">
                 Page {page} of {totalPages}
               </span>
               <button
