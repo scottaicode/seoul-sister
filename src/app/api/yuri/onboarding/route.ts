@@ -169,6 +169,7 @@ export async function POST(request: NextRequest) {
         messages,
         extracted: progress.skin_profile_data,
         extracted_fields: progress.extracted_fields,
+        is_complete: checkOnboardingComplete(progress.skin_profile_data as ExtractedSkinProfile),
       })
     }
 

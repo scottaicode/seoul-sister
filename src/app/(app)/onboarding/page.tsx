@@ -179,6 +179,7 @@ export default function OnboardingPage() {
 
           if (data.conversation_id) setConversationId(data.conversation_id)
           if (typeof data.progress === 'number') setProgress(data.progress)
+          if (data.is_complete) setIsComplete(true)
 
           // Convert existing messages
           if (data.messages && data.messages.length > 0) {
