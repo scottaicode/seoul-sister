@@ -6,6 +6,18 @@ import { checkRateLimit } from '@/lib/utils/rate-limiter'
 const MAX_FREE_MESSAGES = 5
 const WIDGET_RATE_LIMIT = 10 // generous IP limit (multiple users behind same IP)
 const WIDGET_RATE_WINDOW = 24 * 60 * 60 * 1000 // 24 hours in ms
+const MSG_LIMIT_WINDOW = 30 * 24 * 60 * 60 * 1000 // 30 days (matches client-side)
+
+/** Simple hash for session fingerprinting (IP + User-Agent) */
+function simpleHash(str: string): string {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash |= 0 // Convert to 32-bit int
+  }
+  return Math.abs(hash).toString(36)
+}
 
 const widgetSchema = z.object({
   message: z.string().min(1).max(2000),
@@ -60,7 +72,7 @@ export async function POST(request: NextRequest) {
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
       request.headers.get('x-real-ip') ||
       'unknown'
-    const rateCheck = checkRateLimit(`widget:${ip}`, WIDGET_RATE_LIMIT, WIDGET_RATE_WINDOW)
+    const rateCheck = await checkRateLimit(`widget:${ip}`, WIDGET_RATE_LIMIT, WIDGET_RATE_WINDOW)
     if (!rateCheck.allowed) {
       console.warn(`[widget/chat] Rate limit hit for IP ${ip}`)
       return new Response(
@@ -75,18 +87,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const body = await request.json()
-    const parsed = widgetSchema.parse(body)
-
-    // Server-side message limit: count user messages in history + current
-    const userMessageCount =
-      (parsed.history || []).filter((m) => m.role === 'user').length + 1
-    if (userMessageCount > MAX_FREE_MESSAGES) {
+    // Server-side message limit per session (IP + User-Agent hash)
+    const ua = request.headers.get('user-agent') || ''
+    const sessionKey = `widget-msgs:${ip}:${simpleHash(ip + ua)}`
+    const msgCheck = await checkRateLimit(sessionKey, MAX_FREE_MESSAGES, MSG_LIMIT_WINDOW)
+    if (!msgCheck.allowed) {
       return new Response(
         JSON.stringify({ error: 'Free message limit reached. Create an account for unlimited access.' }),
         { status: 429, headers: { 'Content-Type': 'application/json' } }
       )
     }
+
+    const body = await request.json()
+    const parsed = widgetSchema.parse(body)
 
     const anthropic = getAnthropicClient()
 

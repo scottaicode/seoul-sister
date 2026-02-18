@@ -25,7 +25,7 @@
 - Vercel runs each request in isolated containers
 - Widget and scan endpoints rely on this
 - **Fix**: Move rate state to Supabase table or Redis
-- **Status**: PENDING
+- **Status**: FIXED — Rewrote rate-limiter.ts to use Supabase RPC (`ss_check_rate_limit`) with in-memory fallback. Migration SQL at `supabase/migrations/20260217400001_rate_limits.sql` (apply when DB is writable).
 
 ### 4. Onboarding Requires 2+ Skin Concerns — Should Be 1+
 - `src/lib/yuri/onboarding.ts:186-191`
@@ -37,7 +37,7 @@
 - Client-side localStorage counter easily cleared
 - Server trusts client-sent `history` array length
 - **Fix**: Server-side tracking via IP + session hash
-- **Status**: PENDING
+- **Status**: FIXED — Server now enforces 5-message limit via `checkRateLimit()` with IP+UA session hash key (30-day window). Client history array used for AI context only, not counting.
 
 ---
 

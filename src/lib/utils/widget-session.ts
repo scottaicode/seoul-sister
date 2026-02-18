@@ -11,8 +11,11 @@
  * - Survives cookie-clearing (most users clear cookies, not localStorage)
  * - 30-day reset is more natural than cookie expiry hacks
  *
- * Server-side backstop: /api/widget/chat also enforces limits via
- * history-length check and IP rate limiting (10/day).
+ * Server-side enforcement: /api/widget/chat enforces the 5-message limit
+ * per session (IP + User-Agent hash) via Supabase-backed rate limiter,
+ * plus a separate 10/IP/day abuse prevention limit. The client-side
+ * counter here is purely for UX (showing remaining messages) — the
+ * server does NOT trust the client history array for counting.
  */
 
 const STORAGE_KEY = 'yuri_widget_session'
