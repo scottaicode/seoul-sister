@@ -82,8 +82,16 @@ export async function POST(request: NextRequest) {
     if (parsed.action === 'start_onboarding') {
       const progress = await getOrCreateOnboardingProgress(user.id)
 
-      // If already completed, just return the status
+      // If already completed, ensure profile is finalized and redirect
       if (progress.onboarding_status === 'completed') {
+        const extracted = progress.skin_profile_data as ExtractedSkinProfile
+        if (extracted && checkOnboardingComplete(extracted)) {
+          try {
+            await finalizeOnboardingProfile(user.id, extracted)
+          } catch {
+            // May already be finalized — safe to ignore
+          }
+        }
         return Response.json({
           status: 'completed',
           progress,
