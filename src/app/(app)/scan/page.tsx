@@ -1,6 +1,12 @@
 'use client'
 
-import LabelScanner from '@/components/scan/LabelScanner'
+import dynamic from 'next/dynamic'
+import LoadingSpinner from '@/components/ui/LoadingSpinner'
+
+const LabelScanner = dynamic(() => import('@/components/scan/LabelScanner'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center py-20"><LoadingSpinner size="lg" /></div>,
+})
 
 export default function ScanPage() {
   return (

@@ -158,8 +158,41 @@ export default function ProductDetailPage() {
 
   const { product, ingredients, review_summary } = data
 
+  // JSON-LD structured data for AI discoverability
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name_en,
+    description: product.description_en ?? `${product.brand_en} ${product.name_en} - Korean beauty product`,
+    brand: { '@type': 'Brand', name: product.brand_en },
+    category: categoryLabels[product.category] ?? product.category,
+    ...(product.image_url && { image: product.image_url }),
+    ...(product.price_usd && {
+      offers: {
+        '@type': 'Offer',
+        price: Number(product.price_usd).toFixed(2),
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+        seller: { '@type': 'Organization', name: 'Seoul Sister' },
+      },
+    }),
+    ...(review_summary && review_summary.count > 0 && {
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: Number(review_summary.avg_rating).toFixed(1),
+        reviewCount: review_summary.count,
+        bestRating: 5,
+        worstRating: 1,
+      },
+    }),
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Back nav */}
       <button
         onClick={() => router.back()}

@@ -1,14 +1,16 @@
 'use client'
 
 import { useRef, useEffect, useState, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { History, Sparkles, X, AlertCircle, MessageCircle } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useYuri } from '@/hooks/useYuri'
 import ChatMessage from '@/components/yuri/ChatMessage'
 import ChatInput from '@/components/yuri/ChatInput'
-import ConversationList from '@/components/yuri/ConversationList'
-import SpecialistPicker from '@/components/yuri/SpecialistPicker'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
+
+const ConversationList = dynamic(() => import('@/components/yuri/ConversationList'), { ssr: false })
+const SpecialistPicker = dynamic(() => import('@/components/yuri/SpecialistPicker'), { ssr: false })
 import type { SpecialistType } from '@/types/database'
 import type { UsageStatus } from '@/lib/usage'
 

@@ -1,0 +1,24 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/scan-trends",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-prices",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/aggregate-learning",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/update-effectiveness",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/seasonal-adjustments",
+      "schedule": "0 3 1 * *"
+    }
+  ]
+}

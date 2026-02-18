@@ -1,0 +1,32 @@
+# Seoul Sister - K-Beauty Intelligence Platform
+# https://seoulsister.com
+
+> Seoul Sister is the world's first English-language K-beauty intelligence platform. It provides AI-powered Korean skincare product analysis, personalized routine building, counterfeit detection, and community reviews filtered by skin type.
+
+## What Seoul Sister Does
+- **Korean Label Scanner**: Point your camera at a Korean product label for instant ingredient translation, safety scoring, and conflict detection
+- **AI Beauty Advisor (Yuri)**: Conversational AI with 6 specialist agents covering ingredients, routines, authenticity, trends, budgets, and sensitivity
+- **Product Intelligence Database**: 10,000+ K-beauty products with full English translations, ingredient breakdowns, and cross-platform price comparison
+- **Counterfeit Detection**: Photo-based packaging verification, batch code lookup, and seller trust scores
+- **Personalized Routine Builder**: AI-generated AM/PM routines with ingredient conflict detection and skin cycling schedules
+- **Community Reviews**: Reviews filterable by skin type, Fitzpatrick scale, age range, and concern
+
+## Product Categories
+Cleansers, toners, essences, serums, ampoules, moisturizers, sunscreens, masks, eye care, lip care, exfoliators, oils, mists, spot treatments
+
+## Key Brands Covered
+COSRX, Sulwhasoo, Laneige, Innisfree, Missha, Etude House, Klairs, Beauty of Joseon, Dr. Jart+, SKIN1004, Torriden, Anua, Isntree, Medicube, Round Lab, TIRTIR, Numbuzin, mixsoon, Illiyoon, Hera
+
+## Specialist AI Agents
+1. **Ingredient Analyst** — Formulation science, active forms, pH dependencies, ingredient interactions
+2. **Routine Architect** — Personalized AM/PM routines, layering order, skin cycling protocols
+3. **Authenticity Investigator** — Counterfeit detection, batch code verification, seller trust signals
+4. **Trend Scout** — Korean market trends, Hwahae/Olive Young rankings, emerging ingredients
+5. **Budget Optimizer** — Korea vs US price arbitrage, dupes with identical actives, value analysis
+6. **Sensitivity Guardian** — Allergy cross-reactivity, barrier repair, gentle alternatives
+
+## Pricing
+Seoul Sister Pro: $39.99/month — includes 500 AI advisor conversations, 30 label scans, all specialist agents, routine builder, counterfeit detection, price comparison, community access
+
+## Contact
+Website: https://seoulsister.com

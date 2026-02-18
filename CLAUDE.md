@@ -758,11 +758,14 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
     (`utils/widget-helpers.js`, `api/widget-conversation.js`) for architecture reference.
   - Note: Making the anonymous widget too personalized (memory, recognition) can reduce signup
     motivation. The 5-message limit + signup CTA is the correct conversion architecture for now.
-- [ ] Stripe webhook integration
-- [ ] Push notifications
-- [ ] PWA install prompts
-- [ ] AI discoverability (JSON-LD, llms.txt, sitemap)
-- [ ] Performance optimization
+- [x] Stripe webhook integration (6 event types, idempotency, subscription lifecycle)
+- [x] Premium single-tier pricing ($39.99/mo Seoul Sister Pro, usage caps: 500 msgs, 30 scans)
+- [x] PWA install prompts (service worker, beforeinstallprompt handler, offline caching)
+- [x] AI discoverability (robots.ts with AI bot allowances, dynamic sitemap.ts, llms.txt, JSON-LD on products + org)
+- [x] Performance optimization (code splitting via next/dynamic, bundle analyzer, cache headers)
+- [x] Cron job scheduling (vercel.json with 5 cron jobs: scan-trends, refresh-prices, aggregate-learning, update-effectiveness, seasonal-adjustments)
+- [ ] Push notifications (FUTURE -- requires service worker push events, web-push library, subscription management)
+- [ ] Remaining cron jobs (FUTURE -- scan-korean-products, translate-and-index, scan-counterfeits, community-digest, generate-content -- require external data source integrations)
 
 ## Competitive Landscape
 
@@ -847,7 +850,7 @@ Automatic via Vercel on push to `main` branch.
 
 **Created**: February 2026
 **Version**: 3.3.0 (All Build Phases Complete + Deployment)
-**Status**: Phases 1-7 + 3B Complete, Database Migration Pending, Vercel Live
+**Status**: Phases 1-7 + 3B Complete, Production Live, AI Discoverability + PWA + Cron Scheduling Active
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -871,6 +874,18 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
   - DNS configured in Namecheap (A record, CNAME, 2 TXT verification records)
   - Environment variables configured in Vercel (Supabase URL/keys, Anthropic, Stripe)
   - Next.js upgraded from 15.0.0 to 15.5.12 (CVE-2025-66478 fix)
+- v3.4.0 (Feb 18, 2026): AI Discoverability, PWA, Performance, Cron Scheduling
+  - robots.ts with GPTBot, Claude-Web, PerplexityBot, ChatGPT-User, Applebot-Extended allowances
+  - Dynamic sitemap.ts pulling all active products from database
+  - llms.txt product database summary for AI model consumption
+  - JSON-LD structured data: Organization schema on root layout, Product + AggregateRating on product detail pages
+  - Service worker (public/sw.js) with network-first strategy, offline fallback, static asset caching
+  - PWA install prompt component with beforeinstallprompt handler and dismiss persistence
+  - Code splitting: ConversationList, SpecialistPicker, LabelScanner, TikTokCapture lazy-loaded via next/dynamic
+  - Bundle analyzer configured (@next/bundle-analyzer, ANALYZE=true npm run analyze)
+  - vercel.json cron scheduling for 5 existing jobs (trends, prices, learning, effectiveness, seasonal)
+  - Premium single-tier pricing: $39.99/mo Seoul Sister Pro, Stripe product + webhook live
+  - Usage tracking: ss_usage_tracking table, 500 msg / 30 scan caps, UI warnings at 80%+
 - v3.2.0 (Feb 17, 2026): Three-Layer Yuri Widget Architecture. Replaced generic widget spec with three-layer approach: Layer 1 (floating bubble, all pages), Layer 2 ("Try Yuri" inline section mid-page on landing page), Layer 3 (full post-signup experience). Documented landing page flow (hero -> features -> Try Yuri -> social proof -> pricing -> CTA). Added widget-as-hero rule of thumb for LGAAS comparison. Updated Phase 7 with detailed widget implementation steps. Marked Phase 5 complete.
 - v3.1.0 (Feb 17, 2026): Added Yuri Conversational Onboarding (replaces form wizard) and Yuri Landing Page Widget (pre-signup AI demo). Updated LGAAS relationship with clear responsibility separation. Updated all completed phases with implementation details.
 - v3.0.0 (Feb 17, 2026): Complete rebuild as "Hwahae for the World." 7 development phases, 30 database tables, 6 specialist agents, glass skin design system.

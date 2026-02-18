@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { TrendingUp, Loader2 } from 'lucide-react'
 import TrendingCard from '@/components/community/TrendingCard'
-import TikTokCapture from '@/components/community/TikTokCapture'
 import EmptyState from '@/components/ui/EmptyState'
+
+const TikTokCapture = dynamic(() => import('@/components/community/TikTokCapture'), { ssr: false })
 import type { LucideIcon } from 'lucide-react'
 import type { Product } from '@/types/database'
 

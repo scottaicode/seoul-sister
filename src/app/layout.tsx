@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Poppins } from 'next/font/google'
 import { AuthProvider } from '@/contexts/AuthContext'
+import ServiceWorkerRegistration from '@/components/pwa/ServiceWorkerRegistration'
+import InstallPrompt from '@/components/pwa/InstallPrompt'
 import './globals.css'
 
 const inter = Inter({
@@ -79,8 +81,29 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#0D0D0F" />
       </head>
       <body className="font-sans antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: 'Seoul Sister',
+              url: 'https://seoulsister.com',
+              description: 'The world\'s first English-language K-beauty intelligence platform.',
+              sameAs: [],
+              logo: 'https://seoulsister.com/icons/icon-512.svg',
+              potentialAction: {
+                '@type': 'SearchAction',
+                target: 'https://seoulsister.com/products?search={search_term_string}',
+                'query-input': 'required name=search_term_string',
+              },
+            }),
+          }}
+        />
         <AuthProvider>
           {children}
+          <ServiceWorkerRegistration />
+          <InstallPrompt />
         </AuthProvider>
       </body>
     </html>
