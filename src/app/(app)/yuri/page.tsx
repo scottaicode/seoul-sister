@@ -91,7 +91,7 @@ export default function YuriPage() {
   const hasMessages = messages.length > 0
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] md:h-[calc(100vh-0px)] relative">
+    <div className="flex flex-col h-[calc(100vh-64px-5rem)] md:h-[calc(100vh-64px)] relative">
       {/* Conversation history sidebar (mobile overlay) */}
       {showHistory && (
         <div className="absolute inset-0 z-30">
