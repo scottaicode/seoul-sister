@@ -49,7 +49,7 @@ export default function ChatInput({
   }, [])
 
   return (
-    <div className="flex items-end gap-2 p-3 bg-white/80 backdrop-blur-md border-t border-white/50">
+    <div className="flex items-end gap-2 p-3 bg-seoul-card/90 backdrop-blur-md border-t border-white/10">
       <textarea
         ref={textareaRef}
         value={value}
@@ -59,13 +59,13 @@ export default function ChatInput({
         placeholder={placeholder}
         disabled={disabled}
         rows={1}
-        className="flex-1 resize-none glass-input text-sm py-2.5 px-4 max-h-[120px] rounded-2xl"
+        className="flex-1 resize-none dark-input text-sm py-2.5 px-4 max-h-[120px] rounded-2xl"
         aria-label="Message Yuri"
       />
       <button
         onClick={handleSubmit}
         disabled={disabled || !value.trim()}
-        className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-rose-gold to-rose-light text-white flex items-center justify-center transition-all duration-200 hover:shadow-glass disabled:opacity-40 disabled:cursor-not-allowed"
+        className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-light text-seoul-dark flex items-center justify-center transition-all duration-200 hover:shadow-glow-gold disabled:opacity-40 disabled:cursor-not-allowed"
         aria-label="Send message"
       >
         {disabled ? (

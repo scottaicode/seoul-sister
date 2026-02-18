@@ -353,44 +353,44 @@ export default function OnboardingPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-seoul-gradient flex items-center justify-center">
+      <div className="min-h-screen bg-seoul-darker flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-rose-gold to-glass-500 shadow-glow-pink mb-4 animate-pulse">
-            <Sparkles className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-gold to-gold-light shadow-glow-gold mb-4 animate-pulse">
+            <Sparkles className="w-8 h-8 text-seoul-dark" />
           </div>
-          <p className="text-seoul-soft text-sm">Yuri is getting ready...</p>
+          <p className="text-white/40 text-sm">Yuri is getting ready...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-seoul-gradient flex flex-col">
+    <div className="min-h-screen bg-seoul-darker flex flex-col">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-white/50 px-4 py-3">
+      <div className="sticky top-0 z-10 bg-seoul-card/90 backdrop-blur-md border-b border-white/10 px-4 py-3">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-rose-gold to-glass-500 flex items-center justify-center shadow-glass">
-              <Sparkles className="w-4.5 h-4.5 text-white" />
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center shadow-glow-gold">
+              <Sparkles className="w-4.5 h-4.5 text-seoul-dark" />
             </div>
             <div>
-              <h1 className="font-display text-base font-semibold text-seoul-charcoal">
+              <h1 className="font-display text-base font-semibold text-white">
                 Meet Yuri
               </h1>
-              <p className="text-xs text-seoul-soft">Building your skin profile</p>
+              <p className="text-xs text-white/40">Building your skin profile</p>
             </div>
           </div>
 
           {/* Progress indicator */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <div className="w-24 h-1.5 rounded-full bg-seoul-pearl overflow-hidden">
+              <div className="w-24 h-1.5 rounded-full bg-white/10 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-rose-gold to-glass-500 transition-all duration-700 ease-out"
+                  className="h-full rounded-full bg-gradient-to-r from-gold to-gold-light transition-all duration-700 ease-out"
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <span className="text-xs text-seoul-soft font-medium">{progress}%</span>
+              <span className="text-xs text-white/40 font-medium">{progress}%</span>
             </div>
           </div>
         </div>
@@ -423,8 +423,8 @@ export default function OnboardingPage() {
       {/* Error */}
       {error && (
         <div className="px-4 pb-2">
-          <div className="max-w-2xl mx-auto p-3 rounded-xl bg-red-50/80 border border-red-200/60">
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="max-w-2xl mx-auto p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+            <p className="text-sm text-red-400">{error}</p>
           </div>
         </div>
       )}
@@ -439,10 +439,10 @@ export default function OnboardingPage() {
       </div>
 
       {/* Skip link */}
-      <div className="bg-white/80 backdrop-blur-md border-t border-white/50 py-2 text-center">
+      <div className="bg-seoul-card/90 backdrop-blur-md border-t border-white/10 py-2 text-center">
         <button
           onClick={handleSkip}
-          className="inline-flex items-center gap-1.5 text-xs text-seoul-soft hover:text-seoul-charcoal transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors"
         >
           <SkipForward className="w-3 h-3" />
           Skip for now -- you can complete your profile anytime
