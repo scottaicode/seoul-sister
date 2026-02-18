@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState, useCallback } from 'react'
-import { History, Sparkles, X, AlertCircle } from 'lucide-react'
+import { History, Sparkles, X, AlertCircle, MessageCircle } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useYuri } from '@/hooks/useYuri'
 import ChatMessage from '@/components/yuri/ChatMessage'
@@ -10,6 +10,7 @@ import ConversationList from '@/components/yuri/ConversationList'
 import SpecialistPicker from '@/components/yuri/SpecialistPicker'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import type { SpecialistType } from '@/types/database'
+import type { UsageStatus } from '@/lib/usage'
 
 const SUGGESTED_PROMPTS = [
   { text: 'Analyze my COSRX Snail Mucin ingredients', specialist: 'ingredient_analyst' as SpecialistType },
@@ -35,8 +36,28 @@ export default function YuriPage() {
   } = useYuri()
 
   const [showHistory, setShowHistory] = useState(false)
+  const [usage, setUsage] = useState<UsageStatus | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
+
+  // Fetch usage status
+  useEffect(() => {
+    if (!user) return
+    async function fetchUsage() {
+      try {
+        const { data } = await import('@/lib/supabase').then(m => m.supabase.auth.getSession())
+        const token = data.session?.access_token
+        if (!token) return
+        const res = await fetch('/api/usage', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (res.ok) {
+          setUsage(await res.json())
+        }
+      } catch { /* non-critical */ }
+    }
+    fetchUsage()
+  }, [user, messages.length]) // Re-fetch after each message
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -134,14 +155,25 @@ export default function YuriPage() {
           </div>
         </div>
 
-        {hasMessages && (
-          <button
-            onClick={() => startNewConversation()}
-            className="text-xs text-gold font-medium hover:text-gold transition-colors"
-          >
-            New chat
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {/* Usage indicator */}
+          {usage && usage.yuri_usage_pct >= 80 && (
+            <div className="flex items-center gap-1.5 text-[10px]">
+              <MessageCircle className="w-3 h-3 text-white/30" />
+              <span className={usage.yuri_usage_pct >= 100 ? 'text-red-400' : 'text-gold-light'}>
+                {usage.yuri_messages_remaining} left
+              </span>
+            </div>
+          )}
+          {hasMessages && (
+            <button
+              onClick={() => startNewConversation()}
+              className="text-xs text-gold font-medium hover:text-gold transition-colors"
+            >
+              New chat
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Error banner */}
@@ -222,7 +254,18 @@ export default function YuriPage() {
 
       {/* Input area */}
       <div className="flex-shrink-0 pb-safe">
-        <ChatInput onSend={handleSend} disabled={isStreaming} />
+        {usage?.yuri_at_limit ? (
+          <div className="px-4 py-4 bg-white/5 border-t border-white/10 text-center">
+            <p className="text-sm text-white/60 mb-1">
+              You&apos;ve used all 500 Yuri messages this month.
+            </p>
+            <p className="text-xs text-white/30">
+              Your messages reset on your next billing cycle. Product browsing, community, and trending remain available.
+            </p>
+          </div>
+        ) : (
+          <ChatInput onSend={handleSend} disabled={isStreaming} />
+        )}
       </div>
     </div>
   )

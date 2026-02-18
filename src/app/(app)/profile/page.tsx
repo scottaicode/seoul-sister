@@ -174,22 +174,22 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-white">
-                  {profile.plan === 'free' || !profile.plan ? 'Free' : capitalize(profile.plan?.replace('_', ' '))}
+                  {profile.plan === 'pro_monthly' ? 'Seoul Sister Pro' : 'No active subscription'}
                 </p>
                 <p className="text-xs text-white/40 mt-0.5">
-                  {profile.plan === 'free' || !profile.plan
-                    ? '3 scans/month, limited Yuri conversations'
-                    : 'Unlimited scans, full Yuri access, all specialists'}
+                  {profile.plan === 'pro_monthly'
+                    ? '$39.99/month — Full AI intelligence suite'
+                    : 'Subscribe to unlock Yuri, scanning, and all features'}
                 </p>
               </div>
-              {(profile.plan === 'free' || !profile.plan) && (
+              {profile.plan !== 'pro_monthly' && (
                 <a
                   href="/#pricing"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs font-medium text-gold-light hover:text-gold transition-colors"
                 >
-                  Upgrade
+                  Subscribe
                 </a>
               )}
             </div>

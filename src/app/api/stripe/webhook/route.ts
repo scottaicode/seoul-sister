@@ -3,10 +3,9 @@ import { getStripeClient, planFromStripePriceId, type TierKey } from '@/lib/stri
 import { getServiceClient } from '@/lib/supabase'
 import type Stripe from 'stripe'
 
-/** Map full plan key to the ss_subscriptions.tier column value */
-function planToTier(plan: TierKey): string {
-  if (plan === 'pro_monthly' || plan === 'pro_annual') return 'pro'
-  return plan // 'free' | 'student'
+/** Map plan key to the ss_subscriptions.tier column value */
+function planToTier(_plan: TierKey): string {
+  return 'pro' // Single tier — all subscribers are pro
 }
 
 export async function POST(request: NextRequest) {
@@ -76,7 +75,7 @@ export async function POST(request: NextRequest) {
         if (subscriptionId && customerId) {
           const subscription = await stripe.subscriptions.retrieve(subscriptionId)
           const priceId = subscription.items.data[0]?.price?.id
-          const plan = priceId ? planFromStripePriceId(priceId) : 'free'
+          const plan = planFromStripePriceId(priceId ?? '')
 
           await supabase.from('ss_subscriptions').upsert(
             {
@@ -110,7 +109,7 @@ export async function POST(request: NextRequest) {
         if (!userId) break
 
         const priceId = subscription.items.data[0]?.price?.id
-        const plan = priceId ? planFromStripePriceId(priceId) : 'free'
+        const plan = planFromStripePriceId(priceId ?? '')
         const customerId =
           typeof subscription.customer === 'string'
             ? subscription.customer
@@ -155,7 +154,7 @@ export async function POST(request: NextRequest) {
         // Sync plan to user profile
         await supabase
           .from('ss_user_profiles')
-          .update({ plan: subscription.status === 'active' ? plan : 'free' })
+          .update({ plan: subscription.status === 'active' ? plan : null })
           .eq('user_id', userId)
 
         break
@@ -176,7 +175,7 @@ export async function POST(request: NextRequest) {
 
         await supabase
           .from('ss_user_profiles')
-          .update({ plan: 'free' })
+          .update({ plan: null })
           .eq('user_id', userId)
 
         break

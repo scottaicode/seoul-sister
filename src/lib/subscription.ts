@@ -1,5 +1,4 @@
 import { getServiceClient } from './supabase'
-import type { SubscriptionPlan } from '@/types/database'
 
 export type Feature =
   | 'unlimited_yuri'
@@ -9,8 +8,8 @@ export type Feature =
   | 'price_alerts'
   | 'counterfeit_scanner'
   | 'routine_outcomes'
-  | 'priority_support'
 
+/** All features are available to active subscribers */
 const PRO_FEATURES: Feature[] = [
   'unlimited_yuri',
   'specialist_agents',
@@ -19,48 +18,48 @@ const PRO_FEATURES: Feature[] = [
   'price_alerts',
   'counterfeit_scanner',
   'routine_outcomes',
-  'priority_support',
 ]
 
-function isPro(plan: SubscriptionPlan): boolean {
-  return plan === 'pro_monthly' || plan === 'pro_annual' || plan === 'student'
-}
-
-export function checkFeatureAccessByPlan(
-  plan: SubscriptionPlan,
+export function checkFeatureAccessBySubscription(
+  hasActiveSubscription: boolean,
   feature: Feature
 ): boolean {
   if (PRO_FEATURES.includes(feature)) {
-    return isPro(plan)
+    return hasActiveSubscription
   }
   return true
 }
 
-export async function getUserPlan(userId: string): Promise<SubscriptionPlan> {
+export async function hasActiveSubscription(userId: string): Promise<boolean> {
   const supabase = getServiceClient()
 
   const { data } = await supabase
     .from('ss_subscriptions')
-    .select('plan, status')
+    .select('status')
     .eq('user_id', userId)
     .single()
 
-  if (!data || data.status !== 'active') return 'free'
-  return data.plan as SubscriptionPlan
+  return data?.status === 'active'
 }
 
 export async function checkFeatureAccess(
   userId: string,
   feature: Feature
 ): Promise<boolean> {
-  const plan = await getUserPlan(userId)
-  return checkFeatureAccessByPlan(plan, feature)
+  const active = await hasActiveSubscription(userId)
+  return checkFeatureAccessBySubscription(active, feature)
 }
 
-export function getYuriMessageLimit(plan: SubscriptionPlan): number {
-  return isPro(plan) ? -1 : 3 // -1 = unlimited, 3 for free
+/** Monthly usage caps for active subscribers */
+export const USAGE_CAPS = {
+  yuri_messages_per_month: 500,
+  scans_per_month: 30,
+} as const
+
+export function getYuriMessageLimit(): number {
+  return USAGE_CAPS.yuri_messages_per_month
 }
 
-export function getScanLimit(plan: SubscriptionPlan): number {
-  return isPro(plan) ? -1 : 3 // -1 = unlimited, 3/month for free
+export function getScanLimit(): number {
+  return USAGE_CAPS.scans_per_month
 }

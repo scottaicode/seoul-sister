@@ -197,7 +197,7 @@ export interface TrendingProduct {
   product?: Product
 }
 
-export type SubscriptionPlan = 'free' | 'pro_monthly' | 'pro_annual' | 'student'
+export type SubscriptionPlan = 'pro_monthly'
 export type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing'
 
 export interface Subscription {

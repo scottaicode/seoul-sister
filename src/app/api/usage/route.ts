@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getServiceClient } from '@/lib/supabase'
-import { SUBSCRIPTION_TIERS } from '@/lib/stripe'
+import { getUsageStatus } from '@/lib/usage'
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,32 +20,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const serviceClient = getServiceClient()
-    const { data: subscription } = await serviceClient
-      .from('ss_subscriptions')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
-
-    if (!subscription || subscription.status !== 'active') {
-      return NextResponse.json({
-        plan: null,
-        status: 'inactive',
-        tier: null,
-        subscription: null,
-      })
-    }
-
-    return NextResponse.json({
-      plan: 'pro_monthly',
-      status: subscription.status,
-      tier: SUBSCRIPTION_TIERS.pro_monthly,
-      subscription: {
-        id: subscription.id,
-        current_period_end: subscription.current_period_end,
-        canceled_at: subscription.canceled_at,
-      },
-    })
+    const usage = await getUsageStatus(user.id)
+    return NextResponse.json(usage)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Internal server error'
     return NextResponse.json({ error: message }, { status: 500 })

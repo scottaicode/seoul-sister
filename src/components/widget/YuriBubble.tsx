@@ -318,13 +318,13 @@ export default function YuriBubble() {
                     I could help you so much more with a skin profile!
                   </p>
                   <p className="text-xs text-white/40 mb-3">
-                    Create your free account for unlimited Yuri, personalized routines, and 6 specialist agents.
+                    Subscribe to Seoul Sister Pro for full Yuri conversations, personalized routines, and all 6 specialist agents.
                   </p>
                   <a
                     href="/register"
                     className="inline-block glass-button-primary text-xs py-2 px-5"
                   >
-                    Start Free
+                    Get Started
                   </a>
                 </div>
               )}

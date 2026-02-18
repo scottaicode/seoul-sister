@@ -127,7 +127,7 @@ export default function RegisterPage() {
       <div className="dark-card-gold p-8">
         <h2 className="text-xl font-bold text-white text-center mb-2">Join Seoul Sister</h2>
         <p className="text-white/40 text-sm text-center mb-8">
-          Create your free account and start your K-beauty journey
+          Create your account to start your K-beauty journey
         </p>
 
         {/* Error Banner */}
@@ -261,14 +261,14 @@ export default function RegisterPage() {
                 Creating account...
               </>
             ) : (
-              'Create Free Account'
+              'Create Account'
             )}
           </button>
         </form>
 
         {/* Free tier note */}
         <p className="text-xs text-center text-white/30 mt-4">
-          Free forever -- no credit card required
+          Subscription required after account creation. $39.99/month.
         </p>
 
         {/* Divider */}

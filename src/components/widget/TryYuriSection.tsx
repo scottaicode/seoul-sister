@@ -252,13 +252,13 @@ export default function TryYuriSection() {
                     Want the full Yuri experience?
                   </p>
                   <p className="text-xs text-white/40 mb-3">
-                    Sign up for free to get unlimited conversations, personalized routines, and all 6 specialist agents.
+                    Subscribe to Seoul Sister Pro for unlimited conversations, personalized routines, and all 6 specialist agents.
                   </p>
                   <a
                     href="/register"
                     className="inline-flex items-center gap-1.5 glass-button-primary text-xs py-2 px-5"
                   >
-                    Create Free Account <ArrowRight className="w-3 h-3" />
+                    Get Started <ArrowRight className="w-3 h-3" />
                   </a>
                 </div>
               )}

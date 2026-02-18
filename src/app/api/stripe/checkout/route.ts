@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createCheckoutSession, type TierKey } from '@/lib/stripe'
 
 const CheckoutSchema = z.object({
-  plan: z.enum(['pro_monthly', 'pro_annual', 'student']),
+  plan: z.enum(['pro_monthly']),
 })
 
 export async function POST(request: NextRequest) {

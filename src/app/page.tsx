@@ -136,7 +136,7 @@ export default function LandingPage() {
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/register" className="glass-button-primary text-base py-3 px-8">
-                Start Free
+                Get Started
               </Link>
               <Link href="#features" className="dark-button-outline text-base py-3 px-8">
                 See How It Works
@@ -311,7 +311,7 @@ export default function LandingPage() {
       <section id="pricing" className="py-20 px-4 bg-seoul-darker">
         <div className="max-w-6xl mx-auto text-center">
           <h2 className="section-heading mb-3">Simple, Transparent Pricing</h2>
-          <p className="section-subheading mx-auto mb-12">Start free. Go Pro when you&apos;re ready for the full intelligence suite.</p>
+          <p className="section-subheading mx-auto mb-12">One plan. Full AI intelligence. Cancel anytime.</p>
           <PricingCards />
         </div>
       </section>
@@ -337,9 +337,9 @@ export default function LandingPage() {
             href="/register"
             className="inline-flex items-center gap-2 glass-button-primary text-base py-3.5 px-10"
           >
-            Create Free Account <ArrowRight className="w-4 h-4" />
+            Start Your Journey <ArrowRight className="w-4 h-4" />
           </Link>
-          <p className="text-xs text-white/30 mt-4">No credit card required. Free tier is free forever.</p>
+          <p className="text-xs text-white/30 mt-4">Try Yuri free before you subscribe. 5 preview messages, no signup required.</p>
         </motion.div>
       </section>
 
