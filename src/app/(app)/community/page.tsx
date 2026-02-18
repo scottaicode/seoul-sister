@@ -72,15 +72,12 @@ export default function CommunityPage() {
   }, [filters])
 
   async function handleVote(reviewId: string, isHelpful: boolean) {
-    try {
-      await fetch(`/api/reviews/${reviewId}/vote`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_helpful: isHelpful }),
-      })
-    } catch {
-      // Silent fail for voting
-    }
+    const res = await fetch(`/api/reviews/${reviewId}/vote`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_helpful: isHelpful }),
+    })
+    if (!res.ok) throw new Error('Vote failed')
   }
 
   return (

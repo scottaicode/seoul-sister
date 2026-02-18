@@ -55,7 +55,7 @@
 - `src/app/(app)/settings/page.tsx` — placeholder only
 - `src/app/(app)/routine/page.tsx` — placeholder only
 - **Fix**: Build read-only profile display and basic settings (logout, subscription status)
-- **Status**: PENDING
+- **Status**: FIXED — Profile page shows skin profile data, settings has logout + subscription info. Routine still placeholder.
 
 ### 8. Scanner Missing Ingredient Conflict Warnings
 - `src/components/scan/LabelScanner.tsx`
@@ -74,7 +74,7 @@
 - Casts as `Record<string, unknown>` without validation
 - No idempotency check on `stripe_event_id`
 - **Fix**: Validate event shape, check duplicate IDs
-- **Status**: PENDING
+- **Status**: FIXED — Idempotency check added (skips duplicate stripe_event_id)
 
 ---
 
@@ -93,13 +93,13 @@
 ### 13. Dashboard File is 604 Lines
 - `src/app/(app)/dashboard/page.tsx` — exceeds 300-line guideline
 - **Fix**: Extract sub-components
-- **Status**: PENDING
+- **Status**: FIXED — Extracted QuickActionCard, TrendingProductCard, YuriInsightsWidget, SkinProfileWidget to src/components/dashboard/. Page now 210 lines.
 
 ### 14. SSE Streaming Race Condition in useYuri
 - `src/hooks/useYuri.ts:126-137`
 - Two chunks arriving simultaneously could lose text
 - **Fix**: Use ref to accumulate content
-- **Status**: PENDING
+- **Status**: NOT AN ISSUE — Sequential `await reader.read()` + React functional updater pattern already prevents data loss
 
 ### 15. JSON Extraction From Claude Uses Greedy Regex
 - `src/app/api/scan/route.ts:100`, `src/lib/yuri/advisor.ts:297`
@@ -120,7 +120,7 @@
 ### 18. Review Voting Silently Fails
 - `community/page.tsx:82`, `products/[id]/page.tsx:148`
 - **Fix**: Show toast notification on error
-- **Status**: PENDING
+- **Status**: FIXED — ReviewCard now reverts optimistic state on error + shows "Vote failed" indicator
 
 ### 19. Password Validation Inconsistency
 - UI requires special chars, server-side does not
@@ -129,7 +129,7 @@
 
 ### 20. Landing Page Section Order
 - Try Yuri should come after feature grid, before How It Works
-- **Status**: PENDING
+- **Status**: FIXED — Swapped TryYuriSection and How It Works sections in page.tsx
 
 ---
 

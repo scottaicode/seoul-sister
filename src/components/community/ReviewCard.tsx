@@ -15,7 +15,7 @@ interface ReviewCardProps {
     }
   }
   showProduct?: boolean
-  onVote?: (reviewId: string, isHelpful: boolean) => void
+  onVote?: (reviewId: string, isHelpful: boolean) => Promise<void> | void
 }
 
 const reactionLabels: Record<string, { label: string; color: string; icon: typeof Sparkles }> = {
@@ -36,17 +36,22 @@ const skinTypeLabels: Record<string, string> = {
 
 export default function ReviewCard({ review, showProduct = false, onVote }: ReviewCardProps) {
   const [helpfulState, setHelpfulState] = useState<boolean | null>(null)
+  const [voteError, setVoteError] = useState(false)
 
   const reaction = review.reaction ? reactionLabels[review.reaction] : null
   const ReactionIcon = reaction?.icon ?? Sparkles
 
-  function handleVote(isHelpful: boolean) {
-    if (helpfulState === isHelpful) {
-      setHelpfulState(null)
-    } else {
-      setHelpfulState(isHelpful)
+  async function handleVote(isHelpful: boolean) {
+    const prev = helpfulState
+    setVoteError(false)
+    setHelpfulState(helpfulState === isHelpful ? null : isHelpful)
+    try {
+      await onVote?.(review.id, isHelpful)
+    } catch {
+      setHelpfulState(prev)
+      setVoteError(true)
+      setTimeout(() => setVoteError(false), 3000)
     }
-    onVote?.(review.id, isHelpful)
   }
 
   const timeAgo = getTimeAgo(review.created_at)
@@ -157,6 +162,9 @@ export default function ReviewCard({ review, showProduct = false, onVote }: Revi
         <span className="text-[10px] text-white/40">{timeAgo}</span>
 
         <div className="flex items-center gap-3">
+          {voteError && (
+            <span className="text-[10px] text-red-400">Vote failed</span>
+          )}
           <span className="text-[10px] text-white/40">
             {review.helpful_count > 0 && `${review.helpful_count} found helpful`}
           </span>

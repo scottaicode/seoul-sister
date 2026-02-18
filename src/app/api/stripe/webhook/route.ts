@@ -31,6 +31,17 @@ export async function POST(request: NextRequest) {
 
   const supabase = getServiceClient()
 
+  // Idempotency: skip if we've already processed this event
+  const { data: existing } = await supabase
+    .from('ss_subscription_events')
+    .select('id')
+    .eq('stripe_event_id', event.id)
+    .maybeSingle()
+
+  if (existing) {
+    return NextResponse.json({ received: true, duplicate: true })
+  }
+
   // Log the event
   await supabase.from('ss_subscription_events').insert({
     event_type: event.type,

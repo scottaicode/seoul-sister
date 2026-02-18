@@ -213,6 +213,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Try Yuri - Layer 2 (after features, before How It Works per CLAUDE.md) */}
+      <TryYuriSection />
+
       {/* How It Works */}
       <section className="py-20 px-4 bg-seoul-dark">
         <div className="max-w-4xl mx-auto text-center">
@@ -240,9 +243,6 @@ export default function LandingPage() {
           </motion.div>
         </div>
       </section>
-
-      {/* Try Yuri - Layer 2 */}
-      <TryYuriSection />
 
       {/* Social Proof */}
       <section className="py-20 px-4 bg-seoul-dark">
