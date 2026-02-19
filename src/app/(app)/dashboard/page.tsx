@@ -5,6 +5,7 @@ import Link from 'next/link'
 import {
   Camera,
   Clock,
+  CloudSun,
   Layers,
   MessageCircle,
   TrendingUp,
@@ -24,6 +25,7 @@ import SkinProfileWidget from '@/components/dashboard/SkinProfileWidget'
 import ExpiringProductsWidget from '@/components/dashboard/ExpiringProductsWidget'
 import ReformulationAlertWidget from '@/components/dashboard/ReformulationAlert'
 import GlassSkinWidget from '@/components/dashboard/GlassSkinWidget'
+import WeatherRoutineWidget from '@/components/dashboard/WeatherRoutineWidget'
 
 // ---------------------------------------------------------------------------
 // Helpers & data
@@ -227,6 +229,26 @@ export default function DashboardPage() {
         </div>
 
         <GlassSkinWidget />
+      </section>
+
+      {/* Weather Routine Tips */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <CloudSun className="w-4 h-4 text-sky-400" strokeWidth={1.75} />
+            <h2 className="font-display font-semibold text-base text-white">
+              Weather & Skincare
+            </h2>
+          </div>
+          <Link
+            href="/profile"
+            className="text-xs text-gold-light font-medium hover:text-gold transition-colors duration-200 flex items-center gap-0.5"
+          >
+            Settings <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
+
+        <WeatherRoutineWidget />
       </section>
 
       {/* Trending in Korea */}

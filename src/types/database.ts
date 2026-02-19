@@ -674,3 +674,40 @@ export interface GlassSkinComparison {
   improved_dimensions: GlassSkinDimension[]
   declined_dimensions: GlassSkinDimension[]
 }
+
+// =============================================================================
+// Feature 8.10: Weather-Adaptive Routine Alerts
+// =============================================================================
+
+export type WeatherTrigger =
+  | 'high_humidity'
+  | 'low_humidity'
+  | 'high_uv'
+  | 'cold_dry'
+  | 'hot_humid'
+  | 'windy'
+
+export interface WeatherData {
+  temperature: number
+  feels_like: number
+  humidity: number
+  uv_index: number
+  wind_speed: number
+  condition: string
+  icon: string
+  location: string
+}
+
+export interface WeatherRoutineAdjustment {
+  type: 'add' | 'reduce' | 'swap' | 'avoid' | 'emphasize'
+  product_category: string
+  reason: string
+  suggestion: string
+  weather_trigger: WeatherTrigger
+}
+
+export interface WeatherRoutineResponse {
+  weather: WeatherData
+  adjustments: WeatherRoutineAdjustment[]
+  summary: string
+}

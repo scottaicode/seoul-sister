@@ -1773,7 +1773,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 3.8.0 (Feature 8.9 Glass Skin Score Photo Tracking)
+**Version**: 3.9.0 (Feature 8.10 Weather-Adaptive Routine Alerts)
 **Status**: Phases 1-7 + 3B Complete, Production Live, Phase 8 (11 Features) In Progress
 **AI Advisor**: Yuri (유리) - "Glass"
 
@@ -1790,6 +1790,16 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v3.9.0 (Feb 19, 2026): Feature 8.10 Weather-Adaptive Routine Alerts
+  - **Database**: `ss_user_profiles` extended with `latitude` (DECIMAL 10,8), `longitude` (DECIMAL 11,8), `weather_alerts_enabled` (BOOLEAN default FALSE). Partial index on `user_id` WHERE `weather_alerts_enabled = TRUE`
+  - **Intelligence module** (`lib/intelligence/weather-routine.ts`): Open-Meteo API integration (free, no API key) with 30-min revalidation cache. Single endpoint returns temperature, feels_like, humidity, uv_index, wind_speed, WMO weather code. Reverse geocoding for city name (24h cache). `getWeatherAdjustments(weather, skinType)` maps 6 weather triggers (high_humidity, low_humidity, high_uv, cold_dry, hot_humid, windy) to skincare routine adjustments with skin-type-specific extras for oily, dry, combination, sensitive. `getWeatherSummary()` generates one-line condition summary
+  - **API** (`app/api/weather/routine/route.ts`): GET (fetch weather + personalised adjustments; accepts explicit lat/lng query params or falls back to saved profile coordinates), PUT (update latitude, longitude, weather_alerts_enabled). Zod-validated, auth-required
+  - **WeatherRoutineWidget** (`components/dashboard/WeatherRoutineWidget.tsx`): Dashboard widget showing temperature, humidity, UV index, wind speed, location, condition. Displays up to 3 adjustment suggestions with type-coded icons (add/reduce/swap/avoid/emphasize). Shows "Set your location" CTA when no coordinates configured
+  - **Dashboard integration**: Weather & Skincare section added between Glass Skin Score and Trending in Korea with CloudSun icon
+  - **Profile integration**: WeatherLocationToggle component with enable/disable toggle, browser Geolocation API for coordinate capture, location update button, privacy notice
+  - **TypeScript types**: `WeatherTrigger`, `WeatherData`, `WeatherRoutineAdjustment`, `WeatherRoutineResponse` added to `types/database.ts`
+  - **No API key required**: Uses Open-Meteo (open-meteo.com) — free, open-source weather API
+  - **Migration file**: `supabase/migrations/20260219000003_add_weather_alerts.sql` (run manually in SQL Editor)
 - v3.8.0 (Feb 19, 2026): Feature 8.9 Glass Skin Score — Photo Tracking
   - **Database**: `ss_glass_skin_scores` table with RLS (select, insert, delete), index on `(user_id, created_at DESC)`, updated_at trigger. Scores 5 dimensions (luminosity, smoothness, clarity, hydration, evenness) each 0-100 with CHECK constraints
   - **API** (`app/api/skin-score/route.ts`): POST (analyze skin photo via Claude Opus 4.6 Vision, save score, return comparison with previous), GET (score history with limit param). 60s timeout for Vision calls. Zod-validated, auth-required

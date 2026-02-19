@@ -14,6 +14,8 @@ import {
   Sparkles,
   Loader2,
   Heart,
+  CloudSun,
+  Navigation,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
@@ -31,6 +33,9 @@ interface UserProfile {
   plan: string | null
   cycle_tracking_enabled: boolean | null
   avg_cycle_length: number | null
+  latitude: number | null
+  longitude: number | null
+  weather_alerts_enabled: boolean | null
 }
 
 function capitalize(s: string | null): string {
@@ -132,6 +137,135 @@ function CycleTrackingToggle({
   )
 }
 
+function WeatherLocationToggle({
+  enabled,
+  hasLocation,
+  onUpdate,
+}: {
+  enabled: boolean
+  hasLocation: boolean
+  onUpdate: (updates: Partial<UserProfile>) => void
+}) {
+  const [toggling, setToggling] = useState(false)
+  const [locating, setLocating] = useState(false)
+
+  async function handleToggle() {
+    setToggling(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+      const res = await fetch('/api/weather/routine', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ weather_alerts_enabled: !enabled }),
+      })
+      if (res.ok) onUpdate({ weather_alerts_enabled: !enabled })
+    } finally {
+      setToggling(false)
+    }
+  }
+
+  async function handleSetLocation() {
+    if (!navigator.geolocation) return
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session?.access_token) return
+          const lat = Math.round(position.coords.latitude * 1e6) / 1e6
+          const lng = Math.round(position.coords.longitude * 1e6) / 1e6
+          const res = await fetch('/api/weather/routine', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              latitude: lat,
+              longitude: lng,
+              weather_alerts_enabled: true,
+            }),
+          })
+          if (res.ok) {
+            onUpdate({ latitude: lat, longitude: lng, weather_alerts_enabled: true })
+          }
+        } finally {
+          setLocating(false)
+        }
+      },
+      () => setLocating(false),
+      { enableHighAccuracy: false, timeout: 10000 }
+    )
+  }
+
+  return (
+    <div className="glass-card p-5">
+      <h2 className="font-display font-semibold text-sm text-white/60 mb-3 uppercase tracking-wider">
+        Weather Alerts
+      </h2>
+      <div className="flex items-center gap-3 py-2">
+        <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center flex-shrink-0">
+          <CloudSun className="w-4 h-4 text-sky-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-white font-medium">
+            Weather-Adaptive Routine Tips
+          </p>
+          <p className="text-[10px] text-white/30 mt-0.5">
+            {enabled && hasLocation
+              ? 'Active \u00B7 Adjustments appear on your dashboard'
+              : 'Get skincare tips based on your local weather conditions'}
+          </p>
+        </div>
+        <button
+          onClick={handleToggle}
+          disabled={toggling || (!hasLocation && !enabled)}
+          className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+            enabled ? 'bg-sky-500' : 'bg-white/10'
+          } ${!hasLocation && !enabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform duration-200 ${
+              enabled ? 'translate-x-5' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
+
+      {/* Location button */}
+      {!hasLocation && (
+        <button
+          onClick={handleSetLocation}
+          disabled={locating}
+          className="mt-3 ml-11 flex items-center gap-1.5 text-xs font-medium text-sky-400 hover:text-sky-300 transition-colors"
+        >
+          <Navigation className="w-3 h-3" />
+          {locating ? 'Detecting location...' : 'Set my location'}
+        </button>
+      )}
+
+      {enabled && hasLocation && (
+        <div className="mt-2 ml-11 space-y-1">
+          <p className="text-[10px] text-white/20">
+            Your location is used only to fetch local weather data for skincare tips.
+          </p>
+          <button
+            onClick={handleSetLocation}
+            disabled={locating}
+            className="text-[10px] text-sky-400/60 hover:text-sky-400 transition-colors"
+          >
+            {locating ? 'Updating...' : 'Update location'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ProfilePage() {
   const { user } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -142,7 +276,7 @@ export default function ProfilePage() {
     async function load() {
       const { data } = await supabase
         .from('ss_user_profiles')
-        .select('skin_type, skin_concerns, allergies, fitzpatrick_scale, climate, age_range, budget_range, experience_level, onboarding_completed, plan, cycle_tracking_enabled, avg_cycle_length')
+        .select('skin_type, skin_concerns, allergies, fitzpatrick_scale, climate, age_range, budget_range, experience_level, onboarding_completed, plan, cycle_tracking_enabled, avg_cycle_length, latitude, longitude, weather_alerts_enabled')
         .eq('user_id', user!.id)
         .maybeSingle()
       setProfile(data as UserProfile | null)
@@ -247,6 +381,15 @@ export default function ProfilePage() {
             avgLength={profile.avg_cycle_length ?? 28}
             onToggle={(enabled) =>
               setProfile((prev) => prev ? { ...prev, cycle_tracking_enabled: enabled } : prev)
+            }
+          />
+
+          {/* Weather Alerts */}
+          <WeatherLocationToggle
+            enabled={profile.weather_alerts_enabled ?? false}
+            hasLocation={profile.latitude != null && profile.longitude != null}
+            onUpdate={(updates) =>
+              setProfile((prev) => prev ? { ...prev, ...updates } : prev)
             }
           />
 
