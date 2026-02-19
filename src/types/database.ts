@@ -711,3 +711,33 @@ export interface WeatherRoutineResponse {
   adjustments: WeatherRoutineAdjustment[]
   summary: string
 }
+
+// =============================================================================
+// Feature 8.11: Shelf Scan — Collection Analysis
+// =============================================================================
+
+export type RoutineGradeLevel = 'A' | 'B' | 'C' | 'D' | 'F'
+
+export interface ShelfScanProduct {
+  name: string
+  brand: string
+  category: string
+  confidence: number
+  matched_product_id: string | null
+  position_in_image: string
+}
+
+export interface ShelfScanCollectionAnalysis {
+  total_estimated_value: number
+  ingredient_overlap_warnings: string[]
+  missing_categories: string[]
+  redundant_products: string[]
+  overall_routine_grade: RoutineGradeLevel
+  grade_rationale: string
+  recommendations: string[]
+}
+
+export interface ShelfScanResult {
+  products_identified: ShelfScanProduct[]
+  collection_analysis: ShelfScanCollectionAnalysis
+}

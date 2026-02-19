@@ -1773,8 +1773,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 3.9.0 (Feature 8.10 Weather-Adaptive Routine Alerts)
-**Status**: Phases 1-7 + 3B Complete, Production Live, Phase 8 (11 Features) In Progress
+**Version**: 3.10.0 (Feature 8.11 Shelf Scan — Collection Analysis)
+**Status**: Phases 1-7 + 3B Complete, Production Live, Phase 8 (11 Features) Complete
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -1790,6 +1790,17 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v3.10.0 (Feb 19, 2026): Feature 8.11 Shelf Scan — Collection Analysis
+  - **API** (`app/api/shelf-scan/route.ts`): POST endpoint accepts base64 shelf/collection photo, sends to Claude Opus 4.6 Vision with multi-product identification prompt. 60s timeout (`maxDuration = 60`). Identifies every visible product with name, brand, category, confidence score, and position in image. Generates collection analysis: estimated total value, ingredient overlap warnings, missing categories, redundant products, routine grade (A-F) with rationale, and actionable recommendations. Matches identified products against `ss_products` database (fuzzy ilike search). Refines estimated value using real `ss_product_prices` data where products are matched. Auth-required via `requireAuth()`. Response includes products_count and matched_count for DB coverage stats.
+  - **CollectionGrid component** (`components/shelf-scan/CollectionGrid.tsx`): Renders identified products as indexed cards with brand, name, category pill, confidence score with color-coded label (High/Medium/Low), position in image, and database match status ("In DB" with link to product detail page vs "Unknown" badge)
+  - **RoutineGrade component** (`components/shelf-scan/RoutineGrade.tsx`): Large letter-grade display with color-coded styling per grade (A=emerald, B=sky, C=amber, D=orange, F=rose). Shows grade label ("Excellent Collection" through "Just Getting Started") and AI rationale. Ring and glow effects for visual impact
+  - **CollectionStats component** (`components/shelf-scan/CollectionStats.tsx`): 3-column stat grid (product count, estimated value, category count). Category breakdown pills. Missing categories section (amber warning ring). Redundant products section (rose warning ring). Ingredient overlap warnings. Database match count summary
+  - **Shelf Scan page** (`app/(app)/shelf-scan/page.tsx`): Camera capture (`capture="environment"` for landscape), gallery upload, client-side image compression (1500px max, JPEG 80%), 60s AbortController timeout. Results display: RoutineGrade hero, CollectionStats, recommendations list with "Ask Yuri to optimize" deep link, CollectionGrid of identified products, "Build routine from these products" link, scan-again button. Error handling for AbortError, Load failed, Failed to fetch
+  - **ShelfScanWidget** (`components/dashboard/ShelfScanWidget.tsx`): Dashboard CTA widget linking to /shelf-scan with Camera icon and description
+  - **Dashboard integration**: Collection Analysis section added between Weather & Skincare and Trending in Korea with Layers icon
+  - **Navigation**: "Shelf Scan" added to Header desktop/mobile nav links
+  - **TypeScript types**: `RoutineGradeLevel`, `ShelfScanProduct`, `ShelfScanCollectionAnalysis`, `ShelfScanResult` added to `types/database.ts`
+  - **No database changes**: No new tables required. Uses existing `ss_products` and `ss_product_prices` for matching and value refinement
 - v3.9.0 (Feb 19, 2026): Feature 8.10 Weather-Adaptive Routine Alerts
   - **Database**: `ss_user_profiles` extended with `latitude` (DECIMAL 10,8), `longitude` (DECIMAL 11,8), `weather_alerts_enabled` (BOOLEAN default FALSE). Partial index on `user_id` WHERE `weather_alerts_enabled = TRUE`
   - **Intelligence module** (`lib/intelligence/weather-routine.ts`): Open-Meteo API integration (free, no API key) with 30-min revalidation cache. Single endpoint returns temperature, feels_like, humidity, uv_index, wind_speed, WMO weather code. Reverse geocoding for city name (24h cache). `getWeatherAdjustments(weather, skinType)` maps 6 weather triggers (high_humidity, low_humidity, high_uv, cold_dry, hot_humid, windy) to skincare routine adjustments with skin-type-specific extras for oily, dry, combination, sensitive. `getWeatherSummary()` generates one-line condition summary

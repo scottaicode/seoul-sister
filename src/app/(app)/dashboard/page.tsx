@@ -26,6 +26,7 @@ import ExpiringProductsWidget from '@/components/dashboard/ExpiringProductsWidge
 import ReformulationAlertWidget from '@/components/dashboard/ReformulationAlert'
 import GlassSkinWidget from '@/components/dashboard/GlassSkinWidget'
 import WeatherRoutineWidget from '@/components/dashboard/WeatherRoutineWidget'
+import ShelfScanWidget from '@/components/dashboard/ShelfScanWidget'
 
 // ---------------------------------------------------------------------------
 // Helpers & data
@@ -249,6 +250,26 @@ export default function DashboardPage() {
         </div>
 
         <WeatherRoutineWidget />
+      </section>
+
+      {/* Shelf Scan */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-gold" strokeWidth={1.75} />
+            <h2 className="font-display font-semibold text-base text-white">
+              Collection Analysis
+            </h2>
+          </div>
+          <Link
+            href="/shelf-scan"
+            className="text-xs text-gold-light font-medium hover:text-gold transition-colors duration-200 flex items-center gap-0.5"
+          >
+            Scan <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
+
+        <ShelfScanWidget />
       </section>
 
       {/* Trending in Korea */}
