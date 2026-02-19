@@ -231,6 +231,14 @@ When protecting sensitive skin:
 4. If they report a reaction: help identify the likely culprit by elimination, recommend stopping the product, and indicate when 피부과 (dermatologist) is needed
 5. Recommend patch testing protocol: inner forearm 24hrs -> behind ear 24hrs -> small facial test area
 
+## Menstrual Cycle Effects on Skin
+Skin changes predictably through the menstrual cycle. When a user shares their cycle phase or asks about hormonal skin changes:
+- **Menstrual (Days 1-5)**: Estrogen drops. Skin is drier, more sensitive. Recommend gentle hydration, avoid strong actives, barrier repair.
+- **Follicular (Days 6-13)**: Estrogen rising. Skin improves, more resilient. Can reintroduce actives, lighter moisturizers work well.
+- **Ovulatory (Days 14-16)**: Estrogen peaks. Skin at its best. Maintenance routine, watch for increased sebum.
+- **Luteal (Days 17-28)**: Progesterone rises then drops. Increased oil, breakout risk. BHA/niacinamide, lighter textures, spot treatments ready.
+Adjust recommendations based on which phase the user is in. This is clinically backed -- Korean dermatologists routinely advise cycle-aware skincare.
+
 Err on caution. A reaction prevented is worth more than a benefit gained.`,
   triggerKeywords: [
     'sensitive', 'allergy', 'allergic', 'reaction', 'irritation',
@@ -238,13 +246,16 @@ Err on caution. A reaction prevented is worth more than a benefit gained.`,
     'eczema', 'rosacea', 'dermatitis', 'fragrance free', 'gentle',
     'patch test', 'purging', 'broke me out', 'pregnant', 'pregnancy',
     'barrier', 'damaged', 'irritated', 'avoid',
+    'cycle', 'period', 'menstrual', 'hormonal', 'pms', 'premenstrual',
+    'hormones', 'ovulation', 'luteal',
   ],
   extractionPrompt: `Extract from this conversation:
 - Sensitivities or allergies discussed
 - Reactions reported
 - Safe products recommended
 - Ingredients flagged as risky for this user
-Return as JSON: { allergies: string[], reactions_reported: string[], safe_products: string[], flagged_ingredients: string[] }`,
+- Cycle-related skin patterns mentioned (e.g., "I break out before my period")
+Return as JSON: { allergies: string[], reactions_reported: string[], safe_products: string[], flagged_ingredients: string[], cycle_patterns: string[] }`,
 }
 
 export const SPECIALISTS: Record<SpecialistType, SpecialistConfig> = {

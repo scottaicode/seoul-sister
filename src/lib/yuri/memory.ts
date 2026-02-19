@@ -1,5 +1,6 @@
 import { getServiceClient } from '@/lib/supabase'
-import type { SkinProfile, YuriConversation, YuriMessage, SpecialistType } from '@/types/database'
+import type { SkinProfile, YuriConversation, YuriMessage, SpecialistType, CyclePhaseInfo, UserCycleTracking } from '@/types/database'
+import { getCyclePhase, getPhaseLabel } from '@/lib/intelligence/cycle-routine'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -13,6 +14,7 @@ export interface UserContext {
   knownPreferences: string[]
   routineProducts: string[]
   learningInsights: LearningContextData[]
+  cyclePhase: CyclePhaseInfo | null
 }
 
 export interface LearningContextData {
@@ -93,6 +95,29 @@ export async function loadUserContext(userId: string): Promise<UserContext> {
   const skinProfile = profileResult.data as SkinProfile | null
   const learningInsights = await loadLearningContext(db, skinProfile)
 
+  // Load cycle phase if tracking is enabled
+  let cyclePhase: CyclePhaseInfo | null = null
+  try {
+    const profileRaw = profileResult.data as Record<string, unknown> | null
+    if (profileRaw?.cycle_tracking_enabled) {
+      const { data: latestCycle } = await db
+        .from('ss_user_cycle_tracking')
+        .select('cycle_start_date, cycle_length_days')
+        .eq('user_id', userId)
+        .order('cycle_start_date', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (latestCycle) {
+        const entry = latestCycle as unknown as UserCycleTracking
+        const avgLength = (profileRaw.avg_cycle_length as number) || entry.cycle_length_days || 28
+        cyclePhase = getCyclePhase(entry.cycle_start_date, avgLength)
+      }
+    }
+  } catch {
+    // Cycle loading is non-critical
+  }
+
   // Build conversation memories from recent conversations
   const recentConversations: ConversationMemory[] = (conversationsResult.data || []).map(
     (conv: { id: string; title: string | null; specialist_type: SpecialistType | null; updated_at: string }) => ({
@@ -139,6 +164,7 @@ export async function loadUserContext(userId: string): Promise<UserContext> {
     knownPreferences: [],
     routineProducts,
     learningInsights,
+    cyclePhase,
   }
 }
 
@@ -200,6 +226,17 @@ export function formatContextForPrompt(context: UserContext): string {
       .map((c) => `- ${c.summary} (${c.specialistType || 'general'})`)
       .join('\n')
     sections.push(`## Recent Conversation Topics\n${topics}`)
+  }
+
+  // Menstrual cycle phase context
+  if (context.cyclePhase) {
+    const cp = context.cyclePhase
+    sections.push(`## Menstrual Cycle Phase (User has opted into cycle tracking)
+- Current phase: ${getPhaseLabel(cp.phase)} (Day ${cp.day_in_cycle} of ${cp.cycle_length}-day cycle)
+- Days until next phase: ${cp.days_until_next_phase}
+- Skin behavior: ${cp.skin_behavior}
+- Key recommendations for this phase: ${cp.recommendations.slice(0, 3).join('; ')}
+When making skincare recommendations, factor in the user's current cycle phase. This is especially relevant for actives, exfoliation, moisturizer weight, and breakout prevention.`)
   }
 
   // Learning engine insights (makes Yuri smarter over time)

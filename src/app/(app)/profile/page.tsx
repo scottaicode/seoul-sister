@@ -13,6 +13,7 @@ import {
   Award,
   Sparkles,
   Loader2,
+  Heart,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
@@ -28,6 +29,8 @@ interface UserProfile {
   experience_level: string | null
   onboarding_completed: boolean
   plan: string | null
+  cycle_tracking_enabled: boolean | null
+  avg_cycle_length: number | null
 }
 
 function capitalize(s: string | null): string {
@@ -57,6 +60,78 @@ function ProfileField({
   )
 }
 
+function CycleTrackingToggle({
+  enabled,
+  avgLength,
+  onToggle,
+}: {
+  enabled: boolean
+  avgLength: number
+  onToggle: (enabled: boolean) => void
+}) {
+  const [toggling, setToggling] = useState(false)
+
+  async function handleToggle() {
+    setToggling(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+      const res = await fetch('/api/cycle', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ cycle_tracking_enabled: !enabled }),
+      })
+      if (res.ok) onToggle(!enabled)
+    } finally {
+      setToggling(false)
+    }
+  }
+
+  return (
+    <div className="glass-card p-5">
+      <h2 className="font-display font-semibold text-sm text-white/60 mb-3 uppercase tracking-wider">
+        Cycle Tracking
+      </h2>
+      <div className="flex items-center gap-3 py-2">
+        <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center flex-shrink-0">
+          <Heart className="w-4 h-4 text-rose-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-white font-medium">
+            Cycle-Aware Routine Adjustments
+          </p>
+          <p className="text-[10px] text-white/30 mt-0.5">
+            {enabled
+              ? `Active \u00B7 ${avgLength}-day cycle \u00B7 Adjustments appear on your Routine page`
+              : 'Get personalized skincare tips based on your menstrual cycle phase'}
+          </p>
+        </div>
+        <button
+          onClick={handleToggle}
+          disabled={toggling}
+          className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+            enabled ? 'bg-rose-500' : 'bg-white/10'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform duration-200 ${
+              enabled ? 'translate-x-5' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
+      {enabled && (
+        <p className="text-[10px] text-white/20 mt-2 ml-11">
+          Your cycle data is private and only used to personalize your routine. Visit your Routine page to log cycle dates.
+        </p>
+      )}
+    </div>
+  )
+}
+
 export default function ProfilePage() {
   const { user } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -67,7 +142,7 @@ export default function ProfilePage() {
     async function load() {
       const { data } = await supabase
         .from('ss_user_profiles')
-        .select('skin_type, skin_concerns, allergies, fitzpatrick_scale, climate, age_range, budget_range, experience_level, onboarding_completed, plan')
+        .select('skin_type, skin_concerns, allergies, fitzpatrick_scale, climate, age_range, budget_range, experience_level, onboarding_completed, plan, cycle_tracking_enabled, avg_cycle_length')
         .eq('user_id', user!.id)
         .maybeSingle()
       setProfile(data as UserProfile | null)
@@ -165,6 +240,15 @@ export default function ProfilePage() {
             <ProfileField icon={Wallet} label="Budget" value={capitalize(profile.budget_range)} />
             <ProfileField icon={Award} label="K-Beauty Experience" value={capitalize(profile.experience_level)} />
           </div>
+
+          {/* Cycle Tracking */}
+          <CycleTrackingToggle
+            enabled={profile.cycle_tracking_enabled ?? false}
+            avgLength={profile.avg_cycle_length ?? 28}
+            onToggle={(enabled) =>
+              setProfile((prev) => prev ? { ...prev, cycle_tracking_enabled: enabled } : prev)
+            }
+          />
 
           {/* Subscription */}
           <div className="glass-card p-5">

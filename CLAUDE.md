@@ -1773,8 +1773,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 3.6.0 (Phase 8 Feature Plans Documented)
-**Status**: Phases 1-7 + 3B Complete, Production Live, Phase 8 (11 Features) Planned
+**Version**: 3.8.0 (Feature 8.9 Glass Skin Score Photo Tracking)
+**Status**: Phases 1-7 + 3B Complete, Production Live, Phase 8 (11 Features) In Progress
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -1790,6 +1790,30 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v3.8.0 (Feb 19, 2026): Feature 8.9 Glass Skin Score — Photo Tracking
+  - **Database**: `ss_glass_skin_scores` table with RLS (select, insert, delete), index on `(user_id, created_at DESC)`, updated_at trigger. Scores 5 dimensions (luminosity, smoothness, clarity, hydration, evenness) each 0-100 with CHECK constraints
+  - **API** (`app/api/skin-score/route.ts`): POST (analyze skin photo via Claude Opus 4.6 Vision, save score, return comparison with previous), GET (score history with limit param). 60s timeout for Vision calls. Zod-validated, auth-required
+  - **Claude Vision prompt**: Specialized "Glass Skin Analyst" system prompt scoring 5 dimensions with Korean terminology (광채, 매끄러움, 투명도, 수분, 균일). Weighted overall score (luminosity 25%, smoothness 20%, clarity 20%, hydration 20%, evenness 15%). Returns 3-5 K-beauty recommendations targeting lowest dimensions
+  - **ScoreRadarChart component** (`components/glass-skin/ScoreRadarChart.tsx`): SVG pentagon radar chart with 5-level grid, axis lines, current score polygon (gold fill), optional previous score overlay (dashed), score dots, Korean dimension labels, per-dimension score grid with change indicators
+  - **ProgressTimeline component** (`components/glass-skin/ProgressTimeline.tsx`): SVG line chart showing score progression over time with gradient area fill, trend summary (up/down/flat), chronological date axis, score history list with color-coded grade badges and change deltas
+  - **ShareCard component** (`components/glass-skin/ShareCard.tsx`): Canvas-generated 600x400 share image with dark gradient background, gold accent, score circle, dimension bars, Seoul Sister branding. Native Web Share API with image file + text fallback, clipboard copy fallback, PNG download option
+  - **Glass Skin page** (`app/(app)/glass-skin/page.tsx`): Camera selfie capture (front-facing via `capture="user"`), gallery upload, client-side image compression (1500px max, JPEG 80%), animated score ring with gradient, radar chart, recommendations with "Ask Yuri" deep link to lowest dimension, analysis notes, share/download actions, collapsible progress history section
+  - **GlassSkinWidget** (`components/dashboard/GlassSkinWidget.tsx`): Dashboard widget showing latest score with ring visualization and trend indicator, or CTA to take first photo if no scores exist
+  - **Dashboard integration**: Glass Skin Score section added between Reformulation Alerts and Trending
+  - **Navigation**: "Glass Skin" added to Header desktop/mobile nav links
+  - **TypeScript types**: `GlassSkinDimension`, `GlassSkinScore`, `GlassSkinDimensionScore`, `GlassSkinAnalysisResult`, `GlassSkinComparison` added to `types/database.ts`
+  - **Migration file**: `supabase/migrations/20260219000002_add_glass_skin_scores.sql` (run manually in SQL Editor)
+- v3.7.0 (Feb 19, 2026): Feature 8.8 Hormonal Cycle Routine Adjustments
+  - **Database**: `ss_user_cycle_tracking` table with RLS, indexes, trigger. `ss_user_profiles` extended with `cycle_tracking_enabled` and `avg_cycle_length` columns
+  - **Intelligence module** (`lib/intelligence/cycle-routine.ts`): Phase calculation from cycle start date (menstrual/follicular/ovulatory/luteal with proportional day ranges), skin behavior descriptions per phase, personalized routine adjustments factoring skin type and current products
+  - **API** (`app/api/cycle/route.ts`): Full CRUD — GET (phase info + adjustments + history), POST (log cycle start), PUT (toggle tracking/update avg length), DELETE (remove entries). Zod-validated, auth-required
+  - **CycleAdjustment component** (`components/routine/CycleAdjustment.tsx`): Collapsible phase card with color-coded phases, skin behavior summary, routine adjustment suggestions (add/reduce/swap/avoid/emphasize), tips, and LogCycleModal for date entry
+  - **Routine page integration**: CycleAdjustment banner renders above routine cards (only when tracking is enabled)
+  - **Profile page integration**: CycleTrackingToggle component with on/off toggle, privacy notice, and avg cycle length display
+  - **Yuri context injection** (`lib/yuri/memory.ts`): `loadUserContext()` fetches latest cycle entry and calculates current phase; `formatContextForPrompt()` injects phase, day, skin behavior, and recommendations into Yuri's system prompt
+  - **Sensitivity Guardian specialist**: Added cycle/period/hormonal/pms/ovulation keywords to trigger routing; added menstrual cycle skin effects guide to system prompt; cycle_patterns added to extraction prompt
+  - **TypeScript types**: `CyclePhase`, `UserCycleTracking`, `CyclePhaseInfo`, `CycleRoutineAdjustment` added to `types/database.ts`
+  - **Migration file**: `supabase/migrations/20260219000001_add_cycle_tracking.sql` (run manually in SQL Editor)
 - v3.6.0 (Feb 18, 2026): Phase 8 Value Enrichment Features — 11 Feature Implementation Plans
   - Documented comprehensive implementation plans for 11 new features across 3 priority tiers
   - Each plan includes: strategic rationale, current state analysis, exact files to create/modify, database migrations, API signatures, component structures, and step-by-step build instructions

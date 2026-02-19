@@ -27,6 +27,7 @@ import {
   type WaitTimeSuggestion,
   type MissingStepAlert,
 } from '@/lib/intelligence/layering-order'
+import { CycleAdjustment } from '@/components/routine/CycleAdjustment'
 
 interface ProductInfo {
   id: string
@@ -460,6 +461,9 @@ export default function RoutinePage() {
           </p>
         </div>
       </div>
+
+      {/* Cycle phase adjustment banner */}
+      <CycleAdjustment />
 
       {loading ? (
         <div className="flex items-center justify-center py-16">

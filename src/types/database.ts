@@ -595,3 +595,82 @@ export interface ExtractedSkinProfile {
   experience_level?: 'beginner' | 'intermediate' | 'advanced' | 'expert'
   product_preferences?: string[]
 }
+
+// =============================================================================
+// Feature 8.8: Hormonal Cycle Routine Adjustments
+// =============================================================================
+
+export type CyclePhase = 'menstrual' | 'follicular' | 'ovulatory' | 'luteal'
+
+export interface UserCycleTracking {
+  id: string
+  user_id: string
+  cycle_start_date: string
+  cycle_length_days: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CyclePhaseInfo {
+  phase: CyclePhase
+  day_in_cycle: number
+  days_until_next_phase: number
+  cycle_length: number
+  skin_behavior: string
+  recommendations: string[]
+}
+
+export interface CycleRoutineAdjustment {
+  type: 'add' | 'reduce' | 'swap' | 'avoid' | 'emphasize'
+  product_category: string
+  reason: string
+  suggestion: string
+}
+
+// =============================================================================
+// Feature 8.9: Glass Skin Score — Photo Tracking
+// =============================================================================
+
+export type GlassSkinDimension = 'luminosity' | 'smoothness' | 'clarity' | 'hydration' | 'evenness'
+
+export interface GlassSkinScore {
+  id: string
+  user_id: string
+  overall_score: number
+  luminosity_score: number
+  smoothness_score: number
+  clarity_score: number
+  hydration_score: number
+  evenness_score: number
+  recommendations: string[]
+  analysis_notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface GlassSkinDimensionScore {
+  dimension: GlassSkinDimension
+  score: number
+  label: string
+  description: string
+}
+
+export interface GlassSkinAnalysisResult {
+  overall_score: number
+  luminosity_score: number
+  smoothness_score: number
+  clarity_score: number
+  hydration_score: number
+  evenness_score: number
+  recommendations: string[]
+  analysis_notes: string
+}
+
+export interface GlassSkinComparison {
+  current: GlassSkinScore
+  previous: GlassSkinScore | null
+  score_change: number
+  improved_dimensions: GlassSkinDimension[]
+  declined_dimensions: GlassSkinDimension[]
+}

@@ -23,6 +23,7 @@ import YuriInsightsWidget from '@/components/dashboard/YuriInsightsWidget'
 import SkinProfileWidget from '@/components/dashboard/SkinProfileWidget'
 import ExpiringProductsWidget from '@/components/dashboard/ExpiringProductsWidget'
 import ReformulationAlertWidget from '@/components/dashboard/ReformulationAlert'
+import GlassSkinWidget from '@/components/dashboard/GlassSkinWidget'
 
 // ---------------------------------------------------------------------------
 // Helpers & data
@@ -206,6 +207,26 @@ export default function DashboardPage() {
         </div>
 
         <ReformulationAlertWidget />
+      </section>
+
+      {/* Glass Skin Score */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-gold" strokeWidth={1.75} />
+            <h2 className="font-display font-semibold text-base text-white">
+              Glass Skin Score
+            </h2>
+          </div>
+          <Link
+            href="/glass-skin"
+            className="text-xs text-gold-light font-medium hover:text-gold transition-colors duration-200 flex items-center gap-0.5"
+          >
+            Track <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
+
+        <GlassSkinWidget />
       </section>
 
       {/* Trending in Korea */}

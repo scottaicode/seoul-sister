@@ -12,6 +12,7 @@ const navLinks = [
   { label: 'Sunscreen', href: '/sunscreen' },
   { label: 'Routine', href: '/routine' },
   { label: 'Yuri', href: '/yuri' },
+  { label: 'Glass Skin', href: '/glass-skin' },
   { label: 'Community', href: '/community' },
   { label: 'Trending', href: '/trending' },
 ]
