@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   Camera,
+  Clock,
   Layers,
   MessageCircle,
   TrendingUp,
@@ -11,6 +12,7 @@ import {
   ChevronRight,
   Lightbulb,
   Loader2,
+  FlaskConical,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import EmptyState from '@/components/ui/EmptyState'
@@ -19,6 +21,8 @@ import TrendingProductCard from '@/components/dashboard/TrendingProductCard'
 import type { TrendingProduct } from '@/components/dashboard/TrendingProductCard'
 import YuriInsightsWidget from '@/components/dashboard/YuriInsightsWidget'
 import SkinProfileWidget from '@/components/dashboard/SkinProfileWidget'
+import ExpiringProductsWidget from '@/components/dashboard/ExpiringProductsWidget'
+import ReformulationAlertWidget from '@/components/dashboard/ReformulationAlert'
 
 // ---------------------------------------------------------------------------
 // Helpers & data
@@ -168,6 +172,40 @@ export default function DashboardPage() {
         </div>
 
         <SkinProfileWidget />
+      </section>
+
+      {/* Expiring Products */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-400" strokeWidth={1.75} />
+            <h2 className="font-display font-semibold text-base text-white">
+              Expiring Soon
+            </h2>
+          </div>
+          <Link
+            href="/tracking"
+            className="text-xs text-gold-light font-medium hover:text-gold transition-colors duration-200 flex items-center gap-0.5"
+          >
+            View all <ChevronRight className="w-3 h-3" />
+          </Link>
+        </div>
+
+        <ExpiringProductsWidget />
+      </section>
+
+      {/* Reformulation Alerts */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <FlaskConical className="w-4 h-4 text-amber-400" strokeWidth={1.75} />
+            <h2 className="font-display font-semibold text-base text-white">
+              Formula Changes
+            </h2>
+          </div>
+        </div>
+
+        <ReformulationAlertWidget />
       </section>
 
       {/* Trending in Korea */}

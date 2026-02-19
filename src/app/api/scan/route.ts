@@ -3,6 +3,9 @@ import { createClient } from '@supabase/supabase-js'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { requireAuth } from '@/lib/auth'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
+import { enrichScanResult } from '@/lib/scanning/enrich-scan'
+import { detectReformulation, recordReformulation } from '@/lib/intelligence/reformulation-detector'
+import { getServiceClient } from '@/lib/supabase'
 
 // Allow larger request bodies (compressed images) and longer execution time
 export const maxDuration = 60
@@ -233,11 +236,67 @@ export async function POST(request: NextRequest) {
       // Conflict detection is non-critical — don't fail the scan
     }
 
+    // Enrich scan results with personalized intelligence
+    let enrichment = null
+    try {
+      const ingredientNames = (analysis.ingredients as Array<{ name_en: string; name_inci: string }> || [])
+        .map(i => i.name_en || i.name_inci)
+      const brand = (analysis.brand as string) || ''
+
+      // Fetch user's skin type for community data filtering
+      const { data: userProfile } = await supabase
+        .from('ss_user_profiles')
+        .select('skin_type')
+        .eq('user_id', user.id)
+        .single()
+
+      enrichment = await enrichScanResult(
+        supabase,
+        user.id,
+        productMatch?.id || null,
+        brand,
+        ingredientNames,
+        userProfile?.skin_type || undefined
+      )
+    } catch {
+      // Enrichment is non-critical — don't fail the scan
+    }
+
+    // Detect reformulation if product matched and ingredients were extracted
+    let reformulation = null
+    try {
+      const ingredients = analysis.ingredients as Array<{ name_inci: string }> | undefined
+      if (productMatch?.id && ingredients?.length) {
+        const inciNames = ingredients.map((i) => i.name_inci)
+        const detection = await detectReformulation(supabase, productMatch.id, inciNames)
+        if (detection.changed) {
+          const serviceClient = getServiceClient()
+          const result = await recordReformulation(
+            serviceClient,
+            productMatch.id,
+            detection,
+            'scan_comparison'
+          )
+          reformulation = {
+            detected: true,
+            added: detection.added,
+            removed: detection.removed,
+            reordered: detection.reordered,
+            alerts_created: result.alertsCreated,
+          }
+        }
+      }
+    } catch {
+      // Reformulation detection is non-critical — don't fail the scan
+    }
+
     return NextResponse.json({
       success: true,
       analysis,
       product_match: productMatch,
       conflicts,
+      enrichment,
+      reformulation,
     })
   } catch (error) {
     return handleApiError(error)

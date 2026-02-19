@@ -1,6 +1,7 @@
 'use client'
 
 import { Search, SlidersHorizontal, X } from 'lucide-react'
+import IngredientPicker from '@/components/products/IngredientPicker'
 import type { ProductCategory } from '@/types/database'
 
 const CATEGORIES: { value: ProductCategory; label: string }[] = [
@@ -32,10 +33,18 @@ interface ProductFiltersProps {
   category: string
   sortBy: string
   showFilters: boolean
+  includeIngredients: string[]
+  excludeIngredients: string[]
+  fragranceFree: boolean
+  comedogenicMax: number | null
   onQueryChange: (query: string) => void
   onCategoryChange: (category: string) => void
   onSortChange: (sort: string) => void
   onToggleFilters: () => void
+  onIncludeIngredientsChange: (ingredients: string[]) => void
+  onExcludeIngredientsChange: (ingredients: string[]) => void
+  onFragranceFreeChange: (value: boolean) => void
+  onComedogenicMaxChange: (value: number | null) => void
 }
 
 export default function ProductFilters({
@@ -43,11 +52,21 @@ export default function ProductFilters({
   category,
   sortBy,
   showFilters,
+  includeIngredients,
+  excludeIngredients,
+  fragranceFree,
+  comedogenicMax,
   onQueryChange,
   onCategoryChange,
   onSortChange,
   onToggleFilters,
+  onIncludeIngredientsChange,
+  onExcludeIngredientsChange,
+  onFragranceFreeChange,
+  onComedogenicMaxChange,
 }: ProductFiltersProps) {
+  const hasIngredientFilters = includeIngredients.length > 0 || excludeIngredients.length > 0 || fragranceFree || comedogenicMax !== null
+
   return (
     <div className="flex flex-col gap-3">
       {/* Search bar */}
@@ -73,13 +92,16 @@ export default function ProductFilters({
         <button
           onClick={onToggleFilters}
           className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-            showFilters || category
+            showFilters || category || hasIngredientFilters
               ? 'bg-gold text-white'
               : 'glass-card text-white'
           }`}
         >
           <SlidersHorizontal className="w-4 h-4" />
           <span className="hidden sm:inline">Filters</span>
+          {hasIngredientFilters && (
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          )}
         </button>
       </div>
 
@@ -135,6 +157,18 @@ export default function ProductFilters({
               ))}
             </div>
           </div>
+
+          {/* Ingredient filters */}
+          <IngredientPicker
+            includeIngredients={includeIngredients}
+            excludeIngredients={excludeIngredients}
+            fragranceFree={fragranceFree}
+            comedogenicMax={comedogenicMax}
+            onIncludeChange={onIncludeIngredientsChange}
+            onExcludeChange={onExcludeIngredientsChange}
+            onFragranceFreeChange={onFragranceFreeChange}
+            onComedogenicMaxChange={onComedogenicMaxChange}
+          />
         </div>
       )}
     </div>

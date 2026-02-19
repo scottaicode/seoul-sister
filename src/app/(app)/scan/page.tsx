@@ -25,8 +25,8 @@ export default function ScanPage() {
       <div className="glass-card p-4">
         <p className="text-xs text-white/40 leading-relaxed">
           <strong className="text-white">How it works:</strong> Take a photo of any Korean product label.
-          Our AI reads the Korean text, extracts every ingredient, and gives you a complete safety analysis
-          with conflict warnings and skin-type recommendations.
+          Our AI reads the Korean text, extracts every ingredient, and gives you personalized intelligence
+          — safety analysis, skin-type match, price comparison, community reviews, and authenticity verification.
         </p>
       </div>
 

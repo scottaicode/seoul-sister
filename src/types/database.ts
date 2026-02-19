@@ -13,6 +13,12 @@ export interface SkinProfile {
   updated_at: string
 }
 
+export type PaRating = 'PA+' | 'PA++' | 'PA+++' | 'PA++++'
+export type SunscreenType = 'chemical' | 'physical' | 'hybrid'
+export type WhiteCast = 'none' | 'minimal' | 'moderate' | 'heavy'
+export type SunscreenFinish = 'matte' | 'dewy' | 'natural' | 'satin'
+export type SunscreenActivity = 'daily' | 'outdoor' | 'water_sports'
+
 export interface Product {
   id: string
   name_en: string
@@ -33,6 +39,18 @@ export interface Product {
   is_verified: boolean
   created_at: string
   updated_at: string
+  // Sunscreen-specific fields
+  spf_rating: number | null
+  pa_rating: PaRating | null
+  sunscreen_type: SunscreenType | null
+  white_cast: WhiteCast | null
+  finish: SunscreenFinish | null
+  under_makeup: boolean | null
+  water_resistant: boolean | null
+  suitable_for_activity: SunscreenActivity | null
+  // Reformulation tracking fields
+  current_formulation_version: number
+  last_reformulated_at: string | null
 }
 
 export type ProductCategory =
@@ -493,6 +511,76 @@ export interface OnboardingProgress {
   completed_at: string | null
   created_at: string
   updated_at: string
+}
+
+// =============================================================================
+// Feature 8.5: Expiration / PAO Tracking
+// =============================================================================
+
+export type TrackingStatus = 'active' | 'expired' | 'finished' | 'discarded'
+
+export interface UserProductTracking {
+  id: string
+  user_id: string
+  product_id: string | null
+  custom_product_name: string | null
+  opened_date: string
+  expiry_date: string | null
+  pao_months: number | null
+  purchase_date: string | null
+  manufacture_date: string | null
+  batch_code: string | null
+  notes: string | null
+  status: TrackingStatus
+  created_at: string
+  updated_at: string
+  product?: Product
+}
+
+// =============================================================================
+// Feature 8.6: Reformulation Tracker
+// =============================================================================
+
+export type ReformulationChangeType = 'reformulation' | 'packaging' | 'both' | 'minor_tweak'
+export type ReformulationDetectedBy = 'manual' | 'scan_comparison' | 'cron_job'
+
+export interface FormulationHistory {
+  id: string
+  product_id: string
+  version_number: number
+  change_date: string | null
+  change_type: ReformulationChangeType | null
+  ingredients_added: string[]
+  ingredients_removed: string[]
+  ingredients_reordered: boolean
+  change_summary: string | null
+  impact_assessment: string | null
+  detected_by: ReformulationDetectedBy
+  confirmed: boolean
+  created_at: string
+  updated_at: string
+  product?: Product
+}
+
+export interface ReformulationAlert {
+  id: string
+  user_id: string
+  product_id: string
+  formulation_history_id: string
+  seen: boolean
+  dismissed: boolean
+  created_at: string
+  product?: Product
+  formulation_history?: FormulationHistory
+}
+
+export interface ReformulationDetectionResult {
+  changed: boolean
+  added: string[]
+  removed: string[]
+  reordered: boolean
+  history?: FormulationHistory
+  alerts_created: number
 }
 
 export interface ExtractedSkinProfile {

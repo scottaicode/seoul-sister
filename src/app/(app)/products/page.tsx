@@ -19,6 +19,12 @@ export default function ProductsPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
 
+  // Ingredient filter state
+  const [includeIngredients, setIncludeIngredients] = useState<string[]>([])
+  const [excludeIngredients, setExcludeIngredients] = useState<string[]>([])
+  const [fragranceFree, setFragranceFree] = useState(false)
+  const [comedogenicMax, setComedogenicMax] = useState<number | null>(null)
+
   const fetchProducts = useCallback(async () => {
     setLoading(true)
     try {
@@ -28,6 +34,20 @@ export default function ProductsPage() {
       if (sortBy) params.set('sort_by', sortBy)
       params.set('page', String(page))
       params.set('limit', '20')
+
+      // Ingredient filters
+      if (includeIngredients.length > 0) {
+        params.set('include_ingredients', includeIngredients.join(','))
+      }
+      if (excludeIngredients.length > 0) {
+        params.set('exclude_ingredients', excludeIngredients.join(','))
+      }
+      if (fragranceFree) {
+        params.set('fragrance_free', 'true')
+      }
+      if (comedogenicMax !== null) {
+        params.set('comedogenic_max', String(comedogenicMax))
+      }
 
       const res = await fetch(`/api/products?${params}`)
       if (!res.ok) throw new Error('Failed to fetch products')
@@ -41,7 +61,7 @@ export default function ProductsPage() {
     } finally {
       setLoading(false)
     }
-  }, [query, category, sortBy, page])
+  }, [query, category, sortBy, page, includeIngredients, excludeIngredients, fragranceFree, comedogenicMax])
 
   useEffect(() => {
     const timeout = setTimeout(fetchProducts, query ? 300 : 0)
@@ -51,7 +71,9 @@ export default function ProductsPage() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1)
-  }, [query, category, sortBy])
+  }, [query, category, sortBy, includeIngredients, excludeIngredients, fragranceFree, comedogenicMax])
+
+  const hasIngredientFilters = includeIngredients.length > 0 || excludeIngredients.length > 0 || fragranceFree || comedogenicMax !== null
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
@@ -71,11 +93,46 @@ export default function ProductsPage() {
         category={category}
         sortBy={sortBy}
         showFilters={showFilters}
+        includeIngredients={includeIngredients}
+        excludeIngredients={excludeIngredients}
+        fragranceFree={fragranceFree}
+        comedogenicMax={comedogenicMax}
         onQueryChange={setQuery}
         onCategoryChange={setCategory}
         onSortChange={setSortBy}
         onToggleFilters={() => setShowFilters(!showFilters)}
+        onIncludeIngredientsChange={setIncludeIngredients}
+        onExcludeIngredientsChange={setExcludeIngredients}
+        onFragranceFreeChange={setFragranceFree}
+        onComedogenicMaxChange={setComedogenicMax}
       />
+
+      {/* Active ingredient filter summary (visible when filter panel is closed) */}
+      {!showFilters && hasIngredientFilters && (
+        <div className="flex flex-wrap gap-1.5 items-center">
+          <span className="text-[10px] text-white/30 mr-1">Filtering by:</span>
+          {includeIngredients.map(name => (
+            <span key={`inc-${name}`} className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300">
+              + {name}
+            </span>
+          ))}
+          {excludeIngredients.map(name => (
+            <span key={`exc-${name}`} className="px-2 py-0.5 rounded-full text-[10px] bg-rose-500/20 text-rose-300">
+              - {name}
+            </span>
+          ))}
+          {fragranceFree && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-rose-500/20 text-rose-300">
+              Fragrance-free
+            </span>
+          )}
+          {comedogenicMax !== null && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300">
+              Low comedogenic
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Product list */}
       {loading ? (
@@ -84,12 +141,14 @@ export default function ProductsPage() {
         </div>
       ) : products.length === 0 ? (
         <EmptyState
-          icon={query ? Search : Package}
-          title={query ? 'No results found' : 'No products yet'}
+          icon={query || hasIngredientFilters ? Search : Package}
+          title={query || hasIngredientFilters ? 'No results found' : 'No products yet'}
           description={
             query
               ? `No products matching "${query}". Try a different search term.`
-              : 'Products are being added to the database.'
+              : hasIngredientFilters
+                ? 'No products match your ingredient filters. Try adjusting your criteria.'
+                : 'Products are being added to the database.'
           }
         />
       ) : (

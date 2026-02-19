@@ -9,6 +9,7 @@ const navLinks = [
   { label: 'Dashboard', href: '/dashboard' },
   { label: 'Scan', href: '/scan' },
   { label: 'Products', href: '/products' },
+  { label: 'Sunscreen', href: '/sunscreen' },
   { label: 'Routine', href: '/routine' },
   { label: 'Yuri', href: '/yuri' },
   { label: 'Community', href: '/community' },

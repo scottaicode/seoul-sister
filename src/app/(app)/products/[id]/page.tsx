@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import {
   ArrowLeft,
   Star,
@@ -11,7 +12,12 @@ import {
   Heart,
   Share2,
   Camera,
+  Clock,
   Plus,
+  ShoppingBag,
+  MessageCircle,
+  Repeat2,
+  FlaskConical,
 } from 'lucide-react'
 import IngredientList from '@/components/products/IngredientList'
 import PriceComparison from '@/components/products/PriceComparison'
@@ -20,6 +26,18 @@ import ReviewForm, { type ReviewFormData } from '@/components/community/ReviewFo
 import ReviewFilters from '@/components/community/ReviewFilters'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import type { Product, Review } from '@/types/database'
+
+const ProductEnrichment = dynamic(() => import('@/components/products/ProductEnrichment'), {
+  loading: () => (
+    <div className="glass-card p-6 flex items-center justify-center">
+      <LoadingSpinner size="sm" />
+    </div>
+  ),
+})
+
+const FormulationHistory = dynamic(() => import('@/components/products/FormulationHistory'), {
+  loading: () => null,
+})
 
 const categoryLabels: Record<string, string> = {
   cleanser: 'Cleanser',
@@ -252,6 +270,12 @@ export default function ProductDetailPage() {
                 Verified
               </span>
             )}
+            {product.last_reformulated_at && (
+              <span className="flex items-center gap-1 text-xs text-amber-500">
+                <FlaskConical className="w-3.5 h-3.5" />
+                Reformulated {new Date(product.last_reformulated_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-3 justify-center sm:justify-start">
@@ -271,7 +295,43 @@ export default function ProductDetailPage() {
           </div>
 
           {/* Action buttons */}
-          <div className="flex items-center gap-2 justify-center sm:justify-start mt-1">
+          <div className="flex items-center gap-2 justify-center sm:justify-start mt-1 flex-wrap">
+            <button className="flex items-center gap-1.5 glass-button text-xs px-3 py-2">
+              <ShoppingBag className="w-3.5 h-3.5" /> Add to Routine
+            </button>
+            <Link
+              href={`/yuri?ask=${encodeURIComponent(`Tell me about ${product.name_en}`)}`}
+              className="flex items-center gap-1.5 glass-button text-xs px-3 py-2"
+            >
+              <MessageCircle className="w-3.5 h-3.5" /> Ask Yuri
+            </Link>
+            <Link
+              href={`/dupes?product_id=${product.id}`}
+              className="flex items-center gap-1.5 glass-button text-xs px-3 py-2"
+            >
+              <Repeat2 className="w-3.5 h-3.5" /> Find Dupes
+            </Link>
+            <button
+              onClick={async () => {
+                try {
+                  const { supabase } = await import('@/lib/supabase')
+                  const { data: { session } } = await supabase.auth.getSession()
+                  if (!session?.access_token) return
+                  await fetch('/api/tracking', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${session.access_token}`,
+                    },
+                    body: JSON.stringify({ product_id: product.id }),
+                  })
+                  alert('Product tracking started! View in Product Shelf Life.')
+                } catch { /* ignore */ }
+              }}
+              className="flex items-center gap-1.5 glass-button text-xs px-3 py-2"
+            >
+              <Clock className="w-3.5 h-3.5" /> Track Expiry
+            </button>
             <button className="flex items-center gap-1.5 glass-button text-xs px-3 py-2">
               <Heart className="w-3.5 h-3.5" /> Wishlist
             </button>
@@ -308,6 +368,12 @@ export default function ProductDetailPage() {
           )}
         </div>
       )}
+
+      {/* Personalized Enrichment Intelligence */}
+      <ProductEnrichment productId={id} />
+
+      {/* Formulation History */}
+      <FormulationHistory productId={id} />
 
       {/* Tab navigation */}
       <div className="flex gap-1 bg-seoul-pearl rounded-xl p-1">
