@@ -51,6 +51,8 @@ export interface Product {
   // Reformulation tracking fields
   current_formulation_version: number
   last_reformulated_at: string | null
+  // Raw ingredient string (Phase 9.2 — populated by pipeline extractor)
+  ingredients_raw: string | null
 }
 
 export type ProductCategory =
@@ -740,4 +742,41 @@ export interface ShelfScanCollectionAnalysis {
 export interface ShelfScanResult {
   products_identified: ShelfScanProduct[]
   collection_analysis: ShelfScanCollectionAnalysis
+}
+
+// =============================================================================
+// Phase 9.1: Product Pipeline Staging
+// =============================================================================
+
+export type PipelineSource = 'olive_young' | 'yesstyle' | 'soko_glam' | 'amazon' | 'stylekorean'
+export type StagingStatus = 'pending' | 'processing' | 'processed' | 'failed' | 'duplicate'
+export type PipelineRunType = 'full_scrape' | 'incremental' | 'reprocess' | 'quality_check'
+export type PipelineRunStatus = 'running' | 'completed' | 'failed'
+
+export interface StagingRecord {
+  id: string
+  source: PipelineSource
+  source_id: string
+  source_url: string | null
+  raw_data: Record<string, unknown>
+  status: StagingStatus
+  processed_product_id: string | null
+  error_message: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface PipelineRun {
+  id: string
+  source: string
+  run_type: PipelineRunType
+  status: PipelineRunStatus
+  products_scraped: number
+  products_processed: number
+  products_failed: number
+  products_duplicates: number
+  estimated_cost_usd: number | null
+  metadata: Record<string, unknown>
+  started_at: string
+  completed_at: string | null
 }
