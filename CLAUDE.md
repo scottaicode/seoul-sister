@@ -779,7 +779,7 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 - [x] Mobile scan reliability (client-side image compression, 60s timeouts, Safari "Load failed" fix)
 - [x] ScanResults component extraction (LabelScanner refactored from 480 to 252 lines)
 - [ ] Push notifications (FUTURE -- requires service worker push events, web-push library, subscription management)
-- [ ] Remaining cron jobs (FUTURE -- scan-korean-products, translate-and-index, scan-counterfeits, community-digest, generate-content -- require external data source integrations)
+- [ ] Remaining cron jobs — scan-korean-products and translate-and-index planned in Phase 9 (Automated Product Pipeline). scan-counterfeits, community-digest, generate-content still FUTURE
 
 ## Phase 8: Value Enrichment Features (11 Features)
 
@@ -1691,6 +1691,638 @@ Rationale: Start with 8.1 (quick win, shared components used by later features),
 
 ---
 
+## Phase 9: Automated Product Intelligence Pipeline (10,000 Products)
+
+**Strategic Rationale**: Seoul Sister's product database is the core moat. At 626 manually-seeded products, the database demonstrates the concept but lacks the depth needed for real user value. Hwahae has 187,000+ products. We need 10,000+ to be credible as "the" K-beauty intelligence platform. Manual seeding via Claude Code sessions costs $3,000-5,000 and doesn't scale. An automated pipeline using Sonnet for extraction costs ~$200-400 total and maintains itself going forward.
+
+**Current State**:
+- 626 products across 82 brands and 14 categories
+- All seeded manually via SQL migration files
+- No automated data ingestion exists
+- 5 cron jobs defined in vercel.json but none handle product discovery/import
+- `ss_products` table has full schema including ingredients, prices, PAO, sunscreen fields
+- `ss_product_ingredients` links exist for ~130 products (from original seed)
+- `ss_ingredients` has 30 master ingredient records
+
+**Target**: 10,000+ products with ingredients, prices, and descriptions — achieved via automated pipeline that continues growing the database after initial import.
+
+**Build Strategy**: Same as Phase 8 — each feature below is self-contained with full context for a fresh Claude Code session. Build in order (9.1 first, each builds on the previous).
+
+**Cost Estimate**: ~$200-400 in Sonnet API costs for initial 10K import, then ~$25-50/month ongoing maintenance.
+
+---
+
+### Feature 9.1: Olive Young Global Scraper (Tier 1 — Foundation)
+
+**Strategic Rationale**: Olive Young is Korea's largest health & beauty retailer (1,300+ stores, dominant online platform). Their global English site (global.oliveyoung.com) has 8,000-12,000 K-beauty products with structured data: English names, Korean names, prices (KRW), categories, ingredient lists, images, ratings, and reviews. This is the single best data source for building the product database.
+
+#### Data Source Analysis
+
+**Primary: Olive Young Global** (global.oliveyoung.com)
+- Product listings with pagination by category
+- Each product page contains: English name, Korean name, brand, category, price (KRW + USD), full ingredient list (INCI), description, images, rating, review count, volume/size
+- Categories map well to our 14 categories
+- Estimated 8,000-12,000 unique K-beauty SKUs
+- No official API — requires HTML scraping
+
+**Secondary Sources** (Phase 9.4):
+- **YesStyle** (yesstyle.com/k-beauty): ~3,000 products, international pricing, good English descriptions
+- **Soko Glam** (sokoglam.com): ~300 curated products, expert descriptions, US pricing
+- **incidecoder.com**: Ingredient analysis data (INCI breakdowns, function, safety ratings)
+- **Hwahae API** (if accessible): Korean ratings, ingredient analysis, 187K products
+
+#### Implementation Plan
+
+**Step 1: Create Scraper Infrastructure**
+
+Create `src/lib/pipeline/scraper-base.ts`:
+- Base scraper class with: rate limiting (1 request/2 seconds), retry logic (3 retries with exponential backoff), user-agent rotation, error logging
+- `fetchPage(url)`: Fetch HTML with proper headers, handle 429/503 responses
+- `parseHTML(html)`: Return parsed DOM (use `cheerio` or `node-html-parser`)
+- Request queue with concurrency limit (max 3 parallel requests)
+- Progress tracking: log every 100 products scraped
+
+**Step 2: Create Olive Young Category Scraper**
+
+Create `src/lib/pipeline/sources/olive-young.ts`:
+- `scrapeCategories()`: Fetch the category tree from Olive Young Global
+  - Map Olive Young categories → Seoul Sister categories:
+    - Skincare > Cleanser → cleanser
+    - Skincare > Toner/Mist → toner (or mist based on subcategory)
+    - Skincare > Essence/Serum/Ampoule → essence, serum, or ampoule
+    - Skincare > Cream/Moisturizer → moisturizer
+    - Skincare > Eye Care → eye_care
+    - Skincare > Sun Care → sunscreen
+    - Skincare > Mask/Pack → mask
+    - Skincare > Exfoliator/Peeling → exfoliator
+    - Skincare > Oil → oil
+    - Skincare > Spot Treatment → spot_treatment
+    - Lip Care → lip_care
+- `scrapeProductList(categoryUrl, page)`: Extract product URLs from category listing pages
+  - Handle pagination (Olive Young uses page numbers or infinite scroll)
+  - Extract: product URL, name, brand, price, thumbnail
+  - Deduplicate within and across categories
+- `scrapeProductDetail(productUrl)`: Extract full product data from product page
+  - Return `RawProductData` interface:
+    ```typescript
+    interface RawProductData {
+      source: 'olive_young';
+      source_url: string;
+      source_id: string;        // Olive Young product ID
+      name_en: string;
+      name_ko: string | null;
+      brand_en: string;
+      brand_ko: string | null;
+      category_raw: string;     // Original Olive Young category
+      price_krw: number | null;
+      price_usd: number | null;
+      description_raw: string;
+      ingredients_raw: string;  // Full INCI list as string
+      image_url: string | null;
+      volume_display: string | null;
+      rating_avg: number | null;
+      review_count: number | null;
+      scraped_at: Date;
+    }
+    ```
+
+**Step 3: Create Raw Data Staging Table**
+
+Database migration `add_product_pipeline_staging`:
+```sql
+-- Staging table for raw scraped data (before AI processing)
+CREATE TABLE ss_product_staging (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  source TEXT NOT NULL,                    -- 'olive_young', 'yesstyle', 'soko_glam'
+  source_id TEXT NOT NULL,                 -- External product ID
+  source_url TEXT,
+  raw_data JSONB NOT NULL,                 -- Full RawProductData
+  status TEXT DEFAULT 'pending'
+    CHECK (status IN ('pending', 'processing', 'processed', 'failed', 'duplicate')),
+  processed_product_id UUID REFERENCES ss_products(id),  -- Link to created product
+  error_message TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(source, source_id)                -- Prevent duplicate scrapes
+);
+
+CREATE INDEX idx_staging_status ON ss_product_staging(status);
+CREATE INDEX idx_staging_source ON ss_product_staging(source, source_id);
+
+-- Track pipeline runs
+CREATE TABLE ss_pipeline_runs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  source TEXT NOT NULL,
+  run_type TEXT NOT NULL CHECK (run_type IN ('full_scrape', 'incremental', 'reprocess')),
+  status TEXT DEFAULT 'running' CHECK (status IN ('running', 'completed', 'failed')),
+  products_scraped INTEGER DEFAULT 0,
+  products_processed INTEGER DEFAULT 0,
+  products_failed INTEGER DEFAULT 0,
+  products_duplicates INTEGER DEFAULT 0,
+  started_at TIMESTAMPTZ DEFAULT NOW(),
+  completed_at TIMESTAMPTZ
+);
+```
+
+**Step 4: Create Scrape Orchestrator API**
+
+Create `src/app/api/admin/pipeline/scrape/route.ts`:
+```
+POST /api/admin/pipeline/scrape
+Authorization: Bearer <service-role-key>  -- Admin only
+Body: { source: 'olive_young', mode: 'full' | 'incremental', categories?: string[] }
+```
+- Kicks off a scraping run
+- Full mode: Scrape all categories from page 1
+- Incremental mode: Scrape only first 2-3 pages per category (catches new products)
+- Writes raw data to `ss_product_staging` with status='pending'
+- Returns pipeline_run_id for tracking
+- Protected by service role key (not user-accessible)
+
+**Step 5: Create Pipeline Status API**
+
+Create `src/app/api/admin/pipeline/status/route.ts`:
+```
+GET /api/admin/pipeline/status?run_id=<uuid>
+Response: { run: PipelineRun, staged_counts: { pending, processing, processed, failed, duplicate } }
+```
+
+#### Files to Create
+- `src/lib/pipeline/scraper-base.ts` (~150 lines)
+- `src/lib/pipeline/sources/olive-young.ts` (~300 lines)
+- `src/lib/pipeline/types.ts` (~60 lines)
+- `src/app/api/admin/pipeline/scrape/route.ts` (~100 lines)
+- `src/app/api/admin/pipeline/status/route.ts` (~50 lines)
+
+#### Dependencies to Add
+- `cheerio` or `node-html-parser` (HTML parsing)
+
+#### Database Changes
+- New table: `ss_product_staging`
+- New table: `ss_pipeline_runs`
+
+#### Environment Variables
+None new — uses existing Supabase service role key for admin auth.
+
+#### Estimated Complexity
+High. Web scraping with rate limiting, pagination, and error handling. HTML structure analysis of Olive Young Global required.
+
+#### Important Notes
+- Olive Young's HTML structure may change — build with selectors that are easy to update
+- Respect robots.txt and rate limits (1 req/2 sec minimum)
+- Run scraping during off-peak hours (Korean night time = US morning)
+- Store raw HTML in staging for reprocessing without re-scraping
+- The scraper should be idempotent — re-running with same source_id updates rather than duplicates
+
+---
+
+### Feature 9.2: Sonnet AI Extraction & Normalization (Tier 1 — Core Intelligence)
+
+**Strategic Rationale**: Raw scraped data needs AI processing to become useful product records. Sonnet 4.5 normalizes messy HTML descriptions into clean English, categorizes products into our schema, extracts volume/size, and generates Seoul Sister-quality descriptions — all at $3/$15 per million tokens instead of Opus's $15/$75.
+
+#### Current State
+- `ss_product_staging` table holds raw scraped data (from 9.1)
+- Products need: category normalization, description generation, volume extraction, PAO estimation, Korean name verification, subcategory assignment
+
+#### Implementation Plan
+
+**Step 1: Create Sonnet Extraction Module**
+
+Create `src/lib/pipeline/extractor.ts`:
+- `extractProductData(rawData: RawProductData): Promise<ProcessedProductData>`
+- Uses Claude Sonnet 4.5 with a structured extraction prompt
+- System prompt (~300 words):
+  ```
+  You are a K-beauty product data specialist. Given raw product data scraped from
+  a Korean beauty retailer, extract and normalize the following fields into a
+  structured JSON response.
+
+  Rules:
+  - category: Must be one of: cleanser, toner, essence, serum, ampoule, moisturizer,
+    sunscreen, mask, exfoliator, lip_care, eye_care, oil, mist, spot_treatment
+  - subcategory: A 2-3 word descriptor (e.g., "foam cleanser", "sleeping mask",
+    "vitamin c serum", "cleansing oil", "sheet mask", "gel moisturizer")
+  - description_en: Write a 1-2 sentence product description in the Seoul Sister voice.
+    Focus on key active ingredients, what the product does, and who it's for.
+    Keep it factual and concise. Do NOT use marketing superlatives.
+  - volume_ml: Extract numeric volume in milliliters. Convert from oz if needed.
+    For pads/sheets, use total product weight if available, otherwise NULL.
+  - pao_months: Estimate Period After Opening. Serums/ampoules=6, moisturizers=12,
+    cleansers=12, sunscreens=6, masks=6, toners=12, lip products=12, eye care=6
+  - shelf_life_months: Unopened shelf life. Most K-beauty = 24-36 months.
+  - For sunscreens: Extract spf_rating, pa_rating, sunscreen_type, white_cast,
+    finish, under_makeup, water_resistant from description/ingredients
+  - Korean name (name_ko): Keep as-is if present. If only English available, leave null.
+  - rating_avg: Pass through if present from source. Round to 1 decimal.
+  - review_count: Pass through if present from source.
+
+  Return ONLY valid JSON matching the ProcessedProductData schema.
+  ```
+
+- `ProcessedProductData` interface:
+  ```typescript
+  interface ProcessedProductData {
+    name_en: string;
+    name_ko: string | null;
+    brand_en: string;
+    brand_ko: string | null;
+    category: ProductCategory;
+    subcategory: string | null;
+    description_en: string;
+    volume_ml: number | null;
+    volume_display: string | null;
+    price_krw: number | null;
+    price_usd: number | null;
+    rating_avg: number | null;
+    review_count: number | null;
+    pao_months: number | null;
+    shelf_life_months: number | null;
+    image_url: string | null;
+    is_verified: boolean;
+    // Sunscreen-specific (null for non-sunscreens)
+    spf_rating: number | null;
+    pa_rating: string | null;
+    sunscreen_type: string | null;
+    white_cast: string | null;
+    finish: string | null;
+    under_makeup: boolean | null;
+    water_resistant: boolean | null;
+  }
+  ```
+
+**Step 2: Create Batch Processing Module**
+
+Create `src/lib/pipeline/batch-processor.ts`:
+- `processBatch(batchSize: number = 20)`: Process pending staged products
+  - Fetch `batchSize` rows from `ss_product_staging` WHERE status='pending'
+  - Mark them as status='processing'
+  - For each: call `extractProductData()` via Sonnet
+  - Dedup check: `SELECT id FROM ss_products WHERE name_en ILIKE $1 AND brand_en ILIKE $2`
+  - If duplicate: Mark staging row as status='duplicate', skip
+  - If new: INSERT into `ss_products`, mark staging as status='processed', link via processed_product_id
+  - If error: Mark as status='failed' with error_message
+  - Batch Sonnet calls with concurrency limit (5 parallel) to manage API rate limits
+  - Update `ss_pipeline_runs` counts after each batch
+- `reprocessFailed()`: Re-attempt failed extractions
+
+**Step 3: Create Processing API**
+
+Create `src/app/api/admin/pipeline/process/route.ts`:
+```
+POST /api/admin/pipeline/process
+Authorization: Bearer <service-role-key>
+Body: { batch_size?: number, run_id?: string }
+Response: { processed: number, failed: number, duplicates: number, remaining: number }
+```
+- Processes one batch of pending staged products
+- Can be called repeatedly (by cron or manually) until all pending are processed
+- Returns counts for monitoring
+
+**Step 4: Token Cost Tracking**
+
+Add to `src/lib/pipeline/cost-tracker.ts`:
+- Track input_tokens and output_tokens per extraction call
+- Accumulate per pipeline run
+- Log cost estimates based on Sonnet pricing ($3/$15 per M tokens)
+- Store in `ss_pipeline_runs` as `estimated_cost_usd`
+
+#### Files to Create
+- `src/lib/pipeline/extractor.ts` (~200 lines)
+- `src/lib/pipeline/batch-processor.ts` (~200 lines)
+- `src/lib/pipeline/cost-tracker.ts` (~50 lines)
+- `src/app/api/admin/pipeline/process/route.ts` (~80 lines)
+
+#### Database Changes
+- Alter `ss_pipeline_runs`: Add `estimated_cost_usd DECIMAL(10,4)`
+
+#### Estimated Complexity
+Medium. Sonnet prompt engineering + batch processing logic. The extraction prompt is the key piece.
+
+#### Cost Estimate for 10K Products
+- Average tokens per product: ~500 input + ~300 output (raw data in, structured JSON out)
+- 10,000 products: 5M input + 3M output tokens
+- Sonnet cost: (5 × $3) + (3 × $15) = $15 + $45 = **~$60 for extraction alone**
+- With retries and overhead: **~$80-100 total**
+
+---
+
+### Feature 9.3: Ingredient Auto-Linking Pipeline (Tier 1 — Data Completeness)
+
+**Strategic Rationale**: Products without ingredient links are second-class citizens in Seoul Sister. The scan enrichment pipeline, dupe finder, conflict detector, and ingredient search all depend on `ss_product_ingredients` links. Currently only 130 links exist (for original seed products). With 10K products, we need automated ingredient parsing and linking.
+
+#### Current State
+- `ss_ingredients`: 30 master records with name_inci, name_en, function, safety_rating, comedogenic_rating, is_active, is_fragrance
+- `ss_product_ingredients`: 130 links (position, concentration_pct)
+- Raw ingredient lists (INCI strings) are available from scraped product data
+- No automated parsing exists
+
+#### Implementation Plan
+
+**Step 1: Create Ingredient Parser**
+
+Create `src/lib/pipeline/ingredient-parser.ts`:
+- `parseInciString(inciString: string): ParsedIngredient[]`
+  - Split INCI string by commas (handling parenthetical sub-ingredients)
+  - Clean each ingredient name: trim whitespace, normalize casing
+  - Return ordered array with position (INCI order = concentration order)
+  - Handle common patterns: "Water (Aqua)", "Fragrance (Parfum)", CI numbers
+- `ParsedIngredient`: `{ name_inci: string, position: number }`
+
+**Step 2: Create Ingredient Matching Module**
+
+Create `src/lib/pipeline/ingredient-matcher.ts`:
+- `matchOrCreateIngredient(nameInci: string, supabase): Promise<UUID>`
+  - Exact match: `SELECT id FROM ss_ingredients WHERE name_inci ILIKE $1`
+  - Fuzzy match: Handle common variations (e.g., "Sodium Hyaluronate" vs "Hyaluronic Acid")
+  - If no match found: Create new ingredient with Sonnet-generated metadata:
+    - Call Sonnet with: "For the cosmetic ingredient '{name_inci}', provide: name_en (plain English name), function (primary skin function in 3-5 words), is_active (boolean — is this an active ingredient or a filler/preservative/solvent?), is_fragrance (boolean), safety_rating ('safe', 'generally_safe', 'caution', or 'avoid'), comedogenic_rating (0-5 scale)"
+    - INSERT into `ss_ingredients` and return new ID
+- Cache matched ingredients in memory during batch runs to avoid repeated lookups
+
+**Step 3: Create Ingredient Linking Pipeline**
+
+Create `src/lib/pipeline/ingredient-linker.ts`:
+- `linkProductIngredients(productId: UUID, inciString: string, supabase)`
+  - Parse INCI string → array of ingredient names with positions
+  - For each ingredient: matchOrCreate → get ingredient_id
+  - Batch INSERT into `ss_product_ingredients` (product_id, ingredient_id, position)
+  - Skip if product already has ingredient links
+- `linkBatch(batchSize: number = 50)`: Process products without ingredient links
+  - `SELECT id, raw_inci FROM ss_products WHERE id NOT IN (SELECT DISTINCT product_id FROM ss_product_ingredients) LIMIT $1`
+  - Note: `raw_inci` needs to be stored — either in ss_products or retrieved from staging
+
+**Step 4: Store Raw INCI on Products**
+
+Database migration: `ALTER TABLE ss_products ADD COLUMN ingredients_raw TEXT;`
+- Populated during the extraction step (9.2)
+- Used by the ingredient linker to parse and link
+
+**Step 5: Create Linking API**
+
+Create `src/app/api/admin/pipeline/link-ingredients/route.ts`:
+```
+POST /api/admin/pipeline/link-ingredients
+Authorization: Bearer <service-role-key>
+Body: { batch_size?: number }
+Response: { products_linked: number, ingredients_created: number, ingredients_matched: number }
+```
+
+#### Files to Create
+- `src/lib/pipeline/ingredient-parser.ts` (~80 lines)
+- `src/lib/pipeline/ingredient-matcher.ts` (~120 lines)
+- `src/lib/pipeline/ingredient-linker.ts` (~100 lines)
+- `src/app/api/admin/pipeline/link-ingredients/route.ts` (~60 lines)
+
+#### Database Changes
+- Alter `ss_products`: Add `ingredients_raw TEXT`
+- Alter `ss_ingredients`: May grow from 30 to 2,000-5,000 unique ingredients
+
+#### Estimated Complexity
+Medium-high. INCI parsing has edge cases. Ingredient matching/dedup requires careful fuzzy matching.
+
+#### Cost Estimate
+- New ingredient enrichment via Sonnet: ~100 tokens per ingredient × ~3,000 new ingredients = 300K tokens
+- Cost: < $5 total
+- The bulk of ingredients (~80%) will be common across products and cached after first match
+
+---
+
+### Feature 9.4: Multi-Retailer Price Integration (Tier 2 — Price Intelligence)
+
+**Strategic Rationale**: Price comparison is a core Seoul Sister feature. With 10K products, we need automated price tracking across multiple retailers. Currently `ss_product_prices` has 35 manual records. This feature scrapes prices from 6+ retailers and keeps them updated.
+
+#### Implementation Plan
+
+**Step 1: Add Retailer Scrapers**
+
+Create `src/lib/pipeline/sources/yesstyle.ts`:
+- Product search by name/brand → extract USD price, availability, URL
+- Structured data is more accessible than Olive Young
+
+Create `src/lib/pipeline/sources/soko-glam.ts`:
+- Curated catalog (~300 products) — scrape all, match to our database
+- High-quality editorial descriptions (bonus data)
+
+Create `src/lib/pipeline/sources/amazon.ts`:
+- Search Amazon for K-beauty products by name + brand
+- Extract price, Prime eligibility, seller rating
+- Flag marketplace sellers vs authorized retailers
+
+Create `src/lib/pipeline/sources/stylekorean.ts`:
+- Korean retail prices, international shipping
+- Good for KRW reference pricing
+
+**Step 2: Create Price Matching Module**
+
+Create `src/lib/pipeline/price-matcher.ts`:
+- `matchProductToRetailer(product: Product, retailer: string)`: Search retailer for matching product
+- Fuzzy name matching (product names vary across retailers)
+- Confidence scoring: exact match > brand+name > brand+category
+- Store match in `ss_product_prices` with retailer_id, price, currency, URL, last_checked
+
+**Step 3: Create Price Refresh Cron**
+
+Update `src/app/api/cron/refresh-prices/route.ts`:
+- Currently exists but likely a stub
+- Replace with: iterate products with stale prices (>24h old), refresh from all matched retailers
+- Batch processing: 100 products per cron run (Vercel cron has 60s timeout)
+- Priority: refresh trending products and recently-viewed products first
+- Store historical prices in `ss_price_history` for price trend analysis
+
+**Step 4: Create Price Pipeline API**
+
+Create `src/app/api/admin/pipeline/prices/route.ts`:
+```
+POST /api/admin/pipeline/prices
+Authorization: Bearer <service-role-key>
+Body: { retailer: string, batch_size?: number }
+Response: { matched: number, updated: number, new_prices: number }
+```
+
+#### Files to Create
+- `src/lib/pipeline/sources/yesstyle.ts` (~200 lines)
+- `src/lib/pipeline/sources/soko-glam.ts` (~150 lines)
+- `src/lib/pipeline/sources/amazon.ts` (~200 lines)
+- `src/lib/pipeline/sources/stylekorean.ts` (~150 lines)
+- `src/lib/pipeline/price-matcher.ts` (~120 lines)
+- `src/app/api/admin/pipeline/prices/route.ts` (~80 lines)
+
+#### Files to Modify
+- `src/app/api/cron/refresh-prices/route.ts` — Replace stub with real implementation
+
+#### Database Changes
+None — uses existing `ss_product_prices`, `ss_retailers`, `ss_price_history` tables.
+
+#### Estimated Complexity
+High. Multiple retailer HTML structures, fuzzy product matching across naming conventions.
+
+---
+
+### Feature 9.5: Daily Automation Cron Jobs (Tier 2 — Self-Maintaining Pipeline)
+
+**Strategic Rationale**: After the initial 10K import, the pipeline needs to run daily to catch new products, update prices, and detect changes. This feature creates the cron jobs that make the database self-maintaining.
+
+#### Implementation Plan
+
+**Step 1: Create scan-korean-products Cron**
+
+Create `src/app/api/cron/scan-korean-products/route.ts`:
+- Runs daily at 6 AM UTC
+- Incremental scrape: first 2-3 pages per Olive Young category (catches new arrivals)
+- Writes to `ss_product_staging` with status='pending'
+- Skips products already in staging (UNIQUE constraint on source+source_id)
+- Logs run in `ss_pipeline_runs`
+
+**Step 2: Create translate-and-index Cron**
+
+Create `src/app/api/cron/translate-and-index/route.ts`:
+- Runs daily at 7 AM UTC (after scan-korean-products)
+- Processes up to 100 pending staged products per run
+- Calls the batch processor from 9.2
+- Links ingredients from 9.3
+- Updates `ss_pipeline_runs` with counts
+
+**Step 3: Create data-quality Cron**
+
+Create `src/app/api/cron/data-quality/route.ts`:
+- Runs weekly (Sunday 4 AM UTC)
+- Checks for: products without descriptions, products without ingredient links, products with stale prices (>7 days), duplicate detection, missing Korean names
+- Generates a quality report stored in `ss_pipeline_runs` with run_type='quality_check'
+- Marks products needing attention
+
+**Step 4: Update vercel.json**
+
+Add new cron schedules:
+```json
+{
+  "path": "/api/cron/scan-korean-products",
+  "schedule": "0 6 * * *"
+},
+{
+  "path": "/api/cron/translate-and-index",
+  "schedule": "0 7 * * *"
+},
+{
+  "path": "/api/cron/data-quality",
+  "schedule": "0 4 * * 0"
+}
+```
+
+**Step 5: Create Admin Dashboard Page**
+
+Create `src/app/(app)/admin/pipeline/page.tsx`:
+- Protected admin page (check user role or email whitelist)
+- Pipeline run history with status, counts, costs
+- Staged product counts by status (pending, processing, processed, failed, duplicate)
+- Manual trigger buttons: "Run Full Scrape", "Process Batch", "Link Ingredients", "Refresh Prices"
+- Product database stats: total products, products with ingredients, products with prices, by category, by brand
+
+#### Files to Create
+- `src/app/api/cron/scan-korean-products/route.ts` (~80 lines)
+- `src/app/api/cron/translate-and-index/route.ts` (~80 lines)
+- `src/app/api/cron/data-quality/route.ts` (~100 lines)
+- `src/app/(app)/admin/pipeline/page.tsx` (~250 lines)
+
+#### Files to Modify
+- `vercel.json` — Add 3 new cron entries
+
+#### Database Changes
+None — uses tables from 9.1.
+
+#### Estimated Complexity
+Medium. Individual crons are simple; the admin dashboard is the largest piece.
+
+---
+
+### Feature 9.6: Initial 10K Import Execution (Tier 1 — One-Time Run)
+
+**Strategic Rationale**: This is not code — it's the operational execution plan for running the pipeline to reach 10,000 products. After features 9.1-9.3 are built, this describes how to actually run the import.
+
+#### Execution Plan
+
+**Step 1: Run Full Olive Young Scrape**
+```
+POST /api/admin/pipeline/scrape
+Body: { source: "olive_young", mode: "full" }
+```
+- Expected: 8,000-12,000 raw products scraped into `ss_product_staging`
+- Duration: ~4-6 hours at 1 req/2 sec rate limit
+- Can be run in segments by category if needed (to avoid timeout issues)
+- Monitor via status API
+
+**Step 2: Process Staged Products (Batch)**
+```
+POST /api/admin/pipeline/process
+Body: { batch_size: 50 }
+```
+- Call repeatedly until all pending products are processed
+- ~200 batches of 50 = 10,000 products
+- Each batch takes ~30-60 seconds (Sonnet API calls)
+- Total: ~3-5 hours of processing
+- Monitor for failures, reprocess failed batch
+
+**Step 3: Link Ingredients**
+```
+POST /api/admin/pipeline/link-ingredients
+Body: { batch_size: 100 }
+```
+- Call repeatedly until all products have ingredient links
+- Will create ~2,000-5,000 new ingredient records in `ss_ingredients`
+- Total: ~2-3 hours
+
+**Step 4: Verify and Quality Check**
+- Run data-quality cron manually
+- Check: category distribution, brand coverage, products without ingredients
+- Spot-check: Random sample of 50 products for accuracy
+- Fix any systematic extraction errors by adjusting Sonnet prompt and reprocessing
+
+**Step 5: Dedup Against Existing 626 Products**
+- The batch processor (9.2) handles dedup automatically via name+brand matching
+- After import, run: `SELECT name_en, brand_en, COUNT(*) FROM ss_products GROUP BY name_en, brand_en HAVING COUNT(*) > 1`
+- Resolve any remaining duplicates
+
+#### Expected Results After Import
+| Metric | Target |
+|--------|--------|
+| Total products | 10,000+ |
+| Total brands | 200+ |
+| Categories covered | All 14 |
+| Products with ingredient links | 90%+ |
+| Products with prices | 60%+ (Olive Young pricing minimum) |
+| Products with Korean names | 80%+ |
+| Products with ratings | 70%+ |
+| Master ingredients | 3,000-5,000 |
+
+#### Cost Breakdown
+| Component | Estimated Cost |
+|-----------|---------------|
+| Scraping (compute/bandwidth) | ~$0 (Vercel functions) |
+| Sonnet extraction (10K products) | ~$60-80 |
+| Sonnet ingredient enrichment (~3K new) | ~$5 |
+| Sonnet description generation | Included in extraction |
+| Total one-time import cost | **~$65-85** |
+
+---
+
+### Feature Implementation Priority Summary
+
+| # | Feature | Tier | Complexity | Key Deliverable |
+|---|---------|------|-----------|----------------|
+| 9.1 | Olive Young Scraper | 1 | High | Raw product data pipeline |
+| 9.2 | Sonnet Extraction | 1 | Medium | AI-processed product records |
+| 9.3 | Ingredient Auto-Linking | 1 | Med-High | Automated ingredient database |
+| 9.4 | Multi-Retailer Prices | 2 | High | Cross-retailer price comparison |
+| 9.5 | Daily Automation | 2 | Medium | Self-maintaining database |
+| 9.6 | Initial Import Execution | 1 | Low (operational) | 10,000+ products in production |
+
+**Build Order**: 9.1 → 9.2 → 9.3 → 9.6 (run import) → 9.4 → 9.5
+
+Rationale: Build scraper (9.1), then extraction (9.2), then ingredient linking (9.3), then actually run the import (9.6) to get to 10K. After that, add multi-retailer prices (9.4) and daily automation (9.5) to make it self-maintaining.
+
+**Session Strategy**: Features 9.1 + 9.2 can potentially be built in one session since 9.2 depends on 9.1's types. Feature 9.3 is standalone. Feature 9.6 is operational (just running API calls). Features 9.4 and 9.5 are each their own session.
+
+---
+
 ## Competitive Landscape
 
 ### Why Seoul Sister Wins
@@ -1773,8 +2405,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 3.10.0 (Feature 8.11 Shelf Scan — Collection Analysis)
-**Status**: Phases 1-7 + 3B Complete, Production Live, Phase 8 (11 Features) Complete
+**Version**: 4.0.0 (Phase 9 Automated Product Pipeline — Blueprint)
+**Status**: Phases 1-7 + 3B + 8 Complete, Production Live, Phase 9 (Automated Product Pipeline) Planned
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -1790,6 +2422,23 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v4.0.0 (Feb 19, 2026): Phase 9 Blueprint + Product Database Expansion to 626
+  - **Phase 9: Automated Product Intelligence Pipeline** — Full blueprint for 6 features (9.1-9.6) written to CLAUDE.md with implementation plans, database schemas, API signatures, Sonnet prompt designs, cost estimates, and build order
+    - 9.1: Olive Young Global Scraper (foundation infrastructure, `ss_product_staging` + `ss_pipeline_runs` tables)
+    - 9.2: Sonnet AI Extraction & Normalization (batch processing, cost tracking, ~$60-80 for 10K products)
+    - 9.3: Ingredient Auto-Linking Pipeline (INCI parsing, fuzzy matching, auto-create new ingredients)
+    - 9.4: Multi-Retailer Price Integration (YesStyle, Soko Glam, Amazon, StyleKorean scrapers)
+    - 9.5: Daily Automation Cron Jobs (scan-korean-products, translate-and-index, data-quality + admin dashboard)
+    - 9.6: Initial 10K Import Execution (operational runbook)
+    - Build order: 9.1 → 9.2 → 9.3 → 9.6 (run import) → 9.4 → 9.5
+    - Total estimated cost for 10K products: ~$65-85 one-time, ~$25-50/month ongoing
+  - **Product database expanded**: 151 → 626 unique products across 82 brands, 14 categories
+    - Migration files 005-011: 500 new products from 12 parallel research agents covering 60+ brands
+    - Migration file 012: Backfill of 30 file-005 products missing subcategory/rating_avg/review_count/shelf_life_months
+    - Migration file 013: Dedup cleanup (removed 25 duplicate rows, backfilled 21 original seed products with NULL ratings)
+    - Final verified state: 626 products, 82 brands, 14 categories, 569 with ratings
+  - **Migration files created**: `20260219000005` through `20260219000013` (9 files total)
+  - **Remaining Work updated**: scan-korean-products and translate-and-index crons now reference Phase 9
 - v3.10.0 (Feb 19, 2026): Feature 8.11 Shelf Scan — Collection Analysis
   - **API** (`app/api/shelf-scan/route.ts`): POST endpoint accepts base64 shelf/collection photo, sends to Claude Opus 4.6 Vision with multi-product identification prompt. 60s timeout (`maxDuration = 60`). Identifies every visible product with name, brand, category, confidence score, and position in image. Generates collection analysis: estimated total value, ingredient overlap warnings, missing categories, redundant products, routine grade (A-F) with rationale, and actionable recommendations. Matches identified products against `ss_products` database (fuzzy ilike search). Refines estimated value using real `ss_product_prices` data where products are matched. Auth-required via `requireAuth()`. Response includes products_count and matched_count for DB coverage stats.
   - **CollectionGrid component** (`components/shelf-scan/CollectionGrid.tsx`): Renders identified products as indexed cards with brand, name, category pill, confidence score with color-coded label (High/Medium/Low), position in image, and database match status ("In DB" with link to product detail page vs "Unknown" badge)
