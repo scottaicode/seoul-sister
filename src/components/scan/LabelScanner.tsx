@@ -87,6 +87,36 @@ function SafetyScoreRing({ score }: { score: number }) {
   )
 }
 
+/**
+ * Compress an image data URL to JPEG at a target max dimension and quality.
+ * Returns a compressed base64 data URL suitable for API upload.
+ */
+function compressImage(dataUrl: string, maxDimension = 1500, quality = 0.8): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      let { width, height } = img
+      if (width > maxDimension || height > maxDimension) {
+        const ratio = Math.min(maxDimension / width, maxDimension / height)
+        width = Math.round(width * ratio)
+        height = Math.round(height * ratio)
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('Canvas context unavailable'))
+        return
+      }
+      ctx.drawImage(img, 0, 0, width, height)
+      resolve(canvas.toDataURL('image/jpeg', quality))
+    }
+    img.onerror = () => reject(new Error('Failed to load image for compression'))
+    img.src = dataUrl
+  })
+}
+
 export default function LabelScanner() {
   const [image, setImage] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
@@ -107,11 +137,18 @@ export default function LabelScanner() {
     }
 
     const reader = new FileReader()
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string
-      setImage(dataUrl)
-      setResult(null)
-      setError(null)
+    reader.onload = async (e) => {
+      const rawDataUrl = e.target?.result as string
+      try {
+        // Compress to max 1500px, JPEG 80% — keeps detail for text reading
+        // while staying well under Vercel's 4.5MB body limit
+        const compressed = await compressImage(rawDataUrl, 1500, 0.8)
+        setImage(compressed)
+        setResult(null)
+        setError(null)
+      } catch {
+        setError('Failed to process image. Please try another photo.')
+      }
     }
     reader.readAsDataURL(file)
   }, [])
@@ -124,6 +161,10 @@ export default function LabelScanner() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
+
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 60000) // 60s client timeout
+
       const res = await fetch('/api/scan', {
         method: 'POST',
         headers: {
@@ -131,17 +172,30 @@ export default function LabelScanner() {
           ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` }),
         },
         body: JSON.stringify({ image }),
+        signal: controller.signal,
       })
 
+      clearTimeout(timeout)
+
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || 'Scan failed')
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.error || `Scan failed (${res.status})`)
       }
 
       const data = await res.json()
       setResult(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to scan label')
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          setError('Scan timed out. Please try again with a clearer photo.')
+        } else if (err.message === 'Load failed' || err.message === 'Failed to fetch') {
+          setError('Connection lost during scan. Please check your network and try again.')
+        } else {
+          setError(err.message)
+        }
+      } else {
+        setError('Failed to scan label. Please try again.')
+      }
     } finally {
       setScanning(false)
     }

@@ -4,6 +4,10 @@ import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { requireAuth } from '@/lib/auth'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 
+// Allow larger request bodies (compressed images) and longer execution time
+export const maxDuration = 60
+export const runtime = 'nodejs'
+
 const SCAN_SYSTEM_PROMPT = `You are Yuri's Korean Label Decoder specialist. You analyze Korean beauty product labels photographed by users.
 
 Your task:

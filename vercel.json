@@ -1,4 +1,15 @@
 {
+  "functions": {
+    "src/app/api/scan/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/scan/counterfeit/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/yuri/route.ts": {
+      "maxDuration": 60
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/scan-trends",
