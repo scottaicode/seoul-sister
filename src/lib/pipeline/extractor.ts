@@ -65,7 +65,7 @@ export async function extractProductData(
 
   const response = await client.messages.create({
     model: MODELS.background,
-    max_tokens: 2048,
+    max_tokens: 4096,
     system: EXTRACTION_SYSTEM_PROMPT,
     messages: [
       { role: 'user', content: buildUserPrompt(raw) },
