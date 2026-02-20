@@ -11,6 +11,13 @@ const scrapeSchema = z.object({
   categories: z.array(z.string()).optional(),
   max_pages_per_category: z.number().int().min(1).max(50).optional(),
   delay_ms: z.number().int().min(500).max(10000).optional(),
+  skip_details: z.boolean().optional(),
+})
+
+const enrichSchema = z.object({
+  source: z.enum(['olive_young']),
+  batch_size: z.number().int().min(1).max(200).optional(),
+  concurrency: z.number().int().min(1).max(8).optional(),
 })
 
 function verifyAdminAuth(request: NextRequest): void {
@@ -34,11 +41,9 @@ function verifyAdminAuth(request: NextRequest): void {
  *   mode: 'full' | 'incremental',
  *   categories?: string[],
  *   max_pages_per_category?: number,
- *   delay_ms?: number
+ *   delay_ms?: number,
+ *   skip_details?: boolean   // Fast listing-only mode
  * }
- *
- * Returns the pipeline_run_id immediately, then continues scraping
- * in the background. Use GET /api/admin/pipeline/status to monitor.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -60,6 +65,7 @@ export async function POST(request: NextRequest) {
           categories: params.categories ?? 'all',
           max_pages: params.max_pages_per_category,
           delay_ms: params.delay_ms,
+          skip_details: params.skip_details ?? false,
         },
       })
       .select()
@@ -69,8 +75,6 @@ export async function POST(request: NextRequest) {
       throw new AppError('Failed to create pipeline run', 500)
     }
 
-    // Run scrape (this runs synchronously within the request for now;
-    // for production, consider moving to a background job or edge function)
     const scraper = new OliveYoungScraper({
       delayMs: params.delay_ms,
     })
@@ -80,6 +84,7 @@ export async function POST(request: NextRequest) {
         mode: params.mode,
         categories: params.categories,
         maxPagesPerCategory: params.max_pages_per_category,
+        skipDetails: params.skip_details,
       })
 
       // Mark run as completed
@@ -129,6 +134,42 @@ export async function POST(request: NextRequest) {
         500
       )
     }
+  } catch (error) {
+    return handleApiError(error)
+  }
+}
+
+/**
+ * PUT /api/admin/pipeline/scrape
+ *
+ * Enrich staged products with detail page data (ingredients, description, volume).
+ * Call after a skip_details scrape to fill in missing data.
+ *
+ * Body: {
+ *   source: 'olive_young',
+ *   batch_size?: number (default 50),
+ *   concurrency?: number (default 4)
+ * }
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    verifyAdminAuth(request)
+
+    const body = await request.json()
+    const params = enrichSchema.parse(body)
+
+    const scraper = new OliveYoungScraper()
+    const supabase = getServiceClient()
+
+    const result = await scraper.enrichDetails(supabase, {
+      batchSize: params.batch_size,
+      concurrency: params.concurrency,
+    })
+
+    return NextResponse.json({
+      success: true,
+      ...result,
+    })
   } catch (error) {
     return handleApiError(error)
   }

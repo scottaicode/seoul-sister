@@ -65,7 +65,7 @@ export async function extractProductData(
 
   const response = await client.messages.create({
     model: MODELS.background,
-    max_tokens: 1024,
+    max_tokens: 2048,
     system: EXTRACTION_SYSTEM_PROMPT,
     messages: [
       { role: 'user', content: buildUserPrompt(raw) },
@@ -81,12 +81,24 @@ export async function extractProductData(
   try {
     parsed = JSON.parse(textBlock.text)
   } catch {
-    // Try extracting JSON from potential markdown fencing
-    const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      throw new Error(`Failed to parse Sonnet response as JSON: ${textBlock.text.slice(0, 200)}`)
+    // Strip markdown code fences if present (```json ... ```)
+    let cleaned = textBlock.text.trim()
+    if (cleaned.startsWith('```')) {
+      // Remove opening fence (```json or ```)
+      cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '')
+      // Remove closing fence
+      cleaned = cleaned.replace(/\n?```\s*$/, '')
     }
-    parsed = JSON.parse(jsonMatch[0])
+    try {
+      parsed = JSON.parse(cleaned)
+    } catch {
+      // Last resort: extract the outermost JSON object
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        throw new Error(`Failed to parse Sonnet response as JSON: ${textBlock.text.slice(0, 200)}`)
+      }
+      parsed = JSON.parse(jsonMatch[0])
+    }
   }
 
   const data = normalizeExtraction(parsed, raw)

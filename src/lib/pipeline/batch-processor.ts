@@ -44,11 +44,12 @@ export async function processBatch(
   let failed = 0
   let duplicates = 0
 
-  // 1. Fetch pending staged rows
+  // 1. Fetch pending staged rows (only enriched ones with ingredients data)
   const { data: rows, error: fetchError } = await supabase
     .from('ss_product_staging')
     .select('*')
     .eq('status', 'pending')
+    .not('raw_data->>ingredients_raw', 'is', null)
     .order('created_at', { ascending: true })
     .limit(batchSize)
 
@@ -221,7 +222,7 @@ async function insertProduct(
       price_krw: data.price_krw,
       price_usd: data.price_usd,
       rating_avg: data.rating_avg,
-      review_count: data.review_count ?? 0,
+      review_count: data.review_count != null ? Math.round(data.review_count) : 0,
       pao_months: data.pao_months,
       shelf_life_months: data.shelf_life_months,
       image_url: data.image_url,
@@ -266,6 +267,7 @@ async function countPending(supabase: SupabaseClient): Promise<number> {
     .from('ss_product_staging')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'pending')
+    .not('raw_data->>ingredients_raw', 'is', null)
 
   return count ?? 0
 }
