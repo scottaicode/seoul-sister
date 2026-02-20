@@ -2405,8 +2405,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 4.0.0 (Phase 9 Automated Product Pipeline — Blueprint)
-**Status**: Phases 1-7 + 3B + 8 Complete, Production Live, Phase 9 (Automated Product Pipeline) Planned
+**Version**: 5.0.0 (Phase 9.1-9.3 + 9.6 — Automated Pipeline Built & Executed)
+**Status**: Phases 1-8 + 3B Complete, Phase 9.1-9.3 + 9.6 Complete (3,607 products), Phase 9.4-9.5 Remaining
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -2422,6 +2422,41 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v5.0.0 (Feb 20, 2026): Phase 9.1-9.3 + 9.6 — Automated Pipeline Built & Executed
+  - **Phase 9.1: Olive Young Global Scraper** — Built and executed
+    - `src/lib/pipeline/scraper-base.ts`: Base scraper with rate limiting (1 req/2s), retry logic, user-agent rotation
+    - `src/lib/pipeline/sources/olive-young.ts`: Full category scraping + product detail extraction from global.oliveyoung.com
+    - `src/lib/pipeline/types.ts`: RawProductData, ProcessedProductData, PipelineRun interfaces
+    - `src/app/api/admin/pipeline/scrape/route.ts`: Admin endpoint for triggering scrape runs
+    - `src/app/api/admin/pipeline/status/route.ts`: Pipeline monitoring endpoint
+    - Database: `ss_product_staging` + `ss_pipeline_runs` tables created via Supabase MCP
+    - **Results**: 5,656 product listings scraped across all Olive Young categories
+  - **Phase 9.2: Sonnet AI Extraction & Normalization** — Built and executed
+    - `src/lib/pipeline/extractor.ts`: Sonnet 4.5 structured extraction (category, description, volume, PAO, sunscreen fields)
+    - `src/lib/pipeline/batch-processor.ts`: Batch processing with concurrency control, dedup, cost tracking
+    - `src/lib/pipeline/cost-tracker.ts`: Token usage and cost estimation per pipeline run
+    - `src/app/api/admin/pipeline/process/route.ts`: Admin endpoint for batch processing
+    - `scripts/run-import.ts`: CLI orchestrator for all pipeline stages (`--listings-only`, `--enrich`, `--process`, `--link`)
+    - **Results**: 3,615 products extracted, 372 brands, $32.04 total Sonnet cost
+  - **Phase 9.3: Ingredient Auto-Linking Pipeline** — Built and executed
+    - `src/lib/pipeline/ingredient-parser.ts`: INCI string parsing with parenthetical handling
+    - `src/lib/pipeline/ingredient-matcher.ts`: Fuzzy matching with KNOWN_ALIASES map, IngredientCache, Sonnet enrichment for new ingredients
+    - `src/lib/pipeline/ingredient-linker.ts`: Batch linking orchestrator with progress tracking
+    - `src/app/api/admin/pipeline/link-ingredients/route.ts`: Admin endpoint for ingredient linking
+    - Database: `ingredients_raw` column added to `ss_products`
+    - **Results**: 2,993 products linked, 7,117 unique ingredients, 113,937 links, $2.37 Sonnet cost
+    - **Bug fixes during execution**: Pagination query bug in findUnlinkedProducts, JSON parse error in ingredient-matcher (uncaught Sonnet response parse failure)
+  - **Phase 9.6: Import Execution & Data Quality** — Completed
+    - Brand normalization: 94 products fixed across 37 brand mappings (e.g., "MISSHA"→"Missha", "Dr. G"→"Dr.G")
+    - Ingredient deduplication: 215 duplicate ingredients merged, 305 product-ingredient links moved to canonical records
+    - Product deduplication: 8 case-insensitive duplicate products removed (with staging FK cleanup)
+    - **Final verified database state**: 3,607 products, 7,117 ingredients (0 duplicates), 113,937 links, 305 brands, 14 categories
+    - Ingredient metadata: 98.9% with functions, 100% with English names, avg safety 4.03/5
+    - Avg 38.2 ingredient links per product (median 36, max 230)
+    - Total pipeline cost: $34.41 (Sonnet extraction $32.04 + ingredient linking $2.37)
+  - **Pipeline staging**: 2,130 pending rows remaining (scraped but not yet processed through Sonnet extraction)
+  - **Remaining Phase 9 work**: 9.4 (Multi-Retailer Price Integration), 9.5 (Daily Automation Cron Jobs), processing remaining 2,130 pending staging rows
+  - **Key pipeline files**: `scripts/run-import.ts` is the CLI entry point. Usage: `npx tsx --tsconfig tsconfig.json scripts/run-import.ts --enrich` (Sonnet extraction), `--link` (ingredient linking), `--listings-only` (scrape only), `--process` (extract+link combined)
 - v4.0.0 (Feb 19, 2026): Phase 9 Blueprint + Product Database Expansion to 626
   - **Phase 9: Automated Product Intelligence Pipeline** — Full blueprint for 6 features (9.1-9.6) written to CLAUDE.md with implementation plans, database schemas, API signatures, Sonnet prompt designs, cost estimates, and build order
     - 9.1: Olive Young Global Scraper (foundation infrastructure, `ss_product_staging` + `ss_pipeline_runs` tables)
