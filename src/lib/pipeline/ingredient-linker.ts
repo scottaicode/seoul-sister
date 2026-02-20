@@ -199,71 +199,91 @@ export async function linkSingleProduct(
 
 /**
  * Find products that have ingredients_raw but no ss_product_ingredients rows.
+ *
+ * Strategy: First fetch ALL distinct linked product_ids (small set — grows to ~3K max),
+ * then fetch unlinked products excluding those IDs. This avoids the previous bug where
+ * a small over-fetch window (limit*2) would return only already-linked products once
+ * the earliest products by created_at were all linked.
  */
 async function findUnlinkedProducts(
   supabase: SupabaseClient,
   limit: number
 ): Promise<Array<{ id: string; ingredients_raw: string }>> {
-  // Use a raw query via RPC or a subquery approach:
-  // Select products WHERE ingredients_raw IS NOT NULL
-  // AND id NOT IN (SELECT DISTINCT product_id FROM ss_product_ingredients)
-  //
-  // Supabase JS doesn't support NOT IN subqueries directly,
-  // so we fetch products with ingredients_raw, then filter out those with links.
+  // Step 1: Get all linked product IDs (distinct, paginated to handle large sets)
+  const linkedSet = await getAllLinkedProductIds(supabase)
 
-  // First get products with ingredients_raw
-  const { data: candidates, error } = await supabase
-    .from('ss_products')
-    .select('id, ingredients_raw')
-    .not('ingredients_raw', 'is', null)
-    .order('created_at', { ascending: true })
-    .limit(limit * 2) // Over-fetch since some may already have links
+  // Step 2: Fetch products with ingredients_raw, paginating past linked ones
+  // We need to fetch enough candidates to find `limit` unlinked ones
+  const pageSize = 200
+  let offset = 0
+  const results: Array<{ id: string; ingredients_raw: string }> = []
 
-  if (error) throw new Error(`Failed to fetch unlinked products: ${error.message}`)
-  if (!candidates || candidates.length === 0) return []
+  while (results.length < limit) {
+    const { data: candidates, error } = await supabase
+      .from('ss_products')
+      .select('id, ingredients_raw')
+      .not('ingredients_raw', 'is', null)
+      .order('created_at', { ascending: true })
+      .range(offset, offset + pageSize - 1)
 
-  // Check which of these already have ingredient links
-  const candidateIds = candidates.map((p) => p.id as string)
-  const { data: linkedIds, error: linkedError } = await supabase
-    .from('ss_product_ingredients')
-    .select('product_id')
-    .in('product_id', candidateIds)
+    if (error) throw new Error(`Failed to fetch products: ${error.message}`)
+    if (!candidates || candidates.length === 0) break
 
-  if (linkedError) throw new Error(`Failed to check linked products: ${linkedError.message}`)
+    for (const p of candidates) {
+      if (!linkedSet.has(p.id) && p.ingredients_raw) {
+        results.push({ id: p.id as string, ingredients_raw: p.ingredients_raw as string })
+        if (results.length >= limit) break
+      }
+    }
 
-  const linkedSet = new Set((linkedIds ?? []).map((r) => r.product_id as string))
+    offset += pageSize
+    // Safety: don't loop forever if all products are linked
+    if (offset > 10000) break
+  }
 
-  return candidates
-    .filter((p) => !linkedSet.has(p.id) && p.ingredients_raw)
-    .slice(0, limit)
-    .map((p) => ({
-      id: p.id as string,
-      ingredients_raw: p.ingredients_raw as string,
-    }))
+  return results
+}
+
+/**
+ * Get all distinct product IDs that already have ingredient links.
+ * Paginates through ss_product_ingredients to handle large sets.
+ */
+async function getAllLinkedProductIds(supabase: SupabaseClient): Promise<Set<string>> {
+  const linkedSet = new Set<string>()
+  let offset = 0
+  const pageSize = 1000
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('ss_product_ingredients')
+      .select('product_id')
+      .range(offset, offset + pageSize - 1)
+
+    if (error || !data || data.length === 0) break
+
+    for (const row of data) {
+      linkedSet.add(row.product_id as string)
+    }
+
+    if (data.length < pageSize) break
+    offset += pageSize
+  }
+
+  return linkedSet
 }
 
 /**
  * Count products that still need ingredient linking.
- * Uses the same two-step approach as findUnlinkedProducts for accuracy.
  */
 async function countUnlinked(supabase: SupabaseClient): Promise<number> {
-  // Get IDs of all products with ingredients_raw
-  const { data: withRaw, error: rawError } = await supabase
+  const linkedSet = await getAllLinkedProductIds(supabase)
+
+  const { count, error } = await supabase
     .from('ss_products')
-    .select('id')
+    .select('*', { count: 'exact', head: true })
     .not('ingredients_raw', 'is', null)
 
-  if (rawError || !withRaw) return 0
+  if (error || count === null) return 0
 
-  if (withRaw.length === 0) return 0
-
-  // Check which have links already
-  const ids = withRaw.map((p) => p.id as string)
-  const { data: linked } = await supabase
-    .from('ss_product_ingredients')
-    .select('product_id')
-    .in('product_id', ids)
-
-  const linkedSet = new Set((linked ?? []).map((r) => r.product_id as string))
-  return ids.filter((id) => !linkedSet.has(id)).length
+  return count - linkedSet.size
 }

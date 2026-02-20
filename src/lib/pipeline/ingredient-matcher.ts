@@ -211,13 +211,24 @@ async function createIngredient(
 
   let parsed: Record<string, unknown>
   try {
-    parsed = JSON.parse(textBlock.text)
+    // Strip markdown code fences if present
+    let text = textBlock.text.trim()
+    if (text.startsWith('```')) {
+      text = text.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '')
+    }
+    parsed = JSON.parse(text)
   } catch {
+    // Try extracting JSON object via regex
     const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
       return insertMinimalIngredient(supabase, nameInci)
     }
-    parsed = JSON.parse(jsonMatch[0])
+    try {
+      parsed = JSON.parse(jsonMatch[0])
+    } catch {
+      // Both parse attempts failed — use minimal fallback
+      return insertMinimalIngredient(supabase, nameInci)
+    }
   }
 
   const safetyRating = typeof parsed.safety_rating === 'number'
