@@ -63,7 +63,7 @@ const steps = [
 const stats = [
   { value: '6,200+', label: 'Products Tracked' },
   { value: '590+', label: 'K-Beauty Brands' },
-  { value: '10,300+', label: 'Ingredients Decoded' },
+  { value: '14,400+', label: 'Ingredients Decoded' },
   { value: '6', label: 'AI Specialists' },
 ]
 
@@ -178,7 +178,7 @@ export default function LandingPage() {
               <span className="text-gradient">Powered by AI</span>
             </motion.h1>
             <motion.p variants={fadeUp} className="text-white/50 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
-              6,200+ products. 10,300+ ingredients decoded. 6 AI specialist agents. From label scanning to routine building — every decision backed by real intelligence.
+              6,200+ products. 14,400+ ingredients decoded. 6 AI specialist agents. From label scanning to routine building — every decision backed by real intelligence.
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/register" className="glass-button-primary text-base py-3 px-8">

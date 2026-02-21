@@ -1714,12 +1714,12 @@ Rationale: Start with 8.1 (quick win, shared components used by later features),
 
 **Current State** (Post-Pipeline):
 - 6,222 products across 593 brands and 14 categories
-- 11,700+ ingredients with 189,000+ product-ingredient links (76% of products linked)
+- 14,400+ ingredients with 221,000+ product-ingredient links (89% of products linked)
 - Automated pipeline built and executed (Phases 9.1-9.3 + 9.6, plus additional enrichment + linking passes)
 - `ss_product_staging` tracks all scraped products with status (4,895 processed, 760 duplicate, 0 pending)
 - `ss_products` table has full schema including ingredients, prices, PAO, sunscreen fields
-- `ss_product_ingredients` links exist for 4,740+ products (avg 39.9 links per product)
-- `ss_ingredients` has 11,700+ master ingredient records with Sonnet-enriched metadata
+- `ss_product_ingredients` links exist for 5,550+ products (avg 39.9 links per product)
+- `ss_ingredients` has 14,400+ master ingredient records with Sonnet-enriched metadata
 - 5,509 products have `ingredients_raw` data; remaining 713 are listing-only (no ingredient data from source)
 
 **Target**: 10,000+ products with ingredients, prices, and descriptions — achieved via automated pipeline that continues growing the database after initial import.
@@ -2423,8 +2423,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 5.8.2 (Database Stats Sync — 14,200+ Ingredients, 219,000+ Links, 88% Linked)
-**Status**: All Phases Complete (1-9). 6,200+ products, 14,200+ ingredients, 219,000+ links, 590+ brands, 5,500+ products with ingredient links (88%), 52 price records across 6 retailers. 9 cron jobs configured. Admin dashboard live with pipeline alerting. Yuri knows all features.
+**Version**: 5.8.3 (Database Stats Sync — 14,400+ Ingredients, 221,000+ Links, 89% Linked)
+**Status**: All Phases Complete (1-9). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 9 cron jobs configured. Admin dashboard live with pipeline alerting. Yuri knows all features.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -2440,6 +2440,10 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v5.8.3 (Feb 21, 2026): Database Stats Sync — 14,400+ Ingredients, 221,000+ Links, 89% Linked
+  - **fast-link.ts re-run**: Linked 4,050 additional products (all cache hits, $0 Sonnet cost, ~6 min at 10.9/s). Products with ingredient links: 5,552 (89.2%), up from 1,458 pre-run
+  - **Stats synced across all user-facing files**: `page.tsx` (homepage hero + stats grid), `llms.txt`, `advisor.ts` (Yuri system prompt), `specialists.ts` (Trend Scout), `CLAUDE.md`
+  - **Previous stats → New stats**: Ingredients 14,200+ → 14,400+, links 219,000+ → 221,000+, linked products 5,500+ (88%) → 5,550+ (89%)
 - v5.8.2 (Feb 21, 2026): Database Stats Sync — 14,200+ Ingredients, 219,000+ Links, 88% Linked
   - **Ingredient linking pipeline completed**: fast-link.ts processed 4,250 products, creating new ingredient records and links via Sonnet enrichment. Database now at 6,200+ products, 14,200+ ingredients, 219,000+ ingredient links, 590+ brands with 88% of products fully ingredient-linked (up from 76%)
   - **Stats synced across all user-facing files**: Updated `public/llms.txt` (AI discoverability), `src/lib/yuri/advisor.ts` (Yuri's system prompt — "AI + database intelligence" and "Can't find a product" sections), `src/lib/yuri/specialists.ts` (Trend Scout's products page reference)
