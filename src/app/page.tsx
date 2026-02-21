@@ -4,9 +4,11 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Camera, Layers, ShieldCheck, Search, Sparkles, Users,
-  ScanLine, Brain, ListOrdered, Check, Star, ArrowRight,
-  Menu, X
+  Camera, ShieldCheck, Search, Sparkles, Users,
+  ScanLine, Brain, ListOrdered, Star, ArrowRight,
+  Menu, X, FlaskConical, Sun, Timer, CloudSun,
+  Activity, BookOpen, Heart, Beaker, DollarSign, TrendingUp,
+  Filter, Package
 } from 'lucide-react'
 import PricingCards from '@/components/pricing/PricingCards'
 import TryYuriSection from '@/components/widget/TryYuriSection'
@@ -22,26 +24,61 @@ const stagger = {
   show: { transition: { staggerChildren: 0.1 } },
 }
 
-const features = [
-  { icon: Camera, title: 'Korean Label Decoder', desc: 'Point your camera at any Korean label for instant ingredient translation and safety scoring.', badge: 'badge-gold' },
-  { icon: Sparkles, title: 'AI Beauty Advisor', desc: 'Yuri — your personal AI beauty advisor backed by 6 specialist agents and your full skin profile.', badge: 'badge-blue' },
-  { icon: Users, title: 'Community Reviews', desc: 'Reviews filtered by skin type, Fitzpatrick scale, age, and concern — not just star ratings.', badge: 'badge-gold' },
-  { icon: ShieldCheck, title: 'Counterfeit Detection', desc: 'Spot fakes before you buy with AI-powered packaging analysis and crowdsourced signals.', badge: 'badge-blue' },
-  { icon: Search, title: 'Price Comparison', desc: 'Compare prices across Korea and US retailers — know exactly what you should be paying.', badge: 'badge-gold' },
-  { icon: Layers, title: 'Trend Discovery', desc: 'What\'s trending in Seoul right now? From PDRN serums to centella — stay ahead.', badge: 'badge-blue' },
+const coreFeatures = [
+  { icon: Camera, title: 'Korean Label Decoder', desc: 'Point your camera at any Korean label for instant ingredient translation, safety scoring, and personalized skin match.' },
+  { icon: Sparkles, title: 'AI Beauty Advisor', desc: 'Yuri — your personal AI advisor backed by 6 specialist agents, cross-session memory, and your full skin profile.' },
+  { icon: ListOrdered, title: 'Smart Routine Builder', desc: 'AI-generated routines with ingredient conflict detection, layering order, wait times, and skin cycling schedules.' },
+  { icon: ShieldCheck, title: 'Counterfeit Detection', desc: 'Spot fakes before you buy with AI-powered packaging analysis, batch code verification, and crowdsourced signals.' },
+  { icon: Search, title: 'Price Comparison', desc: 'Compare prices across Korea and US retailers — YesStyle, Soko Glam, Olive Young, Amazon, and more.' },
+  { icon: Users, title: 'Community Reviews', desc: 'Reviews filtered by skin type, Fitzpatrick scale, age, and concern — not just star ratings.' },
+]
+
+const advancedFeatures = [
+  { icon: FlaskConical, title: 'Glass Skin Score', desc: 'AI photo analysis scores your skin across 5 dimensions. Track progress over time and share your results.', badge: 'Viral' },
+  { icon: DollarSign, title: 'K-Beauty Dupe Finder', desc: 'Find $12 alternatives to $94 products. Ingredient-level matching shows exactly where the overlap is.', badge: 'Popular' },
+  { icon: Sun, title: 'Sunscreen Finder', desc: 'Filter by PA rating, white cast, finish, under-makeup compatibility — every detail K-beauty sunscreen lovers need.', badge: 'High Intent' },
+  { icon: Package, title: 'Shelf Scan', desc: 'Photograph your entire collection. Get a routine grade, redundancy alerts, gap analysis, and estimated value.', badge: 'Unique' },
+  { icon: Filter, title: 'Ingredient Filters', desc: 'Search 5,500+ products by ingredients you want and ingredients you avoid. Fragrance-free and low-comedogenic shortcuts built in.', badge: 'Power User' },
+  { icon: Timer, title: 'Expiration Tracking', desc: 'Track when you opened each product. Get alerts before they expire. No more guessing if that serum is still good.', badge: 'Unique' },
+  { icon: CloudSun, title: 'Weather-Adaptive Alerts', desc: 'Real-time weather data adjusts your routine. High humidity? Skip the oil. UV spike? Reapply sunscreen reminder.', badge: 'Proactive' },
+  { icon: Activity, title: 'Cycle-Aware Routine', desc: 'Opt-in hormonal cycle tracking adjusts your skincare by phase. Luteal breakouts get BHA, not just moisturizer.', badge: 'Unique' },
 ]
 
 const steps = [
-  { icon: ScanLine, step: '01', title: 'Scan or Search', desc: 'Camera scan a Korean label or search 10,000+ products.' },
-  { icon: Brain, step: '02', title: 'Get AI Intelligence', desc: 'Yuri and her specialist agents decode ingredients, flag conflicts, and check authenticity.' },
-  { icon: ListOrdered, step: '03', title: 'Build Your Routine', desc: 'Add to your personalized routine with layering order, timing, and skin cycling schedule.' },
+  { icon: ScanLine, step: '01', title: 'Scan or Search', desc: 'Camera scan a Korean label or search 5,500+ products across 450+ brands.' },
+  { icon: Brain, step: '02', title: 'Get AI Intelligence', desc: 'Yuri and 6 specialist agents decode ingredients, flag conflicts, check authenticity, and compare prices.' },
+  { icon: ListOrdered, step: '03', title: 'Build Your Routine', desc: 'Add to your personalized routine with conflict detection, layering order, wait times, and skin cycling.' },
+  { icon: Heart, step: '04', title: 'Track and Improve', desc: 'Monitor your Glass Skin Score, track product expiry, get weather alerts, and discover dupes.' },
 ]
 
 const stats = [
-  { value: '10,000+', label: 'Products Tracked' },
-  { value: '30+', label: 'K-Beauty Brands' },
+  { value: '5,500+', label: 'Products Tracked' },
+  { value: '450+', label: 'K-Beauty Brands' },
+  { value: '9,200+', label: 'Ingredients Decoded' },
   { value: '6', label: 'AI Specialists' },
-  { value: '55+', label: 'Ingredients Decoded' },
+]
+
+const testimonials = [
+  {
+    quote: 'Yuri caught a retinol-AHA conflict in my routine I\'d been ignoring for months. My skin barrier has never been better.',
+    name: 'Maya K.',
+    skin: 'Combination skin, Fitzpatrick III',
+  },
+  {
+    quote: 'I saved $40 on my Sulwhasoo by finding the same key ingredients in a $12 alternative. Budget Optimizer is unreal.',
+    name: 'Lily C.',
+    skin: 'Dry skin, Fitzpatrick II',
+  },
+  {
+    quote: 'My Glass Skin Score went from 54 to 73 in two months. Seeing the radar chart improve keeps me consistent with my routine.',
+    name: 'Jenna T.',
+    skin: 'Normal skin, Fitzpatrick IV',
+  },
+  {
+    quote: 'The sunscreen finder finally helped me find a PA++++ with zero white cast that works under makeup. Game changer for daily wear.',
+    name: 'Priya S.',
+    skin: 'Oily skin, Fitzpatrick V',
+  },
 ]
 
 const navLinks = [
@@ -132,14 +169,14 @@ export default function LandingPage() {
               <span className="text-gradient">Powered by AI</span>
             </motion.h1>
             <motion.p variants={fadeUp} className="text-white/50 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
-              Your AI-powered guide to Korean skincare — personalized routines, real ingredients, verified products.
+              5,500+ products. 9,200+ ingredients decoded. 6 AI specialist agents. From label scanning to routine building — every decision backed by real intelligence.
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/register" className="glass-button-primary text-base py-3 px-8">
                 Get Started
               </Link>
               <Link href="#features" className="dark-button-outline text-base py-3 px-8">
-                See How It Works
+                See All Features
               </Link>
             </motion.div>
           </motion.div>
@@ -185,12 +222,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features */}
+      {/* Core Intelligence Features */}
       <section id="features" className="py-20 px-4 bg-seoul-darker">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="section-heading mb-3">Six Reasons K-Beauty Lovers Stay</h2>
-            <p className="section-subheading mx-auto">From label to routine to community — intelligence at every step.</p>
+            <span className="badge-gold mb-3 inline-block">Core Intelligence</span>
+            <h2 className="section-heading mb-3">The Foundation of Smarter Skincare</h2>
+            <p className="section-subheading mx-auto">Six AI-powered pillars — from label to routine to community.</p>
           </div>
           <motion.div
             variants={stagger}
@@ -199,34 +237,68 @@ export default function LandingPage() {
             viewport={{ once: true, margin: '-80px' }}
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
           >
-            {features.map(({ icon: Icon, title, desc, badge }) => (
+            {coreFeatures.map(({ icon: Icon, title, desc }) => (
               <motion.div key={title} variants={fadeUp} className="dark-card p-6 hover:border-gold/20 transition-all duration-300">
                 <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center mb-4">
                   <Icon className="w-5 h-5 text-gold" />
                 </div>
                 <h3 className="font-display font-semibold text-base text-white mb-2">{title}</h3>
                 <p className="text-white/40 text-sm leading-relaxed">{desc}</p>
-                <span className={`${badge} mt-4 inline-block`}>AI-powered</span>
               </motion.div>
             ))}
           </motion.div>
         </div>
       </section>
 
-      {/* Try Yuri - Layer 2 (after features, before How It Works per CLAUDE.md) */}
+      {/* Advanced Features — What Makes Seoul Sister Different */}
+      <section className="py-20 px-4 bg-seoul-dark">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <span className="badge-gold mb-3 inline-block">Beyond the Basics</span>
+            <h2 className="section-heading mb-3">Features No Other K-Beauty App Has</h2>
+            <p className="section-subheading mx-auto">Built for the ingredient-obsessed, the budget-conscious, and the routine-perfectionists.</p>
+          </div>
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-80px' }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+          >
+            {advancedFeatures.map(({ icon: Icon, title, desc, badge }) => (
+              <motion.div
+                key={title}
+                variants={fadeUp}
+                className="dark-card p-5 hover:border-gold/20 transition-all duration-300 group"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center">
+                    <Icon className="w-4 h-4 text-gold" />
+                  </div>
+                  <span className="text-[10px] font-medium text-gold/60 bg-gold/5 px-2 py-0.5 rounded-full border border-gold/10">{badge}</span>
+                </div>
+                <h3 className="font-display font-semibold text-sm text-white mb-1.5">{title}</h3>
+                <p className="text-white/40 text-xs leading-relaxed">{desc}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Try Yuri - Layer 2 */}
       <TryYuriSection />
 
       {/* How It Works */}
       <section className="py-20 px-4 bg-seoul-dark">
-        <div className="max-w-4xl mx-auto text-center">
+        <div className="max-w-5xl mx-auto text-center">
           <h2 className="section-heading mb-3">How It Works</h2>
-          <p className="section-subheading mx-auto mb-12">Three steps from curiosity to confident skin.</p>
+          <p className="section-subheading mx-auto mb-12">Four steps from curiosity to confident skin.</p>
           <motion.div
             variants={stagger}
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, margin: '-60px' }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8"
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8"
           >
             {steps.map(({ icon: Icon, step, title, desc }) => (
               <motion.div key={step} variants={fadeUp} className="flex flex-col items-center text-center">
@@ -235,6 +307,49 @@ export default function LandingPage() {
                     <Icon className="w-7 h-7 text-gold" />
                   </div>
                   <span className="absolute -top-2 -right-2 text-xs font-bold text-seoul-dark bg-gold rounded-full w-6 h-6 flex items-center justify-center">{step}</span>
+                </div>
+                <h3 className="font-display font-semibold text-white mb-2">{title}</h3>
+                <p className="text-white/40 text-sm leading-relaxed">{desc}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* What Sets Us Apart */}
+      <section className="py-20 px-4 bg-seoul-darker">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="section-heading mb-3">Why Seoul Sister Exists</h2>
+            <p className="section-subheading mx-auto">Korean consumers have Hwahae — 187,000 products, 5.7M reviews, ingredient-level intelligence. English speakers have nothing. Until now.</p>
+          </div>
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-60px' }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-5"
+          >
+            {[
+              {
+                icon: Beaker,
+                title: 'Ingredient-Level Intelligence',
+                desc: '9,200+ ingredients decoded with safety ratings, comedogenic scores, and function explanations. Every product analyzed down to the INCI list.',
+              },
+              {
+                icon: BookOpen,
+                title: 'Learning Engine',
+                desc: 'Every scan, review, and routine adjustment teaches the system. Recommendations improve as the community grows — a dataset no competitor can replicate.',
+              },
+              {
+                icon: TrendingUp,
+                title: 'Real-Time Korean Trends',
+                desc: 'Track what\'s trending in Seoul before it hits the US market. TikTok, Reddit, Instagram, and Korean market signals — all in one feed.',
+              },
+            ].map(({ icon: Icon, title, desc }) => (
+              <motion.div key={title} variants={fadeUp} className="dark-card p-6 text-center">
+                <div className="w-12 h-12 rounded-2xl bg-gold/10 flex items-center justify-center mx-auto mb-4">
+                  <Icon className="w-6 h-6 text-gold" />
                 </div>
                 <h3 className="font-display font-semibold text-white mb-2">{title}</h3>
                 <p className="text-white/40 text-sm leading-relaxed">{desc}</p>
@@ -276,18 +391,7 @@ export default function LandingPage() {
             viewport={{ once: true, margin: '-40px' }}
             className="grid grid-cols-1 md:grid-cols-2 gap-5"
           >
-            {[
-              {
-                quote: 'Yuri caught a retinol-AHA conflict in my routine I\'d been ignoring for months. My skin barrier has never been better.',
-                name: 'Maya K.',
-                skin: 'Combination skin, Fitzpatrick III',
-              },
-              {
-                quote: 'I saved $40 on my Sulwhasoo by finding the same key ingredients in a $12 alternative. Budget Optimizer is unreal.',
-                name: 'Lily C.',
-                skin: 'Dry skin, Fitzpatrick II',
-              },
-            ].map((t) => (
+            {testimonials.map((t) => (
               <motion.div key={t.name} variants={fadeUp} className="dark-card p-6">
                 <div className="flex gap-1 mb-3">
                   {Array.from({ length: 5 }).map((_, i) => (
