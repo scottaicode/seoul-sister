@@ -33,13 +33,23 @@ export function checkFeatureAccessBySubscription(
 export async function hasActiveSubscription(userId: string): Promise<boolean> {
   const supabase = getServiceClient()
 
-  const { data } = await supabase
+  // Check ss_subscriptions first (Stripe-managed, source of truth when present)
+  const { data: sub } = await supabase
     .from('ss_subscriptions')
     .select('status')
     .eq('user_id', userId)
     .single()
 
-  return data?.status === 'active'
+  if (sub?.status === 'active') return true
+
+  // Fallback: check profile plan field (manually set, pre-Stripe)
+  const { data: profile } = await supabase
+    .from('ss_user_profiles')
+    .select('plan')
+    .eq('user_id', userId)
+    .single()
+
+  return profile?.plan !== 'free' && profile?.plan != null
 }
 
 export async function checkFeatureAccess(
