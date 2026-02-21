@@ -1,12 +1,12 @@
 # Seoul Sister - K-Beauty Intelligence Platform
 # https://seoulsister.com
 
-> Seoul Sister is the world's first English-language K-beauty intelligence platform — "Hwahae for the World." It provides AI-powered Korean skincare product analysis, personalized routine building, counterfeit detection, ingredient-level price comparison, and community reviews filtered by skin type. Database: 5,500+ products, 9,200+ ingredients, 166,000+ ingredient links, 450+ brands across 14 categories.
+> Seoul Sister is the world's first English-language K-beauty intelligence platform — "Hwahae for the World." It provides AI-powered Korean skincare product analysis, personalized routine building, counterfeit detection, ingredient-level price comparison, and community reviews filtered by skin type. Database: 6,200+ products, 10,300+ ingredients, 180,000+ ingredient links, 590+ brands across 14 categories.
 
 ## What Seoul Sister Does
 - **Korean Label Scanner**: Point your camera at a Korean product label for instant ingredient translation, safety scoring, personalized skin match, price comparison across 6 retailers, community intelligence, authenticity check, and trend context
 - **AI Beauty Advisor (Yuri)**: Conversational AI with 6 specialist agents covering ingredients, routines, authenticity, trends, budgets, and sensitivity. Named after 유리 (glass) — a reference to glass skin (유리 피부)
-- **Product Intelligence Database**: 5,500+ K-beauty products with full English translations, ingredient breakdowns, and cross-platform price comparison across Olive Young, YesStyle, Soko Glam, Amazon, StyleKorean, and more
+- **Product Intelligence Database**: 6,200+ K-beauty products with full English translations, ingredient breakdowns, and cross-platform price comparison across Olive Young, YesStyle, Soko Glam, Amazon, StyleKorean, and more
 - **Glass Skin Score**: Photo-based skin analysis scoring 5 dimensions (luminosity, smoothness, clarity, hydration, evenness) with progress tracking over time and shareable score cards
 - **Shelf Scan Collection Analysis**: Photograph your entire skincare shelf for multi-product identification, routine grading (A-F), gap detection, redundancy alerts, and ingredient conflict detection across your collection
 - **Sunscreen Finder**: Dedicated Korean sunscreen search with PA rating, white cast level, finish (matte/dewy), under-makeup compatibility, chemical vs physical filters
@@ -21,14 +21,14 @@
 Cleansers, toners, essences, serums, ampoules, moisturizers, sunscreens, masks, eye care, lip care, exfoliators, oils, mists, spot treatments
 
 ## Database Statistics
-- 5,500+ products across 450+ brands
-- 9,200+ unique ingredients with safety ratings, comedogenic scores, and function descriptions
-- 166,000+ product-ingredient links
+- 6,200+ products across 590+ brands
+- 10,300+ unique ingredients with safety ratings, comedogenic scores, and function descriptions
+- 180,000+ product-ingredient links
 - Price tracking across 6 retailers with historical price data
 - 14 product categories
 
 ## Key Brands Covered
-COSRX, Sulwhasoo, Laneige, Innisfree, Missha, Etude House, Klairs, Beauty of Joseon, Dr. Jart+, SKIN1004, Torriden, Anua, Isntree, Medicube, Round Lab, TIRTIR, Numbuzin, mixsoon, Illiyoon, Hera, Aestura, Beplain, Dr.G, Skinfood, VT Cosmetics, Mediheal, Bringgreen, and 420+ more
+COSRX, Sulwhasoo, Laneige, Innisfree, Missha, Etude House, Klairs, Beauty of Joseon, Dr. Jart+, SKIN1004, Torriden, Anua, Isntree, Medicube, Round Lab, TIRTIR, Numbuzin, mixsoon, Illiyoon, Hera, Aestura, Beplain, Dr.G, Skinfood, VT Cosmetics, Mediheal, Bringgreen, and 560+ more
 
 ## Specialist AI Agents
 1. **Ingredient Analyst** — Formulation science, active forms, pH dependencies, ingredient interactions, INCI analysis

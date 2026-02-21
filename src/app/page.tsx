@@ -38,7 +38,7 @@ const advancedFeatures = [
   { icon: DollarSign, title: 'K-Beauty Dupe Finder', desc: 'Find $12 alternatives to $94 products. Ingredient-level matching shows exactly where the overlap is.', badge: 'Popular' },
   { icon: Sun, title: 'Sunscreen Finder', desc: 'Filter by PA rating, white cast, finish, under-makeup compatibility — every detail K-beauty sunscreen lovers need.', badge: 'High Intent' },
   { icon: Package, title: 'Shelf Scan', desc: 'Photograph your entire collection. Get a routine grade, redundancy alerts, gap analysis, and estimated value.', badge: 'Unique' },
-  { icon: Filter, title: 'Ingredient Filters', desc: 'Search 5,500+ products by ingredients you want and ingredients you avoid. Fragrance-free and low-comedogenic shortcuts built in.', badge: 'Power User' },
+  { icon: Filter, title: 'Ingredient Filters', desc: 'Search 6,200+ products by ingredients you want and ingredients you avoid. Fragrance-free and low-comedogenic shortcuts built in.', badge: 'Power User' },
   { icon: Timer, title: 'Expiration Tracking', desc: 'Track when you opened each product. Get alerts before they expire. No more guessing if that serum is still good.', badge: 'Unique' },
   { icon: CloudSun, title: 'Weather-Adaptive Alerts', desc: 'Real-time weather data adjusts your routine. High humidity? Skip the oil. UV spike? Reapply sunscreen reminder.', badge: 'Proactive' },
   { icon: Activity, title: 'Cycle-Aware Routine', desc: 'Opt-in hormonal cycle tracking adjusts your skincare by phase. Luteal breakouts get BHA, not just moisturizer.', badge: 'Unique' },
@@ -54,16 +54,16 @@ const specialists = [
 ]
 
 const steps = [
-  { icon: ScanLine, step: '01', title: 'Scan or Search', desc: 'Camera scan a Korean label or search 5,500+ products across 450+ brands.' },
+  { icon: ScanLine, step: '01', title: 'Scan or Search', desc: 'Camera scan a Korean label or search 6,200+ products across 590+ brands.' },
   { icon: Brain, step: '02', title: 'Get AI Intelligence', desc: 'Yuri and 6 specialist agents decode ingredients, flag conflicts, check authenticity, and compare prices.' },
   { icon: ListOrdered, step: '03', title: 'Build Your Routine', desc: 'Add to your personalized routine with conflict detection, layering order, wait times, and skin cycling.' },
   { icon: Heart, step: '04', title: 'Track and Improve', desc: 'Monitor your Glass Skin Score, track product expiry, get weather alerts, and discover dupes.' },
 ]
 
 const stats = [
-  { value: '5,500+', label: 'Products Tracked' },
-  { value: '450+', label: 'K-Beauty Brands' },
-  { value: '9,200+', label: 'Ingredients Decoded' },
+  { value: '6,200+', label: 'Products Tracked' },
+  { value: '590+', label: 'K-Beauty Brands' },
+  { value: '10,300+', label: 'Ingredients Decoded' },
   { value: '6', label: 'AI Specialists' },
 ]
 
@@ -178,7 +178,7 @@ export default function LandingPage() {
               <span className="text-gradient">Powered by AI</span>
             </motion.h1>
             <motion.p variants={fadeUp} className="text-white/50 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
-              5,500+ products. 9,200+ ingredients decoded. 6 AI specialist agents. From label scanning to routine building — every decision backed by real intelligence.
+              6,200+ products. 10,300+ ingredients decoded. 6 AI specialist agents. From label scanning to routine building — every decision backed by real intelligence.
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/register" className="glass-button-primary text-base py-3 px-8">
@@ -380,7 +380,7 @@ export default function LandingPage() {
               {
                 icon: Beaker,
                 title: 'Ingredient-Level Intelligence',
-                desc: '9,200+ ingredients decoded with safety ratings, comedogenic scores, and function explanations. Every product analyzed down to the INCI list.',
+                desc: '10,300+ ingredients decoded with safety ratings, comedogenic scores, and function explanations. Every product analyzed down to the INCI list.',
               },
               {
                 icon: BookOpen,

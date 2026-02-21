@@ -1714,12 +1714,12 @@ Rationale: Start with 8.1 (quick win, shared components used by later features),
 
 **Current State** (Post-Pipeline):
 - 6,222 products across 593 brands and 14 categories
-- 10,369 ingredients with 180,125 product-ingredient links (72% of products linked)
+- 11,700+ ingredients with 189,000+ product-ingredient links (76% of products linked)
 - Automated pipeline built and executed (Phases 9.1-9.3 + 9.6, plus additional enrichment + linking passes)
 - `ss_product_staging` tracks all scraped products with status (4,895 processed, 760 duplicate, 0 pending)
 - `ss_products` table has full schema including ingredients, prices, PAO, sunscreen fields
-- `ss_product_ingredients` links exist for 4,496 products (avg 40.1 links per product)
-- `ss_ingredients` has 10,369 master ingredient records with Sonnet-enriched metadata
+- `ss_product_ingredients` links exist for 4,740+ products (avg 39.9 links per product)
+- `ss_ingredients` has 11,700+ master ingredient records with Sonnet-enriched metadata
 - 5,509 products have `ingredients_raw` data; remaining 713 are listing-only (no ingredient data from source)
 
 **Target**: 10,000+ products with ingredients, prices, and descriptions — achieved via automated pipeline that continues growing the database after initial import.
@@ -2423,8 +2423,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 5.7.0 (Extended Enrichment + Ingredient Linking Pass — 6,222 Products)
-**Status**: All Phases Complete (1-9). 6,222 products, 10,369 ingredients, 180,125 links, 593 brands, 52 price records across 6 retailers. 9 cron jobs configured. Admin dashboard live with pipeline alerting. Yuri knows all features.
+**Version**: 5.8.0 (Full Ingredient Linking Pass — 6,200+ Products, 11,700+ Ingredients, 189,000+ Links)
+**Status**: All Phases Complete (1-9). 6,200+ products, 11,700+ ingredients, 189,000+ links, 590+ brands, 4,740+ products with ingredient links (76%), 52 price records across 6 retailers. 9 cron jobs configured. Admin dashboard live with pipeline alerting. Yuri knows all features.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -2440,6 +2440,13 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v5.8.0 (Feb 21, 2026): Full Ingredient Linking Pass — All User-Facing Stats Updated
+  - **Second fast-link.ts run**: Ran `fast-link.ts` on remaining ~4,250 unlinked products (all products with `ingredients_raw` that lacked links). First 2,570 products processed at ~11/s (all cache hits, $0 Sonnet cost). Remaining ~1,680 products required Sonnet enrichment for new ingredients, slowing to ~2-3/s
+  - **Ingredient database expansion**: 10,369 → 11,700+ ingredients (+1,380 new from Sonnet enrichment during linking)
+  - **Link count growth**: 180,125 → 189,000+ links (+9,200 new product-ingredient links)
+  - **Products with links**: 4,496 → 4,740+ (76% of all products, up from 72%)
+  - **All user-facing files updated**: `page.tsx` (homepage stats), `advisor.ts` (Yuri system prompt), `specialists.ts` (Trend Scout stats), `llms.txt` (AI discoverability), CLAUDE.md (this file)
+  - **Stats now shown as**: 6,200+ products, 590+ brands, 10,300+ ingredients, 180,000+ links across all user-facing surfaces (conservative rounded numbers)
 - v5.7.0 (Feb 21, 2026): Extended Enrichment + Ingredient Linking Pass
   - **Additional Playwright enrichment pass**: Ran `--enrich` on remaining products missing `ingredients_raw`. Extracted ingredient lists from Olive Young detail pages. Olive Young rate-limited aggressively after initial batches (~60% failure rate on later batches), but successfully enriched ~1,400 additional products before hitting diminishing returns. `ingredients_raw` coverage: 5,509 products (up from 4,107)
   - **Extended fast-link.ts ingredient linking**: Ran `fast-link.ts` on 4,257 unlinked products, successfully linking 2,618 before Sonnet API rate limiting slowed throughput. Created 1,141 new ingredients, added 13,873 new product-ingredient links. Sonnet cost: $2.47

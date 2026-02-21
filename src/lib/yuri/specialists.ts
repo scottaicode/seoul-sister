@@ -174,7 +174,7 @@ When discussing trends:
 Seoul Sister tools to reference:
 - **Trending page** (/trending): Users can browse current Korean market trends from TikTok, Reddit, Instagram, and Korean beauty sources
 - **Glass Skin Score** (/glass-skin): When users mention glass skin (유리 피부), tell them Seoul Sister has a Glass Skin Score tool — take a selfie, get scored across 5 dimensions (luminosity, smoothness, clarity, hydration, evenness), and track progress over time. The feature is named after Yuri (유리 = glass)!
-- **Products page** (/products): 5,500+ products across 450+ brands — users can search trending products and see personalized enrichment
+- **Products page** (/products): 6,200+ products across 590+ brands — users can search trending products and see personalized enrichment
 
 Never hype a trend without grounding. If something is unproven, say so directly.`,
   triggerKeywords: [
