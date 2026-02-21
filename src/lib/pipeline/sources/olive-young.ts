@@ -409,6 +409,9 @@ export class OliveYoungScraper {
   /**
    * Enrich staged products that lack ingredients by scraping their detail pages.
    * Runs with configurable concurrency (multiple browser tabs in parallel).
+   *
+   * Targets both 'pending' and 'processed' rows missing ingredients.
+   * For 'processed' rows, also backfills ingredients_raw on the linked ss_products record.
    */
   async enrichDetails(
     supabase: SupabaseClient,
@@ -417,13 +420,13 @@ export class OliveYoungScraper {
     const batchSize = options.batchSize ?? 50
     const concurrency = options.concurrency ?? 4
 
-    // Fetch staged products that lack ingredient data
+    // Fetch staged products that lack ingredient data (pending OR processed)
     const { data: staged, error } = await supabase
       .from('ss_product_staging')
-      .select('id, source_id, raw_data')
-      .eq('status', 'pending')
+      .select('id, source_id, raw_data, status, processed_product_id')
       .eq('source', 'olive_young')
-      .is('raw_data->>ingredients_raw', null)
+      .in('status', ['pending', 'processed'])
+      .or('raw_data->>ingredients_raw.is.null,raw_data->>ingredients_raw.eq.')
       .limit(batchSize)
 
     if (error || !staged) {
@@ -454,14 +457,14 @@ export class OliveYoungScraper {
             await this.delay()
             const detail = await this.scrapeProductDetail(row.source_id, rawData.category_raw)
 
-            if (detail) {
+            if (detail && detail.ingredients_raw) {
               // Merge detail data into raw_data
               const updated: RawProductData = {
                 ...rawData,
                 name_en: detail.name_en || rawData.name_en,
                 brand_en: detail.brand_en || rawData.brand_en,
                 description_raw: detail.description_raw || rawData.description_raw,
-                ingredients_raw: detail.ingredients_raw ?? rawData.ingredients_raw,
+                ingredients_raw: detail.ingredients_raw,
                 volume_display: detail.volume_display ?? rawData.volume_display,
                 image_url: detail.image_url ?? rawData.image_url,
                 rating_avg: detail.rating_avg ?? rawData.rating_avg,
@@ -473,6 +476,14 @@ export class OliveYoungScraper {
                 .from('ss_product_staging')
                 .update({ raw_data: updated })
                 .eq('id', row.id)
+
+              // If this row was already processed, backfill ingredients_raw on ss_products
+              if (row.status === 'processed' && row.processed_product_id) {
+                await supabase
+                  .from('ss_products')
+                  .update({ ingredients_raw: detail.ingredients_raw })
+                  .eq('id', row.processed_product_id)
+              }
 
               return true
             }
@@ -491,13 +502,13 @@ export class OliveYoungScraper {
       await this.closeBrowser()
     }
 
-    // Count remaining
+    // Count remaining (both pending and processed without ingredients)
     const { count } = await supabase
       .from('ss_product_staging')
       .select('id', { count: 'exact', head: true })
-      .eq('status', 'pending')
       .eq('source', 'olive_young')
-      .is('raw_data->>ingredients_raw', null)
+      .in('status', ['pending', 'processed'])
+      .or('raw_data->>ingredients_raw.is.null,raw_data->>ingredients_raw.eq.')
 
     return { enriched, failed, remaining: count ?? 0 }
   }

@@ -1695,14 +1695,14 @@ Rationale: Start with 8.1 (quick win, shared components used by later features),
 
 **Strategic Rationale**: Seoul Sister's product database is the core moat. At 626 manually-seeded products, the database demonstrates the concept but lacks the depth needed for real user value. Hwahae has 187,000+ products. We need 10,000+ to be credible as "the" K-beauty intelligence platform. Manual seeding via Claude Code sessions costs $3,000-5,000 and doesn't scale. An automated pipeline using Sonnet for extraction costs ~$200-400 total and maintains itself going forward.
 
-**Current State**:
-- 626 products across 82 brands and 14 categories
-- All seeded manually via SQL migration files
-- No automated data ingestion exists
-- 5 cron jobs defined in vercel.json but none handle product discovery/import
+**Current State** (Post-Pipeline):
+- 5,516 products across 454 brands and 14 categories
+- 9,228 ingredients with 166,252 product-ingredient links (75% of products linked)
+- Automated pipeline built and executed (Phases 9.1-9.3 + 9.6)
+- `ss_product_staging` tracks all scraped products with status (4,895 processed, 760 duplicate, 0 pending)
 - `ss_products` table has full schema including ingredients, prices, PAO, sunscreen fields
-- `ss_product_ingredients` links exist for ~130 products (from original seed)
-- `ss_ingredients` has 30 master ingredient records
+- `ss_product_ingredients` links exist for 4,137 products (avg 40.2 links per product)
+- `ss_ingredients` has 9,228 master ingredient records with Sonnet-enriched metadata
 
 **Target**: 10,000+ products with ingredients, prices, and descriptions — achieved via automated pipeline that continues growing the database after initial import.
 
@@ -2405,8 +2405,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 5.0.0 (Phase 9.1-9.3 + 9.6 — Automated Pipeline Built & Executed)
-**Status**: Phases 1-8 + 3B Complete, Phase 9.1-9.3 + 9.6 Complete (3,607 products), Phase 9.4-9.5 Remaining
+**Version**: 5.2.0 (Phase 9.6 — Full Pipeline Complete, 5,516 Products, 75% Ingredient-Linked)
+**Status**: Phases 1-8 + 3B Complete, Phase 9.1-9.3 + 9.6 Complete (5,516 products, 4,137 linked), Phase 9.4-9.5 Remaining
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -2422,6 +2422,15 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v5.2.0 (Feb 20, 2026): Phase 9.6 — Detail Enrichment + Full Ingredient Linking Pass
+  - **Playwright detail page enrichment**: Ran `--enrich` on ~1,915 processed products missing `ingredients_raw`. Playwright scraped individual Olive Young product detail pages to extract full INCI ingredient lists. Result: 4,107 products now have `ingredients_raw` (up from ~2,572)
+  - **Optimized ingredient linker** (`scripts/fast-link.ts`): Created standalone fast linker that avoids the `getAllLinkedProductIds` bottleneck (118K+ row pagination). Strategy: fetch all product IDs with `ingredients_raw` in 5 pages, check link status in batched `IN()` queries (100 per batch), load ingredient cache once, process all unlinked products sequentially reusing cache. ~96 min runtime for 3,165 products
+  - **Third ingredient linking pass**: Linked 1,112 additional products (3,025 → 4,137), created 1,972 new ingredients (7,256 → 9,228), added 50,444 new links (115,808 → 166,252). Sonnet cost: $4.13
+  - **Brand normalization + dedup cleanup**: Ran `cleanup-brands-dedup.ts` — 0 changes needed (data already clean from prior passes)
+  - **Final verified database state**: 5,516 products, 9,228 ingredients, 166,252 links, 454 brands, 14 categories
+  - Products with ingredient links: 4,137 (75%). Avg 40.2 links per product
+  - Category distribution: mask (1,038), moisturizer (960), cleanser (805), sunscreen (683), serum (520), toner (461), ampoule (294), spot_treatment (197), exfoliator (176), eye_care (138), essence (130), mist (74), lip_care (24), oil (16)
+  - Total cumulative pipeline cost: $55.97 (extraction $49.15 + ingredient linking $6.82)
 - v5.0.0 (Feb 20, 2026): Phase 9.1-9.3 + 9.6 — Automated Pipeline Built & Executed
   - **Phase 9.1: Olive Young Global Scraper** — Built and executed
     - `src/lib/pipeline/scraper-base.ts`: Base scraper with rate limiting (1 req/2s), retry logic, user-agent rotation
@@ -2437,26 +2446,29 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
     - `src/lib/pipeline/cost-tracker.ts`: Token usage and cost estimation per pipeline run
     - `src/app/api/admin/pipeline/process/route.ts`: Admin endpoint for batch processing
     - `scripts/run-import.ts`: CLI orchestrator for all pipeline stages (`--listings-only`, `--enrich`, `--process`, `--link`)
-    - **Results**: 3,615 products extracted, 372 brands, $32.04 total Sonnet cost
+    - **Results**: 5,530 products extracted (3,615 initial + 1,915 second pass), 507 brands, $49.15 total Sonnet cost ($32.04 + $17.11)
   - **Phase 9.3: Ingredient Auto-Linking Pipeline** — Built and executed
     - `src/lib/pipeline/ingredient-parser.ts`: INCI string parsing with parenthetical handling
     - `src/lib/pipeline/ingredient-matcher.ts`: Fuzzy matching with KNOWN_ALIASES map, IngredientCache, Sonnet enrichment for new ingredients
     - `src/lib/pipeline/ingredient-linker.ts`: Batch linking orchestrator with progress tracking
     - `src/app/api/admin/pipeline/link-ingredients/route.ts`: Admin endpoint for ingredient linking
     - Database: `ingredients_raw` column added to `ss_products`
-    - **Results**: 2,993 products linked, 7,117 unique ingredients, 113,937 links, $2.37 Sonnet cost
+    - **Results**: 4,137 products linked (2,993 initial + 40 second pass + 1,112 third pass via fast-link.ts), 9,228 unique ingredients, 166,252 links, $6.82 Sonnet cost ($2.37 + $0.32 + $4.13)
     - **Bug fixes during execution**: Pagination query bug in findUnlinkedProducts, JSON parse error in ingredient-matcher (uncaught Sonnet response parse failure)
-  - **Phase 9.6: Import Execution & Data Quality** — Completed
-    - Brand normalization: 94 products fixed across 37 brand mappings (e.g., "MISSHA"→"Missha", "Dr. G"→"Dr.G")
-    - Ingredient deduplication: 215 duplicate ingredients merged, 305 product-ingredient links moved to canonical records
-    - Product deduplication: 8 case-insensitive duplicate products removed (with staging FK cleanup)
-    - **Final verified database state**: 3,607 products, 7,117 ingredients (0 duplicates), 113,937 links, 305 brands, 14 categories
-    - Ingredient metadata: 98.9% with functions, 100% with English names, avg safety 4.03/5
-    - Avg 38.2 ingredient links per product (median 36, max 230)
-    - Total pipeline cost: $34.41 (Sonnet extraction $32.04 + ingredient linking $2.37)
-  - **Pipeline staging**: 2,130 pending rows remaining (scraped but not yet processed through Sonnet extraction)
-  - **Remaining Phase 9 work**: 9.4 (Multi-Retailer Price Integration), 9.5 (Daily Automation Cron Jobs), processing remaining 2,130 pending staging rows
-  - **Key pipeline files**: `scripts/run-import.ts` is the CLI entry point. Usage: `npx tsx --tsconfig tsconfig.json scripts/run-import.ts --enrich` (Sonnet extraction), `--link` (ingredient linking), `--listings-only` (scrape only), `--process` (extract+link combined)
+    - **batch-processor.ts change**: Removed `ingredients_raw` non-null filter to allow processing listing-only rows (products without ingredient data still get category, description, PAO from Sonnet)
+  - **Phase 9.6: Import Execution & Data Quality** — Completed (two passes)
+    - **Pass 1** (initial): Brand normalization (94 products, 37 mappings), ingredient dedup (215 merged), product dedup (8 removed). Result: 3,607 products
+    - **Pass 2** (remaining 2,130 staged rows): Processed all pending listing-only rows through Sonnet extraction (+1,915 new products, 215 duplicates, 0 failures, $17.11). Ingredient linking (+40 products linked, 142 new ingredients, $0.32). Brand normalization (718 products across 50 mappings). Product dedup (6 additional removed)
+    - `scripts/cleanup-brands-dedup.ts`: Standalone cleanup script with 50 brand mappings, product dedup, ingredient dedup
+    - **Final verified database state**: 5,516 products, 9,228 ingredients, 166,252 links, 454 brands, 14 categories
+    - Products with ingredient links: 4,137 (75%). Products with `ingredients_raw`: 4,107. Remaining 1,379 products are listing-only (no ingredient data from source)
+    - Avg 40.2 ingredient links per product (for linked products)
+    - Total pipeline cost: $55.97 (Sonnet extraction $49.15 + ingredient linking $6.82)
+    - Category distribution: mask (1,038), moisturizer (960), cleanser (805), sunscreen (683), serum (520), toner (461), ampoule (294), spot_treatment (197), exfoliator (176), eye_care (138), essence (130), mist (74), lip_care (24), oil (16)
+    - Top brands: Anua (225), Mediheal (137), Beplain (118), Aestura (104), Dr.G (96), Skinfood (95), Round Lab (94), Torriden (83), Bringgreen (82), VT (82)
+  - **Pipeline staging**: 0 pending rows remaining. All 5,656 scraped rows processed (4,895 processed, 760 duplicate, 1 failed)
+  - **Remaining Phase 9 work**: 9.4 (Multi-Retailer Price Integration), 9.5 (Daily Automation Cron Jobs). Detail page enrichment completed for all accessible products; 1,379 products remain without `ingredients_raw` (source pages lacked ingredient data)
+  - **Key pipeline files**: `scripts/run-import.ts` is the CLI entry point. Usage: `npx tsx --tsconfig tsconfig.json scripts/run-import.ts --process` (Sonnet extraction), `--link` (ingredient linking), `--listings-only` (scrape only), `--enrich` (Puppeteer detail page scraping). `scripts/cleanup-brands-dedup.ts` for brand normalization + deduplication cleanup
 - v4.0.0 (Feb 19, 2026): Phase 9 Blueprint + Product Database Expansion to 626
   - **Phase 9: Automated Product Intelligence Pipeline** — Full blueprint for 6 features (9.1-9.6) written to CLAUDE.md with implementation plans, database schemas, API signatures, Sonnet prompt designs, cost estimates, and build order
     - 9.1: Olive Young Global Scraper (foundation infrastructure, `ss_product_staging` + `ss_pipeline_runs` tables)

@@ -44,12 +44,12 @@ export async function processBatch(
   let failed = 0
   let duplicates = 0
 
-  // 1. Fetch pending staged rows (only enriched ones with ingredients data)
+  // 1. Fetch pending staged rows (including those without ingredients — they still
+  //    get category normalization, description, PAO, and other metadata from Sonnet)
   const { data: rows, error: fetchError } = await supabase
     .from('ss_product_staging')
     .select('*')
     .eq('status', 'pending')
-    .not('raw_data->>ingredients_raw', 'is', null)
     .order('created_at', { ascending: true })
     .limit(batchSize)
 
@@ -267,7 +267,6 @@ async function countPending(supabase: SupabaseClient): Promise<number> {
     .from('ss_product_staging')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'pending')
-    .not('raw_data->>ingredients_raw', 'is', null)
 
   return count ?? 0
 }
