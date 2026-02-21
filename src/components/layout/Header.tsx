@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { Menu, X, User, Sparkles } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { Menu, X, User, Sparkles, LogOut, Settings, Shield } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
+import { supabase } from '@/lib/supabase'
 
 const navLinks = [
   { label: 'Dashboard', href: '/dashboard' },
@@ -20,7 +22,43 @@ const navLinks = [
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
+  const router = useRouter()
+  const { user, signOut } = useAuth()
+
+  // Check admin status
+  useEffect(() => {
+    if (!user) return
+    async function checkAdmin() {
+      const { data } = await supabase
+        .from('ss_user_profiles')
+        .select('is_admin')
+        .eq('user_id', user!.id)
+        .maybeSingle()
+      setIsAdmin(data?.is_admin === true)
+    }
+    checkAdmin()
+  }, [user])
+
+  // Close profile menu on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setProfileMenuOpen(false)
+      }
+    }
+    if (profileMenuOpen) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [profileMenuOpen])
+
+  async function handleSignOut() {
+    setProfileMenuOpen(false)
+    await signOut()
+    router.push('/login')
+  }
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
@@ -54,15 +92,51 @@ export default function Header() {
               ))}
             </nav>
 
-            {/* Right side: User icon + mobile hamburger */}
+            {/* Right side: Profile dropdown + mobile hamburger */}
             <div className="flex items-center gap-3">
-              <Link
-                href="/profile"
-                className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 border border-white/10 hover:bg-white/15 transition-all duration-200"
-                aria-label="Profile"
-              >
-                <User className="w-4 h-4 text-white/60" />
-              </Link>
+              {/* Profile dropdown */}
+              <div className="relative" ref={profileMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setProfileMenuOpen((prev) => !prev)}
+                  className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 border border-white/10 hover:bg-white/15 transition-all duration-200"
+                  aria-label="Account menu"
+                >
+                  <User className="w-4 h-4 text-white/60" />
+                </button>
+
+                {profileMenuOpen && (
+                  <div className="absolute right-0 top-11 w-48 bg-seoul-card border border-white/10 rounded-xl shadow-lg py-1 z-50">
+                    <Link
+                      href="/profile"
+                      onClick={() => setProfileMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors"
+                    >
+                      <Settings className="w-4 h-4" />
+                      Profile
+                    </Link>
+                    {isAdmin && (
+                      <Link
+                        href="/admin/pipeline"
+                        onClick={() => setProfileMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-gold/70 hover:bg-gold/5 hover:text-gold transition-colors"
+                      >
+                        <Shield className="w-4 h-4" />
+                        Admin
+                      </Link>
+                    )}
+                    <div className="border-t border-white/10 my-1" />
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-rose-400/70 hover:bg-rose-500/5 hover:text-rose-400 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {/* Mobile menu button */}
               <button
@@ -108,6 +182,30 @@ export default function Header() {
                   {link.label}
                 </Link>
               ))}
+              {isAdmin && (
+                <Link
+                  href="/admin/pipeline"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 flex items-center gap-2 ${
+                    isActive('/admin')
+                      ? 'bg-gold/15 text-gold'
+                      : 'text-gold/50 hover:bg-gold/5 hover:text-gold/80'
+                  }`}
+                >
+                  <Shield className="w-4 h-4" />
+                  Admin
+                </Link>
+              )}
+              <div className="border-t border-white/10 mt-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setMobileMenuOpen(false); handleSignOut() }}
+                  className="w-full px-4 py-3 rounded-xl font-medium text-sm text-rose-400/50 hover:bg-rose-500/5 hover:text-rose-400 transition-all duration-200 flex items-center gap-2 text-left"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
+                </button>
+              </div>
             </nav>
           </div>
         </div>

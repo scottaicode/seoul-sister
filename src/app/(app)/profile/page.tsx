@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   Droplets,
   Sun,
@@ -16,6 +17,7 @@ import {
   Heart,
   CloudSun,
   Navigation,
+  LogOut,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
@@ -267,7 +269,8 @@ function WeatherLocationToggle({
 }
 
 export default function ProfilePage() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
+  const router = useRouter()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -329,7 +332,7 @@ export default function ProfilePage() {
             <h2 className="font-display font-semibold text-sm text-white/60 mb-3 uppercase tracking-wider">
               Account
             </h2>
-            <div className="flex items-center gap-3 mb-1">
+            <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center text-seoul-dark font-bold text-sm">
                 {displayName.charAt(0).toUpperCase()}
               </div>
@@ -338,6 +341,17 @@ export default function ProfilePage() {
                 <p className="text-xs text-white/40">{user?.email}</p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={async () => {
+                await signOut()
+                router.push('/login')
+              }}
+              className="flex items-center gap-2 text-sm text-rose-400/60 hover:text-rose-400 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </button>
           </div>
 
           {/* Skin Profile */}
