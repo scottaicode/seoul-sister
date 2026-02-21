@@ -2423,8 +2423,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 5.8.1 (Yuri Conversation Management — Rename, Delete, Auto-Title Propagation)
-**Status**: All Phases Complete (1-9). 6,200+ products, 11,700+ ingredients, 189,000+ links, 590+ brands, 4,740+ products with ingredient links (76%), 52 price records across 6 retailers. 9 cron jobs configured. Admin dashboard live with pipeline alerting. Yuri knows all features.
+**Version**: 5.8.2 (Database Stats Sync — 14,200+ Ingredients, 219,000+ Links, 88% Linked)
+**Status**: All Phases Complete (1-9). 6,200+ products, 14,200+ ingredients, 219,000+ links, 590+ brands, 5,500+ products with ingredient links (88%), 52 price records across 6 retailers. 9 cron jobs configured. Admin dashboard live with pipeline alerting. Yuri knows all features.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -2440,6 +2440,10 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v5.8.2 (Feb 21, 2026): Database Stats Sync — 14,200+ Ingredients, 219,000+ Links, 88% Linked
+  - **Ingredient linking pipeline completed**: fast-link.ts processed 4,250 products, creating new ingredient records and links via Sonnet enrichment. Database now at 6,200+ products, 14,200+ ingredients, 219,000+ ingredient links, 590+ brands with 88% of products fully ingredient-linked (up from 76%)
+  - **Stats synced across all user-facing files**: Updated `public/llms.txt` (AI discoverability), `src/lib/yuri/advisor.ts` (Yuri's system prompt — "AI + database intelligence" and "Can't find a product" sections), `src/lib/yuri/specialists.ts` (Trend Scout's products page reference)
+  - **Previous stats → New stats**: Ingredients 11,700+ → 14,200+, links 189,000+ → 219,000+, linked products 4,740+ (76%) → 5,500+ (88%)
 - v5.8.1 (Feb 21, 2026): Yuri Conversation Management — Rename, Delete, Auto-Title Propagation
   - **Conversation delete**: Added `deleteConversation()` to `lib/yuri/memory.ts` with ownership verification and FK-safe cascade (messages first, then conversation). New DELETE endpoint at `/api/yuri/conversations/[id]`
   - **Conversation rename**: New PUT endpoint at `/api/yuri/conversations/[id]` with Zod validation (1-200 chars). Calls existing `updateConversationTitle()` from memory.ts
