@@ -3,7 +3,8 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
-import { handleApiError } from '@/lib/utils/error-handler'
+import { handleApiError, AppError } from '@/lib/utils/error-handler'
+import { hasActiveSubscription } from '@/lib/subscription'
 
 export const maxDuration = 60
 
@@ -16,6 +17,13 @@ const generateSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+
+    // Check active subscription
+    const isSubscribed = await hasActiveSubscription(user.id)
+    if (!isSubscribed) {
+      throw new AppError('Active subscription required.', 403)
+    }
+
     const body = await request.json()
     const { routine_type, concerns, budget_range } = generateSchema.parse(body)
 

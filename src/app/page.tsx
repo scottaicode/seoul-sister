@@ -8,7 +8,7 @@ import {
   ScanLine, Brain, ListOrdered, Star, ArrowRight,
   Menu, X, FlaskConical, Sun, Timer, CloudSun,
   Activity, BookOpen, Heart, Beaker, DollarSign, TrendingUp,
-  Filter, Package
+  Filter, Package, Layers, PiggyBank, HeartPulse
 } from 'lucide-react'
 import PricingCards from '@/components/pricing/PricingCards'
 import TryYuriSection from '@/components/widget/TryYuriSection'
@@ -42,6 +42,15 @@ const advancedFeatures = [
   { icon: Timer, title: 'Expiration Tracking', desc: 'Track when you opened each product. Get alerts before they expire. No more guessing if that serum is still good.', badge: 'Unique' },
   { icon: CloudSun, title: 'Weather-Adaptive Alerts', desc: 'Real-time weather data adjusts your routine. High humidity? Skip the oil. UV spike? Reapply sunscreen reminder.', badge: 'Proactive' },
   { icon: Activity, title: 'Cycle-Aware Routine', desc: 'Opt-in hormonal cycle tracking adjusts your skincare by phase. Luteal breakouts get BHA, not just moisturizer.', badge: 'Unique' },
+]
+
+const specialists = [
+  { icon: FlaskConical, name: 'Ingredient Analyst', desc: 'Deep ingredient science — safety ratings, comedogenic scores, interaction warnings, and INCI translation.' },
+  { icon: Layers, name: 'Routine Architect', desc: 'Builds personalized AM/PM routines with Korean layering order, wait times, and skin cycling schedules.' },
+  { icon: ShieldCheck, name: 'Authenticity Investigator', desc: 'Spots counterfeits through packaging analysis, batch codes, seller reputation, and crowdsourced signals.' },
+  { icon: TrendingUp, name: 'Trend Scout', desc: 'Tracks what\'s trending in Seoul — TikTok virality, Reddit buzz, and Korean market signals before they hit the US.' },
+  { icon: PiggyBank, name: 'Budget Optimizer', desc: 'Finds ingredient-matched dupes at a fraction of the price. Same key actives, dramatically lower cost.' },
+  { icon: HeartPulse, name: 'Sensitivity Guardian', desc: 'Allergy and reaction prevention — flags irritants, cross-references your history, and protects sensitive skin.' },
 ]
 
 const steps = [
@@ -282,6 +291,43 @@ export default function LandingPage() {
               </motion.div>
             ))}
           </motion.div>
+        </div>
+      </section>
+
+      {/* Meet the Specialists */}
+      <section className="py-20 px-4 bg-seoul-darker">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <span className="badge-gold mb-3 inline-block">Meet the Team</span>
+            <h2 className="section-heading mb-3">6 Specialist AI Agents. One Advisor.</h2>
+            <p className="section-subheading mx-auto">Yuri routes every question to the right specialist — each with deep domain expertise in Korean beauty.</p>
+          </div>
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-60px' }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+          >
+            {specialists.map(({ icon: Icon, name, desc }) => (
+              <motion.div
+                key={name}
+                variants={fadeUp}
+                className="dark-card p-6 hover:border-gold/20 transition-all duration-300 group"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+                    <Icon className="w-5 h-5 text-gold" />
+                  </div>
+                  <h3 className="font-display font-semibold text-base text-white">{name}</h3>
+                </div>
+                <p className="text-white/40 text-sm leading-relaxed">{desc}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+          <div className="text-center mt-8">
+            <p className="text-white/30 text-sm">All specialists report to <span className="text-gold/70 font-medium">Yuri</span> — your personal AI beauty advisor who knows your skin profile, history, and preferences.</p>
+          </div>
         </div>
       </section>
 

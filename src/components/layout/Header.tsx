@@ -33,12 +33,16 @@ export default function Header() {
   useEffect(() => {
     if (!user) return
     async function checkAdmin() {
-      const { data } = await supabase
-        .from('ss_user_profiles')
-        .select('is_admin')
-        .eq('user_id', user!.id)
-        .maybeSingle()
-      setIsAdmin(data?.is_admin === true)
+      try {
+        const { data } = await supabase
+          .from('ss_user_profiles')
+          .select('is_admin')
+          .eq('user_id', user!.id)
+          .maybeSingle()
+        setIsAdmin(data?.is_admin === true)
+      } catch {
+        setIsAdmin(false)
+      }
     }
     checkAdmin()
   }, [user])
@@ -56,7 +60,11 @@ export default function Header() {
 
   async function handleSignOut() {
     setProfileMenuOpen(false)
-    await signOut()
+    try {
+      await signOut()
+    } catch {
+      // Sign out failed — clear local state anyway
+    }
     router.push('/login')
   }
 

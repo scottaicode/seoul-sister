@@ -4,6 +4,8 @@ import { streamAdvisorResponse } from '@/lib/yuri/advisor'
 import { loadConversationMessages, createConversation } from '@/lib/yuri/memory'
 import { AppError } from '@/lib/utils/error-handler'
 import { supabase, getServiceClient } from '@/lib/supabase'
+import { hasActiveSubscription } from '@/lib/subscription'
+import { incrementYuriMessageCount } from '@/lib/usage'
 import type { SpecialistType } from '@/types/database'
 
 const chatSchema = z.object({
@@ -48,6 +50,24 @@ export async function POST(request: NextRequest) {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
       })
+    }
+
+    // Check active subscription
+    const isSubscribed = await hasActiveSubscription(user.id)
+    if (!isSubscribed) {
+      return new Response(
+        JSON.stringify({ error: 'Active subscription required. Subscribe to use Yuri.' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Check and increment usage count
+    const withinLimit = await incrementYuriMessageCount(user.id)
+    if (!withinLimit) {
+      return new Response(
+        JSON.stringify({ error: 'Monthly message limit reached (500). Your limit resets at the start of your next billing period.' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     const body = await request.json()

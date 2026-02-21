@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { requireAuth } from '@/lib/auth'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
+import { hasActiveSubscription } from '@/lib/subscription'
 import type { ShelfScanProduct, ShelfScanCollectionAnalysis, RoutineGradeLevel } from '@/types/database'
 
 export const maxDuration = 60
@@ -52,6 +53,12 @@ Be generous but honest in your grading. If you cannot identify a product with co
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+
+    // Check active subscription
+    const isSubscribed = await hasActiveSubscription(user.id)
+    if (!isSubscribed) {
+      throw new AppError('Active subscription required.', 403)
+    }
 
     const body = await request.json()
     if (!body.image) {

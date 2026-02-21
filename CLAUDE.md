@@ -780,6 +780,9 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 - [x] ScanResults component extraction (LabelScanner refactored from 480 to 252 lines)
 - [ ] Push notifications (FUTURE -- requires service worker push events, web-push library, subscription management)
 - [ ] Remaining cron jobs — scan-korean-products and translate-and-index planned in Phase 9 (Automated Product Pipeline). scan-counterfeits, community-digest, generate-content still FUTURE
+- [ ] **Supabase Attack Protection** (FUTURE — when traffic justifies it):
+  - Enable **Captcha protection** on auth endpoints to prevent bot signups (Supabase Dashboard > Authentication > Attack Protection). Requires adding captcha widget to login/register forms.
+  - Enable **Leaked password protection** (HaveIBeenPwned check on signup/password change). Requires configuring a custom SMTP email provider first (Supabase Dashboard > Authentication > Email). Currently DISABLED because no custom SMTP is set up.
 
 ## Phase 8: Value Enrichment Features (11 Features)
 
@@ -2405,7 +2408,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 5.4.0 (Phase 9.5 Complete + Admin Auth + Yuri Knowledge Update)
+**Version**: 5.5.0 (Production Readiness Audit — Security + Subscription Enforcement)
 **Status**: All Phases Complete (1-9). 5,516 products, 9,228 ingredients, 166,252 links, 454 brands, 52 price records across 6 retailers. Admin dashboard live. Yuri knows all features.
 **AI Advisor**: Yuri (유리) - "Glass"
 
@@ -2422,6 +2425,17 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v5.5.0 (Feb 20, 2026): Production Readiness Audit — Security Hardening + Subscription Enforcement
+  - **Database cleanup**: Dropped 76 ghost tables (leftover from pre-rebuild app), 1 ghost view (`price_intelligence_summary`), 13 ghost functions. Fixed `handle_new_user` auth trigger to insert into `ss_user_profiles` (was inserting into dropped `profiles` table — caused Bailey's missing profile). Fixed `search_path` on 14 functions (security hardening). Enabled RLS on `ss_product_staging`, `ss_pipeline_runs`, `ss_rate_limits`. Migration: `scripts/migrations/cleanup_ghost_tables.sql`
+  - **Subscription enforcement on 6 AI endpoints**: All Claude Opus API routes now check `hasActiveSubscription()` before processing. Returns 403 if no active subscription. Endpoints gated: `/api/yuri/chat`, `/api/scan`, `/api/skin-score`, `/api/shelf-scan`, `/api/routine/generate`, `/api/dupes/ai`
+  - **Usage tracking wired in**: `incrementYuriMessageCount()` now called in `/api/yuri/chat` (500/month cap, returns 429 at limit). `incrementScanCount()` now called in `/api/scan` (30/month cap, returns 429 at limit). Functions existed in `src/lib/usage.ts` but were never called from any route.
+  - **Billing portal**: "Manage" button added to profile page Subscription section. Calls `/api/stripe/portal` to open Stripe billing portal (update payment, cancel, view invoices).
+  - **Error boundaries**: Created `src/app/error.tsx` (global error boundary with retry) and `src/app/not-found.tsx` (404 page). Both were completely missing.
+  - **SSE stream hardening**: `useYuri.ts` — added `useEffect` cleanup to abort in-flight streams on unmount, wrapped reader loop in `try/finally` with `reader.releaseLock()` to prevent memory leaks.
+  - **Header error handling**: `Header.tsx` — added try-catch to admin status check and sign out handler to prevent silent failures.
+  - **Stripe webhook secret**: Updated `.env.local` from placeholder to real `whsec_` value. Webhook was already configured in Stripe dashboard pointing to `seoulsister.com/api/stripe/webhook`.
+  - **Bot account cleanup**: Deleted `test@email.com` + 6 spam bot accounts from `auth.users`. Only 2 legitimate accounts remain (vibetrendai + baileydonmartin).
+  - **Bailey's profile**: Created `ss_user_profiles` record with `plan = 'pro_monthly'`. Both accounts set to pro.
 - v5.4.0 (Feb 20, 2026): Phase 9.5 + Admin Auth + Yuri Knowledge Update
   - **Phase 9.5: Daily Automation Cron Jobs + Admin Dashboard** — Complete
     - 3 new cron jobs: `scan-korean-products` (daily 6 AM), `translate-and-index` (daily 7 AM), `data-quality` (weekly Sunday 4 AM)

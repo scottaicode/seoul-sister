@@ -6,6 +6,8 @@ import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { enrichScanResult } from '@/lib/scanning/enrich-scan'
 import { detectReformulation, recordReformulation } from '@/lib/intelligence/reformulation-detector'
 import { getServiceClient } from '@/lib/supabase'
+import { hasActiveSubscription } from '@/lib/subscription'
+import { incrementScanCount } from '@/lib/usage'
 
 // Allow larger request bodies (compressed images) and longer execution time
 export const maxDuration = 60
@@ -52,6 +54,18 @@ Respond in JSON format:
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+
+    // Check active subscription
+    const isSubscribed = await hasActiveSubscription(user.id)
+    if (!isSubscribed) {
+      throw new AppError('Active subscription required. Subscribe to use the label scanner.', 403)
+    }
+
+    // Check and increment usage count
+    const withinLimit = await incrementScanCount(user.id)
+    if (!withinLimit) {
+      throw new AppError('Monthly scan limit reached (30). Your limit resets at the start of your next billing period.', 429)
+    }
 
     const contentType = request.headers.get('content-type') || ''
 

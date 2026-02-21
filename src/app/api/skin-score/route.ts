@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth'
 import { getServiceClient } from '@/lib/supabase'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
+import { hasActiveSubscription } from '@/lib/subscription'
 import type { GlassSkinScore, GlassSkinAnalysisResult } from '@/types/database'
 
 export const maxDuration = 60
@@ -47,6 +48,13 @@ const analyzeSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+
+    // Check active subscription
+    const isSubscribed = await hasActiveSubscription(user.id)
+    if (!isSubscribed) {
+      throw new AppError('Active subscription required.', 403)
+    }
+
     const body = await request.json()
     const { image } = analyzeSchema.parse(body)
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { ChatMessage, ConversationSummary } from '@/types/yuri'
 import type { SpecialistType } from '@/types/database'
@@ -33,6 +33,16 @@ export function useYuri(): UseYuriReturn {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Abort any in-flight stream when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+        abortControllerRef.current = null
+      }
+    }
+  }, [])
 
   const getToken = useCallback(async (): Promise<string> => {
     const { data } = await supabase.auth.getSession()
@@ -107,62 +117,66 @@ export function useYuri(): UseYuriReturn {
         const decoder = new TextDecoder()
         let buffer = ''
 
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
 
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() || ''
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() || ''
 
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue
-            const jsonStr = line.slice(6).trim()
-            if (!jsonStr) continue
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue
+              const jsonStr = line.slice(6).trim()
+              if (!jsonStr) continue
 
-            try {
-              const event = JSON.parse(jsonStr)
+              try {
+                const event = JSON.parse(jsonStr)
 
-              if (event.type === 'text') {
-                setMessages((prev) => {
-                  const updated = [...prev]
-                  const last = updated[updated.length - 1]
-                  if (last && last.role === 'assistant' && last.isStreaming) {
-                    updated[updated.length - 1] = {
-                      ...last,
-                      content: last.content + event.content,
+                if (event.type === 'text') {
+                  setMessages((prev) => {
+                    const updated = [...prev]
+                    const last = updated[updated.length - 1]
+                    if (last && last.role === 'assistant' && last.isStreaming) {
+                      updated[updated.length - 1] = {
+                        ...last,
+                        content: last.content + event.content,
+                      }
                     }
-                  }
-                  return updated
-                })
-              } else if (event.type === 'done') {
-                // Finalize assistant message
-                setMessages((prev) => {
-                  const updated = [...prev]
-                  const last = updated[updated.length - 1]
-                  if (last && last.role === 'assistant') {
-                    updated[updated.length - 1] = {
-                      ...last,
-                      isStreaming: false,
+                    return updated
+                  })
+                } else if (event.type === 'done') {
+                  // Finalize assistant message
+                  setMessages((prev) => {
+                    const updated = [...prev]
+                    const last = updated[updated.length - 1]
+                    if (last && last.role === 'assistant') {
+                      updated[updated.length - 1] = {
+                        ...last,
+                        isStreaming: false,
+                      }
                     }
-                  }
-                  return updated
-                })
+                    return updated
+                  })
 
-                // Set conversation ID if this was a new conversation
-                if (event.conversation_id && !currentConversationId) {
-                  setCurrentConversationId(event.conversation_id)
+                  // Set conversation ID if this was a new conversation
+                  if (event.conversation_id && !currentConversationId) {
+                    setCurrentConversationId(event.conversation_id)
+                  }
+                } else if (event.type === 'error') {
+                  throw new Error(event.message)
                 }
-              } else if (event.type === 'error') {
-                throw new Error(event.message)
-              }
-            } catch (parseError) {
-              // Skip malformed events
-              if (parseError instanceof Error && parseError.message !== jsonStr) {
-                throw parseError
+              } catch (parseError) {
+                // Skip malformed events
+                if (parseError instanceof Error && parseError.message !== jsonStr) {
+                  throw parseError
+                }
               }
             }
           }
+        } finally {
+          reader.releaseLock()
         }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') return

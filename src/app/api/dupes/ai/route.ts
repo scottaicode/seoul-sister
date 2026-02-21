@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { requireAuth } from '@/lib/auth'
 import { dupeAiSchema } from '@/lib/utils/validation'
-import { handleApiError } from '@/lib/utils/error-handler'
+import { handleApiError, AppError } from '@/lib/utils/error-handler'
+import { hasActiveSubscription } from '@/lib/subscription'
 
 export const maxDuration = 60
 
@@ -43,7 +44,13 @@ Respond in JSON format:
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAuth(request)
+    const user = await requireAuth(request)
+
+    // Check active subscription
+    const isSubscribed = await hasActiveSubscription(user.id)
+    if (!isSubscribed) {
+      throw new AppError('Active subscription required.', 403)
+    }
 
     const body = await request.json()
     const params = dupeAiSchema.parse(body)

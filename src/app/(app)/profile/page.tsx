@@ -268,6 +268,39 @@ function WeatherLocationToggle({
   )
 }
 
+function ManageSubscriptionButton() {
+  const [loading, setLoading] = useState(false)
+
+  async function handleManage() {
+    setLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+      const res = await fetch('/api/stripe/portal', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      if (!res.ok) throw new Error('Failed to open billing portal')
+      const { url } = await res.json()
+      window.location.href = url
+    } catch {
+      // Portal open failed — user can try again
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <button
+      onClick={handleManage}
+      disabled={loading}
+      className="text-xs font-medium text-gold-light hover:text-gold transition-colors disabled:opacity-50"
+    >
+      {loading ? 'Opening...' : 'Manage'}
+    </button>
+  )
+}
+
 export default function ProfilePage() {
   const { user, signOut } = useAuth()
   const router = useRouter()
@@ -423,7 +456,9 @@ export default function ProfilePage() {
                     : 'Subscribe to unlock Yuri, scanning, and all features'}
                 </p>
               </div>
-              {profile.plan !== 'pro_monthly' && (
+              {profile.plan === 'pro_monthly' ? (
+                <ManageSubscriptionButton />
+              ) : (
                 <a
                   href="/#pricing"
                   target="_blank"
