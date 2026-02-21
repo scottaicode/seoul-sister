@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServiceClient } from '@/lib/supabase'
-import { handleApiError, AppError } from '@/lib/utils/error-handler'
+import { handleApiError } from '@/lib/utils/error-handler'
+import { requireAdmin } from '@/lib/auth'
 import { processBatch, reprocessFailed } from '@/lib/pipeline/batch-processor'
 
 export const maxDuration = 120 // 2 min — batch of 20 at ~3-5s each
@@ -11,16 +12,6 @@ const processSchema = z.object({
   reprocess: z.boolean().optional().default(false),
   run_id: z.string().uuid().optional(),
 })
-
-function verifyAdminAuth(request: NextRequest): void {
-  const key = request.headers.get('x-service-key')
-    ?? request.headers.get('authorization')?.replace('Bearer ', '')
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!serviceKey || !key || key !== serviceKey) {
-    throw new AppError('Unauthorized: admin access required', 401)
-  }
-}
 
 /**
  * POST /api/admin/pipeline/process
@@ -36,7 +27,7 @@ function verifyAdminAuth(request: NextRequest): void {
  */
 export async function POST(request: NextRequest) {
   try {
-    verifyAdminAuth(request)
+    await requireAdmin(request)
 
     const body = await request.json()
     const params = processSchema.parse(body)
@@ -70,7 +61,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    verifyAdminAuth(request)
+    await requireAdmin(request)
 
     const supabase = getServiceClient()
 

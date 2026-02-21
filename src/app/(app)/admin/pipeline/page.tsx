@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 
 interface DashboardData {
   database: {
@@ -49,49 +51,58 @@ interface ActionResult {
 }
 
 export default function AdminPipelinePage() {
+  const { user, loading: authLoading } = useAuth()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [serviceKey, setServiceKey] = useState('')
-  const [authenticated, setAuthenticated] = useState(false)
+  const [accessDenied, setAccessDenied] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [actionResult, setActionResult] = useState<ActionResult | null>(null)
 
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) return {}
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+    }
+  }, [])
+
   const fetchDashboard = useCallback(async () => {
-    if (!serviceKey) return
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/admin/pipeline/dashboard', {
-        headers: { 'x-service-key': serviceKey },
-      })
+      const headers = await getAuthHeaders()
+      if (!headers.Authorization) {
+        setAccessDenied(true)
+        return
+      }
+      const res = await fetch('/api/admin/pipeline/dashboard', { headers })
       if (!res.ok) {
-        if (res.status === 401) {
-          setAuthenticated(false)
-          throw new Error('Invalid service key')
+        if (res.status === 401 || res.status === 403) {
+          setAccessDenied(true)
+          return
         }
         throw new Error(`HTTP ${res.status}`)
       }
       const json = await res.json()
       setData(json)
-      setAuthenticated(true)
+      setAccessDenied(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch')
     } finally {
       setLoading(false)
     }
-  }, [serviceKey])
+  }, [getAuthHeaders])
 
   useEffect(() => {
-    if (authenticated) fetchDashboard()
-  }, [authenticated, fetchDashboard])
-
-  const handleAuth = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (serviceKey.trim()) {
-      setAuthenticated(true)
+    if (!authLoading && user) {
+      fetchDashboard()
+    } else if (!authLoading && !user) {
+      setAccessDenied(true)
+      setLoading(false)
     }
-  }
+  }, [authLoading, user, fetchDashboard])
 
   const triggerAction = async (
     endpoint: string,
@@ -102,17 +113,14 @@ export default function AdminPipelinePage() {
     setActionLoading(label ?? endpoint)
     setActionResult(null)
     try {
+      const headers = await getAuthHeaders()
       const res = await fetch(endpoint, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'x-service-key': serviceKey,
-        },
+        headers,
         ...(body ? { body: JSON.stringify(body) } : {}),
       })
       const json = await res.json()
       setActionResult(json)
-      // Refresh dashboard after action
       await fetchDashboard()
     } catch (err) {
       setActionResult({
@@ -124,33 +132,30 @@ export default function AdminPipelinePage() {
     }
   }
 
-  // Auth screen
-  if (!authenticated) {
+  // Loading state
+  if (authLoading || (loading && !data && !accessDenied)) {
     return (
       <div className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center">
-        <form onSubmit={handleAuth} className="w-full max-w-md space-y-4 p-6">
-          <h1 className="text-2xl font-bold text-amber-400">Pipeline Admin</h1>
+        <p className="text-gray-400">Loading...</p>
+      </div>
+    )
+  }
+
+  // Access denied
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center">
+        <div className="text-center space-y-3 max-w-md p-6">
+          <h1 className="text-2xl font-bold text-red-400">Access Denied</h1>
           <p className="text-sm text-gray-400">
-            Enter your Supabase service role key to access the pipeline dashboard.
+            {!user
+              ? 'You must be signed in to access the admin dashboard.'
+              : 'Your account does not have admin privileges.'}
           </p>
-          <input
-            type="password"
-            value={serviceKey}
-            onChange={(e) => setServiceKey(e.target.value)}
-            placeholder="Service role key"
-            className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg
-                       text-gray-100 placeholder-gray-500 focus:border-amber-500
-                       focus:ring-1 focus:ring-amber-500 outline-none"
-          />
-          {error && <p className="text-sm text-red-400">{error}</p>}
-          <button
-            type="submit"
-            className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white
-                       rounded-lg font-medium transition-colors"
-          >
-            Access Dashboard
-          </button>
-        </form>
+          <p className="text-xs text-gray-600">
+            {user?.email ?? 'Not signed in'}
+          </p>
+        </div>
       </div>
     )
   }
@@ -164,6 +169,9 @@ export default function AdminPipelinePage() {
           <p className="text-sm text-gray-400 mt-1">
             Product intelligence pipeline monitoring and control
           </p>
+          <p className="text-xs text-gray-600 mt-0.5">
+            Signed in as {user?.email}
+          </p>
         </div>
         <button
           onClick={fetchDashboard}
@@ -174,6 +182,12 @@ export default function AdminPipelinePage() {
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
+
+      {error && (
+        <div className="p-3 bg-red-900/30 border border-red-800 rounded-lg text-sm text-red-300">
+          {error}
+        </div>
+      )}
 
       {loading && !data && (
         <div className="text-center py-12 text-gray-400">Loading dashboard...</div>

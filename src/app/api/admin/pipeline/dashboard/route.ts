@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
-import { handleApiError, AppError } from '@/lib/utils/error-handler'
-
-function verifyAdminAuth(request: NextRequest): void {
-  const key = request.headers.get('x-service-key')
-    ?? request.headers.get('authorization')?.replace('Bearer ', '')
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!serviceKey || !key || key !== serviceKey) {
-    throw new AppError('Unauthorized: admin access required', 401)
-  }
-}
+import { handleApiError } from '@/lib/utils/error-handler'
+import { requireAdmin } from '@/lib/auth'
 
 /**
  * GET /api/admin/pipeline/dashboard
@@ -27,7 +18,7 @@ function verifyAdminAuth(request: NextRequest): void {
  */
 export async function GET(request: NextRequest) {
   try {
-    verifyAdminAuth(request)
+    await requireAdmin(request)
 
     const db = getServiceClient()
 

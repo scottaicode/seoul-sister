@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
+import { requireAdmin } from '@/lib/auth'
 import { OliveYoungScraper } from '@/lib/pipeline/sources/olive-young'
 import type { PipelineSource } from '@/lib/pipeline/types'
 
@@ -20,16 +21,6 @@ const enrichSchema = z.object({
   concurrency: z.number().int().min(1).max(8).optional(),
 })
 
-function verifyAdminAuth(request: NextRequest): void {
-  const key = request.headers.get('x-service-key')
-    ?? request.headers.get('authorization')?.replace('Bearer ', '')
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!serviceKey || !key || key !== serviceKey) {
-    throw new AppError('Unauthorized: admin access required', 401)
-  }
-}
-
 /**
  * POST /api/admin/pipeline/scrape
  *
@@ -47,7 +38,7 @@ function verifyAdminAuth(request: NextRequest): void {
  */
 export async function POST(request: NextRequest) {
   try {
-    verifyAdminAuth(request)
+    await requireAdmin(request)
 
     const body = await request.json()
     const params = scrapeSchema.parse(body)
@@ -153,7 +144,7 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    verifyAdminAuth(request)
+    await requireAdmin(request)
 
     const body = await request.json()
     const params = enrichSchema.parse(body)
@@ -178,7 +169,7 @@ export async function PUT(request: NextRequest) {
 /** GET /api/admin/pipeline/scrape — List available sources and categories */
 export async function GET(request: NextRequest) {
   try {
-    verifyAdminAuth(request)
+    await requireAdmin(request)
 
     return NextResponse.json({
       sources: {
