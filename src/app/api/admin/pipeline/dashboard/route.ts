@@ -174,30 +174,42 @@ export async function GET(request: NextRequest) {
       brandCount = allBrands.size
     }
 
-    // Linked product count: count distinct product_ids in ss_product_ingredients.
-    // PostgREST can't do COUNT(DISTINCT), so we paginate through the link table
-    // collecting unique product_ids. Ordered by product_id so duplicates cluster
-    // and the Set stays efficient. ~166K rows at 5K per page = ~34 requests.
-    // This is acceptable for an admin dashboard that loads occasionally.
+    // Linked product count: count products that have at least one ingredient link.
+    // Instead of paginating through ~190K link rows (which times out on Vercel),
+    // we paginate through ss_products (6K rows, 7 pages) and for each batch of
+    // 100 product IDs, check if they exist in ss_product_ingredients.
+    // This makes ~63 small queries instead of ~38 large ones.
     let linkedProducts: number | null = null
     try {
       const linkedIds = new Set<string>()
-      let from = 0
-      const pageSize = 5000
+      let page = 0
+      const pageSize = 1000
       let hasMore = true
       while (hasMore) {
-        const { data } = await db.from('ss_product_ingredients')
-          .select('product_id')
-          .order('product_id')
-          .range(from, from + pageSize - 1)
+        const { data } = await db.from('ss_products')
+          .select('id')
+          .range(page * pageSize, (page + 1) * pageSize - 1)
         if (!data || data.length === 0) {
           hasMore = false
         } else {
-          for (const row of data) {
-            linkedIds.add((row as { product_id: string }).product_id)
+          // Check in sub-batches of 50 product IDs
+          // Each product has ~40 ingredient rows, so 50 * 40 = 2,000 rows max.
+          // We use limit(3000) to ensure we capture all rows per sub-batch.
+          const BATCH = 50
+          for (let i = 0; i < data.length; i += BATCH) {
+            const ids = data.slice(i, i + BATCH).map((r: { id: string }) => r.id)
+            const { data: linked } = await db.from('ss_product_ingredients')
+              .select('product_id')
+              .in('product_id', ids)
+              .limit(3000)
+            if (linked) {
+              for (const row of linked) {
+                linkedIds.add((row as { product_id: string }).product_id)
+              }
+            }
           }
-          from += data.length
           if (data.length < pageSize) hasMore = false
+          page++
         }
       }
       linkedProducts = linkedIds.size
