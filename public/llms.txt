@@ -1,32 +1,45 @@
 # Seoul Sister - K-Beauty Intelligence Platform
 # https://seoulsister.com
 
-> Seoul Sister is the world's first English-language K-beauty intelligence platform. It provides AI-powered Korean skincare product analysis, personalized routine building, counterfeit detection, and community reviews filtered by skin type.
+> Seoul Sister is the world's first English-language K-beauty intelligence platform — "Hwahae for the World." It provides AI-powered Korean skincare product analysis, personalized routine building, counterfeit detection, ingredient-level price comparison, and community reviews filtered by skin type. Database: 5,500+ products, 9,200+ ingredients, 166,000+ ingredient links, 450+ brands across 14 categories.
 
 ## What Seoul Sister Does
-- **Korean Label Scanner**: Point your camera at a Korean product label for instant ingredient translation, safety scoring, and conflict detection
-- **AI Beauty Advisor (Yuri)**: Conversational AI with 6 specialist agents covering ingredients, routines, authenticity, trends, budgets, and sensitivity
-- **Product Intelligence Database**: 10,000+ K-beauty products with full English translations, ingredient breakdowns, and cross-platform price comparison
-- **Counterfeit Detection**: Photo-based packaging verification, batch code lookup, and seller trust scores
-- **Personalized Routine Builder**: AI-generated AM/PM routines with ingredient conflict detection and skin cycling schedules
-- **Community Reviews**: Reviews filterable by skin type, Fitzpatrick scale, age range, and concern
+- **Korean Label Scanner**: Point your camera at a Korean product label for instant ingredient translation, safety scoring, personalized skin match, price comparison across 6 retailers, community intelligence, authenticity check, and trend context
+- **AI Beauty Advisor (Yuri)**: Conversational AI with 6 specialist agents covering ingredients, routines, authenticity, trends, budgets, and sensitivity. Named after 유리 (glass) — a reference to glass skin (유리 피부)
+- **Product Intelligence Database**: 5,500+ K-beauty products with full English translations, ingredient breakdowns, and cross-platform price comparison across Olive Young, YesStyle, Soko Glam, Amazon, StyleKorean, and more
+- **Glass Skin Score**: Photo-based skin analysis scoring 5 dimensions (luminosity, smoothness, clarity, hydration, evenness) with progress tracking over time and shareable score cards
+- **Shelf Scan Collection Analysis**: Photograph your entire skincare shelf for multi-product identification, routine grading (A-F), gap detection, redundancy alerts, and ingredient conflict detection across your collection
+- **Sunscreen Finder**: Dedicated Korean sunscreen search with PA rating, white cast level, finish (matte/dewy), under-makeup compatibility, chemical vs physical filters
+- **K-Beauty Dupe Finder**: Find cheaper alternatives with the same key active ingredients — ingredient-level formulation comparison with exact price savings
+- **Counterfeit Detection**: Photo-based packaging verification, batch code lookup, seller trust scores, and verified retailer directory
+- **Personalized Routine Builder**: AI-generated AM/PM routines with ingredient conflict detection, layering order, skin cycling schedules, and hormonal cycle-aware adjustments
+- **Weather-Adaptive Routine**: Real-time weather-based skincare adjustments for humidity, UV index, temperature, and wind
+- **Expiration Tracking**: Product PAO (Period After Opening) monitoring with expiry alerts
+- **Community Reviews**: Reviews filterable by skin type, Fitzpatrick scale, age range, and concern with "Holy Grail" and "Broke Me Out" badges
 
 ## Product Categories
 Cleansers, toners, essences, serums, ampoules, moisturizers, sunscreens, masks, eye care, lip care, exfoliators, oils, mists, spot treatments
 
+## Database Statistics
+- 5,500+ products across 450+ brands
+- 9,200+ unique ingredients with safety ratings, comedogenic scores, and function descriptions
+- 166,000+ product-ingredient links
+- Price tracking across 6 retailers with historical price data
+- 14 product categories
+
 ## Key Brands Covered
-COSRX, Sulwhasoo, Laneige, Innisfree, Missha, Etude House, Klairs, Beauty of Joseon, Dr. Jart+, SKIN1004, Torriden, Anua, Isntree, Medicube, Round Lab, TIRTIR, Numbuzin, mixsoon, Illiyoon, Hera
+COSRX, Sulwhasoo, Laneige, Innisfree, Missha, Etude House, Klairs, Beauty of Joseon, Dr. Jart+, SKIN1004, Torriden, Anua, Isntree, Medicube, Round Lab, TIRTIR, Numbuzin, mixsoon, Illiyoon, Hera, Aestura, Beplain, Dr.G, Skinfood, VT Cosmetics, Mediheal, Bringgreen, and 420+ more
 
 ## Specialist AI Agents
-1. **Ingredient Analyst** — Formulation science, active forms, pH dependencies, ingredient interactions
-2. **Routine Architect** — Personalized AM/PM routines, layering order, skin cycling protocols
-3. **Authenticity Investigator** — Counterfeit detection, batch code verification, seller trust signals
-4. **Trend Scout** — Korean market trends, Hwahae/Olive Young rankings, emerging ingredients
-5. **Budget Optimizer** — Korea vs US price arbitrage, dupes with identical actives, value analysis
-6. **Sensitivity Guardian** — Allergy cross-reactivity, barrier repair, gentle alternatives
+1. **Ingredient Analyst** — Formulation science, active forms, pH dependencies, ingredient interactions, INCI analysis
+2. **Routine Architect** — Personalized AM/PM routines, layering order, skin cycling protocols, seasonal adjustments
+3. **Authenticity Investigator** — Counterfeit detection, batch code verification, seller trust signals, packaging analysis
+4. **Trend Scout** — Korean market trends, Hwahae/Olive Young rankings, emerging ingredients, trend vs fad analysis
+5. **Budget Optimizer** — Korea vs US price arbitrage, dupes with identical actives, value analysis, sale tracking
+6. **Sensitivity Guardian** — Allergy cross-reactivity, barrier repair, gentle alternatives, hormonal cycle skin effects
 
 ## Pricing
-Seoul Sister Pro: $39.99/month — includes 500 AI advisor conversations, 30 label scans, all specialist agents, routine builder, counterfeit detection, price comparison, community access
+Seoul Sister Pro: $39.99/month — includes 500 AI advisor conversations, 30 label scans, all specialist agents, Glass Skin Score, Shelf Scan, routine builder, counterfeit detection, price comparison, weather alerts, cycle tracking, community access
 
 ## Contact
 Website: https://seoulsister.com

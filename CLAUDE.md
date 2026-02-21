@@ -2405,8 +2405,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 5.3.0 (Phase 9.4 — Multi-Retailer Price Integration Complete)
-**Status**: Phases 1-8 + 3B Complete, Phase 9.1-9.4 + 9.6 Complete (5,516 products, 4,137 linked, 52 live price records across 6 retailers), Phase 9.5 Remaining
+**Version**: 5.4.0 (Phase 9.5 Complete + Admin Auth + Yuri Knowledge Update)
+**Status**: All Phases Complete (1-9). 5,516 products, 9,228 ingredients, 166,252 links, 454 brands, 52 price records across 6 retailers. Admin dashboard live. Yuri knows all features.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -2422,6 +2422,32 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v5.4.0 (Feb 20, 2026): Phase 9.5 + Admin Auth + Yuri Knowledge Update
+  - **Phase 9.5: Daily Automation Cron Jobs + Admin Dashboard** — Complete
+    - 3 new cron jobs: `scan-korean-products` (daily 6 AM), `translate-and-index` (daily 7 AM), `data-quality` (weekly Sunday 4 AM)
+    - Admin pipeline dashboard page (`/admin/pipeline`): Pipeline run history, staging counts, manual trigger buttons (scrape, process, link ingredients, refresh prices), product database stats
+    - Total 8 cron jobs configured in `vercel.json` (5 from earlier phases + 3 from Phase 9.5)
+  - **Centralized admin auth system** (`src/lib/auth.ts`):
+    - `requireAdmin()` with three-layer auth: (1) legacy service-role-key header, (2) `ADMIN_EMAILS` env var (comma-separated, bootstrap/fallback), (3) `is_admin` column on `ss_user_profiles` (DB source of truth)
+    - Replaced 6 duplicated `verifyAdminAuth()` functions across admin API routes
+    - Admin dashboard rewritten from manual service-key entry to JWT-based auth using `useAuth()` hook
+    - Migration `20260221000001_add_admin_role.sql`: `is_admin` column + partial index + vibetrendai@gmail.com set as admin
+  - **Header navigation refactor** (`src/components/layout/Header.tsx`):
+    - Profile icon replaced with dropdown menu: Profile, Admin (conditional on `is_admin`), Sign Out
+    - Admin link visible only to admin users (checks `is_admin` via `ss_user_profiles` query)
+    - Sign Out button in both desktop dropdown and mobile nav
+    - Sunscreen and Shelf Scan added to nav links
+  - **Profile page sign out** (`src/app/(app)/profile/page.tsx`): Sign Out button added to Account section
+  - **Yuri knowledge update — CRITICAL FIX**:
+    - Yuri's main system prompt (`src/lib/yuri/advisor.ts`) updated with knowledge of ALL features: Glass Skin Score, Shelf Scan, Sunscreen Finder, Dupe Finder, Expiration Tracking, Weather-Adaptive Routine, Cycle Tracking, ingredient include/exclude filters, scan enrichment pipeline
+    - Added "Advanced Features" section to Yuri's app knowledge with detailed descriptions and paths for 7 features she previously didn't know about
+    - Added "What Makes Seoul Sister Different" section so Yuri can explain competitive advantages
+    - Updated Navigation section with all current pages and accurate descriptions
+    - Updated product count from "10,000+" to accurate "5,500+ across 450+ brands"
+    - Updated troubleshooting with Glass Skin Score and weather tips
+    - All 6 specialist agent prompts updated with "Seoul Sister tools to reference" sections linking agents to relevant app features
+  - **llms.txt updated** (`public/llms.txt`): Corrected product count, added 7 missing features (Glass Skin Score, Shelf Scan, Sunscreen Finder, Dupe Finder, Weather Alerts, Expiration Tracking, Cycle Tracking), added database statistics section, expanded brand list to reflect 450+ brands
+  - **package.json version**: Updated from 3.0.0 to 5.4.0
 - v5.3.0 (Feb 21, 2026): Phase 9.4 — Multi-Retailer Price Integration
   - **4 retailer scrapers built and tested**: YesStyle (Playwright, high reliability), Soko Glam (Shopify Predictive Search API, high reliability), Amazon (Playwright, low reliability — CAPTCHA), StyleKorean (Playwright, low reliability — AJAX search incompatible with headless browsers)
   - **Price matcher module** (`src/lib/pipeline/price-matcher.ts`): Fuzzy product matching with 3-strategy approach: (1) exact normalized name+brand, (2) brand match + token similarity, (3) full fuzzy across all products. `RETAILER_DB_NAMES` mapping handles code→display name conversion. Paginated product loading (5,516 products, 435 brands). Retailer ID caching. `upsertPrice()` handles insert/update with price change detection and `ss_price_history` recording
