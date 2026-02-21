@@ -316,6 +316,38 @@ export async function updateConversationTitle(
     .eq('id', conversationId)
 }
 
+export async function deleteConversation(
+  conversationId: string,
+  userId: string
+): Promise<void> {
+  const db = getServiceClient()
+
+  // Verify ownership
+  const { data: conv } = await db
+    .from('ss_yuri_conversations')
+    .select('user_id')
+    .eq('id', conversationId)
+    .single()
+
+  if (!conv || conv.user_id !== userId) {
+    throw new Error('Conversation not found')
+  }
+
+  // Delete messages first (FK constraint)
+  await db
+    .from('ss_yuri_messages')
+    .delete()
+    .eq('conversation_id', conversationId)
+
+  // Delete the conversation
+  const { error } = await db
+    .from('ss_yuri_conversations')
+    .delete()
+    .eq('id', conversationId)
+
+  if (error) throw new Error(`Failed to delete conversation: ${error.message}`)
+}
+
 export async function loadConversationMessages(
   conversationId: string,
   limit = 50

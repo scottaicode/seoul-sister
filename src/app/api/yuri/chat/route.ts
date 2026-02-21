@@ -117,15 +117,22 @@ export async function POST(request: NextRequest) {
                 : undefined,
           })
 
+          let generatedTitle: string | undefined
           for await (const chunk of generator) {
+            // Check for title sentinel from advisor
+            if (chunk.startsWith('__TITLE__')) {
+              generatedTitle = chunk.slice(9)
+              continue
+            }
             const data = JSON.stringify({ type: 'text', content: chunk })
             controller.enqueue(encoder.encode(`data: ${data}\n\n`))
           }
 
-          // Send completion event with metadata
+          // Send completion event with metadata (including title if generated)
           const meta = JSON.stringify({
             type: 'done',
             conversation_id: conversationId,
+            ...(generatedTitle ? { title: generatedTitle } : {}),
           })
           controller.enqueue(encoder.encode(`data: ${meta}\n\n`))
           controller.close()

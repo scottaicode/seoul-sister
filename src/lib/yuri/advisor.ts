@@ -316,10 +316,12 @@ export async function* streamAdvisorResponse(
   await saveMessage(conversationId, 'assistant', fullResponse, specialistType)
 
   // 8. Generate title if this is the first exchange
+  //    Yield a special __title__ sentinel so the SSE stream can propagate it
   if (conversationHistory.length === 0) {
     try {
       const title = await generateTitle(message, fullResponse)
       await updateConversationTitle(conversationId, title)
+      yield `__TITLE__${title}`
     } catch {
       // Title generation is non-critical; don't fail the conversation
     }

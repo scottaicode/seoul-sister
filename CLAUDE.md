@@ -2423,7 +2423,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 5.8.0 (Full Ingredient Linking Pass — 6,200+ Products, 11,700+ Ingredients, 189,000+ Links)
+**Version**: 5.8.1 (Yuri Conversation Management — Rename, Delete, Auto-Title Propagation)
 **Status**: All Phases Complete (1-9). 6,200+ products, 11,700+ ingredients, 189,000+ links, 590+ brands, 4,740+ products with ingredient links (76%), 52 price records across 6 retailers. 9 cron jobs configured. Admin dashboard live with pipeline alerting. Yuri knows all features.
 **AI Advisor**: Yuri (유리) - "Glass"
 
@@ -2440,6 +2440,14 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v5.8.1 (Feb 21, 2026): Yuri Conversation Management — Rename, Delete, Auto-Title Propagation
+  - **Conversation delete**: Added `deleteConversation()` to `lib/yuri/memory.ts` with ownership verification and FK-safe cascade (messages first, then conversation). New DELETE endpoint at `/api/yuri/conversations/[id]`
+  - **Conversation rename**: New PUT endpoint at `/api/yuri/conversations/[id]` with Zod validation (1-200 chars). Calls existing `updateConversationTitle()` from memory.ts
+  - **Auto-title propagation to client**: `streamAdvisorResponse` in `advisor.ts` now yields a `__TITLE__` sentinel after generating the title. Chat route (`/api/yuri/chat`) detects the sentinel, strips it from the text stream, and includes the title in the SSE `done` event. `useYuri` hook captures the title and updates/adds the conversation in the local list — new conversations appear immediately with their auto-generated title
+  - **useYuri hook extended**: Added `deleteConversation` (DELETE API + local state removal + clear messages if active) and `renameConversation` (PUT API + local list update) to `UseYuriReturn` interface and implementation
+  - **ConversationList rewritten** (`components/yuri/ConversationList.tsx`): Inline edit mode (text input + Check/X confirm/cancel), delete confirmation overlay (red styling with Check/X), Pencil and Trash2 action icons visible on hover (`group-hover:opacity-100`), SpecialistBadge display per conversation, event propagation handling throughout
+  - **New file created**: `src/app/api/yuri/conversations/[id]/route.ts` — PUT (rename) and DELETE endpoints with auth and ownership verification
+  - **Build verified**: `tsc --noEmit` and `next build` both pass cleanly
 - v5.8.0 (Feb 21, 2026): Full Ingredient Linking Pass — All User-Facing Stats Updated
   - **Second fast-link.ts run**: Ran `fast-link.ts` on remaining ~4,250 unlinked products (all products with `ingredients_raw` that lacked links). First 2,570 products processed at ~11/s (all cache hits, $0 Sonnet cost). Remaining ~1,680 products required Sonnet enrichment for new ingredients, slowing to ~2-3/s
   - **Ingredient database expansion**: 10,369 → 11,700+ ingredients (+1,380 new from Sonnet enrichment during linking)

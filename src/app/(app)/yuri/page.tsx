@@ -34,6 +34,8 @@ export default function YuriPage() {
     loadConversations,
     loadConversation,
     startNewConversation,
+    deleteConversation,
+    renameConversation,
     clearError,
   } = useYuri()
 
@@ -133,6 +135,8 @@ export default function YuriPage() {
               }}
               onClose={() => setShowHistory(false)}
               onLoad={loadConversations}
+              onDelete={deleteConversation}
+              onRename={renameConversation}
             />
           </div>
         </div>

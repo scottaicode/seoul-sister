@@ -22,6 +22,8 @@ interface UseYuriReturn {
   loadConversations: () => Promise<void>
   loadConversation: (conversationId: string) => Promise<void>
   startNewConversation: (specialistType?: SpecialistType | null) => void
+  deleteConversation: (conversationId: string) => Promise<void>
+  renameConversation: (conversationId: string, title: string) => Promise<void>
   clearError: () => void
 }
 
@@ -164,6 +166,32 @@ export function useYuri(): UseYuriReturn {
                   if (event.conversation_id && !currentConversationId) {
                     setCurrentConversationId(event.conversation_id)
                   }
+
+                  // Update conversation title in list if auto-generated
+                  if (event.title && event.conversation_id) {
+                    setConversations((prev) => {
+                      const existing = prev.find((c) => c.id === event.conversation_id)
+                      if (existing) {
+                        return prev.map((c) =>
+                          c.id === event.conversation_id
+                            ? { ...c, title: event.title }
+                            : c
+                        )
+                      }
+                      // New conversation — add to top of list
+                      return [
+                        {
+                          id: event.conversation_id,
+                          title: event.title,
+                          specialist_type: null,
+                          message_count: 2,
+                          last_message_preview: null,
+                          updated_at: new Date().toISOString(),
+                        },
+                        ...prev,
+                      ]
+                    })
+                  }
                 } else if (event.type === 'error') {
                   throw new Error(event.message)
                 }
@@ -273,6 +301,64 @@ export function useYuri(): UseYuriReturn {
     []
   )
 
+  const deleteConversation = useCallback(
+    async (conversationId: string) => {
+      try {
+        const token = await getToken()
+        const response = await fetch(`/api/yuri/conversations/${conversationId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({ error: 'Delete failed' }))
+          throw new Error(err.error || `HTTP ${response.status}`)
+        }
+
+        // Remove from local list
+        setConversations((prev) => prev.filter((c) => c.id !== conversationId))
+
+        // If the deleted conversation was active, clear messages
+        if (conversationId === currentConversationId) {
+          setMessages([])
+          setCurrentConversationId(null)
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to delete conversation')
+      }
+    },
+    [getToken, currentConversationId]
+  )
+
+  const renameConversation = useCallback(
+    async (conversationId: string, title: string) => {
+      try {
+        const token = await getToken()
+        const response = await fetch(`/api/yuri/conversations/${conversationId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ title }),
+        })
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({ error: 'Rename failed' }))
+          throw new Error(err.error || `HTTP ${response.status}`)
+        }
+
+        // Update local list
+        setConversations((prev) =>
+          prev.map((c) => (c.id === conversationId ? { ...c, title } : c))
+        )
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to rename conversation')
+      }
+    },
+    [getToken]
+  )
+
   const clearError = useCallback(() => setError(null), [])
 
   return {
@@ -286,6 +372,8 @@ export function useYuri(): UseYuriReturn {
     loadConversations,
     loadConversation,
     startNewConversation,
+    deleteConversation,
+    renameConversation,
     clearError,
   }
 }
