@@ -2405,8 +2405,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 5.2.0 (Phase 9.6 — Full Pipeline Complete, 5,516 Products, 75% Ingredient-Linked)
-**Status**: Phases 1-8 + 3B Complete, Phase 9.1-9.3 + 9.6 Complete (5,516 products, 4,137 linked), Phase 9.4-9.5 Remaining
+**Version**: 5.3.0 (Phase 9.4 — Multi-Retailer Price Integration Complete)
+**Status**: Phases 1-8 + 3B Complete, Phase 9.1-9.4 + 9.6 Complete (5,516 products, 4,137 linked, 52 live price records across 6 retailers), Phase 9.5 Remaining
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -2422,6 +2422,18 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v5.3.0 (Feb 21, 2026): Phase 9.4 — Multi-Retailer Price Integration
+  - **4 retailer scrapers built and tested**: YesStyle (Playwright, high reliability), Soko Glam (Shopify Predictive Search API, high reliability), Amazon (Playwright, low reliability — CAPTCHA), StyleKorean (Playwright, low reliability — AJAX search incompatible with headless browsers)
+  - **Price matcher module** (`src/lib/pipeline/price-matcher.ts`): Fuzzy product matching with 3-strategy approach: (1) exact normalized name+brand, (2) brand match + token similarity, (3) full fuzzy across all products. `RETAILER_DB_NAMES` mapping handles code→display name conversion. Paginated product loading (5,516 products, 435 brands). Retailer ID caching. `upsertPrice()` handles insert/update with price change detection and `ss_price_history` recording
+  - **Price pipeline orchestrator** (`src/lib/pipeline/price-pipeline.ts`): Sequential product processing with rate limiting, per-retailer scraper lifecycle management, `findBestMatch()` with product ID preference and confidence-gated fallback, `getProductsForPricing()` with stale-price exclusion and brand filtering
+  - **CLI script** (`scripts/run-prices.ts`): Full CLI with `--retailer`, `--batch`, `--brands`, `--stale`, `--stats` options. Supports single retailer or `--retailer all` for sequential multi-retailer runs
+  - **Admin API** (`src/app/api/admin/pipeline/prices/route.ts`): POST endpoint for triggering price scrapes, protected by service role key
+  - **Cron job updated** (`src/app/api/cron/refresh-prices/route.ts`): Replaced stub with real implementation using PricePipeline. Runs Soko Glam (50 products) and YesStyle (25 products) per cron execution. Skips products priced within 6 hours. 55s timeout guard for Vercel cron limits
+  - **Pipeline types** (`src/lib/pipeline/types.ts`): Added `PriceRetailer`, `ScrapedPrice`, `PriceMatch`, `PriceScrapeOptions`, `PricePipelineStats` interfaces
+  - **Database**: StyleKorean retailer added via migration (`20260220000004_add_stylekorean_retailer.sql`). 52 total price records across 6 retailers (YesStyle 19, Amazon 10, Olive Young 9, Soko Glam 9, Stylevana 4, iHerb 1). Price history recording for all inserts and price changes
+  - **End-to-end verified**: Soko Glam pipeline: 5 COSRX products searched, 3 matched, 3 inserted. YesStyle pipeline: 25 products searched across 9 brands (COSRX, Anua, Laneige, etc.), 14 matched, 14 inserted. All records verified in `ss_product_prices` and `ss_price_history`
+  - **Retailer reliability**: Soko Glam (high — clean Shopify JSON API), YesStyle (high — Playwright with URL-slug name extraction), Amazon (low — CAPTCHA blocks headless), StyleKorean (low — `ItemListView()` AJAX doesn't fire in headless)
+  - **Key pipeline files**: `scripts/run-prices.ts` CLI entry point. `scripts/test-price-scraper.ts` for individual scraper testing
 - v5.2.0 (Feb 20, 2026): Phase 9.6 — Detail Enrichment + Full Ingredient Linking Pass
   - **Playwright detail page enrichment**: Ran `--enrich` on ~1,915 processed products missing `ingredients_raw`. Playwright scraped individual Olive Young product detail pages to extract full INCI ingredient lists. Result: 4,107 products now have `ingredients_raw` (up from ~2,572)
   - **Optimized ingredient linker** (`scripts/fast-link.ts`): Created standalone fast linker that avoids the `getAllLinkedProductIds` bottleneck (118K+ row pagination). Strategy: fetch all product IDs with `ingredients_raw` in 5 pages, check link status in batched `IN()` queries (100 per batch), load ingredient cache once, process all unlinked products sequentially reusing cache. ~96 min runtime for 3,165 products
@@ -2467,7 +2479,7 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
     - Category distribution: mask (1,038), moisturizer (960), cleanser (805), sunscreen (683), serum (520), toner (461), ampoule (294), spot_treatment (197), exfoliator (176), eye_care (138), essence (130), mist (74), lip_care (24), oil (16)
     - Top brands: Anua (225), Mediheal (137), Beplain (118), Aestura (104), Dr.G (96), Skinfood (95), Round Lab (94), Torriden (83), Bringgreen (82), VT (82)
   - **Pipeline staging**: 0 pending rows remaining. All 5,656 scraped rows processed (4,895 processed, 760 duplicate, 1 failed)
-  - **Remaining Phase 9 work**: 9.4 (Multi-Retailer Price Integration), 9.5 (Daily Automation Cron Jobs). Detail page enrichment completed for all accessible products; 1,379 products remain without `ingredients_raw` (source pages lacked ingredient data)
+  - **Remaining Phase 9 work**: 9.5 (Daily Automation Cron Jobs). Phase 9.4 completed. Detail page enrichment completed for all accessible products; 1,379 products remain without `ingredients_raw` (source pages lacked ingredient data)
   - **Key pipeline files**: `scripts/run-import.ts` is the CLI entry point. Usage: `npx tsx --tsconfig tsconfig.json scripts/run-import.ts --process` (Sonnet extraction), `--link` (ingredient linking), `--listings-only` (scrape only), `--enrich` (Puppeteer detail page scraping). `scripts/cleanup-brands-dedup.ts` for brand normalization + deduplication cleanup
 - v4.0.0 (Feb 19, 2026): Phase 9 Blueprint + Product Database Expansion to 626
   - **Phase 9: Automated Product Intelligence Pipeline** — Full blueprint for 6 features (9.1-9.6) written to CLAUDE.md with implementation plans, database schemas, API signatures, Sonnet prompt designs, cost estimates, and build order
