@@ -78,9 +78,6 @@ async function main() {
 
   console.log(`\nTotal brand names normalized: ${totalUpdated}`)
 
-  // Verify — check for remaining duplicates
-  const { data: remaining } = await sb.rpc('', {}).catch(() => ({ data: null }))
-
   // Just count distinct brands
   const { count } = await sb
     .from('ss_products')
