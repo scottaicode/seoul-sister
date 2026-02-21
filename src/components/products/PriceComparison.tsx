@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { DollarSign, ExternalLink, TrendingDown, ShoppingBag, Loader2 } from 'lucide-react'
+import { DollarSign, ExternalLink, TrendingDown, ShoppingBag, Loader2, Clock } from 'lucide-react'
 
 interface RetailerPrice {
   retailer_name: string
@@ -114,44 +114,80 @@ export default function PriceComparison({ productId }: PriceComparisonProps) {
 
       {/* All retailers */}
       <div className="flex flex-col gap-1.5">
-        {data.prices.map((price, idx) => (
-          <a
-            key={idx}
-            href={price.retailer_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="glass-card p-3 flex items-center justify-between hover:shadow-glass-lg transition-all duration-200 group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-seoul-pearl flex items-center justify-center">
-                <ShoppingBag className="w-4 h-4 text-seoul-soft" strokeWidth={1.5} />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-seoul-charcoal">{price.retailer_name}</p>
-                <div className="flex items-center gap-2">
-                  {price.country && (
-                    <span className="text-[10px] text-seoul-soft">
-                      {price.country === 'KR' ? 'Korea' : price.country === 'US' ? 'US' : price.country}
+        {data.prices.map((price, idx) => {
+          const freshness = getPriceFreshness(price.last_checked)
+          return (
+            <a
+              key={idx}
+              href={price.retailer_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="glass-card p-3 flex items-center justify-between hover:shadow-glass-lg transition-all duration-200 group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-seoul-pearl flex items-center justify-center">
+                  <ShoppingBag className="w-4 h-4 text-seoul-soft" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-seoul-charcoal">{price.retailer_name}</p>
+                  <div className="flex items-center gap-2">
+                    {price.country && (
+                      <span className="text-[10px] text-seoul-soft">
+                        {price.country === 'KR' ? 'Korea' : price.country === 'US' ? 'US' : price.country}
+                      </span>
+                    )}
+                    {!price.in_stock && (
+                      <span className="text-[10px] text-red-500 font-medium">Out of Stock</span>
+                    )}
+                    <span className={`text-[10px] flex items-center gap-0.5 ${freshness.color}`}>
+                      <Clock className="w-2.5 h-2.5" />
+                      {freshness.label}
                     </span>
-                  )}
-                  {!price.in_stock && (
-                    <span className="text-[10px] text-red-500 font-medium">Out of Stock</span>
-                  )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-2">
-              <span className={`font-display font-bold text-sm ${
-                idx === 0 ? 'text-green-600' : 'text-seoul-charcoal'
-              }`}>
-                ${price.price_usd.toFixed(2)}
-              </span>
-              <ExternalLink className="w-3.5 h-3.5 text-seoul-soft/40 group-hover:text-rose-gold transition-colors duration-200" />
-            </div>
-          </a>
-        ))}
+              <div className="flex items-center gap-2">
+                <span className={`font-display font-bold text-sm ${
+                  idx === 0 ? 'text-green-600' : 'text-seoul-charcoal'
+                }`}>
+                  ${price.price_usd.toFixed(2)}
+                </span>
+                <ExternalLink className="w-3.5 h-3.5 text-seoul-soft/40 group-hover:text-rose-gold transition-colors duration-200" />
+              </div>
+            </a>
+          )
+        })}
       </div>
+
+      {/* Staleness warning if any price is >7 days old */}
+      {data.prices.some(p => getPriceFreshness(p.last_checked).stale) && (
+        <p className="text-[10px] text-amber-600/80 flex items-center gap-1 mt-1">
+          <Clock className="w-3 h-3" />
+          Some prices may be outdated. Prices are refreshed automatically every 6 hours.
+        </p>
+      )}
     </div>
   )
+}
+
+function getPriceFreshness(lastChecked: string): { label: string; color: string; stale: boolean } {
+  const checkedAt = new Date(lastChecked)
+  const ageMs = Date.now() - checkedAt.getTime()
+  const ageHours = ageMs / (1000 * 60 * 60)
+  const ageDays = ageHours / 24
+
+  if (ageHours < 12) {
+    return { label: 'Just checked', color: 'text-green-600', stale: false }
+  }
+  if (ageDays < 1) {
+    return { label: 'Today', color: 'text-seoul-soft', stale: false }
+  }
+  if (ageDays < 3) {
+    return { label: `${Math.floor(ageDays)}d ago`, color: 'text-seoul-soft', stale: false }
+  }
+  if (ageDays < 7) {
+    return { label: `${Math.floor(ageDays)}d ago`, color: 'text-amber-500', stale: false }
+  }
+  return { label: `${Math.floor(ageDays)}d ago`, color: 'text-red-500', stale: true }
 }

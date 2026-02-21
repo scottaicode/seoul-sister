@@ -195,6 +195,9 @@ export default function AdminPipelinePage() {
 
       {data && (
         <>
+          {/* Pipeline Health Alerts — prominently surfaces failures */}
+          <PipelineAlerts data={data} />
+
           {/* Database Stats */}
           <section>
             <h2 className="text-lg font-semibold text-gray-300 mb-3">Database Overview</h2>
@@ -655,6 +658,119 @@ function RunRow({ run }: { run: PipelineRun }) {
         </tr>
       )}
     </>
+  )
+}
+
+function PipelineAlerts({ data }: { data: DashboardData }) {
+  const alerts: Array<{ severity: 'critical' | 'warning'; message: string }> = []
+
+  // Check for recent failed pipeline runs (last 24 hours)
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const recentFailures = data.recent_runs.filter(
+    r => r.status === 'failed' && new Date(r.started_at) > oneDayAgo
+  )
+  for (const failure of recentFailures) {
+    const errorDetail = (failure.metadata as Record<string, unknown>)?.fatal_error
+    alerts.push({
+      severity: 'critical',
+      message: `Pipeline FAILED: ${failure.source} ${failure.run_type} at ${new Date(failure.started_at).toLocaleString()}${errorDetail ? ` — ${errorDetail}` : ''}`,
+    })
+  }
+
+  // Check for runs stuck in 'running' state (started >15 min ago)
+  const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000)
+  const stuckRuns = data.recent_runs.filter(
+    r => r.status === 'running' && new Date(r.started_at) < fifteenMinAgo
+  )
+  for (const stuck of stuckRuns) {
+    alerts.push({
+      severity: 'critical',
+      message: `Pipeline STUCK: ${stuck.source} ${stuck.run_type} has been running since ${new Date(stuck.started_at).toLocaleString()}`,
+    })
+  }
+
+  // Check for failed staging rows
+  if (data.staging.failed > 0) {
+    alerts.push({
+      severity: 'warning',
+      message: `${data.staging.failed} products failed staging extraction — may need manual reprocessing`,
+    })
+  }
+
+  // Check quality report health score
+  if (data.latest_quality_report) {
+    const meta = data.latest_quality_report.metadata as { health_score?: number }
+    if (meta.health_score !== undefined && meta.health_score < 60) {
+      alerts.push({
+        severity: 'critical',
+        message: `Data quality health score: ${meta.health_score}/100 — database integrity is degraded`,
+      })
+    } else if (meta.health_score !== undefined && meta.health_score < 80) {
+      alerts.push({
+        severity: 'warning',
+        message: `Data quality health score: ${meta.health_score}/100 — some data gaps detected`,
+      })
+    }
+  }
+
+  // Check for stale quality report (no report in >8 days)
+  if (data.latest_quality_report) {
+    const reportAge = Date.now() - new Date(data.latest_quality_report.started_at).getTime()
+    if (reportAge > 8 * 24 * 60 * 60 * 1000) {
+      alerts.push({
+        severity: 'warning',
+        message: `Data quality report is ${Math.floor(reportAge / (24 * 60 * 60 * 1000))} days old — weekly cron may not be running`,
+      })
+    }
+  } else {
+    alerts.push({
+      severity: 'warning',
+      message: 'No data quality report found — data-quality cron has never run',
+    })
+  }
+
+  // No recent pipeline runs at all (nothing in last 48 hours = crons may be broken)
+  const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000)
+  const anyCronRun = data.recent_runs.some(r => new Date(r.started_at) > twoDaysAgo)
+  if (!anyCronRun && data.recent_runs.length > 0) {
+    alerts.push({
+      severity: 'critical',
+      message: 'No pipeline activity in 48+ hours — cron jobs may not be executing',
+    })
+  }
+
+  if (alerts.length === 0) return null
+
+  const criticalAlerts = alerts.filter(a => a.severity === 'critical')
+  const warningAlerts = alerts.filter(a => a.severity === 'warning')
+
+  return (
+    <section className="space-y-2">
+      {criticalAlerts.map((alert, i) => (
+        <div
+          key={`critical-${i}`}
+          className="p-3 bg-red-950/50 border border-red-700 rounded-lg flex items-start gap-3"
+        >
+          <span className="text-red-400 text-lg mt-0.5">!</span>
+          <div>
+            <p className="text-sm font-medium text-red-300">CRITICAL</p>
+            <p className="text-sm text-red-400/90">{alert.message}</p>
+          </div>
+        </div>
+      ))}
+      {warningAlerts.map((alert, i) => (
+        <div
+          key={`warning-${i}`}
+          className="p-3 bg-amber-950/30 border border-amber-800/50 rounded-lg flex items-start gap-3"
+        >
+          <span className="text-amber-400 text-lg mt-0.5">*</span>
+          <div>
+            <p className="text-sm font-medium text-amber-400">WARNING</p>
+            <p className="text-sm text-amber-400/80">{alert.message}</p>
+          </div>
+        </div>
+      ))}
+    </section>
   )
 }
 

@@ -12,14 +12,31 @@ const BASE_URL = 'https://global.oliveyoung.com'
 /**
  * Olive Young Global category mappings.
  * ctgrNo values come from global.oliveyoung.com URL structure.
+ *
+ * IMPORTANT: Olive Young does NOT have separate pages for toner, essence,
+ * ampoule, serum, oil, or mist. Those product types all live under
+ * "All Skincare" (1000000008). The Sonnet extractor (batch-processor.ts)
+ * assigns the correct Seoul Sister category based on product name/description.
+ * We map 1000000008 to 'serum' as a default hint but Sonnet overrides it.
+ *
+ * Categories updated Feb 2026 to cover all accessible Olive Young sections.
  */
 const CATEGORY_MAP: CategoryMapping[] = [
+  // --- Skincare (core K-beauty) ---
+  { olive_young_id: '1000000008', olive_young_name: 'All Skincare', seoul_sister_category: 'serum' },
   { olive_young_id: '1000000009', olive_young_name: 'Moisturizers', seoul_sister_category: 'moisturizer' },
   { olive_young_id: '1000000010', olive_young_name: 'Cleansers', seoul_sister_category: 'cleanser' },
-  { olive_young_id: '1000000261', olive_young_name: 'Acne & Blemish Treatments', seoul_sister_category: 'spot_treatment' },
-  { olive_young_id: '1000000008', olive_young_name: 'Skincare', seoul_sister_category: 'serum' },
   { olive_young_id: '1000000011', olive_young_name: 'Suncare', seoul_sister_category: 'sunscreen' },
+  { olive_young_id: '1000000261', olive_young_name: 'Acne & Blemish Treatments', seoul_sister_category: 'spot_treatment' },
+  // --- Masks (3 subcategories for broader coverage) ---
   { olive_young_id: '1000000003', olive_young_name: 'Face Masks', seoul_sister_category: 'mask' },
+  { olive_young_id: '1000000004', olive_young_name: 'Sheet Masks', seoul_sister_category: 'mask' },
+  { olive_young_id: '1000000007', olive_young_name: 'Patches', seoul_sister_category: 'mask' },
+  // --- Additional skincare types ---
+  { olive_young_id: '1000000148', olive_young_name: 'Pads', seoul_sister_category: 'exfoliator' },
+  { olive_young_id: '1000000048', olive_young_name: 'Lip Balm & Treatment', seoul_sister_category: 'lip_care' },
+  // --- Eye (makeup subsection but includes eye creams/care) ---
+  { olive_young_id: '1000000040', olive_young_name: 'Eye', seoul_sister_category: 'eye_care' },
 ]
 
 /**

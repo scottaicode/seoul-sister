@@ -8,16 +8,31 @@
     },
     "src/app/api/yuri/route.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/cron/scan-korean-products/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/translate-and-index/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/link-ingredients/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/refresh-prices/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/aggregate-learning/route.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
     {
-      "path": "/api/cron/scan-trends",
-      "schedule": "0 8 * * *"
+      "path": "/api/cron/seasonal-adjustments",
+      "schedule": "0 3 1 * *"
     },
     {
-      "path": "/api/cron/refresh-prices",
-      "schedule": "0 */6 * * *"
+      "path": "/api/cron/data-quality",
+      "schedule": "0 4 * * 0"
     },
     {
       "path": "/api/cron/aggregate-learning",
@@ -25,11 +40,7 @@
     },
     {
       "path": "/api/cron/update-effectiveness",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/seasonal-adjustments",
-      "schedule": "0 3 1 * *"
+      "schedule": "30 5 * * *"
     },
     {
       "path": "/api/cron/scan-korean-products",
@@ -40,8 +51,16 @@
       "schedule": "0 7 * * *"
     },
     {
-      "path": "/api/cron/data-quality",
-      "schedule": "0 4 * * 0"
+      "path": "/api/cron/link-ingredients",
+      "schedule": "30 7 * * *"
+    },
+    {
+      "path": "/api/cron/scan-trends",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-prices",
+      "schedule": "0 */6 * * *"
     }
   ]
 }

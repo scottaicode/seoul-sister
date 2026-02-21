@@ -453,17 +453,31 @@ seoul-sister/
 
 ## Cron Jobs (Automated Intelligence Pipeline)
 
+### Implemented Cron Jobs (9 total, configured in vercel.json)
+
 | Cron Job | Schedule | Purpose |
 |----------|----------|---------|
-| `scan-korean-products` | Daily 6 AM UTC | Monitor Olive Young, Coupang for new products |
-| `translate-and-index` | Daily 7 AM UTC | Claude translates ingredient lists, generates descriptions |
-| `track-prices` | Every 6 hours | Compare Korea vs US prices across 10+ retailers |
+| `seasonal-adjustments` | Monthly 1st 3 AM UTC | Generate seasonal skincare recommendations for 5 climate zones (Sonnet) |
+| `data-quality` | Weekly Sunday 4 AM UTC | Comprehensive DB health audit: coverage, staleness, gaps, health score 0-100 |
+| `aggregate-learning` | Daily 5 AM UTC | Extract patterns from reviews + Yuri conversations via Sonnet |
+| `update-effectiveness` | Daily 5:30 AM UTC | Recalculate ingredient/product effectiveness from review data |
+| `scan-korean-products` | Daily 6 AM UTC | Incremental Olive Young scrape (11 categories, Playwright) |
+| `translate-and-index` | Daily 7 AM UTC | Sonnet extraction: categorize, describe, normalize pending products |
+| `link-ingredients` | Daily 7:30 AM UTC | Parse INCI strings, match/create ingredients, link to products |
+| `scan-trends` | Daily 8 AM UTC | Detect trending products from review/reaction spikes |
+| `refresh-prices` | Every 6 hours | Active price scraping (Soko Glam + YesStyle), history snapshots, drop detection |
+
+**Pipeline daily chain**: `scan-korean-products` (6 AM) scrapes new Olive Young listings → `translate-and-index` (7 AM) runs Sonnet extraction on pending products → `link-ingredients` (7:30 AM) links ingredients → `scan-trends` (8 AM) detects trending products from activity spikes.
+
+**Price freshness**: `refresh-prices` runs 4x/day, actively scraping Soko Glam (Shopify JSON API, no browser) and YesStyle (Playwright). Snapshots all prices to `ss_price_history`. Flags >10% price drops as trend signals.
+
+### Future Cron Jobs (Not Yet Implemented)
+
+| Cron Job | Schedule | Purpose |
+|----------|----------|---------|
 | `scan-counterfeits` | Daily 3 AM UTC | Monitor counterfeit sources, update risk signals |
-| `detect-trends` | Daily 8 AM UTC | Scan TikTok/Reddit/Instagram for trending K-beauty |
 | `community-digest` | Daily 9 AM UTC | Aggregate top reviews, generate "trending today" |
-| `aggregate-learning` | Daily 5 AM UTC | Aggregate scan/review/routine data into patterns |
 | `ingredient-safety-updates` | Weekly Sunday 2 AM UTC | Cross-reference regulatory changes (Korea/US/EU FDA) |
-| `seasonal-routine-updates` | Monthly 1st 3 AM UTC | Update routine recommendations by climate/season |
 | `generate-content` | Daily 10 AM UTC | Auto-generate trend articles for AI discoverability |
 
 ## Learning Engine (The Moat)
@@ -1699,13 +1713,14 @@ Rationale: Start with 8.1 (quick win, shared components used by later features),
 **Strategic Rationale**: Seoul Sister's product database is the core moat. At 626 manually-seeded products, the database demonstrates the concept but lacks the depth needed for real user value. Hwahae has 187,000+ products. We need 10,000+ to be credible as "the" K-beauty intelligence platform. Manual seeding via Claude Code sessions costs $3,000-5,000 and doesn't scale. An automated pipeline using Sonnet for extraction costs ~$200-400 total and maintains itself going forward.
 
 **Current State** (Post-Pipeline):
-- 5,516 products across 454 brands and 14 categories
-- 9,228 ingredients with 166,252 product-ingredient links (75% of products linked)
-- Automated pipeline built and executed (Phases 9.1-9.3 + 9.6)
+- 6,222 products across 593 brands and 14 categories
+- 10,369 ingredients with 180,125 product-ingredient links (72% of products linked)
+- Automated pipeline built and executed (Phases 9.1-9.3 + 9.6, plus additional enrichment + linking passes)
 - `ss_product_staging` tracks all scraped products with status (4,895 processed, 760 duplicate, 0 pending)
 - `ss_products` table has full schema including ingredients, prices, PAO, sunscreen fields
-- `ss_product_ingredients` links exist for 4,137 products (avg 40.2 links per product)
-- `ss_ingredients` has 9,228 master ingredient records with Sonnet-enriched metadata
+- `ss_product_ingredients` links exist for 4,496 products (avg 40.1 links per product)
+- `ss_ingredients` has 10,369 master ingredient records with Sonnet-enriched metadata
+- 5,509 products have `ingredients_raw` data; remaining 713 are listing-only (no ingredient data from source)
 
 **Target**: 10,000+ products with ingredients, prices, and descriptions — achieved via automated pipeline that continues growing the database after initial import.
 
@@ -2408,8 +2423,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 5.5.0 (Production Readiness Audit — Security + Subscription Enforcement)
-**Status**: All Phases Complete (1-9). 5,516 products, 9,228 ingredients, 166,252 links, 454 brands, 52 price records across 6 retailers. Admin dashboard live. Yuri knows all features.
+**Version**: 5.7.0 (Extended Enrichment + Ingredient Linking Pass — 6,222 Products)
+**Status**: All Phases Complete (1-9). 6,222 products, 10,369 ingredients, 180,125 links, 593 brands, 52 price records across 6 retailers. 9 cron jobs configured. Admin dashboard live with pipeline alerting. Yuri knows all features.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -2425,6 +2440,26 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v5.7.0 (Feb 21, 2026): Extended Enrichment + Ingredient Linking Pass
+  - **Additional Playwright enrichment pass**: Ran `--enrich` on remaining products missing `ingredients_raw`. Extracted ingredient lists from Olive Young detail pages. Olive Young rate-limited aggressively after initial batches (~60% failure rate on later batches), but successfully enriched ~1,400 additional products before hitting diminishing returns. `ingredients_raw` coverage: 5,509 products (up from 4,107)
+  - **Extended fast-link.ts ingredient linking**: Ran `fast-link.ts` on 4,257 unlinked products, successfully linking 2,618 before Sonnet API rate limiting slowed throughput. Created 1,141 new ingredients, added 13,873 new product-ingredient links. Sonnet cost: $2.47
+  - **New product count from enrichment**: Enrichment pass also discovered and added ~706 new products to `ss_products` (products that were in staging but hadn't been fully processed). Total products: 5,516 → 6,222
+  - **Brand expansion**: 454 → 593 brands (+139 new brands from enrichment pass)
+  - **Category growth**: Eye care 138 → 555 (+417), lip care 24 → 300 (+276), moisturizer 960 → 973 (+13). Other categories saw minor increases
+  - **Final verified database state**: 6,222 products, 10,369 ingredients, 180,125 links, 593 brands, 14 categories. 4,496 products with ingredient links (72%). 5,509 products with `ingredients_raw`. Avg 40.1 links per linked product
+  - **Remaining unlinked**: ~1,013 products with `ingredients_raw` but no links yet (fast-link was interrupted by rate limiting). Daily `link-ingredients` cron will continue linking these at 50/run
+  - **Total cumulative pipeline cost**: ~$58.44 ($55.97 prior + $2.47 this pass)
+- v5.6.0 (Feb 20, 2026): Cron Pipeline Hardening — Category Coverage, Active Price Scraping, Failure Alerting
+  - **Olive Young CATEGORY_MAP expanded**: 6 → 11 categories. Added Sheet Masks (1000000004), Patches (1000000007), Pads (1000000148), Lip Balm & Treatment (1000000048), Eye (1000000040). Documented that toner/essence/ampoule/serum/oil/mist all live under "All Skincare" (ctgrNo=1000000008) — Sonnet handles fine-grained categorization from product name/description
+  - **refresh-prices cron rewritten**: Was snapshot-only (no actual retailer scraping). Now 3-phase active scraping: (1) Soko Glam via Shopify JSON API (40 products, no browser needed) + YesStyle via Playwright (15 products, conditional on remaining time budget), (2) snapshot all prices to `ss_price_history`, (3) detect >10% price drops and create trend signals. 50s timeout guard for Vercel cron limits. `maxDuration = 60`
+  - **translate-and-index split into two crons**: Previously crammed Sonnet extraction + ingredient linking into one 60s window (ingredient linking often skipped). Now: `translate-and-index` (7 AM, extraction only, 50 products) + new `link-ingredients` (7:30 AM, ingredient linking only, 50 products). Each gets full 60s budget
+  - **New cron: `/api/cron/link-ingredients`**: Dedicated ingredient linking cron at 7:30 AM UTC. Finds products with `ingredients_raw` but no `ss_product_ingredients` rows, parses INCI strings, matches/creates ingredients, inserts links. Uses Sonnet for new ingredient enrichment (~$0.01-0.05 per run)
+  - **Schedule collision fixed**: `update-effectiveness` moved from 6:00 AM → 5:30 AM UTC to avoid collision with `scan-korean-products` at 6:00 AM. Total 9 cron jobs configured in `vercel.json`
+  - **`maxDuration = 60` added**: Route segment config added to 5 cron routes that were missing it (`scan-korean-products`, `translate-and-index`, `link-ingredients`, `refresh-prices`, `aggregate-learning`). Ensures Vercel allocates full 60s execution window
+  - **PipelineAlerts component**: Added to admin dashboard (`/admin/pipeline`). Checks 6 failure conditions: recent failed pipeline runs (24h), stuck runs (>15 min), failed staging rows, low health score (<60 critical, <80 warning), stale quality report (>8 days), no pipeline activity in 48h. Red banners for CRITICAL, amber for WARNING
+  - **Price freshness indicators**: `PriceComparison.tsx` now shows staleness per retailer row — "Just checked" (green, <12h), "Today" (gray), "Xd ago" (amber 3-7d, red >7d). Warning banner at bottom when any price is >7 days old. Uses `getPriceFreshness()` helper
+  - **CLAUDE.md cron documentation overhaul**: Replaced aspirational 10-row cron table with accurate 9-row implemented table + 4-row future table. Added pipeline chain explanation and price freshness description
+  - **Build verified**: Both `tsc --noEmit` and `next build` pass cleanly
 - v5.5.0 (Feb 20, 2026): Production Readiness Audit — Security Hardening + Subscription Enforcement
   - **Database cleanup**: Dropped 76 ghost tables (leftover from pre-rebuild app), 1 ghost view (`price_intelligence_summary`), 13 ghost functions. Fixed `handle_new_user` auth trigger to insert into `ss_user_profiles` (was inserting into dropped `profiles` table — caused Bailey's missing profile). Fixed `search_path` on 14 functions (security hardening). Enabled RLS on `ss_product_staging`, `ss_pipeline_runs`, `ss_rate_limits`. Migration: `scripts/migrations/cleanup_ghost_tables.sql`
   - **Subscription enforcement on 6 AI endpoints**: All Claude Opus API routes now check `hasActiveSubscription()` before processing. Returns 403 if no active subscription. Endpoints gated: `/api/yuri/chat`, `/api/scan`, `/api/skin-score`, `/api/shelf-scan`, `/api/routine/generate`, `/api/dupes/ai`
