@@ -2341,6 +2341,346 @@ Rationale: Build scraper (9.1), then extraction (9.2), then ingredient linking (
 
 ---
 
+## Phase 10: Real-Time Trend Intelligence (Replace Seed Data with Live Sources)
+
+**Strategic Rationale**: The Trending page (`/trending`) currently displays 12 rows of fabricated seed data in `ss_trending_products` — fake TikTok mention counts (48,200 for Numbuzin, etc.) inserted in a single migration. The `scan-trends` cron job only detects trends from *internal* Seoul Sister community activity (review spikes, holy grail reactions), which produces nothing meaningful with 23 seed reviews and minimal real traffic. Seoul Sister's core value proposition is "know what's trending in Korea before it hits the US" — this requires real external data sources.
+
+**Current State**:
+- `ss_trending_products`: 12 seed rows with fabricated data, all inserted 2026-02-19
+- `ss_trend_signals`: Populated only by internal community activity detection (effectively empty)
+- `scan-trends` cron: Runs daily, detects review volume spikes and holy grail clusters from `ss_reviews` — useful once there's real traffic, but generates no signals now
+- Trending page (`/trending`): Two tabs — "Trending Now" (displays `ss_trending_products`) and "TikTok Capture" (product search)
+- **No external data sources**: No Reddit scanning, no Olive Young bestseller tracking, no Korean market intelligence
+
+**Goal**: Replace seed data with real, daily-updated trend data from two primary sources — Korean retail sales data (leading indicator) and English-language community mentions (lagging indicator). The unique insight is the **gap** between these two: products trending in Korea but not yet known in the US = highest signal value.
+
+**Environment Variables Required** (already configured in Seoul Sister's Vercel):
+```
+REDDIT_CLIENT_ID              # Same as LGAAS — shared Reddit app
+REDDIT_CLIENT_SECRET          # Same as LGAAS
+REDDIT_USERNAME               # Same as LGAAS
+REDDIT_PASSWORD               # Same as LGAAS
+```
+
+---
+
+### Feature 10.1: Olive Young Bestseller Scraper (Phase A — Korean Source, Highest Priority)
+
+**Why This First**: Olive Young is Korea's dominant beauty retailer (1,300+ stores). Their global bestseller page shows real-time sales rankings in English. This is the single most valuable signal for "what's trending in Korea" — actual purchase data, not social media noise. We already have the Olive Young scraper infrastructure from Phase 9.1 (`src/lib/pipeline/sources/olive-young.ts`).
+
+**Data Source**: `global.oliveyoung.com` bestseller/ranking page
+- Daily-updated rankings based on actual Korean sales (online + offline)
+- Available in English
+- Product name, brand, price, category, ranking position
+- Two ranking types: "Top Orders" and "Top in Korea"
+- Vue.js-based dynamic rendering with hidden input fields containing structured data (prdtNo, prdtName, brandNo, pricing)
+
+#### Implementation Plan
+
+**Step 1: Bestseller Scraper Module**
+
+Create `src/lib/pipeline/sources/olive-young-bestsellers.ts`:
+- `scrapeBestsellers()`: Fetch the Olive Young Global bestseller page via Playwright
+- Extract ranked products with position, name, brand, price, category
+- Match each scraped product against `ss_products` database (fuzzy name+brand matching — reuse `price-matcher.ts` pattern)
+- Return: `Array<{ rank: number, name: string, brand: string, price_usd: number, matched_product_id: UUID | null, category: string }>`
+- Rate limiting: 1 request per 2 seconds (reuse `scraper-base.ts` infrastructure)
+- Handle both "Top Orders" and "Top in Korea" tabs if available
+
+**Step 2: Trend Score Calculation**
+
+Create `src/lib/intelligence/trend-scorer.ts`:
+- `calculateOliveYoungTrendScore(rank, previousRank, daysOnList)`:
+  - Base score from rank: #1=100, #2=97, #3=94, ..., #50=2
+  - Velocity bonus: If product climbed 10+ positions since yesterday, +15 bonus
+  - New entry bonus: Products appearing for first time get +10
+  - Longevity factor: Products on list 7+ consecutive days get "sustained trend" flag
+- `calculateRedditTrendScore(mentionCount7d, mentionCount30d, sentimentScore)`:
+  - Mention velocity: mentionCount7d / (mentionCount30d / 4) — ratio > 1.5 = accelerating
+  - Base score from 7-day mentions: 0-10=low, 10-50=moderate, 50-200=high, 200+=viral
+  - Sentiment multiplier: 0.8-1.0 range (negative sentiment reduces score)
+- `calculateGapScore(koreaRank, redditMentions)`:
+  - Products with high Korea rank but low Reddit mentions = highest gap score
+  - Gap score = koreanTrendScore × (1 - min(redditMentions / 100, 1))
+  - This identifies "about to trend in the US" products
+
+**Step 3: Upsert to ss_trending_products**
+
+Modify the existing `ss_trending_products` table usage:
+- DELETE existing seed data rows (one-time cleanup)
+- UPSERT scraped bestsellers: match on `product_id`, update `trend_score`, `mention_count` (use Olive Young rank position), `source = 'olive_young_bestseller'`, `sentiment_score` (set to 0.90 default for sales data — people bought it, so sentiment is positive)
+- Track `trending_since` — first date the product appeared on the bestseller list
+- For products NOT in our DB (no `matched_product_id`): still insert with `source_product_name` and `source_product_brand` fields so the Trending page can display them. Consider adding `source_product_name` and `source_product_brand` TEXT columns to `ss_trending_products` if they don't exist.
+
+**Step 4: Cron Job**
+
+Create `src/app/api/cron/scan-olive-young-bestsellers/route.ts`:
+- Runs daily at 5:30 AM UTC (before the existing scan-korean-products at 6 AM)
+- Calls the bestseller scraper
+- Matches against product DB
+- Calculates trend scores
+- Upserts to `ss_trending_products`
+- `maxDuration = 60` (Playwright needed for Vue.js rendering)
+- Protected via `verifyCronAuth()`
+
+**Step 5: Database Migration**
+
+```sql
+-- Add columns for external source tracking
+ALTER TABLE ss_trending_products
+  ADD COLUMN IF NOT EXISTS source_product_name TEXT,
+  ADD COLUMN IF NOT EXISTS source_product_brand TEXT,
+  ADD COLUMN IF NOT EXISTS rank_position INTEGER,
+  ADD COLUMN IF NOT EXISTS previous_rank_position INTEGER,
+  ADD COLUMN IF NOT EXISTS rank_change INTEGER,  -- positive = climbing, negative = dropping
+  ADD COLUMN IF NOT EXISTS days_on_list INTEGER DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS first_seen_at TIMESTAMPTZ DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS gap_score INTEGER DEFAULT 0,  -- Korea vs US awareness gap
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Index for efficient trend queries
+CREATE INDEX IF NOT EXISTS idx_trending_source_score
+  ON ss_trending_products(source, trend_score DESC);
+
+-- Delete seed data (one-time cleanup — run after first real data load)
+-- DELETE FROM ss_trending_products WHERE created_at < '2026-02-20';
+```
+
+#### Files to Create
+- `src/lib/pipeline/sources/olive-young-bestsellers.ts` (~150 lines)
+- `src/lib/intelligence/trend-scorer.ts` (~120 lines)
+- `src/app/api/cron/scan-olive-young-bestsellers/route.ts` (~80 lines)
+
+#### Files to Modify
+- `vercel.json` — Add cron entry for `scan-olive-young-bestsellers`
+- `src/app/api/trending/route.ts` — May need to handle new columns (rank_position, rank_change, gap_score)
+- `src/app/(app)/trending/page.tsx` — Display rank position, rank change arrows, "New" badges, gap score indicators
+
+#### Dependencies
+- Playwright (already installed for Olive Young product scraping)
+
+#### Estimated Complexity
+Medium. Reuses existing scraper infrastructure. Main work is bestseller page HTML parsing + trend score calculation.
+
+---
+
+### Feature 10.2: Reddit K-Beauty Mention Scanner (Phase B — US Community Source)
+
+**Why Reddit**: r/AsianBeauty (1.8M members) is the largest English-language K-beauty community. When a product trends there, it's already mainstream in the US. r/SkincareAddiction (2.5M members) is where K-beauty products cross over. Reddit provides real mention counts and sentiment that replace the fabricated TikTok/Reddit numbers in the seed data.
+
+**Reddit API Access**: Uses the same OAuth credentials as LGAAS (already added to Seoul Sister's Vercel env vars). Direct HTTP requests to Reddit's OAuth API — no library needed. 60 requests/minute rate limit.
+
+**Key Difference from LGAAS**: LGAAS scans Reddit to find *leads to respond to* (qualified posts for engagement). Seoul Sister scans Reddit to *count product mentions and measure sentiment* (trend detection). Same data source, different extraction goal.
+
+#### Implementation Plan
+
+**Step 1: Reddit OAuth Module**
+
+Create `src/lib/reddit/oauth.ts`:
+- Reuse LGAAS pattern (`lgaas/utils/reddit-oauth.js`) adapted to TypeScript
+- `getRedditAccessToken()`: OAuth 2.0 script-type authentication
+  - POST to `https://www.reddit.com/api/v1/access_token` with client credentials
+  - Cache token in memory (1 hour TTL, refresh 5 min before expiry)
+  - Fallback to public API (10 req/min) if OAuth fails
+- `redditFetch(endpoint, params)`: Authenticated GET to `https://oauth.reddit.com/...`
+  - Rate limiting: 60 req/min with 1s minimum between requests
+  - Automatic token refresh on 401
+  - User-Agent: `SeoulSister/1.0 (by /u/${REDDIT_USERNAME})`
+
+**Step 2: K-Beauty Mention Scanner**
+
+Create `src/lib/reddit/mention-scanner.ts`:
+- `scanSubreddit(subreddit, timeRange)`: Fetch recent posts from a subreddit
+  - Endpoint: `/r/{subreddit}/search.json?q=*&sort=new&t={timeRange}&limit=100`
+  - OR: `/r/{subreddit}/new.json?limit=100` for latest posts
+  - Extract: title, selftext, score (upvotes), num_comments, created_utc
+- `extractProductMentions(posts, productIndex)`: Match product names against our database
+  - Build an in-memory index of product names + brand names from `ss_products` (6,200+ products)
+  - For each post title + body, search for product name matches (case-insensitive, handle common abbreviations: "COSRX Snail" → "Advanced Snail 96 Mucin Power Essence")
+  - Return: `Map<productId, { mentionCount: number, posts: Array<{ score, comments, sentiment }> }>`
+- `calculateSentiment(post)`: Simple keyword-based sentiment (positive: "love", "holy grail", "amazing", "repurchase"; negative: "broke me out", "irritation", "waste", "returned")
+  - Returns 0.0 to 1.0 sentiment score
+  - No AI needed for v1 — keyword matching is sufficient for Reddit where opinions are explicit
+- `buildProductNameIndex(supabase)`: Load all products into a searchable structure
+  - Include brand+name combinations, common abbreviations, Korean names
+  - Cache for duration of scan run
+
+**Subreddits to Scan**:
+```typescript
+const K_BEAUTY_SUBREDDITS = [
+  { name: 'AsianBeauty', weight: 1.0 },           // 1.8M members, pure K-beauty
+  { name: 'SkincareAddiction', weight: 0.6 },      // 2.5M members, broader but K-beauty crossover
+  { name: 'KoreanBeauty', weight: 0.8 },           // Smaller but highly focused
+  { name: '30PlusSkinCare', weight: 0.5 },          // Older demographic, premium products
+  { name: 'AsianBeautyAdvice', weight: 0.7 },       // Advice-focused
+]
+```
+
+**Step 3: Reddit Trend Aggregator**
+
+Create `src/lib/reddit/trend-aggregator.ts`:
+- `aggregateMentions(mentionsBySubreddit)`: Combine mentions across all subreddits
+  - Weight by subreddit importance (r/AsianBeauty mentions worth more than r/SkincareAddiction)
+  - Calculate 7-day mention count, 30-day mention count, mention velocity
+  - Calculate weighted sentiment score
+- `upsertRedditTrends(supabase, aggregatedMentions)`: Write to `ss_trending_products`
+  - `source = 'reddit'`
+  - `mention_count` = real mention count (not fabricated)
+  - `sentiment_score` = calculated from post keywords
+  - `trend_score` = from `trend-scorer.ts` Reddit formula
+
+**Step 4: Cron Job**
+
+Create `src/app/api/cron/scan-reddit-mentions/route.ts`:
+- Runs daily at 8:30 AM UTC (after scan-trends at 8 AM)
+- Scans 5 subreddits, 100 posts each = 500 posts max
+- ~10 API requests (100 posts per request), well within 60 req/min limit
+- Extracts product mentions, calculates sentiment, aggregates across subreddits
+- Upserts to `ss_trending_products` with `source = 'reddit'`
+- `maxDuration = 60`
+- Protected via `verifyCronAuth()`
+- Cost: $0 (Reddit API is free for authenticated apps)
+
+#### Files to Create
+- `src/lib/reddit/oauth.ts` (~80 lines)
+- `src/lib/reddit/mention-scanner.ts` (~200 lines)
+- `src/lib/reddit/trend-aggregator.ts` (~100 lines)
+- `src/app/api/cron/scan-reddit-mentions/route.ts` (~80 lines)
+
+#### Files to Modify
+- `vercel.json` — Add cron entry for `scan-reddit-mentions`
+
+#### Environment Variables
+- `REDDIT_CLIENT_ID` (already in Vercel)
+- `REDDIT_CLIENT_SECRET` (already in Vercel)
+- `REDDIT_USERNAME` (already in Vercel)
+- `REDDIT_PASSWORD` (already in Vercel)
+
+#### Estimated Complexity
+Medium-high. Reddit OAuth + mention extraction + fuzzy product matching. The product name matching is the trickiest part — K-beauty products have long names with many abbreviations.
+
+---
+
+### Feature 10.3: Trend Gap Detector & UI Updates (Phase C — The Moat)
+
+**Why This Matters**: The gap between Korean sales data and US community awareness is Seoul Sister's unique insight. No other platform provides this. "This product is #3 in Korea but nobody in the US is talking about it yet" is the kind of intelligence that builds user loyalty and drives sharing.
+
+#### Implementation Plan
+
+**Step 1: Gap Score Calculation**
+
+Add to `src/lib/intelligence/trend-scorer.ts`:
+- `calculateGapScores(supabase)`: Run after both Olive Young and Reddit scans complete
+  - For each product in `ss_trending_products` with `source = 'olive_young_bestseller'`:
+    - Look up same product_id in Reddit trends
+    - If no Reddit entry or low Reddit mentions → high gap score
+    - Gap score formula: `koreanTrendScore × (1 - min(redditMentionCount / 100, 1))`
+    - Score 0-100: 0 = equally known in Korea and US, 100 = trending in Korea, unknown in US
+  - Store `gap_score` on the `ss_trending_products` row
+
+**Step 2: Update Trending Page UI**
+
+Modify `src/app/(app)/trending/page.tsx`:
+- Add third tab: **"Emerging from Korea"** — shows products with highest gap_score
+  - These are products trending in Korean sales but with low Reddit mentions
+  - Display: product card + Korean rank badge + "Not yet trending in the US" indicator
+  - This is the premium intelligence that differentiates Seoul Sister
+- Update "Trending Now" tab:
+  - Show real rank position (e.g., "#3 on Olive Young")
+  - Rank change arrows (green up, red down, gray dash for new)
+  - "NEW" badge for products appearing for first time
+  - Source badges: "Olive Young Bestseller", "Reddit r/AsianBeauty", "Reddit r/SkincareAddiction"
+  - Replace fabricated mention counts with real data
+- Update "TikTok Capture" tab: No changes (product search stays the same)
+
+**Step 3: Update Trending API**
+
+Modify `src/app/api/trending/route.ts`:
+- Add `tab` query param: `trending` (default), `emerging`, `tiktok_capture`
+- `emerging` tab: Query `ss_trending_products` WHERE `gap_score > 50` ORDER BY `gap_score DESC`
+- Include new columns in response: `rank_position`, `rank_change`, `gap_score`, `source`, `days_on_list`
+
+**Step 4: Dashboard Widget Update**
+
+Modify "Trending in Korea" widget on dashboard to prioritize real data:
+- Show top 3 by trend_score from real sources (not seed data)
+- Add "Emerging" badge for products with gap_score > 70
+
+**Step 5: Seed Data Cleanup**
+
+After first successful run of both crons:
+```sql
+-- Delete all fabricated seed data
+DELETE FROM ss_trending_products WHERE created_at < '2026-02-20';
+```
+Run this AFTER verifying real data is flowing (check `source = 'olive_young_bestseller'` rows exist).
+
+#### Files to Modify
+- `src/lib/intelligence/trend-scorer.ts` — Add gap score calculation
+- `src/app/(app)/trending/page.tsx` — Add "Emerging from Korea" tab, update display
+- `src/app/api/trending/route.ts` — Add tab filtering, include new columns
+- `src/app/(app)/dashboard/page.tsx` — Update trending widget for real data
+
+#### Estimated Complexity
+Medium. Mostly UI updates + gap score math. The cross-referencing logic is straightforward.
+
+---
+
+### Future: Hwahae Rankings (Phase D — Deferred)
+
+**What**: Hwahae (화해) is Korea's largest beauty review app (187,000+ products, 5.77M+ reviews). They publish weekly category rankings segmented by age group (20s, 30s, 40s+). An Apify scraper is available for $3 per 1,000 results across 465 ranking themes.
+
+**Why Deferred**: Olive Young bestsellers provide the same "trending in Korea" signal from actual sales data. Hwahae adds depth (age-specific rankings, ingredient-level analysis, review velocity) but isn't needed for the core trend gap feature to work.
+
+**When to Add**: After Phase 10 A-C are live and validated. Hwahae becomes valuable when Seoul Sister wants to say "trending with Korean women in their 20s" (age-specific signals) or when the ingredient-level trend analysis becomes important.
+
+**Implementation Notes for Future Session**:
+- Use Apify actor: `kitschy_marigold/hwahae-ranking-scraper` (465 theme IDs)
+- Run weekly (rankings update Thursdays)
+- Write to `ss_trending_products` with `source = 'hwahae'`
+- Key value: age-specific rankings map to Seoul Sister's Gen Z target demographic
+- Cost: ~$3-15/month depending on number of categories tracked
+
+### Future: Additional Sources (Phase E — Deferred)
+
+These sources can be added incrementally after Phase 10 A-C:
+
+| Source | Value | Effort | Cost | When to Add |
+|--------|-------|--------|------|-------------|
+| **Google Trends** | Search interest over time for product names | Low | $0-50/mo | When want to quantify US awareness beyond Reddit |
+| **YouTube Data API** | Video mention counts for K-beauty products | Low | $0 (free) | When TikTok/YouTube trend signal needed |
+| **Naver Shopping** | Korean e-commerce sales rankings | Medium | $0 | When want second Korean sales data source |
+| **Glowpick Awards** | Biannual Korean beauty award winners (237 categories) | Low | $0 | Import twice/year (May + November) |
+| **Coupang Bestsellers** | Mass-market Korean sales data | Medium | $0 | When want mainstream consumer preferences |
+
+---
+
+### Phase 10 Implementation Priority
+
+| # | Feature | Priority | Complexity | Key Deliverable |
+|---|---------|----------|-----------|----------------|
+| 10.1 | Olive Young Bestsellers | P0 | Medium | Real Korean sales rankings in `ss_trending_products` |
+| 10.2 | Reddit Mention Scanner | P1 | Medium-High | Real US community mention counts + sentiment |
+| 10.3 | Trend Gap Detector + UI | P2 | Medium | "Emerging from Korea" tab — the unique intelligence |
+
+**Build Order**: 10.1 → 10.2 → 10.3
+
+**Rationale**: Korean data first (highest value, we already have the scraper). Reddit second (provides the US side of the gap equation). Gap detector + UI updates last (needs both data sources to calculate gaps).
+
+**Session Strategy**: 10.1 + 10.2 can potentially be built in one session. 10.3 depends on having data from both sources flowing, so it may need to run after at least one cron cycle.
+
+**IMPORTANT — Reference for LGAAS Reddit OAuth Pattern**:
+The Reddit OAuth implementation in LGAAS is at `lgaas/utils/reddit-oauth.js`. Key patterns to reuse:
+- Script-type OAuth 2.0 (client credentials + bot account username/password)
+- Token endpoint: `https://www.reddit.com/api/v1/access_token`
+- API base: `https://oauth.reddit.com` (authenticated)
+- In-memory token caching with 1-hour TTL
+- Automatic fallback to public API (`https://www.reddit.com`) if OAuth fails
+- 60 req/min rate limit (authenticated), 10 req/min (public)
+- User-Agent header required: `AppName/Version (by /u/username)`
+
+---
+
 ## Competitive Landscape
 
 ### Why Seoul Sister Wins
@@ -2423,8 +2763,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 5.8.3 (Database Stats Sync — 14,400+ Ingredients, 221,000+ Links, 89% Linked)
-**Status**: All Phases Complete (1-9). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 9 cron jobs configured. Admin dashboard live with pipeline alerting. Yuri knows all features.
+**Version**: 5.9.0 (Phase 10 Blueprint — Real-Time Trend Intelligence)
+**Status**: All Phases Complete (1-9), Phase 10 documented. 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 9 cron jobs configured. Admin dashboard live with pipeline alerting. Yuri knows all features. Phase 10 (Real-Time Trend Intelligence) ready for implementation.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -2440,6 +2780,15 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v5.9.0 (Feb 22, 2026): Phase 10 Blueprint — Real-Time Trend Intelligence
+  - **Phase 10 documented in CLAUDE.md**: Comprehensive implementation plans for replacing fabricated `ss_trending_products` seed data with real trend intelligence from external sources
+  - **Feature 10.1: Olive Young Bestseller Scraper** (Phase A — Build First): Scrapes `global.oliveyoung.com/display/page/best-seller` for daily Korean sales rankings. Extends existing Olive Young scraper infrastructure (`src/lib/pipeline/sources/olive-young.ts`). Upserts into `ss_trending_products` with `source = 'olive_young'`. New cron job at 6:30 AM UTC. New migration: `ss_trending_products` restructure (drop fabricated seed data, add `source`, `source_rank`, `source_url`, `data_date`, `raw_data` columns), `ss_trend_data_sources` table for tracking scrape history
+  - **Feature 10.2: Reddit K-Beauty Mention Scanner** (Phase B): Reddit OAuth 2.0 script-type auth (same credentials as LGAAS). Scans r/AsianBeauty, r/SkincareAddiction, r/KoreanBeauty, r/30PlusSkinCare for product mentions. Product name matching via `ss_products` fuzzy search. Sentiment analysis via Haiku. New cron at 8:30 AM UTC. New `ss_reddit_mentions` table. Environment variables: `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USERNAME`, `REDDIT_PASSWORD`
+  - **Feature 10.3: Trend Gap Detector & UI Updates** (Phase C): Cross-references Olive Young rankings vs Reddit mentions to identify "emerging trends" (high Korean rank + low English awareness = highest signal). Rewrites `/trending` page to show "Trending in Korea" (Olive Young data) vs "Trending in K-Beauty Community" (Reddit) vs "Emerging Trends" (gap analysis). Replaces fabricated data with real-time intelligence
+  - **Future sources documented**: Hwahae Rankings (Phase D — deferred, Apify scraper ~$3/1K results, weekly category rankings by age group), Additional Sources (Phase E — YouTube Data API, Google Trends, Naver Shopping, Glowpick)
+  - **LGAAS Reddit OAuth pattern reference**: Documented the fan-out search architecture from LGAAS `api/search-reddit.js` for the next session to adapt. Seoul Sister needs mention counting + sentiment, not lead response
+  - **Implementation priority**: 10.1 (Olive Young, high impact) → 10.2 (Reddit, medium) → 10.3 (Gap detector, ties it together). Build order designed for one feature per session
+  - **Existing trend infrastructure preserved**: `src/lib/learning/trends.ts` (internal community signal detection) continues running alongside new external sources. Both feed `ss_trend_signals`
 - v5.8.3 (Feb 21, 2026): Database Stats Sync — 14,400+ Ingredients, 221,000+ Links, 89% Linked
   - **fast-link.ts re-run**: Linked 4,050 additional products (all cache hits, $0 Sonnet cost, ~6 min at 10.9/s). Products with ingredient links: 5,552 (89.2%), up from 1,458 pre-run
   - **Stats synced across all user-facing files**: `page.tsx` (homepage hero + stats grid), `llms.txt`, `advisor.ts` (Yuri system prompt), `specialists.ts` (Trend Scout), `CLAUDE.md`
