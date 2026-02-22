@@ -380,7 +380,7 @@ export default function LandingPage() {
               {
                 icon: Beaker,
                 title: 'Ingredient-Level Intelligence',
-                desc: '10,300+ ingredients decoded with safety ratings, comedogenic scores, and function explanations. Every product analyzed down to the INCI list.',
+                desc: '14,400+ ingredients decoded with safety ratings, comedogenic scores, and function explanations. Every product analyzed down to the INCI list.',
               },
               {
                 icon: BookOpen,

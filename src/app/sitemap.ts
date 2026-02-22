@@ -16,6 +16,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Dynamic product pages
   let productPages: MetadataRoute.Sitemap = []
+  let blogPages: MetadataRoute.Sitemap = []
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -36,9 +37,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8,
       }))
     }
+
+    // Blog posts
+    const { data: blogPosts } = await supabase
+      .from('ss_content_posts')
+      .select('slug, published_at, updated_at')
+      .not('published_at', 'is', null)
+      .lte('published_at', new Date().toISOString())
+      .order('published_at', { ascending: false })
+
+    if (blogPosts) {
+      blogPages = blogPosts.map((p) => ({
+        url: `${baseUrl}/blog/${p.slug}`,
+        lastModified: new Date(p.updated_at || p.published_at),
+        changeFrequency: 'weekly' as const,
+        priority: 0.7,
+      }))
+    }
   } catch {
     // Sitemap generation should never fail the build
   }
 
-  return [...staticPages, ...productPages]
+  return [
+    ...staticPages,
+    { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.8 },
+    ...productPages,
+    ...blogPages,
+  ]
 }
