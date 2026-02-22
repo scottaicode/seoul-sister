@@ -342,6 +342,17 @@ async function extractAndUpdate(
 
     await updateOnboardingProgress(userId, merged, capturedFields, percentage, isComplete)
 
+    // Auto-finalize: write extracted data to ss_user_profiles as soon as
+    // all required fields are captured, so the profile is ready even if
+    // the user never clicks the explicit "Complete" button.
+    if (isComplete) {
+      try {
+        await finalizeOnboardingProfile(userId, merged)
+      } catch (finalizeErr) {
+        console.error(`[yuri/onboarding] Auto-finalize error for user ${userId}:`, finalizeErr)
+      }
+    }
+
     return { percentage, isComplete, capturedFields }
   } catch (err) {
     console.error(`[yuri/onboarding] Extraction error for user ${userId}:`, err)
