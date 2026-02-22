@@ -17,6 +17,7 @@ import DupeCard from '@/components/dupes/DupeCard'
 import AiDupeCard from '@/components/dupes/AiDupeCard'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import EmptyState from '@/components/ui/EmptyState'
+import { supabase } from '@/lib/supabase'
 import type { Product } from '@/types/database'
 
 interface DupeResult {
@@ -115,7 +116,12 @@ export default function DupesPage() {
     setDupeLoading(true)
     setDupeData(null)
     try {
-      const res = await fetch(`/api/dupes?product_id=${productId}&max_dupes=10`)
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: Record<string, string> = {}
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      const res = await fetch(`/api/dupes?product_id=${productId}&max_dupes=10`, { headers })
       if (!res.ok) throw new Error('Failed to fetch dupes')
       const data: DupeResponse = await res.json()
       setDupeData(data)
@@ -139,9 +145,14 @@ export default function DupesPage() {
     setAiLoading(true)
     setAiResult(null)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
       const res = await fetch('/api/dupes/ai', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ product_name: aiQuery }),
       })
       if (!res.ok) throw new Error('AI search failed')

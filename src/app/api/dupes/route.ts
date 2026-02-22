@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { requireAuth } from '@/lib/auth'
+import { getServiceClient } from '@/lib/supabase'
 import { dupeFinderSchema } from '@/lib/utils/validation'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 
@@ -43,6 +44,8 @@ export interface DupeResult {
 
 export async function GET(request: NextRequest) {
   try {
+    await requireAuth(request)
+
     const { searchParams } = new URL(request.url)
     const params = dupeFinderSchema.parse({
       product_id: searchParams.get('product_id') || undefined,
@@ -50,10 +53,7 @@ export async function GET(request: NextRequest) {
       min_match_score: searchParams.get('min_match_score') ? Number(searchParams.get('min_match_score')) : undefined,
     })
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+    const supabase = getServiceClient()
 
     // Step 1: Fetch the target product
     const { data: targetProduct, error: productError } = await supabase

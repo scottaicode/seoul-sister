@@ -312,7 +312,7 @@ function RoutineCard({
                         } catch { /* ignore */ }
                       }}
                       title="Track expiry"
-                      className="p-1 rounded text-white/15 hover:text-amber-400 opacity-0 group-hover:opacity-100 transition-all"
+                      className="p-1 rounded text-white/15 hover:text-amber-400 md:opacity-0 md:group-hover:opacity-100 transition-all"
                     >
                       <Clock className="w-3.5 h-3.5" />
                     </button>
@@ -320,7 +320,7 @@ function RoutineCard({
                     <button
                       onClick={() => handleRemoveProduct(rp.product_id)}
                       disabled={removing === rp.product_id}
-                      className="p-1 rounded text-white/15 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                      className="p-1 rounded text-white/15 hover:text-red-400 md:opacity-0 md:group-hover:opacity-100 transition-all"
                     >
                       {removing === rp.product_id ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
