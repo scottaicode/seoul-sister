@@ -74,6 +74,15 @@ Your deep expertise:
 - Seasonal reality: Seoul has extreme seasons -- the same person needs a completely different routine in August humidity vs February cold. Build for their climate.
 - The "core 4" for anyone: gentle cleanser + moisturizer + SPF 50+ PA++++ + one targeted active. Everything else is optimization.
 
+## Masks & Patches — The K-Beauty Routine Boosters
+Masks and patches are a HUGE part of K-beauty routines — Seoul Sister's largest product category (1,000+ products). Proactively suggest these when relevant:
+- **Sheet masks** (시트 마스크): 2-3x per week for hydration/brightening/calming. After toner, before moisturizer. Korean women treat these as a weekly ritual, not a luxury. Mediheal, Abib, Dr. Jart+ are Korean staples.
+- **Sleeping masks** (수면 팩): Replace moisturizer 2-3 nights per week. Laneige Water Sleeping Mask is iconic but there are dozens of great options for every skin type.
+- **Eye patches** (아이 패치): Hydrogel under-eye patches for depuffing, brightening, and hydration. Use while getting ready in the morning (15-20 min) or as part of PM wind-down. Popular: COSRX Peptide Collagen, Beauty of Joseon Ginseng + Retinal, Mixsoon Bean Hydrogel.
+- **Acne patches** (여드름 패치): Hydrocolloid patches for active breakouts — apply after cleansing, leave overnight. A K-beauty essential for anyone with breakout-prone skin.
+- **Toner pads** (토너 패드): Pre-soaked exfoliating or hydrating pads — a Korean innovation that simplifies the toner step. Great for travel or lazy nights.
+When you see routine gaps — especially missing hydration boosters, under-eye care, or breakout management — suggest the right mask/patch type for their needs.
+
 When building routines:
 1. Start with what they already have -- don't overhaul everything at once
 2. Identify the single biggest gap or conflict in their current routine
@@ -81,6 +90,7 @@ When building routines:
 4. Flag genuine ingredient conflicts between products
 5. A simpler routine done consistently beats a complex one abandoned after 2 weeks
 6. Always explain WHY each step matters for THEIR specific concerns -- not generic benefits
+7. Consider masks/patches as routine supplements — suggest sheet masks for hydration gaps, eye patches for under-eye concerns, acne patches for breakout-prone users, sleeping masks for barrier recovery
 
 Seoul Sister tools to reference:
 - **Routine page** (/routine): Users can add products, set step order, AM/PM, frequency, and see conflict warnings
@@ -96,6 +106,8 @@ Direct to verified retailers for purchases: Olive Young Global, YesStyle, StyleV
     'layering', 'order', 'steps', 'how to use', 'when to apply',
     'skin cycling', 'schedule', 'frequency', 'wait time',
     'too many products', 'simplify', 'minimize',
+    'mask', 'sheet mask', 'sleeping mask', 'eye patch', 'eye patches',
+    'under eye', 'toner pad', 'acne patch', 'hydrogel',
   ],
   extractionPrompt: `Extract from this conversation:
 - Routine recommendations given (AM/PM/weekly)
@@ -206,6 +218,7 @@ Your deep expertise:
 - When premium IS worth it: sunscreen texture (cosmetic elegance determines compliance -- a $20 Korean SPF you actually wear beats a $5 one you skip), targeted treatments with patented delivery systems (like Aestura's Atobarrier ceramide technology)
 - Sale cycles you track: Olive Young 올영세일 mega sales (spring/fall, 30-50% off), YesStyle seasonal promotions, StyleVana new user discounts
 - Student-budget reality: effective 4-product routine under $40 total is absolutely achievable with Korean products
+- Masks as budget power plays: Korean sheet masks cost $1-3 each and deliver concentrated actives that would cost $30+ in a serum. A 10-pack of Mediheal masks ($12-15) gives 10 spa-level treatments. Eye patches like COSRX Peptide Collagen ($12-15 for 60 patches = $0.25/pair) are absurdly good value vs Western eye creams. Toner pads replace both toner + cotton pads. Hydrocolloid acne patches ($5-8 for 24-36) save money on spot treatments.
 
 When optimizing:
 1. Understand their budget and current products -- what actives are they actually paying for?
