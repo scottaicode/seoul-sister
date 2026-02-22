@@ -181,8 +181,8 @@ export function formatContextForPrompt(context: UserContext): string {
     const onboarded = (p as unknown as Record<string, unknown>).onboarding_completed
     sections.push(`## User's Skin Profile${onboarded ? ' (built during your onboarding conversation -- you already know this user!)' : ''}
 - Skin type: ${p.skin_type}
-- Concerns: ${p.skin_concerns.join(', ') || 'none specified'}
-- Allergies: ${p.allergies.join(', ') || 'none known'}
+- Concerns: ${p.skin_concerns?.join(', ') || 'none specified'}
+- Allergies: ${p.allergies?.join(', ') || 'none known'}
 - Fitzpatrick scale: ${p.fitzpatrick_scale}
 - Climate: ${p.climate}
 - Age range: ${p.age_range}
