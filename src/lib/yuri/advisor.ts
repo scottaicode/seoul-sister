@@ -348,6 +348,13 @@ export async function* streamAdvisorResponse(
       // Insight extraction is non-critical
     })
   }
+
+  // 10. Continuous learning: extract profile updates + product reactions
+  //     Runs on EVERY conversation (not just specialist ones) to catch new
+  //     information the user reveals over time. Fire-and-forget.
+  extractContinuousLearning(userId, message, fullResponse).catch(() => {
+    // Learning extraction is non-critical — never block the stream
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -398,6 +405,159 @@ Return ONLY valid JSON.`,
     await saveSpecialistInsight(conversationId, specialistType, insightData)
   } catch {
     // Extraction failed; non-critical
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Background: extract profile updates + product reactions from any conversation
+// ---------------------------------------------------------------------------
+
+async function extractContinuousLearning(
+  userId: string,
+  userMessage: string,
+  assistantResponse: string
+): Promise<void> {
+  const client = getAnthropicClient()
+
+  const response = await client.messages.create({
+    model: MODELS.background,
+    max_tokens: 500,
+    messages: [
+      {
+        role: 'user',
+        content: `Analyze this K-beauty advisor conversation exchange and extract TWO things:
+
+1. **Profile updates**: Any NEW information the user revealed about themselves that should update their skin profile. Only extract what they EXPLICITLY stated — never infer. Return null for any field not mentioned.
+
+Possible profile fields:
+- skin_type: "oily" | "dry" | "combination" | "normal" | "sensitive"
+- new_concerns: string[] (new skin concerns mentioned)
+- new_allergies: string[] (new allergies or sensitivities discovered)
+- climate: "humid" | "dry" | "temperate" | "tropical" | "cold"
+- budget_preference: "budget" | "mid-range" | "luxury" | "mixed"
+- experience_level: "beginner" | "intermediate" | "advanced"
+- new_routine_products: string[] (products they mentioned using)
+- new_product_preferences: string[] (brands or products they expressed liking)
+
+2. **Product reactions**: If the user described a specific reaction to a specific product, extract it. Only if they clearly stated a reaction — not hypothetical or asking about potential reactions.
+
+Possible reactions: "holy_grail" (they love it/HG/repurchase forever), "good" (positive), "okay" (neutral), "bad" (negative), "broke_me_out" (caused breakouts/irritation/reaction)
+
+USER MESSAGE: "${userMessage.slice(0, 1000)}"
+ASSISTANT RESPONSE: "${assistantResponse.slice(0, 1000)}"
+
+Return ONLY valid JSON in this exact format:
+{
+  "profile_updates": { ...only non-null fields... } or null,
+  "product_reactions": [ { "product_name": "...", "brand": "...", "reaction": "..." } ] or []
+}
+
+If nothing new was revealed, return: { "profile_updates": null, "product_reactions": [] }`,
+      },
+    ],
+  })
+
+  const block = response.content[0]
+  if (block.type !== 'text') return
+
+  let parsed: {
+    profile_updates: Record<string, unknown> | null
+    product_reactions: Array<{ product_name: string; brand?: string; reaction: string }>
+  }
+  try {
+    const text = block.text.trim().replace(/^```json?\s*/, '').replace(/\s*```$/, '')
+    parsed = JSON.parse(text)
+  } catch {
+    return
+  }
+
+  const { getServiceClient } = await import('@/lib/supabase')
+  const db = getServiceClient()
+
+  // Apply profile updates if any were extracted
+  if (parsed.profile_updates && Object.keys(parsed.profile_updates).length > 0) {
+    try {
+      const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
+      const pu = parsed.profile_updates
+
+      // Direct field updates (only override if user explicitly stated something new)
+      if (pu.skin_type) updates.skin_type = pu.skin_type
+      if (pu.climate) updates.climate = pu.climate
+      if (pu.budget_preference) updates.budget_range = pu.budget_preference
+      if (pu.experience_level) updates.experience_level = pu.experience_level
+
+      // Array fields — merge with existing rather than overwrite
+      if (
+        (pu.new_concerns && (pu.new_concerns as string[]).length > 0) ||
+        (pu.new_allergies && (pu.new_allergies as string[]).length > 0)
+      ) {
+        const { data: existing } = await db
+          .from('ss_user_profiles')
+          .select('skin_concerns, allergies')
+          .eq('user_id', userId)
+          .single()
+
+        if (existing) {
+          if (pu.new_concerns && (pu.new_concerns as string[]).length > 0) {
+            const merged = [...new Set([
+              ...(existing.skin_concerns || []),
+              ...(pu.new_concerns as string[]),
+            ])]
+            updates.skin_concerns = merged
+          }
+          if (pu.new_allergies && (pu.new_allergies as string[]).length > 0) {
+            const merged = [...new Set([
+              ...(existing.allergies || []),
+              ...(pu.new_allergies as string[]),
+            ])]
+            updates.allergies = merged
+          }
+        }
+      }
+
+      // Only write if we have real updates beyond just the timestamp
+      if (Object.keys(updates).length > 1) {
+        await db
+          .from('ss_user_profiles')
+          .update(updates)
+          .eq('user_id', userId)
+      }
+    } catch (err) {
+      console.error(`[yuri/learning] Profile update error for user ${userId}:`, err)
+    }
+  }
+
+  // Auto-log product reactions
+  if (parsed.product_reactions && parsed.product_reactions.length > 0) {
+    for (const reaction of parsed.product_reactions) {
+      try {
+        // Try to match product in database by name
+        const { data: matchedProducts } = await db
+          .from('ss_products')
+          .select('id, name_en')
+          .ilike('name_en', `%${reaction.product_name.slice(0, 50)}%`)
+          .limit(1)
+
+        if (matchedProducts && matchedProducts.length > 0) {
+          const validReactions = ['holy_grail', 'good', 'okay', 'bad', 'broke_me_out']
+          if (validReactions.includes(reaction.reaction)) {
+            await db
+              .from('ss_user_product_reactions')
+              .upsert(
+                {
+                  user_id: userId,
+                  product_id: matchedProducts[0].id,
+                  reaction: reaction.reaction,
+                  notes: 'Auto-detected from Yuri conversation',
+                },
+                { onConflict: 'user_id,product_id' }
+              )
+          }
+        }
+      } catch (err) {
+        console.error(`[yuri/learning] Product reaction error for "${reaction.product_name}":`, err)
+      }
+    }
   }
 }
 

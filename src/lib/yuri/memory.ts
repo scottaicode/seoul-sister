@@ -6,6 +6,12 @@ import { getCyclePhase, getPhaseLabel } from '@/lib/intelligence/cycle-routine'
 // Types
 // ---------------------------------------------------------------------------
 
+export interface SpecialistInsightMemory {
+  specialistType: string
+  data: Record<string, unknown>
+  createdAt: string
+}
+
 export interface UserContext {
   skinProfile: SkinProfile | null
   recentConversations: ConversationMemory[]
@@ -14,6 +20,7 @@ export interface UserContext {
   knownPreferences: string[]
   routineProducts: string[]
   learningInsights: LearningContextData[]
+  specialistInsights: SpecialistInsightMemory[]
   cyclePhase: CyclePhaseInfo | null
 }
 
@@ -48,6 +55,7 @@ export async function loadUserContext(userId: string): Promise<UserContext> {
     conversationsResult,
     reactionsResult,
     routineResult,
+    specialistInsightsResult,
   ] = await Promise.all([
     // Skin profile
     db
@@ -89,6 +97,14 @@ export async function loadUserContext(userId: string): Promise<UserContext> {
       `)
       .eq('user_id', userId)
       .eq('is_active', true),
+
+    // Specialist insights from past conversations (most recent per specialist)
+    db
+      .from('ss_specialist_insights')
+      .select('specialist_type, data, created_at, conversation_id, ss_yuri_conversations!inner(user_id)')
+      .eq('ss_yuri_conversations.user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(20),
   ])
 
   // Load learning insights after we know the skin profile
@@ -156,6 +172,28 @@ export async function loadUserContext(userId: string): Promise<UserContext> {
     }
   }
 
+  // Extract specialist insights — deduplicate by specialist type (keep most recent)
+  const specialistInsights: SpecialistInsightMemory[] = []
+  const seenSpecialists = new Set<string>()
+  for (const row of specialistInsightsResult.data || []) {
+    const r = row as Record<string, unknown>
+    const st = r.specialist_type as string
+    if (seenSpecialists.has(st)) continue
+    seenSpecialists.add(st)
+    const data = r.data as Record<string, unknown>
+    // Only include insights that have meaningful content (non-empty arrays/values)
+    const hasContent = Object.values(data).some((v) =>
+      Array.isArray(v) ? v.length > 0 : v !== null && v !== undefined && v !== ''
+    )
+    if (hasContent) {
+      specialistInsights.push({
+        specialistType: st,
+        data,
+        createdAt: r.created_at as string,
+      })
+    }
+  }
+
   return {
     skinProfile,
     recentConversations,
@@ -164,6 +202,7 @@ export async function loadUserContext(userId: string): Promise<UserContext> {
     knownPreferences: [],
     routineProducts,
     learningInsights,
+    specialistInsights,
     cyclePhase,
   }
 }
@@ -245,6 +284,24 @@ When making skincare recommendations, factor in the user's current cycle phase. 
       .map((i) => `- [${i.type}] ${i.summary}`)
       .join('\n')
     sections.push(`## Learning Engine Insights (From Community Data)\nUse these data-backed insights to personalize your advice. Cite the data when relevant:\n${insightLines}`)
+  }
+
+  // Specialist insights from past conversations (accumulated intelligence)
+  if (context.specialistInsights.length > 0) {
+    const insightLines = context.specialistInsights.map((si) => {
+      const data = si.data
+      const parts: string[] = [`### ${si.specialistType.replace(/_/g, ' ')}`]
+      // Format known data fields from specialist extractions
+      for (const [key, value] of Object.entries(data)) {
+        if (Array.isArray(value) && value.length > 0) {
+          parts.push(`- ${key.replace(/_/g, ' ')}: ${value.join(', ')}`)
+        } else if (typeof value === 'string' && value) {
+          parts.push(`- ${key.replace(/_/g, ' ')}: ${value}`)
+        }
+      }
+      return parts.join('\n')
+    }).join('\n')
+    sections.push(`## Past Specialist Intelligence (From Previous Conversations)\nThis user has had specialist conversations before. Use these insights to build on previous advice — don't ask about things you already learned:\n${insightLines}`)
   }
 
   return sections.join('\n\n')
