@@ -11,7 +11,7 @@ export const maxDuration = 60
 const generateSchema = z.object({
   routine_type: z.enum(['am', 'pm']),
   concerns: z.array(z.string()).optional(),
-  budget_range: z.enum(['budget', 'mid', 'premium', 'luxury']).optional(),
+  budget_range: z.enum(['budget', 'mid-range', 'luxury', 'mixed']).optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -69,10 +69,10 @@ Concerns: ${(concerns ?? profile.skin_concerns ?? []).join(', ')}
 Allergies: ${(profile.allergies ?? []).join(', ') || 'None reported'}
 Climate: ${profile.climate ?? 'Unknown'}
 Age: ${profile.age_range ?? 'Unknown'}
-Budget: ${budget_range ?? profile.budget_range ?? 'mid'}
+Budget: ${budget_range ?? profile.budget_range ?? 'mid-range'}
 Experience: ${profile.experience_level ?? 'beginner'}`
       : `No skin profile available. Recommend a balanced routine for combination skin.
-Budget: ${budget_range ?? 'mid'}`
+Budget: ${budget_range ?? 'mid-range'}`
 
     const existingRoutineInfo = existingRoutines?.length
       ? existingRoutines

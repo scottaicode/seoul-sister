@@ -16,9 +16,9 @@ export const skinProfileSchema = z.object({
   allergies: z.array(z.string()),
   fitzpatrick_scale: z.number().min(1).max(6),
   climate: z.enum(['humid', 'dry', 'temperate', 'tropical', 'cold']),
-  age_range: z.enum(['13-17', '18-24', '25-30', '31-40', '41-50', '51+']),
-  budget_range: z.enum(['budget', 'mid', 'premium', 'luxury']),
-  experience_level: z.enum(['beginner', 'intermediate', 'advanced', 'expert']),
+  age_range: z.enum(['18-24', '25-30', '31-35', '36-40', '41-50', '50+']),
+  budget_range: z.enum(['budget', 'mid-range', 'luxury', 'mixed']),
+  experience_level: z.enum(['beginner', 'intermediate', 'advanced']),
 })
 
 export type SkinProfileInput = z.infer<typeof skinProfileSchema>
@@ -57,7 +57,7 @@ export const dupeFinderSchema = z.object({
 
 export const dupeAiSchema = z.object({
   product_name: z.string().min(1, 'Product name is required').max(200),
-  budget_range: z.enum(['budget', 'mid', 'premium']).optional(),
+  budget_range: z.enum(['budget', 'mid-range', 'luxury']).optional(),
 })
 
 export const trackingCreateSchema = z.object({

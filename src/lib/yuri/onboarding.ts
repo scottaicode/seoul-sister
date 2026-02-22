@@ -127,13 +127,13 @@ Return a JSON object with ONLY the fields that have been explicitly mentioned. O
 Possible fields:
 - skin_type: one of "oily", "dry", "combination", "normal", "sensitive"
 - skin_concerns: array of concerns (e.g., ["acne", "dark spots", "dullness"]). Normalize to lowercase.
-- age_range: one of "13-17", "18-24", "25-30", "31-40", "41-50", "51+"
+- age_range: one of "18-24", "25-30", "31-35", "36-40", "41-50", "50+"
 - fitzpatrick_scale: integer 1-6 (1=very fair/always burns, 6=deep/never burns)
 - climate: one of "humid", "dry", "temperate", "tropical", "cold"
 - allergies: array of known allergens or ingredients they react to
 - current_routine: array of product names or categories they currently use
-- budget_preference: one of "budget", "mid", "premium", "luxury"
-- experience_level: one of "beginner", "intermediate", "advanced", "expert"
+- budget_preference: one of "budget", "mid-range", "luxury", "mixed"
+- experience_level: one of "beginner", "intermediate", "advanced"
 - product_preferences: array of specific products or brands they like
 
 CONVERSATION:
@@ -325,7 +325,7 @@ export async function finalizeOnboardingProfile(
     fitzpatrick_scale: extracted.fitzpatrick_scale || 3,
     climate: extracted.climate || 'temperate',
     age_range: extracted.age_range || '25-30',
-    budget_range: extracted.budget_preference || 'mid',
+    budget_range: extracted.budget_preference || 'mid-range',
     experience_level: extracted.experience_level || 'beginner',
     onboarding_completed: true,
     updated_at: new Date().toISOString(),
@@ -363,7 +363,7 @@ export async function skipOnboarding(userId: string): Promise<void> {
       fitzpatrick_scale: 3,
       climate: 'temperate',
       age_range: '25-30',
-      budget_range: 'mid',
+      budget_range: 'mid-range',
       experience_level: 'beginner',
       onboarding_completed: false,
       updated_at: new Date().toISOString(),

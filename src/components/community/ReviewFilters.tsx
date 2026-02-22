@@ -31,12 +31,12 @@ const fitzpatrickScales = [
 ]
 
 const ageRanges = [
-  { value: '13-17', label: '13-17' },
   { value: '18-24', label: '18-24' },
   { value: '25-30', label: '25-30' },
-  { value: '31-40', label: '31-40' },
+  { value: '31-35', label: '31-35' },
+  { value: '36-40', label: '36-40' },
   { value: '41-50', label: '41-50' },
-  { value: '51+', label: '51+' },
+  { value: '50+', label: '50+' },
 ]
 
 const reactions = [

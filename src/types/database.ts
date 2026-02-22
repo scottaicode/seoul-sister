@@ -6,9 +6,9 @@ export interface SkinProfile {
   allergies: string[]
   fitzpatrick_scale: 1 | 2 | 3 | 4 | 5 | 6
   climate: 'humid' | 'dry' | 'temperate' | 'tropical' | 'cold'
-  age_range: '13-17' | '18-24' | '25-30' | '31-40' | '41-50' | '51+'
-  budget_range: 'budget' | 'mid' | 'premium' | 'luxury'
-  experience_level: 'beginner' | 'intermediate' | 'advanced' | 'expert'
+  age_range: '18-24' | '25-30' | '31-35' | '36-40' | '41-50' | '50+'
+  budget_range: 'budget' | 'mid-range' | 'luxury' | 'mixed'
+  experience_level: 'beginner' | 'intermediate' | 'advanced'
   created_at: string
   updated_at: string
 }
@@ -593,8 +593,8 @@ export interface ExtractedSkinProfile {
   climate?: 'humid' | 'dry' | 'temperate' | 'tropical' | 'cold'
   allergies?: string[]
   current_routine?: string[]
-  budget_preference?: 'budget' | 'mid' | 'premium' | 'luxury'
-  experience_level?: 'beginner' | 'intermediate' | 'advanced' | 'expert'
+  budget_preference?: 'budget' | 'mid-range' | 'luxury' | 'mixed'
+  experience_level?: 'beginner' | 'intermediate' | 'advanced'
   product_preferences?: string[]
 }
 
