@@ -342,14 +342,16 @@ async function extractAndUpdate(
 
     await updateOnboardingProgress(userId, merged, capturedFields, percentage, isComplete)
 
-    // Auto-finalize: write extracted data to ss_user_profiles as soon as
-    // all required fields are captured, so the profile is ready even if
-    // the user never clicks the explicit "Complete" button.
-    if (isComplete) {
+    // Continuously sync extracted data to ss_user_profiles so the profile
+    // stays up to date as the conversation progresses. Requires at minimum
+    // a skin_type before writing (avoids creating empty profiles from early
+    // messages). On subsequent messages, new data (e.g. budget, concerns,
+    // product preferences) is merged into the existing profile.
+    if (merged.skin_type) {
       try {
         await finalizeOnboardingProfile(userId, merged)
       } catch (finalizeErr) {
-        console.error(`[yuri/onboarding] Auto-finalize error for user ${userId}:`, finalizeErr)
+        console.error(`[yuri/onboarding] Profile sync error for user ${userId}:`, finalizeErr)
       }
     }
 
