@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/auth'
-import { supabase } from '@/lib/supabase'
+import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { checkRoutineConflicts } from '@/lib/intelligence/conflict-detector'
 import { getCategoryPosition } from '@/lib/intelligence/layering-order'
@@ -24,6 +24,7 @@ interface RouteContext {
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const user = await requireAuth(request)
+    const supabase = getServiceClient()
     const { id: routineId } = await context.params
     const body = await request.json()
     const { product_id, step_order, frequency } = addProductSchema.parse(body)
@@ -117,6 +118,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const user = await requireAuth(request)
+    const supabase = getServiceClient()
     const { id: routineId } = await context.params
     const productId = request.nextUrl.searchParams.get('product_id')
 
@@ -172,6 +174,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const user = await requireAuth(request)
+    const supabase = getServiceClient()
     const { id: routineId } = await context.params
     const body = await request.json()
     const { product_ids } = reorderSchema.parse(body)

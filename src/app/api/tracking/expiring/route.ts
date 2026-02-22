@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
-import { supabase } from '@/lib/supabase'
+import { getServiceClient } from '@/lib/supabase'
 import { handleApiError } from '@/lib/utils/error-handler'
 
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+    const supabase = getServiceClient()
     const { searchParams } = new URL(request.url)
     const days = Math.min(Math.max(parseInt(searchParams.get('days') || '30', 10), 1), 365)
 

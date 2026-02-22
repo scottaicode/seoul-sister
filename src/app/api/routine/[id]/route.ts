@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/auth'
-import { supabase } from '@/lib/supabase'
+import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { checkAllRoutineConflicts } from '@/lib/intelligence/conflict-detector'
 
@@ -18,6 +18,7 @@ interface RouteContext {
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const user = await requireAuth(request)
+    const supabase = getServiceClient()
     const { id } = await context.params
 
     const { data, error } = await supabase
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const user = await requireAuth(request)
+    const supabase = getServiceClient()
     const { id } = await context.params
     const body = await request.json()
     const updates = updateRoutineSchema.parse(body)
@@ -100,6 +102,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const user = await requireAuth(request)
+    const supabase = getServiceClient()
     const { id } = await context.params
 
     const { error } = await supabase

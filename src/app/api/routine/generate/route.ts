@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/auth'
-import { supabase } from '@/lib/supabase'
+import { getServiceClient } from '@/lib/supabase'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { hasActiveSubscription } from '@/lib/subscription'
@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
       throw new AppError('Active subscription required.', 403)
     }
 
+    const supabase = getServiceClient()
     const body = await request.json()
     const { routine_type, concerns, budget_range } = generateSchema.parse(body)
 
