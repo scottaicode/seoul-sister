@@ -48,14 +48,23 @@ function useTrendingProducts() {
       try {
         const res = await fetch('/api/trending?limit=3')
         const data = await res.json()
-        const items = (data.trending ?? []).map((t: Record<string, unknown>) => ({
-          id: (t.product as Record<string, unknown>)?.id ?? t.product_id,
-          name: (t.product as Record<string, unknown>)?.name_en ?? 'Unknown Product',
-          brand: (t.product as Record<string, unknown>)?.brand_en ?? '',
-          category: (t.product as Record<string, unknown>)?.category ?? '',
-          trendSignal: `${t.source ?? 'Trending'} · ${t.mention_count ?? 0} mentions`,
-          rating: (t.product as Record<string, unknown>)?.average_rating ?? null,
-        }))
+        const items = (data.trending ?? []).map((t: Record<string, unknown>) => {
+          const product = t.product as Record<string, unknown> | null
+          const source = t.source as string
+          const isOliveYoung = source === 'olive_young'
+          const rankPos = t.rank_position as number | null
+          const signal = isOliveYoung && rankPos
+            ? `#${rankPos} on Olive Young`
+            : `${source ?? 'Trending'} · ${t.mention_count ?? 0} mentions`
+          return {
+            id: product?.id ?? t.product_id ?? t.id,
+            name: product?.name_en ?? t.source_product_name ?? 'Unknown Product',
+            brand: product?.brand_en ?? t.source_product_brand ?? '',
+            category: product?.category ?? '',
+            trendSignal: signal,
+            rating: product?.average_rating ?? null,
+          }
+        })
         setTrending(items)
       } catch {
         setTrending([])

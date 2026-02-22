@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
-import { TrendingUp, Loader2 } from 'lucide-react'
+import { TrendingUp, Loader2, ShoppingBag } from 'lucide-react'
 import TrendingCard from '@/components/community/TrendingCard'
 import EmptyState from '@/components/ui/EmptyState'
 
@@ -12,20 +12,27 @@ import type { Product } from '@/types/database'
 
 interface TrendingItem {
   id: string
-  product_id: string
+  product_id: string | null
   source: string
   trend_score: number
   mention_count: number
   sentiment_score: number | null
   trending_since: string
-  product: Product
+  product: Product | null
+  // Phase 10.1 fields
+  source_product_name: string | null
+  source_product_brand: string | null
+  source_url: string | null
+  rank_position: number | null
+  rank_change: number | null
+  days_on_list: number | null
 }
 
 const sourceFilters = [
   { value: '', label: 'All' },
-  { value: 'tiktok', label: 'TikTok' },
+  { value: 'olive_young', label: 'Olive Young' },
   { value: 'reddit', label: 'Reddit' },
-  { value: 'instagram', label: 'Instagram' },
+  { value: 'tiktok', label: 'TikTok' },
   { value: 'korean_market', label: 'Seoul' },
 ]
 
@@ -43,7 +50,7 @@ export default function TrendingPage() {
       try {
         const params = new URLSearchParams()
         if (sourceFilter) params.set('source', sourceFilter)
-        params.set('limit', '20')
+        params.set('limit', '30')
 
         const res = await fetch(`/api/trending?${params.toString()}`)
         if (!res.ok) throw new Error('Failed to load trends')
@@ -59,6 +66,9 @@ export default function TrendingPage() {
     fetchTrending()
   }, [sourceFilter])
 
+  // Count Olive Young entries for the header subtitle
+  const oliveYoungCount = trending.filter(t => t.source === 'olive_young').length
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
       {/* Header */}
@@ -67,7 +77,9 @@ export default function TrendingPage() {
           Trending in Korea
         </h1>
         <p className="text-white/40 text-sm">
-          Emerging ingredients, viral products, and market movements before they hit the US.
+          {oliveYoungCount > 0
+            ? `Real-time Olive Young bestseller rankings + community signals.`
+            : 'Emerging ingredients, viral products, and market movements before they hit the US.'}
         </p>
       </div>
 
@@ -135,10 +147,21 @@ export default function TrendingPage() {
             <EmptyState
               icon={TrendingUp as LucideIcon}
               title="No Trending Products"
-              description="Check back soon for the latest K-beauty trends from Seoul."
+              description={
+                sourceFilter === 'olive_young'
+                  ? 'Olive Young bestseller data will appear after the daily scan runs.'
+                  : 'Check back soon for the latest K-beauty trends from Seoul.'
+              }
             />
           ) : (
             <div className="space-y-3">
+              {/* Show section header when filtering to olive_young */}
+              {sourceFilter === 'olive_young' && (
+                <div className="flex items-center gap-2 text-xs text-white/30 pb-1">
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  <span>Based on real Olive Young Korean sales rankings</span>
+                </div>
+              )}
               {trending.map((item) => (
                 <TrendingCard
                   key={item.id}
@@ -148,6 +171,12 @@ export default function TrendingPage() {
                   mentionCount={item.mention_count}
                   sentimentScore={item.sentiment_score}
                   trendingSince={item.trending_since}
+                  sourceProductName={item.source_product_name}
+                  sourceProductBrand={item.source_product_brand}
+                  sourceUrl={item.source_url}
+                  rankPosition={item.rank_position}
+                  rankChange={item.rank_change}
+                  daysOnList={item.days_on_list}
                 />
               ))}
             </div>

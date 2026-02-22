@@ -1,28 +1,32 @@
 'use client'
 
 import Link from 'next/link'
-import { TrendingUp, Package, Star, MessageSquare, Flame } from 'lucide-react'
+import { TrendingUp, Package, Star, Flame, ArrowUp, ArrowDown, Minus, Sparkles } from 'lucide-react'
 import type { Product } from '@/types/database'
 
 interface TrendingCardProps {
-  product: Product
+  product: Product | null
   source: string
   trendScore: number
   mentionCount: number
   sentimentScore: number | null
   trendingSince: string
+  // Phase 10.1: New fields for external trend data
+  sourceProductName?: string | null
+  sourceProductBrand?: string | null
+  sourceUrl?: string | null
+  rankPosition?: number | null
+  rankChange?: number | null
+  daysOnList?: number | null
 }
 
 const sourceLabels: Record<string, { label: string; color: string }> = {
+  olive_young: { label: 'Olive Young', color: 'bg-green-100 text-green-700' },
   tiktok: { label: 'TikTok', color: 'bg-black text-white' },
   reddit: { label: 'Reddit', color: 'bg-orange-100 text-orange-700' },
   instagram: { label: 'Instagram', color: 'bg-purple-100 text-purple-700' },
   korean_market: { label: 'Seoul', color: 'bg-gold/10 text-gold' },
-}
-
-function formatMentions(count: number): string {
-  if (count >= 1000) return `${(count / 1000).toFixed(1)}K`
-  return count.toString()
+  community: { label: 'Community', color: 'bg-sky-100 text-sky-700' },
 }
 
 function getDaysAgo(dateStr: string): string {
@@ -33,39 +37,108 @@ function getDaysAgo(dateStr: string): string {
   return `${days} days ago`
 }
 
+function RankBadge({ rank }: { rank: number }) {
+  const bgColor = rank <= 3
+    ? 'bg-gradient-to-br from-gold to-amber-600 text-white'
+    : rank <= 10
+    ? 'bg-white/10 text-gold'
+    : 'bg-white/5 text-white/60'
+
+  return (
+    <div className={`flex-shrink-0 w-8 h-8 rounded-lg ${bgColor} flex items-center justify-center font-display font-bold text-xs`}>
+      {rank}
+    </div>
+  )
+}
+
+function RankChangeIndicator({ change, daysOnList }: { change: number | null; daysOnList: number | null }) {
+  if (daysOnList !== null && daysOnList <= 1) {
+    return (
+      <span className="flex items-center gap-0.5 text-[10px] font-bold text-emerald-400">
+        <Sparkles className="w-2.5 h-2.5" />
+        NEW
+      </span>
+    )
+  }
+
+  if (change === null || change === 0) {
+    return (
+      <span className="flex items-center gap-0.5 text-[10px] text-white/30">
+        <Minus className="w-2.5 h-2.5" />
+      </span>
+    )
+  }
+
+  if (change > 0) {
+    return (
+      <span className="flex items-center gap-0.5 text-[10px] font-medium text-emerald-400">
+        <ArrowUp className="w-2.5 h-2.5" />
+        {change}
+      </span>
+    )
+  }
+
+  return (
+    <span className="flex items-center gap-0.5 text-[10px] font-medium text-rose-400">
+      <ArrowDown className="w-2.5 h-2.5" />
+      {Math.abs(change)}
+    </span>
+  )
+}
+
 export default function TrendingCard({
   product,
   source,
   trendScore,
-  mentionCount,
   sentimentScore,
   trendingSince,
+  sourceProductName,
+  sourceProductBrand,
+  sourceUrl,
+  rankPosition,
+  rankChange,
+  daysOnList,
 }: TrendingCardProps) {
   const sourceInfo = sourceLabels[source] ?? { label: source, color: 'bg-gray-100 text-gray-700' }
+  const isOliveYoung = source === 'olive_young'
 
-  return (
-    <Link
-      href={`/products/${product.id}`}
-      className="glass-card p-4 flex gap-3 transition-all duration-300 group"
-    >
-      {/* Product image */}
-      <div className="flex-shrink-0 w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden relative">
-        {product.image_url ? (
-          <img
-            src={product.image_url}
-            alt={product.name_en}
-            className="w-full h-full object-cover rounded-xl"
-          />
-        ) : (
-          <Package className="w-6 h-6 text-gold/50" strokeWidth={1.5} />
-        )}
-        {/* Trend score flame */}
-        {trendScore >= 80 && (
-          <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center">
-            <Flame className="w-3 h-3 text-white" />
-          </div>
-        )}
-      </div>
+  // Use product data if matched, fall back to source data
+  const displayName = product?.name_en ?? sourceProductName ?? 'Unknown Product'
+  const displayBrand = product?.brand_en ?? sourceProductBrand ?? ''
+  const hasProductPage = product?.id != null
+
+  // Link to product page if matched, otherwise to Olive Young source URL
+  const href = hasProductPage
+    ? `/products/${product!.id}`
+    : sourceUrl ?? '#'
+  const isExternal = !hasProductPage && sourceUrl != null
+
+  const CardContent = (
+    <div className="glass-card p-4 flex gap-3 transition-all duration-300 group">
+      {/* Rank badge (for ranked sources) or product image */}
+      {isOliveYoung && rankPosition ? (
+        <div className="flex flex-col items-center gap-1 flex-shrink-0">
+          <RankBadge rank={rankPosition} />
+          <RankChangeIndicator change={rankChange ?? null} daysOnList={daysOnList ?? null} />
+        </div>
+      ) : (
+        <div className="flex-shrink-0 w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden relative">
+          {product?.image_url ? (
+            <img
+              src={product.image_url}
+              alt={displayName}
+              className="w-full h-full object-cover rounded-xl"
+            />
+          ) : (
+            <Package className="w-6 h-6 text-gold/50" strokeWidth={1.5} />
+          )}
+          {trendScore >= 80 && (
+            <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center">
+              <Flame className="w-3 h-3 text-white" />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Info */}
       <div className="flex-1 min-w-0 space-y-1.5">
@@ -77,18 +150,20 @@ export default function TrendingCard({
             <TrendingUp className="w-2.5 h-2.5" />
             {trendScore}
           </span>
+          {!hasProductPage && isOliveYoung && (
+            <span className="text-[10px] text-white/20 italic">not in DB</span>
+          )}
         </div>
 
         <p className="font-display font-semibold text-sm text-white truncate group-hover:text-gold transition-colors">
-          {product.name_en}
+          {displayName}
         </p>
-        <p className="text-[10px] text-white/40">{product.brand_en}</p>
+        <p className="text-[10px] text-white/40">{displayBrand}</p>
 
         <div className="flex items-center gap-3 text-[10px] text-white/40">
-          <span className="flex items-center gap-0.5">
-            <MessageSquare className="w-2.5 h-2.5" />
-            {formatMentions(mentionCount)} mentions
-          </span>
+          {isOliveYoung && daysOnList != null && (
+            <span>{daysOnList}d on list</span>
+          )}
           {sentimentScore !== null && (
             <span className={`font-medium ${sentimentScore >= 0.8 ? 'text-green-600' : sentimentScore >= 0.6 ? 'text-yellow-600' : 'text-red-600'}`}>
               {Math.round(sentimentScore * 100)}% positive
@@ -100,18 +175,43 @@ export default function TrendingCard({
 
       {/* Price + rating */}
       <div className="flex flex-col items-end justify-center flex-shrink-0 gap-1">
-        {product.price_usd && (
+        {(product?.price_usd || (isOliveYoung && product == null)) && (
           <span className="font-display font-bold text-sm text-white">
-            ${Number(product.price_usd).toFixed(0)}
+            {product?.price_usd
+              ? `$${Number(product.price_usd).toFixed(0)}`
+              : ''}
           </span>
         )}
-        {product.rating_avg && (
+        {product?.rating_avg && (
           <span className="flex items-center gap-0.5 text-[10px] text-white/40">
             <Star className="w-2.5 h-2.5 fill-gold text-gold" />
             {Number(product.rating_avg).toFixed(1)}
           </span>
         )}
       </div>
-    </Link>
+    </div>
   )
+
+  if (isExternal) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block"
+      >
+        {CardContent}
+      </a>
+    )
+  }
+
+  if (hasProductPage) {
+    return (
+      <Link href={href} className="block">
+        {CardContent}
+      </Link>
+    )
+  }
+
+  return <div>{CardContent}</div>
 }

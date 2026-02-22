@@ -12,25 +12,36 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const source = searchParams.get('source') || undefined
+    const tab = searchParams.get('tab') || 'trending'
     const limit = Math.min(Number(searchParams.get('limit') || 20), 50)
 
     let query = supabase
       .from('ss_trending_products')
       .select('*, product:ss_products(*)')
-      .order('trend_score', { ascending: false })
-      .limit(limit)
 
     if (source) {
       query = query.eq('source', source)
     }
 
+    // For "trending" tab with olive_young source, sort by rank_position
+    if (source === 'olive_young') {
+      query = query.order('rank_position', { ascending: true, nullsFirst: false })
+    } else {
+      query = query.order('trend_score', { ascending: false })
+    }
+
+    query = query.limit(limit)
+
     const { data, error } = await query
 
     if (error) throw error
 
-    // Filter out entries where the product join returned null
+    // For olive_young source, keep entries even without a matched product
+    // (we display source_product_name and source_product_brand as fallback)
+    // For other sources, filter out entries where the product join returned null
     const trending = (data ?? []).filter(
-      (t: Record<string, unknown>) => t.product !== null
+      (t: Record<string, unknown>) =>
+        t.source === 'olive_young' || t.product !== null
     )
 
     return NextResponse.json({ trending })

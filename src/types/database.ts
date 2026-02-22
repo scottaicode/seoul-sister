@@ -205,16 +205,31 @@ export interface YuriMessage {
   created_at: string
 }
 
+export type TrendSource = 'olive_young' | 'reddit' | 'tiktok' | 'instagram' | 'korean_market' | 'community'
+
 export interface TrendingProduct {
   id: string
-  product_id: string
-  source: 'tiktok' | 'reddit' | 'instagram' | 'korean_market'
+  product_id: string | null
+  source: TrendSource
   trend_score: number
   mention_count: number
   sentiment_score: number | null
   trending_since: string
   created_at: string
-  product?: Product
+  product?: Product | null
+  // Phase 10.1: Olive Young bestseller fields
+  source_product_name: string | null
+  source_product_brand: string | null
+  source_url: string | null
+  rank_position: number | null
+  previous_rank_position: number | null
+  rank_change: number | null
+  days_on_list: number | null
+  first_seen_at: string | null
+  gap_score: number | null
+  data_date: string | null
+  raw_data: Record<string, unknown> | null
+  updated_at: string | null
 }
 
 export type SubscriptionPlan = 'pro_monthly'
