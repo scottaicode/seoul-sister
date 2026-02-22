@@ -24,12 +24,13 @@ async function getOrCreateUsageRecord(userId: string) {
   const supabase = getServiceClient()
 
   // Try to get subscription billing period
+  // Use maybeSingle() — many users have no Stripe subscription row (pre-Stripe manual plans)
   const { data: sub } = await supabase
     .from('ss_subscriptions')
     .select('current_period_start, current_period_end')
     .eq('user_id', userId)
     .eq('status', 'active')
-    .single()
+    .maybeSingle()
 
   let periodStart: string
   let periodEnd: string
@@ -44,32 +45,39 @@ async function getOrCreateUsageRecord(userId: string) {
     periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString()
   }
 
-  // Upsert the usage record for this period
+  // Try to fetch existing record first (avoids upsert 406 when ignoreDuplicates skips insert)
+  const { data: existing } = await supabase
+    .from('ss_usage_tracking')
+    .select()
+    .eq('user_id', userId)
+    .eq('billing_period_start', periodStart)
+    .maybeSingle()
+
+  if (existing) return existing
+
+  // No record exists — insert a new one
   const { data, error } = await supabase
     .from('ss_usage_tracking')
-    .upsert(
-      {
-        user_id: userId,
-        billing_period_start: periodStart,
-        billing_period_end: periodEnd,
-        yuri_messages_used: 0,
-        scans_used: 0,
-      },
-      { onConflict: 'user_id,billing_period_start', ignoreDuplicates: true }
-    )
+    .insert({
+      user_id: userId,
+      billing_period_start: periodStart,
+      billing_period_end: periodEnd,
+      yuri_messages_used: 0,
+      scans_used: 0,
+    })
     .select()
     .single()
 
   if (error) {
-    // If upsert with ignoreDuplicates didn't return data, fetch it
-    const { data: existing } = await supabase
+    // Race condition: another request created it between our check and insert
+    const { data: raceResult } = await supabase
       .from('ss_usage_tracking')
       .select()
       .eq('user_id', userId)
       .eq('billing_period_start', periodStart)
-      .single()
+      .maybeSingle()
 
-    return existing
+    return raceResult
   }
 
   return data
@@ -107,13 +115,13 @@ export async function incrementYuriMessageCount(userId: string): Promise<boolean
 
   const supabase = getServiceClient()
 
-  // Get current period start
+  // Get current period start (maybeSingle — user may not have Stripe subscription)
   const { data: sub } = await supabase
     .from('ss_subscriptions')
     .select('current_period_start')
     .eq('user_id', userId)
     .eq('status', 'active')
-    .single()
+    .maybeSingle()
 
   const periodStart = sub?.current_period_start
     ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
@@ -141,7 +149,7 @@ export async function incrementScanCount(userId: string): Promise<boolean> {
     .select('current_period_start')
     .eq('user_id', userId)
     .eq('status', 'active')
-    .single()
+    .maybeSingle()
 
   const periodStart = sub?.current_period_start
     ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()

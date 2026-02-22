@@ -34,11 +34,12 @@ export async function hasActiveSubscription(userId: string): Promise<boolean> {
   const supabase = getServiceClient()
 
   // Check ss_subscriptions first (Stripe-managed, source of truth when present)
+  // Use maybeSingle() — many users have no Stripe subscription row (pre-Stripe manual plans)
   const { data: sub } = await supabase
     .from('ss_subscriptions')
     .select('status')
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   if (sub?.status === 'active') return true
 
