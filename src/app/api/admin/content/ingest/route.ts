@@ -45,33 +45,58 @@ export async function POST(request: NextRequest) {
     const category = inferCategory(data.primary_keyword, data.title)
     const tags = data.secondary_keywords?.slice(0, 10) || []
 
-    const { data: post, error } = await supabase
-      .from('ss_content_posts')
-      .upsert(
-        {
-          lgaas_post_id: data.lgaas_post_id,
-          title: data.title,
-          slug: sanitizeSlug(data.slug),
-          meta_description: data.meta_description || null,
-          body: data.content,
-          excerpt: data.excerpt || generateExcerpt(data.content),
-          category,
-          tags,
-          primary_keyword: data.primary_keyword || null,
-          secondary_keywords: data.secondary_keywords || null,
-          faq_schema: data.faq_schema || null,
-          featured_image_url: data.featured_image_url || null,
-          read_time_minutes: readTimeMinutes,
-          source: 'lgaas' as const,
-          published_at: data.published_at || new Date().toISOString(),
-          author: 'Seoul Sister Team',
-        },
-        { onConflict: 'lgaas_post_id', ignoreDuplicates: false }
-      )
-      .select('id, slug')
-      .single()
+    const row = {
+      lgaas_post_id: data.lgaas_post_id,
+      title: data.title,
+      slug: sanitizeSlug(data.slug),
+      meta_description: data.meta_description || null,
+      body: data.content,
+      excerpt: data.excerpt || generateExcerpt(data.content),
+      category,
+      tags,
+      primary_keyword: data.primary_keyword || null,
+      secondary_keywords: data.secondary_keywords || null,
+      faq_schema: data.faq_schema || null,
+      featured_image_url: data.featured_image_url || null,
+      read_time_minutes: readTimeMinutes,
+      source: 'lgaas' as const,
+      published_at: data.published_at || new Date().toISOString(),
+      author: 'Seoul Sister Team',
+    }
 
-    if (error) {
+    // Manual upsert: check if lgaas_post_id already exists, then insert or update.
+    // We avoid .upsert({ onConflict }) because the partial unique index on
+    // lgaas_post_id (WHERE lgaas_post_id IS NOT NULL) isn't compatible with
+    // PostgREST's ON CONFLICT resolution.
+    const { data: existing } = await supabase
+      .from('ss_content_posts')
+      .select('id')
+      .eq('lgaas_post_id', data.lgaas_post_id)
+      .maybeSingle()
+
+    let post: { id: string; slug: string } | null = null
+    let error: { message: string } | null = null
+
+    if (existing) {
+      const result = await supabase
+        .from('ss_content_posts')
+        .update(row)
+        .eq('id', existing.id)
+        .select('id, slug')
+        .single()
+      post = result.data
+      error = result.error
+    } else {
+      const result = await supabase
+        .from('ss_content_posts')
+        .insert(row)
+        .select('id, slug')
+        .single()
+      post = result.data
+      error = result.error
+    }
+
+    if (error || !post) {
       console.error('[content-ingest] Supabase error:', error)
       throw new AppError('Failed to save content', 500)
     }
