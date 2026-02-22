@@ -77,7 +77,7 @@ export class OliveYoungScraper {
   }
 
   /** Close browser when done */
-  private async closeBrowser(): Promise<void> {
+  async closeBrowser(): Promise<void> {
     if (this.browser) {
       await this.browser.close()
       this.browser = null
