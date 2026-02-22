@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   },
 }
 
-export const revalidate = 3600
+export const revalidate = 600 // Re-check every 10 min for new posts
 
 interface BlogPost {
   id: string

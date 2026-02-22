@@ -73,7 +73,7 @@ export async function generateMetadata({
   }
 }
 
-export const revalidate = 3600
+export const revalidate = 600 // Re-check every 10 min
 
 export default async function BlogPostPage({
   params,
