@@ -32,14 +32,10 @@ const sourceFilters = [
   { value: '', label: 'All', active: true },
   { value: 'olive_young', label: 'Olive Young', active: true },
   { value: 'reddit', label: 'Reddit', active: false },
-  { value: 'tiktok', label: 'TikTok', active: false },
-  { value: 'korean_market', label: 'Seoul', active: false },
 ]
 
 const comingSoonMessages: Record<string, string> = {
-  reddit: 'Reddit community mention tracking is coming soon. We\'ll scan r/AsianBeauty and r/SkincareAddiction for real product mentions.',
-  tiktok: 'TikTok trend tracking is coming soon. Use "TikTok Capture" above to search for products you saw on TikTok.',
-  korean_market: 'Seoul market intelligence is coming soon. We\'re adding Hwahae rankings and Naver Shopping data.',
+  reddit: 'Reddit community mention tracking is coming soon. We\'ll scan r/AsianBeauty and r/SkincareAddiction for real product mentions and sentiment.',
 }
 
 export default function TrendingPage() {
