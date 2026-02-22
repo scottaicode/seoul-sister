@@ -23,9 +23,11 @@ export async function GET(request: NextRequest) {
       query = query.eq('source', source)
     }
 
-    // For "trending" tab with olive_young source, sort by rank_position
-    if (source === 'olive_young') {
-      query = query.order('rank_position', { ascending: true, nullsFirst: false })
+    // Sort by rank_position when viewing olive_young data (including "All" which is mostly olive_young)
+    // This ensures the bestseller ranking order is preserved
+    if (source === 'olive_young' || !source) {
+      query = query.order('rank_position', { ascending: true, nullsFirst: true })
+        .order('trend_score', { ascending: false })
     } else {
       query = query.order('trend_score', { ascending: false })
     }

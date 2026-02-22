@@ -29,12 +29,18 @@ interface TrendingItem {
 }
 
 const sourceFilters = [
-  { value: '', label: 'All' },
-  { value: 'olive_young', label: 'Olive Young' },
-  { value: 'reddit', label: 'Reddit' },
-  { value: 'tiktok', label: 'TikTok' },
-  { value: 'korean_market', label: 'Seoul' },
+  { value: '', label: 'All', active: true },
+  { value: 'olive_young', label: 'Olive Young', active: true },
+  { value: 'reddit', label: 'Reddit', active: false },
+  { value: 'tiktok', label: 'TikTok', active: false },
+  { value: 'korean_market', label: 'Seoul', active: false },
 ]
+
+const comingSoonMessages: Record<string, string> = {
+  reddit: 'Reddit community mention tracking is coming soon. We\'ll scan r/AsianBeauty and r/SkincareAddiction for real product mentions.',
+  tiktok: 'TikTok trend tracking is coming soon. Use "TikTok Capture" above to search for products you saw on TikTok.',
+  korean_market: 'Seoul market intelligence is coming soon. We\'re adding Hwahae rankings and Naver Shopping data.',
+}
 
 export default function TrendingPage() {
   const [trending, setTrending] = useState<TrendingItem[]>([])
@@ -113,13 +119,15 @@ export default function TrendingPage() {
         <>
           {/* Source filter */}
           <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
-            {sourceFilters.map(({ value, label }) => (
+            {sourceFilters.map(({ value, label, active }) => (
               <button
                 key={value}
                 onClick={() => setSourceFilter(value)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 ${
                   sourceFilter === value
                     ? 'bg-glass-100 text-glass-700 border border-glass-300'
+                    : !active
+                    ? 'bg-white/[0.02] text-white/20 border border-white/5'
                     : 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10'
                 }`}
               >
@@ -144,19 +152,29 @@ export default function TrendingPage() {
               <Loader2 className="w-6 h-6 animate-spin text-gold" />
             </div>
           ) : trending.length === 0 ? (
-            <EmptyState
-              icon={TrendingUp as LucideIcon}
-              title="No Trending Products"
-              description={
-                sourceFilter === 'olive_young'
-                  ? 'Olive Young bestseller data will appear after the daily scan runs.'
-                  : 'Check back soon for the latest K-beauty trends from Seoul.'
-              }
-            />
+            comingSoonMessages[sourceFilter] ? (
+              <div className="glass-card p-6 text-center space-y-2">
+                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
+                  <TrendingUp className="w-5 h-5 text-white/20" />
+                </div>
+                <p className="text-sm font-medium text-white/60">Coming Soon</p>
+                <p className="text-xs text-white/30 max-w-sm mx-auto">{comingSoonMessages[sourceFilter]}</p>
+              </div>
+            ) : (
+              <EmptyState
+                icon={TrendingUp as LucideIcon}
+                title="No Trending Products"
+                description={
+                  sourceFilter === 'olive_young'
+                    ? 'Olive Young bestseller data will appear after the daily scan runs.'
+                    : 'Check back soon for the latest K-beauty trends from Seoul.'
+                }
+              />
+            )
           ) : (
             <div className="space-y-3">
-              {/* Show section header when filtering to olive_young */}
-              {sourceFilter === 'olive_young' && (
+              {/* Show section header when olive_young data is visible */}
+              {(sourceFilter === 'olive_young' || sourceFilter === '') && trending.some(t => t.source === 'olive_young') && (
                 <div className="flex items-center gap-2 text-xs text-white/30 pb-1">
                   <ShoppingBag className="w-3.5 h-3.5" />
                   <span>Based on real Olive Young Korean sales rankings</span>
