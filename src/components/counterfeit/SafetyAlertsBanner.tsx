@@ -12,10 +12,10 @@ import {
 import type { SafetyAlert, AlertSeverity } from '@/types/database'
 
 const SEVERITY_CONFIG: Record<AlertSeverity, { icon: typeof AlertTriangle; bg: string; border: string; text: string; iconColor: string }> = {
-  critical: { icon: AlertOctagon, bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-800', iconColor: 'text-red-500' },
-  high: { icon: ShieldAlert, bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-800', iconColor: 'text-orange-500' },
-  medium: { icon: AlertTriangle, bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-800', iconColor: 'text-yellow-500' },
-  low: { icon: Info, bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800', iconColor: 'text-blue-500' },
+  critical: { icon: AlertOctagon, bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400', iconColor: 'text-red-500' },
+  high: { icon: ShieldAlert, bg: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-400', iconColor: 'text-orange-500' },
+  medium: { icon: AlertTriangle, bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', text: 'text-yellow-400', iconColor: 'text-yellow-500' },
+  low: { icon: Info, bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400', iconColor: 'text-blue-500' },
 }
 
 export default function SafetyAlertsBanner() {
@@ -73,9 +73,9 @@ export default function SafetyAlertsBanner() {
                 <p className={`text-xs font-semibold ${config.text}`}>{alert.title}</p>
                 <button
                   onClick={() => dismissAlert(alert.id)}
-                  className="flex-shrink-0 w-5 h-5 rounded-full hover:bg-black/5 flex items-center justify-center transition-colors"
+                  className="flex-shrink-0 w-5 h-5 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors"
                 >
-                  <X className="w-3 h-3 text-seoul-soft" />
+                  <X className="w-3 h-3 text-white/40" />
                 </button>
               </div>
               <p className={`text-[11px] ${config.text} opacity-80 mt-0.5 leading-relaxed`}>

@@ -214,7 +214,7 @@ export default function ProductDetailPage() {
       {/* Back nav */}
       <button
         onClick={() => router.back()}
-        className="flex items-center gap-1.5 text-sm text-seoul-soft hover:text-seoul-charcoal transition-colors duration-200"
+        className="flex items-center gap-1.5 text-sm text-white/50 hover:text-white transition-colors duration-200"
       >
         <ArrowLeft className="w-4 h-4" />
         Back
@@ -223,7 +223,7 @@ export default function ProductDetailPage() {
       {/* Product header */}
       <div className="glass-card-strong p-5 flex flex-col sm:flex-row gap-4">
         {/* Product image */}
-        <div className="flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-seoul-pearl flex items-center justify-center overflow-hidden mx-auto sm:mx-0">
+        <div className="flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-white/5 flex items-center justify-center overflow-hidden mx-auto sm:mx-0">
           {product.image_url ? (
             <img
               src={product.image_url}
@@ -241,24 +241,24 @@ export default function ProductDetailPage() {
             <span className="badge-blue text-[10px] mb-1 inline-block">
               {categoryLabels[product.category] ?? product.category}
             </span>
-            <h1 className="font-display font-bold text-xl text-seoul-charcoal leading-tight">
+            <h1 className="font-display font-bold text-xl text-white leading-tight">
               {product.name_en}
             </h1>
             {product.name_ko && (
-              <p className="text-sm text-seoul-soft mt-0.5">{product.name_ko}</p>
+              <p className="text-sm text-white/40 mt-0.5">{product.name_ko}</p>
             )}
-            <p className="text-sm text-seoul-soft">{product.brand_en}</p>
+            <p className="text-sm text-white/50">{product.brand_en}</p>
           </div>
 
           <div className="flex items-center gap-3 justify-center sm:justify-start flex-wrap">
             {product.rating_avg && (
               <span className="flex items-center gap-1 text-sm">
                 <Star className="w-4 h-4 fill-rose-gold text-rose-gold" />
-                <span className="font-semibold text-seoul-charcoal">
+                <span className="font-semibold text-white">
                   {Number(product.rating_avg).toFixed(1)}
                 </span>
                 {product.review_count > 0 && (
-                  <span className="text-seoul-soft text-xs">
+                  <span className="text-white/40 text-xs">
                     ({product.review_count} reviews)
                   </span>
                 )}
@@ -280,15 +280,15 @@ export default function ProductDetailPage() {
 
           <div className="flex items-center gap-3 justify-center sm:justify-start">
             {product.price_usd && (
-              <span className="font-display font-bold text-2xl text-seoul-charcoal">
+              <span className="font-display font-bold text-2xl text-white">
                 ${Number(product.price_usd).toFixed(2)}
               </span>
             )}
             {product.volume_display && (
-              <span className="text-sm text-seoul-soft">{product.volume_display}</span>
+              <span className="text-sm text-white/40">{product.volume_display}</span>
             )}
             {product.price_krw && (
-              <span className="text-xs text-seoul-soft">
+              <span className="text-xs text-white/40">
                 ({product.price_krw.toLocaleString()})
               </span>
             )}
@@ -351,7 +351,7 @@ export default function ProductDetailPage() {
       {/* Description */}
       {product.description_en && (
         <div className="glass-card p-4">
-          <p className="text-sm text-seoul-charcoal leading-relaxed">{product.description_en}</p>
+          <p className="text-sm text-white/70 leading-relaxed">{product.description_en}</p>
         </div>
       )}
 
@@ -362,7 +362,7 @@ export default function ProductDetailPage() {
             {review_summary.holy_grail_count} Holy Grail
           </span>
           {review_summary.broke_me_out_count > 0 && (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/20 text-red-400">
               {review_summary.broke_me_out_count} Broke Me Out
             </span>
           )}
@@ -376,15 +376,15 @@ export default function ProductDetailPage() {
       <FormulationHistory productId={id} />
 
       {/* Tab navigation */}
-      <div className="flex gap-1 bg-seoul-pearl rounded-xl p-1">
+      <div className="flex gap-1 bg-white/5 rounded-xl p-1">
         {(['ingredients', 'prices', 'reviews'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
               activeTab === tab
-                ? 'bg-white shadow-glass text-seoul-charcoal'
-                : 'text-seoul-soft hover:text-seoul-charcoal'
+                ? 'bg-white/10 text-white'
+                : 'text-white/40 hover:text-white'
             }`}
           >
             {tab === 'ingredients' ? `Ingredients (${ingredients.length})` :
@@ -441,7 +441,7 @@ export default function ProductDetailPage() {
             </div>
           ) : reviews.length === 0 ? (
             <div className="glass-card p-6 text-center">
-              <p className="text-sm text-seoul-soft">No reviews yet. Be the first!</p>
+              <p className="text-sm text-white/40">No reviews yet. Be the first!</p>
             </div>
           ) : (
             <>
@@ -462,7 +462,7 @@ export default function ProductDetailPage() {
                   >
                     Previous
                   </button>
-                  <span className="text-xs text-seoul-soft">
+                  <span className="text-xs text-white/40">
                     {reviewsPage} / {reviewsTotalPages}
                   </span>
                   <button

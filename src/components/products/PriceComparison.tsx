@@ -60,7 +60,7 @@ export default function PriceComparison({ productId }: PriceComparisonProps) {
     return (
       <div className="glass-card p-4 flex items-center justify-center gap-2">
         <Loader2 className="w-4 h-4 animate-spin text-rose-gold" />
-        <span className="text-sm text-seoul-soft">Loading prices...</span>
+        <span className="text-sm text-white/40">Loading prices...</span>
       </div>
     )
   }
@@ -68,8 +68,8 @@ export default function PriceComparison({ productId }: PriceComparisonProps) {
   if (error || !data || data.prices.length === 0) {
     return (
       <div className="glass-card p-4 text-center">
-        <DollarSign className="w-6 h-6 text-seoul-soft/40 mx-auto mb-2" />
-        <p className="text-sm text-seoul-soft">No price comparison data available yet.</p>
+        <DollarSign className="w-6 h-6 text-white/30 mx-auto mb-2" />
+        <p className="text-sm text-white/40">No price comparison data available yet.</p>
       </div>
     )
   }
@@ -77,7 +77,7 @@ export default function PriceComparison({ productId }: PriceComparisonProps) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-display font-semibold text-sm text-seoul-charcoal">
+        <h3 className="font-display font-semibold text-sm text-white">
           Price Comparison
         </h3>
         {data.savings_pct !== null && data.savings_pct > 0 && (
@@ -90,14 +90,14 @@ export default function PriceComparison({ productId }: PriceComparisonProps) {
 
       {/* Best deal highlight */}
       {data.best_deal && (
-        <div className="glass-card border-rose-gold/30 bg-gradient-to-r from-white/80 to-seoul-blush/20 p-3">
+        <div className="glass-card border-rose-gold/30 bg-gradient-to-r from-gold/10 to-gold/5 p-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] text-rose-gold font-medium uppercase tracking-wider">Best Price</p>
-              <p className="font-display font-bold text-lg text-seoul-charcoal">
+              <p className="text-[10px] text-gold font-medium uppercase tracking-wider">Best Price</p>
+              <p className="font-display font-bold text-lg text-white">
                 ${data.best_deal.price_usd.toFixed(2)}
               </p>
-              <p className="text-xs text-seoul-soft">{data.best_deal.retailer_name}</p>
+              <p className="text-xs text-white/50">{data.best_deal.retailer_name}</p>
             </div>
             <a
               href={data.best_deal.retailer_url}
@@ -125,14 +125,14 @@ export default function PriceComparison({ productId }: PriceComparisonProps) {
               className="glass-card p-3 flex items-center justify-between hover:shadow-glass-lg transition-all duration-200 group"
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-seoul-pearl flex items-center justify-center">
-                  <ShoppingBag className="w-4 h-4 text-seoul-soft" strokeWidth={1.5} />
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                  <ShoppingBag className="w-4 h-4 text-white/50" strokeWidth={1.5} />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-seoul-charcoal">{price.retailer_name}</p>
+                  <p className="text-sm font-medium text-white">{price.retailer_name}</p>
                   <div className="flex items-center gap-2">
                     {price.country && (
-                      <span className="text-[10px] text-seoul-soft">
+                      <span className="text-[10px] text-white/40">
                         {price.country === 'KR' ? 'Korea' : price.country === 'US' ? 'US' : price.country}
                       </span>
                     )}
@@ -149,11 +149,11 @@ export default function PriceComparison({ productId }: PriceComparisonProps) {
 
               <div className="flex items-center gap-2">
                 <span className={`font-display font-bold text-sm ${
-                  idx === 0 ? 'text-green-600' : 'text-seoul-charcoal'
+                  idx === 0 ? 'text-emerald-400' : 'text-white'
                 }`}>
                   ${price.price_usd.toFixed(2)}
                 </span>
-                <ExternalLink className="w-3.5 h-3.5 text-seoul-soft/40 group-hover:text-rose-gold transition-colors duration-200" />
+                <ExternalLink className="w-3.5 h-3.5 text-white/20 group-hover:text-gold transition-colors duration-200" />
               </div>
             </a>
           )
@@ -178,13 +178,13 @@ function getPriceFreshness(lastChecked: string): { label: string; color: string;
   const ageDays = ageHours / 24
 
   if (ageHours < 12) {
-    return { label: 'Just checked', color: 'text-green-600', stale: false }
+    return { label: 'Just checked', color: 'text-emerald-400', stale: false }
   }
   if (ageDays < 1) {
-    return { label: 'Today', color: 'text-seoul-soft', stale: false }
+    return { label: 'Today', color: 'text-white/40', stale: false }
   }
   if (ageDays < 3) {
-    return { label: `${Math.floor(ageDays)}d ago`, color: 'text-seoul-soft', stale: false }
+    return { label: `${Math.floor(ageDays)}d ago`, color: 'text-white/40', stale: false }
   }
   if (ageDays < 7) {
     return { label: `${Math.floor(ageDays)}d ago`, color: 'text-amber-500', stale: false }

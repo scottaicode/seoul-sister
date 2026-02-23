@@ -22,10 +22,10 @@ export interface ReviewFormData {
 
 const reactions = [
   { value: 'holy_grail', label: 'Holy Grail', icon: Sparkles, color: 'border-rose-gold bg-seoul-blush text-rose-dark' },
-  { value: 'good', label: 'Good', icon: ThumbsUp, color: 'border-green-400 bg-green-50 text-green-700' },
-  { value: 'okay', label: 'Okay', icon: Clock, color: 'border-gray-300 bg-gray-50 text-gray-600' },
-  { value: 'bad', label: 'Bad', icon: ThumbsDown, color: 'border-orange-400 bg-orange-50 text-orange-700' },
-  { value: 'broke_me_out', label: 'Broke Me Out', icon: AlertTriangle, color: 'border-red-400 bg-red-50 text-red-700' },
+  { value: 'good', label: 'Good', icon: ThumbsUp, color: 'border-green-400/50 bg-green-500/20 text-green-400' },
+  { value: 'okay', label: 'Okay', icon: Clock, color: 'border-white/20 bg-white/10 text-white/60' },
+  { value: 'bad', label: 'Bad', icon: ThumbsDown, color: 'border-orange-400/50 bg-orange-500/20 text-orange-400' },
+  { value: 'broke_me_out', label: 'Broke Me Out', icon: AlertTriangle, color: 'border-red-400/50 bg-red-500/20 text-red-400' },
 ] as const
 
 const usageDurations = [
@@ -94,21 +94,21 @@ export default function ReviewForm({ productId, productName, onSubmit, onCancel 
   return (
     <form onSubmit={handleSubmit} className="glass-card-strong p-5 space-y-5">
       <div className="flex items-center justify-between">
-        <h3 className="font-display font-semibold text-lg text-seoul-charcoal">
+        <h3 className="font-display font-semibold text-lg text-white">
           Review {productName}
         </h3>
         <button
           type="button"
           onClick={handleCancel}
-          className="p-1.5 rounded-lg hover:bg-seoul-pearl transition-colors"
+          className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
         >
-          <X className="w-4 h-4 text-seoul-soft" />
+          <X className="w-4 h-4 text-white/40" />
         </button>
       </div>
 
       {/* Star rating */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-seoul-charcoal">Rating *</label>
+        <label className="text-sm font-medium text-white">Rating *</label>
         <div className="flex items-center gap-1">
           {Array.from({ length: 5 }).map((_, i) => (
             <button
@@ -123,20 +123,20 @@ export default function ReviewForm({ productId, productName, onSubmit, onCancel 
                 className={`w-7 h-7 transition-colors ${
                   i < (hoverRating || rating)
                     ? 'fill-rose-gold text-rose-gold'
-                    : 'text-gray-200'
+                    : 'text-white/20'
                 }`}
               />
             </button>
           ))}
           {rating > 0 && (
-            <span className="ml-2 text-sm text-seoul-soft">{rating}/5</span>
+            <span className="ml-2 text-sm text-white/40">{rating}/5</span>
           )}
         </div>
       </div>
 
       {/* Reaction */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-seoul-charcoal">How was your experience?</label>
+        <label className="text-sm font-medium text-white">How was your experience?</label>
         <div className="flex flex-wrap gap-2">
           {reactions.map(({ value, label, icon: Icon, color }) => (
             <button
@@ -146,7 +146,7 @@ export default function ReviewForm({ productId, productName, onSubmit, onCancel 
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${
                 reaction === value
                   ? color
-                  : 'border-white/50 bg-white/50 text-seoul-soft hover:bg-seoul-pearl'
+                  : 'border-white/10 bg-white/5 text-white/40 hover:bg-white/10'
               }`}
             >
               <Icon className="w-3 h-3" />
@@ -158,7 +158,7 @@ export default function ReviewForm({ productId, productName, onSubmit, onCancel 
 
       {/* Title */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-seoul-charcoal">Title *</label>
+        <label className="text-sm font-medium text-white">Title *</label>
         <input
           type="text"
           value={title}
@@ -171,7 +171,7 @@ export default function ReviewForm({ productId, productName, onSubmit, onCancel 
 
       {/* Body */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-seoul-charcoal">Your review *</label>
+        <label className="text-sm font-medium text-white">Your review *</label>
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
@@ -180,12 +180,12 @@ export default function ReviewForm({ productId, productName, onSubmit, onCancel 
           maxLength={5000}
           className="glass-input text-sm resize-none"
         />
-        <p className="text-[10px] text-seoul-soft text-right">{body.length}/5000</p>
+        <p className="text-[10px] text-white/40 text-right">{body.length}/5000</p>
       </div>
 
       {/* Usage duration */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-seoul-charcoal">How long have you used this?</label>
+        <label className="text-sm font-medium text-white">How long have you used this?</label>
         <div className="flex flex-wrap gap-1.5">
           {usageDurations.map((d) => (
             <button
@@ -195,7 +195,7 @@ export default function ReviewForm({ productId, productName, onSubmit, onCancel 
               className={`px-2.5 py-1 rounded-full text-xs transition-all duration-200 ${
                 usageDuration === d
                   ? 'bg-glass-100 text-glass-700 border border-glass-300'
-                  : 'bg-white/50 text-seoul-soft border border-white/50 hover:bg-seoul-pearl'
+                  : 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10'
               }`}
             >
               {d}
@@ -206,7 +206,7 @@ export default function ReviewForm({ productId, productName, onSubmit, onCancel 
 
       {/* Would repurchase */}
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-seoul-charcoal">Would you repurchase?</label>
+        <label className="text-sm font-medium text-white">Would you repurchase?</label>
         <div className="flex gap-2">
           {[
             { value: true, label: 'Yes' },
@@ -219,9 +219,9 @@ export default function ReviewForm({ productId, productName, onSubmit, onCancel 
               className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
                 wouldRepurchase === value
                   ? value
-                    ? 'bg-green-100 text-green-700 border border-green-300'
-                    : 'bg-red-100 text-red-700 border border-red-300'
-                  : 'bg-white/50 text-seoul-soft border border-white/50 hover:bg-seoul-pearl'
+                    ? 'bg-green-500/20 text-green-400 border border-green-400/50'
+                    : 'bg-red-500/20 text-red-400 border border-red-400/50'
+                  : 'bg-white/5 text-white/40 border border-white/10 hover:bg-white/10'
               }`}
             >
               {label}
@@ -231,7 +231,7 @@ export default function ReviewForm({ productId, productName, onSubmit, onCancel 
       </div>
 
       {error && (
-        <p className="text-sm text-red-600 bg-red-50 p-3 rounded-xl">{error}</p>
+        <p className="text-sm text-red-400 bg-red-500/10 p-3 rounded-xl">{error}</p>
       )}
 
       {/* Submit */}

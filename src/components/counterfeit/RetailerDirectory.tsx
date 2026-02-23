@@ -30,10 +30,10 @@ function TrustScoreBar({ score }: { score: number }) {
   const color = score >= 80 ? 'bg-green-500' : score >= 60 ? 'bg-yellow-500' : score >= 40 ? 'bg-orange-500' : 'bg-red-500'
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-seoul-pearl rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${score}%` }} />
       </div>
-      <span className={`text-xs font-bold ${score >= 80 ? 'text-green-600' : score >= 60 ? 'text-yellow-600' : score >= 40 ? 'text-orange-600' : 'text-red-600'}`}>
+      <span className={`text-xs font-bold ${score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-yellow-400' : score >= 40 ? 'text-orange-400' : 'text-red-400'}`}>
         {score}
       </span>
     </div>
@@ -43,10 +43,10 @@ function TrustScoreBar({ score }: { score: number }) {
 function RiskBadge({ level }: { level: string | null }) {
   if (!level) return null
   const config: Record<string, { icon: typeof ShieldCheck; label: string; className: string }> = {
-    low: { icon: ShieldCheck, label: 'Low Risk', className: 'bg-green-100 text-green-700' },
-    medium: { icon: ShieldAlert, label: 'Medium Risk', className: 'bg-yellow-100 text-yellow-700' },
-    high: { icon: ShieldX, label: 'High Risk', className: 'bg-orange-100 text-orange-700' },
-    very_high: { icon: ShieldX, label: 'Very High Risk', className: 'bg-red-100 text-red-700' },
+    low: { icon: ShieldCheck, label: 'Low Risk', className: 'bg-emerald-500/20 text-emerald-400' },
+    medium: { icon: ShieldAlert, label: 'Medium Risk', className: 'bg-yellow-500/20 text-yellow-400' },
+    high: { icon: ShieldX, label: 'High Risk', className: 'bg-orange-500/20 text-orange-400' },
+    very_high: { icon: ShieldX, label: 'Very High Risk', className: 'bg-red-500/20 text-red-400' },
   }
   const c = config[level] || config.medium
   const Icon = c.icon
@@ -89,7 +89,7 @@ export default function RetailerDirectory() {
 
   if (error) {
     return (
-      <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-red-700 text-sm">
+      <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 text-red-400 text-sm">
         <AlertTriangle className="w-4 h-4 flex-shrink-0" />
         {error}
       </div>
@@ -99,9 +99,9 @@ export default function RetailerDirectory() {
   if (retailers.length === 0) {
     return (
       <div className="glass-card p-6 text-center">
-        <Globe className="w-8 h-8 text-seoul-soft mx-auto mb-2" />
-        <p className="text-sm text-seoul-soft">No retailers in directory yet.</p>
-        <p className="text-xs text-seoul-soft mt-1">Retailer data will be populated as the database grows.</p>
+        <Globe className="w-8 h-8 text-white/40 mx-auto mb-2" />
+        <p className="text-sm text-white/40">No retailers in directory yet.</p>
+        <p className="text-xs text-white/40 mt-1">Retailer data will be populated as the database grows.</p>
       </div>
     )
   }
@@ -113,15 +113,15 @@ export default function RetailerDirectory() {
     <div className="flex flex-col gap-4">
       {/* Info card */}
       <div className="glass-card p-3">
-        <p className="text-xs text-seoul-soft leading-relaxed">
-          <strong className="text-seoul-charcoal">Trust scores</strong> are based on authorization status, counterfeit report history, and community feedback. Higher scores indicate safer purchasing.
+        <p className="text-xs text-white/40 leading-relaxed">
+          <strong className="text-white">Trust scores</strong> are based on authorization status, counterfeit report history, and community feedback. Higher scores indicate safer purchasing.
         </p>
       </div>
 
       {/* Authorized retailers */}
       {authorized.length > 0 && (
         <div>
-          <h3 className="font-display font-semibold text-sm text-seoul-charcoal mb-2 flex items-center gap-1.5">
+          <h3 className="font-display font-semibold text-sm text-white mb-2 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-green-500" />
             Authorized Retailers
           </h3>
@@ -136,8 +136,8 @@ export default function RetailerDirectory() {
       {/* Other retailers */}
       {others.length > 0 && (
         <div>
-          <h3 className="font-display font-semibold text-sm text-seoul-charcoal mb-2 flex items-center gap-1.5">
-            <Globe className="w-4 h-4 text-seoul-soft" />
+          <h3 className="font-display font-semibold text-sm text-white mb-2 flex items-center gap-1.5">
+            <Globe className="w-4 h-4 text-white/40" />
             Other Retailers
           </h3>
           <div className="flex flex-col gap-2">
@@ -159,13 +159,13 @@ function RetailerCard({ retailer }: { retailer: RetailerData }) {
       <div className="flex items-start justify-between gap-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-display font-semibold text-sm text-seoul-charcoal">{retailer.name}</p>
+            <p className="font-display font-semibold text-sm text-white">{retailer.name}</p>
             {retailer.is_authorized && (
               <ShieldCheck className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
             )}
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[10px] text-seoul-soft">{retailer.country}</span>
+            <span className="text-[10px] text-white/40">{retailer.country}</span>
             {retailer.ships_international && (
               <span className="text-[10px] text-blue-600 font-medium">Ships Intl</span>
             )}
@@ -180,28 +180,28 @@ function RetailerCard({ retailer }: { retailer: RetailerData }) {
             href={retailer.website}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-shrink-0 w-8 h-8 rounded-lg bg-seoul-pearl flex items-center justify-center hover:bg-rose-gold/10 transition-colors"
+            className="flex-shrink-0 w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-rose-gold/10 transition-colors"
             onClick={(e) => e.stopPropagation()}
           >
-            <ExternalLink className="w-3.5 h-3.5 text-seoul-soft" />
+            <ExternalLink className="w-3.5 h-3.5 text-white/40" />
           </a>
         )}
       </div>
 
       {expanded && (
-        <div className="mt-3 pt-3 border-t border-seoul-pearl animate-fade-in">
+        <div className="mt-3 pt-3 border-t border-white/10 animate-fade-in">
           {retailer.authorized_brands && retailer.authorized_brands.length > 0 && (
             <div className="mb-2">
-              <p className="text-[10px] text-seoul-soft mb-1">Authorized for:</p>
+              <p className="text-[10px] text-white/40 mb-1">Authorized for:</p>
               <div className="flex flex-wrap gap-1">
                 {retailer.authorized_brands.map(b => (
-                  <span key={b} className="px-1.5 py-0.5 rounded text-[10px] bg-green-50 text-green-700 font-medium">{b}</span>
+                  <span key={b} className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 font-medium">{b}</span>
                 ))}
               </div>
             </div>
           )}
           {retailer.verification_notes && (
-            <p className="text-[11px] text-seoul-soft leading-relaxed">{retailer.verification_notes}</p>
+            <p className="text-[11px] text-white/40 leading-relaxed">{retailer.verification_notes}</p>
           )}
           {retailer.counterfeit_report_count > 0 && (
             <p className="text-[10px] text-amber-600 mt-1.5 flex items-center gap-1">

@@ -85,7 +85,7 @@ export default function BatchCodeChecker() {
         <>
           {/* Brand input with suggestions */}
           <div className="glass-card p-4">
-            <label className="text-xs font-medium text-seoul-charcoal block mb-1.5">
+            <label className="text-xs font-medium text-white block mb-1.5">
               Brand
             </label>
             <input
@@ -93,7 +93,7 @@ export default function BatchCodeChecker() {
               value={brand}
               onChange={(e) => setBrand(e.target.value)}
               placeholder="Enter brand name..."
-              className="w-full px-3 py-2 rounded-lg bg-seoul-pearl text-sm text-seoul-charcoal placeholder-seoul-soft border border-transparent focus:border-rose-gold/30 focus:outline-none transition-colors"
+              className="w-full px-3 py-2 rounded-lg bg-white/10 text-sm text-white placeholder-white/30 border border-transparent focus:border-rose-gold/30 focus:outline-none transition-colors"
             />
             <div className="flex flex-wrap gap-1.5 mt-2">
               {POPULAR_BRANDS.filter(b => !brand || b.toLowerCase().includes(brand.toLowerCase())).slice(0, 8).map(b => (
@@ -103,7 +103,7 @@ export default function BatchCodeChecker() {
                   className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors ${
                     brand === b
                       ? 'bg-rose-gold text-white'
-                      : 'bg-seoul-pearl text-seoul-soft hover:bg-rose-gold/10 hover:text-rose-gold'
+                      : 'bg-white/10 text-white/40 hover:bg-rose-gold/10 hover:text-rose-gold'
                   }`}
                 >
                   {b}
@@ -114,7 +114,7 @@ export default function BatchCodeChecker() {
 
           {/* Batch code input */}
           <div className="glass-card p-4">
-            <label className="text-xs font-medium text-seoul-charcoal block mb-1.5">
+            <label className="text-xs font-medium text-white block mb-1.5">
               Batch Code
             </label>
             <input
@@ -122,9 +122,9 @@ export default function BatchCodeChecker() {
               value={batchCode}
               onChange={(e) => setBatchCode(e.target.value)}
               placeholder="e.g. K2411053, C240815..."
-              className="w-full px-3 py-2.5 rounded-lg bg-seoul-pearl text-sm text-seoul-charcoal placeholder-seoul-soft border border-transparent focus:border-rose-gold/30 focus:outline-none font-mono tracking-wider"
+              className="w-full px-3 py-2.5 rounded-lg bg-white/10 text-sm text-white placeholder-white/30 border border-transparent focus:border-rose-gold/30 focus:outline-none font-mono tracking-wider"
             />
-            <p className="text-[10px] text-seoul-soft mt-1.5">
+            <p className="text-[10px] text-white/40 mt-1.5">
               Usually printed or stamped on the bottom, back, or crimp of the product
             </p>
           </div>
@@ -153,13 +153,13 @@ export default function BatchCodeChecker() {
           <div className="glass-card-strong p-4">
             <div className="flex items-center justify-between mb-2">
               <div>
-                <p className="font-display font-bold text-base text-seoul-charcoal">{result.verification.brand}</p>
-                <p className="text-sm text-seoul-soft font-mono">{result.verification.batch_code}</p>
+                <p className="font-display font-bold text-base text-white">{result.verification.brand}</p>
+                <p className="text-sm text-white/40 font-mono">{result.verification.batch_code}</p>
               </div>
               <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                result.verification.is_valid === true ? 'bg-green-100 text-green-700' :
-                result.verification.is_valid === false ? 'bg-red-100 text-red-700' :
-                'bg-yellow-100 text-yellow-700'
+                result.verification.is_valid === true ? 'bg-emerald-500/20 text-emerald-400' :
+                result.verification.is_valid === false ? 'bg-red-500/20 text-red-400' :
+                'bg-yellow-500/20 text-yellow-400'
               }`}>
                 {result.verification.is_valid === true ? <CheckCircle2 className="w-3.5 h-3.5" /> :
                  result.verification.is_valid === false ? <XCircle className="w-3.5 h-3.5" /> :
@@ -169,9 +169,9 @@ export default function BatchCodeChecker() {
                  'Unknown Format'}
               </div>
             </div>
-            <div className="flex items-center gap-1 text-[10px] text-seoul-soft">
+            <div className="flex items-center gap-1 text-[10px] text-white/40">
               Confidence: {result.verification.confidence}/10
-              <div className="flex-1 h-1 bg-seoul-pearl rounded-full overflow-hidden ml-1">
+              <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden ml-1">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${
                     result.verification.confidence >= 7 ? 'bg-green-500' :
@@ -185,14 +185,14 @@ export default function BatchCodeChecker() {
 
           {/* Decoded info */}
           <div className="glass-card p-4">
-            <h3 className="font-display font-semibold text-sm text-seoul-charcoal mb-3">Decoded Information</h3>
+            <h3 className="font-display font-semibold text-sm text-white mb-3">Decoded Information</h3>
             <div className="grid grid-cols-2 gap-3">
               {result.verification.manufacture_date && (
                 <div className="flex items-start gap-2">
                   <Calendar className="w-4 h-4 text-rose-gold flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-[10px] text-seoul-soft">Manufactured</p>
-                    <p className="text-xs font-medium text-seoul-charcoal">{result.verification.manufacture_date}</p>
+                    <p className="text-[10px] text-white/40">Manufactured</p>
+                    <p className="text-xs font-medium text-white">{result.verification.manufacture_date}</p>
                   </div>
                 </div>
               )}
@@ -200,8 +200,8 @@ export default function BatchCodeChecker() {
                 <div className="flex items-start gap-2">
                   <Clock className={`w-4 h-4 flex-shrink-0 mt-0.5 ${result.verification.is_expired ? 'text-red-500' : 'text-green-500'}`} />
                   <div>
-                    <p className="text-[10px] text-seoul-soft">Expires</p>
-                    <p className={`text-xs font-medium ${result.verification.is_expired ? 'text-red-600' : 'text-seoul-charcoal'}`}>
+                    <p className="text-[10px] text-white/40">Expires</p>
+                    <p className={`text-xs font-medium ${result.verification.is_expired ? 'text-red-400' : 'text-white'}`}>
                       {result.verification.expiry_date}
                       {result.verification.is_expired && ' (EXPIRED)'}
                     </p>
@@ -212,8 +212,8 @@ export default function BatchCodeChecker() {
                 <div className="flex items-start gap-2">
                   <MapPin className="w-4 h-4 text-rose-gold flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-[10px] text-seoul-soft">Factory</p>
-                    <p className="text-xs font-medium text-seoul-charcoal">{result.verification.factory_location}</p>
+                    <p className="text-[10px] text-white/40">Factory</p>
+                    <p className="text-xs font-medium text-white">{result.verification.factory_location}</p>
                   </div>
                 </div>
               )}
@@ -221,8 +221,8 @@ export default function BatchCodeChecker() {
                 <div className="flex items-start gap-2">
                   <Clock className="w-4 h-4 text-rose-gold flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-[10px] text-seoul-soft">Product Age</p>
-                    <p className="text-xs font-medium text-seoul-charcoal">{result.verification.age_months} months</p>
+                    <p className="text-[10px] text-white/40">Product Age</p>
+                    <p className="text-xs font-medium text-white">{result.verification.age_months} months</p>
                   </div>
                 </div>
               )}
@@ -231,7 +231,7 @@ export default function BatchCodeChecker() {
 
           {/* Expiry warning */}
           {result.verification.is_expired && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 text-red-400 text-xs border border-red-500/20">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
               This product appears to be expired. Expired products may be less effective or cause skin reactions.
             </div>
@@ -239,8 +239,8 @@ export default function BatchCodeChecker() {
 
           {/* Notes */}
           <div className="glass-card p-4">
-            <h3 className="font-display font-semibold text-sm text-seoul-charcoal mb-1.5">Notes</h3>
-            <p className="text-xs text-seoul-charcoal leading-relaxed">{result.verification.notes}</p>
+            <h3 className="font-display font-semibold text-sm text-white mb-1.5">Notes</h3>
+            <p className="text-xs text-white leading-relaxed">{result.verification.notes}</p>
           </div>
 
           <button onClick={reset} className="glass-button py-2.5 text-sm font-medium">
@@ -250,7 +250,7 @@ export default function BatchCodeChecker() {
       )}
 
       {error && (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-red-700 text-sm">
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 text-red-400 text-sm">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
           {error}
         </div>

@@ -27,10 +27,10 @@ interface IngredientListProps {
 
 function SafetyBadge({ rating }: { rating: number }) {
   const config = rating >= 4
-    ? { color: 'bg-green-100 text-green-700', label: 'Safe' }
+    ? { color: 'bg-emerald-500/20 text-emerald-400', label: 'Safe' }
     : rating >= 3
-    ? { color: 'bg-yellow-100 text-yellow-700', label: 'Moderate' }
-    : { color: 'bg-red-100 text-red-700', label: 'Caution' }
+    ? { color: 'bg-yellow-500/20 text-yellow-400', label: 'Moderate' }
+    : { color: 'bg-red-500/20 text-red-400', label: 'Caution' }
 
   return (
     <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium ${config.color}`}>
@@ -43,7 +43,7 @@ function SafetyBadge({ rating }: { rating: number }) {
 function ComedogenicBadge({ rating }: { rating: number }) {
   if (rating <= 1) return null
   return (
-    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-orange-100 text-orange-700">
+    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-orange-500/20 text-orange-400">
       Pore risk: {rating}/5
     </span>
   )
@@ -56,9 +56,9 @@ export default function IngredientList({ ingredients }: IngredientListProps) {
   if (ingredients.length === 0) {
     return (
       <div className="glass-card p-4 text-center">
-        <Beaker className="w-6 h-6 text-seoul-soft/40 mx-auto mb-2" />
-        <p className="text-sm text-seoul-soft">No ingredient data available yet.</p>
-        <p className="text-xs text-seoul-soft/60 mt-1">Scan this product to analyze ingredients.</p>
+        <Beaker className="w-6 h-6 text-white/30 mx-auto mb-2" />
+        <p className="text-sm text-white/40">No ingredient data available yet.</p>
+        <p className="text-xs text-white/30 mt-1">Scan this product to analyze ingredients.</p>
       </div>
     )
   }
@@ -69,7 +69,7 @@ export default function IngredientList({ ingredients }: IngredientListProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <h3 className="font-display font-semibold text-sm text-seoul-charcoal">
+        <h3 className="font-display font-semibold text-sm text-white">
           Key Ingredients ({ingredients.length})
         </h3>
       </div>
@@ -88,10 +88,10 @@ export default function IngredientList({ ingredients }: IngredientListProps) {
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-seoul-pearl text-[10px] font-bold text-seoul-soft flex-shrink-0">
+                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-white/10 text-[10px] font-bold text-white/50 flex-shrink-0">
                       {item.position}
                     </span>
-                    <p className="font-medium text-sm text-seoul-charcoal truncate">
+                    <p className="font-medium text-sm text-white truncate">
                       {ing.name_en || ing.name_inci}
                     </p>
                     {ing.is_active && (
@@ -104,7 +104,7 @@ export default function IngredientList({ ingredients }: IngredientListProps) {
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-seoul-soft mt-0.5 ml-7">
+                  <p className="text-[11px] text-white/40 mt-0.5 ml-7">
                     {ing.name_inci}
                     {item.concentration_pct && (
                       <span className="text-rose-gold font-medium ml-1">
@@ -119,7 +119,7 @@ export default function IngredientList({ ingredients }: IngredientListProps) {
               {/* Expanded detail */}
               {isSelected && (
                 <div className="mt-3 ml-7 flex flex-col gap-2 animate-fade-in">
-                  <p className="text-xs text-seoul-soft leading-relaxed">{ing.description}</p>
+                  <p className="text-xs text-white/50 leading-relaxed">{ing.description}</p>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="badge-blue text-[10px]">{ing.function}</span>
                     <ComedogenicBadge rating={ing.comedogenic_rating} />
@@ -127,13 +127,13 @@ export default function IngredientList({ ingredients }: IngredientListProps) {
                   {ing.common_concerns && ing.common_concerns.length > 0 && (
                     <div className="flex items-start gap-1.5">
                       <AlertTriangle className="w-3 h-3 text-amber-500 flex-shrink-0 mt-0.5" />
-                      <p className="text-[11px] text-amber-700">
+                      <p className="text-[11px] text-amber-400">
                         {ing.common_concerns.join(', ')}
                       </p>
                     </div>
                   )}
                   {ing.name_ko && (
-                    <p className="text-[11px] text-seoul-soft">Korean: {ing.name_ko}</p>
+                    <p className="text-[11px] text-white/40">Korean: {ing.name_ko}</p>
                   )}
                 </div>
               )}

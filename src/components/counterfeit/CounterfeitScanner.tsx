@@ -48,7 +48,7 @@ function AuthenticityScoreRing({ score }: { score: number }) {
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="font-display font-bold text-xl" style={{ color }}>{score}/10</span>
-        <span className="text-[9px] text-seoul-soft">{label}</span>
+        <span className="text-[9px] text-white/40">{label}</span>
       </div>
     </div>
   )
@@ -56,10 +56,10 @@ function AuthenticityScoreRing({ score }: { score: number }) {
 
 function RecommendationBadge({ rec }: { rec: CounterfeitRecommendation }) {
   const config = {
-    likely_authentic: { icon: ShieldCheck, label: 'Likely Authentic', bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200' },
-    suspicious: { icon: ShieldAlert, label: 'Suspicious', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
-    likely_counterfeit: { icon: XCircle, label: 'Likely Counterfeit', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-    inconclusive: { icon: ShieldQuestion, label: 'Inconclusive', bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
+    likely_authentic: { icon: ShieldCheck, label: 'Likely Authentic', bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30' },
+    suspicious: { icon: ShieldAlert, label: 'Suspicious', bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30' },
+    likely_counterfeit: { icon: XCircle, label: 'Likely Counterfeit', bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/30' },
+    inconclusive: { icon: ShieldQuestion, label: 'Inconclusive', bg: 'bg-yellow-500/20', text: 'text-yellow-400', border: 'border-yellow-500/30' },
   }
 
   const c = config[rec]
@@ -141,10 +141,10 @@ export default function CounterfeitScanner() {
             <Shield className="w-7 h-7 text-white" strokeWidth={1.5} />
           </div>
           <div className="text-center">
-            <p className="font-display font-semibold text-sm text-seoul-charcoal">
+            <p className="font-display font-semibold text-sm text-white">
               Photograph Product
             </p>
-            <p className="text-xs text-seoul-soft mt-0.5">
+            <p className="text-xs text-white/40 mt-0.5">
               Take a clear photo of packaging, label, or batch code
             </p>
           </div>
@@ -156,19 +156,19 @@ export default function CounterfeitScanner() {
           onClick={() => fileInputRef.current?.click()}
           className="glass-card p-3 flex items-center gap-3 hover:shadow-glass-lg transition-all duration-300"
         >
-          <div className="w-9 h-9 rounded-xl bg-seoul-pearl flex items-center justify-center">
+          <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
             <Upload className="w-4.5 h-4.5 text-rose-gold" strokeWidth={1.5} />
           </div>
           <div className="text-left">
-            <p className="font-display font-semibold text-xs text-seoul-charcoal">Upload Photo</p>
-            <p className="text-[11px] text-seoul-soft">From gallery or screenshots</p>
+            <p className="font-display font-semibold text-xs text-white">Upload Photo</p>
+            <p className="text-[11px] text-white/40">From gallery or screenshots</p>
           </div>
         </button>
 
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
 
         {error && (
-          <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-red-700 text-sm">
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 text-red-400 text-sm">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             {error}
           </div>
@@ -181,7 +181,7 @@ export default function CounterfeitScanner() {
     <div className="flex flex-col gap-4">
       {/* Image preview */}
       <div className="relative glass-card overflow-hidden">
-        <img src={image} alt="Product for verification" className="w-full max-h-56 object-contain bg-seoul-pearl" />
+        <img src={image} alt="Product for verification" className="w-full max-h-56 object-contain bg-white/10" />
         <button onClick={resetScan} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors duration-200">
           <X className="w-4 h-4" />
         </button>
@@ -191,7 +191,7 @@ export default function CounterfeitScanner() {
       {!result && !scanning && (
         <>
           <div className="glass-card p-3">
-            <label className="text-xs font-medium text-seoul-charcoal block mb-1.5">
+            <label className="text-xs font-medium text-white block mb-1.5">
               Brand name (optional, improves accuracy)
             </label>
             <input
@@ -199,7 +199,7 @@ export default function CounterfeitScanner() {
               value={brand}
               onChange={(e) => setBrand(e.target.value)}
               placeholder="e.g. COSRX, Sulwhasoo, Laneige..."
-              className="w-full px-3 py-2 rounded-lg bg-seoul-pearl text-sm text-seoul-charcoal placeholder-seoul-soft border border-transparent focus:border-rose-gold/30 focus:outline-none transition-colors"
+              className="w-full px-3 py-2 rounded-lg bg-white/10 text-sm text-white placeholder-white/30 border border-transparent focus:border-rose-gold/30 focus:outline-none transition-colors"
             />
           </div>
           <button
@@ -216,13 +216,13 @@ export default function CounterfeitScanner() {
       {scanning && (
         <div className="glass-card p-6 flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-rose-gold" />
-          <p className="font-display font-semibold text-sm text-seoul-charcoal">Analyzing packaging...</p>
-          <p className="text-xs text-seoul-soft text-center">Checking fonts, labels, batch codes, regulatory markings</p>
+          <p className="font-display font-semibold text-sm text-white">Analyzing packaging...</p>
+          <p className="text-xs text-white/40 text-center">Checking fonts, labels, batch codes, regulatory markings</p>
         </div>
       )}
 
       {error && (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-red-700 text-sm">
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 text-red-400 text-sm">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
           {error}
         </div>
@@ -236,10 +236,10 @@ export default function CounterfeitScanner() {
             <AuthenticityScoreRing score={result.analysis.authenticity_score} />
             <div className="flex-1 min-w-0">
               {result.analysis.brand_detected && (
-                <p className="font-display font-bold text-base text-seoul-charcoal">{result.analysis.brand_detected}</p>
+                <p className="font-display font-bold text-base text-white">{result.analysis.brand_detected}</p>
               )}
               {result.analysis.product_detected && (
-                <p className="text-sm text-seoul-soft">{result.analysis.product_detected}</p>
+                <p className="text-sm text-white/40">{result.analysis.product_detected}</p>
               )}
               <div className="mt-2">
                 <RecommendationBadge rec={result.analysis.recommendation} />
@@ -254,14 +254,14 @@ export default function CounterfeitScanner() {
 
           {/* Summary */}
           <div className="glass-card p-4">
-            <h3 className="font-display font-semibold text-sm text-seoul-charcoal mb-1.5">Analysis Summary</h3>
-            <p className="text-xs text-seoul-charcoal leading-relaxed">{result.analysis.analysis_summary}</p>
+            <h3 className="font-display font-semibold text-sm text-white mb-1.5">Analysis Summary</h3>
+            <p className="text-xs text-white leading-relaxed">{result.analysis.analysis_summary}</p>
           </div>
 
           {/* Red flags */}
           {result.analysis.red_flags.length > 0 && (
-            <div className="glass-card p-4 border-red-200 bg-red-50/50">
-              <h3 className="font-display font-semibold text-sm text-red-800 mb-2 flex items-center gap-1.5">
+            <div className="glass-card p-4 border-red-500/20 bg-red-500/10">
+              <h3 className="font-display font-semibold text-sm text-red-400 mb-2 flex items-center gap-1.5">
                 <XCircle className="w-4 h-4" />
                 Red Flags ({result.analysis.red_flags.length})
               </h3>
@@ -269,16 +269,16 @@ export default function CounterfeitScanner() {
                 {result.analysis.red_flags.map((flag, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                      flag.severity === 'critical' ? 'bg-red-200 text-red-800' :
-                      flag.severity === 'high' ? 'bg-orange-200 text-orange-800' :
-                      flag.severity === 'medium' ? 'bg-yellow-200 text-yellow-800' :
-                      'bg-gray-200 text-gray-700'
+                      flag.severity === 'critical' ? 'bg-red-500/20 text-red-400' :
+                      flag.severity === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                      flag.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                      'bg-white/10 text-white/50'
                     }`}>
                       {flag.severity?.toUpperCase() || 'FLAG'}
                     </span>
                     <div className="flex-1">
-                      <p className="text-xs font-medium text-red-800">{flag.flag}</p>
-                      <p className="text-[11px] text-red-700">{flag.description}</p>
+                      <p className="text-xs font-medium text-red-400">{flag.flag}</p>
+                      <p className="text-[11px] text-red-400/70">{flag.description}</p>
                     </div>
                   </li>
                 ))}
@@ -288,14 +288,14 @@ export default function CounterfeitScanner() {
 
           {/* Green flags */}
           {result.analysis.green_flags.length > 0 && (
-            <div className="glass-card p-4 border-green-200 bg-green-50/50">
-              <h3 className="font-display font-semibold text-sm text-green-800 mb-2 flex items-center gap-1.5">
+            <div className="glass-card p-4 border-emerald-500/20 bg-emerald-500/10">
+              <h3 className="font-display font-semibold text-sm text-emerald-400 mb-2 flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4" />
                 Authenticity Indicators ({result.analysis.green_flags.length})
               </h3>
               <ul className="flex flex-col gap-1.5">
                 {result.analysis.green_flags.map((flag, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-green-700">
+                  <li key={i} className="flex items-start gap-2 text-xs text-emerald-400">
                     <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-green-500" />
                     <div>
                       <span className="font-medium">{flag.flag}:</span> {flag.description}

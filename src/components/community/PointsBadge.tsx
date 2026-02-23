@@ -8,10 +8,10 @@ interface PointsBadgeProps {
 }
 
 function getLevel(points: number) {
-  if (points >= 500) return { name: 'K-Beauty Expert', icon: Crown, color: 'text-purple-600 bg-purple-100', next: null }
-  if (points >= 200) return { name: 'Glow Getter', icon: Gem, color: 'text-rose-dark bg-seoul-blush', next: 500 }
-  if (points >= 50) return { name: 'Skin Scholar', icon: Star, color: 'text-glass-700 bg-glass-100', next: 200 }
-  return { name: 'Newcomer', icon: Award, color: 'text-seoul-soft bg-seoul-pearl', next: 50 }
+  if (points >= 500) return { name: 'K-Beauty Expert', icon: Crown, color: 'text-purple-400 bg-purple-500/20', next: null }
+  if (points >= 200) return { name: 'Glow Getter', icon: Gem, color: 'text-rose-gold bg-rose-gold/10', next: 500 }
+  if (points >= 50) return { name: 'Skin Scholar', icon: Star, color: 'text-glass-500 bg-glass-500/10', next: 200 }
+  return { name: 'Newcomer', icon: Award, color: 'text-white/50 bg-white/10', next: 50 }
 }
 
 export default function PointsBadge({ points, compact = false }: PointsBadgeProps) {
@@ -34,8 +34,8 @@ export default function PointsBadge({ points, compact = false }: PointsBadgeProp
           <LevelIcon className="w-5 h-5" />
         </div>
         <div>
-          <p className="font-display font-semibold text-sm text-seoul-charcoal">{level.name}</p>
-          <p className="text-[10px] text-seoul-soft">{points} community points</p>
+          <p className="font-display font-semibold text-sm text-white">{level.name}</p>
+          <p className="text-[10px] text-white/40">{points} community points</p>
         </div>
       </div>
 
@@ -43,10 +43,10 @@ export default function PointsBadge({ points, compact = false }: PointsBadgeProp
       {level.next && (
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-seoul-soft">Progress to next level</span>
-            <span className="text-[10px] text-seoul-soft">{points}/{level.next}</span>
+            <span className="text-[10px] text-white/40">Progress to next level</span>
+            <span className="text-[10px] text-white/40">{points}/{level.next}</span>
           </div>
-          <div className="h-1.5 bg-seoul-pearl rounded-full overflow-hidden">
+          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-rose-gold to-glass-500 rounded-full transition-all duration-500"
               style={{ width: `${Math.min((points / level.next) * 100, 100)}%` }}

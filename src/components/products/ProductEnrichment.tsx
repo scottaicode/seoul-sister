@@ -51,7 +51,7 @@ export default function ProductEnrichment({ productId }: ProductEnrichmentProps)
     return (
       <div className="glass-card p-6 flex items-center justify-center gap-2">
         <Loader2 className="w-4 h-4 animate-spin text-gold" />
-        <span className="text-sm text-seoul-soft">Loading personalized intelligence...</span>
+        <span className="text-sm text-white/40">Loading personalized intelligence...</span>
       </div>
     )
   }
@@ -73,10 +73,10 @@ export default function ProductEnrichment({ productId }: ProductEnrichmentProps)
       <div className="glass-card p-5 flex items-center gap-3">
         <Lock className="w-5 h-5 text-gold flex-shrink-0" />
         <div>
-          <p className="text-sm font-medium text-seoul-charcoal">
+          <p className="text-sm font-medium text-white">
             Sign in for personalized intelligence
           </p>
-          <p className="text-xs text-seoul-soft mt-0.5">
+          <p className="text-xs text-white/40 mt-0.5">
             Get skin match analysis, price comparison, community ratings, and authenticity checks.
           </p>
         </div>
@@ -93,10 +93,10 @@ export default function ProductEnrichment({ productId }: ProductEnrichmentProps)
         <div className="glass-card p-4 flex items-center gap-3">
           <UserCircle className="w-5 h-5 text-gold flex-shrink-0" />
           <div>
-            <p className="text-sm font-medium text-seoul-charcoal">
+            <p className="text-sm font-medium text-white">
               Complete your skin profile
             </p>
-            <p className="text-xs text-seoul-soft mt-0.5">
+            <p className="text-xs text-white/40 mt-0.5">
               Get personalized skin match warnings and recommendations for this product.
             </p>
           </div>

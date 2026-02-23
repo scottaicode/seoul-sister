@@ -93,9 +93,9 @@ export default function CounterfeitReportForm() {
   if (!user) {
     return (
       <div className="glass-card p-6 text-center">
-        <Flag className="w-8 h-8 text-seoul-soft mx-auto mb-2" />
-        <p className="text-sm text-seoul-charcoal font-medium">Sign in to report counterfeits</p>
-        <p className="text-xs text-seoul-soft mt-1">Your reports help protect the K-beauty community.</p>
+        <Flag className="w-8 h-8 text-white/40 mx-auto mb-2" />
+        <p className="text-sm text-white font-medium">Sign in to report counterfeits</p>
+        <p className="text-xs text-white/40 mt-1">Your reports help protect the K-beauty community.</p>
       </div>
     )
   }
@@ -104,8 +104,8 @@ export default function CounterfeitReportForm() {
     return (
       <div className="glass-card p-6 text-center animate-fade-in">
         <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto mb-3" />
-        <p className="font-display font-semibold text-base text-seoul-charcoal">Report Submitted</p>
-        <p className="text-xs text-seoul-soft mt-1 mb-4">
+        <p className="font-display font-semibold text-base text-white">Report Submitted</p>
+        <p className="text-xs text-white/40 mt-1 mb-4">
           Thank you for helping protect the K-beauty community. Our team will review your report.
         </p>
         <button
@@ -130,20 +130,20 @@ export default function CounterfeitReportForm() {
   return (
     <div className="flex flex-col gap-3">
       <div className="glass-card p-3">
-        <p className="text-xs text-seoul-soft leading-relaxed">
-          <strong className="text-seoul-charcoal">Report a suspected counterfeit.</strong> Your reports are reviewed by our team and help protect other consumers. All reports are confidential.
+        <p className="text-xs text-white/40 leading-relaxed">
+          <strong className="text-white">Report a suspected counterfeit.</strong> Your reports are reviewed by our team and help protect other consumers. All reports are confidential.
         </p>
       </div>
 
       {/* Brand */}
       <div className="glass-card p-3">
-        <label className="text-xs font-medium text-seoul-charcoal block mb-1">Brand</label>
-        <input type="text" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="e.g. COSRX, Laneige..." className="w-full px-3 py-2 rounded-lg bg-seoul-pearl text-sm text-seoul-charcoal placeholder-seoul-soft border border-transparent focus:border-rose-gold/30 focus:outline-none" />
+        <label className="text-xs font-medium text-white block mb-1">Brand</label>
+        <input type="text" value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="e.g. COSRX, Laneige..." className="w-full px-3 py-2 rounded-lg bg-white/5 text-sm text-white placeholder-white/30 border border-transparent focus:border-rose-gold/30 focus:outline-none" />
       </div>
 
       {/* Description (required) */}
       <div className="glass-card p-3">
-        <label className="text-xs font-medium text-seoul-charcoal block mb-1">
+        <label className="text-xs font-medium text-white block mb-1">
           What makes you think this is counterfeit? <span className="text-red-500">*</span>
         </label>
         <textarea
@@ -151,39 +151,39 @@ export default function CounterfeitReportForm() {
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
           placeholder="Describe packaging differences, texture, smell, or any red flags..."
-          className="w-full px-3 py-2 rounded-lg bg-seoul-pearl text-sm text-seoul-charcoal placeholder-seoul-soft border border-transparent focus:border-rose-gold/30 focus:outline-none resize-none"
+          className="w-full px-3 py-2 rounded-lg bg-white/5 text-sm text-white placeholder-white/30 border border-transparent focus:border-rose-gold/30 focus:outline-none resize-none"
         />
       </div>
 
       {/* Where purchased */}
       <div className="glass-card p-3">
-        <label className="text-xs font-medium text-seoul-charcoal block mb-1">Where did you buy it?</label>
+        <label className="text-xs font-medium text-white block mb-1">Where did you buy it?</label>
         <div className="flex flex-wrap gap-1.5 mb-2">
           {PLATFORMS.map(p => (
             <button
               key={p}
               onClick={() => setPlatform(platform === p ? '' : p)}
               className={`px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors ${
-                platform === p ? 'bg-rose-gold text-white' : 'bg-seoul-pearl text-seoul-soft hover:bg-rose-gold/10'
+                platform === p ? 'bg-rose-gold text-white' : 'bg-white/5 text-white/40 hover:bg-rose-gold/10'
               }`}
             >
               {p}
             </button>
           ))}
         </div>
-        <input type="text" value={sellerName} onChange={(e) => setSellerName(e.target.value)} placeholder="Seller name (optional)" className="w-full px-3 py-2 rounded-lg bg-seoul-pearl text-sm text-seoul-charcoal placeholder-seoul-soft border border-transparent focus:border-rose-gold/30 focus:outline-none mb-2" />
-        <input type="text" value={purchaseUrl} onChange={(e) => setPurchaseUrl(e.target.value)} placeholder="Product listing URL (optional)" className="w-full px-3 py-2 rounded-lg bg-seoul-pearl text-sm text-seoul-charcoal placeholder-seoul-soft border border-transparent focus:border-rose-gold/30 focus:outline-none" />
+        <input type="text" value={sellerName} onChange={(e) => setSellerName(e.target.value)} placeholder="Seller name (optional)" className="w-full px-3 py-2 rounded-lg bg-white/5 text-sm text-white placeholder-white/30 border border-transparent focus:border-rose-gold/30 focus:outline-none mb-2" />
+        <input type="text" value={purchaseUrl} onChange={(e) => setPurchaseUrl(e.target.value)} placeholder="Product listing URL (optional)" className="w-full px-3 py-2 rounded-lg bg-white/5 text-sm text-white placeholder-white/30 border border-transparent focus:border-rose-gold/30 focus:outline-none" />
       </div>
 
       {/* Batch code */}
       <div className="glass-card p-3">
-        <label className="text-xs font-medium text-seoul-charcoal block mb-1">Batch Code (if visible)</label>
-        <input type="text" value={batchCode} onChange={(e) => setBatchCode(e.target.value)} placeholder="e.g. K2411053" className="w-full px-3 py-2 rounded-lg bg-seoul-pearl text-sm text-seoul-charcoal placeholder-seoul-soft border border-transparent focus:border-rose-gold/30 focus:outline-none font-mono" />
+        <label className="text-xs font-medium text-white block mb-1">Batch Code (if visible)</label>
+        <input type="text" value={batchCode} onChange={(e) => setBatchCode(e.target.value)} placeholder="e.g. K2411053" className="w-full px-3 py-2 rounded-lg bg-white/5 text-sm text-white placeholder-white/30 border border-transparent focus:border-rose-gold/30 focus:outline-none font-mono" />
       </div>
 
       {/* Images */}
       <div className="glass-card p-3">
-        <label className="text-xs font-medium text-seoul-charcoal block mb-1.5">
+        <label className="text-xs font-medium text-white block mb-1.5">
           Photos (up to 4)
         </label>
         <div className="flex flex-wrap gap-2">
@@ -198,9 +198,9 @@ export default function CounterfeitReportForm() {
           {images.length < 4 && (
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-16 h-16 rounded-lg border-2 border-dashed border-seoul-pearl flex items-center justify-center hover:border-rose-gold/30 transition-colors"
+              className="w-16 h-16 rounded-lg border-2 border-dashed border-white/10 flex items-center justify-center hover:border-rose-gold/30 transition-colors"
             >
-              <Camera className="w-5 h-5 text-seoul-soft" />
+              <Camera className="w-5 h-5 text-white/40" />
             </button>
           )}
         </div>
@@ -208,7 +208,7 @@ export default function CounterfeitReportForm() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-red-700 text-sm">
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 text-red-400 text-sm">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
           {error}
         </div>
