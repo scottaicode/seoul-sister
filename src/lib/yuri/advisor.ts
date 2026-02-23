@@ -7,6 +7,7 @@ import {
   updateConversationTitle,
   saveSpecialistInsight,
   saveConversationSummary,
+  extractAndSaveDecisionMemory,
   type UserContext,
 } from './memory'
 import { YURI_TOOLS, executeYuriTool, resetWebSearchCounter } from './tools'
@@ -501,6 +502,19 @@ export async function* streamAdvisorResponse(
       fullResponse
     ).catch(() => {
       // Summary generation is non-critical
+    })
+  }
+
+  // 12. Extract structured decision memory (decisions, preferences, commitments).
+  //     Same cadence as summary generation — every 5 messages after initial exchange.
+  if (shouldSummarize) {
+    const transcriptForDecisions = [
+      ...conversationHistory.map((m) => ({ role: m.role, content: m.content })),
+      { role: 'user', content: message },
+      { role: 'assistant', content: fullResponse },
+    ]
+    extractAndSaveDecisionMemory(userId, conversationId, transcriptForDecisions).catch(() => {
+      // Decision memory extraction is non-critical
     })
   }
 }

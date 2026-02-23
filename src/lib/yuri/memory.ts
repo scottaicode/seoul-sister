@@ -6,6 +6,13 @@ import { getCyclePhase, getPhaseLabel } from '@/lib/intelligence/cycle-routine'
 // Types
 // ---------------------------------------------------------------------------
 
+export interface DecisionMemory {
+  decisions: Array<{ topic: string; decision: string; date: string }>
+  preferences: Array<{ topic: string; preference: string }>
+  commitments: Array<{ item: string; date: string }>
+  extracted_at: string
+}
+
 export interface SpecialistInsightMemory {
   specialistType: string
   data: Record<string, unknown>
@@ -28,6 +35,7 @@ export interface UserContext {
   routineProducts: string[]
   learningInsights: LearningContextData[]
   specialistInsights: SpecialistInsightMemory[]
+  decisionMemory: DecisionMemory | null
   cyclePhase: CyclePhaseInfo | null
   locationName: string | null
 }
@@ -213,6 +221,9 @@ export async function loadUserContext(userId: string, currentConversationId?: st
   // Reverse-geocode user's location from lat/lng if available
   const locationName = await reverseGeocodeUserLocation(skinProfile)
 
+  // Load structured decision memory across recent conversations
+  const decisionMemory = await loadDecisionMemory(db, userId)
+
   return {
     skinProfile,
     recentConversations,
@@ -223,6 +234,7 @@ export async function loadUserContext(userId: string, currentConversationId?: st
     routineProducts,
     learningInsights,
     specialistInsights,
+    decisionMemory,
     cyclePhase,
     locationName,
   }
@@ -439,6 +451,37 @@ When making skincare recommendations, factor in the user's current cycle phase. 
       return parts.join('\n')
     }).join('\n')
     sections.push(`## Past Specialist Intelligence (From Previous Conversations)\nThis user has had specialist conversations before. Use these insights to build on previous advice — don't ask about things you already learned:\n${insightLines}`)
+  }
+
+  // Decision memory — structured decisions, preferences, and commitments
+  if (context.decisionMemory) {
+    const dm = context.decisionMemory
+    const dmParts: string[] = []
+
+    if (dm.decisions.length > 0) {
+      const decisionLines = dm.decisions
+        .map((d) => `- **${d.topic}**: ${d.decision} (decided ${d.date})`)
+        .join('\n')
+      dmParts.push(`### Active Decisions\n${decisionLines}`)
+    }
+
+    if (dm.preferences.length > 0) {
+      const prefLines = dm.preferences
+        .map((p) => `- **${p.topic}**: ${p.preference}`)
+        .join('\n')
+      dmParts.push(`### User Preferences\n${prefLines}`)
+    }
+
+    if (dm.commitments.length > 0) {
+      const commitLines = dm.commitments
+        .map((c) => `- ${c.item} (committed ${c.date})`)
+        .join('\n')
+      dmParts.push(`### User Commitments\n${commitLines}`)
+    }
+
+    if (dmParts.length > 0) {
+      sections.push(`## Your Decisions & Preferences (Structured Memory)\nThese are structured decisions, preferences, and commitments extracted from your conversations with this user. Reference them when relevant — they represent agreed-upon plans and stated preferences.\n\n${dmParts.join('\n\n')}`)
+    }
   }
 
   return sections.join('\n\n')
@@ -711,6 +754,216 @@ export async function saveSpecialistInsight(
     insight_type: 'conversation_extraction',
     data: insightData,
   })
+}
+
+// ---------------------------------------------------------------------------
+// Decision Memory — structured cross-session decisions, preferences, commitments
+// ---------------------------------------------------------------------------
+
+const EMPTY_DECISION_MEMORY: DecisionMemory = {
+  decisions: [],
+  preferences: [],
+  commitments: [],
+  extracted_at: '',
+}
+
+/**
+ * Merge two DecisionMemory objects. Latest decision per topic wins.
+ * Preferences: latest per topic wins. Commitments: append with dedup by item text.
+ */
+export function mergeDecisionMemory(
+  existing: DecisionMemory | null,
+  incoming: DecisionMemory
+): DecisionMemory {
+  const base = existing || EMPTY_DECISION_MEMORY
+
+  // Decisions: latest per topic wins
+  const decisionMap = new Map<string, { topic: string; decision: string; date: string }>()
+  for (const d of base.decisions) decisionMap.set(d.topic.toLowerCase(), d)
+  for (const d of incoming.decisions) decisionMap.set(d.topic.toLowerCase(), d)
+  const decisions = Array.from(decisionMap.values())
+
+  // Preferences: latest per topic wins
+  const prefMap = new Map<string, { topic: string; preference: string }>()
+  for (const p of base.preferences) prefMap.set(p.topic.toLowerCase(), p)
+  for (const p of incoming.preferences) prefMap.set(p.topic.toLowerCase(), p)
+  const preferences = Array.from(prefMap.values())
+
+  // Commitments: append with dedup by lowercase item text
+  const commitmentSet = new Set<string>()
+  const commitments: Array<{ item: string; date: string }> = []
+  for (const c of [...base.commitments, ...incoming.commitments]) {
+    const key = c.item.toLowerCase().trim()
+    if (!commitmentSet.has(key)) {
+      commitmentSet.add(key)
+      commitments.push(c)
+    }
+  }
+
+  return {
+    decisions,
+    preferences,
+    commitments,
+    extracted_at: incoming.extracted_at || base.extracted_at,
+  }
+}
+
+/**
+ * Load and merge decision memory from the 3 most recent conversations
+ * that have non-empty decision_memory JSONB.
+ */
+async function loadDecisionMemory(
+  db: ReturnType<typeof getServiceClient>,
+  userId: string
+): Promise<DecisionMemory | null> {
+  try {
+    const { data: conversations } = await db
+      .from('ss_yuri_conversations')
+      .select('decision_memory')
+      .eq('user_id', userId)
+      .not('decision_memory', 'eq', '{}')
+      .order('updated_at', { ascending: false })
+      .limit(3)
+
+    if (!conversations || conversations.length === 0) return null
+
+    let merged: DecisionMemory | null = null
+    // Process oldest first so newest overwrites on merge
+    for (const conv of conversations.reverse()) {
+      const raw = conv.decision_memory as DecisionMemory | null
+      if (!raw || (!raw.decisions?.length && !raw.preferences?.length && !raw.commitments?.length)) {
+        continue
+      }
+      merged = mergeDecisionMemory(merged, raw)
+    }
+
+    return merged
+  } catch {
+    // Decision memory loading is non-critical
+    return null
+  }
+}
+
+/**
+ * Extract structured decisions, preferences, and commitments from a conversation
+ * via Sonnet, then merge with existing memory and save to the conversation record.
+ */
+export async function extractAndSaveDecisionMemory(
+  userId: string,
+  conversationId: string,
+  conversationHistory: Array<{ role: string; content: string }>
+): Promise<void> {
+  const { getAnthropicClient, MODELS, callAnthropicWithRetry } = await import('@/lib/anthropic')
+  const client = getAnthropicClient()
+
+  // Build a condensed transcript from the conversation
+  const transcript = conversationHistory
+    .slice(-20) // Last 20 messages
+    .map((m) => `${m.role === 'user' ? 'User' : 'Yuri'}: ${m.content.slice(0, 400)}`)
+    .join('\n')
+
+  const response = await callAnthropicWithRetry(
+    () =>
+      client.messages.create({
+        model: MODELS.background,
+        max_tokens: 500,
+        messages: [
+          {
+            role: 'user',
+            content: `Analyze this K-beauty advisor conversation and extract structured data in three categories. Only extract what is EXPLICITLY stated — never infer or assume.
+
+1. **DECISIONS**: Specific skincare decisions the user or Yuri agreed on. Each needs a short topic label and the decision text.
+   Examples: { "topic": "barrier_repair", "decision": "3-phase approach starting with ceramides before reintroducing actives" }
+   Examples: { "topic": "sunscreen", "decision": "Switched to Beauty of Joseon PA++++" }
+
+2. **PREFERENCES**: User's stated preferences about products, ingredients, or routines. Each needs a topic and the preference.
+   Examples: { "topic": "fragrance", "preference": "fragrance-free only" }
+   Examples: { "topic": "texture", "preference": "gel-cream over heavy creams" }
+
+3. **COMMITMENTS**: Specific actions the user committed to trying or doing. Each needs the item and today's date.
+   Examples: { "item": "Try COSRX Snail Mucin for 2 weeks", "date": "${new Date().toISOString().split('T')[0]}" }
+
+CONVERSATION:
+${transcript}
+
+Return ONLY valid JSON in this exact format (empty arrays are fine if nothing found):
+{
+  "decisions": [{ "topic": "...", "decision": "...", "date": "${new Date().toISOString().split('T')[0]}" }],
+  "preferences": [{ "topic": "...", "preference": "..." }],
+  "commitments": [{ "item": "...", "date": "${new Date().toISOString().split('T')[0]}" }]
+}`,
+          },
+        ],
+      }),
+    1 // Non-critical: only 1 retry
+  )
+
+  const block = response.content[0]
+  if (block.type !== 'text') return
+
+  let extracted: { decisions?: unknown[]; preferences?: unknown[]; commitments?: unknown[] }
+  try {
+    const text = block.text.trim().replace(/^```json?\s*/, '').replace(/\s*```$/, '')
+    extracted = JSON.parse(text)
+  } catch {
+    return // Parse failed — skip silently
+  }
+
+  // Validate and normalize the extracted data
+  const incoming: DecisionMemory = {
+    decisions: Array.isArray(extracted.decisions)
+      ? (extracted.decisions as Array<{ topic?: string; decision?: string; date?: string }>)
+          .filter((d) => d.topic && d.decision)
+          .map((d) => ({
+            topic: String(d.topic),
+            decision: String(d.decision),
+            date: String(d.date || new Date().toISOString().split('T')[0]),
+          }))
+      : [],
+    preferences: Array.isArray(extracted.preferences)
+      ? (extracted.preferences as Array<{ topic?: string; preference?: string }>)
+          .filter((p) => p.topic && p.preference)
+          .map((p) => ({
+            topic: String(p.topic),
+            preference: String(p.preference),
+          }))
+      : [],
+    commitments: Array.isArray(extracted.commitments)
+      ? (extracted.commitments as Array<{ item?: string; date?: string }>)
+          .filter((c) => c.item)
+          .map((c) => ({
+            item: String(c.item),
+            date: String(c.date || new Date().toISOString().split('T')[0]),
+          }))
+      : [],
+    extracted_at: new Date().toISOString(),
+  }
+
+  // Skip if nothing was extracted
+  if (
+    incoming.decisions.length === 0 &&
+    incoming.preferences.length === 0 &&
+    incoming.commitments.length === 0
+  ) {
+    return
+  }
+
+  // Load existing decision memory from this conversation and merge
+  const db = getServiceClient()
+  const { data: conv } = await db
+    .from('ss_yuri_conversations')
+    .select('decision_memory')
+    .eq('id', conversationId)
+    .single()
+
+  const existing = (conv?.decision_memory as DecisionMemory | null) || null
+  const merged = mergeDecisionMemory(existing, incoming)
+
+  // Save merged decision memory back to the conversation
+  await db
+    .from('ss_yuri_conversations')
+    .update({ decision_memory: merged })
+    .eq('id', conversationId)
 }
 
 // ---------------------------------------------------------------------------
