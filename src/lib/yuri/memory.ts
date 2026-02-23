@@ -12,9 +12,16 @@ export interface SpecialistInsightMemory {
   createdAt: string
 }
 
+export interface RecentConversationExcerpt {
+  conversationId: string
+  title: string | null
+  messages: Array<{ role: string; content: string }>
+}
+
 export interface UserContext {
   skinProfile: SkinProfile | null
   recentConversations: ConversationMemory[]
+  recentExcerpts: RecentConversationExcerpt[]
   productReactions: ProductReaction[]
   knownAllergies: string[]
   knownPreferences: string[]
@@ -48,7 +55,7 @@ export interface ProductReaction {
 // Load user context for Yuri conversations
 // ---------------------------------------------------------------------------
 
-export async function loadUserContext(userId: string): Promise<UserContext> {
+export async function loadUserContext(userId: string, currentConversationId?: string): Promise<UserContext> {
   const db = getServiceClient()
 
   const [
@@ -196,9 +203,14 @@ export async function loadUserContext(userId: string): Promise<UserContext> {
     }
   }
 
+  // Load actual message content from recent conversations (LGAAS pattern)
+  // This gives Yuri access to what she actually said, even if the summary missed it
+  const recentExcerpts = await loadRecentConversationExcerpts(db, userId, currentConversationId)
+
   return {
     skinProfile,
     recentConversations,
+    recentExcerpts,
     productReactions,
     knownAllergies: skinProfile?.allergies || [],
     knownPreferences: [],
@@ -280,6 +292,21 @@ export function formatContextForPrompt(context: UserContext): string {
         .join('\n')
       sections.push(`## Other Recent Conversation Topics\n${topics}`)
     }
+  }
+
+  // Recent conversation excerpts (actual message content from past conversations)
+  // This is the safety net — even if summaries missed specific recommendations,
+  // Yuri can see what she actually said in the last few messages of recent conversations
+  if (context.recentExcerpts.length > 0) {
+    const excerptText = context.recentExcerpts
+      .map((ex) => {
+        const msgs = ex.messages
+          .map((m) => `${m.role === 'user' ? 'User' : 'Yuri'}: ${m.content}`)
+          .join('\n')
+        return `### ${ex.title || 'Conversation'}\n${msgs}`
+      })
+      .join('\n\n')
+    sections.push(`## Recent Conversation Excerpts (Your Actual Messages)\nThese are the last few messages from your recent conversations with this user. Use these to remember EXACTLY what you said — specific products you recommended, advice you gave, and commitments you made:\n\n${excerptText}`)
   }
 
   // Menstrual cycle phase context
@@ -434,9 +461,14 @@ export async function saveConversationSummary(
     .eq('id', conversationId)
 }
 
+// Truncation constants (LGAAS pattern)
+const TRUNCATION_THRESHOLD = 50 // Start truncating after this many messages
+const HEAD_COUNT = 4 // Keep first N messages (conversation setup)
+const TAIL_COUNT = 40 // Keep last N messages (recent flow)
+
 export async function loadConversationMessages(
   conversationId: string,
-  limit = 50
+  limit = 200
 ): Promise<YuriMessage[]> {
   const db = getServiceClient()
   const { data, error } = await db
@@ -447,7 +479,109 @@ export async function loadConversationMessages(
     .limit(limit)
 
   if (error) throw new Error(`Failed to load messages: ${error.message}`)
-  return data as YuriMessage[]
+  const messages = data as YuriMessage[]
+
+  // If under threshold, return all messages as-is
+  if (messages.length <= TRUNCATION_THRESHOLD) {
+    return messages
+  }
+
+  // Smart truncation: keep head + tail, bridge-summarize the middle
+  return await truncateWithBridge(db, conversationId, messages)
+}
+
+/**
+ * Smart truncation with bridge summary (LGAAS pattern).
+ * Keeps first HEAD_COUNT messages (topic setup) + last TAIL_COUNT messages (recent flow).
+ * Generates a Sonnet summary of the dropped middle section and injects it as a
+ * synthetic assistant message between head and tail.
+ * Bridge summaries are cached on the conversation record to avoid regeneration.
+ */
+async function truncateWithBridge(
+  db: ReturnType<typeof getServiceClient>,
+  conversationId: string,
+  messages: YuriMessage[]
+): Promise<YuriMessage[]> {
+  const head = messages.slice(0, HEAD_COUNT)
+  const tail = messages.slice(-TAIL_COUNT)
+  const droppedMessages = messages.slice(HEAD_COUNT, messages.length - TAIL_COUNT)
+
+  if (droppedMessages.length === 0) return messages
+
+  // Check for cached bridge summary
+  const { data: conv } = await db
+    .from('ss_yuri_conversations')
+    .select('truncation_summary, truncation_summary_msg_count')
+    .eq('id', conversationId)
+    .single()
+
+  let bridgeSummary = conv?.truncation_summary
+  const cachedMsgCount = conv?.truncation_summary_msg_count
+
+  // Regenerate if no cached summary or message count has changed significantly
+  if (!bridgeSummary || !cachedMsgCount || Math.abs(cachedMsgCount - messages.length) >= 5) {
+    try {
+      const { getAnthropicClient, MODELS } = await import('@/lib/anthropic')
+      const client = getAnthropicClient()
+
+      const droppedTranscript = droppedMessages
+        .map((m) => `${m.role === 'user' ? 'User' : 'Yuri'}: ${m.content.slice(0, 400)}`)
+        .join('\n')
+
+      const response = await client.messages.create({
+        model: MODELS.background,
+        max_tokens: 600,
+        messages: [{
+          role: 'user',
+          content: `Summarize these messages from the MIDDLE of a K-beauty advisor conversation. These messages are being dropped due to conversation length, so the summary must preserve all critical information.
+
+Focus on:
+1. Specific product recommendations Yuri made (exact names, brands)
+2. Advice and reasoning Yuri gave for each recommendation
+3. Key decisions or preferences the user expressed
+4. Any routine changes discussed or agreed upon
+
+DROPPED MESSAGES (${droppedMessages.length} messages):
+${droppedTranscript}
+
+Write a dense, factual summary. Max 400 words. Return ONLY the summary text.`,
+        }],
+      })
+
+      const block = response.content[0]
+      if (block.type === 'text') {
+        bridgeSummary = block.text.trim()
+
+        // Cache the bridge summary
+        await db
+          .from('ss_yuri_conversations')
+          .update({
+            truncation_summary: bridgeSummary,
+            truncation_summary_msg_count: messages.length,
+          })
+          .eq('id', conversationId)
+      }
+    } catch {
+      // Bridge generation failed — fall back to simple truncation
+      return [...head, ...tail]
+    }
+  }
+
+  // Inject bridge summary as a synthetic assistant message between head and tail
+  if (bridgeSummary) {
+    const bridgeMessage: YuriMessage = {
+      id: 'bridge-summary',
+      conversation_id: conversationId,
+      role: 'assistant',
+      content: `[CONVERSATION CONTEXT — ${droppedMessages.length} earlier messages summarized]\n\n${bridgeSummary}\n\n[End of summary. The ${tail.length} most recent messages follow below.]`,
+      specialist_type: null,
+      image_urls: [],
+      created_at: head[head.length - 1]?.created_at || new Date().toISOString(),
+    }
+    return [...head, bridgeMessage, ...tail]
+  }
+
+  return [...head, ...tail]
 }
 
 export async function loadUserConversations(
@@ -482,6 +616,68 @@ export async function saveSpecialistInsight(
     insight_type: 'conversation_extraction',
     data: insightData,
   })
+}
+
+// ---------------------------------------------------------------------------
+// Load actual message content from recent conversations (LGAAS pattern)
+// Gives Yuri access to what she actually said, even if summaries missed it
+// ---------------------------------------------------------------------------
+
+async function loadRecentConversationExcerpts(
+  db: ReturnType<typeof getServiceClient>,
+  userId: string,
+  currentConversationId?: string
+): Promise<RecentConversationExcerpt[]> {
+  try {
+    // Find the 3 most recent conversations with 3+ messages (meaningful conversations)
+    // Exclude the current conversation since those messages are already in the API history
+    let query = db
+      .from('ss_yuri_conversations')
+      .select('id, title, message_count')
+      .eq('user_id', userId)
+      .gte('message_count', 3)
+      .order('updated_at', { ascending: false })
+      .limit(4) // Fetch 4 in case one is the current conversation
+
+    if (currentConversationId) {
+      query = query.neq('id', currentConversationId)
+    }
+
+    const { data: conversations } = await query
+    if (!conversations || conversations.length === 0) return []
+
+    // Load the last 6 messages from each (captures the most recent exchange context)
+    const excerpts: RecentConversationExcerpt[] = []
+    const targetConversations = conversations.slice(0, 3)
+
+    for (const conv of targetConversations) {
+      const { data: messages } = await db
+        .from('ss_yuri_messages')
+        .select('role, content')
+        .eq('conversation_id', conv.id)
+        .order('created_at', { ascending: false })
+        .limit(6)
+
+      if (messages && messages.length > 0) {
+        // Reverse to get chronological order (we fetched descending)
+        const chronological = messages.reverse()
+        excerpts.push({
+          conversationId: conv.id,
+          title: conv.title,
+          messages: chronological.map((m) => ({
+            role: m.role,
+            // Generous content per message — product names and recommendations need space
+            content: m.content.slice(0, 500),
+          })),
+        })
+      }
+    }
+
+    return excerpts
+  } catch {
+    // Excerpt loading is non-critical
+    return []
+  }
 }
 
 // ---------------------------------------------------------------------------

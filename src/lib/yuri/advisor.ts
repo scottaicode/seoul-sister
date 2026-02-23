@@ -276,7 +276,8 @@ export async function* streamAdvisorResponse(
       : detectSpecialist(message)
 
   // 2. Load user context (skin profile, memory, reactions)
-  const userContext = await loadUserContext(userId)
+  //    Pass conversationId so we exclude current conversation from recent excerpts
+  const userContext = await loadUserContext(userId, conversationId)
 
   // 3. Build system prompt with context + specialist
   const systemPrompt = buildSystemPrompt(
@@ -364,10 +365,12 @@ export async function* streamAdvisorResponse(
   })
 
   // 11. Generate/update conversation summary for cross-session memory.
-  //     Runs on message 1, 3, 5, then every 5 messages to keep summaries fresh
-  //     without regenerating on every single message.
+  //     Runs on message 2, 6, then every 5 messages to keep summaries fresh.
+  //     At every-5, the summary is always within 4 messages of current state,
+  //     preventing the bug where a 37-message conversation's final recommendations
+  //     were never captured (old trigger: every 10, missed messages 31-37).
   const msgCount = conversationHistory.length + 2 // +2 for user + assistant just added
-  const shouldSummarize = msgCount <= 2 || msgCount === 6 || msgCount === 10 || msgCount % 10 === 0
+  const shouldSummarize = msgCount <= 2 || msgCount === 6 || msgCount % 5 === 0
   if (shouldSummarize) {
     generateAndSaveSummary(
       conversationId,
@@ -390,35 +393,45 @@ async function generateAndSaveSummary(
 ): Promise<void> {
   const client = getAnthropicClient()
 
-  // Build a condensed transcript for the summary
+  // Build a condensed transcript — generous content per message to capture product names
   const transcript = conversationHistory
-    .slice(-20) // Last 20 messages max for context
-    .map((m) => `${m.role === 'user' ? 'User' : 'Yuri'}: ${m.content.slice(0, 300)}`)
+    .slice(-30) // Last 30 messages for longer conversations
+    .map((m) => `${m.role === 'user' ? 'User' : 'Yuri'}: ${m.content.slice(0, 600)}`)
     .join('\n')
-  const fullTranscript = `${transcript}\nYuri: ${latestResponse.slice(0, 500)}`
+  const fullTranscript = `${transcript}\nYuri: ${latestResponse.slice(0, 800)}`
 
   const response = await client.messages.create({
     model: MODELS.background,
-    max_tokens: 400,
+    max_tokens: 800,
     messages: [
       {
         role: 'user',
-        content: `Summarize this K-beauty advisor conversation for future reference. Extract the KEY DETAILS that Yuri should remember in future conversations with this user. Focus on:
+        content: `Summarize this K-beauty advisor conversation for Yuri's cross-session memory. This summary will be injected into Yuri's system prompt in FUTURE conversations so she remembers what happened here.
 
-1. Specific products mentioned (exact names) and whether the user likes/dislikes them
-2. The user's current routine (AM/PM products, steps, frequency)
-3. Specific skin concerns or goals discussed
-4. Recommendations Yuri made (so she doesn't repeat herself)
-5. Personal details the user shared (location, lifestyle, budget, preferences)
-6. Any allergies or bad reactions mentioned
-7. Questions left unanswered or follow-ups promised
+Structure the summary in TWO sections (both required):
 
-Write the summary in second person ("User uses...", "User mentioned..."). Be concise but specific — product names and details matter more than general topics. Max 300 words.
+**SECTION 1 — YURI'S RECOMMENDATIONS & ADVICE (write this section FIRST, it's the highest priority):**
+- Every specific product Yuri recommended (exact product names, brands)
+- WHY each product was recommended (what skin concern it addresses)
+- Any phased plans or timelines Yuri suggested (e.g., "Phase 2 — add vitamin C after barrier repair")
+- Routine changes Yuri advised (products to add, remove, swap, reorder)
+- Specific advice given (e.g., "stop using cotton pad with toner in AM", "layer SPF under BB cream")
+- Warnings Yuri gave (e.g., "Zero Pore Pads causing over-exfoliation")
+
+**SECTION 2 — USER PROFILE & CONTEXT:**
+- Skin type, concerns, goals discussed
+- Current routine products (AM/PM)
+- Personal details (age, location, budget, lifestyle)
+- Products they like/dislike and why
+- Allergies or bad reactions
+- Questions left unanswered or follow-ups promised
+
+Write in second person ("User has...", "Yuri recommended..."). Be specific — exact product names matter more than general topics. Max 500 words.
 
 CONVERSATION:
 ${fullTranscript}
 
-Return ONLY the summary text, no headers or formatting.`,
+Return ONLY the summary text, no JSON or code formatting.`,
       },
     ],
   })
