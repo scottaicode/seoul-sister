@@ -41,6 +41,7 @@ export interface ConversationMemory {
   conversationId: string
   title: string | null
   specialistType: SpecialistType | null
+  conversationType: string | null
   summary: string
   keyInsights: string[]
   timestamp: string
@@ -76,7 +77,7 @@ export async function loadUserContext(userId: string, currentConversationId?: st
     // Recent conversations (last 10) for memory context
     db
       .from('ss_yuri_conversations')
-      .select('id, title, specialist_type, updated_at, summary')
+      .select('id, title, specialist_type, conversation_type, updated_at, summary')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false })
       .limit(10),
@@ -145,10 +146,11 @@ export async function loadUserContext(userId: string, currentConversationId?: st
 
   // Build conversation memories from recent conversations
   const recentConversations: ConversationMemory[] = (conversationsResult.data || []).map(
-    (conv: { id: string; title: string | null; specialist_type: SpecialistType | null; updated_at: string; summary: string | null }) => ({
+    (conv: { id: string; title: string | null; specialist_type: SpecialistType | null; conversation_type: string | null; updated_at: string; summary: string | null }) => ({
       conversationId: conv.id,
       title: conv.title,
       specialistType: conv.specialist_type,
+      conversationType: conv.conversation_type,
       summary: conv.title || 'Untitled conversation',
       keyInsights: [],
       timestamp: conv.updated_at,
@@ -227,6 +229,72 @@ export async function loadUserContext(userId: string, currentConversationId?: st
 }
 
 // ---------------------------------------------------------------------------
+// Extract specific product recommendations from conversation summaries
+// into structured data that Claude can't accidentally dismiss
+// ---------------------------------------------------------------------------
+
+interface ProductRecommendation {
+  product: string
+  context: string
+}
+
+function extractProductRecommendations(conversations: ConversationMemory[]): ProductRecommendation[] {
+  const recommendations: ProductRecommendation[] = []
+
+  for (const conv of conversations) {
+    if (!conv.aiSummary) continue
+    const summary = conv.aiSummary
+    const conversationLabel = conv.title || 'previous conversation'
+
+    // Match patterns like "**Product Name**" or "Yuri recommended Product Name"
+    // Look for bold product names in SECTION 1 (recommendations section)
+    const boldProductPattern = /\*\*([A-Z][^*]{3,60})\*\*/g
+    let match
+
+    // Extract from SECTION 1 only (the recommendations section)
+    const section1Match = summary.match(/SECTION 1[^]*?(?=\*\*SECTION 2|$)/i)
+    const section1 = section1Match ? section1Match[0] : ''
+
+    if (section1) {
+      while ((match = boldProductPattern.exec(section1)) !== null) {
+        const productName = match[1].trim()
+        // Filter out section headers and generic terms
+        if (
+          productName.length > 5 &&
+          !productName.startsWith('SECTION') &&
+          !productName.startsWith('Key ') &&
+          !productName.startsWith('Phase ') &&
+          !productName.startsWith('Stop') &&
+          !productName.startsWith('WARNING') &&
+          !productName.startsWith('NOTE') &&
+          !productName.includes('routine') &&
+          !productName.includes('Routine')
+        ) {
+          // Avoid duplicates
+          if (!recommendations.some(r => r.product === productName)) {
+            // Get a short context snippet around the match
+            const idx = section1.indexOf(match[0])
+            const snippetStart = Math.max(0, idx - 10)
+            const snippetEnd = Math.min(section1.length, idx + match[0].length + 80)
+            const snippet = section1.slice(snippetStart, snippetEnd)
+              .replace(/\*\*/g, '')
+              .replace(/\n/g, ' ')
+              .trim()
+
+            recommendations.push({
+              product: productName,
+              context: `recommended in "${conversationLabel}" — ${snippet.slice(0, 100)}`,
+            })
+          }
+        }
+      }
+    }
+  }
+
+  return recommendations
+}
+
+// ---------------------------------------------------------------------------
 // Format user context as text for system prompt injection
 // ---------------------------------------------------------------------------
 
@@ -291,11 +359,25 @@ export function formatContextForPrompt(context: UserContext): string {
     const withoutSummaries = context.recentConversations.filter(c => !c.aiSummary)
 
     if (withSummaries.length > 0) {
-      const summaryText = withSummaries
-        .slice(0, 5)
+      // Always include the onboarding conversation summary (foundational recommendations)
+      const onboarding = withSummaries.find(c => c.conversationType === 'onboarding')
+      const nonOnboarding = withSummaries.filter(c => c.conversationType !== 'onboarding')
+      const pinnedSummaries = [
+        ...(onboarding ? [onboarding] : []),
+        ...nonOnboarding,
+      ].slice(0, 7) // Increased from 5 to 7 to ensure onboarding + recent all fit
+
+      const summaryText = pinnedSummaries
         .map((c) => `### ${c.title || 'Conversation'} (${c.specialistType || 'general'})\n${c.aiSummary}`)
         .join('\n\n')
-      sections.push(`## Previous Conversations (Your Memory)\nYou remember these past conversations with this user. Use this knowledge naturally — don't repeat advice they've already received, build on what you discussed before, and reference specific products/routines/preferences they mentioned:\n\n${summaryText}`)
+      sections.push(`## Previous Conversations (Your Memory)\nThese are YOUR OWN conversations with this user. The summaries document what YOU said — products you recommended, routines you built, warnings you gave. This is your memory. Own it.\n\n${summaryText}`)
+
+      // Extract specific product recommendations from summaries into a structured section
+      // so Claude sees them as clear, undeniable facts rather than buried in prose
+      const productRecommendations = extractProductRecommendations(pinnedSummaries)
+      if (productRecommendations.length > 0) {
+        sections.push(`## YOUR Previous Product Recommendations (You Said These)\nThese are specific products YOU recommended to this user in past conversations. You MUST acknowledge these if the user asks about them:\n${productRecommendations.map(r => `- **${r.product}** — ${r.context}`).join('\n')}`)
+      }
     }
 
     if (withoutSummaries.length > 0) {
