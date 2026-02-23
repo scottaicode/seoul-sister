@@ -2,11 +2,18 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { checkRateLimit } from '@/lib/utils/rate-limiter'
+import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
+import type Anthropic from '@anthropic-ai/sdk'
 
 const MAX_FREE_MESSAGES = 5
 const WIDGET_RATE_LIMIT = 10 // generous IP limit (multiple users behind same IP)
 const WIDGET_RATE_WINDOW = 24 * 60 * 60 * 1000 // 24 hours in ms
 const MSG_LIMIT_WINDOW = 30 * 24 * 60 * 60 * 1000 // 30 days (matches client-side)
+const MAX_WIDGET_TOOL_LOOPS = 2 // fewer loops than authenticated Yuri (cost control)
+
+/** Widget-safe tools: subset of Yuri's 7 tools that work without user auth */
+const WIDGET_TOOL_NAMES = new Set(['search_products', 'compare_prices', 'get_trending_products'])
+const WIDGET_TOOLS = YURI_TOOLS.filter((t) => WIDGET_TOOL_NAMES.has(t.name))
 
 /** Simple hash for session fingerprinting (IP + User-Agent) */
 function simpleHash(str: string): string {
@@ -47,23 +54,35 @@ Think: "cool older sister who works at Amorepacific in Seoul." Confident, warm, 
 - Drop insider knowledge casually: parent company connections, reformulation history, Korean dermatologist opinions, Hwahae rankings
 - When debunking myths, cite the actual science briefly (e.g., "that's from a 1960s study using conditions nothing like your bathroom shelf")
 
+## Database Access
+You have access to Seoul Sister's product intelligence database with 6,200+ K-beauty products, real retailer prices, and trending data. When visitors ask about specific products, prices, or what's trending in Korea, USE YOUR TOOLS to search the database and give real data. This is what makes Seoul Sister different from generic AI -- you have real product intelligence backed by data.
+
+Use tools when the question involves:
+- Specific product recommendations or searches
+- Price comparisons or "where to buy"
+- What's trending in Korean beauty right now
+
+Do NOT use tools for general skincare education, ingredient science, or K-beauty philosophy -- your training knowledge is sufficient for those.
+
 ## Response Format
 - 3-4 short paragraphs max (this is a widget, not an article)
 - Use **bold** for product names and key terms
 - Use bullet lists for product recommendations
+- When citing database results, mention real prices and retailer names naturally
 - End with a specific, personalized follow-up question -- not a sales pitch
 - If a deeper dive would help, mention your 6 specialist agents naturally (not as a sales push)
 
 ## Rules
 - Never be pushy about signup -- deliver value first, always
-- Never make up product data or ingredient information
+- Never make up product data or ingredient information -- if your tools return data, use it
 - Never diagnose medical conditions -- recommend 피부과 (dermatologist) for persistent issues
 - If asked about something outside K-beauty, gently redirect
 - Seoul Sister is NOT a store -- direct to verified retailers (Olive Young Global, YesStyle, StyleVana)`
 
 /**
  * POST /api/widget/chat - Anonymous Yuri widget chat (no auth required)
- * Rate limited by IP. Returns SSE stream with shorter max_tokens.
+ * Rate limited by IP. Supports tool use for database access (3 tools).
+ * Returns SSE stream with shorter max_tokens.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -103,7 +122,7 @@ export async function POST(request: NextRequest) {
 
     const anthropic = getAnthropicClient()
 
-    const messages = [
+    const messages: Anthropic.Messages.MessageParam[] = [
       ...(parsed.history || []).map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
@@ -115,25 +134,78 @@ export async function POST(request: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const response = await anthropic.messages.create({
-            model: MODELS.primary,
-            max_tokens: 300,
-            system: YURI_WIDGET_SYSTEM,
-            messages,
-            stream: true,
-          })
+          // Tool use loop (same pattern as advisor.ts but with widget constraints)
+          const loopMessages: Anthropic.Messages.MessageParam[] = [...messages]
+          let toolLoopCount = 0
+          let fullResponse = ''
 
-          for await (const event of response) {
-            if (
-              event.type === 'content_block_delta' &&
-              event.delta.type === 'text_delta'
-            ) {
-              const data = JSON.stringify({
-                type: 'text',
-                content: event.delta.text,
-              })
-              controller.enqueue(encoder.encode(`data: ${data}\n\n`))
+          while (toolLoopCount <= MAX_WIDGET_TOOL_LOOPS) {
+            const response = await anthropic.messages.create({
+              model: MODELS.primary,
+              max_tokens: 400, // slightly more than 300 to account for tool-enriched responses
+              system: YURI_WIDGET_SYSTEM,
+              messages: loopMessages,
+              tools: WIDGET_TOOLS,
+              tool_choice: { type: 'auto' },
+            })
+
+            if (response.stop_reason === 'tool_use') {
+              toolLoopCount++
+
+              // Add Claude's response (with tool_use blocks) to conversation
+              loopMessages.push({ role: 'assistant', content: response.content })
+
+              // Execute each tool — limit to 1 tool per loop for widget (cost control)
+              const toolResults: Anthropic.Messages.ToolResultBlockParam[] = []
+              let toolsExecuted = 0
+              for (const block of response.content) {
+                if (block.type === 'tool_use' && toolsExecuted < 1) {
+                  const result = await executeYuriTool(
+                    block.name,
+                    block.input as Record<string, unknown>,
+                    '' // empty userId for anonymous widget
+                  )
+                  toolResults.push({
+                    type: 'tool_result',
+                    tool_use_id: block.id,
+                    content: result,
+                  })
+                  toolsExecuted++
+                } else if (block.type === 'tool_use') {
+                  // Skip additional tool calls for widget
+                  toolResults.push({
+                    type: 'tool_result',
+                    tool_use_id: block.id,
+                    content: JSON.stringify({ error: 'Only one tool call per message in the widget. Answer with the data you have.' }),
+                  })
+                }
+              }
+
+              // Add tool results as a user message (Claude API requirement)
+              loopMessages.push({ role: 'user', content: toolResults })
+              continue
             }
+
+            // stop_reason is 'end_turn' or 'max_tokens' — extract text
+            for (const block of response.content) {
+              if (block.type === 'text') {
+                fullResponse += block.text
+              }
+            }
+            break
+          }
+
+          // Fallback if tool loops exhausted without text
+          if (!fullResponse) {
+            fullResponse = "I'm having a moment accessing our database. Based on my experience though — what specifically are you looking for? I can help with product recommendations, ingredient questions, or K-beauty routines."
+          }
+
+          // Stream the response in chunks to maintain SSE feel
+          const CHUNK_SIZE = 50
+          for (let i = 0; i < fullResponse.length; i += CHUNK_SIZE) {
+            const chunk = fullResponse.slice(i, i + CHUNK_SIZE)
+            const data = JSON.stringify({ type: 'text', content: chunk })
+            controller.enqueue(encoder.encode(`data: ${data}\n\n`))
           }
 
           const done = JSON.stringify({ type: 'done' })
