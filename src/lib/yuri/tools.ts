@@ -149,6 +149,23 @@ export const YURI_TOOLS: ToolDef[] = [
       },
     },
   },
+  {
+    name: 'web_search',
+    description:
+      'Search the web for current K-beauty information, latest product reviews, ingredient research, brand news, or Korean skincare trends. Use when the question requires information more recent than your training data, or when you need to verify current product availability, reformulations, or pricing from sources outside the Seoul Sister database.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        query: { type: 'string', description: 'Search query' },
+        focus: {
+          type: 'string',
+          enum: ['general', 'reddit', 'research', 'news'],
+          description: 'Focus area for search results. Use "reddit" to search K-beauty communities, "research" for scientific/dermatological sources, "news" for recent brand news.',
+        },
+      },
+      required: ['query'],
+    },
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -174,6 +191,8 @@ export async function executeYuriTool(
         return await executeComparePrices(input)
       case 'get_personalized_match':
         return await executeGetPersonalizedMatch(input, userId)
+      case 'web_search':
+        return await executeWebSearch(input)
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` })
     }
@@ -815,4 +834,148 @@ async function executeGetPersonalizedMatch(
     ingredients_analyzed: ingredientNames.length,
     overall: warnings.length === 0 ? 'Good match' : `${warnings.length} warning(s) found`,
   })
+}
+
+// ---------------------------------------------------------------------------
+// Tool: web_search (Brave Search API)
+// ---------------------------------------------------------------------------
+
+// In-memory cache with 1-hour TTL
+const webSearchCache = new Map<string, { result: string; expiry: number }>()
+const WEB_SEARCH_CACHE_TTL = 60 * 60 * 1000 // 1 hour
+
+// Per-conversation rate limiting: track calls per advisor invocation
+// Reset externally by the advisor loop (or use a simple counter here)
+let webSearchCallCount = 0
+const WEB_SEARCH_MAX_PER_TURN = 3
+
+/** Reset the per-turn web search counter. Called at the start of each advisor response. */
+export function resetWebSearchCounter(): void {
+  webSearchCallCount = 0
+}
+
+async function executeWebSearch(
+  input: Record<string, unknown>
+): Promise<string> {
+  const query = input.query as string | undefined
+  const focus = (input.focus as string) || 'general'
+
+  if (!query) {
+    return JSON.stringify({ error: 'No search query provided' })
+  }
+
+  // Rate limit: max 3 web searches per conversation turn
+  if (webSearchCallCount >= WEB_SEARCH_MAX_PER_TURN) {
+    return JSON.stringify({
+      error: 'Web search limit reached for this response (max 3). Answer with available information.',
+    })
+  }
+  webSearchCallCount++
+
+  // Build the effective query based on focus
+  let effectiveQuery = query
+  switch (focus) {
+    case 'reddit':
+      effectiveQuery = `${query} site:reddit.com`
+      break
+    case 'research':
+      effectiveQuery = `${query} (pubmed OR dermatology OR clinical study)`
+      break
+    case 'news':
+      effectiveQuery = `${query} (news OR announcement OR launch)`
+      break
+    // 'general' — use query as-is
+  }
+
+  // Check cache
+  const cacheKey = effectiveQuery.toLowerCase().trim()
+  const cached = webSearchCache.get(cacheKey)
+  if (cached && cached.expiry > Date.now()) {
+    return cached.result
+  }
+
+  // Check for API key
+  const apiKey = process.env.BRAVE_SEARCH_API_KEY
+  if (!apiKey) {
+    return JSON.stringify({
+      error: 'Web search is not configured. BRAVE_SEARCH_API_KEY is missing.',
+      fallback: 'Answer based on your training knowledge instead.',
+    })
+  }
+
+  try {
+    const url = new URL('https://api.search.brave.com/res/v1/web/search')
+    url.searchParams.set('q', effectiveQuery)
+    url.searchParams.set('count', '5')
+    url.searchParams.set('safesearch', 'moderate')
+    url.searchParams.set('text_decorations', 'false')
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        'Accept': 'application/json',
+        'Accept-Encoding': 'gzip',
+        'X-Subscription-Token': apiKey,
+      },
+      signal: AbortSignal.timeout(10000), // 10s timeout
+    })
+
+    if (!response.ok) {
+      const statusText = response.statusText || response.status
+      console.error(`[yuri/tools] Brave Search API error: ${statusText}`)
+      return JSON.stringify({
+        error: `Web search failed (${statusText}). Answer from your knowledge instead.`,
+      })
+    }
+
+    const data = await response.json() as {
+      web?: {
+        results?: Array<{
+          title?: string
+          url?: string
+          description?: string
+          age?: string
+        }>
+      }
+    }
+
+    const results = (data.web?.results || []).slice(0, 5).map((r) => ({
+      title: r.title || '',
+      url: r.url || '',
+      snippet: r.description || '',
+      age: r.age || null,
+    }))
+
+    if (results.length === 0) {
+      const noResults = JSON.stringify({
+        results: [],
+        message: 'No web results found for this query.',
+      })
+      webSearchCache.set(cacheKey, { result: noResults, expiry: Date.now() + WEB_SEARCH_CACHE_TTL })
+      return noResults
+    }
+
+    const resultJson = JSON.stringify({
+      query: effectiveQuery,
+      results,
+      result_count: results.length,
+    })
+
+    // Cache the result
+    webSearchCache.set(cacheKey, { result: resultJson, expiry: Date.now() + WEB_SEARCH_CACHE_TTL })
+
+    // Evict expired cache entries periodically (every 20 entries)
+    if (webSearchCache.size > 100) {
+      const now = Date.now()
+      for (const [key, val] of webSearchCache) {
+        if (val.expiry < now) webSearchCache.delete(key)
+      }
+    }
+
+    return resultJson
+  } catch (err) {
+    console.error('[yuri/tools] Web search error:', err)
+    return JSON.stringify({
+      error: `Web search failed: ${err instanceof Error ? err.message : 'unknown error'}. Answer from your knowledge instead.`,
+    })
+  }
 }

@@ -9,7 +9,7 @@ import {
   saveConversationSummary,
   type UserContext,
 } from './memory'
-import { YURI_TOOLS, executeYuriTool } from './tools'
+import { YURI_TOOLS, executeYuriTool, resetWebSearchCounter } from './tools'
 import type { SpecialistType, YuriMessage } from '@/types/database'
 import type Anthropic from '@anthropic-ai/sdk'
 
@@ -52,6 +52,18 @@ You have direct access to Seoul Sister's product intelligence database through t
 **When to use tools**: Use them for product-specific questions, price inquiries, ingredient lookups, trend queries, and personalized matching. Do NOT use tools for general skincare education, emotional support, or app guidance — answer those from your knowledge.
 **When NOT to use tools**: Simple greetings, skincare theory, application tips, app navigation help, or when you already have the answer from the conversation context.
 **Tool results**: When you get tool results, incorporate the data naturally into your response. Cite specific products, prices, and ingredients from the results. If a tool returns no results, say so honestly and offer alternatives.
+
+## Web Search
+You can search the web for current information using the **web_search** tool. Use this when:
+- A user asks about a very new product or recent reformulation
+- You need the latest research on an ingredient
+- You want to check current Reddit sentiment about a product
+- Your training knowledge might be outdated on a topic
+- A user asks about recent K-beauty news, brand launches, or ingredient trends
+
+Do NOT search the web for basic K-beauty knowledge you already know well. Most skincare advice, ingredient science, and routine guidance doesn't need a web search.
+
+When citing web search results, mention the source naturally ("I just checked, and according to a recent post on r/AsianBeauty..." or "Based on recent search results..."). You can search up to 3 times per response. Use focus modes: "reddit" for community opinions, "research" for scientific sources, "news" for brand announcements.
 
 You can also:
 - Analyze product labels from photos (Korean text translation + ingredient analysis)
@@ -324,6 +336,9 @@ export async function* streamAdvisorResponse(
   // 6. Call Claude with tool use support
   const client = getAnthropicClient()
   let fullResponse = ''
+
+  // Reset per-turn web search rate limiter
+  resetWebSearchCounter()
 
   // Build the messages array for the tool use loop.
   // We use the SDK's MessageParam type for the conversation with tool results.
