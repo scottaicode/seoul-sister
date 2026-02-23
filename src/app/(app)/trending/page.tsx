@@ -37,7 +37,7 @@ const sourceFilters = [
 export default function TrendingPage() {
   const [trending, setTrending] = useState<TrendingItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [sourceFilter, setSourceFilter] = useState('')
+  const [sourceFilter, setSourceFilter] = useState('olive_young')
   const [activeTab, setActiveTab] = useState<'trending' | 'tiktok'>('trending')
   const [error, setError] = useState<string | null>(null)
 
@@ -48,7 +48,8 @@ export default function TrendingPage() {
       try {
         const params = new URLSearchParams()
         if (sourceFilter) params.set('source', sourceFilter)
-        params.set('limit', '30')
+        // "All" needs a higher limit to include both sources
+        params.set('limit', sourceFilter === '' ? '50' : '30')
 
         const res = await fetch(`/api/trending?${params.toString()}`)
         if (!res.ok) throw new Error('Failed to load trends')
@@ -76,13 +77,11 @@ export default function TrendingPage() {
           Trending in Korea
         </h1>
         <p className="text-white/40 text-sm">
-          {oliveYoungCount > 0 && redditCount > 0
-            ? 'Korean sales rankings + Reddit community mentions.'
-            : oliveYoungCount > 0
-            ? 'Real-time Olive Young bestseller rankings + community signals.'
-            : redditCount > 0
+          {sourceFilter === 'olive_young'
+            ? 'Real-time Olive Young bestseller rankings from Korea.'
+            : sourceFilter === 'reddit'
             ? 'What the K-beauty community is talking about on Reddit.'
-            : 'Emerging ingredients, viral products, and market movements before they hit the US.'}
+            : 'Korean sales rankings + Reddit community mentions.'}
         </p>
       </div>
 
@@ -162,36 +161,67 @@ export default function TrendingPage() {
               />
           ) : (
             <div className="space-y-3">
-              {/* Show source section headers */}
-              {(sourceFilter === 'olive_young' || sourceFilter === '') && trending.some(t => t.source === 'olive_young') && (
+              {/* Source section headers */}
+              {sourceFilter === 'olive_young' && (
                 <div className="flex items-center gap-2 text-xs text-white/30 pb-1">
                   <ShoppingBag className="w-3.5 h-3.5" />
                   <span>Based on real Olive Young Korean sales rankings</span>
                 </div>
               )}
-              {sourceFilter === 'reddit' && trending.some(t => t.source === 'reddit') && (
+              {sourceFilter === 'reddit' && (
                 <div className="flex items-center gap-2 text-xs text-white/30 pb-1">
                   <MessageCircle className="w-3.5 h-3.5" />
                   <span>Mentions from r/AsianBeauty, r/SkincareAddiction + K-beauty communities</span>
                 </div>
               )}
-              {trending.map((item) => (
-                <TrendingCard
-                  key={item.id}
-                  product={item.product}
-                  source={item.source}
-                  trendScore={item.trend_score}
-                  mentionCount={item.mention_count}
-                  sentimentScore={item.sentiment_score}
-                  trendingSince={item.trending_since}
-                  sourceProductName={item.source_product_name}
-                  sourceProductBrand={item.source_product_brand}
-                  sourceUrl={item.source_url}
-                  rankPosition={item.rank_position}
-                  rankChange={item.rank_change}
-                  daysOnList={item.days_on_list}
-                />
-              ))}
+
+              {/* "All" view: group by source with section headers */}
+              {sourceFilter === '' ? (
+                <>
+                  {oliveYoungCount > 0 && (
+                    <>
+                      <div className="flex items-center gap-2 text-xs text-white/30 pb-1">
+                        <ShoppingBag className="w-3.5 h-3.5" />
+                        <span>Top sellers on Olive Young Korea</span>
+                      </div>
+                      {trending.filter(t => t.source === 'olive_young').slice(0, 10).map((item) => (
+                        <TrendingCard key={item.id} product={item.product} source={item.source}
+                          trendScore={item.trend_score} mentionCount={item.mention_count}
+                          sentimentScore={item.sentiment_score} trendingSince={item.trending_since}
+                          sourceProductName={item.source_product_name} sourceProductBrand={item.source_product_brand}
+                          sourceUrl={item.source_url} rankPosition={item.rank_position}
+                          rankChange={item.rank_change} daysOnList={item.days_on_list} />
+                      ))}
+                    </>
+                  )}
+                  {redditCount > 0 && (
+                    <>
+                      <div className="flex items-center gap-2 text-xs text-white/30 pb-1 pt-3">
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>Trending on Reddit K-beauty communities</span>
+                      </div>
+                      {trending.filter(t => t.source === 'reddit').slice(0, 10).map((item) => (
+                        <TrendingCard key={item.id} product={item.product} source={item.source}
+                          trendScore={item.trend_score} mentionCount={item.mention_count}
+                          sentimentScore={item.sentiment_score} trendingSince={item.trending_since}
+                          sourceProductName={item.source_product_name} sourceProductBrand={item.source_product_brand}
+                          sourceUrl={item.source_url} rankPosition={item.rank_position}
+                          rankChange={item.rank_change} daysOnList={item.days_on_list} />
+                      ))}
+                    </>
+                  )}
+                </>
+              ) : (
+                /* Single source view */
+                trending.map((item) => (
+                  <TrendingCard key={item.id} product={item.product} source={item.source}
+                    trendScore={item.trend_score} mentionCount={item.mention_count}
+                    sentimentScore={item.sentiment_score} trendingSince={item.trending_since}
+                    sourceProductName={item.source_product_name} sourceProductBrand={item.source_product_brand}
+                    sourceUrl={item.source_url} rankPosition={item.rank_position}
+                    rankChange={item.rank_change} daysOnList={item.days_on_list} />
+                ))
+              )}
             </div>
           )}
         </>

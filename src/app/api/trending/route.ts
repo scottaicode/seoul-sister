@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
     } else if (source === 'reddit') {
       query = query.order('trend_score', { ascending: false })
     } else {
-      // "All" — show olive_young by rank first, then reddit by score
-      query = query.order('rank_position', { ascending: true, nullsFirst: true })
+      // "All" — show olive_young by rank first (nulls last), then reddit by score
+      query = query.order('rank_position', { ascending: true, nullsFirst: false })
         .order('trend_score', { ascending: false })
     }
 
