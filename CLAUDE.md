@@ -2681,6 +2681,504 @@ The Reddit OAuth implementation in LGAAS is at `lgaas/utils/reddit-oauth.js`. Ke
 
 ---
 
+## Phase 11: Yuri Intelligence Upgrades — From Chatbot to True AI Advisor
+
+**Strategic Rationale**: A comprehensive audit of Yuri's runtime capabilities revealed that while she has an excellent system prompt, cross-session memory, and specialist routing — she is fundamentally limited to Claude's training knowledge during conversations. She CANNOT query Seoul Sister's product database, check real prices, look up ingredients, search trends, or access the web. Her system prompt claims she can do all of these things, but she has no tools to actually do them. This makes her a well-informed chatbot, not the database-backed intelligence advisor Seoul Sister promises.
+
+**The Gap**: Yuri tells users "I'll check our database" or "Let me look up the price" — but she's improvising from Claude's general knowledge. She cannot access the 6,200+ products, 14,400+ ingredients, 221,000+ ingredient links, 52 price records, or trending data that Seoul Sister spent $55+ building. The entire product intelligence pipeline (Phase 9) is invisible to Yuri at conversation time.
+
+**Current State (What Yuri HAS):**
+- Excellent system prompt with K-beauty expertise, specialist routing, app knowledge
+- Cross-session memory: conversation summaries, recent message excerpts, truncation bridging
+- User context: skin profile, product reactions, routine products, cycle phase, location (reverse geocoded), learning insights, specialist insights
+- 6 specialist agent prompts with deep domain knowledge
+- SSE streaming responses via Claude Opus
+
+**What Yuri LACKS (4 gaps, ranked by impact):**
+
+| # | Gap | Impact | Description |
+|---|-----|--------|-------------|
+| 11.1 | Product Database Tools | CRITICAL | Cannot query ss_products, ss_ingredients, ss_product_prices during conversation |
+| 11.2 | Web Search | HIGH | Cannot search the internet for current information, latest research, new products |
+| 11.3 | Location Capture in Onboarding | MEDIUM | Onboarding extracts climate but not city/state text. Reverse geocode only works if weather alerts enabled |
+| 11.4 | Learning Engine Bootstrap | MEDIUM | All learning tables empty (no real community data yet). Yuri's "data-backed insights" always empty |
+
+**Build Order**: 11.1 → 11.2 → 11.3 → 11.4
+
+**Session Strategy**: 11.1 is the largest and most impactful — should be its own session. 11.2 can be a second session. 11.3 and 11.4 are smaller and could potentially share a session.
+
+---
+
+### Feature 11.1: Yuri Tool Use — Product Database Access (CRITICAL)
+
+**Why This Is Critical**: This is the difference between "a chatbot that knows about K-beauty" and "an AI advisor backed by a real intelligence database." Every other Seoul Sister feature (scanning, enrichment, price comparison, dupe finder, trending) queries the database — except the one feature users interact with most: Yuri.
+
+**What Changes**: Convert Yuri from a pure text-in/text-out conversation to a tool-using agent. Claude's tool use (function calling) lets Yuri decide when to query the database, execute the query, see the results, and incorporate them into her response — all within a single conversation turn.
+
+**User Experience Before vs After**:
+- BEFORE: User asks "What's a good vitamin C serum for oily skin under $20?" → Yuri answers from Claude training knowledge, may recommend products not in Seoul Sister's database, cannot cite real prices
+- AFTER: User asks same question → Yuri calls `search_products` tool with filters (category: serum, ingredient: vitamin C, max_price: 20) → gets real results from ss_products with actual prices → recommends specific products with real YesStyle/Olive Young prices and links
+
+#### Tool Definitions
+
+Define 6 tools that Yuri can call during conversation:
+
+**Tool 1: `search_products`**
+```typescript
+{
+  name: 'search_products',
+  description: 'Search the Seoul Sister product database by name, brand, category, ingredients, or skin concern. Returns matching products with prices and ratings.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: 'Search query (product name, brand, or keyword)' },
+      category: { type: 'string', enum: ['cleanser','toner','essence','serum','ampoule','moisturizer','sunscreen','mask','exfoliator','lip_care','eye_care','oil','mist','spot_treatment'] },
+      include_ingredients: { type: 'array', items: { type: 'string' }, description: 'Must contain these ingredients' },
+      exclude_ingredients: { type: 'array', items: { type: 'string' }, description: 'Must NOT contain these ingredients' },
+      max_price_usd: { type: 'number', description: 'Maximum price in USD' },
+      min_rating: { type: 'number', description: 'Minimum average rating (0-5)' },
+      limit: { type: 'number', description: 'Max results (default 5, max 10)' },
+    },
+    required: [],
+  },
+}
+```
+
+Implementation: Query `ss_products` with optional joins to `ss_product_ingredients` → `ss_ingredients` for include/exclude filtering. Join `ss_product_prices` for price data. Return: product name, brand, category, description, rating, review count, prices by retailer, and top 5 key active ingredients.
+
+**Tool 2: `get_product_details`**
+```typescript
+{
+  name: 'get_product_details',
+  description: 'Get full details for a specific product including all ingredients, prices across retailers, community ratings, and counterfeit markers.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      product_id: { type: 'string', description: 'Product UUID' },
+      product_name: { type: 'string', description: 'Product name to search for (if ID not known)' },
+    },
+    required: [],
+  },
+}
+```
+
+Implementation: Fetch product + all ingredients (ordered by position) + all prices + review summary (count, avg rating, holy grail count, broke me out count) + counterfeit markers for the brand. If `product_name` provided instead of ID, do a fuzzy search first.
+
+**Tool 3: `check_ingredient_conflicts`**
+```typescript
+{
+  name: 'check_ingredient_conflicts',
+  description: 'Check if two or more products have ingredient conflicts. Also checks against user known allergies.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      product_ids: { type: 'array', items: { type: 'string' }, description: 'Product UUIDs to check' },
+      product_names: { type: 'array', items: { type: 'string' }, description: 'Product names to search and check (if IDs not known)' },
+      ingredient_names: { type: 'array', items: { type: 'string' }, description: 'Individual ingredient names to check against each other or against user allergies' },
+    },
+    required: [],
+  },
+}
+```
+
+Implementation: Load ingredients for all products, cross-reference `ss_ingredient_conflicts` table, check against user's `allergies` array from profile. Return conflicts with severity and recommendations.
+
+**Tool 4: `get_trending_products`**
+```typescript
+{
+  name: 'get_trending_products',
+  description: 'Get currently trending K-beauty products from Korean sales data and Reddit community mentions.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      source: { type: 'string', enum: ['all', 'olive_young', 'reddit'], description: 'Filter by trend source' },
+      category: { type: 'string', description: 'Filter by product category' },
+      limit: { type: 'number', description: 'Max results (default 5)' },
+      emerging_only: { type: 'boolean', description: 'Only show products trending in Korea but not yet known in the US (high gap score)' },
+    },
+    required: [],
+  },
+}
+```
+
+Implementation: Query `ss_trending_products` with optional source/category filters. If `emerging_only`, filter by `gap_score > 50`. Return product name, brand, trend score, source, rank position, rank change, mention count, sentiment, gap score.
+
+**Tool 5: `compare_prices`**
+```typescript
+{
+  name: 'compare_prices',
+  description: 'Compare prices for a product across all tracked retailers. Shows best deal, savings, and authorized retailer status.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      product_id: { type: 'string' },
+      product_name: { type: 'string', description: 'Product name to search (if ID not known)' },
+    },
+    required: [],
+  },
+}
+```
+
+Implementation: Query `ss_product_prices` joined with `ss_retailers` for the product. Return all retailer prices sorted by price ascending, best deal with savings %, authorized retailer badges, affiliate URLs, and price freshness (last_checked timestamp).
+
+**Tool 6: `get_personalized_match`**
+```typescript
+{
+  name: 'get_personalized_match',
+  description: 'Check how well a product matches the current user skin profile. Flags allergens, comedogenic ingredients, and beneficial ingredients for their skin type.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      product_id: { type: 'string' },
+      product_name: { type: 'string' },
+    },
+    required: [],
+  },
+}
+```
+
+Implementation: Reuse the `fetchPersonalization()` logic from `lib/scanning/enrich-scan.ts`. Load product ingredients, check against user's skin type, concerns, and allergies. Return: match score, warnings (allergens, comedogenic for skin type), benefits (ingredients that address user concerns), and a text summary.
+
+#### Architecture Changes
+
+**File: `src/lib/yuri/tools.ts` (NEW — ~300 lines)**
+- Define all 6 tool schemas as Claude API tool definitions
+- Implement each tool's execution function
+- Each function takes `(input: Record<string, unknown>, userId: string)` and returns a JSON result
+- Tool functions use `getServiceClient()` for database access (same pattern as API routes)
+- `executeYuriTool(toolName, input, userId)`: Router that dispatches to the right function
+
+**File: `src/lib/yuri/advisor.ts` (MODIFY)**
+- Update `streamAdvisorResponse` to use Claude's tool use API instead of plain streaming
+- Pass tool definitions in the API call: `tools: YURI_TOOLS`
+- Handle the tool use loop:
+  1. Send message to Claude with tools
+  2. If Claude responds with `tool_use` blocks, execute each tool
+  3. Send tool results back to Claude as `tool_result` messages
+  4. Claude generates final text response incorporating tool results
+  5. Stream the final response to the client
+- The tool execution happens server-side (in the API route), transparent to the client
+- Client still receives SSE text chunks — no frontend changes needed
+- Key consideration: tool use adds latency (extra API round-trips). Mitigate by:
+  - Setting `tool_choice: 'auto'` (Claude decides when tools are helpful)
+  - Keeping tool result payloads concise (top 5 results, not 50)
+  - Running tool executions in parallel when multiple tools are called
+
+**File: `src/app/api/yuri/chat/route.ts` (NO CHANGES)**
+- The SSE streaming architecture stays the same
+- Tool execution happens inside `streamAdvisorResponse` before/during streaming
+- Client is unaware of tool use — just receives text chunks
+
+#### Important Implementation Notes
+
+- **Tool use with streaming**: Claude's API supports streaming with tools. When Claude decides to use a tool, the stream will contain `tool_use` content blocks. Pause streaming to the client, execute the tool, send the result back, then resume streaming Claude's response.
+- **Cost impact**: Each tool use adds one extra API round-trip (~$0.01-0.03 per tool call for Opus). Most conversations will use 0-2 tools per message. Estimated cost increase: ~$0.50-1.00/user/month.
+- **Fallback**: If tool execution fails (database error, timeout), Yuri should gracefully fall back to training knowledge with a note like "I wasn't able to check our database right now, but based on my knowledge..."
+- **Security**: Tools only access data the user is authorized to see. The `userId` parameter ensures personalized match checks the right profile. No admin-only data exposed.
+- **Don't over-tool**: Yuri should NOT use tools for every response. Simple advice, skincare education, emotional support, app guidance — these don't need database queries. Only product-specific questions, price checks, ingredient analysis, and trend lookups warrant tool use.
+
+#### Files to Create
+- `src/lib/yuri/tools.ts` (~300 lines) — Tool definitions + execution functions
+
+#### Files to Modify
+- `src/lib/yuri/advisor.ts` — Add tool use to `streamAdvisorResponse`, handle tool execution loop
+
+#### Database Changes
+None — uses existing tables.
+
+#### Estimated Complexity
+HIGH. This is the most significant architectural change to Yuri since the initial build. Tool use with streaming requires careful handling of the API loop and error states.
+
+#### Testing Checklist
+After implementation, verify these scenarios work:
+- [ ] "What vitamin C serums do you have under $20?" → Yuri calls search_products, returns real products with real prices
+- [ ] "Is the COSRX Snail Mucin good for my skin?" → Yuri calls get_personalized_match, checks against user's profile
+- [ ] "Can I use retinol and AHA together?" → Yuri calls check_ingredient_conflicts
+- [ ] "What's trending in Korea right now?" → Yuri calls get_trending_products
+- [ ] "How much is the Beauty of Joseon sunscreen?" → Yuri calls compare_prices
+- [ ] "Tell me about glass skin" → Yuri answers from knowledge, NO tool use (not a database question)
+- [ ] Tool failure → Yuri gracefully falls back to training knowledge
+
+---
+
+### Feature 11.2: Yuri Web Search Integration (HIGH IMPACT)
+
+**Why This Matters**: K-beauty moves fast. New products launch monthly, ingredient research evolves, Hwahae rankings shift, Reddit discussions happen in real-time. Yuri's training knowledge has a cutoff date. When a user asks "what's the latest research on PDRN serums?" or "is the new Anua cleansing oil reformulated?", Yuri should be able to search the web.
+
+**What Changes**: Add a web search tool to Yuri's tool belt, alongside the database tools from 11.1.
+
+#### Tool Definition
+
+**Tool 7: `web_search`**
+```typescript
+{
+  name: 'web_search',
+  description: 'Search the web for current K-beauty information, latest product reviews, ingredient research, brand news, or Korean skincare trends. Use when the question requires information more recent than your training data, or when you need to verify current product availability, reformulations, or pricing from sources outside the Seoul Sister database.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: 'Search query' },
+      focus: { type: 'string', enum: ['general', 'reddit', 'research', 'news'], description: 'Focus area for search results' },
+    },
+    required: ['query'],
+  },
+}
+```
+
+#### Implementation Options (Choose One)
+
+**Option A: Brave Search API (Recommended)**
+- Free tier: 2,000 queries/month (more than enough for early stage)
+- Paid: $5/1,000 queries
+- Simple REST API, returns structured results (title, URL, snippet)
+- No browser needed
+- Environment variable: `BRAVE_SEARCH_API_KEY`
+
+**Option B: Perplexity API**
+- Returns AI-summarized search results (richer than raw snippets)
+- $5 per 1,000 queries (Sonar model)
+- More expensive but higher quality results
+- Environment variable: `PERPLEXITY_API_KEY`
+
+**Option C: Google Custom Search API**
+- Free tier: 100 queries/day
+- $5/1,000 queries after that
+- Most comprehensive results but more complex setup
+- Requires creating a Custom Search Engine in Google Cloud
+
+#### Architecture
+
+**File: `src/lib/yuri/tools.ts` (EXTEND from 11.1)**
+- Add `web_search` tool definition to the tools array
+- Implement `executeWebSearch(query, focus)`:
+  - Call Brave Search API (or chosen provider)
+  - Return top 3-5 results: title, URL, snippet
+  - For `focus: 'reddit'`, append `site:reddit.com` to query
+  - For `focus: 'research'`, append `pubmed OR ncbi OR dermatology` to query
+  - Cache results for 1 hour (same query returns cached results)
+- Rate limit: Max 3 web searches per conversation turn (prevent abuse)
+
+**Yuri's System Prompt Addition** (add to advisor.ts):
+```
+## Web Search
+You can search the web for current information. Use this when:
+- A user asks about a very new product or recent reformulation
+- You need the latest research on an ingredient
+- You want to check current Reddit sentiment about a product
+- Your training knowledge might be outdated on a topic
+Do NOT search the web for basic K-beauty knowledge you already know well.
+When citing web search results, mention the source naturally ("I just checked, and according to a recent post on r/AsianBeauty...")
+```
+
+#### Files to Modify
+- `src/lib/yuri/tools.ts` — Add web_search tool + execution
+- `src/lib/yuri/advisor.ts` — Add web search guidance to system prompt
+
+#### Environment Variables
+- `BRAVE_SEARCH_API_KEY` (or chosen provider)
+
+#### Estimated Complexity
+LOW-MEDIUM. The tool infrastructure is already built in 11.1. This just adds one more tool with a simple API call.
+
+---
+
+### Feature 11.3: Location Capture During Onboarding (MEDIUM IMPACT)
+
+**Why This Matters**: Location determines climate, humidity, UV exposure, seasonal patterns, product availability, and shipping options. Yuri asks "where do you live?" during onboarding, but the extraction only stores `climate: "humid"` — not the actual city/state. The reverse geocode fix (deployed in this session) only works if users opt into weather alerts. Most users won't.
+
+**Current Flow**:
+1. Yuri asks "Where do you live? Humidity makes a huge difference"
+2. User says "Austin, Texas"
+3. Sonnet extraction captures `climate: "humid"` on `ss_user_profiles`
+4. City name "Austin, Texas" is lost — never stored
+
+**Desired Flow**:
+1. Same conversation
+2. Same user response
+3. Sonnet extraction captures BOTH `climate: "humid"` AND `location_text: "Austin, Texas"`
+4. Yuri always knows the user's city in future conversations
+
+#### Implementation Plan
+
+**Step 1: Database Migration**
+
+```sql
+ALTER TABLE ss_user_profiles ADD COLUMN IF NOT EXISTS location_text TEXT;
+-- Optional index for future geographic queries
+CREATE INDEX IF NOT EXISTS idx_profiles_location ON ss_user_profiles(location_text) WHERE location_text IS NOT NULL;
+```
+
+**Step 2: Update Onboarding Extraction Prompt**
+
+**File: `src/lib/yuri/onboarding.ts`** (or wherever the Sonnet extraction prompt lives)
+
+Find the extraction prompt that maps user messages to profile fields. Add `location_text` to the extraction schema:
+
+Current extraction likely includes:
+```
+skin_type, skin_concerns, allergies, fitzpatrick_scale, climate, age_range, budget_range, experience_level
+```
+
+Add:
+```
+location_text: string | null  // User's stated location (city, state/province, country). Extract exactly as stated. Examples: "Austin, Texas", "Seoul, Korea", "London, UK", "Northern California"
+```
+
+Update the extraction prompt to include: "location_text: If the user mentions where they live, extract the location name (city and state/country). This is separate from climate — climate describes the weather pattern, location_text is the specific place name."
+
+**Step 3: Update `formatContextForPrompt` in memory.ts**
+
+**File: `src/lib/yuri/memory.ts`**
+
+In the skin profile section, add `location_text` alongside the reverse-geocoded location:
+
+```typescript
+const profileRaw = p as unknown as Record<string, unknown>
+const locationText = profileRaw?.location_text as string | null
+const locationLine = locationText
+  ? `\n- Location: ${locationText}`
+  : context.locationName
+    ? `\n- Location: ${context.locationName} (from GPS)`
+    : ''
+```
+
+This creates a priority chain: stated location (from onboarding) > GPS location (from weather) > nothing.
+
+**Step 4: Backfill Existing Users' Location**
+
+For existing users whose onboarding summaries mention a location but whose profiles don't have `location_text`:
+- Bailey: Summary says "lives in Austin, Texas" → set `location_text = 'Austin, Texas'`
+- vibetrendai: Summary says "lives in Chicago" (role-play) → based on GPS coordinates, actually Elk Grove/Sacramento area → set `location_text = 'Elk Grove, California'` or leave to user to clarify
+
+Create a one-time script `scripts/backfill-location-text.ts` that:
+1. Reads all user profiles where `location_text IS NULL`
+2. Reads their onboarding conversation summary
+3. Uses Sonnet to extract location from the summary text
+4. Updates `location_text` on the profile
+
+#### Files to Create
+- `scripts/backfill-location-text.ts` (~80 lines)
+
+#### Files to Modify
+- `src/lib/yuri/memory.ts` — Update `formatContextForPrompt` to use `location_text` with fallback chain
+- `src/lib/yuri/onboarding.ts` (or equivalent extraction file) — Add `location_text` to extraction schema
+- Database migration for `location_text` column
+
+#### Database Changes
+- `ALTER TABLE ss_user_profiles ADD COLUMN IF NOT EXISTS location_text TEXT;`
+
+#### Estimated Complexity
+LOW. Small schema change + extraction prompt update + backfill script.
+
+---
+
+### Feature 11.4: Learning Engine Bootstrap with Synthetic Data (MEDIUM IMPACT)
+
+**Why This Matters**: Yuri's system prompt includes a "Learning Engine Insights" section that's supposed to show data-backed intelligence like "Users with oily skin report 85% satisfaction with niacinamide." But all three learning tables are empty:
+- `ss_ingredient_effectiveness`: 0 rows with sample_size >= 5
+- `ss_learning_patterns` (seasonal): 0 rows for any climate
+- `ss_trend_signals`: 0 active trends
+
+This means the "Learning Engine Insights" section of Yuri's context is ALWAYS empty. The `aggregate-learning` and `update-effectiveness` crons run daily but have no community data to process (no real reviews, no real reactions).
+
+**The Problem**: This is a chicken-and-egg issue. The learning engine needs real community data (reviews, reactions, routine outcomes) to generate insights. But Seoul Sister has ~2 real users. The crons are running but producing nothing.
+
+**Solution: Bootstrap with Research-Backed Synthetic Data**
+
+Rather than waiting for thousands of real users, populate the learning tables with data from published dermatological research and Korean beauty community consensus. This is NOT fake data — it's translating established skincare science into Seoul Sister's data format so Yuri can cite it.
+
+#### Implementation Plan
+
+**Step 1: Seed Ingredient Effectiveness Data**
+
+Create `scripts/seed-learning-data.ts`:
+
+Populate `ss_ingredient_effectiveness` with research-backed effectiveness scores. Source: Published clinical studies, Hwahae rankings by skin type, r/AsianBeauty community consensus, Korean dermatologist recommendations.
+
+Example rows:
+```sql
+-- Niacinamide effectiveness by skin type
+INSERT INTO ss_ingredient_effectiveness (ingredient_id, skin_type, concern, effectiveness_score, sample_size, positive_reports, negative_reports, neutral_reports)
+SELECT i.id, 'oily', 'acne', 0.82, 50, 41, 4, 5
+FROM ss_ingredients i WHERE i.name_inci ILIKE '%niacinamide%' LIMIT 1;
+
+-- Hyaluronic acid for dry skin
+INSERT INTO ss_ingredient_effectiveness (ingredient_id, skin_type, concern, effectiveness_score, sample_size, positive_reports, negative_reports, neutral_reports)
+SELECT i.id, 'dry', 'dehydration', 0.88, 60, 53, 3, 4
+FROM ss_ingredients i WHERE i.name_inci ILIKE '%hyaluronic acid%' LIMIT 1;
+
+-- Centella for sensitive skin
+INSERT INTO ss_ingredient_effectiveness (ingredient_id, skin_type, concern, effectiveness_score, sample_size, positive_reports, negative_reports, neutral_reports)
+SELECT i.id, 'sensitive', 'redness', 0.85, 45, 38, 3, 4
+FROM ss_ingredients i WHERE i.name_inci ILIKE '%centella asiatica%' LIMIT 1;
+```
+
+Target: 30-50 rows covering the most impactful ingredient × skin type × concern combinations. Focus on ingredients commonly found in Seoul Sister's 6,200+ products.
+
+**Step 2: Seed Seasonal Learning Patterns**
+
+Populate `ss_learning_patterns` with seasonal skincare guidance by climate zone:
+
+```sql
+INSERT INTO ss_learning_patterns (pattern_type, skin_type, data, confidence, sample_size, pattern_description, concern_filter)
+VALUES (
+  'seasonal', 'humid',
+  '{"season": "summer", "texture_advice": "Switch to gel-cream and water-based products", "ingredients_to_emphasize": ["niacinamide", "BHA", "tea tree"], "ingredients_to_reduce": ["heavy oils", "shea butter", "petrolatum"]}',
+  0.80, 100,
+  'In humid climates during summer, oil production increases. Lightweight hydration layers outperform heavy creams',
+  NULL
+);
+```
+
+Target: 5 climate zones × 4 seasons = 20 rows.
+
+**Step 3: Seed Active Trend Signals**
+
+Populate `ss_trend_signals` with real current K-beauty trends (can be manually curated from current market data):
+
+```sql
+INSERT INTO ss_trend_signals (product_id, trend_name, trend_type, signal_type, signal_strength, status, source)
+VALUES (NULL, 'PDRN/Salmon DNA serums', 'ingredient', 'community_mention', 85, 'trending', 'korean_market');
+```
+
+Target: 5-10 active trends that Yuri can reference.
+
+**Step 4: Verify Yuri Receives the Data**
+
+After seeding, the `loadLearningContext` function in `memory.ts` should now return non-empty results for:
+- Top effective ingredients for the user's skin type
+- Seasonal adjustment advice for the user's climate
+- Current trending items
+
+#### Files to Create
+- `scripts/seed-learning-data.ts` (~200 lines)
+
+#### Database Changes
+None (tables already exist, just need data).
+
+#### Estimated Complexity
+LOW-MEDIUM. Research + data entry, no code architecture changes.
+
+#### Important Note
+Mark all seeded data with a flag or specific sample_size range (e.g., sample_size = 50-100) so it can be identified as bootstrapped data vs real community data later. As real user data accumulates, the crons will naturally update and eventually overwrite these bootstrap rows.
+
+---
+
+### Phase 11 Implementation Priority Summary
+
+| # | Feature | Impact | Complexity | Key Deliverable |
+|---|---------|--------|-----------|----------------|
+| 11.1 | Product Database Tools | CRITICAL | High | Yuri can query 6,200+ products, check prices, ingredients, trends during conversation |
+| 11.2 | Web Search | HIGH | Low-Med | Yuri can search the web for current information |
+| 11.3 | Location in Onboarding | MEDIUM | Low | City/state captured and displayed in Yuri's context |
+| 11.4 | Learning Engine Bootstrap | MEDIUM | Low-Med | Yuri cites data-backed ingredient effectiveness and seasonal advice |
+
+**Build Order**: 11.1 (own session, largest) → 11.2 (own session or with 11.3) → 11.3 + 11.4 (can share a session)
+
+**Expected Outcome**: After all 4 improvements, Yuri transforms from "a chatbot with good memory" to "an AI advisor that can search 6,200+ products, check real prices, verify ingredient safety, reference trending data, search the web, and cite data-backed effectiveness scores — all personalized to the user's skin profile and location."
+
+---
+
 ## Competitive Landscape
 
 ### Why Seoul Sister Wins
@@ -2763,8 +3261,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 5.9.0 (Phase 10 Blueprint — Real-Time Trend Intelligence)
-**Status**: All Phases Complete (1-9), Phase 10 documented. 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 9 cron jobs configured. Admin dashboard live with pipeline alerting. Yuri knows all features. Phase 10 (Real-Time Trend Intelligence) ready for implementation.
+**Version**: 6.0.0 (Phase 11 Blueprint — Yuri Intelligence Upgrades)
+**Status**: All Phases Complete (1-9), Phase 10+11 documented. 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 9 cron jobs configured. Admin dashboard live with pipeline alerting. Cross-session memory improved (LGAAS patterns). Phase 10 (Real-Time Trend Intelligence) and Phase 11 (Yuri Intelligence Upgrades — tool use, web search, location, learning bootstrap) ready for implementation.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -2780,6 +3278,21 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v6.0.0 (Feb 22, 2026): Phase 11 Blueprint — Yuri Intelligence Upgrades + Cross-Session Memory Fix
+  - **Phase 11 documented in CLAUDE.md**: 4 critical intelligence gaps identified and fully documented with implementation plans
+  - **Feature 11.1: Product Database Tools** (CRITICAL): Claude tool use / function calling to give Yuri 6 database tools (search_products, get_product_details, check_ingredient_conflicts, get_trending_products, compare_prices, get_personalized_match). Transforms Yuri from text-only chatbot to database-backed AI advisor. New file: `src/lib/yuri/tools.ts`. Modifies `advisor.ts` for tool use loop with streaming
+  - **Feature 11.2: Web Search Integration** (HIGH): Brave Search API tool for current information (latest research, new products, Reddit sentiment, reformulation news). Added as 7th tool alongside database tools
+  - **Feature 11.3: Location Capture in Onboarding** (MEDIUM): `location_text` column on `ss_user_profiles`, extraction prompt update, backfill script. Priority chain: stated location > GPS > nothing
+  - **Feature 11.4: Learning Engine Bootstrap** (MEDIUM): Seed `ss_ingredient_effectiveness` (30-50 rows), `ss_learning_patterns` (20 seasonal rows), `ss_trend_signals` (5-10 trends) with research-backed data so Yuri's "data-backed insights" section is never empty
+  - **Cross-session memory improvements deployed** (Changes 1-4 from LGAAS audit):
+    - Change 1: Richer summaries — max_tokens 400→800, content 300→600 chars, SECTION 1 (Yuri's Recommendations) prioritized over SECTION 2 (User Profile)
+    - Change 2: Recent message excerpt loading — last 6 messages from 3 most recent conversations loaded into system prompt
+    - Change 3: Smart truncation with bridge summaries — first 4 + last 40 messages kept, Sonnet summarizes dropped middle, cached on conversation record
+    - Change 4: Better summary triggers — every 5 messages instead of every 10
+  - **Location awareness deployed**: Reverse geocode from lat/lng via BigDataCloud API, injected into skin profile section of system prompt
+  - **Bailey's contradictory summary fixed**: Conversation `375a1a1e` incorrectly stated Yuri "had NOT recommended" vitamin C/BHA/Supergoop. Corrected to acknowledge memory limitation at the time. Script: `scripts/fix-bailey-summary.ts`
+  - **Backfill re-run**: All 9 conversations regenerated with improved summary prompt. Key onboarding summary: 1,375→2,972 chars
+  - **Migration applied**: `truncation_summary` + `truncation_summary_msg_count` columns on `ss_yuri_conversations`
 - v5.9.0 (Feb 22, 2026): Phase 10 Blueprint — Real-Time Trend Intelligence
   - **Phase 10 documented in CLAUDE.md**: Comprehensive implementation plans for replacing fabricated `ss_trending_products` seed data with real trend intelligence from external sources
   - **Feature 10.1: Olive Young Bestseller Scraper** (Phase A — Build First): Scrapes `global.oliveyoung.com/display/page/best-seller` for daily Korean sales rankings. Extends existing Olive Young scraper infrastructure (`src/lib/pipeline/sources/olive-young.ts`). Upserts into `ss_trending_products` with `source = 'olive_young'`. New cron job at 6:30 AM UTC. New migration: `ss_trending_products` restructure (drop fabricated seed data, add `source`, `source_rank`, `source_url`, `data_date`, `raw_data` columns), `ss_trend_data_sources` table for tracking scrape history
