@@ -1,6 +1,6 @@
 'use client'
 
-import { Sun, X } from 'lucide-react'
+import { Sun, X, Sparkles } from 'lucide-react'
 import type { PaRating, SunscreenType, WhiteCast, SunscreenFinish, SunscreenActivity } from '@/types/database'
 
 interface SunscreenFiltersProps {
@@ -12,6 +12,7 @@ interface SunscreenFiltersProps {
   waterResistant: boolean
   activity: SunscreenActivity | ''
   sortBy: string
+  personalized?: boolean
   onPaRatingChange: (value: PaRating | '') => void
   onWhiteCastChange: (value: WhiteCast | '') => void
   onFinishChange: (value: SunscreenFinish | '') => void
@@ -95,6 +96,7 @@ export default function SunscreenFilters({
   waterResistant,
   activity,
   sortBy,
+  personalized,
   onPaRatingChange,
   onWhiteCastChange,
   onFinishChange,
@@ -110,6 +112,14 @@ export default function SunscreenFilters({
 
   return (
     <div className="glass-card p-4 flex flex-col gap-4">
+      {/* Personalized badge */}
+      {personalized && (
+        <div className="flex items-center gap-1.5 text-xs text-gold">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Filters personalized for your skin profile</span>
+        </div>
+      )}
+
       {/* Quick toggles */}
       <div>
         <p className="text-xs font-medium text-white/60 mb-2">Quick filters</p>

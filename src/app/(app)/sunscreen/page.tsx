@@ -1,20 +1,57 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { Sun, SlidersHorizontal, ShieldCheck } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Sun, SlidersHorizontal, ShieldCheck, Sparkles, AlertTriangle } from 'lucide-react'
 import SunscreenCard from '@/components/sunscreen/SunscreenCard'
 import SunscreenFilters from '@/components/sunscreen/SunscreenFilters'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import EmptyState from '@/components/ui/EmptyState'
-import type { Product, PaRating, SunscreenType, WhiteCast, SunscreenFinish, SunscreenActivity } from '@/types/database'
+import { useAuth } from '@/hooks/useAuth'
+import { supabase } from '@/lib/supabase'
+import type {
+  Product,
+  PaRating,
+  SunscreenType,
+  WhiteCast,
+  SunscreenFinish,
+  SunscreenActivity,
+} from '@/types/database'
+
+interface UvData {
+  uv_index: number
+  location: string
+}
+
+interface YuriPick {
+  product: Product
+  reasoning: string
+}
+
+interface ProfileDefaults {
+  pa_rating: string
+  white_cast: string
+  finish: string
+  sunscreen_type: string
+  under_makeup: boolean
+  water_resistant: boolean
+}
 
 export default function SunscreenFinderPage() {
+  const { user } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [showFilters, setShowFilters] = useState(true)
+
+  // Profile-aware state
+  const [uv, setUv] = useState<UvData | null>(null)
+  const [picks, setPicks] = useState<YuriPick[]>([])
+  const [picksLoading, setPicksLoading] = useState(false)
+  const [personalized, setPersonalized] = useState(false)
+  const [profileSkinType, setProfileSkinType] = useState<string | null>(null)
+  const defaultsApplied = useRef(false)
 
   // Filter state
   const [paRating, setPaRating] = useState<PaRating | ''>('')
@@ -35,7 +72,74 @@ export default function SunscreenFinderPage() {
     setWaterResistant(false)
     setActivity('')
     setSortBy('rating')
+    setPersonalized(false)
   }
+
+  // Fetch user profile defaults + UV on mount
+  useEffect(() => {
+    if (!user || defaultsApplied.current) return
+
+    async function loadProfile() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) return
+
+        const res = await fetch('/api/sunscreen/profile', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+        if (!res.ok) return
+        const data = await res.json()
+
+        if (data.uv) {
+          setUv(data.uv)
+        }
+
+        if (data.profile?.skin_type) {
+          setProfileSkinType(data.profile.skin_type)
+        }
+
+        if (data.defaults) {
+          const d = data.defaults as ProfileDefaults
+          let applied = false
+
+          if (d.pa_rating) { setPaRating(d.pa_rating as PaRating); applied = true }
+          if (d.finish) { setFinish(d.finish as SunscreenFinish); applied = true }
+          if (d.sunscreen_type) { setSunscreenType(d.sunscreen_type as SunscreenType); applied = true }
+          if (d.under_makeup) { setUnderMakeup(true); applied = true }
+          if (d.water_resistant) { setWaterResistant(true); applied = true }
+
+          if (applied) setPersonalized(true)
+        }
+
+        defaultsApplied.current = true
+      } catch {
+        // Profile fetch is non-critical
+      }
+    }
+
+    loadProfile()
+  }, [user])
+
+  // Fetch Yuri's Picks when skin type is known
+  useEffect(() => {
+    if (!profileSkinType) return
+
+    async function loadPicks() {
+      setPicksLoading(true)
+      try {
+        const res = await fetch(`/api/sunscreen/picks?skin_type=${profileSkinType}`)
+        if (!res.ok) return
+        const data = await res.json()
+        setPicks(data.picks ?? [])
+      } catch {
+        // Picks are non-critical
+      } finally {
+        setPicksLoading(false)
+      }
+    }
+
+    loadPicks()
+  }, [profileSkinType])
 
   const fetchSunscreens = useCallback(async () => {
     setLoading(true)
@@ -93,6 +197,18 @@ export default function SunscreenFinderPage() {
         </p>
       </div>
 
+      {/* UV Index Banner */}
+      {uv && <UvBanner uvIndex={uv.uv_index} location={uv.location} />}
+
+      {/* Yuri's Pick Section */}
+      {(picks.length > 0 || picksLoading) && profileSkinType && (
+        <YuriPicksSection
+          picks={picks}
+          skinType={profileSkinType}
+          loading={picksLoading}
+        />
+      )}
+
       {/* Filter toggle */}
       <button
         onClick={() => setShowFilters(!showFilters)}
@@ -120,6 +236,7 @@ export default function SunscreenFinderPage() {
           waterResistant={waterResistant}
           activity={activity}
           sortBy={sortBy}
+          personalized={personalized}
           onPaRatingChange={setPaRating}
           onWhiteCastChange={setWhiteCast}
           onFinishChange={setFinish}
@@ -255,5 +372,157 @@ export default function SunscreenFinderPage() {
       {/* Bottom spacer */}
       <div className="h-4" />
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// UV Banner Component
+// ---------------------------------------------------------------------------
+
+function UvBanner({ uvIndex, location }: { uvIndex: number; location: string }) {
+  if (uvIndex >= 10) {
+    return (
+      <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 flex items-start gap-3">
+        <AlertTriangle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-rose-300">
+            Extreme UV in {location} (UV {uvIndex})
+          </p>
+          <p className="text-xs text-rose-300/70 mt-0.5">
+            PA++++ essential. Reapply every 90 minutes outdoors. Seek shade between 10 AM - 4 PM.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (uvIndex >= 7) {
+    return (
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex items-start gap-3">
+        <Sun className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-amber-300">
+            High UV in {location} (UV {uvIndex})
+          </p>
+          <p className="text-xs text-amber-300/70 mt-0.5">
+            PA++++ recommended. Reapply every 2 hours if outdoors.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (uvIndex >= 3) {
+    return (
+      <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 flex items-start gap-3">
+        <Sun className="w-5 h-5 text-white/40 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-white/60">
+            Moderate UV in {location} (UV {uvIndex})
+          </p>
+          <p className="text-xs text-white/40 mt-0.5">
+            Daily sunscreen is sufficient. Reapply if spending extended time outdoors.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 flex items-start gap-3">
+      <Sun className="w-5 h-5 text-emerald-400/60 flex-shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm font-medium text-emerald-300/70">
+          Low UV in {location} (UV {uvIndex})
+        </p>
+        <p className="text-xs text-emerald-300/50 mt-0.5">
+          UV is low today, but daily sunscreen is still a good habit.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Yuri's Picks Section Component
+// ---------------------------------------------------------------------------
+
+function YuriPicksSection({
+  picks,
+  skinType,
+  loading,
+}: {
+  picks: YuriPick[]
+  skinType: string
+  loading: boolean
+}) {
+  return (
+    <div className="glass-card p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Sparkles className="w-4 h-4 text-gold" />
+        <h2 className="font-display font-semibold text-sm text-white">
+          Yuri&apos;s Picks for {skinType} skin
+        </h2>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-4">
+          <LoadingSpinner size="sm" />
+        </div>
+      ) : picks.length === 0 ? (
+        <p className="text-xs text-white/40">
+          No personalized picks available yet.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {picks.map((pick, index) => (
+            <YuriPickCard key={pick.product.id} pick={pick} rank={index + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function YuriPickCard({ pick, rank }: { pick: YuriPick; rank: number }) {
+  const { product, reasoning } = pick
+  return (
+    <a
+      href={`/products/${product.id}`}
+      className="flex items-start gap-3 rounded-xl bg-white/5 p-3 transition-all duration-200 hover:bg-gold/10 group"
+    >
+      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gold/20 text-gold text-xs font-bold flex items-center justify-center">
+        {rank}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-white truncate group-hover:text-gold transition-colors">
+          {product.name_en}
+        </p>
+        <p className="text-[10px] text-white/40">{product.brand_en}</p>
+        <p className="text-xs text-white/50 mt-1 leading-relaxed">{reasoning}</p>
+        <div className="flex flex-wrap gap-1 mt-1.5">
+          {product.spf_rating && (
+            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-amber-500/15 text-amber-300">
+              SPF {product.spf_rating}
+            </span>
+          )}
+          {product.pa_rating && (
+            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-blue-500/15 text-blue-300">
+              {product.pa_rating}
+            </span>
+          )}
+          {product.finish && (
+            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-white/5 text-white/50">
+              {product.finish}
+            </span>
+          )}
+        </div>
+      </div>
+      {product.price_usd && (
+        <span className="flex-shrink-0 font-display font-bold text-sm text-white">
+          ${Number(product.price_usd).toFixed(0)}
+        </span>
+      )}
+    </a>
   )
 }
