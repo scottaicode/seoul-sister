@@ -373,7 +373,7 @@ export async function* streamAdvisorResponse(
       : tool
   )
 
-  const MAX_TOOL_LOOPS = 3
+  const MAX_TOOL_LOOPS = 5
   let toolLoopCount = 0
 
   // Helper: apply cache_control to the last assistant message for cache reuse
@@ -396,8 +396,11 @@ export async function* streamAdvisorResponse(
   }
 
   // Streaming tool use loop: use messages.stream() for ALL calls.
-  // Tool use rounds: collect tool_use blocks from stream, execute them, loop.
-  // Final text round: yield text_delta events to client in real-time.
+  // Strategy: buffer text per iteration. If tools are found, discard the
+  // "thinking out loud" text (e.g., "Let me search for that...") since it
+  // creates a bad UX when concatenated with the next round's text. Only
+  // yield text from the final round (no tools requested) for a clean,
+  // coherent streamed response.
   while (toolLoopCount <= MAX_TOOL_LOOPS) {
     const cachedMessages = applyCacheControl(loopMessages)
 
@@ -411,9 +414,10 @@ export async function* streamAdvisorResponse(
     })
 
     // Collect tool_use blocks from the stream (if any).
-    // Also yield text deltas in real-time for the final response.
+    // Buffer text — only yield to client if this is the final (no-tools) round.
     const toolUseBlocks: Array<{ id: string; name: string; input: string }> = []
     let currentToolBlock: { id: string; name: string; input: string } | null = null
+    let iterationText = ''
 
     for await (const event of stream) {
       if (event.type === 'content_block_start') {
@@ -426,9 +430,8 @@ export async function* streamAdvisorResponse(
         }
       } else if (event.type === 'content_block_delta') {
         if (event.delta.type === 'text_delta') {
-          // Real-time text streaming to client
-          fullResponse += event.delta.text
-          yield event.delta.text
+          // Buffer text — we'll decide whether to yield after the stream ends
+          iterationText += event.delta.text
         } else if (event.delta.type === 'input_json_delta' && currentToolBlock) {
           currentToolBlock.input += event.delta.partial_json
         }
@@ -438,12 +441,19 @@ export async function* streamAdvisorResponse(
       }
     }
 
-    // If no tool_use blocks were collected, the response is complete
+    // If no tool_use blocks were collected, this is the final response —
+    // yield the buffered text to the client in one go for streaming.
     if (toolUseBlocks.length === 0) {
+      if (iterationText) {
+        fullResponse += iterationText
+        yield iterationText
+      }
       break
     }
 
-    // Tools were requested — execute them and loop
+    // Tools were found — discard intermediate "thinking" text (e.g.,
+    // "Let me search for that...") to avoid it running together with
+    // the final response text. Execute tools and loop for the next round.
     toolLoopCount++
 
     // Reconstruct the assistant content blocks for the message history
