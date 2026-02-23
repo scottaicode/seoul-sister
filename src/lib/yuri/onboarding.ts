@@ -17,6 +17,7 @@ const ALL_FIELDS = [
   'budget_preference',
   'experience_level',
   'product_preferences',
+  'location_text',
 ] as const
 
 const REQUIRED_FIELDS = ['skin_type', 'skin_concerns', 'age_range'] as const
@@ -135,6 +136,7 @@ Possible fields:
 - budget_preference: one of "budget", "mid-range", "luxury", "mixed"
 - experience_level: one of "beginner", "intermediate", "advanced"
 - product_preferences: array of specific products or brands they like
+- location_text: string, the user's stated location (city, state/province, country). Extract exactly as stated. Examples: "Austin, Texas", "Seoul, Korea", "London, UK", "Northern California". This is separate from climate -- climate describes the weather pattern, location_text is the specific place name.
 
 CONVERSATION:
 ${conversationText}
@@ -317,7 +319,7 @@ export async function finalizeOnboardingProfile(
 ): Promise<void> {
   const db = getServiceClient()
 
-  const profileData = {
+  const profileData: Record<string, unknown> = {
     user_id: userId,
     skin_type: extracted.skin_type || 'normal',
     skin_concerns: extracted.skin_concerns || [],
@@ -329,6 +331,11 @@ export async function finalizeOnboardingProfile(
     experience_level: extracted.experience_level || 'beginner',
     onboarding_completed: true,
     updated_at: new Date().toISOString(),
+  }
+
+  // Only set location_text if explicitly extracted (don't overwrite existing with null)
+  if (extracted.location_text) {
+    profileData.location_text = extracted.location_text
   }
 
   await db

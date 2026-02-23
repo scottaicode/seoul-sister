@@ -611,6 +611,7 @@ export interface ExtractedSkinProfile {
   budget_preference?: 'budget' | 'mid-range' | 'luxury' | 'mixed'
   experience_level?: 'beginner' | 'intermediate' | 'advanced'
   product_preferences?: string[]
+  location_text?: string
 }
 
 // =============================================================================

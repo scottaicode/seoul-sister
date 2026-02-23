@@ -236,8 +236,15 @@ export function formatContextForPrompt(context: UserContext): string {
   // Skin profile
   if (context.skinProfile) {
     const p = context.skinProfile
-    const onboarded = (p as unknown as Record<string, unknown>).onboarding_completed
-    const locationLine = context.locationName ? `\n- Location: ${context.locationName}` : ''
+    const profileRaw = p as unknown as Record<string, unknown>
+    const onboarded = profileRaw.onboarding_completed
+    // Location fallback chain: stated location (from onboarding) > GPS reverse-geocode > nothing
+    const locationText = profileRaw.location_text as string | null
+    const locationLine = locationText
+      ? `\n- Location: ${locationText}`
+      : context.locationName
+        ? `\n- Location: ${context.locationName} (from GPS)`
+        : ''
     sections.push(`## User's Skin Profile${onboarded ? ' (built during your onboarding conversation -- you already know this user!)' : ''}
 - Skin type: ${p.skin_type}
 - Concerns: ${p.skin_concerns?.join(', ') || 'none specified'}
