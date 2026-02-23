@@ -20,6 +20,8 @@ import {
   CommunityIntelligence,
   AuthenticityCheck,
   TrendContext,
+  IngredientInsights,
+  SeasonalContext,
 } from '@/components/shared/EnrichmentSections'
 import type { ScanEnrichment } from '@/lib/scanning/enrich-scan'
 
@@ -290,6 +292,16 @@ export default function ScanResults({ result, onReset }: ScanResultsProps) {
       {/* ── Personalized Match (Your Skin) ────────────────────────── */}
       {enrichment?.personalization && (
         <PersonalizedMatch data={enrichment.personalization} />
+      )}
+
+      {/* ── Ingredient Effectiveness Insights ───────────────────── */}
+      {enrichment?.ingredientInsights && (
+        <IngredientInsights data={enrichment.ingredientInsights} />
+      )}
+
+      {/* ── Seasonal Context ────────────────────────────────────── */}
+      {enrichment?.seasonalContext && (
+        <SeasonalContext data={enrichment.seasonalContext} />
       )}
 
       {/* ── Trend Context ─────────────────────────────────────────── */}

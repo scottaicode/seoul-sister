@@ -8,6 +8,8 @@ export interface ScanEnrichment {
   community: CommunityData | null
   counterfeit: CounterfeitData | null
   trending: TrendingData | null
+  ingredientInsights: IngredientInsightsData | null
+  seasonalContext: SeasonalContextData | null
 }
 
 export interface PersonalizationData {
@@ -57,6 +59,37 @@ export interface TrendingData {
   trend_signals: Array<{ trend_name: string; status: string; source: string }>
 }
 
+export interface IngredientInsightItem {
+  ingredientName: string
+  concern: string
+  effectivenessScore: number
+  sampleSize: number
+}
+
+export interface IngredientInsightsData {
+  insights: IngredientInsightItem[]
+  skinType: string
+}
+
+export interface SeasonalContextData {
+  season: string
+  climate: string
+  textureAdvice: string
+  goodIngredients: string[]
+  cautionIngredients: string[]
+  patternDescription: string
+}
+
+// ─── Season Helper ──────────────────────────────────────────────────
+
+function getCurrentSeason(): string {
+  const month = new Date().getMonth() + 1
+  if (month >= 3 && month <= 5) return 'spring'
+  if (month >= 6 && month <= 8) return 'summer'
+  if (month >= 9 && month <= 11) return 'fall'
+  return 'winter'
+}
+
 // ─── Main Enrichment Function ────────────────────────────────────────
 
 export async function enrichScanResult(
@@ -67,19 +100,37 @@ export async function enrichScanResult(
   ingredientNames: string[],
   skinType?: string
 ): Promise<ScanEnrichment> {
-  // Run all enrichment queries in parallel
-  const [personalization, pricing, community, counterfeit, trending] = await Promise.all([
+  // Run all 7 enrichment queries in parallel
+  const [
+    personalization,
+    pricing,
+    community,
+    counterfeit,
+    trending,
+    ingredientInsights,
+    seasonalContext,
+  ] = await Promise.all([
     fetchPersonalization(supabase, userId, ingredientNames),
     productId ? fetchPricing(supabase, productId, brand) : Promise.resolve(null),
     productId ? fetchCommunity(supabase, productId, skinType) : Promise.resolve(null),
     fetchCounterfeit(supabase, brand),
     productId ? fetchTrending(supabase, productId, brand) : Promise.resolve(null),
+    fetchIngredientInsights(supabase, userId, ingredientNames),
+    fetchSeasonalContext(supabase, userId, ingredientNames),
   ])
 
-  return { personalization, pricing, community, counterfeit, trending }
+  return {
+    personalization,
+    pricing,
+    community,
+    counterfeit,
+    trending,
+    ingredientInsights,
+    seasonalContext,
+  }
 }
 
-// ─── Personalization ─────────────────────────────────────────────────
+// ─── Personalization (database-driven) ──────────────────────────────
 
 async function fetchPersonalization(
   supabase: SupabaseClient,
@@ -109,58 +160,111 @@ async function fetchPersonalization(
     }
   }
 
-  // Skin-type-specific warnings
-  if (profile.skin_type === 'oily' || profile.skin_type === 'combination') {
-    const comedogenicOils = ['coconut oil', 'cocoa butter', 'wheat germ oil', 'isopropyl myristate']
-    for (const oil of comedogenicOils) {
-      if (lowerIngredients.some(i => i.includes(oil))) {
-        warnings.push(`Contains ${oil} — can be comedogenic for ${profile.skin_type} skin`)
-      }
-    }
-  }
+  // --- Database-driven comedogenic warnings ---
+  // Query ingredients with high comedogenic ratings (3+) from the database
+  try {
+    const { data: comedogenicIngredients } = await supabase
+      .from('ss_ingredients')
+      .select('name_inci, name_en, comedogenic_rating')
+      .gte('comedogenic_rating', 3)
 
-  if (profile.skin_type === 'sensitive') {
-    const irritants = ['denatured alcohol', 'alcohol denat', 'fragrance', 'parfum', 'essential oil']
-    for (const irritant of irritants) {
-      if (lowerIngredients.some(i => i.includes(irritant))) {
-        warnings.push(`Contains ${irritant} — may irritate sensitive skin`)
-      }
-    }
-  }
-
-  // Beneficial ingredient notes
-  const beneficialMap: Record<string, string[]> = {
-    'dry': ['hyaluronic acid', 'ceramide', 'squalane', 'glycerin', 'panthenol'],
-    'oily': ['niacinamide', 'salicylic acid', 'zinc', 'tea tree'],
-    'combination': ['niacinamide', 'hyaluronic acid', 'centella'],
-    'sensitive': ['centella', 'allantoin', 'panthenol', 'madecassoside', 'aloe'],
-    'normal': ['vitamin c', 'retinol', 'peptide', 'antioxidant'],
-  }
-
-  const beneficials = beneficialMap[profile.skin_type || ''] || []
-  for (const b of beneficials) {
-    if (lowerIngredients.some(i => i.includes(b))) {
-      notes.push(`Contains ${b} — great for ${profile.skin_type} skin`)
-    }
-  }
-
-  // Concern-specific notes
-  if (profile.skin_concerns?.length) {
-    const concernIngredients: Record<string, string[]> = {
-      'acne': ['salicylic acid', 'benzoyl peroxide', 'tea tree', 'niacinamide', 'zinc'],
-      'aging': ['retinol', 'peptide', 'vitamin c', 'collagen', 'adenosine'],
-      'hyperpigmentation': ['vitamin c', 'arbutin', 'niacinamide', 'tranexamic acid', 'kojic acid'],
-      'dryness': ['hyaluronic acid', 'ceramide', 'squalane', 'shea butter'],
-      'redness': ['centella', 'cica', 'madecassoside', 'allantoin', 'green tea'],
-      'pores': ['niacinamide', 'bha', 'salicylic acid', 'clay', 'charcoal'],
-    }
-    for (const concern of profile.skin_concerns) {
-      const helpfulIngredients = concernIngredients[concern.toLowerCase()] || []
-      for (const hi of helpfulIngredients) {
-        if (lowerIngredients.some(i => i.includes(hi))) {
-          notes.push(`Contains ${hi} — targets your concern: ${concern}`)
+    if (comedogenicIngredients?.length && (profile.skin_type === 'oily' || profile.skin_type === 'combination')) {
+      for (const ci of comedogenicIngredients) {
+        const ciNameLower = (ci.name_en || ci.name_inci).toLowerCase()
+        if (lowerIngredients.some(i => i.includes(ciNameLower) || ciNameLower.includes(i))) {
+          warnings.push(`Contains ${ci.name_en || ci.name_inci} (comedogenic rating ${ci.comedogenic_rating}/5) — can clog pores for ${profile.skin_type} skin`)
         }
       }
+    }
+  } catch {
+    // Fall through — non-critical
+  }
+
+  // --- Database-driven irritant warnings ---
+  // Query ingredients with low safety ratings (1-2) or flagged as fragrance
+  try {
+    const { data: irritantIngredients } = await supabase
+      .from('ss_ingredients')
+      .select('name_inci, name_en, safety_rating, is_fragrance')
+      .or('safety_rating.lte.2,is_fragrance.eq.true')
+
+    if (irritantIngredients?.length && profile.skin_type === 'sensitive') {
+      for (const ir of irritantIngredients) {
+        const irNameLower = (ir.name_en || ir.name_inci).toLowerCase()
+        if (lowerIngredients.some(i => i.includes(irNameLower) || irNameLower.includes(i))) {
+          const reason = ir.is_fragrance
+            ? 'fragrance ingredient'
+            : `safety rating ${ir.safety_rating}/5`
+          warnings.push(`Contains ${ir.name_en || ir.name_inci} (${reason}) — may irritate sensitive skin`)
+        }
+      }
+    }
+  } catch {
+    // Fall through — non-critical
+  }
+
+  // --- Database-driven beneficial ingredient notes ---
+  // Query ingredient effectiveness for the user's skin type
+  try {
+    const { data: effectiveIngredients } = await supabase
+      .from('ss_ingredient_effectiveness')
+      .select(`
+        effectiveness_score, concern,
+        ingredient:ss_ingredients(name_en, name_inci)
+      `)
+      .or(`skin_type.eq.${profile.skin_type || 'normal'},skin_type.eq.__all__`)
+      .gte('effectiveness_score', 0.70)
+      .gte('sample_size', 5)
+      .order('effectiveness_score', { ascending: false })
+
+    if (effectiveIngredients?.length) {
+      for (const ei of effectiveIngredients) {
+        const ing = ei.ingredient as unknown as Record<string, unknown> | null
+        if (!ing) continue
+        const ingName = (ing.name_en as string) || (ing.name_inci as string) || ''
+        const ingNameLower = ingName.toLowerCase()
+        if (lowerIngredients.some(i => i.includes(ingNameLower) || ingNameLower.includes(i))) {
+          const pct = Math.round((ei.effectiveness_score as number) * 100)
+          notes.push(`Contains ${ingName} — ${pct}% effective for ${ei.concern} with ${profile.skin_type} skin`)
+        }
+      }
+    }
+  } catch {
+    // Fall through — non-critical
+  }
+
+  // --- Database-driven concern-specific notes ---
+  // If the effectiveness query above didn't find concern-specific matches,
+  // check if the user's concerns match ingredient effectiveness data
+  if (profile.skin_concerns?.length) {
+    try {
+      for (const concern of profile.skin_concerns) {
+        const { data: concernEffective } = await supabase
+          .from('ss_ingredient_effectiveness')
+          .select(`
+            effectiveness_score, concern,
+            ingredient:ss_ingredients(name_en, name_inci)
+          `)
+          .eq('concern', concern.toLowerCase())
+          .gte('effectiveness_score', 0.60)
+          .gte('sample_size', 5)
+          .order('effectiveness_score', { ascending: false })
+          .limit(10)
+
+        if (concernEffective?.length) {
+          for (const ce of concernEffective) {
+            const ing = ce.ingredient as unknown as Record<string, unknown> | null
+            if (!ing) continue
+            const ingName = (ing.name_en as string) || (ing.name_inci as string) || ''
+            const ingNameLower = ingName.toLowerCase()
+            if (lowerIngredients.some(i => i.includes(ingNameLower) || ingNameLower.includes(i))) {
+              notes.push(`Contains ${ingName} — targets your concern: ${concern}`)
+            }
+          }
+        }
+      }
+    } catch {
+      // Fall through — non-critical
     }
   }
 
@@ -169,8 +273,156 @@ async function fetchPersonalization(
     concerns: profile.skin_concerns || [],
     allergies: profile.allergies || [],
     fitzpatrick_scale: profile.fitzpatrick_scale,
-    personalized_warnings: warnings,
-    skin_match_notes: [...new Set(notes)].slice(0, 5), // Dedupe and limit
+    personalized_warnings: [...new Set(warnings)].slice(0, 8),
+    skin_match_notes: [...new Set(notes)].slice(0, 5),
+  }
+}
+
+// ─── Ingredient Insights (6th fetcher) ──────────────────────────────
+
+async function fetchIngredientInsights(
+  supabase: SupabaseClient,
+  userId: string,
+  ingredientNames: string[]
+): Promise<IngredientInsightsData | null> {
+  if (ingredientNames.length === 0) return null
+
+  try {
+    // Get user's skin type
+    const { data: profile } = await supabase
+      .from('ss_user_profiles')
+      .select('skin_type')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (!profile?.skin_type) return null
+
+    // Match scanned ingredient names to database ingredients
+    // Use ilike for fuzzy matching on common names
+    const lowerNames = ingredientNames.map(n => n.toLowerCase())
+
+    const { data: dbIngredients } = await supabase
+      .from('ss_ingredients')
+      .select('id, name_inci, name_en')
+
+    if (!dbIngredients?.length) return null
+
+    // Find matching ingredient IDs
+    const matchedIds: string[] = []
+    for (const dbIng of dbIngredients) {
+      const dbNameLower = (dbIng.name_en || dbIng.name_inci).toLowerCase()
+      if (lowerNames.some(n => n.includes(dbNameLower) || dbNameLower.includes(n))) {
+        matchedIds.push(dbIng.id)
+      }
+    }
+
+    if (matchedIds.length === 0) return null
+
+    // Fetch effectiveness data for matched ingredients + user's skin type
+    const { data: effectiveness } = await supabase
+      .from('ss_ingredient_effectiveness')
+      .select(`
+        effectiveness_score, sample_size, concern, ingredient_id,
+        ingredient:ss_ingredients(name_en, name_inci)
+      `)
+      .in('ingredient_id', matchedIds)
+      .or(`skin_type.eq.${profile.skin_type},skin_type.eq.__all__`)
+      .gte('sample_size', 5)
+      .order('effectiveness_score', { ascending: false })
+
+    if (!effectiveness?.length) return null
+
+    const insights: IngredientInsightItem[] = effectiveness.map(e => {
+      const ing = e.ingredient as unknown as Record<string, unknown> | null
+      return {
+        ingredientName: (ing?.name_en as string) || (ing?.name_inci as string) || 'Unknown',
+        concern: (e.concern as string) || '',
+        effectivenessScore: e.effectiveness_score as number,
+        sampleSize: e.sample_size as number,
+      }
+    })
+
+    // Dedupe by ingredient name (keep highest score per ingredient)
+    const seen = new Set<string>()
+    const deduped = insights.filter(i => {
+      const key = `${i.ingredientName.toLowerCase()}-${i.concern}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+
+    return {
+      insights: deduped.slice(0, 8),
+      skinType: profile.skin_type,
+    }
+  } catch {
+    return null
+  }
+}
+
+// ─── Seasonal Context (7th fetcher) ─────────────────────────────────
+
+async function fetchSeasonalContext(
+  supabase: SupabaseClient,
+  userId: string,
+  ingredientNames: string[]
+): Promise<SeasonalContextData | null> {
+  try {
+    // Get user's climate
+    const { data: profile } = await supabase
+      .from('ss_user_profiles')
+      .select('climate')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (!profile?.climate) return null
+
+    const currentSeason = getCurrentSeason()
+
+    // Query seasonal patterns for user's climate
+    const { data: patterns } = await supabase
+      .from('ss_learning_patterns')
+      .select('data, pattern_description')
+      .eq('pattern_type', 'seasonal')
+      .eq('skin_type', profile.climate)
+
+    if (!patterns?.length) return null
+
+    // Find the pattern for the current season
+    const currentPattern = patterns.find(p => {
+      const d = p.data as Record<string, unknown>
+      return d.season === currentSeason
+    })
+
+    if (!currentPattern) return null
+
+    const data = currentPattern.data as Record<string, unknown>
+    const toEmphasize = (data.ingredients_to_emphasize as string[]) || []
+    const toReduce = (data.ingredients_to_reduce as string[]) || []
+
+    // Cross-reference scanned ingredients against seasonal advice
+    const lowerIngredients = ingredientNames.map(n => n.toLowerCase())
+
+    const goodIngredients = lowerIngredients.filter(i =>
+      toEmphasize.some(e => i.includes(e.toLowerCase()) || e.toLowerCase().includes(i))
+    )
+    const cautionIngredients = lowerIngredients.filter(i =>
+      toReduce.some(r => i.includes(r.toLowerCase()) || r.toLowerCase().includes(i))
+    )
+
+    // Only return if there's something relevant to show
+    if (goodIngredients.length === 0 && cautionIngredients.length === 0) return null
+
+    return {
+      season: currentSeason,
+      climate: profile.climate,
+      textureAdvice: (data.texture_advice as string) || '',
+      goodIngredients,
+      cautionIngredients,
+      patternDescription: currentPattern.pattern_description || '',
+    }
+  } catch {
+    return null
   }
 }
 

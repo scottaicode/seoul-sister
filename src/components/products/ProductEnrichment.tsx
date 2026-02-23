@@ -9,6 +9,8 @@ import {
   CommunityIntelligence,
   AuthenticityCheck,
   TrendContext,
+  IngredientInsights,
+  SeasonalContext,
 } from '@/components/shared/EnrichmentSections'
 import type { ScanEnrichment } from '@/lib/scanning/enrich-scan'
 
@@ -62,7 +64,9 @@ export default function ProductEnrichment({ productId }: ProductEnrichmentProps)
     enrichment.pricing ||
     enrichment.community ||
     enrichment.counterfeit ||
-    enrichment.trending
+    enrichment.trending ||
+    enrichment.ingredientInsights ||
+    enrichment.seasonalContext
   )
 
   if (!hasData && isAuthenticated) return null
@@ -105,6 +109,14 @@ export default function ProductEnrichment({ productId }: ProductEnrichmentProps)
 
       {enrichment?.personalization && (
         <PersonalizedMatch data={enrichment.personalization} />
+      )}
+
+      {enrichment?.ingredientInsights && (
+        <IngredientInsights data={enrichment.ingredientInsights} />
+      )}
+
+      {enrichment?.seasonalContext && (
+        <SeasonalContext data={enrichment.seasonalContext} />
       )}
 
       {enrichment?.trending && (

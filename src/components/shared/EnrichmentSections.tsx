@@ -22,6 +22,8 @@ import type {
   CommunityData,
   CounterfeitData,
   TrendingData,
+  IngredientInsightsData,
+  SeasonalContextData,
 } from '@/lib/scanning/enrich-scan'
 
 // ─── Section Header ────────────────────────────────────────────────────
@@ -317,6 +319,94 @@ export function AuthenticityCheck({ data }: { data: CounterfeitData }) {
             ))}
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Ingredient Insights Section ──────────────────────────────────────
+
+export function IngredientInsights({ data }: { data: IngredientInsightsData }) {
+  if (!data.insights.length) return null
+
+  return (
+    <div className="glass-card p-4">
+      <SectionHeader icon={Sparkles} title={`Ingredient Effectiveness (${data.skinType} skin)`} color="text-emerald-400" />
+      <div className="space-y-2">
+        {data.insights.map((insight, i) => {
+          const pct = Math.round(insight.effectivenessScore * 100)
+          const color = pct >= 80 ? 'bg-emerald-400' : pct >= 70 ? 'bg-green-400' : 'bg-yellow-400'
+          const textColor = pct >= 80 ? 'text-emerald-400' : pct >= 70 ? 'text-green-400' : 'text-yellow-400'
+          return (
+            <div key={i} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-white/5">
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-medium text-white truncate">
+                  {insight.ingredientName}
+                </p>
+                <p className="text-[10px] text-white/40">
+                  for {insight.concern} (n={insight.sampleSize})
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <div className="w-12 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${color} transition-all duration-500`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className={`text-[11px] font-semibold ${textColor} w-8 text-right`}>
+                  {pct}%
+                </span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Seasonal Context Section ─────────────────────────────────────────
+
+export function SeasonalContext({ data }: { data: SeasonalContextData }) {
+  return (
+    <div className="glass-card p-4 border-sky-500/20">
+      <SectionHeader icon={Eye} title={`Seasonal Note (${data.season}, ${data.climate})`} color="text-sky-400" />
+
+      {data.textureAdvice && (
+        <p className="text-[11px] text-white/60 mb-2.5">{data.textureAdvice}</p>
+      )}
+
+      {data.goodIngredients.length > 0 && (
+        <div className="mb-2">
+          <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">Good for this season</p>
+          <div className="flex flex-wrap gap-1.5">
+            {data.goodIngredients.map((name, i) => (
+              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                <CheckCircle2 className="w-2.5 h-2.5" />
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.cautionIngredients.length > 0 && (
+        <div>
+          <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">Consider reducing this season</p>
+          <div className="flex flex-wrap gap-1.5">
+            {data.cautionIngredients.map((name, i) => (
+              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <AlertTriangle className="w-2.5 h-2.5" />
+                {name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.patternDescription && (
+        <p className="text-[10px] text-white/30 mt-2.5 italic">{data.patternDescription}</p>
       )}
     </div>
   )
