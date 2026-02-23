@@ -122,6 +122,8 @@ const NON_SKINCARE_BRANDS = new Set([
   'bb lab',
   'vodana',
   'hugrab',
+  'beaund',       // EMS beauty devices only
+  'labo-h',       // Scalp/hair care only
 ])
 
 /** Our skincare categories — products matched in DB with these always pass */
