@@ -28,6 +28,7 @@ import {
   type MissingStepAlert,
 } from '@/lib/intelligence/layering-order'
 import { CycleAdjustment } from '@/components/routine/CycleAdjustment'
+import { RoutineEffectiveness } from '@/components/routine/RoutineEffectiveness'
 
 interface ProductInfo {
   id: string
@@ -475,11 +476,15 @@ export default function RoutinePage() {
           {routines.length > 0 && (
             <div className="flex flex-col gap-4">
               {routines.map((routine) => (
-                <RoutineCard
-                  key={routine.id}
-                  routine={routine}
-                  onRefresh={loadRoutines}
-                />
+                <div key={routine.id} className="flex flex-col gap-2">
+                  <RoutineCard
+                    routine={routine}
+                    onRefresh={loadRoutines}
+                  />
+                  {routine.products.length > 0 && (
+                    <RoutineEffectiveness routineId={routine.id} />
+                  )}
+                </div>
               ))}
             </div>
           )}
