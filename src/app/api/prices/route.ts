@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       throw pricesError
     }
 
-    const retailerPrices = (prices ?? []).map(p => {
+    let retailerPrices = (prices ?? []).map(p => {
       const retailer = p.retailer as unknown as Record<string, unknown> | null
       return {
         retailer_name: (retailer?.name as string) ?? 'Unknown',
@@ -72,6 +72,22 @@ export async function GET(request: NextRequest) {
         last_checked: p.last_checked,
       }
     })
+
+    // Fallback: if no retailer prices but product has a price, show it as Olive Young
+    if (retailerPrices.length === 0 && product.price_usd) {
+      retailerPrices = [{
+        retailer_name: 'Olive Young',
+        retailer_url: `https://global.oliveyoung.com/search?query=${encodeURIComponent(product.name_en)}`,
+        price_usd: Number(product.price_usd),
+        price_krw: product.price_krw,
+        in_stock: true,
+        trust_score: 95,
+        country: 'KR',
+        ships_international: true,
+        is_affiliate: false,
+        last_checked: new Date().toISOString(),
+      }]
+    }
 
     const bestDeal = retailerPrices.find(p => p.in_stock) ?? null
     const koreaPrice = retailerPrices.find(p => p.country === 'KR')
