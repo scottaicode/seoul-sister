@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       .from('ss_user_profiles')
       .select('skin_type, skin_concerns, fitzpatrick_scale, age_range')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     const { data: review, error } = await supabase
       .from('ss_reviews')

@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       .from('ss_user_profiles')
       .select('skin_type, skin_concerns, allergies, climate, age_range, budget_range, experience_level')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     // Get available products from our database
     const { data: products } = await supabase

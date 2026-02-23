@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       .from('ss_user_profiles')
       .select('latitude, longitude, skin_type, climate, location_text')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     let lat: number
     let lng: number

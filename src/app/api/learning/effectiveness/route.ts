@@ -92,7 +92,7 @@ export async function POST(request: Request) {
       .from('ss_user_profiles')
       .select('skin_type, skin_concerns')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     const effectiveSkinType =
       skin_type || (profile as Record<string, unknown>)?.skin_type || null

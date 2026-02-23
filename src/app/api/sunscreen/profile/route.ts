@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       .from('ss_user_profiles')
       .select('skin_type, climate, latitude, longitude, skin_concerns, allergies, location_text')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     if (!profile) {
       return NextResponse.json({ profile: null, uv: null })

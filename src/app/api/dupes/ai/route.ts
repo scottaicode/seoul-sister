@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
         .from('ss_user_profiles')
         .select('skin_type, skin_concerns, budget_range, allergies')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
 
       if (profile?.skin_type) {
         const concerns = (profile.skin_concerns as string[])?.join(', ') || 'none specified'

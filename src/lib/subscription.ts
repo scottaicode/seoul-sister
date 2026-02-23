@@ -48,7 +48,7 @@ export async function hasActiveSubscription(userId: string): Promise<boolean> {
     .from('ss_user_profiles')
     .select('plan')
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   return profile?.plan !== 'free' && profile?.plan != null
 }

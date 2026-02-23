@@ -262,7 +262,7 @@ export async function POST(request: NextRequest) {
         .from('ss_user_profiles')
         .select('skin_type')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
 
       enrichment = await enrichScanResult(
         supabase,

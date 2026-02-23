@@ -243,7 +243,7 @@ export async function GET(request: NextRequest) {
           .from('ss_user_profiles')
           .select('skin_type')
           .eq('user_id', userId)
-          .single()
+          .maybeSingle()
         skinType = (profile?.skin_type as string) ?? null
       } catch {
         // Non-critical

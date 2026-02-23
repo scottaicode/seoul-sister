@@ -146,7 +146,7 @@ export async function loadUserContext(
       .from('ss_user_profiles')
       .select('*')
       .eq('user_id', userId)
-      .single(),
+      .maybeSingle(),
 
     // Recent conversations (last 10) for memory context
     db
@@ -233,7 +233,7 @@ export async function loadUserContext(
           .eq('user_id', userId)
           .order('cycle_start_date', { ascending: false })
           .limit(1)
-          .single()
+          .maybeSingle()
 
         if (latestCycle) {
           const entry = latestCycle as unknown as UserCycleTracking

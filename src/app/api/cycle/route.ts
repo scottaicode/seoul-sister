@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       .from('ss_user_profiles')
       .select('cycle_tracking_enabled, avg_cycle_length, skin_type, skin_concerns, allergies, fitzpatrick_scale, climate, age_range, budget_range, experience_level')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     if (!profile?.cycle_tracking_enabled) {
       return NextResponse.json({

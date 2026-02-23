@@ -27,7 +27,7 @@ export async function getPersonalizedRecommendations(
     .from('ss_user_profiles')
     .select('*')
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   if (!profile) return []
 
@@ -165,7 +165,7 @@ export async function getLearningInsights(
     .from('ss_user_profiles')
     .select('*')
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   if (!profile) {
     return [

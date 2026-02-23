@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       .from('ss_user_profiles')
       .select('skin_type, skin_concerns, climate')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     const skinType = profile?.skin_type ?? null
     const skinConcerns: string[] = (profile?.skin_concerns as string[]) ?? []

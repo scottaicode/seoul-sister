@@ -35,7 +35,7 @@ async function loadSkinProfile(userId: string): Promise<SkinProfile | null> {
     .from('ss_user_profiles')
     .select('skin_type, skin_concerns')
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   if (!data?.skin_type) return null
   return {

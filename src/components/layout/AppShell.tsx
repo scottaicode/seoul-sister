@@ -36,7 +36,7 @@ export default function AppShell({ children }: AppShellProps) {
           .from('ss_user_profiles')
           .select('onboarding_completed')
           .eq('user_id', user!.id)
-          .single()
+          .maybeSingle()
 
         if (data && !data.onboarding_completed) {
           router.replace('/onboarding')

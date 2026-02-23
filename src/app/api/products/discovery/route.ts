@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
             .from('ss_user_profiles')
             .select('skin_type, skin_concerns')
             .eq('user_id', userId)
-            .single()
+            .maybeSingle()
         : Promise.resolve({ data: null }),
     ])
 

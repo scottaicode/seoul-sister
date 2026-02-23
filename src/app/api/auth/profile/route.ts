@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
       .from('ss_user_profiles')
       .select('*')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     if (error && error.code !== 'PGRST116') {
       throw new AppError(error.message, 500)

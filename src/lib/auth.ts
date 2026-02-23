@@ -62,7 +62,7 @@ export async function requireAdmin(request: NextRequest): Promise<User> {
       .from('ss_user_profiles')
       .select('is_admin')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     if (data?.is_admin === true) {
       return user
