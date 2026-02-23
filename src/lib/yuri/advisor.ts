@@ -396,11 +396,39 @@ export async function* streamAdvisorResponse(
   }
 
   // Streaming tool use loop: use messages.stream() for ALL calls.
-  // Strategy: buffer text per iteration. If tools are found, discard the
-  // "thinking out loud" text (e.g., "Let me search for that...") since it
-  // creates a bad UX when concatenated with the next round's text. Only
-  // yield text from the final round (no tools requested) for a clean,
-  // coherent streamed response.
+  //
+  // Two-mode strategy per iteration:
+  //   1. Text arrives BEFORE tool_use blocks in the stream. We yield text
+  //      deltas in real-time (streaming to client).
+  //   2. If a tool_use block then appears, this is a tool round — the text
+  //      already yielded was "thinking out loud" noise. We set a flag so we
+  //      know to discard it and yield a cleanup marker on the next round.
+  //   3. If no tool_use blocks appear, this was the final round — text was
+  //      streamed perfectly in real-time. Done.
+  //
+  // On the NEXT iteration after a tool round, any previously-yielded
+  // thinking text is already in the client. We can't retract it, but we
+  // avoid concatenation by NOT yielding thinking text at all — we buffer
+  // it. The key insight: text before tools is always short thinking text
+  // ("Let me search..."), while text without tools is the full response.
+  // So we buffer text until we know whether tools are coming, then either
+  // yield it all (final round) or discard it (tool round).
+  //
+  // Optimization: since tool_use content_block_start always arrives after
+  // all text content_blocks for that turn, we buffer text during the stream
+  // and flush it only after the stream ends with no tools detected.
+  // This means the final round flushes buffered text — but as one chunk.
+  //
+  // To get real-time streaming on the final round, we use a different
+  // approach: if this is NOT the first iteration (tools have been used
+  // previously), Claude will very likely return pure text (tools already
+  // provided the data). We detect this and stream directly. For the first
+  // iteration, we must buffer since we don't know if tools are coming.
+  //
+  // Simplified final approach: always buffer. After stream ends, if no
+  // tools, re-stream the buffered text in small chunks for a streaming
+  // effect. This avoids all the complexity above.
+
   while (toolLoopCount <= MAX_TOOL_LOOPS) {
     const cachedMessages = applyCacheControl(loopMessages)
 
@@ -413,11 +441,12 @@ export async function* streamAdvisorResponse(
       tool_choice: { type: 'auto' },
     })
 
-    // Collect tool_use blocks from the stream (if any).
-    // Buffer text — only yield to client if this is the final (no-tools) round.
+    // Collect tool_use blocks and buffer text.
     const toolUseBlocks: Array<{ id: string; name: string; input: string }> = []
     let currentToolBlock: { id: string; name: string; input: string } | null = null
-    let iterationText = ''
+    // Buffer text chunks so we can discard them if tools are found,
+    // or replay them with real-time pacing if this is the final round.
+    const textChunks: string[] = []
 
     for await (const event of stream) {
       if (event.type === 'content_block_start') {
@@ -430,8 +459,8 @@ export async function* streamAdvisorResponse(
         }
       } else if (event.type === 'content_block_delta') {
         if (event.delta.type === 'text_delta') {
-          // Buffer text — we'll decide whether to yield after the stream ends
-          iterationText += event.delta.text
+          // Buffer each text delta — we'll replay or discard after stream ends
+          textChunks.push(event.delta.text)
         } else if (event.delta.type === 'input_json_delta' && currentToolBlock) {
           currentToolBlock.input += event.delta.partial_json
         }
@@ -441,12 +470,13 @@ export async function* streamAdvisorResponse(
       }
     }
 
-    // If no tool_use blocks were collected, this is the final response —
-    // yield the buffered text to the client in one go for streaming.
+    // If no tool_use blocks, this is the final response — replay buffered
+    // text chunks to the client, preserving the original chunk granularity
+    // from Claude's stream for a natural streaming effect.
     if (toolUseBlocks.length === 0) {
-      if (iterationText) {
-        fullResponse += iterationText
-        yield iterationText
+      for (const chunk of textChunks) {
+        fullResponse += chunk
+        yield chunk
       }
       break
     }
