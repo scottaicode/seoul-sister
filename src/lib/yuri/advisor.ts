@@ -1,4 +1,4 @@
-import { getAnthropicClient, MODELS } from '@/lib/anthropic'
+import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
 import { SPECIALISTS, detectSpecialist } from './specialists'
 import {
   loadUserContext,
@@ -259,18 +259,22 @@ export async function generateTitle(
 ): Promise<string> {
   const client = getAnthropicClient()
 
-  const response = await client.messages.create({
-    model: MODELS.background,
-    max_tokens: 50,
-    messages: [
-      {
-        role: 'user',
-        content: `Generate a very short title (4-6 words max) for a K-beauty conversation that starts with this question: "${userMessage.slice(0, 200)}"
+  const response = await callAnthropicWithRetry(
+    () =>
+      client.messages.create({
+        model: MODELS.background,
+        max_tokens: 50,
+        messages: [
+          {
+            role: 'user',
+            content: `Generate a very short title (4-6 words max) for a K-beauty conversation that starts with this question: "${userMessage.slice(0, 200)}"
 
 Return ONLY the title text, nothing else. No quotes.`,
-      },
-    ],
-  })
+          },
+        ],
+      }),
+    1 // Non-critical: only 1 retry
+  )
 
   const block = response.content[0]
   if (block.type === 'text') {
@@ -343,7 +347,7 @@ export async function* streamAdvisorResponse(
   // 5. Save user message to DB
   await saveMessage(conversationId, 'user', message, specialistType, imageUrls)
 
-  // 6. Call Claude with tool use support
+  // 6. Call Claude with tool use support + prompt caching + retry
   const client = getAnthropicClient()
   let fullResponse = ''
 
@@ -355,19 +359,45 @@ export async function* streamAdvisorResponse(
   const loopMessages: Anthropic.Messages.MessageParam[] =
     apiMessages as Anthropic.Messages.MessageParam[]
 
+  // Prepare tools with cache_control on the last tool definition
+  const cachedTools = YURI_TOOLS.map((tool, idx) =>
+    idx === YURI_TOOLS.length - 1
+      ? { ...tool, cache_control: { type: 'ephemeral' as const } }
+      : tool
+  )
+
   const MAX_TOOL_LOOPS = 3
   let toolLoopCount = 0
 
   // Tool use loop: Claude may request tools, we execute them, then re-call
   while (toolLoopCount <= MAX_TOOL_LOOPS) {
-    const response = await client.messages.create({
-      model: MODELS.primary,
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: loopMessages,
-      tools: YURI_TOOLS,
-      tool_choice: { type: 'auto' },
+    // Apply cache_control to the last assistant message for cache reuse
+    const cachedMessages = loopMessages.map((msg, idx) => {
+      if (
+        msg.role === 'assistant' &&
+        typeof msg.content === 'string' &&
+        idx === loopMessages.length - 2
+      ) {
+        return {
+          role: 'assistant' as const,
+          content: [
+            { type: 'text' as const, text: msg.content, cache_control: { type: 'ephemeral' as const } },
+          ],
+        }
+      }
+      return msg
     })
+
+    const response = await callAnthropicWithRetry(() =>
+      client.messages.create({
+        model: MODELS.primary,
+        max_tokens: 2048,
+        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+        messages: cachedMessages,
+        tools: cachedTools,
+        tool_choice: { type: 'auto' },
+      })
+    )
 
     if (response.stop_reason === 'tool_use') {
       // Claude wants to use tools — extract tool_use blocks, execute, and loop
@@ -493,13 +523,15 @@ async function generateAndSaveSummary(
     .join('\n')
   const fullTranscript = `${transcript}\nYuri: ${latestResponse.slice(0, 800)}`
 
-  const response = await client.messages.create({
-    model: MODELS.background,
-    max_tokens: 800,
-    messages: [
-      {
-        role: 'user',
-        content: `Summarize this K-beauty advisor conversation for Yuri's cross-session memory. This summary will be injected into Yuri's system prompt in FUTURE conversations so she remembers what happened here.
+  const response = await callAnthropicWithRetry(
+    () =>
+      client.messages.create({
+        model: MODELS.background,
+        max_tokens: 800,
+        messages: [
+          {
+            role: 'user',
+            content: `Summarize this K-beauty advisor conversation for Yuri's cross-session memory. This summary will be injected into Yuri's system prompt in FUTURE conversations so she remembers what happened here.
 
 Structure the summary in TWO sections (both required):
 
@@ -525,9 +557,11 @@ CONVERSATION:
 ${fullTranscript}
 
 Return ONLY the summary text, no JSON or code formatting.`,
-      },
-    ],
-  })
+          },
+        ],
+      }),
+    1 // Non-critical: only 1 retry
+  )
 
   const block = response.content[0]
   if (block.type !== 'text') return
@@ -550,21 +584,25 @@ async function extractAndSaveInsight(
 
   const client = getAnthropicClient()
 
-  const response = await client.messages.create({
-    model: MODELS.background,
-    max_tokens: 300,
-    messages: [
-      {
-        role: 'user',
-        content: `${specialist.extractionPrompt}
+  const response = await callAnthropicWithRetry(
+    () =>
+      client.messages.create({
+        model: MODELS.background,
+        max_tokens: 300,
+        messages: [
+          {
+            role: 'user',
+            content: `${specialist.extractionPrompt}
 
 User message: "${userMessage.slice(0, 500)}"
 Assistant response: "${assistantResponse.slice(0, 500)}"
 
 Return ONLY valid JSON.`,
-      },
-    ],
-  })
+          },
+        ],
+      }),
+    1 // Non-critical: only 1 retry
+  )
 
   const block = response.content[0]
   if (block.type !== 'text') return
@@ -597,13 +635,15 @@ async function extractContinuousLearning(
 ): Promise<void> {
   const client = getAnthropicClient()
 
-  const response = await client.messages.create({
-    model: MODELS.background,
-    max_tokens: 500,
-    messages: [
-      {
-        role: 'user',
-        content: `Analyze this K-beauty advisor conversation exchange and extract TWO things:
+  const response = await callAnthropicWithRetry(
+    () =>
+      client.messages.create({
+        model: MODELS.background,
+        max_tokens: 500,
+        messages: [
+          {
+            role: 'user',
+            content: `Analyze this K-beauty advisor conversation exchange and extract TWO things:
 
 1. **Profile updates**: Any NEW information the user revealed about themselves that should update their skin profile. Only extract what they EXPLICITLY stated — never infer. Return null for any field not mentioned.
 
@@ -631,9 +671,11 @@ Return ONLY valid JSON in this exact format:
 }
 
 If nothing new was revealed, return: { "profile_updates": null, "product_reactions": [] }`,
-      },
-    ],
-  })
+          },
+        ],
+      }),
+    1 // Non-critical: only 1 retry
+  )
 
   const block = response.content[0]
   if (block.type !== 'text') return

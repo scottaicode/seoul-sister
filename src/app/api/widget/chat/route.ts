@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { getAnthropicClient, MODELS } from '@/lib/anthropic'
+import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
 import { checkRateLimit } from '@/lib/utils/rate-limiter'
 import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
 import type Anthropic from '@anthropic-ai/sdk'
@@ -14,6 +14,16 @@ const MAX_WIDGET_TOOL_LOOPS = 2 // fewer loops than authenticated Yuri (cost con
 /** Widget-safe tools: subset of Yuri's 7 tools that work without user auth */
 const WIDGET_TOOL_NAMES = new Set(['search_products', 'compare_prices', 'get_trending_products'])
 const WIDGET_TOOLS = YURI_TOOLS.filter((t) => WIDGET_TOOL_NAMES.has(t.name))
+
+/** Prompt-cached versions: cache_control on system prompt and last tool definition */
+const CACHED_WIDGET_SYSTEM = [
+  { type: 'text' as const, text: '', cache_control: { type: 'ephemeral' as const } },
+] // text filled at call site
+const CACHED_WIDGET_TOOLS = WIDGET_TOOLS.map((tool, idx) =>
+  idx === WIDGET_TOOLS.length - 1
+    ? { ...tool, cache_control: { type: 'ephemeral' as const } }
+    : tool
+)
 
 /** Simple hash for session fingerprinting (IP + User-Agent) */
 function simpleHash(str: string): string {
@@ -140,14 +150,33 @@ export async function POST(request: NextRequest) {
           let fullResponse = ''
 
           while (toolLoopCount <= MAX_WIDGET_TOOL_LOOPS) {
-            const response = await anthropic.messages.create({
-              model: MODELS.primary,
-              max_tokens: 400, // slightly more than 300 to account for tool-enriched responses
-              system: YURI_WIDGET_SYSTEM,
-              messages: loopMessages,
-              tools: WIDGET_TOOLS,
-              tool_choice: { type: 'auto' },
+            // Apply cache_control to last assistant message for prompt caching
+            const cachedMessages = loopMessages.map((msg, idx) => {
+              if (
+                msg.role === 'assistant' &&
+                typeof msg.content === 'string' &&
+                idx === loopMessages.length - 2
+              ) {
+                return {
+                  role: 'assistant' as const,
+                  content: [
+                    { type: 'text' as const, text: msg.content, cache_control: { type: 'ephemeral' as const } },
+                  ],
+                }
+              }
+              return msg
             })
+
+            const response = await callAnthropicWithRetry(() =>
+              anthropic.messages.create({
+                model: MODELS.primary,
+                max_tokens: 400, // slightly more than 300 to account for tool-enriched responses
+                system: [{ type: 'text', text: YURI_WIDGET_SYSTEM, cache_control: { type: 'ephemeral' } }],
+                messages: cachedMessages,
+                tools: CACHED_WIDGET_TOOLS,
+                tool_choice: { type: 'auto' },
+              })
+            )
 
             if (response.stop_reason === 'tool_use') {
               toolLoopCount++

@@ -1,4 +1,4 @@
-import { getAnthropicClient, MODELS } from '@/lib/anthropic'
+import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
 import { getServiceClient } from '@/lib/supabase'
 import type { ExtractedSkinProfile, OnboardingProgress, YuriMessage } from '@/types/database'
 
@@ -115,13 +115,14 @@ export async function extractSkinProfileData(
     .map((m) => `${m.role === 'user' ? 'User' : 'Yuri'}: ${m.content}`)
     .join('\n\n')
 
-  const response = await client.messages.create({
-    model: MODELS.background,
-    max_tokens: 1024,
-    messages: [
-      {
-        role: 'user',
-        content: `Extract structured skin profile data from this onboarding conversation between Yuri (AI beauty advisor) and a user. Only extract data the user has explicitly stated -- never infer or assume.
+  const response = await callAnthropicWithRetry(() =>
+    client.messages.create({
+      model: MODELS.background,
+      max_tokens: 1024,
+      messages: [
+        {
+          role: 'user',
+          content: `Extract structured skin profile data from this onboarding conversation between Yuri (AI beauty advisor) and a user. Only extract data the user has explicitly stated -- never infer or assume.
 
 Return a JSON object with ONLY the fields that have been explicitly mentioned. Omit any field where the data is unclear or not provided.
 
@@ -142,9 +143,10 @@ CONVERSATION:
 ${conversationText}
 
 Return ONLY valid JSON, no explanation or markdown. If nothing can be extracted, return {}.`,
-      },
-    ],
-  })
+        },
+      ],
+    })
+  )
 
   const block = response.content[0]
   if (block.type !== 'text') return {}
@@ -413,11 +415,27 @@ export async function* streamOnboardingResponse(
 
   const client = getAnthropicClient()
 
+  // Apply cache_control to last assistant message for prompt caching
+  const cachedMessages = apiMessages.map((msg, idx) => {
+    if (
+      msg.role === 'assistant' &&
+      idx === apiMessages.length - 2
+    ) {
+      return {
+        role: 'assistant' as const,
+        content: [
+          { type: 'text' as const, text: msg.content, cache_control: { type: 'ephemeral' as const } },
+        ],
+      }
+    }
+    return msg
+  })
+
   const stream = client.messages.stream({
     model: MODELS.primary,
     max_tokens: 600,
-    system: systemPrompt,
-    messages: apiMessages,
+    system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+    messages: cachedMessages,
   })
 
   for await (const event of stream) {
