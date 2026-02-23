@@ -441,7 +441,16 @@ export default function ProductDetailPage() {
             </div>
           ) : reviews.length === 0 ? (
             <div className="glass-card p-6 text-center">
-              <p className="text-sm text-white/40">No reviews yet. Be the first!</p>
+              {product.review_count > 0 ? (
+                <>
+                  <p className="text-sm text-white/50">
+                    Rated {Number(product.rating_avg).toFixed(1)}/5 from {product.review_count.toLocaleString()} reviews on Olive Young
+                  </p>
+                  <p className="text-xs text-white/30 mt-1">Be the first to review it on Seoul Sister!</p>
+                </>
+              ) : (
+                <p className="text-sm text-white/40">No reviews yet. Be the first!</p>
+              )}
             </div>
           ) : (
             <>
