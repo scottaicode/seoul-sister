@@ -9,7 +9,9 @@ import {
   saveConversationSummary,
   type UserContext,
 } from './memory'
+import { YURI_TOOLS, executeYuriTool } from './tools'
 import type { SpecialistType, YuriMessage } from '@/types/database'
+import type Anthropic from '@anthropic-ai/sdk'
 
 // ---------------------------------------------------------------------------
 // Yuri's core system prompt
@@ -38,13 +40,24 @@ You orchestrate 6 specialist agents who provide deep domain expertise:
 5. **Budget Optimizer** -- Korea vs US price arbitrage, dupes with identical actives, value analysis
 6. **Sensitivity Guardian** -- allergy cross-reactivity, barrier repair, gentle alternatives
 
+## Database Tools
+You have direct access to Seoul Sister's product intelligence database through tools. USE THEM when users ask about specific products, ingredients, prices, trends, or need personalized product matching. Available tools:
+- **search_products**: Search 6,200+ products by name, brand, category, ingredients, price, rating
+- **get_product_details**: Full product info with all ingredients, prices, reviews, counterfeit markers
+- **check_ingredient_conflicts**: Check for ingredient conflicts between products and against user allergies
+- **get_trending_products**: Current trending products from Korean sales data and Reddit mentions
+- **compare_prices**: Price comparison across all tracked retailers with best deal calculation
+- **get_personalized_match**: Check how well a product matches the user's skin profile
+
+**When to use tools**: Use them for product-specific questions, price inquiries, ingredient lookups, trend queries, and personalized matching. Do NOT use tools for general skincare education, emotional support, or app guidance — answer those from your knowledge.
+**When NOT to use tools**: Simple greetings, skincare theory, application tips, app navigation help, or when you already have the answer from the conversation context.
+**Tool results**: When you get tool results, incorporate the data naturally into your response. Cite specific products, prices, and ingredients from the results. If a tool returns no results, say so honestly and offer alternatives.
+
 You can also:
-- Search the Seoul Sister product database for specific products or ingredients
 - Analyze product labels from photos (Korean text translation + ingredient analysis)
 - Add products to a user's routine
 - Set price alerts on wishlisted products
 - Track product expiry dates (PAO tracking)
-- Check ingredient conflicts between products
 
 ## Response Guidelines
 - ALWAYS personalize based on the user's skin profile (provided in context)
@@ -308,26 +321,81 @@ export async function* streamAdvisorResponse(
   // 5. Save user message to DB
   await saveMessage(conversationId, 'user', message, specialistType, imageUrls)
 
-  // 6. Stream response from Claude
+  // 6. Call Claude with tool use support
   const client = getAnthropicClient()
   let fullResponse = ''
 
-  const stream = client.messages.stream({
-    model: MODELS.primary,
-    max_tokens: 2048,
-    system: systemPrompt,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    messages: apiMessages as any,
-  })
+  // Build the messages array for the tool use loop.
+  // We use the SDK's MessageParam type for the conversation with tool results.
+  const loopMessages: Anthropic.Messages.MessageParam[] =
+    apiMessages as Anthropic.Messages.MessageParam[]
 
-  for await (const event of stream) {
-    if (
-      event.type === 'content_block_delta' &&
-      event.delta.type === 'text_delta'
-    ) {
-      fullResponse += event.delta.text
-      yield event.delta.text
+  const MAX_TOOL_LOOPS = 3
+  let toolLoopCount = 0
+
+  // Tool use loop: Claude may request tools, we execute them, then re-call
+  while (toolLoopCount <= MAX_TOOL_LOOPS) {
+    const response = await client.messages.create({
+      model: MODELS.primary,
+      max_tokens: 2048,
+      system: systemPrompt,
+      messages: loopMessages,
+      tools: YURI_TOOLS,
+      tool_choice: { type: 'auto' },
+    })
+
+    if (response.stop_reason === 'tool_use') {
+      // Claude wants to use tools — extract tool_use blocks, execute, and loop
+      toolLoopCount++
+
+      // Add Claude's response (with tool_use blocks) to the message history
+      loopMessages.push({ role: 'assistant', content: response.content })
+
+      // Execute each tool and build tool_result blocks
+      const toolResults: Anthropic.Messages.ToolResultBlockParam[] = []
+      for (const block of response.content) {
+        if (block.type === 'tool_use') {
+          const result = await executeYuriTool(
+            block.name,
+            block.input as Record<string, unknown>,
+            userId
+          )
+          toolResults.push({
+            type: 'tool_result',
+            tool_use_id: block.id,
+            content: result,
+          })
+        }
+      }
+
+      // Add tool results as a user message (Claude API requirement)
+      loopMessages.push({ role: 'user', content: toolResults })
+
+      // Continue the loop — Claude will process tool results and respond
+      continue
     }
+
+    // stop_reason is 'end_turn' (or 'max_tokens') — extract text and yield
+    for (const block of response.content) {
+      if (block.type === 'text') {
+        fullResponse += block.text
+      }
+    }
+
+    // Yield the response in chunks to maintain SSE streaming feel
+    // Break into ~50 char chunks to simulate streaming
+    const CHUNK_SIZE = 50
+    for (let i = 0; i < fullResponse.length; i += CHUNK_SIZE) {
+      yield fullResponse.slice(i, i + CHUNK_SIZE)
+    }
+
+    break // Exit the tool loop
+  }
+
+  // If we exhausted tool loops without a final text response, yield what we have
+  if (!fullResponse) {
+    fullResponse = "I'm having trouble accessing the database right now. Let me answer based on my knowledge instead."
+    yield fullResponse
   }
 
   // 7. Save assistant response to DB

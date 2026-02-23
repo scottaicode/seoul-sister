@@ -12,7 +12,7 @@
     "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.20.9",
+    "@anthropic-ai/sdk": "^0.78.0",
     "@stripe/react-stripe-js": "^2.4.0",
     "@stripe/stripe-js": "^2.1.11",
     "@supabase/supabase-js": "^2.38.0",
