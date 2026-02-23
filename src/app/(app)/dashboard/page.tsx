@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useCallback, useMemo, useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   Camera,
@@ -27,6 +27,7 @@ import ReformulationAlertWidget from '@/components/dashboard/ReformulationAlert'
 import GlassSkinWidget from '@/components/dashboard/GlassSkinWidget'
 import WeatherRoutineWidget from '@/components/dashboard/WeatherRoutineWidget'
 import ShelfScanWidget from '@/components/dashboard/ShelfScanWidget'
+import IntelligenceWidgets from '@/components/dashboard/IntelligenceWidgets'
 
 // ---------------------------------------------------------------------------
 // Helpers & data
@@ -104,6 +105,11 @@ function useTrendingProducts() {
 export default function DashboardPage() {
   const { user } = useAuth()
   const { trending, emergingCount, loading: trendingLoading } = useTrendingProducts()
+  const [relevantTrendingIds, setRelevantTrendingIds] = useState<Set<string>>(new Set())
+
+  const handleRelevantTrendingIds = useCallback((ids: string[]) => {
+    setRelevantTrendingIds(new Set(ids))
+  }, [])
 
   const displayName = useMemo(() => {
     if (!user) return null
@@ -194,6 +200,9 @@ export default function DashboardPage() {
 
         <YuriInsightsWidget />
       </section>
+
+      {/* Intelligence Widgets (Top Ingredients + Seasonal Tip) */}
+      <IntelligenceWidgets onRelevantTrendingIds={handleRelevantTrendingIds} />
 
       {/* Skin Profile */}
       <section>
@@ -336,7 +345,11 @@ export default function DashboardPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {trending.map((product) => (
-              <TrendingProductCard key={product.id} product={product} />
+              <TrendingProductCard
+                key={product.id}
+                product={product}
+                skinRelevant={relevantTrendingIds.has(String(product.id))}
+              />
             ))}
           </div>
         )}
