@@ -737,10 +737,20 @@ export interface WeatherRoutineAdjustment {
   weather_trigger: WeatherTrigger
 }
 
+export interface SeasonalInsight {
+  pattern_description: string
+  texture_advice: string
+  ingredients_to_emphasize: string[]
+  ingredients_to_reduce: string[]
+  season: string
+  climate: string
+}
+
 export interface WeatherRoutineResponse {
   weather: WeatherData
   adjustments: WeatherRoutineAdjustment[]
   summary: string
+  seasonal_insight?: SeasonalInsight | null
 }
 
 // =============================================================================

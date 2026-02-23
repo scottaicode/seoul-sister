@@ -11,6 +11,7 @@ import {
   Thermometer,
   CloudRain,
 } from 'lucide-react'
+import { Leaf } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { WeatherRoutineResponse, WeatherRoutineAdjustment } from '@/types/database'
 
@@ -94,7 +95,7 @@ export default function WeatherRoutineWidget() {
 
   if (!data) return null
 
-  const { weather, adjustments, summary } = data
+  const { weather, adjustments, summary, seasonal_insight } = data
   const ConditionIcon = getConditionIcon(weather.icon)
   const displayAdjustments = adjustments.slice(0, 3)
 
@@ -163,6 +164,23 @@ export default function WeatherRoutineWidget() {
               +{adjustments.length - 3} more suggestion{adjustments.length - 3 !== 1 ? 's' : ''}
             </p>
           )}
+        </div>
+      )}
+
+      {/* Seasonal insight from learning engine */}
+      {seasonal_insight && (
+        <div className="flex items-start gap-2.5 pt-1 border-t border-white/5">
+          <span className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0 mt-0.5 text-emerald-400 bg-emerald-400/10">
+            <Leaf className="w-3 h-3" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[10px] text-white/50">
+              {seasonal_insight.texture_advice || seasonal_insight.pattern_description}
+            </p>
+            <p className="text-[10px] text-white/25 mt-0.5 capitalize">
+              {seasonal_insight.season} · {seasonal_insight.climate} climate
+            </p>
+          </div>
         </div>
       )}
     </div>

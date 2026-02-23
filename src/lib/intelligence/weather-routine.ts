@@ -1,7 +1,9 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   WeatherData,
   WeatherRoutineAdjustment,
   WeatherTrigger,
+  SeasonalInsight,
   SkinProfile,
 } from '@/types/database'
 
@@ -298,17 +300,79 @@ const ADJUSTMENT_RULES: AdjustmentRule[] = [
   },
 ]
 
+// ---------------------------------------------------------------------------
+// Season detection helper
+// ---------------------------------------------------------------------------
+
+function getCurrentSeason(): string {
+  const month = new Date().getMonth() // 0-indexed
+  if (month >= 2 && month <= 4) return 'spring'
+  if (month >= 5 && month <= 7) return 'summer'
+  if (month >= 8 && month <= 10) return 'fall'
+  return 'winter'
+}
+
+// ---------------------------------------------------------------------------
+// Fetch seasonal learning patterns from ss_learning_patterns
+// ---------------------------------------------------------------------------
+
+export async function fetchSeasonalLearning(
+  supabase: SupabaseClient,
+  climate: string | null
+): Promise<SeasonalInsight | null> {
+  if (!climate) return null
+
+  try {
+    const { data: patterns } = await supabase
+      .from('ss_learning_patterns')
+      .select('data, pattern_description')
+      .eq('pattern_type', 'seasonal')
+      .eq('skin_type', climate)
+      .order('updated_at', { ascending: false })
+      .limit(4) // all seasons for this climate
+
+    if (!patterns?.length) return null
+
+    const currentSeason = getCurrentSeason()
+
+    const currentPattern = patterns.find((p: Record<string, unknown>) => {
+      const d = p.data as Record<string, unknown>
+      return d?.season === currentSeason
+    })
+
+    if (!currentPattern) return null
+
+    const data = currentPattern.data as Record<string, unknown>
+
+    return {
+      pattern_description: (currentPattern.pattern_description as string) || '',
+      texture_advice: (data.texture_advice as string) || '',
+      ingredients_to_emphasize: (data.ingredients_to_emphasize as string[]) || [],
+      ingredients_to_reduce: (data.ingredients_to_reduce as string[]) || [],
+      season: currentSeason,
+      climate,
+    }
+  } catch {
+    // Learning data is non-critical
+    return null
+  }
+}
+
 /**
  * Determine which routine adjustments are needed based on current weather
- * and the user's skin type.
+ * and the user's skin type. When a Supabase client and climate are provided,
+ * also queries ss_learning_patterns for seasonal intelligence and merges
+ * those adjustments with the hardcoded weather trigger rules.
  */
-export function getWeatherAdjustments(
+export async function getWeatherAdjustments(
   weather: WeatherData,
-  skinType: SkinProfile['skin_type'] | null
-): WeatherRoutineAdjustment[] {
+  skinType: SkinProfile['skin_type'] | null,
+  options?: { supabase?: SupabaseClient; climate?: string | null }
+): Promise<WeatherRoutineAdjustment[]> {
   const adjustments: WeatherRoutineAdjustment[] = []
   const type = skinType ?? 'combination'
 
+  // 1. Hardcoded weather-trigger adjustments (existing rules)
   for (const rule of ADJUSTMENT_RULES) {
     if (!rule.match(weather)) continue
 
@@ -322,6 +386,44 @@ export function getWeatherAdjustments(
     if (extras) {
       for (const adj of extras) {
         adjustments.push({ ...adj, weather_trigger: rule.trigger })
+      }
+    }
+  }
+
+  // 2. Merge seasonal learning patterns (supplements hardcoded rules)
+  if (options?.supabase && options.climate) {
+    const insight = await fetchSeasonalLearning(options.supabase, options.climate)
+    if (insight) {
+      // Add "emphasize" adjustments for seasonal ingredients that aren't
+      // already covered by the weather-trigger adjustments above
+      const existingSuggestions = new Set(
+        adjustments.map(a => a.suggestion.toLowerCase())
+      )
+
+      for (const ingredient of insight.ingredients_to_emphasize) {
+        const suggestion = `Seasonal tip: emphasize ${ingredient} in your ${insight.season} routine`
+        if (!existingSuggestions.has(suggestion.toLowerCase())) {
+          adjustments.push({
+            type: 'emphasize',
+            product_category: 'serum',
+            reason: `${insight.climate} climate, ${insight.season} season — learned from community patterns`,
+            suggestion,
+            weather_trigger: 'high_humidity', // closest trigger; seasonal is supplemental
+          })
+        }
+      }
+
+      for (const ingredient of insight.ingredients_to_reduce) {
+        const suggestion = `Seasonal tip: reduce ${ingredient} during ${insight.season}`
+        if (!existingSuggestions.has(suggestion.toLowerCase())) {
+          adjustments.push({
+            type: 'reduce',
+            product_category: 'serum',
+            reason: `${insight.climate} climate, ${insight.season} season — learned from community patterns`,
+            suggestion,
+            weather_trigger: 'low_humidity', // closest trigger; seasonal is supplemental
+          })
+        }
       }
     }
   }

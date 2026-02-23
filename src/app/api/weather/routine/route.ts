@@ -5,6 +5,7 @@ import { getServiceClient } from '@/lib/supabase'
 import { handleApiError } from '@/lib/utils/error-handler'
 import {
   fetchWeather,
+  fetchSeasonalLearning,
   getWeatherAdjustments,
   getWeatherSummary,
 } from '@/lib/intelligence/weather-routine'
@@ -29,6 +30,13 @@ export async function GET(request: NextRequest) {
     const latParam = searchParams.get('lat')
     const lngParam = searchParams.get('lng')
 
+    // Load full profile (coordinates, skin type, climate, location_text)
+    const { data: profile } = await db
+      .from('ss_user_profiles')
+      .select('latitude, longitude, skin_type, climate, location_text')
+      .eq('user_id', user.id)
+      .single()
+
     let lat: number
     let lng: number
 
@@ -37,13 +45,6 @@ export async function GET(request: NextRequest) {
       lat = parsed.lat
       lng = parsed.lng
     } else {
-      // Fall back to saved coordinates in profile
-      const { data: profile } = await db
-        .from('ss_user_profiles')
-        .select('latitude, longitude')
-        .eq('user_id', user.id)
-        .single()
-
       if (!profile?.latitude || !profile?.longitude) {
         return NextResponse.json(
           { error: 'No location set. Provide lat/lng params or set location in profile.' },
@@ -57,18 +58,28 @@ export async function GET(request: NextRequest) {
     // Fetch current weather
     const weather = await fetchWeather(lat, lng)
 
-    // Load skin profile for personalised adjustments
-    const { data: skinProfile } = await db
-      .from('ss_user_profiles')
-      .select('skin_type')
-      .eq('user_id', user.id)
-      .single()
+    const skinType = (profile?.skin_type as SkinProfile['skin_type']) ?? null
+    const climate = (profile?.climate as string) ?? null
 
-    const skinType = (skinProfile?.skin_type as SkinProfile['skin_type']) ?? null
-    const adjustments = getWeatherAdjustments(weather, skinType)
+    // Use location_text from profile if available, else keep reverse-geocoded name
+    if (profile?.location_text) {
+      weather.location = profile.location_text as string
+    }
+
+    // Get weather adjustments with seasonal learning patterns merged in
+    const adjustments = await getWeatherAdjustments(weather, skinType, {
+      supabase: db,
+      climate,
+    })
     const summary = getWeatherSummary(weather, adjustments.length)
 
-    return NextResponse.json({ weather, adjustments, summary })
+    // Fetch seasonal insight for the response (displayed separately in the widget)
+    let seasonal_insight = null
+    if (climate) {
+      seasonal_insight = await fetchSeasonalLearning(db, climate)
+    }
+
+    return NextResponse.json({ weather, adjustments, summary, seasonal_insight })
   } catch (error) {
     return handleApiError(error)
   }
