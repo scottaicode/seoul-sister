@@ -23,13 +23,18 @@ export async function GET(request: NextRequest) {
       query = query.eq('source', source)
     }
 
-    // Sort by rank_position when viewing olive_young data (including "All" which is mostly olive_young)
-    // This ensures the bestseller ranking order is preserved
-    if (source === 'olive_young' || !source) {
+    // Sort order depends on source:
+    // - olive_young: by rank_position (bestseller ranking order)
+    // - reddit: by trend_score (calculated from mentions + sentiment)
+    // - "All": rank_position first (for olive_young rows), then trend_score (for reddit rows)
+    if (source === 'olive_young') {
+      query = query.order('rank_position', { ascending: true, nullsFirst: false })
+    } else if (source === 'reddit') {
+      query = query.order('trend_score', { ascending: false })
+    } else {
+      // "All" — show olive_young by rank first, then reddit by score
       query = query.order('rank_position', { ascending: true, nullsFirst: true })
         .order('trend_score', { ascending: false })
-    } else {
-      query = query.order('trend_score', { ascending: false })
     }
 
     query = query.limit(limit)

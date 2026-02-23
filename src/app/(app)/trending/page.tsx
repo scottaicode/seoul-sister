@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
-import { TrendingUp, Loader2, ShoppingBag } from 'lucide-react'
+import { TrendingUp, Loader2, ShoppingBag, MessageCircle } from 'lucide-react'
 import TrendingCard from '@/components/community/TrendingCard'
 import EmptyState from '@/components/ui/EmptyState'
 
@@ -31,12 +31,8 @@ interface TrendingItem {
 const sourceFilters = [
   { value: '', label: 'All', active: true },
   { value: 'olive_young', label: 'Olive Young', active: true },
-  { value: 'reddit', label: 'Reddit', active: false },
+  { value: 'reddit', label: 'Reddit', active: true },
 ]
-
-const comingSoonMessages: Record<string, string> = {
-  reddit: 'Reddit community mention tracking is coming soon. We\'ll scan r/AsianBeauty and r/SkincareAddiction for real product mentions and sentiment.',
-}
 
 export default function TrendingPage() {
   const [trending, setTrending] = useState<TrendingItem[]>([])
@@ -68,8 +64,9 @@ export default function TrendingPage() {
     fetchTrending()
   }, [sourceFilter])
 
-  // Count Olive Young entries for the header subtitle
+  // Count entries by source for the header subtitle
   const oliveYoungCount = trending.filter(t => t.source === 'olive_young').length
+  const redditCount = trending.filter(t => t.source === 'reddit').length
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
@@ -79,8 +76,12 @@ export default function TrendingPage() {
           Trending in Korea
         </h1>
         <p className="text-white/40 text-sm">
-          {oliveYoungCount > 0
-            ? `Real-time Olive Young bestseller rankings + community signals.`
+          {oliveYoungCount > 0 && redditCount > 0
+            ? 'Korean sales rankings + Reddit community mentions.'
+            : oliveYoungCount > 0
+            ? 'Real-time Olive Young bestseller rankings + community signals.'
+            : redditCount > 0
+            ? 'What the K-beauty community is talking about on Reddit.'
             : 'Emerging ingredients, viral products, and market movements before they hit the US.'}
         </p>
       </div>
@@ -148,32 +149,30 @@ export default function TrendingPage() {
               <Loader2 className="w-6 h-6 animate-spin text-gold" />
             </div>
           ) : trending.length === 0 ? (
-            comingSoonMessages[sourceFilter] ? (
-              <div className="glass-card p-6 text-center space-y-2">
-                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
-                  <TrendingUp className="w-5 h-5 text-white/20" />
-                </div>
-                <p className="text-sm font-medium text-white/60">Coming Soon</p>
-                <p className="text-xs text-white/30 max-w-sm mx-auto">{comingSoonMessages[sourceFilter]}</p>
-              </div>
-            ) : (
               <EmptyState
                 icon={TrendingUp as LucideIcon}
                 title="No Trending Products"
                 description={
                   sourceFilter === 'olive_young'
                     ? 'Olive Young bestseller data will appear after the daily scan runs.'
+                    : sourceFilter === 'reddit'
+                    ? 'Reddit mention data will appear after the daily scan runs.'
                     : 'Check back soon for the latest K-beauty trends from Seoul.'
                 }
               />
-            )
           ) : (
             <div className="space-y-3">
-              {/* Show section header when olive_young data is visible */}
+              {/* Show source section headers */}
               {(sourceFilter === 'olive_young' || sourceFilter === '') && trending.some(t => t.source === 'olive_young') && (
                 <div className="flex items-center gap-2 text-xs text-white/30 pb-1">
                   <ShoppingBag className="w-3.5 h-3.5" />
                   <span>Based on real Olive Young Korean sales rankings</span>
+                </div>
+              )}
+              {sourceFilter === 'reddit' && trending.some(t => t.source === 'reddit') && (
+                <div className="flex items-center gap-2 text-xs text-white/30 pb-1">
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>Mentions from r/AsianBeauty, r/SkincareAddiction + K-beauty communities</span>
                 </div>
               )}
               {trending.map((item) => (

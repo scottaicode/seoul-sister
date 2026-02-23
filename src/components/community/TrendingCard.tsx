@@ -90,6 +90,7 @@ export default function TrendingCard({
   product,
   source,
   trendScore,
+  mentionCount,
   sentimentScore,
   trendingSince,
   sourceProductName,
@@ -101,13 +102,14 @@ export default function TrendingCard({
 }: TrendingCardProps) {
   const sourceInfo = sourceLabels[source] ?? { label: source, color: 'bg-gray-100 text-gray-700' }
   const isOliveYoung = source === 'olive_young'
+  const isReddit = source === 'reddit'
 
   // Use product data if matched, fall back to source data
   const displayName = product?.name_en ?? sourceProductName ?? 'Unknown Product'
   const displayBrand = product?.brand_en ?? sourceProductBrand ?? ''
   const hasProductPage = product?.id != null
 
-  // Link to product page if matched, otherwise to Olive Young source URL
+  // Link to product page if matched, otherwise to source URL
   const href = hasProductPage
     ? `/products/${product!.id}`
     : sourceUrl ?? '#'
@@ -164,8 +166,11 @@ export default function TrendingCard({
           {isOliveYoung && daysOnList != null && (
             <span>{daysOnList}d on list</span>
           )}
-          {sentimentScore !== null && (
-            <span className={`font-medium ${sentimentScore >= 0.8 ? 'text-green-600' : sentimentScore >= 0.6 ? 'text-yellow-600' : 'text-red-600'}`}>
+          {isReddit && mentionCount > 0 && (
+            <span>{mentionCount} mention{mentionCount !== 1 ? 's' : ''}</span>
+          )}
+          {sentimentScore !== null && sentimentScore !== 0.5 && (
+            <span className={`font-medium ${sentimentScore >= 0.7 ? 'text-green-600' : sentimentScore >= 0.5 ? 'text-yellow-600' : 'text-red-600'}`}>
               {Math.round(sentimentScore * 100)}% positive
             </span>
           )}
