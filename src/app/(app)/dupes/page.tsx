@@ -27,6 +27,11 @@ interface DupeResult {
   unique_to_original: string[]
   unique_to_dupe: string[]
   price_savings_pct: number
+  effectiveness_insight?: {
+    ingredientName: string
+    concern: string
+    score: number
+  } | null
 }
 
 interface DupeResponse {

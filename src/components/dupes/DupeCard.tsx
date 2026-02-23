@@ -9,6 +9,7 @@ import {
   ChevronUp,
   ExternalLink,
   MessageCircle,
+  Beaker,
 } from 'lucide-react'
 import IngredientComparison from './IngredientComparison'
 
@@ -26,6 +27,12 @@ interface DupeProduct {
   volume_display: string | null
 }
 
+interface EffectivenessInsight {
+  ingredientName: string
+  concern: string
+  score: number
+}
+
 export interface DupeCardProps {
   original: DupeProduct
   dupe: {
@@ -35,6 +42,7 @@ export interface DupeCardProps {
     unique_to_original: string[]
     unique_to_dupe: string[]
     price_savings_pct: number
+    effectiveness_insight?: EffectivenessInsight | null
   }
   rank: number
 }
@@ -125,7 +133,7 @@ export default function DupeCard({ original, dupe, rank }: DupeCardProps) {
       </div>
 
       {/* Shared ingredients summary */}
-      <div className="px-4 pb-2">
+      <div className="px-4 pb-2 space-y-1">
         <p className="text-[10px] text-white/30">
           {dupe.shared_ingredients.length} shared ingredients:
           <span className="text-white/50 ml-1">
@@ -133,6 +141,16 @@ export default function DupeCard({ original, dupe, rank }: DupeCardProps) {
             {dupe.shared_ingredients.length > 4 && ` +${dupe.shared_ingredients.length - 4} more`}
           </span>
         </p>
+
+        {/* Effectiveness insight for authenticated users */}
+        {dupe.effectiveness_insight && (
+          <div className="flex items-center gap-1.5 text-[10px]">
+            <Beaker className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+            <span className="text-emerald-300/80">
+              Contains {dupe.effectiveness_insight.ingredientName} ({dupe.effectiveness_insight.score}% effective for {dupe.effectiveness_insight.concern})
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Expand toggle */}

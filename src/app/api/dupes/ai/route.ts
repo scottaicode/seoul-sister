@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { requireAuth } from '@/lib/auth'
+import { getServiceClient } from '@/lib/supabase'
 import { dupeAiSchema } from '@/lib/utils/validation'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { hasActiveSubscription } from '@/lib/subscription'
@@ -55,6 +56,39 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const params = dupeAiSchema.parse(body)
 
+    // Load user profile for personalized dupe recommendations
+    let profileContext = ''
+    try {
+      const supabase = getServiceClient()
+      const { data: profile } = await supabase
+        .from('ss_user_profiles')
+        .select('skin_type, skin_concerns, budget_range, allergies')
+        .eq('user_id', user.id)
+        .single()
+
+      if (profile?.skin_type) {
+        const concerns = (profile.skin_concerns as string[])?.join(', ') || 'none specified'
+        const allergies = (profile.allergies as string[])?.join(', ') || 'none known'
+        const budget = (profile.budget_range as string) || 'not specified'
+
+        profileContext = `
+
+## User Skin Profile (Personalize Your Recommendations)
+- Skin type: ${profile.skin_type}
+- Primary concerns: ${concerns}
+- Known allergies/sensitivities: ${allergies}
+- Budget range: ${budget}
+
+When finding dupes, prioritize products that:
+- Work well for ${profile.skin_type} skin specifically
+- Address the user's concerns (${concerns})
+- AVOID ingredients the user is allergic to (${allergies})
+- Fit within their budget preference`
+      }
+    } catch {
+      // Non-critical — fall back to generic recommendations
+    }
+
     const anthropic = getAnthropicClient()
 
     const userMessage = params.budget_range
@@ -64,7 +98,7 @@ export async function POST(request: NextRequest) {
     const response = await anthropic.messages.create({
       model: MODELS.primary,
       max_tokens: 2048,
-      system: DUPE_SYSTEM_PROMPT,
+      system: DUPE_SYSTEM_PROMPT + profileContext,
       messages: [{ role: 'user', content: userMessage }],
     })
 

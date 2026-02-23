@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth'
+import { createClient } from '@supabase/supabase-js'
 import { getServiceClient } from '@/lib/supabase'
 import { dupeFinderSchema } from '@/lib/utils/validation'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
@@ -21,6 +21,12 @@ interface IngredientLink {
   position: number
 }
 
+interface EffectivenessInsight {
+  ingredientName: string
+  concern: string
+  score: number
+}
+
 export interface DupeResult {
   product: {
     id: string
@@ -40,11 +46,31 @@ export interface DupeResult {
   unique_to_original: string[]
   unique_to_dupe: string[]
   price_savings_pct: number
+  effectiveness_insight: EffectivenessInsight | null
+}
+
+// ---------------------------------------------------------------------------
+// Soft auth: extract user ID from Bearer token if present (non-critical)
+// ---------------------------------------------------------------------------
+async function softAuth(request: NextRequest): Promise<string | null> {
+  const authSupabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+  const token = request.headers.get('authorization')?.replace('Bearer ', '')
+  if (!token) return null
+  try {
+    const { data: { user } } = await authSupabase.auth.getUser(token)
+    return user?.id ?? null
+  } catch {
+    return null
+  }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAuth(request)
+    // Soft auth — fall back to standard scoring if not authenticated
+    const userId = await softAuth(request)
 
     const { searchParams } = new URL(request.url)
     const params = dupeFinderSchema.parse({
@@ -202,7 +228,120 @@ export async function GET(request: NextRequest) {
         unique_to_original: uniqueToOriginal,
         unique_to_dupe: uniqueToDupe,
         price_savings_pct: savingsPct,
+        effectiveness_insight: null,
       })
+    }
+
+    // -----------------------------------------------------------------------
+    // Effectiveness weighting: if user is authenticated, load ingredient
+    // effectiveness for their skin type and re-score dupes accordingly.
+    // -----------------------------------------------------------------------
+    let skinType: string | null = null
+    if (userId) {
+      try {
+        const { data: profile } = await supabase
+          .from('ss_user_profiles')
+          .select('skin_type')
+          .eq('user_id', userId)
+          .single()
+        skinType = (profile?.skin_type as string) ?? null
+      } catch {
+        // Non-critical
+      }
+    }
+
+    if (skinType && dupeResults.length > 0) {
+      try {
+        // Get effectiveness data for user's skin type
+        const { data: effectiveness } = await supabase
+          .from('ss_ingredient_effectiveness')
+          .select('ingredient_id, concern, effectiveness_score, sample_size')
+          .eq('skin_type', skinType)
+          .gte('sample_size', 5)
+          .gte('effectiveness_score', 0.50)
+          .order('effectiveness_score', { ascending: false })
+          .limit(30)
+
+        if (effectiveness?.length) {
+          const effectivenessMap = new Map(
+            effectiveness.map(e => [e.ingredient_id as string, e])
+          )
+          const effectiveIngredientIds = new Set(effectiveness.map(e => e.ingredient_id as string))
+
+          // Collect all dupe product IDs so we can fetch their ingredient links
+          const dupeProductIds = dupeResults.map(d => d.product.id)
+
+          const { data: dupeLinks } = await supabase
+            .from('ss_product_ingredients')
+            .select('product_id, ingredient_id')
+            .in('product_id', dupeProductIds)
+            .in('ingredient_id', Array.from(effectiveIngredientIds))
+            .limit(5000)
+
+          if (dupeLinks?.length) {
+            // Score each dupe's effective ingredient coverage
+            const dupeEffScores = new Map<string, { totalScore: number; count: number; topIngredient: { id: string; concern: string; score: number } }>()
+
+            for (const link of dupeLinks) {
+              const eff = effectivenessMap.get(link.ingredient_id as string)
+              if (!eff) continue
+
+              const existing = dupeEffScores.get(link.product_id as string)
+              const effScore = eff.effectiveness_score as number
+              if (existing) {
+                existing.totalScore += effScore
+                existing.count++
+                if (effScore > existing.topIngredient.score) {
+                  existing.topIngredient = { id: link.ingredient_id as string, concern: eff.concern as string, score: effScore }
+                }
+              } else {
+                dupeEffScores.set(link.product_id as string, {
+                  totalScore: effScore,
+                  count: 1,
+                  topIngredient: { id: link.ingredient_id as string, concern: eff.concern as string, score: effScore },
+                })
+              }
+            }
+
+            // Resolve ingredient names for effectiveness insights
+            const topIngredientIds = new Set<string>()
+            for (const info of dupeEffScores.values()) {
+              topIngredientIds.add(info.topIngredient.id)
+            }
+            const ingredientNameMap = new Map<string, string>()
+            if (topIngredientIds.size > 0) {
+              const { data: ingNames } = await supabase
+                .from('ss_ingredients')
+                .select('id, name_en')
+                .in('id', Array.from(topIngredientIds))
+              for (const ing of ingNames ?? []) {
+                ingredientNameMap.set(ing.id, ing.name_en)
+              }
+            }
+
+            // Apply effectiveness weighting to match_score
+            for (const dupe of dupeResults) {
+              const effInfo = dupeEffScores.get(dupe.product.id)
+              if (effInfo && effInfo.count > 0) {
+                const avgEffectiveness = effInfo.totalScore / effInfo.count
+                // Effectiveness-weighted score: ingredient_overlap × avg_effectiveness_ratio
+                // A dupe with 70% overlap but 90% effectiveness beats 90% overlap with 60% effectiveness
+                dupe.match_score = Math.round(dupe.match_score * (0.5 + avgEffectiveness * 0.5) * 100) / 100
+
+                // Attach top effectiveness insight for UI display
+                const ingredientName = ingredientNameMap.get(effInfo.topIngredient.id) ?? 'Key ingredient'
+                dupe.effectiveness_insight = {
+                  ingredientName,
+                  concern: effInfo.topIngredient.concern,
+                  score: Math.round(effInfo.topIngredient.score * 100),
+                }
+              }
+            }
+          }
+        }
+      } catch {
+        // Non-critical — fall back to standard scoring
+      }
     }
 
     // Sort by match score descending, then by savings
