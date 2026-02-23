@@ -6,6 +6,7 @@ import {
   saveMessage,
   updateConversationTitle,
   saveSpecialistInsight,
+  saveConversationSummary,
   type UserContext,
 } from './memory'
 import type { SpecialistType, YuriMessage } from '@/types/database'
@@ -361,6 +362,71 @@ export async function* streamAdvisorResponse(
   extractContinuousLearning(userId, message, fullResponse).catch(() => {
     // Learning extraction is non-critical — never block the stream
   })
+
+  // 11. Generate/update conversation summary for cross-session memory.
+  //     Runs on message 1, 3, 5, then every 5 messages to keep summaries fresh
+  //     without regenerating on every single message.
+  const msgCount = conversationHistory.length + 2 // +2 for user + assistant just added
+  const shouldSummarize = msgCount <= 2 || msgCount === 6 || msgCount === 10 || msgCount % 10 === 0
+  if (shouldSummarize) {
+    generateAndSaveSummary(
+      conversationId,
+      [...conversationHistory, { content: message, role: 'user' as const } as YuriMessage],
+      fullResponse
+    ).catch(() => {
+      // Summary generation is non-critical
+    })
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Background: generate conversation summary for cross-session memory
+// ---------------------------------------------------------------------------
+
+async function generateAndSaveSummary(
+  conversationId: string,
+  conversationHistory: YuriMessage[],
+  latestResponse: string
+): Promise<void> {
+  const client = getAnthropicClient()
+
+  // Build a condensed transcript for the summary
+  const transcript = conversationHistory
+    .slice(-20) // Last 20 messages max for context
+    .map((m) => `${m.role === 'user' ? 'User' : 'Yuri'}: ${m.content.slice(0, 300)}`)
+    .join('\n')
+  const fullTranscript = `${transcript}\nYuri: ${latestResponse.slice(0, 500)}`
+
+  const response = await client.messages.create({
+    model: MODELS.background,
+    max_tokens: 400,
+    messages: [
+      {
+        role: 'user',
+        content: `Summarize this K-beauty advisor conversation for future reference. Extract the KEY DETAILS that Yuri should remember in future conversations with this user. Focus on:
+
+1. Specific products mentioned (exact names) and whether the user likes/dislikes them
+2. The user's current routine (AM/PM products, steps, frequency)
+3. Specific skin concerns or goals discussed
+4. Recommendations Yuri made (so she doesn't repeat herself)
+5. Personal details the user shared (location, lifestyle, budget, preferences)
+6. Any allergies or bad reactions mentioned
+7. Questions left unanswered or follow-ups promised
+
+Write the summary in second person ("User uses...", "User mentioned..."). Be concise but specific — product names and details matter more than general topics. Max 300 words.
+
+CONVERSATION:
+${fullTranscript}
+
+Return ONLY the summary text, no headers or formatting.`,
+      },
+    ],
+  })
+
+  const block = response.content[0]
+  if (block.type !== 'text') return
+
+  await saveConversationSummary(conversationId, block.text.trim())
 }
 
 // ---------------------------------------------------------------------------

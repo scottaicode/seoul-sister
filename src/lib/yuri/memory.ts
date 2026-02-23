@@ -36,6 +36,7 @@ export interface ConversationMemory {
   summary: string
   keyInsights: string[]
   timestamp: string
+  aiSummary: string | null
 }
 
 export interface ProductReaction {
@@ -67,7 +68,7 @@ export async function loadUserContext(userId: string): Promise<UserContext> {
     // Recent conversations (last 10) for memory context
     db
       .from('ss_yuri_conversations')
-      .select('id, title, specialist_type, updated_at')
+      .select('id, title, specialist_type, updated_at, summary')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false })
       .limit(10),
@@ -136,13 +137,14 @@ export async function loadUserContext(userId: string): Promise<UserContext> {
 
   // Build conversation memories from recent conversations
   const recentConversations: ConversationMemory[] = (conversationsResult.data || []).map(
-    (conv: { id: string; title: string | null; specialist_type: SpecialistType | null; updated_at: string }) => ({
+    (conv: { id: string; title: string | null; specialist_type: SpecialistType | null; updated_at: string; summary: string | null }) => ({
       conversationId: conv.id,
       title: conv.title,
       specialistType: conv.specialist_type,
       summary: conv.title || 'Untitled conversation',
       keyInsights: [],
       timestamp: conv.updated_at,
+      aiSummary: conv.summary || null,
     })
   )
 
@@ -258,13 +260,26 @@ export function formatContextForPrompt(context: UserContext): string {
     sections.push(`## IMPORTANT: Known Allergies/Sensitivities\nALWAYS check for these before recommending any product:\n${context.knownAllergies.map((a) => `- ${a}`).join('\n')}`)
   }
 
-  // Recent conversation topics
+  // Recent conversation summaries (cross-session memory)
   if (context.recentConversations.length > 0) {
-    const topics = context.recentConversations
-      .slice(0, 5)
-      .map((c) => `- ${c.summary} (${c.specialistType || 'general'})`)
-      .join('\n')
-    sections.push(`## Recent Conversation Topics\n${topics}`)
+    const withSummaries = context.recentConversations.filter(c => c.aiSummary)
+    const withoutSummaries = context.recentConversations.filter(c => !c.aiSummary)
+
+    if (withSummaries.length > 0) {
+      const summaryText = withSummaries
+        .slice(0, 5)
+        .map((c) => `### ${c.title || 'Conversation'} (${c.specialistType || 'general'})\n${c.aiSummary}`)
+        .join('\n\n')
+      sections.push(`## Previous Conversations (Your Memory)\nYou remember these past conversations with this user. Use this knowledge naturally — don't repeat advice they've already received, build on what you discussed before, and reference specific products/routines/preferences they mentioned:\n\n${summaryText}`)
+    }
+
+    if (withoutSummaries.length > 0) {
+      const topics = withoutSummaries
+        .slice(0, 3)
+        .map((c) => `- ${c.summary} (${c.specialistType || 'general'})`)
+        .join('\n')
+      sections.push(`## Other Recent Conversation Topics\n${topics}`)
+    }
   }
 
   // Menstrual cycle phase context
@@ -403,6 +418,20 @@ export async function deleteConversation(
     .eq('id', conversationId)
 
   if (error) throw new Error(`Failed to delete conversation: ${error.message}`)
+}
+
+export async function saveConversationSummary(
+  conversationId: string,
+  summary: string
+): Promise<void> {
+  const db = getServiceClient()
+  await db
+    .from('ss_yuri_conversations')
+    .update({
+      summary,
+      summary_generated_at: new Date().toISOString(),
+    })
+    .eq('id', conversationId)
 }
 
 export async function loadConversationMessages(
