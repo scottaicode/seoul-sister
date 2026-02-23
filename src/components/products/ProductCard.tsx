@@ -1,11 +1,18 @@
 'use client'
 
 import Link from 'next/link'
-import { Star, Shield, Package } from 'lucide-react'
+import { Star, Shield, Package, TrendingUp, Sparkles } from 'lucide-react'
 import type { Product } from '@/types/database'
+
+export interface TrendingInfo {
+  source: string
+  trend_score: number
+  gap_score: number
+}
 
 interface ProductCardProps {
   product: Product
+  trendingInfo?: TrendingInfo
 }
 
 const categoryLabels: Record<string, string> = {
@@ -25,12 +32,54 @@ const categoryLabels: Record<string, string> = {
   spot_treatment: 'Spot Treatment',
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+function getTrendingBadge(info: TrendingInfo): { label: string; className: string } | null {
+  if (info.gap_score > 50) {
+    return {
+      label: 'Emerging',
+      className: 'bg-purple-500/20 text-purple-300',
+    }
+  }
+  if (info.source === 'olive_young' || info.source === 'olive_young_bestseller') {
+    return {
+      label: 'Trending in Korea',
+      className: 'bg-rose-500/20 text-rose-300',
+    }
+  }
+  if (info.source === 'reddit') {
+    return {
+      label: 'Trending on Reddit',
+      className: 'bg-orange-500/20 text-orange-300',
+    }
+  }
+  if (info.trend_score > 0) {
+    return {
+      label: 'Trending',
+      className: 'bg-amber-500/20 text-amber-300',
+    }
+  }
+  return null
+}
+
+export default function ProductCard({ product, trendingInfo }: ProductCardProps) {
+  const badge = trendingInfo ? getTrendingBadge(trendingInfo) : null
+
   return (
     <Link
       href={`/products/${product.id}`}
-      className="glass-card p-4 flex gap-3 transition-all duration-300 group"
+      className="glass-card p-4 flex gap-3 transition-all duration-300 group relative"
     >
+      {/* Trending badge */}
+      {badge && (
+        <span className={`absolute top-2 right-2 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-medium ${badge.className}`}>
+          {badge.label === 'Emerging' ? (
+            <Sparkles className="w-2.5 h-2.5" />
+          ) : (
+            <TrendingUp className="w-2.5 h-2.5" />
+          )}
+          {badge.label}
+        </span>
+      )}
+
       {/* Product image placeholder */}
       <div className="flex-shrink-0 w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden">
         {product.image_url ? (
@@ -76,7 +125,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       </div>
 
       {/* Price */}
-      <div className="flex flex-col items-end justify-center flex-shrink-0">
+      <div className={`flex flex-col items-end justify-center flex-shrink-0 ${badge ? 'mt-4' : ''}`}>
         {product.price_usd && (
           <span className="font-display font-bold text-sm text-white">
             ${Number(product.price_usd).toFixed(0)}

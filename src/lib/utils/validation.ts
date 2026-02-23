@@ -120,7 +120,7 @@ export const productSearchSchema = z.object({
   exclude_ingredients: z.string().optional(),
   fragrance_free: z.boolean().optional(),
   comedogenic_max: z.number().min(0).max(5).optional(),
-  sort_by: z.enum(['price_asc', 'price_desc', 'rating', 'newest', 'trending']).optional(),
+  sort_by: z.enum(['price_asc', 'price_desc', 'rating', 'newest', 'trending', 'recommended']).optional(),
   page: z.number().min(1).optional().default(1),
   limit: z.number().min(1).max(50).optional().default(20),
 })

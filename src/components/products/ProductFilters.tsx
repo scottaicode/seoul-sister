@@ -1,6 +1,6 @@
 'use client'
 
-import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { Search, SlidersHorizontal, Sparkles, X } from 'lucide-react'
 import IngredientPicker from '@/components/products/IngredientPicker'
 import type { ProductCategory } from '@/types/database'
 
@@ -37,6 +37,7 @@ interface ProductFiltersProps {
   excludeIngredients: string[]
   fragranceFree: boolean
   comedogenicMax: number | null
+  isAuthenticated?: boolean
   onQueryChange: (query: string) => void
   onCategoryChange: (category: string) => void
   onSortChange: (sort: string) => void
@@ -56,6 +57,7 @@ export default function ProductFilters({
   excludeIngredients,
   fragranceFree,
   comedogenicMax,
+  isAuthenticated,
   onQueryChange,
   onCategoryChange,
   onSortChange,
@@ -66,6 +68,7 @@ export default function ProductFilters({
   onComedogenicMaxChange,
 }: ProductFiltersProps) {
   const hasIngredientFilters = includeIngredients.length > 0 || excludeIngredients.length > 0 || fragranceFree || comedogenicMax !== null
+  const isRecommended = sortBy === 'recommended'
 
   return (
     <div className="flex flex-col gap-3">
@@ -89,6 +92,19 @@ export default function ProductFilters({
             </button>
           )}
         </div>
+        {isAuthenticated && (
+          <button
+            onClick={() => onSortChange(isRecommended ? 'rating' : 'recommended')}
+            className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+              isRecommended
+                ? 'bg-gradient-to-r from-gold to-amber-500 text-white shadow-lg shadow-gold/20'
+                : 'glass-card text-white/60 hover:text-white'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span className="hidden sm:inline">For You</span>
+          </button>
+        )}
         <button
           onClick={onToggleFilters}
           className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
