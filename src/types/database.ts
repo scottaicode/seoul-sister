@@ -674,6 +674,17 @@ export interface GlassSkinDimensionScore {
   description: string
 }
 
+export interface GlassSkinProductSuggestion {
+  product_id: string
+  name: string
+  brand: string
+  category: string
+  rating_avg: number | null
+  price_usd: number | null
+  retailer: string | null
+  relevance: string // e.g. "hydration", "vitamin C serum"
+}
+
 export interface GlassSkinAnalysisResult {
   overall_score: number
   luminosity_score: number
@@ -683,6 +694,8 @@ export interface GlassSkinAnalysisResult {
   evenness_score: number
   recommendations: string[]
   analysis_notes: string
+  recommended_ingredients?: string[]
+  recommended_categories?: string[]
 }
 
 export interface GlassSkinComparison {
