@@ -787,10 +787,12 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 - [x] Feature 9.5: Daily Automation Cron Jobs + Admin Dashboard (9 cron jobs configured)
 - [x] Feature 9.6: Initial Import Execution (6,200+ products, 590+ brands, $55.97 total pipeline cost)
 
-### Phase 10: Real-Time Trend Intelligence (DOCUMENTED — Next to Build)
-- [ ] Feature 10.1: Olive Young Bestseller Scraper (Korean sales rankings)
-- [ ] Feature 10.2: Reddit K-Beauty Mention Scanner (community mention counts + sentiment)
-- [ ] Feature 10.3: Trend Gap Detector & UI Updates ("Emerging from Korea" tab)
+### Phase 10: Real-Time Trend Intelligence (COMPLETE)
+- [x] Feature 10.1: Olive Young Bestseller Scraper (daily Korean sales rankings via Playwright, 3-tier product matching, non-skincare filtering)
+- [x] Feature 10.2: Reddit K-Beauty Mention Scanner (OAuth 2.0, 5 subreddits, sentiment analysis, brand alias mapping)
+- [x] Feature 10.3: Trend Gap Detector & UI Updates ("Emerging from Korea" tab, gap_score calculation, fabricated seed data deleted)
+- [x] 3 new cron jobs: scan-korean-bestsellers (6:30 AM), scan-reddit-mentions (8:30 AM), calculate-gap-scores (9:00 AM)
+- [x] Migration: ss_trending_products restructured (12 new columns), ss_trend_data_sources tracking table
 
 ### Phase 11: Yuri Intelligence Upgrades (COMPLETE)
 - [x] Feature 11.1: Product Database Tools (6 tools via Claude tool use / function calling)
@@ -815,13 +817,7 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 
 ### Remaining Work
 
-**Next Priority: Phase 10 — Real-Time Trend Intelligence**
-- [ ] Feature 10.1: Olive Young Bestseller Scraper (replace fabricated seed data with real Korean sales rankings)
-- [ ] Feature 10.2: Reddit K-Beauty Mention Scanner (real community mention counts + sentiment)
-- [ ] Feature 10.3: Trend Gap Detector & UI Updates ("Emerging from Korea" — the unique insight)
-- See Phase 10 section below for full implementation plans
-
-**Deferred Phase 8 Features** (build when core intelligence loop is validated with real users)
+**Next Priority: Deferred Phase 8 Features** (build when core intelligence loop is validated with real users)
 - [ ] Feature 8.1: Product Detail Page Enrichment (enrichment API endpoint for product pages)
 - [ ] Feature 8.2: Routine Builder Intelligence (routine CRUD API, conflict detection, layering logic, AI generation)
 - [ ] Feature 8.5: Expiration/PAO Tracking (tracking page exists, API wiring needs review)
@@ -4116,7 +4112,7 @@ Automatic via Vercel on push to `main` branch.
 
 **Created**: February 2026
 **Version**: 8.0.0 (Phase 12 COMPLETE — Platform-Wide Intelligence Upgrade)
-**Status**: Phases 1-12 built. Phase 10 documented (next to build — Real-Time Trend Intelligence). Every feature now personalized, data-backed, and seasonally aware. 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 9 cron jobs configured. Learning engine seeded with 47 ingredient effectiveness rows, 20 seasonal patterns, 8 trend signals. Shared intelligence context helper powers all features.
+**Status**: Phases 1-12 ALL COMPLETE. Phase 10 replaced fabricated seed data with real Olive Young bestseller rankings + Reddit mention scanning + gap score detection (3 cron jobs). Every feature now personalized, data-backed, and seasonally aware. 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 12 cron jobs configured (9 original + 3 Phase 10 trend intelligence). Shared intelligence context helper powers all features.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -4147,8 +4143,8 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
   - **Feature 12.10: Routine Effectiveness Intelligence** (MEDIUM): New `src/lib/intelligence/routine-effectiveness.ts` with `calculateRoutineEffectiveness()`. Queries `ss_ingredient_effectiveness` for per-concern scoring across all routine ingredients
   - **Feature 12.11: Dashboard Intelligence Widgets** (LOW-MED): New `IntelligenceWidgets` component renders "Your Top Ingredients" (top 5 effective ingredients with effectiveness bars and concern labels) and "Seasonal Tip" (current season's advice for user's climate). Wired into dashboard between Yuri's Insights and Skin Profile
   - **Feature 12.12: Community Cohort Intelligence** (LOW): Community page shows effectiveness data per reviewed product. Skin-type cohort analysis integrated into review display with `effectivenessMap`
-  - **Development Phases section updated**: Phases 8-12 now have COMPLETE checkboxes with feature summaries. Remaining Work section reorganized: Phase 10 as next priority, deferred Phase 8 features listed, future work consolidated
-  - **Recommended next phase**: Phase 10 (Real-Time Trend Intelligence) — replaces fabricated seed data with real Olive Young bestseller rankings and Reddit mention counts. Critical for credibility as a trend intelligence platform
+  - **Development Phases section updated**: Phases 8-12 now have COMPLETE checkboxes with feature summaries. Phase 10 confirmed complete (Olive Young bestseller scraper, Reddit mention scanner, gap score detector all deployed with 3 cron jobs). Remaining Work section reorganized: deferred Phase 8 features as next priority, future work consolidated
+  - **12 cron jobs now configured**: 9 original + 3 Phase 10 (scan-korean-bestsellers 6:30 AM, scan-reddit-mentions 8:30 AM, calculate-gap-scores 9:00 AM)
 - v7.0.0 (Feb 22, 2026): Phase 12 Blueprint — Intelligence Layer Propagation Across All Features
   - **Comprehensive feature audit**: Systematically reviewed all 15+ Seoul Sister features for intelligence gaps. Found that Phase 11 upgrades (database tools, learning engine, location awareness) only benefit Yuri — zero other features use the intelligence layer
   - **Phase 12 documented in CLAUDE.md**: 13 features (12.0-12.12) with full implementation plans, code snippets, files to create/modify, and build order
