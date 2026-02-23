@@ -48,7 +48,7 @@ const specialists = [
   { icon: FlaskConical, name: 'Ingredient Analyst', desc: 'Deep ingredient science — safety ratings, comedogenic scores, interaction warnings, and INCI translation.' },
   { icon: Layers, name: 'Routine Architect', desc: 'Builds personalized AM/PM routines with Korean layering order, wait times, and skin cycling schedules.' },
   { icon: ShieldCheck, name: 'Authenticity Investigator', desc: 'Spots counterfeits through packaging analysis, batch codes, seller reputation, and crowdsourced signals.' },
-  { icon: TrendingUp, name: 'Trend Scout', desc: 'Tracks what\'s trending in Seoul — TikTok virality, Reddit buzz, and Korean market signals before they hit the US.' },
+  { icon: TrendingUp, name: 'Trend Scout', desc: 'Live Olive Young bestseller data and Reddit K-beauty mentions. Identifies products trending in Korea before they hit the US.' },
   { icon: PiggyBank, name: 'Budget Optimizer', desc: 'Finds ingredient-matched dupes at a fraction of the price. Same key actives, dramatically lower cost.' },
   { icon: HeartPulse, name: 'Sensitivity Guardian', desc: 'Allergy and reaction prevention — flags irritants, cross-references your history, and protects sensitive skin.' },
 ]
@@ -367,7 +367,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="section-heading mb-3">Why Seoul Sister Exists</h2>
-            <p className="section-subheading mx-auto">Korean consumers have Hwahae — 187,000 products, 5.7M reviews, ingredient-level intelligence. English speakers have nothing. Until now.</p>
+            <p className="section-subheading mx-auto">Korean consumers have deep skincare intelligence — ingredient analysis, safety ratings, millions of reviews filtered by skin type. English speakers have nothing equivalent. Until now.</p>
           </div>
           <motion.div
             variants={stagger}
@@ -390,7 +390,7 @@ export default function LandingPage() {
               {
                 icon: TrendingUp,
                 title: 'Real-Time Korean Trends',
-                desc: 'Track what\'s trending in Seoul before it hits the US market. TikTok, Reddit, Instagram, and Korean market signals — all in one feed.',
+                desc: 'Live Olive Young bestseller rankings scraped daily from Korea. Reddit mention counts from K-beauty communities. Gap scores reveal what\'s trending in Korea before the US notices.',
               },
             ].map(({ icon: Icon, title, desc }) => (
               <motion.div key={title} variants={fadeUp} className="dark-card p-6 text-center">
