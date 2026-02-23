@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Star, ThumbsUp, ThumbsDown, Sparkles, AlertTriangle, Clock, RefreshCw } from 'lucide-react'
+import { Star, ThumbsUp, ThumbsDown, Sparkles, AlertTriangle, Clock, RefreshCw, Beaker } from 'lucide-react'
 import type { Review } from '@/types/database'
 
 interface ReviewCardProps {
@@ -16,6 +16,7 @@ interface ReviewCardProps {
   }
   showProduct?: boolean
   onVote?: (reviewId: string, isHelpful: boolean) => Promise<void> | void
+  effectiveIngredient?: { ingredientName: string; score: number } | null
 }
 
 const reactionLabels: Record<string, { label: string; color: string; icon: typeof Sparkles }> = {
@@ -34,7 +35,7 @@ const skinTypeLabels: Record<string, string> = {
   sensitive: 'Sensitive',
 }
 
-export default function ReviewCard({ review, showProduct = false, onVote }: ReviewCardProps) {
+export default function ReviewCard({ review, showProduct = false, onVote, effectiveIngredient }: ReviewCardProps) {
   const [helpfulState, setHelpfulState] = useState<boolean | null>(null)
   const [voteError, setVoteError] = useState(false)
 
@@ -78,6 +79,17 @@ export default function ReviewCard({ review, showProduct = false, onVote }: Revi
             </p>
             <p className="text-[10px] text-white/40">{review.product.brand_en}</p>
           </div>
+        </div>
+      )}
+
+      {/* Effectiveness badge */}
+      {effectiveIngredient && (
+        <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
+          <Beaker className="w-3 h-3 text-emerald-400/70 flex-shrink-0" />
+          <span className="text-[10px] text-emerald-400/80">
+            Contains <span className="font-medium capitalize">{effectiveIngredient.ingredientName}</span>{' '}
+            ({effectiveIngredient.score}% effective for your skin)
+          </span>
         </div>
       )}
 

@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Users, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import ReviewCard from '@/components/community/ReviewCard'
 import ReviewFilters from '@/components/community/ReviewFilters'
 import PointsBadge from '@/components/community/PointsBadge'
+import CommunityInsights from '@/components/community/CommunityInsights'
+import type { ProductEffectivenessMap } from '@/components/community/CommunityInsights'
 import EmptyState from '@/components/ui/EmptyState'
 import type { LucideIcon } from 'lucide-react'
 import type { Review } from '@/types/database'
@@ -37,6 +39,13 @@ export default function CommunityPage() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [userPoints, setUserPoints] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [effectivenessMap, setEffectivenessMap] = useState<ProductEffectivenessMap>({})
+
+  // Derive unique product IDs from current reviews for the insights API
+  const reviewProductIds = useMemo(
+    () => [...new Set(reviews.map((r) => r.product_id).filter(Boolean))],
+    [reviews],
+  )
 
   const fetchReviews = useCallback(async () => {
     setLoading(true)
@@ -132,6 +141,14 @@ export default function CommunityPage() {
         </div>
       )}
 
+      {/* Community Insights for Your Skin */}
+      {reviews.length > 0 && (
+        <CommunityInsights
+          productIds={reviewProductIds}
+          onEffectivenessData={setEffectivenessMap}
+        />
+      )}
+
       {/* Reviews list */}
       {error ? (
         <div className="glass-card p-6 text-center">
@@ -167,6 +184,7 @@ export default function CommunityPage() {
               review={review}
               showProduct
               onVote={handleVote}
+              effectiveIngredient={effectivenessMap[review.product_id] ?? null}
             />
           ))}
 
