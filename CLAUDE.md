@@ -4029,6 +4029,683 @@ LOW. Query + display.
 
 ---
 
+## Phase 13: AI Conversation Engine Hardening — Learned from LGAAS Audit
+
+**Strategic Rationale**: A comprehensive cross-application audit comparing Seoul Sister's Yuri and LGAAS's AriaStar revealed 6 architectural gaps in Yuri's conversation engine. LGAAS has battle-tested patterns for prompt caching, API retry logic, decision memory, intent-based context loading, onboarding quality scoring, and voice quality cleanup — all proven in production with paying subscribers. Seoul Sister has NONE of these. Meanwhile, LGAAS is missing patterns that Seoul Sister pioneered: Claude native tool use, recent message excerpts as memory safety net, and structured product recommendation extraction.
+
+**The Audit**: Every file in both applications' chat systems was reviewed line-by-line. LGAAS's `advisor-conversation.js` (2,207 lines), `widget-conversation.js` (1,392 lines), `advisor-prompt-helpers.js` (1,350 lines), and `advisor-actions.js` (3,581 lines) were compared against Seoul Sister's `advisor.ts` (764 lines), `memory.ts` (899 lines), `chat/route.ts` (178 lines), and `widget/chat/route.ts` (248 lines).
+
+**Key Findings**:
+
+| Capability | LGAAS | Seoul Sister | Gap |
+|-----------|-------|-------------|-----|
+| Prompt Caching | `cache_control: { type: 'ephemeral' }` on system prompt + last assistant turn + tool defs | **NONE** | HIGH — 20-30% token waste per conversation |
+| API Retry Logic | `callAnthropicWithRetry()` — 3 attempts, exponential backoff (2s, 4s, 8s), retryable status codes | **NONE** | HIGH — any transient failure kills the conversation |
+| Decision Memory | Structured JSON extraction (decisions, preferences, commitments), topic-keyed merging | Prose summaries only | MEDIUM — loses structured decisions between sessions |
+| Intent-Based Context | `classifyAdvisorIntent()` → load only relevant sections (10 topic categories) | Loads ALL context every turn | MEDIUM — unnecessary token usage and Supabase queries |
+| Onboarding Quality | `calculateOnboardingQualityScore()`, vague data detection, improvement sessions | Basic field completion % only | MEDIUM — no detection of thin/vague profile data |
+| Voice Quality Layer | `cleanBannedPatterns()`, `detectAIPatterns()`, `humanizeText()` on every response | **NONE** | LOW — Yuri's system prompt handles voice, but no post-processing cleanup |
+
+**What Seoul Sister Has That LGAAS Doesn't** (documented in LGAAS blueprint for them to adopt):
+- Claude native tool use API (7 tools with `tool_choice: auto`)
+- Recent message excerpts (last 6 messages from 3 recent conversations as memory safety net)
+- Structured product recommendation extraction from prose summaries
+- Specialist agent system with deep domain prompts (200-400 words each)
+
+**Build Strategy**: 6 features, ranked by impact. Each is self-contained for a fresh Claude Code session. Features 13.1-13.3 are the highest priority — they directly improve reliability, reduce costs, and prevent the memory denial bugs that damaged Bailey's trust.
+
+---
+
+### Feature 13.1: Prompt Caching — 20-30% Token Cost Reduction (HIGH PRIORITY)
+
+**Why This First**: Yuri's system prompt is ~1,900 lines (~2,200 tokens). User context adds 2,000-5,000 tokens. Specialist prompts add 250-500 tokens. On a 10-message conversation, the system prompt is re-sent 10 times unchanged. With prompt caching, messages 2+ reuse the cached system prompt at 90% discount. At Opus pricing ($15/$75 per M tokens), this saves $1-3 per active subscriber per month.
+
+**What LGAAS Does** (lines 573-592 of `widget-conversation.js`, lines 737-763 of `advisor-conversation.js`):
+```javascript
+// Cache system prompt
+{ role: 'system', content: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }] }
+
+// Cache last assistant message in conversation history
+if (msg.role === 'assistant' && idx === conversationHistory.length - 2) {
+  return { role: msg.role, content: [{ type: 'text', text: msg.content, cache_control: { type: 'ephemeral' } }] };
+}
+
+// Cache tool definitions
+tools: [{ ...webSearchTool, cache_control: { type: 'ephemeral' } }]
+```
+
+**Ephemeral cache** lasts ~5 minutes. Within a conversation, messages come every 10-60 seconds, so the cache is almost always warm. First message in a new conversation pays full price; subsequent messages pay 10%.
+
+#### Implementation Plan
+
+**File: `src/lib/yuri/advisor.ts` (MODIFY — ~20 lines changed)**
+
+Currently (line ~360):
+```typescript
+const response = await client.messages.create({
+  model: MODELS.primary,
+  max_tokens: 2048,
+  system: fullSystemPrompt,
+  messages: formattedMessages,
+  tools: YURI_TOOLS,
+  tool_choice: { type: 'auto' },
+})
+```
+
+Change to:
+```typescript
+const response = await client.messages.create({
+  model: MODELS.primary,
+  max_tokens: 2048,
+  system: [{ type: 'text', text: fullSystemPrompt, cache_control: { type: 'ephemeral' } }],
+  messages: formattedMessages.map((msg, idx) => {
+    // Cache the last assistant message (second-to-last in history)
+    if (msg.role === 'assistant' && idx === formattedMessages.length - 2) {
+      return {
+        role: msg.role,
+        content: typeof msg.content === 'string'
+          ? [{ type: 'text', text: msg.content, cache_control: { type: 'ephemeral' } }]
+          : msg.content, // Already content blocks (images)
+      }
+    }
+    return msg
+  }),
+  tools: YURI_TOOLS.map((tool, idx) => idx === YURI_TOOLS.length - 1
+    ? { ...tool, cache_control: { type: 'ephemeral' } }
+    : tool
+  ),
+  tool_choice: { type: 'auto' },
+})
+```
+
+**Also apply to**: The tool use loop's follow-up API call (line ~390) — same caching pattern.
+
+**File: `src/app/api/widget/chat/route.ts` (MODIFY — ~10 lines changed)**
+
+Same pattern: cache system prompt + tool definitions. Widget has shorter conversations (5 messages max) so savings are smaller but still worthwhile.
+
+**File: `src/lib/yuri/onboarding.ts` (MODIFY — ~5 lines changed)**
+
+Cache the onboarding system prompt. Onboarding conversations are typically 15-20 turns, so caching saves significantly.
+
+#### Files to Modify
+- `src/lib/yuri/advisor.ts` — Cache system prompt, last assistant message, tool definitions
+- `src/app/api/widget/chat/route.ts` — Cache system prompt, tool definitions
+- `src/lib/yuri/onboarding.ts` — Cache system prompt
+
+#### Database Changes
+None.
+
+#### Testing Checklist
+- [ ] Verify `cache_creation_input_tokens` and `cache_read_input_tokens` appear in API response usage
+- [ ] Confirm message 1 shows `cache_creation_input_tokens` > 0
+- [ ] Confirm message 2+ shows `cache_read_input_tokens` > 0
+- [ ] Verify response quality is unchanged (caching doesn't affect output)
+- [ ] Check widget works with cached system prompt
+- [ ] Check onboarding works with cached system prompt
+
+#### Estimated Complexity
+LOW. This is a 20-30 line change across 3 files. The LGAAS pattern is directly copy-adaptable.
+
+#### Cost Impact
+- Current: ~$4.00/mo avg per Pro subscriber (Opus API)
+- After: ~$2.80-3.20/mo avg (20-30% reduction on input tokens)
+- At 100 subscribers: saves $80-120/month
+
+---
+
+### Feature 13.2: API Retry Logic — Graceful Failure Handling (HIGH PRIORITY)
+
+**Why This Matters**: When Anthropic's API is overloaded (status 529), has a gateway error (502/503), or drops a connection, Yuri's response simply fails. The user sees an error message. LGAAS handles this gracefully with exponential backoff — the user never sees the transient failure.
+
+**What LGAAS Does** (lines 65-88 of `advisor-conversation.js`):
+```javascript
+async function callAnthropicWithRetry(params, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await anthropic.messages.create(params);
+    } catch (error) {
+      const isRetryable =
+        error.message?.includes('Connection error') ||
+        error.message?.includes('overloaded') ||
+        error.message?.includes('ECONNRESET') ||
+        error.message?.includes('socket hang up') ||
+        error.status === 529 ||
+        error.status === 503 ||
+        error.status === 502;
+      if (isRetryable && attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+```
+
+#### Implementation Plan
+
+**File: `src/lib/anthropic.ts` (MODIFY — add retry wrapper)**
+
+Add a retry utility alongside the existing Anthropic client export:
+
+```typescript
+export async function callAnthropicWithRetry(
+  fn: () => Promise<Anthropic.Messages.Message>,
+  maxRetries = 3
+): Promise<Anthropic.Messages.Message> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (error: unknown) {
+      const err = error as { message?: string; status?: number }
+      const isRetryable =
+        err.message?.includes('Connection error') ||
+        err.message?.includes('overloaded') ||
+        err.message?.includes('ECONNRESET') ||
+        err.message?.includes('socket hang up') ||
+        err.status === 529 ||
+        err.status === 503 ||
+        err.status === 502
+
+      if (isRetryable && attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000 // 2s, 4s, 8s
+        console.warn(`[YURI] Attempt ${attempt}/${maxRetries} failed (${err.message || err.status}), retrying in ${delay}ms...`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+      throw error
+    }
+  }
+  throw new Error('Unreachable')
+}
+```
+
+**File: `src/lib/yuri/advisor.ts` (MODIFY)**
+
+Replace `client.messages.create(...)` calls with `callAnthropicWithRetry(() => client.messages.create(...))`:
+- Main conversation call (~line 360)
+- Tool use loop follow-up call (~line 390)
+- Title generation call (~line 435): Use `maxRetries = 1` (non-critical)
+- Summary generation call (~line 510): Use `maxRetries = 1`
+- Insight extraction call (~line 555): Use `maxRetries = 1`
+
+**File: `src/app/api/widget/chat/route.ts` (MODIFY)**
+
+Same pattern for widget's `client.messages.create()` call.
+
+**File: `src/lib/yuri/onboarding.ts` (MODIFY)**
+
+Same pattern for onboarding's `client.messages.stream()` call. Note: streaming uses `.stream()` not `.create()` — need to handle the stream retry differently:
+```typescript
+// For streaming, retry the entire stream creation
+for (let attempt = 1; attempt <= maxRetries; attempt++) {
+  try {
+    const stream = client.messages.stream({...})
+    // If stream starts successfully, return it
+    return stream
+  } catch (error) {
+    // Same retry logic
+  }
+}
+```
+
+#### Files to Modify
+- `src/lib/anthropic.ts` — Add `callAnthropicWithRetry()` utility
+- `src/lib/yuri/advisor.ts` — Wrap API calls with retry
+- `src/app/api/widget/chat/route.ts` — Wrap API calls with retry
+- `src/lib/yuri/onboarding.ts` — Wrap streaming call with retry
+
+#### Database Changes
+None.
+
+#### Testing Checklist
+- [ ] Verify normal conversation works (no false retries)
+- [ ] Simulate 529 by temporarily using invalid model name and verify retry attempts logged
+- [ ] Verify non-retryable errors (400 Bad Request, 401 Auth) are NOT retried
+- [ ] Verify background tasks (title, summary, learning) use maxRetries = 1
+
+#### Estimated Complexity
+LOW. One utility function + 5-10 call site wraps across 4 files.
+
+---
+
+### Feature 13.3: Decision Memory — Structured Cross-Session Intelligence (HIGH PRIORITY)
+
+**Why This Matters**: Yuri currently stores cross-session memory as prose summaries. This works for narrative context but loses structured decisions. When Bailey tells Yuri "I prefer fragrance-free products" or "I've decided to do a 3-phase barrier repair," that's a DECISION that should persist as a structured record — not buried in a 500-word summary that Claude may or may not parse correctly on the next session.
+
+The memory denial bug (Bailey incident) happened partly because Claude didn't "see" specific recommendations in the prose summary. A structured decision memory format — where decisions are explicit key-value pairs — would have prevented this.
+
+**What LGAAS Does** (lines 98-220 of `advisor-conversation.js`):
+- After each conversation, Sonnet extracts structured JSON:
+  ```json
+  {
+    "decisions": [{ "topic": "barrier_repair", "decision": "3-phase approach starting with ceramides", "date": "2026-02-23" }],
+    "preferences": [{ "topic": "fragrance", "preference": "fragrance-free only" }],
+    "commitments": [{ "item": "Try COSRX Snail Mucin for 2 weeks", "date": "2026-02-23" }]
+  }
+  ```
+- Stored on conversation record as JSONB
+- Merged across sessions: latest decision per topic wins, commitments append with dedup
+- Injected into system prompt as structured data
+
+#### Implementation Plan
+
+**Step 1: Add decision_memory column to conversations**
+
+Database migration:
+```sql
+ALTER TABLE ss_yuri_conversations
+  ADD COLUMN IF NOT EXISTS decision_memory JSONB DEFAULT '{}';
+```
+
+**Step 2: Create Decision Memory Extraction Function**
+
+Add to `src/lib/yuri/memory.ts`:
+
+```typescript
+interface DecisionMemory {
+  decisions: Array<{ topic: string; decision: string; date: string }>
+  preferences: Array<{ topic: string; preference: string }>
+  commitments: Array<{ item: string; date: string }>
+  extracted_at: string
+}
+
+async function extractDecisionMemory(
+  messages: Array<{ role: string; content: string }>,
+  existingMemory: DecisionMemory | null
+): Promise<DecisionMemory> {
+  // Call Sonnet to extract structured decisions
+  // Prompt: "Extract any decisions, preferences, or commitments from this conversation..."
+  // Parse JSON response
+  // Merge with existing memory (latest per topic wins)
+}
+
+function mergeDecisionMemory(
+  existing: DecisionMemory | null,
+  extracted: DecisionMemory
+): DecisionMemory {
+  // Latest decision per topic overwrites previous
+  // Preferences: latest per topic overwrites
+  // Commitments: append with dedup by lowercase item text
+}
+```
+
+**Step 3: Call extraction in advisor.ts background tasks**
+
+In `streamAdvisorResponse()`, add decision memory extraction alongside summary generation:
+```typescript
+// After streaming completes
+void extractAndSaveDecisionMemory(userId, conversationId, conversationHistory).catch(() => {})
+```
+
+Trigger: Every 5 messages (same cadence as summary generation). Don't extract on every message — too expensive.
+
+**Step 4: Load decision memory into user context**
+
+In `loadUserContext()` in memory.ts:
+- Query the 3 most recent conversations' `decision_memory` JSONB columns
+- Merge them (latest timestamp wins per topic)
+- Return merged DecisionMemory in UserContext
+
+**Step 5: Format decision memory in system prompt**
+
+In `formatContextForPrompt()`:
+```
+## Your Decisions & Preferences (Structured Memory)
+These are structured decisions and preferences you've recorded from conversations with this user.
+
+### Active Decisions
+- **barrier_repair**: 3-phase approach starting with ceramides (decided 2026-02-23)
+- **sunscreen**: Switched to Beauty of Joseon PA++++ (decided 2026-02-20)
+
+### User Preferences
+- **fragrance**: Fragrance-free only
+- **texture**: Prefers gel-cream over heavy creams
+- **budget**: Max $25 per product
+
+### User Commitments
+- Try COSRX Snail Mucin for 2 weeks (committed 2026-02-23)
+- Take Glass Skin Score photo weekly (committed 2026-02-20)
+```
+
+This gives Claude EXPLICIT structured data instead of hoping it parses the right items from prose summaries.
+
+#### Files to Modify
+- `src/lib/yuri/memory.ts` — Add extraction function, merge function, load function, format function
+- `src/lib/yuri/advisor.ts` — Call extraction in background tasks
+
+#### Database Changes
+- `ALTER TABLE ss_yuri_conversations ADD COLUMN IF NOT EXISTS decision_memory JSONB DEFAULT '{}';`
+
+#### Estimated Complexity
+MEDIUM. The extraction prompt and merge logic are the core work. ~150 lines of new code.
+
+---
+
+### Feature 13.4: Intent-Based Context Loading — Load What's Needed (MEDIUM PRIORITY)
+
+**Why This Matters**: Currently, `loadUserContext()` in memory.ts runs 7 parallel queries EVERY conversation turn regardless of what the user asked. If a user says "what's trending?", Yuri still loads their full routine, product reactions, specialist insights, learning context, and recent excerpts. This wastes ~200-500ms of Supabase query time and adds unnecessary tokens to the prompt.
+
+**What LGAAS Does** (lines 23-80 of `advisor-prompt-helpers.js`):
+```javascript
+function classifyAdvisorIntent(message, isFirstMessage = false) {
+  if (isFirstMessage) return new Set(['general']); // Load everything on first message
+  const topics = new Set();
+  if (/routine|order|layer|morning|night/i.test(message)) topics.add('routine');
+  if (/ingredient|inci|ph|concentration/i.test(message)) topics.add('ingredients');
+  if (/price|budget|cheap|dupe/i.test(message)) topics.add('pricing');
+  if (/trending|popular|viral|korea/i.test(message)) topics.add('trending');
+  // ... 10 topic categories
+  return topics.size ? topics : new Set(['general']);
+}
+```
+
+Then only loads relevant context sections based on detected topics.
+
+#### Implementation Plan
+
+**Step 1: Create Intent Classifier**
+
+Add to `src/lib/yuri/memory.ts`:
+
+```typescript
+type ConversationTopic = 'routine' | 'ingredients' | 'pricing' | 'trending' | 'skin_profile' | 'products' | 'counterfeit' | 'general'
+
+function classifyIntent(message: string, isFirstMessage: boolean): Set<ConversationTopic> {
+  if (isFirstMessage) return new Set(['general'])
+  const topics = new Set<ConversationTopic>()
+
+  if (/routine|order|layer|morning|night|pm|am|step|cycle/i.test(message)) topics.add('routine')
+  if (/ingredient|inci|ph|concentration|formula|niacinamide|retinol|hyaluronic/i.test(message)) topics.add('ingredients')
+  if (/price|budget|cheap|dupe|alternative|save|cost|afford/i.test(message)) topics.add('pricing')
+  if (/trending|popular|viral|korea|tiktok|olive young|new product/i.test(message)) topics.add('trending')
+  if (/skin type|concern|allergy|sensitive|oily|dry|combo|acne|aging/i.test(message)) topics.add('skin_profile')
+  if (/product|recommend|suggest|best|which|compare/i.test(message)) topics.add('products')
+  if (/fake|counterfeit|authentic|batch code|real/i.test(message)) topics.add('counterfeit')
+
+  return topics.size ? topics : new Set(['general'])
+}
+```
+
+**Step 2: Modify `loadUserContext()` to accept topics**
+
+```typescript
+export async function loadUserContext(
+  userId: string,
+  conversationId: string,
+  options?: { topics?: Set<ConversationTopic>; message?: string; isFirstMessage?: boolean }
+): Promise<UserContext> {
+  const topics = options?.topics
+    || classifyIntent(options?.message || '', options?.isFirstMessage ?? false)
+
+  // ALWAYS load (cheap, critical)
+  const profilePromise = loadProfile(userId)
+  const memoriesPromise = loadConversationMemories(userId)
+
+  // CONDITIONAL loads (skip if not relevant)
+  const routinePromise = topics.has('routine') || topics.has('general')
+    ? loadRoutineProducts(userId) : Promise.resolve(null)
+  const reactionsPromise = topics.has('products') || topics.has('ingredients') || topics.has('general')
+    ? loadProductReactions(userId) : Promise.resolve(null)
+  const learningPromise = topics.has('ingredients') || topics.has('skin_profile') || topics.has('general')
+    ? loadLearningContext(profile) : Promise.resolve(null)
+  const specialistPromise = topics.has('general')
+    ? loadSpecialistInsights(userId) : Promise.resolve(null)
+  const excerptsPromise = topics.has('general')
+    ? loadRecentExcerpts(userId) : Promise.resolve(null)
+
+  // Run in parallel
+  const [profile, memories, routine, reactions, learning, specialist, excerpts] =
+    await Promise.all([profilePromise, memoriesPromise, routinePromise, reactionsPromise,
+                       learningPromise, specialistPromise, excerptsPromise])
+
+  return { profile, memories, routine, reactions, learning, specialist, excerpts }
+}
+```
+
+**Step 3: Pass intent from advisor.ts**
+
+In `streamAdvisorResponse()`:
+```typescript
+const isFirstMessage = conversationHistory.length === 0
+const context = await loadUserContext(userId, conversationId, {
+  message, isFirstMessage
+})
+```
+
+**Fallback**: First message of any conversation always loads everything (`general` topic). This ensures Yuri has full context for new conversations. Subsequent messages in the same conversation load selectively.
+
+#### Files to Modify
+- `src/lib/yuri/memory.ts` — Add intent classifier, modify `loadUserContext()` signature and logic
+- `src/lib/yuri/advisor.ts` — Pass message and isFirstMessage to context loader
+
+#### Database Changes
+None.
+
+#### Estimated Complexity
+MEDIUM. Intent classification is simple regex; the refactor of `loadUserContext()` to conditional loading needs careful null handling.
+
+---
+
+### Feature 13.5: Onboarding Quality Scoring — Detect Vague Profiles (MEDIUM PRIORITY)
+
+**Why This Matters**: Yuri's onboarding currently tracks field completion percentage (0-100%). But "completion" doesn't mean "quality." A user who says "I have normal skin" and "no concerns" gets 100% completion but a useless profile. LGAAS detects vague/thin answers and follows up.
+
+**What LGAAS Does** (line 251 of `onboarding-conversation.js`):
+```javascript
+function calculateOnboardingQualityScore(extractedData) {
+  // Scores each field for specificity
+  // "normal" skin type = low specificity (30%)
+  // "combination with oily T-zone" = high specificity (90%)
+  // Identifies thin areas requiring improvement
+  // Returns overall quality score + thin_areas array
+}
+```
+
+#### Implementation Plan
+
+**Step 1: Add Quality Scoring to Onboarding**
+
+Add to `src/lib/yuri/onboarding.ts`:
+
+```typescript
+interface OnboardingQuality {
+  overallScore: number           // 0-100
+  fieldScores: Record<string, number>
+  thinAreas: string[]            // Fields needing more specificity
+  suggestions: string[]          // Natural follow-up prompts for Yuri
+}
+
+function calculateOnboardingQuality(extracted: ExtractedSkinProfile): OnboardingQuality {
+  const scores: Record<string, number> = {}
+
+  // Skin type specificity
+  if (extracted.skin_type) {
+    scores.skin_type = ['oily', 'dry', 'normal'].includes(extracted.skin_type) ? 50 : 85
+    // "combination with oily T-zone and dry cheeks" = 85
+    // "normal" = 50 (vague — most people think they're normal)
+  }
+
+  // Concerns specificity
+  if (extracted.skin_concerns?.length) {
+    scores.skin_concerns = extracted.skin_concerns.length >= 2 ? 90 : 60
+    // Single concern = okay, multiple = better profiling
+  }
+
+  // Allergies: any answer is good (including "none")
+  scores.allergies = extracted.allergies ? 90 : 0
+
+  // Climate: specific city > general zone
+  scores.climate = extracted.location_text ? 90 : (extracted.climate ? 60 : 0)
+
+  // Budget: specific range better than vague
+  scores.budget_preference = extracted.budget_preference ? 70 : 0
+
+  // Current routine: named products > "I use cleanser and moisturizer"
+  scores.current_routine = (extracted.current_routine?.length || 0) >= 3 ? 90
+    : (extracted.current_routine?.length || 0) >= 1 ? 60 : 0
+
+  const thinAreas = Object.entries(scores)
+    .filter(([, score]) => score > 0 && score < 65)
+    .map(([field]) => field)
+
+  const suggestions = thinAreas.map(field => {
+    switch (field) {
+      case 'skin_type': return "Can you tell me more about how your skin feels throughout the day? Like, is your T-zone different from your cheeks?"
+      case 'skin_concerns': return "Besides that, is there anything else about your skin that bugs you? Even small things count."
+      case 'current_routine': return "What specific products are you using right now? Brand names help me give better advice."
+      default: return null
+    }
+  }).filter(Boolean) as string[]
+
+  const filled = Object.values(scores).filter(s => s > 0)
+  const overallScore = filled.length ? Math.round(filled.reduce((a, b) => a + b, 0) / filled.length) : 0
+
+  return { overallScore, fieldScores: scores, thinAreas, suggestions }
+}
+```
+
+**Step 2: Inject quality feedback into onboarding system prompt**
+
+When Yuri has captured the required fields but quality is low (<70), inject a hint:
+```
+## Profile Quality Assessment
+The user's profile is technically complete but some answers are vague:
+- Skin type: They said "normal" — this is often a default answer. Ask a clarifying question naturally.
+- Current routine: Only 1 product mentioned — gently ask if they use anything else.
+
+Ask ONE follow-up question to improve specificity. Don't be clinical about it — be curious and conversational.
+```
+
+**Step 3: Store quality score**
+
+Add `quality_score` column to `ss_onboarding_progress`:
+```sql
+ALTER TABLE ss_onboarding_progress ADD COLUMN IF NOT EXISTS quality_score INTEGER DEFAULT 0;
+```
+
+Track quality score alongside completion percentage. Only mark onboarding as "truly complete" when quality_score >= 65 (not just field completion).
+
+#### Files to Modify
+- `src/lib/yuri/onboarding.ts` — Add quality scoring function, inject into system prompt, track in progress
+- Database migration for `quality_score` column
+
+#### Database Changes
+- `ALTER TABLE ss_onboarding_progress ADD COLUMN IF NOT EXISTS quality_score INTEGER DEFAULT 0;`
+
+#### Estimated Complexity
+MEDIUM. Quality scoring logic + prompt injection + database tracking.
+
+---
+
+### Feature 13.6: Voice Quality Post-Processing — Clean AI Artifacts (LOW PRIORITY)
+
+**Why This Matters**: Despite Yuri's excellent system prompt guiding her voice, Claude occasionally produces AI-isms: em-dashes everywhere, "I'd be happy to help!", "Let me break this down", excessive bullet points, corporate filler phrases. LGAAS catches these with a post-processing layer before saving to the database.
+
+**What LGAAS Does** (from `utils/human-voice-agent.js`):
+```javascript
+function cleanBannedPatterns(rawText) {
+  // Remove em-dashes (—) — replace with comma or period
+  // Remove "I'd be happy to", "Great question!", "Absolutely!"
+  // Remove "Let me break this down", "Here's what I think"
+  // Remove excessive bullet points (convert to prose if >5 bullets in a row)
+}
+
+function detectAIPatterns(text) {
+  // Counts: em-dashes, exclamation marks, "in conclusion", "furthermore"
+  // Returns AI score 0-100
+  // If >50: flag for review
+}
+```
+
+#### Implementation Plan
+
+**Step 1: Create Voice Cleanup Module**
+
+Create `src/lib/yuri/voice-cleanup.ts`:
+
+```typescript
+const BANNED_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
+  // Opener clichés
+  { pattern: /^(Great question!|That's a great question!|I'd be happy to help!?)\s*/i, replacement: '' },
+  { pattern: /^(Absolutely!|Of course!|Sure thing!)\s*/i, replacement: '' },
+  { pattern: /^(Let me break this down\.?|Here's what I think\.?)\s*/i, replacement: '' },
+
+  // Em-dash overuse (replace with comma when between words)
+  { pattern: / — /g, replacement: ', ' },
+
+  // Corporate filler
+  { pattern: /\b(it's worth noting that|it's important to note that)\b/gi, replacement: '' },
+  { pattern: /\b(in conclusion|to summarize|to sum up)\b/gi, replacement: '' },
+  { pattern: /\b(furthermore|moreover|additionally)\b/gi, replacement: 'also' },
+  { pattern: /\b(utilize)\b/gi, replacement: 'use' },
+
+  // Double spaces from removal
+  { pattern: /  +/g, replacement: ' ' },
+  // Leading/trailing whitespace per line
+  { pattern: /^\s+|\s+$/gm, replacement: '' },
+]
+
+export function cleanYuriResponse(text: string): string {
+  let cleaned = text
+  for (const { pattern, replacement } of BANNED_PATTERNS) {
+    cleaned = cleaned.replace(pattern, replacement)
+  }
+  return cleaned.trim()
+}
+```
+
+**Step 2: Apply in advisor.ts**
+
+In `streamAdvisorResponse()`, after collecting the full response text but before saving to DB:
+```typescript
+const cleanedText = cleanYuriResponse(fullResponseText)
+// Save cleanedText to database
+// Stream cleanedText chunks to client
+```
+
+**Important**: Apply cleanup AFTER streaming, not during. Users see the raw stream (latency-sensitive), but the saved version is cleaned. This means the user's real-time experience might have a few AI-isms, but conversation history and summaries will be clean.
+
+**Alternative**: Apply during streaming by cleaning each chunk. Risk: regex replacements on partial text can break words. Only viable if patterns are line-boundary safe.
+
+#### Files to Create
+- `src/lib/yuri/voice-cleanup.ts` (~60 lines)
+
+#### Files to Modify
+- `src/lib/yuri/advisor.ts` — Apply cleanup before DB save
+
+#### Database Changes
+None.
+
+#### Estimated Complexity
+LOW. Simple regex post-processor. The pattern list can grow over time as AI-isms are identified.
+
+---
+
+### Phase 13 Implementation Priority Summary
+
+| # | Feature | Impact | Complexity | Key Deliverable |
+|---|---------|--------|-----------|----------------|
+| 13.1 | Prompt Caching | HIGH | Low | 20-30% token cost reduction |
+| 13.2 | API Retry Logic | HIGH | Low | Graceful handling of transient API failures |
+| 13.3 | Decision Memory | HIGH | Medium | Structured cross-session decisions/preferences/commitments |
+| 13.4 | Intent-Based Context | MEDIUM | Medium | Load only relevant context per message |
+| 13.5 | Onboarding Quality | MEDIUM | Medium | Detect vague profiles, follow up naturally |
+| 13.6 | Voice Quality Cleanup | LOW | Low | Remove AI-isms from saved responses |
+
+**Build Order**: 13.1 + 13.2 (one session — both are low complexity, high impact) → 13.3 (own session — medium complexity, core architecture) → 13.4 + 13.5 (one session — both medium complexity) → 13.6 (can be combined with any other session)
+
+**Session Strategy**: 3 sessions total:
+- Session 1: 13.1 (prompt caching) + 13.2 (retry logic) — Quick wins
+- Session 2: 13.3 (decision memory) — Core architecture change
+- Session 3: 13.4 (intent context) + 13.5 (onboarding quality) + 13.6 (voice cleanup) — Remaining improvements
+
+**Expected Outcome**: Yuri's conversation engine matches LGAAS's battle-tested reliability (prompt caching, retry logic) while adding structured decision memory that prevents memory denial bugs. Cost reduced 20-30%, transient failures handled gracefully, vague profiles detected and improved, AI artifacts cleaned.
+
+---
+
 ## Competitive Landscape
 
 ### Why Seoul Sister Wins
@@ -4111,8 +4788,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 8.0.0 (Phase 12 COMPLETE — Platform-Wide Intelligence Upgrade)
-**Status**: Phases 1-12 ALL COMPLETE. Phase 10 replaced fabricated seed data with real Olive Young bestseller rankings + Reddit mention scanning + gap score detection (3 cron jobs). Every feature now personalized, data-backed, and seasonally aware. 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 12 cron jobs configured (9 original + 3 Phase 10 trend intelligence). Shared intelligence context helper powers all features.
+**Version**: 8.1.0 (Phase 13 Blueprint — AI Conversation Engine Hardening)
+**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 12 cron jobs configured.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -4128,6 +4805,23 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v8.1.0 (Feb 23, 2026): Phase 13 Blueprint — AI Conversation Engine Hardening
+  - **Cross-application audit completed**: Line-by-line comparison of LGAAS AriaStar (7,530+ lines across 4 core files) vs Seoul Sister Yuri (2,089 lines across 4 core files). Identified 6 architectural gaps in Yuri's conversation engine
+  - **Phase 13 documented in CLAUDE.md**: 6 features (13.1-13.6) with full implementation plans, LGAAS code references, and build order
+  - **Feature 13.1: Prompt Caching** (HIGH): Add `cache_control: { type: 'ephemeral' }` to system prompt, last assistant message, and tool definitions in advisor.ts, widget/chat, and onboarding.ts. 20-30% token cost reduction. LGAAS reference: advisor-conversation.js lines 737-763
+  - **Feature 13.2: API Retry Logic** (HIGH): `callAnthropicWithRetry()` utility with 3 attempts, exponential backoff (2s, 4s, 8s), retryable status codes (529, 503, 502, connection errors). Applied to all Claude API calls. LGAAS reference: advisor-conversation.js lines 65-88
+  - **Feature 13.3: Decision Memory** (HIGH): Structured JSON extraction (decisions, preferences, commitments) from conversations via Sonnet. Topic-keyed merging across sessions (latest per topic wins). JSONB column on `ss_yuri_conversations`. Injected into system prompt as explicit structured data. LGAAS reference: advisor-conversation.js lines 98-220
+  - **Feature 13.4: Intent-Based Context Loading** (MEDIUM): `classifyIntent()` function detecting 7 topic categories via regex. `loadUserContext()` conditionally loads only relevant data (routine, reactions, learning, specialist insights, excerpts) based on detected intent. First message always loads everything. Saves ~200-500ms of Supabase queries and reduces prompt tokens
+  - **Feature 13.5: Onboarding Quality Scoring** (MEDIUM): `calculateOnboardingQuality()` scores field specificity (not just completion). Detects vague answers ("normal" skin type = 50% vs "combination with oily T-zone" = 85%). Generates natural follow-up suggestions. `quality_score` column on `ss_onboarding_progress`. LGAAS reference: onboarding-conversation.js line 251
+  - **Feature 13.6: Voice Quality Post-Processing** (LOW): `cleanYuriResponse()` regex post-processor removes AI-isms (em-dashes, "Great question!", corporate filler, excessive bullets). Applied before DB save. LGAAS reference: utils/human-voice-agent.js
+  - **Session strategy**: 3 sessions — (1) 13.1+13.2 quick wins, (2) 13.3 decision memory, (3) 13.4+13.5+13.6 remaining
+  - **LGAAS improvement blueprint**: Created `/lgaas/IMPROVEMENT-BLUEPRINT.md` with 5 improvements Seoul Sister pioneered that LGAAS should adopt (Claude tool use, recent message excerpts, product recommendation extraction, specialist agent system, streaming SSE)
+- v8.0.1 (Feb 23, 2026): Fix Yuri memory denial bug — strengthen cross-session memory trust
+  - **Root cause identified**: Bailey asked Yuri about her onboarding recommendations. Yuri denied making recommendations that WERE in her conversation summaries. Claude's caution about confabulation overrode the instruction to trust summaries as memory. This was NOT a data availability issue — all 3 summaries fit within the 7-summary window
+  - **Fix 1 — System prompt memory trust** (`advisor.ts`): Added "Cross-Session Memory (CRITICAL)" section with 5 explicit rules before "Important Rules". Instructs Claude to NEVER deny recommendations in summaries, always own past advice, explain direction changes
+  - **Fix 2 — Structured product recommendation extraction** (`memory.ts`): New `extractProductRecommendations()` parses bold product names from SECTION 1 of summaries. Deduplicates, filters false positives, generates context snippets. Injected as explicit "YOUR Previous Product Recommendations" section in system prompt
+  - **Fix 3 — Pinned onboarding + expanded limits** (`memory.ts`): Onboarding summary always loaded first (pinned regardless of recency). Summary limit increased from 5 to 7. Header text changed from passive "You remember..." to authoritative "These are YOUR OWN conversations..."
+  - **Build verified**: `tsc --noEmit` and `next build` both pass
 - v8.0.0 (Feb 23, 2026): Phase 12 COMPLETE — Platform-Wide Intelligence Upgrade
   - **All 13 features (12.0-12.12) built and deployed**: Every Seoul Sister feature is now personalized, data-backed, and seasonally aware. The intelligence layer built in Phase 11 (originally only available to Yuri) now powers every scan, product page, routine, trending feed, and dashboard widget.
   - **Feature 12.0: Shared Intelligence Context Helper** (FOUNDATION): Created `src/lib/intelligence/context.ts` with centralized `loadIntelligenceContext(userId)` — runs 5 parallel queries (skin profile, ingredient effectiveness, seasonal patterns, trend signals, product reactions) so any feature can access the intelligence layer without duplicating query logic
