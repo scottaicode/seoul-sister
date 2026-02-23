@@ -18,6 +18,8 @@ interface TrendingCardProps {
   rankPosition?: number | null
   rankChange?: number | null
   daysOnList?: number | null
+  // Phase 10.3: Gap score (Korea vs US awareness gap)
+  gapScore?: number | null
 }
 
 const sourceLabels: Record<string, { label: string; color: string }> = {
@@ -99,10 +101,12 @@ export default function TrendingCard({
   rankPosition,
   rankChange,
   daysOnList,
+  gapScore,
 }: TrendingCardProps) {
   const sourceInfo = sourceLabels[source] ?? { label: source, color: 'bg-gray-100 text-gray-700' }
   const isOliveYoung = source === 'olive_young'
   const isReddit = source === 'reddit'
+  const isEmerging = (gapScore ?? 0) > 50
 
   // Use product data if matched, fall back to source data
   const displayName = product?.name_en ?? sourceProductName ?? 'Unknown Product'
@@ -148,6 +152,12 @@ export default function TrendingCard({
           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${sourceInfo.color}`}>
             {sourceInfo.label}
           </span>
+          {isEmerging && (
+            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-500/20 text-violet-300 border border-violet-500/30">
+              <Sparkles className="w-2.5 h-2.5" />
+              Emerging
+            </span>
+          )}
           <span className="flex items-center gap-0.5 text-[10px] text-gold font-medium">
             <TrendingUp className="w-2.5 h-2.5" />
             {trendScore}
@@ -172,6 +182,11 @@ export default function TrendingCard({
           {sentimentScore !== null && sentimentScore !== 0.5 && (
             <span className={`font-medium ${sentimentScore >= 0.7 ? 'text-green-600' : sentimentScore >= 0.5 ? 'text-yellow-600' : 'text-red-600'}`}>
               {Math.round(sentimentScore * 100)}% positive
+            </span>
+          )}
+          {isEmerging && (
+            <span className="font-medium text-violet-400">
+              Not yet trending in the US
             </span>
           )}
           <span>{getDaysAgo(trendingSince)}</span>

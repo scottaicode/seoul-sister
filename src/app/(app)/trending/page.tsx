@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { TrendingUp, Loader2, ShoppingBag, MessageCircle } from 'lucide-react'
+import { TrendingUp, Loader2, ShoppingBag, MessageCircle, Sparkles } from 'lucide-react'
 import TrendingCard from '@/components/community/TrendingCard'
 import EmptyState from '@/components/ui/EmptyState'
 
@@ -26,7 +26,11 @@ interface TrendingItem {
   rank_position: number | null
   rank_change: number | null
   days_on_list: number | null
+  // Phase 10.3 fields
+  gap_score: number | null
 }
+
+type ActiveTab = 'trending' | 'emerging' | 'tiktok'
 
 const sourceFilters = [
   { value: '', label: 'All', active: true },
@@ -36,56 +40,88 @@ const sourceFilters = [
 
 export default function TrendingPage() {
   const [trending, setTrending] = useState<TrendingItem[]>([])
+  const [emerging, setEmerging] = useState<TrendingItem[]>([])
   const [loading, setLoading] = useState(true)
   const [sourceFilter, setSourceFilter] = useState('olive_young')
-  const [activeTab, setActiveTab] = useState<'trending' | 'tiktok'>('trending')
+  const [activeTab, setActiveTab] = useState<ActiveTab>('trending')
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function fetchTrending() {
-      setLoading(true)
-      setError(null)
-      try {
-        const params = new URLSearchParams()
-        if (sourceFilter) params.set('source', sourceFilter)
-        // "All" needs a higher limit to include both sources
-        params.set('limit', sourceFilter === '' ? '50' : '30')
+  // Fetch trending data (standard tab)
+  const fetchTrending = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const params = new URLSearchParams()
+      if (sourceFilter) params.set('source', sourceFilter)
+      params.set('limit', sourceFilter === '' ? '50' : '30')
 
-        const res = await fetch(`/api/trending?${params.toString()}`)
-        if (!res.ok) throw new Error('Failed to load trends')
-        const data = await res.json()
-        setTrending(data.trending ?? [])
-      } catch {
-        setError('Failed to load trending products. Please try again.')
-        setTrending([])
-      } finally {
-        setLoading(false)
-      }
+      const res = await fetch(`/api/trending?${params.toString()}`)
+      if (!res.ok) throw new Error('Failed to load trends')
+      const data = await res.json()
+      setTrending(data.trending ?? [])
+    } catch {
+      setError('Failed to load trending products. Please try again.')
+      setTrending([])
+    } finally {
+      setLoading(false)
     }
-    fetchTrending()
   }, [sourceFilter])
 
-  // Count entries by source for the header subtitle
+  // Fetch emerging data (gap score tab)
+  const fetchEmerging = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/trending?tab=emerging&limit=30')
+      if (!res.ok) throw new Error('Failed to load emerging trends')
+      const data = await res.json()
+      setEmerging(data.trending ?? [])
+    } catch {
+      setError('Failed to load emerging trends. Please try again.')
+      setEmerging([])
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'trending') {
+      fetchTrending()
+    } else if (activeTab === 'emerging') {
+      fetchEmerging()
+    }
+  }, [activeTab, fetchTrending, fetchEmerging])
+
+  // Count entries by source for the "All" view
   const oliveYoungCount = trending.filter(t => t.source === 'olive_young').length
   const redditCount = trending.filter(t => t.source === 'reddit').length
+
+  // Tab descriptions
+  const tabDescriptions: Record<ActiveTab, string> = {
+    trending:
+      sourceFilter === 'olive_young'
+        ? 'Real-time Olive Young bestseller rankings from Korea.'
+        : sourceFilter === 'reddit'
+        ? 'What the K-beauty community is talking about on Reddit.'
+        : 'Korean sales rankings + Reddit community mentions.',
+    emerging:
+      'Products trending in Korea that the US hasn\u2019t discovered yet \u2014 your early-access edge.',
+    tiktok: '',
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col gap-1">
         <h1 className="font-display font-semibold text-2xl text-white section-heading">
-          Trending in Korea
+          {activeTab === 'emerging' ? 'Emerging from Korea' : 'Trending in Korea'}
         </h1>
         <p className="text-white/40 text-sm">
-          {sourceFilter === 'olive_young'
-            ? 'Real-time Olive Young bestseller rankings from Korea.'
-            : sourceFilter === 'reddit'
-            ? 'What the K-beauty community is talking about on Reddit.'
-            : 'Korean sales rankings + Reddit community mentions.'}
+          {tabDescriptions[activeTab]}
         </p>
       </div>
 
-      {/* Tab switcher */}
+      {/* Tab switcher — 3 tabs */}
       <div className="flex gap-1 bg-white/5 rounded-xl p-1">
         <button
           onClick={() => setActiveTab('trending')}
@@ -96,7 +132,18 @@ export default function TrendingPage() {
           }`}
         >
           <TrendingUp className="w-4 h-4" />
-          Trending Now
+          Trending
+        </button>
+        <button
+          onClick={() => setActiveTab('emerging')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+            activeTab === 'emerging'
+              ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+              : 'text-white/40 hover:text-white'
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+          Emerging
         </button>
         <button
           onClick={() => setActiveTab('tiktok')}
@@ -107,10 +154,11 @@ export default function TrendingPage() {
           }`}
         >
           <span className="w-4 h-4 rounded bg-black text-white text-[8px] font-bold flex items-center justify-center">TT</span>
-          TikTok Capture
+          TikTok
         </button>
       </div>
 
+      {/* ---- Trending Now tab ---- */}
       {activeTab === 'trending' && (
         <>
           {/* Source filter */}
@@ -137,7 +185,7 @@ export default function TrendingPage() {
             <div className="glass-card p-6 text-center">
               <p className="text-sm text-red-400 mb-3">{error}</p>
               <button
-                onClick={() => setSourceFilter(sourceFilter)}
+                onClick={() => fetchTrending()}
                 className="text-xs text-gold-light hover:text-gold transition-colors"
               >
                 Try again
@@ -190,7 +238,8 @@ export default function TrendingPage() {
                           sentimentScore={item.sentiment_score} trendingSince={item.trending_since}
                           sourceProductName={item.source_product_name} sourceProductBrand={item.source_product_brand}
                           sourceUrl={item.source_url} rankPosition={item.rank_position}
-                          rankChange={item.rank_change} daysOnList={item.days_on_list} />
+                          rankChange={item.rank_change} daysOnList={item.days_on_list}
+                          gapScore={item.gap_score} />
                       ))}
                     </>
                   )}
@@ -206,7 +255,8 @@ export default function TrendingPage() {
                           sentimentScore={item.sentiment_score} trendingSince={item.trending_since}
                           sourceProductName={item.source_product_name} sourceProductBrand={item.source_product_brand}
                           sourceUrl={item.source_url} rankPosition={item.rank_position}
-                          rankChange={item.rank_change} daysOnList={item.days_on_list} />
+                          rankChange={item.rank_change} daysOnList={item.days_on_list}
+                          gapScore={item.gap_score} />
                       ))}
                     </>
                   )}
@@ -219,7 +269,8 @@ export default function TrendingPage() {
                     sentimentScore={item.sentiment_score} trendingSince={item.trending_since}
                     sourceProductName={item.source_product_name} sourceProductBrand={item.source_product_brand}
                     sourceUrl={item.source_url} rankPosition={item.rank_position}
-                    rankChange={item.rank_change} daysOnList={item.days_on_list} />
+                    rankChange={item.rank_change} daysOnList={item.days_on_list}
+                    gapScore={item.gap_score} />
                 ))
               )}
             </div>
@@ -227,6 +278,60 @@ export default function TrendingPage() {
         </>
       )}
 
+      {/* ---- Emerging from Korea tab ---- */}
+      {activeTab === 'emerging' && (
+        <>
+          {error ? (
+            <div className="glass-card p-6 text-center">
+              <p className="text-sm text-red-400 mb-3">{error}</p>
+              <button
+                onClick={() => fetchEmerging()}
+                className="text-xs text-gold-light hover:text-gold transition-colors"
+              >
+                Try again
+              </button>
+            </div>
+          ) : loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-gold" />
+            </div>
+          ) : emerging.length === 0 ? (
+            <EmptyState
+              icon={Sparkles as LucideIcon}
+              title="No Emerging Trends Yet"
+              description="Gap scores are calculated daily after Olive Young and Reddit scans complete. Products trending in Korea but not yet popular in the US will appear here."
+            />
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-xs text-white/30 pb-1">
+                <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+                <span>Trending in Korea, not yet on the US radar</span>
+              </div>
+
+              {/* Explainer card */}
+              <div className="glass-card p-4 border-violet-500/20">
+                <p className="text-xs text-white/50 leading-relaxed">
+                  These products are selling well in Korea (Olive Young bestsellers) but have little to no
+                  discussion in English K-beauty communities. History shows these often become the next big
+                  trends — you&apos;re seeing them first.
+                </p>
+              </div>
+
+              {emerging.map((item) => (
+                <TrendingCard key={item.id} product={item.product} source={item.source}
+                  trendScore={item.trend_score} mentionCount={item.mention_count}
+                  sentimentScore={item.sentiment_score} trendingSince={item.trending_since}
+                  sourceProductName={item.source_product_name} sourceProductBrand={item.source_product_brand}
+                  sourceUrl={item.source_url} rankPosition={item.rank_position}
+                  rankChange={item.rank_change} daysOnList={item.days_on_list}
+                  gapScore={item.gap_score} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ---- TikTok Capture tab ---- */}
       {activeTab === 'tiktok' && <TikTokCapture />}
 
       {/* Bottom spacer for mobile nav */}

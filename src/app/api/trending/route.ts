@@ -15,6 +15,23 @@ export async function GET(request: NextRequest) {
     const tab = searchParams.get('tab') || 'trending'
     const limit = Math.min(Number(searchParams.get('limit') || 20), 50)
 
+    // "emerging" tab: products trending in Korea but unknown in the US
+    if (tab === 'emerging') {
+      const { data, error } = await supabase
+        .from('ss_trending_products')
+        .select('*, product:ss_products(*)')
+        .eq('source', 'olive_young')
+        .gt('gap_score', 30)
+        .order('gap_score', { ascending: false })
+        .order('trend_score', { ascending: false })
+        .limit(limit)
+
+      if (error) throw error
+
+      return NextResponse.json({ trending: data ?? [] })
+    }
+
+    // Standard trending tab
     let query = supabase
       .from('ss_trending_products')
       .select('*, product:ss_products(*)')

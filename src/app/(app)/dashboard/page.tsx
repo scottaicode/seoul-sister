@@ -41,21 +41,39 @@ function getGreeting() {
 
 function useTrendingProducts() {
   const [trending, setTrending] = useState<TrendingProduct[]>([])
+  const [emergingCount, setEmergingCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch('/api/trending?limit=3')
-        const data = await res.json()
-        const items = (data.trending ?? []).map((t: Record<string, unknown>) => {
+        // Fetch top 3 trending + check for emerging products in parallel
+        const [trendingRes, emergingRes] = await Promise.all([
+          fetch('/api/trending?limit=3'),
+          fetch('/api/trending?tab=emerging&limit=1'),
+        ])
+        const trendingData = await trendingRes.json()
+        const emergingData = await emergingRes.json()
+
+        setEmergingCount((emergingData.trending ?? []).length)
+
+        const items = (trendingData.trending ?? []).map((t: Record<string, unknown>) => {
           const product = t.product as Record<string, unknown> | null
           const source = t.source as string
           const isOliveYoung = source === 'olive_young'
           const rankPos = t.rank_position as number | null
-          const signal = isOliveYoung && rankPos
-            ? `#${rankPos} on Olive Young`
-            : `${source ?? 'Trending'} · ${t.mention_count ?? 0} mentions`
+          const gapScore = t.gap_score as number | null
+          const isEmerging = (gapScore ?? 0) > 50
+
+          let signal: string
+          if (isEmerging) {
+            signal = `Emerging · #${rankPos ?? '?'} in Korea`
+          } else if (isOliveYoung && rankPos) {
+            signal = `#${rankPos} on Olive Young`
+          } else {
+            signal = `${source ?? 'Trending'} · ${t.mention_count ?? 0} mentions`
+          }
+
           return {
             id: product?.id ?? t.product_id ?? t.id,
             name: product?.name_en ?? t.source_product_name ?? 'Unknown Product',
@@ -63,6 +81,7 @@ function useTrendingProducts() {
             category: product?.category ?? '',
             trendSignal: signal,
             rating: product?.average_rating ?? null,
+            isEmerging,
           }
         })
         setTrending(items)
@@ -75,7 +94,7 @@ function useTrendingProducts() {
     load()
   }, [])
 
-  return { trending, loading }
+  return { trending, emergingCount, loading }
 }
 
 // ---------------------------------------------------------------------------
@@ -84,7 +103,7 @@ function useTrendingProducts() {
 
 export default function DashboardPage() {
   const { user } = useAuth()
-  const { trending, loading: trendingLoading } = useTrendingProducts()
+  const { trending, emergingCount, loading: trendingLoading } = useTrendingProducts()
 
   const displayName = useMemo(() => {
     if (!user) return null
@@ -284,9 +303,20 @@ export default function DashboardPage() {
       {/* Trending in Korea */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-display font-semibold text-base text-white">
-            Trending in Korea
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="font-display font-semibold text-base text-white">
+              Trending in Korea
+            </h2>
+            {emergingCount > 0 && (
+              <Link
+                href="/trending"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-500/20 text-violet-300 border border-violet-500/30 hover:bg-violet-500/30 transition-colors"
+              >
+                <Sparkles className="w-2.5 h-2.5" />
+                Emerging
+              </Link>
+            )}
+          </div>
           <Link
             href="/trending"
             className="text-xs text-gold-light font-medium hover:text-gold transition-colors duration-200 flex items-center gap-0.5"

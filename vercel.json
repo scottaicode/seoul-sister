@@ -32,6 +32,9 @@
     },
     "src/app/api/cron/scan-reddit-mentions/route.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/cron/calculate-gap-scores/route.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -78,6 +81,10 @@
     {
       "path": "/api/cron/scan-reddit-mentions",
       "schedule": "30 8 * * *"
+    },
+    {
+      "path": "/api/cron/calculate-gap-scores",
+      "schedule": "0 9 * * *"
     },
     {
       "path": "/api/cron/refresh-prices",

@@ -1,4 +1,4 @@
-import { ChevronRight, Flame, Package, Star } from 'lucide-react'
+import { ChevronRight, Flame, Package, Sparkles, Star } from 'lucide-react'
 
 export interface TrendingProduct {
   id: string
@@ -7,6 +7,7 @@ export interface TrendingProduct {
   category: string
   trendSignal: string
   rating: number
+  isEmerging?: boolean
 }
 
 export default function TrendingProductCard({ product }: { product: TrendingProduct }) {
@@ -22,8 +23,12 @@ export default function TrendingProductCard({ product }: { product: TrendingProd
         </p>
         <p className="text-xs text-white/40">{product.brand}</p>
         <div className="flex items-center gap-2 mt-1.5">
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-gold/10 text-gold-light border border-gold/20 inline-flex items-center gap-1">
-            <Flame className="w-2.5 h-2.5" />
+          <span className={`text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
+            product.isEmerging
+              ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+              : 'bg-gold/10 text-gold-light border border-gold/20'
+          }`}>
+            {product.isEmerging ? <Sparkles className="w-2.5 h-2.5" /> : <Flame className="w-2.5 h-2.5" />}
             {product.trendSignal}
           </span>
           <span className="flex items-center gap-0.5 text-[10px] text-white/40">
