@@ -376,14 +376,13 @@ export async function* streamAdvisorResponse(
   const MAX_TOOL_LOOPS = 3
   let toolLoopCount = 0
 
-  // Tool use loop: Claude may request tools, we execute them, then re-call
-  while (toolLoopCount <= MAX_TOOL_LOOPS) {
-    // Apply cache_control to the last assistant message for cache reuse
-    const cachedMessages = loopMessages.map((msg, idx) => {
+  // Helper: apply cache_control to the last assistant message for cache reuse
+  function applyCacheControl(msgs: Anthropic.Messages.MessageParam[]) {
+    return msgs.map((msg, idx) => {
       if (
         msg.role === 'assistant' &&
         typeof msg.content === 'string' &&
-        idx === loopMessages.length - 2
+        idx === msgs.length - 2
       ) {
         return {
           role: 'assistant' as const,
@@ -394,64 +393,86 @@ export async function* streamAdvisorResponse(
       }
       return msg
     })
+  }
 
-    const response = await callAnthropicWithRetry(() =>
-      client.messages.create({
-        model: MODELS.primary,
-        max_tokens: 2048,
-        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-        messages: cachedMessages,
-        tools: cachedTools,
-        tool_choice: { type: 'auto' },
-      })
-    )
+  // Streaming tool use loop: use messages.stream() for ALL calls.
+  // Tool use rounds: collect tool_use blocks from stream, execute them, loop.
+  // Final text round: yield text_delta events to client in real-time.
+  while (toolLoopCount <= MAX_TOOL_LOOPS) {
+    const cachedMessages = applyCacheControl(loopMessages)
 
-    if (response.stop_reason === 'tool_use') {
-      // Claude wants to use tools — extract tool_use blocks, execute, and loop
-      toolLoopCount++
+    const stream = client.messages.stream({
+      model: MODELS.primary,
+      max_tokens: 2048,
+      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+      messages: cachedMessages,
+      tools: cachedTools,
+      tool_choice: { type: 'auto' },
+    })
 
-      // Add Claude's response (with tool_use blocks) to the message history
-      loopMessages.push({ role: 'assistant', content: response.content })
+    // Collect tool_use blocks from the stream (if any).
+    // Also yield text deltas in real-time for the final response.
+    const toolUseBlocks: Array<{ id: string; name: string; input: string }> = []
+    let currentToolBlock: { id: string; name: string; input: string } | null = null
 
-      // Execute each tool and build tool_result blocks
-      const toolResults: Anthropic.Messages.ToolResultBlockParam[] = []
-      for (const block of response.content) {
-        if (block.type === 'tool_use') {
-          const result = await executeYuriTool(
-            block.name,
-            block.input as Record<string, unknown>,
-            userId
-          )
-          toolResults.push({
-            type: 'tool_result',
-            tool_use_id: block.id,
-            content: result,
-          })
+    for await (const event of stream) {
+      if (event.type === 'content_block_start') {
+        if (event.content_block.type === 'tool_use') {
+          currentToolBlock = {
+            id: event.content_block.id,
+            name: event.content_block.name,
+            input: '',
+          }
         }
-      }
-
-      // Add tool results as a user message (Claude API requirement)
-      loopMessages.push({ role: 'user', content: toolResults })
-
-      // Continue the loop — Claude will process tool results and respond
-      continue
-    }
-
-    // stop_reason is 'end_turn' (or 'max_tokens') — extract text and yield
-    for (const block of response.content) {
-      if (block.type === 'text') {
-        fullResponse += block.text
+      } else if (event.type === 'content_block_delta') {
+        if (event.delta.type === 'text_delta') {
+          // Real-time text streaming to client
+          fullResponse += event.delta.text
+          yield event.delta.text
+        } else if (event.delta.type === 'input_json_delta' && currentToolBlock) {
+          currentToolBlock.input += event.delta.partial_json
+        }
+      } else if (event.type === 'content_block_stop' && currentToolBlock) {
+        toolUseBlocks.push(currentToolBlock)
+        currentToolBlock = null
       }
     }
 
-    // Yield the response in chunks to maintain SSE streaming feel
-    // Break into ~50 char chunks to simulate streaming
-    const CHUNK_SIZE = 50
-    for (let i = 0; i < fullResponse.length; i += CHUNK_SIZE) {
-      yield fullResponse.slice(i, i + CHUNK_SIZE)
+    // If no tool_use blocks were collected, the response is complete
+    if (toolUseBlocks.length === 0) {
+      break
     }
 
-    break // Exit the tool loop
+    // Tools were requested — execute them and loop
+    toolLoopCount++
+
+    // Reconstruct the assistant content blocks for the message history
+    const finalMessage = await stream.finalMessage()
+    loopMessages.push({ role: 'assistant', content: finalMessage.content })
+
+    // Execute each tool and build tool_result blocks
+    const toolResults: Anthropic.Messages.ToolResultBlockParam[] = []
+    for (const toolBlock of toolUseBlocks) {
+      let parsedInput: Record<string, unknown> = {}
+      try {
+        parsedInput = JSON.parse(toolBlock.input || '{}')
+      } catch {
+        // Fall through with empty input
+      }
+      const result = await executeYuriTool(
+        toolBlock.name,
+        parsedInput,
+        userId
+      )
+      toolResults.push({
+        type: 'tool_result',
+        tool_use_id: toolBlock.id,
+        content: result,
+      })
+    }
+
+    // Add tool results as a user message (Claude API requirement)
+    loopMessages.push({ role: 'user', content: toolResults })
   }
 
   // If we exhausted tool loops without a final text response, yield what we have
