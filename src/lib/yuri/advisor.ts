@@ -475,13 +475,20 @@ export async function* streamAdvisorResponse(
     }
 
     // Tools were found — discard intermediate "thinking" text (e.g.,
-    // "Let me search for that...") to avoid it running together with
-    // the final response text. Execute tools and loop for the next round.
+    // "Let me search for that...") to avoid it leaking into the final
+    // response. Strip text blocks from the assistant message so Claude
+    // only sees its tool_use blocks on the next round.
     toolLoopCount++
 
-    // Reconstruct the assistant content blocks for the message history
     const finalMessage = await stream.finalMessage()
-    loopMessages.push({ role: 'assistant', content: finalMessage.content })
+    // Keep only tool_use blocks — drop text blocks (thinking noise)
+    const toolOnlyContent = finalMessage.content.filter(
+      (block) => block.type === 'tool_use'
+    )
+    loopMessages.push({
+      role: 'assistant',
+      content: toolOnlyContent.length > 0 ? toolOnlyContent : finalMessage.content,
+    })
 
     // Execute each tool and build tool_result blocks
     const toolResults: Anthropic.Messages.ToolResultBlockParam[] = []
