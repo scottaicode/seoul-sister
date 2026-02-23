@@ -20,6 +20,9 @@ interface TrendingCardProps {
   daysOnList?: number | null
   // Phase 10.3: Gap score (Korea vs US awareness gap)
   gapScore?: number | null
+  // Phase 12.7: Personalized cohort label
+  cohortLabel?: string | null
+  cohortScore?: number | null
 }
 
 const sourceLabels: Record<string, { label: string; color: string }> = {
@@ -102,6 +105,8 @@ export default function TrendingCard({
   rankChange,
   daysOnList,
   gapScore,
+  cohortLabel,
+  cohortScore,
 }: TrendingCardProps) {
   const sourceInfo = sourceLabels[source] ?? { label: source, color: 'bg-gray-100 text-gray-700' }
   const isOliveYoung = source === 'olive_young'
@@ -171,6 +176,21 @@ export default function TrendingCard({
           {displayName}
         </p>
         <p className="text-[10px] text-white/40">{displayBrand}</p>
+
+        {/* Cohort label — personalized skin-type effectiveness */}
+        {cohortLabel && (
+          <div className="flex items-center gap-1.5">
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+              (cohortScore ?? 0) >= 75
+                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                : (cohortScore ?? 0) >= 60
+                ? 'bg-sky-500/15 text-sky-400 border border-sky-500/20'
+                : 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
+            }`}>
+              {cohortLabel}
+            </span>
+          </div>
+        )}
 
         <div className="flex items-center gap-3 text-[10px] text-white/40">
           {isOliveYoung && daysOnList != null && (
