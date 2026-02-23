@@ -29,6 +29,7 @@ export interface UserContext {
   learningInsights: LearningContextData[]
   specialistInsights: SpecialistInsightMemory[]
   cyclePhase: CyclePhaseInfo | null
+  locationName: string | null
 }
 
 export interface LearningContextData {
@@ -207,6 +208,9 @@ export async function loadUserContext(userId: string, currentConversationId?: st
   // This gives Yuri access to what she actually said, even if the summary missed it
   const recentExcerpts = await loadRecentConversationExcerpts(db, userId, currentConversationId)
 
+  // Reverse-geocode user's location from lat/lng if available
+  const locationName = await reverseGeocodeUserLocation(skinProfile)
+
   return {
     skinProfile,
     recentConversations,
@@ -218,6 +222,7 @@ export async function loadUserContext(userId: string, currentConversationId?: st
     learningInsights,
     specialistInsights,
     cyclePhase,
+    locationName,
   }
 }
 
@@ -232,12 +237,13 @@ export function formatContextForPrompt(context: UserContext): string {
   if (context.skinProfile) {
     const p = context.skinProfile
     const onboarded = (p as unknown as Record<string, unknown>).onboarding_completed
+    const locationLine = context.locationName ? `\n- Location: ${context.locationName}` : ''
     sections.push(`## User's Skin Profile${onboarded ? ' (built during your onboarding conversation -- you already know this user!)' : ''}
 - Skin type: ${p.skin_type}
 - Concerns: ${p.skin_concerns?.join(', ') || 'none specified'}
 - Allergies: ${p.allergies?.join(', ') || 'none known'}
 - Fitzpatrick scale: ${p.fitzpatrick_scale}
-- Climate: ${p.climate}
+- Climate: ${p.climate}${locationLine}
 - Age range: ${p.age_range}
 - Budget: ${p.budget_range}
 - Experience level: ${p.experience_level}`)
@@ -677,6 +683,50 @@ async function loadRecentConversationExcerpts(
   } catch {
     // Excerpt loading is non-critical
     return []
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Reverse-geocode user location from lat/lng (Open-Meteo, free, no key)
+// ---------------------------------------------------------------------------
+
+async function reverseGeocodeUserLocation(
+  skinProfile: SkinProfile | null
+): Promise<string | null> {
+  try {
+    const raw = skinProfile as unknown as Record<string, unknown> | null
+    const lat = raw?.latitude as string | number | null
+    const lng = raw?.longitude as string | number | null
+    if (!lat || !lng) return null
+
+    const latNum = typeof lat === 'string' ? parseFloat(lat) : lat
+    const lngNum = typeof lng === 'string' ? parseFloat(lng) : lng
+    if (isNaN(latNum) || isNaN(lngNum)) return null
+
+    // BigDataCloud free reverse geocoding (no API key, no rate limit issues)
+    const res = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latNum}&longitude=${lngNum}&localityLanguage=en`,
+      { next: { revalidate: 86400 } } // cache 24h
+    )
+    if (!res.ok) return null
+
+    const data = await res.json() as {
+      city?: string
+      locality?: string
+      principalSubdivision?: string
+      countryName?: string
+    }
+
+    const city = data.city || data.locality
+    if (!city) return null
+
+    const parts = [city]
+    if (data.principalSubdivision) parts.push(data.principalSubdivision)
+    if (data.countryName) parts.push(data.countryName)
+    return parts.join(', ')
+  } catch {
+    // Location is non-critical
+    return null
   }
 }
 
