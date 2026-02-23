@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
 import { checkRateLimit } from '@/lib/utils/rate-limiter'
 import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
+import { cleanYuriResponse } from '@/lib/yuri/voice-cleanup'
 import type Anthropic from '@anthropic-ai/sdk'
 
 const MAX_FREE_MESSAGES = 5
@@ -232,6 +233,9 @@ export async function POST(request: NextRequest) {
         if (!fullResponse) {
           fullResponse = "I'm having a moment accessing our database. Based on my experience though — what specifically are you looking for? I can help with product recommendations, ingredient questions, or K-beauty routines."
         }
+
+        // Clean AI artifacts before sending to client
+        fullResponse = cleanYuriResponse(fullResponse)
 
         // Stream the response in chunks to maintain SSE feel
         const CHUNK_SIZE = 50
