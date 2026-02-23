@@ -310,10 +310,13 @@ function ChatMessageComponent({ message }: ChatMessageProps) {
             <span className="inline-block w-1.5 h-4 bg-gold/60 animate-pulse ml-0.5 -mb-0.5 rounded-sm" />
           )}
           {message.isStreaming && message.content.length === 0 && (
-            <div className="flex items-center gap-1.5 py-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-gold/40 animate-pulse" />
-              <span className="w-1.5 h-1.5 rounded-full bg-gold/40 animate-pulse [animation-delay:150ms]" />
-              <span className="w-1.5 h-1.5 rounded-full bg-gold/40 animate-pulse [animation-delay:300ms]" />
+            <div className="flex items-center gap-2 py-1">
+              <span className="text-gold/70 text-sm italic">Yuri is thinking</span>
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-gold/50 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-gold/50 animate-pulse [animation-delay:150ms]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-gold/50 animate-pulse [animation-delay:300ms]" />
+              </span>
             </div>
           )}
         </div>

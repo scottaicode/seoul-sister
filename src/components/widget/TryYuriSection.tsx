@@ -239,8 +239,18 @@ export default function TryYuriSection() {
                       </div>
                     )}
                     {msg.role === 'assistant' ? renderMarkdown(msg.content) : msg.content}
-                    {msg.isStreaming && (
+                    {msg.isStreaming && msg.content.length > 0 && (
                       <span className="inline-block w-1 h-3 bg-gold/60 animate-pulse ml-0.5 align-middle" />
+                    )}
+                    {msg.isStreaming && msg.content.length === 0 && (
+                      <span className="flex items-center gap-1.5 py-0.5">
+                        <span className="text-gold/70 text-xs italic">Yuri is thinking</span>
+                        <span className="flex items-center gap-0.5">
+                          <span className="w-1 h-1 rounded-full bg-gold/50 animate-pulse" />
+                          <span className="w-1 h-1 rounded-full bg-gold/50 animate-pulse [animation-delay:150ms]" />
+                          <span className="w-1 h-1 rounded-full bg-gold/50 animate-pulse [animation-delay:300ms]" />
+                        </span>
+                      </span>
                     )}
                   </div>
                 </div>
