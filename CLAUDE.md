@@ -3179,6 +3179,825 @@ Mark all seeded data with a flag or specific sample_size range (e.g., sample_siz
 
 ---
 
+## Phase 12: Platform-Wide Intelligence Upgrade — Extend Phase 11 to Every Feature
+
+**Strategic Rationale**: Phase 11 gave Yuri access to 6 database tools, web search, location awareness, and data-backed learning insights. The result: Yuri went from a text-only chatbot to a database-backed AI advisor. A systematic audit of every other Seoul Sister feature reveals that **none of them have been wired into this same intelligence layer**. Every feature operates on shallow data (basic product info, generic ratings) while ignoring the learning engine, ingredient effectiveness, seasonal patterns, location context, and personalization infrastructure that now exists.
+
+**The Pattern**: Phase 11 built the intelligence. Phase 12 wires it into everything.
+
+**Audit Findings Summary**:
+
+| Feature | Database Tools? | Learning Engine? | Personalization? | Location/Climate? | Gap Severity |
+|---------|:-:|:-:|:-:|:-:|---|
+| Scan/Label Decoder | Partial | NO | Partial | NO | HIGH |
+| Routine Builder | Partial (conflicts) | NO | Cycle only | NO | HIGH |
+| Dashboard | Widgets only | NO | Profile shown | Weather widget | MEDIUM |
+| Trending | Real data | Gap score only | NO | NO | MEDIUM |
+| Products Browse | Basic search | NO | NO | NO | HIGH |
+| Product Detail | Enrichment built | Via enrichment | Via enrichment | NO | LOW (mostly done) |
+| Sunscreen Finder | K-beauty filters | NO | NO skin-type | NO UV/climate | HIGH |
+| Dupe Finder | Ingredient match | NO | NO | NO | MEDIUM |
+| Glass Skin Score | Vision only | NO | NO profile read | NO | HIGH |
+| Shelf Scan | Vision only | NO | NO profile read | NO | HIGH |
+| Community | Reviews only | NO | Filters only | NO | MEDIUM |
+| Weather Routine | Weather API | NO (hardcoded) | Skin type only | Coords only | MEDIUM |
+| Widget (anonymous) | NO tools at all | NO | NO | NO | CRITICAL |
+| Expiration Tracking | Basic PAO | NO | NO | NO | LOW |
+| Profile Page | Settings display | NO | NO insights | NO | LOW |
+
+**Root Cause**: Each feature was built in its own session before Phase 11 existed. They query "critical path" data (products, prices, reviews) but ignore the intelligence layer above it (ingredient effectiveness, seasonal patterns, learning insights, location, personalization).
+
+**Solution Architecture**: Create a shared `loadIntelligenceContext(userId)` helper that any feature can call to get the full intelligence picture — similar to how Yuri's `loadUserContext()` works in `memory.ts`. This avoids duplicating queries across 15 features.
+
+---
+
+### Feature 12.0: Shared Intelligence Context Helper (FOUNDATION — Build First)
+
+**Why This First**: Every feature below needs the same data: user profile, ingredient effectiveness for their skin type, seasonal patterns for their climate, active trends, and allergen list. Instead of each feature implementing its own queries, create one shared module.
+
+**What Changes**: Create `src/lib/intelligence/context.ts` — a single function that loads all intelligence data for a user in parallel, cached per request.
+
+#### Implementation Plan
+
+**File: `src/lib/intelligence/context.ts` (NEW — ~200 lines)**
+
+```typescript
+interface IntelligenceContext {
+  // User Profile (full)
+  profile: {
+    userId: string
+    skinType: string | null
+    skinConcerns: string[]
+    allergies: string[]
+    fitzpatrickScale: number | null
+    climate: string | null
+    locationText: string | null
+    ageRange: string | null
+    budgetRange: string | null
+    experienceLevel: string | null
+    cyclePhase: string | null       // Current phase if tracking enabled
+    latitude: number | null
+    longitude: number | null
+  } | null
+
+  // Learning Engine Data
+  ingredientEffectiveness: Array<{
+    ingredientName: string
+    ingredientId: string
+    concern: string
+    effectivenessScore: number
+    sampleSize: number
+  }>
+
+  // Seasonal Patterns (for user's climate)
+  seasonalPatterns: Array<{
+    season: string
+    textureAdvice: string
+    ingredientsToEmphasize: string[]
+    ingredientsToReduce: string[]
+    patternDescription: string
+  }>
+
+  // Active Trends
+  activeTrends: Array<{
+    trendName: string
+    trendType: string
+    status: string
+    signalStrength: number
+  }>
+
+  // Weather (if location available)
+  weather: {
+    temperature: number
+    humidity: number
+    uvIndex: number
+    condition: string
+    locationName: string
+  } | null
+}
+```
+
+**Function: `loadIntelligenceContext(userId: string, options?: { includeWeather?: boolean })`**
+- Runs 5 parallel queries via `Promise.all`:
+  1. `ss_user_profiles` — full profile including location_text, cycle data
+  2. `ss_ingredient_effectiveness` — filtered by user's skin_type, ordered by effectiveness_score DESC, limit 20
+  3. `ss_learning_patterns` — filtered by `pattern_type = 'seasonal'` AND `skin_type = user.climate`, current season
+  4. `ss_trend_signals` — WHERE `status IN ('trending', 'emerging')`, ordered by signal_strength DESC, limit 10
+  5. Weather API call (optional, only if `includeWeather: true` and user has lat/lng)
+- Returns `IntelligenceContext` object
+- Each query is non-critical (wrapped in try/catch, returns null/empty on failure)
+- Cached per userId for duration of request (use module-level Map cleared on each new request)
+
+**Function: `getPersonalizedIngredientInsights(context: IntelligenceContext, ingredientNames: string[])`**
+- Given a list of ingredient names (from a product or scan), cross-reference against the user's effectiveness data
+- Returns: for each ingredient, whether it's effective for their skin type, any allergy conflicts, seasonal recommendation
+- Example output: `{ niacinamide: { effective: true, score: 0.82, concern: 'acne', seasonal: 'emphasize in summer' }, retinol: { effective: true, score: 0.87, concern: 'anti-aging', seasonal: 'reduce in winter for your climate' } }`
+
+**Function: `getSeasonalAdvice(context: IntelligenceContext)`**
+- Returns current season's advice for user's climate
+- Falls back to hardcoded defaults if no learning data
+
+This module becomes the single import for every feature that needs intelligence.
+
+#### Files to Create
+- `src/lib/intelligence/context.ts` (~200 lines)
+
+#### Estimated Complexity
+MEDIUM. Query logic is straightforward; the value is in centralizing it.
+
+---
+
+### Feature 12.1: Widget Intelligence — Give Anonymous Yuri Database Access (CRITICAL)
+
+**Why This Is Critical**: The landing page widget is Seoul Sister's conversion tool. Currently, anonymous visitors get a text-only chatbot — Claude's training knowledge about K-beauty. They CANNOT search Seoul Sister's 6,200+ products, check real prices, or get database-backed answers. This means the widget cannot demonstrate Seoul Sister's core value proposition. A visitor asking "What's a good vitamin C serum under $20?" gets a generic answer instead of "Here are 3 from our database with real prices at Olive Young and YesStyle."
+
+**Current State**: `src/app/api/widget/chat/route.ts` uses `client.messages.stream()` — plain text, no tools. Excellent system prompt, but zero database access.
+
+**What Changes**: Add a subset of Yuri's tools to the widget. Not all 7 — anonymous users don't need personalized match or conflict checking (they have no profile). But product search, price comparison, and trending are safe and high-value for conversion.
+
+#### Implementation Plan
+
+**Widget Tools (3 of Yuri's 7)**:
+1. **`search_products`** — "What vitamin C serums do you have?" → Real product results with real prices
+2. **`compare_prices`** — "How much is the Beauty of Joseon sunscreen?" → Multi-retailer pricing
+3. **`get_trending_products`** — "What's trending in Korea?" → Real Olive Young/Reddit data
+
+NOT included for anonymous users:
+- `get_personalized_match` (requires profile)
+- `check_ingredient_conflicts` (requires profile/routine)
+- `get_product_details` (included via search_products results)
+- `web_search` (cost control for anonymous)
+
+**File: `src/app/api/widget/chat/route.ts` (MODIFY)**
+- Import tool definitions and execution from `src/lib/yuri/tools.ts`
+- Filter to widget-safe tools (search_products, compare_prices, get_trending_products)
+- Replace `client.messages.stream()` with tool use loop (same pattern as `advisor.ts`)
+- Pass `userId = null` to tool execution (no personalization for anonymous)
+- Keep existing rate limiting (5 messages/session, 10/IP/day)
+- Keep existing max_tokens (300) for cost control
+- Limit tool calls to 1 per message (prevent abuse)
+
+**System Prompt Addition**:
+```
+## Database Access
+You have access to Seoul Sister's product database with 6,200+ K-beauty products.
+When users ask about specific products, prices, or what's trending, use your tools
+to search the database and provide real data. This is what makes Seoul Sister
+different from generic AI — you have real product intelligence.
+For anonymous users, focus on showing the value of the database rather than
+personalized recommendations (those require a profile).
+```
+
+**Why This Matters for Conversion**: A visitor who asks a question and gets a real product recommendation with a real price from a real retailer is 5-10x more likely to sign up than one who gets generic advice. This is the difference between "another AI chatbot" and "this actually has real data."
+
+#### Files to Modify
+- `src/app/api/widget/chat/route.ts` — Add tool use loop with 3 widget-safe tools
+
+#### Estimated Complexity
+MEDIUM. Tool infrastructure exists; this wires it into the widget with appropriate restrictions.
+
+---
+
+### Feature 12.2: Scan Intelligence Layer — Learning Engine + Location + Seasonal (HIGH)
+
+**Why This Matters**: The scan is Seoul Sister's flagship feature — camera-to-intelligence. The enrichment pipeline already does 5 parallel queries (personalization, pricing, community, counterfeit, trending). But it completely ignores ingredient effectiveness data, seasonal patterns, location context, and cycle phase. A scan in January should show different intelligence than a scan in July.
+
+**Current State**: `src/lib/scanning/enrich-scan.ts` runs `fetchPersonalization()` which checks allergies and comedogenic ratings using hardcoded ingredient lists (80 lines of static arrays). Does NOT query `ss_ingredient_effectiveness` or `ss_learning_patterns`.
+
+#### Implementation Plan
+
+**Step 1: Add Ingredient Effectiveness to Scan Enrichment**
+
+Modify `src/lib/scanning/enrich-scan.ts` — add 6th enrichment fetcher:
+
+```typescript
+async function fetchIngredientInsights(
+  supabase: SupabaseClient,
+  ingredientNames: string[],
+  skinType: string | null
+): Promise<IngredientInsight[]> {
+  if (!skinType || ingredientNames.length === 0) return []
+
+  // Match ingredient names to ss_ingredients IDs
+  const { data: ingredients } = await supabase
+    .from('ss_ingredients')
+    .select('id, name_inci, name_en')
+    .in('name_inci', ingredientNames)
+
+  if (!ingredients?.length) return []
+
+  // Fetch effectiveness for user's skin type
+  const { data: effectiveness } = await supabase
+    .from('ss_ingredient_effectiveness')
+    .select('ingredient_id, concern, effectiveness_score, sample_size')
+    .in('ingredient_id', ingredients.map(i => i.id))
+    .eq('skin_type', skinType)
+    .gte('sample_size', 5)
+    .order('effectiveness_score', { ascending: false })
+
+  // Map back to ingredient names with scores
+  return effectiveness?.map(e => ({
+    ingredientName: ingredients.find(i => i.id === e.ingredient_id)?.name_en || '',
+    concern: e.concern,
+    effectivenessScore: e.effectiveness_score,
+    sampleSize: e.sample_size,
+  })) || []
+}
+```
+
+**Step 2: Add Seasonal Context to Scan Enrichment**
+
+Add 7th enrichment fetcher:
+
+```typescript
+async function fetchSeasonalContext(
+  supabase: SupabaseClient,
+  climate: string | null,
+  ingredientNames: string[]
+): Promise<SeasonalContext | null> {
+  if (!climate) return null
+
+  const currentSeason = getCurrentSeason() // helper: month → season
+
+  const { data: patterns } = await supabase
+    .from('ss_learning_patterns')
+    .select('data, pattern_description')
+    .eq('pattern_type', 'seasonal')
+    .eq('skin_type', climate) // climate stored in skin_type column
+    .limit(4) // all seasons for this climate
+
+  const currentPattern = patterns?.find(p => {
+    const d = p.data as Record<string, unknown>
+    return d.season === currentSeason
+  })
+
+  if (!currentPattern) return null
+
+  const data = currentPattern.data as Record<string, unknown>
+  const toEmphasize = (data.ingredients_to_emphasize as string[]) || []
+  const toReduce = (data.ingredients_to_reduce as string[]) || []
+
+  // Cross-reference with scanned product's ingredients
+  const emphasized = ingredientNames.filter(i =>
+    toEmphasize.some(e => i.toLowerCase().includes(e.toLowerCase()))
+  )
+  const reduced = ingredientNames.filter(i =>
+    toReduce.some(r => i.toLowerCase().includes(r.toLowerCase()))
+  )
+
+  return {
+    season: currentSeason,
+    climate,
+    textureAdvice: data.texture_advice as string,
+    goodIngredients: emphasized,
+    cautionIngredients: reduced,
+    patternDescription: currentPattern.pattern_description,
+  }
+}
+```
+
+**Step 3: Replace Hardcoded Ingredient Lists**
+
+In `fetchPersonalization()`, replace the 80 lines of hardcoded arrays (`COMEDOGENIC_INGREDIENTS`, `COMMON_IRRITANTS`, `BENEFICIAL_INGREDIENTS`) with database queries:
+
+```typescript
+// Instead of hardcoded: const COMEDOGENIC_INGREDIENTS = ['isopropyl myristate', ...]
+const { data: comedogenic } = await supabase
+  .from('ss_ingredients')
+  .select('name_inci')
+  .gte('comedogenic_rating', 3)
+
+// Instead of hardcoded: const COMMON_IRRITANTS = ['alcohol denat', ...]
+const { data: irritants } = await supabase
+  .from('ss_ingredients')
+  .select('name_inci')
+  .eq('safety_rating', 'caution')
+  .or('safety_rating.eq.avoid')
+
+// Instead of hardcoded: const BENEFICIAL = { oily: [...], dry: [...] }
+// Use ss_ingredient_effectiveness for the user's skin type
+const { data: beneficial } = await supabase
+  .from('ss_ingredient_effectiveness')
+  .select('ingredient_id, concern, effectiveness_score')
+  .eq('skin_type', skinType)
+  .gte('effectiveness_score', 0.70)
+```
+
+**Step 4: Add Location Context to Scan Response**
+
+In `src/app/api/scan/route.ts`, fetch `location_text` and `climate` from user profile (currently only fetches `skin_type`). Pass to enrichment for seasonal context.
+
+**Step 5: New UI Component — IngredientEffectivenessSection**
+
+Add to `src/components/shared/EnrichmentSections.tsx`:
+- Shows top 3 effective ingredients found in the scanned product for user's skin type
+- Shows any ingredients flagged as "reduce this season" for user's climate
+- Example: "Niacinamide — 82% effective for acne with oily skin (based on 60 user reports)"
+- Example: "Heavy oils detected — seasonal note: reduce in summer for humid climates"
+
+#### Files to Modify
+- `src/lib/scanning/enrich-scan.ts` — Add 2 new fetchers, replace hardcoded lists
+- `src/app/api/scan/route.ts` — Fetch full profile including climate/location
+- `src/components/shared/EnrichmentSections.tsx` — Add IngredientInsights + SeasonalContext sections
+- `src/components/scan/ScanResults.tsx` — Render new sections
+
+#### Database Changes
+None — uses existing tables.
+
+#### Estimated Complexity
+MEDIUM-HIGH. Core enrichment refactor + 2 new fetchers + 2 new UI components.
+
+---
+
+### Feature 12.3: Glass Skin Score — Personalized Vision Analysis (HIGH)
+
+**Why This Matters**: The Glass Skin Score feature sends a selfie to Claude Vision for analysis, but the Claude prompt has ZERO context about the user. It doesn't know their skin type, concerns, allergies, climate, or what products they use. This means recommendations are generic — the same advice for a 19-year-old with oily skin in Houston as a 45-year-old with dry skin in Seoul.
+
+**Current State**: `src/app/api/skin-score/route.ts` calls `requireAuth()` but never reads `ss_user_profiles`. The Vision prompt says "provide 3-5 K-beauty tips" without knowing anything about the user.
+
+#### Implementation Plan
+
+**Step 1: Read User Profile Before Vision Call**
+
+In `src/app/api/skin-score/route.ts`, after auth:
+```typescript
+const { data: profile } = await supabase
+  .from('ss_user_profiles')
+  .select('skin_type, skin_concerns, climate, location_text, age_range, allergies, fitzpatrick_scale')
+  .eq('user_id', user.id)
+  .single()
+```
+
+**Step 2: Inject Profile + Learning Data Into Vision Prompt**
+
+Load ingredient effectiveness for user's skin type:
+```typescript
+const { data: topIngredients } = await supabase
+  .from('ss_ingredient_effectiveness')
+  .select('ingredient_id, concern, effectiveness_score')
+  .eq('skin_type', profile?.skin_type || 'normal')
+  .gte('effectiveness_score', 0.70)
+  .order('effectiveness_score', { ascending: false })
+  .limit(10)
+```
+
+Add to the Vision system prompt:
+```
+## User Context (Personalize Your Analysis)
+- Skin type: ${profile?.skin_type || 'unknown'}
+- Primary concerns: ${profile?.skin_concerns?.join(', ') || 'unknown'}
+- Climate: ${profile?.climate || 'unknown'} (${profile?.location_text || 'unknown location'})
+- Age range: ${profile?.age_range || 'unknown'}
+- Allergies: ${profile?.allergies?.join(', ') || 'none known'}
+
+## Top Effective Ingredients for This User's Skin Type
+${topIngredients.map(i => `- ${i.ingredientName}: ${Math.round(i.effectiveness_score * 100)}% effective for ${i.concern}`).join('\n')}
+
+When recommending products or ingredients, prioritize those proven effective
+for this specific skin type. Avoid recommending ingredients in their allergy list.
+Reference specific Seoul Sister product categories when suggesting improvements.
+```
+
+**Step 3: Link Recommendations to Real Products**
+
+After the Vision response, for each recommended ingredient/category, query `ss_products`:
+```typescript
+// For each recommended ingredient, find top-rated products containing it
+const { data: recommendedProducts } = await supabase
+  .from('ss_products')
+  .select('id, name_en, brand_en, rating_avg')
+  .textSearch('description_en', recommendedIngredient)
+  .order('rating_avg', { ascending: false })
+  .limit(2)
+```
+
+Return these product links alongside the Glass Skin Score so the UI can show:
+"Hydration score: 54. Try adding a hyaluronic acid toner → [Klairs Supple Preparation Toner — $23 at Olive Young]"
+
+#### Files to Modify
+- `src/app/api/skin-score/route.ts` — Read profile + learning data, inject into prompt, link products
+
+#### Estimated Complexity
+MEDIUM. Profile query + prompt injection + product linking.
+
+---
+
+### Feature 12.4: Shelf Scan — Personalized Collection Intelligence (HIGH)
+
+**Why This Matters**: Shelf Scan identifies products from a photo and grades the collection, but does so generically. It doesn't know the user's allergies, skin type, or concerns. A collection grade should factor in "3 of your 8 products contain fragrance (you're allergic)" or "your collection is missing ceramides (critical for dry skin in winter)."
+
+**Current State**: `src/app/api/shelf-scan/route.ts` matches products against `ss_products` but never reads `ss_user_profiles`. The Claude prompt for collection analysis has no user context.
+
+#### Implementation Plan
+
+**Step 1: Read User Profile**
+
+After auth, load full profile + allergies:
+```typescript
+const { data: profile } = await supabase
+  .from('ss_user_profiles')
+  .select('skin_type, skin_concerns, allergies, climate, location_text')
+  .eq('user_id', user.id)
+  .single()
+```
+
+**Step 2: Inject Into Collection Analysis Prompt**
+
+Add to the Claude Vision prompt:
+```
+## User Skin Profile
+- Skin type: ${profile?.skin_type}
+- Concerns: ${profile?.skin_concerns?.join(', ')}
+- Known allergies: ${profile?.allergies?.join(', ')}
+- Climate: ${profile?.climate} (${profile?.location_text})
+
+When analyzing this collection:
+- Flag any products containing ingredients the user is allergic to
+- Assess whether the collection addresses the user's stated concerns
+- Recommend missing product categories based on their skin type and climate
+- Grade should factor in personal relevance, not just generic completeness
+```
+
+**Step 3: Post-Match Enrichment**
+
+For matched products (those found in `ss_products`), load their ingredients and check against user allergies:
+```typescript
+for (const matched of matchedProducts) {
+  const { data: ingredients } = await supabase
+    .from('ss_product_ingredients')
+    .select('ingredient:ss_ingredients(name_inci, name_en, is_fragrance)')
+    .eq('product_id', matched.id)
+
+  // Check allergen overlap
+  const allergenHits = ingredients?.filter(i =>
+    profile.allergies.some(a => i.ingredient.name_inci.toLowerCase().includes(a.toLowerCase()))
+  )
+  matched.allergenWarnings = allergenHits
+}
+```
+
+#### Files to Modify
+- `src/app/api/shelf-scan/route.ts` — Read profile, inject into prompt, post-match allergen check
+
+#### Estimated Complexity
+MEDIUM. Profile query + prompt injection + allergen cross-reference.
+
+---
+
+### Feature 12.5: Sunscreen Finder — Climate + UV + Skin-Type Intelligence (HIGH)
+
+**Why This Matters**: Sunscreen is the #1 searched K-beauty category. The finder has excellent K-beauty-specific filters (PA rating, white cast, finish) but zero personalization. A user in tropical Houston with oily skin should see different defaults than a user in cold Minneapolis with dry skin. The sunscreen finder should auto-set filters based on the user's profile and show UV-aware recommendations.
+
+**Current State**: `src/app/(app)/sunscreen/page.tsx` has manual filters. No auto-population from profile. No UV index integration.
+
+#### Implementation Plan
+
+**Step 1: Auto-Populate Filters from Profile**
+
+On page load, fetch user profile and pre-fill filters:
+```typescript
+// Oily skin → default finish: matte, under_makeup: true
+// Dry skin → default finish: dewy
+// Sensitive → default type: physical (mineral), fragrance_free: true
+// Tropical/humid climate → default PA++++, water_resistant: true
+// Cold/dry climate → default finish: dewy (less drying)
+```
+
+**Step 2: Add UV Index Integration**
+
+If user has lat/lng, fetch current UV from Open-Meteo (already used by weather module):
+```typescript
+const uvIndex = await getCurrentUvIndex(profile.latitude, profile.longitude)
+// UV ≥ 7: Show banner "High UV today — PA++++ recommended"
+// UV ≥ 10: Show banner "Extreme UV — reapply every 90 min"
+```
+
+**Step 3: "Yuri's Pick for Your Skin" Section**
+
+Add a highlighted section above results:
+- Query `ss_ingredient_effectiveness` for sunscreen-active ingredients (zinc oxide, tinosorb, etc.) by user's skin type
+- Cross-reference with products matching filters
+- Show top 3 "best match for your skin" with effectiveness reasoning
+
+**Step 4: Skin-Type Effectiveness Ranking**
+
+Instead of sorting only by `rating_avg`, add a `match_score` that factors:
+- Community rating for user's skin type (from `ss_reviews` filtered by skin_type)
+- Ingredient effectiveness for user's concerns
+- Climate suitability (PA++++ weighted higher for tropical users)
+
+#### Files to Modify
+- `src/app/(app)/sunscreen/page.tsx` — Auto-populate filters, UV banner, Yuri's Pick section
+- `src/app/api/sunscreen/route.ts` — Add skin_type matching + effectiveness scoring
+
+#### Estimated Complexity
+MEDIUM. Filter pre-population + UV fetch + effectiveness scoring.
+
+---
+
+### Feature 12.6: Products Browse — Learning-Powered Discovery (HIGH)
+
+**Why This Matters**: The products page is the main browsing experience for 6,200+ products. Currently sorted by rating only. Every user sees the identical product order. With 47 ingredient effectiveness rows and user profiles, we can show "recommended for your skin" sorting.
+
+**Current State**: `src/app/api/products/route.ts` supports `sort_by` (rating_avg, price_asc, price_desc, newest). No personalized sort. No skin-type filtering.
+
+#### Implementation Plan
+
+**Step 1: Add `sort_by=recommended` to Products API**
+
+New sort option that calculates a personalized match score:
+```typescript
+if (sortBy === 'recommended' && userId) {
+  // Fetch user profile
+  const profile = await getUserProfile(userId)
+
+  // For each product in results, calculate match score:
+  // 1. Query ss_ingredient_effectiveness for product's ingredients × user's skin_type
+  // 2. Average effectiveness scores for matching ingredients
+  // 3. Bonus: product addresses user's stated concerns
+  // 4. Penalty: product contains user's allergens
+  // 5. Sort by match_score DESC
+}
+```
+
+**Step 2: Add "For Your Skin" Filter Toggle**
+
+In `ProductFilters.tsx`, add a toggle: "Show recommended for my skin"
+- When enabled, adds `sort_by=recommended` + `skin_type=<user's type>` to API query
+- Products with ingredients known to be ineffective for user's skin type are deprioritized
+
+**Step 3: Trending Badge Overlay**
+
+Products currently in `ss_trending_products` should show a small badge on their ProductCard:
+- "Trending in Korea" (source = olive_young)
+- "Trending on Reddit" (source = reddit)
+- "Emerging" (gap_score > 50)
+
+**Step 4: "People With Your Skin Type Love" Section**
+
+On the products page, above the product grid, show a horizontal scroll of 5-8 products:
+- Query `ss_product_effectiveness` filtered by user's skin_type
+- Show effectiveness score + "holy grail" count for that skin type
+- Acts as personalized curation above the generic browse
+
+#### Files to Modify
+- `src/app/api/products/route.ts` — Add `recommended` sort with match scoring
+- `src/components/products/ProductFilters.tsx` — Add "For Your Skin" toggle
+- `src/components/products/ProductCard.tsx` — Add trending badge overlay
+- `src/app/(app)/products/page.tsx` — Add "People With Your Skin Type Love" section
+
+#### Estimated Complexity
+MEDIUM-HIGH. Match scoring algorithm + new UI sections.
+
+---
+
+### Feature 12.7: Trending — Personalized Trend Relevance (MEDIUM)
+
+**Why This Matters**: The trending page shows what's trending globally. But a user with dry skin doesn't care about trending oil-control products. Personalized trending = "trending AND relevant to your skin."
+
+**Current State**: `src/app/api/trending/route.ts` returns all trending products sorted by trend_score. No skin-type filtering.
+
+#### Implementation Plan
+
+**Step 1: Add Personalized Relevance Score**
+
+In the trending API, when user is authenticated:
+```typescript
+// For each trending product, calculate skin relevance:
+// 1. Does the product's category match user's concerns?
+// 2. Does it contain ingredients effective for their skin type?
+// 3. Is it in their price range?
+// Relevance-weighted trend score = trend_score × relevance_multiplier
+```
+
+**Step 2: "Trending for Your Skin" Tab**
+
+Add a 4th tab: "For You" — shows trending products filtered by skin-type relevance:
+- Products with ingredients that score >0.70 effectiveness for user's skin type
+- Products in categories matching user's concerns
+- Sorted by trend_score × relevance_multiplier
+
+**Step 3: Skin-Type Cohort Labels**
+
+On each trending product card, show: "Popular with oily skin (78% positive)" or "Mixed reviews from sensitive skin (54% positive)" — pulled from `ss_ingredient_effectiveness` or `ss_product_effectiveness`.
+
+#### Files to Modify
+- `src/app/api/trending/route.ts` — Add relevance scoring, "for_you" tab filter
+- `src/app/(app)/trending/page.tsx` — Add 4th tab, cohort labels on cards
+
+#### Estimated Complexity
+MEDIUM. Relevance calculation + UI tab.
+
+---
+
+### Feature 12.8: Dupe Finder — Effectiveness-Weighted Dupes (MEDIUM)
+
+**Why This Matters**: The dupe finder matches products by ingredient overlap %. But two products can share 80% of ingredients and perform very differently for a specific skin type. A dupe should be scored by "how effective is it for YOUR skin?" not just ingredient similarity.
+
+**Current State**: `src/app/api/dupes/route.ts` calculates ingredient overlap. `src/app/api/dupes/ai/route.ts` calls Claude without reading user profile.
+
+#### Implementation Plan
+
+**Step 1: Add Effectiveness Weighting to Database Dupes**
+
+In `/api/dupes/route.ts`, after calculating ingredient overlap:
+```typescript
+// For each dupe candidate, also calculate:
+// 1. Load ingredient effectiveness for dupe's ingredients × user's skin_type
+// 2. Compare average effectiveness vs original product's ingredients
+// 3. Effectiveness-weighted match = ingredient_overlap × avg_effectiveness_ratio
+// A dupe with 70% overlap but 90% effectiveness for your skin beats 90% overlap with 60% effectiveness
+```
+
+**Step 2: Pass User Profile to AI Dupes**
+
+In `/api/dupes/ai/route.ts`, read `ss_user_profiles` and inject into Budget Optimizer prompt:
+```
+User's skin type: ${profile.skin_type}
+User's concerns: ${profile.skin_concerns.join(', ')}
+User's budget: ${profile.budget_range}
+User's allergies: ${profile.allergies.join(', ')}
+
+Find dupes that work specifically for THIS user's skin profile, not generic dupes.
+```
+
+**Step 3: Show Effectiveness Comparison**
+
+In `DupeCard.tsx`, show:
+- Original: "Niacinamide 82% effective for your skin"
+- Dupe: "Niacinamide 82% effective (same ingredient, same concentration range)"
+- Key difference: "Dupe has tea tree (76% effective for your acne) — original doesn't"
+
+#### Files to Modify
+- `src/app/api/dupes/route.ts` — Add effectiveness weighting
+- `src/app/api/dupes/ai/route.ts` — Read profile, inject into prompt
+- `src/components/dupes/DupeCard.tsx` — Show effectiveness comparison
+
+#### Estimated Complexity
+MEDIUM. Effectiveness query + AI prompt enhancement.
+
+---
+
+### Feature 12.9: Weather Routine — Learning-Driven Adjustments (MEDIUM)
+
+**Why This Matters**: The weather-routine module (`src/lib/intelligence/weather-routine.ts`) has 170 lines of hardcoded adjustment rules. Meanwhile, `ss_learning_patterns` now has 20 rows of research-backed seasonal advice per climate. The hardcoded rules should be supplemented (or replaced) with learned patterns.
+
+**Current State**: `ADJUSTMENT_RULES` array at lines 129-299 of `weather-routine.ts` is static. Never queries `ss_learning_patterns`.
+
+#### Implementation Plan
+
+**Step 1: Query Learning Patterns in Adjustment Logic**
+
+In `getWeatherAdjustments()`, after checking hardcoded rules, also query:
+```typescript
+const { data: seasonalPatterns } = await supabase
+  .from('ss_learning_patterns')
+  .select('data, pattern_description, confidence_score')
+  .eq('pattern_type', 'seasonal')
+  .eq('skin_type', userClimate)
+
+const currentSeason = getCurrentSeason()
+const seasonalAdvice = seasonalPatterns?.find(p => p.data.season === currentSeason)
+```
+
+**Step 2: Merge Learned Patterns with Weather Triggers**
+
+Combine real-time weather triggers (humidity > 70%, UV > 7) with seasonal learned patterns:
+- Weather trigger: "High humidity today" + Seasonal pattern: "In humid summer, emphasize niacinamide + BHA"
+- Combined output: "High humidity today — emphasize niacinamide (82% effective for your oily skin) and BHA"
+
+**Step 3: Use location_text in Weather Messaging**
+
+Instead of generic "Your location", show "Today in Austin, Texas: 92°F, 78% humidity"
+
+#### Files to Modify
+- `src/lib/intelligence/weather-routine.ts` — Query learning patterns, merge with weather triggers
+- `src/app/api/weather/routine/route.ts` — Fetch climate + location_text from profile
+
+#### Estimated Complexity
+LOW-MEDIUM. Query + merge logic.
+
+---
+
+### Feature 12.10: Routine Builder — Seasonal + Effectiveness Intelligence (MEDIUM)
+
+**Why This Matters**: The routine page has conflict detection but no effectiveness insights. A user's AM routine could show "This routine's combined effectiveness for your skin: 78%. Adding a vitamin C serum would increase it to 85%."
+
+#### Implementation Plan
+
+**Step 1: Routine Effectiveness Score**
+
+For each routine, calculate combined ingredient effectiveness:
+```typescript
+// Load all ingredients across all products in the routine
+// Cross-reference with ss_ingredient_effectiveness for user's skin type
+// Calculate weighted average effectiveness per concern
+// Display: "Your AM routine effectiveness: Acne control 82%, Hydration 74%"
+```
+
+**Step 2: Seasonal Routine Suggestions**
+
+Query `ss_learning_patterns` for user's climate and current season. If seasonal advice says "emphasize ceramides in winter" but user's routine has no ceramide products, show a banner: "Seasonal tip: Add a ceramide product for winter in your climate."
+
+**Step 3: Missing Ingredient Alerts**
+
+Based on `ss_ingredient_effectiveness`, if high-effectiveness ingredients for the user's skin type + top concern are not present in any routine product, suggest: "Niacinamide is 82% effective for your acne concern but isn't in your current routine."
+
+#### Files to Modify
+- `src/app/(app)/routine/page.tsx` — Add effectiveness score display + seasonal suggestions
+- Create helper: `src/lib/intelligence/routine-effectiveness.ts` (~100 lines)
+
+#### Estimated Complexity
+MEDIUM. Effectiveness calculation + seasonal cross-reference.
+
+---
+
+### Feature 12.11: Dashboard Intelligence Widgets (LOW-MEDIUM)
+
+**Why This Matters**: The dashboard is the home screen. It shows basic widgets but no intelligence insights. Should surface the learning engine's top findings.
+
+#### Implementation Plan
+
+**Step 1: "Your Top Ingredients" Widget**
+
+New widget between Yuri's Insights and Skin Profile:
+- Query `ss_ingredient_effectiveness` for user's skin type
+- Show top 5 most effective ingredients with scores
+- Link each to product search: "Find products with niacinamide →"
+
+**Step 2: "Seasonal Tip" Widget**
+
+Add a seasonal advice card:
+- Query `ss_learning_patterns` for user's climate + current season
+- Show texture_advice and top 2 ingredients to emphasize
+- Rotates with each season change
+
+**Step 3: Trending Relevance in Existing Widget**
+
+The existing "Trending in Korea" widget shows generic top 3. Enhance:
+- Filter trending by skin-type relevance
+- Show "Trending AND good for your skin" badge
+
+#### Files to Modify
+- `src/app/(app)/dashboard/page.tsx` — Add 2 new widgets, enhance trending widget
+
+#### Estimated Complexity
+LOW-MEDIUM. Query + render new widgets.
+
+---
+
+### Feature 12.12: Community Page — Cohort Intelligence (LOW)
+
+**Why This Matters**: The community page shows reviews filterable by skin type. But it doesn't surface patterns: "Users with your skin type rate this product 4.6/5" or "Most repurchased product among oily skin users."
+
+#### Implementation Plan
+
+**Step 1: "Community Insights for Your Skin" Section**
+
+Above the review list, show:
+- "Most loved by [skin_type] skin: [top 3 products by that skin type's reviews]"
+- "Most effective ingredients for [skin_type]: [from ss_ingredient_effectiveness]"
+
+**Step 2: Effectiveness Badges on Reviews**
+
+For each reviewed product, show a small badge:
+- "This product's key ingredient (niacinamide) is 82% effective for your skin type"
+- Pulled from `ss_ingredient_effectiveness`
+
+#### Files to Modify
+- `src/app/(app)/community/page.tsx` — Add insights section + badges
+
+#### Estimated Complexity
+LOW. Query + display.
+
+---
+
+### Phase 12 Implementation Priority Summary
+
+| # | Feature | Impact | Complexity | Prerequisite |
+|---|---------|--------|-----------|--------------|
+| 12.0 | Shared Intelligence Context Helper | FOUNDATION | Medium | None |
+| 12.1 | Widget Database Tools | CRITICAL | Medium | 12.0 |
+| 12.2 | Scan Intelligence Layer | HIGH | Med-High | 12.0 |
+| 12.3 | Glass Skin Personalization | HIGH | Medium | 12.0 |
+| 12.4 | Shelf Scan Personalization | HIGH | Medium | 12.0 |
+| 12.5 | Sunscreen Climate + UV | HIGH | Medium | 12.0 |
+| 12.6 | Products Discovery | HIGH | Med-High | 12.0 |
+| 12.7 | Trending Relevance | MEDIUM | Medium | 12.0 |
+| 12.8 | Dupe Effectiveness | MEDIUM | Medium | 12.0 |
+| 12.9 | Weather Learning-Driven | MEDIUM | Low-Med | 12.0 |
+| 12.10 | Routine Effectiveness | MEDIUM | Medium | 12.0 |
+| 12.11 | Dashboard Widgets | LOW-MED | Low-Med | 12.0 |
+| 12.12 | Community Insights | LOW | Low | 12.0 |
+
+**Build Order**: 12.0 (foundation) → 12.1 (critical conversion) → 12.2 (flagship feature) → 12.3 + 12.4 (vision features) → 12.5 (high search volume) → 12.6 (browse experience) → 12.7 → 12.8 → 12.9 → 12.10 → 12.11 → 12.12
+
+**Session Strategy**: 12.0 + 12.1 together (foundation + critical widget upgrade). 12.2 own session (scan refactor is substantial). 12.3 + 12.4 together (both are "read profile → inject into Vision prompt" pattern). 12.5 + 12.6 together (both enhance product discovery). 12.7-12.12 can be grouped 2-3 per session as they're lower complexity.
+
+**Expected Outcome**: Every feature in Seoul Sister becomes personalized, data-backed, and seasonally aware. The same intelligence that makes Yuri a 10x advisor now powers every scan, every product page, every routine, every trending feed. The platform goes from "features that exist" to "features that know you."
+
+---
+
 ## Competitive Landscape
 
 ### Why Seoul Sister Wins
@@ -3261,8 +4080,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 6.0.0 (Phase 11 Blueprint — Yuri Intelligence Upgrades)
-**Status**: All Phases Complete (1-9), Phase 10+11 documented. 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 9 cron jobs configured. Admin dashboard live with pipeline alerting. Cross-session memory improved (LGAAS patterns). Phase 10 (Real-Time Trend Intelligence) and Phase 11 (Yuri Intelligence Upgrades — tool use, web search, location, learning bootstrap) ready for implementation.
+**Version**: 7.0.0 (Phase 12 Blueprint — Platform-Wide Intelligence Upgrade)
+**Status**: Phases 1-9 built. Phase 10 documented. Phase 11 COMPLETE (tool use, web search, location, learning bootstrap all deployed). Phase 12 documented (13 features to extend Phase 11 intelligence to every feature). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 9 cron jobs configured. Learning engine seeded with 47 ingredient effectiveness rows, 20 seasonal patterns, 8 trend signals.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -3278,6 +4097,26 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v7.0.0 (Feb 22, 2026): Phase 12 Blueprint — Intelligence Layer Propagation Across All Features
+  - **Comprehensive feature audit**: Systematically reviewed all 15+ Seoul Sister features for intelligence gaps. Found that Phase 11 upgrades (database tools, learning engine, location awareness) only benefit Yuri — zero other features use the intelligence layer
+  - **Phase 12 documented in CLAUDE.md**: 13 features (12.0-12.12) with full implementation plans, code snippets, files to create/modify, and build order
+  - **Feature 12.0: Shared Intelligence Context Helper** (FOUNDATION): Centralized `loadIntelligenceContext(userId)` in `src/lib/intelligence/context.ts` — runs 5 parallel queries (skin profile, ingredient effectiveness, seasonal patterns, trend signals, product reactions) so any feature can access the intelligence layer without duplicating query logic
+  - **Feature 12.1: Widget Intelligence** (CRITICAL): Add 3 database tools (search_products, compare_prices, get_trending_products) to anonymous landing page widget. Currently widget uses only Claude training knowledge — cannot reference 6,200+ products or real prices
+  - **Feature 12.2: Scan Intelligence Layer** (HIGH): Replace 80 lines of hardcoded ingredient arrays in enrich-scan.ts with `ss_ingredient_effectiveness` queries. Add seasonal context from `ss_learning_patterns`. Add trend signal detection from `ss_trend_signals`
+  - **Feature 12.3: Glass Skin Personalization** (HIGH): Inject user skin profile + ingredient effectiveness into Claude Vision prompt. Currently analyzes photos with zero knowledge of user's skin type, concerns, or routine
+  - **Feature 12.4: Shelf Scan Personalization** (HIGH): Inject allergens, skin type, and routine into collection analysis. Currently generates generic grades with no personalization
+  - **Feature 12.5: Sunscreen Climate + UV Intelligence** (HIGH): Auto-populate filters from user profile climate/location, integrate real-time UV index from Open-Meteo, rank by skin-type effectiveness scores
+  - **Feature 12.6: Products Discovery Intelligence** (HIGH): Add `sort_by=recommended` with personalized match scoring using ingredient effectiveness data. Add trending badges. Add "People With Your Skin Type Love" section
+  - **Feature 12.7: Trending Relevance** (MEDIUM): Add "For You" tab filtering trending products by user's skin type and concerns. Show cohort labels ("Popular with oily skin")
+  - **Feature 12.8: Dupe Effectiveness Scoring** (MEDIUM): Weight dupe matches by ingredient effectiveness for user's skin type. Pass user context to AI dupe finder
+  - **Feature 12.9: Weather Learning-Driven Adjustments** (MEDIUM): Replace hardcoded `ADJUSTMENT_RULES` object with `ss_learning_patterns` queries. Use `location_text` for display
+  - **Feature 12.10: Routine Effectiveness Intelligence** (MEDIUM): Calculate combined routine effectiveness score from ingredient data. Show seasonal routine suggestions from learning patterns
+  - **Feature 12.11: Dashboard Intelligence Widgets** (LOW-MED): Add "Your Top Ingredients" widget, "Seasonal Tip" widget, relevance-filtered trending section
+  - **Feature 12.12: Community Cohort Insights** (LOW): Add cohort analysis to reviews ("Users with oily skin rate this 4.2 vs 3.1 for dry skin"). Effectiveness badges on reviews
+  - **Build order**: 12.0 (foundation) → 12.1 (widget, critical) → 12.2 (scan) → 12.3 (glass skin) → 12.4 (shelf scan) → 12.5 (sunscreen) → 12.6 (products) → 12.7-12.12 (remaining)
+  - **Phase 11 features deployed to production**:
+    - Feature 11.3 migrations applied: `location_text` column on `ss_user_profiles`, backfill script run (Bailey → "Austin, Texas", vibetrendai → "Elk Grove, California")
+    - Feature 11.4 migrations applied: 47 ingredient effectiveness rows, 20 seasonal learning patterns, 8 trend signals seeded
 - v6.0.0 (Feb 22, 2026): Phase 11 Blueprint — Yuri Intelligence Upgrades + Cross-Session Memory Fix
   - **Phase 11 documented in CLAUDE.md**: 4 critical intelligence gaps identified and fully documented with implementation plans
   - **Feature 11.1: Product Database Tools** (CRITICAL): Claude tool use / function calling to give Yuri 6 database tools (search_products, get_product_details, check_ingredient_conflicts, get_trending_products, compare_prices, get_personalized_match). Transforms Yuri from text-only chatbot to database-backed AI advisor. New file: `src/lib/yuri/tools.ts`. Modifies `advisor.ts` for tool use loop with streaming
