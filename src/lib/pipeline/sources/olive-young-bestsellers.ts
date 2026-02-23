@@ -27,6 +27,7 @@ export interface BestsellerScrapeResult {
 export interface BestsellerMatchResult {
   bestseller: BestsellerProduct
   matched_product_id: string | null
+  matched_category: string | null
   match_confidence: number
   match_method: 'exact' | 'brand_name' | 'fuzzy' | 'none'
 }
@@ -39,6 +40,7 @@ interface ProductRecord {
   id: string
   name_en: string
   brand_en: string
+  category: string | null
   name_normalized: string
   brand_normalized: string
 }
@@ -71,6 +73,93 @@ function brandsMatch(a: string, b: string): boolean {
   if (na === nb) return true
   if (na.includes(nb) || nb.includes(na)) return true
   return false
+}
+
+// ---------------------------------------------------------------------------
+// Non-skincare product filter
+// ---------------------------------------------------------------------------
+
+// Seoul Sister is a skincare intelligence platform. The Olive Young bestseller
+// page includes supplements, hair tools, devices, and makeup that don't belong
+// in our trending feed. Products matched in our DB with a valid skincare
+// category always pass through. Unmatched products are filtered by keywords.
+
+/** Product name patterns that indicate non-skincare items */
+const NON_SKINCARE_NAME_PATTERNS = [
+  // Supplements & ingestibles
+  /\bjelly\b.*\bstick/i,
+  /\bprotein\s+shake/i,
+  /\bprobiotics?\b/i,
+  /\bday[\s-]*supply\b/i,
+  /\bcollagen\b.*\bstick/i,
+  /\binner\s+dot\b/i,
+  /\binner\s+beauty\b/i,
+  /\bdietary\s+supplement/i,
+  // Hair care & styling tools
+  /\bhair\s+(styler|dryer|curler|iron|straightener|roller|clip)\b/i,
+  /\bshampoo\b/i,
+  /\bhair\s+(treatment|oil|ampoule|tonic|serum|essence)\b/i,
+  /\bscalp\b/i,
+  /\broot\s+enhancer/i,
+  /\bdamage\s+(repair|treatment)\b/i,
+  // Beauty devices / tools
+  /\bems\b/i,
+  /\bmassager\b/i,
+  /\bbooster\s+pro\b/i,
+  /\bleg[\s-]*scene\b/i,
+  /\bnmode\s+pro\b/i,
+  /\bleeds\s+line\b/i,
+  /\bhigh\s+focus\s+shot\b/i,
+  /\bage-r\b.*\b(pro|plus)\b/i,
+]
+
+/** Brands that are entirely non-skincare on Olive Young */
+const NON_SKINCARE_BRANDS = new Set([
+  'foodology',
+  'flimeal',
+  'lacto-fit',
+  'lactofit',
+  'bb lab',
+  'vodana',
+  'hugrab',
+])
+
+/** Our skincare categories — products matched in DB with these always pass */
+const SKINCARE_CATEGORIES = new Set([
+  'cleanser', 'toner', 'essence', 'serum', 'ampoule', 'moisturizer',
+  'sunscreen', 'mask', 'exfoliator', 'lip_care', 'eye_care', 'oil',
+  'mist', 'spot_treatment',
+])
+
+/**
+ * Check if a bestseller product is skincare-relevant.
+ * Products matched in our DB with a valid category always pass.
+ * Unmatched products are filtered by brand + name patterns.
+ */
+export function isSkincareProduct(
+  name: string,
+  brand: string,
+  matchedCategory: string | null
+): boolean {
+  // If matched in our DB with a skincare category, always include
+  if (matchedCategory && SKINCARE_CATEGORIES.has(matchedCategory)) {
+    return true
+  }
+
+  // Filter out known non-skincare brands
+  if (NON_SKINCARE_BRANDS.has(brand.toLowerCase().trim())) {
+    return false
+  }
+
+  // Filter out products matching non-skincare name patterns
+  for (const pattern of NON_SKINCARE_NAME_PATTERNS) {
+    if (pattern.test(name)) {
+      return false
+    }
+  }
+
+  // Default: include (could be skincare we don't have in DB yet)
+  return true
 }
 
 // ---------------------------------------------------------------------------
@@ -115,7 +204,7 @@ export class OliveYoungBestsellerScraper {
     while (hasMore) {
       const { data, error } = await supabase
         .from('ss_products')
-        .select('id, name_en, brand_en')
+        .select('id, name_en, brand_en, category')
         .range(offset, offset + PAGE_SIZE - 1)
 
       if (error) throw new Error(`Failed to load products: ${error.message}`)
@@ -126,6 +215,7 @@ export class OliveYoungBestsellerScraper {
           id: row.id,
           name_en: row.name_en,
           brand_en: row.brand_en,
+          category: row.category ?? null,
           name_normalized: normalize(row.name_en),
           brand_normalized: normalize(row.brand_en),
         }
@@ -260,6 +350,7 @@ export class OliveYoungBestsellerScraper {
         return {
           bestseller,
           matched_product_id: product.id,
+          matched_category: product.category,
           match_confidence: 1.0,
           match_method: 'exact',
         }
@@ -287,6 +378,7 @@ export class OliveYoungBestsellerScraper {
       return {
         bestseller,
         matched_product_id: bestMatch.product.id,
+        matched_category: bestMatch.product.category,
         match_confidence: bestMatch.confidence,
         match_method: 'brand_name',
       }
@@ -306,6 +398,7 @@ export class OliveYoungBestsellerScraper {
       return {
         bestseller,
         matched_product_id: bestMatch.product.id,
+        matched_category: bestMatch.product.category,
         match_confidence: Math.min(bestMatch.confidence, 1.0),
         match_method: 'fuzzy',
       }
@@ -315,6 +408,7 @@ export class OliveYoungBestsellerScraper {
     return {
       bestseller,
       matched_product_id: null,
+      matched_category: null,
       match_confidence: 0,
       match_method: 'none',
     }
@@ -328,9 +422,10 @@ export class OliveYoungBestsellerScraper {
     matched: number
     unmatched: number
     upserted: number
+    filtered: number
     errors: string[]
   }> {
-    const result = { scraped: 0, matched: 0, unmatched: 0, upserted: 0, errors: [] as string[] }
+    const result = { scraped: 0, matched: 0, unmatched: 0, upserted: 0, filtered: 0, errors: [] as string[] }
 
     try {
       // 1. Create scrape tracking record
@@ -397,7 +492,7 @@ export class OliveYoungBestsellerScraper {
         .delete()
         .eq('source', 'olive_young')
 
-      // 6. Match and upsert each bestseller
+      // 6. Match, filter, and upsert each bestseller
       for (const bestseller of scrapeResult.products) {
         const match = this.matchProduct(bestseller)
 
@@ -405,6 +500,13 @@ export class OliveYoungBestsellerScraper {
           result.matched++
         } else {
           result.unmatched++
+        }
+
+        // Filter out non-skincare products (supplements, hair tools, devices, etc.)
+        if (!isSkincareProduct(bestseller.name, bestseller.brand, match.matched_category)) {
+          result.filtered++
+          console.log(`[bestsellers] Filtered non-skincare: ${bestseller.brand} - ${bestseller.name}`)
+          continue
         }
 
         // Calculate rank change and days on list
@@ -467,6 +569,7 @@ export class OliveYoungBestsellerScraper {
             items_new: result.upserted,
             metadata: {
               unmatched: result.unmatched,
+              filtered: result.filtered,
               errors: result.errors.length,
               scrape_date: today,
             },
@@ -475,7 +578,7 @@ export class OliveYoungBestsellerScraper {
           .eq('id', scrapeId)
       }
 
-      console.log(`[bestsellers] Complete: ${result.scraped} scraped, ${result.matched} matched, ${result.unmatched} unmatched, ${result.upserted} upserted`)
+      console.log(`[bestsellers] Complete: ${result.scraped} scraped, ${result.matched} matched, ${result.unmatched} unmatched, ${result.filtered} filtered (non-skincare), ${result.upserted} upserted`)
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)
       result.errors.push(msg)
