@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
+import { getServiceClient } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { hasActiveSubscription } from '@/lib/subscription'
@@ -9,7 +9,142 @@ import type { ShelfScanProduct, ShelfScanCollectionAnalysis, RoutineGradeLevel }
 export const maxDuration = 60
 export const runtime = 'nodejs'
 
-const SHELF_SCAN_SYSTEM_PROMPT = `You are Yuri's Shelf Scan specialist. You analyze photos of skincare product shelves and collections.
+// ---------------------------------------------------------------------------
+// User profile types (same pattern as skin-score)
+// ---------------------------------------------------------------------------
+
+interface UserProfileData {
+  skin_type: string | null
+  skin_concerns: string[] | null
+  climate: string | null
+  location_text: string | null
+  age_range: string | null
+  allergies: string[] | null
+  fitzpatrick_scale: number | null
+}
+
+interface EffectivenessRow {
+  ingredientName: string
+  concern: string
+  effectivenessScore: number
+  sampleSize: number
+}
+
+// ---------------------------------------------------------------------------
+// Load user profile + ingredient effectiveness
+// ---------------------------------------------------------------------------
+
+async function loadUserProfileAndEffectiveness(
+  userId: string
+): Promise<{
+  profile: UserProfileData | null
+  effectiveness: EffectivenessRow[]
+}> {
+  const db = getServiceClient()
+
+  let profile: UserProfileData | null = null
+  try {
+    const { data } = await db
+      .from('ss_user_profiles')
+      .select(
+        'skin_type, skin_concerns, climate, location_text, age_range, allergies, fitzpatrick_scale'
+      )
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (data) {
+      profile = data as UserProfileData
+    }
+  } catch {
+    // Non-critical — continue without profile
+  }
+
+  let effectiveness: EffectivenessRow[] = []
+  if (profile?.skin_type) {
+    try {
+      const { data } = await db
+        .from('ss_ingredient_effectiveness')
+        .select(
+          `effectiveness_score, sample_size, concern,
+           ingredient:ss_ingredients(name_en, name_inci)`
+        )
+        .or(
+          `skin_type.eq.${profile.skin_type},skin_type.eq.__all__`
+        )
+        .gte('sample_size', 5)
+        .order('effectiveness_score', { ascending: false })
+        .limit(10)
+
+      effectiveness = (data || []).map(
+        (row: Record<string, unknown>) => {
+          const ing = row.ingredient as Record<string, unknown> | null
+          return {
+            ingredientName:
+              (ing?.name_en as string) ||
+              (ing?.name_inci as string) ||
+              'Unknown',
+            concern: (row.concern as string) || '',
+            effectivenessScore: row.effectiveness_score as number,
+            sampleSize: row.sample_size as number,
+          }
+        }
+      )
+    } catch {
+      // Non-critical
+    }
+  }
+
+  return { profile, effectiveness }
+}
+
+// ---------------------------------------------------------------------------
+// Build personalized system prompt
+// ---------------------------------------------------------------------------
+
+function buildSystemPrompt(
+  profile: UserProfileData | null,
+  effectiveness: EffectivenessRow[]
+): string {
+  let userContextSection = ''
+
+  if (profile) {
+    const lines: string[] = []
+    if (profile.skin_type) lines.push(`- Skin type: ${profile.skin_type}`)
+    if (profile.skin_concerns?.length)
+      lines.push(`- Primary concerns: ${profile.skin_concerns.join(', ')}`)
+    if (profile.climate)
+      lines.push(
+        `- Climate: ${profile.climate}${profile.location_text ? ` (${profile.location_text})` : ''}`
+      )
+    if (profile.age_range) lines.push(`- Age range: ${profile.age_range}`)
+    if (profile.allergies?.length)
+      lines.push(`- Known allergies/sensitivities: ${profile.allergies.join(', ')}`)
+    if (profile.fitzpatrick_scale)
+      lines.push(`- Fitzpatrick scale: ${profile.fitzpatrick_scale}`)
+
+    if (lines.length > 0) {
+      userContextSection += `\n\n## User Skin Profile (Personalize Your Analysis)\n${lines.join('\n')}`
+
+      userContextSection += `\n\nWhen analyzing this collection:
+- Flag any products likely containing ingredients the user is allergic to
+- Assess whether the collection addresses the user's stated skin concerns
+- Recommend missing product categories based on their skin type and climate
+- Factor personal relevance into the routine grade — a collection that doesn't address their primary concerns should score lower, even if it covers all categories
+- For missing categories, suggest what would specifically help THIS user (e.g., "Your oily skin would benefit from a BHA exfoliator" rather than just "missing exfoliator")`
+    }
+
+    if (effectiveness.length > 0) {
+      const ingredientLines = effectiveness
+        .slice(0, 10)
+        .map(
+          (e) =>
+            `- ${e.ingredientName}: ${Math.round(e.effectivenessScore * 100)}% effective for ${e.concern} (${e.sampleSize} reports)`
+        )
+      userContextSection += `\n\n## Top Effective Ingredients for This User's Skin Type\n${ingredientLines.join('\n')}\n\nWhen recommending products to add, prioritize those containing ingredients proven effective for this user's skin type.`
+    }
+  }
+
+  return `You are Yuri's Shelf Scan specialist. You analyze photos of skincare product shelves and collections.
 
 Your task:
 1. Identify EVERY visible Korean beauty / skincare product in the photo
@@ -48,7 +183,53 @@ Grading criteria:
 - D: Missing several categories or heavy redundancy with no clear routine structure
 - F: Very incomplete or entirely redundant with no skincare structure
 
-Be generous but honest in your grading. If you cannot identify a product with confidence, still include it with a lower confidence score and your best guess.`
+Be generous but honest in your grading. If you cannot identify a product with confidence, still include it with a lower confidence score and your best guess.${userContextSection}`
+}
+
+// ---------------------------------------------------------------------------
+// Post-match allergen cross-reference
+// ---------------------------------------------------------------------------
+
+async function checkAllergens(
+  productId: string,
+  allergies: string[]
+): Promise<string[]> {
+  if (!allergies.length) return []
+
+  const db = getServiceClient()
+  const warnings: string[] = []
+
+  try {
+    const { data: ingredients } = await db
+      .from('ss_product_ingredients')
+      .select('ingredient:ss_ingredients(name_inci, name_en)')
+      .eq('product_id', productId)
+
+    if (!ingredients?.length) return []
+
+    for (const row of ingredients) {
+      const ing = row.ingredient as unknown as Record<string, unknown> | null
+      if (!ing) continue
+      const ingName = (ing.name_en as string) || (ing.name_inci as string) || ''
+      const ingNameLower = ingName.toLowerCase()
+
+      for (const allergy of allergies) {
+        const allergyLower = allergy.toLowerCase()
+        if (ingNameLower.includes(allergyLower) || allergyLower.includes(ingNameLower)) {
+          warnings.push(`Contains ${ingName} — you listed "${allergy}" as an allergy`)
+        }
+      }
+    }
+  } catch {
+    // Non-critical — return empty
+  }
+
+  return [...new Set(warnings)]
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/shelf-scan — Analyze a shelf/collection photo
+// ---------------------------------------------------------------------------
 
 export async function POST(request: NextRequest) {
   try {
@@ -72,12 +253,18 @@ export async function POST(request: NextRequest) {
     const mediaType = match[1] as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif'
     const imageBase64 = match[3]
 
+    // Load user profile + ingredient effectiveness for personalized prompt
+    const { profile, effectiveness } =
+      await loadUserProfileAndEffectiveness(user.id)
+
+    const systemPrompt = buildSystemPrompt(profile, effectiveness)
+
     const anthropic = getAnthropicClient()
 
     const response = await anthropic.messages.create({
       model: MODELS.primary,
       max_tokens: 4096,
-      system: SHELF_SCAN_SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: [
         {
           role: 'user',
@@ -122,17 +309,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Try to match identified products against our database
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+    const supabase = getServiceClient()
+    const userAllergies = profile?.allergies || []
 
     const matchedProducts: ShelfScanProduct[] = []
     for (const product of analysis.products_identified) {
       try {
         const searchTerm = product.name || product.brand
         if (!searchTerm) {
-          matchedProducts.push(product)
+          matchedProducts.push({ ...product, allergen_warnings: [] })
           continue
         }
 
@@ -143,18 +328,25 @@ export async function POST(request: NextRequest) {
           .limit(1)
 
         if (data && data.length > 0) {
+          // Post-match allergen cross-reference
+          const allergenWarnings = await checkAllergens(
+            data[0].id,
+            userAllergies
+          )
+
           matchedProducts.push({
             ...product,
             matched_product_id: data[0].id,
             name: data[0].name_en || product.name,
             brand: data[0].brand_en || product.brand,
             category: data[0].category || product.category,
+            allergen_warnings: allergenWarnings,
           })
         } else {
-          matchedProducts.push(product)
+          matchedProducts.push({ ...product, allergen_warnings: [] })
         }
       } catch {
-        matchedProducts.push(product)
+        matchedProducts.push({ ...product, allergen_warnings: [] })
       }
     }
 

@@ -756,6 +756,7 @@ export interface ShelfScanProduct {
   confidence: number
   matched_product_id: string | null
   position_in_image: string
+  allergen_warnings: string[]
 }
 
 export interface ShelfScanCollectionAnalysis {
