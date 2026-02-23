@@ -28,7 +28,9 @@ const REQUIRED_FIELDS = ['skin_type', 'skin_concerns', 'age_range'] as const
 
 export function buildOnboardingSystemPrompt(
   extractedSoFar: ExtractedSkinProfile,
-  extractedFields: Record<string, boolean>
+  extractedFields: Record<string, boolean>,
+  qualityScore?: number,
+  qualitySuggestions?: string[]
 ): string {
   const capturedList = Object.entries(extractedFields)
     .filter(([, v]) => v)
@@ -45,6 +47,24 @@ Current data: ${JSON.stringify(extractedSoFar, null, 2)}`
     ? `\nFields still needed: ${missingList.join(', ')}
 Required fields still missing: ${requiredMissing.length > 0 ? requiredMissing.join(', ') : 'NONE -- all required fields captured!'}`
     : '\nAll fields captured!'
+
+  // Quality feedback: when fields are captured but answers are vague
+  let qualitySection = ''
+  if (
+    qualityScore !== undefined &&
+    qualityScore > 0 &&
+    qualityScore < 70 &&
+    qualitySuggestions &&
+    qualitySuggestions.length > 0 &&
+    requiredMissing.length === 0
+  ) {
+    qualitySection = `
+
+## Profile Quality Note
+The user's required fields are captured, but some answers are vague (quality score: ${qualityScore}/100). Before wrapping up, ask ONE natural follow-up to improve specificity. Pick the most impactful:
+${qualitySuggestions.map((s) => `- "${s}"`).join('\n')}
+Don't be clinical about it -- be curious and conversational. If they don't want to elaborate, that's fine -- move on.`
+  }
 
   return `You are Yuri (유리), Seoul Sister's AI beauty advisor with 20+ years in the Korean skincare industry. You are conducting a conversational onboarding to build this user's skin profile.
 
@@ -93,6 +113,7 @@ When you have enough to build a meaningful profile (at minimum: skin_type + 2 co
 ## Current State
 ${capturedSummary}
 ${missingSummary}
+${qualitySection}
 
 ## Important Rules
 - NEVER make up or assume profile data the user hasn't shared
@@ -202,6 +223,96 @@ export function checkOnboardingComplete(extracted: ExtractedSkinProfile): boolea
 }
 
 // ---------------------------------------------------------------------------
+// Onboarding quality scoring — detect vague/thin profile answers
+// ---------------------------------------------------------------------------
+
+interface OnboardingQuality {
+  overallScore: number
+  fieldScores: Record<string, number>
+  thinAreas: string[]
+  suggestions: string[]
+}
+
+export function calculateOnboardingQuality(
+  extracted: ExtractedSkinProfile
+): OnboardingQuality {
+  const scores: Record<string, number> = {}
+
+  // Skin type specificity: "normal" is often a default — low confidence
+  if (extracted.skin_type) {
+    scores.skin_type = extracted.skin_type === 'normal' ? 50 : 85
+  }
+
+  // Concerns: single concern = okay, multiple = much better profiling
+  if (extracted.skin_concerns?.length) {
+    scores.skin_concerns = extracted.skin_concerns.length >= 2 ? 90 : 60
+  }
+
+  // Age range: any value is good
+  if (extracted.age_range) {
+    scores.age_range = 80
+  }
+
+  // Fitzpatrick: specific value captured
+  if (extracted.fitzpatrick_scale) {
+    scores.fitzpatrick_scale = 85
+  }
+
+  // Climate: specific city (location_text) > general zone
+  if (extracted.location_text) {
+    scores.climate = 90
+  } else if (extracted.climate) {
+    scores.climate = 60
+  }
+
+  // Allergies: any answer is valuable (including "none known")
+  if (extracted.allergies) {
+    scores.allergies = extracted.allergies.length > 0 ? 90 : 70
+  }
+
+  // Current routine: named products > vague categories
+  if (extracted.current_routine?.length) {
+    scores.current_routine = extracted.current_routine.length >= 3 ? 90 : 60
+  }
+
+  // Budget: specific range
+  if (extracted.budget_preference) {
+    scores.budget_preference = 75
+  }
+
+  // Experience level
+  if (extracted.experience_level) {
+    scores.experience_level = 80
+  }
+
+  // Product preferences: specific brand/product names
+  if (extracted.product_preferences?.length) {
+    scores.product_preferences = extracted.product_preferences.length >= 2 ? 90 : 70
+  }
+
+  const thinAreas = Object.entries(scores)
+    .filter(([, score]) => score > 0 && score < 65)
+    .map(([field]) => field)
+
+  const suggestionMap: Record<string, string> = {
+    skin_type: 'How does your skin feel through the day? Like, is your T-zone different from your cheeks?',
+    skin_concerns: 'Besides that, anything else about your skin that bugs you? Even small things help me give better advice.',
+    climate: 'Where are you based? City and state help me factor in humidity and seasons.',
+    current_routine: 'What specific products are you using right now? Brand names help me spot what\'s working and what\'s not.',
+  }
+  const suggestions: string[] = thinAreas
+    .map((field) => suggestionMap[field])
+    .filter((s): s is string => s !== undefined)
+
+  const filledScores = Object.values(scores).filter((s) => s > 0)
+  const overallScore = filledScores.length
+    ? Math.round(filledScores.reduce((a, b) => a + b, 0) / filledScores.length)
+    : 0
+
+  return { overallScore, fieldScores: scores, thinAreas, suggestions }
+}
+
+// ---------------------------------------------------------------------------
 // Merge newly extracted data into existing profile data
 // ---------------------------------------------------------------------------
 
@@ -289,7 +400,8 @@ export async function updateOnboardingProgress(
   mergedProfile: ExtractedSkinProfile,
   capturedFields: Record<string, boolean>,
   percentage: number,
-  isComplete: boolean
+  isComplete: boolean,
+  qualityScore?: number
 ): Promise<void> {
   const db = getServiceClient()
 
@@ -298,6 +410,10 @@ export async function updateOnboardingProgress(
     extracted_fields: capturedFields,
     completion_percentage: percentage,
     updated_at: new Date().toISOString(),
+  }
+
+  if (qualityScore !== undefined) {
+    updates.quality_score = qualityScore
   }
 
   if (isComplete) {
@@ -402,9 +518,14 @@ export async function* streamOnboardingResponse(
   conversationHistory: YuriMessage[],
   currentProgress: OnboardingProgress
 ): AsyncGenerator<string, void, unknown> {
+  const extractedSoFar = currentProgress.skin_profile_data as ExtractedSkinProfile
+  const extractedFields = currentProgress.extracted_fields as Record<string, boolean>
+  const quality = calculateOnboardingQuality(extractedSoFar)
   const systemPrompt = buildOnboardingSystemPrompt(
-    currentProgress.skin_profile_data as ExtractedSkinProfile,
-    currentProgress.extracted_fields as Record<string, boolean>
+    extractedSoFar,
+    extractedFields,
+    quality.overallScore,
+    quality.suggestions
   )
 
   // Build message history for Claude

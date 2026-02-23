@@ -3,6 +3,59 @@ import type { SkinProfile, YuriConversation, YuriMessage, SpecialistType, CycleP
 import { getCyclePhase, getPhaseLabel } from '@/lib/intelligence/cycle-routine'
 
 // ---------------------------------------------------------------------------
+// Intent classification for conditional context loading
+// ---------------------------------------------------------------------------
+
+export type ConversationTopic =
+  | 'routine'
+  | 'ingredients'
+  | 'pricing'
+  | 'trending'
+  | 'skin_profile'
+  | 'products'
+  | 'counterfeit'
+  | 'general'
+
+/**
+ * Classify the user's message intent to determine which context sections to load.
+ * First message of any conversation always returns 'general' (load everything).
+ * Subsequent messages load only relevant sections to save Supabase queries and tokens.
+ */
+export function classifyIntent(
+  message: string,
+  isFirstMessage: boolean
+): Set<ConversationTopic> {
+  if (isFirstMessage) return new Set(['general'])
+
+  const topics = new Set<ConversationTopic>()
+  const m = message.toLowerCase()
+
+  if (/routine|order|layer|morning|night|pm\b|am\b|step|cycle|hormonal|menstrual/.test(m)) {
+    topics.add('routine')
+  }
+  if (/ingredient|inci|ph\b|concentration|formula|niacinamide|retinol|hyaluronic|vitamin c|bha|aha|centella|ceramide|peptide/.test(m)) {
+    topics.add('ingredients')
+  }
+  if (/price|budget|cheap|dupe|alternative|save|cost|afford|expensive|value/.test(m)) {
+    topics.add('pricing')
+  }
+  if (/trending|popular|viral|korea|tiktok|olive young|new product|emerging|bestseller|reddit/.test(m)) {
+    topics.add('trending')
+  }
+  if (/skin type|concern|allergy|sensitive|oily|dry|combo|acne|aging|wrinkle|pore|dark spot|redness|barrier/.test(m)) {
+    topics.add('skin_profile')
+  }
+  if (/product|recommend|suggest|best|which|compare|review|serum|moisturizer|cleanser|toner|sunscreen|mask/.test(m)) {
+    topics.add('products')
+  }
+  if (/fake|counterfeit|authentic|batch code|real|genuine|seller|trust/.test(m)) {
+    topics.add('counterfeit')
+  }
+
+  return topics.size > 0 ? topics : new Set(['general'])
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -65,16 +118,29 @@ export interface ProductReaction {
 // Load user context for Yuri conversations
 // ---------------------------------------------------------------------------
 
-export async function loadUserContext(userId: string, currentConversationId?: string): Promise<UserContext> {
+export interface LoadUserContextOptions {
+  /** The current user message — used for intent classification. */
+  message?: string
+  /** True if this is the first message in the conversation (loads everything). */
+  isFirstMessage?: boolean
+}
+
+export async function loadUserContext(
+  userId: string,
+  currentConversationId?: string,
+  options?: LoadUserContextOptions
+): Promise<UserContext> {
   const db = getServiceClient()
 
-  const [
-    profileResult,
-    conversationsResult,
-    reactionsResult,
-    routineResult,
-    specialistInsightsResult,
-  ] = await Promise.all([
+  // Classify intent to decide which context sections to load
+  const topics = classifyIntent(
+    options?.message || '',
+    options?.isFirstMessage ?? true // Default to loading everything if not specified
+  )
+  const loadAll = topics.has('general')
+
+  // ALWAYS load: profile + conversations + decision memory (cheap, critical)
+  const alwaysPromises = Promise.all([
     // Skin profile
     db
       .from('ss_user_profiles')
@@ -89,67 +155,95 @@ export async function loadUserContext(userId: string, currentConversationId?: st
       .eq('user_id', userId)
       .order('updated_at', { ascending: false })
       .limit(10),
-
-    // Product reactions (holy grail / broke me out)
-    db
-      .from('ss_user_product_reactions')
-      .select(`
-        reaction,
-        product_id,
-        ss_products (name_en)
-      `)
-      .eq('user_id', userId)
-      .limit(50),
-
-    // Current routine products
-    db
-      .from('ss_user_routines')
-      .select(`
-        id,
-        routine_type,
-        ss_routine_products (
-          step_order,
-          product_id,
-          ss_products (name_en, brand_en, category)
-        )
-      `)
-      .eq('user_id', userId)
-      .eq('is_active', true),
-
-    // Specialist insights from past conversations (most recent per specialist)
-    db
-      .from('ss_specialist_insights')
-      .select('specialist_type, data, created_at, conversation_id, ss_yuri_conversations!inner(user_id)')
-      .eq('ss_yuri_conversations.user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(20),
   ])
 
-  // Load learning insights after we know the skin profile
-  const skinProfile = profileResult.data as SkinProfile | null
-  const learningInsights = await loadLearningContext(db, skinProfile)
-
-  // Load cycle phase if tracking is enabled
-  let cyclePhase: CyclePhaseInfo | null = null
-  try {
-    const profileRaw = profileResult.data as Record<string, unknown> | null
-    if (profileRaw?.cycle_tracking_enabled) {
-      const { data: latestCycle } = await db
-        .from('ss_user_cycle_tracking')
-        .select('cycle_start_date, cycle_length_days')
+  // CONDITIONAL: product reactions (needed for products, ingredients, skin_profile, or general)
+  const loadReactions = loadAll || topics.has('products') || topics.has('ingredients') || topics.has('skin_profile')
+  const reactionsPromise = loadReactions
+    ? db
+        .from('ss_user_product_reactions')
+        .select(`
+          reaction,
+          product_id,
+          ss_products (name_en)
+        `)
         .eq('user_id', userId)
-        .order('cycle_start_date', { ascending: false })
-        .limit(1)
-        .single()
+        .limit(50)
+    : Promise.resolve({ data: null })
 
-      if (latestCycle) {
-        const entry = latestCycle as unknown as UserCycleTracking
-        const avgLength = (profileRaw.avg_cycle_length as number) || entry.cycle_length_days || 28
-        cyclePhase = getCyclePhase(entry.cycle_start_date, avgLength)
+  // CONDITIONAL: routine products (needed for routine or general)
+  const loadRoutine = loadAll || topics.has('routine')
+  const routinePromise = loadRoutine
+    ? db
+        .from('ss_user_routines')
+        .select(`
+          id,
+          routine_type,
+          ss_routine_products (
+            step_order,
+            product_id,
+            ss_products (name_en, brand_en, category)
+          )
+        `)
+        .eq('user_id', userId)
+        .eq('is_active', true)
+    : Promise.resolve({ data: null })
+
+  // CONDITIONAL: specialist insights (only for general — these are rarely referenced in focused queries)
+  const loadSpecialist = loadAll
+  const specialistInsightsPromise = loadSpecialist
+    ? db
+        .from('ss_specialist_insights')
+        .select('specialist_type, data, created_at, conversation_id, ss_yuri_conversations!inner(user_id)')
+        .eq('ss_yuri_conversations.user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20)
+    : Promise.resolve({ data: null })
+
+  // Execute all queries in parallel
+  const [
+    [profileResult, conversationsResult],
+    reactionsResult,
+    routineResult,
+    specialistInsightsResult,
+  ] = await Promise.all([
+    alwaysPromises,
+    reactionsPromise,
+    routinePromise,
+    specialistInsightsPromise,
+  ])
+
+  const skinProfile = profileResult.data as SkinProfile | null
+
+  // CONDITIONAL: learning insights (needed for ingredients, skin_profile, products, or general)
+  const loadLearning = loadAll || topics.has('ingredients') || topics.has('skin_profile') || topics.has('products')
+  const learningInsights = loadLearning
+    ? await loadLearningContext(db, skinProfile)
+    : []
+
+  // Load cycle phase if tracking is enabled (needed for routine or general)
+  let cyclePhase: CyclePhaseInfo | null = null
+  if (loadAll || topics.has('routine')) {
+    try {
+      const profileRaw = profileResult.data as Record<string, unknown> | null
+      if (profileRaw?.cycle_tracking_enabled) {
+        const { data: latestCycle } = await db
+          .from('ss_user_cycle_tracking')
+          .select('cycle_start_date, cycle_length_days')
+          .eq('user_id', userId)
+          .order('cycle_start_date', { ascending: false })
+          .limit(1)
+          .single()
+
+        if (latestCycle) {
+          const entry = latestCycle as unknown as UserCycleTracking
+          const avgLength = (profileRaw.avg_cycle_length as number) || entry.cycle_length_days || 28
+          cyclePhase = getCyclePhase(entry.cycle_start_date, avgLength)
+        }
       }
+    } catch {
+      // Cycle loading is non-critical
     }
-  } catch {
-    // Cycle loading is non-critical
   }
 
   // Build conversation memories from recent conversations
@@ -214,14 +308,15 @@ export async function loadUserContext(userId: string, currentConversationId?: st
     }
   }
 
-  // Load actual message content from recent conversations (LGAAS pattern)
-  // This gives Yuri access to what she actually said, even if the summary missed it
-  const recentExcerpts = await loadRecentConversationExcerpts(db, userId, currentConversationId)
+  // CONDITIONAL: recent excerpts (only for general — these are expensive and mainly used as memory safety net)
+  const recentExcerpts = loadAll
+    ? await loadRecentConversationExcerpts(db, userId, currentConversationId)
+    : []
 
   // Reverse-geocode user's location from lat/lng if available
   const locationName = await reverseGeocodeUserLocation(skinProfile)
 
-  // Load structured decision memory across recent conversations
+  // Load structured decision memory across recent conversations (always load — cheap and critical)
   const decisionMemory = await loadDecisionMemory(db, userId)
 
   return {

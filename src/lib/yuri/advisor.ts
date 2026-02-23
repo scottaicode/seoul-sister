@@ -11,6 +11,7 @@ import {
   type UserContext,
 } from './memory'
 import { YURI_TOOLS, executeYuriTool, resetWebSearchCounter } from './tools'
+import { cleanYuriResponse } from './voice-cleanup'
 import type { SpecialistType, YuriMessage } from '@/types/database'
 import type Anthropic from '@anthropic-ai/sdk'
 
@@ -317,7 +318,12 @@ export async function* streamAdvisorResponse(
 
   // 2. Load user context (skin profile, memory, reactions)
   //    Pass conversationId so we exclude current conversation from recent excerpts
-  const userContext = await loadUserContext(userId, conversationId)
+  //    Pass message + isFirstMessage for intent-based context loading (13.4)
+  const isFirstMessage = conversationHistory.length === 0
+  const userContext = await loadUserContext(userId, conversationId, {
+    message,
+    isFirstMessage,
+  })
 
   // 3. Build system prompt with context + specialist
   const systemPrompt = buildSystemPrompt(
@@ -454,7 +460,10 @@ export async function* streamAdvisorResponse(
     yield fullResponse
   }
 
-  // 7. Save assistant response to DB
+  // 7. Clean AI artifacts before saving (users see raw stream; saved text is polished)
+  fullResponse = cleanYuriResponse(fullResponse)
+
+  // 8. Save assistant response to DB
   await saveMessage(conversationId, 'assistant', fullResponse, specialistType)
 
   // 8. Generate title if this is the first exchange

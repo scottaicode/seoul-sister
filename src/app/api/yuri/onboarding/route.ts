@@ -8,11 +8,13 @@ import {
   extractSkinProfileData,
   mergeSkinProfileData,
   calculateOnboardingProgress,
+  calculateOnboardingQuality,
   checkOnboardingComplete,
   updateOnboardingProgress,
   finalizeOnboardingProfile,
   skipOnboarding,
 } from '@/lib/yuri/onboarding'
+import { cleanYuriResponse } from '@/lib/yuri/voice-cleanup'
 import type { ExtractedSkinProfile } from '@/types/database'
 
 // ---------------------------------------------------------------------------
@@ -140,6 +142,9 @@ export async function POST(request: NextRequest) {
                 controller.enqueue(encoder.encode(`data: ${data}\n\n`))
               }
 
+              // Clean AI artifacts before saving
+              fullResponse = cleanYuriResponse(fullResponse)
+
               // Save Yuri's opening message
               await saveMessage(progress.conversation_id!, 'assistant', fullResponse, null)
 
@@ -215,6 +220,9 @@ export async function POST(request: NextRequest) {
               const data = JSON.stringify({ type: 'text', content: chunk })
               controller.enqueue(encoder.encode(`data: ${data}\n\n`))
             }
+
+            // Clean AI artifacts before saving
+            fullResponse = cleanYuriResponse(fullResponse)
 
             // Save assistant response
             await saveMessage(progress.conversation_id!, 'assistant', fullResponse, null)
@@ -339,8 +347,9 @@ async function extractAndUpdate(
     const merged = mergeSkinProfileData(existingProfile, newExtracted)
     const { percentage, capturedFields, missingRequired } = calculateOnboardingProgress(merged)
     const isComplete = missingRequired.length === 0
+    const quality = calculateOnboardingQuality(merged)
 
-    await updateOnboardingProgress(userId, merged, capturedFields, percentage, isComplete)
+    await updateOnboardingProgress(userId, merged, capturedFields, percentage, isComplete, quality.overallScore)
 
     // Continuously sync extracted data to ss_user_profiles so the profile
     // stays up to date as the conversation progresses. Requires at minimum
