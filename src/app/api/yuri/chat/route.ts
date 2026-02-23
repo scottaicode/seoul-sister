@@ -100,56 +100,69 @@ export async function POST(request: NextRequest) {
     // Load conversation history
     const history = await loadConversationMessages(conversationId)
 
-    // Create a readable stream for SSE
+    // Create an SSE stream from the advisor async generator.
+    //
+    // IMPORTANT: We use a TransformStream instead of ReadableStream({ start })
+    // because the start() pattern runs the entire async generator to completion
+    // before flushing — the browser receives all chunks as one batch. The
+    // TransformStream writable side flushes each write to the readable side
+    // immediately, giving us real-time streaming to the client.
     const encoder = new TextEncoder()
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          const generator = streamAdvisorResponse({
-            userId: user.id,
-            conversationId,
-            message: parsed.message,
-            imageUrls: parsed.image_urls || [],
-            conversationHistory: history,
-            requestedSpecialist:
-              parsed.specialist_type !== undefined
-                ? (parsed.specialist_type as SpecialistType | null)
-                : undefined,
-          })
+    const { readable, writable } = new TransformStream()
+    const writer = writable.getWriter()
 
-          let generatedTitle: string | undefined
-          for await (const chunk of generator) {
-            // Check for title sentinel from advisor
-            if (chunk.startsWith('__TITLE__')) {
-              generatedTitle = chunk.slice(9)
-              continue
-            }
-            const data = JSON.stringify({ type: 'text', content: chunk })
-            controller.enqueue(encoder.encode(`data: ${data}\n\n`))
+    // Run the generator in the background — each write flushes immediately
+    const streamPromise = (async () => {
+      try {
+        const generator = streamAdvisorResponse({
+          userId: user.id,
+          conversationId,
+          message: parsed.message,
+          imageUrls: parsed.image_urls || [],
+          conversationHistory: history,
+          requestedSpecialist:
+            parsed.specialist_type !== undefined
+              ? (parsed.specialist_type as SpecialistType | null)
+              : undefined,
+        })
+
+        let generatedTitle: string | undefined
+        for await (const chunk of generator) {
+          // Check for title sentinel from advisor
+          if (chunk.startsWith('__TITLE__')) {
+            generatedTitle = chunk.slice(9)
+            continue
           }
-
-          // Send completion event with metadata (including title if generated)
-          const meta = JSON.stringify({
-            type: 'done',
-            conversation_id: conversationId,
-            ...(generatedTitle ? { title: generatedTitle } : {}),
-          })
-          controller.enqueue(encoder.encode(`data: ${meta}\n\n`))
-          controller.close()
-        } catch (err) {
-          console.error(`[yuri/chat] Stream error for user ${user.id}, conv ${conversationId}:`, err)
-          const errMsg =
-            err instanceof AppError
-              ? err.message
-              : err instanceof Error
-                ? err.message
-                : 'Stream error'
-          const errorData = JSON.stringify({ type: 'error', message: errMsg })
-          controller.enqueue(encoder.encode(`data: ${errorData}\n\n`))
-          controller.close()
+          const data = JSON.stringify({ type: 'text', content: chunk })
+          await writer.write(encoder.encode(`data: ${data}\n\n`))
         }
-      },
-    })
+
+        // Send completion event with metadata (including title if generated)
+        const meta = JSON.stringify({
+          type: 'done',
+          conversation_id: conversationId,
+          ...(generatedTitle ? { title: generatedTitle } : {}),
+        })
+        await writer.write(encoder.encode(`data: ${meta}\n\n`))
+      } catch (err) {
+        console.error(`[yuri/chat] Stream error for user ${user.id}, conv ${conversationId}:`, err)
+        const errMsg =
+          err instanceof AppError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : 'Stream error'
+        const errorData = JSON.stringify({ type: 'error', message: errMsg })
+        await writer.write(encoder.encode(`data: ${errorData}\n\n`))
+      } finally {
+        await writer.close()
+      }
+    })()
+
+    // Prevent unhandled rejection if the stream errors after response is sent
+    streamPromise.catch(() => {})
+
+    const stream = readable
 
     return new Response(stream, {
       headers: {

@@ -140,118 +140,123 @@ export async function POST(request: NextRequest) {
       { role: 'user' as const, content: parsed.message },
     ]
 
+    // Use TransformStream for real-time SSE flushing (ReadableStream start()
+    // buffers all enqueues until the async callback resolves — no streaming).
     const encoder = new TextEncoder()
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          // Tool use loop (same pattern as advisor.ts but with widget constraints)
-          const loopMessages: Anthropic.Messages.MessageParam[] = [...messages]
-          let toolLoopCount = 0
-          let fullResponse = ''
+    const { readable, writable } = new TransformStream()
+    const writer = writable.getWriter()
 
-          while (toolLoopCount <= MAX_WIDGET_TOOL_LOOPS) {
-            // Apply cache_control to last assistant message for prompt caching
-            const cachedMessages = loopMessages.map((msg, idx) => {
-              if (
-                msg.role === 'assistant' &&
-                typeof msg.content === 'string' &&
-                idx === loopMessages.length - 2
-              ) {
-                return {
-                  role: 'assistant' as const,
-                  content: [
-                    { type: 'text' as const, text: msg.content, cache_control: { type: 'ephemeral' as const } },
-                  ],
-                }
+    const streamPromise = (async () => {
+      try {
+        // Tool use loop (same pattern as advisor.ts but with widget constraints)
+        const loopMessages: Anthropic.Messages.MessageParam[] = [...messages]
+        let toolLoopCount = 0
+        let fullResponse = ''
+
+        while (toolLoopCount <= MAX_WIDGET_TOOL_LOOPS) {
+          // Apply cache_control to last assistant message for prompt caching
+          const cachedMessages = loopMessages.map((msg, idx) => {
+            if (
+              msg.role === 'assistant' &&
+              typeof msg.content === 'string' &&
+              idx === loopMessages.length - 2
+            ) {
+              return {
+                role: 'assistant' as const,
+                content: [
+                  { type: 'text' as const, text: msg.content, cache_control: { type: 'ephemeral' as const } },
+                ],
               }
-              return msg
+            }
+            return msg
+          })
+
+          const response = await callAnthropicWithRetry(() =>
+            anthropic.messages.create({
+              model: MODELS.primary,
+              max_tokens: 400, // slightly more than 300 to account for tool-enriched responses
+              system: [{ type: 'text', text: YURI_WIDGET_SYSTEM, cache_control: { type: 'ephemeral' } }],
+              messages: cachedMessages,
+              tools: CACHED_WIDGET_TOOLS,
+              tool_choice: { type: 'auto' },
             })
+          )
 
-            const response = await callAnthropicWithRetry(() =>
-              anthropic.messages.create({
-                model: MODELS.primary,
-                max_tokens: 400, // slightly more than 300 to account for tool-enriched responses
-                system: [{ type: 'text', text: YURI_WIDGET_SYSTEM, cache_control: { type: 'ephemeral' } }],
-                messages: cachedMessages,
-                tools: CACHED_WIDGET_TOOLS,
-                tool_choice: { type: 'auto' },
-              })
-            )
+          if (response.stop_reason === 'tool_use') {
+            toolLoopCount++
 
-            if (response.stop_reason === 'tool_use') {
-              toolLoopCount++
+            // Add Claude's response (with tool_use blocks) to conversation
+            loopMessages.push({ role: 'assistant', content: response.content })
 
-              // Add Claude's response (with tool_use blocks) to conversation
-              loopMessages.push({ role: 'assistant', content: response.content })
-
-              // Execute each tool — limit to 1 tool per loop for widget (cost control)
-              const toolResults: Anthropic.Messages.ToolResultBlockParam[] = []
-              let toolsExecuted = 0
-              for (const block of response.content) {
-                if (block.type === 'tool_use' && toolsExecuted < 1) {
-                  const result = await executeYuriTool(
-                    block.name,
-                    block.input as Record<string, unknown>,
-                    '' // empty userId for anonymous widget
-                  )
-                  toolResults.push({
-                    type: 'tool_result',
-                    tool_use_id: block.id,
-                    content: result,
-                  })
-                  toolsExecuted++
-                } else if (block.type === 'tool_use') {
-                  // Skip additional tool calls for widget
-                  toolResults.push({
-                    type: 'tool_result',
-                    tool_use_id: block.id,
-                    content: JSON.stringify({ error: 'Only one tool call per message in the widget. Answer with the data you have.' }),
-                  })
-                }
-              }
-
-              // Add tool results as a user message (Claude API requirement)
-              loopMessages.push({ role: 'user', content: toolResults })
-              continue
-            }
-
-            // stop_reason is 'end_turn' or 'max_tokens' — extract text
+            // Execute each tool — limit to 1 tool per loop for widget (cost control)
+            const toolResults: Anthropic.Messages.ToolResultBlockParam[] = []
+            let toolsExecuted = 0
             for (const block of response.content) {
-              if (block.type === 'text') {
-                fullResponse += block.text
+              if (block.type === 'tool_use' && toolsExecuted < 1) {
+                const result = await executeYuriTool(
+                  block.name,
+                  block.input as Record<string, unknown>,
+                  '' // empty userId for anonymous widget
+                )
+                toolResults.push({
+                  type: 'tool_result',
+                  tool_use_id: block.id,
+                  content: result,
+                })
+                toolsExecuted++
+              } else if (block.type === 'tool_use') {
+                // Skip additional tool calls for widget
+                toolResults.push({
+                  type: 'tool_result',
+                  tool_use_id: block.id,
+                  content: JSON.stringify({ error: 'Only one tool call per message in the widget. Answer with the data you have.' }),
+                })
               }
             }
-            break
+
+            // Add tool results as a user message (Claude API requirement)
+            loopMessages.push({ role: 'user', content: toolResults })
+            continue
           }
 
-          // Fallback if tool loops exhausted without text
-          if (!fullResponse) {
-            fullResponse = "I'm having a moment accessing our database. Based on my experience though — what specifically are you looking for? I can help with product recommendations, ingredient questions, or K-beauty routines."
+          // stop_reason is 'end_turn' or 'max_tokens' — extract text
+          for (const block of response.content) {
+            if (block.type === 'text') {
+              fullResponse += block.text
+            }
           }
-
-          // Stream the response in chunks to maintain SSE feel
-          const CHUNK_SIZE = 50
-          for (let i = 0; i < fullResponse.length; i += CHUNK_SIZE) {
-            const chunk = fullResponse.slice(i, i + CHUNK_SIZE)
-            const data = JSON.stringify({ type: 'text', content: chunk })
-            controller.enqueue(encoder.encode(`data: ${data}\n\n`))
-          }
-
-          const done = JSON.stringify({ type: 'done' })
-          controller.enqueue(encoder.encode(`data: ${done}\n\n`))
-          controller.close()
-        } catch (err) {
-          const msg =
-            err instanceof Error ? err.message : 'Stream error'
-          console.error(`[widget/chat] Stream error for IP ${ip}:`, err)
-          const errorData = JSON.stringify({ type: 'error', message: msg })
-          controller.enqueue(encoder.encode(`data: ${errorData}\n\n`))
-          controller.close()
+          break
         }
-      },
-    })
 
-    return new Response(stream, {
+        // Fallback if tool loops exhausted without text
+        if (!fullResponse) {
+          fullResponse = "I'm having a moment accessing our database. Based on my experience though — what specifically are you looking for? I can help with product recommendations, ingredient questions, or K-beauty routines."
+        }
+
+        // Stream the response in chunks to maintain SSE feel
+        const CHUNK_SIZE = 50
+        for (let i = 0; i < fullResponse.length; i += CHUNK_SIZE) {
+          const chunk = fullResponse.slice(i, i + CHUNK_SIZE)
+          const data = JSON.stringify({ type: 'text', content: chunk })
+          await writer.write(encoder.encode(`data: ${data}\n\n`))
+        }
+
+        const done = JSON.stringify({ type: 'done' })
+        await writer.write(encoder.encode(`data: ${done}\n\n`))
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : 'Stream error'
+        console.error(`[widget/chat] Stream error for IP ${ip}:`, err)
+        const errorData = JSON.stringify({ type: 'error', message: msg })
+        await writer.write(encoder.encode(`data: ${errorData}\n\n`))
+      } finally {
+        await writer.close()
+      }
+    })()
+
+    streamPromise.catch(() => {})
+
+    return new Response(readable, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
