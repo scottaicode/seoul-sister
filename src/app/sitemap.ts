@@ -26,7 +26,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const { data: products } = await supabase
       .from('ss_products')
       .select('id, updated_at')
-      .eq('is_active', true)
       .order('updated_at', { ascending: false })
 
     if (products) {

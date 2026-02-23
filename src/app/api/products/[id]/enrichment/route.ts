@@ -31,7 +31,7 @@ export async function GET(
           .from('ss_user_profiles')
           .select('skin_type')
           .eq('user_id', user.id)
-          .single()
+          .maybeSingle()
         skinType = profile?.skin_type || undefined
       }
     }

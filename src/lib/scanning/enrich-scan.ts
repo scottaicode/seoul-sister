@@ -90,7 +90,7 @@ async function fetchPersonalization(
     .from('ss_user_profiles')
     .select('skin_type, skin_concerns, allergies, fitzpatrick_scale')
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   if (!profile) return null
 

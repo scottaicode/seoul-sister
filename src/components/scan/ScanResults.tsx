@@ -103,27 +103,105 @@ function SafetyScoreRing({ score }: { score: number }) {
 
 // ─── Action Buttons ────────────────────────────────────────────────────
 
-function ActionButtons({ productMatch, hasPricing }: {
+function ActionButtons({ productMatch, hasPricing, productName }: {
   productMatch: ScanResultData['product_match']
   hasPricing: boolean
+  productName: string
 }) {
+  const [routineAdded, setRoutineAdded] = useState(false)
+  const [alertSet, setAlertSet] = useState(false)
+
   return (
     <div className="grid grid-cols-2 gap-2">
-      <button
-        onClick={() => {/* TODO: add to routine action */}}
-        className="glass-card p-3 flex flex-col items-center gap-1.5 hover:bg-white/10 transition-colors duration-200 active:scale-[0.98]"
-      >
-        <ShoppingBag className="w-5 h-5 text-gold" />
-        <span className="text-[10px] font-medium text-white/70">Add to Routine</span>
-      </button>
-
-      {hasPricing && (
+      {productMatch ? (
         <button
-          onClick={() => {/* TODO: set price alert */}}
+          onClick={async () => {
+            try {
+              const { supabase } = await import('@/lib/supabase')
+              const { data: { session } } = await supabase.auth.getSession()
+              if (!session?.access_token) {
+                window.location.href = '/login'
+                return
+              }
+              // Fetch user's active AM routine (or first routine)
+              const res = await fetch('/api/routine', {
+                headers: { Authorization: `Bearer ${session.access_token}` },
+              })
+              const data = await res.json()
+              const routines = data.routines || []
+              if (routines.length === 0) {
+                // No routine exists — navigate to routine page to create one
+                window.location.href = '/routine'
+                return
+              }
+              // Add to first active routine
+              const routine = routines[0]
+              await fetch(`/api/routine/${routine.id}/products`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ product_id: productMatch.id }),
+              })
+              setRoutineAdded(true)
+            } catch { /* ignore */ }
+          }}
           className="glass-card p-3 flex flex-col items-center gap-1.5 hover:bg-white/10 transition-colors duration-200 active:scale-[0.98]"
         >
-          <Bell className="w-5 h-5 text-gold" />
-          <span className="text-[10px] font-medium text-white/70">Price Alert</span>
+          <ShoppingBag className={`w-5 h-5 ${routineAdded ? 'text-green-400' : 'text-gold'}`} />
+          <span className="text-[10px] font-medium text-white/70">
+            {routineAdded ? 'Added!' : 'Add to Routine'}
+          </span>
+        </button>
+      ) : (
+        <button
+          onClick={() => { window.location.href = `/routine` }}
+          className="glass-card p-3 flex flex-col items-center gap-1.5 hover:bg-white/10 transition-colors duration-200 active:scale-[0.98]"
+        >
+          <ShoppingBag className="w-5 h-5 text-gold" />
+          <span className="text-[10px] font-medium text-white/70">Add to Routine</span>
+        </button>
+      )}
+
+      {hasPricing && productMatch && (
+        <button
+          onClick={async () => {
+            try {
+              const { supabase } = await import('@/lib/supabase')
+              const { data: { session } } = await supabase.auth.getSession()
+              if (!session?.access_token) {
+                window.location.href = '/login'
+                return
+              }
+              // Check if already wishlisted
+              const { data: existing } = await supabase
+                .from('ss_user_wishlists')
+                .select('id')
+                .eq('user_id', session.user.id)
+                .eq('product_id', productMatch.id)
+                .maybeSingle()
+              if (existing) {
+                setAlertSet(true)
+                return
+              }
+              // Add to wishlist with price alert threshold
+              const { error } = await supabase
+                .from('ss_user_wishlists')
+                .insert({
+                  user_id: session.user.id,
+                  product_id: productMatch.id,
+                  price_alert_threshold: 0, // alert on any price drop
+                })
+              if (!error) setAlertSet(true)
+            } catch { /* ignore */ }
+          }}
+          className="glass-card p-3 flex flex-col items-center gap-1.5 hover:bg-white/10 transition-colors duration-200 active:scale-[0.98]"
+        >
+          <Bell className={`w-5 h-5 ${alertSet ? 'text-green-400' : 'text-gold'}`} />
+          <span className="text-[10px] font-medium text-white/70">
+            {alertSet ? 'Alert Set!' : 'Price Alert'}
+          </span>
         </button>
       )}
 
@@ -278,6 +356,7 @@ export default function ScanResults({ result, onReset }: ScanResultsProps) {
       <ActionButtons
         productMatch={result.product_match}
         hasPricing={!!enrichment?.pricing}
+        productName={result.analysis.product_name_en}
       />
 
       {/* ── Price Comparison ──────────────────────────────────────── */}
