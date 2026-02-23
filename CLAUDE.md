@@ -766,37 +766,72 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 - [x] Service role manages subscriptions (webhook access)
 - [x] Users can read own subscription and affiliate click data
 
-### Remaining Work (Post-Migration)
-- [x] Yuri Three-Layer Widget System (Layer 1 floating bubble, Layer 2 inline, Layer 3 post-signup)
-- [x] Landing page build (hero + feature grid + Try Yuri + social proof + pricing + CTA)
-- [x] Dark + gold design theme (Seoul-inspired aesthetic)
-- [x] Mobile hamburger menu + widget overlap fixes
-- [x] Yuri persona rewrite (20-year Korean industry veteran voice across all touchpoints)
-- [ ] **Widget Email Capture** (FUTURE CONSIDERATION)
-  - Currently: Widget is stateless. Cookie tracks message count (5 free, 24hr expiry). At limit,
-    shows "Create Free Account" CTA. No email capture, no conversation storage.
-  - Lightweight first step (when traffic justifies it): Add an email input field at the message
-    limit alongside the signup CTA. Lower friction than full account creation. Store in a simple
-    `ss_widget_emails` table. No full session tracking or memory needed at this stage.
-  - Full lead gen & conversation memory (only if data shows returning visitors bouncing without
-    converting): Session storage, AI memory, returning visitor recognition. See LGAAS patterns
-    (`utils/widget-helpers.js`, `api/widget-conversation.js`) for architecture reference.
-  - Note: Making the anonymous widget too personalized (memory, recognition) can reduce signup
-    motivation. The 5-message limit + signup CTA is the correct conversion architecture for now.
-- [x] Stripe webhook integration (6 event types, idempotency, subscription lifecycle)
-- [x] Premium single-tier pricing ($39.99/mo Seoul Sister Pro, usage caps: 500 msgs, 30 scans)
-- [x] PWA install prompts (service worker, beforeinstallprompt handler, offline caching)
-- [x] AI discoverability (robots.ts with AI bot allowances, dynamic sitemap.ts, llms.txt, JSON-LD on products + org)
-- [x] Performance optimization (code splitting via next/dynamic, bundle analyzer, cache headers)
-- [x] Cron job scheduling (vercel.json with 5 cron jobs: scan-trends, refresh-prices, aggregate-learning, update-effectiveness, seasonal-adjustments)
-- [x] Scan enrichment pipeline (personalized skin match, price comparison, community intelligence, authenticity check, trend context)
-- [x] Mobile scan reliability (client-side image compression, 60s timeouts, Safari "Load failed" fix)
-- [x] ScanResults component extraction (LabelScanner refactored from 480 to 252 lines)
-- [ ] Push notifications (FUTURE -- requires service worker push events, web-push library, subscription management)
-- [ ] Remaining cron jobs — scan-korean-products and translate-and-index planned in Phase 9 (Automated Product Pipeline). scan-counterfeits, community-digest, generate-content still FUTURE
-- [ ] **Supabase Attack Protection** (FUTURE — when traffic justifies it):
-  - Enable **Captcha protection** on auth endpoints to prevent bot signups (Supabase Dashboard > Authentication > Attack Protection). Requires adding captcha widget to login/register forms.
-  - Enable **Leaked password protection** (HaveIBeenPwned check on signup/password change). Requires configuring a custom SMTP email provider first (Supabase Dashboard > Authentication > Email). Currently DISABLED because no custom SMTP is set up.
+### Phase 8: Value Enrichment Features (COMPLETE — 7 of 11 built, 4 deferred)
+- [x] Feature 8.3: K-Beauty Dupe Finder (ingredient overlap algorithm, AI dupes, dupe page + API)
+- [x] Feature 8.4: Ingredient Include/Exclude Search (products API extension, IngredientPicker component)
+- [x] Feature 8.7: Sunscreen Finder (K-beauty filters: PA rating, white cast, finish, under-makeup)
+- [x] Feature 8.8: Hormonal Cycle Routine Adjustments (cycle tracking, phase-aware routine suggestions)
+- [x] Feature 8.9: Glass Skin Score Photo Tracking (Claude Vision, radar chart, progress timeline, share card)
+- [x] Feature 8.10: Weather-Adaptive Routine Alerts (Open-Meteo API, weather-to-skincare mapping)
+- [x] Feature 8.11: Shelf Scan Collection Analysis (multi-product Vision identification, routine grade)
+- [ ] Feature 8.1: Product Detail Page Enrichment (deferred — enrichment via shared components exists but standalone endpoint not wired)
+- [ ] Feature 8.2: Routine Builder Intelligence (deferred — routine CRUD API, conflict detection, layering order, AI generation)
+- [ ] Feature 8.5: Expiration/PAO Tracking (deferred — tracking page exists but API wiring needs review)
+- [ ] Feature 8.6: Reformulation Tracker (deferred — detection logic, alert system, version history)
+
+### Phase 9: Automated Product Intelligence Pipeline (COMPLETE)
+- [x] Feature 9.1: Olive Young Global Scraper (5,656 listings scraped)
+- [x] Feature 9.2: Sonnet AI Extraction & Normalization (5,530 products extracted, $49.15 Sonnet cost)
+- [x] Feature 9.3: Ingredient Auto-Linking Pipeline (14,400+ ingredients, 221,000+ links)
+- [x] Feature 9.4: Multi-Retailer Price Integration (YesStyle, Soko Glam, Amazon, StyleKorean)
+- [x] Feature 9.5: Daily Automation Cron Jobs + Admin Dashboard (9 cron jobs configured)
+- [x] Feature 9.6: Initial Import Execution (6,200+ products, 590+ brands, $55.97 total pipeline cost)
+
+### Phase 10: Real-Time Trend Intelligence (DOCUMENTED — Next to Build)
+- [ ] Feature 10.1: Olive Young Bestseller Scraper (Korean sales rankings)
+- [ ] Feature 10.2: Reddit K-Beauty Mention Scanner (community mention counts + sentiment)
+- [ ] Feature 10.3: Trend Gap Detector & UI Updates ("Emerging from Korea" tab)
+
+### Phase 11: Yuri Intelligence Upgrades (COMPLETE)
+- [x] Feature 11.1: Product Database Tools (6 tools via Claude tool use / function calling)
+- [x] Feature 11.2: Web Search Integration (Brave Search API, 7th tool)
+- [x] Feature 11.3: Location Capture in Onboarding (location_text column, backfill)
+- [x] Feature 11.4: Learning Engine Bootstrap (47 effectiveness rows, 20 seasonal patterns, 8 trends)
+
+### Phase 12: Platform-Wide Intelligence Upgrade (COMPLETE)
+- [x] Feature 12.0: Shared Intelligence Context Helper (`src/lib/intelligence/context.ts` — centralized `loadIntelligenceContext()`)
+- [x] Feature 12.1: Widget Intelligence (3 database tools for anonymous landing page widget)
+- [x] Feature 12.2: Scan Intelligence Layer (learning engine queries replace hardcoded ingredient arrays)
+- [x] Feature 12.3: Glass Skin Score Personalization (user profile + effectiveness injected into Vision prompt)
+- [x] Feature 12.4: Shelf Scan Personalization (allergens, skin type, concerns injected into collection analysis)
+- [x] Feature 12.5: Sunscreen Climate + UV Intelligence (auto-populated filters, real-time UV index, effectiveness ranking)
+- [x] Feature 12.6: Products Discovery Intelligence (`sort_by=recommended` with personalized match scoring)
+- [x] Feature 12.7: Trending Relevance ("For You" tab with skin-type-filtered trends, cohort labels)
+- [x] Feature 12.8: Dupe Effectiveness Scoring (ingredient effectiveness weighting, user context in AI dupes)
+- [x] Feature 12.9: Weather Learning-Driven Adjustments (learning patterns supplement hardcoded rules)
+- [x] Feature 12.10: Routine Effectiveness Intelligence (combined effectiveness score from ingredient data)
+- [x] Feature 12.11: Dashboard Intelligence Widgets ("Your Top Ingredients" + "Seasonal Tip" widgets)
+- [x] Feature 12.12: Community Cohort Intelligence (effectiveness data per review, skin-type cohort analysis)
+
+### Remaining Work
+
+**Next Priority: Phase 10 — Real-Time Trend Intelligence**
+- [ ] Feature 10.1: Olive Young Bestseller Scraper (replace fabricated seed data with real Korean sales rankings)
+- [ ] Feature 10.2: Reddit K-Beauty Mention Scanner (real community mention counts + sentiment)
+- [ ] Feature 10.3: Trend Gap Detector & UI Updates ("Emerging from Korea" — the unique insight)
+- See Phase 10 section below for full implementation plans
+
+**Deferred Phase 8 Features** (build when core intelligence loop is validated with real users)
+- [ ] Feature 8.1: Product Detail Page Enrichment (enrichment API endpoint for product pages)
+- [ ] Feature 8.2: Routine Builder Intelligence (routine CRUD API, conflict detection, layering logic, AI generation)
+- [ ] Feature 8.5: Expiration/PAO Tracking (tracking page exists, API wiring needs review)
+- [ ] Feature 8.6: Reformulation Tracker (formulation change detection, alert system, version history)
+
+**Future Work** (when traffic/revenue justifies)
+- [ ] **Widget Email Capture** — Currently stateless with 5 free messages + signup CTA. Add email capture field at message limit when traffic justifies it. Store in `ss_widget_emails` table.
+- [ ] **Push Notifications** — Requires service worker push events, web-push library, subscription management
+- [ ] **Remaining Cron Jobs** — scan-counterfeits, community-digest, generate-content
+- [ ] **Supabase Attack Protection** — Captcha on auth endpoints (requires captcha widget), leaked password protection (requires custom SMTP). Enable when traffic justifies it.
 
 ## Phase 8: Value Enrichment Features (11 Features)
 
@@ -4080,8 +4115,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 7.0.0 (Phase 12 Blueprint — Platform-Wide Intelligence Upgrade)
-**Status**: Phases 1-9 built. Phase 10 documented. Phase 11 COMPLETE (tool use, web search, location, learning bootstrap all deployed). Phase 12 documented (13 features to extend Phase 11 intelligence to every feature). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 9 cron jobs configured. Learning engine seeded with 47 ingredient effectiveness rows, 20 seasonal patterns, 8 trend signals.
+**Version**: 8.0.0 (Phase 12 COMPLETE — Platform-Wide Intelligence Upgrade)
+**Status**: Phases 1-12 built. Phase 10 documented (next to build — Real-Time Trend Intelligence). Every feature now personalized, data-backed, and seasonally aware. 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 9 cron jobs configured. Learning engine seeded with 47 ingredient effectiveness rows, 20 seasonal patterns, 8 trend signals. Shared intelligence context helper powers all features.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -4097,6 +4132,23 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v8.0.0 (Feb 23, 2026): Phase 12 COMPLETE — Platform-Wide Intelligence Upgrade
+  - **All 13 features (12.0-12.12) built and deployed**: Every Seoul Sister feature is now personalized, data-backed, and seasonally aware. The intelligence layer built in Phase 11 (originally only available to Yuri) now powers every scan, product page, routine, trending feed, and dashboard widget.
+  - **Feature 12.0: Shared Intelligence Context Helper** (FOUNDATION): Created `src/lib/intelligence/context.ts` with centralized `loadIntelligenceContext(userId)` — runs 5 parallel queries (skin profile, ingredient effectiveness, seasonal patterns, trend signals, product reactions) so any feature can access the intelligence layer without duplicating query logic
+  - **Feature 12.1: Widget Intelligence** (CRITICAL): Added 3 database tools (`search_products`, `compare_prices`, `get_trending_products`) to the anonymous landing page widget via `WIDGET_TOOLS` filter in `/api/widget/chat`. Widget can now search 6,200+ real products and cite real prices — transforms conversion from "generic chatbot" to "database-backed advisor demo"
+  - **Feature 12.2: Scan Intelligence Layer** (HIGH): Replaced 80 lines of hardcoded ingredient arrays in `enrich-scan.ts` with `ss_ingredient_effectiveness` queries. Added seasonal context from `ss_learning_patterns`. Scan enrichment now data-driven instead of static
+  - **Feature 12.3: Glass Skin Score Personalization** (HIGH): `/api/skin-score` now reads full `ss_user_profiles` (skin_type, concerns, climate, location_text, age_range, allergies, fitzpatrick_scale) and injects into Claude Vision prompt alongside top effective ingredients for user's skin type
+  - **Feature 12.4: Shelf Scan Personalization** (HIGH): `/api/shelf-scan` reads user profile and injects allergens, skin type, and concerns into collection analysis prompt. Post-match allergen cross-reference checks product ingredients against user allergies
+  - **Feature 12.5: Sunscreen Climate + UV Intelligence** (HIGH): Sunscreen page auto-populates filters from user profile. Real-time UV index via Open-Meteo displayed in `UvBanner` component with threshold warnings (extreme/high/moderate/low). Effectiveness ranking by skin type
+  - **Feature 12.6: Products Discovery Intelligence** (HIGH): Added `sort_by=recommended` to products API with personalized match scoring using `ss_ingredient_effectiveness`. Trending badges on product cards. "People With Your Skin Type Love" section
+  - **Feature 12.7: Trending Relevance** (MEDIUM): Added "For You" tab to trending page filtering by skin-type relevance. `relevance_score` calculation using `relevanceMultiplier`. Cohort labels showing skin-type-specific popularity
+  - **Feature 12.8: Dupe Effectiveness Scoring** (MEDIUM): Dupe finder now queries `ss_ingredient_effectiveness` filtered by user's skin type. Effectiveness-weighted match scoring applied to dupes. User context injected into AI dupe finder prompt
+  - **Feature 12.9: Weather Learning-Driven Adjustments** (MEDIUM): `weather-routine.ts` now queries `ss_learning_patterns` for seasonal data. Learning patterns supplement hardcoded weather rules. `location_text` used for display
+  - **Feature 12.10: Routine Effectiveness Intelligence** (MEDIUM): New `src/lib/intelligence/routine-effectiveness.ts` with `calculateRoutineEffectiveness()`. Queries `ss_ingredient_effectiveness` for per-concern scoring across all routine ingredients
+  - **Feature 12.11: Dashboard Intelligence Widgets** (LOW-MED): New `IntelligenceWidgets` component renders "Your Top Ingredients" (top 5 effective ingredients with effectiveness bars and concern labels) and "Seasonal Tip" (current season's advice for user's climate). Wired into dashboard between Yuri's Insights and Skin Profile
+  - **Feature 12.12: Community Cohort Intelligence** (LOW): Community page shows effectiveness data per reviewed product. Skin-type cohort analysis integrated into review display with `effectivenessMap`
+  - **Development Phases section updated**: Phases 8-12 now have COMPLETE checkboxes with feature summaries. Remaining Work section reorganized: Phase 10 as next priority, deferred Phase 8 features listed, future work consolidated
+  - **Recommended next phase**: Phase 10 (Real-Time Trend Intelligence) — replaces fabricated seed data with real Olive Young bestseller rankings and Reddit mention counts. Critical for credibility as a trend intelligence platform
 - v7.0.0 (Feb 22, 2026): Phase 12 Blueprint — Intelligence Layer Propagation Across All Features
   - **Comprehensive feature audit**: Systematically reviewed all 15+ Seoul Sister features for intelligence gaps. Found that Phase 11 upgrades (database tools, learning engine, location awareness) only benefit Yuri — zero other features use the intelligence layer
   - **Phase 12 documented in CLAUDE.md**: 13 features (12.0-12.12) with full implementation plans, code snippets, files to create/modify, and build order
