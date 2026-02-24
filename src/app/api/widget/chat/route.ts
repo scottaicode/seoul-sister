@@ -12,8 +12,8 @@ const WIDGET_RATE_WINDOW = 24 * 60 * 60 * 1000 // 24 hours in ms
 const MSG_LIMIT_WINDOW = 30 * 24 * 60 * 60 * 1000 // 30 days (matches client-side)
 const MAX_WIDGET_TOOL_LOOPS = 2 // fewer loops than authenticated Yuri (cost control)
 
-/** Widget-safe tools: subset of Yuri's 7 tools that work without user auth */
-const WIDGET_TOOL_NAMES = new Set(['search_products', 'compare_prices', 'get_trending_products'])
+/** Widget-safe tools: subset of Yuri's tools that work without user auth */
+const WIDGET_TOOL_NAMES = new Set(['search_products', 'compare_prices', 'get_trending_products', 'get_current_weather'])
 const WIDGET_TOOLS = YURI_TOOLS.filter((t) => WIDGET_TOOL_NAMES.has(t.name))
 
 /** Prompt-cached versions: cache_control on system prompt and last tool definition */
@@ -72,6 +72,7 @@ Use tools when the question involves:
 - Specific product recommendations or searches
 - Price comparisons or "where to buy"
 - What's trending in Korean beauty right now
+- Weather-based skincare advice (use get_current_weather with their city name)
 
 Do NOT use tools for general skincare education, ingredient science, or K-beauty philosophy -- your training knowledge is sufficient for those.
 

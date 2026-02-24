@@ -1,4 +1,5 @@
 import { getServiceClient } from '@/lib/supabase'
+import { fetchWeather } from '@/lib/intelligence/weather-routine'
 import type Anthropic from '@anthropic-ai/sdk'
 
 // ---------------------------------------------------------------------------
@@ -166,6 +167,29 @@ export const YURI_TOOLS: ToolDef[] = [
       required: ['query'],
     },
   },
+  {
+    name: 'get_current_weather',
+    description:
+      'Get real-time weather conditions for a location including temperature, humidity, UV index, and wind speed. Use this when a user asks about weather, wants skincare advice for current conditions, or mentions their location. Returns raw weather data plus the user\'s skin profile so you can provide personalized, weather-aware skincare advice.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        city: {
+          type: 'string',
+          description:
+            'City name to look up (e.g., "Austin", "Seoul", "London"). Will be geocoded to coordinates. Use this OR latitude/longitude.',
+        },
+        latitude: {
+          type: 'number',
+          description: 'Latitude coordinate. Use with longitude for precise location.',
+        },
+        longitude: {
+          type: 'number',
+          description: 'Longitude coordinate. Use with latitude for precise location.',
+        },
+      },
+    },
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -193,6 +217,8 @@ export async function executeYuriTool(
         return await executeGetPersonalizedMatch(input, userId)
       case 'web_search':
         return await executeWebSearch(input)
+      case 'get_current_weather':
+        return await executeGetCurrentWeather(input, userId)
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` })
     }
@@ -978,4 +1004,155 @@ async function executeWebSearch(
       error: `Web search failed: ${err instanceof Error ? err.message : 'unknown error'}. Answer from your knowledge instead.`,
     })
   }
+}
+
+// ---------------------------------------------------------------------------
+// Tool: get_current_weather
+// ---------------------------------------------------------------------------
+
+/** Geocode a city name to lat/lng using Open-Meteo's free geocoding API */
+async function geocodeCity(
+  city: string
+): Promise<{ lat: number; lng: number; name: string } | null> {
+  try {
+    const res = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`,
+      { signal: AbortSignal.timeout(5000) }
+    )
+    if (!res.ok) return null
+    const data = (await res.json()) as {
+      results?: Array<{ latitude: number; longitude: number; name: string; country: string }>
+    }
+    const result = data.results?.[0]
+    if (!result) return null
+    return {
+      lat: result.latitude,
+      lng: result.longitude,
+      name: `${result.name}, ${result.country}`,
+    }
+  } catch {
+    return null
+  }
+}
+
+async function executeGetCurrentWeather(
+  input: Record<string, unknown>,
+  userId: string
+): Promise<string> {
+  const city = input.city as string | undefined
+  const inputLat = input.latitude as number | undefined
+  const inputLng = input.longitude as number | undefined
+
+  // Resolve coordinates: explicit lat/lng > city geocoding > user profile
+  let lat: number | undefined
+  let lng: number | undefined
+  let resolvedLocation: string | undefined
+
+  if (typeof inputLat === 'number' && typeof inputLng === 'number') {
+    lat = inputLat
+    lng = inputLng
+  } else if (city) {
+    const geo = await geocodeCity(city)
+    if (geo) {
+      lat = geo.lat
+      lng = geo.lng
+      resolvedLocation = geo.name
+    }
+  }
+
+  // Fallback: try user's saved coordinates from profile
+  if (lat === undefined || lng === undefined) {
+    const db = getServiceClient()
+    const { data: profile } = await db
+      .from('ss_user_profiles')
+      .select('latitude, longitude, location_text')
+      .eq('user_id', userId)
+      .single()
+
+    const profileRaw = profile as Record<string, unknown> | null
+    const savedLat = profileRaw?.latitude as number | null
+    const savedLng = profileRaw?.longitude as number | null
+
+    if (savedLat && savedLng) {
+      lat = savedLat
+      lng = savedLng
+      resolvedLocation = (profileRaw?.location_text as string) || undefined
+    }
+  }
+
+  if (lat === undefined || lng === undefined) {
+    return JSON.stringify({
+      error:
+        'Could not determine location. Ask the user for their city name or location.',
+    })
+  }
+
+  // Fetch real-time weather from Open-Meteo (free, no API key)
+  const weather = await fetchWeather(lat, lng)
+  if (resolvedLocation) {
+    weather.location = resolvedLocation
+  }
+
+  // Load user skin profile for context (Claude uses this to reason about
+  // personalized skincare adjustments — we do NOT apply template-based rules)
+  const db = getServiceClient()
+  const { data: skinProfile } = await db
+    .from('ss_user_profiles')
+    .select(
+      'skin_type, skin_concerns, allergies, climate, location_text, fitzpatrick_scale'
+    )
+    .eq('user_id', userId)
+    .single()
+
+  // Load seasonal learning patterns if available
+  const userClimate = (skinProfile as Record<string, unknown> | null)?.climate as string | null
+  let seasonalInsight: string | null = null
+  if (userClimate) {
+    const month = new Date().getMonth()
+    const season =
+      month >= 2 && month <= 4
+        ? 'spring'
+        : month >= 5 && month <= 7
+          ? 'summer'
+          : month >= 8 && month <= 10
+            ? 'fall'
+            : 'winter'
+
+    const { data: patterns } = await db
+      .from('ss_learning_patterns')
+      .select('data, pattern_description')
+      .eq('pattern_type', 'seasonal')
+      .eq('skin_type', userClimate)
+
+    const match = patterns?.find((p) => {
+      const d = p.data as Record<string, unknown>
+      return d.season === season
+    })
+    if (match) {
+      seasonalInsight = match.pattern_description
+    }
+  }
+
+  return JSON.stringify({
+    weather: {
+      location: weather.location,
+      temperature_c: weather.temperature,
+      feels_like_c: weather.feels_like,
+      humidity_percent: weather.humidity,
+      uv_index: weather.uv_index,
+      wind_speed_kmh: weather.wind_speed,
+      condition: weather.condition,
+    },
+    user_skin_profile: skinProfile
+      ? {
+          skin_type: (skinProfile as Record<string, unknown>).skin_type,
+          concerns: (skinProfile as Record<string, unknown>).skin_concerns,
+          allergies: (skinProfile as Record<string, unknown>).allergies,
+          fitzpatrick_scale: (skinProfile as Record<string, unknown>).fitzpatrick_scale,
+          climate_zone: userClimate,
+        }
+      : null,
+    seasonal_insight: seasonalInsight,
+    note: 'Use the weather data and skin profile to provide personalized, specific skincare advice for today. Reference actual conditions (temperature, humidity, UV) in your response.',
+  })
 }

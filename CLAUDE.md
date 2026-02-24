@@ -802,7 +802,7 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 
 ### Phase 12: Platform-Wide Intelligence Upgrade (COMPLETE)
 - [x] Feature 12.0: Shared Intelligence Context Helper (`src/lib/intelligence/context.ts` — centralized `loadIntelligenceContext()`)
-- [x] Feature 12.1: Widget Intelligence (3 database tools for anonymous landing page widget)
+- [x] Feature 12.1: Widget Intelligence (4 tools for anonymous landing page widget: search, prices, trending, weather)
 - [x] Feature 12.2: Scan Intelligence Layer (learning engine queries replace hardcoded ingredient arrays)
 - [x] Feature 12.3: Glass Skin Score Personalization (user profile + effectiveness injected into Vision prompt)
 - [x] Feature 12.4: Shelf Scan Personalization (allergens, skin type, concerns injected into collection analysis)
@@ -2956,6 +2956,24 @@ After implementation, verify these scenarios work:
 }
 ```
 
+**Tool 8: `get_current_weather`**
+```typescript
+{
+  name: 'get_current_weather',
+  description: 'Get real-time weather conditions for a location including temperature, humidity, UV index, and wind speed. Returns raw weather data plus the user\'s skin profile so you can provide personalized, weather-aware skincare advice.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      city: { type: 'string', description: 'City name to look up (e.g., "Austin", "Seoul")' },
+      latitude: { type: 'number', description: 'Latitude coordinate' },
+      longitude: { type: 'number', description: 'Longitude coordinate' },
+    },
+  },
+}
+```
+
+Implementation: Geocodes city name via Open-Meteo (free, no API key), calls `fetchWeather()` from `weather-routine.ts` for real-time conditions, loads user skin profile from `ss_user_profiles`, and fetches seasonal learning patterns from `ss_learning_patterns`. Falls back to user's saved profile coordinates if no location provided. Returns raw weather data + skin profile — Claude reasons about skincare adjustments dynamically (AI-first, no templates). Available to both authenticated Yuri AND the anonymous widget.
+
 #### Implementation Options (Choose One)
 
 **Option A: Brave Search API (Recommended)**
@@ -4047,7 +4065,7 @@ LOW. Query + display.
 | Voice Quality Layer | `cleanBannedPatterns()`, `detectAIPatterns()`, `humanizeText()` on every response | **NONE** | LOW — Yuri's system prompt handles voice, but no post-processing cleanup |
 
 **What Seoul Sister Has That LGAAS Doesn't** (documented in LGAAS blueprint for them to adopt):
-- Claude native tool use API (7 tools with `tool_choice: auto`)
+- Claude native tool use API (8 tools with `tool_choice: auto`)
 - Recent message excerpts (last 6 messages from 3 recent conversations as memory safety net)
 - Structured product recommendation extraction from prose summaries
 - Specialist agent system with deep domain prompts (200-400 words each)
@@ -4788,7 +4806,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 8.1.0 (Phase 13 Blueprint — AI Conversation Engine Hardening)
+**Version**: 8.1.1 (Feature 11.5 — Real-Time Weather Tool)
 **Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 12 cron jobs configured.
 **AI Advisor**: Yuri (유리) - "Glass"
 
@@ -4805,6 +4823,15 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v8.1.1 (Feb 24, 2026): Feature 11.5 — Real-Time Weather Tool for Yuri + Widget
+  - **New tool: `get_current_weather`**: 8th tool added to Yuri's tool belt. Returns real-time weather (temperature, humidity, UV index, wind speed, condition) for any city via Open-Meteo API (free, no key required). AI-First design: returns raw weather data + user skin profile to Claude Opus for dynamic reasoning — does NOT use hardcoded `getWeatherAdjustments()` rule-based system
+  - **3-tier location resolution**: (1) Explicit lat/lng coordinates, (2) city name geocoded via Open-Meteo geocoding API, (3) fallback to user's saved profile coordinates. Works for both authenticated users and anonymous widget visitors
+  - **Seasonal learning context**: Queries `ss_learning_patterns` for user's climate zone and current season, includes as optional context alongside weather data
+  - **Widget access**: Added to `WIDGET_TOOL_NAMES` set — anonymous visitors can now ask weather-based skincare questions. Widget system prompt updated with weather tool usage guidance
+  - **Advisor system prompt**: Updated tool list and "when to use tools" guidance to include weather scenarios
+  - **Files modified**: `src/lib/yuri/tools.ts` (tool definition + execution), `src/app/api/widget/chat/route.ts` (widget tool access), `src/lib/yuri/advisor.ts` (system prompt)
+  - **No new dependencies or env vars**: Uses existing Open-Meteo API and `fetchWeather()` from `weather-routine.ts`
+  - **Build verified**: `tsc --noEmit` and `next build` both pass
 - v8.1.0 (Feb 23, 2026): Phase 13 Blueprint — AI Conversation Engine Hardening
   - **Cross-application audit completed**: Line-by-line comparison of LGAAS AriaStar (7,530+ lines across 4 core files) vs Seoul Sister Yuri (2,089 lines across 4 core files). Identified 6 architectural gaps in Yuri's conversation engine
   - **Phase 13 documented in CLAUDE.md**: 6 features (13.1-13.6) with full implementation plans, LGAAS code references, and build order
@@ -4863,6 +4890,7 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
   - **Phase 11 documented in CLAUDE.md**: 4 critical intelligence gaps identified and fully documented with implementation plans
   - **Feature 11.1: Product Database Tools** (CRITICAL): Claude tool use / function calling to give Yuri 6 database tools (search_products, get_product_details, check_ingredient_conflicts, get_trending_products, compare_prices, get_personalized_match). Transforms Yuri from text-only chatbot to database-backed AI advisor. New file: `src/lib/yuri/tools.ts`. Modifies `advisor.ts` for tool use loop with streaming
   - **Feature 11.2: Web Search Integration** (HIGH): Brave Search API tool for current information (latest research, new products, Reddit sentiment, reformulation news). Added as 7th tool alongside database tools
+  - **Feature 11.5: Real-Time Weather Tool** (HIGH): `get_current_weather` tool (8th tool) gives Yuri real-time weather access via Open-Meteo (free, no API key). Geocodes city names, returns raw weather data (temperature, humidity, UV, wind) + user skin profile + seasonal learning patterns. Claude reasons dynamically about personalized weather-based skincare (AI-first, no templates). Available to both authenticated Yuri and anonymous widget (4 widget tools total)
   - **Feature 11.3: Location Capture in Onboarding** (MEDIUM): `location_text` column on `ss_user_profiles`, extraction prompt update, backfill script. Priority chain: stated location > GPS > nothing
   - **Feature 11.4: Learning Engine Bootstrap** (MEDIUM): Seed `ss_ingredient_effectiveness` (30-50 rows), `ss_learning_patterns` (20 seasonal rows), `ss_trend_signals` (5-10 trends) with research-backed data so Yuri's "data-backed insights" section is never empty
   - **Cross-session memory improvements deployed** (Changes 1-4 from LGAAS audit):
