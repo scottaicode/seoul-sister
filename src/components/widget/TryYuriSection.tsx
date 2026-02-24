@@ -39,6 +39,7 @@ interface TryYuriMessage {
   role: 'user' | 'assistant'
   content: string
   isStreaming?: boolean
+  isIncomplete?: boolean
 }
 
 const fadeUp = {
@@ -146,7 +147,11 @@ export default function TryYuriSection() {
                   const updated = [...prev]
                   const last = updated[updated.length - 1]
                   if (last?.isStreaming) {
-                    updated[updated.length - 1] = { ...last, isStreaming: false }
+                    updated[updated.length - 1] = {
+                      ...last,
+                      isStreaming: false,
+                      ...(event.message ? { content: event.message } : {}),
+                    }
                   }
                   return updated
                 })
@@ -157,12 +162,29 @@ export default function TryYuriSection() {
           }
         }
       } catch (err) {
-        setMessages((prev) => prev.filter((m) => !m.isStreaming))
-        setError(
-          err instanceof Error && err.message.includes('Rate limit')
-            ? 'Too many requests. Please try again later.'
-            : 'Something went wrong. Please try again.'
-        )
+        // Preserve partial streamed content instead of discarding everything
+        let hadPartialContent = false
+        setMessages((prev) => {
+          const updated = [...prev]
+          const last = updated[updated.length - 1]
+          if (last?.role === 'assistant' && last.isStreaming && last.content.trim()) {
+            updated[updated.length - 1] = {
+              ...last,
+              isStreaming: false,
+              isIncomplete: true,
+            }
+            hadPartialContent = true
+            return updated
+          }
+          return prev.filter((m) => !m.isStreaming)
+        })
+        if (!hadPartialContent) {
+          setError(
+            err instanceof Error && err.message.includes('Rate limit')
+              ? 'Too many requests. Please try again later.'
+              : 'Something went wrong. Please try again.'
+          )
+        }
       } finally {
         setIsStreaming(false)
       }
@@ -251,6 +273,11 @@ export default function TryYuriSection() {
                           <span className="w-1 h-1 rounded-full bg-gold/50 animate-pulse [animation-delay:300ms]" />
                         </span>
                       </span>
+                    )}
+                    {msg.isIncomplete && (
+                      <p className="text-[10px] text-amber-500/70 mt-1.5 italic">
+                        (Response may be incomplete)
+                      </p>
                     )}
                   </div>
                 </div>

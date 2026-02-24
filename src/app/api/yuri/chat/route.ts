@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { streamAdvisorResponse } from '@/lib/yuri/advisor'
 import { loadConversationMessages, createConversation } from '@/lib/yuri/memory'
+import { cleanYuriResponse } from '@/lib/yuri/voice-cleanup'
 import { AppError } from '@/lib/utils/error-handler'
 import { supabase, getServiceClient } from '@/lib/supabase'
 import { hasActiveSubscription } from '@/lib/subscription'
@@ -127,21 +128,26 @@ export async function POST(request: NextRequest) {
         })
 
         let generatedTitle: string | undefined
+        let fullResponse = ''
         for await (const chunk of generator) {
           // Check for title sentinel from advisor
           if (chunk.startsWith('__TITLE__')) {
             generatedTitle = chunk.slice(9)
             continue
           }
+          fullResponse += chunk
           const data = JSON.stringify({ type: 'text', content: chunk })
           await writer.write(encoder.encode(`data: ${data}\n\n`))
         }
 
-        // Send completion event with metadata (including title if generated)
+        // Send completion event with cleaned text so clients can swap out
+        // any AI artifacts that were streamed in real-time
+        const cleanedMessage = cleanYuriResponse(fullResponse)
         const meta = JSON.stringify({
           type: 'done',
           conversation_id: conversationId,
           ...(generatedTitle ? { title: generatedTitle } : {}),
+          ...(cleanedMessage !== fullResponse ? { message: cleanedMessage } : {}),
         })
         await writer.write(encoder.encode(`data: ${meta}\n\n`))
       } catch (err) {

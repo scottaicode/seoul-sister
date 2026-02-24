@@ -245,7 +245,9 @@ export async function POST(request: NextRequest) {
           await writer.write(encoder.encode(`data: ${data}\n\n`))
         }
 
-        const done = JSON.stringify({ type: 'done' })
+        // Include full cleaned message in done event so client can replace
+        // any chunking-boundary artifacts
+        const done = JSON.stringify({ type: 'done', message: fullResponse })
         await writer.write(encoder.encode(`data: ${done}\n\n`))
       } catch (err) {
         const msg =

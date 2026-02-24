@@ -149,7 +149,7 @@ export function useYuri(): UseYuriReturn {
                     return updated
                   })
                 } else if (event.type === 'done') {
-                  // Finalize assistant message
+                  // Finalize assistant message, swapping in cleaned text if provided
                   setMessages((prev) => {
                     const updated = [...prev]
                     const last = updated[updated.length - 1]
@@ -157,6 +157,7 @@ export function useYuri(): UseYuriReturn {
                       updated[updated.length - 1] = {
                         ...last,
                         isStreaming: false,
+                        ...(event.message ? { content: event.message } : {}),
                       }
                     }
                     return updated
@@ -210,13 +211,30 @@ export function useYuri(): UseYuriReturn {
         if (err instanceof Error && err.name === 'AbortError') return
 
         const errMsg = err instanceof Error ? err.message : 'Failed to send message'
-        setError(errMsg)
 
-        // Remove the streaming assistant message on error
+        // Preserve partial streamed content instead of discarding everything
+        let hadPartialContent = false
         setMessages((prev) => {
-          const updated = prev.filter((m) => !m.isStreaming)
-          return updated
+          const updated = [...prev]
+          const last = updated[updated.length - 1]
+          if (last?.role === 'assistant' && last.isStreaming && last.content.trim()) {
+            // Keep the partial content with an incomplete flag
+            updated[updated.length - 1] = {
+              ...last,
+              isStreaming: false,
+              isIncomplete: true,
+            }
+            hadPartialContent = true
+            return updated
+          }
+          // No content streamed yet — remove the empty placeholder
+          return prev.filter((m) => !m.isStreaming)
         })
+
+        // Only show error if no partial content was preserved
+        if (!hadPartialContent) {
+          setError(errMsg)
+        }
       } finally {
         setIsStreaming(false)
         abortControllerRef.current = null

@@ -8,6 +8,7 @@ export interface ChatMessage {
   image_urls: string[]
   timestamp: string
   isStreaming?: boolean
+  isIncomplete?: boolean
 }
 
 export interface ConversationSummary {

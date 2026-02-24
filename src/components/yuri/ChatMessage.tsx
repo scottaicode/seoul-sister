@@ -319,6 +319,13 @@ function ChatMessageComponent({ message }: ChatMessageProps) {
               </span>
             </div>
           )}
+
+          {/* Incomplete response indicator (stream was interrupted) */}
+          {message.isIncomplete && (
+            <p className="text-xs text-amber-500/70 mt-2 italic">
+              (Response may be incomplete — connection was interrupted)
+            </p>
+          )}
         </div>
       </div>
     </div>
