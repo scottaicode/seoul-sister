@@ -4806,7 +4806,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 8.2.1 (Smart Product Search — Cross-Column Term Splitting)
+**Version**: 8.2.2 (Yuri Persona Refinement — Pacing, Warmth, Third-Party Advice)
 **Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 12 cron jobs configured.
 **AI Advisor**: Yuri (유리) - "Glass"
 
@@ -4823,6 +4823,13 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v8.2.2 (Feb 25, 2026): Yuri Persona Refinement — Pacing, Warmth, Third-Party Advice
+  - **Conversational pacing replaces rigid length rules** (`advisor.ts`): Replaced the "Response Length" section (which had word count tiers like "under 150 words" and "150-300 words") with a "Conversational Pacing" section that trusts Opus to read the room. Key principle: lead with the top 1-2 picks, offer depth instead of dumping it. "Every response should feel like the next thing a knowledgeable friend would say, not like a report they prepared." No word counts, no rigid tiers
+  - **Emoji guidance restored** (`advisor.ts`): v8.1.2 added "Limit emojis to 0-2 per response maximum. Zero is fine" — the "Zero is fine" gave Opus permission to skip emojis entirely, removing the warmth Bailey experienced. New guidance frames emojis as "facial expressions" (1-2 per response for warmth/humor/emphasis) and explicitly states zero feels cold in a chat
+  - **Third-party advice handling** (`advisor.ts`): New "Advice for Someone Else" section in system prompt. When subscribers ask about skincare for a boyfriend, mom, or friend: help warmly with general advice, flag that personalized intelligence (conflict checks, skin matching) is tied to the logged-in user's profile, naturally suggest the other person create their own account. Don't refuse or be cold about it
+  - **Live testing validated**: Price comparison (Beauty of Joseon Relief Sun → 3 retailers), product search (vitamin C serums under $20 → contextual top picks), trending products (Olive Young bestseller data), general knowledge (AHA vs BHA streaming) all confirmed working in production
+  - **No data isolation issues**: Investigation confirmed both user accounts (vibetrendai, baileydonmartin) are properly isolated via `auth.uid()` JWT — no cross-account data leaking
+  - **Build verified**: `tsc --noEmit` and `next build` both pass
 - v8.2.1 (Feb 25, 2026): Smart Product Search — Cross-Column Term Splitting
   - **Root cause**: v8.2.0's `shouldForceToolUse()` successfully forces tool calls (confirmed via Supabase API logs), but `search_products` and all name-resolution functions returned empty results. The problem: Claude sends combined queries like "Beauty of Joseon Relief Sun sunscreen" but the database stores brand in `brand_en` ("Beauty of Joseon") and product name in `name_en` ("Relief Sun: Rice + Probiotics SPF50+ PA++++"). The old search used `dbQuery.or('name_en.ilike.%{query}%,brand_en.ilike.%{query}%')` — a single `ilike` pattern per column that fails when the query spans both columns
   - **Fix: `smartProductSearch()` with 3-strategy cascade** (`tools.ts`): New search function splits the query into individual terms (with stop-word removal), then tries three strategies in order: (1) full-string `ilike` match against individual columns (fast, handles exact matches), (2) ALL-term match — over-fetches with first term then post-filters to rows where every term appears in the combined `brand_en + name_en` string, (3) ANY-term match as broadest fallback. Returns on first strategy that yields results
