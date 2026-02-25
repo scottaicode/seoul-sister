@@ -1,6 +1,154 @@
 import { getServiceClient } from '@/lib/supabase'
 import { fetchWeather } from '@/lib/intelligence/weather-routine'
 import type Anthropic from '@anthropic-ai/sdk'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+// ---------------------------------------------------------------------------
+// Shared: Smart product name search
+// ---------------------------------------------------------------------------
+// When Claude sends "Beauty of Joseon Relief Sun sunscreen", the brand is in
+// brand_en and the product name is in name_en — no single column contains the
+// full string. This helper splits the query into terms and finds products where
+// ALL terms match across brand_en + name_en combined.
+// ---------------------------------------------------------------------------
+
+/** Stop-words that add noise to product searches */
+const SEARCH_STOP_WORDS = new Set([
+  'the', 'a', 'an', 'for', 'and', 'or', 'by', 'with', 'in', 'of', 'to',
+  'my', 'me', 'is', 'it', 'do', 'you', 'have', 'this', 'that',
+  // K-beauty generic terms Claude often appends
+  'product', 'products', 'skincare', 'kbeauty', 'k-beauty', 'korean',
+])
+
+/**
+ * Search ss_products by name, splitting the query into terms so "Beauty of
+ * Joseon Relief Sun" matches brand_en="Beauty of Joseon" + name_en="Relief Sun…".
+ *
+ * Strategy (tried in order, first non-empty result wins):
+ *  1. Full query against brand_en + name_en (works when query IS the brand or product name)
+ *  2. Each meaningful term must match somewhere in brand_en || ' ' || name_en
+ *     (PostgreSQL concatenation via RPC or raw filter fallback)
+ *  3. Fuzzy: ANY term matches brand_en or name_en (broadest, used as last resort)
+ */
+async function smartProductSearch(
+  db: SupabaseClient,
+  rawQuery: string,
+  options?: { category?: string; limit?: number; selectCols?: string }
+): Promise<Array<Record<string, unknown>>> {
+  const cols = options?.selectCols || 'id, name_en, brand_en, category, subcategory, description_en, rating_avg, review_count, price_usd, image_url'
+  const limit = options?.limit || 15
+
+  // Clean and tokenize
+  const cleaned = rawQuery.trim()
+  const terms = cleaned
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
+
+  // Strategy 1: Full-string ilike on name_en, brand_en, description_en
+  let baseQuery = db
+    .from('ss_products')
+    .select(cols)
+    .eq('is_verified', true)
+
+  if (options?.category) baseQuery = baseQuery.eq('category', options.category)
+
+  const { data: fullMatch } = await baseQuery
+    .or(`name_en.ilike.%${cleaned}%,brand_en.ilike.%${cleaned}%`)
+    .order('rating_avg', { ascending: false, nullsFirst: false })
+    .limit(limit)
+
+  if (fullMatch?.length) return fullMatch as unknown as Array<Record<string, unknown>>
+
+  // Strategy 2: ALL non-stop-word terms must appear in brand_en || ' ' || name_en
+  // Supabase doesn't support concat in filters, so we fetch a broader set and
+  // post-filter in JS. Fetch products matching ANY term, then keep only rows
+  // where ALL terms appear.
+  if (terms.length >= 2) {
+    // Build OR filter: each term checked against name_en and brand_en
+    const orClauses = terms
+      .slice(0, 6) // cap to avoid absurdly long filter strings
+      .flatMap(t => [`name_en.ilike.%${t}%`, `brand_en.ilike.%${t}%`])
+      .join(',')
+
+    let broadQuery = db
+      .from('ss_products')
+      .select(cols)
+      .eq('is_verified', true)
+      .or(orClauses)
+
+    if (options?.category) broadQuery = broadQuery.eq('category', options.category)
+
+    const { data: broadResults } = await broadQuery
+      .order('rating_avg', { ascending: false, nullsFirst: false })
+      .limit(limit * 5) // over-fetch for post-filter
+
+    if (broadResults?.length) {
+      const rows = broadResults as unknown as Array<Record<string, unknown>>
+      // Post-filter: ALL terms must appear in combined brand + name
+      const allTermMatch = rows.filter(p => {
+        const combined = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`.toLowerCase()
+        return terms.every(t => combined.includes(t))
+      })
+      if (allTermMatch.length) return allTermMatch.slice(0, limit)
+
+      // If ALL-terms didn't work, return the broad results anyway (SOME terms matched)
+      return rows.slice(0, limit)
+    }
+  }
+
+  // Strategy 3: Single-term searches (when query is just 1-2 words)
+  if (terms.length > 0) {
+    const orClauses = terms
+      .flatMap(t => [`name_en.ilike.%${t}%`, `brand_en.ilike.%${t}%`])
+      .join(',')
+
+    let q = db
+      .from('ss_products')
+      .select(cols)
+      .eq('is_verified', true)
+      .or(orClauses)
+
+    if (options?.category) q = q.eq('category', options.category)
+
+    const { data } = await q
+      .order('rating_avg', { ascending: false, nullsFirst: false })
+      .limit(limit)
+
+    if (data?.length) return data as unknown as Array<Record<string, unknown>>
+  }
+
+  return []
+}
+
+/**
+ * Resolve a product name to a single product ID (best match).
+ * Used by compare_prices, get_product_details, get_personalized_match, etc.
+ */
+async function resolveProductByName(
+  db: SupabaseClient,
+  productName: string
+): Promise<{ id: string; name_en: string; brand_en: string } | null> {
+  const results = await smartProductSearch(db, productName, {
+    limit: 5,
+    selectCols: 'id, name_en, brand_en',
+  })
+  if (!results.length) return null
+
+  // Prefer exact-ish match: product where ALL query terms appear in brand+name
+  const terms = productName.toLowerCase().split(/\s+/).filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
+  const bestMatch = results.find(p => {
+    const combined = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`.toLowerCase()
+    return terms.every(t => combined.includes(t))
+  })
+
+  const chosen = bestMatch || results[0]
+  return {
+    id: chosen.id as string,
+    name_en: chosen.name_en as string,
+    brand_en: chosen.brand_en as string,
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Tool definitions for Yuri's database access
@@ -247,29 +395,35 @@ async function executeSearchProducts(
   const minRating = input.min_rating as number | undefined
   const limit = Math.min((input.limit as number) || 5, 10)
 
-  // Base query: products with optional filters
-  let dbQuery = db
-    .from('ss_products')
-    .select('id, name_en, brand_en, category, subcategory, description_en, rating_avg, review_count, price_usd, image_url')
-    .eq('is_verified', true)
+  let products: Array<Record<string, unknown>>
 
   if (query) {
-    dbQuery = dbQuery.or(
-      `name_en.ilike.%${query}%,brand_en.ilike.%${query}%,description_en.ilike.%${query}%`
-    )
+    // Use smart search that handles brand+product queries across columns
+    products = await smartProductSearch(db, query, {
+      category,
+      limit: limit * 3, // over-fetch for post-filtering
+    })
+  } else {
+    // No query — just filters
+    let dbQuery = db
+      .from('ss_products')
+      .select('id, name_en, brand_en, category, subcategory, description_en, rating_avg, review_count, price_usd, image_url')
+      .eq('is_verified', true)
+    if (category) dbQuery = dbQuery.eq('category', category)
+    if (minRating) dbQuery = dbQuery.gte('rating_avg', minRating)
+    dbQuery = dbQuery.order('rating_avg', { ascending: false, nullsFirst: false })
+    dbQuery = dbQuery.limit(limit * 3)
+    const { data, error } = await dbQuery
+    if (error) return JSON.stringify({ error: error.message })
+    products = (data || []) as Array<Record<string, unknown>>
   }
-  if (category) {
-    dbQuery = dbQuery.eq('category', category)
-  }
-  if (minRating) {
-    dbQuery = dbQuery.gte('rating_avg', minRating)
-  }
-  dbQuery = dbQuery.order('rating_avg', { ascending: false, nullsFirst: false })
-  dbQuery = dbQuery.limit(limit * 3) // Fetch extra for post-filtering
 
-  const { data: products, error } = await dbQuery
-  if (error) return JSON.stringify({ error: error.message })
-  if (!products?.length) return JSON.stringify({ products: [], message: 'No products found matching your criteria.' })
+  // Apply min_rating post-filter (smart search doesn't filter by rating)
+  if (minRating) {
+    products = products.filter(p => (p.rating_avg as number | null) !== null && (p.rating_avg as number) >= minRating)
+  }
+
+  if (!products.length) return JSON.stringify({ products: [], message: 'No products found matching your criteria.' })
 
   // Post-filter by price if needed
   let filtered = products
@@ -394,13 +548,9 @@ async function executeGetProductDetails(
 
   // Find by name if no ID
   if (!productId && productName) {
-    const { data: matches } = await db
-      .from('ss_products')
-      .select('id, name_en')
-      .ilike('name_en', `%${productName}%`)
-      .limit(1)
-    if (matches?.length) {
-      productId = (matches[0] as Record<string, unknown>).id as string
+    const match = await resolveProductByName(db, productName)
+    if (match) {
+      productId = match.id
     } else {
       return JSON.stringify({ error: `No product found matching "${productName}"` })
     }
@@ -508,12 +658,8 @@ async function executeCheckIngredientConflicts(
   const resolvedIds: string[] = [...(productIds || [])]
   if (productNames?.length) {
     for (const name of productNames) {
-      const { data: matches } = await db
-        .from('ss_products')
-        .select('id')
-        .ilike('name_en', `%${name}%`)
-        .limit(1)
-      if (matches?.length) resolvedIds.push((matches[0] as Record<string, unknown>).id as string)
+      const match = await resolveProductByName(db, name)
+      if (match) resolvedIds.push(match.id)
     }
   }
 
@@ -679,13 +825,9 @@ async function executeComparePrices(
   const productName = input.product_name as string | undefined
 
   if (!productId && productName) {
-    const { data: matches } = await db
-      .from('ss_products')
-      .select('id, name_en, brand_en')
-      .ilike('name_en', `%${productName}%`)
-      .limit(1)
-    if (matches?.length) {
-      productId = (matches[0] as Record<string, unknown>).id as string
+    const match = await resolveProductByName(db, productName)
+    if (match) {
+      productId = match.id
     } else {
       return JSON.stringify({ error: `No product found matching "${productName}"` })
     }
@@ -751,13 +893,9 @@ async function executeGetPersonalizedMatch(
   const productName = input.product_name as string | undefined
 
   if (!productId && productName) {
-    const { data: matches } = await db
-      .from('ss_products')
-      .select('id, name_en, brand_en')
-      .ilike('name_en', `%${productName}%`)
-      .limit(1)
-    if (matches?.length) {
-      productId = (matches[0] as Record<string, unknown>).id as string
+    const match = await resolveProductByName(db, productName)
+    if (match) {
+      productId = match.id
     } else {
       return JSON.stringify({ error: `No product found matching "${productName}"` })
     }
