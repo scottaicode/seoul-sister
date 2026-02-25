@@ -5,17 +5,18 @@
 
 ## What Seoul Sister Does
 - **Korean Label Scanner**: Point your camera at a Korean product label for instant ingredient translation, safety scoring, personalized skin match, price comparison across 6 retailers, community intelligence, authenticity check, and trend context
-- **AI Beauty Advisor (Yuri)**: Conversational AI with 6 specialist agents covering ingredients, routines, authenticity, trends, budgets, and sensitivity. Named after 유리 (glass) — a reference to glass skin (유리 피부)
+- **AI Beauty Advisor (Yuri)**: Conversational AI backed by 8 real-time database tools (product search, price comparison, ingredient conflicts, trending, personalized match, product details, web search, weather) and 6 specialist agents. Cross-session memory with structured decision tracking remembers preferences, recommendations, and commitments across conversations. Named after 유리 (glass) — a reference to glass skin (유리 피부)
 - **Product Intelligence Database**: 6,200+ K-beauty products with full English translations, 14,400+ ingredients with 221,000+ ingredient links, and cross-platform price comparison across Olive Young, YesStyle, Soko Glam, Amazon, StyleKorean, and more
-- **Glass Skin Score**: Photo-based skin analysis scoring 5 dimensions (luminosity, smoothness, clarity, hydration, evenness) with progress tracking over time and shareable score cards
+- **Glass Skin Score**: Photo-based skin analysis scoring 5 dimensions (luminosity, smoothness, clarity, hydration, evenness) with progress tracking over time and shareable score cards. Yuri coordinates treatment plan recommendations with Glass Skin progress — if you're on a barrier repair plan, she adjusts advice based on your score trajectory
 - **Shelf Scan Collection Analysis**: Photograph your entire skincare shelf for multi-product identification, routine grading (A-F), gap detection, redundancy alerts, and ingredient conflict detection across your collection
-- **Sunscreen Finder**: Dedicated Korean sunscreen search with PA rating, white cast level, finish (matte/dewy), under-makeup compatibility, chemical vs physical filters
-- **K-Beauty Dupe Finder**: Find cheaper alternatives with the same key active ingredients — ingredient-level formulation comparison with exact price savings
+- **Sunscreen Finder**: Dedicated Korean sunscreen search with PA rating, white cast level, finish (matte/dewy), under-makeup compatibility, chemical vs physical filters, real-time UV index, and auto-populated filters from user skin profile
+- **K-Beauty Dupe Finder**: Find cheaper alternatives with the same key active ingredients — ingredient-level formulation comparison with exact price savings and effectiveness scoring for your skin type
 - **Counterfeit Detection**: Photo-based packaging verification, batch code lookup, seller trust scores, and verified retailer directory
-- **Personalized Routine Builder**: AI-generated AM/PM routines with ingredient conflict detection, layering order, skin cycling schedules, and hormonal cycle-aware adjustments
-- **Weather-Adaptive Routine**: Real-time weather-based skincare adjustments for humidity, UV index, temperature, and wind
-- **Expiration Tracking**: Product PAO (Period After Opening) monitoring with expiry alerts
-- **Community Reviews**: Reviews filterable by skin type, Fitzpatrick scale, age range, and concern with "Holy Grail" and "Broke Me Out" badges
+- **Personalized Routine Builder**: AI-generated AM/PM routines with ingredient conflict detection, layering order, effectiveness scoring per concern, skin cycling schedules, and hormonal cycle-aware adjustments (menstrual, follicular, ovulatory, luteal phases)
+- **Trending Intelligence**: Live Olive Young bestseller rankings from Korea, Reddit community mention scanning across r/AsianBeauty and related subreddits, "Emerging from Korea" gap detection for products trending in Korea but not yet known in the US, and personalized "For You" trending filtered by skin type
+- **Weather-Adaptive Routine**: Real-time weather-based skincare adjustments using Open-Meteo data — humidity, UV index, temperature, and wind mapped to specific product and ingredient recommendations
+- **Expiration Tracking**: Product PAO (Period After Opening) monitoring with color-coded expiry alerts
+- **Community Reviews**: Reviews filterable by skin type, Fitzpatrick scale, age range, and concern with "Holy Grail" and "Broke Me Out" badges and ingredient effectiveness data per review
 
 ## Product Categories
 Cleansers, toners, essences, serums, ampoules, moisturizers, sunscreens, masks, eye care, lip care, exfoliators, oils, mists, spot treatments
@@ -39,7 +40,7 @@ COSRX, Sulwhasoo, Laneige, Innisfree, Missha, Etude House, Klairs, Beauty of Jos
 6. **Sensitivity Guardian** — Allergy cross-reactivity, barrier repair, gentle alternatives, hormonal cycle skin effects
 
 ## Pricing
-Seoul Sister Pro: $39.99/month — includes 500 AI advisor conversations, 30 label scans, all specialist agents, Glass Skin Score, Shelf Scan, routine builder, counterfeit detection, price comparison, weather alerts, cycle tracking, community access
+Seoul Sister Pro: $39.99/month — includes 500 AI advisor conversations, 30 label scans, all specialist agents, Glass Skin Score, Shelf Scan, routine builder, counterfeit detection, price comparison, trending intelligence, weather alerts, cycle tracking, dupe finder, expiration tracking, personalized dashboard with intelligence widgets, and community access
 
 ## Contact
 Website: https://seoulsister.com

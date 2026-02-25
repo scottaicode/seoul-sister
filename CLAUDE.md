@@ -4806,7 +4806,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 8.4.0 (Streaming Engine Hardening — Retry, Real-Time Tool Streaming, Widget)
+**Version**: 8.5.0 (Yuri Quality Hardening — Bailey Feedback, Pacing, Feature Knowledge Audit)
 **Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 12 cron jobs configured.
 **AI Advisor**: Yuri (유리) - "Glass"
 
@@ -4823,6 +4823,20 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v8.5.0 (Feb 25, 2026): Yuri Quality Hardening — Bailey Feedback, Pacing, Feature Knowledge Audit
+  - **4 fixes from Bailey's real-user testing feedback** (commit `32f7753`):
+    - **Glass Skin phase-awareness**: Glass Skin was recommending actives (tranexamic acid, vitamin C, BHA) while Yuri had Bailey on Phase 1 barrier repair (NO actives). New `loadTreatmentPlanContext()` reads Yuri's `decision_memory` and conversation summaries, injects the active treatment plan as a mandatory constraint into the Glass Skin Vision prompt. Recommendations now align with Yuri's phased approach
+    - **Glass Skin result persistence**: ProgressTimeline had recommendation/analysis data but only rendered scores/dates. Converted score history list to expandable accordion — tap any past score to see its full analysis notes and recommendation bullets
+    - **Yuri date/timeline reasoning**: Yuri told Bailey "2.5 weeks into your plan" when she was 2 days in. Injected `Today's date` + explicit instruction to count actual days from decision memory timestamps into `buildSystemPrompt()`
+    - **Glass Skin score consistency**: Same photo scored 48 then 49. Set `temperature=0` on the Claude Vision API call for deterministic scoring
+  - **Voice quality refinements** (4 commits refining Yuri's conversational pacing):
+    - **Brevity as expertise** (`85a9cf9`): Rewrote Voice, Edge, and Pacing sections. "One killer insight per response, deliver it in ONE sentence." Hard sentence limits (product rec: 2-4 sentences, comparison: one paragraph each, general: 3-6 sentences). Added concrete GOOD vs BAD example and "the test": if you can delete a sentence and the answer still works, delete it
+    - **Emoji placement** (`987c1fa`): Emojis go WHERE the emotion is (mid-sentence), not as sign-off punctuation at the end. Added yes/no safety question pacing: YES or NO first sentence, 3-4 sentences max
+    - **Multi-part question handling** (`5a36a2e`): Two yes/no questions = two tight answers, not two essays. Added explicit rule: "Don't add a third topic they didn't ask about"
+    - **Tool-result pacing** (`698b081`): After tool results: #1 pick with name, price, ONE sentence on why. Runner-up only if genuinely different tradeoff. Stop and offer depth. Added 6 mid-sentence voice-cleanup patterns ("let me break it down", "here's the thing", etc.)
+  - **Feature knowledge audit**: Audited Yuri's system prompt, all 6 specialist prompts, and widget prompt for complete feature awareness. Added Dashboard to Seoul Sister Reference table, enhanced feature descriptions with cross-feature integration context (scan → skin match → prices → routine → track expiry), added "How it all connects" summary showing the subscriber value chain
+  - **Files modified**: `src/lib/yuri/advisor.ts` (reference table + pacing + voice), `src/lib/yuri/voice-cleanup.ts` (6 new mid-sentence patterns), `src/app/api/skin-score/route.ts` (treatment plan awareness + temperature=0), `src/components/glass-skin/ProgressTimeline.tsx` (expandable accordion)
+  - **Build verified**: `tsc --noEmit` and `next build` both pass
 - v8.4.0 (Feb 25, 2026): Streaming Engine Hardening — Retry, Real-Time Tool Streaming, Widget
   - **3 improvements** to Yuri's streaming architecture that fix reliability gaps and eliminate fake chunking
   - **Improvement 1 — Streaming retry with exponential backoff** (`advisor.ts`): `messages.stream()` calls now retry up to 3 times on transient failures (529 overloaded, 502/503 gateway, connection resets). Uses `isRetryableError()` from `anthropic.ts`. Only retries when `eventsReceived === false` (connection-level failure) — once events flow, partial data is consumed and retry would cause duplication. Backoff: 2s, 4s, 8s

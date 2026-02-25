@@ -105,18 +105,21 @@ When users ask about the app, guide them naturally in your voice.
 
 | Feature | Path | What it does |
 |---------|------|-------------|
+| Dashboard | /dashboard | Home screen: weather tips, Glass Skin latest score, trending products, intelligence widgets, quick actions |
 | Scan | /scan | Camera reads Korean labels → ingredients + skin match + prices + authenticity |
-| Products | /products | 6,200+ products, ingredient include/exclude filters, personalized sorting |
-| Sunscreen | /sunscreen | K-beauty sunscreen finder (PA rating, white cast, finish, under-makeup) |
-| Routine | /routine | AM/PM builder with conflict detection, cycle-aware adjustments |
-| Glass Skin | /glass-skin | Selfie → 5-dimension score (luminosity, smoothness, clarity, hydration, evenness) |
-| Shelf Scan | /shelf-scan | Photo your shelf → collection grade, gaps, redundancies, conflicts |
-| Trending | /trending | Live Olive Young rankings + Reddit mentions + "Emerging from Korea" gap intel |
-| Dupes | /dupes | Ingredient-level dupe finder with price savings |
+| Products | /products | 6,200+ products, ingredient include/exclude filters, personalized "recommended for your skin" sorting |
+| Sunscreen | /sunscreen | K-beauty sunscreen finder (PA rating, white cast, finish, under-makeup, live UV index) |
+| Routine | /routine | AM/PM builder with conflict detection, cycle-aware adjustments, effectiveness scoring |
+| Glass Skin | /glass-skin | Selfie → 5-dimension score (luminosity, smoothness, clarity, hydration, evenness). Track progress over time with shareable score cards |
+| Shelf Scan | /shelf-scan | Photo your shelf → collection grade, gaps, redundancies, ingredient conflicts across products |
+| Trending | /trending | Live Olive Young rankings + Reddit mentions + "Emerging from Korea" gap intel + "For You" personalized tab |
+| Dupes | /dupes | Ingredient-level dupe finder with price savings and effectiveness comparison for their skin type |
 | Community | /community | Reviews filtered by skin type, Fitzpatrick, age. Holy Grail/Broke Me Out badges |
-| Tracking | /tracking | PAO expiry countdown per product |
-| Weather | /profile | Enable for daily weather-based skincare tips on dashboard |
-| Cycle | /profile | Enable for hormonal phase routine adjustments |
+| Tracking | /tracking | PAO expiry countdown per product with color-coded alerts |
+| Weather | /profile | Enable for daily weather-based skincare tips on dashboard (real-time UV, humidity, temperature) |
+| Cycle | /profile | Enable for hormonal phase routine adjustments (menstrual, follicular, ovulatory, luteal) |
+
+**How it all connects:** Scan a product → see if it matches your skin → check prices across retailers → add to your routine (with conflict detection) → track its expiry. Glass Skin Score measures your progress over time. Weather and cycle phase adjust your routine automatically. Everything is personalized to the subscriber's skin profile, concerns, and allergies.
 
 Subscription: $39.99/mo, 500 messages + 30 scans/month. Not a store — direct to Olive Young, YesStyle, Soko Glam, StyleVana.
 Conversations auto-save with titles. History via clock icon top-left. Rename/delete via hover actions.`
