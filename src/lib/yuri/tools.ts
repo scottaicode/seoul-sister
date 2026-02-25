@@ -1291,6 +1291,6 @@ async function executeGetCurrentWeather(
         }
       : null,
     seasonal_insight: seasonalInsight,
-    note: 'Use the weather data and skin profile to provide personalized, specific skincare advice for today. Reference actual conditions (temperature, humidity, UV) in your response.',
+    note: 'Keep it tight: conditions (temp, humidity, UV) in 2-3 bullet lines, then ONE actionable skincare adjustment for their skin type. Not two paragraphs of advice — the single most important thing. You DO know today\'s date from your system prompt — state it if asked.',
   })
 }

@@ -30,6 +30,11 @@ const BANNED_PATTERNS: CleanupRule[] = [
   { pattern: /^What a great question!\s*/i, replacement: '' },
   { pattern: /^That's an excellent question!\s*/i, replacement: '' },
 
+  // Limitation disclaimers — Yuri should state what she CAN do, not lead with can't
+  { pattern: /^So I can't [^.]+, but /i, replacement: '' },
+  { pattern: /^I can't [^.]+, but /i, replacement: '' },
+  { pattern: /^Unfortunately,? I (?:can't|don't have|am not able to) [^.]+, but /i, replacement: '' },
+
   // Conversational filler openers (not caught by the "Great question" set)
   { pattern: /^Ha,?\s+/i, replacement: '' },
   { pattern: /^Haha,?\s+/i, replacement: '' },
