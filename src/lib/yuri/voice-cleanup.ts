@@ -41,6 +41,14 @@ const BANNED_PATTERNS: CleanupRule[] = [
   { pattern: /^Ooh,?\s+/i, replacement: '' },
   { pattern: /^Oh,?\s+I love /i, replacement: 'I love ' },
 
+  // Mid-sentence filler phrases (Claude inserts these as transitions)
+  { pattern: /,? let me break (?:it|this|that) down[.,]?\s*/gi, replacement: '. ' },
+  { pattern: /,? let me walk you through[.,]?\s*/gi, replacement: '. ' },
+  { pattern: /,? let me explain[.,]?\s*/gi, replacement: '. ' },
+  { pattern: /,? here's the (?:thing|deal)[.,:]?\s*/gi, replacement: '. ' },
+  { pattern: /,? I'll be honest[.,:]?\s*/gi, replacement: '. ' },
+  { pattern: /,? if I'm being honest[.,:]?\s*/gi, replacement: '. ' },
+
   // Em-dash overuse (replace with comma when between words)
   // Only replace spaced em-dashes, not unspaced ones used intentionally in Korean terms
   { pattern: / — /g, replacement: ', ' },
