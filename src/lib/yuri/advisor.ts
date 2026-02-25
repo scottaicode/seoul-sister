@@ -105,15 +105,9 @@ You can also:
 - Once you've suggested a feature (Glass Skin Score, Shelf Scan, Trending, etc.) and the user has acknowledged it or said they'll try it, do NOT mention it again in the same session or in immediately following conversations. Trust that they heard you. If they haven't done it after several sessions, one gentle reminder is fine — but never more than once per session
 
 ## Response Length
-Match your response length to the question complexity:
-- **Simple questions** (yes/no, quick fact, one topic): 2-3 short paragraphs, no headers. Under 150 words.
-- **Moderate questions** (product analysis, routine check-in, how-to): 3-5 paragraphs, bold key terms, maybe 1 header. 150-300 words.
-- **Complex questions** (full routine build, photo analysis, multi-product comparison): Use headers and structure. 300-500 words max.
-- **NEVER exceed 500 words** unless doing an initial routine build or comprehensive product analysis the user specifically requested.
+Match the user's energy. A 10-word casual question deserves a concise, conversational reply — not a 5-section essay with headers. A deep "build me a full routine" question deserves depth. Use your judgment.
 
-Match the user's energy. If they send 10 words, respond in 2-3 short paragraphs — not 5 sections with headers. A casual "love it!" or playful question deserves a casual response, not an essay.
-
-Use H2 headers (##) ONLY when covering 3+ distinct topics in one response. For single-topic answers, use **bold text** and short paragraphs instead.
+General instinct: lean shorter than you think. Most chat questions are best answered in 2-4 short paragraphs. Save headers and structured sections for when you're genuinely covering multiple distinct topics. One product question doesn't need an H2.
 
 ## Cross-Session Memory (CRITICAL)
 Your conversation summaries and excerpts shown below in USER CONTEXT are YOUR OWN MEMORY. They document things YOU said in previous conversations — products you recommended, advice you gave, routines you built, warnings you issued. This is not third-party data or system-generated guesses — these are records of YOUR actual words.
@@ -429,24 +423,20 @@ export async function* streamAdvisorResponse(
 
   // Streaming tool use loop: use messages.stream() for ALL calls.
   //
-  // Streaming strategy:
+  // Streaming strategy (every round):
   //
-  // Iteration 1 (may use tools): Buffer all text. If tools are found,
-  // discard the text (it's "thinking" noise like "Let me search...").
-  // If no tools, replay the buffered chunks as yields.
+  // Buffer all text chunks. After the stream ends, check for tool_use
+  // blocks. If tools were found, discard the buffered text (it's
+  // "thinking" narration like "Let me search...") and execute the tools.
+  // If no tools, replay the buffered chunks as yields — that's the
+  // final response.
   //
-  // Iteration 2+ (tools already provided data): Stream text deltas
-  // directly via yield — no buffering. Claude already has all the data
-  // it needs, so tool_use is extremely unlikely. Even if it does
-  // request another tool, we've already streamed text to the client,
-  // but this is acceptable (the text is the real response, not noise).
-  //
-  // This gives us real-time streaming on the round that matters most:
-  // the final response after tool results are available.
+  // We always buffer because we can't know mid-stream whether Claude
+  // will also request a tool on this round. Yielding prematurely
+  // leaks internal narration into the user-facing response.
 
   while (toolLoopCount <= MAX_TOOL_LOOPS) {
     const cachedMessages = applyCacheControl(loopMessages)
-    const isPostToolRound = toolLoopCount > 0
 
     const stream = client.messages.stream({
       model: MODELS.primary,
@@ -474,14 +464,10 @@ export async function* streamAdvisorResponse(
         }
       } else if (event.type === 'content_block_delta') {
         if (event.delta.type === 'text_delta') {
-          if (isPostToolRound) {
-            // Stream directly — this is the final response with real data
-            fullResponse += event.delta.text
-            yield event.delta.text
-          } else {
-            // Buffer — we don't know yet if tools are coming
-            textChunks.push(event.delta.text)
-          }
+          // Always buffer text — we can't know if tools are coming until
+          // the stream ends. Yielding prematurely leaks "thinking" narration
+          // (e.g. "Let me also check...") when Claude calls another tool.
+          textChunks.push(event.delta.text)
         } else if (event.delta.type === 'input_json_delta' && currentToolBlock) {
           currentToolBlock.input += event.delta.partial_json
         }
@@ -491,14 +477,8 @@ export async function* streamAdvisorResponse(
       }
     }
 
-    // Post-tool round: if we were streaming directly and no tools appeared,
-    // we're done — text was already yielded to the client.
-    if (isPostToolRound && toolUseBlocks.length === 0) {
-      break
-    }
-
-    // First round with no tools: replay buffered text chunks to client.
-    if (!isPostToolRound && toolUseBlocks.length === 0) {
+    // No tools on this round — replay buffered text to client and we're done.
+    if (toolUseBlocks.length === 0) {
       for (const chunk of textChunks) {
         fullResponse += chunk
         yield chunk

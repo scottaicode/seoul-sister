@@ -4806,7 +4806,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 8.1.2 (Post-Bailey Review — Yuri Performance Improvements)
+**Version**: 8.1.3 (Streaming Fix + AI-First Response Length)
 **Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 12 cron jobs configured.
 **AI Advisor**: Yuri (유리) - "Glass"
 
@@ -4823,10 +4823,15 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v8.1.3 (Feb 25, 2026): Post-Test Review — Streaming Fix + AI-First Response Length
+  - **Thinking text leak fix** (`advisor.ts`): Unified streaming strategy across all tool-loop iterations. Previously, post-tool rounds (iteration 2+) yielded text directly, which leaked internal narration ("Let me also check if it's listed under a slightly different name:") when Claude called another tool on the same round. Now ALL rounds buffer text and only yield after confirming no tools were requested. This is an architecture fix — not a regex/template constraint
+  - **Response length softened** (`advisor.ts`): Replaced rigid 4-tier word count system (150/300/500 hard limits) with AI-First directional guidance: "match the user's energy, lean shorter than you think, save headers for multiple topics." Trusts Opus to reason about appropriate length rather than hitting word targets
+  - **Files modified**: `src/lib/yuri/advisor.ts` (streaming loop refactor + response length rewrite)
+  - **Build verified**: `tsc --noEmit` and `next build` both pass
 - v8.1.2 (Feb 24, 2026): Post-Bailey Review — Yuri Performance Improvements
   - **Context**: Bailey's 4 conversations with Yuri (26 messages, Feb 24) revealed 6 improvement areas. All changes are prompt engineering and cleanup logic — no new features, no database changes, no architectural shifts
   - **Change 1 — Mandatory tool usage rules** (`advisor.ts`): Replaced soft "USE THEM when users ask" guidance with `## Tool Usage Rules (MANDATORY)` section. 7 explicit mandatory triggers (product by name → `search_products`, prices → `compare_prices`, trending → `get_trending_products`, weather → `get_current_weather`, skin match → `get_personalized_match`, conflicts → `check_ingredient_conflicts`, recent news → `web_search`). 3 explicit prohibitions (never claim DB status without searching, never estimate prices, never say "let me check" then answer from memory). Root cause: Yuri used ZERO tools across 26 messages because Claude's training knowledge made tool use feel unnecessary
-  - **Change 2 — Response length control** (`advisor.ts`): Added `## Response Length` section with 4 tiers: simple (<150 words, no headers), moderate (150-300, bold terms), complex (300-500, headers allowed), never >500. Rule: match user's energy — 10-word question gets 2-3 paragraphs, not 5 sections with headers. H2 headers only when covering 3+ distinct topics. Problem: Yuri averaged 400-800 words vs Bailey's 20-40 words (15:1+ ratio)
+  - **Change 2 — Response length control** (`advisor.ts`): Added `## Response Length` section (later softened in v8.1.3 to AI-First directional guidance). Problem: Yuri averaged 400-800 words vs Bailey's 20-40 words (15:1+ ratio)
   - **Change 3 — Feature repetition prevention** (`advisor.ts`): Added rule to `## Response Guidelines`: once a feature (Glass Skin Score, Shelf Scan, etc.) is suggested and acknowledged, do NOT mention it again in same session or immediately following conversations. Problem: Yuri mentioned Glass Skin Score in ALL 4 conversations, even after Bailey said "I'm going to do the glass skin score!"
   - **Change 4A — Voice tightening** (`advisor.ts`): Added 2 rules to `## Your Voice` section: never start with filler openers ("Ha, ...", "Love to hear that", etc.) and limit emojis to 0-2 per response max
   - **Change 4B — New voice cleanup patterns** (`voice-cleanup.ts`): Added 9 new `BANNED_PATTERNS` for conversational filler openers that bypass existing "Great question" set: `^Ha,?`, `^Haha,?`, `^Love to hear that`, `^Love that`, `^So glad to hear that`, `^Good question`, `^Really good question`, `^Ooh,?`, `^Oh,? I love` (preserves "I love" after removal)
