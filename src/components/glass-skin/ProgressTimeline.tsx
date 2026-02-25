@@ -1,6 +1,7 @@
 'use client'
 
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { useState } from 'react'
+import { TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from 'lucide-react'
 import type { GlassSkinScore } from '@/types/database'
 
 interface Props {
@@ -146,15 +147,27 @@ export default function ProgressTimeline({ scores }: Props) {
       )}
 
       {/* Score history list */}
-      <div className="space-y-2">
-        {scores.slice(0, 5).map((s, i) => {
-          const prev = scores[i + 1]
-          const change = prev ? s.overall_score - prev.overall_score : null
+      <ScoreHistoryList scores={scores} />
+    </div>
+  )
+}
 
-          return (
-            <div
-              key={s.id}
-              className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03]"
+function ScoreHistoryList({ scores }: { scores: GlassSkinScore[] }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  return (
+    <div className="space-y-2">
+      {scores.slice(0, 5).map((s, i) => {
+        const prev = scores[i + 1]
+        const change = prev ? s.overall_score - prev.overall_score : null
+        const isExpanded = expandedId === s.id
+        const hasDetails = (s.recommendations?.length ?? 0) > 0 || s.analysis_notes
+
+        return (
+          <div key={s.id} className="rounded-lg bg-white/[0.03] overflow-hidden">
+            <button
+              className="flex items-center justify-between w-full px-3 py-2 text-left"
+              onClick={() => hasDetails && setExpandedId(isExpanded ? null : s.id)}
             >
               <div className="flex items-center gap-3">
                 <div
@@ -169,19 +182,53 @@ export default function ProgressTimeline({ scores }: Props) {
                 </span>
               </div>
 
-              {change !== null && change !== 0 && (
-                <span
-                  className={`text-xs font-medium ${
-                    change > 0 ? 'text-emerald-400' : 'text-rose-400'
-                  }`}
-                >
-                  {change > 0 ? '+' : ''}{change}
-                </span>
-              )}
-            </div>
-          )
-        })}
-      </div>
+              <div className="flex items-center gap-2">
+                {change !== null && change !== 0 && (
+                  <span
+                    className={`text-xs font-medium ${
+                      change > 0 ? 'text-emerald-400' : 'text-rose-400'
+                    }`}
+                  >
+                    {change > 0 ? '+' : ''}{change}
+                  </span>
+                )}
+                {hasDetails && (
+                  isExpanded
+                    ? <ChevronUp className="w-3.5 h-3.5 text-white/30" />
+                    : <ChevronDown className="w-3.5 h-3.5 text-white/30" />
+                )}
+              </div>
+            </button>
+
+            {isExpanded && hasDetails && (
+              <div className="px-3 pb-3 space-y-2 border-t border-white/[0.05]">
+                {s.analysis_notes && (
+                  <p className="text-xs text-white/50 mt-2 leading-relaxed">
+                    {s.analysis_notes}
+                  </p>
+                )}
+                {(s.recommendations?.length ?? 0) > 0 && (
+                  <div className="space-y-1 mt-2">
+                    <span className="text-[10px] uppercase tracking-wider text-white/30">
+                      Recommendations
+                    </span>
+                    <ul className="space-y-1">
+                      {s.recommendations.map((rec, ri) => (
+                        <li
+                          key={ri}
+                          className="text-xs text-white/60 pl-3 relative before:content-['•'] before:absolute before:left-0 before:text-gold/60"
+                        >
+                          {rec}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

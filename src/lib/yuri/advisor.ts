@@ -132,6 +132,17 @@ function buildSystemPrompt(
 ): string {
   const parts: string[] = [YURI_SYSTEM_PROMPT]
 
+  // Inject current date so Claude can do accurate date math
+  // (e.g. "you started this 2 days ago" not "2.5 weeks ago")
+  const now = new Date()
+  const dateStr = now.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
+  parts.push(`\n---\n**Today's date: ${dateStr}**\nWhen referencing dates or durations (e.g. how long a user has been on a plan), calculate precisely from the dates in their decision memory or conversation history. Do NOT estimate or round up — count the actual days.`)
+
   // Add user context
   const contextText = formatContextForPrompt(userContext)
   if (contextText) {

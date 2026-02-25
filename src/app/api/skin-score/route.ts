@@ -35,9 +35,17 @@ interface EffectivenessRow {
   sampleSize: number
 }
 
+interface TreatmentPlanContext {
+  activePlan: string | null      // e.g. "3-phase barrier repair"
+  currentPhase: string | null    // e.g. "Phase 1: Barrier repair only"
+  avoidIngredients: string[]     // Ingredients the plan says to avoid right now
+  summarySnippet: string | null  // Relevant excerpt from latest Yuri conversation
+}
+
 function buildSystemPrompt(
   profile: UserProfileData | null,
-  effectiveness: EffectivenessRow[]
+  effectiveness: EffectivenessRow[],
+  treatmentPlan?: TreatmentPlanContext
 ): string {
   let userContextSection = ''
 
@@ -73,6 +81,23 @@ function buildSystemPrompt(
     if (lines.length > 0) {
       userContextSection += `\n\nWhen recommending products or ingredients, prioritize those proven effective for this specific skin type and concerns. Avoid recommending ingredients in their allergy list. Reference specific Seoul Sister product categories (serum, toner, moisturizer, essence, ampoule, sunscreen, cleanser, mask, exfoliator, etc.) when suggesting improvements.`
     }
+  }
+
+  // Inject active treatment plan from Yuri's conversations
+  if (treatmentPlan?.activePlan) {
+    userContextSection += `\n\n## IMPORTANT: Active Treatment Plan from Yuri (AI Advisor)
+This user is following a treatment plan that Yuri (their AI skincare advisor) designed for them:
+- **Active plan**: ${treatmentPlan.activePlan}`
+    if (treatmentPlan.currentPhase) {
+      userContextSection += `\n- **Current phase**: ${treatmentPlan.currentPhase}`
+    }
+    if (treatmentPlan.summarySnippet) {
+      userContextSection += `\n- **Context**: ${treatmentPlan.summarySnippet}`
+    }
+    if (treatmentPlan.avoidIngredients.length > 0) {
+      userContextSection += `\n- **Ingredients to AVOID recommending right now**: ${treatmentPlan.avoidIngredients.join(', ')}`
+    }
+    userContextSection += `\n\n**Your recommendations MUST be compatible with their current treatment phase.** If they are in a barrier repair phase, do NOT recommend strong actives (retinol, AHA, BHA, high-concentration vitamin C). Instead, recommend gentle hydrating and barrier-supporting ingredients (ceramides, centella, panthenol, hyaluronic acid). Mention that their advisor has them on a phased plan and your recommendations align with it.`
   }
 
   return `You are Yuri's Glass Skin Analyst — an expert in evaluating skin quality based on the Korean "glass skin" (유리 피부) standard. You analyze selfie photos to score skin across 5 dimensions.
@@ -175,6 +200,132 @@ async function loadUserProfileAndEffectiveness(
   }
 
   return { profile, effectiveness }
+}
+
+// ---------------------------------------------------------------------------
+// Load active treatment plan from Yuri's decision memory + summaries
+// ---------------------------------------------------------------------------
+
+async function loadTreatmentPlanContext(
+  userId: string
+): Promise<TreatmentPlanContext> {
+  const result: TreatmentPlanContext = {
+    activePlan: null,
+    currentPhase: null,
+    avoidIngredients: [],
+    summarySnippet: null,
+  }
+  const db = getServiceClient()
+
+  try {
+    // 1. Check decision memory for active treatment decisions
+    const { data: conversations } = await db
+      .from('ss_yuri_conversations')
+      .select('decision_memory, ai_summary')
+      .eq('user_id', userId)
+      .not('decision_memory', 'eq', '{}')
+      .order('updated_at', { ascending: false })
+      .limit(3)
+
+    if (conversations?.length) {
+      for (const conv of conversations) {
+        const dm = conv.decision_memory as {
+          decisions?: Array<{ topic: string; decision: string; date: string }>
+        } | null
+        if (!dm?.decisions) continue
+
+        for (const d of dm.decisions) {
+          const topic = d.topic.toLowerCase()
+          // Look for barrier repair, treatment plan, phase-related decisions
+          if (
+            topic.includes('barrier') ||
+            topic.includes('repair') ||
+            topic.includes('treatment') ||
+            topic.includes('phase') ||
+            topic.includes('routine_plan') ||
+            topic.includes('actives')
+          ) {
+            result.activePlan = d.decision
+            // Try to extract phase info from the decision text
+            const phaseMatch = d.decision.match(/phase\s*(\d)/i)
+            if (phaseMatch) {
+              result.currentPhase = `Phase ${phaseMatch[1]}`
+            }
+          }
+        }
+      }
+
+      // 2. Scan recent summaries for treatment plan context
+      for (const conv of conversations) {
+        const summary = conv.ai_summary as string | null
+        if (!summary) continue
+
+        // Look for phase/barrier/treatment mentions in summaries
+        const lines = summary.split('\n')
+        for (const line of lines) {
+          const lower = line.toLowerCase()
+          if (
+            lower.includes('phase') ||
+            lower.includes('barrier repair') ||
+            lower.includes('no actives') ||
+            lower.includes('avoid actives') ||
+            lower.includes('treatment plan')
+          ) {
+            result.summarySnippet = line.trim().replace(/^[-•*]\s*/, '')
+            break
+          }
+        }
+        if (result.summarySnippet) break
+      }
+    }
+
+    // 3. Also check conversations without decision memory but with summaries
+    if (!result.activePlan) {
+      const { data: recentConvs } = await db
+        .from('ss_yuri_conversations')
+        .select('ai_summary')
+        .eq('user_id', userId)
+        .not('ai_summary', 'is', null)
+        .order('updated_at', { ascending: false })
+        .limit(5)
+
+      if (recentConvs) {
+        for (const conv of recentConvs) {
+          const summary = conv.ai_summary as string | null
+          if (!summary) continue
+
+          const lower = summary.toLowerCase()
+          // Detect barrier repair / treatment phases in summaries
+          if (lower.includes('barrier repair') || lower.includes('phase 1')) {
+            if (lower.includes('no actives') || lower.includes('avoid actives') || lower.includes('gentle')) {
+              result.activePlan = result.activePlan || 'Barrier repair (from Yuri conversation)'
+              result.avoidIngredients = [
+                ...result.avoidIngredients,
+                'retinol', 'retinoid', 'AHA', 'BHA', 'glycolic acid',
+                'salicylic acid', 'vitamin C (L-ascorbic acid)',
+                'benzoyl peroxide', 'azelaic acid',
+              ]
+            }
+            // Extract snippet
+            const lines = summary.split('\n')
+            for (const line of lines) {
+              if (line.toLowerCase().includes('phase') || line.toLowerCase().includes('barrier')) {
+                result.summarySnippet = result.summarySnippet || line.trim().replace(/^[-•*]\s*/, '')
+                break
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Deduplicate avoidIngredients
+    result.avoidIngredients = [...new Set(result.avoidIngredients)]
+  } catch {
+    // Non-critical — continue without treatment context
+  }
+
+  return result
 }
 
 // ---------------------------------------------------------------------------
@@ -330,17 +481,20 @@ export async function POST(request: NextRequest) {
       | 'image/gif'
     const imageBase64 = match[3]
 
-    // Load user profile + ingredient effectiveness for personalized prompt
-    const { profile, effectiveness } =
-      await loadUserProfileAndEffectiveness(user.id)
+    // Load user profile + ingredient effectiveness + treatment plan for personalized prompt
+    const [{ profile, effectiveness }, treatmentPlan] = await Promise.all([
+      loadUserProfileAndEffectiveness(user.id),
+      loadTreatmentPlanContext(user.id),
+    ])
 
-    const systemPrompt = buildSystemPrompt(profile, effectiveness)
+    const systemPrompt = buildSystemPrompt(profile, effectiveness, treatmentPlan)
 
     const anthropic = getAnthropicClient()
 
     const response = await anthropic.messages.create({
       model: MODELS.primary,
       max_tokens: 2048,
+      temperature: 0,
       system: systemPrompt,
       messages: [
         {
