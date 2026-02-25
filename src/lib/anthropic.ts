@@ -68,3 +68,6 @@ export async function callAnthropicWithRetry<T>(
   // Unreachable — final attempt either returns or throws
   throw new Error('[anthropic] Retry loop exhausted without result')
 }
+
+/** Exposed for streaming retry loops in advisor.ts and widget */
+export { isRetryableError }

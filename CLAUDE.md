@@ -4806,7 +4806,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 8.3.0 (Application-Wide Prompt Refactor — Trust the Model More)
+**Version**: 8.4.0 (Streaming Engine Hardening — Retry, Real-Time Tool Streaming, Widget)
 **Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 12 cron jobs configured.
 **AI Advisor**: Yuri (유리) - "Glass"
 
@@ -4823,6 +4823,15 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v8.4.0 (Feb 25, 2026): Streaming Engine Hardening — Retry, Real-Time Tool Streaming, Widget
+  - **3 improvements** to Yuri's streaming architecture that fix reliability gaps and eliminate fake chunking
+  - **Improvement 1 — Streaming retry with exponential backoff** (`advisor.ts`): `messages.stream()` calls now retry up to 3 times on transient failures (529 overloaded, 502/503 gateway, connection resets). Uses `isRetryableError()` from `anthropic.ts`. Only retries when `eventsReceived === false` (connection-level failure) — once events flow, partial data is consumed and retry would cause duplication. Backoff: 2s, 4s, 8s
+  - **Improvement 2 — Real-time streaming during tool-use conversations** (`advisor.ts`): Previously, ALL text was buffered during every round of the tool loop and yielded as a single block at the end. Now uses two modes: BUFFER mode (first round) prevents "Let me search..." narration from leaking to the client, STREAM mode (post-tool rounds with real results) yields each text delta in real-time via `yield`. Users see Yuri's answer stream character-by-character instead of waiting for the entire response to complete
+  - **Improvement 3 — Widget real streaming** (`widget/chat/route.ts`): Replaced the fake 50-char chunking system (which collected the full response then split it into artificial chunks with delays) with real `messages.stream()` for post-tool final rounds. Tool loop rounds still use non-streaming `messages.create()` (need full response to detect `stop_reason === 'tool_use'`). Stream retry logic mirrors advisor.ts pattern. For no-tool queries, complete text from `messages.create()` is sent as a single SSE event
+  - **Type fix**: Changed `ContentBlock[]` to `ContentBlockParam[]` in advisor.ts tool loop content assembly — `ContentBlock` (output type) requires `citations`/`caller` fields only the API populates; `ContentBlockParam` (input type) doesn't
+  - **Files modified**: `src/lib/yuri/advisor.ts` (streaming retry + two-mode streaming + type fix), `src/app/api/widget/chat/route.ts` (real streaming + retry)
+  - **No changes to**: system prompts, tools, memory, routing, onboarding, or any other files
+  - **Build verified**: `tsc --noEmit` and `next build` both pass
 - v8.3.0 (Feb 25, 2026): Application-Wide Prompt Refactor — "Trust the Model More, Constrain It Less"
   - **Philosophy**: Opus 4.6 performs better with fewer, sharper instructions than exhaustive rule lists. Heavy system prompts (~6,800 tokens for Yuri) create competing directives that produce checklist-style output. This release converts rulebook-style prompts into creative briefs describing WHO the AI is, not every possible output format.
   - **3 files modified**: `advisor.ts`, `specialists.ts`, `widget/chat/route.ts`. No changes to tools, memory, streaming, routing, or any runtime logic.

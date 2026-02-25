@@ -1,4 +1,4 @@
-import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
+import { getAnthropicClient, MODELS, callAnthropicWithRetry, isRetryableError } from '@/lib/anthropic'
 import { SPECIALISTS, detectSpecialist } from './specialists'
 import {
   loadUserContext,
@@ -461,17 +461,22 @@ export async function* streamAdvisorResponse(
 
   // Streaming tool use loop: use messages.stream() for ALL calls.
   //
-  // Streaming strategy (every round):
+  // Streaming strategy — two modes:
   //
-  // Buffer all text chunks. After the stream ends, check for tool_use
-  // blocks. If tools were found, discard the buffered text (it's
-  // "thinking" narration like "Let me search...") and execute the tools.
-  // If no tools, replay the buffered chunks as yields — that's the
-  // final response.
+  // BUFFER mode (toolLoopCount === 0, first round): Buffer all text.
+  // We can't know if Claude will emit tool_use blocks until the stream
+  // ends. Yielding prematurely leaks "Let me search..." narration.
   //
-  // We always buffer because we can't know mid-stream whether Claude
-  // will also request a tool on this round. Yielding prematurely
-  // leaks internal narration into the user-facing response.
+  // STREAM mode (toolLoopCount > 0, post-tool rounds): Yield text in
+  // real-time as chunks arrive. After tools executed, Claude is writing
+  // the real response. If it calls another tool mid-stream, the text
+  // already yielded is real response content (not narration) — safe.
+  //
+  // Retry: If the stream fails before ANY events are emitted (connection
+  // error, 529 overloaded), retry with exponential backoff. Once events
+  // start flowing, errors are not retried (partial data consumed).
+
+  const STREAM_MAX_RETRIES = 3
 
   while (toolLoopCount <= MAX_TOOL_LOOPS) {
     const cachedMessages = applyCacheControl(loopMessages)
@@ -484,68 +489,141 @@ export async function* streamAdvisorResponse(
         ? { type: 'any' }
         : { type: 'auto' }
 
-    const stream = client.messages.stream({
-      model: MODELS.primary,
-      max_tokens: 2048,
-      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-      messages: cachedMessages,
-      tools: cachedTools,
-      tool_choice: toolChoice,
-    })
-
-    // Collect tool_use blocks and (on first round) buffer text.
+    // Collect tool_use blocks and text chunks for this round.
     const toolUseBlocks: Array<{ id: string; name: string; input: string }> = []
     let currentToolBlock: { id: string; name: string; input: string } | null = null
-    // Only used on first iteration — post-tool rounds yield directly.
     const textChunks: string[] = []
+    let hasSeenToolBlock = false
+    let streamSucceeded = false
+    // On post-tool rounds, yield text in real-time for actual streaming.
+    // Track how much text was already yielded (in case tools appear later).
+    const isPostToolRound = toolLoopCount > 0
+    let yieldedLength = 0
 
-    for await (const event of stream) {
-      if (event.type === 'content_block_start') {
-        if (event.content_block.type === 'tool_use') {
-          currentToolBlock = {
-            id: event.content_block.id,
-            name: event.content_block.name,
-            input: '',
+    // Retry loop for transient stream creation failures
+    for (let attempt = 1; attempt <= STREAM_MAX_RETRIES; attempt++) {
+      // Reset state for each attempt
+      toolUseBlocks.length = 0
+      currentToolBlock = null
+      textChunks.length = 0
+      hasSeenToolBlock = false
+      yieldedLength = 0
+      let eventsReceived = false
+
+      const stream = client.messages.stream({
+        model: MODELS.primary,
+        max_tokens: 2048,
+        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+        messages: cachedMessages,
+        tools: cachedTools,
+        tool_choice: toolChoice,
+      })
+
+      try {
+        for await (const event of stream) {
+          eventsReceived = true
+          if (event.type === 'content_block_start') {
+            if (event.content_block.type === 'tool_use') {
+              hasSeenToolBlock = true
+              currentToolBlock = {
+                id: event.content_block.id,
+                name: event.content_block.name,
+                input: '',
+              }
+            }
+          } else if (event.type === 'content_block_delta') {
+            if (event.delta.type === 'text_delta') {
+              textChunks.push(event.delta.text)
+              // STREAM mode: yield text in real-time on post-tool rounds
+              // (stop yielding once a tool block appears — remaining text
+              // will be handled by the next loop iteration)
+              if (isPostToolRound && !hasSeenToolBlock) {
+                fullResponse += event.delta.text
+                yieldedLength += event.delta.text.length
+                yield event.delta.text
+              }
+            } else if (event.delta.type === 'input_json_delta' && currentToolBlock) {
+              currentToolBlock.input += event.delta.partial_json
+            }
+          } else if (event.type === 'content_block_stop' && currentToolBlock) {
+            toolUseBlocks.push(currentToolBlock)
+            currentToolBlock = null
           }
         }
-      } else if (event.type === 'content_block_delta') {
-        if (event.delta.type === 'text_delta') {
-          // Always buffer text — we can't know if tools are coming until
-          // the stream ends. Yielding prematurely leaks "thinking" narration
-          // (e.g. "Let me also check...") when Claude calls another tool.
-          textChunks.push(event.delta.text)
-        } else if (event.delta.type === 'input_json_delta' && currentToolBlock) {
-          currentToolBlock.input += event.delta.partial_json
+        streamSucceeded = true
+        break // Stream completed successfully — exit retry loop
+      } catch (streamError: unknown) {
+        // Only retry if no events were received (connection-level failure)
+        // and the error is retryable. If text was already yielded to the
+        // client, we can't retry (partial response visible to user).
+        if (!eventsReceived && isRetryableError(streamError) && attempt < STREAM_MAX_RETRIES) {
+          const delay = Math.pow(2, attempt) * 1000
+          console.warn(
+            `[yuri/stream] Attempt ${attempt}/${STREAM_MAX_RETRIES} failed (${(streamError as Error).message || 'unknown'}), retrying in ${delay}ms...`
+          )
+          await new Promise((resolve) => setTimeout(resolve, delay))
+          continue
         }
-      } else if (event.type === 'content_block_stop' && currentToolBlock) {
-        toolUseBlocks.push(currentToolBlock)
-        currentToolBlock = null
+        throw streamError // Non-retryable or events already consumed
       }
     }
 
-    // No tools on this round — replay buffered text to client and we're done.
+    if (!streamSucceeded) {
+      throw new Error('[yuri/stream] Stream retry loop exhausted')
+    }
+
+    // No tools on this round — we're done.
     if (toolUseBlocks.length === 0) {
-      for (const chunk of textChunks) {
-        fullResponse += chunk
-        yield chunk
+      // In BUFFER mode (first round), replay all text now.
+      // In STREAM mode (post-tool), text was already yielded in real-time;
+      // only replay chunks that arrived AFTER a tool block appeared (if any).
+      if (!isPostToolRound) {
+        for (const chunk of textChunks) {
+          fullResponse += chunk
+          yield chunk
+        }
       }
+      // If post-tool and some text arrived after a tool block was seen but
+      // no actual tool blocks ended up in the list (edge case), yield it
       break
     }
 
-    // Tools were found — discard intermediate "thinking" text (e.g.,
-    // "Let me search for that...") to avoid it leaking into the final
-    // response. Strip text blocks from the assistant message so Claude
-    // only sees its tool_use blocks on the next round.
+    // Tools were found. On first round, discard "thinking" text ("Let me
+    // search..."). On post-tool rounds, text yielded before the tool block
+    // appeared is real response content — it's already in fullResponse and
+    // visible to the user. We keep it in fullResponse but strip it from
+    // the assistant message sent back to Claude (Claude sees only tool_use).
     toolLoopCount++
 
-    const finalMessage = await stream.finalMessage()
+    // Build assistant content from collected blocks instead of stream.finalMessage()
+    // since the stream was already consumed by the event loop above.
+    // Use ContentBlockParam (not ContentBlock) since we're constructing input for the
+    // next API call — ContentBlock has required fields (citations, caller) that only
+    // the API response populates.
+    const assistantContent: Anthropic.Messages.ContentBlockParam[] = []
+    // Include text block for API consistency (Claude needs to see its own text)
+    const allText = textChunks.join('')
+    if (allText) {
+      assistantContent.push({ type: 'text' as const, text: allText })
+    }
+    for (const tb of toolUseBlocks) {
+      let parsedToolInput: unknown = {}
+      try { parsedToolInput = JSON.parse(tb.input || '{}') } catch { /* keep empty */ }
+      assistantContent.push({
+        type: 'tool_use' as const,
+        id: tb.id,
+        name: tb.name,
+        input: parsedToolInput as Record<string, unknown>,
+      })
+    }
+
     // Keep only tool_use blocks — drop text blocks (thinking noise)
-    const toolOnlyContent = finalMessage.content.filter(
+    const toolOnlyContent = assistantContent.filter(
       (block) => block.type === 'tool_use'
     )
     loopMessages.push({
       role: 'assistant',
-      content: toolOnlyContent.length > 0 ? toolOnlyContent : finalMessage.content,
+      content: toolOnlyContent.length > 0 ? toolOnlyContent : assistantContent,
     })
 
     // Execute each tool and build tool_result blocks

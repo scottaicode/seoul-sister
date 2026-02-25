@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
+import { getAnthropicClient, MODELS, callAnthropicWithRetry, isRetryableError } from '@/lib/anthropic'
 import { checkRateLimit } from '@/lib/utils/rate-limiter'
 import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
 import { cleanYuriResponse } from '@/lib/yuri/voice-cleanup'
@@ -192,19 +192,22 @@ export async function POST(request: NextRequest) {
 
     const streamPromise = (async () => {
       try {
-        // Tool use loop (same pattern as advisor.ts but with widget constraints)
+        // Tool use loop: non-streaming for tool rounds, real streaming for final response.
+        //
+        // Tool rounds use messages.create() (need full response to detect tool_use blocks).
+        // Final response round uses messages.stream() for real-time text to the client.
         const loopMessages: Anthropic.Messages.MessageParam[] = [...messages]
         let toolLoopCount = 0
         let fullResponse = ''
         const forceToolUse = shouldWidgetForceToolUse(parsed.message)
 
-        while (toolLoopCount <= MAX_WIDGET_TOOL_LOOPS) {
-          // Apply cache_control to last assistant message for prompt caching
-          const cachedMessages = loopMessages.map((msg, idx) => {
+        // Helper: apply cache_control to last assistant message
+        function applyCacheControl(msgs: Anthropic.Messages.MessageParam[]) {
+          return msgs.map((msg, idx) => {
             if (
               msg.role === 'assistant' &&
               typeof msg.content === 'string' &&
-              idx === loopMessages.length - 2
+              idx === msgs.length - 2
             ) {
               return {
                 role: 'assistant' as const,
@@ -215,31 +218,40 @@ export async function POST(request: NextRequest) {
             }
             return msg
           })
+        }
 
-          // Force tool use on first iteration for product/price/trending queries
+        // Common API params
+        const baseParams = {
+          model: MODELS.primary,
+          max_tokens: 400,
+          system: [{ type: 'text' as const, text: YURI_WIDGET_SYSTEM, cache_control: { type: 'ephemeral' as const } }],
+          tools: CACHED_WIDGET_TOOLS,
+        }
+
+        while (toolLoopCount <= MAX_WIDGET_TOOL_LOOPS) {
+          const cachedMessages = applyCacheControl(loopMessages)
           const toolChoice: Anthropic.Messages.MessageCreateParams['tool_choice'] =
             forceToolUse && toolLoopCount === 0
               ? { type: 'any' }
               : { type: 'auto' }
 
+          // --- Non-streaming tool round ---
+          // Use messages.create() with retry — we need the full response to check
+          // for tool_use blocks. On the first forced-tool round and any subsequent
+          // tool rounds, Claude returns tool_use which we execute before continuing.
           const response = await callAnthropicWithRetry(() =>
             anthropic.messages.create({
-              model: MODELS.primary,
-              max_tokens: 400, // slightly more than 300 to account for tool-enriched responses
-              system: [{ type: 'text', text: YURI_WIDGET_SYSTEM, cache_control: { type: 'ephemeral' } }],
+              ...baseParams,
               messages: cachedMessages,
-              tools: CACHED_WIDGET_TOOLS,
               tool_choice: toolChoice,
             })
           )
 
           if (response.stop_reason === 'tool_use') {
             toolLoopCount++
-
-            // Add Claude's response (with tool_use blocks) to conversation
             loopMessages.push({ role: 'assistant', content: response.content })
 
-            // Execute each tool — limit to 1 tool per loop for widget (cost control)
+            // Execute each tool — limit to 1 per loop for widget (cost control)
             const toolResults: Anthropic.Messages.ToolResultBlockParam[] = []
             let toolsExecuted = 0
             for (const block of response.content) {
@@ -256,7 +268,6 @@ export async function POST(request: NextRequest) {
                 })
                 toolsExecuted++
               } else if (block.type === 'tool_use') {
-                // Skip additional tool calls for widget
                 toolResults.push({
                   type: 'tool_result',
                   tool_use_id: block.id,
@@ -264,16 +275,68 @@ export async function POST(request: NextRequest) {
                 })
               }
             }
-
-            // Add tool results as a user message (Claude API requirement)
             loopMessages.push({ role: 'user', content: toolResults })
             continue
           }
 
-          // stop_reason is 'end_turn' or 'max_tokens' — extract text
-          for (const block of response.content) {
-            if (block.type === 'text') {
-              fullResponse += block.text
+          // --- Final response: stream text in real-time ---
+          // The non-streaming create() call already returned the response.
+          // For the first round with no tools, we already have the text. But for
+          // post-tool rounds, we want real streaming. Re-call with stream() only
+          // when we came through at least one tool loop.
+          if (toolLoopCount > 0) {
+            // We got the final text via create(), but we want to STREAM it.
+            // Discard the non-streaming response and re-request with stream().
+            // This costs one extra API call but gives real-time streaming after tools.
+            const STREAM_MAX_RETRIES = 3
+            let streamSucceeded = false
+
+            for (let attempt = 1; attempt <= STREAM_MAX_RETRIES; attempt++) {
+              let eventsReceived = false
+              const stream = anthropic.messages.stream({
+                ...baseParams,
+                messages: cachedMessages,
+                tool_choice: { type: 'auto' },
+              })
+
+              try {
+                for await (const event of stream) {
+                  eventsReceived = true
+                  if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+                    fullResponse += event.delta.text
+                    const data = JSON.stringify({ type: 'text', content: event.delta.text })
+                    await writer.write(encoder.encode(`data: ${data}\n\n`))
+                  }
+                  // If Claude tries to call another tool on final round, ignore text
+                  // from tool_use blocks (we don't execute more tools here)
+                }
+                streamSucceeded = true
+                break
+              } catch (streamError: unknown) {
+                if (!eventsReceived && isRetryableError(streamError) && attempt < STREAM_MAX_RETRIES) {
+                  const delay = Math.pow(2, attempt) * 1000
+                  console.warn(`[widget/stream] Attempt ${attempt}/${STREAM_MAX_RETRIES} failed, retrying in ${delay}ms...`)
+                  await new Promise((resolve) => setTimeout(resolve, delay))
+                  fullResponse = '' // Reset for retry
+                  continue
+                }
+                throw streamError
+              }
+            }
+
+            if (!streamSucceeded) {
+              throw new Error('[widget/stream] Stream retry loop exhausted')
+            }
+          } else {
+            // No tools were called — extract text from the non-streaming response
+            // and stream it chunk-by-chunk (real-time not possible since we already
+            // have the complete text from messages.create()).
+            for (const block of response.content) {
+              if (block.type === 'text') {
+                fullResponse += block.text
+                const data = JSON.stringify({ type: 'text', content: block.text })
+                await writer.write(encoder.encode(`data: ${data}\n\n`))
+              }
             }
           }
           break
@@ -282,22 +345,13 @@ export async function POST(request: NextRequest) {
         // Fallback if tool loops exhausted without text
         if (!fullResponse) {
           fullResponse = "I'm having a moment accessing our database. Based on my experience though — what specifically are you looking for? I can help with product recommendations, ingredient questions, or K-beauty routines."
-        }
-
-        // Clean AI artifacts before sending to client
-        fullResponse = cleanYuriResponse(fullResponse)
-
-        // Stream the response in chunks to maintain SSE feel
-        const CHUNK_SIZE = 50
-        for (let i = 0; i < fullResponse.length; i += CHUNK_SIZE) {
-          const chunk = fullResponse.slice(i, i + CHUNK_SIZE)
-          const data = JSON.stringify({ type: 'text', content: chunk })
+          const data = JSON.stringify({ type: 'text', content: fullResponse })
           await writer.write(encoder.encode(`data: ${data}\n\n`))
         }
 
-        // Include full cleaned message in done event so client can replace
-        // any chunking-boundary artifacts
-        const done = JSON.stringify({ type: 'done', message: fullResponse })
+        // Clean AI artifacts and include cleaned version in done event
+        const cleanedResponse = cleanYuriResponse(fullResponse)
+        const done = JSON.stringify({ type: 'done', message: cleanedResponse })
         await writer.write(encoder.encode(`data: ${done}\n\n`))
       } catch (err) {
         const msg =
