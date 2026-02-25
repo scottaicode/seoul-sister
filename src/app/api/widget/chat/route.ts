@@ -50,6 +50,46 @@ const widgetSchema = z.object({
     .optional(),
 })
 
+// ---------------------------------------------------------------------------
+// Intent detection for widget: mirrors advisor.ts shouldForceToolUse()
+// ---------------------------------------------------------------------------
+function shouldWidgetForceToolUse(message: string): boolean {
+  const msg = message.toLowerCase()
+
+  // Skip greetings and general education questions
+  if (/^(hi|hey|hello|thanks|thank you|bye|ok|okay|cool)\b/i.test(message)) return false
+  if (/^(what is|explain|how does|tell me about)\s+(skincare|k-beauty|glass skin|double cleansing|layering)/i.test(message)) return false
+
+  // Force for brand mentions
+  const BRAND_SIGNALS = [
+    'cosrx', 'beauty of joseon', 'laneige', 'innisfree', 'etude', 'missha',
+    'klairs', 'some by mi', 'purito', 'dr.jart', 'dr jart', 'sulwhasoo',
+    'anua', 'torriden', 'roundlab', 'round lab', 'numbuzin', 'illiyoon',
+    'skinfood', 'tonymoly', 'holika', 'glow recipe', 'tatcha', 'the ordinary',
+    'mediheal', 'beplain', 'aestura', 'abib', 'mixsoon', 'biodance', 'tirtir',
+  ]
+  for (const brand of BRAND_SIGNALS) {
+    if (msg.includes(brand)) return true
+  }
+
+  // Force for price/buy questions
+  if (/\b(how much|price|cost|cheap|where.{0,15}buy|retailer|deal)\b/i.test(msg)) return true
+
+  // Force for trending queries
+  if (/\b(trending|trend|what's new|popular|bestseller|viral|emerging)\b/i.test(msg)) return true
+
+  // Force for specific product lookups
+  if (/\b(do you have|search for|find me|recommend.{0,20}(product|serum|cream|sunscreen|cleanser|toner|moisturizer|mask))\b/i.test(msg)) return true
+
+  // Force for product category + qualifier
+  if (/\b(best|top|good)\s+(serum|sunscreen|cleanser|toner|moisturizer|cream|mask|essence)\b/i.test(msg)) return true
+
+  // Force for weather queries
+  if (/\b(weather|uv|humidity|sun.{0,5}(today|right now))\b/i.test(msg)) return true
+
+  return false
+}
+
 const YURI_WIDGET_SYSTEM = `You are Yuri (유리), Seoul Sister's AI beauty advisor with 20+ years in the Korean skincare industry. "Yuri" means "glass" in Korean -- a reference to 유리 피부 (glass skin). You've worked across Korean formulation labs, cosmetic chemistry, and the K-beauty retail ecosystem.
 
 You are speaking with an anonymous visitor on the Seoul Sister landing page.
@@ -154,6 +194,7 @@ export async function POST(request: NextRequest) {
         const loopMessages: Anthropic.Messages.MessageParam[] = [...messages]
         let toolLoopCount = 0
         let fullResponse = ''
+        const forceToolUse = shouldWidgetForceToolUse(parsed.message)
 
         while (toolLoopCount <= MAX_WIDGET_TOOL_LOOPS) {
           // Apply cache_control to last assistant message for prompt caching
@@ -173,6 +214,12 @@ export async function POST(request: NextRequest) {
             return msg
           })
 
+          // Force tool use on first iteration for product/price/trending queries
+          const toolChoice: Anthropic.Messages.MessageCreateParams['tool_choice'] =
+            forceToolUse && toolLoopCount === 0
+              ? { type: 'any' }
+              : { type: 'auto' }
+
           const response = await callAnthropicWithRetry(() =>
             anthropic.messages.create({
               model: MODELS.primary,
@@ -180,7 +227,7 @@ export async function POST(request: NextRequest) {
               system: [{ type: 'text', text: YURI_WIDGET_SYSTEM, cache_control: { type: 'ephemeral' } }],
               messages: cachedMessages,
               tools: CACHED_WIDGET_TOOLS,
-              tool_choice: { type: 'auto' },
+              tool_choice: toolChoice,
             })
           )
 

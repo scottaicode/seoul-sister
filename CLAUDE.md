@@ -4806,7 +4806,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 8.1.3 (Streaming Fix + AI-First Response Length)
+**Version**: 8.2.0 (Force Tool Use for Product/Price Queries)
 **Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 12 cron jobs configured.
 **AI Advisor**: Yuri (유리) - "Glass"
 
@@ -4823,6 +4823,15 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v8.2.0 (Feb 24, 2026): Fix Yuri Tool Usage — Intent-Based tool_choice Forcing
+  - **Root cause identified**: With `tool_choice: { type: 'auto' }`, Claude Opus answers product-specific questions from training knowledge instead of calling `search_products` or `compare_prices`. The system prompt's MANDATORY tool usage rules (added in v8.1.2) were insufficient — Claude's confidence in its training knowledge about popular K-beauty brands (Beauty of Joseon, COSRX, etc.) overrode even explicit prompt instructions. Test confirmed: user asked "How much does the Beauty of Joseon Relief Sun sunscreen cost?" and Yuri responded "that's not in our database right now" — despite 20 Beauty of Joseon products existing in `ss_products` with 3 price records ($10-$18 across Olive Young, Stylevana, Amazon)
+  - **Fix: `shouldForceToolUse()` intent detector** (`advisor.ts`): Lightweight function that examines the user's message for product/price/trending/weather signals. When detected, sets `tool_choice: { type: 'any' }` (forces at least one tool call) on the FIRST streaming iteration only. Subsequent iterations revert to `{ type: 'auto' }` so Claude can generate its final text response incorporating tool results
+  - **Detection categories**: (1) Brand name mentions (60+ K-beauty and popular skincare brands), (2) price/buy/cost/retailer questions, (3) trending/viral/bestseller queries, (4) explicit product lookup signals ("do you have", "find me", "recommend a serum"), (5) product category + qualifier ("best sunscreen", "good toner"), (6) personalized match queries ("for my skin", "good for oily"), (7) weather/UV questions, (8) ingredient conflict checks
+  - **Skip patterns**: Greetings, general skincare education ("what is double cleansing"), app navigation questions. These bypass forcing to preserve full AI-First creative freedom
+  - **Widget parity** (`widget/chat/route.ts`): Same `shouldWidgetForceToolUse()` function applied to anonymous landing page widget with matching logic. Widget already had 4 tools (search_products, compare_prices, get_trending_products, get_current_weather) — now they'll actually be used for product-specific queries
+  - **Architecture**: This is a mechanical fix, not a prompt fix. Prompt-only instructions ("MANDATORY", "no exceptions", "NEVER") were proven insufficient for overriding Claude's training knowledge confidence. The `tool_choice: 'any'` API parameter is the only reliable way to force tool calls. The intent detector ensures this forcing only happens when appropriate — general conversation retains full `'auto'` freedom
+  - **Files modified**: `src/lib/yuri/advisor.ts` (added `shouldForceToolUse()` + dynamic `tool_choice`), `src/app/api/widget/chat/route.ts` (added `shouldWidgetForceToolUse()` + dynamic `tool_choice`)
+  - **Build verified**: `tsc --noEmit` and `next build` both pass
 - v8.1.3 (Feb 25, 2026): Post-Test Review — Streaming Fix + AI-First Response Length
   - **Thinking text leak fix** (`advisor.ts`): Unified streaming strategy across all tool-loop iterations. Previously, post-tool rounds (iteration 2+) yielded text directly, which leaked internal narration ("Let me also check if it's listed under a slightly different name:") when Claude called another tool on the same round. Now ALL rounds buffer text and only yield after confirming no tools were requested. This is an architecture fix — not a regex/template constraint
   - **Response length softened** (`advisor.ts`): Replaced rigid 4-tier word count system (150/300/500 hard limits) with AI-First directional guidance: "match the user's energy, lean shorter than you think, save headers for multiple topics." Trusts Opus to reason about appropriate length rather than hitting word targets

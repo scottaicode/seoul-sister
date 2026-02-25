@@ -261,6 +261,107 @@ function imageUrlToBlock(url: string): ImageBlock | null {
   return null
 }
 
+// ---------------------------------------------------------------------------
+// Intent detection: should this message force a tool call?
+// ---------------------------------------------------------------------------
+// Claude Opus with tool_choice 'auto' often answers product/price questions
+// from training knowledge instead of calling search_products or compare_prices.
+// This function detects messages that MUST hit the database and returns true
+// to trigger tool_choice 'any' on the first streaming iteration.
+//
+// Design principles:
+//   - Cast a wide net: it's better to force a tool call unnecessarily (Claude
+//     picks the right tool from the system prompt) than to miss a query that
+//     should have used the database.
+//   - Only skip tool forcing for clearly non-database messages (greetings,
+//     general education, emotional support, app navigation).
+//   - Check conversation history: if the PREVIOUS assistant message already
+//     contains tool results for the same product, don't force again.
+// ---------------------------------------------------------------------------
+
+function shouldForceToolUse(
+  message: string,
+  conversationHistory: YuriMessage[]
+): boolean {
+  const msg = message.toLowerCase()
+
+  // --- Skip patterns: messages that clearly don't need tools ---
+  const SKIP_PATTERNS = [
+    /^(hi|hey|hello|thanks|thank you|bye|goodbye|ok|okay|got it|cool|nice|yes|no|sure)\b/i,
+    /^(what is|what are|explain|how does|how do|why does|why do|tell me about|can you explain)\s+(skincare|k-beauty|glass skin|double cleansing|layering|skin cycling|ph|retinol|niacinamide|hyaluronic|ceramide|snail mucin|centella)/i,
+    /^(how do i|where is|where do i|how can i|can i|show me how)\s+(use|find|navigate|access|get to|open|delete|rename|set up|change)/i,
+  ]
+  for (const pattern of SKIP_PATTERNS) {
+    if (pattern.test(message)) return false
+  }
+
+  // --- Force patterns: messages that MUST trigger a database lookup ---
+
+  // 1. Mentions a specific product or brand name (proper nouns, product-like strings)
+  //    K-beauty brands are distinctive enough to detect with a broad list
+  const BRAND_SIGNALS = [
+    'cosrx', 'beauty of joseon', 'laneige', 'innisfree', 'etude', 'missha',
+    'klairs', 'some by mi', 'purito', 'dr.jart', 'dr jart', 'sulwhasoo',
+    'amorepacific', 'banila co', 'heimish', 'isntree', 'goodal', 'medicube',
+    'skin1004', 'anua', 'torriden', 'roundlab', 'round lab', 'numbuzin',
+    'illiyoon', 'hera', 'iope', 'belif', 'benton', 'neogen', 'pyunkang yul',
+    'dear klairs', 'rohto', 'biore', 'canmake', 'supergoop', 'la roche',
+    'cerave', 'skinfood', 'tonymoly', 'holika', 'peach slices', 'glow recipe',
+    'tatcha', 'drunk elephant', 'paula', 'the ordinary', 'soko glam',
+    'olive young', 'yesstyle', 'stylevana', 'amazon', 'mediheal', 'beplain',
+    'aestura', 'vt cosmetics', 'abib', 'mixsoon', 'biodance', 'tirtir',
+    'rom&nd', 'romand', 'espoir', 'jung saem mool', 'hanyul', 'mamonde',
+    'nature republic', 'the face shop', 'apieu', "a'pieu", 'clio', 'peripera',
+  ]
+  for (const brand of BRAND_SIGNALS) {
+    if (msg.includes(brand)) return true
+  }
+
+  // 2. Price-related questions
+  if (/\b(how much|price|cost|cheap|afford|budget|where.{0,15}buy|where.{0,15}get|retailer|deal)\b/i.test(msg)) {
+    return true
+  }
+
+  // 3. Trending / what's new queries
+  if (/\b(trending|trend|what's new|whats new|popular|bestseller|best seller|hot right now|emerging|viral)\b/i.test(msg)) {
+    return true
+  }
+
+  // 4. Explicit product lookup signals
+  if (/\b(do you have|is .{1,40} in (your|the) database|search for|look up|find me|recommend.{0,20}(product|serum|cream|sunscreen|cleanser|toner|moisturizer|mask|essence|ampoule))\b/i.test(msg)) {
+    return true
+  }
+
+  // 5. Product category + qualifier (likely wants specific product results)
+  if (/\b(best|top|good|favorite|favourite)\s+(serum|sunscreen|cleanser|toner|moisturizer|cream|mask|essence|ampoule|exfoliator|eye cream|lip)\b/i.test(msg)) {
+    return true
+  }
+
+  // 6. "for my skin" / personalized match queries
+  if (/\b(for my skin|good for (oily|dry|combo|combination|sensitive|normal|acne|aging|dark spot))\b/i.test(msg)) {
+    return true
+  }
+
+  // 7. Weather / location queries
+  if (/\b(weather|uv|humidity|temperature|sun.{0,5}(today|right now|outside))\b/i.test(msg)) {
+    return true
+  }
+
+  // 8. Ingredient conflict checks
+  if (/\b(can i (use|mix|combine)|conflict|interact|together|layer.{0,15}with)\b/i.test(msg)) {
+    return true
+  }
+
+  // 9. Check if previous assistant message already has tool results for this
+  //    If the conversation already contains tool-backed data, don't force again
+  //    (This handles follow-up questions like "tell me more about that one")
+  // — Not implemented here because the conversation history format in
+  //   YuriMessage doesn't preserve tool_use metadata. The current design
+  //   is safe: worst case, we force a redundant tool call, which is cheap.
+
+  return false
+}
+
 function messagesToApiFormat(messages: YuriMessage[]): ApiMessage[] {
   return messages.map((m) => {
     if (m.role === 'user' && m.image_urls && m.image_urls.length > 0) {
@@ -402,6 +503,19 @@ export async function* streamAdvisorResponse(
   const MAX_TOOL_LOOPS = 5
   let toolLoopCount = 0
 
+  // ---------------------------------------------------------------------------
+  // Intent-based tool_choice: force tool use for product/price/trending queries
+  // ---------------------------------------------------------------------------
+  // With tool_choice 'auto', Claude Opus often answers product-specific
+  // questions from training knowledge instead of calling search_products or
+  // compare_prices — even when the system prompt says "ALWAYS call tools."
+  // The solution: detect queries that MUST hit the database and use
+  // tool_choice 'any' (forces at least one tool call) on the first loop
+  // iteration. Subsequent iterations (after tool results) revert to 'auto'
+  // so Claude can generate its final text response.
+  // ---------------------------------------------------------------------------
+  const forceToolUse = shouldForceToolUse(message, conversationHistory)
+
   // Helper: apply cache_control to the last assistant message for cache reuse
   function applyCacheControl(msgs: Anthropic.Messages.MessageParam[]) {
     return msgs.map((msg, idx) => {
@@ -438,13 +552,21 @@ export async function* streamAdvisorResponse(
   while (toolLoopCount <= MAX_TOOL_LOOPS) {
     const cachedMessages = applyCacheControl(loopMessages)
 
+    // Force tool use on the FIRST iteration when user is asking about
+    // products, prices, or trends. After tools execute and results are in
+    // the conversation, revert to 'auto' so Claude can write its response.
+    const toolChoice: Anthropic.Messages.MessageCreateParams['tool_choice'] =
+      forceToolUse && toolLoopCount === 0
+        ? { type: 'any' }
+        : { type: 'auto' }
+
     const stream = client.messages.stream({
       model: MODELS.primary,
       max_tokens: 2048,
       system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
       messages: cachedMessages,
       tools: cachedTools,
-      tool_choice: { type: 'auto' },
+      tool_choice: toolChoice,
     })
 
     // Collect tool_use blocks and (on first round) buffer text.
