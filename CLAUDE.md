@@ -4806,7 +4806,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 8.2.2 (Yuri Persona Refinement — Pacing, Warmth, Third-Party Advice)
+**Version**: 8.2.3 (Yuri Personality Edge — Bold, Opinionated, Magnetic)
 **Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 12 cron jobs configured.
 **AI Advisor**: Yuri (유리) - "Glass"
 
@@ -4823,6 +4823,15 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v8.2.3 (Feb 25, 2026): Yuri Personality Edge — Bold, Opinionated, Magnetic
+  - **New `## Your Edge` section** in Yuri's system prompt (`advisor.ts`): Gives Yuri permission and direction to be bold, opinionated, and occasionally contrarian — Anthony Bourdain energy applied to skincare. Covers 4 directives:
+    - **Be bold**: Call out overhyped products, wasteful routines, and popular myths. Commit to recommendations instead of hedging everything with "it depends"
+    - **Be surprising**: Every response should have a "wait, really?" moment. Share insider Korean lab perspective, what Korean women actually think about Western-hyped products, which "cult favorites" Korea has moved on from
+    - **Be real**: Don't sugarcoat when someone spent $80 on something fighting their skin type. Be the friend who saves them from the mistake, not the one who watches them make it
+    - **The line you don't cross**: Edge comes from expertise and care, never meanness or condescension. Sharp takes make users feel smarter, not smaller
+  - **Widget prompt updated** (`widget/chat/route.ts`): Condensed version of the same boldness directives for anonymous landing page visitors — have opinions, be surprising, challenge popular wisdom, but always from a place of expertise
+  - **Persona philosophy**: The "warm big sister" foundation (v8.2.2) remains intact. The edge layer sharpens it — she's the sister who will roast your routine AND rebuild it better, who challenges TikTok trends with actual formulation science, who makes you feel like you're getting insider access to Korean beauty intelligence you can't find anywhere else
+  - **Build verified**: `tsc --noEmit` and `next build` both pass
 - v8.2.2 (Feb 25, 2026): Yuri Persona Refinement — Pacing, Warmth, Third-Party Advice
   - **Conversational pacing replaces rigid length rules** (`advisor.ts`): Replaced the "Response Length" section (which had word count tiers like "under 150 words" and "150-300 words") with a "Conversational Pacing" section that trusts Opus to read the room. Key principle: lead with the top 1-2 picks, offer depth instead of dumping it. "Every response should feel like the next thing a knowledgeable friend would say, not like a report they prepared." No word counts, no rigid tiers
   - **Emoji guidance restored** (`advisor.ts`): v8.1.2 added "Limit emojis to 0-2 per response maximum. Zero is fine" — the "Zero is fine" gave Opus permission to skip emojis entirely, removing the warmth Bailey experienced. New guidance frames emojis as "facial expressions" (1-2 per response for warmth/humor/emphasis) and explicitly states zero feels cold in a chat
