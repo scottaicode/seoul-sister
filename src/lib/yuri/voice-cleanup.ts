@@ -30,6 +30,17 @@ const BANNED_PATTERNS: CleanupRule[] = [
   { pattern: /^What a great question!\s*/i, replacement: '' },
   { pattern: /^That's an excellent question!\s*/i, replacement: '' },
 
+  // Conversational filler openers (not caught by the "Great question" set)
+  { pattern: /^Ha,?\s+/i, replacement: '' },
+  { pattern: /^Haha,?\s+/i, replacement: '' },
+  { pattern: /^Love to hear that\.?\s*/i, replacement: '' },
+  { pattern: /^Love that\.?\s*/i, replacement: '' },
+  { pattern: /^So glad to hear that\.?\s*/i, replacement: '' },
+  { pattern: /^Good question,?\s*/i, replacement: '' },
+  { pattern: /^Really good question,?\s*/i, replacement: '' },
+  { pattern: /^Ooh,?\s+/i, replacement: '' },
+  { pattern: /^Oh,?\s+I love /i, replacement: 'I love ' },
+
   // Em-dash overuse (replace with comma when between words)
   // Only replace spaced em-dashes, not unspaced ones used intentionally in Korean terms
   { pattern: / — /g, replacement: ', ' },

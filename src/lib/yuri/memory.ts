@@ -952,16 +952,18 @@ export async function extractAndSaveDecisionMemory(
   const client = getAnthropicClient()
 
   // Build a condensed transcript from the conversation
+  // Use 1200 chars per message (not 400) so Sonnet can see decisions that appear
+  // mid-response in Yuri's 1,500-3,000 char replies
   const transcript = conversationHistory
     .slice(-20) // Last 20 messages
-    .map((m) => `${m.role === 'user' ? 'User' : 'Yuri'}: ${m.content.slice(0, 400)}`)
+    .map((m) => `${m.role === 'user' ? 'User' : 'Yuri'}: ${m.content.slice(0, 1200)}`)
     .join('\n')
 
   const response = await callAnthropicWithRetry(
     () =>
       client.messages.create({
         model: MODELS.background,
-        max_tokens: 500,
+        max_tokens: 800,
         messages: [
           {
             role: 'user',
