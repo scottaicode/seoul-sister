@@ -4806,7 +4806,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 8.2.0 (Force Tool Use for Product/Price Queries)
+**Version**: 8.2.1 (Smart Product Search — Cross-Column Term Splitting)
 **Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 12 cron jobs configured.
 **AI Advisor**: Yuri (유리) - "Glass"
 
@@ -4823,6 +4823,15 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v8.2.1 (Feb 25, 2026): Smart Product Search — Cross-Column Term Splitting
+  - **Root cause**: v8.2.0's `shouldForceToolUse()` successfully forces tool calls (confirmed via Supabase API logs), but `search_products` and all name-resolution functions returned empty results. The problem: Claude sends combined queries like "Beauty of Joseon Relief Sun sunscreen" but the database stores brand in `brand_en` ("Beauty of Joseon") and product name in `name_en` ("Relief Sun: Rice + Probiotics SPF50+ PA++++"). The old search used `dbQuery.or('name_en.ilike.%{query}%,brand_en.ilike.%{query}%')` — a single `ilike` pattern per column that fails when the query spans both columns
+  - **Fix: `smartProductSearch()` with 3-strategy cascade** (`tools.ts`): New search function splits the query into individual terms (with stop-word removal), then tries three strategies in order: (1) full-string `ilike` match against individual columns (fast, handles exact matches), (2) ALL-term match — over-fetches with first term then post-filters to rows where every term appears in the combined `brand_en + name_en` string, (3) ANY-term match as broadest fallback. Returns on first strategy that yields results
+  - **`resolveProductByName()` shared helper** (`tools.ts`): Single function for product name-to-ID resolution, used by `get_product_details`, `compare_prices`, `get_personalized_match`, and `check_ingredient_conflicts`. Uses `smartProductSearch()` internally with best-match selection (prefers result where ALL query terms appear in brand+name)
+  - **Stop-word filtering**: Removes common English words ("the", "for", "with") and K-beauty generic terms Claude appends ("product", "skincare", "korean") that add noise. Constant: `SEARCH_STOP_WORDS`
+  - **All 6 tool functions updated**: `search_products` uses `smartProductSearch()` directly. `get_product_details`, `compare_prices`, `get_personalized_match`, `check_ingredient_conflicts` all use `resolveProductByName()` for name-to-ID resolution. Previously all used single-column `.ilike('name_en', '%${query}%')` patterns
+  - **Database verification**: "Beauty of Joseon Relief Sun" query confirmed returning 5 matching products after fix (0 before)
+  - **Files modified**: `src/lib/yuri/tools.ts` (added `smartProductSearch()`, `resolveProductByName()`, `SEARCH_STOP_WORDS`; updated 5 execute functions)
+  - **Build verified**: `tsc --noEmit` and `next build` both pass
 - v8.2.0 (Feb 24, 2026): Fix Yuri Tool Usage — Intent-Based tool_choice Forcing
   - **Root cause identified**: With `tool_choice: { type: 'auto' }`, Claude Opus answers product-specific questions from training knowledge instead of calling `search_products` or `compare_prices`. The system prompt's MANDATORY tool usage rules (added in v8.1.2) were insufficient — Claude's confidence in its training knowledge about popular K-beauty brands (Beauty of Joseon, COSRX, etc.) overrode even explicit prompt instructions. Test confirmed: user asked "How much does the Beauty of Joseon Relief Sun sunscreen cost?" and Yuri responded "that's not in our database right now" — despite 20 Beauty of Joseon products existing in `ss_products` with 3 price records ($10-$18 across Olive Young, Stylevana, Amazon)
   - **Fix: `shouldForceToolUse()` intent detector** (`advisor.ts`): Lightweight function that examines the user's message for product/price/trending/weather signals. When detected, sets `tool_choice: { type: 'any' }` (forces at least one tool call) on the FIRST streaming iteration only. Subsequent iterations revert to `{ type: 'auto' }` so Claude can generate its final text response incorporating tool results
