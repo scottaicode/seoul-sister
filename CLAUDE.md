@@ -4806,7 +4806,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 8.2.3 (Yuri Personality Edge — Bold, Opinionated, Magnetic)
+**Version**: 8.3.0 (Application-Wide Prompt Refactor — Trust the Model More)
 **Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 12 cron jobs configured.
 **AI Advisor**: Yuri (유리) - "Glass"
 
@@ -4823,6 +4823,27 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v8.3.0 (Feb 25, 2026): Application-Wide Prompt Refactor — "Trust the Model More, Constrain It Less"
+  - **Philosophy**: Opus 4.6 performs better with fewer, sharper instructions than exhaustive rule lists. Heavy system prompts (~6,800 tokens for Yuri) create competing directives that produce checklist-style output. This release converts rulebook-style prompts into creative briefs describing WHO the AI is, not every possible output format.
+  - **3 files modified**: `advisor.ts`, `specialists.ts`, `widget/chat/route.ts`. No changes to tools, memory, streaming, routing, or any runtime logic.
+  - **`advisor.ts` — Main System Prompt (~6,800 → ~3,800 tokens, ~44% reduction)**:
+    - **Kept verbatim**: `## Your Voice`, `## Your Edge`, `## Conversational Pacing`, `## Cross-Session Memory (CRITICAL)` — these are already creative briefs that work well
+    - **Merged**: `## Database Tools` + `## Tool Usage Rules (MANDATORY)` + `## Web Search` → unified `## Tools` section (~1,700 → ~650 tokens). Lists all 8 tools in one line, states default behavior ("call the tool FIRST, answer from results"), and what NOT to use tools for
+    - **Cut entirely**: `## Response Guidelines` (duplicated Voice, Pacing, and Edge), `## Advice for Someone Else` (one sentence added to Important Rules instead), extra capabilities list (lines 110-114, duplicated tool descriptions)
+    - **Replaced**: `## Seoul Sister App Knowledge` (7 prose subsections, ~2,550 tokens) → `## Seoul Sister Reference` table (12 features with paths and one-liners, ~450 tokens). Opus doesn't need paragraphs of app documentation — it needs a quick-reference to scan
+    - **Added**: `## Quick Reminders` (3 bullets — masks/patches proactive suggestion, feature repetition avoidance, not-a-store reminder)
+    - **Slimmed**: `## Your Capabilities` from 6-item numbered list to single inline sentence listing all 6 specialists
+  - **`specialists.ts` — 6 Specialist Prompts (~3,180 → ~2,030 tokens, ~36% reduction)**:
+    - **Strategy applied to ALL 6**: Removed "When analyzing/building/investigating:" numbered checklists (Opus knows how to analyze ingredients, build routines, etc.) and "Seoul Sister tools to reference:" blocks (Yuri already knows all features from the main prompt, duplicating them adds tokens without value)
+    - **Kept**: Identity lines, voice reminders, all domain-specific expertise (the non-obvious knowledge Opus might not have from training)
+    - **Special sections preserved**: Routine Architect's `## Masks & Patches` (Seoul Sister's largest category — domain-specific), Sensitivity Guardian's `## Menstrual Cycle Effects on Skin` (clinical safety — can't trust model to get phase details right)
+    - **Biggest reduction**: Trend Scout (~650 → ~350 tokens) — removed entire "Seoul Sister's LIVE Trend Intelligence" subsection that restated information already in the main prompt
+    - **UNTOUCHED**: All `triggerKeywords` arrays, all `extractionPrompt` strings, `detectSpecialist()` function, `containsKeyword()` function
+  - **`widget/chat/route.ts` — Widget Prompt (~1,000 → ~950 tokens)**:
+    - Removed line about "mention your 6 specialist agents" — widget users can't access specialists, instruction was misleading
+  - **What is NOT changed**: `shouldForceToolUse()`, `detectSpecialist()`, `buildSystemPrompt()`, `streamAdvisorResponse()`, all extraction prompts, all trigger keywords, `memory.ts`, `tools.ts`, `onboarding.ts`, `voice-cleanup.ts`, all API routes, all background prompts, widget tool forcing
+  - **Expected outcome**: Yuri's responses become less formulaic, more naturally conversational. Specialist modes stop producing checklist-style output. ~35% total token reduction reduces prompt caching costs. Opus has more room to use its natural voice within the character framework.
+  - **Build verified**: `tsc --noEmit` and `next build` both pass
 - v8.2.3 (Feb 25, 2026): Yuri Personality Edge — Bold, Opinionated, Magnetic
   - **New `## Your Edge` section** in Yuri's system prompt (`advisor.ts`): Gives Yuri permission and direction to be bold, opinionated, and occasionally contrarian — Anthony Bourdain energy applied to skincare. Covers 4 directives:
     - **Be bold**: Call out overhyped products, wasteful routines, and popular myths. Commit to recommendations instead of hedging everything with "it depends"
