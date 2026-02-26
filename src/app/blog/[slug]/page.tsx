@@ -62,7 +62,7 @@ export async function generateMetadata({
       publishedTime: post.published_at,
       authors: post.author ? [post.author] : undefined,
       images: post.featured_image_url ? [post.featured_image_url] : undefined,
-      url: `https://seoulsister.com/blog/${slug}`,
+      url: `https://www.seoulsister.com/blog/${slug}`,
     },
     twitter: {
       card: 'summary_large_image',
@@ -101,27 +101,41 @@ export default async function BlogPostPage({
     '@context': 'https://schema.org',
     '@graph': [
       {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.seoulsister.com' },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://www.seoulsister.com/blog' },
+          { '@type': 'ListItem', position: 3, name: blogPost.title, item: `https://www.seoulsister.com/blog/${blogPost.slug}` },
+        ],
+      },
+      {
         '@type': 'Article',
-        '@id': `https://seoulsister.com/blog/${blogPost.slug}#article`,
+        '@id': `https://www.seoulsister.com/blog/${blogPost.slug}#article`,
         headline: blogPost.title,
         description: blogPost.meta_description || blogPost.excerpt,
         image: blogPost.featured_image_url,
         datePublished: blogPost.published_at,
         dateModified: blogPost.updated_at || blogPost.published_at,
-        author: {
-          '@type': 'Organization',
-          name: blogPost.author || 'Seoul Sister',
-          url: 'https://seoulsister.com',
-        },
+        author: blogPost.author && blogPost.author !== 'Seoul Sister'
+          ? {
+              '@type': 'Person',
+              name: blogPost.author,
+              url: 'https://www.seoulsister.com',
+            }
+          : {
+              '@type': 'Organization',
+              name: 'Seoul Sister',
+              url: 'https://www.seoulsister.com',
+            },
         publisher: {
           '@type': 'Organization',
           name: 'Seoul Sister',
-          url: 'https://seoulsister.com',
-          logo: 'https://seoulsister.com/icons/icon-512.svg',
+          url: 'https://www.seoulsister.com',
+          logo: 'https://www.seoulsister.com/icons/icon-512.svg',
         },
         mainEntityOfPage: {
           '@type': 'WebPage',
-          '@id': `https://seoulsister.com/blog/${blogPost.slug}`,
+          '@id': `https://www.seoulsister.com/blog/${blogPost.slug}`,
         },
         keywords: blogPost.tags?.join(', ') || blogPost.primary_keyword,
       },
@@ -129,7 +143,7 @@ export default async function BlogPostPage({
         ? [
             {
               '@type': 'FAQPage',
-              '@id': `https://seoulsister.com/blog/${blogPost.slug}#faq`,
+              '@id': `https://www.seoulsister.com/blog/${blogPost.slug}#faq`,
               mainEntity: blogPost.faq_schema.questions.map((faq) => ({
                 '@type': 'Question',
                 name: faq.question,

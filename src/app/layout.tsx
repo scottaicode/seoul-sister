@@ -19,6 +19,7 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://www.seoulsister.com'),
   title: {
     default: 'Seoul Sister - K-Beauty Intelligence',
     template: '%s | Seoul Sister',
@@ -37,7 +38,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://seoulsister.com',
+    url: 'https://www.seoulsister.com',
     siteName: 'Seoul Sister',
     title: 'Seoul Sister - K-Beauty Intelligence',
     description:
@@ -88,13 +89,13 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@type': 'Organization',
               name: 'Seoul Sister',
-              url: 'https://seoulsister.com',
+              url: 'https://www.seoulsister.com',
               description: 'The world\'s first English-language K-beauty intelligence platform.',
               sameAs: [],
-              logo: 'https://seoulsister.com/icons/icon-512.svg',
+              logo: 'https://www.seoulsister.com/icons/icon-512.svg',
               potentialAction: {
                 '@type': 'SearchAction',
-                target: 'https://seoulsister.com/products?search={search_term_string}',
+                target: 'https://www.seoulsister.com/products?search={search_term_string}',
                 'query-input': 'required name=search_term_string',
               },
             }),

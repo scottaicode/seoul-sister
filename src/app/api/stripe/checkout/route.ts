@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const origin = request.headers.get('origin') || 'https://seoulsister.com'
+    const origin = request.headers.get('origin') || 'https://www.seoulsister.com'
 
     const url = await createCheckoutSession({
       userId: user.id,

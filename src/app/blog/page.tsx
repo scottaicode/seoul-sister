@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     description:
       'Expert guides, ingredient deep-dives, and trend reports for K-beauty enthusiasts.',
     type: 'website',
-    url: 'https://seoulsister.com/blog',
+    url: 'https://www.seoulsister.com/blog',
   },
 }
 
@@ -47,8 +47,37 @@ export default async function BlogPage() {
 
   const blogPosts = (posts || []) as BlogPost[]
 
+  const blogListingSchema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'CollectionPage',
+        '@id': 'https://www.seoulsister.com/blog#collection',
+        name: 'K-Beauty Blog',
+        description: 'Expert guides, ingredient deep-dives, and trend reports for K-beauty enthusiasts.',
+        url: 'https://www.seoulsister.com/blog',
+        isPartOf: {
+          '@type': 'WebSite',
+          '@id': 'https://www.seoulsister.com#website',
+          name: 'Seoul Sister',
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.seoulsister.com' },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://www.seoulsister.com/blog' },
+        ],
+      },
+    ],
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogListingSchema) }}
+      />
       {/* Header */}
       <div className="border-b border-white/10">
         <div className="max-w-4xl mx-auto px-4 py-12">

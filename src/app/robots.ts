@@ -29,6 +29,6 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
       },
     ],
-    sitemap: 'https://seoulsister.com/sitemap.xml',
+    sitemap: 'https://www.seoulsister.com/sitemap.xml',
   }
 }

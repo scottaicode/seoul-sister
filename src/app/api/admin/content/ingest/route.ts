@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
       success: true,
       id: post.id,
       slug: post.slug,
-      url: `https://seoulsister.com/blog/${post.slug}`,
+      url: `https://www.seoulsister.com/blog/${post.slug}`,
     })
   } catch (error) {
     return handleApiError(error)
