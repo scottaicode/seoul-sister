@@ -4806,8 +4806,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 8.5.0 (Yuri Quality Hardening — Bailey Feedback, Pacing, Feature Knowledge Audit)
-**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 12 cron jobs configured.
+**Version**: 8.6.0 (SEO Implementation — Canonical URLs, Product Metadata, Blog Schema)
+**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 12 cron jobs configured. SEO foundation complete (canonical URLs, www normalization, product metadata, blog JSON-LD, breadcrumbs, E-E-A-T author schema).
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -4823,6 +4823,18 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v8.6.0 (Feb 26, 2026): SEO Implementation — Canonical URLs, Product Metadata, Blog Schema
+  - **Fix 1 — Canonical URLs**: Added `metadataBase: new URL('https://www.seoulsister.com')` to root `layout.tsx`. Next.js now auto-generates `<link rel="canonical" href="...">` on every page that exports metadata, including all blog posts and product pages. Consolidates ranking signals and prevents duplicate content indexing
+  - **Fix 2 — www base URL normalization**: Replaced all `https://seoulsister.com` references with `https://www.seoulsister.com` across 8 files. `seoulsister.com` returns HTTP 307 → `www.seoulsister.com`, so all URLs in sitemap, robots.txt, JSON-LD, OpenGraph, Stripe callbacks, and content ingest now match the canonical www domain. Eliminates redirect chains for every URL Google crawls
+  - **Fix 3 — Product page metadata**: Created `src/app/(app)/products/[id]/layout.tsx` with `generateMetadata` that fetches product data from Supabase server-side. Every product page now gets a unique `<title>` (e.g., "Advanced Snail 96 Mucin Power Essence by COSRX"), meta description, OpenGraph, and Twitter card. Previously all 6,200+ product pages showed generic "Seoul Sister - K-Beauty Intelligence" in search results
+  - **Fix 4 — Blog listing JSON-LD**: Added `CollectionPage` + `BreadcrumbList` schema to `src/app/blog/page.tsx`. Helps search engines understand the blog index is a curated collection of articles
+  - **Fix 5 — Blog post BreadcrumbList**: Added `BreadcrumbList` (Home → Blog → Post Title) to the existing `@graph` array in `src/app/blog/[slug]/page.tsx`. Enables breadcrumb trail display in Google search results
+  - **Fix 6 — Blog author E-E-A-T**: Updated Article JSON-LD author field to use `Person` type when author is a named individual, falling back to `Organization` for "Seoul Sister" or unattributed posts. Improves Google E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness) signals
+  - **Fix 7 — Home page structured data**: Deferred — root layout Organization schema with SearchAction already covers brand-level SEO. Home page ranks for brand name queries regardless
+  - **Files modified**: `src/app/layout.tsx`, `src/app/sitemap.ts`, `src/app/robots.ts`, `src/app/blog/page.tsx`, `src/app/blog/[slug]/page.tsx`, `src/app/api/admin/content/ingest/route.ts`, `src/app/api/stripe/checkout/route.ts`, `src/app/api/stripe/portal/route.ts`
+  - **Files created**: `src/app/(app)/products/[id]/layout.tsx`
+  - **Post-deployment verification needed**: GSC URL Inspection on product + blog pages, Google Rich Results Test, sitemap resubmission in GSC
+  - **Build verified**: `tsc --noEmit` and `next build` both pass
 - v8.5.0 (Feb 25, 2026): Yuri Quality Hardening — Bailey Feedback, Pacing, Feature Knowledge Audit
   - **4 fixes from Bailey's real-user testing feedback** (commit `32f7753`):
     - **Glass Skin phase-awareness**: Glass Skin was recommending actives (tranexamic acid, vitamin C, BHA) while Yuri had Bailey on Phase 1 barrier repair (NO actives). New `loadTreatmentPlanContext()` reads Yuri's `decision_memory` and conversation summaries, injects the active treatment plan as a mandatory constraint into the Glass Skin Vision prompt. Recommendations now align with Yuri's phased approach
