@@ -1,5 +1,6 @@
 import { getServiceClient } from '@/lib/supabase'
 import { fetchWeather } from '@/lib/intelligence/weather-routine'
+import { getProductPosition } from '@/lib/intelligence/layering-order'
 import type Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -92,8 +93,9 @@ async function smartProductSearch(
       })
       if (allTermMatch.length) return allTermMatch.slice(0, limit)
 
-      // If ALL-terms didn't work, return the broad results anyway (SOME terms matched)
-      return rows.slice(0, limit)
+      // ALL-terms didn't match. Rather than returning noise (any COSRX product
+      // when the user asked for a specific one), fall through to Strategy 3
+      // which is designed for broad single-term searches.
     }
   }
 
@@ -338,6 +340,54 @@ export const YURI_TOOLS: ToolDef[] = [
       },
     },
   },
+  {
+    name: 'add_to_routine',
+    description:
+      'Add a product to the user\'s AM, PM, or weekly routine. The product will be automatically placed in the correct layering order position (devices first, then thinnest-to-thickest). Use this whenever you recommend a product for their routine AND they confirm they want to add it, or when you\'re building/updating a routine. Always search for the product first to get the product_id.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        product_id: {
+          type: 'string',
+          description: 'Product UUID from a previous search_products or get_product_details result',
+        },
+        product_name: {
+          type: 'string',
+          description: 'Product name to search for if product_id is not known',
+        },
+        routine_type: {
+          type: 'string',
+          enum: ['am', 'pm', 'weekly'],
+          description: 'Which routine to add to: am (morning), pm (evening), or weekly',
+        },
+      },
+      required: ['routine_type'],
+    },
+  },
+  {
+    name: 'remove_from_routine',
+    description:
+      'Remove a product from the user\'s AM, PM, or weekly routine. Use this when a user wants to remove a product, swap it out, or simplify their routine. The remaining products will be renumbered automatically.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        product_id: {
+          type: 'string',
+          description: 'Product UUID to remove',
+        },
+        product_name: {
+          type: 'string',
+          description: 'Product name to search for if product_id is not known',
+        },
+        routine_type: {
+          type: 'string',
+          enum: ['am', 'pm', 'weekly'],
+          description: 'Which routine to remove from: am (morning), pm (evening), or weekly',
+        },
+      },
+      required: ['routine_type'],
+    },
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -367,6 +417,10 @@ export async function executeYuriTool(
         return await executeWebSearch(input)
       case 'get_current_weather':
         return await executeGetCurrentWeather(input, userId)
+      case 'add_to_routine':
+        return await executeAddToRoutine(input, userId)
+      case 'remove_from_routine':
+        return await executeRemoveFromRoutine(input, userId)
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` })
     }
@@ -423,7 +477,25 @@ async function executeSearchProducts(
     products = products.filter(p => (p.rating_avg as number | null) !== null && (p.rating_avg as number) >= minRating)
   }
 
-  if (!products.length) return JSON.stringify({ products: [], message: 'No products found matching your criteria.' })
+  if (!products.length) {
+    // Suggest retry strategies instead of a dead-end message
+    const suggestions: string[] = []
+    if (query && query.split(/\s+/).length > 2) {
+      suggestions.push('Try searching with fewer words (just brand OR product name, not both together)')
+    }
+    if (category) {
+      suggestions.push('Try removing the category filter — the product might be categorized differently')
+    }
+    if (includeIngredients?.length) {
+      suggestions.push('Try removing the ingredient filter and searching by name alone')
+    }
+    return JSON.stringify({
+      products: [],
+      message: 'No exact matches found with this search.',
+      retry_suggestions: suggestions.length > 0 ? suggestions : ['Try different search terms or a partial product name'],
+      note: 'Do NOT tell the user this product is "not in the database." Instead, try a different search or ask the user to clarify the exact product name.',
+    })
+  }
 
   // Post-filter by price if needed
   let filtered = products
@@ -1292,5 +1364,267 @@ async function executeGetCurrentWeather(
       : null,
     seasonal_insight: seasonalInsight,
     note: 'Keep it tight: conditions (temp, humidity, UV) in 2-3 bullet lines, then ONE actionable skincare adjustment for their skin type. Not two paragraphs of advice — the single most important thing. You DO know today\'s date from your system prompt — state it if asked.',
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Tool: add_to_routine
+// ---------------------------------------------------------------------------
+
+async function executeAddToRoutine(
+  input: Record<string, unknown>,
+  userId: string
+): Promise<string> {
+  const db = getServiceClient()
+  let productId = input.product_id as string | undefined
+  const productName = input.product_name as string | undefined
+  const routineType = input.routine_type as 'am' | 'pm' | 'weekly'
+
+  if (!routineType) {
+    return JSON.stringify({ error: 'routine_type is required (am, pm, or weekly)' })
+  }
+
+  // Resolve product by name if no ID provided
+  if (!productId && productName) {
+    const match = await resolveProductByName(db, productName)
+    if (match) {
+      productId = match.id
+    } else {
+      return JSON.stringify({
+        error: `Could not find a product matching "${productName}" in the database. Try searching with search_products first to find the exact product.`,
+      })
+    }
+  }
+  if (!productId) {
+    return JSON.stringify({ error: 'Either product_id or product_name is required' })
+  }
+
+  // Find or create the user's routine for this type
+  let { data: routine } = await db
+    .from('ss_user_routines')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('routine_type', routineType)
+    .eq('is_active', true)
+    .single()
+
+  if (!routine) {
+    const label =
+      routineType === 'am'
+        ? 'Morning Routine'
+        : routineType === 'pm'
+          ? 'Evening Routine'
+          : 'Weekly Treatments'
+
+    const { data: newRoutine, error } = await db
+      .from('ss_user_routines')
+      .insert({
+        user_id: userId,
+        name: label,
+        routine_type: routineType,
+        is_active: true,
+      })
+      .select('id')
+      .single()
+
+    if (error) return JSON.stringify({ error: `Failed to create routine: ${error.message}` })
+    routine = newRoutine
+  }
+
+  // Check if product is already in this routine
+  const { data: exists } = await db
+    .from('ss_routine_products')
+    .select('id')
+    .eq('routine_id', routine.id)
+    .eq('product_id', productId)
+    .single()
+
+  if (exists) {
+    return JSON.stringify({
+      already_in_routine: true,
+      message: 'This product is already in the routine.',
+    })
+  }
+
+  // Get product info for layering position
+  const { data: productInfo } = await db
+    .from('ss_products')
+    .select('category, name_en, brand_en')
+    .eq('id', productId)
+    .single()
+
+  const layeringPosition = productInfo
+    ? getProductPosition(productInfo.category, productInfo.name_en)
+    : 5
+
+  // Get all existing products in routine with their categories
+  const { data: allRoutineProducts } = await db
+    .from('ss_routine_products')
+    .select('id, step_order, product:product_id (category, name_en)')
+    .eq('routine_id', routine.id)
+    .order('step_order', { ascending: true })
+
+  let stepOrder: number
+  if (allRoutineProducts?.length) {
+    // Find the correct insertion point based on layering order
+    let insertAt = 1
+    for (const rp of allRoutineProducts) {
+      const rpProduct = rp.product as unknown as { category: string; name_en: string } | null
+      const rpPosition = rpProduct
+        ? getProductPosition(rpProduct.category, rpProduct.name_en)
+        : 5
+      if (rpPosition <= layeringPosition) {
+        insertAt = rp.step_order + 1
+      }
+    }
+    stepOrder = insertAt
+
+    // Shift products at or above the insertion point up by 1
+    const toShift = allRoutineProducts.filter((rp) => rp.step_order >= stepOrder)
+    for (const rp of toShift.reverse()) {
+      const { error: shiftError } = await db
+        .from('ss_routine_products')
+        .update({ step_order: rp.step_order + 1 })
+        .eq('id', rp.id)
+      if (shiftError) {
+        console.error(`[add_to_routine] Failed to shift product ${rp.id}:`, shiftError.message)
+        return JSON.stringify({ error: 'Failed to reorder routine products. Please try again.' })
+      }
+    }
+  } else {
+    stepOrder = 1
+  }
+
+  // Insert the product
+  const { error } = await db.from('ss_routine_products').insert({
+    routine_id: routine.id,
+    product_id: productId,
+    step_order: stepOrder,
+    frequency: 'daily',
+  })
+
+  if (error) return JSON.stringify({ error: `Failed to add product: ${error.message}` })
+
+  const productLabel = productInfo
+    ? `${productInfo.brand_en} ${productInfo.name_en}`
+    : 'Product'
+
+  return JSON.stringify({
+    success: true,
+    message: `Added ${productLabel} to ${routineType.toUpperCase()} routine at step ${stepOrder}.`,
+    product_name: productLabel,
+    routine_type: routineType,
+    step_order: stepOrder,
+    is_device: layeringPosition === 0,
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Tool: remove_from_routine
+// ---------------------------------------------------------------------------
+
+async function executeRemoveFromRoutine(
+  input: Record<string, unknown>,
+  userId: string
+): Promise<string> {
+  const db = getServiceClient()
+  let productId = input.product_id as string | undefined
+  const productName = input.product_name as string | undefined
+  const routineType = input.routine_type as 'am' | 'pm' | 'weekly'
+
+  if (!routineType) {
+    return JSON.stringify({ error: 'routine_type is required (am, pm, or weekly)' })
+  }
+
+  // Resolve product by name if no ID provided
+  if (!productId && productName) {
+    const match = await resolveProductByName(db, productName)
+    if (match) {
+      productId = match.id
+    } else {
+      return JSON.stringify({
+        error: `Could not find a product matching "${productName}" in the database.`,
+      })
+    }
+  }
+
+  if (!productId) {
+    return JSON.stringify({ error: 'Either product_id or product_name is required.' })
+  }
+
+  // Find the active routine
+  const { data: routine } = await db
+    .from('ss_user_routines')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('routine_type', routineType)
+    .eq('is_active', true)
+    .single()
+
+  if (!routine) {
+    return JSON.stringify({ error: `No active ${routineType.toUpperCase()} routine found.` })
+  }
+
+  // Get product name for the response message
+  const { data: productInfo } = await db
+    .from('ss_products')
+    .select('name_en, brand_en')
+    .eq('id', productId)
+    .single()
+
+  // Check if product is actually in this routine
+  const { data: existing } = await db
+    .from('ss_routine_products')
+    .select('id')
+    .eq('routine_id', routine.id)
+    .eq('product_id', productId)
+    .single()
+
+  if (!existing) {
+    const label = productInfo ? `${productInfo.brand_en} ${productInfo.name_en}` : 'That product'
+    return JSON.stringify({
+      error: `${label} is not in your ${routineType.toUpperCase()} routine.`,
+    })
+  }
+
+  // Delete the product from the routine
+  const { error: deleteError } = await db
+    .from('ss_routine_products')
+    .delete()
+    .eq('routine_id', routine.id)
+    .eq('product_id', productId)
+
+  if (deleteError) {
+    return JSON.stringify({ error: `Failed to remove product: ${deleteError.message}` })
+  }
+
+  // Re-number remaining products to close any gaps
+  const { data: remaining } = await db
+    .from('ss_routine_products')
+    .select('id, step_order')
+    .eq('routine_id', routine.id)
+    .order('step_order', { ascending: true })
+
+  if (remaining) {
+    for (let i = 0; i < remaining.length; i++) {
+      if (remaining[i].step_order !== i + 1) {
+        await db
+          .from('ss_routine_products')
+          .update({ step_order: i + 1 })
+          .eq('id', remaining[i].id)
+      }
+    }
+  }
+
+  const productLabel = productInfo
+    ? `${productInfo.brand_en} ${productInfo.name_en}`
+    : 'Product'
+
+  return JSON.stringify({
+    success: true,
+    message: `Removed ${productLabel} from your ${routineType.toUpperCase()} routine.`,
+    product_name: productLabel,
+    routine_type: routineType,
+    remaining_products: remaining?.length ?? 0,
   })
 }

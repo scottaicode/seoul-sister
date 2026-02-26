@@ -28,8 +28,16 @@ export interface MissingStepAlert {
 /**
  * Korean skincare layering order by category.
  * AM and PM share most steps, with sunscreen (AM) and sleeping mask (PM) as the final step.
+ *
+ * Position 0: Beauty devices (LED masks, red light, microcurrent) — applied to clean skin
+ *             BEFORE any products. Light therapy needs direct skin contact for penetration.
+ * Positions 1-8: Product layering follows thinnest-to-thickest texture rule.
  */
 const LAYERING_ORDER: Record<string, { position: number; label: string }> = {
+  // Devices — clean skin, before all products
+  device: { position: 0, label: 'Beauty Device (LED/Red Light/Microcurrent)' },
+  led_mask: { position: 0, label: 'LED / Red Light Mask' },
+  // Products — thinnest to thickest
   cleanser: { position: 1, label: 'Cleanser' },
   toner: { position: 2, label: 'Toner' },
   essence: { position: 3, label: 'Essence' },
@@ -82,16 +90,48 @@ const WAIT_TIME_TRIGGERS: Array<{
 ]
 
 /**
+ * Device detection keywords — products that are beauty devices/tools,
+ * not skincare products. These go BEFORE all products (position 0).
+ */
+const DEVICE_KEYWORDS = [
+  'led mask', 'red light', 'blue light', 'light therapy',
+  'microcurrent', 'dermaroller', 'derma roller', 'derma pen',
+  'gua sha', 'jade roller', 'ice roller', 'facial steamer',
+  'high frequency', 'galvanic', 'rf device', 'radio frequency',
+  'dermastamp', 'dermashot', 'wand', 'booster mode',
+]
+
+/**
+ * Check if a product is a beauty device based on its name.
+ * Catches devices miscategorized as "mask" or other product categories.
+ */
+export function isBeautyDevice(productName: string): boolean {
+  const lower = productName.toLowerCase()
+  return DEVICE_KEYWORDS.some((kw) => lower.includes(kw))
+}
+
+/**
+ * Get the effective layering position for a product, accounting for
+ * devices that may be miscategorized (e.g., red light mask filed as "mask").
+ */
+export function getEffectivePosition(product: ProductWithCategory): number {
+  // Device detection by name overrides category-based position
+  if (isBeautyDevice(product.name_en)) return 0
+  return LAYERING_ORDER[product.category]?.position ?? 5
+}
+
+/**
  * Suggest the optimal layering order for products based on their categories.
  * Returns products sorted by the Korean skincare layering order.
+ * Devices (LED masks, red light, etc.) are always placed first (position 0).
  */
 export function suggestLayeringOrder(
   products: ProductWithCategory[],
   routineType: 'am' | 'pm' | 'weekly' = 'am'
 ): ProductWithCategory[] {
   return [...products].sort((a, b) => {
-    const posA = LAYERING_ORDER[a.category]?.position ?? 5
-    const posB = LAYERING_ORDER[b.category]?.position ?? 5
+    const posA = getEffectivePosition(a)
+    const posB = getEffectivePosition(b)
 
     if (posA !== posB) return posA - posB
 
@@ -209,8 +249,18 @@ export function detectMissingSteps(
 
 /**
  * Get the position number for a product category in the layering order.
+ * For device-aware positioning, use getEffectivePosition() with a full product object.
  */
 export function getCategoryPosition(category: string): number {
+  return LAYERING_ORDER[category]?.position ?? 5
+}
+
+/**
+ * Get the position number for a product, using name-based device detection
+ * to override the category position when appropriate.
+ */
+export function getProductPosition(category: string, productName: string): number {
+  if (isBeautyDevice(productName)) return 0
   return LAYERING_ORDER[category]?.position ?? 5
 }
 

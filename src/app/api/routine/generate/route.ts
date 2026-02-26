@@ -110,13 +110,14 @@ Budget: ${budget_range ?? 'mid-range'}`
 
 RULES:
 1. Only recommend products from the provided catalog (use exact product IDs).
-2. Follow Korean layering order: cleanser -> toner -> essence -> serum/ampoule -> eye cream -> moisturizer -> sunscreen (AM) / sleeping mask (PM).
-3. Flag any ingredient conflicts between recommended products.
-4. The "core 4" for anyone: gentle cleanser + moisturizer + SPF 50+ PA++++ + one targeted active.
-5. A simpler routine done consistently beats a complex one abandoned after 2 weeks.
-6. For beginners, recommend 4-5 products max. For advanced, up to 7-8.
-7. Include wait times where needed (vitamin C: 15 min, AHA/BHA: 20 min).
-8. Respect budget constraints.
+2. Beauty devices (LED masks, red light therapy, microcurrent tools) go FIRST at step 1 — on clean skin BEFORE any products. Light therapy needs direct skin contact.
+3. Follow Korean layering order for products: cleanser -> toner -> essence -> serum/ampoule -> eye cream -> moisturizer -> sunscreen (AM) / sleeping mask (PM).
+4. Flag any ingredient conflicts between recommended products.
+5. The "core 4" for anyone: gentle cleanser + moisturizer + SPF 50+ PA++++ + one targeted active.
+6. A simpler routine done consistently beats a complex one abandoned after 2 weeks.
+7. For beginners, recommend 4-5 products max. For advanced, up to 7-8.
+8. Include wait times where needed (vitamin C: 15 min, AHA/BHA: 20 min).
+9. Respect budget constraints.
 
 RESPOND WITH ONLY VALID JSON matching this structure:
 {

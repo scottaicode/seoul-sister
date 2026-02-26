@@ -1,4 +1,5 @@
 import { getServiceClient } from '@/lib/supabase'
+import { getProductPosition } from '@/lib/intelligence/layering-order'
 
 /**
  * Yuri can execute actions on behalf of the user during conversations.
@@ -67,17 +68,52 @@ async function addToRoutine(
     routine = newRoutine
   }
 
-  // Get the next step order if not specified
+  // Determine step order using proper layering logic if not specified
   let stepOrder = params.stepOrder
   if (stepOrder === undefined) {
-    const { data: existing } = await db
-      .from('ss_routine_products')
-      .select('step_order')
-      .eq('routine_id', routine.id)
-      .order('step_order', { ascending: false })
-      .limit(1)
+    // Get product info for layering position
+    const { data: productInfo } = await db
+      .from('ss_products')
+      .select('category, name_en')
+      .eq('id', params.productId)
+      .single()
 
-    stepOrder = existing && existing.length > 0 ? existing[0].step_order + 1 : 1
+    const layeringPosition = productInfo
+      ? getProductPosition(productInfo.category, productInfo.name_en)
+      : 5
+
+    // Get all existing products in routine with their categories
+    const { data: allRoutineProducts } = await db
+      .from('ss_routine_products')
+      .select('id, step_order, product:product_id (category, name_en)')
+      .eq('routine_id', routine.id)
+      .order('step_order', { ascending: true })
+
+    if (allRoutineProducts?.length) {
+      // Insert after the last product whose layering position <= new product's position
+      let insertAt = 1
+      for (const rp of allRoutineProducts) {
+        const rpProduct = rp.product as unknown as { category: string; name_en: string } | null
+        const rpPosition = rpProduct
+          ? getProductPosition(rpProduct.category, rpProduct.name_en)
+          : 5
+        if (rpPosition <= layeringPosition) {
+          insertAt = rp.step_order + 1
+        }
+      }
+      stepOrder = insertAt
+
+      // Shift products at or above the insertion point up by 1
+      const toShift = allRoutineProducts.filter((rp) => rp.step_order >= stepOrder!)
+      for (const rp of toShift.reverse()) {
+        await db
+          .from('ss_routine_products')
+          .update({ step_order: rp.step_order + 1 })
+          .eq('id', rp.id)
+      }
+    } else {
+      stepOrder = 1
+    }
   }
 
   // Check if product already in routine

@@ -4,7 +4,7 @@ import { requireAuth } from '@/lib/auth'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { checkRoutineConflicts } from '@/lib/intelligence/conflict-detector'
-import { getCategoryPosition } from '@/lib/intelligence/layering-order'
+import { getProductPosition } from '@/lib/intelligence/layering-order'
 
 const addProductSchema = z.object({
   product_id: z.string().uuid(),
@@ -56,35 +56,52 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // Check for ingredient conflicts
     const conflictResult = await checkRoutineConflicts(supabase, routineId, product_id)
 
-    // Determine step order: use provided value, or auto-assign based on category
+    // Determine step order: use provided value, or auto-assign based on layering order
     let finalStepOrder = step_order
     if (!finalStepOrder) {
-      // Get product category for auto-ordering
+      // Get product category + name for device-aware ordering
       const { data: product } = await supabase
         .from('ss_products')
-        .select('category')
+        .select('category, name_en')
         .eq('id', product_id)
         .single()
 
-      finalStepOrder = product ? getCategoryPosition(product.category) : 5
+      const layeringPosition = product
+        ? getProductPosition(product.category, product.name_en)
+        : 5
 
-      // Shift existing products if needed
-      const { data: currentProducts } = await supabase
+      // Get ALL existing products with their categories and names for proper re-ordering
+      const { data: allRoutineProducts } = await supabase
         .from('ss_routine_products')
-        .select('id, step_order')
+        .select('id, step_order, product:product_id (category, name_en)')
         .eq('routine_id', routineId)
-        .gte('step_order', finalStepOrder)
-        .order('step_order', { ascending: false })
+        .order('step_order', { ascending: true })
 
-      if (currentProducts?.length) {
-        // Recalculate: count existing products and place the new one at the end of its position group
-        const { data: allProducts } = await supabase
-          .from('ss_routine_products')
-          .select('step_order')
-          .eq('routine_id', routineId)
-          .order('step_order', { ascending: true })
+      if (allRoutineProducts?.length) {
+        // Find the correct insertion point based on layering order.
+        // Insert AFTER the last product whose layering position <= new product's position.
+        let insertAt = 1
+        for (const rp of allRoutineProducts) {
+          const rpProduct = rp.product as unknown as { category: string; name_en: string } | null
+          const rpPosition = rpProduct
+            ? getProductPosition(rpProduct.category, rpProduct.name_en)
+            : 5
+          if (rpPosition <= layeringPosition) {
+            insertAt = rp.step_order + 1
+          }
+        }
+        finalStepOrder = insertAt
 
-        finalStepOrder = (allProducts?.length ?? 0) + 1
+        // Shift products at or above the insertion point up by 1
+        const toShift = allRoutineProducts.filter((rp) => rp.step_order >= finalStepOrder!)
+        for (const rp of toShift.reverse()) {
+          await supabase
+            .from('ss_routine_products')
+            .update({ step_order: rp.step_order + 1 })
+            .eq('id', rp.id)
+        }
+      } else {
+        finalStepOrder = 1
       }
     }
 
