@@ -41,8 +41,15 @@ interface BlogPost {
   published_at: string
   updated_at: string | null
   author: string | null
-  faq_schema: { questions?: Array<{ question: string; answer: string }> } | null
+  faq_schema: { questions?: Array<{ question: string; answer: string }> } | Array<{ question: string; answer: string }> | null
   primary_keyword: string | null
+}
+
+/** Normalize FAQ data — LGAAS sends a flat array, but the page expects { questions: [...] } */
+function getFaqQuestions(faq: BlogPost['faq_schema']): Array<{ question: string; answer: string }> {
+  if (!faq) return []
+  if (Array.isArray(faq)) return faq
+  return faq.questions || []
 }
 
 function getSupabase() {
@@ -162,12 +169,12 @@ export default async function BlogPostPage({
         },
         keywords: blogPost.tags?.join(', ') || blogPost.primary_keyword,
       },
-      ...(blogPost.faq_schema?.questions?.length
+      ...(getFaqQuestions(blogPost.faq_schema).length
         ? [
             {
               '@type': 'FAQPage',
               '@id': `https://www.seoulsister.com/blog/${blogPost.slug}#faq`,
-              mainEntity: blogPost.faq_schema.questions.map((faq) => ({
+              mainEntity: getFaqQuestions(blogPost.faq_schema).map((faq) => ({
                 '@type': 'Question',
                 name: faq.question,
                 acceptedAnswer: {
@@ -277,13 +284,13 @@ export default async function BlogPostPage({
           )}
 
           {/* FAQ Section */}
-          {blogPost.faq_schema?.questions && blogPost.faq_schema.questions.length > 0 && (
+          {getFaqQuestions(blogPost.faq_schema).length > 0 && (
             <div className="mt-12 pt-8 border-t border-white/10">
               <h2 className="font-display font-semibold text-xl text-white mb-6">
                 Frequently Asked Questions
               </h2>
               <div className="space-y-4">
-                {blogPost.faq_schema.questions.map((faq, i) => (
+                {getFaqQuestions(blogPost.faq_schema).map((faq, i) => (
                   <details
                     key={i}
                     className="group bg-white/5 rounded-xl border border-white/10"
