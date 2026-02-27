@@ -7,40 +7,10 @@ import {
   getMessageCount,
   setMessageCount,
   MAX_FREE_MESSAGES,
+  onMessageCountChange,
 } from '@/lib/utils/widget-session'
-
-/** Lightweight markdown: **bold**, *italic*, `- ` list items, paragraph spacing */
-function renderMarkdown(text: string) {
-  const lines = text.split('\n')
-  return lines.map((line, i) => {
-    const isList = line.trimStart().startsWith('- ')
-    const content = isList ? line.replace(/^\s*-\s*/, '') : line
-
-    const parts = content.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/).map((seg, j) => {
-      if (seg.startsWith('**') && seg.endsWith('**')) {
-        return <strong key={j} className="font-semibold text-white">{seg.slice(2, -2)}</strong>
-      }
-      if (seg.startsWith('*') && seg.endsWith('*')) {
-        return <em key={j}>{seg.slice(1, -1)}</em>
-      }
-      return seg
-    })
-
-    if (isList) {
-      return <li key={i} className="ml-3 list-disc list-inside">{parts}</li>
-    }
-    if (line.trim() === '') return <div key={i} className="h-2.5" />
-    return <span key={i}>{parts}{i < lines.length - 1 ? ' ' : ''}</span>
-  })
-}
-
-interface TryYuriMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  isStreaming?: boolean
-  isIncomplete?: boolean
-}
+import { renderMarkdown, parseWidgetStream } from '@/lib/utils/widget-shared'
+import type { WidgetMessage } from '@/lib/utils/widget-shared'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -48,7 +18,7 @@ const fadeUp = {
 }
 
 export default function TryYuriSection() {
-  const [messages, setMessages] = useState<TryYuriMessage[]>([])
+  const [messages, setMessages] = useState<WidgetMessage[]>([])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [messageCount, setMessageCountState] = useState(0)
@@ -56,9 +26,18 @@ export default function TryYuriSection() {
   const [error, setError] = useState<string | null>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     setMessageCountState(getMessageCount())
+    return onMessageCountChange((count) => setMessageCountState(count))
+  }, [])
+
+  // Abort any in-flight stream when component unmounts
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort()
+    }
   }, [])
 
   // Scroll within the chat container, not the page
@@ -78,16 +57,18 @@ export default function TryYuriSection() {
       const trimmed = text.trim()
       setError(null)
       setShowLive(true)
-      const newCount = messageCount + 1
-      setMessageCount(newCount)
-      setMessageCountState(newCount)
 
-      const userMsg: TryYuriMessage = {
+      // Abort any previous in-flight stream
+      abortControllerRef.current?.abort()
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+
+      const userMsg: WidgetMessage = {
         id: `u-${Date.now()}`,
         role: 'user',
         content: trimmed,
       }
-      const assistantMsg: TryYuriMessage = {
+      const assistantMsg: WidgetMessage = {
         id: `a-${Date.now()}`,
         role: 'assistant',
         content: '',
@@ -107,6 +88,7 @@ export default function TryYuriSection() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: trimmed, history }),
+          signal: controller.signal,
         })
 
         if (!response.ok || !response.body) {
@@ -114,54 +96,58 @@ export default function TryYuriSection() {
           throw new Error(errBody?.error || 'Request failed')
         }
 
-        const reader = response.body.getReader()
-        const decoder = new TextDecoder()
-        let buffer = ''
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() || ''
-
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue
-            try {
-              const event = JSON.parse(line.slice(6))
-              if (event.type === 'text') {
-                setMessages((prev) => {
-                  const updated = [...prev]
-                  const last = updated[updated.length - 1]
-                  if (last?.isStreaming) {
-                    updated[updated.length - 1] = {
-                      ...last,
-                      content: last.content + event.content,
-                    }
-                  }
-                  return updated
-                })
-              } else if (event.type === 'done') {
-                setMessages((prev) => {
-                  const updated = [...prev]
-                  const last = updated[updated.length - 1]
-                  if (last?.isStreaming) {
-                    updated[updated.length - 1] = {
-                      ...last,
-                      isStreaming: false,
-                      ...(event.message ? { content: event.message } : {}),
-                    }
-                  }
-                  return updated
-                })
+        await parseWidgetStream(response.body, controller.signal, {
+          onText(content) {
+            setMessages((prev) => {
+              const updated = [...prev]
+              const last = updated[updated.length - 1]
+              if (last?.isStreaming) {
+                updated[updated.length - 1] = {
+                  ...last,
+                  content: last.content + content,
+                }
               }
-            } catch {
-              // skip
-            }
-          }
-        }
+              return updated
+            })
+          },
+          onDone(cleanedMessage) {
+            setMessages((prev) => {
+              const updated = [...prev]
+              const last = updated[updated.length - 1]
+              if (last?.isStreaming) {
+                updated[updated.length - 1] = {
+                  ...last,
+                  isStreaming: false,
+                  ...(cleanedMessage ? { content: cleanedMessage } : {}),
+                }
+              }
+              return updated
+            })
+          },
+          onError(err) {
+            throw err
+          },
+        })
+
+        // Increment count only after successful stream (FIX: was before fetch)
+        const newCount = messageCount + 1
+        setMessageCount(newCount)
+        setMessageCountState(newCount)
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          // User navigated away or component unmounted — mark partial content
+          setMessages((prev) => {
+            const updated = [...prev]
+            const last = updated[updated.length - 1]
+            if (last?.isStreaming && last.content.trim()) {
+              updated[updated.length - 1] = { ...last, isStreaming: false, isIncomplete: true }
+              return updated
+            }
+            return prev.filter((m) => !m.isStreaming)
+          })
+          return
+        }
+
         // Preserve partial streamed content instead of discarding everything
         let hadPartialContent = false
         setMessages((prev) => {

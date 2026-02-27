@@ -32,6 +32,23 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'origin-when-cross-origin' },
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js requires inline scripts + eval for dev/hydration
+              "style-src 'self' 'unsafe-inline'", // Tailwind + framer-motion inject inline styles
+              "img-src 'self' data: blob: https://images.unsplash.com https://gzqjvbhmndnovhlgumdk.supabase.co https://www.seoulsister.com",
+              "font-src 'self'",
+              "connect-src 'self' https://gzqjvbhmndnovhlgumdk.supabase.co https://*.supabase.co wss://*.supabase.co https://api.stripe.com",
+              "frame-src https://js.stripe.com https://hooks.stripe.com",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'none'",
+              "upgrade-insecure-requests",
+            ].join('; '),
+          },
         ],
       },
       {

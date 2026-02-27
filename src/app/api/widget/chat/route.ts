@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { getAnthropicClient, MODELS, callAnthropicWithRetry, isRetryableError } from '@/lib/anthropic'
 import { checkRateLimit } from '@/lib/utils/rate-limiter'
+import { getServiceClient } from '@/lib/supabase'
 import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
 import { cleanYuriResponse } from '@/lib/yuri/voice-cleanup'
 import type Anthropic from '@anthropic-ai/sdk'
@@ -353,6 +354,43 @@ export async function POST(request: NextRequest) {
         const cleanedResponse = cleanYuriResponse(fullResponse)
         const done = JSON.stringify({ type: 'done', message: cleanedResponse })
         await writer.write(encoder.encode(`data: ${done}\n\n`))
+
+        // Fire-and-forget analytics upsert (non-blocking)
+        const sessionHash = simpleHash(ip + ua)
+        void (async () => {
+          try {
+            const supabase = getServiceClient()
+            // Check if session already exists
+            const { data: existing } = await supabase
+              .from('ss_widget_analytics')
+              .select('id, messages_sent, tool_calls_made')
+              .eq('session_hash', sessionHash)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single()
+
+            if (existing) {
+              await supabase
+                .from('ss_widget_analytics')
+                .update({
+                  messages_sent: existing.messages_sent + 1,
+                  tool_calls_made: existing.tool_calls_made + toolLoopCount,
+                  last_message_at: new Date().toISOString(),
+                })
+                .eq('id', existing.id)
+            } else {
+              await supabase.from('ss_widget_analytics').insert({
+                session_hash: sessionHash,
+                messages_sent: 1,
+                tool_calls_made: toolLoopCount,
+                first_message_at: new Date().toISOString(),
+                last_message_at: new Date().toISOString(),
+              })
+            }
+          } catch {
+            // Analytics should never break the user experience
+          }
+        })()
       } catch (err) {
         const msg =
           err instanceof Error ? err.message : 'Stream error'
