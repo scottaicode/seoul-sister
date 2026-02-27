@@ -94,6 +94,7 @@ const navLinks = [
   { label: 'Features', href: '#features' },
   { label: 'Try Yuri', href: '#try-yuri' },
   { label: 'Pricing', href: '#pricing' },
+  { label: 'Blog', href: '/blog' },
 ]
 
 export default function LandingPage() {
@@ -505,6 +506,7 @@ export default function LandingPage() {
               { label: 'Features', href: '#features' },
               { label: 'Try Yuri', href: '#try-yuri' },
               { label: 'Pricing', href: '#pricing' },
+              { label: 'Blog', href: '/blog' },
             ].map((link) => (
               <Link key={link.label} href={link.href} className="nav-link">
                 {link.label}
