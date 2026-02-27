@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, Poppins } from 'next/font/google'
 import { AuthProvider } from '@/contexts/AuthContext'
 import ServiceWorkerRegistration from '@/components/pwa/ServiceWorkerRegistration'
-import InstallPrompt from '@/components/pwa/InstallPrompt'
 import './globals.css'
 
 const inter = Inter({
@@ -104,7 +103,6 @@ export default function RootLayout({
         <AuthProvider>
           {children}
           <ServiceWorkerRegistration />
-          <InstallPrompt />
         </AuthProvider>
       </body>
     </html>

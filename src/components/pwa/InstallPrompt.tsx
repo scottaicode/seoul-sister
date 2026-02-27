@@ -8,6 +8,9 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
+const VISIT_COUNT_KEY = 'ss-app-visits'
+const MIN_VISITS_TO_SHOW = 3
+
 export default function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showPrompt, setShowPrompt] = useState(false)
@@ -17,10 +20,14 @@ export default function InstallPrompt() {
     if (window.matchMedia('(display-mode: standalone)').matches) return
     if (localStorage.getItem('pwa-prompt-dismissed')) return
 
+    // Track visits — only show after MIN_VISITS_TO_SHOW authenticated app visits
+    const visits = parseInt(localStorage.getItem(VISIT_COUNT_KEY) || '0', 10) + 1
+    localStorage.setItem(VISIT_COUNT_KEY, visits.toString())
+    if (visits < MIN_VISITS_TO_SHOW) return
+
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
-      // Show after a delay so it's not intrusive on first load
       setTimeout(() => setShowPrompt(true), 5000)
     }
 
