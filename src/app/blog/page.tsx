@@ -7,12 +7,22 @@ export const metadata: Metadata = {
   title: 'K-Beauty Blog',
   description:
     'Expert guides, ingredient deep-dives, and trend reports for K-beauty enthusiasts. Discover the latest in Korean skincare.',
+  robots: { index: true, follow: true },
+  alternates: { canonical: 'https://www.seoulsister.com/blog' },
   openGraph: {
     title: 'K-Beauty Blog | Seoul Sister',
     description:
       'Expert guides, ingredient deep-dives, and trend reports for K-beauty enthusiasts.',
     type: 'website',
     url: 'https://www.seoulsister.com/blog',
+    images: [{ url: 'https://www.seoulsister.com/icons/icon-512.svg', alt: 'Seoul Sister' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'K-Beauty Blog | Seoul Sister',
+    description:
+      'Expert guides, ingredient deep-dives, and trend reports for K-beauty enthusiasts.',
+    images: ['https://www.seoulsister.com/icons/icon-512.svg'],
   },
 }
 

@@ -85,6 +85,8 @@ export async function generateMetadata({
     title: post.title,
     description,
     authors: post.author ? [{ name: post.author }] : undefined,
+    robots: { index: true, follow: true },
+    alternates: { canonical: `https://www.seoulsister.com/blog/${slug}` },
     openGraph: {
       title: post.title,
       description,
