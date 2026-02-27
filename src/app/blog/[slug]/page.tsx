@@ -3,6 +3,29 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { Calendar, Clock, ArrowLeft, Tag } from 'lucide-react'
+import { marked } from 'marked'
+
+// Configure marked: open external links in new tab, sanitize
+const renderer = new marked.Renderer()
+renderer.link = ({ href, title, text }) => {
+  const isExternal = href && (href.startsWith('http://') || href.startsWith('https://'))
+  const titleAttr = title ? ` title="${title}"` : ''
+  const target = isExternal ? ' target="_blank" rel="noopener noreferrer"' : ''
+  return `<a href="${href}"${titleAttr}${target}>${text}</a>`
+}
+
+marked.setOptions({
+  renderer,
+  gfm: true,
+  breaks: false,
+})
+
+function renderMarkdown(content: string): string {
+  if (!content) return ''
+  // Strip leading H1 if it duplicates the page title (LGAAS includes it in content)
+  const stripped = content.replace(/^#\s+.+\n+/, '')
+  return marked.parse(stripped) as string
+}
 
 interface BlogPost {
   id: string
@@ -233,7 +256,7 @@ export default async function BlogPostPage({
               prose-blockquote:border-amber-500 prose-blockquote:text-white/70
               prose-code:text-amber-300 prose-code:bg-white/10 prose-code:px-1 prose-code:rounded
               prose-hr:border-white/10"
-            dangerouslySetInnerHTML={{ __html: blogPost.body }}
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(blogPost.body) }}
           />
 
           {/* Tags */}
