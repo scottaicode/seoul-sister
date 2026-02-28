@@ -16,6 +16,7 @@ import {
 import {
   SectionHeader,
   PersonalizedMatch,
+  OwnershipStatus,
   EnrichmentPriceComparison,
   CommunityIntelligence,
   AuthenticityCheck,
@@ -292,6 +293,11 @@ export default function ScanResults({ result, onReset }: ScanResultsProps) {
       {/* ── Personalized Match (Your Skin) ────────────────────────── */}
       {enrichment?.personalization && (
         <PersonalizedMatch data={enrichment.personalization} />
+      )}
+
+      {/* ── Ownership Status ────────────────────────────────────── */}
+      {enrichment?.ownership && (
+        <OwnershipStatus data={enrichment.ownership} />
       )}
 
       {/* ── Ingredient Effectiveness Insights ───────────────────── */}

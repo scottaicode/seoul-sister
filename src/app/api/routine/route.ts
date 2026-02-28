@@ -36,7 +36,41 @@ export async function GET(request: NextRequest) {
         .sort((a, b) => (a.step_order as number) - (b.step_order as number)),
     }))
 
-    return NextResponse.json({ routines })
+    // Cross-reference with ss_user_products for ownership data
+    const allProductIds = routines.flatMap((r) =>
+      r.products.map((p: Record<string, unknown>) => p.product_id as string)
+    ).filter(Boolean)
+
+    let ownershipMap = new Map<string, { custom_name: string | null }>()
+    if (allProductIds.length > 0) {
+      try {
+        const { data: owned } = await supabase
+          .from('ss_user_products')
+          .select('product_id, custom_name')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .in('product_id', allProductIds)
+
+        if (owned) {
+          ownershipMap = new Map(
+            owned.map((o) => [o.product_id, { custom_name: o.custom_name || null }])
+          )
+        }
+      } catch {
+        // Non-critical — continue without ownership data
+      }
+    }
+
+    // Attach ownership data to each product
+    const enrichedRoutines = routines.map((r) => ({
+      ...r,
+      products: r.products.map((p: Record<string, unknown>) => ({
+        ...p,
+        ownership: ownershipMap.get(p.product_id as string) ?? null,
+      })),
+    }))
+
+    return NextResponse.json({ routines: enrichedRoutines })
   } catch (error) {
     return handleApiError(error)
   }

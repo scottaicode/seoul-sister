@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, X, Plus, AlertTriangle, Loader2 } from 'lucide-react'
+import { Search, X, Plus, AlertTriangle, Loader2, PackageCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 interface Product {
@@ -11,6 +11,13 @@ interface Product {
   category: string
   image_url: string | null
   price_usd: number | null
+}
+
+interface OwnedProduct {
+  product_id: string
+  custom_name: string | null
+  category: string | null
+  product: Product | null
 }
 
 interface AddProductModalProps {
@@ -24,9 +31,30 @@ interface AddProductModalProps {
 export function AddProductModal({ isOpen, onClose, onAdd, routineType, existingProductIds }: AddProductModalProps) {
   const [query, setQuery] = useState('')
   const [products, setProducts] = useState<Product[]>([])
+  const [ownedProducts, setOwnedProducts] = useState<OwnedProduct[]>([])
   const [loading, setLoading] = useState(false)
   const [adding, setAdding] = useState<string | null>(null)
   const [addResult, setAddResult] = useState<{ productId: string; conflicts: Array<{ ingredient_a: string; ingredient_b: string; severity: string; description: string }> } | null>(null)
+
+  // Load user's owned products on open
+  useEffect(() => {
+    if (!isOpen) return
+    async function loadOwned() {
+      const { data } = await supabase
+        .from('ss_user_products')
+        .select(`
+          product_id, custom_name, category,
+          product:product_id (id, name_en, brand_en, category, image_url, price_usd)
+        `)
+        .eq('status', 'active')
+      if (data) {
+        const typed = data as unknown as OwnedProduct[]
+        // Filter out products already in the routine
+        setOwnedProducts(typed.filter((op) => op.product_id && !existingProductIds.includes(op.product_id)))
+      }
+    }
+    loadOwned()
+  }, [isOpen, existingProductIds])
 
   const searchProducts = useCallback(async (searchQuery: string) => {
     setLoading(true)
@@ -136,11 +164,62 @@ export function AddProductModal({ isOpen, onClose, onAdd, routineType, existingP
 
         {/* Product list */}
         <div className="flex-1 overflow-y-auto p-3 space-y-1">
+          {/* Your Products section */}
+          {!query && ownedProducts.length > 0 && (
+            <>
+              <div className="flex items-center gap-2 px-1 pt-1 pb-2">
+                <PackageCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Your Products</span>
+              </div>
+              {ownedProducts.map((op) => {
+                const product = op.product
+                if (!product) return null
+                const displayName = op.custom_name || product.name_en
+                return (
+                  <div
+                    key={product.id}
+                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 transition-colors border border-emerald-500/10"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {product.image_url ? (
+                        <img src={product.image_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <PackageCheck className="w-4 h-4 text-emerald-400/40" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white font-medium truncate">{displayName}</p>
+                      <p className="text-[10px] text-white/40">
+                        {product.brand_en} &middot; {op.category || product.category}
+                        {product.price_usd ? ` \u00b7 $${product.price_usd}` : ''}
+                        <span className="text-emerald-400/60"> &middot; Owned</span>
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleAdd(product.id)}
+                      disabled={adding === product.id}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+                    >
+                      {adding === product.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Plus className="w-3.5 h-3.5" />
+                      )}
+                      Add
+                    </button>
+                  </div>
+                )
+              })}
+              <div className="flex items-center gap-2 px-1 pt-3 pb-2">
+                <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">Browse Catalog</span>
+              </div>
+            </>
+          )}
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="w-5 h-5 animate-spin text-gold" />
             </div>
-          ) : products.length === 0 ? (
+          ) : products.length === 0 && ownedProducts.length === 0 ? (
             <p className="text-center text-sm text-white/30 py-8">
               {query ? 'No matching products found' : 'No products available'}
             </p>

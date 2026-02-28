@@ -350,6 +350,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Cross-reference with user's product inventory
+    const matchedDbIds = matchedProducts
+      .map((p) => p.matched_product_id)
+      .filter(Boolean) as string[]
+
+    let inventoryProductIds = new Set<string>()
+    if (matchedDbIds.length > 0) {
+      try {
+        const { data: inventoryRows } = await supabase
+          .from('ss_user_products')
+          .select('product_id')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .in('product_id', matchedDbIds)
+
+        inventoryProductIds = new Set(
+          (inventoryRows ?? []).map((r) => r.product_id).filter(Boolean) as string[]
+        )
+      } catch {
+        // Non-critical
+      }
+    }
+
+    // Tag each product with ownership status
+    for (const product of matchedProducts) {
+      if (product.matched_product_id && inventoryProductIds.has(product.matched_product_id)) {
+        product.already_in_inventory = true
+      }
+    }
+
     // Refine estimated value using DB prices where matched
     let refinedValue = 0
     let unmatchedEstimate = 0
@@ -392,6 +422,7 @@ export async function POST(request: NextRequest) {
       },
       products_count: matchedProducts.length,
       matched_count: matchedProducts.filter(p => p.matched_product_id).length,
+      already_owned_count: matchedProducts.filter(p => p.already_in_inventory).length,
     })
   } catch (error) {
     return handleApiError(error)

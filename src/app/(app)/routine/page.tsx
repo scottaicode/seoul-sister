@@ -14,6 +14,7 @@ import {
   Clock,
   Layers,
   AlertCircle,
+  PackageCheck,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
@@ -39,6 +40,10 @@ interface ProductInfo {
   price_usd: number | null
 }
 
+interface ProductOwnership {
+  custom_name: string | null
+}
+
 interface RoutineProduct {
   id: string
   step_order: number
@@ -46,6 +51,7 @@ interface RoutineProduct {
   notes: string | null
   product_id: string
   product: ProductInfo | null
+  ownership: ProductOwnership | null
 }
 
 interface Routine {
@@ -278,14 +284,25 @@ function RoutineCard({
                     <div className="flex-1 min-w-0">
                       {rp.product ? (
                         <>
-                          <Link
-                            href={`/products/${rp.product.id}`}
-                            className="text-sm text-white font-medium hover:text-gold-light transition-colors truncate block"
-                          >
-                            {rp.product.name_en}
-                          </Link>
+                          <div className="flex items-center gap-1.5">
+                            <Link
+                              href={`/products/${rp.product.id}`}
+                              className="text-sm text-white font-medium hover:text-gold-light transition-colors truncate"
+                            >
+                              {rp.ownership?.custom_name || rp.product.name_en}
+                            </Link>
+                            {rp.ownership && (
+                              <span className="flex items-center gap-0.5 text-[9px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                                <PackageCheck className="w-2.5 h-2.5" />
+                                Owned
+                              </span>
+                            )}
+                          </div>
                           <p className="text-[10px] text-white/40">
-                            {rp.product.brand_en} &middot; {rp.product.category}
+                            {rp.ownership?.custom_name
+                              ? `${rp.product.name_en} · ${rp.product.brand_en}`
+                              : `${rp.product.brand_en} · ${rp.product.category}`
+                            }
                           </p>
                         </>
                       ) : (

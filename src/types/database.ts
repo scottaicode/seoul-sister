@@ -767,6 +767,7 @@ export interface ShelfScanProduct {
   matched_product_id: string | null
   position_in_image: string
   allergen_warnings: string[]
+  already_in_inventory?: boolean
 }
 
 export interface ShelfScanCollectionAnalysis {

@@ -15,6 +15,7 @@ import {
   ThumbsDown,
   Flame,
   Eye,
+  PackageCheck,
 } from 'lucide-react'
 import type {
   PersonalizationData,
@@ -24,6 +25,7 @@ import type {
   TrendingData,
   IngredientInsightsData,
   SeasonalContextData,
+  OwnershipData,
 } from '@/lib/scanning/enrich-scan'
 
 // ─── Section Header ────────────────────────────────────────────────────
@@ -98,6 +100,28 @@ export function PersonalizedMatch({ data }: { data: PersonalizationData }) {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Ownership Status Section ──────────────────────────────────────────
+
+export function OwnershipStatus({ data }: { data: OwnershipData }) {
+  return (
+    <div className="glass-card p-4">
+      <SectionHeader icon={PackageCheck} title="You Own This Product" color="text-emerald-400" />
+      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+        <PackageCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+        <div>
+          <p className="text-[11px] font-medium text-emerald-300">
+            This product is in your collection
+            {data.custom_name ? ` as "${data.custom_name}"` : ''}
+          </p>
+          <p className="text-[10px] text-emerald-300/60">
+            No need to buy — check your shelf!
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

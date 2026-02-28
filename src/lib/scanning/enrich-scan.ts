@@ -2,6 +2,12 @@ import { SupabaseClient } from '@supabase/supabase-js'
 
 // ─── Types ───────────────────────────────────────────────────────────
 
+export interface OwnershipData {
+  already_owned: boolean
+  custom_name: string | null
+  status: string | null
+}
+
 export interface ScanEnrichment {
   personalization: PersonalizationData | null
   pricing: PricingData | null
@@ -10,6 +16,7 @@ export interface ScanEnrichment {
   trending: TrendingData | null
   ingredientInsights: IngredientInsightsData | null
   seasonalContext: SeasonalContextData | null
+  ownership: OwnershipData | null
 }
 
 export interface PersonalizationData {
@@ -100,7 +107,7 @@ export async function enrichScanResult(
   ingredientNames: string[],
   skinType?: string
 ): Promise<ScanEnrichment> {
-  // Run all 7 enrichment queries in parallel
+  // Run all 8 enrichment queries in parallel
   const [
     personalization,
     pricing,
@@ -109,6 +116,7 @@ export async function enrichScanResult(
     trending,
     ingredientInsights,
     seasonalContext,
+    ownership,
   ] = await Promise.all([
     fetchPersonalization(supabase, userId, ingredientNames),
     productId ? fetchPricing(supabase, productId, brand) : Promise.resolve(null),
@@ -117,6 +125,7 @@ export async function enrichScanResult(
     productId ? fetchTrending(supabase, productId, brand) : Promise.resolve(null),
     fetchIngredientInsights(supabase, userId, ingredientNames),
     fetchSeasonalContext(supabase, userId, ingredientNames),
+    productId ? fetchOwnership(supabase, userId, productId) : Promise.resolve(null),
   ])
 
   return {
@@ -127,6 +136,7 @@ export async function enrichScanResult(
     trending,
     ingredientInsights,
     seasonalContext,
+    ownership,
   }
 }
 
@@ -626,5 +636,33 @@ async function fetchTrending(
       status: s.status,
       source: s.source,
     })),
+  }
+}
+
+// ─── Ownership Check ──────────────────────────────────────────────────
+
+async function fetchOwnership(
+  supabase: SupabaseClient,
+  userId: string,
+  productId: string
+): Promise<OwnershipData | null> {
+  try {
+    const { data } = await supabase
+      .from('ss_user_products')
+      .select('custom_name, status')
+      .eq('user_id', userId)
+      .eq('product_id', productId)
+      .eq('status', 'active')
+      .maybeSingle()
+
+    if (!data) return null
+
+    return {
+      already_owned: true,
+      custom_name: data.custom_name || null,
+      status: data.status || null,
+    }
+  } catch {
+    return null
   }
 }

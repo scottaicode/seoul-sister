@@ -5,6 +5,8 @@ import {
   CheckCircle2,
   HelpCircle,
   ExternalLink,
+  PackageCheck,
+  AlertTriangle,
 } from 'lucide-react'
 import type { ShelfScanProduct, ProductCategory } from '@/types/database'
 
@@ -89,15 +91,33 @@ export default function CollectionGrid({ products }: CollectionGridProps) {
               )}
             </div>
 
-            {/* Category + confidence */}
-            <div className="flex items-center gap-2 mt-1.5">
+            {/* Category + confidence + owned badge */}
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               <span className="text-[10px] text-gold bg-gold/10 px-1.5 py-0.5 rounded-full">
                 {CATEGORY_LABELS[product.category] || product.category}
               </span>
               <span className={`text-[10px] ${getConfidenceColor(product.confidence)}`}>
-                {getConfidenceLabel(product.confidence)} confidence ({Math.round(product.confidence * 100)}%)
+                {getConfidenceLabel(product.confidence)} ({Math.round(product.confidence * 100)}%)
               </span>
+              {product.already_in_inventory && (
+                <span className="flex items-center gap-0.5 text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded-full">
+                  <PackageCheck className="w-3 h-3" />
+                  Owned
+                </span>
+              )}
             </div>
+
+            {/* Allergen warnings */}
+            {product.allergen_warnings && product.allergen_warnings.length > 0 && (
+              <div className="mt-1.5 space-y-0.5">
+                {product.allergen_warnings.map((warning, wIdx) => (
+                  <div key={wIdx} className="flex items-start gap-1">
+                    <AlertTriangle className="w-3 h-3 text-rose-400 flex-shrink-0 mt-px" />
+                    <span className="text-[10px] text-rose-400/80">{warning}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Position */}
             {product.position_in_image && (

@@ -35,7 +35,17 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .maybeSingle()
 
-    // Get available products from our database
+    // Get user's owned products (prioritize these for routine building)
+    const { data: ownedProducts } = await supabase
+      .from('ss_user_products')
+      .select(`
+        id, custom_name, category, texture_weight, notes, status,
+        product:product_id (id, name_en, brand_en, category, price_usd, rating_avg, description_en)
+      `)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+
+    // Get top catalog products as supplement (for gaps in user's collection)
     const { data: products } = await supabase
       .from('ss_products')
       .select('id, name_en, brand_en, category, price_usd, rating_avg, description_en')
@@ -90,7 +100,39 @@ Budget: ${budget_range ?? 'mid-range'}`
           .join('\n')
       : 'No existing routines.'
 
+    // Build owned products list (these take priority)
+    interface OwnedProductJoin {
+      id: string
+      name_en: string
+      brand_en: string
+      category: string
+      price_usd: number | null
+      rating_avg: number | null
+    }
+
+    const ownedProductIds = new Set<string>()
+    const ownedProductList = (ownedProducts ?? [])
+      .map((up) => {
+        const raw = up.product
+        // Supabase FK joins return a single object at runtime, but the generated
+        // types may infer an array. Normalise to a single object safely.
+        const p: OwnedProductJoin | null =
+          raw == null ? null : Array.isArray(raw) ? (raw[0] ?? null) : raw
+
+        if (p) {
+          ownedProductIds.add(p.id)
+          const customNote = up.custom_name ? ` (user calls it "${up.custom_name}")` : ''
+          const textureNote = up.texture_weight ? ` texture:${up.texture_weight}/10` : ''
+          return `- ${p.name_en} by ${p.brand_en} [${up.category || p.category}]${customNote}${textureNote} $${p.price_usd ?? '?'} ID:${p.id}`
+        }
+        // Custom product not in DB
+        return `- ${up.custom_name ?? 'Unknown product'} by ${up.notes ?? '?'} [${up.category ?? '?'}] (custom, no ID)`
+      })
+      .join('\n')
+
+    // Catalog products (exclude ones user already owns)
     const productCatalog = (products ?? [])
+      .filter((p) => !ownedProductIds.has(p.id))
       .map((p) => `- ${p.name_en} by ${p.brand_en} [${p.category}] $${p.price_usd ?? '?'} (${p.rating_avg ?? '?'}/5) ID:${p.id}`)
       .join('\n')
 
@@ -109,7 +151,7 @@ Budget: ${budget_range ?? 'mid-range'}`
       system: `You are Yuri's Routine Architect -- 20+ years of Korean skincare routine design. You build personalized regimens using ONLY products from the Seoul Sister database.
 
 RULES:
-1. Only recommend products from the provided catalog (use exact product IDs).
+1. PRIORITIZE products the user already owns (listed under "YOUR PRODUCTS"). Only suggest catalog products to fill gaps.
 2. Beauty devices (LED masks, red light therapy, microcurrent tools) go FIRST at step 1 — on clean skin BEFORE any products. Light therapy needs direct skin contact.
 3. Follow Korean layering order for products: cleanser -> toner -> essence -> serum/ampoule -> eye cream -> moisturizer -> sunscreen (AM) / sleeping mask (PM).
 4. Flag any ingredient conflicts between recommended products.
@@ -156,10 +198,13 @@ ${skinInfo}
 EXISTING ROUTINES:
 ${existingRoutineInfo}
 
+YOUR PRODUCTS (user already owns these — use them first):
+${ownedProductList || 'No products in inventory yet.'}
+
 KNOWN INGREDIENT CONFLICTS:
 ${conflictInfo || 'None in database'}
 
-PRODUCT CATALOG (choose ONLY from these):
+PRODUCT CATALOG (suggest from these ONLY to fill gaps the user's owned products don't cover):
 ${productCatalog}`,
         },
       ],
