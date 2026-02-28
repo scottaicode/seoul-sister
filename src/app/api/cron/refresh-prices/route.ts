@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     const db = getServiceClient()
     const startedAt = Date.now()
-    const timeoutGuardMs = 50000 // Stop new work at 50s, leave 10s buffer
+    const timeoutGuardMs = 52000 // Stop new work at 52s, leave 8s buffer for response
 
     let pricesRecorded = 0
     let trendSignals = 0
@@ -58,14 +58,15 @@ export async function POST(request: Request) {
         scrapeResults.push({ retailer: 'soko_glam', searched: 0, matched: 0, errors: 1 })
       }
 
-      // YesStyle: Requires Playwright — only run if we have time budget remaining
-      // YesStyle is slower (~15-20s for 15 products) so we use a smaller batch
+      // YesStyle: Requires Playwright — only run if we have time budget remaining.
+      // Serverless Chromium cold start is ~5-10s, plus each product takes ~3s delay.
+      // batch_size=5 ≈ 15s scraping + 10s cold start = ~25s.
       const elapsed = Date.now() - startedAt
-      if (elapsed < 30000) {
+      if (elapsed < 25000) {
         try {
           const yesStats = await pipeline.run(db, {
             retailer: 'yesstyle',
-            batch_size: 15,
+            batch_size: 5,
             stale_hours: 6,
           })
           scrapeResults.push({
@@ -128,8 +129,8 @@ export async function POST(request: Request) {
         // ---------------------------------------------------------------
         const elapsedAfterSnapshot = Date.now() - startedAt
         if (elapsedAfterSnapshot < timeoutGuardMs) {
-          // Only check a sample (50 max) to stay within timeout
-          const sampled = currentPrices.slice(0, 50)
+          // Only check a sample (20 max) to stay within timeout
+          const sampled = currentPrices.slice(0, 20)
 
           for (const price of sampled) {
             if (Date.now() - startedAt > timeoutGuardMs) break
