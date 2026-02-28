@@ -604,18 +604,17 @@ export class OliveYoungScraper {
   ): Promise<void> {
     this.stats.scraped++
 
+    // Use plain insert (not upsert with ignoreDuplicates) so we can distinguish
+    // new inserts from duplicate skips via the 23505 unique constraint error.
     const { error } = await supabase
       .from('ss_product_staging')
-      .upsert(
-        {
-          source: rawData.source,
-          source_id: rawData.source_id,
-          source_url: rawData.source_url,
-          raw_data: rawData,
-          status: 'pending',
-        },
-        { onConflict: 'source,source_id', ignoreDuplicates: true }
-      )
+      .insert({
+        source: rawData.source,
+        source_id: rawData.source_id,
+        source_url: rawData.source_url,
+        raw_data: rawData,
+        status: 'pending',
+      })
 
     if (error) {
       if (error.code === '23505') {
