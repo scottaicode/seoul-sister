@@ -6,6 +6,7 @@ import type {
   PipelineStats,
 } from '../types'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { launchBrowser, type Browser, type Page } from '../browser'
 
 const BASE_URL = 'https://global.oliveyoung.com'
 
@@ -57,21 +58,17 @@ export class OliveYoungScraper {
   private stats: PipelineStats = { scraped: 0, new: 0, duplicates: 0, failed: 0, errors: [] }
   private readonly delayMs: number
   private readonly maxConcurrency: number
-  private browser: import('playwright').Browser | null = null
+  private browser: Browser | null = null
 
   constructor(options?: { delayMs?: number; maxConcurrency?: number }) {
     this.delayMs = options?.delayMs ?? 2000
     this.maxConcurrency = options?.maxConcurrency ?? 2
   }
 
-  /** Launch Chromium browser instance */
-  private async ensureBrowser(): Promise<import('playwright').Browser> {
+  /** Launch Chromium browser instance (serverless-safe via @sparticuz/chromium) */
+  private async ensureBrowser(): Promise<Browser> {
     if (!this.browser) {
-      const { chromium } = await import('playwright')
-      this.browser = await chromium.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      })
+      this.browser = await launchBrowser()
     }
     return this.browser
   }
@@ -85,7 +82,7 @@ export class OliveYoungScraper {
   }
 
   /** Create a new page with standard settings */
-  private async newPage(): Promise<import('playwright').Page> {
+  private async newPage(): Promise<Page> {
     const browser = await this.ensureBrowser()
     const page = await browser.newPage()
     await page.setExtraHTTPHeaders({

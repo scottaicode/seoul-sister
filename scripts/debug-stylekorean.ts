@@ -1,4 +1,4 @@
-import { chromium } from 'playwright'
+import { chromium } from 'playwright-core'
 
 async function main() {
   console.log('Launching browser...')

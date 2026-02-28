@@ -1,4 +1,5 @@
 import type { ScrapedPrice } from '../types'
+import { launchBrowser, type Browser } from '../browser'
 
 /**
  * Amazon price scraper.
@@ -17,7 +18,7 @@ import type { ScrapedPrice } from '../types'
  * - Limit concurrency to 1 request at a time with long delays
  */
 export class AmazonScraper {
-  private browser: import('playwright').Browser | null = null
+  private browser: Browser | null = null
   private readonly delayMs: number
 
   constructor(options?: { delayMs?: number }) {
@@ -25,17 +26,9 @@ export class AmazonScraper {
     this.delayMs = options?.delayMs ?? 5000
   }
 
-  private async ensureBrowser(): Promise<import('playwright').Browser> {
+  private async ensureBrowser(): Promise<Browser> {
     if (!this.browser) {
-      const { chromium } = await import('playwright')
-      this.browser = await chromium.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-blink-features=AutomationControlled',
-        ],
-      })
+      this.browser = await launchBrowser(['--disable-blink-features=AutomationControlled'])
     }
     return this.browser
   }

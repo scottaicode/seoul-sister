@@ -6,6 +6,10 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 const nextConfig = {
   reactStrictMode: true,
 
+  // Exclude @sparticuz/chromium and playwright-core from serverless bundling
+  // so they can load native binaries at runtime
+  serverExternalPackages: ['@sparticuz/chromium', 'playwright-core'],
+
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },

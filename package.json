@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "@sparticuz/chromium": "^143.0.4",
     "@stripe/react-stripe-js": "^2.4.0",
     "@stripe/stripe-js": "^2.1.11",
     "@supabase/supabase-js": "^2.38.0",
@@ -22,7 +23,7 @@
     "lucide-react": "^0.545.0",
     "marked": "^17.0.3",
     "next": "15.5.12",
-    "playwright": "^1.58.2",
+    "playwright-core": "^1.58.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "stripe": "^14.5.0",

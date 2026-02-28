@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { launchBrowser, type Browser } from '../browser'
 
 const BASE_URL = 'https://global.oliveyoung.com'
 const BESTSELLER_URL = `${BASE_URL}/display/page/best-seller`
@@ -169,18 +170,14 @@ export function isSkincareProduct(
 // ---------------------------------------------------------------------------
 
 export class OliveYoungBestsellerScraper {
-  private browser: import('playwright').Browser | null = null
+  private browser: Browser | null = null
   private products: ProductRecord[] = []
   private productsByBrand: Map<string, ProductRecord[]> = new Map()
   private productsLoaded = false
 
-  private async ensureBrowser(): Promise<import('playwright').Browser> {
+  private async ensureBrowser(): Promise<Browser> {
     if (!this.browser) {
-      const { chromium } = await import('playwright')
-      this.browser = await chromium.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      })
+      this.browser = await launchBrowser()
     }
     return this.browser
   }

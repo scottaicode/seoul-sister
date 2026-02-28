@@ -1,4 +1,5 @@
 import type { ScrapedPrice } from '../types'
+import { launchBrowser, type Browser } from '../browser'
 
 const BASE_URL = 'https://www.yesstyle.com'
 
@@ -15,20 +16,16 @@ const BASE_URL = 'https://www.yesstyle.com'
  * - Search URL: /en/list.html?q=<query>&bpt=48
  */
 export class YesStyleScraper {
-  private browser: import('playwright').Browser | null = null
+  private browser: Browser | null = null
   private readonly delayMs: number
 
   constructor(options?: { delayMs?: number }) {
     this.delayMs = options?.delayMs ?? 3000
   }
 
-  private async ensureBrowser(): Promise<import('playwright').Browser> {
+  private async ensureBrowser(): Promise<Browser> {
     if (!this.browser) {
-      const { chromium } = await import('playwright')
-      this.browser = await chromium.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      })
+      this.browser = await launchBrowser()
     }
     return this.browser
   }
