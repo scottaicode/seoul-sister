@@ -658,13 +658,18 @@ export async function* streamAdvisorResponse(
       })
     }
 
-    // Keep only tool_use blocks — drop text blocks (thinking noise)
-    const toolOnlyContent = assistantContent.filter(
-      (block) => block.type === 'tool_use'
-    )
+    // On round 0 (BUFFER mode), text blocks are narration noise ("Let me
+    // search...") — drop them so Claude doesn't see them on the next round.
+    // On post-tool rounds (STREAM mode), text was already yielded to the
+    // client. Keep it in the assistant message so Claude sees what it already
+    // wrote and can continue with proper spacing/coherence.
+    const contentForHistory = isPostToolRound
+      ? assistantContent                                    // keep text + tool_use
+      : assistantContent.filter((b) => b.type === 'tool_use') // drop text (narration)
+
     loopMessages.push({
       role: 'assistant',
-      content: toolOnlyContent.length > 0 ? toolOnlyContent : assistantContent,
+      content: contentForHistory.length > 0 ? contentForHistory : assistantContent,
     })
 
     // Execute each tool and build tool_result blocks
