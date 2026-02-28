@@ -78,6 +78,15 @@ export interface RecentConversationExcerpt {
   messages: Array<{ role: string; content: string }>
 }
 
+export interface UserProduct {
+  custom_name: string | null
+  custom_brand: string | null
+  category: string | null
+  texture_weight: number | null
+  notes: string | null
+  status: string
+}
+
 export interface UserContext {
   skinProfile: SkinProfile | null
   recentConversations: ConversationMemory[]
@@ -86,6 +95,7 @@ export interface UserContext {
   knownAllergies: string[]
   knownPreferences: string[]
   routineProducts: string[]
+  userProducts: UserProduct[]
   learningInsights: LearningContextData[]
   specialistInsights: SpecialistInsightMemory[]
   decisionMemory: DecisionMemory | null
@@ -189,6 +199,17 @@ export async function loadUserContext(
         .eq('is_active', true)
     : Promise.resolve({ data: null })
 
+  // CONDITIONAL: user product inventory (needed for routine, products, or general)
+  const loadUserProducts = loadAll || topics.has('routine') || topics.has('products')
+  const userProductsPromise = loadUserProducts
+    ? db
+        .from('ss_user_products')
+        .select('custom_name, custom_brand, category, texture_weight, notes, status')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('custom_name')
+    : Promise.resolve({ data: null })
+
   // CONDITIONAL: specialist insights (only for general — these are rarely referenced in focused queries)
   const loadSpecialist = loadAll
   const specialistInsightsPromise = loadSpecialist
@@ -205,11 +226,13 @@ export async function loadUserContext(
     [profileResult, conversationsResult],
     reactionsResult,
     routineResult,
+    userProductsResult,
     specialistInsightsResult,
   ] = await Promise.all([
     alwaysPromises,
     reactionsPromise,
     routinePromise,
+    userProductsPromise,
     specialistInsightsPromise,
   ])
 
@@ -286,6 +309,18 @@ export async function loadUserContext(
     }
   }
 
+  // Extract user product inventory
+  const userProducts: UserProduct[] = (userProductsResult.data || []).map(
+    (r: Record<string, unknown>) => ({
+      custom_name: r.custom_name as string | null,
+      custom_brand: r.custom_brand as string | null,
+      category: r.category as string | null,
+      texture_weight: r.texture_weight as number | null,
+      notes: r.notes as string | null,
+      status: r.status as string,
+    })
+  )
+
   // Extract specialist insights — deduplicate by specialist type (keep most recent)
   const specialistInsights: SpecialistInsightMemory[] = []
   const seenSpecialists = new Set<string>()
@@ -327,6 +362,7 @@ export async function loadUserContext(
     knownAllergies: skinProfile?.allergies || [],
     knownPreferences: [],
     routineProducts,
+    userProducts,
     learningInsights,
     specialistInsights,
     decisionMemory,
@@ -436,6 +472,25 @@ export function formatContextForPrompt(context: UserContext): string {
   // Current routine
   if (context.routineProducts.length > 0) {
     sections.push(`## Current Routine Products\n${context.routineProducts.map((p) => `- ${p}`).join('\n')}`)
+  }
+
+  // User product inventory (products the user owns, with texture data for layering)
+  if (context.userProducts.length > 0) {
+    const productLines = context.userProducts.map((up) => {
+      const parts: string[] = []
+      parts.push(up.custom_name || 'Unknown product')
+      const meta: string[] = []
+      if (up.category) meta.push(up.category)
+      if (up.texture_weight) {
+        const label = up.texture_weight <= 2 ? 'water-thin' : up.texture_weight <= 4 ? 'light' : up.texture_weight <= 6 ? 'medium' : up.texture_weight <= 8 ? 'thick' : 'heavy cream'
+        meta.push(`texture: ${up.texture_weight}/10 — ${label}`)
+      }
+      if (up.custom_brand) meta.push(`by ${up.custom_brand}`)
+      if (meta.length > 0) parts.push(`(${meta.join(', ')})`)
+      if (up.notes) parts.push(`— ${up.notes}`)
+      return `- ${parts.join(' ')}`
+    })
+    sections.push(`## Your Product Inventory\nThese are products the user currently owns and uses. Use texture_weight for layering order when building routines:\n${productLines.join('\n')}`)
   }
 
   // Product reactions
@@ -553,9 +608,14 @@ When making skincare recommendations, factor in the user's current cycle phase. 
     const dm = context.decisionMemory
     const dmParts: string[] = []
 
+    const now = new Date()
+
     if (dm.decisions.length > 0) {
       const decisionLines = dm.decisions
-        .map((d) => `- **${d.topic}**: ${d.decision} (decided ${d.date})`)
+        .map((d) => {
+          const daysAgo = Math.floor((now.getTime() - new Date(d.date).getTime()) / (1000 * 60 * 60 * 24))
+          return `- **${d.topic}**: ${d.decision} (decided ${d.date}, which was ${daysAgo} day${daysAgo !== 1 ? 's' : ''} ago)`
+        })
         .join('\n')
       dmParts.push(`### Active Decisions\n${decisionLines}`)
     }
@@ -569,7 +629,25 @@ When making skincare recommendations, factor in the user's current cycle phase. 
 
     if (dm.commitments.length > 0) {
       const commitLines = dm.commitments
-        .map((c) => `- ${c.item} (committed ${c.date})`)
+        .map((c) => {
+          const daysAgo = Math.floor((now.getTime() - new Date(c.date).getTime()) / (1000 * 60 * 60 * 24))
+          const elapsed = `committed ${c.date}, which was ${daysAgo} day${daysAgo !== 1 ? 's' : ''} ago`
+
+          // Try to parse duration from commitment text (e.g. "for 2 weeks", "for 14 days")
+          const weekMatch = c.item.match(/for\s+(\d+)\s+weeks?/i)
+          const dayMatch = c.item.match(/for\s+(\d+)\s+days?/i)
+          const totalDays = weekMatch ? parseInt(weekMatch[1]) * 7
+            : dayMatch ? parseInt(dayMatch[1]) : null
+
+          if (totalDays !== null) {
+            const remaining = totalDays - daysAgo
+            const remainingStr = remaining > 0
+              ? `${remaining} day${remaining !== 1 ? 's' : ''} remaining`
+              : 'duration completed'
+            return `- ${c.item} (${elapsed} — ${remainingStr})`
+          }
+          return `- ${c.item} (${elapsed})`
+        })
         .join('\n')
       dmParts.push(`### User Commitments\n${commitLines}`)
     }

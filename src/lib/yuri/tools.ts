@@ -1,6 +1,8 @@
 import { getServiceClient } from '@/lib/supabase'
 import { fetchWeather } from '@/lib/intelligence/weather-routine'
-import { getProductPosition } from '@/lib/intelligence/layering-order'
+import {
+  getProductPosition,
+} from '@/lib/intelligence/layering-order'
 import type Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -388,6 +390,84 @@ export const YURI_TOOLS: ToolDef[] = [
       required: ['routine_type'],
     },
   },
+  // --- Fix 5: update_user_product ---
+  {
+    name: 'update_user_product',
+    description:
+      'Update information about a product the user owns. Use when the user corrects you about a product attribute (texture, how they use it, etc.) or mentions a new product they bought. This persists across sessions.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        product_name: { type: 'string', description: 'Product name' },
+        brand: { type: 'string', description: 'Brand name' },
+        category: {
+          type: 'string',
+          description: 'Product category: cleanser, toner, essence, serum, moisturizer, sunscreen, device, mask, eye_care, etc.',
+        },
+        texture_weight: {
+          type: 'number',
+          description: 'Texture thickness 1-10: 1=water-thin, 3=light serum, 5=medium serum, 7=thick cream-serum, 10=heavy cream',
+        },
+        notes: { type: 'string', description: 'Any notes about how the user uses this product' },
+        status: {
+          type: 'string',
+          enum: ['active', 'finished', 'destashed'],
+          description: 'Product status — default active',
+        },
+      },
+      required: ['product_name'],
+    },
+  },
+  // --- get_routine_context: AI-First data tool (replaces rigid verify_routine) ---
+  {
+    name: 'get_routine_context',
+    description:
+      'Fetch the user\'s product inventory, current saved routines, texture data, and ingredient conflict records. Call this when building or revising a routine so you have the full picture — their products, textures, and any known conflicts — before presenting it.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        routine_type: {
+          type: 'string',
+          enum: ['am', 'pm'],
+          description: 'Which routine type to load context for (loads current saved routine of this type)',
+        },
+      },
+      required: ['routine_type'],
+    },
+  },
+  // --- Fix 6: save_routine ---
+  {
+    name: 'save_routine',
+    description:
+      'Save a complete routine to the user\'s app. Call when the user approves a routine you presented, or when they ask to save it. Ask first: "Want me to save this to your Routine page?"',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        routine_type: { type: 'string', enum: ['am', 'pm'], description: 'AM or PM routine' },
+        routine_name: { type: 'string', description: 'Display name like "Phase 1 AM Routine"' },
+        steps: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              product_name: { type: 'string' },
+              product_brand: { type: 'string' },
+              category: { type: 'string' },
+              step_order: { type: 'number' },
+              frequency: { type: 'string', description: 'daily, weekdays_only, mon_wed_fri, etc.' },
+              notes: { type: 'string' },
+            },
+            required: ['product_name', 'step_order'],
+          },
+        },
+        replace_existing: {
+          type: 'boolean',
+          description: 'If true, deactivate any existing routine of this type before saving',
+        },
+      },
+      required: ['routine_type', 'steps'],
+    },
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -421,6 +501,12 @@ export async function executeYuriTool(
         return await executeAddToRoutine(input, userId)
       case 'remove_from_routine':
         return await executeRemoveFromRoutine(input, userId)
+      case 'update_user_product':
+        return await executeUpdateUserProduct(input, userId)
+      case 'get_routine_context':
+        return await executeGetRoutineContext(input, userId)
+      case 'save_routine':
+        return await executeSaveRoutine(input, userId)
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` })
     }
@@ -1626,5 +1712,317 @@ async function executeRemoveFromRoutine(
     product_name: productLabel,
     routine_type: routineType,
     remaining_products: remaining?.length ?? 0,
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Tool: update_user_product (Fix 5)
+// ---------------------------------------------------------------------------
+
+async function executeUpdateUserProduct(
+  input: Record<string, unknown>,
+  userId: string
+): Promise<string> {
+  const db = getServiceClient()
+  const productName = input.product_name as string | undefined
+  const brand = input.brand as string | undefined
+  const category = input.category as string | undefined
+  const textureWeight = input.texture_weight as number | undefined
+  const notes = input.notes as string | undefined
+  const status = (input.status as string) || 'active'
+
+  if (!productName) {
+    return JSON.stringify({ error: 'product_name is required' })
+  }
+
+  // Try to resolve against ss_products
+  let productId: string | null = null
+  const match = await resolveProductByName(db, productName)
+  if (match) {
+    productId = match.id
+  }
+
+  // Check if the user already has this product tracked
+  let existingQuery = db
+    .from('ss_user_products')
+    .select('id')
+    .eq('user_id', userId)
+
+  if (productId) {
+    existingQuery = existingQuery.eq('product_id', productId)
+  } else {
+    existingQuery = existingQuery.ilike('custom_name', productName)
+  }
+
+  const { data: existing } = await existingQuery.limit(1).single()
+
+  const record: Record<string, unknown> = {
+    user_id: userId,
+    custom_name: productName,
+    custom_brand: brand || (match ? (match as Record<string, unknown>).brand_en : null),
+    category: category || (match ? (match as Record<string, unknown>).category : null),
+    texture_weight: textureWeight ?? null,
+    notes: notes ?? null,
+    status,
+    learned_from: 'conversation',
+  }
+  if (productId) {
+    record.product_id = productId
+  }
+
+  if (existing) {
+    // Update existing record — only set fields that were explicitly provided
+    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
+    if (brand !== undefined) updates.custom_brand = brand
+    if (category !== undefined) updates.category = category
+    if (textureWeight !== undefined) updates.texture_weight = textureWeight
+    if (notes !== undefined) updates.notes = notes
+    if (status !== undefined) updates.status = status
+
+    const { error } = await db
+      .from('ss_user_products')
+      .update(updates)
+      .eq('id', existing.id)
+
+    if (error) return JSON.stringify({ error: `Failed to update product: ${error.message}` })
+
+    return JSON.stringify({
+      success: true,
+      action: 'updated',
+      message: `Updated ${productName}${textureWeight ? ` — texture weight set to ${textureWeight}/10` : ''}.`,
+      product_name: productName,
+      texture_weight: textureWeight,
+    })
+  } else {
+    // Insert new record
+    const { error } = await db.from('ss_user_products').insert(record)
+
+    if (error) return JSON.stringify({ error: `Failed to save product: ${error.message}` })
+
+    return JSON.stringify({
+      success: true,
+      action: 'created',
+      message: `Saved ${productName} to your product inventory${textureWeight ? ` with texture ${textureWeight}/10` : ''}.`,
+      product_name: productName,
+      matched_in_db: !!productId,
+      texture_weight: textureWeight,
+    })
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tool: get_routine_context (AI-First: gives Opus the data, not verdicts)
+// ---------------------------------------------------------------------------
+
+async function executeGetRoutineContext(
+  input: Record<string, unknown>,
+  userId: string
+): Promise<string> {
+  const db = getServiceClient()
+  const routineType = input.routine_type as 'am' | 'pm'
+
+  if (!routineType) {
+    return JSON.stringify({ error: 'routine_type is required (am or pm)' })
+  }
+
+  // ---- 1. User's product inventory (with texture data) ----
+  const { data: userProducts } = await db
+    .from('ss_user_products')
+    .select('custom_name, custom_brand, category, texture_weight, notes, status')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .order('category')
+
+  // ---- 2. Current saved routine of this type ----
+  const { data: routine } = await db
+    .from('ss_user_routines')
+    .select('id, name')
+    .eq('user_id', userId)
+    .eq('routine_type', routineType)
+    .eq('is_active', true)
+    .limit(1)
+    .single()
+
+  let currentRoutineSteps: Array<Record<string, unknown>> = []
+  if (routine) {
+    const { data: steps } = await db
+      .from('ss_routine_products')
+      .select('step_order, frequency, notes, product:product_id (name_en, brand_en, category)')
+      .eq('routine_id', routine.id)
+      .order('step_order', { ascending: true })
+
+    if (steps) {
+      currentRoutineSteps = steps.map((s) => {
+        const prod = s.product as unknown as { name_en: string; brand_en: string; category: string } | null
+        return {
+          step_order: s.step_order,
+          product_name: prod?.name_en || '(unknown)',
+          brand: prod?.brand_en || null,
+          category: prod?.category || null,
+          frequency: s.frequency,
+          notes: s.notes,
+        }
+      })
+    }
+  }
+
+  // ---- 3. Ingredient conflicts from the database ----
+  const { data: conflictsData } = await db
+    .from('ss_ingredient_conflicts')
+    .select('ingredient_a:ingredient_a_id (name_inci), ingredient_b:ingredient_b_id (name_inci), severity, description, recommendation')
+
+  const knownConflicts = (conflictsData || []).map((c) => {
+    const a = c.ingredient_a as unknown as { name_inci: string } | null
+    const b = c.ingredient_b as unknown as { name_inci: string } | null
+    return {
+      ingredient_a: a?.name_inci || 'unknown',
+      ingredient_b: b?.name_inci || 'unknown',
+      severity: c.severity,
+      description: c.description,
+      recommendation: c.recommendation,
+    }
+  })
+
+  // ---- 4. User's skin profile (allergies + skin type for context) ----
+  const { data: profile } = await db
+    .from('ss_user_profiles')
+    .select('skin_type, skin_concerns, allergies')
+    .eq('user_id', userId)
+    .single()
+
+  return JSON.stringify({
+    routine_type: routineType,
+    user_products: (userProducts || []).map((p) => ({
+      name: p.custom_name,
+      brand: p.custom_brand,
+      category: p.category,
+      texture_weight: p.texture_weight,
+      notes: p.notes,
+    })),
+    current_saved_routine: currentRoutineSteps.length > 0
+      ? { name: routine?.name, steps: currentRoutineSteps }
+      : null,
+    known_ingredient_conflicts: knownConflicts,
+    user_skin_type: profile?.skin_type || null,
+    user_allergies: profile?.allergies || [],
+    user_concerns: profile?.skin_concerns || [],
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Tool: save_routine (Fix 6)
+// ---------------------------------------------------------------------------
+
+interface SaveRoutineStep {
+  product_name: string
+  product_brand?: string
+  category?: string
+  step_order: number
+  frequency?: string
+  notes?: string
+}
+
+async function executeSaveRoutine(
+  input: Record<string, unknown>,
+  userId: string
+): Promise<string> {
+  const db = getServiceClient()
+  const routineType = input.routine_type as 'am' | 'pm'
+  const routineName = (input.routine_name as string) ||
+    (routineType === 'am' ? 'Morning Routine' : 'Evening Routine')
+  const steps = input.steps as SaveRoutineStep[]
+  const replaceExisting = input.replace_existing as boolean | undefined
+
+  if (!routineType || !steps || !Array.isArray(steps) || steps.length === 0) {
+    return JSON.stringify({ error: 'routine_type and non-empty steps array are required' })
+  }
+
+  // If replacing, deactivate existing routines of this type
+  if (replaceExisting) {
+    await db
+      .from('ss_user_routines')
+      .update({ is_active: false })
+      .eq('user_id', userId)
+      .eq('routine_type', routineType)
+      .eq('is_active', true)
+  }
+
+  // Create the new routine
+  const { data: newRoutine, error: routineError } = await db
+    .from('ss_user_routines')
+    .insert({
+      user_id: userId,
+      name: routineName,
+      routine_type: routineType,
+      is_active: true,
+    })
+    .select('id')
+    .single()
+
+  if (routineError || !newRoutine) {
+    return JSON.stringify({ error: `Failed to create routine: ${routineError?.message || 'unknown'}` })
+  }
+
+  // Resolve product IDs and insert steps
+  const savedSteps: Array<{ step_order: number; product_name: string; matched: boolean }> = []
+
+  for (const step of steps) {
+    let productId: string | null = null
+    const match = await resolveProductByName(db, step.product_name)
+    if (match) {
+      productId = match.id
+    }
+
+    const { error: stepError } = await db.from('ss_routine_products').insert({
+      routine_id: newRoutine.id,
+      product_id: productId,
+      step_order: step.step_order,
+      frequency: step.frequency || 'daily',
+      notes: step.notes || null,
+    })
+
+    if (stepError) {
+      console.error(`[save_routine] Failed to save step ${step.step_order}:`, stepError.message)
+    }
+
+    savedSteps.push({
+      step_order: step.step_order,
+      product_name: step.product_name,
+      matched: !!productId,
+    })
+
+    // Also ensure the product is in ss_user_products
+    if (productId) {
+      const { data: existing } = await db
+        .from('ss_user_products')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('product_id', productId)
+        .limit(1)
+        .single()
+
+      if (!existing) {
+        await db.from('ss_user_products').insert({
+          user_id: userId,
+          product_id: productId,
+          custom_name: step.product_name,
+          custom_brand: step.product_brand || null,
+          category: step.category || null,
+          status: 'active',
+          learned_from: 'conversation',
+        })
+      }
+    }
+  }
+
+  return JSON.stringify({
+    success: true,
+    routine_id: newRoutine.id,
+    routine_name: routineName,
+    routine_type: routineType,
+    steps_saved: savedSteps.length,
+    steps: savedSteps,
+    replaced_existing: !!replaceExisting,
+    message: `Saved "${routineName}" with ${savedSteps.length} steps. ${replaceExisting ? 'Previous routine deactivated.' : ''} The user can view it on the Routine page.`,
   })
 }

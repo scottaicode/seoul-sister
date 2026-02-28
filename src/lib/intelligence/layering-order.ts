@@ -3,6 +3,62 @@ interface ProductWithCategory {
   name_en: string
   brand_en: string
   category: string
+  texture_weight?: number | null
+}
+
+// ---------------------------------------------------------------------------
+// Device placement rules — structured data for verify_routine validation
+// ---------------------------------------------------------------------------
+
+export interface DevicePlacementRule {
+  deviceKeywords: string[]
+  placement: 'before_products' | 'with_products' | 'after_products'
+  requiresProduct: boolean
+  description: string
+}
+
+const DEVICE_PLACEMENT_RULES: DevicePlacementRule[] = [
+  {
+    deviceKeywords: ['led mask', 'red light', 'blue light', 'light therapy', 'light mask', 'led panel'],
+    placement: 'before_products',
+    requiresProduct: false,
+    description: 'LED/light therapy goes on bare, clean skin immediately after cleansing — before any serums, moisturizers, or actives. Light wavelengths penetrate best through clean skin without product barriers.',
+  },
+  {
+    deviceKeywords: ['ems', 'booster mode', 'booster wand', 'microcurrent', 'mc mode'],
+    placement: 'with_products',
+    requiresProduct: true,
+    description: 'EMS and microcurrent devices need product on the skin for conductivity and to drive actives deeper. Apply serum or moisturizer first, then use the device over it.',
+  },
+  {
+    deviceKeywords: ['dermashot', 'electroporation'],
+    placement: 'with_products',
+    requiresProduct: true,
+    description: 'Electroporation devices drive active ingredients deeper. Apply your target active serum first, then use the device.',
+  },
+  {
+    deviceKeywords: ['gua sha', 'facial roller', 'jade roller', 'ice roller'],
+    placement: 'with_products',
+    requiresProduct: true,
+    description: 'Facial tools need product for smooth gliding. Use over serum or facial oil.',
+  },
+  {
+    deviceKeywords: ['airshot'],
+    placement: 'with_products',
+    requiresProduct: true,
+    description: 'Airshot mode is gentle and works with product applied. Safe for sensitive areas.',
+  },
+]
+
+/**
+ * Look up the device placement rule for a product by name.
+ * Returns null if the product is not recognized as a device.
+ */
+export function getDevicePlacementRule(productName: string): DevicePlacementRule | null {
+  const nameLower = productName.toLowerCase()
+  return DEVICE_PLACEMENT_RULES.find(rule =>
+    rule.deviceKeywords.some(kw => nameLower.includes(kw))
+  ) || null
 }
 
 export interface LayeringStep {
@@ -135,7 +191,15 @@ export function suggestLayeringOrder(
 
     if (posA !== posB) return posA - posB
 
-    // Same position: sort alphabetically by name
+    // Same position: sort by texture_weight (thinnest first)
+    const twA = a.texture_weight ?? null
+    const twB = b.texture_weight ?? null
+    if (twA !== null && twB !== null) return twA - twB
+    // Products with texture data sort before those without
+    if (twA !== null && twB === null) return -1
+    if (twA === null && twB !== null) return 1
+
+    // Fallback: alphabetical
     return a.name_en.localeCompare(b.name_en)
   })
 }
