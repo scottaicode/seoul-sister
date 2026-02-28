@@ -3,7 +3,9 @@ import { timingSafeEqual } from 'crypto'
 
 /**
  * Verify cron job authentication using timing-safe comparison.
- * Also validates that CRON_SECRET is configured.
+ * Accepts two header formats:
+ *   1. Vercel cron: `Authorization: Bearer <CRON_SECRET>` (production)
+ *   2. Legacy/manual: `x-cron-secret: <CRON_SECRET>` (CLI, admin API)
  * Returns a NextResponse error if unauthorized, or null if OK.
  */
 export function verifyCronAuth(request: Request): NextResponse | null {
@@ -13,7 +15,11 @@ export function verifyCronAuth(request: Request): NextResponse | null {
     return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 })
   }
 
-  const provided = request.headers.get('x-cron-secret') ?? ''
+  // Try Vercel's Authorization: Bearer header first, then legacy x-cron-secret
+  const authHeader = request.headers.get('authorization') ?? ''
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+  const provided = bearerToken || request.headers.get('x-cron-secret') || ''
+
   if (provided.length !== secret.length) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

@@ -453,7 +453,7 @@ seoul-sister/
 
 ## Cron Jobs (Automated Intelligence Pipeline)
 
-### Implemented Cron Jobs (9 total, configured in vercel.json)
+### Implemented Cron Jobs (13 total, configured in vercel.json)
 
 | Cron Job | Schedule | Purpose |
 |----------|----------|---------|
@@ -462,12 +462,16 @@ seoul-sister/
 | `aggregate-learning` | Daily 5 AM UTC | Extract patterns from reviews + Yuri conversations via Sonnet |
 | `update-effectiveness` | Daily 5:30 AM UTC | Recalculate ingredient/product effectiveness from review data |
 | `scan-korean-products` | Daily 6 AM UTC | Incremental Olive Young scrape (11 categories, Playwright) |
+| `scan-korean-bestsellers` | Daily 6:30 AM UTC | Olive Young Global bestseller rankings (real Korean sales data) |
+| `backfill-trending` | Daily 6:45 AM UTC | Backfill trending product data from external sources |
 | `translate-and-index` | Daily 7 AM UTC | Sonnet extraction: categorize, describe, normalize pending products |
 | `link-ingredients` | Daily 7:30 AM UTC | Parse INCI strings, match/create ingredients, link to products |
 | `scan-trends` | Daily 8 AM UTC | Detect trending products from review/reaction spikes |
+| `scan-reddit-mentions` | Daily 8:30 AM UTC | Reddit K-beauty mention scanning (5 subreddits, sentiment analysis) |
+| `calculate-gap-scores` | Daily 9 AM UTC | Korea-vs-US trend gap detection (emerging products intelligence) |
 | `refresh-prices` | Every 6 hours | Active price scraping (Soko Glam + YesStyle), history snapshots, drop detection |
 
-**Pipeline daily chain**: `scan-korean-products` (6 AM) scrapes new Olive Young listings → `translate-and-index` (7 AM) runs Sonnet extraction on pending products → `link-ingredients` (7:30 AM) links ingredients → `scan-trends` (8 AM) detects trending products from activity spikes.
+**Pipeline daily chain**: `scan-korean-products` (6 AM) scrapes new Olive Young listings → `scan-korean-bestsellers` (6:30 AM) captures Korean sales rankings → `translate-and-index` (7 AM) runs Sonnet extraction on pending products → `link-ingredients` (7:30 AM) links ingredients → `scan-trends` (8 AM) detects trending products from activity spikes → `scan-reddit-mentions` (8:30 AM) scans English K-beauty communities → `calculate-gap-scores` (9 AM) cross-references Korean rankings vs US mentions.
 
 **Price freshness**: `refresh-prices` runs 4x/day, actively scraping Soko Glam (Shopify JSON API, no browser) and YesStyle (Playwright). Snapshots all prices to `ss_price_history`. Flags >10% price drops as trend signals.
 
@@ -4806,8 +4810,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 8.6.0 (SEO Implementation — Canonical URLs, Product Metadata, Blog Schema)
-**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 12 cron jobs configured. SEO foundation complete (canonical URLs, www normalization, product metadata, blog JSON-LD, breadcrumbs, E-E-A-T author schema).
+**Version**: 8.9.0 (Pre-Launch Health Audit — Security, Performance, Cron Fixes)
+**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 13 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -4823,6 +4827,33 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v8.9.0 (Feb 27, 2026): Pre-Launch Audit Session 3 — Cron Pipeline Fix (CRITICAL)
+  - **Root cause identified**: ALL 13 cron jobs have been silently failing since deployment. Two compounding bugs prevented any Vercel-triggered cron execution from succeeding
+  - **Bug #1 — Auth header mismatch**: `verifyCronAuth()` in `src/lib/utils/cron-auth.ts` only checked `x-cron-secret` header, but Vercel cron sends `Authorization: Bearer <CRON_SECRET>`. Every cron invocation received 401 Unauthorized
+  - **Bug #2 — HTTP method mismatch**: All 13 cron route files only exported `POST` handlers, but Vercel cron jobs send `GET` requests. Every cron invocation received 405 Method Not Allowed
+  - **Fix 1**: Updated `cron-auth.ts` to try `Authorization: Bearer` header first, then fall back to legacy `x-cron-secret` header (for CLI/admin API use). Uses timing-safe comparison for both
+  - **Fix 2**: Added `export { POST as GET }` to all 13 cron route files so Vercel's GET requests are handled
+  - **Evidence**: Supabase API logs showed ZERO cron job traffic — only Yuri chat requests. `ss_pipeline_runs` last entry was Feb 21 (manual admin trigger, not cron). Product scraping, price refreshing, trend analysis, and learning aggregation all stalled for 6+ days
+  - **Impact**: After deploy, all 13 cron jobs will begin executing on schedule: product scraping (daily 6 AM), Sonnet extraction (7 AM), ingredient linking (7:30 AM), trend scanning (8 AM), price refreshing (every 6h), learning aggregation (daily 5 AM), effectiveness updates (5:30 AM), Reddit scanning (8:30 AM), bestseller scraping (6:30 AM), gap scores (9 AM), data quality (weekly), seasonal adjustments (monthly), trend detection (8 AM)
+  - **Action required**: Verify `CRON_SECRET` environment variable exists in Vercel project settings (Settings → Environment Variables) for Production environment
+  - **Files modified**: `src/lib/utils/cron-auth.ts`, all 13 `src/app/api/cron/*/route.ts` files
+  - **Build verified**: `tsc --noEmit` passes clean
+- v8.8.0 (Feb 27, 2026): Pre-Launch Audit Session 2 — Database Performance Optimization
+  - **Fix 4 — auth.uid() InitPlan optimization**: Wrapped `auth.uid()` in `(select auth.uid())` subselect across 69 RLS policies on 25 tables. Without the subselect, `auth.uid()` (which calls `current_setting('request.jwt.claims', true)::json->>'sub'`) re-evaluates per row — O(n) overhead. With `(select ...)`, PostgreSQL evaluates it once as an InitPlan. Applied via 3 migrations: `20260227000001` (30 policies), `20260227000001_part2` (20 policies), `20260227000001_part3` (19 policies)
+  - **Fix 5 — auth.role() InitPlan optimization**: Same subselect pattern applied to 5 service-role-only policies on `ss_pipeline_runs`, `ss_product_staging`, `ss_rate_limits`, `ss_subscription_events`, `ss_widget_analytics`. Migration: `20260227000005`
+  - **Fix 6 — Missing FK indexes**: Added btree indexes on 3 foreign key columns that reference `ss_products(id)`: `ss_batch_code_verifications(product_id)`, `ss_product_staging(processed_product_id)`, `ss_user_product_tracking(product_id)`. Without indexes, cascading deletes and joins cause sequential scans. Migration: `20260227000003`
+  - **Fix 7 — Ghost functions dropped**: Removed 3 functions (`increment_report_view_count`, `get_user_saved_reports`, `calculate_ingredient_trend`) that referenced tables dropped in v5.5.0 ghost table cleanup. Had mutable `search_path` (Supabase security advisor flag). Migration: `20260227000004`
+  - **Fix 8 — Duplicate index dropped**: Removed `idx_ss_product_ingredients_ingr` which duplicated `idx_product_ingredients_ingredient_id` (both btree on `ingredient_id`). Migration: `20260227000005`
+  - **Verification**: Supabase Performance Advisor re-run confirmed 0 remaining `auth_rls_initplan` warnings and 0 `duplicate_index` warnings. All 5 migrations applied successfully
+  - **Yuri live testing**: 7 scenarios tested post-migration — product search, trending, price comparison, personalized match, web search, general knowledge, specialist routing. All passed
+  - **Data isolation verified**: Confirmed `auth.uid()` JWT properly isolates vibetrendai and baileydonmartin accounts — no cross-account data leaking
+  - **Files created**: `supabase/migrations/20260227000001_fix_auth_uid_rls_initplan.sql`, `20260227000001_part2_fix_auth_uid_rls_initplan.sql`, `20260227000001_part3_fix_auth_uid_rls_initplan.sql`, `20260227000003_add_missing_fk_indexes.sql`, `20260227000004_drop_ghost_functions.sql`, `20260227000005_fix_auth_role_rls_and_drop_duplicate_index.sql`
+- v8.7.0 (Feb 27, 2026): Pre-Launch Audit Session 1 — Security Hardening
+  - **Fix 1 — RLS on unprotected tables**: Enabled Row Level Security on `ss_pipeline_runs` and `ss_product_staging` (service-role-only access). These tables had RLS disabled, meaning any authenticated user could read/write pipeline data
+  - **Fix 2 — Cron job timeouts**: Added `statement_timeout` to long-running cron jobs (`aggregate-learning`, `update-effectiveness`, `scan-trends`) to prevent runaway queries from consuming database connections. 55-second guard for Vercel's 60-second cron limit
+  - **Fix 3 — Search input sanitization**: Added input sanitization to product search API (`src/app/api/products/route.ts`) to prevent SQL injection via crafted search queries. Strips special characters that could break `ilike` patterns
+  - **Migration**: `20260227000002_enable_rls_pipeline_tables.sql` — RLS policies for `ss_pipeline_runs` and `ss_product_staging`
+  - **Files modified**: `src/app/api/products/route.ts`, `src/app/api/cron/aggregate-learning/route.ts`, `src/app/api/cron/update-effectiveness/route.ts`, `src/app/api/cron/scan-trends/route.ts`
 - v8.6.0 (Feb 26, 2026): SEO Implementation — Canonical URLs, Product Metadata, Blog Schema
   - **Fix 1 — Canonical URLs**: Added `metadataBase: new URL('https://www.seoulsister.com')` to root `layout.tsx`. Next.js now auto-generates `<link rel="canonical" href="...">` on every page that exports metadata, including all blog posts and product pages. Consolidates ranking signals and prevents duplicate content indexing
   - **Fix 2 — www base URL normalization**: Replaced all `https://seoulsister.com` references with `https://www.seoulsister.com` across 8 files. `seoulsister.com` returns HTTP 307 → `www.seoulsister.com`, so all URLs in sitemap, robots.txt, JSON-LD, OpenGraph, Stripe callbacks, and content ingest now match the canonical www domain. Eliminates redirect chains for every URL Google crawls

@@ -127,3 +127,6 @@ export async function POST(request: Request) {
     )
   }
 }
+
+// Vercel cron jobs send GET requests
+export { POST as GET }

@@ -155,3 +155,6 @@ function getSeasonForMonth(
   if (month >= 9 && month <= 11) return 'autumn'
   return 'winter'
 }
+
+// Vercel cron jobs send GET requests
+export { POST as GET }
