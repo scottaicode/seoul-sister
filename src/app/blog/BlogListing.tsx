@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Calendar, Clock } from 'lucide-react'
+import { Clock } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
 import type { BlogPost } from './page'
 
 // Category badge colors matching Seoul Sister's amber/gold palette
@@ -31,6 +32,7 @@ function formatCategory(category: string): string {
 
 export default function BlogListing({ posts }: { posts: BlogPost[] }) {
   const [activeCategory, setActiveCategory] = useState<string>('')
+  const { user } = useAuth()
 
   // Extract unique categories
   const categories = Array.from(
@@ -58,10 +60,10 @@ export default function BlogListing({ posts }: { posts: BlogPost[] }) {
           </Link>
           <div className="flex items-center gap-6">
             <Link
-              href="/"
+              href={user ? '/dashboard' : '/'}
               className="text-white/60 hover:text-gold transition-colors text-sm font-medium"
             >
-              Home
+              {user ? 'Dashboard' : 'Home'}
             </Link>
             <Link
               href="/blog"
@@ -221,16 +223,17 @@ export default function BlogListing({ posts }: { posts: BlogPost[] }) {
               Want personalized K-beauty advice?
             </h2>
             <p className="text-white/50 mb-6 text-sm">
-              Chat with Yuri, our AI beauty advisor, for recommendations
-              tailored to your skin.
+              {user
+                ? 'Chat with Yuri, your AI beauty advisor, for recommendations tailored to your skin.'
+                : 'Sign up to chat with Yuri, our AI beauty advisor, for recommendations tailored to your skin.'}
             </p>
             <Link
-              href="/yuri"
+              href={user ? '/yuri' : '/register'}
               className="inline-flex items-center justify-center px-8 py-3 rounded-full
                 bg-gradient-to-r from-gold to-gold-light text-[#0a0a0a] font-semibold text-sm
                 hover:shadow-glow-gold hover:brightness-110 transition-all duration-300 active:scale-[0.98]"
             >
-              Talk to Yuri
+              {user ? 'Talk to Yuri' : 'Get Started Free'}
             </Link>
           </div>
         </div>
