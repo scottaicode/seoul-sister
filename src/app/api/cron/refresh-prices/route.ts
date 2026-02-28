@@ -36,15 +36,21 @@ export async function POST(request: Request) {
     const scrapeResults: Array<{ retailer: string; searched: number; matched: number; errors: number }> = []
 
     // ---------------------------------------------------------------
-    // Phase 1: Active price scraping from Soko Glam (HTTP-only, ~20s)
+    // Phase 1: Active price scraping from Soko Glam + YesStyle
+    // Budget: ~45s total (leave 15s for Phase 2+3 and response)
+    //
+    // Soko Glam: Shopify JSON API, ~2s per product (fetch + 1.5s delay)
+    //   batch_size=10 × 2s ≈ 20s
+    // YesStyle: Playwright, ~5-10s cold start + ~3s per product
+    //   batch_size=3 × 3s + 10s cold start ≈ 19s
     // ---------------------------------------------------------------
     try {
       const pipeline = new PricePipeline()
       try {
-        // Soko Glam: Shopify JSON API, no browser needed, very fast
+        // Soko Glam: Shopify JSON API, no browser needed
         const sokoStats = await pipeline.run(db, {
           retailer: 'soko_glam',
-          batch_size: 40,
+          batch_size: 10,
           stale_hours: 6,
         })
         scrapeResults.push({
@@ -59,14 +65,12 @@ export async function POST(request: Request) {
       }
 
       // YesStyle: Requires Playwright — only run if we have time budget remaining.
-      // Serverless Chromium cold start is ~5-10s, plus each product takes ~3s delay.
-      // batch_size=5 ≈ 15s scraping + 10s cold start = ~25s.
       const elapsed = Date.now() - startedAt
       if (elapsed < 25000) {
         try {
           const yesStats = await pipeline.run(db, {
             retailer: 'yesstyle',
-            batch_size: 5,
+            batch_size: 3,
             stale_hours: 6,
           })
           scrapeResults.push({

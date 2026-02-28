@@ -40,7 +40,7 @@ export class SokoGlamScraper {
   private readonly delayMs: number
 
   constructor(options?: { delayMs?: number }) {
-    this.delayMs = options?.delayMs ?? 3000
+    this.delayMs = options?.delayMs ?? 1500
   }
 
   private async delay(): Promise<void> {
