@@ -10,6 +10,7 @@ const nextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'gzqjvbhmndnovhlgumdk.supabase.co' },
+      { protocol: 'https', hostname: 'tjzhhfczyjvfjjmuvegd.supabase.co' }, // LGAAS Supabase — blog hero images
       { protocol: 'https', hostname: 'seoulsister.com' },
     ],
     formats: ['image/avif', 'image/webp'],
@@ -38,7 +39,7 @@ const nextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js requires inline scripts + eval for dev/hydration
               "style-src 'self' 'unsafe-inline'", // Tailwind + framer-motion inject inline styles
-              "img-src 'self' data: blob: https://images.unsplash.com https://gzqjvbhmndnovhlgumdk.supabase.co https://www.seoulsister.com",
+              "img-src 'self' data: blob: https://images.unsplash.com https://gzqjvbhmndnovhlgumdk.supabase.co https://tjzhhfczyjvfjjmuvegd.supabase.co https://www.seoulsister.com",
               "font-src 'self'",
               "connect-src 'self' https://gzqjvbhmndnovhlgumdk.supabase.co https://*.supabase.co wss://*.supabase.co https://api.stripe.com",
               "frame-src https://js.stripe.com https://hooks.stripe.com",
