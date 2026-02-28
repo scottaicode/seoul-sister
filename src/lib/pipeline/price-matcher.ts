@@ -28,7 +28,7 @@ const RETAILER_DB_NAMES: Record<PriceRetailer, string> = {
 /**
  * Normalize a string for comparison: lowercase, remove special chars, collapse spaces.
  */
-function normalize(s: string): string {
+export function normalize(s: string): string {
   return s
     .toLowerCase()
     .replace(/[™®©]/g, '')
@@ -42,7 +42,7 @@ function normalize(s: string): string {
  * Compute a simple token-overlap similarity between two normalized strings.
  * Returns 0-1 where 1 = perfect match.
  */
-function tokenSimilarity(a: string, b: string): number {
+export function tokenSimilarity(a: string, b: string): number {
   const tokensA = new Set(a.split(' ').filter(t => t.length > 1))
   const tokensB = new Set(b.split(' ').filter(t => t.length > 1))
   if (tokensA.size === 0 || tokensB.size === 0) return 0
@@ -61,7 +61,7 @@ function tokenSimilarity(a: string, b: string): number {
  * Check if brand strings match (normalized).
  * Handles common variations like "COSRX" vs "Cosrx", "Dr. Jart+" vs "Dr Jart".
  */
-function brandsMatch(a: string, b: string): boolean {
+export function brandsMatch(a: string, b: string): boolean {
   const na = normalize(a)
   const nb = normalize(b)
   if (na === nb) return true

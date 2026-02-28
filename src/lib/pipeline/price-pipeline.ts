@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PriceRetailer, PricePipelineStats, PriceScrapeOptions, ScrapedPrice } from './types'
-import { PriceMatcher } from './price-matcher'
+import { PriceMatcher, normalize, tokenSimilarity, brandsMatch } from './price-matcher'
 import { YesStyleScraper } from './sources/yesstyle'
 import { SokoGlamScraper } from './sources/soko-glam'
 import { AmazonScraper } from './sources/amazon'
@@ -194,59 +194,69 @@ export class PricePipeline {
 
   /**
    * Find the best matching scraped price for a given product.
-   * Uses the PriceMatcher for fuzzy matching, with a preference for
-   * results that match brand AND name.
+   *
+   * Since we searched by this product's brand + name, scraped results should
+   * be for this product. We score each scraped result against the TARGET
+   * product directly (not the full 6,225-product catalog) and pick the best.
    */
   private findBestMatch(
     scrapedPrices: ScrapedPrice[],
     product: ProductForPricing
   ): import('./types').PriceMatch | null {
-    let best: import('./types').PriceMatch | null = null
+    const productNameNorm = normalize(product.name_en)
+    const productBrandNorm = normalize(product.brand_en)
+
+    let bestScraped: ScrapedPrice | null = null
+    let bestScore = 0
+    let bestMethod: import('./types').PriceMatch['match_method'] = 'fuzzy'
 
     for (const scraped of scrapedPrices) {
-      const match = this.matcher.matchProduct(scraped, 0.4)
-      if (!match) continue
+      if (!scraped.price_usd || scraped.price_usd <= 0) continue
 
-      // Prefer matches that match our specific product ID
-      if (match.product_id === product.id) {
-        return match // Exact product match, use immediately
+      const scrapedNameNorm = normalize(scraped.product_name)
+      const scrapedBrandNorm = normalize(scraped.brand)
+
+      // Check brand match first
+      const brandOk = brandsMatch(productBrandNorm, scrapedBrandNorm)
+      if (!brandOk) continue
+
+      // Score: token similarity between scraped name and our product name
+      let score = tokenSimilarity(productNameNorm, scrapedNameNorm)
+
+      // Boost if one name contains the other (handles "Snail Mucin" vs "Advanced Snail 96 Mucin Power Essence")
+      if (productNameNorm.includes(scrapedNameNorm) || scrapedNameNorm.includes(productNameNorm)) {
+        score = Math.max(score, 0.7)
       }
 
-      // Otherwise track the best overall match
-      if (!best || match.confidence > best.confidence) {
-        best = match
+      // Exact normalized match
+      if (productNameNorm === scrapedNameNorm) {
+        score = 1.0
       }
-    }
 
-    // Only return if the best match is for our target product
-    // (avoids assigning prices to wrong products)
-    if (best && best.product_id === product.id) {
-      return best
-    }
-
-    // Fallback: if the best match has high confidence, create a match
-    // with our product ID (the search was for this specific product)
-    if (best && best.confidence >= 0.6 && scrapedPrices.length > 0) {
-      // Use the first scraped price directly for this product
-      const topScraped = scrapedPrices[0]
-      if (topScraped.price_usd && topScraped.price_usd > 0) {
-        return {
-          product_id: product.id,
-          product_name: product.name_en,
-          product_brand: product.brand_en,
-          retailer: topScraped.retailer as PriceRetailer,
-          retailer_id: '', // Set by caller
-          price_usd: topScraped.price_usd,
-          price_krw: topScraped.price_krw,
-          url: topScraped.url,
-          in_stock: topScraped.in_stock,
-          confidence: best.confidence,
-          match_method: best.match_method,
-        }
+      if (score > bestScore) {
+        bestScore = score
+        bestScraped = scraped
+        bestMethod = score >= 0.9 ? 'exact' : score >= 0.5 ? 'brand_name' : 'fuzzy'
       }
     }
 
-    return null
+    // Require minimum 0.3 similarity — we already know brand matches and we
+    // searched for this specific product, so even low token overlap is likely valid
+    if (!bestScraped || bestScore < 0.3) return null
+
+    return {
+      product_id: product.id,
+      product_name: product.name_en,
+      product_brand: product.brand_en,
+      retailer: bestScraped.retailer as PriceRetailer,
+      retailer_id: '', // Set by caller
+      price_usd: bestScraped.price_usd!,
+      price_krw: bestScraped.price_krw,
+      url: bestScraped.url,
+      in_stock: bestScraped.in_stock,
+      confidence: bestScore,
+      match_method: bestMethod,
+    }
   }
 
   /**
@@ -282,9 +292,9 @@ export class PricePipeline {
     }
 
     // Default: find products that DON'T have a recent price from this retailer
-    // This is a two-step query since Supabase doesn't support complex NOT EXISTS easily
+    // Prioritize brands that this retailer is known to carry.
 
-    // Step 1: Get products that have a recent price from this retailer
+    // Step 1: Get products that have a recent price from this retailer (skip these)
     const staleThreshold = new Date(Date.now() - staleHours * 60 * 60 * 1000).toISOString()
     const { data: recentlyPriced } = await supabase
       .from('ss_product_prices')
@@ -294,19 +304,51 @@ export class PricePipeline {
 
     const recentIds = new Set((recentlyPriced ?? []).map(r => r.product_id))
 
-    // Step 2: Get products not in that set
-    // Prioritize: popular brands, products with ratings, products already having some prices
-    const { data: products } = await supabase
-      .from('ss_products')
-      .select('id, name_en, brand_en, category')
-      .not('price_usd', 'is', null)
-      .order('rating_avg', { ascending: false, nullsFirst: false })
-      .limit(batchSize * 2) // Fetch more to filter down after excluding recent
+    // Step 2: Get brands this retailer already carries (from existing price records)
+    const { data: retailerBrands } = await supabase
+      .from('ss_product_prices')
+      .select('product:ss_products(brand_en)')
+      .eq('retailer_id', retailerId)
 
-    if (!products) return []
+    const knownBrands = new Set<string>()
+    for (const row of retailerBrands ?? []) {
+      const brand = (row.product as unknown as { brand_en: string })?.brand_en
+      if (brand) knownBrands.add(brand)
+    }
 
-    // Filter out recently priced and limit
-    return products
+    // Step 3: Fetch products — prioritize known brands, then popular products
+    const candidates: ProductForPricing[] = []
+
+    // 3a: Products from brands this retailer carries (highest priority)
+    if (knownBrands.size > 0) {
+      const { data: brandProducts } = await supabase
+        .from('ss_products')
+        .select('id, name_en, brand_en, category')
+        .in('brand_en', Array.from(knownBrands))
+        .order('rating_avg', { ascending: false, nullsFirst: false })
+        .limit(batchSize * 3)
+
+      if (brandProducts) candidates.push(...brandProducts)
+    }
+
+    // 3b: Fill remaining slots with other highly-rated products
+    if (candidates.length < batchSize * 2) {
+      const { data: otherProducts } = await supabase
+        .from('ss_products')
+        .select('id, name_en, brand_en, category')
+        .order('rating_avg', { ascending: false, nullsFirst: false })
+        .limit(batchSize * 3)
+
+      if (otherProducts) {
+        const existingIds = new Set(candidates.map(c => c.id))
+        for (const p of otherProducts) {
+          if (!existingIds.has(p.id)) candidates.push(p)
+        }
+      }
+    }
+
+    // Step 4: Filter out recently priced and limit
+    return candidates
       .filter(p => !recentIds.has(p.id))
       .slice(0, batchSize)
   }
