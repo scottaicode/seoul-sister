@@ -3,6 +3,11 @@ import { createClient } from '@supabase/supabase-js'
 import { productSearchSchema } from '@/lib/utils/validation'
 import { handleApiError } from '@/lib/utils/error-handler'
 
+/** Escape SQL LIKE/ILIKE wildcard characters to prevent pattern injection */
+function sanitizeLikeInput(input: string): string {
+  return input.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -101,13 +106,14 @@ async function handleStandardQuery(supabase: SupabaseClient, params: SearchParam
   let query = supabase.from('ss_products').select('*', { count: 'exact' })
 
   if (params.query) {
-    query = query.or(`name_en.ilike.%${params.query}%,brand_en.ilike.%${params.query}%`)
+    const q = sanitizeLikeInput(params.query)
+    query = query.or(`name_en.ilike.%${q}%,brand_en.ilike.%${q}%`)
   }
   if (params.category) {
     query = query.eq('category', params.category)
   }
   if (params.brand) {
-    query = query.ilike('brand_en', `%${params.brand}%`)
+    query = query.ilike('brand_en', `%${sanitizeLikeInput(params.brand)}%`)
   }
   if (params.min_price !== undefined) {
     query = query.gte('price_usd', params.min_price)
@@ -175,13 +181,14 @@ async function handleRecommendedQuery(
   // 3. Get candidate products matching basic filters
   let candidateQuery = supabase.from('ss_products').select('id')
   if (params.query) {
-    candidateQuery = candidateQuery.or(`name_en.ilike.%${params.query}%,brand_en.ilike.%${params.query}%`)
+    const q = sanitizeLikeInput(params.query)
+    candidateQuery = candidateQuery.or(`name_en.ilike.%${q}%,brand_en.ilike.%${q}%`)
   }
   if (params.category) {
     candidateQuery = candidateQuery.eq('category', params.category)
   }
   if (params.brand) {
-    candidateQuery = candidateQuery.ilike('brand_en', `%${params.brand}%`)
+    candidateQuery = candidateQuery.ilike('brand_en', `%${sanitizeLikeInput(params.brand)}%`)
   }
   if (params.min_price !== undefined) {
     candidateQuery = candidateQuery.gte('price_usd', params.min_price)
@@ -332,13 +339,14 @@ async function handleIngredientFilteredQuery(supabase: SupabaseClient, params: S
   // Step 1: Get candidate product IDs matching basic filters
   let candidateQuery = supabase.from('ss_products').select('id')
   if (params.query) {
-    candidateQuery = candidateQuery.or(`name_en.ilike.%${params.query}%,brand_en.ilike.%${params.query}%`)
+    const q = sanitizeLikeInput(params.query)
+    candidateQuery = candidateQuery.or(`name_en.ilike.%${q}%,brand_en.ilike.%${q}%`)
   }
   if (params.category) {
     candidateQuery = candidateQuery.eq('category', params.category)
   }
   if (params.brand) {
-    candidateQuery = candidateQuery.ilike('brand_en', `%${params.brand}%`)
+    candidateQuery = candidateQuery.ilike('brand_en', `%${sanitizeLikeInput(params.brand)}%`)
   }
   if (params.min_price !== undefined) {
     candidateQuery = candidateQuery.gte('price_usd', params.min_price)

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { recalculateEffectivenessFromReviews } from '@/lib/learning/effectiveness'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
 
+export const maxDuration = 60
+
 // POST /api/cron/update-effectiveness
 // Daily: Recalculate ingredient effectiveness scores from new data
 // Secured with CRON_SECRET header

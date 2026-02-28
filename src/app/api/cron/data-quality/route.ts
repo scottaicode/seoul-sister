@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
 
+export const maxDuration = 60
+
 /**
  * POST /api/cron/data-quality
  *

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { detectTrendSignals } from '@/lib/learning/trends'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
 
+export const maxDuration = 60
+
 // POST /api/cron/scan-trends
 // Daily: Detect emerging trend signals from community activity
 // Secured with CRON_SECRET header

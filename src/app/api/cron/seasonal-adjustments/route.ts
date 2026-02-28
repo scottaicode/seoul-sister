@@ -3,6 +3,8 @@ import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
 
+export const maxDuration = 60
+
 // POST /api/cron/seasonal-adjustments
 // Monthly: Adjust routine recommendations for seasonal skin changes
 // Secured with CRON_SECRET header
