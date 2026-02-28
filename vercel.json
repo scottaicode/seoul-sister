@@ -1,42 +1,4 @@
 {
-  "functions": {
-    "src/app/api/scan/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/scan/counterfeit/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/yuri/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/cron/scan-korean-products/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/cron/translate-and-index/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/cron/link-ingredients/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/cron/refresh-prices/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/cron/aggregate-learning/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/cron/scan-korean-bestsellers/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/cron/backfill-trending/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/cron/scan-reddit-mentions/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/cron/calculate-gap-scores/route.ts": {
-      "maxDuration": 60
-    }
-  },
   "crons": [
     {
       "path": "/api/cron/seasonal-adjustments",
