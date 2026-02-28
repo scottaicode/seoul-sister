@@ -51,10 +51,6 @@
     {
       "path": "/api/cron/refresh-prices",
       "schedule": "0 */6 * * *"
-    },
-    {
-      "path": "/api/cron/generate-content",
-      "schedule": "0 10 * * 1"
     }
   ]
 }
