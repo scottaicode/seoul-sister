@@ -70,6 +70,7 @@ export type ProductCategory =
   | 'oil'
   | 'mist'
   | 'spot_treatment'
+  | 'not_skincare'
 
 export interface Ingredient {
   id: string

@@ -11,8 +11,12 @@ import type { TokenUsage } from './cost-tracker'
 
 const EXTRACTION_SYSTEM_PROMPT = `You are a K-beauty product data specialist. Given raw product data scraped from a Korean beauty retailer, extract and normalize it into a structured JSON object.
 
+IMPORTANT — Skincare products ONLY:
+Seoul Sister is a SKINCARE intelligence platform. If the product is makeup (foundation, concealer, blush, bronzer, highlighter, contour, eyeshadow, mascara, eyeliner, brow products, lipstick, lip gloss, lip tint, lip liner, setting powder, primer that is purely makeup, BB/CC cream that is purely coverage), a hair care product (shampoo, conditioner, hair mask, hair oil, styling product), a body care product (body lotion, body wash, hand cream, deodorant, nail care), a fragrance/perfume, or any other non-facial-skincare product, set category to "not_skincare" and return minimal fields.
+Exception: Lip BALM/treatment (hydrating, SPF) and sunscreen/sun care ARE skincare. BB/CC creams with skincare benefits (SPF, niacinamide, centella) ARE skincare.
+
 Rules:
-- category: Must be exactly one of: cleanser, toner, essence, serum, ampoule, moisturizer, sunscreen, mask, exfoliator, lip_care, eye_care, oil, mist, spot_treatment
+- category: Must be exactly one of: cleanser, toner, essence, serum, ampoule, moisturizer, sunscreen, mask, exfoliator, lip_care, eye_care, oil, mist, spot_treatment, not_skincare
 - subcategory: A 2-3 word descriptor (e.g., "foam cleanser", "sleeping mask", "vitamin c serum", "cleansing oil", "sheet mask", "gel moisturizer", "cleansing balm", "micellar water", "snail essence", "retinol serum")
 - description_en: Write a concise 1-2 sentence product description. Focus on key active ingredients, what the product does, and who it's for. Keep it factual. Do NOT use marketing superlatives like "revolutionary" or "amazing."
 - volume_ml: Extract numeric volume in milliliters. Convert from fl oz if needed (1 fl oz = 29.5735 mL). For pads/sheets, use total product weight if available, otherwise null.
@@ -123,12 +127,12 @@ function normalizeExtraction(
   const validCategories = [
     'cleanser', 'toner', 'essence', 'serum', 'ampoule', 'moisturizer',
     'sunscreen', 'mask', 'exfoliator', 'lip_care', 'eye_care', 'oil',
-    'mist', 'spot_treatment',
+    'mist', 'spot_treatment', 'not_skincare',
   ]
 
   const category = validCategories.includes(parsed.category as string)
     ? (parsed.category as ProcessedProductData['category'])
-    : 'moisturizer' // safe fallback
+    : 'moisturizer' // safe fallback for ambiguous skincare
 
   const validPaRatings = ['PA+', 'PA++', 'PA+++', 'PA++++']
   const validSunscreenTypes = ['chemical', 'physical', 'hybrid']

@@ -158,6 +158,15 @@ async function processOne(
   const { data: extracted, usage } = await extractProductData(rawData)
   tracker.record(usage)
 
+  // Reject non-skincare products (makeup, hair care, body care, fragrance)
+  if (extracted.category === 'not_skincare') {
+    await supabase
+      .from('ss_product_staging')
+      .update({ status: 'duplicate', error_message: 'Rejected: not a skincare product' })
+      .eq('id', stagingId)
+    return 'duplicate'
+  }
+
   // Check for duplicates in ss_products
   const isDuplicate = await checkDuplicate(supabase, extracted)
   if (isDuplicate) {

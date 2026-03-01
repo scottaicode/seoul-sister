@@ -4810,8 +4810,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 8.9.0 (Pre-Launch Health Audit — Security, Performance, Cron Fixes)
-**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 6,200+ products, 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 13 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized.
+**Version**: 9.0.0 (Data Quality Hardening — Skincare-Only Filter, Non-Skincare Cleanup, Price Expansion)
+**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 5,900+ products (skincare only), 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 13 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed — non-skincare products automatically rejected at pipeline level.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -4827,6 +4827,23 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v9.0.0 (Feb 28, 2026): Data Quality Hardening — Skincare-Only Filter, Non-Skincare Cleanup, Price Expansion
+  - **Cron health audit**: Verified all 12 active crons healthy (13th `generate-content` intentionally disabled). Pipeline chain confirmed operational: scrape → extract → link → trends → prices all running on schedule
+  - **Fix 1 — Price scraping coverage expanded** (`src/app/api/cron/refresh-prices/route.ts`): Soko Glam batch size increased from 10 to 25 products per run (~100 products/day, up from ~52). YesStyle removed from cron entirely — Playwright cold start (~10s) consumed too much of the 60s budget for only 3 products. YesStyle remains available via CLI/admin. Budget math: 25 × 1.5s ≈ 37.5s within 52s timeout guard
+  - **Fix 2 — Skincare-only extraction filter** (3 files modified): Seoul Sister is a SKINCARE platform, but the Sonnet extraction pipeline had no category gating — Olive Young categories include makeup, hair care, and body care that were leaking into `ss_products`
+    - `src/lib/pipeline/extractor.ts`: Added detailed skincare-only instructions to `EXTRACTION_SYSTEM_PROMPT` — classifies non-skincare (makeup, hair, body, fragrance) as `not_skincare` with explicit exceptions for lip balm/treatment, sunscreen, and BB/CC creams with skincare benefits. Added `'not_skincare'` to `validCategories` array
+    - `src/lib/pipeline/batch-processor.ts`: Added rejection logic in `processOne()` — products classified as `not_skincare` are marked `status: 'duplicate'` with error message `'Rejected: not a skincare product'` and never inserted into `ss_products`
+    - `src/types/database.ts`: Added `| 'not_skincare'` to `ProductCategory` union type
+  - **Fix 3 — Existing non-skincare product cleanup**: 299 non-skincare products removed from database
+    - Audited all 200 distinct subcategory/category combinations to identify non-skincare entries
+    - 28 subcategories identified as non-skincare: eye makeup (15), face makeup (8), lip color (2), body/hair (3)
+    - Deliberately preserved skincare-adjacent items: lip oil, tinted balm, lip balm, lip treatment, lip mask, lip serum, lip essence, lip scrub, eye cream, eye patch, hydrogel patches, eyelash serum, makeup remover
+    - Cascade deleted in chunks of 50: trending rows → staging unlinks → ingredient links → products. No user data affected
+    - Script: `scripts/cleanup-non-skincare.ts`. Result: 0 remaining, 5,926 total products
+  - **Fix 4 — Failed staging row reprocessed**: GA260136975 (JSON parse failure from earlier pipeline run) reset to pending and re-extracted. Sonnet correctly classified it as `not_skincare` (it's a product bundle/set). Properly rejected by new filter. 18 remaining pending staging rows will process on next `translate-and-index` cron
+  - **Scripts created**: `scripts/cleanup-non-skincare.ts` (one-time non-skincare removal), `scripts/reprocess-failed.ts` (reprocess failed staging rows)
+  - **Database impact**: 6,222 → 5,926 products (net -296 after cleanup). All remaining products verified as skincare-only. Going forward, non-skincare products are blocked at the extraction pipeline level
+  - **Files modified**: `src/app/api/cron/refresh-prices/route.ts`, `src/lib/pipeline/extractor.ts`, `src/lib/pipeline/batch-processor.ts`, `src/types/database.ts`
 - v8.9.0 (Feb 27, 2026): Pre-Launch Audit Session 3 — Cron Pipeline Fix (CRITICAL)
   - **Root cause identified**: ALL 13 cron jobs have been silently failing since deployment. Two compounding bugs prevented any Vercel-triggered cron execution from succeeding
   - **Bug #1 — Auth header mismatch**: `verifyCronAuth()` in `src/lib/utils/cron-auth.ts` only checked `x-cron-secret` header, but Vercel cron sends `Authorization: Bearer <CRON_SECRET>`. Every cron invocation received 401 Unauthorized

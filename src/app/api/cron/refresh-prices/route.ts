@@ -8,14 +8,14 @@ import { PricePipeline } from '@/lib/pipeline/price-pipeline'
  *
  * Runs every 6 hours (via vercel.json).
  * Three responsibilities:
- * 1. Actively scrape fresh prices from high-reliability retailers
- *    (Soko Glam via Shopify API — no Playwright, fast and reliable)
+ * 1. Actively scrape fresh prices from Soko Glam (Shopify JSON API,
+ *    no Playwright, fast and reliable) — 25 products per run
  * 2. Snapshot all current prices into ss_price_history for trend analysis
  * 3. Detect significant price drops and create trend signals
  *
- * Low-reliability retailers (Amazon, StyleKorean) are skipped here because
- * they require Playwright and are prone to CAPTCHA/AJAX failures. Those
- * are handled via admin API or CLI only.
+ * YesStyle removed from cron — Playwright cold start (~10s) consumed
+ * too much of the 60s budget for only 3 products. Run via admin/CLI.
+ * Amazon, StyleKorean also CLI-only (CAPTCHA/AJAX issues).
  *
  * Secured with CRON_SECRET header.
  */
@@ -36,21 +36,21 @@ export async function POST(request: Request) {
     const scrapeResults: Array<{ retailer: string; searched: number; matched: number; errors: number }> = []
 
     // ---------------------------------------------------------------
-    // Phase 1: Active price scraping from Soko Glam + YesStyle
-    // Budget: ~45s total (leave 15s for Phase 2+3 and response)
+    // Phase 1: Active price scraping from Soko Glam
+    // Budget: ~40s (leave 12s for Phase 2+3 and response)
     //
-    // Soko Glam: Shopify JSON API, ~2s per product (fetch + 1.5s delay)
-    //   batch_size=10 × 2s ≈ 20s
-    // YesStyle: Playwright, ~5-10s cold start + ~3s per product
-    //   batch_size=3 × 3s + 10s cold start ≈ 19s
+    // Soko Glam: Shopify JSON API, ~1.5s per product (fetch + delay)
+    //   batch_size=25 × 1.5s ≈ 37.5s
+    //
+    // YesStyle removed from cron — Playwright cold start (~10s) ate
+    // too much budget for only 3 products. Run via CLI/admin instead.
     // ---------------------------------------------------------------
     try {
       const pipeline = new PricePipeline()
       try {
-        // Soko Glam: Shopify JSON API, no browser needed
         const sokoStats = await pipeline.run(db, {
           retailer: 'soko_glam',
-          batch_size: 10,
+          batch_size: 25,
           stale_hours: 6,
         })
         scrapeResults.push({
@@ -62,27 +62,6 @@ export async function POST(request: Request) {
       } catch (error) {
         console.error('[cron:refresh-prices] Soko Glam scrape failed:', error instanceof Error ? error.message : error)
         scrapeResults.push({ retailer: 'soko_glam', searched: 0, matched: 0, errors: 1 })
-      }
-
-      // YesStyle: Requires Playwright — only run if we have time budget remaining.
-      const elapsed = Date.now() - startedAt
-      if (elapsed < 25000) {
-        try {
-          const yesStats = await pipeline.run(db, {
-            retailer: 'yesstyle',
-            batch_size: 3,
-            stale_hours: 6,
-          })
-          scrapeResults.push({
-            retailer: 'yesstyle',
-            searched: yesStats.products_searched,
-            matched: yesStats.prices_matched,
-            errors: yesStats.errors.length,
-          })
-        } catch (error) {
-          console.error('[cron:refresh-prices] YesStyle scrape failed:', error instanceof Error ? error.message : error)
-          scrapeResults.push({ retailer: 'yesstyle', searched: 0, matched: 0, errors: 1 })
-        }
       }
 
       await pipeline.cleanup()

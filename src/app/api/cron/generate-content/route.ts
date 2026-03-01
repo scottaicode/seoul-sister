@@ -141,7 +141,7 @@ async function categoryBestOf(supabase: ReturnType<typeof getServiceClient>): Pr
     primary_keyword: `best Korean ${catPlural}`,
     secondary_keywords: [`top K-beauty ${catPlural}`, `Korean ${category} recommendations`, `${catPlural} for sensitive skin`, `affordable Korean ${catPlural}`],
     tags: ['best of', category, 'K-beauty', 'product recommendations'],
-    prompt_context: `Top ${products.length} Korean ${catPlural} by community rating from Seoul Sister's database of 6,200+ K-beauty products:\n\n${lines}`,
+    prompt_context: `Top ${products.length} Korean ${catPlural} by community rating from Seoul Sister's database of 5,900+ K-beauty products:\n\n${lines}`,
   }
 }
 
@@ -267,7 +267,7 @@ Secondary keywords: ${topic.secondary_keywords.join(', ')}
 DATA FROM SEOUL SISTER'S DATABASE:
 ${topic.prompt_context}
 
-Remember: Reference the actual products and data above. This is what makes Seoul Sister's content authoritative — it's backed by real data from 6,200+ K-beauty products and community intelligence.`
+Remember: Reference the actual products and data above. This is what makes Seoul Sister's content authoritative — it's backed by real data from 5,900+ K-beauty products and community intelligence.`
 
   const response = await callAnthropicWithRetry(() =>
     anthropic.messages.create({

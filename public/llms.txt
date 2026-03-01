@@ -1,12 +1,12 @@
 # Seoul Sister - K-Beauty Intelligence Platform
 # https://seoulsister.com
 
-> Seoul Sister is the world's first English-language K-beauty intelligence platform — "Hwahae for the World." It provides AI-powered Korean skincare product analysis, personalized routine building, counterfeit detection, ingredient-level price comparison, and community reviews filtered by skin type. Database: 6,200+ products, 14,400+ ingredients, 221,000+ ingredient links, 590+ brands across 14 categories.
+> Seoul Sister is the world's first English-language K-beauty intelligence platform — "Hwahae for the World." It provides AI-powered Korean skincare product analysis, personalized routine building, counterfeit detection, ingredient-level price comparison, and community reviews filtered by skin type. Database: 5,900+ products, 14,400+ ingredients, 221,000+ ingredient links, 590+ brands across 14 categories.
 
 ## What Seoul Sister Does
 - **Korean Label Scanner**: Point your camera at a Korean product label for instant ingredient translation, safety scoring, personalized skin match, price comparison across 6 retailers, community intelligence, authenticity check, and trend context
 - **AI Beauty Advisor (Yuri)**: Conversational AI backed by 8 real-time database tools (product search, price comparison, ingredient conflicts, trending, personalized match, product details, web search, weather) and 6 specialist agents. Cross-session memory with structured decision tracking remembers preferences, recommendations, and commitments across conversations. Named after 유리 (glass) — a reference to glass skin (유리 피부)
-- **Product Intelligence Database**: 6,200+ K-beauty products with full English translations, 14,400+ ingredients with 221,000+ ingredient links, and cross-platform price comparison across Olive Young, YesStyle, Soko Glam, Amazon, StyleKorean, and more
+- **Product Intelligence Database**: 5,900+ K-beauty products with full English translations, 14,400+ ingredients with 221,000+ ingredient links, and cross-platform price comparison across Olive Young, YesStyle, Soko Glam, Amazon, StyleKorean, and more
 - **Glass Skin Score**: Photo-based skin analysis scoring 5 dimensions (luminosity, smoothness, clarity, hydration, evenness) with progress tracking over time and shareable score cards. Yuri coordinates treatment plan recommendations with Glass Skin progress — if you're on a barrier repair plan, she adjusts advice based on your score trajectory
 - **Shelf Scan Collection Analysis**: Photograph your entire skincare shelf for multi-product identification, routine grading (A-F), gap detection, redundancy alerts, and ingredient conflict detection across your collection
 - **Sunscreen Finder**: Dedicated Korean sunscreen search with PA rating, white cast level, finish (matte/dewy), under-makeup compatibility, chemical vs physical filters, real-time UV index, and auto-populated filters from user skin profile
@@ -22,7 +22,7 @@
 Cleansers, toners, essences, serums, ampoules, moisturizers, sunscreens, masks, eye care, lip care, exfoliators, oils, mists, spot treatments
 
 ## Database Statistics
-- 6,200+ products across 590+ brands
+- 5,900+ products across 590+ brands
 - 14,400+ unique ingredients with safety ratings, comedogenic scores, and function descriptions
 - 221,000+ product-ingredient links (89% of products fully linked)
 - Price tracking across 6 retailers with historical price data
