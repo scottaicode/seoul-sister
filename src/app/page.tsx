@@ -54,7 +54,7 @@ const specialists = [
 ]
 
 const steps = [
-  { icon: ScanLine, step: '01', title: 'Scan or Search', desc: 'Camera scan a Korean label or search 5,800+ products across 590+ brands.' },
+  { icon: ScanLine, step: '01', title: 'Scan or Search', desc: 'Camera scan a Korean label or search 5,800+ products across 550+ brands.' },
   { icon: Brain, step: '02', title: 'Get AI Intelligence', desc: 'Yuri and 6 specialist agents decode ingredients, flag conflicts, check authenticity, and compare prices.' },
   { icon: ListOrdered, step: '03', title: 'Build Your Routine', desc: 'Add to your personalized routine with conflict detection, layering order, wait times, and skin cycling.' },
   { icon: Heart, step: '04', title: 'Track and Improve', desc: 'Monitor your Glass Skin Score, track product expiry, get weather alerts, and discover dupes.' },
@@ -62,7 +62,7 @@ const steps = [
 
 const stats = [
   { value: '5,800+', label: 'Products Tracked' },
-  { value: '590+', label: 'K-Beauty Brands' },
+  { value: '550+', label: 'K-Beauty Brands' },
   { value: '14,400+', label: 'Ingredients Decoded' },
   { value: '6', label: 'AI Specialists' },
 ]

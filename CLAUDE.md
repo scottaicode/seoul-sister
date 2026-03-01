@@ -786,10 +786,10 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 ### Phase 9: Automated Product Intelligence Pipeline (COMPLETE)
 - [x] Feature 9.1: Olive Young Global Scraper (5,656 listings scraped)
 - [x] Feature 9.2: Sonnet AI Extraction & Normalization (5,530 products extracted, $49.15 Sonnet cost)
-- [x] Feature 9.3: Ingredient Auto-Linking Pipeline (14,400+ ingredients, 221,000+ links)
+- [x] Feature 9.3: Ingredient Auto-Linking Pipeline (14,400+ ingredients, 207,000+ links)
 - [x] Feature 9.4: Multi-Retailer Price Integration (YesStyle, Soko Glam, Amazon, StyleKorean)
 - [x] Feature 9.5: Daily Automation Cron Jobs + Admin Dashboard (9 cron jobs configured)
-- [x] Feature 9.6: Initial Import Execution (6,200+ products, 590+ brands, $55.97 total pipeline cost)
+- [x] Feature 9.6: Initial Import Execution (6,200+ products, 550+ brands, $55.97 total pipeline cost)
 
 ### Phase 10: Real-Time Trend Intelligence (COMPLETE)
 - [x] Feature 10.1: Olive Young Bestseller Scraper (daily Korean sales rankings via Playwright, 3-tier product matching, non-skincare filtering)
@@ -1749,7 +1749,7 @@ Rationale: Start with 8.1 (quick win, shared components used by later features),
 
 **Current State** (Post-Pipeline):
 - 6,222 products across 593 brands and 14 categories
-- 14,400+ ingredients with 221,000+ product-ingredient links (89% of products linked)
+- 14,400+ ingredients with 207,000+ product-ingredient links (89% of products linked)
 - Automated pipeline built and executed (Phases 9.1-9.3 + 9.6, plus additional enrichment + linking passes)
 - `ss_product_staging` tracks all scraped products with status (4,895 processed, 760 duplicate, 0 pending)
 - `ss_products` table has full schema including ingredients, prices, PAO, sunscreen fields
@@ -2720,7 +2720,7 @@ The Reddit OAuth implementation in LGAAS is at `lgaas/utils/reddit-oauth.js`. Ke
 
 **Strategic Rationale**: A comprehensive audit of Yuri's runtime capabilities revealed that while she has an excellent system prompt, cross-session memory, and specialist routing — she is fundamentally limited to Claude's training knowledge during conversations. She CANNOT query Seoul Sister's product database, check real prices, look up ingredients, search trends, or access the web. Her system prompt claims she can do all of these things, but she has no tools to actually do them. This makes her a well-informed chatbot, not the database-backed intelligence advisor Seoul Sister promises.
 
-**The Gap**: Yuri tells users "I'll check our database" or "Let me look up the price" — but she's improvising from Claude's general knowledge. She cannot access the 6,200+ products, 14,400+ ingredients, 221,000+ ingredient links, 52 price records, or trending data that Seoul Sister spent $55+ building. The entire product intelligence pipeline (Phase 9) is invisible to Yuri at conversation time.
+**The Gap**: Yuri tells users "I'll check our database" or "Let me look up the price" — but she's improvising from Claude's general knowledge. She cannot access the 6,200+ products, 14,400+ ingredients, 207,000+ ingredient links, 52 price records, or trending data that Seoul Sister spent $55+ building. The entire product intelligence pipeline (Phase 9) is invisible to Yuri at conversation time.
 
 **Current State (What Yuri HAS):**
 - Excellent system prompt with K-beauty expertise, specialist routing, app knowledge
@@ -4811,7 +4811,7 @@ Automatic via Vercel on push to `main` branch.
 
 **Created**: February 2026
 **Version**: 9.1.0 (Cosmetics Pass-2 Cleanup — ILIKE Pattern Sweep + Extractor Hardening)
-**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 5,800+ products (skincare only), 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 13 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level.
+**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 5,800+ products (skincare only), 14,400+ ingredients, 207,000+ links, 550+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 13 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status

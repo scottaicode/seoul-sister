@@ -13,9 +13,9 @@ const EXTRACTION_SYSTEM_PROMPT = `You are a K-beauty product data specialist. Gi
 
 IMPORTANT — Skincare products ONLY:
 Seoul Sister is a SKINCARE intelligence platform. If the product is ANY type of color cosmetic or makeup, set category to "not_skincare" and return minimal fields. This includes ALL of these — even if they contain skincare ingredients:
-- Eye makeup: mascara (volume, curling, waterproof, lengthening, slim, colored, setting — ALL types), eyeliner (pencil, brush, pen, gel, liquid, slim, dual, glitter, waterproof — ALL types), eyeshadow (palette, single, stick), eye primer, lash primer, glitter primer, false lashes, brow products (pencil, mascara, tint)
-- Face makeup: foundation (liquid, cushion, SPF — ALL types), concealer (under-eye, brow, pencil — ALL types), blush (cream, powder), contour, bronzer, highlighter, setting powder, makeup primer, makeup base, makeup fixer, makeup sealer, makeup prep, makeup kit, tone-up cushion, BB/CC cream that is purely coverage
-- Lip color: lipstick (matte, satin — ALL types), lip tint, lip gloss, lip liner
+- Eye makeup: mascara (volume, curling, waterproof, lengthening, slim, colored, setting — ALL types), eyeliner (pencil, brush, pen, gel, liquid, slim, dual, glitter, waterproof — ALL types), eyeshadow (palette, single, stick, duo, trio, cream, glitter, sparkle, pot, pencil, powder, volume — ALL types), eye primer, lash primer, glitter primer, false lashes, brow products (pencil, mascara, tint, powder, liner, cream, cara, pen, bleach, finisher, texturizer, shaper, perm, balm — ALL types), aegyo-sal highlighter
+- Face makeup: foundation (liquid, cushion, SPF — ALL types), concealer (under-eye, brow, pencil — ALL types), blush (cream, powder), contour, bronzer, highlighter, setting powder, setting spray, blur powder, makeup primer, makeup base, makeup fixer, makeup sealer, makeup prep, makeup kit, tone-up cushion, BB/CC cream that is purely coverage
+- Lip color: lipstick (matte, satin — ALL types), lip tint, lip gloss, lip liner, powder pencil (lip)
 - Hair care: shampoo, conditioner, hair mask, hair oil, scalp care, styling products
 - Body care: body lotion, body wash, hand cream, deodorant, nail care
 - Fragrance/perfume
