@@ -12,8 +12,15 @@ import type { TokenUsage } from './cost-tracker'
 const EXTRACTION_SYSTEM_PROMPT = `You are a K-beauty product data specialist. Given raw product data scraped from a Korean beauty retailer, extract and normalize it into a structured JSON object.
 
 IMPORTANT — Skincare products ONLY:
-Seoul Sister is a SKINCARE intelligence platform. If the product is makeup (foundation, concealer, blush, bronzer, highlighter, contour, eyeshadow, mascara, eyeliner, brow products, lipstick, lip gloss, lip tint, lip liner, setting powder, primer that is purely makeup, BB/CC cream that is purely coverage), a hair care product (shampoo, conditioner, hair mask, hair oil, styling product), a body care product (body lotion, body wash, hand cream, deodorant, nail care), a fragrance/perfume, or any other non-facial-skincare product, set category to "not_skincare" and return minimal fields.
-Exception: Lip BALM/treatment (hydrating, SPF) and sunscreen/sun care ARE skincare. BB/CC creams with skincare benefits (SPF, niacinamide, centella) ARE skincare.
+Seoul Sister is a SKINCARE intelligence platform. If the product is ANY type of color cosmetic or makeup, set category to "not_skincare" and return minimal fields. This includes ALL of these — even if they contain skincare ingredients:
+- Eye makeup: mascara (volume, curling, waterproof, lengthening, slim, colored, setting — ALL types), eyeliner (pencil, brush, pen, gel, liquid, slim, dual, glitter, waterproof — ALL types), eyeshadow (palette, single, stick), eye primer, lash primer, glitter primer, false lashes, brow products (pencil, mascara, tint)
+- Face makeup: foundation (liquid, cushion, SPF — ALL types), concealer (under-eye, brow, pencil — ALL types), blush (cream, powder), contour, bronzer, highlighter, setting powder, makeup primer, makeup base, makeup fixer, makeup sealer, makeup prep, makeup kit, tone-up cushion, BB/CC cream that is purely coverage
+- Lip color: lipstick (matte, satin — ALL types), lip tint, lip gloss, lip liner
+- Hair care: shampoo, conditioner, hair mask, hair oil, scalp care, styling products
+- Body care: body lotion, body wash, hand cream, deodorant, nail care
+- Fragrance/perfume
+- ANY product whose primary purpose is color/coverage/decoration rather than skin treatment
+Exception: These ARE skincare — keep them: makeup REMOVER (cleansing product), lip BALM/treatment (hydrating, SPF), sunscreen/sun care (even if labeled "makeup sun cream"), BB/CC creams with clear skincare benefits (SPF, niacinamide, centella) and skincare-first positioning.
 
 Rules:
 - category: Must be exactly one of: cleanser, toner, essence, serum, ampoule, moisturizer, sunscreen, mask, exfoliator, lip_care, eye_care, oil, mist, spot_treatment, not_skincare

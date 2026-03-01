@@ -38,7 +38,7 @@ const advancedFeatures = [
   { icon: DollarSign, title: 'K-Beauty Dupe Finder', desc: 'Find $12 alternatives to $94 products. Ingredient-level matching shows exactly where the overlap is.', badge: 'Popular' },
   { icon: Sun, title: 'Sunscreen Finder', desc: 'Filter by PA rating, white cast, finish, under-makeup compatibility — every detail K-beauty sunscreen lovers need.', badge: 'High Intent' },
   { icon: Package, title: 'Shelf Scan', desc: 'Photograph your entire collection. Get a routine grade, redundancy alerts, gap analysis, and estimated value.', badge: 'Unique' },
-  { icon: Filter, title: 'Ingredient Filters', desc: 'Search 5,900+ products by ingredients you want and ingredients you avoid. Fragrance-free and low-comedogenic shortcuts built in.', badge: 'Power User' },
+  { icon: Filter, title: 'Ingredient Filters', desc: 'Search 5,800+ products by ingredients you want and ingredients you avoid. Fragrance-free and low-comedogenic shortcuts built in.', badge: 'Power User' },
   { icon: Timer, title: 'Expiration Tracking', desc: 'Track when you opened each product. Get alerts before they expire. No more guessing if that serum is still good.', badge: 'Unique' },
   { icon: CloudSun, title: 'Weather-Adaptive Alerts', desc: 'Real-time weather data adjusts your routine. High humidity? Skip the oil. UV spike? Reapply sunscreen reminder.', badge: 'Proactive' },
   { icon: Activity, title: 'Cycle-Aware Routine', desc: 'Opt-in hormonal cycle tracking adjusts your skincare by phase. Luteal breakouts get BHA, not just moisturizer.', badge: 'Unique' },
@@ -54,14 +54,14 @@ const specialists = [
 ]
 
 const steps = [
-  { icon: ScanLine, step: '01', title: 'Scan or Search', desc: 'Camera scan a Korean label or search 5,900+ products across 590+ brands.' },
+  { icon: ScanLine, step: '01', title: 'Scan or Search', desc: 'Camera scan a Korean label or search 5,800+ products across 590+ brands.' },
   { icon: Brain, step: '02', title: 'Get AI Intelligence', desc: 'Yuri and 6 specialist agents decode ingredients, flag conflicts, check authenticity, and compare prices.' },
   { icon: ListOrdered, step: '03', title: 'Build Your Routine', desc: 'Add to your personalized routine with conflict detection, layering order, wait times, and skin cycling.' },
   { icon: Heart, step: '04', title: 'Track and Improve', desc: 'Monitor your Glass Skin Score, track product expiry, get weather alerts, and discover dupes.' },
 ]
 
 const stats = [
-  { value: '5,900+', label: 'Products Tracked' },
+  { value: '5,800+', label: 'Products Tracked' },
   { value: '590+', label: 'K-Beauty Brands' },
   { value: '14,400+', label: 'Ingredients Decoded' },
   { value: '6', label: 'AI Specialists' },
@@ -179,7 +179,7 @@ export default function LandingPage() {
               <span className="text-gradient">Powered by AI</span>
             </motion.h1>
             <motion.p variants={fadeUp} className="text-white/50 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
-              5,900+ products. 14,400+ ingredients decoded. 6 AI specialist agents. From label scanning to routine building — every decision backed by real intelligence.
+              5,800+ products. 14,400+ ingredients decoded. 6 AI specialist agents. From label scanning to routine building — every decision backed by real intelligence.
             </motion.p>
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/register" className="glass-button-primary text-base py-3 px-8">

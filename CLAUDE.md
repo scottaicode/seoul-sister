@@ -4810,8 +4810,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 9.0.0 (Data Quality Hardening — Skincare-Only Filter, Non-Skincare Cleanup, Price Expansion)
-**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 5,900+ products (skincare only), 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 13 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed — non-skincare products automatically rejected at pipeline level.
+**Version**: 9.1.0 (Cosmetics Pass-2 Cleanup — ILIKE Pattern Sweep + Extractor Hardening)
+**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 5,800+ products (skincare only), 14,400+ ingredients, 221,000+ links, 590+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 13 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 ### Deployment Status
@@ -4827,6 +4827,13 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v9.1.0 (Feb 28, 2026): Cosmetics Pass-2 Cleanup — ILIKE Pattern Sweep + Extractor Hardening
+  - **Root cause**: Pass-1 cleanup (v9.0.0) used exact `.in('subcategory', [...])` matching, missing variant subcategories like "volume mascara", "cream blush", "pencil eyeliner", "under eye concealer", "foundation SPF". User spotted Etude Double Lasting Foundation SPF42 on the live site
+  - **Pass-2 ILIKE cleanup**: Created `scripts/cleanup-cosmetics-pass2.ts` using ILIKE patterns (`.or('subcategory.ilike.%mascara%,...')`) for broader matching. KEEP_SUBCATEGORIES whitelist preserves legitimate skincare: makeup remover, eye makeup remover, makeup sun cream, makeup base sunscreen. Result: 92 matched, 18 kept, 74 deleted. Products: 5,926 → 5,852
+  - **Extractor prompt hardened** (`src/lib/pipeline/extractor.ts`): Expanded `EXTRACTION_SYSTEM_PROMPT` with exhaustive cosmetic rejection categories — eye makeup (ALL types: mascara, eyeliner pencil/pen/gel/liquid, eyeshadow palette/single/stick, false lashes, brow pencil/mascara/product), face makeup (ALL types: foundation, cushion, concealer, blush, contour, setting powder, primer, highlighter, bronzer), lip color (lipstick, lip tint, lip gloss, lip liner), hair care, body care, fragrance, nail care, tools/accessories. Exception list preserved: makeup REMOVER, lip BALM/treatment, sunscreen, BB/CC with skincare benefits
+  - **Product counts updated across 6 files**: "5,900+" → "5,800+" in `public/llms.txt`, `src/lib/yuri/advisor.ts`, `src/app/page.tsx`, `src/app/api/widget/chat/route.ts`, `src/app/api/cron/generate-content/route.ts`, `CLAUDE.md`
+  - **Scripts created**: `scripts/cleanup-cosmetics-pass2.ts` (one-time ILIKE pattern cosmetic removal with KEEP whitelist)
+  - **Database impact**: 5,926 → 5,852 products. Remaining "makeup" subcategories verified skincare-only: eye makeup remover, makeup remover, makeup sun cream, makeup base sunscreen
 - v9.0.0 (Feb 28, 2026): Data Quality Hardening — Skincare-Only Filter, Non-Skincare Cleanup, Price Expansion
   - **Cron health audit**: Verified all 12 active crons healthy (13th `generate-content` intentionally disabled). Pipeline chain confirmed operational: scrape → extract → link → trends → prices all running on schedule
   - **Fix 1 — Price scraping coverage expanded** (`src/app/api/cron/refresh-prices/route.ts`): Soko Glam batch size increased from 10 to 25 products per run (~100 products/day, up from ~52). YesStyle removed from cron entirely — Playwright cold start (~10s) consumed too much of the 60s budget for only 3 products. YesStyle remains available via CLI/admin. Budget math: 25 × 1.5s ≈ 37.5s within 52s timeout guard
