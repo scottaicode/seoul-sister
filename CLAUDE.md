@@ -208,6 +208,24 @@ Each specialist has deep domain prompts (200-400 words), extracts intelligence a
 | Payments | Stripe | Subscriptions only (no product commerce) |
 | Hosting | Vercel | Edge functions, automatic SSL |
 | Distribution | PWA | No App Store dependency, Stripe at 2.9% vs Apple 30% |
+| Analytics | Google Analytics 4 | Measurement ID: G-L3VXSLT781 |
+| Analytics | Vercel Analytics | Automatic page views + Web Vitals |
+| Analytics | Vercel SpeedInsights | Core Web Vitals monitoring (LCP, FID, CLS) |
+
+### Analytics & Tracking
+
+All analytics are configured in `src/app/layout.tsx`:
+
+| Tool | Implementation | Purpose |
+|------|---------------|---------|
+| **Google Analytics 4** | `<Script>` with `afterInteractive` strategy | User behavior, traffic sources, conversions |
+| **Vercel Analytics** | `<Analytics />` component | Automatic page views, Web Vitals |
+| **Vercel SpeedInsights** | `<SpeedInsights />` component | Core Web Vitals (LCP, FID, CLS) |
+| **JSON-LD** | `dangerouslySetInnerHTML` in `<body>` | Organization schema + SearchAction for Google sitelinks |
+
+**GA4 Measurement ID**: `G-L3VXSLT781`
+
+**Structured Data**: Organization schema with `SearchAction` targeting `/products?search={query}` for Google sitelinks search box. Additional JSON-LD on blog posts (Article, BreadcrumbList) and product pages (Product, AggregateRating).
 
 ### PWA Architecture (Critical Decision)
 
@@ -4810,9 +4828,11 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 9.1.0 (Cosmetics Pass-2 Cleanup — ILIKE Pattern Sweep + Extractor Hardening)
-**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 5,800+ products (skincare only), 14,400+ ingredients, 207,000+ links, 550+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 13 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level.
+**Version**: 9.2.0 (Google Analytics 4 Integration + Vercel Analytics)
+**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 5,800+ products (skincare only), 14,400+ ingredients, 207,000+ links, 550+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 13 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level. GA4 (G-L3VXSLT781) + Vercel Analytics + SpeedInsights live.
 **AI Advisor**: Yuri (유리) - "Glass"
+
+**Changelog**: See `CHANGELOG.md` for full version history.
 
 ### Deployment Status
 - **Vercel**: Live at seoul-sister.vercel.app
