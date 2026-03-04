@@ -123,20 +123,14 @@ export async function aggregateRedditTrends(
 
     const previousCount = previousByProductId.size
 
-    // 3. Delete existing reddit entries (we replace each run)
-    const { count: deletedCount } = await supabase
-      .from('ss_trending_products')
-      .delete({ count: 'exact' })
-      .eq('source', 'reddit')
-
-    result.removed = deletedCount ?? 0
-
-    // 4. Filter to meaningful mentions only (at least 1 mention with upvotes)
+    // 3. Filter to meaningful mentions only (at least 1 mention with upvotes)
     const significantMentions = scanResult.aggregates.filter(
       agg => agg.mention_count >= 1 && agg.total_upvotes >= 2
     )
 
-    // 5. Upsert each aggregate
+    // 4. UPSERT each aggregate (replaces DELETE+INSERT to preserve history)
+    const todaysProductIds = new Set<string>()
+
     for (const agg of significantMentions) {
       const trendScore = calculateRedditTrendScore(agg)
       const prev = previousByProductId.get(agg.product_id)
@@ -147,42 +141,113 @@ export async function aggregateRedditTrends(
       const previousMentions = prev?.mention_count ?? 0
       const mentionChange = agg.mention_count - previousMentions
 
-      const { error: insertError } = await supabase
-        .from('ss_trending_products')
-        .insert({
-          product_id: agg.product_id,
-          source: 'reddit',
-          source_product_name: agg.product_name,
-          source_product_brand: agg.product_brand,
-          source_url: agg.top_post_url,
-          trend_score: trendScore,
-          mention_count: agg.mention_count,
-          sentiment_score: agg.avg_sentiment,
-          days_on_list: daysOnList,
-          first_seen_at: firstSeenAt,
-          rank_change: mentionChange,
-          data_date: today,
-          raw_data: {
-            weighted_mention_count: agg.weighted_mention_count,
-            total_upvotes: agg.total_upvotes,
-            total_comments: agg.total_comments,
-            subreddits: agg.subreddits,
-            top_post_title: agg.top_post_title,
-            post_count: agg.posts.length,
-            top_posts: agg.posts.slice(0, 5).map(p => ({
-              subreddit: p.subreddit,
-              score: p.score,
-              url: p.url,
-            })),
-          },
-          trending_since: firstSeenAt,
-        })
+      todaysProductIds.add(agg.product_id)
 
-      if (insertError) {
-        result.errors.push(`Insert error for ${agg.product_brand} ${agg.product_name}: ${insertError.message}`)
+      const row = {
+        product_id: agg.product_id,
+        source: 'reddit' as const,
+        source_product_name: agg.product_name,
+        source_product_brand: agg.product_brand,
+        source_url: agg.top_post_url,
+        trend_score: trendScore,
+        mention_count: agg.mention_count,
+        sentiment_score: agg.avg_sentiment,
+        days_on_list: daysOnList,
+        first_seen_at: firstSeenAt,
+        rank_change: mentionChange,
+        data_date: today,
+        raw_data: {
+          weighted_mention_count: agg.weighted_mention_count,
+          total_upvotes: agg.total_upvotes,
+          total_comments: agg.total_comments,
+          subreddits: agg.subreddits,
+          top_post_title: agg.top_post_title,
+          post_count: agg.posts.length,
+          top_posts: agg.posts.slice(0, 5).map(p => ({
+            subreddit: p.subreddit,
+            score: p.score,
+            url: p.url,
+          })),
+        },
+        trending_since: firstSeenAt,
+      }
+
+      // UPSERT: update existing row for this product+source, insert if new
+      const { error: upsertError } = await supabase
+        .from('ss_trending_products')
+        .upsert(row, { onConflict: 'source,product_id', ignoreDuplicates: false })
+
+      if (upsertError) {
+        // Fallback to plain insert if upsert conflict column doesn't exist
+        const { error: fallbackError } = await supabase
+          .from('ss_trending_products')
+          .insert(row)
+        if (fallbackError) {
+          result.errors.push(`Upsert error for ${agg.product_brand} ${agg.product_name}: ${fallbackError.message}`)
+        } else {
+          result.upserted++
+        }
       } else {
         result.upserted++
       }
+    }
+
+    // 5. Remove reddit entries for products NOT mentioned in today's scan
+    const { data: currentRedditTrends } = await supabase
+      .from('ss_trending_products')
+      .select('id, product_id')
+      .eq('source', 'reddit')
+
+    const staleIds = (currentRedditTrends ?? [])
+      .filter(t => t.product_id && !todaysProductIds.has(t.product_id))
+      .map(t => t.id)
+
+    if (staleIds.length > 0) {
+      const { count: removedCount } = await supabase
+        .from('ss_trending_products')
+        .delete({ count: 'exact' })
+        .in('id', staleIds)
+      result.removed = removedCount ?? 0
+      console.log(`[reddit-aggregator] Removed ${result.removed} products no longer mentioned`)
+    }
+
+    // 5b. Archive today's reddit snapshot to ss_trending_history (non-critical)
+    try {
+      const { data: todaysTrends } = await supabase
+        .from('ss_trending_products')
+        .select('product_id, source, source_product_name, source_product_brand, source_url, trend_score, mention_count, sentiment_score, rank_position, rank_change, days_on_list, gap_score, data_date, raw_data')
+        .eq('source', 'reddit')
+
+      if (todaysTrends && todaysTrends.length > 0) {
+        const historyRows = todaysTrends.map(t => ({
+          product_id: t.product_id,
+          source: t.source,
+          source_product_name: t.source_product_name,
+          source_product_brand: t.source_product_brand,
+          source_url: t.source_url,
+          trend_score: t.trend_score,
+          mention_count: t.mention_count,
+          sentiment_score: t.sentiment_score,
+          rank_position: t.rank_position,
+          rank_change: t.rank_change,
+          days_on_list: t.days_on_list,
+          gap_score: t.gap_score,
+          data_date: t.data_date ?? today,
+          raw_data: t.raw_data,
+        }))
+
+        const { error: historyError } = await supabase
+          .from('ss_trending_history')
+          .upsert(historyRows, { onConflict: 'source,product_id,source_product_name,data_date', ignoreDuplicates: true })
+
+        if (historyError) {
+          console.warn(`[reddit-aggregator] History archive failed (non-critical): ${historyError.message}`)
+        } else {
+          console.log(`[reddit-aggregator] Archived ${historyRows.length} rows to ss_trending_history`)
+        }
+      }
+    } catch (archiveErr) {
+      console.warn(`[reddit-aggregator] History archive error (non-critical): ${archiveErr instanceof Error ? archiveErr.message : archiveErr}`)
     }
 
     // 6. Update tracking record

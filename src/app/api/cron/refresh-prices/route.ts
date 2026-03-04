@@ -7,15 +7,16 @@ import { PricePipeline } from '@/lib/pipeline/price-pipeline'
  * POST /api/cron/refresh-prices
  *
  * Runs every 6 hours (via vercel.json).
- * Three responsibilities:
+ * Four responsibilities:
  * 1. Actively scrape fresh prices from Soko Glam (Shopify JSON API,
  *    no Playwright, fast and reliable) — 25 products per run
- * 2. Snapshot all current prices into ss_price_history for trend analysis
- * 3. Detect significant price drops and create trend signals
+ * 2. If time budget remains (>20s), scrape YesStyle via Playwright
+ *    with a small batch (5 products). Playwright cold-start is ~10s
+ *    so this only runs when Soko Glam finishes quickly
+ * 3. Snapshot all current prices into ss_price_history for trend analysis
+ * 4. Detect significant price drops and create trend signals
  *
- * YesStyle removed from cron — Playwright cold start (~10s) consumed
- * too much of the 60s budget for only 3 products. Run via admin/CLI.
- * Amazon, StyleKorean also CLI-only (CAPTCHA/AJAX issues).
+ * Amazon, StyleKorean are CLI-only (CAPTCHA/AJAX issues).
  *
  * Secured with CRON_SECRET header.
  */
@@ -36,17 +37,12 @@ export async function POST(request: Request) {
     const scrapeResults: Array<{ retailer: string; searched: number; matched: number; errors: number }> = []
 
     // ---------------------------------------------------------------
-    // Phase 1: Active price scraping from Soko Glam
-    // Budget: ~40s (leave 12s for Phase 2+3 and response)
-    //
-    // Soko Glam: Shopify JSON API, ~1.5s per product (fetch + delay)
+    // Phase 1a: Active price scraping from Soko Glam
+    // Budget: ~40s (Shopify JSON API, ~1.5s per product)
     //   batch_size=25 × 1.5s ≈ 37.5s
-    //
-    // YesStyle removed from cron — Playwright cold start (~10s) ate
-    // too much budget for only 3 products. Run via CLI/admin instead.
     // ---------------------------------------------------------------
+    const pipeline = new PricePipeline()
     try {
-      const pipeline = new PricePipeline()
       try {
         const sokoStats = await pipeline.run(db, {
           retailer: 'soko_glam',
@@ -64,9 +60,39 @@ export async function POST(request: Request) {
         scrapeResults.push({ retailer: 'soko_glam', searched: 0, matched: 0, errors: 1 })
       }
 
-      await pipeline.cleanup()
+      // ---------------------------------------------------------------
+      // Phase 1b: YesStyle (Playwright) — time-budget conditional
+      // Only runs if Soko Glam finished with >20s remaining.
+      // Playwright cold-start ~10s + 5 products × ~2s = ~20s total.
+      // This gives ~100 products/day across 4 runs (25 Soko + 5 YesStyle).
+      // ---------------------------------------------------------------
+      const elapsedAfterSoko = Date.now() - startedAt
+      const yesstyleBudgetMs = 20000 // Need at least 20s for Playwright + small batch
+      if (elapsedAfterSoko < timeoutGuardMs - yesstyleBudgetMs) {
+        try {
+          console.log(`[cron:refresh-prices] Soko Glam took ${Math.round(elapsedAfterSoko / 1000)}s — running YesStyle with remaining budget`)
+          const yesStats = await pipeline.run(db, {
+            retailer: 'yesstyle',
+            batch_size: 5,
+            stale_hours: 12, // More lenient — YesStyle prices change less frequently
+          })
+          scrapeResults.push({
+            retailer: 'yesstyle',
+            searched: yesStats.products_searched,
+            matched: yesStats.prices_matched,
+            errors: yesStats.errors.length,
+          })
+        } catch (error) {
+          console.error('[cron:refresh-prices] YesStyle scrape failed:', error instanceof Error ? error.message : error)
+          scrapeResults.push({ retailer: 'yesstyle', searched: 0, matched: 0, errors: 1 })
+        }
+      } else {
+        console.log(`[cron:refresh-prices] Soko Glam took ${Math.round(elapsedAfterSoko / 1000)}s — skipping YesStyle (insufficient time budget)`)
+      }
     } catch (error) {
       console.error('[cron:refresh-prices] Price pipeline error:', error instanceof Error ? error.message : error)
+    } finally {
+      await pipeline.cleanup()
     }
 
     // ---------------------------------------------------------------

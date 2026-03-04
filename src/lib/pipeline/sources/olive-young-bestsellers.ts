@@ -485,13 +485,10 @@ export class OliveYoungBestsellerScraper {
         }
       }
 
-      // 5. Delete old olive_young entries (we replace them each run)
-      await supabase
-        .from('ss_trending_products')
-        .delete()
-        .eq('source', 'olive_young')
+      // 5. Build upsert batch and track which products are in today's scrape
+      const todaysProductKeys = new Set<string>()
 
-      // 6. Match, filter, and upsert each bestseller
+      // 6. Match, filter, and upsert each bestseller (UPSERT replaces DELETE+INSERT)
       for (const bestseller of scrapeResult.products) {
         const match = this.matchProduct(bestseller)
 
@@ -523,38 +520,114 @@ export class OliveYoungBestsellerScraper {
           daysOnList
         )
 
-        const { error: insertError } = await supabase
-          .from('ss_trending_products')
-          .insert({
-            product_id: match.matched_product_id,
-            source: 'olive_young',
-            source_product_name: bestseller.name,
-            source_product_brand: bestseller.brand,
-            source_url: bestseller.source_url,
-            trend_score: trendScore,
-            mention_count: bestseller.rank, // Use rank as "mention" for display
-            sentiment_score: 0.9, // Sales data = positive sentiment
-            rank_position: bestseller.rank,
-            previous_rank_position: previousRank,
-            rank_change: rankChange,
-            days_on_list: daysOnList,
-            first_seen_at: firstSeenAt,
-            data_date: today,
-            raw_data: {
-              source_id: bestseller.source_id,
-              price_usd: bestseller.price_usd,
-              image_url: bestseller.image_url,
-              match_confidence: match.match_confidence,
-              match_method: match.match_method,
-            },
-            trending_since: firstSeenAt,
-          })
+        todaysProductKeys.add(prevKey)
 
-        if (insertError) {
-          result.errors.push(`Insert error for ${bestseller.name}: ${insertError.message}`)
+        const row = {
+          product_id: match.matched_product_id,
+          source: 'olive_young' as const,
+          source_product_name: bestseller.name,
+          source_product_brand: bestseller.brand,
+          source_url: bestseller.source_url,
+          trend_score: trendScore,
+          mention_count: bestseller.rank, // Use rank as "mention" for display
+          sentiment_score: 0.9, // Sales data = positive sentiment
+          rank_position: bestseller.rank,
+          previous_rank_position: previousRank,
+          rank_change: rankChange,
+          days_on_list: daysOnList,
+          first_seen_at: firstSeenAt,
+          data_date: today,
+          raw_data: {
+            source_id: bestseller.source_id,
+            price_usd: bestseller.price_usd,
+            image_url: bestseller.image_url,
+            match_confidence: match.match_confidence,
+            match_method: match.match_method,
+          },
+          trending_since: firstSeenAt,
+        }
+
+        // UPSERT: update if this source+product already exists, insert otherwise
+        const { error: upsertError } = match.matched_product_id
+          ? await supabase
+              .from('ss_trending_products')
+              .upsert(row, { onConflict: 'source,product_id', ignoreDuplicates: false })
+          : await supabase
+              .from('ss_trending_products')
+              .insert(row)
+
+        if (upsertError) {
+          // Fallback: try plain insert (conflict column may not exist)
+          const { error: fallbackError } = await supabase
+            .from('ss_trending_products')
+            .insert(row)
+          if (fallbackError) {
+            result.errors.push(`Upsert error for ${bestseller.name}: ${fallbackError.message}`)
+          } else {
+            result.upserted++
+          }
         } else {
           result.upserted++
         }
+      }
+
+      // 6b. Remove olive_young entries NOT in today's scrape (products that dropped off)
+      const { data: currentOYTrends } = await supabase
+        .from('ss_trending_products')
+        .select('id, source_product_name')
+        .eq('source', 'olive_young')
+
+      const staleIds = (currentOYTrends ?? [])
+        .filter(t => t.source_product_name && !todaysProductKeys.has(normalize(t.source_product_name)))
+        .map(t => t.id)
+
+      if (staleIds.length > 0) {
+        await supabase
+          .from('ss_trending_products')
+          .delete()
+          .in('id', staleIds)
+        console.log(`[bestsellers] Removed ${staleIds.length} products no longer on bestseller list`)
+      }
+
+      // 6c. Archive today's snapshot to ss_trending_history (non-critical)
+      try {
+        const { data: todaysTrends } = await supabase
+          .from('ss_trending_products')
+          .select('product_id, source, source_product_name, source_product_brand, source_url, trend_score, mention_count, sentiment_score, rank_position, rank_change, days_on_list, gap_score, data_date, raw_data')
+          .eq('source', 'olive_young')
+
+        if (todaysTrends && todaysTrends.length > 0) {
+          const historyRows = todaysTrends.map(t => ({
+            product_id: t.product_id,
+            source: t.source,
+            source_product_name: t.source_product_name,
+            source_product_brand: t.source_product_brand,
+            source_url: t.source_url,
+            trend_score: t.trend_score,
+            mention_count: t.mention_count,
+            sentiment_score: t.sentiment_score,
+            rank_position: t.rank_position,
+            rank_change: t.rank_change,
+            days_on_list: t.days_on_list,
+            gap_score: t.gap_score,
+            data_date: t.data_date ?? today,
+            raw_data: t.raw_data,
+          }))
+
+          // Use upsert with unique index to avoid duplicate snapshots
+          const { error: historyError } = await supabase
+            .from('ss_trending_history')
+            .upsert(historyRows, { onConflict: 'source,product_id,source_product_name,data_date', ignoreDuplicates: true })
+
+          if (historyError) {
+            console.warn(`[bestsellers] History archive failed (non-critical): ${historyError.message}`)
+          } else {
+            console.log(`[bestsellers] Archived ${historyRows.length} rows to ss_trending_history`)
+          }
+        }
+      } catch (archiveErr) {
+        // History archival is non-critical — don't fail the pipeline
+        console.warn(`[bestsellers] History archive error (non-critical): ${archiveErr instanceof Error ? archiveErr.message : archiveErr}`)
       }
 
       // 7. Update scrape tracking record

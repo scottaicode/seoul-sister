@@ -30,24 +30,11 @@ export async function POST(request: Request) {
 
     // For each climate zone, generate seasonal skincare patterns
     for (const [climate, season] of Object.entries(climateSeasons)) {
-      // Get current effective ingredients for this climate
-      const { data: patterns } = await db
-        .from('ss_learning_patterns')
-        .select('*')
-        .eq('pattern_type', 'seasonal')
-        .eq('skin_type', climate)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-
-      // Only regenerate if no recent pattern (within 25 days)
-      if (
-        patterns &&
-        patterns.length > 0 &&
-        new Date(patterns[0].updated_at).getTime() >
-          Date.now() - 25 * 24 * 60 * 60 * 1000
-      ) {
-        continue
-      }
+      // Always regenerate seasonal patterns on the monthly run.
+      // The Sonnet call is cheap (~$0.01 per climate zone) and seasonal
+      // data should reflect the current month, not stale patterns.
+      // Previously had a 25-day freshness check that caused the monthly
+      // cron to skip — the check window was shorter than the cron interval.
 
       // Use Sonnet to generate seasonal adjustment recommendations
       const response = await client.messages.create({
