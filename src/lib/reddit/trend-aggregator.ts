@@ -227,7 +227,9 @@ export async function aggregateRedditTrends(
       console.log(`[reddit-aggregator] Removed ${result.removed} products no longer mentioned`)
     }
 
-    // 5b. Archive today's reddit snapshot to ss_trending_history (non-critical)
+    // 5b. Archive today's reddit snapshot to ss_trending_history (non-critical).
+    //     The unique index uses COALESCE expressions, so Supabase JS .upsert()
+    //     onConflict can't reference it. Use select-then-update/insert instead.
     try {
       const { data: todaysTrends } = await supabase
         .from('ss_trending_products')
@@ -235,32 +237,59 @@ export async function aggregateRedditTrends(
         .eq('source', 'reddit')
 
       if (todaysTrends && todaysTrends.length > 0) {
-        const historyRows = todaysTrends.map(t => ({
-          product_id: t.product_id,
-          source: t.source,
-          source_product_name: t.source_product_name,
-          source_product_brand: t.source_product_brand,
-          source_url: t.source_url,
-          trend_score: t.trend_score,
-          mention_count: t.mention_count,
-          sentiment_score: t.sentiment_score,
-          rank_position: t.rank_position,
-          rank_change: t.rank_change,
-          days_on_list: t.days_on_list,
-          gap_score: t.gap_score,
-          data_date: t.data_date ?? today,
-          raw_data: t.raw_data,
-        }))
+        let archived = 0
+        for (const t of todaysTrends) {
+          const historyRow = {
+            product_id: t.product_id,
+            source: t.source,
+            source_product_name: t.source_product_name,
+            source_product_brand: t.source_product_brand,
+            source_url: t.source_url,
+            trend_score: t.trend_score,
+            mention_count: t.mention_count,
+            sentiment_score: t.sentiment_score,
+            rank_position: t.rank_position,
+            rank_change: t.rank_change,
+            days_on_list: t.days_on_list,
+            gap_score: t.gap_score,
+            data_date: t.data_date ?? today,
+            raw_data: t.raw_data,
+          }
 
-        const { error: historyError } = await supabase
-          .from('ss_trending_history')
-          .upsert(historyRows, { onConflict: 'source,product_id,source_product_name,data_date', ignoreDuplicates: true })
+          // Check for existing history row for this source+product+name+date
+          let query = supabase
+            .from('ss_trending_history')
+            .select('id')
+            .eq('source', t.source)
+            .eq('data_date', historyRow.data_date)
 
-        if (historyError) {
-          console.warn(`[reddit-aggregator] History archive failed (non-critical): ${historyError.message}`)
-        } else {
-          console.log(`[reddit-aggregator] Archived ${historyRows.length} rows to ss_trending_history`)
+          if (t.product_id) {
+            query = query.eq('product_id', t.product_id)
+          } else {
+            query = query.is('product_id', null)
+          }
+
+          if (t.source_product_name) {
+            query = query.eq('source_product_name', t.source_product_name)
+          } else {
+            query = query.is('source_product_name', null)
+          }
+
+          const { data: existingHistory } = await query.maybeSingle()
+
+          if (existingHistory) {
+            await supabase
+              .from('ss_trending_history')
+              .update(historyRow)
+              .eq('id', existingHistory.id)
+          } else {
+            await supabase
+              .from('ss_trending_history')
+              .insert(historyRow)
+          }
+          archived++
         }
+        console.log(`[reddit-aggregator] Archived ${archived} rows to ss_trending_history`)
       }
     } catch (archiveErr) {
       console.warn(`[reddit-aggregator] History archive error (non-critical): ${archiveErr instanceof Error ? archiveErr.message : archiveErr}`)

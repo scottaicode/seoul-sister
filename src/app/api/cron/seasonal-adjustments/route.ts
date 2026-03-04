@@ -28,22 +28,20 @@ export async function POST(request: Request) {
       cold: getSeasonForMonth(month, 'cold'),
     }
 
-    // For each climate zone, generate seasonal skincare patterns
-    for (const [climate, season] of Object.entries(climateSeasons)) {
-      // Always regenerate seasonal patterns on the monthly run.
-      // The Sonnet call is cheap (~$0.01 per climate zone) and seasonal
-      // data should reflect the current month, not stale patterns.
-      // Previously had a 25-day freshness check that caused the monthly
-      // cron to skip — the check window was shorter than the cron interval.
+    // Run all 5 climate zones in parallel to stay within the 60s Vercel timeout.
+    // Sequential execution (~10s per Sonnet call × 5 = ~50s) left no margin.
+    const climateEntries = Object.entries(climateSeasons)
 
-      // Use Sonnet to generate seasonal adjustment recommendations
-      const response = await client.messages.create({
-        model: MODELS.background,
-        max_tokens: 500,
-        messages: [
-          {
-            role: 'user',
-            content: `Generate K-beauty seasonal skincare adjustment recommendations for:
+    const results = await Promise.allSettled(
+      climateEntries.map(async ([climate, season]) => {
+        // Use Sonnet to generate seasonal adjustment recommendations
+        const response = await client.messages.create({
+          model: MODELS.background,
+          max_tokens: 500,
+          messages: [
+            {
+              role: 'user',
+              content: `Generate K-beauty seasonal skincare adjustment recommendations for:
 - Climate: ${climate}
 - Current season: ${season}
 - Month: ${month}
@@ -61,22 +59,19 @@ Return JSON with these fields:
 }
 
 Return ONLY valid JSON.`,
-          },
-        ],
-      })
+            },
+          ],
+        })
 
-      const block = response.content[0]
-      if (block.type !== 'text') {
-        console.error(`[seasonal] ${climate}: Sonnet returned non-text block type: ${block.type}`)
-        continue
-      }
+        const block = response.content[0]
+        if (block.type !== 'text') {
+          throw new Error(`Sonnet returned non-text block type: ${block.type}`)
+        }
 
-      try {
         const text = block.text.trim()
         const jsonMatch = text.match(/\{[\s\S]*\}/)
         if (!jsonMatch) {
-          console.error(`[seasonal] ${climate}: No JSON found in Sonnet response: ${text.substring(0, 200)}`)
-          continue
+          throw new Error(`No JSON found in Sonnet response: ${text.substring(0, 200)}`)
         }
         const seasonalData = JSON.parse(jsonMatch[0])
 
@@ -89,8 +84,7 @@ Return ONLY valid JSON.`,
           .maybeSingle()
 
         if (selectError) {
-          console.error(`[seasonal] ${climate}: Select error: ${selectError.message}`)
-          continue
+          throw new Error(`Select error: ${selectError.message}`)
         }
 
         if (existing) {
@@ -104,8 +98,7 @@ Return ONLY valid JSON.`,
             })
             .eq('id', existing.id)
           if (updateError) {
-            console.error(`[seasonal] ${climate}: Update error: ${updateError.message}`)
-            continue
+            throw new Error(`Update error: ${updateError.message}`)
           }
         } else {
           const { error: insertError } = await db.from('ss_learning_patterns').insert({
@@ -119,15 +112,23 @@ Return ONLY valid JSON.`,
             sample_size: 1,
           })
           if (insertError) {
-            console.error(`[seasonal] ${climate}: Insert error: ${insertError.message}`)
-            continue
+            throw new Error(`Insert error: ${insertError.message}`)
           }
         }
 
-        patternsGenerated++
         console.log(`[seasonal] ${climate}/${season}: pattern generated`)
-      } catch (err) {
-        console.error(`[seasonal] Failed to process ${climate}: ${err instanceof Error ? err.message : String(err)}`)
+        return climate
+      })
+    )
+
+    // Count successes and log failures
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i]
+      const [climate] = climateEntries[i]
+      if (result.status === 'fulfilled') {
+        patternsGenerated++
+      } else {
+        console.error(`[seasonal] Failed to process ${climate}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`)
       }
     }
 
