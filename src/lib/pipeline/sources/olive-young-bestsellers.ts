@@ -573,7 +573,7 @@ export class OliveYoungBestsellerScraper {
               .upsert(row, { onConflict: 'source,product_id', ignoreDuplicates: false })
           : await supabase
               .from('ss_trending_products')
-              .insert(row)
+              .upsert(row, { onConflict: 'source,source_product_name', ignoreDuplicates: false })
 
         if (upsertError) {
           result.errors.push(`Upsert error for ${bestseller.name}: ${upsertError.message}`)
