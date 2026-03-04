@@ -133,6 +133,7 @@ Return ONLY valid JSON.`,
       success: true,
       patterns_generated: patternsGenerated,
       seasons: climateSeasons,
+      errors: errors.length > 0 ? errors : undefined,
       processed_at: new Date().toISOString(),
     })
   } catch (error) {
