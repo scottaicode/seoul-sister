@@ -66,24 +66,35 @@ Return ONLY valid JSON.`,
       })
 
       const block = response.content[0]
-      if (block.type !== 'text') continue
+      if (block.type !== 'text') {
+        console.error(`[seasonal] ${climate}: Sonnet returned non-text block type: ${block.type}`)
+        continue
+      }
 
       try {
         const text = block.text.trim()
         const jsonMatch = text.match(/\{[\s\S]*\}/)
-        if (!jsonMatch) continue
+        if (!jsonMatch) {
+          console.error(`[seasonal] ${climate}: No JSON found in Sonnet response: ${text.substring(0, 200)}`)
+          continue
+        }
         const seasonalData = JSON.parse(jsonMatch[0])
 
-        // Upsert seasonal pattern
-        const { data: existing } = await db
+        // Upsert seasonal pattern — use maybeSingle to avoid throwing on 0 rows
+        const { data: existing, error: selectError } = await db
           .from('ss_learning_patterns')
           .select('id')
           .eq('pattern_type', 'seasonal')
           .eq('skin_type', climate)
-          .single()
+          .maybeSingle()
+
+        if (selectError) {
+          console.error(`[seasonal] ${climate}: Select error: ${selectError.message}`)
+          continue
+        }
 
         if (existing) {
-          await db
+          const { error: updateError } = await db
             .from('ss_learning_patterns')
             .update({
               data: seasonalData,
@@ -92,8 +103,12 @@ Return ONLY valid JSON.`,
               sample_size: 1,
             })
             .eq('id', existing.id)
+          if (updateError) {
+            console.error(`[seasonal] ${climate}: Update error: ${updateError.message}`)
+            continue
+          }
         } else {
-          await db.from('ss_learning_patterns').insert({
+          const { error: insertError } = await db.from('ss_learning_patterns').insert({
             pattern_type: 'seasonal',
             skin_type: climate,
             skin_concerns: [],
@@ -103,11 +118,16 @@ Return ONLY valid JSON.`,
             confidence_score: 0.85,
             sample_size: 1,
           })
+          if (insertError) {
+            console.error(`[seasonal] ${climate}: Insert error: ${insertError.message}`)
+            continue
+          }
         }
 
         patternsGenerated++
-      } catch {
-        console.error(`Failed to parse seasonal data for ${climate}`)
+        console.log(`[seasonal] ${climate}/${season}: pattern generated`)
+      } catch (err) {
+        console.error(`[seasonal] Failed to process ${climate}: ${err instanceof Error ? err.message : String(err)}`)
       }
     }
 

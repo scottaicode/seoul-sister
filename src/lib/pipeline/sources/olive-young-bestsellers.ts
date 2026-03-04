@@ -525,7 +525,10 @@ export class OliveYoungBestsellerScraper {
         console.log(`[bestsellers] Deduped ${skippedDupes} listings matching same product_id`)
       }
 
-      // 6. Upsert each bestseller (UPSERT replaces DELETE+INSERT)
+      // 6. Upsert each bestseller via select-then-update/insert pattern.
+      //    Supabase JS .upsert() onConflict cannot reference partial unique
+      //    indexes (which have WHERE clauses). Instead we check for an
+      //    existing row manually and update or insert accordingly.
       for (const { bestseller, match } of dedupedResults) {
         const prevKey = normalize(bestseller.name)
         const prev = previousByName.get(prevKey)
@@ -567,18 +570,50 @@ export class OliveYoungBestsellerScraper {
           trending_since: firstSeenAt,
         }
 
-        const { error: upsertError } = match.matched_product_id
-          ? await supabase
+        try {
+          // Find existing row: matched products keyed by product_id, unmatched by source_product_name
+          let existingId: string | null = null
+          if (match.matched_product_id) {
+            const { data: existing } = await supabase
               .from('ss_trending_products')
-              .upsert(row, { onConflict: 'source,product_id', ignoreDuplicates: false })
-          : await supabase
+              .select('id')
+              .eq('source', 'olive_young')
+              .eq('product_id', match.matched_product_id)
+              .maybeSingle()
+            existingId = existing?.id ?? null
+          } else {
+            const { data: existing } = await supabase
               .from('ss_trending_products')
-              .upsert(row, { onConflict: 'source,source_product_name', ignoreDuplicates: false })
+              .select('id')
+              .eq('source', 'olive_young')
+              .is('product_id', null)
+              .eq('source_product_name', bestseller.name)
+              .maybeSingle()
+            existingId = existing?.id ?? null
+          }
 
-        if (upsertError) {
-          result.errors.push(`Upsert error for ${bestseller.name}: ${upsertError.message}`)
-        } else {
-          result.upserted++
+          if (existingId) {
+            const { error: updateError } = await supabase
+              .from('ss_trending_products')
+              .update(row)
+              .eq('id', existingId)
+            if (updateError) {
+              result.errors.push(`Update error for ${bestseller.name}: ${updateError.message}`)
+            } else {
+              result.upserted++
+            }
+          } else {
+            const { error: insertError } = await supabase
+              .from('ss_trending_products')
+              .insert(row)
+            if (insertError) {
+              result.errors.push(`Insert error for ${bestseller.name}: ${insertError.message}`)
+            } else {
+              result.upserted++
+            }
+          }
+        } catch (err) {
+          result.errors.push(`Error for ${bestseller.name}: ${err instanceof Error ? err.message : String(err)}`)
         }
       }
 

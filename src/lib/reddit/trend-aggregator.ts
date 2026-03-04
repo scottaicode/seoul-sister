@@ -172,23 +172,39 @@ export async function aggregateRedditTrends(
         trending_since: firstSeenAt,
       }
 
-      // UPSERT: update existing row for this product+source, insert if new
-      const { error: upsertError } = await supabase
-        .from('ss_trending_products')
-        .upsert(row, { onConflict: 'source,product_id', ignoreDuplicates: false })
-
-      if (upsertError) {
-        // Fallback to plain insert if upsert conflict column doesn't exist
-        const { error: fallbackError } = await supabase
+      // Select-then-update/insert pattern.
+      // Supabase JS .upsert() onConflict cannot reference partial unique
+      // indexes (which have WHERE clauses). Check for existing row manually.
+      try {
+        const { data: existing } = await supabase
           .from('ss_trending_products')
-          .insert(row)
-        if (fallbackError) {
-          result.errors.push(`Upsert error for ${agg.product_brand} ${agg.product_name}: ${fallbackError.message}`)
+          .select('id')
+          .eq('source', 'reddit')
+          .eq('product_id', agg.product_id)
+          .maybeSingle()
+
+        if (existing) {
+          const { error: updateError } = await supabase
+            .from('ss_trending_products')
+            .update(row)
+            .eq('id', existing.id)
+          if (updateError) {
+            result.errors.push(`Update error for ${agg.product_brand} ${agg.product_name}: ${updateError.message}`)
+          } else {
+            result.upserted++
+          }
         } else {
-          result.upserted++
+          const { error: insertError } = await supabase
+            .from('ss_trending_products')
+            .insert(row)
+          if (insertError) {
+            result.errors.push(`Insert error for ${agg.product_brand} ${agg.product_name}: ${insertError.message}`)
+          } else {
+            result.upserted++
+          }
         }
-      } else {
-        result.upserted++
+      } catch (err) {
+        result.errors.push(`Error for ${agg.product_brand} ${agg.product_name}: ${err instanceof Error ? err.message : String(err)}`)
       }
     }
 
