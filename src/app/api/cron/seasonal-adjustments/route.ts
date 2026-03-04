@@ -39,7 +39,7 @@ export async function POST(request: Request) {
         const response = await callAnthropicWithRetry(() =>
           client.messages.create({
             model: MODELS.background,
-            max_tokens: 300,
+            max_tokens: 600,
             messages: [
               {
                 role: 'user',
@@ -48,19 +48,10 @@ export async function POST(request: Request) {
 - Current season: ${season}
 - Month: ${month}
 
-Return JSON with these fields:
-{
-  "season": "${season}",
-  "climate": "${climate}",
-  "texture_advice": "lighter/heavier textures recommendation",
-  "ingredients_to_emphasize": ["ingredient1", "ingredient2"],
-  "ingredients_to_reduce": ["ingredient1"],
-  "routine_adjustments": ["adjustment1", "adjustment2"],
-  "spf_advice": "seasonal SPF guidance",
-  "hydration_advice": "seasonal hydration tips"
-}
+Return a JSON object (no markdown fences, no explanation) with these fields:
+{"season":"${season}","climate":"${climate}","texture_advice":"...","ingredients_to_emphasize":["..."],"ingredients_to_reduce":["..."],"routine_adjustments":["..."],"spf_advice":"...","hydration_advice":"..."}
 
-Return ONLY valid JSON.`,
+Keep values concise (1 sentence each, 2-3 items per array). Return ONLY the raw JSON object.`,
               },
             ],
           }),
@@ -72,7 +63,9 @@ Return ONLY valid JSON.`,
           throw new Error(`Sonnet returned non-text block type: ${block.type}`)
         }
 
-        const text = block.text.trim()
+        let text = block.text.trim()
+        // Strip markdown code fences if present
+        text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '')
         const jsonMatch = text.match(/\{[\s\S]*\}/)
         if (!jsonMatch) {
           throw new Error(`No JSON found in Sonnet response: ${text.substring(0, 200)}`)
