@@ -22,7 +22,7 @@ export const MODELS = {
 // Retry wrapper for transient Anthropic API failures
 // ---------------------------------------------------------------------------
 
-const RETRYABLE_STATUS_CODES = new Set([529, 503, 502])
+const RETRYABLE_STATUS_CODES = new Set([429, 529, 503, 502])
 const RETRYABLE_ERROR_PATTERNS = [
   'Connection error',
   'overloaded',

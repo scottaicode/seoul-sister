@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getAnthropicClient, MODELS } from '@/lib/anthropic'
+import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
 import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
 
@@ -28,26 +28,21 @@ export async function POST(request: Request) {
       cold: getSeasonForMonth(month, 'cold'),
     }
 
-    // Run all 5 climate zones in parallel with staggered starts to avoid
-    // Anthropic rate-limit rejections. Each call takes ~8-10s; staggering by
-    // 1s keeps total time to ~14s, well within the 60s Vercel timeout.
-    const climateEntries = Object.entries(climateSeasons)
+    // Run 5 climate zones sequentially to avoid Anthropic rate-limit
+    // rejections. Each Sonnet call takes ~8-10s; sequential = ~50s total,
+    // within the 60s Vercel timeout. callAnthropicWithRetry handles 429s.
+    const errors: string[] = []
 
-    const results = await Promise.allSettled(
-      climateEntries.map(async ([climate, season], idx) => {
-        // Stagger starts by 1s to avoid rate-limit collisions
-        if (idx > 0) {
-          await new Promise(resolve => setTimeout(resolve, idx * 1000))
-        }
-
-        // Use Sonnet to generate seasonal adjustment recommendations
-        const response = await client.messages.create({
-          model: MODELS.background,
-          max_tokens: 500,
-          messages: [
-            {
-              role: 'user',
-              content: `Generate K-beauty seasonal skincare adjustment recommendations for:
+    for (const [climate, season] of Object.entries(climateSeasons)) {
+      try {
+        const response = await callAnthropicWithRetry(() =>
+          client.messages.create({
+            model: MODELS.background,
+            max_tokens: 500,
+            messages: [
+              {
+                role: 'user',
+                content: `Generate K-beauty seasonal skincare adjustment recommendations for:
 - Climate: ${climate}
 - Current season: ${season}
 - Month: ${month}
@@ -65,9 +60,10 @@ Return JSON with these fields:
 }
 
 Return ONLY valid JSON.`,
-            },
-          ],
-        })
+              },
+            ],
+          })
+        )
 
         const block = response.content[0]
         if (block.type !== 'text') {
@@ -122,19 +118,12 @@ Return ONLY valid JSON.`,
           }
         }
 
-        console.log(`[seasonal] ${climate}/${season}: pattern generated`)
-        return climate
-      })
-    )
-
-    // Count successes and log failures
-    for (let i = 0; i < results.length; i++) {
-      const result = results[i]
-      const [climate] = climateEntries[i]
-      if (result.status === 'fulfilled') {
         patternsGenerated++
-      } else {
-        console.error(`[seasonal] Failed to process ${climate}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`)
+        console.log(`[seasonal] ${climate}/${season}: pattern generated`)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        errors.push(`${climate}: ${msg}`)
+        console.error(`[seasonal] Failed to process ${climate}: ${msg}`)
       }
     }
 
