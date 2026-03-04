@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     // Run 5 climate zones sequentially to avoid Anthropic rate-limit
     // rejections. Each Sonnet call takes ~8-10s; sequential = ~50s total,
     // within the 60s Vercel timeout. callAnthropicWithRetry handles 429s.
+    // maxRetries=2 (one retry with 2s backoff) to stay within budget.
     const errors: string[] = []
 
     for (const [climate, season] of Object.entries(climateSeasons)) {
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
         const response = await callAnthropicWithRetry(() =>
           client.messages.create({
             model: MODELS.background,
-            max_tokens: 500,
+            max_tokens: 300,
             messages: [
               {
                 role: 'user',
@@ -62,7 +63,8 @@ Return JSON with these fields:
 Return ONLY valid JSON.`,
               },
             ],
-          })
+          }),
+          2 // maxRetries — one retry with 2s backoff to stay within 60s
         )
 
         const block = response.content[0]
