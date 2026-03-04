@@ -28,12 +28,18 @@ export async function POST(request: Request) {
       cold: getSeasonForMonth(month, 'cold'),
     }
 
-    // Run all 5 climate zones in parallel to stay within the 60s Vercel timeout.
-    // Sequential execution (~10s per Sonnet call × 5 = ~50s) left no margin.
+    // Run all 5 climate zones in parallel with staggered starts to avoid
+    // Anthropic rate-limit rejections. Each call takes ~8-10s; staggering by
+    // 1s keeps total time to ~14s, well within the 60s Vercel timeout.
     const climateEntries = Object.entries(climateSeasons)
 
     const results = await Promise.allSettled(
-      climateEntries.map(async ([climate, season]) => {
+      climateEntries.map(async ([climate, season], idx) => {
+        // Stagger starts by 1s to avoid rate-limit collisions
+        if (idx > 0) {
+          await new Promise(resolve => setTimeout(resolve, idx * 1000))
+        }
+
         // Use Sonnet to generate seasonal adjustment recommendations
         const response = await client.messages.create({
           model: MODELS.background,
