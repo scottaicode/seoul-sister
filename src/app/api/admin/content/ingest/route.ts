@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     const category = inferCategory(data.primary_keyword, data.title)
     const tags = data.secondary_keywords?.slice(0, 10) || []
 
-    const row = {
+    const row: Record<string, unknown> = {
       lgaas_post_id: data.lgaas_post_id,
       title: data.title,
       slug: sanitizeSlug(data.slug),
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       faq_schema: data.faq_schema || null,
       featured_image_url: data.featured_image_url || null,
       read_time_minutes: readTimeMinutes,
-      source: 'lgaas' as const,
+      source: 'lgaas',
       published_at: data.published_at || new Date().toISOString(),
       author: 'Seoul Sister Team',
     }
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     // PostgREST's ON CONFLICT resolution.
     const { data: existing } = await supabase
       .from('ss_content_posts')
-      .select('id')
+      .select('id, slug, previous_slugs')
       .eq('lgaas_post_id', data.lgaas_post_id)
       .maybeSingle()
 
@@ -78,6 +78,15 @@ export async function POST(request: NextRequest) {
     let error: { message: string } | null = null
 
     if (existing) {
+      // If the slug changed, preserve the old slug for 301 redirects
+      if (existing.slug && existing.slug !== row.slug) {
+        const prev: string[] = (existing.previous_slugs as string[]) || []
+        if (!prev.includes(existing.slug)) {
+          row.previous_slugs = [...prev, existing.slug]
+        }
+        console.log(`[content-ingest] Slug changed: "${existing.slug}" -> "${row.slug}" (old slug saved for redirect)`)
+      }
+
       const result = await supabase
         .from('ss_content_posts')
         .update(row)

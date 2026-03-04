@@ -22,30 +22,48 @@ export async function GET(request: NextRequest) {
     }
 
     const serviceClient = getServiceClient()
+
+    // Check Stripe-managed subscription first
     const { data: subscription } = await serviceClient
       .from('ss_subscriptions')
       .select('*')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
-    if (!subscription || subscription.status !== 'active') {
+    if (subscription?.status === 'active') {
       return NextResponse.json({
-        plan: null,
-        status: 'inactive',
-        tier: null,
-        subscription: null,
+        plan: 'pro_monthly',
+        status: subscription.status,
+        tier: SUBSCRIPTION_TIERS.pro_monthly,
+        subscription: {
+          id: subscription.id,
+          current_period_end: subscription.current_period_end,
+          canceled_at: subscription.canceled_at,
+        },
+      })
+    }
+
+    // Fallback: check profile plan (manually set, pre-Stripe)
+    const { data: profile } = await serviceClient
+      .from('ss_user_profiles')
+      .select('plan')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (profile?.plan && profile.plan !== 'free') {
+      return NextResponse.json({
+        plan: profile.plan,
+        status: 'active',
+        tier: SUBSCRIPTION_TIERS.pro_monthly,
+        subscription: null, // No Stripe subscription — manual plan
       })
     }
 
     return NextResponse.json({
-      plan: 'pro_monthly',
-      status: subscription.status,
-      tier: SUBSCRIPTION_TIERS.pro_monthly,
-      subscription: {
-        id: subscription.id,
-        current_period_end: subscription.current_period_end,
-        canceled_at: subscription.canceled_at,
-      },
+      plan: null,
+      status: 'inactive',
+      tier: null,
+      subscription: null,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Internal server error'

@@ -134,42 +134,78 @@ export default function TermsPage() {
 
       <section>
         <h2 className="text-white font-semibold text-lg mb-3 pt-4 border-t border-white/10">
-          9. Limitation of Liability
+          9. Disclaimer of Warranties
+        </h2>
+        <p>THE SERVICE IS PROVIDED &ldquo;AS IS&rdquo; AND &ldquo;AS AVAILABLE&rdquo; WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.</p>
+        <p className="mt-2">WITHOUT LIMITING THE FOREGOING, SEOUL SISTER DOES NOT WARRANT THAT:</p>
+        <ul className="list-disc pl-5 space-y-1 mt-2">
+          <li>AI-generated recommendations, ingredient analysis, or routine suggestions will be accurate, complete, or suitable for your individual needs</li>
+          <li>Counterfeit detection results will be correct in all cases</li>
+          <li>Price comparison data will be current or error-free</li>
+          <li>The service will be uninterrupted, secure, or free of errors</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="text-white font-semibold text-lg mb-3 pt-4 border-t border-white/10">
+          10. Limitation of Liability
         </h2>
         <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, SEOUL SISTER AND ITS OPERATORS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO SKIN REACTIONS, ALLERGIC RESPONSES, FINANCIAL LOSSES FROM COUNTERFEIT PRODUCTS, OR RELIANCE ON AI RECOMMENDATIONS. OUR TOTAL LIABILITY SHALL NOT EXCEED THE AMOUNT YOU PAID FOR THE SERVICE IN THE 12 MONTHS PRECEDING THE CLAIM.</p>
       </section>
 
       <section>
         <h2 className="text-white font-semibold text-lg mb-3 pt-4 border-t border-white/10">
-          10. Indemnification
+          11. Automated Decision-Making
+        </h2>
+        <p className="mb-2">Seoul Sister uses automated AI processing in several features:</p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li><strong className="text-white/90">Yuri AI Advisor:</strong> Generates personalized skincare recommendations based on your skin profile and conversation history</li>
+          <li><strong className="text-white/90">Label Scanning:</strong> AI vision analysis identifies ingredients and provides safety assessments</li>
+          <li><strong className="text-white/90">Routine Builder:</strong> Automated ingredient conflict detection and layering order suggestions</li>
+          <li><strong className="text-white/90">Personalized Matching:</strong> Automated scoring of product suitability for your skin type</li>
+          <li><strong className="text-white/90">Learning Engine:</strong> Automated aggregation of anonymized community data for effectiveness scores</li>
+        </ul>
+        <p className="mt-2">These automated processes inform recommendations but do not make binding decisions about your healthcare, financial status, or legal rights. You always make the final decision about which products to use. If you have concerns about automated processing, contact us at the email below.</p>
+      </section>
+
+      <section>
+        <h2 className="text-white font-semibold text-lg mb-3 pt-4 border-t border-white/10">
+          12. Indemnification
         </h2>
         <p>You agree to indemnify and hold harmless Seoul Sister from any claims, damages, or expenses arising from your use of the service, your content, or your violation of these terms.</p>
       </section>
 
       <section>
         <h2 className="text-white font-semibold text-lg mb-3 pt-4 border-t border-white/10">
-          11. Service Modifications
+          13. Service Modifications
         </h2>
         <p>We may modify, suspend, or discontinue any part of the service at any time. We will provide reasonable notice for material changes that affect paid subscribers.</p>
       </section>
 
       <section>
         <h2 className="text-white font-semibold text-lg mb-3 pt-4 border-t border-white/10">
-          12. Termination
+          14. Termination
         </h2>
         <p>We may suspend or terminate your account for violation of these terms. You may delete your account at any time through Settings. Upon termination, your data will be handled according to our Privacy Policy.</p>
       </section>
 
       <section>
         <h2 className="text-white font-semibold text-lg mb-3 pt-4 border-t border-white/10">
-          13. Governing Law
+          15. Governing Law
         </h2>
         <p>These terms are governed by the laws of the State of California, United States, without regard to conflict of law principles.</p>
       </section>
 
       <section>
         <h2 className="text-white font-semibold text-lg mb-3 pt-4 border-t border-white/10">
-          14. Contact
+          16. Severability
+        </h2>
+        <p>If any provision of these Terms is found to be unenforceable or invalid by a court, that provision will be limited or eliminated to the minimum extent necessary, and the remaining provisions will continue in full force and effect.</p>
+      </section>
+
+      <section>
+        <h2 className="text-white font-semibold text-lg mb-3 pt-4 border-t border-white/10">
+          17. Contact
         </h2>
         <p>For questions about these terms:</p>
         <p className="mt-2">
@@ -183,7 +219,7 @@ export default function TermsPage() {
       {/* Plain English Summary */}
       <div className="rounded-xl border border-white/10 bg-white/5 p-5">
         <h3 className="text-white font-semibold text-sm mb-2">Plain English Summary</h3>
-        <p>We built Seoul Sister to help you make smarter K-beauty decisions. Yuri is an AI, not a doctor &mdash; always check with a dermatologist for medical concerns. Your data is yours; we use it to personalize your experience and delete it when you ask. We earn money through subscriptions and affiliate links, but those never influence our AI recommendations. Be honest in reviews, don&apos;t game the system, and we&apos;ll all have a better experience.</p>
+        <p>We built Seoul Sister to help you make smarter K-beauty decisions. Yuri is an AI, not a doctor &mdash; always check with a dermatologist for medical concerns. AI features are provided &ldquo;as is&rdquo; without guarantees of accuracy. Your data is yours; we use it to personalize your experience and delete it when you ask. Yuri and our other tools use automated AI processing to generate recommendations, but you always make the final call. We earn money through subscriptions and affiliate links, but those never influence our AI recommendations. Be honest in reviews, don&apos;t game the system, and we&apos;ll all have a better experience.</p>
       </div>
 
       {/* Footer nav */}

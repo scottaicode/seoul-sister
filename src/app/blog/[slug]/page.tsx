@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { Calendar, Clock, ArrowLeft, Tag } from 'lucide-react'
@@ -76,6 +76,7 @@ export async function generateMetadata({
     .single()
 
   if (!post) {
+    // Check if slug was renamed — redirect will happen in the page component
     return { title: 'Post Not Found' }
   }
 
@@ -125,6 +126,19 @@ export default async function BlogPostPage({
     .single()
 
   if (!post) {
+    // Check if this slug was previously used by a post that was renamed
+    const { data: redirectPost } = await supabase
+      .from('ss_content_posts')
+      .select('slug')
+      .contains('previous_slugs', [slug])
+      .not('published_at', 'is', null)
+      .lte('published_at', new Date().toISOString())
+      .single()
+
+    if (redirectPost) {
+      redirect(`/blog/${redirectPost.slug}`)
+    }
+
     notFound()
   }
 

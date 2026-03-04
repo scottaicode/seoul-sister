@@ -22,15 +22,19 @@ export async function POST(request: NextRequest) {
     }
 
     const serviceClient = getServiceClient()
+
+    // Check ss_subscriptions first (Stripe-managed)
     const { data: subscription } = await serviceClient
       .from('ss_subscriptions')
       .select('stripe_customer_id')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     if (!subscription?.stripe_customer_id) {
+      // No Stripe subscription row — user has a manually-set plan or no subscription.
+      // They can't use the Stripe billing portal without a Stripe customer record.
       return NextResponse.json(
-        { error: 'No active subscription found' },
+        { error: 'No Stripe subscription found. Your plan was set up manually — contact support to manage it.' },
         { status: 404 }
       )
     }
