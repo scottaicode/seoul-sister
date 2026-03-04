@@ -485,27 +485,48 @@ export class OliveYoungBestsellerScraper {
         }
       }
 
-      // 5. Build upsert batch and track which products are in today's scrape
+      // 5. Match all products and deduplicate by product_id.
+      //    Multiple Olive Young listings (sets, bundles, limited editions) often
+      //    match the same base product in our DB. The unique index on
+      //    (source, product_id) only allows one row per product, so we keep
+      //    the highest-ranked listing for each product_id.
       const todaysProductKeys = new Set<string>()
+      const matchResults: Array<{ bestseller: BestsellerProduct; match: BestsellerMatchResult }> = []
 
-      // 6. Match, filter, and upsert each bestseller (UPSERT replaces DELETE+INSERT)
       for (const bestseller of scrapeResult.products) {
         const match = this.matchProduct(bestseller)
-
         if (match.matched_product_id) {
           result.matched++
         } else {
           result.unmatched++
         }
-
-        // Filter out non-skincare products (supplements, hair tools, devices, etc.)
         if (!isSkincareProduct(bestseller.name, bestseller.brand, match.matched_category)) {
           result.filtered++
-          console.log(`[bestsellers] Filtered non-skincare: ${bestseller.brand} - ${bestseller.name}`)
           continue
         }
+        matchResults.push({ bestseller, match })
+      }
 
-        // Calculate rank change and days on list
+      // Deduplicate: for matched products, keep only the highest-ranked (lowest rank number)
+      const seenProductIds = new Set<string>()
+      const dedupedResults: typeof matchResults = []
+
+      for (const item of matchResults) {
+        const pid = item.match.matched_product_id
+        if (pid) {
+          if (seenProductIds.has(pid)) continue // Skip lower-ranked duplicate
+          seenProductIds.add(pid)
+        }
+        dedupedResults.push(item)
+      }
+
+      const skippedDupes = matchResults.length - dedupedResults.length
+      if (skippedDupes > 0) {
+        console.log(`[bestsellers] Deduped ${skippedDupes} listings matching same product_id`)
+      }
+
+      // 6. Upsert each bestseller (UPSERT replaces DELETE+INSERT)
+      for (const { bestseller, match } of dedupedResults) {
         const prevKey = normalize(bestseller.name)
         const prev = previousByName.get(prevKey)
         const previousRank = prev?.rank_position ?? null
@@ -513,7 +534,6 @@ export class OliveYoungBestsellerScraper {
         const daysOnList = prev ? (prev.days_on_list ?? 0) + 1 : 1
         const firstSeenAt = prev?.first_seen_at ?? new Date().toISOString()
 
-        // Calculate trend score from rank
         const trendScore = calculateOliveYoungTrendScore(
           bestseller.rank,
           previousRank,
@@ -529,8 +549,8 @@ export class OliveYoungBestsellerScraper {
           source_product_brand: bestseller.brand,
           source_url: bestseller.source_url,
           trend_score: trendScore,
-          mention_count: bestseller.rank, // Use rank as "mention" for display
-          sentiment_score: 0.9, // Sales data = positive sentiment
+          mention_count: bestseller.rank,
+          sentiment_score: 0.9,
           rank_position: bestseller.rank,
           previous_rank_position: previousRank,
           rank_change: rankChange,
@@ -547,7 +567,6 @@ export class OliveYoungBestsellerScraper {
           trending_since: firstSeenAt,
         }
 
-        // UPSERT: update if this source+product already exists, insert otherwise
         const { error: upsertError } = match.matched_product_id
           ? await supabase
               .from('ss_trending_products')
@@ -557,15 +576,7 @@ export class OliveYoungBestsellerScraper {
               .insert(row)
 
         if (upsertError) {
-          // Fallback: try plain insert (conflict column may not exist)
-          const { error: fallbackError } = await supabase
-            .from('ss_trending_products')
-            .insert(row)
-          if (fallbackError) {
-            result.errors.push(`Upsert error for ${bestseller.name}: ${fallbackError.message}`)
-          } else {
-            result.upserted++
-          }
+          result.errors.push(`Upsert error for ${bestseller.name}: ${upsertError.message}`)
         } else {
           result.upserted++
         }
