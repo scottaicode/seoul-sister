@@ -17,6 +17,7 @@ const BASE_URL = 'https://www.yesstyle.com'
  */
 export class YesStyleScraper {
   private browser: Browser | null = null
+  private page: import('playwright-core').Page | null = null
   private readonly delayMs: number
 
   constructor(options?: { delayMs?: number }) {
@@ -30,7 +31,26 @@ export class YesStyleScraper {
     return this.browser
   }
 
+  /**
+   * Get a reusable page instead of creating a new one per search.
+   * Each browser page allocates ~100MB (DOM, V8, JS context).
+   * Creating 80 pages exhausts the ~3GB serverless memory budget.
+   */
+  private async ensurePage(): Promise<import('playwright-core').Page> {
+    if (!this.page || this.page.isClosed()) {
+      const browser = await this.ensureBrowser()
+      this.page = await browser.newPage()
+      await this.page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' })
+      console.warn('[yesstyle] Created reusable browser page')
+    }
+    return this.page
+  }
+
   async close(): Promise<void> {
+    if (this.page && !this.page.isClosed()) {
+      await this.page.close().catch(() => {})
+      this.page = null
+    }
     if (this.browser) {
       await this.browser.close()
       this.browser = null
@@ -48,11 +68,19 @@ export class YesStyleScraper {
     const query = `${brand} ${productName}`.trim()
     const searchUrl = `${BASE_URL}/en/list.html?q=${encodeURIComponent(query)}&bpt=48`
 
-    const browser = await this.ensureBrowser()
-    const page = await browser.newPage()
+    let page: import('playwright-core').Page
+    try {
+      page = await this.ensurePage()
+    } catch (pageErr) {
+      // If page creation fails (memory exhaustion), reset and try once more
+      console.warn('[yesstyle] Page creation failed, resetting browser:', pageErr instanceof Error ? pageErr.message : pageErr)
+      this.page = null
+      await this.browser?.close().catch(() => {})
+      this.browser = null
+      page = await this.ensurePage()
+    }
 
     try {
-      await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' })
       await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 })
 
       // Wait for product links to render (MUI hydration)
@@ -180,10 +208,16 @@ export class YesStyleScraper {
           image_url: r.image_url,
         }))
     } catch (error) {
-      console.error(`[yesstyle] Search failed for "${brand} ${productName}":`, error instanceof Error ? error.message : error)
+      const msg = error instanceof Error ? error.message : String(error)
+      console.error(`[yesstyle] Search failed for "${brand} ${productName}":`, msg)
+
+      // If the page crashed or disconnected, invalidate it so ensurePage() creates a fresh one
+      if (msg.includes('Target closed') || msg.includes('crashed') || msg.includes('disposed') || msg.includes('context')) {
+        console.warn('[yesstyle] Page appears corrupted, will recreate on next search')
+        this.page = null
+      }
+
       return []
-    } finally {
-      await page.close()
     }
   }
 }

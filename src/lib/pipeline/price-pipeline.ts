@@ -53,7 +53,7 @@ export class PricePipeline {
       errors: [],
     }
 
-    console.log(`[price-pipeline] Starting ${options.retailer} price scrape`)
+    console.warn(`[price-pipeline] Starting ${options.retailer} price scrape`)
 
     // Load product catalog for matching
     await this.matcher.loadProducts(supabase)
@@ -67,7 +67,7 @@ export class PricePipeline {
 
     // Fetch products to search for
     const products = await this.getProductsForPricing(supabase, options, retailerId)
-    console.log(`[price-pipeline] ${products.length} products to search on ${options.retailer}`)
+    console.warn(`[price-pipeline] ${products.length} products to search on ${options.retailer}`)
 
     // Initialize the scraper for this retailer
     const scraper = this.getScraper(options.retailer)
@@ -109,9 +109,9 @@ export class PricePipeline {
 
       // Log progress every 25 products
       if ((i + 1) % 25 === 0 || i === products.length - 1) {
-        console.log(
+        console.warn(
           `[price-pipeline] ${options.retailer} progress: ${i + 1}/${products.length} searched, ` +
-          `${stats.prices_matched} matched, ${stats.prices_new} new, ${stats.prices_updated} updated`
+          `${stats.prices_matched} matched, ${stats.prices_new} new, ${stats.prices_updated} updated, ${stats.errors.length} errors`
         )
       }
     }
@@ -119,7 +119,7 @@ export class PricePipeline {
     // Cleanup browser instances
     await this.cleanup()
 
-    console.log(`[price-pipeline] ${options.retailer} complete:`, JSON.stringify(stats, null, 2))
+    console.warn(`[price-pipeline] ${options.retailer} complete:`, JSON.stringify(stats, null, 2))
     return stats
   }
 
