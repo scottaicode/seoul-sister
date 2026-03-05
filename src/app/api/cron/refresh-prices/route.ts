@@ -37,13 +37,16 @@ export async function POST(request: Request) {
     // ---------------------------------------------------------------
     // Phase 1: Soko Glam (Shopify JSON API — full budget)
     // ---------------------------------------------------------------
+    let scrapeError: string | null = null
     const pipeline = new PricePipeline()
     try {
+      console.warn(`[cron:soko-glam] Phase 1: starting Soko Glam scrape (batch=150, budget=${timeoutGuardMs}ms)`)
       const sokoStats = await pipeline.run(db, {
         retailer: 'soko_glam',
         batch_size: 150,
         stale_hours: 24,
       })
+      console.warn(`[cron:soko-glam] Phase 1 complete: searched=${sokoStats.products_searched}, matched=${sokoStats.prices_matched}, errors=${sokoStats.errors.length}`)
       scrapeResults.push({
         retailer: 'soko_glam',
         searched: sokoStats.products_searched,
@@ -51,10 +54,15 @@ export async function POST(request: Request) {
         errors: sokoStats.errors.length,
       })
     } catch (error) {
-      console.error('[cron:refresh-prices] Soko Glam scrape failed:', error instanceof Error ? error.message : error)
+      scrapeError = error instanceof Error ? error.message : String(error)
+      console.error('[cron:soko-glam] Phase 1 FAILED:', scrapeError)
       scrapeResults.push({ retailer: 'soko_glam', searched: 0, matched: 0, errors: 1 })
     } finally {
-      await pipeline.cleanup()
+      try {
+        await pipeline.cleanup()
+      } catch (cleanupErr) {
+        console.error('[cron:soko-glam] Cleanup error:', cleanupErr instanceof Error ? cleanupErr.message : cleanupErr)
+      }
     }
 
     // ---------------------------------------------------------------
@@ -153,9 +161,12 @@ export async function POST(request: Request) {
       .select('*', { count: 'exact', head: true })
       .lt('last_checked', staleThreshold)
 
+    console.warn(`[cron:soko-glam] Done in ${Date.now() - startedAt}ms — prices=${pricesRecorded}, signals=${trendSignals}, error=${scrapeError ?? 'none'}`)
+
     return NextResponse.json({
-      success: true,
+      success: !scrapeError,
       scrape_results: scrapeResults,
+      scrape_error: scrapeError,
       prices_recorded: pricesRecorded,
       trend_signals: trendSignals,
       stale_prices: stalePrices ?? 0,
@@ -163,9 +174,10 @@ export async function POST(request: Request) {
       refreshed_at: new Date().toISOString(),
     })
   } catch (error) {
-    console.error('Refresh prices error:', error)
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('Refresh prices error:', message)
     return NextResponse.json(
-      { error: 'Failed to refresh prices' },
+      { error: 'Failed to refresh prices', details: message },
       { status: 500 }
     )
   }

@@ -24,7 +24,10 @@ const nextConfig = {
   },
 
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+    // Strip console.log in production but keep error/warn for debugging cron jobs and API routes
+    removeConsole: process.env.NODE_ENV === 'production'
+      ? { exclude: ['error', 'warn'] }
+      : false,
   },
 
   async headers() {

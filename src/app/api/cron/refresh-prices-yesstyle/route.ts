@@ -38,13 +38,16 @@ export async function POST(request: Request) {
     // ---------------------------------------------------------------
     // Phase 1: YesStyle (Playwright — full budget)
     // ---------------------------------------------------------------
+    let scrapeError: string | null = null
     const pipeline = new PricePipeline()
     try {
+      console.warn(`[cron:yesstyle] Phase 1: starting YesStyle scrape (batch=80, budget=${timeoutGuardMs}ms)`)
       const ysStats = await pipeline.run(db, {
         retailer: 'yesstyle',
         batch_size: 80,
         stale_hours: 24,
       })
+      console.warn(`[cron:yesstyle] Phase 1 complete: searched=${ysStats.products_searched}, matched=${ysStats.prices_matched}, errors=${ysStats.errors.length}`)
       scrapeResults.push({
         retailer: 'yesstyle',
         searched: ysStats.products_searched,
@@ -52,10 +55,18 @@ export async function POST(request: Request) {
         errors: ysStats.errors.length,
       })
     } catch (error) {
-      console.error('[cron:refresh-prices-yesstyle] YesStyle scrape failed:', error instanceof Error ? error.message : error)
+      scrapeError = error instanceof Error ? error.message : String(error)
+      console.error('[cron:yesstyle] Phase 1 FAILED:', scrapeError)
+      if (error instanceof Error && error.stack) {
+        console.error('[cron:yesstyle] Stack:', error.stack)
+      }
       scrapeResults.push({ retailer: 'yesstyle', searched: 0, matched: 0, errors: 1 })
     } finally {
-      await pipeline.cleanup()
+      try {
+        await pipeline.cleanup()
+      } catch (cleanupErr) {
+        console.error('[cron:yesstyle] Cleanup error:', cleanupErr instanceof Error ? cleanupErr.message : cleanupErr)
+      }
     }
 
     // ---------------------------------------------------------------
@@ -154,9 +165,12 @@ export async function POST(request: Request) {
       .select('*', { count: 'exact', head: true })
       .lt('last_checked', staleThreshold)
 
+    console.warn(`[cron:yesstyle] Done in ${Date.now() - startedAt}ms — prices=${pricesRecorded}, signals=${trendSignals}, error=${scrapeError ?? 'none'}`)
+
     return NextResponse.json({
-      success: true,
+      success: !scrapeError,
       scrape_results: scrapeResults,
+      scrape_error: scrapeError,
       prices_recorded: pricesRecorded,
       trend_signals: trendSignals,
       stale_prices: stalePrices ?? 0,
@@ -164,9 +178,12 @@ export async function POST(request: Request) {
       refreshed_at: new Date().toISOString(),
     })
   } catch (error) {
-    console.error('Refresh YesStyle prices error:', error)
+    const message = error instanceof Error ? error.message : String(error)
+    const stack = error instanceof Error ? error.stack : undefined
+    console.error('Refresh YesStyle prices error:', message)
+    if (stack) console.error('Stack:', stack)
     return NextResponse.json(
-      { error: 'Failed to refresh YesStyle prices' },
+      { error: 'Failed to refresh YesStyle prices', details: message },
       { status: 500 }
     )
   }
