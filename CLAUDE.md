@@ -471,7 +471,7 @@ seoul-sister/
 
 ## Cron Jobs (Automated Intelligence Pipeline)
 
-### Implemented Cron Jobs (13 total, configured in vercel.json)
+### Implemented Cron Jobs (14 total, configured in vercel.json)
 
 | Cron Job | Schedule | Purpose |
 |----------|----------|---------|
@@ -487,11 +487,12 @@ seoul-sister/
 | `scan-trends` | Daily 8 AM UTC | Detect trending products from review/reaction spikes |
 | `scan-reddit-mentions` | Daily 8:30 AM UTC | Reddit K-beauty mention scanning (5 subreddits, sentiment analysis) |
 | `calculate-gap-scores` | Daily 9 AM UTC | Korea-vs-US trend gap detection (emerging products intelligence) |
-| `refresh-prices` | Every 6 hours | Active price scraping (Soko Glam + YesStyle), history snapshots, drop detection |
+| `refresh-prices` | Daily 6 AM UTC | Soko Glam price scraping (Shopify JSON API, 150 products/run, 300s Pro budget), history snapshots, drop detection |
+| `refresh-prices-yesstyle` | Daily 6 PM UTC | YesStyle price scraping (Playwright, 80 products/run, 300s Pro budget), history snapshots, drop detection |
 
 **Pipeline daily chain**: `scan-korean-products` (6 AM) scrapes new Olive Young listings → `scan-korean-bestsellers` (6:30 AM) captures Korean sales rankings → `translate-and-index` (7 AM) runs Sonnet extraction on pending products → `link-ingredients` (7:30 AM) links ingredients → `scan-trends` (8 AM) detects trending products from activity spikes → `scan-reddit-mentions` (8:30 AM) scans English K-beauty communities → `calculate-gap-scores` (9 AM) cross-references Korean rankings vs US mentions.
 
-**Price freshness**: `refresh-prices` runs 4x/day, actively scraping Soko Glam (Shopify JSON API, no browser) and YesStyle (Playwright). Snapshots all prices to `ss_price_history`. Flags >10% price drops as trend signals.
+**Price freshness**: Two dedicated price crons run daily with the full Vercel Pro 300s budget — `refresh-prices` (6 AM UTC, Soko Glam via Shopify JSON API, ~150 products/run) and `refresh-prices-yesstyle` (6 PM UTC, YesStyle via Playwright, ~80 products/run). Combined: ~230 products/day, full catalog cycle in ~25 days. Both snapshot all prices to `ss_price_history` and flag >10% price drops as trend signals. Amazon and StyleKorean remain CLI-only (CAPTCHA/AJAX issues).
 
 ### Future Cron Jobs (Not Yet Implemented)
 
@@ -4829,7 +4830,7 @@ Automatic via Vercel on push to `main` branch.
 
 **Created**: February 2026
 **Version**: 9.2.0 (Google Analytics 4 Integration + Vercel Analytics)
-**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 5,800+ products (skincare only), 14,400+ ingredients, 207,000+ links, 550+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 13 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level. GA4 (G-L3VXSLT781) + Vercel Analytics + SpeedInsights live.
+**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 5,800+ products (skincare only), 14,400+ ingredients, 207,000+ links, 550+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 14 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level. GA4 (G-L3VXSLT781) + Vercel Analytics + SpeedInsights live.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 **Changelog**: See `CHANGELOG.md` for full version history.

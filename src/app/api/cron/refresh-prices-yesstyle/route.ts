@@ -4,16 +4,17 @@ import { verifyCronAuth } from '@/lib/utils/cron-auth'
 import { PricePipeline } from '@/lib/pipeline/price-pipeline'
 
 /**
- * POST /api/cron/refresh-prices
+ * POST /api/cron/refresh-prices-yesstyle
  *
- * Runs daily at 6 AM UTC (via vercel.json).
- * Dedicated to Soko Glam (Shopify JSON API — no browser, fast, reliable).
+ * Runs daily at 6 PM UTC (via vercel.json).
+ * Dedicated to YesStyle (Playwright browser scraping).
  *
- * 300s budget (Vercel Pro) for Soko Glam:
- * - 150 products × ~1.5s ≈ 225s scraping
+ * 300s budget (Vercel Pro) for YesStyle:
+ * - ~10s Playwright cold start
+ * - 80 products × ~3s ≈ 240s scraping
  * - Remaining time: snapshot prices to history + detect price drops
  *
- * YesStyle has its own cron at 6 PM UTC (refresh-prices-yesstyle).
+ * Soko Glam has its own cron at 6 AM UTC (refresh-prices).
  * Amazon, StyleKorean are CLI-only (CAPTCHA/AJAX issues).
  *
  * Secured with CRON_SECRET header.
@@ -35,24 +36,24 @@ export async function POST(request: Request) {
     const scrapeResults: Array<{ retailer: string; searched: number; matched: number; errors: number }> = []
 
     // ---------------------------------------------------------------
-    // Phase 1: Soko Glam (Shopify JSON API — full budget)
+    // Phase 1: YesStyle (Playwright — full budget)
     // ---------------------------------------------------------------
     const pipeline = new PricePipeline()
     try {
-      const sokoStats = await pipeline.run(db, {
-        retailer: 'soko_glam',
-        batch_size: 150,
+      const ysStats = await pipeline.run(db, {
+        retailer: 'yesstyle',
+        batch_size: 80,
         stale_hours: 24,
       })
       scrapeResults.push({
-        retailer: 'soko_glam',
-        searched: sokoStats.products_searched,
-        matched: sokoStats.prices_matched,
-        errors: sokoStats.errors.length,
+        retailer: 'yesstyle',
+        searched: ysStats.products_searched,
+        matched: ysStats.prices_matched,
+        errors: ysStats.errors.length,
       })
     } catch (error) {
-      console.error('[cron:refresh-prices] Soko Glam scrape failed:', error instanceof Error ? error.message : error)
-      scrapeResults.push({ retailer: 'soko_glam', searched: 0, matched: 0, errors: 1 })
+      console.error('[cron:refresh-prices-yesstyle] YesStyle scrape failed:', error instanceof Error ? error.message : error)
+      scrapeResults.push({ retailer: 'yesstyle', searched: 0, matched: 0, errors: 1 })
     } finally {
       await pipeline.cleanup()
     }
@@ -163,9 +164,9 @@ export async function POST(request: Request) {
       refreshed_at: new Date().toISOString(),
     })
   } catch (error) {
-    console.error('Refresh prices error:', error)
+    console.error('Refresh YesStyle prices error:', error)
     return NextResponse.json(
-      { error: 'Failed to refresh prices' },
+      { error: 'Failed to refresh YesStyle prices' },
       { status: 500 }
     )
   }
