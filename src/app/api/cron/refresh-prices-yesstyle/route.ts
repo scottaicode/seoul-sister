@@ -10,8 +10,8 @@ import { PricePipeline } from '@/lib/pipeline/price-pipeline'
  * Dedicated to YesStyle (Playwright browser scraping).
  *
  * 300s budget (Vercel Pro) for YesStyle:
- * - ~10s Playwright cold start
- * - 80 products × ~3s ≈ 240s scraping
+ * - ~15s Playwright cold start (binary decompression + launch)
+ * - 30 products × ~8s (3s delay + 5s navigation/render) ≈ 240s scraping
  * - Remaining time: snapshot prices to history + detect price drops
  *
  * Soko Glam has its own cron at 6 AM UTC (refresh-prices).
@@ -41,10 +41,10 @@ export async function POST(request: Request) {
     let scrapeError: string | null = null
     const pipeline = new PricePipeline()
     try {
-      console.warn(`[cron:yesstyle] Phase 1: starting YesStyle scrape (batch=80, budget=${timeoutGuardMs}ms)`)
+      console.warn(`[cron:yesstyle] Phase 1: starting YesStyle scrape (batch=30, budget=${timeoutGuardMs}ms)`)
       const ysStats = await pipeline.run(db, {
         retailer: 'yesstyle',
-        batch_size: 80,
+        batch_size: 30,
         stale_hours: 24,
       })
       console.warn(`[cron:yesstyle] Phase 1 complete: searched=${ysStats.products_searched}, matched=${ysStats.prices_matched}, errors=${ysStats.errors.length}`)
