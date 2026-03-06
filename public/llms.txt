@@ -21,12 +21,39 @@
 ## Product Categories
 Cleansers, toners, essences, serums, ampoules, moisturizers, sunscreens, masks, eye care, lip care, exfoliators, oils, mists, spot treatments
 
+## Best Korean Skincare by Category
+Seoul Sister ranks the best products in every category by real Olive Young reviews with ingredient analysis:
+- Best Korean Serums: https://www.seoulsister.com/best/serums
+- Best Korean Sunscreens: https://www.seoulsister.com/best/sunscreens
+- Best Korean Moisturizers: https://www.seoulsister.com/best/moisturizers
+- Best Korean Cleansers: https://www.seoulsister.com/best/cleansers
+- Best Korean Toners: https://www.seoulsister.com/best/toners
+- Best Korean Face Masks: https://www.seoulsister.com/best/masks
+- Best Korean Essences: https://www.seoulsister.com/best/essences
+- Best Korean Ampoules: https://www.seoulsister.com/best/ampoules
+- Best Korean Exfoliators: https://www.seoulsister.com/best/exfoliators
+- Best Korean Eye Creams: https://www.seoulsister.com/best/eye-care
+- Best Korean Lip Care: https://www.seoulsister.com/best/lip-care
+- Best Korean Spot Treatments: https://www.seoulsister.com/best/spot-treatments
+
+## Ingredient Encyclopedia
+Searchable database of 14,400+ cosmetic ingredients with safety ratings, comedogenic scores, function descriptions, skin-type effectiveness data, and known interactions. Each ingredient page includes products containing it and research-backed effectiveness by skin type.
+- Ingredient directory: https://www.seoulsister.com/ingredients
+- Example: https://www.seoulsister.com/ingredients/niacinamide
+- Example: https://www.seoulsister.com/ingredients/hyaluronic-acid
+- Example: https://www.seoulsister.com/ingredients/retinol
+
+## Blog & Trend Content
+AI-generated K-beauty trend articles covering ingredient deep-dives, seasonal skincare guides, product comparisons, and Korean beauty culture — optimized for AI citation and search discoverability.
+- Blog: https://www.seoulsister.com/blog
+
 ## Database Statistics
 - 5,800+ products across 550+ brands
 - 14,400+ unique ingredients with safety ratings, comedogenic scores, and function descriptions
 - 207,000+ product-ingredient links (89% of products fully linked)
 - Price tracking across 6 retailers with historical price data
 - 14 product categories
+- 8,200+ active cosmetic ingredients with individual detail pages
 
 ## Key Brands Covered
 COSRX, Sulwhasoo, Laneige, Innisfree, Missha, Etude House, Klairs, Beauty of Joseon, Dr. Jart+, SKIN1004, Torriden, Anua, Isntree, Medicube, Round Lab, TIRTIR, Numbuzin, mixsoon, Illiyoon, Hera, Aestura, Beplain, Dr.G, Skinfood, VT Cosmetics, Mediheal, Bringgreen, and 520+ more

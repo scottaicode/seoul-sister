@@ -4,6 +4,38 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v9.4.0 (Mar 6, 2026) — SEO & AI Discoverability: Ingredient Encyclopedia, Best-of Pages, Enhanced Structured Data
+
+### Added
+- **Ingredient Encyclopedia** (`/ingredients`, `/ingredients/[slug]`): Searchable directory of 8,200+ active cosmetic ingredients with individual detail pages. Each page includes safety rating, comedogenic score, function description, effectiveness by skin type (from `ss_ingredient_effectiveness`), known ingredient interactions, products containing the ingredient, and a CTA to ask Yuri. JSON-LD: Article, FAQPage, BreadcrumbList per page
+- **Ingredient Search API** (`/api/ingredients/search`): New endpoint for typeahead ingredient search with ILIKE injection prevention, active-first sorting, accepts both `q` and `query` params
+- **Ingredient Search Component** (`IngredientSearch.tsx`): Client-side debounced search with dropdown results showing INCI name, English name, function, and active badge
+- **Best-of Category Landing Pages** (`/best`, `/best/[category]`): 12 category pages targeting "best Korean [category]" search queries with ranked product lists, real Olive Young ratings/reviews, price data, FAQ sections, and cross-category navigation. JSON-LD: CollectionPage, ItemList (top 20 products with prices/ratings), FAQPage, BreadcrumbList per page. `generateStaticParams()` pre-generates all 12 pages
+- **Best-of Index Page** (`/best`): Hub page linking to all 12 categories with live product counts and top product per category
+- **Enhanced Product Page JSON-LD** (`products/[id]/layout.tsx`): Server-rendered Product schema with AggregateRating, FAQPage (auto-generated from ingredient data and pricing), BreadcrumbList, and `robots: { index: true, follow: true }` + canonical URL
+- **`generate-content` cron enabled**: Daily 10 AM UTC content generation targeting AI-discoverability topics (ingredient deep-dives, seasonal guides, brand spotlights, product comparisons, routine building)
+- **Slug utility** (`lib/utils/slug.ts`): `toSlug()` function for INCI name → URL-safe slug conversion
+
+### Changed
+- **Sitemap expanded** (`sitemap.ts`): Now includes `/ingredients`, `/best`, 12 best-of category pages, and ~8,200 active ingredient detail pages alongside existing product and blog pages. All queries run in parallel via `Promise.all`. Slug deduplication prevents duplicate URLs. Total sitemap: ~14K URLs
+- **llms.txt updated**: Added Best-of category links (12 URLs), Ingredient Encyclopedia section with example URLs, Blog section, and updated database statistics (8,200+ active ingredient pages)
+
+### Files Created
+- `src/app/ingredients/page.tsx` — Ingredient listing page with featured ingredients and search
+- `src/app/ingredients/[slug]/page.tsx` — Ingredient detail page with full structured data
+- `src/app/ingredients/IngredientSearch.tsx` — Client-side ingredient search component
+- `src/app/best/page.tsx` — Best-of index page
+- `src/app/best/[category]/page.tsx` — Dynamic best-of category pages (12 categories)
+- `src/lib/utils/slug.ts` — INCI name to URL slug utility
+
+### Files Modified
+- `src/app/(app)/products/[id]/layout.tsx` — Added server-rendered Product + FAQ JSON-LD
+- `src/app/sitemap.ts` — Added ingredient pages, best-of pages, parallel queries
+- `public/llms.txt` — Added best-of links, ingredient encyclopedia, blog section
+- `vercel.json` — Enabled `generate-content` cron schedule
+
+---
+
 ## v9.3.0 (Mar 5, 2026) — Monetization Overhaul: Payment-First Registration + AI-First Widget Conversion
 
 ### Changed

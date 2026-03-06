@@ -471,7 +471,7 @@ seoul-sister/
 
 ## Cron Jobs (Automated Intelligence Pipeline)
 
-### Implemented Cron Jobs (14 total, configured in vercel.json)
+### Implemented Cron Jobs (15 total, configured in vercel.json)
 
 | Cron Job | Schedule | Purpose |
 |----------|----------|---------|
@@ -489,6 +489,7 @@ seoul-sister/
 | `calculate-gap-scores` | Daily 9 AM UTC | Korea-vs-US trend gap detection (emerging products intelligence) |
 | `refresh-prices` | Daily 6 AM UTC | Soko Glam price scraping (Shopify JSON API, 150 products/run, 300s Pro budget), history snapshots, drop detection |
 | `refresh-prices-yesstyle` | Daily 6 PM UTC | YesStyle price scraping (Playwright, 80 products/run, 300s Pro budget), history snapshots, drop detection |
+| `generate-content` | Daily 10 AM UTC | Auto-generate SEO trend articles targeting AI discoverability (Opus) |
 
 **Pipeline daily chain**: `scan-korean-products` (6 AM) scrapes new Olive Young listings → `scan-korean-bestsellers` (6:30 AM) captures Korean sales rankings → `translate-and-index` (7 AM) runs Sonnet extraction on pending products → `link-ingredients` (7:30 AM) links ingredients → `scan-trends` (8 AM) detects trending products from activity spikes → `scan-reddit-mentions` (8:30 AM) scans English K-beauty communities → `calculate-gap-scores` (9 AM) cross-references Korean rankings vs US mentions.
 
@@ -501,7 +502,6 @@ seoul-sister/
 | `scan-counterfeits` | Daily 3 AM UTC | Monitor counterfeit sources, update risk signals |
 | `community-digest` | Daily 9 AM UTC | Aggregate top reviews, generate "trending today" |
 | `ingredient-safety-updates` | Weekly Sunday 2 AM UTC | Cross-reference regulatory changes (Korea/US/EU FDA) |
-| `generate-content` | Daily 10 AM UTC | Auto-generate trend articles for AI discoverability |
 
 ## Learning Engine (The Moat)
 
@@ -699,13 +699,15 @@ Browser -> Scanner -> Reviewer -> Subscriber -> Purchaser -> Advocate
 
 Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Korean moisturizer for oily skin?"
 
-- JSON-LD @graph on all product pages (Product, Review, AggregateRating)
+- JSON-LD @graph on all product pages (Product, AggregateRating, FAQPage, BreadcrumbList)
 - Article schema on all trend content
 - SpeakableSpecification for voice assistant citation
 - Dynamic robots.txt allowing GPTBot, Claude-Web, PerplexityBot
-- Dynamic sitemap.xml for all product and content pages
-- llms.txt with product database summary
-- Blog pipeline auto-generates K-beauty trend content from data
+- Dynamic sitemap.xml for all product, ingredient, best-of, and content pages (~14K URLs)
+- llms.txt with product database summary, best-of category links, ingredient encyclopedia links
+- Blog pipeline auto-generates K-beauty trend content from data (`generate-content` cron, daily 10 AM UTC)
+- **Ingredient Encyclopedia** (`/ingredients`, `/ingredients/[slug]`): 8,200+ active ingredient pages with JSON-LD (Article, FAQPage, BreadcrumbList), effectiveness by skin type, known interactions, products containing each ingredient
+- **Best-of Category Pages** (`/best`, `/best/[category]`): 12 category landing pages with JSON-LD (CollectionPage, ItemList with top 20 products, FAQPage, BreadcrumbList), targeting "best Korean [category]" queries
 
 ## Development Phases
 
@@ -849,7 +851,7 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 **Future Work** (when traffic/revenue justifies)
 - [ ] **Widget Email Capture** — Currently stateless with 20 preview messages + subscribe CTA. Add email capture field at message limit when traffic justifies it. Store in `ss_widget_emails` table.
 - [ ] **Push Notifications** — Requires service worker push events, web-push library, subscription management
-- [ ] **Remaining Cron Jobs** — scan-counterfeits, community-digest, generate-content
+- [ ] **Remaining Cron Jobs** — scan-counterfeits, community-digest
 - [ ] **Supabase Attack Protection** — Captcha on auth endpoints (requires captcha widget), leaked password protection (requires custom SMTP). Enable when traffic justifies it.
 
 ## Phase 8: Value Enrichment Features (11 Features)
@@ -4829,7 +4831,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 9.3.0 (Monetization Overhaul — Payment-First Registration, AI-First Widget Conversion)
+**Version**: 9.4.0 (SEO & AI Discoverability — Ingredient Encyclopedia, Best-of Pages, Enhanced Structured Data)
 **Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 5,800+ products (skincare only), 14,400+ ingredients, 207,000+ links, 550+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 14 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level. GA4 (G-L3VXSLT781) + Vercel Analytics + SpeedInsights live. **Monetization hardened**: Free tier eliminated, payment-first registration flow (Register → Stripe $39.99/mo → Onboarding, no email verification), widget system prompt rewritten AI-First with 20 preview messages and natural conversion.
 **AI Advisor**: Yuri (유리) - "Glass"
 
