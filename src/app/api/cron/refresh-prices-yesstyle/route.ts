@@ -41,11 +41,13 @@ export async function POST(request: Request) {
     let scrapeError: string | null = null
     const pipeline = new PricePipeline()
     try {
-      console.warn(`[cron:yesstyle] Phase 1: starting YesStyle scrape (batch=30, budget=${timeoutGuardMs}ms)`)
+      console.warn(`[cron:yesstyle] Phase 1: starting YesStyle scrape (batch=20, budget=${timeoutGuardMs}ms)`)
       const ysStats = await pipeline.run(db, {
         retailer: 'yesstyle',
-        batch_size: 30,
+        batch_size: 20,
         stale_hours: 24,
+        timeout_ms: 240000,
+        started_at: startedAt,
       })
       console.warn(`[cron:yesstyle] Phase 1 complete: searched=${ysStats.products_searched}, matched=${ysStats.prices_matched}, errors=${ysStats.errors.length}`)
       scrapeResults.push({

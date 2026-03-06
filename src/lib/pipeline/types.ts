@@ -190,4 +190,8 @@ export interface PriceScrapeOptions {
   brands?: string[]
   /** Skip products that already have a price from this retailer checked within N hours */
   stale_hours?: number
+  /** Hard time budget in ms — pipeline loop stops before exceeding this */
+  timeout_ms?: number
+  /** Timestamp when the caller started (used with timeout_ms) */
+  started_at?: number
 }

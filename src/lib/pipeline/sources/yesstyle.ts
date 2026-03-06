@@ -21,7 +21,7 @@ export class YesStyleScraper {
   private readonly delayMs: number
 
   constructor(options?: { delayMs?: number }) {
-    this.delayMs = options?.delayMs ?? 3000
+    this.delayMs = options?.delayMs ?? 2000
   }
 
   private async ensureBrowser(): Promise<Browser> {

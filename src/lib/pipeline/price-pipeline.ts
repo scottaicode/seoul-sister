@@ -74,6 +74,15 @@ export class PricePipeline {
 
     // Process products in sequence (respecting rate limits)
     for (let i = 0; i < products.length; i++) {
+      // Time-budget guard: stop before exceeding serverless timeout
+      if (options.timeout_ms && options.started_at) {
+        const elapsed = Date.now() - options.started_at
+        if (elapsed > options.timeout_ms) {
+          console.warn(`[price-pipeline] Time budget exhausted (${elapsed}ms > ${options.timeout_ms}ms), stopping after ${i} products`)
+          break
+        }
+      }
+
       const product = products[i]
       stats.products_searched++
 
