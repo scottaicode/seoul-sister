@@ -98,7 +98,7 @@ export default function ProductFilters({
             className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
               isRecommended
                 ? 'bg-gradient-to-r from-gold to-amber-500 text-white shadow-lg shadow-gold/20'
-                : 'glass-card text-white/60 hover:text-white'
+                : 'bg-white/10 border border-white/20 text-white/80 hover:bg-white/15 hover:text-white'
             }`}
           >
             <Sparkles className="w-4 h-4" />
@@ -110,7 +110,7 @@ export default function ProductFilters({
           className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
             showFilters || category || hasIngredientFilters
               ? 'bg-gold text-white'
-              : 'glass-card text-white'
+              : 'bg-white/10 border border-white/20 text-white/80 hover:bg-white/15 hover:text-white'
           }`}
         >
           <SlidersHorizontal className="w-4 h-4" />
