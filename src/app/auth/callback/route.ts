@@ -31,8 +31,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL('/login?recovered=true', request.url))
       }
 
-      // Email verification: redirect to onboarding or dashboard
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+      // Email verification: redirect to subscribe (payment required before app access)
+      return NextResponse.redirect(new URL('/subscribe', request.url))
     }
   }
 

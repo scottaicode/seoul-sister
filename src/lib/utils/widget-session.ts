@@ -2,7 +2,7 @@
  * Widget Session Tracking (localStorage-based)
  *
  * Tracks anonymous widget message usage with a 30-day rolling window.
- * After 5 messages, visitors must create an account for unlimited access.
+ * After 20 messages, visitors must subscribe for unlimited access.
  * Counter resets after 30 days, giving returning visitors a second chance.
  *
  * Why localStorage over cookies:
@@ -11,9 +11,9 @@
  * - Survives cookie-clearing (most users clear cookies, not localStorage)
  * - 30-day reset is more natural than cookie expiry hacks
  *
- * Server-side enforcement: /api/widget/chat enforces the 5-message limit
+ * Server-side enforcement: /api/widget/chat enforces the 20-message limit
  * per session (IP + User-Agent hash) via Supabase-backed rate limiter,
- * plus a separate 10/IP/day abuse prevention limit. The client-side
+ * plus a separate 25/IP/day abuse prevention limit. The client-side
  * counter here is purely for UX (showing remaining messages) — the
  * server does NOT trust the client history array for counting.
  */
@@ -21,7 +21,7 @@
 const STORAGE_KEY = 'yuri_widget_session'
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
-export const MAX_FREE_MESSAGES = 5
+export const MAX_FREE_MESSAGES = 20
 
 interface WidgetSession {
   count: number

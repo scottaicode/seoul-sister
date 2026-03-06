@@ -40,8 +40,8 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       email: user.email!,
       plan: parsed.data.plan as TierKey,
-      successUrl: `${origin}/dashboard?subscription=success`,
-      cancelUrl: `${origin}/dashboard?subscription=canceled`,
+      successUrl: `${origin}/onboarding`,
+      cancelUrl: `${origin}/subscribe?canceled=true`,
     })
 
     return NextResponse.json({ url })

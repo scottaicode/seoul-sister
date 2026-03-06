@@ -326,17 +326,17 @@ export default function YuriBubble() {
               {/* Conversion prompt when at limit */}
               {isAtLimit && (
                 <div className="bg-gold/5 rounded-2xl p-4 border border-gold/20 text-center">
-                  <p className="text-xs text-white font-medium mb-1">
-                    I could help you so much more with a skin profile!
+                  <p className="text-sm text-white font-medium mb-1">
+                    This is just the preview.
                   </p>
-                  <p className="text-xs text-white/40 mb-3">
-                    Subscribe to Seoul Sister Pro for full Yuri conversations, personalized routines, and all 6 specialist agents.
+                  <p className="text-xs text-white/50 mb-3">
+                    Subscribers get unlimited Yuri conversations, a personalized skin profile she remembers across sessions, 6 specialist agents, routine building with ingredient conflict detection, and more.
                   </p>
                   <a
-                    href="/register"
+                    href="/register?plan=pro_monthly"
                     className="inline-block glass-button-primary text-xs py-2 px-5"
                   >
-                    Get Started
+                    Subscribe — $39.99/mo
                   </a>
                 </div>
               )}

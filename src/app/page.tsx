@@ -490,7 +490,7 @@ export default function LandingPage() {
           >
             Start Your Journey <ArrowRight className="w-4 h-4" />
           </Link>
-          <p className="text-xs text-white/30 mt-4">Try Yuri free before you subscribe. 5 preview messages, no signup required.</p>
+          <p className="text-xs text-white/30 mt-4">Try Yuri free — 20 preview messages, no signup required.</p>
         </motion.div>
       </section>
 

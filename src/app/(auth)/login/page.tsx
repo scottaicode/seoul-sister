@@ -184,7 +184,7 @@ export default function LoginPage() {
           href="/register"
           className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-full font-medium text-sm text-white/70 transition-all duration-300 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white active:scale-[0.98]"
         >
-          Create a free account
+          Create an account
         </Link>
       </div>
 

@@ -91,7 +91,7 @@ User registers
 - Bottom-right corner, all pages, always visible
 - Collapsed state: Yuri avatar + "Ask me anything about K-beauty"
 - Expands to chat window on click
-- 3-5 free messages per session (cookie-tracked)
+- 20 free preview messages per session (IP+UA hash tracked, 30-day window)
 - Full-screen takeover on mobile
 - Follows visitor as they browse -- available whenever curiosity strikes
 - SSE streaming for real-time responses
@@ -100,26 +100,28 @@ User registers
 **Layer 2: "Try Yuri" Interactive Section (Mid-Page)**
 ```
 Landing Page Flow:
-  Hero: Glass skin visual + value prop + "Start Free" CTA
+  Hero: Glass skin visual + value prop + "Start Your K-Beauty Journey" CTA
   -> Feature Grid (6 features with glass-card design)
   -> "Try Yuri" Section (HERE -- after visitor understands what Seoul Sister is)
   -> Social Proof (community stats, testimonials)
-  -> Pricing (Free / Pro Monthly / Pro Annual / Student)
+  -> Pricing (Seoul Sister Pro — $39.99/mo)
   -> Final CTA
 ```
 
 The "Try Yuri" section appears AFTER the feature grid, when the visitor already understands what Seoul Sister offers. This section includes:
 - Pre-populated demo conversation showing Yuri's personality (visitor question + Yuri response)
 - Live input field: "Ask Yuri anything about K-beauty..." (types directly into the section)
-- Same 3-5 free message limit as floating bubble (shared session)
-- After free messages: soft conversion prompt to sign up
+- Same 20-message limit as floating bubble (shared session)
+- After 20 messages: conversion prompt to subscribe
 - NOT a duplicate of the floating bubble -- this is an embedded inline experience
 - On mobile: tapping the input area opens full-screen Yuri conversation
 
 **Layer 3: Full Yuri Experience (Post-Signup)**
 ```
-After account creation:
-  -> Yuri onboarding conversation (skin profile, preferences, concerns)
+After account creation + Stripe payment:
+  -> Redirected to /subscribe (payment gate)
+  -> Stripe Checkout ($39.99/mo Seoul Sister Pro)
+  -> On success: Yuri onboarding conversation (skin profile, preferences, concerns)
   -> /yuri page with full specialist routing
   -> 6 specialist agents (no message limits)
   -> Cross-session memory and personalization
@@ -136,19 +138,17 @@ After account creation:
    -> Visitor types their own question in the live input
    -> Yuri gives a genuinely helpful answer
 4. OR visitor clicks floating bubble at any point
-5. After 3-5 free messages (either Layer 1 or 2):
-   -> Yuri: "I could help you so much more with a skin profile.
-      Create your free account and I'll build you a personalized
-      K-beauty routine."
-   -> Soft conversion prompt (not a hard paywall)
-6. Visitor signs up -> enters Yuri onboarding conversation (Layer 3)
+5. After 20 preview messages (either Layer 1 or 2):
+   -> Yuri naturally suggests subscribing for the full experience
+   -> Value-first conversion prompt highlighting what subscribers unlock
+6. Visitor subscribes ($39.99/mo) -> enters Yuri onboarding conversation (Layer 3)
 ```
 
 #### Widget Specifications
-- **Free messages**: 3-5 per session (cookie-tracked, shared between Layer 1 and Layer 2)
-- **No login required**: Anonymous conversations stored with session ID
-- **Genuine value**: Yuri gives real, helpful answers -- not teaser responses
-- **Soft conversion**: After free messages, Yuri naturally suggests signup for full experience
+- **Preview messages**: 20 per session (IP+UA hash tracked, 30-day window, shared between Layer 1 and Layer 2)
+- **No login required**: Anonymous conversations streamed and forgotten (not stored)
+- **Genuine value**: Yuri gives real, helpful answers backed by database tools -- not teaser responses
+- **Natural conversion**: After 20 messages, Yuri highlights what subscribers unlock (personalized routines, unlimited scans, specialist agents)
 - **Surface-level routing**: Anonymous questions get helpful answers but not deep specialist dives
 - **Data capture**: Anonymous conversation data feeds the learning engine
 - **Mobile-optimized**: Full-screen takeover on mobile for both layers
@@ -162,11 +162,11 @@ After account creation:
 - Track Layer 1 vs Layer 2 engagement (which gets more conversations started)
 
 #### Rate Limiting (Cost Control)
-- 3-5 messages per session (cookie-based, shared across layers)
-- 10 messages per IP per day (prevents abuse)
+- 20 messages per session (IP+UA hash, 30-day window, shared across layers)
+- 25 messages per IP per day (prevents abuse)
 - Shorter max_tokens for anonymous visitors (300 vs 600 for subscribers)
 - Anonymous conversations not saved to database (just streamed and forgotten)
-- No specialist agent deep-dives for anonymous users (surface-level answers only)
+- 4 database tools available (search_products, compare_prices, get_trending, get_weather) but no specialist agent deep-dives
 
 #### What This Is NOT
 - NOT the LGAAS AriaStar widget (which is white-labeled for subscriber businesses)
@@ -535,42 +535,42 @@ After 10,000 users, no competitor can replicate the dataset. After 100,000 users
 
 ## Pricing Model
 
-### Subscription Tiers
+### Single Tier — Seoul Sister Pro ($39.99/mo)
 
-| Tier | Price | Purpose |
-|------|-------|---------|
-| **Free** | $0 | User acquisition, database growth via scans |
-| **Pro Monthly** | $14.99/mo | Full AI intelligence suite |
-| **Pro Annual** | $99.99/yr ($8.33/mo) | Price-sensitive users, cash flow |
-| **Student** | $6.99/mo (with .edu email) | College demographic, long-term retention |
+Seoul Sister is a paid-only platform. There is no free tier. Visitors get 20 free preview messages with Yuri on the landing page widget to experience the AI's quality before subscribing.
 
-### Free Tier (Generous -- Builds User Base)
-- Browse product database
-- 3 label scans per month (cached results, minimal AI cost)
-- Basic ingredient lists (pre-translated, no live AI)
-- Community access (read reviews)
-- Trending products feed
+**Registration Flow**: Register → Stripe Checkout ($39.99/mo) → Yuri onboarding → Full app access (no email verification)
 
-### Pro Tier (Full AI Intelligence)
-- Unlimited AI label scanning
-- Full Yuri advisor conversations (all specialist agents)
+**What Subscribers Get**:
+- Unlimited AI label scanning (Claude Opus 4.6 Vision)
+- Full Yuri advisor conversations (all 6 specialist agents)
+- 8 database-backed tools (product search, price comparison, trending, conflicts, personalization, web search, weather)
 - Personalized routine builder with conflict detection
-- Counterfeit detection alerts
-- Price drop alerts on wishlist
+- Counterfeit detection and authenticity analysis
+- Price comparison across 6 retailers with drop alerts
+- Glass Skin Score photo tracking
+- Shelf Scan collection analysis
+- Weather-adaptive routine alerts
+- Hormonal cycle routine adjustments
+- Cross-session memory and personalization
 - Proactive intelligence notifications
-- Skin cycling schedule generation
-- Priority scan processing
 
-### Unit Economics (Pro Monthly at $14.99)
+**What Anonymous Visitors Get** (landing page widget):
+- 20 preview messages with Yuri (IP+UA tracked, 30-day window)
+- 4 database tools (search products, compare prices, trending, weather)
+- Real, helpful answers backed by 5,800+ product database
+- No account required, no data stored
+
+### Unit Economics (Pro at $39.99)
 | Item | Cost |
 |------|------|
 | Claude Opus 4.6 API (scans, Yuri, analysis) | ~$4.00/mo avg |
 | Claude Vision (scanning, counterfeit) | ~$1.50/mo avg |
 | Supabase (storage, queries, auth) | ~$0.50/mo |
 | Vercel (hosting, functions) | ~$0.25/mo |
-| Stripe processing (2.9% + $0.30) | ~$0.73/mo |
-| **Total variable cost** | **~$6.98/mo** |
-| **Margin per Pro user** | **~$8.01/mo (53%)** |
+| Stripe processing (2.9% + $0.30) | ~$1.46/mo |
+| **Total variable cost** | **~$7.71/mo** |
+| **Margin per Pro user** | **~$32.28/mo (81%)** |
 
 ### Secondary Revenue: Affiliate Commissions
 - 5-15% on purchases through affiliate links to Olive Young, Soko Glam, YesStyle, Amazon
@@ -847,7 +847,7 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 - [ ] Feature 8.6: Reformulation Tracker (formulation change detection, alert system, version history)
 
 **Future Work** (when traffic/revenue justifies)
-- [ ] **Widget Email Capture** — Currently stateless with 5 free messages + signup CTA. Add email capture field at message limit when traffic justifies it. Store in `ss_widget_emails` table.
+- [ ] **Widget Email Capture** — Currently stateless with 20 preview messages + subscribe CTA. Add email capture field at message limit when traffic justifies it. Store in `ss_widget_emails` table.
 - [ ] **Push Notifications** — Requires service worker push events, web-push library, subscription management
 - [ ] **Remaining Cron Jobs** — scan-counterfeits, community-digest, generate-content
 - [ ] **Supabase Attack Protection** — Captcha on auth endpoints (requires captcha widget), leaked password protection (requires custom SMTP). Enable when traffic justifies it.
@@ -4829,8 +4829,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 9.2.0 (Google Analytics 4 Integration + Vercel Analytics)
-**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 5,800+ products (skincare only), 14,400+ ingredients, 207,000+ links, 550+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 14 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level. GA4 (G-L3VXSLT781) + Vercel Analytics + SpeedInsights live.
+**Version**: 9.3.0 (Monetization Overhaul — Payment-First Registration, AI-First Widget Conversion)
+**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 5,800+ products (skincare only), 14,400+ ingredients, 207,000+ links, 550+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 14 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level. GA4 (G-L3VXSLT781) + Vercel Analytics + SpeedInsights live. **Monetization hardened**: Free tier eliminated, payment-first registration flow (Register → Stripe $39.99/mo → Onboarding, no email verification), widget system prompt rewritten AI-First with 20 preview messages and natural conversion.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 **Changelog**: See `CHANGELOG.md` for full version history.

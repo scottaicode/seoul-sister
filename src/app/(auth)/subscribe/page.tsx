@@ -1,21 +1,51 @@
 'use client'
 
-import { useState } from 'react'
-import { Star, Loader2, Check } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Star, Loader2, Check, ArrowRight } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { SUBSCRIPTION_TIERS } from '@/lib/stripe'
 
-interface PricingCardsProps {
-  /** If true, renders checkout CTAs for authenticated users */
-  isAuthenticated?: boolean
-}
-
-export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
+export default function SubscribePage() {
+  const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(false)
+  const [checking, setChecking] = useState(true)
+
+  // If user already has a subscription, skip to onboarding/dashboard
+  useEffect(() => {
+    if (authLoading) return
+    if (!user) {
+      router.replace('/register')
+      return
+    }
+
+    async function checkSubscription() {
+      try {
+        const { data: profile } = await supabase
+          .from('ss_user_profiles')
+          .select('plan, onboarding_completed')
+          .eq('user_id', user!.id)
+          .maybeSingle()
+
+        if (profile?.plan && profile.plan !== 'free') {
+          // Already subscribed — go to onboarding or dashboard
+          router.replace(profile.onboarding_completed ? '/dashboard' : '/onboarding')
+          return
+        }
+      } catch {
+        // Profile check failed — show subscribe page anyway
+      }
+      setChecking(false)
+    }
+
+    checkSubscription()
+  }, [user, authLoading, router])
 
   async function handleCheckout() {
-    if (!isAuthenticated) {
-      window.location.href = '/register?plan=pro_monthly'
+    if (!user) {
+      router.push('/register')
       return
     }
 
@@ -45,11 +75,27 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
     }
   }
 
+  if (authLoading || checking) {
+    return (
+      <div className="flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
+      </div>
+    )
+  }
+
   const tier = SUBSCRIPTION_TIERS.pro_monthly
 
   return (
-    <div className="max-w-md mx-auto">
-      {/* Seoul Sister Pro */}
+    <div className="w-full max-w-md mx-auto">
+      <div className="text-center mb-6">
+        <h1 className="font-display text-2xl font-bold text-gradient mb-2">
+          One last step
+        </h1>
+        <p className="text-white/50 text-sm">
+          Subscribe to unlock your full K-beauty intelligence suite.
+        </p>
+      </div>
+
       <div className="relative dark-card-gold p-8 text-left shadow-glow-gold">
         <span className="absolute -top-3 left-1/2 -translate-x-1/2 badge-gold font-semibold px-4 py-1 text-xs">
           Full AI Intelligence Suite
@@ -78,19 +124,19 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
         <button
           onClick={handleCheckout}
           disabled={loading}
-          className="glass-button-primary w-full text-center text-sm py-3 disabled:opacity-50"
+          className="glass-button-primary w-full flex items-center justify-center gap-2 text-sm py-3 disabled:opacity-50"
         >
           {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-          ) : isAuthenticated ? (
-            'Subscribe Now'
+            <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
-            'Get Started'
+            <>
+              Subscribe Now <ArrowRight className="w-4 h-4" />
+            </>
           )}
         </button>
 
         <p className="text-center text-[10px] text-white/30 mt-3">
-          Powered by Claude Opus AI. Try 20 free preview messages before subscribing.
+          Powered by Claude Opus AI. Secure payment via Stripe.
         </p>
       </div>
     </div>

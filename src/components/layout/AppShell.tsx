@@ -15,7 +15,7 @@ export default function AppShell({ children }: AppShellProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
-  const [onboardingChecked, setOnboardingChecked] = useState(false)
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -23,37 +23,45 @@ export default function AppShell({ children }: AppShellProps) {
     }
   }, [user, loading, router])
 
-  // Redirect to onboarding if profile not completed (skip if already on /onboarding)
+  // Check subscription + onboarding before showing app content
   useEffect(() => {
     if (!user || loading || pathname === '/onboarding') {
-      setOnboardingChecked(true)
+      setReady(true)
       return
     }
 
-    async function checkOnboarding() {
+    async function checkAccess() {
       try {
         const { data } = await supabase
           .from('ss_user_profiles')
-          .select('onboarding_completed')
+          .select('plan, onboarding_completed')
           .eq('user_id', user!.id)
           .maybeSingle()
 
+        // No subscription → redirect to subscribe page
+        if (!data?.plan || data.plan === 'free') {
+          router.replace('/subscribe')
+          return
+        }
+
+        // Not onboarded → redirect to onboarding
         if (data && !data.onboarding_completed) {
           router.replace('/onboarding')
-        } else {
-          setOnboardingChecked(true)
+          return
         }
+
+        setReady(true)
       } catch {
         // Profile fetch failed — don't block the app
-        setOnboardingChecked(true)
+        setReady(true)
       }
     }
 
-    checkOnboarding()
+    checkAccess()
   }, [user, loading, pathname, router])
 
   // Show nothing while checking auth or onboarding to prevent flash of protected content
-  if (loading || !onboardingChecked) {
+  if (loading || !ready) {
     return (
       <div className="min-h-screen bg-seoul-darker flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />

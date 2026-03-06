@@ -77,8 +77,8 @@ export default function TermsPage() {
           4. Subscriptions &amp; Billing
         </h2>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Free tier features are available at no charge</li>
-          <li>Pro subscriptions are billed monthly or annually through Stripe</li>
+          <li>Seoul Sister requires a paid subscription to access the platform</li>
+          <li>Subscriptions are billed monthly through Stripe</li>
           <li>You can cancel anytime; access continues through the end of the billing period</li>
           <li>Refunds are handled on a case-by-case basis within 7 days of charge</li>
           <li>We reserve the right to change pricing with 30 days notice to existing subscribers</li>

@@ -4,6 +4,48 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v9.3.0 (Mar 5, 2026) — Monetization Overhaul: Payment-First Registration + AI-First Widget Conversion
+
+### Changed
+- **Free tier eliminated**: Seoul Sister is now a paid-only platform. No free accounts can be created. All users must subscribe ($39.99/mo) before accessing the app
+- **Payment-first registration flow**: Register → `/subscribe` payment gate → Stripe Checkout → `/onboarding` → app access. New `src/app/(auth)/subscribe/page.tsx` page placed under `(auth)` route group to avoid AppShell redirect loops
+- **Email verification removed**: Registration no longer requires email confirmation. Account is created instantly, user redirected straight to payment. Requires "Confirm email" disabled in Supabase dashboard (Authentication > Providers > Email)
+- **AppShell subscription enforcement**: `src/components/layout/AppShell.tsx` now checks `ss_user_profiles.plan` — redirects to `/subscribe` if no active plan, redirects to `/onboarding` if not onboarded
+- **Auth callback redirect**: Email verification now redirects to `/subscribe` (was `/dashboard`)
+- **Stripe checkout URLs**: Success URL changed from `/dashboard?subscription=success` to `/onboarding`. Cancel URL changed to `/subscribe?canceled=true`
+- **Widget system prompt rewritten AI-First**: Replaced message-by-message conversion playbook with identity/context/values/business-reality framework. Claude Opus given creative freedom to build trust naturally through genuine K-beauty expertise, not scripted conversion tactics
+- **Widget message limit increased**: 5 → 20 preview messages per session. Server-side: IP+UA hash tracking with 30-day window. Client-side: localStorage counter. Rate limit increased 10 → 25/IP/day, history limit 10 → 40 messages
+- **Widget conversion CTAs**: Both `YuriBubble.tsx` and `TryYuriSection.tsx` updated with value-first messaging: "This is just the preview" + feature highlights + "$39.99/mo" subscribe CTA
+- **Onboarding prompt updated**: `buildOnboardingSystemPrompt()` now acknowledges subscriber status — "This person just subscribed... proving the subscription is worth it by showing real expertise"
+
+### Removed
+- **Free tier references**: "Create a free account" → "Create an account" on login page. Terms of Service updated: "Free tier features are available at no charge" → "Seoul Sister requires a paid subscription". Register page comment updated
+- **Free/Pro/Annual/Student pricing tiers**: Single tier only ($39.99/mo Seoul Sister Pro)
+- **Email verification UI**: Removed `verificationSent` state, "Check your email" screen, and conditional branching from register page. `signUp()` now always redirects to `/subscribe`. `/auth/callback` route kept for password recovery only
+
+### Fixed
+- **AppShell variable mismatch**: `onboardingChecked` → `ready` (stale reference from previous refactor would have caused ReferenceError)
+
+### Files Created
+- `src/app/(auth)/subscribe/page.tsx` — Payment gate page with Stripe checkout integration
+
+### Files Modified
+- `src/app/api/widget/chat/route.ts` — Full system prompt rewrite, limits increased
+- `src/lib/utils/widget-session.ts` — MAX_FREE_MESSAGES 5 → 20
+- `src/app/page.tsx` — "Try Yuri free — 20 preview messages"
+- `src/components/pricing/PricingCards.tsx` — "Try 20 free preview messages"
+- `src/components/widget/YuriBubble.tsx` — Value-first conversion CTA
+- `src/components/widget/TryYuriSection.tsx` — Value-first conversion CTA
+- `src/app/auth/callback/route.ts` — Redirect to `/subscribe`
+- `src/components/layout/AppShell.tsx` — Subscription + onboarding gating
+- `src/app/(auth)/register/page.tsx` — Redirect to `/subscribe`, remove "free" language
+- `src/app/api/stripe/checkout/route.ts` — Updated success/cancel URLs
+- `src/app/(auth)/login/page.tsx` — "Create an account" (removed "free")
+- `src/app/(legal)/terms/page.tsx` — Updated subscription billing language
+- `src/lib/yuri/onboarding.ts` — Subscriber-aware onboarding prompt
+
+---
+
 ## v9.2.0 (Mar 2, 2026) — Google Analytics 4 Integration + Vercel Analytics
 
 ### Added
