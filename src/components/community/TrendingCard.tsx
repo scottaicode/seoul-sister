@@ -126,11 +126,24 @@ export default function TrendingCard({
 
   const CardContent = (
     <div className="glass-card p-4 flex gap-3 transition-all duration-300 group">
-      {/* Rank badge (for ranked sources) or product image */}
+      {/* Rank badge + product image */}
       {isOliveYoung && rankPosition ? (
-        <div className="flex flex-col items-center gap-1 flex-shrink-0">
-          <RankBadge rank={rankPosition} />
-          <RankChangeIndicator change={rankChange ?? null} daysOnList={daysOnList ?? null} />
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex flex-col items-center gap-1">
+            <RankBadge rank={rankPosition} />
+            <RankChangeIndicator change={rankChange ?? null} daysOnList={daysOnList ?? null} />
+          </div>
+          <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden relative">
+            {product?.image_url ? (
+              <img
+                src={product.image_url}
+                alt={displayName}
+                className="w-full h-full object-cover rounded-lg"
+              />
+            ) : (
+              <Package className="w-5 h-5 text-gold/50" strokeWidth={1.5} />
+            )}
+          </div>
         </div>
       ) : (
         <div className="flex-shrink-0 w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden relative">
