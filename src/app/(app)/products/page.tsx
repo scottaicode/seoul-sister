@@ -293,17 +293,17 @@ export default function ProductsPage() {
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-4 py-2 rounded-xl text-sm font-medium glass-card disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+            className="px-4 py-2 rounded-xl text-sm font-medium bg-white/10 border border-white/20 text-white/80 hover:bg-white/15 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
           >
             Previous
           </button>
-          <span className="text-sm text-white/40 px-3">
+          <span className="text-sm text-white/60 px-3">
             {page} of {totalPages}
           </span>
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="px-4 py-2 rounded-xl text-sm font-medium glass-card disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+            className="px-4 py-2 rounded-xl text-sm font-medium bg-white/10 border border-white/20 text-white/80 hover:bg-white/15 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
           >
             Next
           </button>
