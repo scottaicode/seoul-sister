@@ -89,6 +89,14 @@ export default async function IngredientsPage() {
     .in('name_inci', FEATURED_INCI)
     .order('name_en')
 
+  // Fetch all enriched ingredients (have rich_content = detailed guide pages)
+  const { data: enrichedRaw } = await supabase
+    .from('ss_ingredients')
+    .select('id, name_inci, name_en, function, is_active, safety_rating, comedogenic_rating')
+    .eq('is_active', true)
+    .not('rich_content', 'is', null)
+    .order('name_en')
+
   // Fetch counts
   const { count: totalCount } = await supabase
     .from('ss_ingredients')
@@ -100,6 +108,19 @@ export default async function IngredientsPage() {
     .eq('is_active', true)
 
   const featured = (featuredRaw || []) as IngredientRow[]
+  const enriched = (enrichedRaw || []) as IngredientRow[]
+
+  // Group enriched by first letter for alphabetical browsing
+  const featuredSet = new Set(FEATURED_INCI)
+  const alphabetical = enriched
+    .filter((ing) => !featuredSet.has(ing.name_inci)) // exclude already-featured
+    .reduce<Record<string, IngredientRow[]>>((acc, ing) => {
+      const letter = (ing.name_en || ing.name_inci).charAt(0).toUpperCase()
+      if (!acc[letter]) acc[letter] = []
+      acc[letter].push(ing)
+      return acc
+    }, {})
+  const sortedLetters = Object.keys(alphabetical).sort()
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -236,6 +257,63 @@ export default async function IngredientsPage() {
             ))}
           </div>
         </div>
+
+        {/* All Ingredient Guides — Alphabetical */}
+        {sortedLetters.length > 0 && (
+          <div className="max-w-6xl mx-auto px-4 pb-16">
+            <div className="border-t border-white/10 pt-12 mb-8">
+              <h2 className="font-display font-semibold text-xl text-white mb-2">
+                All Ingredient Guides
+              </h2>
+              <p className="text-white/50 text-sm mb-6">
+                {enriched.length} ingredients with in-depth guides — mechanism of action, skin type suitability, usage tips, and FAQ.
+              </p>
+
+              {/* Letter jump nav */}
+              <div className="flex flex-wrap gap-1.5 mb-8">
+                {sortedLetters.map((letter) => (
+                  <a
+                    key={letter}
+                    href={`#letter-${letter}`}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium bg-white/5 text-white/60 hover:bg-amber-500/20 hover:text-amber-400 transition-colors"
+                  >
+                    {letter}
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Alphabetical sections */}
+            {sortedLetters.map((letter) => (
+              <div key={letter} id={`letter-${letter}`} className="mb-10">
+                <h3 className="font-display font-semibold text-lg text-amber-400 mb-3 sticky top-0 bg-[#0a0a0a] py-2 z-10 border-b border-white/5">
+                  {letter}
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {alphabetical[letter].map((ing) => (
+                    <Link
+                      key={ing.id}
+                      href={`/ingredients/${toSlug(ing.name_inci)}`}
+                      className="group flex items-center gap-3 bg-white/[0.03] rounded-lg border border-white/5 px-4 py-3 hover:border-amber-500/30 hover:bg-white/[0.06] transition-all"
+                    >
+                      <Sparkles className="w-4 h-4 text-amber-500/40 group-hover:text-amber-400 transition-colors shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-sm text-white group-hover:text-amber-400 transition-colors">
+                          {ing.name_en || ing.name_inci}
+                        </span>
+                        {ing.function && (
+                          <p className="text-xs text-white/40 line-clamp-1 mt-0.5">
+                            {ing.function}
+                          </p>
+                        )}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </>
   )
