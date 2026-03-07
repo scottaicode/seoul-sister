@@ -14,7 +14,7 @@ const MSG_LIMIT_WINDOW = 30 * 24 * 60 * 60 * 1000 // 30 days (matches client-sid
 const MAX_WIDGET_TOOL_LOOPS = 2 // fewer loops than authenticated Yuri (cost control)
 
 /** Widget-safe tools: subset of Yuri's tools that work without user auth */
-const WIDGET_TOOL_NAMES = new Set(['search_products', 'compare_prices', 'get_trending_products', 'get_current_weather'])
+const WIDGET_TOOL_NAMES = new Set(['search_products', 'compare_prices', 'get_trending_products', 'get_current_weather', 'get_ingredient_guide'])
 const WIDGET_TOOLS = YURI_TOOLS.filter((t) => WIDGET_TOOL_NAMES.has(t.name))
 
 /** Prompt-cached versions: cache_control on system prompt and last tool definition */

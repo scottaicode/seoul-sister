@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 import { Calendar, Clock, ArrowLeft, Tag } from 'lucide-react'
 import BlogYuriCta from '@/components/blog/BlogYuriCta'
 import { marked } from 'marked'
+import { linkIngredients, buildIngredientMap, type IngredientLink } from '@/lib/utils/ingredient-linker'
 
 // Configure marked: open external links in new tab, sanitize
 const renderer = new marked.Renderer()
@@ -144,6 +145,22 @@ export default async function BlogPostPage({
 
   const blogPost = post as BlogPost
 
+  // Fetch enriched ingredients for internal linking
+  const { data: enrichedIngredients } = await supabase
+    .from('ss_ingredients')
+    .select('name_en, name_inci')
+    .eq('is_active', true)
+    .not('rich_content', 'is', null)
+    .order('name_en')
+
+  const ingredientLinks: IngredientLink[] = enrichedIngredients
+    ? buildIngredientMap(enrichedIngredients)
+    : []
+
+  // Render body with ingredient links
+  const rawHtml = renderMarkdown(blogPost.body)
+  const { html: linkedHtml, linked: linkedIngredients } = linkIngredients(rawHtml, ingredientLinks)
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -280,7 +297,7 @@ export default async function BlogPostPage({
               prose-blockquote:border-amber-500 prose-blockquote:text-white/70
               prose-code:text-amber-300 prose-code:bg-white/10 prose-code:px-1 prose-code:rounded
               prose-hr:border-white/10"
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(blogPost.body) }}
+            dangerouslySetInnerHTML={{ __html: linkedHtml }}
           />
 
           {/* Tags */}
@@ -321,6 +338,29 @@ export default async function BlogPostPage({
                     <div className="px-5 pb-4 text-white/70">{faq.answer}</div>
                   </details>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Key Ingredients Mentioned */}
+          {linkedIngredients.length > 0 && (
+            <div className="mt-12 pt-8 border-t border-white/10">
+              <h2 className="font-display font-semibold text-xl text-white mb-4">
+                Key Ingredients Mentioned
+              </h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                {linkedIngredients.map((name) => {
+                  const link = ingredientLinks.find((l) => l.name === name)
+                  return link ? (
+                    <Link
+                      key={name}
+                      href={`/ingredients/${link.slug}`}
+                      className="px-3 py-1.5 rounded-full text-sm bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/30 transition-colors"
+                    >
+                      {name}
+                    </Link>
+                  ) : null
+                })}
               </div>
             </div>
           )}

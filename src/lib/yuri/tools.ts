@@ -303,6 +303,21 @@ export const YURI_TOOLS: ToolDef[] = [
     },
   },
   {
+    name: 'get_ingredient_guide',
+    description:
+      'Get a comprehensive ingredient guide including mechanism of action, skin type suitability, usage tips, history, and FAQ. Also returns effectiveness data, known conflicts, and top products containing the ingredient. Use when a user asks about a specific ingredient (e.g., "What is niacinamide?", "How does retinol work?", "Is hyaluronic acid good for oily skin?").',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        ingredient_name: {
+          type: 'string',
+          description: 'Ingredient name to look up (INCI, English, or Korean name)',
+        },
+      },
+      required: ['ingredient_name'],
+    },
+  },
+  {
     name: 'web_search',
     description:
       'Search the web for current K-beauty information, latest product reviews, ingredient research, brand news, or Korean skincare trends. Use when the question requires information more recent than your training data, or when you need to verify current product availability, reformulations, or pricing from sources outside the Seoul Sister database.',
@@ -493,6 +508,8 @@ export async function executeYuriTool(
         return await executeComparePrices(input)
       case 'get_personalized_match':
         return await executeGetPersonalizedMatch(input, userId)
+      case 'get_ingredient_guide':
+        return await executeGetIngredientGuide(input)
       case 'web_search':
         return await executeWebSearch(input)
       case 'get_current_weather':
@@ -653,7 +670,7 @@ async function executeSearchProducts(
   // Get top active ingredients for each product
   const { data: topIngredients } = await db
     .from('ss_product_ingredients')
-    .select('product_id, position, ingredient:ss_ingredients(name_en, is_active)')
+    .select('product_id, position, ingredient:ss_ingredients(name_en, is_active, function, rich_content_generated_at)')
     .in('product_id', finalIds)
     .lte('position', 10)
     .order('position', { ascending: true })
@@ -671,9 +688,14 @@ async function executeSearchProducts(
       .filter((i: Record<string, unknown>) => i.product_id === pid)
       .map((i: Record<string, unknown>) => {
         const ing = i.ingredient as Record<string, unknown> | null
-        return ing?.name_en || 'Unknown'
+        if (!ing?.name_en || ing.name_en === 'Unknown') return null
+        return {
+          name: ing.name_en as string,
+          function: ing.function as string | null,
+          has_guide: !!ing.rich_content_generated_at,
+        }
       })
-      .filter((name: unknown) => name !== 'Unknown')
+      .filter((x): x is NonNullable<typeof x> => x !== null)
       .slice(0, 5)
 
     return {
@@ -722,7 +744,7 @@ async function executeGetProductDetails(
       .eq('id', productId)
       .single(),
     db.from('ss_product_ingredients')
-      .select('position, ingredient:ss_ingredients(name_inci, name_en, function, is_active, safety_rating, comedogenic_rating)')
+      .select('position, ingredient:ss_ingredients(name_inci, name_en, function, is_active, safety_rating, comedogenic_rating, rich_content, rich_content_generated_at)')
       .eq('product_id', productId)
       .order('position', { ascending: true })
       .limit(30),
@@ -744,12 +766,19 @@ async function executeGetProductDetails(
 
   const ingredients = (ingredientsRes.data || []).map((i: Record<string, unknown>) => {
     const ing = i.ingredient as Record<string, unknown> | null
-    return {
+    const rc = ing?.rich_content as Record<string, unknown> | null
+    const entry: Record<string, unknown> = {
       name: ing?.name_en || ing?.name_inci || 'Unknown',
       function: ing?.function,
       is_active: ing?.is_active,
       position: i.position,
+      has_guide: !!ing?.rich_content_generated_at,
     }
+    // Include condensed overview for active ingredients with guides
+    if (ing?.is_active && rc?.overview) {
+      entry.overview = (rc.overview as string).slice(0, 200)
+    }
+    return entry
   })
 
   const prices = (pricesRes.data || []).map((p: Record<string, unknown>) => {
@@ -797,6 +826,157 @@ async function executeGetProductDetails(
     },
     counterfeit_markers: markersRes.data || [],
   })
+}
+
+// ---------------------------------------------------------------------------
+// Tool: get_ingredient_guide
+// ---------------------------------------------------------------------------
+
+async function executeGetIngredientGuide(
+  input: Record<string, unknown>
+): Promise<string> {
+  const db = getServiceClient()
+  const ingredientName = input.ingredient_name as string | undefined
+
+  if (!ingredientName) {
+    return JSON.stringify({ error: 'ingredient_name is required' })
+  }
+
+  // Search for ingredient by name (INCI, English, or Korean)
+  const term = ingredientName.trim()
+  const { data: ingredients } = await db
+    .from('ss_ingredients')
+    .select(
+      'id, name_inci, name_en, name_ko, function, description, safety_rating, comedogenic_rating, is_fragrance, is_active, common_concerns, rich_content, rich_content_generated_at'
+    )
+    .or(
+      `name_inci.ilike.%${term}%,name_en.ilike.%${term}%,name_ko.ilike.%${term}%`
+    )
+    .limit(5)
+
+  if (!ingredients?.length) {
+    return JSON.stringify({
+      error: `No ingredient found matching "${ingredientName}"`,
+    })
+  }
+
+  // Prefer exact match, then closest
+  const exactMatch = ingredients.find(
+    (i) =>
+      i.name_inci?.toLowerCase() === term.toLowerCase() ||
+      i.name_en?.toLowerCase() === term.toLowerCase()
+  )
+  const ing = exactMatch || ingredients[0]
+
+  // Parallel queries for related data
+  const [effectivenessRes, conflictsRes, productsRes, productCountRes] =
+    await Promise.all([
+      db
+        .from('ss_ingredient_effectiveness')
+        .select('skin_type, concern, effectiveness_score, sample_size')
+        .eq('ingredient_id', ing.id)
+        .order('effectiveness_score', { ascending: false })
+        .limit(10),
+      db
+        .from('ss_ingredient_conflicts')
+        .select(
+          `severity, description, recommendation,
+         ingredient_a:ss_ingredients!ingredient_a_id(name_en, name_inci),
+         ingredient_b:ss_ingredients!ingredient_b_id(name_en, name_inci)`
+        )
+        .or(`ingredient_a_id.eq.${ing.id},ingredient_b_id.eq.${ing.id}`),
+      db
+        .from('ss_product_ingredients')
+        .select(
+          'position, product:ss_products(id, name_en, brand_en, category, rating_avg, review_count)'
+        )
+        .eq('ingredient_id', ing.id)
+        .order('position', { ascending: true })
+        .limit(5),
+      db
+        .from('ss_product_ingredients')
+        .select('id', { count: 'exact', head: true })
+        .eq('ingredient_id', ing.id),
+    ])
+
+  // Build response
+  const result: Record<string, unknown> = {
+    ingredient: {
+      name_inci: ing.name_inci,
+      name_en: ing.name_en,
+      name_ko: ing.name_ko,
+      function: ing.function,
+      description: ing.description,
+      safety_rating: ing.safety_rating,
+      comedogenic_rating: ing.comedogenic_rating,
+      is_fragrance: ing.is_fragrance,
+      is_active: ing.is_active,
+      common_concerns: ing.common_concerns,
+    },
+    product_count: productCountRes.count || 0,
+    has_guide: !!ing.rich_content_generated_at,
+  }
+
+  // Add rich content guide if available
+  if (ing.rich_content) {
+    const rc = ing.rich_content as Record<string, unknown>
+    result.guide = {
+      overview: rc.overview,
+      how_it_works: rc.how_it_works,
+      skin_types: rc.skin_types,
+      usage_tips: rc.usage_tips,
+      history_origin: rc.history_origin,
+      faq: rc.faq,
+    }
+  }
+
+  // Add effectiveness data
+  if (effectivenessRes.data?.length) {
+    result.effectiveness = effectivenessRes.data.map(
+      (e: Record<string, unknown>) => ({
+        skin_type: e.skin_type,
+        concern: e.concern,
+        score: e.effectiveness_score,
+        sample_size: e.sample_size,
+      })
+    )
+  }
+
+  // Add conflicts
+  if (conflictsRes.data?.length) {
+    result.conflicts = conflictsRes.data.map((c: Record<string, unknown>) => {
+      const a = c.ingredient_a as Record<string, string> | null
+      const b = c.ingredient_b as Record<string, string> | null
+      const otherName =
+        (a?.name_en || a?.name_inci) === (ing.name_en || ing.name_inci)
+          ? b?.name_en || b?.name_inci
+          : a?.name_en || a?.name_inci
+      return {
+        conflicts_with: otherName,
+        severity: c.severity,
+        description: c.description,
+        recommendation: c.recommendation,
+      }
+    })
+  }
+
+  // Add top products
+  if (productsRes.data?.length) {
+    result.top_products = productsRes.data.map(
+      (p: Record<string, unknown>) => {
+        const prod = p.product as Record<string, unknown> | null
+        return {
+          name: prod?.name_en,
+          brand: prod?.brand_en,
+          category: prod?.category,
+          rating: prod?.rating_avg,
+          reviews: prod?.review_count,
+        }
+      }
+    )
+  }
+
+  return JSON.stringify(result)
 }
 
 // ---------------------------------------------------------------------------

@@ -10,6 +10,8 @@ import {
   Sparkles,
   Droplets,
   Star,
+  BookOpen,
+  Calendar,
 } from 'lucide-react'
 import { toSlug } from '@/lib/utils/slug'
 
@@ -249,6 +251,20 @@ export default async function IngredientDetailPage({
 
   const productCount = productCountRes.count || products.length
   const displayName = ingredient.name_en || ingredient.name_inci
+
+  // Fetch related blog articles that mention this ingredient
+  const searchTerms = [ingredient.name_inci, ingredient.name_en].filter(Boolean)
+  const orConditions = searchTerms.map((t) => `body.ilike.%${t}%`).join(',')
+  const { data: relatedArticles } = orConditions
+    ? await supabase
+        .from('ss_content_posts')
+        .select('slug, title, excerpt, published_at')
+        .or(orConditions)
+        .not('published_at', 'is', null)
+        .lte('published_at', new Date().toISOString())
+        .order('published_at', { ascending: false })
+        .limit(3)
+    : { data: null }
 
   // Safety label
   function safetyLabel(rating: number | null): {
@@ -809,6 +825,42 @@ export default async function IngredientDetailPage({
                       {item.answer}
                     </div>
                   </details>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Related Articles */}
+          {relatedArticles && relatedArticles.length > 0 && (
+            <section>
+              <h2 className="font-display font-semibold text-lg text-white mb-4 flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-amber-400" />
+                Articles About {displayName}
+              </h2>
+              <div className="space-y-3">
+                {relatedArticles.map((article) => (
+                  <Link
+                    key={article.slug}
+                    href={`/blog/${article.slug}`}
+                    className="block group bg-white/5 rounded-xl border border-white/10 hover:border-amber-500/30 p-4 transition-colors"
+                  >
+                    <h3 className="text-sm font-medium text-white group-hover:text-amber-400 transition-colors line-clamp-2">
+                      {article.title}
+                    </h3>
+                    {article.excerpt && (
+                      <p className="text-white/50 text-xs mt-1 line-clamp-2">
+                        {article.excerpt}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1 mt-2 text-white/30 text-xs">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(article.published_at).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </div>
+                  </Link>
                 ))}
               </div>
             </section>
