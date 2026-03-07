@@ -24,13 +24,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.seoulsister.com'
   const now = new Date()
 
-  // Static pages
+  // Static pages (only publicly accessible — auth-gated pages excluded)
   const staticPages: MetadataRoute.Sitemap = [
     { url: baseUrl, lastModified: now, changeFrequency: 'daily', priority: 1 },
-    { url: `${baseUrl}/products`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
-    { url: `${baseUrl}/trending`, lastModified: now, changeFrequency: 'daily', priority: 0.8 },
-    { url: `${baseUrl}/community`, lastModified: now, changeFrequency: 'daily', priority: 0.7 },
-    { url: `${baseUrl}/ingredients`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${baseUrl}/ingredients`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${baseUrl}/best`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${baseUrl}/login`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
     { url: `${baseUrl}/register`, lastModified: now, changeFrequency: 'monthly', priority: 0.3 },
@@ -44,8 +41,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }))
 
-  // Dynamic pages
-  let productPages: MetadataRoute.Sitemap = []
+  // Dynamic pages (only publicly accessible content)
   let blogPages: MetadataRoute.Sitemap = []
   let ingredientPages: MetadataRoute.Sitemap = []
 
@@ -55,12 +51,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
-    // Products, blog posts, and active ingredients in parallel
-    const [productsRes, blogRes, ingredientsRes] = await Promise.all([
-      supabase
-        .from('ss_products')
-        .select('id, updated_at')
-        .order('updated_at', { ascending: false }),
+    // Blog posts and active ingredients in parallel
+    // (Products excluded — behind auth gate, not crawlable)
+    const [blogRes, ingredientsRes] = await Promise.all([
       supabase
         .from('ss_content_posts')
         .select('slug, published_at, updated_at')
@@ -73,15 +66,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .eq('is_active', true)
         .order('name_inci'),
     ])
-
-    if (productsRes.data) {
-      productPages = productsRes.data.map((p) => ({
-        url: `${baseUrl}/products/${p.id}`,
-        lastModified: new Date(p.updated_at),
-        changeFrequency: 'weekly' as const,
-        priority: 0.8,
-      }))
-    }
 
     if (blogRes.data) {
       blogPages = blogRes.data.map((p) => ({
@@ -121,7 +105,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...staticPages,
     ...bestOfPages,
     { url: `${baseUrl}/blog`, lastModified: now, changeFrequency: 'daily' as const, priority: 0.8 },
-    ...productPages,
     ...blogPages,
     ...ingredientPages,
   ]
