@@ -15,6 +15,23 @@ import { toSlug } from '@/lib/utils/slug'
 
 export const revalidate = 3600
 
+interface RichContent {
+  overview: string
+  how_it_works: string
+  skin_types: {
+    oily: string
+    dry: string
+    combination: string
+    sensitive: string
+    normal: string
+  }
+  usage_tips: string[]
+  history_origin: string
+  faq: Array<{ question: string; answer: string }>
+  word_count: number
+  model_used: string
+}
+
 interface IngredientRow {
   id: string
   name_inci: string
@@ -27,6 +44,7 @@ interface IngredientRow {
   is_fragrance: boolean
   is_active: boolean
   common_concerns: string[] | null
+  rich_content: RichContent | null
 }
 
 interface EffectivenessRow {
@@ -69,7 +87,7 @@ async function findIngredientBySlug(
   const { data: exact } = await supabase
     .from('ss_ingredients')
     .select(
-      'id, name_inci, name_en, name_ko, function, description, safety_rating, comedogenic_rating, is_fragrance, is_active, common_concerns'
+      'id, name_inci, name_en, name_ko, function, description, safety_rating, comedogenic_rating, is_fragrance, is_active, common_concerns, rich_content'
     )
     .ilike('name_inci', slug.replace(/-/g, '_').replace(/_/g, '%'))
     .limit(50)
@@ -86,7 +104,7 @@ async function findIngredientBySlug(
   const { data: broad } = await supabase
     .from('ss_ingredients')
     .select(
-      'id, name_inci, name_en, name_ko, function, description, safety_rating, comedogenic_rating, is_fragrance, is_active, common_concerns'
+      'id, name_inci, name_en, name_ko, function, description, safety_rating, comedogenic_rating, is_fragrance, is_active, common_concerns, rich_content'
     )
     .ilike('name_inci', `%${words[0]}%`)
     .limit(200)
@@ -108,9 +126,11 @@ export async function generateMetadata({
   }
 
   const displayName = ingredient.name_en || ingredient.name_inci
-  const description =
-    ingredient.description ||
-    `${displayName} in K-beauty: safety rating, comedogenic score, skin-type effectiveness, and which Korean skincare products contain it.`
+  const rc = ingredient.rich_content
+  const description = rc?.overview
+    ? rc.overview.slice(0, 155).replace(/\s+\S*$/, '') + '...'
+    : ingredient.description ||
+      `${displayName} in K-beauty: safety rating, comedogenic score, skin-type effectiveness, and which Korean skincare products contain it.`
 
   return {
     title: `${displayName} — K-Beauty Ingredient Guide`,
@@ -243,6 +263,7 @@ export default async function IngredientDetailPage({
   }
 
   const safety = safetyLabel(ingredient.safety_rating)
+  const richContent = ingredient.rich_content
 
   // JSON-LD
   const jsonLd = {
@@ -276,6 +297,7 @@ export default async function IngredientDetailPage({
         '@id': `https://www.seoulsister.com/ingredients/${slug}#article`,
         headline: `${displayName} in K-Beauty: Safety, Effectiveness & Products`,
         description:
+          richContent?.overview?.slice(0, 300) ||
           ingredient.description ||
           `Complete guide to ${displayName} in Korean skincare. Safety rating, comedogenic score, effectiveness by skin type, and products containing this ingredient.`,
         url: `https://www.seoulsister.com/ingredients/${slug}`,
@@ -306,79 +328,88 @@ export default async function IngredientDetailPage({
           .filter(Boolean)
           .join(', '),
       },
-      // FAQ schema from effectiveness data
-      ...(effectiveness.length > 0
+      // FAQ schema — use AI-generated FAQ when available, fall back to template
+      ...((richContent?.faq?.length || effectiveness.length > 0)
         ? [
             {
               '@type': 'FAQPage',
               '@id': `https://www.seoulsister.com/ingredients/${slug}#faq`,
-              mainEntity: [
-                {
-                  '@type': 'Question',
-                  name: `Is ${displayName} safe for skin?`,
-                  acceptedAnswer: {
-                    '@type': 'Answer',
-                    text:
-                      ingredient.safety_rating != null
-                        ? `${displayName} has a safety rating of ${ingredient.safety_rating}/5. ${
-                            ingredient.safety_rating >= 4
-                              ? 'It is considered very safe for most skin types.'
-                              : ingredient.safety_rating >= 3
-                                ? 'It is generally safe but some individuals may experience sensitivity.'
-                                : 'Use with caution and patch test first.'
-                          }${
-                            ingredient.comedogenic_rating != null && ingredient.comedogenic_rating > 0
-                              ? ` It has a comedogenic rating of ${ingredient.comedogenic_rating}/5.`
-                              : ' It is non-comedogenic.'
-                          }`
-                        : `Safety data for ${displayName} is still being compiled.`,
-                  },
-                },
-                {
-                  '@type': 'Question',
-                  name: `What does ${displayName} do in skincare?`,
-                  acceptedAnswer: {
-                    '@type': 'Answer',
-                    text:
-                      ingredient.description ||
-                      ingredient.function ||
-                      `${displayName} is used in Korean skincare products for its beneficial properties.`,
-                  },
-                },
-                ...(effectiveness.length > 0
-                  ? [
-                      {
-                        '@type': 'Question',
-                        name: `What skin type is ${displayName} best for?`,
-                        acceptedAnswer: {
-                          '@type': 'Answer',
-                          text: `Based on effectiveness data, ${displayName} works best for ${effectiveness
-                            .slice(0, 3)
-                            .map(
-                              (e) =>
-                                `${e.skin_type} skin (${Math.round(e.effectiveness_score * 100)}% effective for ${e.concern})`
-                            )
-                            .join(', ')}.`,
-                        },
+              mainEntity: richContent?.faq?.length
+                ? richContent.faq.map((f) => ({
+                    '@type': 'Question',
+                    name: f.question,
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: f.answer,
+                    },
+                  }))
+                : [
+                    {
+                      '@type': 'Question',
+                      name: `Is ${displayName} safe for skin?`,
+                      acceptedAnswer: {
+                        '@type': 'Answer',
+                        text:
+                          ingredient.safety_rating != null
+                            ? `${displayName} has a safety rating of ${ingredient.safety_rating}/5. ${
+                                ingredient.safety_rating >= 4
+                                  ? 'It is considered very safe for most skin types.'
+                                  : ingredient.safety_rating >= 3
+                                    ? 'It is generally safe but some individuals may experience sensitivity.'
+                                    : 'Use with caution and patch test first.'
+                              }${
+                                ingredient.comedogenic_rating != null && ingredient.comedogenic_rating > 0
+                                  ? ` It has a comedogenic rating of ${ingredient.comedogenic_rating}/5.`
+                                  : ' It is non-comedogenic.'
+                              }`
+                            : `Safety data for ${displayName} is still being compiled.`,
                       },
-                    ]
-                  : []),
-                {
-                  '@type': 'Question',
-                  name: `Which K-beauty products contain ${displayName}?`,
-                  acceptedAnswer: {
-                    '@type': 'Answer',
-                    text: `${productCount.toLocaleString()} Korean skincare products in our database contain ${displayName}${
-                      products.length > 0
-                        ? `, including ${products
-                            .slice(0, 3)
-                            .map((p) => `${p.name_en} by ${p.brand_en}`)
-                            .join(', ')}.`
-                        : '.'
-                    }`,
-                  },
-                },
-              ],
+                    },
+                    {
+                      '@type': 'Question',
+                      name: `What does ${displayName} do in skincare?`,
+                      acceptedAnswer: {
+                        '@type': 'Answer',
+                        text:
+                          ingredient.description ||
+                          ingredient.function ||
+                          `${displayName} is used in Korean skincare products for its beneficial properties.`,
+                      },
+                    },
+                    ...(effectiveness.length > 0
+                      ? [
+                          {
+                            '@type': 'Question',
+                            name: `What skin type is ${displayName} best for?`,
+                            acceptedAnswer: {
+                              '@type': 'Answer',
+                              text: `Based on effectiveness data, ${displayName} works best for ${effectiveness
+                                .slice(0, 3)
+                                .map(
+                                  (e) =>
+                                    `${e.skin_type} skin (${Math.round(e.effectiveness_score * 100)}% effective for ${e.concern})`
+                                )
+                                .join(', ')}.`,
+                            },
+                          },
+                        ]
+                      : []),
+                    {
+                      '@type': 'Question',
+                      name: `Which K-beauty products contain ${displayName}?`,
+                      acceptedAnswer: {
+                        '@type': 'Answer',
+                        text: `${productCount.toLocaleString()} Korean skincare products in our database contain ${displayName}${
+                          products.length > 0
+                            ? `, including ${products
+                                .slice(0, 3)
+                                .map((p) => `${p.name_en} by ${p.brand_en}`)
+                                .join(', ')}.`
+                            : '.'
+                        }`,
+                      },
+                    },
+                  ],
             },
           ]
         : []),
@@ -490,6 +521,101 @@ export default async function IngredientDetailPage({
         </div>
 
         <div className="max-w-4xl mx-auto px-4 py-8 space-y-10">
+          {/* Rich Content: Overview */}
+          {richContent?.overview && (
+            <section>
+              <h2 className="font-display font-semibold text-lg text-white mb-3">
+                About {displayName}
+              </h2>
+              <div className="text-white/70 leading-relaxed space-y-4">
+                {richContent.overview.split('\n\n').map((para, i) => (
+                  <p key={i}>{para}</p>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Rich Content: How It Works */}
+          {richContent?.how_it_works && (
+            <section>
+              <h2 className="font-display font-semibold text-lg text-white mb-3">
+                How {displayName} Works
+              </h2>
+              <div className="text-white/70 leading-relaxed space-y-4">
+                {richContent.how_it_works.split('\n\n').map((para, i) => (
+                  <p key={i}>{para}</p>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Rich Content: Best For Your Skin Type */}
+          {richContent?.skin_types && (
+            <section>
+              <h2 className="font-display font-semibold text-lg text-white mb-4">
+                {displayName} by Skin Type
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {(['oily', 'dry', 'combination', 'sensitive', 'normal'] as const).map((type) => {
+                  const text = richContent.skin_types[type]
+                  if (!text) return null
+                  const icons: Record<string, string> = {
+                    oily: 'Oily',
+                    dry: 'Dry',
+                    combination: 'Combo',
+                    sensitive: 'Sensitive',
+                    normal: 'Normal',
+                  }
+                  return (
+                    <div
+                      key={type}
+                      className="bg-white/5 rounded-xl border border-white/10 p-4"
+                    >
+                      <h3 className="text-amber-400 font-medium text-sm mb-2 capitalize">
+                        {icons[type]} Skin
+                      </h3>
+                      <p className="text-white/60 text-sm leading-relaxed">{text}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* Rich Content: Usage Tips */}
+          {richContent?.usage_tips && richContent.usage_tips.length > 0 && (
+            <section>
+              <h2 className="font-display font-semibold text-lg text-white mb-3">
+                How to Use {displayName}
+              </h2>
+              <ol className="space-y-3">
+                {richContent.usage_tips.map((tip, i) => (
+                  <li
+                    key={i}
+                    className="flex gap-3 text-white/70 text-sm leading-relaxed"
+                  >
+                    <span className="shrink-0 w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-semibold">
+                      {i + 1}
+                    </span>
+                    <span>{tip}</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          {/* Rich Content: History & Origin */}
+          {richContent?.history_origin && (
+            <section>
+              <h2 className="font-display font-semibold text-lg text-white mb-3">
+                Background
+              </h2>
+              <p className="text-white/70 leading-relaxed">
+                {richContent.history_origin}
+              </p>
+            </section>
+          )}
+
           {/* Concerns */}
           {ingredient.common_concerns &&
             ingredient.common_concerns.length > 0 && (
@@ -656,6 +782,33 @@ export default async function IngredientDetailPage({
                       </div>
                     </div>
                   </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Rich Content: FAQ Accordion */}
+          {richContent?.faq && richContent.faq.length > 0 && (
+            <section>
+              <h2 className="font-display font-semibold text-lg text-white mb-4">
+                Frequently Asked Questions
+              </h2>
+              <div className="space-y-2">
+                {richContent.faq.map((item, i) => (
+                  <details
+                    key={i}
+                    className="group bg-white/5 rounded-xl border border-white/10"
+                  >
+                    <summary className="flex items-center justify-between cursor-pointer px-4 py-3 text-sm font-medium text-white hover:text-amber-400 transition-colors list-none">
+                      <span>{item.question}</span>
+                      <span className="shrink-0 ml-2 text-white/30 group-open:rotate-180 transition-transform">
+                        &#9660;
+                      </span>
+                    </summary>
+                    <div className="px-4 pb-4 text-white/60 text-sm leading-relaxed">
+                      {item.answer}
+                    </div>
+                  </details>
                 ))}
               </div>
             </section>

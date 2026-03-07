@@ -72,6 +72,23 @@ export type ProductCategory =
   | 'spot_treatment'
   | 'not_skincare'
 
+export interface IngredientRichContent {
+  overview: string
+  how_it_works: string
+  skin_types: {
+    oily: string
+    dry: string
+    combination: string
+    sensitive: string
+    normal: string
+  }
+  usage_tips: string[]
+  history_origin: string
+  faq: Array<{ question: string; answer: string }>
+  word_count: number
+  model_used: string
+}
+
 export interface Ingredient {
   id: string
   name_inci: string
@@ -84,6 +101,8 @@ export interface Ingredient {
   is_fragrance: boolean
   is_active: boolean
   common_concerns: string[]
+  rich_content: IngredientRichContent | null
+  rich_content_generated_at: string | null
   created_at: string
 }
 

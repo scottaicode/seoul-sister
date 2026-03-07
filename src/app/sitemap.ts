@@ -69,7 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .order('published_at', { ascending: false }),
       supabase
         .from('ss_ingredients')
-        .select('name_inci')
+        .select('name_inci, rich_content_generated_at')
         .eq('is_active', true)
         .order('name_inci'),
     ])
@@ -100,11 +100,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           const slug = toSlug(i.name_inci)
           if (!slug || seen.has(slug)) return null
           seen.add(slug)
+          const isEnriched = !!i.rich_content_generated_at
+          const changeFreq: 'monthly' | 'yearly' = isEnriched ? 'monthly' : 'yearly'
           return {
             url: `${baseUrl}/ingredients/${slug}`,
-            lastModified: now,
-            changeFrequency: 'monthly' as const,
-            priority: 0.6,
+            lastModified: isEnriched
+              ? new Date(i.rich_content_generated_at)
+              : now,
+            changeFrequency: changeFreq,
+            priority: isEnriched ? 0.8 : 0.4,
           }
         })
         .filter((x): x is NonNullable<typeof x> => x !== null)
