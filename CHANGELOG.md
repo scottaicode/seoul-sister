@@ -4,6 +4,19 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v9.4.1 (Mar 7, 2026) — Bug Fixes: Ingredient Filters, Multi-Term Search
+
+### Fixed
+- **Ingredient include/exclude filters returning 500**: `handleIngredientFilteredQuery()` passed all 5,838 product IDs in a single Supabase `.in()` call, exceeding PostgREST URL length limits. Fixed by batching in chunks of 500 (same pattern already used in `handleRecommendedQuery`). Affects `?include_ingredients=` and `?exclude_ingredients=` query params on `/api/products`
+- **Multi-term product search returning 0 results**: Searching "cosrx snail" (brand + product name) returned empty because the products API used single-column `ilike` matching. Ported the `smartProductSearch()` term-splitting pattern from Yuri's `tools.ts` — new `applySmartSearch()` helper splits queries into terms, matches ANY term against both `name_en` and `brand_en`, then post-sorts results so ALL-term matches rank first
+
+### Notes
+- Comprehensive API test suite run across all endpoints: Products (7 tests), Trending (4 tests), Sunscreen (4 tests), Ingredients (2 tests), Weather (1 test), SEO files (4 tests), Database health (10 checks). 3 bugs found and 2 fixed in this release
+- Dupe finder returns empty for original 56 seed products (pre-pipeline) because they lack `ingredients_raw` data. Works correctly for 5,500+ pipeline products with full ingredient links. Not a code bug — data limitation of manually-seeded products
+- 3 `not_skincare` products identified for manual cleanup (Round Lab set, 2x So Natural makeup setting spray)
+
+---
+
 ## v9.4.0 (Mar 6, 2026) — SEO & AI Discoverability: Ingredient Encyclopedia, Best-of Pages, Enhanced Structured Data
 
 ### Added
