@@ -18,6 +18,7 @@ const navLinks = [
   { label: 'Shelf Scan', href: '/shelf-scan' },
   { label: 'Community', href: '/community' },
   { label: 'Trending', href: '/trending' },
+  { label: 'Ingredients', href: '/ingredients' },
   { label: 'Blog', href: '/blog' },
 ]
 
