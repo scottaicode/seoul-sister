@@ -8,6 +8,38 @@ function sanitizeLikeInput(input: string): string {
   return input.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
 }
 
+/** Stop-words to strip from multi-term product searches */
+const SEARCH_STOP_WORDS = new Set([
+  'the', 'a', 'an', 'for', 'and', 'or', 'by', 'with', 'in', 'of', 'to',
+  'my', 'me', 'is', 'it', 'do', 'you', 'have', 'this', 'that',
+  'product', 'products', 'skincare', 'kbeauty', 'k-beauty', 'korean',
+])
+
+/**
+ * Smart search: for multi-term queries like "cosrx snail", builds an OR filter
+ * matching each term against both name_en and brand_en. For single-term queries,
+ * uses standard ilike on both columns.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applySmartSearch<T extends { or: (...args: any[]) => any }>(query: T, rawQuery: string): T {
+  const cleaned = sanitizeLikeInput(rawQuery.trim())
+  const terms = rawQuery.trim().toLowerCase().split(/\s+/)
+    .filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
+    .map(t => sanitizeLikeInput(t))
+
+  if (terms.length >= 2) {
+    // Multi-term: match ANY term against either column (post-filter ranks best matches)
+    const orClauses = terms
+      .slice(0, 6)
+      .flatMap(t => [`name_en.ilike.%${t}%`, `brand_en.ilike.%${t}%`])
+      .join(',')
+    return query.or(orClauses)
+  }
+
+  // Single term or after stop-word removal
+  return query.or(`name_en.ilike.%${cleaned}%,brand_en.ilike.%${cleaned}%`)
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -106,8 +138,7 @@ async function handleStandardQuery(supabase: SupabaseClient, params: SearchParam
   let query = supabase.from('ss_products').select('*', { count: 'exact' })
 
   if (params.query) {
-    const q = sanitizeLikeInput(params.query)
-    query = query.or(`name_en.ilike.%${q}%,brand_en.ilike.%${q}%`)
+    query = applySmartSearch(query, params.query)
   }
   if (params.category) {
     query = query.eq('category', params.category)
@@ -134,8 +165,24 @@ async function handleStandardQuery(supabase: SupabaseClient, params: SearchParam
 
   if (error) throw error
 
+  // Post-filter for multi-term queries: when query has multiple terms spanning
+  // brand + product name, the OR filter over-fetches; re-rank best matches first
+  let products = data ?? []
+  if (params.query && params.query.trim().includes(' ')) {
+    const terms = params.query.toLowerCase().split(/\s+/).filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
+    if (terms.length >= 2) {
+      products = products.sort((a, b) => {
+        const aCombined = `${a.brand_en || ''} ${a.name_en || ''}`.toLowerCase()
+        const bCombined = `${b.brand_en || ''} ${b.name_en || ''}`.toLowerCase()
+        const aMatches = terms.filter(t => aCombined.includes(t)).length
+        const bMatches = terms.filter(t => bCombined.includes(t)).length
+        return bMatches - aMatches
+      })
+    }
+  }
+
   return NextResponse.json({
-    products: data ?? [],
+    products,
     total: count ?? 0,
     page: params.page,
     total_pages: Math.ceil((count ?? 0) / params.limit),
@@ -329,18 +376,14 @@ async function handleRecommendedQuery(
 
 /**
  * Ingredient-filtered query: fetches candidate products matching basic filters,
- * loads their ingredient links in bulk, then filters client-side by ingredient
- * criteria (include/exclude/fragrance-free/comedogenic max).
- *
- * This approach avoids raw SQL and works with the Supabase JS client.
- * With ~55 products and ~130 ingredient links, the in-memory filtering is fast.
+ * loads their ingredient links in batches (to avoid PostgREST URL length limits),
+ * then filters client-side by ingredient criteria (include/exclude/fragrance-free/comedogenic max).
  */
 async function handleIngredientFilteredQuery(supabase: SupabaseClient, params: SearchParams) {
   // Step 1: Get candidate product IDs matching basic filters
   let candidateQuery = supabase.from('ss_products').select('id')
   if (params.query) {
-    const q = sanitizeLikeInput(params.query)
-    candidateQuery = candidateQuery.or(`name_en.ilike.%${q}%,brand_en.ilike.%${q}%`)
+    candidateQuery = applySmartSearch(candidateQuery, params.query)
   }
   if (params.category) {
     candidateQuery = candidateQuery.eq('category', params.category)
@@ -366,18 +409,30 @@ async function handleIngredientFilteredQuery(supabase: SupabaseClient, params: S
     return { products: [], total: 0, page: params.page, total_pages: 0 }
   }
 
-  // Step 2: Bulk-fetch ingredient links and ingredient details
-  const [piResult, ingResult] = await Promise.all([
-    supabase
-      .from('ss_product_ingredients')
-      .select('product_id, ingredient_id')
-      .in('product_id', candidateIds),
+  // Step 2: Bulk-fetch ingredient links (batched to avoid URL length limits)
+  // and ingredient details in parallel
+  const BATCH_SIZE = 500
+  const allPiData: Array<{ product_id: string; ingredient_id: string }> = []
+
+  const piBatchFetches = async () => {
+    for (let i = 0; i < candidateIds.length; i += BATCH_SIZE) {
+      const batch = candidateIds.slice(i, i + BATCH_SIZE)
+      const { data, error } = await supabase
+        .from('ss_product_ingredients')
+        .select('product_id, ingredient_id')
+        .in('product_id', batch)
+      if (error) throw error
+      if (data) allPiData.push(...data)
+    }
+  }
+
+  const [ingResult] = await Promise.all([
     supabase
       .from('ss_ingredients')
       .select('id, name_en, name_inci, is_fragrance, comedogenic_rating'),
+    piBatchFetches(),
   ])
 
-  if (piResult.error) throw piResult.error
   if (ingResult.error) throw ingResult.error
 
   // Build ingredient lookup
@@ -389,7 +444,7 @@ async function handleIngredientFilteredQuery(supabase: SupabaseClient, params: S
 
   // Build product -> ingredients mapping
   const productIngredients = new Map<string, IngredientInfo[]>()
-  for (const pi of piResult.data ?? []) {
+  for (const pi of allPiData) {
     const ing = ingredientMap.get(pi.ingredient_id)
     if (!ing) continue
     if (!productIngredients.has(pi.product_id)) {
