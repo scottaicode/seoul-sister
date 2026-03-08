@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { Star, TrendingUp, FlaskConical, Shield, ArrowRight } from 'lucide-react'
+import PublicNav from '@/components/layout/PublicNav'
 import { notFound } from 'next/navigation'
 import { toSlug } from '@/lib/utils/slug'
 
@@ -351,8 +352,10 @@ export default async function BestOfCategoryPage({ params }: Props) {
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">
+        <PublicNav />
+
         {/* Hero */}
-        <div className="border-b border-white/10 bg-gradient-to-b from-amber-500/5 to-transparent">
+        <div className="border-b border-white/10 bg-gradient-to-b from-amber-500/5 to-transparent pt-16">
           <div className="max-w-6xl mx-auto px-4 py-12">
             <nav className="text-xs text-white/40 mb-4 flex items-center gap-1.5">
               <Link href="/" className="hover:text-white/60">Home</Link>

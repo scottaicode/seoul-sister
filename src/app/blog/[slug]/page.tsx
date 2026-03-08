@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { Calendar, Clock, ArrowLeft, Tag } from 'lucide-react'
+import PublicNav from '@/components/layout/PublicNav'
 import BlogYuriCta from '@/components/blog/BlogYuriCta'
 import { marked } from 'marked'
 import { linkIngredients, buildIngredientMap, type IngredientLink } from '@/lib/utils/ingredient-linker'
@@ -234,8 +235,10 @@ export default async function BlogPostPage({
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">
+        <PublicNav />
+
         {/* Back link */}
-        <div className="border-b border-white/10">
+        <div className="border-b border-white/10 pt-16">
           <div className="max-w-3xl mx-auto px-4 py-4">
             <Link
               href="/blog"

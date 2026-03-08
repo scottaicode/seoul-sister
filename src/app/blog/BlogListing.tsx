@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Clock } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import PublicNav from '@/components/layout/PublicNav'
 import type { BlogPost } from './page'
 
 // Category badge colors matching Seoul Sister's amber/gold palette
@@ -33,7 +34,6 @@ function formatCategory(category: string): string {
 export default function BlogListing({ posts }: { posts: BlogPost[] }) {
   const [activeCategory, setActiveCategory] = useState<string>('')
   const { user } = useAuth()
-
   // Extract unique categories
   const categories = Array.from(
     new Set(posts.map((p) => p.category || 'general').filter(Boolean))
@@ -45,35 +45,7 @@ export default function BlogListing({ posts }: { posts: BlogPost[] }) {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <img
-              src="/icons/icon-512.svg"
-              alt="Seoul Sister"
-              className="h-8 w-8"
-            />
-            <span className="font-display font-semibold text-white text-sm hidden sm:inline">
-              Seoul Sister
-            </span>
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link
-              href={user ? '/dashboard' : '/'}
-              className="text-white/60 hover:text-gold transition-colors text-sm font-medium"
-            >
-              {user ? 'Dashboard' : 'Home'}
-            </Link>
-            <Link
-              href="/blog"
-              className="text-gold font-medium text-sm"
-            >
-              Blog
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <PublicNav />
 
       {/* Hero Section */}
       <section className="pt-32 pb-10 text-center px-4">

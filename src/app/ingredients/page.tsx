@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { FlaskConical, Shield, Sparkles } from 'lucide-react'
 import { toSlug } from '@/lib/utils/slug'
 import IngredientSearch from './IngredientSearch'
-import IngredientsNav from './IngredientsNav'
+import PublicNav from '@/components/layout/PublicNav'
 
 export const metadata: Metadata = {
   title: 'K-Beauty Ingredient Encyclopedia | 14,000+ Ingredients',
@@ -168,7 +168,7 @@ export default async function IngredientsPage() {
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">
-        <IngredientsNav />
+        <PublicNav />
 
         {/* Hero */}
         <div className="border-b border-white/10 bg-gradient-to-b from-amber-500/5 to-transparent pt-16">

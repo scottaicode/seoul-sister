@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { Package, Star } from 'lucide-react'
-import ProductsNav from './ProductsNav'
+import PublicNav from '@/components/layout/PublicNav'
 
 export const metadata: Metadata = {
   title: 'K-Beauty Product Database | 5,800+ Korean Skincare Products',
@@ -126,7 +126,7 @@ export default async function ProductsPage() {
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">
-        <ProductsNav />
+        <PublicNav />
 
         {/* Hero */}
         <div className="border-b border-white/10 bg-gradient-to-b from-sky-500/5 to-transparent pt-16">

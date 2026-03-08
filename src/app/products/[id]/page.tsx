@@ -15,7 +15,7 @@ import {
   Calendar,
 } from 'lucide-react'
 import { toSlug } from '@/lib/utils/slug'
-import ProductsNav from '../ProductsNav'
+import PublicNav from '@/components/layout/PublicNav'
 
 export const revalidate = 3600
 
@@ -383,7 +383,7 @@ export default async function PublicProductPage({ params }: Props) {
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">
-        <ProductsNav />
+        <PublicNav />
 
         <div className="max-w-4xl mx-auto px-4 pt-20 pb-16">
           {/* Breadcrumb */}

@@ -14,7 +14,7 @@ import {
   Calendar,
 } from 'lucide-react'
 import { toSlug } from '@/lib/utils/slug'
-import IngredientsNav from '../IngredientsNav'
+import PublicNav from '@/components/layout/PublicNav'
 
 export const revalidate = 3600
 
@@ -452,7 +452,7 @@ export default async function IngredientDetailPage({
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">
-        <IngredientsNav />
+        <PublicNav />
 
         {/* Back link */}
         <div className="border-b border-white/10 pt-16">

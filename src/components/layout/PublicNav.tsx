@@ -1,10 +1,22 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 
-export default function IngredientsNav() {
+const publicLinks = [
+  { label: 'Products', href: '/products' },
+  { label: 'Ingredients', href: '/ingredients' },
+  { label: 'Best Products', href: '/best' },
+  { label: 'Blog', href: '/blog' },
+]
+
+export default function PublicNav() {
   const { user } = useAuth()
+  const pathname = usePathname()
+
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(href + '/')
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/10">
@@ -19,19 +31,26 @@ export default function IngredientsNav() {
             Seoul Sister
           </span>
         </Link>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 sm:gap-6">
           <Link
             href={user ? '/dashboard' : '/'}
             className="text-white/60 hover:text-gold transition-colors text-sm font-medium"
           >
             {user ? 'Dashboard' : 'Home'}
           </Link>
-          <Link
-            href="/ingredients"
-            className="text-gold font-medium text-sm"
-          >
-            Ingredients
-          </Link>
+          {publicLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`transition-colors text-sm font-medium ${
+                isActive(link.href)
+                  ? 'text-gold'
+                  : 'text-white/60 hover:text-gold'
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
         </div>
       </div>
     </nav>
