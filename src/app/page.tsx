@@ -93,6 +93,9 @@ const testimonials = [
 const navLinks = [
   { label: 'Features', href: '#features' },
   { label: 'Try Yuri', href: '#try-yuri' },
+  { label: 'Ingredients', href: '/ingredients' },
+  { label: 'Products', href: '/products' },
+  { label: 'Best Products', href: '/best' },
   { label: 'Pricing', href: '#pricing' },
   { label: 'Blog', href: '/blog' },
 ]
@@ -501,10 +504,13 @@ export default function LandingPage() {
             <span className="font-display font-bold text-lg text-white">Seoul Sister</span>
             <p className="text-xs text-white/30 mt-1">The world&apos;s first English K-beauty intelligence platform.</p>
           </div>
-          <div className="flex gap-6 text-sm">
+          <div className="flex flex-wrap justify-center gap-6 text-sm">
             {[
               { label: 'Features', href: '#features' },
               { label: 'Try Yuri', href: '#try-yuri' },
+              { label: 'Ingredients', href: '/ingredients' },
+              { label: 'Products', href: '/products' },
+              { label: 'Best Products', href: '/best' },
               { label: 'Pricing', href: '#pricing' },
               { label: 'Blog', href: '/blog' },
             ].map((link) => (

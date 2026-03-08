@@ -41,9 +41,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }))
 
-  // Dynamic pages (only publicly accessible content)
+  // Dynamic pages (publicly accessible content)
   let blogPages: MetadataRoute.Sitemap = []
   let ingredientPages: MetadataRoute.Sitemap = []
+  let productPages: MetadataRoute.Sitemap = []
 
   try {
     const supabase = createClient(
@@ -51,9 +52,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
-    // Blog posts and active ingredients in parallel
-    // (Products excluded — behind auth gate, not crawlable)
-    const [blogRes, ingredientsRes] = await Promise.all([
+    // Blog posts, active ingredients, and products in parallel
+    const [blogRes, ingredientsRes, productsRes] = await Promise.all([
       supabase
         .from('ss_content_posts')
         .select('slug, published_at, updated_at')
@@ -65,6 +65,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .select('name_inci, rich_content_generated_at')
         .eq('is_active', true)
         .order('name_inci'),
+      supabase
+        .from('ss_products')
+        .select('id, updated_at, rating_avg, description_en')
+        .not('description_en', 'is', null)
+        .order('rating_avg', { ascending: false }),
     ])
 
     if (blogRes.data) {
@@ -97,6 +102,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         })
         .filter((x): x is NonNullable<typeof x> => x !== null)
     }
+
+    if (productsRes.data) {
+      productPages = productsRes.data.map((p) => {
+        const hasRichContent = !!p.description_en && !!p.rating_avg
+        return {
+          url: `${baseUrl}/products/${p.id}`,
+          lastModified: p.updated_at ? new Date(p.updated_at) : now,
+          changeFrequency: 'weekly' as const,
+          priority: hasRichContent ? 0.7 : 0.5,
+        }
+      })
+    }
   } catch {
     // Sitemap generation should never fail the build
   }
@@ -104,8 +121,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...staticPages,
     ...bestOfPages,
+    { url: `${baseUrl}/products`, lastModified: now, changeFrequency: 'daily' as const, priority: 0.9 },
     { url: `${baseUrl}/blog`, lastModified: now, changeFrequency: 'daily' as const, priority: 0.8 },
     ...blogPages,
     ...ingredientPages,
+    ...productPages,
   ]
 }

@@ -48,6 +48,7 @@ interface IngredientRow {
   is_active: boolean
   common_concerns: string[] | null
   rich_content: RichContent | null
+  rich_content_generated_at: string | null
 }
 
 interface EffectivenessRow {
@@ -90,7 +91,7 @@ async function findIngredientBySlug(
   const { data: exact } = await supabase
     .from('ss_ingredients')
     .select(
-      'id, name_inci, name_en, name_ko, function, description, safety_rating, comedogenic_rating, is_fragrance, is_active, common_concerns, rich_content'
+      'id, name_inci, name_en, name_ko, function, description, safety_rating, comedogenic_rating, is_fragrance, is_active, common_concerns, rich_content, rich_content_generated_at'
     )
     .ilike('name_inci', slug.replace(/-/g, '_').replace(/_/g, '%'))
     .limit(50)
@@ -107,7 +108,7 @@ async function findIngredientBySlug(
   const { data: broad } = await supabase
     .from('ss_ingredients')
     .select(
-      'id, name_inci, name_en, name_ko, function, description, safety_rating, comedogenic_rating, is_fragrance, is_active, common_concerns, rich_content'
+      'id, name_inci, name_en, name_ko, function, description, safety_rating, comedogenic_rating, is_fragrance, is_active, common_concerns, rich_content, rich_content_generated_at'
     )
     .ilike('name_inci', `%${words[0]}%`)
     .limit(200)
@@ -318,6 +319,12 @@ export default async function IngredientDetailPage({
           ingredient.description ||
           `Complete guide to ${displayName} in Korean skincare. Safety rating, comedogenic score, effectiveness by skin type, and products containing this ingredient.`,
         url: `https://www.seoulsister.com/ingredients/${slug}`,
+        datePublished: ingredient.rich_content_generated_at
+          ? new Date(ingredient.rich_content_generated_at).toISOString()
+          : new Date().toISOString(),
+        dateModified: ingredient.rich_content_generated_at
+          ? new Date(ingredient.rich_content_generated_at).toISOString()
+          : new Date().toISOString(),
         author: {
           '@type': 'Organization',
           name: 'Seoul Sister',
@@ -344,6 +351,10 @@ export default async function IngredientDetailPage({
         ]
           .filter(Boolean)
           .join(', '),
+        speakable: {
+          '@type': 'SpeakableSpecification',
+          cssSelector: ['.ingredient-headline', '.ingredient-overview'],
+        },
       },
       // FAQ schema — use AI-generated FAQ when available, fall back to template
       ...((richContent?.faq?.length || effectiveness.length > 0)
@@ -472,7 +483,7 @@ export default async function IngredientDetailPage({
               )}
             </div>
 
-            <h1 className="font-display font-bold text-3xl md:text-4xl text-white mb-2">
+            <h1 className="ingredient-headline font-display font-bold text-3xl md:text-4xl text-white mb-2">
               {displayName}
             </h1>
 
@@ -546,7 +557,7 @@ export default async function IngredientDetailPage({
               <h2 className="font-display font-semibold text-lg text-white mb-3">
                 About {displayName}
               </h2>
-              <div className="text-white/70 leading-relaxed space-y-4">
+              <div className="ingredient-overview text-white/70 leading-relaxed space-y-4">
                 {richContent.overview.split('\n\n').map((para, i) => (
                   <p key={i}>{para}</p>
                 ))}
@@ -662,6 +673,17 @@ export default async function IngredientDetailPage({
                 <Sparkles className="w-5 h-5 text-amber-400" />
                 Effectiveness by Skin Type
               </h2>
+              {/* Citation-friendly summary paragraph for AI search engines */}
+              <p className="text-white/70 text-sm leading-relaxed mb-4">
+                Based on {effectiveness.reduce((sum, e) => sum + e.sample_size, 0)} user reports across Seoul Sister&apos;s community, {displayName} shows the highest effectiveness for{' '}
+                {effectiveness.slice(0, 2).map((e, i) => (
+                  <span key={`${e.skin_type}-${e.concern}`}>
+                    {i > 0 && ' and '}
+                    <strong className="text-white">{e.skin_type} skin targeting {e.concern}</strong> ({Math.round(e.effectiveness_score * 100)}% positive)
+                  </span>
+                ))}.
+                {effectiveness.length > 2 && ` It also benefits ${effectiveness.slice(2).map(e => `${e.skin_type} skin for ${e.concern}`).join(', ')}.`}
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {effectiveness.map((e) => (
                   <div
@@ -865,6 +887,53 @@ export default async function IngredientDetailPage({
                     </div>
                   </Link>
                 ))}
+              </div>
+            </section>
+          )}
+
+          {/* Cross-links: Related categories */}
+          {ingredient.function && (
+            <section>
+              <h2 className="font-display font-semibold text-lg text-white mb-3">
+                Explore More
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href="/ingredients"
+                  className="px-3 py-1.5 rounded-full text-xs bg-white/5 text-white/60 border border-white/10 hover:border-amber-500/30 hover:text-amber-400 transition-colors"
+                >
+                  All Ingredients
+                </Link>
+                <Link
+                  href="/best/serums"
+                  className="px-3 py-1.5 rounded-full text-xs bg-white/5 text-white/60 border border-white/10 hover:border-amber-500/30 hover:text-amber-400 transition-colors"
+                >
+                  Best Serums
+                </Link>
+                <Link
+                  href="/best/moisturizers"
+                  className="px-3 py-1.5 rounded-full text-xs bg-white/5 text-white/60 border border-white/10 hover:border-amber-500/30 hover:text-amber-400 transition-colors"
+                >
+                  Best Moisturizers
+                </Link>
+                <Link
+                  href="/best/sunscreens"
+                  className="px-3 py-1.5 rounded-full text-xs bg-white/5 text-white/60 border border-white/10 hover:border-amber-500/30 hover:text-amber-400 transition-colors"
+                >
+                  Best Sunscreens
+                </Link>
+                <Link
+                  href="/products"
+                  className="px-3 py-1.5 rounded-full text-xs bg-white/5 text-white/60 border border-white/10 hover:border-amber-500/30 hover:text-amber-400 transition-colors"
+                >
+                  All Products
+                </Link>
+                <Link
+                  href="/blog"
+                  className="px-3 py-1.5 rounded-full text-xs bg-white/5 text-white/60 border border-white/10 hover:border-amber-500/30 hover:text-amber-400 transition-colors"
+                >
+                  K-Beauty Blog
+                </Link>
               </div>
             </section>
           )}

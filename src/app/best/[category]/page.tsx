@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { Star, TrendingUp, FlaskConical, Shield, ArrowRight } from 'lucide-react'
 import { notFound } from 'next/navigation'
+import { toSlug } from '@/lib/utils/slug'
 
 export const revalidate = 3600
 
@@ -398,12 +399,13 @@ export default async function BestOfCategoryPage({ params }: Props) {
           <h2 className="text-sm font-medium text-white/50 mb-2">Key Ingredients to Look For</h2>
           <div className="flex flex-wrap gap-2">
             {meta.keyIngredients.map((ing) => (
-              <span
+              <Link
                 key={ing}
-                className="px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+                href={`/ingredients/${toSlug(ing)}`}
+                className="px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 hover:border-emerald-500/30 transition-colors"
               >
                 {ing}
-              </span>
+              </Link>
             ))}
           </div>
         </div>

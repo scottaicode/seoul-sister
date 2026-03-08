@@ -202,6 +202,10 @@ export default async function BlogPostPage({
           '@id': `https://www.seoulsister.com/blog/${blogPost.slug}`,
         },
         keywords: blogPost.tags?.join(', ') || blogPost.primary_keyword,
+        speakable: {
+          '@type': 'SpeakableSpecification',
+          cssSelector: ['.blog-headline', '.blog-excerpt'],
+        },
       },
       ...(getFaqQuestions(blogPost.faq_schema).length
         ? [
@@ -252,7 +256,7 @@ export default async function BlogPostPage({
                 {blogPost.category}
               </span>
             )}
-            <h1 className="font-display font-bold text-3xl md:text-4xl text-white mb-4 leading-tight">
+            <h1 className="blog-headline font-display font-bold text-3xl md:text-4xl text-white mb-4 leading-tight">
               {blogPost.title}
             </h1>
             <div className="flex flex-wrap items-center gap-4 text-white/50 text-sm">
@@ -283,6 +287,13 @@ export default async function BlogPostPage({
                 className="w-full aspect-[2/1] object-cover"
               />
             </div>
+          )}
+
+          {/* Excerpt for SpeakableSpecification */}
+          {blogPost.excerpt && (
+            <p className="blog-excerpt text-white/60 text-lg leading-relaxed mb-8 border-l-2 border-amber-500/30 pl-4">
+              {blogPost.excerpt}
+            </p>
           )}
 
           {/* Content */}
