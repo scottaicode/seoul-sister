@@ -3,7 +3,7 @@ import { verifyCronAuth } from '@/lib/utils/cron-auth'
 import { getServiceClient } from '@/lib/supabase'
 import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
 
-export const maxDuration = 60
+export const maxDuration = 300 // Content generation needs full Vercel Pro budget
 
 // Topic generators — each queries real data and returns a blog post topic with context
 type TopicGenerator = (supabase: ReturnType<typeof getServiceClient>) => Promise<TopicResult | null>
