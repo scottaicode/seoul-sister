@@ -52,8 +52,8 @@ function getSupabase() {
 export default async function ProductsPage() {
   const supabase = getSupabase()
 
-  // Fetch counts and featured products in parallel
-  const [countRes, featuredRes, categoryCountsRes] = await Promise.all([
+  // Fetch total count, featured products, and per-category counts in parallel
+  const [countRes, featuredRes, ...categoryCountResults] = await Promise.all([
     supabase.from('ss_products').select('id', { count: 'exact', head: true }),
     supabase
       .from('ss_products')
@@ -63,22 +63,23 @@ export default async function ProductsPage() {
       .not('description_en', 'is', null)
       .order('review_count', { ascending: false })
       .limit(12),
-    supabase
-      .from('ss_products')
-      .select('category', { count: 'exact', head: false })
+    ...CATEGORIES.map((cat) =>
+      supabase
+        .from('ss_products')
+        .select('id', { count: 'exact', head: true })
+        .eq('category', cat.slug)
+    ),
   ])
 
   const totalCount = countRes.count || 5800
   const featured = featuredRes.data || []
 
-  // Calculate category counts
+  // Map category counts from parallel queries
   const catCounts: Record<string, number> = {}
-  if (categoryCountsRes.data) {
-    for (const row of categoryCountsRes.data) {
-      const cat = (row as { category: string }).category
-      catCounts[cat] = (catCounts[cat] || 0) + 1
-    }
-  }
+  CATEGORIES.forEach((cat, idx) => {
+    const count = categoryCountResults[idx]?.count
+    if (count && count > 0) catCounts[cat.slug] = count
+  })
 
   const jsonLd = {
     '@context': 'https://schema.org',
