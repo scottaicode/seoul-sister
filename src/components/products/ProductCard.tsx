@@ -13,6 +13,8 @@ export interface TrendingInfo {
 interface ProductCardProps {
   product: Product
   trendingInfo?: TrendingInfo
+  /** Base path for product links (default: '/products') */
+  basePath?: string
 }
 
 const categoryLabels: Record<string, string> = {
@@ -60,12 +62,12 @@ function getTrendingBadge(info: TrendingInfo): { label: string; className: strin
   return null
 }
 
-export default function ProductCard({ product, trendingInfo }: ProductCardProps) {
+export default function ProductCard({ product, trendingInfo, basePath = '/products' }: ProductCardProps) {
   const badge = trendingInfo ? getTrendingBadge(trendingInfo) : null
 
   return (
     <Link
-      href={`/products/${product.id}`}
+      href={`${basePath}/${product.id}`}
       className="glass-card p-4 flex gap-3 transition-all duration-300 group relative"
     >
       {/* Trending badge */}

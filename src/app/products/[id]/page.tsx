@@ -51,15 +51,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const supabase = getSupabase()
 
-  const { data: product } = await supabase
-    .from('ss_products')
-    .select('name_en, brand_en, description_en, category, price_usd, image_url')
-    .eq('id', id)
-    .single()
+  const [productRes, ingredientCountRes] = await Promise.all([
+    supabase
+      .from('ss_products')
+      .select('name_en, brand_en, description_en, category, price_usd, image_url, rating_avg')
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('ss_product_ingredients')
+      .select('id', { count: 'exact', head: true })
+      .eq('product_id', id),
+  ])
 
+  const product = productRes.data
   if (!product) {
     return { title: 'Product Not Found | Seoul Sister' }
   }
+
+  // Thin content gate: noindex products missing BOTH rating AND ingredient links
+  const hasRating = product.rating_avg !== null
+  const hasIngredients = (ingredientCountRes.count || 0) > 0
+  const isThinContent = !hasRating && !hasIngredients
 
   const categoryLabel = categoryLabels[product.category] || product.category
   const title = `${product.name_en} by ${product.brand_en} — ${categoryLabel} Review & Ingredients`
@@ -70,7 +82,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
-    robots: { index: true, follow: true },
+    robots: { index: !isThinContent, follow: true },
     alternates: {
       canonical: `https://www.seoulsister.com/products/${id}`,
     },
@@ -94,7 +106,7 @@ export default async function PublicProductPage({ params }: Props) {
   const { id } = await params
   const supabase = getSupabase()
 
-  // Fetch product + top ingredients + review stats + trending + blog articles in parallel
+  // Fetch product + top ingredients + review stats + trending + blog articles + related products in parallel
   const [productRes, ingredientsRes, reviewRes, trendingRes, priceRangeRes, relatedArticlesRes] = await Promise.all([
     supabase
       .from('ss_products')
@@ -140,7 +152,44 @@ export default async function PublicProductPage({ params }: Props) {
   const categoryLabel = categoryLabels[product.category] || product.category
   const reviewCount = reviewRes.count || product.review_count || 0
 
-  const ingredients = (ingredientsRes.data || []).map((row) => ({
+  // Second wave: queries that depend on product data (category, ingredient IDs)
+  const ingredientRows = ingredientsRes.data || []
+  const ingredientIds = ingredientRows
+    .map((r) => (r.ingredient as unknown as { id: string } | null)?.id)
+    .filter(Boolean) as string[]
+
+  const [relatedProductsRes, effectivenessRes] = await Promise.all([
+    // Related products in the same category (for internal linking + richer content)
+    supabase
+      .from('ss_products')
+      .select('id, name_en, brand_en, rating_avg, price_usd, image_url')
+      .eq('category', product.category)
+      .neq('id', id)
+      .not('rating_avg', 'is', null)
+      .order('rating_avg', { ascending: false })
+      .limit(6),
+    // Ingredient effectiveness data (enriches page with stats)
+    ingredientIds.length > 0
+      ? supabase
+          .from('ss_ingredient_effectiveness')
+          .select('ingredient_id, skin_type, concern, effectiveness_score, sample_size')
+          .in('ingredient_id', ingredientIds.slice(0, 10))
+          .gte('sample_size', 5)
+          .order('effectiveness_score', { ascending: false })
+          .limit(15)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  const relatedProducts = relatedProductsRes.data || []
+  const effectivenessData = (effectivenessRes.data || []) as Array<{
+    ingredient_id: string
+    skin_type: string
+    concern: string
+    effectiveness_score: number
+    sample_size: number
+  }>
+
+  const ingredients = (ingredientRows).map((row) => ({
     position: row.position,
     ingredient: row.ingredient as unknown as {
       id: string
@@ -180,7 +229,21 @@ export default async function PublicProductPage({ params }: Props) {
   const priceMin = prices.length > 0 ? Math.min(...prices) : product.price_usd ? Number(product.price_usd) : null
   const priceMax = prices.length > 1 ? Math.max(...prices) : null
 
-  // Build JSON-LD
+  // Map ingredient effectiveness by ingredient_id for easy lookup
+  const effectivenessMap = new Map<string, Array<{ skin_type: string; concern: string; score: number; sample_size: number }>>()
+  for (const row of effectivenessData) {
+    const existing = effectivenessMap.get(row.ingredient_id) || []
+    existing.push({ skin_type: row.skin_type, concern: row.concern, score: row.effectiveness_score, sample_size: row.sample_size })
+    effectivenessMap.set(row.ingredient_id, existing)
+  }
+
+  // Build ingredient effectiveness summary for FAQ answers (stats boost AI citation 30-40%)
+  const topEffective = effectivenessData.slice(0, 3)
+  const effectivenessSummary = topEffective.length > 0
+    ? ` Based on Seoul Sister's analysis of ${topEffective[0].sample_size}+ user reports, key ingredients show ${Math.round(topEffective[0].effectiveness_score * 100)}% effectiveness for ${topEffective[0].concern} in ${topEffective[0].skin_type} skin types.`
+    : ''
+
+  // Build FAQ questions — expanded with skin-type-specific questions and statistics
   const faqQuestions = [
     {
       '@type': 'Question' as const,
@@ -191,8 +254,8 @@ export default async function PublicProductPage({ params }: Props) {
           ? `The key active ingredients in ${product.name_en} by ${product.brand_en} include ${activeIngredients
               .slice(0, 5)
               .map((i) => `${i.ingredient?.name_en || i.ingredient?.name_inci}${i.ingredient?.function ? ` (${i.ingredient.function})` : ''}`)
-              .join(', ')}.`
-          : `${product.name_en} is a ${categoryLabel.toLowerCase()} by ${product.brand_en}. Subscribe to Seoul Sister for full ingredient analysis.`,
+              .join(', ')}.${effectivenessSummary} Seoul Sister tracks ingredient effectiveness across 5,800+ K-beauty products to provide data-backed recommendations.`
+          : `${product.name_en} is a ${categoryLabel.toLowerCase()} by ${product.brand_en}. Subscribe to Seoul Sister for full ingredient analysis across our database of 5,800+ K-beauty products.`,
       },
     },
     {
@@ -200,7 +263,15 @@ export default async function PublicProductPage({ params }: Props) {
       name: `Is ${product.name_en} good for sensitive skin?`,
       acceptedAnswer: {
         '@type': 'Answer' as const,
-        text: `${product.name_en} is a ${categoryLabel.toLowerCase()} by ${product.brand_en}. Seoul Sister's AI advisor Yuri can analyze how this product works with your specific skin type, concerns, and allergies for a personalized compatibility score.`,
+        text: `${product.name_en} is a Korean ${categoryLabel.toLowerCase()} by ${product.brand_en}. Sensitive skin compatibility depends on individual triggers and allergies. Seoul Sister's AI advisor Yuri analyzes all ${ingredients.length || 'N/A'} ingredients against your specific skin type, concerns, and known allergens to provide a personalized compatibility score. Common irritant ingredients like fragrance, alcohol denat, and essential oils are flagged automatically.`,
+      },
+    },
+    {
+      '@type': 'Question' as const,
+      name: `Is ${product.name_en} good for oily skin?`,
+      acceptedAnswer: {
+        '@type': 'Answer' as const,
+        text: `For oily skin, the key factors in evaluating ${product.name_en} are comedogenic ingredient ratings, oil content, and finish type. ${activeIngredients.length > 0 ? `This ${categoryLabel.toLowerCase()} contains ${activeIngredients.length} active ingredients.` : ''} Seoul Sister's database cross-references each ingredient's comedogenic rating (0-5 scale) against your skin type to identify potential pore-clogging risks. Subscribe for a personalized oily skin compatibility analysis.`,
       },
     },
     ...(priceMin
@@ -210,11 +281,19 @@ export default async function PublicProductPage({ params }: Props) {
             name: `How much does ${product.name_en} cost?`,
             acceptedAnswer: {
               '@type': 'Answer' as const,
-              text: `${product.name_en} by ${product.brand_en} starts from $${priceMin.toFixed(2)} USD${product.volume_display ? ` for ${product.volume_display}` : ''}. Seoul Sister Pro members can compare prices across 6+ retailers to find the best deal.`,
+              text: `${product.name_en} by ${product.brand_en} starts from $${priceMin.toFixed(2)} USD${product.volume_display ? ` for ${product.volume_display}` : ''}${priceMax && priceMax > priceMin ? `, with prices ranging up to $${priceMax.toFixed(2)} across retailers` : ''}. Seoul Sister Pro members compare prices across 6+ authorized retailers including Olive Young, Soko Glam, and YesStyle to find the best deal, with automatic price drop alerts.`,
             },
           },
         ]
       : []),
+    {
+      '@type': 'Question' as const,
+      name: `Where to buy ${product.name_en}?`,
+      acceptedAnswer: {
+        '@type': 'Answer' as const,
+        text: `${product.name_en} by ${product.brand_en} is available from authorized K-beauty retailers including Olive Young Global, Soko Glam, YesStyle, and Amazon.${priceMin ? ` Prices start from $${priceMin.toFixed(2)} USD.` : ''} Seoul Sister verifies retailer authenticity and tracks counterfeit indicators to help you buy genuine Korean skincare products.`,
+      },
+    },
   ]
 
   const jsonLd = {
@@ -448,6 +527,49 @@ export default async function PublicProductPage({ params }: Props) {
             </div>
           )}
 
+          {/* Ingredient Effectiveness Stats — FREE (data-rich content for AI citation) */}
+          {effectivenessData.length > 0 && (
+            <div className="bg-white/5 rounded-xl border border-white/10 p-5 mb-6">
+              <h2 className="font-display font-semibold text-lg text-white mb-3 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
+                Ingredient Effectiveness Data
+              </h2>
+              <p className="text-xs text-white/40 mb-3">
+                Based on aggregated user reports across Seoul Sister&apos;s community
+              </p>
+              <div className="space-y-2">
+                {Array.from(effectivenessMap.entries()).slice(0, 5).map(([ingId, entries]) => {
+                  const ing = ingredients.find((i) => i.ingredient?.id === ingId)?.ingredient
+                  if (!ing) return null
+                  const topEntry = entries[0]
+                  return (
+                    <div key={ingId} className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
+                      <div className="min-w-0">
+                        <span className="text-sm text-white font-medium">
+                          {ing.name_en || ing.name_inci}
+                        </span>
+                        <span className="text-xs text-white/40 ml-2">
+                          for {topEntry.concern} ({topEntry.skin_type} skin)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-emerald-400"
+                            style={{ width: `${Math.round(topEntry.score * 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-medium text-emerald-400 w-8 text-right">
+                          {Math.round(topEntry.score * 100)}%
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* GATED: Personalized Intelligence */}
           <div className="product-gated-content space-y-4 mb-8">
             {/* Skin Match */}
@@ -507,6 +629,48 @@ export default async function PublicProductPage({ params }: Props) {
               Full access to Yuri AI advisor, unlimited scans, and all intelligence features
             </p>
           </div>
+
+          {/* Related Products in Same Category — FREE (internal linking + richer content) */}
+          {relatedProducts.length > 0 && (
+            <div className="mt-8 mb-8">
+              <h2 className="font-display font-semibold text-lg text-white mb-4 flex items-center gap-2">
+                <Package className="w-5 h-5 text-sky-400" />
+                More Korean {categoryLabel}s
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {relatedProducts.map((rp) => (
+                  <Link
+                    key={rp.id}
+                    href={`/products/${rp.id}`}
+                    className="group bg-white/5 rounded-xl border border-white/10 hover:border-amber-500/20 p-3 transition-colors"
+                  >
+                    <div className="w-full h-16 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden mb-2">
+                      {rp.image_url ? (
+                        <img src={rp.image_url} alt={rp.name_en} className="w-full h-full object-cover rounded-lg" />
+                      ) : (
+                        <Package className="w-5 h-5 text-white/20" strokeWidth={1.25} />
+                      )}
+                    </div>
+                    <p className="text-xs font-medium text-white truncate group-hover:text-amber-400 transition-colors">
+                      {rp.name_en}
+                    </p>
+                    <p className="text-[10px] text-white/40 truncate">{rp.brand_en}</p>
+                    <div className="flex items-center justify-between mt-1">
+                      {rp.rating_avg && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-white/50">
+                          <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                          {Number(rp.rating_avg).toFixed(1)}
+                        </span>
+                      )}
+                      {rp.price_usd && (
+                        <span className="text-[10px] text-white/50">${Number(rp.price_usd).toFixed(0)}</span>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* FAQ Section for SEO */}
           <div className="mt-12">

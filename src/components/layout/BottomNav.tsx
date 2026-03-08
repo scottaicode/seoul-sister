@@ -7,7 +7,7 @@ import { LayoutDashboard, Camera, Search, MessageCircle, User } from 'lucide-rea
 const navItems = [
   { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Scan', href: '/scan', icon: Camera },
-  { label: 'Products', href: '/products', icon: Search },
+  { label: 'Products', href: '/browse', icon: Search },
   { label: 'Yuri', href: '/yuri', icon: MessageCircle },
   { label: 'Profile', href: '/profile', icon: User },
 ]
