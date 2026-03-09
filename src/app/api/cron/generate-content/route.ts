@@ -313,89 +313,16 @@ Remember: Reference the actual products and data above. This is what makes Seoul
 
 // ─── Main Handler ────────────────────────────────────────────────────
 
-export async function POST(request: Request) {
-  try {
-    // DISABLED: Blog generation now handled entirely by LGAAS lead generation platform.
-    // Seoul Sister receives blog posts via /api/admin/content/ingest webhook from LGAAS.
-    // Disabled 2026-03-09 to prevent duplicate, lower-quality posts without hero images or human voice enforcement.
-    return NextResponse.json({
-      success: true,
-      generated: false,
-      reason: 'Blog generation disabled — handled by LGAAS platform',
-      ran_at: new Date().toISOString(),
-    })
-
-    const authError = verifyCronAuth(request)
-    if (authError) return authError
-
-    const supabase = getServiceClient()
-    const startMs = Date.now()
-
-    // Pick a topic that hasn't been written about
-    const topic = await pickTopic(supabase)
-    if (!topic) {
-      return NextResponse.json({
-        success: true,
-        generated: false,
-        reason: 'No new topics available — all topic generators returned existing slugs',
-        ran_at: new Date().toISOString(),
-      })
-    }
-
-    // Generate the post via Sonnet
-    const content = await generateBlogPost(topic)
-
-    // Insert into ss_content_posts
-    const { data: post, error } = await supabase
-      .from('ss_content_posts')
-      .insert({
-        title: topic.title,
-        slug: topic.slug,
-        body: content.body,
-        category: topic.category,
-        tags: topic.tags,
-        meta_description: content.meta_description,
-        excerpt: content.excerpt,
-        primary_keyword: topic.primary_keyword,
-        secondary_keywords: topic.secondary_keywords,
-        faq_schema: content.faq_schema,
-        read_time_minutes: content.read_time_minutes,
-        author: 'Seoul Sister Team',
-        source: 'manual',
-        published_at: new Date().toISOString(),
-      })
-      .select('id, slug, title')
-      .single()
-
-    if (error) {
-      console.error('[generate-content] Insert error:', error)
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 })
-    }
-
-    const durationMs = Date.now() - startMs
-    console.log(`[generate-content] Published: "${post.title}" -> /blog/${post.slug} (${durationMs}ms)`)
-
-    return NextResponse.json({
-      success: true,
-      generated: true,
-      post: {
-        id: post.id,
-        slug: post.slug,
-        title: post.title,
-        url: `https://www.seoulsister.com/blog/${post.slug}`,
-      },
-      topic_type: topic.category,
-      duration_ms: durationMs,
-      ran_at: new Date().toISOString(),
-    })
-  } catch (error) {
-    console.error('[generate-content] Error:', error)
-    return NextResponse.json(
-      { error: 'Failed to generate content', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    )
-  }
+// DISABLED: Blog generation now handled entirely by LGAAS lead generation platform.
+// Seoul Sister receives blog posts via /api/admin/content/ingest webhook from LGAAS.
+// Disabled 2026-03-09 to prevent duplicate, lower-quality posts without hero images or human voice enforcement.
+export async function POST() {
+  return NextResponse.json({
+    success: true,
+    generated: false,
+    reason: 'Blog generation disabled — handled by LGAAS platform',
+    ran_at: new Date().toISOString(),
+  })
 }
 
-// Vercel cron jobs send GET requests
 export { POST as GET }
