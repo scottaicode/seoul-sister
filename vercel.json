@@ -55,10 +55,6 @@
     {
       "path": "/api/cron/refresh-prices-yesstyle",
       "schedule": "0 18 * * *"
-    },
-    {
-      "path": "/api/cron/generate-content",
-      "schedule": "0 10 * * *"
     }
   ]
 }

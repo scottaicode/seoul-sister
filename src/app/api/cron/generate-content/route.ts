@@ -315,6 +315,16 @@ Remember: Reference the actual products and data above. This is what makes Seoul
 
 export async function POST(request: Request) {
   try {
+    // DISABLED: Blog generation now handled entirely by LGAAS lead generation platform.
+    // Seoul Sister receives blog posts via /api/admin/content/ingest webhook from LGAAS.
+    // Disabled 2026-03-09 to prevent duplicate, lower-quality posts without hero images or human voice enforcement.
+    return NextResponse.json({
+      success: true,
+      generated: false,
+      reason: 'Blog generation disabled — handled by LGAAS platform',
+      ran_at: new Date().toISOString(),
+    })
+
     const authError = verifyCronAuth(request)
     if (authError) return authError
 
