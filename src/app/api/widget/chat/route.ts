@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { getAnthropicClient, MODELS, callAnthropicWithRetry, isRetryableError } from '@/lib/anthropic'
+import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
 import { checkRateLimit } from '@/lib/utils/rate-limiter'
 import { getServiceClient } from '@/lib/supabase'
 import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
@@ -281,62 +281,20 @@ export async function POST(request: NextRequest) {
             continue
           }
 
-          // --- Final response: stream text in real-time ---
-          // The non-streaming create() call already returned the response.
-          // For the first round with no tools, we already have the text. But for
-          // post-tool rounds, we want real streaming. Re-call with stream() only
-          // when we came through at least one tool loop.
-          if (toolLoopCount > 0) {
-            // We got the final text via create(), but we want to STREAM it.
-            // Discard the non-streaming response and re-request with stream().
-            // This costs one extra API call but gives real-time streaming after tools.
-            const STREAM_MAX_RETRIES = 3
-            let streamSucceeded = false
-
-            for (let attempt = 1; attempt <= STREAM_MAX_RETRIES; attempt++) {
-              let eventsReceived = false
-              const stream = anthropic.messages.stream({
-                ...baseParams,
-                messages: cachedMessages,
-                tool_choice: { type: 'auto' },
-              })
-
-              try {
-                for await (const event of stream) {
-                  eventsReceived = true
-                  if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-                    fullResponse += event.delta.text
-                    const data = JSON.stringify({ type: 'text', content: event.delta.text })
-                    await writer.write(encoder.encode(`data: ${data}\n\n`))
-                  }
-                  // If Claude tries to call another tool on final round, ignore text
-                  // from tool_use blocks (we don't execute more tools here)
-                }
-                streamSucceeded = true
-                break
-              } catch (streamError: unknown) {
-                if (!eventsReceived && isRetryableError(streamError) && attempt < STREAM_MAX_RETRIES) {
-                  const delay = Math.pow(2, attempt) * 1000
-                  console.warn(`[widget/stream] Attempt ${attempt}/${STREAM_MAX_RETRIES} failed, retrying in ${delay}ms...`)
-                  await new Promise((resolve) => setTimeout(resolve, delay))
-                  fullResponse = '' // Reset for retry
-                  continue
-                }
-                throw streamError
-              }
-            }
-
-            if (!streamSucceeded) {
-              throw new Error('[widget/stream] Stream retry loop exhausted')
-            }
-          } else {
-            // No tools were called — extract text from the non-streaming response
-            // and stream it chunk-by-chunk (real-time not possible since we already
-            // have the complete text from messages.create()).
-            for (const block of response.content) {
-              if (block.type === 'text') {
-                fullResponse += block.text
-                const data = JSON.stringify({ type: 'text', content: block.text })
+          // --- Final response: extract text and stream to client ---
+          // The non-streaming create() call already returned the full response.
+          // Extract text blocks and send them as SSE chunks. We previously tried
+          // re-calling the API with stream() for "real" streaming after tool rounds,
+          // but that caused failures: the re-call could return tool_use instead of
+          // text, leaving fullResponse empty and triggering the fallback message.
+          // Using the existing response is reliable and saves an API call.
+          for (const block of response.content) {
+            if (block.type === 'text') {
+              fullResponse += block.text
+              // Send in small chunks for a streaming feel
+              const chunks = block.text.match(/.{1,80}/g) || [block.text]
+              for (const chunk of chunks) {
+                const data = JSON.stringify({ type: 'text', content: chunk })
                 await writer.write(encoder.encode(`data: ${data}\n\n`))
               }
             }
