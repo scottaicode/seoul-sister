@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
 
           const stream = anthropic.messages.stream({
             model: MODELS.primary,
-            max_tokens: 600,
+            max_tokens: 800,
             system: [{ type: 'text' as const, text: YURI_WIDGET_SYSTEM, cache_control: { type: 'ephemeral' as const } }],
             messages: cachedMessages,
             tools: CACHED_WIDGET_TOOLS,
