@@ -12,21 +12,21 @@ const searchSchema = z.object({
   limit: z.number().int().min(1).max(20).optional().default(10),
 })
 
-// Skin concern → product category mapping
+// Skin concern → product category mapping (lowercase to match ss_products.category)
 const CONCERN_CATEGORY_MAP: Record<string, string[]> = {
-  acne: ['Cleanser', 'Toner', 'Serum', 'Spot Treatment'],
-  dry: ['Moisturizer', 'Essence', 'Ampoule'],
-  dryness: ['Moisturizer', 'Essence', 'Ampoule'],
-  wrinkles: ['Serum', 'Essence', 'Eye Care'],
-  aging: ['Serum', 'Essence', 'Eye Care'],
-  hyperpigmentation: ['Serum', 'Ampoule'],
-  'dark spots': ['Serum', 'Ampoule'],
-  redness: ['Toner', 'Moisturizer', 'Essence'],
-  sensitive: ['Toner', 'Moisturizer', 'Essence'],
-  pores: ['Toner', 'Serum', 'Exfoliator'],
-  oily: ['Cleanser', 'Toner', 'Sunscreen'],
-  'sun protection': ['Sunscreen'],
-  'barrier damage': ['Moisturizer', 'Essence'],
+  acne: ['cleanser', 'toner', 'serum', 'spot treatment'],
+  dry: ['moisturizer', 'essence', 'ampoule'],
+  dryness: ['moisturizer', 'essence', 'ampoule'],
+  wrinkles: ['serum', 'essence', 'eye care'],
+  aging: ['serum', 'essence', 'eye care'],
+  hyperpigmentation: ['serum', 'ampoule'],
+  'dark spots': ['serum', 'ampoule'],
+  redness: ['toner', 'moisturizer', 'essence'],
+  sensitive: ['toner', 'moisturizer', 'essence'],
+  pores: ['toner', 'serum', 'exfoliator'],
+  oily: ['cleanser', 'toner', 'sunscreen'],
+  'sun protection': ['sunscreen'],
+  'barrier damage': ['moisturizer', 'essence'],
 }
 
 /**
@@ -54,8 +54,8 @@ export async function POST(request: NextRequest) {
 
     const supabase = getServiceClient()
 
-    // Merge explicit categories with concern-derived categories
-    const allCategories = new Set<string>(categories || [])
+    // Merge explicit categories with concern-derived categories (lowercase to match DB)
+    const allCategories = new Set<string>((categories || []).map(c => c.toLowerCase()))
     if (skin_concerns?.length) {
       for (const concern of skin_concerns) {
         const mapped = CONCERN_CATEGORY_MAP[concern.toLowerCase().trim()]
