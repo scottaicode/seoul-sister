@@ -251,6 +251,47 @@ export async function POST(request: NextRequest) {
 
           if (response.stop_reason === 'tool_use') {
             toolLoopCount++
+
+            // If we've exhausted tool loops, don't execute more tools.
+            // Make one final API call (without tools) forcing Claude to answer with what it has.
+            if (toolLoopCount > MAX_WIDGET_TOOL_LOOPS) {
+              console.warn(`[widget/chat] Tool loop exhausted (${toolLoopCount}/${MAX_WIDGET_TOOL_LOOPS}), forcing text response`)
+              loopMessages.push({ role: 'assistant', content: response.content })
+              // Provide dummy tool results so the API doesn't reject the message
+              const dummyResults: Anthropic.Messages.ToolResultBlockParam[] = []
+              for (const block of response.content) {
+                if (block.type === 'tool_use') {
+                  dummyResults.push({
+                    type: 'tool_result',
+                    tool_use_id: block.id,
+                    content: JSON.stringify({ note: 'Tool limit reached. Answer the user with the data you already have.' }),
+                  })
+                }
+              }
+              loopMessages.push({ role: 'user', content: dummyResults })
+              // Fall through to text extraction on next iteration — but we've
+              // exceeded the loop counter, so force one final create() call here
+              // Omit tools entirely so Claude must produce text
+              const { tools: _omit, ...paramsNoTools } = baseParams
+              const finalResponse = await callAnthropicWithRetry(() =>
+                anthropic.messages.create({
+                  ...paramsNoTools,
+                  messages: applyCacheControl(loopMessages),
+                })
+              )
+              for (const block of finalResponse.content) {
+                if (block.type === 'text') {
+                  fullResponse += block.text
+                  const chunks = block.text.match(/.{1,80}/g) || [block.text]
+                  for (const chunk of chunks) {
+                    const data = JSON.stringify({ type: 'text', content: chunk })
+                    await writer.write(encoder.encode(`data: ${data}\n\n`))
+                  }
+                }
+              }
+              break
+            }
+
             loopMessages.push({ role: 'assistant', content: response.content })
 
             // Execute each tool — limit to 1 per loop for widget (cost control)
