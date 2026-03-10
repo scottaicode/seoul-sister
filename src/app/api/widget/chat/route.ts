@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
+import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { checkRateLimit } from '@/lib/utils/rate-limiter'
 import { getServiceClient } from '@/lib/supabase'
 import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
@@ -194,10 +194,10 @@ export async function POST(request: NextRequest) {
 
     const streamPromise = (async () => {
       try {
-        // Tool use loop: non-streaming for tool rounds, real streaming for final response.
-        //
-        // Tool rounds use messages.create() (need full response to detect tool_use blocks).
-        // Final response round uses messages.stream() for real-time text to the client.
+        // Streaming tool use loop — matches proven advisor.ts pattern.
+        // Uses stream() for ALL calls. Two modes:
+        //   BUFFER mode (round 0): Buffer text, discard if tools found ("Let me search...")
+        //   STREAM mode (post-tool): Yield text in real-time as it arrives
         const loopMessages: Anthropic.Messages.MessageParam[] = [...messages]
         let toolLoopCount = 0
         let fullResponse = ''
@@ -222,73 +222,97 @@ export async function POST(request: NextRequest) {
           })
         }
 
-        // Common API params
-        const baseParams = {
-          model: MODELS.primary,
-          max_tokens: 600,
-          system: [{ type: 'text' as const, text: YURI_WIDGET_SYSTEM, cache_control: { type: 'ephemeral' as const } }],
-          tools: CACHED_WIDGET_TOOLS,
-        }
-
-        // Helper: stream a response (no tools) and write SSE chunks
-        async function streamFinalResponse(msgs: Anthropic.Messages.MessageParam[]) {
-          const { tools: _omit, ...paramsNoTools } = baseParams
-          const stream = anthropic.messages.stream({
-            ...paramsNoTools,
-            messages: msgs,
-          })
-          for await (const event of stream) {
-            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-              fullResponse += event.delta.text
-              const data = JSON.stringify({ type: 'text', content: event.delta.text })
-              await writer.write(encoder.encode(`data: ${data}\n\n`))
-            }
-          }
-        }
-
-        // Phase 1: Tool rounds via create() — always runs to check if Claude wants tools.
-        // Uses non-streaming create() because we need the full response to detect tool_use.
-        // Force tool_choice: 'any' on first round when forceToolUse is true.
-        while (toolLoopCount < MAX_WIDGET_TOOL_LOOPS) {
+        while (toolLoopCount <= MAX_WIDGET_TOOL_LOOPS) {
           const cachedMessages = applyCacheControl(loopMessages)
           const toolChoice: Anthropic.Messages.MessageCreateParams['tool_choice'] =
             forceToolUse && toolLoopCount === 0
               ? { type: 'any' }
               : { type: 'auto' }
 
-          const response = await callAnthropicWithRetry(() =>
-            anthropic.messages.create({
-              ...baseParams,
-              messages: cachedMessages,
-              tool_choice: toolChoice,
-            })
-          )
+          // Collect tool_use blocks and text chunks from the stream
+          const toolUseBlocks: Array<{ id: string; name: string; input: string }> = []
+          let currentToolBlock: { id: string; name: string; input: string } | null = null
+          const textChunks: string[] = []
+          const isPostToolRound = toolLoopCount > 0
 
-          if (response.stop_reason !== 'tool_use') break
+          const stream = anthropic.messages.stream({
+            model: MODELS.primary,
+            max_tokens: 600,
+            system: [{ type: 'text' as const, text: YURI_WIDGET_SYSTEM, cache_control: { type: 'ephemeral' as const } }],
+            messages: cachedMessages,
+            tools: CACHED_WIDGET_TOOLS,
+            tool_choice: toolChoice,
+          })
 
+          for await (const event of stream) {
+            if (event.type === 'content_block_start') {
+              if (event.content_block.type === 'tool_use') {
+                currentToolBlock = { id: event.content_block.id, name: event.content_block.name, input: '' }
+              }
+            } else if (event.type === 'content_block_delta') {
+              if (event.delta.type === 'text_delta') {
+                textChunks.push(event.delta.text)
+                // STREAM mode: yield text in real-time on post-tool rounds
+                if (isPostToolRound && toolUseBlocks.length === 0 && !currentToolBlock) {
+                  fullResponse += event.delta.text
+                  const data = JSON.stringify({ type: 'text', content: event.delta.text })
+                  await writer.write(encoder.encode(`data: ${data}\n\n`))
+                }
+              } else if (event.delta.type === 'input_json_delta' && currentToolBlock) {
+                currentToolBlock.input += event.delta.partial_json
+              }
+            } else if (event.type === 'content_block_stop' && currentToolBlock) {
+              toolUseBlocks.push(currentToolBlock)
+              currentToolBlock = null
+            }
+          }
+
+          // No tools — stream is done, yield any buffered text
+          if (toolUseBlocks.length === 0) {
+            if (!isPostToolRound) {
+              // BUFFER mode: replay all text now (first round, no tools used)
+              for (const chunk of textChunks) {
+                fullResponse += chunk
+                const data = JSON.stringify({ type: 'text', content: chunk })
+                await writer.write(encoder.encode(`data: ${data}\n\n`))
+              }
+            }
+            // Post-tool text was already yielded in real-time above
+            break
+          }
+
+          // Tools found — execute them and loop
           toolLoopCount++
-          loopMessages.push({ role: 'assistant', content: response.content })
 
-          // Execute each tool — limit to 1 per loop for widget (cost control)
+          // Build assistant content for conversation history
+          const assistantContent: Anthropic.Messages.ContentBlockParam[] = []
+          const allText = textChunks.join('')
+          // On first round, drop narration text ("Let me search...").
+          // On post-tool rounds, keep text (it was already shown to user).
+          if (allText && isPostToolRound) {
+            assistantContent.push({ type: 'text' as const, text: allText })
+          }
+          for (const tb of toolUseBlocks) {
+            let parsedInput: unknown = {}
+            try { parsedInput = JSON.parse(tb.input || '{}') } catch { /* keep empty */ }
+            assistantContent.push({ type: 'tool_use' as const, id: tb.id, name: tb.name, input: parsedInput as Record<string, unknown> })
+          }
+          loopMessages.push({ role: 'assistant', content: assistantContent })
+
+          // Execute tools — limit to 1 per loop for widget (cost control)
           const toolResults: Anthropic.Messages.ToolResultBlockParam[] = []
           let toolsExecuted = 0
-          for (const block of response.content) {
-            if (block.type === 'tool_use' && toolsExecuted < 1) {
-              const result = await executeYuriTool(
-                block.name,
-                block.input as Record<string, unknown>,
-                '' // empty userId for anonymous widget
-              )
-              toolResults.push({
-                type: 'tool_result',
-                tool_use_id: block.id,
-                content: result,
-              })
+          for (const tb of toolUseBlocks) {
+            if (toolsExecuted < 1) {
+              let parsedInput: Record<string, unknown> = {}
+              try { parsedInput = JSON.parse(tb.input || '{}') } catch { /* keep empty */ }
+              const result = await executeYuriTool(tb.name, parsedInput, '')
+              toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: result })
               toolsExecuted++
-            } else if (block.type === 'tool_use') {
+            } else {
               toolResults.push({
                 type: 'tool_result',
-                tool_use_id: block.id,
+                tool_use_id: tb.id,
                 content: JSON.stringify({ error: 'Only one tool call per message in the widget. Answer with the data you have.' }),
               })
             }
@@ -296,14 +320,9 @@ export async function POST(request: NextRequest) {
           loopMessages.push({ role: 'user', content: toolResults })
         }
 
-        // Phase 2: Stream the final text response (always real-time)
-        // Tools omitted so Claude produces text only — no risk of tool loops.
-        console.log(`[widget/chat] Phase 2: streaming final response (toolLoops=${toolLoopCount}, msgs=${loopMessages.length})`)
-        await streamFinalResponse(applyCacheControl(loopMessages))
-
         // Fallback if tool loops exhausted without text
         if (!fullResponse) {
-          fullResponse = "I'm having a moment accessing our database. Based on my experience though — what specifically are you looking for? I can help with product recommendations, ingredient questions, or K-beauty routines."
+          fullResponse = "I'm having a moment accessing our database. Based on my experience though, what specifically are you looking for? I can help with product recommendations, ingredient questions, or K-beauty routines."
           const data = JSON.stringify({ type: 'text', content: fullResponse })
           await writer.write(encoder.encode(`data: ${data}\n\n`))
         }
