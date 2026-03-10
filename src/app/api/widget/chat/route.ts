@@ -271,22 +271,17 @@ export async function POST(request: NextRequest) {
               loopMessages.push({ role: 'user', content: dummyResults })
               // Fall through to text extraction on next iteration — but we've
               // exceeded the loop counter, so force one final create() call here
-              // Omit tools entirely so Claude must produce text
+              // Stream final response with tools omitted so Claude must produce text
               const { tools: _omit, ...paramsNoTools } = baseParams
-              const finalResponse = await callAnthropicWithRetry(() =>
-                anthropic.messages.create({
-                  ...paramsNoTools,
-                  messages: applyCacheControl(loopMessages),
-                })
-              )
-              for (const block of finalResponse.content) {
-                if (block.type === 'text') {
-                  fullResponse += block.text
-                  const chunks = block.text.match(/.{1,80}/g) || [block.text]
-                  for (const chunk of chunks) {
-                    const data = JSON.stringify({ type: 'text', content: chunk })
-                    await writer.write(encoder.encode(`data: ${data}\n\n`))
-                  }
+              const finalStream = anthropic.messages.stream({
+                ...paramsNoTools,
+                messages: applyCacheControl(loopMessages),
+              })
+              for await (const event of finalStream) {
+                if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+                  fullResponse += event.delta.text
+                  const data = JSON.stringify({ type: 'text', content: event.delta.text })
+                  await writer.write(encoder.encode(`data: ${data}\n\n`))
                 }
               }
               break
@@ -322,21 +317,34 @@ export async function POST(request: NextRequest) {
             continue
           }
 
-          // --- Final response: extract text and stream to client ---
-          // The non-streaming create() call already returned the full response.
-          // Extract text blocks and send them as SSE chunks. We previously tried
-          // re-calling the API with stream() for "real" streaming after tool rounds,
-          // but that caused failures: the re-call could return tool_use instead of
-          // text, leaving fullResponse empty and triggering the fallback message.
-          // Using the existing response is reliable and saves an API call.
-          for (const block of response.content) {
-            if (block.type === 'text') {
-              fullResponse += block.text
-              // Send in small chunks for a streaming feel
-              const chunks = block.text.match(/.{1,80}/g) || [block.text]
-              for (const chunk of chunks) {
-                const data = JSON.stringify({ type: 'text', content: chunk })
+          // --- Final response: stream text to client in real-time ---
+          if (toolLoopCount > 0) {
+            // After tool rounds: we already have a non-streamed text response, but
+            // we want real streaming. Re-call with stream() and tools OMITTED so
+            // Claude can only produce text (no risk of another tool_use loop).
+            const { tools: _omit2, ...paramsNoTools2 } = baseParams
+            const stream = anthropic.messages.stream({
+              ...paramsNoTools2,
+              messages: cachedMessages,
+            })
+            for await (const event of stream) {
+              if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+                fullResponse += event.delta.text
+                const data = JSON.stringify({ type: 'text', content: event.delta.text })
                 await writer.write(encoder.encode(`data: ${data}\n\n`))
+              }
+            }
+          } else {
+            // No tools called: extract text from the non-streaming response.
+            // First message typically doesn't use tools, so this is the common path.
+            for (const block of response.content) {
+              if (block.type === 'text') {
+                fullResponse += block.text
+                const chunks = block.text.match(/.{1,80}/g) || [block.text]
+                for (const chunk of chunks) {
+                  const data = JSON.stringify({ type: 'text', content: chunk })
+                  await writer.write(encoder.encode(`data: ${data}\n\n`))
+                }
               }
             }
           }
