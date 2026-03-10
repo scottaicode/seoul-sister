@@ -11,7 +11,7 @@ const MAX_FREE_MESSAGES = 20
 const WIDGET_RATE_LIMIT = 25 // generous IP limit (multiple users behind same IP)
 const WIDGET_RATE_WINDOW = 24 * 60 * 60 * 1000 // 24 hours in ms
 const MSG_LIMIT_WINDOW = 30 * 24 * 60 * 60 * 1000 // 30 days (matches client-side)
-const MAX_WIDGET_TOOL_LOOPS = 2 // fewer loops than authenticated Yuri (cost control)
+const MAX_WIDGET_TOOL_LOOPS = 3 // allows 3 tool calls (e.g., one per product in a routine recommendation)
 
 /** Widget-safe tools: subset of Yuri's tools that work without user auth */
 const WIDGET_TOOL_NAMES = new Set(['search_products', 'compare_prices', 'get_trending_products', 'get_current_weather', 'get_ingredient_guide'])
@@ -298,6 +298,7 @@ export async function POST(request: NextRequest) {
 
         // Phase 2: Stream the final text response (always real-time)
         // Tools omitted so Claude produces text only — no risk of tool loops.
+        console.log(`[widget/chat] Phase 2: streaming final response (toolLoops=${toolLoopCount}, msgs=${loopMessages.length})`)
         await streamFinalResponse(applyCacheControl(loopMessages))
 
         // Fallback if tool loops exhausted without text
