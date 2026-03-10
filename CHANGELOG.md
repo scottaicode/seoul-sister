@@ -4,6 +4,22 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v9.5.0 (Mar 10, 2026) — Hero Widget Redesign: Yuri Above the Fold
+
+### Changed
+- **Homepage hero redesign**: Yuri chat widget is now 50% of the hero section (50/50 grid layout) instead of buried mid-page as section 6 of 11. Matches the proven Softcom/myweekendceo "widget-as-hero" pattern that drives actual chat engagement
+- **Hero layout**: Left column = value proposition + quick stats + CTAs. Right column = live Yuri chat with demo conversation, quick prompts, and full streaming support
+- **Stats moved to hero**: Key metrics (5,800+ products, 14,400+ ingredients, 6 specialists, 550+ brands) now visible above the fold in a compact grid
+- **Removed duplicate mid-page TryYuriSection**: Yuri is now in the hero only (plus floating bubble globally)
+
+### Added
+- `TryYuriSection` `variant` prop: `"hero"` renders as embedded card without section wrapper, `"section"` preserves original full-width layout for standalone use
+- 4 quick prompt buttons in hero widget demo state: "Is my COSRX Snail Mucin real?", "Best serum for glass skin?", "Build me a routine", "Find me a sunscreen dupe"
+- Chat header with "Live" badge in hero variant
+- Shared `chatContent` between both variants to eliminate code duplication
+
+---
+
 ## v9.4.1 (Mar 7, 2026) — Bug Fixes: Ingredient Filters, Multi-Term Search
 
 ### Fixed

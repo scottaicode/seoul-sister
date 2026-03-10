@@ -76,45 +76,55 @@ User registers
 
 **Why Not Both (Form + Conversation)**: The form wizard was the MVP approach. Now that Yuri exists, the conversational path IS the product experience. Offering both dilutes the first impression. A user who fills out a form has a "meh, another app" experience. A user who chats with Yuri has a "wow, this AI gets skincare" experience. The onboarding IS the conversion moment.
 
-### Yuri Landing Page Widget -- Three-Layer Architecture
+### Yuri Landing Page Widget -- Widget-as-Hero Architecture (v9.5.0)
 
 **Philosophy**: Trust-first conversion. Let Yuri sell herself through free value before asking anyone to create an account. A visitor who's had a real conversation with Yuri before signing up is 5-10x more likely to convert than someone who just read marketing copy.
 
-**Why NOT Widget-as-Hero**: Seoul Sister has 6 major features to showcase (Product Intelligence, AI Advisor, Community, Counterfeit Detection, Price Comparison, Trend Discovery). The conversation is one of six features, not the entire product. Putting Yuri in the hero would hide everything else. Compare with LGAAS subscriber pages (e.g., myweekendceo.com) where the AI conversation IS the entire product -- hero placement is correct there.
+**Why Widget-as-Hero (Changed in v9.5.0)**: The original design buried Yuri mid-page (section 6 of 11) behind feature grids, specialist lists, and "How It Works" sections. Result: organic search traffic reached the site but zero visitors engaged with Yuri. Meanwhile, LGAAS subscriber sites using the "widget-as-hero" pattern (softcominternet.com, myweekendceo.com) saw 10+ conversations per weekend. The data was clear — if visitors don't see Yuri above the fold, they don't talk to her.
 
-**Rule of Thumb**: If the AI conversation IS the product -> widget in hero (50% of page). If the AI conversation is one of many features -> mid-page section + floating bubble.
+**Previous reasoning** was that Seoul Sister has many features to showcase, so the conversation shouldn't dominate the hero. But features below the fold don't matter if visitors bounce before seeing them. Yuri IS the differentiator — she's what no competitor has. Leading with her is the right call.
 
-#### Three-Layer Approach
+#### Two-Layer Architecture
 
-**Layer 1: Floating Yuri Bubble (Always Present)**
+**Layer 1: Hero Widget (Above the Fold — Primary Conversion Mechanic)**
+
 ```
-- Bottom-right corner, all pages, always visible
-- Collapsed state: Yuri avatar + "Ask me anything about K-beauty"
-- Expands to chat window on click
-- 20 free preview messages per session (IP+UA hash tracked, 30-day window)
-- Full-screen takeover on mobile
-- Follows visitor as they browse -- available whenever curiosity strikes
-- SSE streaming for real-time responses
-```
-
-**Layer 2: "Try Yuri" Interactive Section (Mid-Page)**
-```
-Landing Page Flow:
-  Hero: Glass skin visual + value prop + "Start Your K-Beauty Journey" CTA
-  -> Feature Grid (6 features with glass-card design)
-  -> "Try Yuri" Section (HERE -- after visitor understands what Seoul Sister is)
-  -> Social Proof (community stats, testimonials)
+Homepage Layout (v9.5.0):
+  Navigation (sticky)
+  Hero Section (50/50 grid):
+    LEFT (50%):  Badge + Headline + Subheadline + Stats Grid + CTAs
+    RIGHT (50%): Yuri chat widget (live, interactive, streaming)
+  -> Core Intelligence Features (6 cards)
+  -> Advanced Features (8 badges)
+  -> Meet the Specialists (6 agents)
+  -> How It Works (4 steps)
+  -> Why Seoul Sister Exists (3 differentiators)
+  -> Social Proof (testimonials)
   -> Pricing (Seoul Sister Pro — $39.99/mo)
   -> Final CTA
+  Footer
 ```
 
-The "Try Yuri" section appears AFTER the feature grid, when the visitor already understands what Seoul Sister offers. This section includes:
-- Pre-populated demo conversation showing Yuri's personality (visitor question + Yuri response)
-- Live input field: "Ask Yuri anything about K-beauty..." (types directly into the section)
-- Same 20-message limit as floating bubble (shared session)
-- After 20 messages: conversion prompt to subscribe
-- NOT a duplicate of the floating bubble -- this is an embedded inline experience
-- On mobile: tapping the input area opens full-screen Yuri conversation
+The hero widget includes:
+- Chat header with Yuri avatar, name, "K-Beauty AI Advisor" subtitle, "Live" badge
+- Pre-populated demo conversation (COSRX authenticity check) showing Yuri's personality
+- 4 quick prompt buttons: "Is my COSRX Snail Mucin real?", "Best serum for glass skin?", "Build me a routine", "Find me a sunscreen dupe"
+- Live input field — visitor can type immediately without scrolling
+- Full SSE streaming with real-time responses
+- After 20 messages: conversion prompt to subscribe ($39.99/mo)
+- Min-height: 520px, max-height: 640px on desktop
+- Component: `TryYuriSection` with `variant="hero"` prop
+
+**Layer 2: Floating Yuri Bubble (Always Present — Secondary Access)**
+```
+- Bottom-right corner, all pages, always visible
+- Collapsed state: Yuri avatar + "Ask me about K-beauty" tooltip on hover
+- Expands to chat window on click (400px wide, 70vh tall)
+- 20 free preview messages (shared with hero widget via localStorage)
+- Quick prompts when empty: "Best serum for glass skin?", "Is this sunscreen legit?", "Build me a routine"
+- SSE streaming for real-time responses
+- Component: YuriBubble
+```
 
 **Layer 3: Full Yuri Experience (Post-Signup)**
 ```
@@ -128,38 +138,39 @@ After account creation + Stripe payment:
   -> Deep-dive conversations with product recommendations
 ```
 
-#### Visitor Journey Example
+#### Visitor Journey (v9.5.0)
 ```
 1. Visitor lands on seoulsister.com
-2. Scrolls through hero, sees feature grid
-3. Reaches "Try Yuri" section:
-   -> Sees demo: "Is the COSRX snail mucin I bought on Amazon real?"
-   -> Yuri's demo response shows counterfeit detection knowledge
-   -> Visitor types their own question in the live input
-   -> Yuri gives a genuinely helpful answer
-4. OR visitor clicks floating bubble at any point
-5. After 20 preview messages (either Layer 1 or 2):
-   -> Yuri naturally suggests subscribing for the full experience
-   -> Value-first conversion prompt highlighting what subscribers unlock
-6. Visitor subscribes ($39.99/mo) -> enters Yuri onboarding conversation (Layer 3)
+2. IMMEDIATELY sees Yuri in the hero (right column, above the fold)
+   -> Demo conversation shows Yuri's counterfeit detection knowledge
+   -> 4 quick prompt buttons reduce friction to first message
+3. Visitor types a question OR clicks a quick prompt
+   -> Yuri gives a genuinely helpful, streaming response
+   -> Backed by real product database (5,800+ products)
+4. OR visitor scrolls first, then clicks floating bubble at any point
+5. After 20 preview messages (shared across layers):
+   -> Conversion prompt: "Subscribe — $39.99/mo"
+   -> Highlights: unlimited conversations, skin profile memory, 6 specialists, routine builder
+6. Visitor subscribes ($39.99/mo) -> Yuri onboarding conversation (Layer 3)
 ```
 
+#### TryYuriSection Component Architecture
+The `TryYuriSection` component (`src/components/widget/TryYuriSection.tsx`) supports two variants:
+- `variant="hero"`: Renders as an embedded card (no section wrapper, no heading). Used in the homepage hero grid. Has chat header with "Live" badge.
+- `variant="section"`: Renders with full-width section wrapper, heading, and subheading. Available for standalone use on other pages if needed.
+
+Both variants share identical `chatContent` (demo conversation, live messages, input, error handling, streaming logic) to avoid code duplication. The variant only affects the outer container and header.
+
 #### Widget Specifications
-- **Preview messages**: 20 per session (IP+UA hash tracked, 30-day window, shared between Layer 1 and Layer 2)
+- **Preview messages**: 20 per session (IP+UA hash tracked, 30-day window, shared between hero widget and floating bubble)
 - **No login required**: Anonymous conversations streamed and forgotten (not stored)
-- **Genuine value**: Yuri gives real, helpful answers backed by database tools -- not teaser responses
+- **Genuine value**: Yuri gives real, helpful answers backed by database tools — not teaser responses
 - **Natural conversion**: After 20 messages, Yuri highlights what subscribers unlock (personalized routines, unlimited scans, specialist agents)
 - **Surface-level routing**: Anonymous questions get helpful answers but not deep specialist dives
 - **Data capture**: Anonymous conversation data feeds the learning engine
-- **Mobile-optimized**: Full-screen takeover on mobile for both layers
+- **Mobile-responsive**: Hero stacks to single column on mobile; floating bubble remains accessible
 - **SSE streaming**: Real-time streamed responses (not waiting for full response)
-
-#### Conversion Tracking
-- Track which questions visitors ask most (informs marketing and feature priority)
-- Track conversion rate: Layer 1 (bubble) vs Layer 2 (inline) vs organic signup
-- Track which Yuri responses have highest conversion (learning engine)
-- A/B test Yuri's conversion prompts over time
-- Track Layer 1 vs Layer 2 engagement (which gets more conversations started)
+- **Quick prompts**: 4 in hero widget, 3 in floating bubble — reduce friction to first message
 
 #### Rate Limiting (Cost Control)
 - 20 messages per session (IP+UA hash, 30-day window, shared across layers)
@@ -178,7 +189,7 @@ After account creation + Stripe payment:
 When Seoul Sister subscribes to LGAAS for marketing automation:
 - **LGAAS provides**: Reddit K-beauty discovery, blog generation, social content, email sequences, competitive intelligence, learning engine for marketing
 - **Seoul Sister keeps**: Its own landing page with Yuri widget (NOT replaced by AriaStar)
-- **AriaStar's role**: Business advisor to Seoul Sister's team (marketing strategy, content performance) -- not visitor-facing
+- **AriaStar's role**: Business advisor to Seoul Sister's team (marketing strategy, content performance) — not visitor-facing
 - **Clean separation**: AriaStar drives traffic TO seoulsister.com. Yuri handles conversion ON seoulsister.com.
 
 ### Specialist Agents (Report to Yuri)
@@ -537,7 +548,7 @@ After 10,000 users, no competitor can replicate the dataset. After 100,000 users
 
 ### Single Tier — Seoul Sister Pro ($39.99/mo)
 
-Seoul Sister is a paid-only platform. There is no free tier. Visitors get 20 free preview messages with Yuri on the landing page widget to experience the AI's quality before subscribing.
+Seoul Sister is a paid-only platform. There is no free tier. Visitors get 20 free preview messages with Yuri on the landing page hero widget to experience the AI's quality before subscribing.
 
 **Registration Flow**: Register → Stripe Checkout ($39.99/mo) → Yuri onboarding → Full app access (no email verification)
 
@@ -555,7 +566,7 @@ Seoul Sister is a paid-only platform. There is no free tier. Visitors get 20 fre
 - Cross-session memory and personalization
 - Proactive intelligence notifications
 
-**What Anonymous Visitors Get** (landing page widget):
+**What Anonymous Visitors Get** (landing page hero widget):
 - 20 preview messages with Yuri (IP+UA tracked, 30-day window)
 - 4 database tools (search products, compare prices, trending, weather)
 - Real, helpful answers backed by 5,800+ product database

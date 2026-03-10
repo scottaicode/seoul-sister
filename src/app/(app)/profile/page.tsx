@@ -454,11 +454,7 @@ export default function ProfilePage() {
                 </p>
                 <p className="text-xs text-white/40 mt-0.5">
                   {profile.plan && profile.plan !== 'free'
-                    ? profile.plan === 'pro_annual'
-                      ? '$99.99/year — Full AI intelligence suite'
-                      : profile.plan === 'student'
-                        ? '$6.99/month — Student plan'
-                        : '$39.99/month — Full AI intelligence suite'
+                    ? '$39.99/month — Full AI intelligence suite'
                     : 'Subscribe to unlock Yuri, scanning, and all features'}
                 </p>
               </div>

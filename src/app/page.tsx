@@ -92,7 +92,6 @@ const testimonials = [
 
 const navLinks = [
   { label: 'Features', href: '#features' },
-  { label: 'Try Yuri', href: '#try-yuri' },
   { label: 'Ingredients', href: '/ingredients' },
   { label: 'Products', href: '/products' },
   { label: 'Best Products', href: '/best' },
@@ -165,73 +164,76 @@ export default function LandingPage() {
         </AnimatePresence>
       </nav>
 
-      {/* Hero */}
-      <section className="relative bg-hero-gradient pt-20 pb-24 px-4 overflow-hidden">
-        {/* Gold glow effect */}
+      {/* Hero — Widget as Hero (50/50 grid) */}
+      <section className="relative bg-hero-gradient pt-12 pb-16 md:pt-16 md:pb-20 px-4 overflow-hidden">
+        {/* Gold glow effects */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-gold/8 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute top-20 right-1/4 w-[300px] h-[300px] bg-gold/5 rounded-full blur-[100px] pointer-events-none" />
 
-        <div className="relative max-w-4xl mx-auto text-center">
-          <motion.div variants={stagger} initial="hidden" animate="show">
+        <div className="relative max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-12 items-start">
+          {/* Left — Value Proposition */}
+          <motion.div variants={stagger} initial="hidden" animate="show" className="pt-4 lg:pt-8">
             <motion.div variants={fadeUp}>
               <span className="badge-gold mb-4 inline-block">World&apos;s First English K-Beauty Intelligence Platform</span>
             </motion.div>
-            <motion.h1 variants={fadeUp} className="font-display font-bold text-4xl md:text-6xl lg:text-7xl text-white leading-tight mb-6">
+            <motion.h1 variants={fadeUp} className="font-display font-bold text-3xl md:text-5xl lg:text-5xl text-white leading-tight mb-5">
               K-Beauty Intelligence,
               <br />
               <span className="text-gradient">Powered by AI</span>
             </motion.h1>
-            <motion.p variants={fadeUp} className="text-white/50 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
-              5,800+ products. 14,400+ ingredients decoded. 6 AI specialist agents. From label scanning to routine building — every decision backed by real intelligence.
+            <motion.p variants={fadeUp} className="text-white/50 text-base md:text-lg max-w-lg mb-8 leading-relaxed">
+              5,800+ products. 14,400+ ingredients decoded. 6 AI specialist agents. Ask Yuri anything about Korean skincare — she&apos;s ready now.
             </motion.p>
-            <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/register" className="glass-button-primary text-base py-3 px-8">
-                Get Started
+
+            {/* Quick stats row */}
+            <motion.div variants={fadeUp} className="grid grid-cols-2 gap-3 mb-8 max-w-sm">
+              {[
+                { value: '5,800+', label: 'Products' },
+                { value: '14,400+', label: 'Ingredients' },
+                { value: '6', label: 'AI Specialists' },
+                { value: '550+', label: 'Brands' },
+              ].map(({ value, label }) => (
+                <div key={label} className="dark-card p-3 text-center">
+                  <p className="text-lg font-bold text-gradient">{value}</p>
+                  <p className="text-[10px] text-white/40">{label}</p>
+                </div>
+              ))}
+            </motion.div>
+
+            <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-3">
+              <Link href="#pricing" className="glass-button-primary text-sm py-3 px-6">
+                View Plans
               </Link>
-              <Link href="#features" className="dark-button-outline text-base py-3 px-8">
+              <Link href="#features" className="dark-button-outline text-sm py-3 px-6">
                 See All Features
               </Link>
             </motion.div>
+
+            <motion.p variants={fadeUp} className="text-xs text-white/30 mt-4">
+              Try Yuri free — 20 preview messages, no signup required.
+            </motion.p>
           </motion.div>
 
-          {/* Glass product scan preview */}
+          {/* Right — Yuri Chat Widget (Hero position) */}
           <motion.div
-            initial={{ opacity: 0, y: 32 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.8 }}
-            className="mt-16 mx-auto max-w-sm animate-float"
+            transition={{ delay: 0.3, duration: 0.6 }}
           >
-            <div className="dark-card-gold p-6 text-left shadow-glow-gold">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center">
-                  <Camera className="w-4 h-4 text-seoul-dark" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-white">Scanning label...</p>
-                  <p className="text-xs text-white/40">COSRX Advanced Snail 96</p>
-                </div>
-                <span className="ml-auto badge-gold animate-pulse-soft">Live</span>
-              </div>
-              <div className="space-y-2">
-                {[
-                  { name: 'Snail Secretion Filtrate', score: 96 },
-                  { name: 'Sodium Hyaluronate', score: 88 },
-                  { name: 'Allantoin', score: 92 },
-                ].map((ing) => (
-                  <div key={ing.name} className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <p className="text-xs font-medium text-white/80">{ing.name}</p>
-                      <div className="h-1 bg-white/5 rounded-full mt-1">
-                        <div className="h-1 bg-gradient-to-r from-gold to-gold-light rounded-full" style={{ width: `${ing.score}%` }} />
-                      </div>
-                    </div>
-                    <span className="text-xs font-semibold text-gold">{ing.score}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-3 text-xs text-gold/70 font-medium">No conflicts with your routine</p>
-            </div>
+            <TryYuriSection variant="hero" />
           </motion.div>
+        </div>
+
+        {/* Mobile sticky CTA bar — appears on scroll past hero */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-seoul-dark/95 backdrop-blur-md border-t border-gold/20 p-3 translate-y-full transition-transform duration-300" id="mobile-sticky-cta">
+          <button
+            onClick={() => {
+              document.getElementById('hero-yuri')?.scrollIntoView({ behavior: 'smooth' })
+            }}
+            className="glass-button-primary w-full text-sm py-3"
+          >
+            Ask Yuri About Your Skin
+          </button>
         </div>
       </section>
 
@@ -335,9 +337,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Try Yuri - Layer 2 */}
-      <TryYuriSection />
-
       {/* How It Works */}
       <section className="py-20 px-4 bg-seoul-dark">
         <div className="max-w-5xl mx-auto text-center">
@@ -417,22 +416,6 @@ export default function LandingPage() {
             <p className="section-subheading mx-auto">The intelligence platform built for ingredient-literate skincare lovers.</p>
           </div>
 
-          {/* Stats */}
-          <motion.div
-            variants={stagger}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: '-40px' }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-12"
-          >
-            {stats.map(({ value, label }) => (
-              <motion.div key={label} variants={fadeUp} className="dark-card-gold p-5 text-center">
-                <p className="text-2xl md:text-3xl font-bold text-gradient">{value}</p>
-                <p className="text-xs text-white/40 mt-1">{label}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-
           {/* Testimonials */}
           <motion.div
             variants={stagger}
@@ -482,10 +465,10 @@ export default function LandingPage() {
           className="relative max-w-2xl mx-auto text-center"
         >
           <h2 className="font-display font-bold text-3xl md:text-4xl text-white mb-4">
-            Start Your K-Beauty Journey
+            Your Skin Deserves Intelligence
           </h2>
           <p className="text-white/40 text-base md:text-lg mb-8 leading-relaxed">
-            Join the community of ingredient-literate K-beauty lovers who make smarter skincare decisions.
+            Join the community of ingredient-literate K-beauty lovers who make smarter skincare decisions every day.
           </p>
           <Link
             href="/register"
@@ -507,7 +490,6 @@ export default function LandingPage() {
           <div className="flex flex-wrap justify-center gap-6 text-sm">
             {[
               { label: 'Features', href: '#features' },
-              { label: 'Try Yuri', href: '#try-yuri' },
               { label: 'Ingredients', href: '/ingredients' },
               { label: 'Products', href: '/products' },
               { label: 'Best Products', href: '/best' },
