@@ -297,7 +297,11 @@ ss_yuri_conversations       - AI advisor conversations (type: onboarding, genera
 ss_yuri_messages            - Individual messages (with image_urls for vision)
 ss_specialist_insights      - Intelligence extracted from specialist conversations
 ss_onboarding_progress      - Tracks which profile fields Yuri has captured during onboarding
-ss_widget_conversations     - Anonymous pre-signup landing page widget conversations
+ss_widget_conversations     - Anonymous pre-signup landing page widget conversations (legacy — replaced by Phase 14 tables)
+ss_widget_visitors          - Persistent anonymous visitor identity with AI memory and lifetime stats
+ss_widget_sessions          - Per-conversation session tracking (specialist domains, intent signals, message counts)
+ss_widget_messages          - Full message storage with tool call JSONB logging
+ss_widget_intent_signals    - Consumer intent signal detection (15 signals across 4 categories)
 ```
 
 #### Intelligence & Learning
@@ -859,8 +863,14 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 - [ ] Feature 8.5: Expiration/PAO Tracking (tracking page exists, API wiring needs review)
 - [ ] Feature 8.6: Reformulation Tracker (formulation change detection, alert system, version history)
 
+**Next Priority: Phase 14 — Widget Conversation Intelligence** (5 features: persistence, cross-session memory, specialist preview, intent signals, admin dashboard)
+- [ ] Feature 14.1: Widget Database Schema (4 tables for full conversation persistence)
+- [ ] Feature 14.2: Widget Chat Route Rewrite (message storage, tool logging, cross-session memory)
+- [ ] Feature 14.3: Specialist Preview System (conversion FOMO via specialist name-dropping)
+- [ ] Feature 14.4: Intent Signal Detection (~15 consumer skincare signals)
+- [ ] Feature 14.5: Admin Widget Dashboard (conversation viewer, intent analytics, conversion funnel)
+
 **Future Work** (when traffic/revenue justifies)
-- [ ] **Widget Email Capture** — Currently stateless with 20 preview messages + subscribe CTA. Add email capture field at message limit when traffic justifies it. Store in `ss_widget_emails` table.
 - [ ] **Push Notifications** — Requires service worker push events, web-push library, subscription management
 - [ ] **Remaining Cron Jobs** — scan-counterfeits, community-digest
 - [ ] **Supabase Attack Protection** — Captcha on auth endpoints (requires captcha widget), leaked password protection (requires custom SMTP). Enable when traffic justifies it.
@@ -4760,6 +4770,768 @@ LOW. Simple regex post-processor. The pattern list can grow over time as AI-isms
 
 ---
 
+## Phase 14: Widget Conversation Intelligence — From Stateless Chat to Conversion Engine
+
+**Strategic Rationale**: The landing page widget is Seoul Sister's primary conversion mechanism. A visitor who talks to Yuri before signing up is 5-10x more likely to convert. But today, every widget conversation is stateless — messages stream and vanish. There is zero persistence, zero cross-session memory, zero intent tracking, and zero observability into what visitors ask, what tools Yuri uses, or which conversations lead to subscriptions. The `ss_widget_analytics` table stores only session-level counters (messages_sent, tool_calls_made) — not the actual content.
+
+**The LGAAS Comparison**: LGAAS's widget-conversation.js (1,392 lines) stores every message, generates cross-session AI memory via Sonnet, tracks trust signals, assigns persistent visitor identities, and provides a full admin conversation viewer. Seoul Sister's widget/chat/route.ts (408 lines) streams responses and fires-and-forgets a counter increment. The gap is fundamental.
+
+**What This Phase Delivers**:
+1. Full message persistence (every widget message stored, tool calls logged)
+2. Persistent anonymous visitor identity (survives page refreshes, browser restarts, multi-day returns)
+3. Cross-session AI memory (Sonnet-generated summaries so Yuri remembers returning visitors)
+4. Intent signal detection (~15 consumer skincare signals that indicate purchase readiness)
+5. Specialist preview system (name-drop specialist expertise to drive conversion FOMO)
+6. Admin widget dashboard (conversation viewer, intent analytics, conversion funnel)
+
+**Reference**: LGAAS `lgaas/api/widget-conversation.js` patterns — `handleStartAndMessage()` (lines 292-393), `getPreviousConversationContext()` (lines 945-1045), `generateConversationMemory()` (lines 1304-1367), `detectAndRecordSignals()`.
+
+---
+
+### Feature 14.1: Widget Database Schema — Conversation Persistence Layer (FOUNDATION)
+
+**Why This First**: Every other feature depends on having tables to store data. This migration creates 4 tables that replace the shallow `ss_widget_analytics` table with a full conversation persistence layer.
+
+**Design Decisions**:
+- **Persistent visitor identity**: Client-generated UUID stored in localStorage + 365-day cookie (belt and suspenders). Server stores the visitor record with first_seen/last_seen timestamps, total message count, and AI-generated cross-session memory.
+- **Ghost conversation prevention**: Sessions are created on FIRST MESSAGE, not page load. LGAAS learned this the hard way — their `handleStart` creates a conversation on widget open, resulting in hundreds of empty conversation records. Seoul Sister's `handleStartAndMessage` pattern (from LGAAS lines 292-393) only creates the session when the visitor actually sends a message.
+- **Tool call logging**: Stored as JSONB array on assistant messages (`tool_calls` column) rather than a separate table. Each entry: `{ name: string, input: object, result_summary: string }`. This avoids JOIN overhead for the common read path (viewing a conversation) while keeping full auditability.
+- **Rate limiting migration**: Currently uses `ss_rate_limits` table with IP+UA hash. Phase 14 migrates to visitor-record-based counting — `ss_widget_visitors.total_messages` replaces the hash-based rate limit for the 20-message session limit. The 25/IP/day abuse limit stays on `ss_rate_limits`.
+
+#### Database Migration
+
+Create `supabase/migrations/20260310000001_widget_conversation_persistence.sql`:
+
+```sql
+-- ============================================================
+-- Phase 14.1: Widget Conversation Persistence Layer
+-- Replaces shallow ss_widget_analytics with full message storage
+-- ============================================================
+
+-- 1. Persistent anonymous visitor identity
+CREATE TABLE ss_widget_visitors (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  visitor_id TEXT NOT NULL UNIQUE,           -- Client-generated UUID (localStorage + cookie)
+  ip_hash TEXT,                               -- For abuse detection (NOT for identity)
+  user_agent_hash TEXT,                       -- For analytics (NOT for identity)
+  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  total_messages INTEGER NOT NULL DEFAULT 0,
+  total_sessions INTEGER NOT NULL DEFAULT 0,
+  total_tool_calls INTEGER NOT NULL DEFAULT 0,
+  ai_memory JSONB DEFAULT '{}',              -- Sonnet-generated cross-session memory
+  -- { summary: string, topics_discussed: string[], skin_concerns: string[],
+  --   products_interested_in: string[], interest_level: 'browsing'|'curious'|'engaged'|'ready_to_buy',
+  --   recommended_approach: string }
+  converted_at TIMESTAMPTZ,                  -- Set when visitor creates an account
+  converted_user_id UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_widget_visitors_visitor_id ON ss_widget_visitors(visitor_id);
+CREATE INDEX idx_widget_visitors_last_seen ON ss_widget_visitors(last_seen_at DESC);
+CREATE INDEX idx_widget_visitors_converted ON ss_widget_visitors(converted_user_id) WHERE converted_user_id IS NOT NULL;
+
+-- 2. Widget conversation sessions (created on first message, not page load)
+CREATE TABLE ss_widget_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  visitor_id TEXT NOT NULL REFERENCES ss_widget_visitors(visitor_id),
+  session_number INTEGER NOT NULL DEFAULT 1, -- Nth session for this visitor
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_message_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  message_count INTEGER NOT NULL DEFAULT 0,
+  tool_calls_count INTEGER NOT NULL DEFAULT 0,
+  specialist_domains_detected TEXT[] DEFAULT '{}', -- Which specialist areas were triggered
+  intent_signals_detected TEXT[] DEFAULT '{}',     -- Signal types detected this session
+  ai_summary TEXT,                            -- Sonnet-generated session summary (fire-and-forget)
+  ended_naturally BOOLEAN DEFAULT FALSE,      -- True if visitor hit 20-msg limit
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_widget_sessions_visitor ON ss_widget_sessions(visitor_id, started_at DESC);
+CREATE INDEX idx_widget_sessions_recent ON ss_widget_sessions(started_at DESC);
+
+-- 3. Widget messages (every message stored with tool call logging)
+CREATE TABLE ss_widget_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id UUID NOT NULL REFERENCES ss_widget_sessions(id) ON DELETE CASCADE,
+  visitor_id TEXT NOT NULL,                   -- Denormalized for fast queries
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content TEXT NOT NULL,
+  tool_calls JSONB,                           -- Array of { name, input, result_summary } (assistant only)
+  -- result_summary is truncated to ~200 chars per tool call to avoid bloat
+  specialist_detected TEXT,                   -- Which specialist domain was detected (user msgs only)
+  intent_signals TEXT[] DEFAULT '{}',         -- Signals detected on this specific message
+  tokens_used INTEGER,                        -- For cost tracking (assistant only)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_widget_messages_session ON ss_widget_messages(session_id, created_at);
+CREATE INDEX idx_widget_messages_visitor ON ss_widget_messages(visitor_id, created_at DESC);
+
+-- 4. Intent signals — individual signal events for analytics
+CREATE TABLE ss_widget_intent_signals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  visitor_id TEXT NOT NULL REFERENCES ss_widget_visitors(visitor_id),
+  session_id UUID NOT NULL REFERENCES ss_widget_sessions(id) ON DELETE CASCADE,
+  message_id UUID REFERENCES ss_widget_messages(id) ON DELETE CASCADE,
+  signal_type TEXT NOT NULL,                  -- e.g., 'described_skin_concern', 'asked_product_price'
+  signal_data JSONB DEFAULT '{}',             -- Context: { product: "COSRX Snail", concern: "acne" }
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_widget_signals_visitor ON ss_widget_intent_signals(visitor_id, created_at DESC);
+CREATE INDEX idx_widget_signals_type ON ss_widget_intent_signals(signal_type, created_at DESC);
+
+-- RLS Policies: service_role writes, admin reads
+ALTER TABLE ss_widget_visitors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ss_widget_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ss_widget_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ss_widget_intent_signals ENABLE ROW LEVEL SECURITY;
+
+-- Service role can do everything (API route uses getServiceClient)
+CREATE POLICY "Service role manages widget visitors"
+  ON ss_widget_visitors FOR ALL
+  USING ((select auth.role()) = 'service_role');
+
+CREATE POLICY "Service role manages widget sessions"
+  ON ss_widget_sessions FOR ALL
+  USING ((select auth.role()) = 'service_role');
+
+CREATE POLICY "Service role manages widget messages"
+  ON ss_widget_messages FOR ALL
+  USING ((select auth.role()) = 'service_role');
+
+CREATE POLICY "Service role manages widget signals"
+  ON ss_widget_intent_signals FOR ALL
+  USING ((select auth.role()) = 'service_role');
+
+-- Admin users can read (for dashboard)
+CREATE POLICY "Admins can read widget visitors"
+  ON ss_widget_visitors FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM ss_user_profiles WHERE user_id = (select auth.uid()) AND is_admin = true
+  ));
+
+CREATE POLICY "Admins can read widget sessions"
+  ON ss_widget_sessions FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM ss_user_profiles WHERE user_id = (select auth.uid()) AND is_admin = true
+  ));
+
+CREATE POLICY "Admins can read widget messages"
+  ON ss_widget_messages FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM ss_user_profiles WHERE user_id = (select auth.uid()) AND is_admin = true
+  ));
+
+CREATE POLICY "Admins can read widget signals"
+  ON ss_widget_intent_signals FOR SELECT
+  USING (EXISTS (
+    SELECT 1 FROM ss_user_profiles WHERE user_id = (select auth.uid()) AND is_admin = true
+  ));
+
+-- Updated_at trigger for visitors
+CREATE TRIGGER set_widget_visitors_updated
+  BEFORE UPDATE ON ss_widget_visitors
+  FOR EACH ROW
+  EXECUTE FUNCTION ss_set_updated_at();
+```
+
+#### Files to Create
+- `supabase/migrations/20260310000001_widget_conversation_persistence.sql` (~120 lines)
+
+#### Database Changes
+- New table: `ss_widget_visitors` (persistent anonymous identity + AI memory)
+- New table: `ss_widget_sessions` (conversation sessions, created on first message)
+- New table: `ss_widget_messages` (every message with tool call JSONB)
+- New table: `ss_widget_intent_signals` (individual signal events)
+- RLS: service_role for API writes, admin read via `is_admin`
+- `ss_widget_analytics` preserved (not dropped) for historical data; new code writes to new tables
+
+#### Estimated Complexity
+LOW. Pure SQL migration, no application code.
+
+---
+
+### Feature 14.2: Widget Chat Route Rewrite — Full Persistence + Tool Logging (CORE)
+
+**Why This Is The Core**: This rewrites `src/app/api/widget/chat/route.ts` to persist every message, log tool calls, generate cross-session memory, and support returning visitors. The SSE streaming architecture and tool use loop stay intact — this adds persistence around them.
+
+**What Changes From Current Route**:
+- Request body gains `visitor_id` (client-generated UUID) and `session_id` (null on first message)
+- Session created on first message (ghost prevention)
+- Every user message and assistant response saved to `ss_widget_messages`
+- Tool calls logged as JSONB on assistant messages
+- Cross-session memory injected into system prompt for returning visitors
+- Sonnet memory generation fires after conversation (fire-and-forget, non-blocking)
+- Rate limiting migrates from IP+UA hash to visitor record `total_messages`
+
+**Architecture**: Extract persistence logic into 3 new modules under `src/lib/widget/` to keep the route file under 300 lines:
+
+#### New Module: `src/lib/widget/visitor.ts` (~80 lines)
+
+```typescript
+/**
+ * Persistent anonymous visitor identity management.
+ * Adapted from LGAAS's getOrCreateProspect() (widget-conversation.js lines 879-913).
+ */
+
+interface WidgetVisitor {
+  id: string           // UUID (database PK)
+  visitor_id: string   // Client-generated UUID
+  total_messages: number
+  total_sessions: number
+  ai_memory: Record<string, unknown> | null
+}
+
+/**
+ * getOrCreateVisitor(visitorId, ipHash, uaHash)
+ *
+ * - If visitor_id exists in ss_widget_visitors: update last_seen_at, return record
+ * - If new: INSERT with first_seen_at = now, return new record
+ * - Uses UPSERT (ON CONFLICT visitor_id DO UPDATE) for atomicity
+ */
+
+/**
+ * incrementVisitorCounters(visitorId, messagesDelta, toolCallsDelta)
+ *
+ * Atomic increment of total_messages, total_tool_calls on the visitor record.
+ * Called after each successful message exchange.
+ */
+
+/**
+ * isVisitorAtLimit(visitor): boolean
+ *
+ * Returns true if visitor.total_messages >= MAX_FREE_MESSAGES (20).
+ * Replaces the current IP+UA hash rate limit for the session message cap.
+ */
+```
+
+#### New Module: `src/lib/widget/session.ts` (~100 lines)
+
+```typescript
+/**
+ * Widget session lifecycle management.
+ * Sessions created on first message only (ghost prevention).
+ * Adapted from LGAAS's handleStartAndMessage() (widget-conversation.js lines 292-393).
+ */
+
+interface WidgetSession {
+  id: string           // UUID
+  visitor_id: string
+  session_number: number
+  message_count: number
+}
+
+/**
+ * createSession(visitorId)
+ *
+ * Creates a new ss_widget_sessions row. Session number = visitor.total_sessions + 1.
+ * Called ONLY when first message arrives (not on page load).
+ * Also increments visitor.total_sessions.
+ */
+
+/**
+ * incrementSessionCounters(sessionId, toolCallsDelta)
+ *
+ * Atomic increment of message_count, tool_calls_count on the session record.
+ * Updates last_message_at.
+ */
+
+/**
+ * updateSessionMetadata(sessionId, specialistDomains, intentSignals)
+ *
+ * Appends detected specialist domains and intent signals to the session arrays.
+ * Uses array_cat for atomic append.
+ */
+```
+
+#### New Module: `src/lib/widget/persistence.ts` (~120 lines)
+
+```typescript
+/**
+ * Message persistence and cross-session memory.
+ * Every message stored. Tool calls logged as JSONB. Memory generated via Sonnet.
+ */
+
+interface ToolCallLog {
+  name: string
+  input: Record<string, unknown>
+  result_summary: string  // Truncated to ~200 chars
+}
+
+/**
+ * saveUserMessage(sessionId, visitorId, content, specialistDetected, intentSignals)
+ *
+ * INSERT into ss_widget_messages with role='user'.
+ */
+
+/**
+ * saveAssistantMessage(sessionId, visitorId, content, toolCalls, tokensUsed)
+ *
+ * INSERT into ss_widget_messages with role='assistant'.
+ * toolCalls: Array<ToolCallLog> — truncated result summaries to avoid bloat.
+ */
+
+/**
+ * truncateToolResult(result: string, maxLength = 200): string
+ *
+ * Truncate tool execution results for storage. Keep first 200 chars + "..." indicator.
+ * Full results don't need to be stored — the tool name + input tells the story.
+ */
+
+/**
+ * getPreviousConversationContext(visitorId)
+ *
+ * Adapted from LGAAS's getPreviousConversationContext() (lines 945-1045).
+ * Loads the visitor's ai_memory and injects it into the system prompt as:
+ *
+ *   ## Returning Visitor Context
+ *   This visitor has chatted with you before. Here's what you know about them:
+ *   - Summary: {ai_memory.summary}
+ *   - Topics discussed: {ai_memory.topics_discussed}
+ *   - Skin concerns: {ai_memory.skin_concerns}
+ *   - Products interested in: {ai_memory.products_interested_in}
+ *   - Interest level: {ai_memory.interest_level}
+ *   - Recommended approach: {ai_memory.recommended_approach}
+ *
+ *   Use this context naturally. Don't say "I remember you" explicitly — just
+ *   demonstrate knowledge. If they asked about vitamin C serums last time,
+ *   naturally reference that when relevant.
+ *
+ * Returns null for first-time visitors (no memory to inject).
+ */
+
+/**
+ * generateAndSaveMemory(visitorId, sessionMessages)
+ *
+ * Fire-and-forget Sonnet call after conversation.
+ * Adapted from LGAAS's generateConversationMemory() (lines 1304-1367).
+ *
+ * Merges existing ai_memory with current session to produce updated memory.
+ * Prompt asks Sonnet to extract:
+ *   - summary: 2-3 sentence overview of all conversations with this visitor
+ *   - topics_discussed: array of topics across all sessions
+ *   - skin_concerns: extracted skin concerns (acne, dryness, sensitivity, etc.)
+ *   - products_interested_in: products they asked about or showed interest in
+ *   - interest_level: browsing | curious | engaged | ready_to_buy
+ *   - recommended_approach: how Yuri should approach this visitor next time
+ *
+ * Trigger: after every 3rd message in a session (not every message — cost control).
+ * Uses Sonnet 4.5 (cheap), max_tokens 400.
+ * Estimated cost: ~$0.005 per memory generation.
+ */
+```
+
+#### Route Rewrite: `src/app/api/widget/chat/route.ts`
+
+**Request body changes**:
+```typescript
+const widgetSchema = z.object({
+  message: z.string().min(1).max(2000),
+  history: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string(),
+  })).max(40).optional(),
+  visitor_id: z.string().uuid().optional(),  // NEW: client-generated UUID
+  session_id: z.string().uuid().optional(),  // NEW: null on first message
+})
+```
+
+**Flow changes (pseudocode)**:
+```
+1. Parse request, extract visitor_id + session_id
+2. IP rate limit check (25/IP/day abuse limit — KEEP as-is)
+3. getOrCreateVisitor(visitor_id, ipHash, uaHash)
+4. isVisitorAtLimit(visitor) → 429 if true
+5. If no session_id → createSession(visitor.visitor_id) → get session_id
+6. Load previous conversation context (getPreviousConversationContext)
+7. Inject context into system prompt (append after YURI_WIDGET_SYSTEM)
+8. detectSpecialist(message) → for logging, NOT for routing (widget doesn't route)
+9. saveUserMessage(session_id, visitor_id, message, specialist, signals)
+10. --- EXISTING STREAMING + TOOL LOOP (unchanged) ---
+11. Collect tool calls during loop: Array<ToolCallLog>
+12. saveAssistantMessage(session_id, visitor_id, fullResponse, toolCalls, tokens)
+13. incrementVisitorCounters(visitor_id, 1, toolCallCount)
+14. incrementSessionCounters(session_id, toolCallCount)
+15. Fire-and-forget: generateAndSaveMemory (every 3rd message)
+16. Fire-and-forget: detectAndRecordSignals (Feature 14.4)
+```
+
+**What stays identical**: The entire streaming architecture, TransformStream, SSE event format, tool use loop with BUFFER/STREAM modes, `shouldWidgetForceToolUse()`, prompt caching, voice cleanup, and `CACHED_WIDGET_TOOLS`. This feature adds persistence AROUND the existing streaming, not inside it.
+
+#### Client-Side Changes
+
+**`src/lib/utils/widget-session.ts`** — Add visitor identity:
+```typescript
+const VISITOR_ID_KEY = 'yuri_visitor_id'
+
+/**
+ * getOrCreateVisitorId(): string
+ *
+ * Returns a persistent UUID for this browser:
+ * 1. Check localStorage for existing visitor_id
+ * 2. Check cookie for existing visitor_id (fallback if localStorage cleared)
+ * 3. Generate new UUID (crypto.randomUUID()), save to both localStorage + cookie
+ *
+ * Cookie: 365-day expiry, SameSite=Strict, path=/
+ * This gives us two-layer persistence: localStorage (primary) + cookie (backup).
+ */
+
+/**
+ * getSessionId(): string | null
+ * setSessionId(id: string): void
+ *
+ * Session ID stored in sessionStorage (dies with tab).
+ * Set after first message response includes the server-generated session_id.
+ */
+```
+
+**`src/components/widget/TryYuriSection.tsx`** — Modify `sendMessage()`:
+- Import `getOrCreateVisitorId`, `getSessionId`, `setSessionId` from widget-session
+- Add `visitor_id` and `session_id` to fetch body
+- Parse `session_id` from SSE done event (route returns it on first message)
+- Call `setSessionId()` after receiving it
+
+**`src/components/widget/YuriBubble.tsx`** — Same changes as TryYuriSection.
+
+#### SSE Response Changes
+
+The `done` event gains a `session_id` field:
+```json
+{ "type": "done", "message": "cleaned response text", "session_id": "uuid" }
+```
+
+Client stores this for subsequent messages in the same browser session.
+
+#### Files to Create
+- `src/lib/widget/visitor.ts` (~80 lines)
+- `src/lib/widget/session.ts` (~100 lines)
+- `src/lib/widget/persistence.ts` (~120 lines)
+
+#### Files to Modify
+- `src/app/api/widget/chat/route.ts` — Add persistence calls around existing streaming loop
+- `src/lib/utils/widget-session.ts` — Add `getOrCreateVisitorId()`, session ID storage
+- `src/components/widget/TryYuriSection.tsx` — Send visitor_id + session_id, store session_id from response
+- `src/components/widget/YuriBubble.tsx` — Same changes as TryYuriSection
+
+#### Database Changes
+None beyond Feature 14.1 migration.
+
+#### Estimated Complexity
+HIGH. This is the largest feature — route rewrite with 3 new modules, client changes to both widget components, and SSE response format change. The streaming architecture is preserved but persistence wraps around it.
+
+#### Testing Checklist
+- [ ] First-time visitor: sends message, session created, messages stored, response streams correctly
+- [ ] Same visitor returns (new tab): visitor_id persists, session_id is new, previous memory injected
+- [ ] Tool calls logged: search_products call appears in assistant message tool_calls JSONB
+- [ ] 20-message limit: visitor hits limit, gets conversion prompt, server returns 429
+- [ ] Memory generation: after 3rd message, Sonnet fire-and-forget runs, ai_memory updated on visitor
+- [ ] Cross-session memory: returning visitor's system prompt includes memory context
+- [ ] Hero widget + floating bubble share visitor_id (same visitor, different components)
+- [ ] Rate limiting: 25/IP/day abuse limit still works alongside visitor-based counting
+- [ ] SSE streaming performance: no perceptible latency increase from persistence calls
+
+---
+
+### Feature 14.3: Specialist Preview System — Conversion Through FOMO (MEDIUM)
+
+**Why This Matters**: The widget currently gives visitors the same Yuri for every question. Subscribers get 6 specialist agents with deep domain expertise. The specialist preview system lets widget Yuri name-drop specialist capabilities when she detects a question in a specialist's domain — creating natural conversion FOMO without being salesy.
+
+**How It Works**: When a visitor's message triggers `detectSpecialist()` (the existing function from `specialists.ts`), the widget prompt gets a one-time injection telling Yuri to acknowledge the specialist domain and hint at subscriber depth.
+
+**What This Is NOT**: This is NOT full specialist routing for widget visitors. The specialist system prompt is NOT injected. Yuri answers with her general knowledge + tools. She simply acknowledges that a deeper specialist experience exists.
+
+#### Implementation Plan
+
+**Step 1: Detect Specialist Domain on Each Message**
+
+In the widget route, after parsing the message:
+```typescript
+import { detectSpecialist, SPECIALISTS } from '@/lib/yuri/specialists'
+
+const detectedSpecialist = detectSpecialist(parsed.message)
+```
+
+Store on the user message record (`specialist_detected` column) and append to session's `specialist_domains_detected` array.
+
+**Step 2: Add Specialist Preview Injection to System Prompt**
+
+When `detectedSpecialist` is not null, append to the system prompt BEFORE sending to Claude:
+
+```typescript
+const specialistPreviewPrompt = detectedSpecialist ? `
+
+## Specialist Knowledge Available
+This question touches on ${SPECIALISTS[detectedSpecialist].name} territory. You have deep expertise here and can give a solid answer. But subscribers get access to a dedicated ${SPECIALISTS[detectedSpecialist].name} mode with even deeper analysis — ingredient-level formulation breakdowns, personalized conflict detection against their full routine, and intelligence extraction that improves over time.
+
+When answering, naturally weave in ONE brief mention of what the specialist mode adds. Examples:
+- "My Ingredient Analyst mode could cross-check this against your full routine for conflicts..."
+- "Subscribers get my Routine Architect mode which builds step-by-step layered routines with wait times..."
+- "My Authenticity Investigator could do a full packaging comparison if you upload a photo..."
+
+Keep it to ONE sentence, naturally embedded. Not a sales pitch. Just a glimpse of depth.
+` : ''
+```
+
+**Step 3: Track Specialist Domain Frequency**
+
+In session metadata, accumulate which specialist domains were triggered:
+```typescript
+if (detectedSpecialist) {
+  await updateSessionMetadata(sessionId, [detectedSpecialist], [])
+}
+```
+
+This feeds the admin dashboard: "60% of widget conversations trigger Ingredient Analyst" tells us what visitors care about.
+
+#### Files to Modify
+- `src/app/api/widget/chat/route.ts` — Add specialist detection + prompt injection
+- `src/lib/widget/session.ts` — Use `updateSessionMetadata()` for specialist tracking
+
+#### Database Changes
+None beyond Feature 14.1 (specialist_detected column already on ss_widget_messages).
+
+#### Estimated Complexity
+LOW. One import, one function call, one conditional string append to the system prompt.
+
+---
+
+### Feature 14.4: Intent Signal Detection Engine — Know When Visitors Are Ready (HIGH)
+
+**Why This Matters**: Not all widget conversations are equal. A visitor who asks "how much is the COSRX snail mucin?" is closer to buying than one who asks "what is glass skin?" Intent signals detect purchase readiness from message content and conversation patterns. This feeds the admin dashboard and could drive future automated follow-up (email capture, targeted conversion prompts).
+
+**LGAAS Reference**: `detectAndRecordSignals()` in widget-conversation.js iterates an array of signal definitions, each with a `detect(message, context)` function. Adapted for B2C consumer skincare context.
+
+#### Signal Definitions (~15 signals)
+
+Create `src/lib/widget/signals.ts` (~150 lines):
+
+```typescript
+interface IntentSignal {
+  type: string
+  category: 'skin_awareness' | 'product_interest' | 'purchase_intent' | 'engagement'
+  detect: (message: string, context: SignalContext) => SignalMatch | null
+}
+
+interface SignalContext {
+  messageNumber: number        // Nth message in this session
+  totalVisitorMessages: number // Across all sessions
+  toolsUsedThisSession: string[]
+  specialistsDetected: string[]
+}
+
+interface SignalMatch {
+  signal_type: string
+  signal_data: Record<string, unknown>
+}
+```
+
+**Skin Awareness Signals** (visitor knows their skin):
+| Signal | Detection Logic | Example |
+|--------|----------------|---------|
+| `described_skin_type` | Message contains "my skin is [oily/dry/combo/sensitive/normal]" or "I have [oily/dry] skin" | "I have really oily skin" |
+| `described_skin_concern` | Message contains concern keywords: acne, wrinkles, dark spots, redness, dehydration, pores, texture, hyperpigmentation | "I'm trying to fix my acne scars" |
+| `mentioned_current_routine` | Message references current products or routine: "I use", "my routine", "currently using", "I've been using" | "I currently use COSRX cleanser and Laneige moisturizer" |
+| `mentioned_skin_reaction` | Message describes a reaction: "broke me out", "irritation", "redness from", "allergic to" | "The last serum broke me out badly" |
+
+**Product Interest Signals** (visitor is evaluating products):
+| Signal | Detection Logic | Example |
+|--------|----------------|---------|
+| `asked_about_specific_product` | Tool forced (brand mention) OR message contains specific product name | "Is the Beauty of Joseon sunscreen good?" |
+| `asked_product_comparison` | Message contains comparison words + products: "vs", "or", "better", "difference between" | "COSRX snail mucin vs the Mixsoon one?" |
+| `asked_product_price` | Message contains price keywords: "how much", "price", "cost", "where to buy" | "How much is the Anua cleansing oil?" |
+| `asked_for_recommendation` | Message asks for rec: "recommend", "suggest", "best", "what should I" | "What's the best vitamin C serum for dark spots?" |
+| `asked_about_authenticity` | Authenticity keywords: "fake", "real", "authentic", "counterfeit" | "Is the one on Amazon real?" |
+
+**Purchase Intent Signals** (visitor is close to buying):
+| Signal | Detection Logic | Example |
+|--------|----------------|---------|
+| `asked_where_to_buy` | "where can I buy", "where to get", "which retailer", "olive young" | "Where's the cheapest place to buy it?" |
+| `asked_about_subscription` | "subscribe", "subscription", "$39", "pro", "how much is Seoul Sister" | "What do I get with the subscription?" |
+| `multiple_product_questions` | 3+ different products asked about in same session (tracked via tool calls) | (Pattern detection, not single message) |
+| `deep_routine_question` | Routine-specific: "what order", "layering", "can I use X with Y", "am and pm" | "Can I use retinol and vitamin C in the same routine?" |
+
+**Engagement Signals** (visitor is invested):
+| Signal | Detection Logic | Example |
+|--------|----------------|---------|
+| `returned_visitor` | session_number > 1 (detected from visitor record) | (Automatic on return visit) |
+| `long_conversation` | message_count >= 8 in a single session | (Pattern detection) |
+
+#### Signal Detection Function
+
+```typescript
+/**
+ * detectSignals(message, context): SignalMatch[]
+ *
+ * Runs all signal definitions against the message + context.
+ * Returns array of matched signals (0 or more per message).
+ */
+
+/**
+ * recordSignals(signals, visitorId, sessionId, messageId)
+ *
+ * Batch INSERT into ss_widget_intent_signals.
+ * Also appends signal types to message.intent_signals and session.intent_signals_detected.
+ * Fire-and-forget (non-blocking).
+ */
+```
+
+#### Integration with Route
+
+In the widget chat route, after saving the user message:
+```typescript
+// Fire-and-forget signal detection
+const signalContext: SignalContext = {
+  messageNumber: session.message_count + 1,
+  totalVisitorMessages: visitor.total_messages,
+  toolsUsedThisSession: toolCallsThisSession.map(t => t.name),
+  specialistsDetected: session.specialist_domains_detected || [],
+}
+
+void detectAndRecordSignals(parsed.message, signalContext, visitor.visitor_id, sessionId, messageId)
+  .catch(() => {}) // Never break the stream
+```
+
+#### Files to Create
+- `src/lib/widget/signals.ts` (~150 lines)
+
+#### Files to Modify
+- `src/app/api/widget/chat/route.ts` — Add signal detection call after user message save
+
+#### Database Changes
+None beyond Feature 14.1 (ss_widget_intent_signals table already created).
+
+#### Estimated Complexity
+MEDIUM. ~15 regex/keyword detectors + batch insert logic. No AI calls — all detection is pattern-based.
+
+---
+
+### Feature 14.5: Admin Widget Dashboard — Conversation Viewer + Analytics (MEDIUM)
+
+**Why This Matters**: Without a dashboard, all the data stored by Features 14.1-14.4 is invisible. The admin dashboard provides: conversation viewer (read every widget conversation), intent analytics (which signals fire most often), conversion funnel (how many visitors reach N messages), and visitor detail view.
+
+#### API Endpoints
+
+**`src/app/api/admin/widget/conversations/route.ts`** (~80 lines):
+```
+GET /api/admin/widget/conversations
+  ?page=1&limit=20&sort=recent|longest|most_signals
+  Authorization: via requireAdmin()
+  Response: { conversations: Array<{
+    session_id, visitor_id, started_at, message_count,
+    tool_calls_count, specialist_domains_detected, intent_signals_detected,
+    first_message_preview: string (first 100 chars of first user message)
+  }>, total: number, page: number }
+```
+
+**`src/app/api/admin/widget/conversations/[id]/route.ts`** (~50 lines):
+```
+GET /api/admin/widget/conversations/:session_id
+  Authorization: via requireAdmin()
+  Response: {
+    session: WidgetSession,
+    visitor: WidgetVisitor (minus ip_hash),
+    messages: Array<WidgetMessage>,
+    signals: Array<IntentSignal>
+  }
+```
+
+**`src/app/api/admin/widget/analytics/route.ts`** (~100 lines):
+```
+GET /api/admin/widget/analytics?days=7
+  Authorization: via requireAdmin()
+  Response: {
+    period: { start, end },
+    totals: { visitors, sessions, messages, tool_calls, unique_visitors_with_signals },
+    signal_breakdown: Array<{ signal_type, count, percentage }>,
+    specialist_breakdown: Array<{ domain, count, percentage }>,
+    conversion_funnel: {
+      visited: number,         // Unique visitors who sent at least 1 message
+      engaged: number,         // Visitors who sent 3+ messages
+      deep_engaged: number,    // Visitors who sent 8+ messages
+      hit_limit: number,       // Visitors who hit 20-message limit
+      converted: number,       // Visitors who later created an account
+    },
+    daily_volume: Array<{ date, visitors, messages, tool_calls }>,
+    top_first_questions: Array<{ question: string, count: number }>,
+  }
+```
+
+#### Admin Dashboard Page
+
+Create `src/app/(app)/admin/widget/page.tsx` (~300 lines):
+
+**Layout**:
+- **Summary Cards** (top): Total visitors (7d), Total conversations, Messages, Tool calls, Conversion rate
+- **Conversion Funnel** (left): Visual funnel showing visited -> engaged -> deep engaged -> hit limit -> converted
+- **Signal Breakdown** (right): Bar chart of intent signal types by frequency
+- **Specialist Domains** (right): Pie chart of which specialist areas widget visitors trigger most
+- **Daily Volume** (center): Line chart of daily visitors, messages, tool calls
+- **Top First Questions** (below): Table of most common first messages (helps understand what visitors come for)
+- **Conversation List** (bottom): Paginated table with session date, message count, first message preview, signals detected, specialist domains. Click to expand full conversation.
+
+**Conversation Detail View** — expandable or modal:
+- Full message thread (user messages left-aligned, assistant right-aligned, matching widget styling)
+- Tool call indicators on assistant messages (collapsible: tool name + input + truncated result)
+- Intent signal badges on messages where signals were detected
+- Visitor context card: first_seen, last_seen, total_messages, total_sessions, AI memory summary, interest_level
+
+#### Navigation
+
+Add "Widget Intel" link to admin dropdown in `Header.tsx`, visible only when `is_admin = true`.
+
+#### Files to Create
+- `src/app/api/admin/widget/conversations/route.ts` (~80 lines)
+- `src/app/api/admin/widget/conversations/[id]/route.ts` (~50 lines)
+- `src/app/api/admin/widget/analytics/route.ts` (~100 lines)
+- `src/app/(app)/admin/widget/page.tsx` (~300 lines)
+
+#### Files to Modify
+- `src/components/layout/Header.tsx` — Add "Widget Intel" link to admin dropdown
+
+#### Database Changes
+None beyond Feature 14.1.
+
+#### Estimated Complexity
+MEDIUM. 3 API endpoints + 1 page with visualization components. The analytics query is the most complex piece (signal aggregation + funnel calculation).
+
+---
+
+### Phase 14 Implementation Priority Summary
+
+| # | Feature | Impact | Complexity | Key Deliverable |
+|---|---------|--------|-----------|----------------|
+| 14.1 | Database Schema | FOUNDATION | Low | 4 tables for full widget conversation persistence |
+| 14.2 | Chat Route Rewrite | CORE | High | Every message stored, tool calls logged, cross-session memory |
+| 14.3 | Specialist Preview | MEDIUM | Low | Name-drop specialist expertise for conversion FOMO |
+| 14.4 | Intent Signals | HIGH | Medium | ~15 consumer intent signals detected from message patterns |
+| 14.5 | Admin Dashboard | MEDIUM | Medium | Conversation viewer, intent analytics, conversion funnel |
+
+**Build Order**: 14.1 (migration) → 14.2 (route rewrite + client changes) → 14.4 (intent signals) → 14.3 (specialist preview) → 14.5 (admin dashboard)
+
+**Rationale**: Schema first (14.1), then the core persistence rewrite (14.2) which is the largest piece and must work before anything else. Intent signals (14.4) next because they feed both the specialist preview logic and the admin dashboard. Specialist preview (14.3) is a small prompt injection that depends on specialist detection already being wired in. Dashboard (14.5) last because it's read-only — it consumes data from 14.1-14.4.
+
+**Session Strategy**: 3 sessions total:
+- Session 1: 14.1 (migration) + 14.2 (route rewrite + client changes) — Foundation + core. Largest session.
+- Session 2: 14.4 (intent signals) + 14.3 (specialist preview) — Detection + conversion layer.
+- Session 3: 14.5 (admin dashboard) — Read-only analytics UI.
+
+**Expected Outcome**: Every widget conversation is fully persisted with message content, tool call logs, specialist domain detection, and intent signals. Returning visitors get cross-session AI memory (Yuri remembers them). Specialist preview creates natural conversion FOMO. Admin dashboard provides full observability into what visitors ask, which tools Yuri uses, and where visitors are in the conversion funnel.
+
+**Cost Impact**:
+- Supabase storage: ~1KB per message, 20 messages per visitor = ~20KB per visitor. At 1,000 visitors/month = 20MB/month. Negligible.
+- Sonnet memory generation: ~$0.005 per call, triggered every 3rd message. At 1,000 visitors averaging 6 messages = 2,000 memory calls/month = $10/month.
+- No additional Claude Opus costs — the streaming call is already happening; persistence is just saving what already exists.
+
+**Relationship to Existing Systems**:
+- `ss_widget_analytics` is NOT dropped — preserved for historical data. New code writes to new tables. Can be dropped after 30 days of Phase 14 running.
+- The 25/IP/day abuse rate limit in `ss_rate_limits` is preserved. The 20-message session limit migrates from IP+UA hash to visitor-record-based counting.
+- `widget-session.ts` client-side localStorage counter is preserved as UX display ("N messages remaining") but is no longer the source of truth for limiting — server-side visitor record is authoritative.
+
+---
+
 ## Competitive Landscape
 
 ### Why Seoul Sister Wins
@@ -4842,8 +5614,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 9.4.0 (SEO & AI Discoverability — Ingredient Encyclopedia, Best-of Pages, Enhanced Structured Data)
-**Status**: Phases 1-12 ALL COMPLETE. Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 5,800+ products (skincare only), 14,400+ ingredients, 207,000+ links, 550+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 14 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level. GA4 (G-L3VXSLT781) + Vercel Analytics + SpeedInsights live. **Monetization hardened**: Free tier eliminated, payment-first registration flow (Register → Stripe $39.99/mo → Onboarding, no email verification), widget system prompt rewritten AI-First with 20 preview messages and natural conversion.
+**Version**: 10.0.0 (Phase 14 — Widget Conversation Intelligence)
+**Status**: Phases 1-12 ALL COMPLETE. Phase 14 COMPLETE (Widget Conversation Intelligence — stateless→persistent with visitor tracking, message storage, intent signals, specialist preview, admin dashboard). Phase 13 documented (6 features for conversation engine hardening learned from LGAAS audit). Memory denial bug fixed (v8.0.1). 5,800+ products (skincare only), 14,400+ ingredients, 207,000+ links, 550+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 14 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level. GA4 (G-L3VXSLT781) + Vercel Analytics + SpeedInsights live. **Monetization hardened**: Free tier eliminated, payment-first registration flow (Register → Stripe $39.99/mo → Onboarding, no email verification), widget system prompt rewritten AI-First with 20 preview messages and natural conversion.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 **Changelog**: See `CHANGELOG.md` for full version history.
@@ -4861,6 +5633,21 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v10.0.0 (Mar 10, 2026): Phase 14 — Widget Conversation Intelligence
+  - **Architecture shift**: Converted the completely stateless anonymous widget (conversations "streamed and forgotten") into a fully persistent system with visitor tracking, message storage, intent signal detection, specialist preview, and admin dashboard
+  - **4 new database tables**: `ss_widget_visitors` (persistent anonymous identity, AI memory, lifetime stats), `ss_widget_sessions` (per-conversation tracking with specialist domains, intent signals), `ss_widget_messages` (full message storage with tool call JSONB), `ss_widget_intent_signals` (15 consumer intent signals across 4 categories). All with RLS (service_role write, admin read)
+  - **Feature 14.1: Ghost-Free Session Management** — Sessions created on FIRST MESSAGE, not page load. Client-generated visitor UUID via `crypto.randomUUID()` in localStorage + 365-day cookie (two-layer persistence). Session ID returned via SSE `done` event and sent back on subsequent messages
+  - **Feature 14.2: Message Persistence** — Every user and assistant message saved to `ss_widget_messages` with tool call JSONB logging. Fire-and-forget pattern: all persistence operations non-blocking, never break the SSE stream. Previous conversation context loaded for returning visitors
+  - **Feature 14.3: Intent Signal Detection** — 15 regex/keyword-based consumer skincare signals across 4 categories: purchase_intent, routine_building, skin_concern_urgent, product_comparison. Detected after each assistant response and recorded to `ss_widget_intent_signals`
+  - **Feature 14.4: Specialist Preview** — `detectSpecialist()` from `specialists.ts` identifies when anonymous visitors trigger specialist domains. Injects one-line specialist FOMO into widget system prompt ("You're getting into [specialist] territory — subscribers get deep-dive analysis from our [Specialist Name]")
+  - **Feature 14.5: Admin Widget Dashboard** — Full admin page at `/admin/widget` with two tabs: Analytics (5 overview stats, top intent signals with bar visualization, specialist domain counts, recent visitors table with AI memory) and Conversations (paginated session list with returning visitor badges, signal pills, full message thread detail view with tool calls). 3 API endpoints: `/api/admin/widget/analytics`, `/api/admin/widget/conversations`, `/api/admin/widget/conversations/[id]`
+  - **Cross-session AI memory**: Sonnet-generated structured JSON (interests, skin_profile, products_discussed, key_concerns, conversation_style) merged cumulatively on `ss_widget_visitors.ai_memory`. Generated after each conversation via fire-and-forget background task
+  - **Client components updated**: Both `TryYuriSection.tsx` and `YuriBubble.tsx` send `visitor_id`/`session_id` and capture returned `session_id` from SSE done events
+  - **Header navigation**: "Widget Intel" link added to admin dropdown menu (desktop + mobile) pointing to `/admin/widget`
+  - **New files created**: `src/lib/widget/visitor.ts`, `src/lib/widget/session.ts`, `src/lib/widget/persistence.ts`, `src/lib/widget/signals.ts`, `src/app/api/admin/widget/analytics/route.ts`, `src/app/api/admin/widget/conversations/route.ts`, `src/app/api/admin/widget/conversations/[id]/route.ts`, `src/app/(app)/admin/widget/page.tsx`
+  - **Files modified**: `src/app/api/widget/chat/route.ts` (complete rewrite with persistence), `src/lib/utils/widget-session.ts` (visitor ID + session ID helpers), `src/lib/utils/widget-shared.tsx` (onDone callback signature), `src/components/widget/TryYuriSection.tsx`, `src/components/widget/YuriBubble.tsx`, `src/components/layout/Header.tsx`
+  - **Migration**: `supabase/migrations/20260310000001_widget_conversation_persistence.sql`
+  - **Build verified**: `tsc --noEmit` passes clean
 - v9.1.0 (Feb 28, 2026): Cosmetics Pass-2 Cleanup — ILIKE Pattern Sweep + Extractor Hardening
   - **Root cause**: Pass-1 cleanup (v9.0.0) used exact `.in('subcategory', [...])` matching, missing variant subcategories like "volume mascara", "cream blush", "pencil eyeliner", "under eye concealer", "foundation SPF". User spotted Etude Double Lasting Foundation SPF42 on the live site
   - **Pass-2 ILIKE cleanup**: Created `scripts/cleanup-cosmetics-pass2.ts` using ILIKE patterns (`.or('subcategory.ilike.%mascara%,...')`) for broader matching. KEEP_SUBCATEGORIES whitelist preserves legitimate skincare: makeup remover, eye makeup remover, makeup sun cream, makeup base sunscreen. Result: 92 matched, 18 kept, 74 deleted. Products: 5,926 → 5,852

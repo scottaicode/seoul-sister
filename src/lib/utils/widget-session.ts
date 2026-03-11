@@ -105,3 +105,74 @@ export function onMessageCountChange(callback: (count: number) => void): () => v
   window.addEventListener('storage', handler)
   return () => window.removeEventListener('storage', handler)
 }
+
+// ---------------------------------------------------------------------------
+// Persistent Visitor Identity (Phase 14)
+// ---------------------------------------------------------------------------
+
+const VISITOR_ID_KEY = 'yuri_visitor_id'
+const VISITOR_COOKIE_NAME = 'yuri_vid'
+const SESSION_ID_KEY = 'yuri_widget_session_id'
+
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+function setCookie(name: string, value: string, days: number): void {
+  if (typeof document === 'undefined') return
+  const expires = new Date(Date.now() + days * 86400000).toUTCString()
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Strict`
+}
+
+/**
+ * Get or create a persistent visitor UUID.
+ * Two-layer persistence: localStorage (primary) + cookie (backup).
+ */
+export function getOrCreateVisitorId(): string {
+  if (!isClient()) return ''
+
+  // Check localStorage first
+  try {
+    const stored = localStorage.getItem(VISITOR_ID_KEY)
+    if (stored) {
+      // Ensure cookie is in sync
+      setCookie(VISITOR_COOKIE_NAME, stored, 365)
+      return stored
+    }
+  } catch { /* localStorage unavailable */ }
+
+  // Check cookie fallback
+  const cookieVal = getCookie(VISITOR_COOKIE_NAME)
+  if (cookieVal) {
+    try { localStorage.setItem(VISITOR_ID_KEY, cookieVal) } catch { /* */ }
+    return cookieVal
+  }
+
+  // Generate new UUID
+  const newId = crypto.randomUUID()
+  try { localStorage.setItem(VISITOR_ID_KEY, newId) } catch { /* */ }
+  setCookie(VISITOR_COOKIE_NAME, newId, 365)
+  return newId
+}
+
+/**
+ * Get the current session ID (stored in sessionStorage — dies with tab).
+ */
+export function getWidgetSessionId(): string | null {
+  if (!isClient()) return null
+  try {
+    return sessionStorage.getItem(SESSION_ID_KEY)
+  } catch { return null }
+}
+
+/**
+ * Set the session ID after first message response.
+ */
+export function setWidgetSessionId(id: string): void {
+  if (!isClient()) return
+  try {
+    sessionStorage.setItem(SESSION_ID_KEY, id)
+  } catch { /* sessionStorage unavailable */ }
+}

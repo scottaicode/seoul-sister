@@ -43,7 +43,7 @@ export interface WidgetMessage {
 
 interface StreamCallbacks {
   onText: (text: string) => void
-  onDone: (cleanedMessage?: string) => void
+  onDone: (cleanedMessage?: string, sessionId?: string) => void
   onError: (error: Error) => void
 }
 
@@ -79,7 +79,7 @@ export async function parseWidgetStream(
           if (event.type === 'text') {
             callbacks.onText(event.content)
           } else if (event.type === 'done') {
-            callbacks.onDone(event.message)
+            callbacks.onDone(event.message, event.session_id)
           } else if (event.type === 'error') {
             callbacks.onError(new Error(event.message))
           }

@@ -9,6 +9,9 @@ import {
   setMessageCount,
   MAX_FREE_MESSAGES,
   onMessageCountChange,
+  getOrCreateVisitorId,
+  getWidgetSessionId,
+  setWidgetSessionId,
 } from '@/lib/utils/widget-session'
 import { renderMarkdown, parseWidgetStream } from '@/lib/utils/widget-shared'
 import type { WidgetMessage } from '@/lib/utils/widget-shared'
@@ -100,7 +103,12 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
         const response = await fetch('/api/widget/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: trimmed, history }),
+          body: JSON.stringify({
+            message: trimmed,
+            history,
+            visitor_id: getOrCreateVisitorId(),
+            session_id: getWidgetSessionId(),
+          }),
           signal: controller.signal,
         })
 
@@ -123,7 +131,8 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
               return updated
             })
           },
-          onDone(cleanedMessage) {
+          onDone(cleanedMessage, sessionId) {
+            if (sessionId) setWidgetSessionId(sessionId)
             setMessages((prev) => {
               const updated = [...prev]
               const last = updated[updated.length - 1]

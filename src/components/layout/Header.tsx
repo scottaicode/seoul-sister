@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Menu, X, User, Sparkles, LogOut, Settings, Shield } from 'lucide-react'
+import { Menu, X, User, Sparkles, LogOut, Settings, Shield, MessageCircle } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 
@@ -126,14 +126,24 @@ export default function Header() {
                       Profile
                     </Link>
                     {isAdmin && (
-                      <Link
-                        href="/admin/pipeline"
-                        onClick={() => setProfileMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-gold/70 hover:bg-gold/5 hover:text-gold transition-colors"
-                      >
-                        <Shield className="w-4 h-4" />
-                        Admin
-                      </Link>
+                      <>
+                        <Link
+                          href="/admin/pipeline"
+                          onClick={() => setProfileMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 text-sm text-gold/70 hover:bg-gold/5 hover:text-gold transition-colors"
+                        >
+                          <Shield className="w-4 h-4" />
+                          Admin
+                        </Link>
+                        <Link
+                          href="/admin/widget"
+                          onClick={() => setProfileMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 text-sm text-gold/70 hover:bg-gold/5 hover:text-gold transition-colors"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          Widget Intel
+                        </Link>
+                      </>
                     )}
                     <div className="border-t border-white/10 my-1" />
                     <button
@@ -193,18 +203,32 @@ export default function Header() {
                 </Link>
               ))}
               {isAdmin && (
-                <Link
-                  href="/admin/pipeline"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 flex items-center gap-2 ${
-                    isActive('/admin')
-                      ? 'bg-gold/15 text-gold'
-                      : 'text-gold/50 hover:bg-gold/5 hover:text-gold/80'
-                  }`}
-                >
-                  <Shield className="w-4 h-4" />
-                  Admin
-                </Link>
+                <>
+                  <Link
+                    href="/admin/pipeline"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 flex items-center gap-2 ${
+                      isActive('/admin/pipeline')
+                        ? 'bg-gold/15 text-gold'
+                        : 'text-gold/50 hover:bg-gold/5 hover:text-gold/80'
+                    }`}
+                  >
+                    <Shield className="w-4 h-4" />
+                    Admin
+                  </Link>
+                  <Link
+                    href="/admin/widget"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 flex items-center gap-2 ${
+                      isActive('/admin/widget')
+                        ? 'bg-gold/15 text-gold'
+                        : 'text-gold/50 hover:bg-gold/5 hover:text-gold/80'
+                    }`}
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    Widget Intel
+                  </Link>
+                </>
               )}
               <div className="border-t border-white/10 mt-2 pt-2">
                 <button

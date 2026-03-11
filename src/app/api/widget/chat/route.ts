@@ -2,66 +2,67 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { checkRateLimit } from '@/lib/utils/rate-limiter'
-import { getServiceClient } from '@/lib/supabase'
 import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
 import { cleanYuriResponse } from '@/lib/yuri/voice-cleanup'
+import { detectSpecialist, SPECIALISTS } from '@/lib/yuri/specialists'
+import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit } from '@/lib/widget/visitor'
+import { createSession, getSession, incrementSessionCounters, updateSessionMetadata } from '@/lib/widget/session'
+import {
+  saveUserMessage,
+  saveAssistantMessage,
+  truncateToolResult,
+  getPreviousConversationContext,
+  generateAndSaveMemory,
+  type ToolCallLog,
+} from '@/lib/widget/persistence'
+import { detectAndRecordSignals, type SignalContext } from '@/lib/widget/signals'
 import type Anthropic from '@anthropic-ai/sdk'
 
-const MAX_FREE_MESSAGES = 20
-const WIDGET_RATE_LIMIT = 25 // generous IP limit (multiple users behind same IP)
-const WIDGET_RATE_WINDOW = 24 * 60 * 60 * 1000 // 24 hours in ms
-const MSG_LIMIT_WINDOW = 30 * 24 * 60 * 60 * 1000 // 30 days (matches client-side)
-const MAX_WIDGET_TOOL_LOOPS = 3 // allows 3 tool calls (e.g., one per product in a routine recommendation)
+const WIDGET_RATE_LIMIT = 25
+const WIDGET_RATE_WINDOW = 24 * 60 * 60 * 1000
+const MAX_WIDGET_TOOL_LOOPS = 3
 
 /** Widget-safe tools: subset of Yuri's tools that work without user auth */
 const WIDGET_TOOL_NAMES = new Set(['search_products', 'compare_prices', 'get_trending_products', 'get_current_weather', 'get_ingredient_guide'])
 const WIDGET_TOOLS = YURI_TOOLS.filter((t) => WIDGET_TOOL_NAMES.has(t.name))
 
-/** Prompt-cached versions: cache_control on system prompt and last tool definition */
-const CACHED_WIDGET_SYSTEM = [
-  { type: 'text' as const, text: '', cache_control: { type: 'ephemeral' as const } },
-] // text filled at call site
+/** Prompt-cached versions */
 const CACHED_WIDGET_TOOLS = WIDGET_TOOLS.map((tool, idx) =>
   idx === WIDGET_TOOLS.length - 1
     ? { ...tool, cache_control: { type: 'ephemeral' as const } }
     : tool
 )
 
-/** Simple hash for session fingerprinting (IP + User-Agent) */
+/** Simple hash for IP abuse detection */
 function simpleHash(str: string): string {
   let hash = 0
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i)
     hash = ((hash << 5) - hash) + char
-    hash |= 0 // Convert to 32-bit int
+    hash |= 0
   }
   return Math.abs(hash).toString(36)
 }
 
 const widgetSchema = z.object({
   message: z.string().min(1).max(2000),
-  history: z
-    .array(
-      z.object({
-        role: z.enum(['user', 'assistant']),
-        content: z.string(),
-      })
-    )
-    .max(40)
-    .optional(),
+  history: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string(),
+  })).max(40).optional(),
+  visitor_id: z.string().min(1).max(100).optional(),
+  session_id: z.string().uuid().optional(),
 })
 
 // ---------------------------------------------------------------------------
-// Intent detection for widget: mirrors advisor.ts shouldForceToolUse()
+// Intent detection: mirrors advisor.ts shouldForceToolUse()
 // ---------------------------------------------------------------------------
 function shouldWidgetForceToolUse(message: string): boolean {
   const msg = message.toLowerCase()
 
-  // Skip greetings and general education questions
   if (/^(hi|hey|hello|thanks|thank you|bye|ok|okay|cool)\b/i.test(message)) return false
   if (/^(what is|explain|how does|tell me about)\s+(skincare|k-beauty|glass skin|double cleansing|layering)/i.test(message)) return false
 
-  // Force for brand mentions
   const BRAND_SIGNALS = [
     'cosrx', 'beauty of joseon', 'laneige', 'innisfree', 'etude', 'missha',
     'klairs', 'some by mi', 'purito', 'dr.jart', 'dr jart', 'sulwhasoo',
@@ -73,19 +74,10 @@ function shouldWidgetForceToolUse(message: string): boolean {
     if (msg.includes(brand)) return true
   }
 
-  // Force for price/buy questions
   if (/\b(how much|price|cost|cheap|where.{0,15}buy|retailer|deal)\b/i.test(msg)) return true
-
-  // Force for trending queries
   if (/\b(trending|trend|what's new|popular|bestseller|viral|emerging)\b/i.test(msg)) return true
-
-  // Force for specific product lookups
   if (/\b(do you have|search for|find me|recommend.{0,20}(product|serum|cream|sunscreen|cleanser|toner|moisturizer|mask))\b/i.test(msg)) return true
-
-  // Force for product category + qualifier
   if (/\b(best|top|good)\s+(serum|sunscreen|cleanser|toner|moisturizer|cream|mask|essence)\b/i.test(msg)) return true
-
-  // Force for weather queries
   if (/\b(weather|uv|humidity|sun.{0,5}(today|right now))\b/i.test(msg)) return true
 
   return false
@@ -138,45 +130,97 @@ How conversion happens naturally:
 - Gently redirect non-K-beauty questions`
 
 /**
- * POST /api/widget/chat - Anonymous Yuri widget chat (no auth required)
- * Rate limited by IP. Supports tool use for database access (3 tools).
- * Returns SSE stream with shorter max_tokens.
+ * POST /api/widget/chat - Anonymous Yuri widget chat with full persistence.
+ * Rate limited by IP + visitor identity. Supports tool use for database access.
+ * Returns SSE stream with session_id in done event.
  */
 export async function POST(request: NextRequest) {
   try {
-    // Server-side IP rate limiting (10 messages/IP/day)
+    // IP rate limiting (25/IP/day abuse prevention)
     const ip =
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
       request.headers.get('x-real-ip') ||
       'unknown'
     const rateCheck = await checkRateLimit(`widget:${ip}`, WIDGET_RATE_LIMIT, WIDGET_RATE_WINDOW)
     if (!rateCheck.allowed) {
-      console.warn(`[widget/chat] Rate limit hit for IP ${ip}`)
       return new Response(
         JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-        {
-          status: 429,
-          headers: {
-            'Content-Type': 'application/json',
-            'Retry-After': String(Math.ceil(rateCheck.resetIn / 1000)),
-          },
-        }
-      )
-    }
-
-    // Server-side message limit per session (IP + User-Agent hash)
-    const ua = request.headers.get('user-agent') || ''
-    const sessionKey = `widget-msgs:${ip}:${simpleHash(ip + ua)}`
-    const msgCheck = await checkRateLimit(sessionKey, MAX_FREE_MESSAGES, MSG_LIMIT_WINDOW)
-    if (!msgCheck.allowed) {
-      return new Response(
-        JSON.stringify({ error: 'Preview limit reached. Subscribe to Seoul Sister Pro ($39.99/mo) for unlimited Yuri conversations, personalized routines, and all 6 specialist agents.', limitReached: true }),
-        { status: 429, headers: { 'Content-Type': 'application/json' } }
+        { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': String(Math.ceil(rateCheck.resetIn / 1000)) } }
       )
     }
 
     const body = await request.json()
     const parsed = widgetSchema.parse(body)
+
+    const ua = request.headers.get('user-agent') || ''
+    const ipHash = simpleHash(ip)
+    const uaHash = simpleHash(ua)
+
+    // --- Visitor identity & rate limiting ---
+    let visitor = null
+    let sessionId = parsed.session_id || null
+    let session = null
+
+    if (parsed.visitor_id) {
+      try {
+        visitor = await getOrCreateVisitor(parsed.visitor_id, ipHash, uaHash)
+
+        if (isVisitorAtLimit(visitor)) {
+          return new Response(
+            JSON.stringify({
+              error: 'Preview limit reached. Subscribe to Seoul Sister Pro ($39.99/mo) for unlimited Yuri conversations, personalized routines, and all 6 specialist agents.',
+              limitReached: true,
+            }),
+            { status: 429, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+
+        // Load or create session
+        if (sessionId) {
+          session = await getSession(sessionId)
+        }
+        if (!session) {
+          session = await createSession(parsed.visitor_id, visitor.total_sessions)
+          sessionId = session.id
+        }
+      } catch (err) {
+        console.error('[widget/chat] Visitor/session setup failed:', err)
+        // Continue without persistence — don't break the conversation
+      }
+    }
+
+    // Fallback rate limit for visitors without visitor_id (old clients)
+    if (!visitor) {
+      const sessionKey = `widget-msgs:${ip}:${simpleHash(ip + ua)}`
+      const msgCheck = await checkRateLimit(sessionKey, 20, 30 * 24 * 60 * 60 * 1000)
+      if (!msgCheck.allowed) {
+        return new Response(
+          JSON.stringify({ error: 'Preview limit reached. Subscribe to Seoul Sister Pro ($39.99/mo) for unlimited Yuri conversations.', limitReached: true }),
+          { status: 429, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+
+    // --- Specialist detection ---
+    const detectedSpecialist = detectSpecialist(parsed.message)
+
+    // --- Build system prompt with context ---
+    let systemPrompt = YURI_WIDGET_SYSTEM
+
+    // Inject returning visitor memory
+    if (visitor?.ai_memory) {
+      const context = await getPreviousConversationContext(parsed.visitor_id!, visitor.ai_memory)
+      if (context) systemPrompt += context
+    }
+
+    // Inject specialist preview (Feature 14.3)
+    if (detectedSpecialist && SPECIALISTS[detectedSpecialist]) {
+      const specialistName = SPECIALISTS[detectedSpecialist].name
+      systemPrompt += `\n\n## Specialist Knowledge Available
+This question touches on ${specialistName} territory. You have deep expertise here and can give a solid answer. But subscribers get access to a dedicated ${specialistName} mode with even deeper analysis — ingredient-level formulation breakdowns, personalized conflict detection against their full routine, and intelligence extraction that improves over time.
+
+When answering, naturally weave in ONE brief mention of what the specialist mode adds. Keep it to ONE sentence, naturally embedded. Not a sales pitch. Just a glimpse of depth.`
+    }
 
     const anthropic = getAnthropicClient()
 
@@ -188,36 +232,40 @@ export async function POST(request: NextRequest) {
       { role: 'user' as const, content: parsed.message },
     ]
 
-    // Use TransformStream for real-time SSE flushing (ReadableStream start()
-    // buffers all enqueues until the async callback resolves — no streaming).
+    // --- Save user message (fire-and-forget if no session) ---
+    let userMessageId = ''
+    if (sessionId && parsed.visitor_id) {
+      try {
+        userMessageId = await saveUserMessage(
+          sessionId,
+          parsed.visitor_id,
+          parsed.message,
+          detectedSpecialist,
+          []
+        )
+      } catch { /* persistence failure is non-critical */ }
+    }
+
+    // --- SSE Streaming with tool use loop ---
     const encoder = new TextEncoder()
     const { readable, writable } = new TransformStream()
     const writer = writable.getWriter()
 
     const streamPromise = (async () => {
       try {
-        // Streaming tool use loop — matches proven advisor.ts pattern.
-        // Uses stream() for ALL calls. Two modes:
-        //   BUFFER mode (round 0): Buffer text, discard if tools found ("Let me search...")
-        //   STREAM mode (post-tool): Yield text in real-time as it arrives
         const loopMessages: Anthropic.Messages.MessageParam[] = [...messages]
         let toolLoopCount = 0
         let fullResponse = ''
         const forceToolUse = shouldWidgetForceToolUse(parsed.message)
+        const toolCallLogs: ToolCallLog[] = []
+        const toolNamesUsed: string[] = []
 
-        // Helper: apply cache_control to last assistant message
         function applyCacheControl(msgs: Anthropic.Messages.MessageParam[]) {
           return msgs.map((msg, idx) => {
-            if (
-              msg.role === 'assistant' &&
-              typeof msg.content === 'string' &&
-              idx === msgs.length - 2
-            ) {
+            if (msg.role === 'assistant' && typeof msg.content === 'string' && idx === msgs.length - 2) {
               return {
                 role: 'assistant' as const,
-                content: [
-                  { type: 'text' as const, text: msg.content, cache_control: { type: 'ephemeral' as const } },
-                ],
+                content: [{ type: 'text' as const, text: msg.content, cache_control: { type: 'ephemeral' as const } }],
               }
             }
             return msg
@@ -227,11 +275,8 @@ export async function POST(request: NextRequest) {
         while (toolLoopCount <= MAX_WIDGET_TOOL_LOOPS) {
           const cachedMessages = applyCacheControl(loopMessages)
           const toolChoice: Anthropic.Messages.MessageCreateParams['tool_choice'] =
-            forceToolUse && toolLoopCount === 0
-              ? { type: 'any' }
-              : { type: 'auto' }
+            forceToolUse && toolLoopCount === 0 ? { type: 'any' } : { type: 'auto' }
 
-          // Collect tool_use blocks and text chunks from the stream
           const toolUseBlocks: Array<{ id: string; name: string; input: string }> = []
           let currentToolBlock: { id: string; name: string; input: string } | null = null
           const textChunks: string[] = []
@@ -240,7 +285,7 @@ export async function POST(request: NextRequest) {
           const stream = anthropic.messages.stream({
             model: MODELS.primary,
             max_tokens: 800,
-            system: [{ type: 'text' as const, text: YURI_WIDGET_SYSTEM, cache_control: { type: 'ephemeral' as const } }],
+            system: [{ type: 'text' as const, text: systemPrompt, cache_control: { type: 'ephemeral' as const } }],
             messages: cachedMessages,
             tools: CACHED_WIDGET_TOOLS,
             tool_choice: toolChoice,
@@ -254,7 +299,6 @@ export async function POST(request: NextRequest) {
             } else if (event.type === 'content_block_delta') {
               if (event.delta.type === 'text_delta') {
                 textChunks.push(event.delta.text)
-                // STREAM mode: yield text in real-time on post-tool rounds
                 if (isPostToolRound && toolUseBlocks.length === 0 && !currentToolBlock) {
                   fullResponse += event.delta.text
                   const data = JSON.stringify({ type: 'text', content: event.delta.text })
@@ -269,28 +313,22 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // No tools — stream is done, yield any buffered text
+          // No tools — stream is done
           if (toolUseBlocks.length === 0) {
             if (!isPostToolRound) {
-              // BUFFER mode: replay all text now (first round, no tools used)
               for (const chunk of textChunks) {
                 fullResponse += chunk
                 const data = JSON.stringify({ type: 'text', content: chunk })
                 await writer.write(encoder.encode(`data: ${data}\n\n`))
               }
             }
-            // Post-tool text was already yielded in real-time above
             break
           }
 
-          // Tools found — execute them and loop
+          // Tools found — execute and loop
           toolLoopCount++
-
-          // Build assistant content for conversation history
           const assistantContent: Anthropic.Messages.ContentBlockParam[] = []
           const allText = textChunks.join('')
-          // On first round, drop narration text ("Let me search...").
-          // On post-tool rounds, keep text (it was already shown to user).
           if (allText && isPostToolRound) {
             assistantContent.push({ type: 'text' as const, text: allText })
           }
@@ -301,7 +339,6 @@ export async function POST(request: NextRequest) {
           }
           loopMessages.push({ role: 'assistant', content: assistantContent })
 
-          // Execute tools — limit to 1 per loop for widget (cost control)
           const toolResults: Anthropic.Messages.ToolResultBlockParam[] = []
           let toolsExecuted = 0
           for (const tb of toolUseBlocks) {
@@ -310,6 +347,12 @@ export async function POST(request: NextRequest) {
               try { parsedInput = JSON.parse(tb.input || '{}') } catch { /* keep empty */ }
               const result = await executeYuriTool(tb.name, parsedInput, '')
               toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: result })
+              toolNamesUsed.push(tb.name)
+              toolCallLogs.push({
+                name: tb.name,
+                input: parsedInput,
+                result_summary: truncateToolResult(result),
+              })
               toolsExecuted++
             } else {
               toolResults.push({
@@ -322,57 +365,72 @@ export async function POST(request: NextRequest) {
           loopMessages.push({ role: 'user', content: toolResults })
         }
 
-        // Fallback if tool loops exhausted without text
+        // Fallback
         if (!fullResponse) {
           fullResponse = "I'm having a moment accessing our database. Based on my experience though, what specifically are you looking for? I can help with product recommendations, ingredient questions, or K-beauty routines."
           const data = JSON.stringify({ type: 'text', content: fullResponse })
           await writer.write(encoder.encode(`data: ${data}\n\n`))
         }
 
-        // Clean AI artifacts and include cleaned version in done event
         const cleanedResponse = cleanYuriResponse(fullResponse)
-        const done = JSON.stringify({ type: 'done', message: cleanedResponse })
+
+        // Include session_id in done event so client can send it back
+        const done = JSON.stringify({ type: 'done', message: cleanedResponse, session_id: sessionId })
         await writer.write(encoder.encode(`data: ${done}\n\n`))
 
-        // Fire-and-forget analytics upsert (non-blocking)
-        const sessionHash = simpleHash(ip + ua)
-        void (async () => {
-          try {
-            const supabase = getServiceClient()
-            // Check if session already exists
-            const { data: existing } = await supabase
-              .from('ss_widget_analytics')
-              .select('id, messages_sent, tool_calls_made')
-              .eq('session_hash', sessionHash)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .single()
+        // --- Post-stream persistence (all fire-and-forget) ---
+        if (sessionId && parsed.visitor_id) {
+          void (async () => {
+            try {
+              // Save assistant message
+              await saveAssistantMessage(
+                sessionId!,
+                parsed.visitor_id!,
+                cleanedResponse,
+                toolCallLogs,
+                null
+              )
 
-            if (existing) {
-              await supabase
-                .from('ss_widget_analytics')
-                .update({
-                  messages_sent: existing.messages_sent + 1,
-                  tool_calls_made: existing.tool_calls_made + toolLoopCount,
-                  last_message_at: new Date().toISOString(),
-                })
-                .eq('id', existing.id)
-            } else {
-              await supabase.from('ss_widget_analytics').insert({
-                session_hash: sessionHash,
-                messages_sent: 1,
-                tool_calls_made: toolLoopCount,
-                first_message_at: new Date().toISOString(),
-                last_message_at: new Date().toISOString(),
-              })
+              // Increment counters
+              await incrementVisitorCounters(parsed.visitor_id!, 1, toolCallLogs.length)
+              await incrementSessionCounters(sessionId!, toolCallLogs.length)
+
+              // Update session metadata with specialist + signals
+              if (detectedSpecialist) {
+                await updateSessionMetadata(sessionId!, [detectedSpecialist], [])
+              }
+
+              // Detect and record intent signals
+              const signalContext: SignalContext = {
+                messageNumber: (session?.message_count || 0) + 1,
+                totalVisitorMessages: visitor?.total_messages || 0,
+                toolsUsedThisSession: toolNamesUsed,
+                specialistsDetected: detectedSpecialist ? [detectedSpecialist] : [],
+              }
+              const signalTypes = await detectAndRecordSignals(
+                parsed.message, signalContext, parsed.visitor_id!, sessionId!, userMessageId
+              )
+              if (signalTypes.length > 0) {
+                await updateSessionMetadata(sessionId!, [], signalTypes)
+              }
+
+              // Generate AI memory every 3rd message
+              const msgCount = (session?.message_count || 0) + 1
+              if (msgCount % 3 === 0) {
+                const sessionMessages = [
+                  ...(parsed.history || []),
+                  { role: 'user', content: parsed.message },
+                  { role: 'assistant', content: cleanedResponse },
+                ]
+                await generateAndSaveMemory(parsed.visitor_id!, sessionMessages)
+              }
+            } catch (err) {
+              console.error('[widget/chat] Post-stream persistence error:', err)
             }
-          } catch {
-            // Analytics should never break the user experience
-          }
-        })()
+          })()
+        }
       } catch (err) {
-        const msg =
-          err instanceof Error ? err.message : 'Stream error'
+        const msg = err instanceof Error ? err.message : 'Stream error'
         console.error(`[widget/chat] Stream error for IP ${ip}:`, err)
         const errorData = JSON.stringify({ type: 'error', message: msg })
         await writer.write(encoder.encode(`data: ${errorData}\n\n`))
