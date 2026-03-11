@@ -216,7 +216,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide">
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
         {/* Demo conversation (before first interaction) */}
         {!showLive && (
           <div className="p-4 space-y-3">
