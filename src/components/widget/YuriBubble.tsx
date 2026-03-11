@@ -191,8 +191,8 @@ export default function YuriBubble() {
         })
         if (!hadPartialContent) {
           setError(
-            err instanceof Error && err.message.includes('Rate limit')
-              ? 'Too many requests. Please try again later.'
+            err instanceof Error && (err.message.includes('Rate limit') || err.message.includes('rate limit'))
+              ? 'You\'ve used all your free preview messages for today. Subscribe for unlimited Yuri conversations!'
               : 'Something went wrong. Please try again.'
           )
         }

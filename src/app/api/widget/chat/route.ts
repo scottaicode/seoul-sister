@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
     const rateCheck = await checkRateLimit(`widget:${ip}`, WIDGET_RATE_LIMIT, WIDGET_RATE_WINDOW)
     if (!rateCheck.allowed) {
       return new Response(
-        JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+        JSON.stringify({ error: 'Rate limit reached. You\'ve used all your free preview messages for today. Subscribe for unlimited Yuri conversations.' }),
         { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': String(Math.ceil(rateCheck.resetIn / 1000)) } }
       )
     }
