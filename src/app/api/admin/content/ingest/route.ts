@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
@@ -106,11 +107,20 @@ export async function POST(request: NextRequest) {
     }
 
     if (error || !post) {
-      console.error('[content-ingest] Supabase error:', error)
-      throw new AppError('Failed to save content', 500)
+      console.error('[content-ingest] Supabase error:', JSON.stringify(error))
+      console.error('[content-ingest] Row keys:', Object.keys(row))
+      // Return the actual error so LGAAS can log it for debugging
+      return NextResponse.json(
+        { error: 'Failed to save content', details: error?.message || 'No post returned' },
+        { status: 500 }
+      )
     }
 
     console.log(`[content-ingest] Saved: "${data.title}" -> /blog/${post.slug}`)
+
+    // Revalidate blog pages so updated content appears immediately
+    revalidatePath('/blog')
+    revalidatePath(`/blog/${post.slug}`)
 
     return NextResponse.json({
       success: true,
