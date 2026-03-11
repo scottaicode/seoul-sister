@@ -411,7 +411,9 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
               await updateSessionMetadata(sessionId!, [], signalTypes)
             }
 
-            // Generate AI memory every 3rd message (expensive Sonnet call — fire-and-forget OK)
+            // Generate AI memory every 3rd message
+            // MUST be awaited — Vercel kills the function after writer.close(),
+            // so fire-and-forget Sonnet calls get terminated before completing.
             const msgCount = (session?.message_count || 0) + 1
             if (msgCount % 3 === 0) {
               const sessionMessages = [
@@ -419,7 +421,11 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
                 { role: 'user', content: parsed.message },
                 { role: 'assistant', content: cleanedResponse },
               ]
-              void generateAndSaveMemory(parsed.visitor_id!, sessionMessages).catch(() => {})
+              try {
+                await generateAndSaveMemory(parsed.visitor_id!, sessionMessages)
+              } catch (err) {
+                console.error('[widget/chat] Memory generation failed:', err)
+              }
             }
           } catch (err) {
             console.error('[widget/chat] Post-stream persistence error:', err)
