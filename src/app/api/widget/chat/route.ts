@@ -50,8 +50,8 @@ const widgetSchema = z.object({
     role: z.enum(['user', 'assistant']),
     content: z.string(),
   })).max(40).optional(),
-  visitor_id: z.string().min(1).max(100).optional(),
-  session_id: z.string().uuid().optional(),
+  visitor_id: z.string().min(1).max(100).optional().nullable().transform(v => v ?? undefined),
+  session_id: z.string().uuid().optional().nullable().transform(v => v ?? undefined),
 })
 
 // ---------------------------------------------------------------------------
