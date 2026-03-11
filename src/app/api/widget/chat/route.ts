@@ -375,56 +375,55 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
         const done = JSON.stringify({ type: 'done', message: cleanedResponse, session_id: sessionId })
         await writer.write(encoder.encode(`data: ${done}\n\n`))
 
-        // --- Post-stream persistence (all fire-and-forget) ---
+        // --- Post-stream persistence ---
+        // Critical persistence (message save + counter increments) is AWAITED
+        // so it completes before writer.close(). Vercel can kill the function
+        // after the stream closes, so fire-and-forget operations get terminated.
         if (sessionId && parsed.visitor_id) {
-          void (async () => {
-            try {
-              // Save assistant message
-              await saveAssistantMessage(
-                sessionId!,
-                parsed.visitor_id!,
-                cleanedResponse,
-                toolCallLogs,
-                null
-              )
+          try {
+            // Save assistant message + increment counters (critical)
+            await saveAssistantMessage(
+              sessionId!,
+              parsed.visitor_id!,
+              cleanedResponse,
+              toolCallLogs,
+              null
+            )
+            await incrementVisitorCounters(parsed.visitor_id!, 1, toolCallLogs.length)
+            await incrementSessionCounters(sessionId!, toolCallLogs.length)
 
-              // Increment counters
-              await incrementVisitorCounters(parsed.visitor_id!, 1, toolCallLogs.length)
-              await incrementSessionCounters(sessionId!, toolCallLogs.length)
-
-              // Update session metadata with specialist + signals
-              if (detectedSpecialist) {
-                await updateSessionMetadata(sessionId!, [detectedSpecialist], [])
-              }
-
-              // Detect and record intent signals
-              const signalContext: SignalContext = {
-                messageNumber: (session?.message_count || 0) + 1,
-                totalVisitorMessages: visitor?.total_messages || 0,
-                toolsUsedThisSession: toolNamesUsed,
-                specialistsDetected: detectedSpecialist ? [detectedSpecialist] : [],
-              }
-              const signalTypes = await detectAndRecordSignals(
-                parsed.message, signalContext, parsed.visitor_id!, sessionId!, userMessageId
-              )
-              if (signalTypes.length > 0) {
-                await updateSessionMetadata(sessionId!, [], signalTypes)
-              }
-
-              // Generate AI memory every 3rd message
-              const msgCount = (session?.message_count || 0) + 1
-              if (msgCount % 3 === 0) {
-                const sessionMessages = [
-                  ...(parsed.history || []),
-                  { role: 'user', content: parsed.message },
-                  { role: 'assistant', content: cleanedResponse },
-                ]
-                await generateAndSaveMemory(parsed.visitor_id!, sessionMessages)
-              }
-            } catch (err) {
-              console.error('[widget/chat] Post-stream persistence error:', err)
+            // Update session metadata with specialist + signals (critical)
+            if (detectedSpecialist) {
+              await updateSessionMetadata(sessionId!, [detectedSpecialist], [])
             }
-          })()
+
+            // Detect and record intent signals (critical)
+            const signalContext: SignalContext = {
+              messageNumber: (session?.message_count || 0) + 1,
+              totalVisitorMessages: visitor?.total_messages || 0,
+              toolsUsedThisSession: toolNamesUsed,
+              specialistsDetected: detectedSpecialist ? [detectedSpecialist] : [],
+            }
+            const signalTypes = await detectAndRecordSignals(
+              parsed.message, signalContext, parsed.visitor_id!, sessionId!, userMessageId
+            )
+            if (signalTypes.length > 0) {
+              await updateSessionMetadata(sessionId!, [], signalTypes)
+            }
+
+            // Generate AI memory every 3rd message (expensive Sonnet call — fire-and-forget OK)
+            const msgCount = (session?.message_count || 0) + 1
+            if (msgCount % 3 === 0) {
+              const sessionMessages = [
+                ...(parsed.history || []),
+                { role: 'user', content: parsed.message },
+                { role: 'assistant', content: cleanedResponse },
+              ]
+              void generateAndSaveMemory(parsed.visitor_id!, sessionMessages).catch(() => {})
+            }
+          } catch (err) {
+            console.error('[widget/chat] Post-stream persistence error:', err)
+          }
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Stream error'
