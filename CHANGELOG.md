@@ -4,6 +4,34 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v10.0.1 (Mar 11, 2026) — All Development Phases Complete
+
+### Changed
+- **Phase 13 confirmed COMPLETE**: All 6 conversation engine hardening features built and deployed — prompt caching (20-30% token cost reduction), API retry with exponential backoff, structured decision memory, intent-based context loading, onboarding quality scoring, voice quality post-processing
+- **Deferred Phase 8 features confirmed COMPLETE**: All 4 previously deferred features built and deployed — Feature 8.1 (Product Detail Page Enrichment), Feature 8.2 (Routine Builder Intelligence), Feature 8.5 (Expiration/PAO Tracking), Feature 8.6 (Reformulation Tracker). Phase 8 now 11/11 features complete
+- **All 14 development phases now COMPLETE**: Phases 1-14 representing 60+ features across product intelligence, AI conversation engine, community, monetization, trend intelligence, widget conversion, and platform-wide personalization
+- **Remaining work**: Only future items remain — push notifications, scan-counterfeits cron, community-digest cron, Supabase attack protection (all deferred until traffic/revenue justifies)
+
+---
+
+## v10.0.0 (Mar 10, 2026) — Phase 14: Widget Conversation Intelligence
+
+### Added
+- **4 new database tables**: `ss_widget_visitors` (persistent anonymous identity, AI memory, lifetime stats), `ss_widget_sessions` (per-conversation tracking with specialist domains, intent signals), `ss_widget_messages` (full message storage with tool call JSONB), `ss_widget_intent_signals` (15 consumer intent signals across 4 categories)
+- **Feature 14.1: Ghost-Free Session Management**: Sessions created on first message, not page load. Client-generated visitor UUID via `crypto.randomUUID()` in localStorage + 365-day cookie
+- **Feature 14.2: Message Persistence**: Every user and assistant message saved with tool call JSONB logging. Fire-and-forget persistence, never blocks SSE stream
+- **Feature 14.3: Specialist Preview**: `detectSpecialist()` identifies specialist domains in anonymous conversations, injects one-line FOMO into system prompt
+- **Feature 14.4: Intent Signal Detection**: 15 regex/keyword-based consumer skincare signals across 4 categories (purchase_intent, routine_building, skin_concern_urgent, product_comparison)
+- **Feature 14.5: Admin Widget Dashboard**: Full admin page at `/admin/widget` with analytics tab (overview stats, intent signals, specialist domains, recent visitors) and conversations tab (paginated session list, full message thread detail with tool calls)
+- **Cross-session AI memory**: Sonnet-generated structured JSON merged cumulatively on `ss_widget_visitors.ai_memory`
+
+### Changed
+- **Architecture shift**: Widget converted from completely stateless (conversations streamed and forgotten) to fully persistent system with visitor tracking, message storage, intent signals, and admin observability
+- Both `TryYuriSection.tsx` and `YuriBubble.tsx` send `visitor_id`/`session_id` and capture returned `session_id` from SSE done events
+- "Widget Intel" link added to admin dropdown menu in Header
+
+---
+
 ## v9.5.0 (Mar 10, 2026) — Hero Widget Redesign: Yuri Above the Fold
 
 ### Changed
