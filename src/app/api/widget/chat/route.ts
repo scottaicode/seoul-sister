@@ -105,7 +105,7 @@ You have access to Seoul Sister's product database — 5,800+ K-beauty products 
 
 Do NOT use tools for general skincare education or ingredient science — your training knowledge handles those.
 
-IMPORTANT: When recommending multiple products (e.g., a routine), search for ALL of them in a SINGLE tool call using a broad query like "cleanser moisturizer sunscreen oily skin" rather than making separate searches for each product. You have limited tool calls in this widget — consolidate.
+IMPORTANT: When recommending multiple products (e.g., a routine), search for ALL of them in a SINGLE tool call using a broad query rather than making separate searches for each product. But if the user asks about DIFFERENT things (e.g., a product recommendation AND what's trending), use the appropriate different tools for each.
 
 ## The Business Reality
 Seoul Sister is a subscription platform at $39.99/month. This preview conversation gives visitors 20 messages to experience your value. You are NOT a salesperson — you are a demonstration of what subscribers get every day. Your job is to be so genuinely helpful that the visitor thinks "I need this in my life."
@@ -281,6 +281,7 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
           let currentToolBlock: { id: string; name: string; input: string } | null = null
           const textChunks: string[] = []
           const isPostToolRound = toolLoopCount > 0
+          let hasSeenToolBlock = false
 
           const stream = anthropic.messages.stream({
             model: MODELS.primary,
@@ -294,12 +295,15 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
           for await (const event of stream) {
             if (event.type === 'content_block_start') {
               if (event.content_block.type === 'tool_use') {
+                hasSeenToolBlock = true
                 currentToolBlock = { id: event.content_block.id, name: event.content_block.name, input: '' }
               }
             } else if (event.type === 'content_block_delta') {
               if (event.delta.type === 'text_delta') {
                 textChunks.push(event.delta.text)
-                if (isPostToolRound && toolUseBlocks.length === 0 && !currentToolBlock) {
+                // STREAM mode: only yield text on post-tool rounds AND before any tool block
+                // This prevents narration like "let me search again" from leaking
+                if (isPostToolRound && !hasSeenToolBlock) {
                   fullResponse += event.delta.text
                   const data = JSON.stringify({ type: 'text', content: event.delta.text })
                   await writer.write(encoder.encode(`data: ${data}\n\n`))
@@ -316,6 +320,7 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
           // No tools — stream is done
           if (toolUseBlocks.length === 0) {
             if (!isPostToolRound) {
+              // First round, no tools — send all text
               for (const chunk of textChunks) {
                 fullResponse += chunk
                 const data = JSON.stringify({ type: 'text', content: chunk })
@@ -329,6 +334,8 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
           toolLoopCount++
           const assistantContent: Anthropic.Messages.ContentBlockParam[] = []
           const allText = textChunks.join('')
+          // Only include pre-tool text in the message history on post-tool rounds
+          // First-round narration (e.g. "let me search") is discarded
           if (allText && isPostToolRound) {
             assistantContent.push({ type: 'text' as const, text: allText })
           }
@@ -340,27 +347,17 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
           loopMessages.push({ role: 'assistant', content: assistantContent })
 
           const toolResults: Anthropic.Messages.ToolResultBlockParam[] = []
-          let toolsExecuted = 0
           for (const tb of toolUseBlocks) {
-            if (toolsExecuted < 1) {
-              let parsedInput: Record<string, unknown> = {}
-              try { parsedInput = JSON.parse(tb.input || '{}') } catch { /* keep empty */ }
-              const result = await executeYuriTool(tb.name, parsedInput, '')
-              toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: result })
-              toolNamesUsed.push(tb.name)
-              toolCallLogs.push({
-                name: tb.name,
-                input: parsedInput,
-                result_summary: truncateToolResult(result),
-              })
-              toolsExecuted++
-            } else {
-              toolResults.push({
-                type: 'tool_result',
-                tool_use_id: tb.id,
-                content: JSON.stringify({ error: 'Only one tool call per message in the widget. Answer with the data you have.' }),
-              })
-            }
+            let parsedInput: Record<string, unknown> = {}
+            try { parsedInput = JSON.parse(tb.input || '{}') } catch { /* keep empty */ }
+            const result = await executeYuriTool(tb.name, parsedInput, '')
+            toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: result })
+            toolNamesUsed.push(tb.name)
+            toolCallLogs.push({
+              name: tb.name,
+              input: parsedInput,
+              result_summary: truncateToolResult(result),
+            })
           }
           loopMessages.push({ role: 'user', content: toolResults })
         }
