@@ -59,7 +59,8 @@ export async function getOrCreateVisitor(
 }
 
 /**
- * Atomic increment of visitor counters after a message exchange.
+ * Increment visitor counters after a message exchange.
+ * Uses read-then-write pattern (acceptable for widget traffic levels).
  */
 export async function incrementVisitorCounters(
   visitorId: string,
@@ -68,31 +69,30 @@ export async function incrementVisitorCounters(
 ): Promise<void> {
   const supabase = getServiceClient()
 
-  // Use RPC-style update with raw SQL for atomic increment
-  const { error } = await supabase.rpc('increment_widget_visitor_counters' as never, {
-    p_visitor_id: visitorId,
-    p_messages: messagesDelta,
-    p_tool_calls: toolCallsDelta,
-  })
+  // Read current values
+  const { data: current, error: readError } = await supabase
+    .from('ss_widget_visitors')
+    .select('total_messages, total_tool_calls')
+    .eq('visitor_id', visitorId)
+    .single()
 
-  // Fallback if RPC doesn't exist: read-then-write (slightly racy but acceptable)
-  if (error) {
-    const { data: current } = await supabase
-      .from('ss_widget_visitors')
-      .select('total_messages, total_tool_calls')
-      .eq('visitor_id', visitorId)
-      .single()
+  if (readError || !current) {
+    console.error('[Widget] Failed to read visitor counters:', readError?.message)
+    return
+  }
 
-    if (current) {
-      await supabase
-        .from('ss_widget_visitors')
-        .update({
-          total_messages: current.total_messages + messagesDelta,
-          total_tool_calls: current.total_tool_calls + toolCallsDelta,
-          last_seen_at: new Date().toISOString(),
-        })
-        .eq('visitor_id', visitorId)
-    }
+  // Write incremented values
+  const { error: writeError } = await supabase
+    .from('ss_widget_visitors')
+    .update({
+      total_messages: current.total_messages + messagesDelta,
+      total_tool_calls: current.total_tool_calls + toolCallsDelta,
+      last_seen_at: new Date().toISOString(),
+    })
+    .eq('visitor_id', visitorId)
+
+  if (writeError) {
+    console.error('[Widget] Failed to update visitor counters:', writeError.message)
   }
 }
 
