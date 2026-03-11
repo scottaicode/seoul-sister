@@ -188,7 +188,7 @@ export default function AdminWidgetPage() {
     if (tab === 'conversations') fetchSessions(page)
   }, [tab, page, authLoading, accessDenied, fetchAnalytics, fetchSessions])
 
-  if (authLoading) return <div className="p-8 text-white/50">Loading...</div>
+  if (authLoading) return <AdminLoadingSkeleton />
   if (accessDenied) return <div className="p-8 text-rose-400">Admin access required.</div>
 
   // ---------------------------------------------------------------------------
@@ -342,7 +342,7 @@ export default function AdminWidgetPage() {
       {tab === 'analytics' && (
         <>
           {analyticsLoading ? (
-            <p className="text-white/40">Loading analytics...</p>
+            <AnalyticsLoadingSkeleton />
           ) : analytics ? (
             <div className="space-y-6">
               {/* Overview cards */}
@@ -462,7 +462,7 @@ export default function AdminWidgetPage() {
       {tab === 'conversations' && (
         <>
           {sessionsLoading ? (
-            <p className="text-white/40">Loading conversations...</p>
+            <ConversationsLoadingSkeleton />
           ) : sessions.length === 0 ? (
             <p className="text-white/40">No widget conversations yet.</p>
           ) : (
@@ -546,6 +546,102 @@ export default function AdminWidgetPage() {
           )}
         </>
       )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Loading Skeletons
+// ---------------------------------------------------------------------------
+
+function AdminLoadingSkeleton() {
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+      <div>
+        <div className="h-8 w-56 bg-white/5 rounded-lg animate-pulse" />
+        <div className="h-4 w-80 bg-white/5 rounded mt-2 animate-pulse" />
+      </div>
+      <div className="flex gap-1 bg-white/5 rounded-xl p-1 w-fit">
+        <div className="h-9 w-28 bg-white/10 rounded-lg animate-pulse" />
+        <div className="h-9 w-36 bg-white/5 rounded-lg animate-pulse" />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="dark-card p-4">
+            <div className="h-3 w-14 bg-white/5 rounded animate-pulse mb-2" />
+            <div className="h-8 w-16 bg-white/10 rounded animate-pulse" />
+          </div>
+        ))}
+      </div>
+      <div className="grid md:grid-cols-2 gap-4">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="dark-card p-5 space-y-3">
+            <div className="h-5 w-40 bg-white/5 rounded animate-pulse" />
+            {Array.from({ length: 4 }).map((_, j) => (
+              <div key={j} className="h-3 w-full bg-white/5 rounded animate-pulse" />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function AnalyticsLoadingSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="dark-card p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="h-4 w-4 bg-gold/10 rounded animate-pulse" />
+              <div className="h-3 w-14 bg-white/5 rounded animate-pulse" />
+            </div>
+            <div className="h-8 w-16 bg-white/10 rounded animate-pulse" />
+          </div>
+        ))}
+      </div>
+      <div className="grid md:grid-cols-2 gap-4">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="dark-card p-5 space-y-3">
+            <div className="h-5 w-40 bg-white/5 rounded animate-pulse" />
+            {Array.from({ length: 5 }).map((_, j) => (
+              <div key={j} className="flex items-center justify-between">
+                <div className="h-3 w-24 bg-white/5 rounded animate-pulse" />
+                <div className="h-3 w-12 bg-white/5 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+      <div className="dark-card p-5 space-y-3">
+        <div className="h-5 w-40 bg-white/5 rounded animate-pulse" />
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-8 w-full bg-white/5 rounded animate-pulse" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ConversationsLoadingSkeleton() {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="dark-card p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-5 w-24 bg-white/10 rounded animate-pulse" />
+              <div className="h-4 w-16 bg-white/5 rounded animate-pulse" />
+            </div>
+            <div className="h-3 w-12 bg-white/5 rounded animate-pulse" />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-3 w-14 bg-white/5 rounded animate-pulse" />
+            <div className="h-3 w-14 bg-white/5 rounded animate-pulse" />
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

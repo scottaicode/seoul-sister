@@ -135,8 +135,47 @@ export default function AdminPipelinePage() {
   // Loading state
   if (authLoading || (loading && !data && !accessDenied)) {
     return (
-      <div className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center">
-        <p className="text-gray-400">Loading...</p>
+      <div className="min-h-screen bg-gray-950 text-gray-100 p-4 md:p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-8 w-56 bg-gray-800 rounded-lg animate-pulse" />
+            <div className="h-4 w-80 bg-gray-800/60 rounded mt-2 animate-pulse" />
+          </div>
+          <div className="h-10 w-24 bg-gray-800 rounded-lg animate-pulse" />
+        </div>
+        <div>
+          <div className="h-5 w-40 bg-gray-800/60 rounded mb-3 animate-pulse" />
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-gray-900 border border-gray-800 rounded-lg p-3">
+                <div className="h-3 w-16 bg-gray-800 rounded animate-pulse" />
+                <div className="h-7 w-20 bg-gray-800 rounded mt-2 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div className="h-5 w-36 bg-gray-800/60 rounded mb-3 animate-pulse" />
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-gray-900 border border-gray-800 rounded-lg p-3">
+                <div className="h-3 w-16 bg-gray-800 rounded animate-pulse" />
+                <div className="h-7 w-14 bg-gray-800 rounded mt-2 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div className="h-5 w-36 bg-gray-800/60 rounded mb-3 animate-pulse" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+                <div className="h-5 w-32 bg-gray-800 rounded animate-pulse" />
+                <div className="h-3 w-48 bg-gray-800/60 rounded mt-2 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
@@ -190,7 +229,7 @@ export default function AdminPipelinePage() {
       )}
 
       {loading && !data && (
-        <div className="text-center py-12 text-gray-400">Loading dashboard...</div>
+        <div className="text-center py-12 text-gray-400 animate-pulse">Loading dashboard...</div>
       )}
 
       {data && (
