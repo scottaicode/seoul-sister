@@ -146,12 +146,12 @@ export default async function BlogPostPage({
 
   const blogPost = post as BlogPost
 
-  // Fetch enriched ingredients for internal linking
+  // Fetch active ingredients for internal linking
+  // All ingredients have valid /ingredients/[slug] pages regardless of rich_content
   const { data: enrichedIngredients } = await supabase
     .from('ss_ingredients')
     .select('name_en, name_inci')
     .eq('is_active', true)
-    .not('rich_content', 'is', null)
     .order('name_en')
 
   const ingredientLinks: IngredientLink[] = enrichedIngredients
