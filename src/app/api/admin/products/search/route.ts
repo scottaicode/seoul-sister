@@ -4,6 +4,7 @@ import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 
 const searchSchema = z.object({
+  query: z.string().max(200).optional(),
   categories: z.array(z.string()).optional(),
   skin_types: z.array(z.string()).optional(),
   skin_concerns: z.array(z.string()).optional(),
@@ -46,9 +47,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const params = searchSchema.parse(body)
-    const { categories, skin_types, skin_concerns, price_max, brands, limit } = params
+    const { query, categories, skin_types, skin_concerns, price_max, brands, limit } = params
 
-    if (!categories?.length && !skin_types?.length && !skin_concerns?.length && !brands?.length) {
+    if (!query && !categories?.length && !skin_types?.length && !skin_concerns?.length && !brands?.length) {
       throw new AppError('At least one filter is required', 400)
     }
 
@@ -64,33 +65,44 @@ export async function POST(request: NextRequest) {
     }
 
     // Build query
-    let query = supabase
+    let dbQuery = supabase
       .from('ss_products')
       .select('name_en, brand_en, category, price_usd, rating_avg, description_en, image_url')
 
-    if (allCategories.size > 0) {
-      query = query.in('category', Array.from(allCategories))
-    }
+    if (query) {
+      // Text search: match product name or brand name
+      const terms = query.trim().split(/\s+/).filter(t => t.length > 1)
+      if (terms.length > 0) {
+        const nameFilters = terms.map(t => `name_en.ilike.%${t}%`).join(',')
+        const brandFilters = terms.map(t => `brand_en.ilike.%${t}%`).join(',')
+        dbQuery = dbQuery.or(`${nameFilters},${brandFilters}`)
+      }
+    } else {
+      // Structured search: categories, skin types, brands
+      if (allCategories.size > 0) {
+        dbQuery = dbQuery.in('category', Array.from(allCategories))
+      }
 
-    if (skin_types?.length) {
-      // Skin type matching via description or name (ss_products doesn't have a skin_type column)
-      query = query.or(skin_types.map(t => `description_en.ilike.%${t}%`).join(','))
+      if (skin_types?.length) {
+        // Skin type matching via description or name (ss_products doesn't have a skin_type column)
+        dbQuery = dbQuery.or(skin_types.map(t => `description_en.ilike.%${t}%`).join(','))
+      }
+
+      if (brands?.length) {
+        dbQuery = dbQuery.or(brands.map(b => `brand_en.ilike.%${b}%`).join(','))
+      }
     }
 
     if (price_max !== undefined) {
-      query = query.lte('price_usd', price_max)
+      dbQuery = dbQuery.lte('price_usd', price_max)
     }
 
-    if (brands?.length) {
-      query = query.or(brands.map(b => `brand_en.ilike.%${b}%`).join(','))
-    }
-
-    query = query
+    dbQuery = dbQuery
       .not('price_usd', 'is', null)
       .order('rating_avg', { ascending: false, nullsFirst: false })
       .limit(limit)
 
-    const { data: products, error } = await query
+    const { data: products, error } = await dbQuery
 
     if (error) {
       console.error('Product search error:', error)
