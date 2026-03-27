@@ -83,6 +83,7 @@ export interface ScanResult {
 
 export const KBEAUTY_SUBREDDITS: SubredditConfig[] = [
   { name: 'AsianBeauty', weight: 1.0 },
+  { name: 'koreanskincare', weight: 0.95 },
   { name: 'KoreanBeauty', weight: 0.9 },
   { name: 'SkincareAddiction', weight: 0.6 },
   { name: 'AsianBeautyAdvice', weight: 0.8 },
@@ -165,6 +166,13 @@ const BRAND_ALIASES: Record<string, string[]> = {
   'illiyoon': ['illiyoon'],
   'aestura': ['aestura'],
   'beplain': ['beplain', 'be plain'],
+  'cnp': ['cnp laboratory', 'cnp lab'],
+  'zeroid': ['zeroid'],
+  'real barrier': ['real barrier', 'realbarrier'],
+  'biodance': ['biodance', 'bio dance'],
+  'vt': ['vt cosmetics', 'vt cosme', 'reedle shot', 'reedleshot'],
+  'medi peel': ['medipeel', 'medi-peel', 'medi peel'],
+  'dong-a': ['dong-a pharmaceutical', 'dongkook', 'dong a'],
 }
 
 // Common words that should NOT count as distinctive product name tokens.

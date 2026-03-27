@@ -500,7 +500,7 @@ seoul-sister/
 | `translate-and-index` | Daily 7 AM UTC | Sonnet extraction: categorize, describe, normalize pending products |
 | `link-ingredients` | Daily 7:30 AM UTC | Parse INCI strings, match/create ingredients, link to products |
 | `scan-trends` | Daily 8 AM UTC | Detect trending products from review/reaction spikes |
-| `scan-reddit-mentions` | Daily 8:30 AM UTC | Reddit K-beauty mention scanning (5 subreddits, sentiment analysis) |
+| `scan-reddit-mentions` | Daily 8:30 AM UTC | Reddit K-beauty mention scanning (6 subreddits, sentiment analysis) |
 | `calculate-gap-scores` | Daily 9 AM UTC | Korea-vs-US trend gap detection (emerging products intelligence) |
 | `refresh-prices` | Daily 6 AM UTC | Soko Glam price scraping (Shopify JSON API, 150 products/run, 300s Pro budget), history snapshots, drop detection |
 | `refresh-prices-yesstyle` | Daily 6 PM UTC | YesStyle price scraping (Playwright, 80 products/run, 300s Pro budget), history snapshots, drop detection |
@@ -829,7 +829,7 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 
 ### Phase 10: Real-Time Trend Intelligence (COMPLETE)
 - [x] Feature 10.1: Olive Young Bestseller Scraper (daily Korean sales rankings via Playwright, 3-tier product matching, non-skincare filtering)
-- [x] Feature 10.2: Reddit K-Beauty Mention Scanner (OAuth 2.0, 5 subreddits, sentiment analysis, brand alias mapping)
+- [x] Feature 10.2: Reddit K-Beauty Mention Scanner (OAuth 2.0, 6 subreddits incl. r/koreanskincare, sentiment analysis, brand alias mapping)
 - [x] Feature 10.3: Trend Gap Detector & UI Updates ("Emerging from Korea" tab, gap_score calculation, fabricated seed data deleted)
 - [x] 3 new cron jobs: scan-korean-bestsellers (6:30 AM), scan-reddit-mentions (8:30 AM), calculate-gap-scores (9:00 AM)
 - [x] Migration: ss_trending_products restructured (12 new columns), ss_trend_data_sources tracking table
@@ -2588,6 +2588,7 @@ Create `src/lib/reddit/mention-scanner.ts`:
 ```typescript
 const K_BEAUTY_SUBREDDITS = [
   { name: 'AsianBeauty', weight: 1.0 },           // 1.8M members, pure K-beauty
+  { name: 'koreanskincare', weight: 0.95 },         // 147K weekly visitors, high-quality insider discussion
   { name: 'SkincareAddiction', weight: 0.6 },      // 2.5M members, broader but K-beauty crossover
   { name: 'KoreanBeauty', weight: 0.8 },           // Smaller but highly focused
   { name: '30PlusSkinCare', weight: 0.5 },          // Older demographic, premium products
@@ -2612,7 +2613,7 @@ Create `src/lib/reddit/trend-aggregator.ts`:
 
 Create `src/app/api/cron/scan-reddit-mentions/route.ts`:
 - Runs daily at 8:30 AM UTC (after scan-trends at 8 AM)
-- Scans 5 subreddits, 100 posts each = 500 posts max
+- Scans 6 subreddits, 100 posts each = 600 posts max
 - ~10 API requests (100 posts per request), well within 60 req/min limit
 - Extracts product mentions, calculates sentiment, aggregates across subreddits
 - Upserts to `ss_trending_products` with `source = 'reddit'`
