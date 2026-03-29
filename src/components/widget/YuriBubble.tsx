@@ -72,6 +72,13 @@ export default function YuriBubble() {
     }
   }, [isOpen])
 
+  // Listen for custom 'open-yuri' events from other components (blog CTAs, nav, etc.)
+  useEffect(() => {
+    const handleOpenYuri = () => setIsOpen(true)
+    window.addEventListener('open-yuri', handleOpenYuri)
+    return () => window.removeEventListener('open-yuri', handleOpenYuri)
+  }, [])
+
   const isAtLimit = messageCount >= MAX_FREE_MESSAGES
 
   const sendMessage = useCallback(

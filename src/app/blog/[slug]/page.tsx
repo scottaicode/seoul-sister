@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 import { Calendar, Clock, ArrowLeft, Tag } from 'lucide-react'
 import PublicNav from '@/components/layout/PublicNav'
 import BlogYuriCta from '@/components/blog/BlogYuriCta'
+import BlogInlineYuriPrompt from '@/components/blog/BlogInlineYuriPrompt'
 import { marked } from 'marked'
 import { linkIngredients, buildIngredientMap, type IngredientLink } from '@/lib/utils/ingredient-linker'
 
@@ -312,6 +313,12 @@ export default async function BlogPostPage({
               prose-code:text-amber-300 prose-code:bg-white/10 prose-code:px-1 prose-code:rounded
               prose-hr:border-white/10"
             dangerouslySetInnerHTML={{ __html: linkedHtml }}
+          />
+
+          {/* Inline Yuri prompt — subtle contextual CTA */}
+          <BlogInlineYuriPrompt
+            category={blogPost.category}
+            primaryKeyword={blogPost.primary_keyword}
           />
 
           {/* Tags */}

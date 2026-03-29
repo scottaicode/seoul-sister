@@ -12,7 +12,6 @@ import {
 } from 'lucide-react'
 import PricingCards from '@/components/pricing/PricingCards'
 import TryYuriSection from '@/components/widget/TryYuriSection'
-import YuriBubble from '@/components/widget/YuriBubble'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -509,8 +508,6 @@ export default function LandingPage() {
         <p className="text-center text-xs text-white/20 mt-8">&copy; 2026 Seoul Sister. All rights reserved.</p>
       </footer>
 
-      {/* Layer 1: Floating Yuri Bubble */}
-      <YuriBubble />
     </div>
   )
 }

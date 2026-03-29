@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { AuthProvider } from '@/contexts/AuthContext'
 import ServiceWorkerRegistration from '@/components/pwa/ServiceWorkerRegistration'
+import YuriBubble from '@/components/widget/YuriBubble'
 import './globals.css'
 
 const inter = Inter({
@@ -121,6 +122,7 @@ export default function RootLayout({
         </AuthProvider>
         <Analytics />
         <SpeedInsights />
+        <YuriBubble />
       </body>
     </html>
   )

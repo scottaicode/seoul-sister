@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Sparkles } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 
 const publicLinks = [
@@ -51,6 +52,13 @@ export default function PublicNav() {
               {link.label}
             </Link>
           ))}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-yuri'))}
+            className="hidden md:inline-flex items-center gap-1.5 text-sm font-medium text-amber-400 hover:text-amber-300 transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Ask Yuri
+          </button>
         </div>
       </div>
     </nav>
