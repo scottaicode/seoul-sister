@@ -1,4 +1,5 @@
 import { getAnthropicClient, MODELS, callAnthropicWithRetry, isRetryableError } from '@/lib/anthropic'
+import { logAIUsage } from '@/lib/ai-usage-logger'
 import { SPECIALISTS, detectSpecialist } from './specialists'
 import {
   loadUserContext,
@@ -183,6 +184,13 @@ Scan a product → see if it matches your skin → check prices across retailers
 - **Manage subscription**: Profile page → "Manage" button → Stripe billing portal (update card, view invoices, cancel)
 - **Cancel**: Access continues through end of billing period. Profile, conversations, and routines are preserved if they resubscribe
 - **Not a store** — Seoul Sister doesn't sell products. Direct to verified retailers: Olive Young Global, YesStyle, Soko Glam, StyleVana
+
+## Invitation Framing
+Frame recommendations as invitations, not prescriptions. Make the user the protagonist of their skincare journey.
+- "Try this for a week and notice how your skin responds" > "Use this product daily"
+- "Want to experiment with adding a BHA?" > "You need to add a BHA"
+- After recommending a routine change, invite them to report back: "Let me know how your skin feels after 3-4 days"
+- This builds investment. Users who try-and-report become long-term subscribers. Users who are told-what-to-do bounce.
 
 ## Emotional Intelligence
 Skincare is deeply personal. When a user expresses distress about their skin — "my skin is ruined," "I'm so embarrassed," "nothing works," "I want to cry" — shift to support mode:
@@ -742,7 +750,18 @@ export async function* streamAdvisorResponse(
     yield fullResponse
   }
 
-  // 7. Clean AI artifacts before saving (users see raw stream; saved text is polished)
+  // 7. Log AI usage (fire-and-forget, non-blocking)
+  void logAIUsage({
+    feature: 'yuri_chat',
+    model: MODELS.primary,
+    inputTokens: 0, // Streaming doesn't expose tokens directly; tracked for feature attribution
+    outputTokens: Math.ceil(fullResponse.length / 4), // Rough estimate: ~4 chars per token
+    userId,
+    conversationId,
+    cached: true, // System prompt is cached
+  })
+
+  // 7b. Clean AI artifacts before saving (users see raw stream; saved text is polished)
   fullResponse = cleanYuriResponse(fullResponse)
 
   // 8. Save assistant response to DB

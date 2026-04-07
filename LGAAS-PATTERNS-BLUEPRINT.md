@@ -1,0 +1,127 @@
+# LGAAS Patterns Blueprint for Seoul Sister
+
+**Created**: April 7, 2026
+**Source**: Cross-application audit of LGAAS (Lead Generation As A Service) codebase
+**Purpose**: Battle-tested patterns from LGAAS that strengthen Seoul Sister's subscriber experience
+
+---
+
+## Already Ported (Phases 11-14)
+
+These LGAAS patterns were already implemented in Seoul Sister during earlier development phases:
+
+| Pattern | Seoul Sister Phase | Status |
+|---------|-------------------|--------|
+| Prompt caching (cache_control ephemeral) | Phase 13.1 | COMPLETE |
+| API retry with exponential backoff | Phase 13.2 | COMPLETE |
+| Decision memory extraction (structured JSON) | Phase 13.3 | COMPLETE |
+| Intent-based context loading | Phase 13.4 | COMPLETE |
+| Voice cleanup / banned pattern regex | Phase 13.6 | COMPLETE |
+| Recent message excerpts (memory safety net) | Phase 11 | COMPLETE |
+| Dynamic tool forcing (shouldForceToolUse) | v8.2.0 | COMPLETE |
+| Specialist agent system (6 agents) | Phase 3 | COMPLETE |
+| Widget cross-session AI memory | Phase 14 | COMPLETE |
+| Widget intent signal detection | Phase 14.4 | COMPLETE |
+
+---
+
+## High-Value Patterns to Implement
+
+### Pattern 1: Emotional Intelligence / Crisis Detection
+**LGAAS Source**: `utils/crisis-detector.js`
+**Priority**: HIGH — Skincare is deeply personal. Acne shame, aging anxiety, barrier damage panic.
+**Status**: COMPLETE (April 7, 2026) — Wired into Yuri's system prompt
+
+**What it does**: Detects when users express distress about their skin and shifts Yuri to empathy-first mode. Validates emotion before recommending products. Never pushes products when someone is upset.
+
+**Skincare crisis signals**: "ruined", "destroyed", "horrible", "disgusting", "embarrassed", "can't leave house", "destroying my confidence", "nothing works", "want to cry", "severe", "burning"
+
+**Response pattern**: Empathy first → "Let's figure this out together" → Solutions only after trust is established → Recommend dermatologist for severe/persistent issues
+
+---
+
+### Pattern 2: AI Cost Tracking
+**LGAAS Source**: `utils/ai-usage-logger.js`
+**Priority**: MEDIUM — Know where API spend goes
+**Status**: TO BUILD
+
+**What it does**: Every Claude API call logged to a database table with: feature context, model used, input tokens, output tokens, computed cost. Fire-and-forget (async, never blocks responses). Admin dashboard aggregates by feature, by day, by user.
+
+**Seoul Sister implementation**:
+- Table: `ss_ai_usage` (conversation_id, feature, model, tokens_in, tokens_out, cost_usd, created_at)
+- Features to track: yuri_chat, widget_chat, scan_analysis, glass_skin_score, shelf_scan, routine_generation, onboarding_extraction, title_generation, summary_generation, decision_extraction, widget_memory_generation
+- Log after each Claude API call in advisor.ts, widget/chat, scan, skin-score, shelf-scan, onboarding
+- Cost computation: Opus input $15/M, output $75/M. Sonnet input $3/M, output $15/M
+
+---
+
+### Pattern 3: Invitation Framing
+**LGAAS Source**: `CLAUDE.md` content philosophy (lines 147-164)
+**Priority**: MEDIUM — Increases engagement and sharing
+**Status**: TO BUILD
+
+**What it does**: Frames recommendations as invitations to participate, not commands. "Try this for a week and tell me how your skin responds" vs "Use this product." Makes the user the protagonist of their skincare journey.
+
+**Seoul Sister implementation**:
+- Add to Yuri's system prompt as a response philosophy
+- Affects: product recommendations, routine suggestions, Glass Skin Score follow-ups
+- Key phrases: "try this and report back", "experiment with", "notice how your skin responds", "what do you think?"
+- Blog content: end posts with participatory CTAs, not "subscribe now"
+
+---
+
+### Pattern 4: Centralized AI Config
+**LGAAS Source**: `utils/ai-config.js`
+**Priority**: MEDIUM — Single source of truth for all model assignments
+**Status**: TO BUILD
+
+**What it does**: One file defines every AI context in the app: which model, max tokens, caching, streaming, cost notes. All 47+ files reference this instead of hardcoding model IDs. Model upgrades affect everywhere instantly.
+
+**Seoul Sister implementation**:
+- File: `src/lib/ai-config.ts`
+- Contexts: YURI_CHAT, WIDGET_CHAT, SCAN_ANALYSIS, GLASS_SKIN, SHELF_SCAN, ROUTINE_GENERATION, ONBOARDING_EXTRACTION, TITLE_GENERATION, SUMMARY_GENERATION, DECISION_EXTRACTION, WIDGET_MEMORY, CONTENT_GENERATION, INGREDIENT_ENRICHMENT, PRODUCT_EXTRACTION
+- Each defines: model, maxTokens, cachingEnabled, streaming, costNote
+
+---
+
+### Pattern 5: Content Intelligence Scoring
+**LGAAS Source**: `utils/content-intelligence-engine.js`
+**Priority**: LOW (future) — Score blog posts before publishing
+**Status**: DEFERRED
+
+**What it does**: 6-dimension scoring (hook strength, emotional resonance, pattern match, platform fit, practical value, identity alignment). AI-powered improvement suggestions. A/B hook variant generation.
+
+**Seoul Sister implementation**: Apply to blog posts generated by the content pipeline. Score before publishing. Reject posts scoring < 70.
+
+---
+
+### Pattern 6: Churn Prediction
+**LGAAS Source**: `utils/churn-prediction-agent.js`
+**Priority**: LOW (need scale first) — Meaningful at 50+ subscribers
+**Status**: DEFERRED
+
+**What it does**: 7 engagement signals weighted into a 0-100 churn risk score. Weekly cron. Risk levels trigger re-engagement conversations.
+
+**Seoul Sister signals**: Days since last Yuri chat, days since last scan, routine completeness, Glass Skin Score frequency, products browsed vs saved ratio, trending page visits, community engagement.
+
+---
+
+### Pattern 7: Transactional Email System
+**LGAAS Source**: `utils/email-notifications.js`
+**Priority**: MEDIUM — Welcome emails, weekly tips, price drop alerts
+**Status**: TO BUILD (when email provider configured)
+
+**What it does**: Resend-based email system. Seoul Sister-branded emails (not generic Supabase). Welcome sequence, password resets, weekly skincare tips, price drop alerts.
+
+**Requires**: Resend account + API key + domain verification for seoulsister.com
+
+---
+
+## Implementation Order
+
+1. **AI Cost Tracking** (Pattern 2) — Low effort, immediate visibility into API spend
+2. **Centralized AI Config** (Pattern 4) — Low effort, prevents config drift
+3. **Invitation Framing** (Pattern 3) — Prompt-only change, zero code
+4. **Transactional Email** (Pattern 7) — Medium effort, requires external service setup
+5. **Content Intelligence** (Pattern 5) — Future sprint
+6. **Churn Prediction** (Pattern 6) — Future sprint (need subscriber volume)

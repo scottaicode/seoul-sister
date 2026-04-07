@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { checkRateLimit } from '@/lib/utils/rate-limiter'
+import { logAIUsage } from '@/lib/ai-usage-logger'
 import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
 import { cleanYuriResponse } from '@/lib/yuri/voice-cleanup'
 import { detectSpecialist, SPECIALISTS } from '@/lib/yuri/specialists'
@@ -370,6 +371,15 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
         }
 
         const cleanedResponse = cleanYuriResponse(fullResponse)
+
+        // Log AI usage (fire-and-forget)
+        void logAIUsage({
+          feature: 'widget_chat',
+          model: MODELS.primary,
+          inputTokens: 0,
+          outputTokens: Math.ceil(fullResponse.length / 4),
+          cached: true,
+        })
 
         // Include session_id in done event so client can send it back
         const done = JSON.stringify({ type: 'done', message: cleanedResponse, session_id: sessionId })
