@@ -475,6 +475,29 @@ export default function ProfilePage() {
         </>
       )}
 
+      {/* Support */}
+      <div className="glass-card p-5">
+        <a
+          href="/support"
+          className="flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-white/40">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">Need Help?</p>
+              <p className="text-xs text-white/40">FAQ, billing support, or contact us</p>
+            </div>
+          </div>
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="text-white/30">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
+      </div>
+
       <div className="h-16 md:h-0" />
     </div>
   )

@@ -503,6 +503,7 @@ export default function LandingPage() {
           <div className="flex gap-4 text-xs text-white/30">
             <Link href="/privacy" className="hover:text-gold transition-colors">Privacy</Link>
             <Link href="/terms" className="hover:text-gold transition-colors">Terms</Link>
+            <Link href="/support" className="hover:text-gold transition-colors">Support</Link>
           </div>
         </div>
         <p className="text-center text-xs text-white/20 mt-8">&copy; 2026 Seoul Sister. All rights reserved.</p>

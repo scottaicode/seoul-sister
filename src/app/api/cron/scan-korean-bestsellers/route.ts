@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
 
-export const maxDuration = 60
+export const maxDuration = 300
 
 /**
  * POST /api/cron/scan-korean-bestsellers
@@ -27,7 +27,15 @@ export async function POST(request: Request) {
     )
 
     const scraper = new OliveYoungBestsellerScraper()
-    const result = await scraper.run(db)
+
+    // Guard: abort if approaching the 300s function timeout
+    const TIMEOUT_MS = 270_000 // 270s, leaving 30s buffer
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Approaching function timeout (270s)')), TIMEOUT_MS)
+    )
+
+    const result = await Promise.race([scraper.run(db), timeoutPromise])
+      .finally(() => scraper.closeBrowser())
 
     return NextResponse.json({
       success: true,

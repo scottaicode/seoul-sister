@@ -4,10 +4,10 @@ import { createClient } from '@supabase/supabase-js'
 /**
  * Supabase Auth Callback Handler
  *
- * Handles redirects from Supabase auth emails:
+ * Handles redirects from:
  * - Email verification (type=signup)
  * - Password recovery (type=recovery)
- * - Magic link login (type=magiclink)
+ * - OAuth providers (Google, etc.)
  *
  * Supabase sends users here with a `code` query param that gets
  * exchanged for a session via PKCE flow.
@@ -23,19 +23,38 @@ export async function GET(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
-    if (!error) {
-      // Password recovery: redirect to a page where they can set new password
+    if (!error && data.session) {
+      // Password recovery: redirect to login with recovery flag
       if (type === 'recovery') {
         return NextResponse.redirect(new URL('/login?recovered=true', request.url))
       }
 
-      // Email verification: redirect to subscribe (payment required before app access)
+      // Check if user already has a profile with subscription + onboarding
+      // This handles returning OAuth users who don't need to go through subscribe again
+      const serviceClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
+      const { data: profile } = await serviceClient
+        .from('ss_user_profiles')
+        .select('plan, onboarding_completed')
+        .eq('user_id', data.session.user.id)
+        .maybeSingle()
+
+      if (profile?.plan && profile.plan !== 'free') {
+        // Existing subscriber -- send to onboarding or dashboard
+        return NextResponse.redirect(
+          new URL(profile.onboarding_completed ? '/dashboard' : '/onboarding', request.url)
+        )
+      }
+
+      // New user or free plan -- send to subscribe for payment
       return NextResponse.redirect(new URL('/subscribe', request.url))
     }
   }
 
-  // Fallback: something went wrong, send to login with error hint
+  // Fallback: something went wrong
   return NextResponse.redirect(new URL('/login?error=callback_failed', request.url))
 }
