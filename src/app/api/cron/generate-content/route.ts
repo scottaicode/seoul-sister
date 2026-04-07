@@ -232,6 +232,13 @@ async function generateBlogPost(topic: TopicResult): Promise<{
 
   const systemPrompt = `You are a K-beauty content writer for Seoul Sister, the world's first English-language K-beauty intelligence platform. Write authoritative, data-backed blog posts.
 
+PERSPECTIVE SHIFT (Do This First):
+Before writing, articulate the reader's current perception:
+- What does someone searching this topic already believe about their skin?
+- What have they already tried that didn't work? (They've probably wasted money on products or routines that failed)
+- What are they frustrated by or afraid of RIGHT NOW?
+Then write from their perspective — not what Seoul Sister wants to say, but what the reader needs to hear. The opening paragraph should prove you understand their world before you offer solutions. Every section should pass the test: "Would the reader feel understood by this, or talked at?"
+
 VOICE:
 - Expert but approachable — a knowledgeable Korean beauty advisor, not a textbook
 - Reference specific products and ingredients by name from the data provided

@@ -6,7 +6,7 @@
 
 ---
 
-## Already Ported (Phases 11-14)
+## Already Ported (Phases 11-14 + April 2026 Session)
 
 These LGAAS patterns were already implemented in Seoul Sister during earlier development phases:
 
@@ -22,12 +22,35 @@ These LGAAS patterns were already implemented in Seoul Sister during earlier dev
 | Specialist agent system (6 agents) | Phase 3 | COMPLETE |
 | Widget cross-session AI memory | Phase 14 | COMPLETE |
 | Widget intent signal detection | Phase 14.4 | COMPLETE |
+| Perception vs. Perspective framework | April 7, 2026 | COMPLETE |
+| Emotional intelligence / crisis detection | April 7, 2026 | COMPLETE |
+| Invitation framing | April 7, 2026 | COMPLETE |
+| Centralized AI config | April 7, 2026 | COMPLETE |
+| AI cost tracking (usage logger) | April 7, 2026 | COMPLETE |
 
 ---
 
 ## High-Value Patterns to Implement
 
-### Pattern 1: Emotional Intelligence / Crisis Detection
+### Pattern 1: Perception vs. Perspective Framework (v3.12.0)
+**LGAAS Source**: All 7 AI touchpoints (advisor, blog, social, email, Reddit, specialists, widget)
+**Priority**: HIGH — Structural intelligence, not cosmetic empathy
+**Status**: COMPLETE (April 7, 2026)
+
+**What it does**: Before every AI response, the model articulates the reader/user's current mental state (what they believe, what they've tried, what they fear). Then writes from THEIR perspective, not the platform's. The user should think "she gets my situation" before they think "she's advising me."
+
+**Seoul Sister implementation** (5 touchpoints):
+1. **Yuri main prompt** (`advisor.ts`): `## Perspective Shift (Do This First)` section with 3 skincare-specific perception questions. Placed after Voice/Edge, before Capabilities.
+2. **Widget prompt** (`widget/chat/route.ts`): `## Conversation Approach: Their Perspective First` with behavioral rules and non-negotiable sequence constraint.
+3. **Specialist agents** (`advisor.ts buildSystemPrompt`): Perspective reminder appended to every specialist injection so expertise lands after understanding.
+4. **Blog generation** (`generate-content cron`): `PERSPECTIVE SHIFT` pre-writing section with reader perception questions before voice/format instructions.
+5. **Emotional Intelligence** section (already in prompt): Handles the distress case specifically.
+
+**Why it matters for skincare**: Skincare users come with baggage -- failed products, wasted money, skin shame, information overload. "I understand your frustration with X" before "try Y" is the difference between trust and bounce.
+
+---
+
+### Pattern 2: Emotional Intelligence / Crisis Detection
 **LGAAS Source**: `utils/crisis-detector.js`
 **Priority**: HIGH — Skincare is deeply personal. Acne shame, aging anxiety, barrier damage panic.
 **Status**: COMPLETE (April 7, 2026) — Wired into Yuri's system prompt
