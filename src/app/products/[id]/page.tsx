@@ -7,15 +7,13 @@ import {
   Package,
   Shield,
   FlaskConical,
-  Lock,
-  ArrowRight,
   TrendingUp,
-  Sparkles,
   BookOpen,
   Calendar,
 } from 'lucide-react'
 import { toSlug } from '@/lib/utils/slug'
 import PublicNav from '@/components/layout/PublicNav'
+import ProductIntelligenceSection from '@/components/products/ProductIntelligenceSection'
 
 export const revalidate = 3600
 
@@ -570,65 +568,11 @@ export default async function PublicProductPage({ params }: Props) {
             </div>
           )}
 
-          {/* GATED: Personalized Intelligence */}
-          <div className="product-gated-content space-y-4 mb-8">
-            {/* Skin Match */}
-            <GatedSection
-              icon={<Sparkles className="w-5 h-5 text-amber-400" />}
-              title="Your Skin Match Score"
-              description="See how this product matches your skin type, concerns, and allergies. Get personalized warnings and benefits."
-            />
-
-            {/* Full Ingredient Analysis */}
-            <GatedSection
-              icon={<FlaskConical className="w-5 h-5 text-emerald-400" />}
-              title="Full Ingredient Analysis"
-              description={`Complete breakdown of all ${ingredients.length || 'N/A'} ingredients with safety ratings, comedogenic scores, and interaction warnings.`}
-            />
-
-            {/* Price Comparison */}
-            <GatedSection
-              icon={<Package className="w-5 h-5 text-sky-400" />}
-              title="Price Comparison Across 6+ Retailers"
-              description="Compare exact prices at Olive Young, Soko Glam, YesStyle, Amazon, and more. Find the best deal with savings calculations."
-            />
-
-            {/* Community Reviews */}
-            <GatedSection
-              icon={<Star className="w-5 h-5 text-rose-400" />}
-              title="Community Reviews by Skin Type"
-              description="Read reviews filtered by your skin type, age, and concerns. See Holy Grail and Broke Me Out counts."
-            />
-
-            {/* AI Advisor */}
-            <GatedSection
-              icon={<Shield className="w-5 h-5 text-violet-400" />}
-              title="Ask Yuri About This Product"
-              description="Get AI-powered analysis from Yuri, your K-beauty advisor. Counterfeit detection, dupe suggestions, and routine placement."
-            />
-          </div>
-
-          {/* Subscribe CTA */}
-          <div className="bg-gradient-to-br from-amber-500/10 to-rose-500/10 rounded-2xl border border-amber-500/20 p-8 text-center">
-            <h2 className="font-display font-bold text-xl text-white mb-2">
-              Unlock Full Product Intelligence
-            </h2>
-            <p className="text-white/60 text-sm mb-6 max-w-lg mx-auto">
-              Seoul Sister Pro gives you personalized skin matching, full ingredient analysis,
-              multi-retailer price comparison, community reviews, AI-powered advice, and more
-              for every product in our database.
-            </p>
-            <Link
-              href="/register"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold text-sm hover:opacity-90 transition-opacity"
-            >
-              Start Your K-Beauty Journey — $39.99/mo
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <p className="text-xs text-white/30 mt-3">
-              Full access to Yuri AI advisor, unlimited scans, and all intelligence features
-            </p>
-          </div>
+          {/* Personalized Intelligence — shows enrichment for subscribers, gate for anonymous */}
+          <ProductIntelligenceSection
+            productId={product.id}
+            ingredientCount={ingredients.length}
+          />
 
           {/* Related Products in Same Category — FREE (internal linking + richer content) */}
           {relatedProducts.length > 0 && (
@@ -753,35 +697,3 @@ export default async function PublicProductPage({ params }: Props) {
 }
 
 /** Gated intelligence section — shows lock + description + subscribe CTA */
-function GatedSection({
-  icon,
-  title,
-  description,
-}: {
-  icon: React.ReactNode
-  title: string
-  description: string
-}) {
-  return (
-    <div className="relative bg-white/[0.03] rounded-xl border border-white/10 p-5 overflow-hidden">
-      {/* Blur overlay */}
-      <div className="absolute inset-0 backdrop-blur-[2px] bg-[#0a0a0a]/40 z-10 flex items-center justify-center">
-        <Link
-          href="/register"
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-sm text-white hover:bg-white/15 transition-colors"
-        >
-          <Lock className="w-3.5 h-3.5" />
-          Subscribe to unlock
-        </Link>
-      </div>
-      {/* Teaser content (blurred behind overlay) */}
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5">{icon}</div>
-        <div>
-          <h3 className="font-medium text-sm text-white mb-1">{title}</h3>
-          <p className="text-xs text-white/50">{description}</p>
-        </div>
-      </div>
-    </div>
-  )
-}
