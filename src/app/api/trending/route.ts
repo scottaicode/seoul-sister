@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getServiceClient } from '@/lib/supabase'
 import { handleApiError } from '@/lib/utils/error-handler'
 import { trendingSearchSchema } from '@/lib/utils/validation'
 
@@ -31,7 +32,8 @@ interface SkinProfile {
 }
 
 async function loadSkinProfile(userId: string): Promise<SkinProfile | null> {
-  const { data } = await supabase
+  const db = getServiceClient()
+  const { data } = await db
     .from('ss_user_profiles')
     .select('skin_type, skin_concerns')
     .eq('user_id', userId)
