@@ -559,16 +559,17 @@ export async function* streamAdvisorResponse(
 
   // Streaming tool use loop: use messages.stream() for ALL calls.
   //
-  // Streaming strategy — two modes:
+  // Streaming strategy — ALWAYS BUFFER:
   //
-  // BUFFER mode (toolLoopCount === 0, first round): Buffer all text.
-  // We can't know if Claude will emit tool_use blocks until the stream
-  // ends. Yielding prematurely leaks "Let me search..." narration.
+  // Every round buffers all text until the stream completes. If no tool
+  // blocks were found, the buffered text is the final response — yield
+  // it all. If tool blocks were found, the text is narration ("Let me
+  // search...") — discard it and continue the tool loop.
   //
-  // STREAM mode (toolLoopCount > 0, post-tool rounds): Yield text in
-  // real-time as chunks arrive. After tools executed, Claude is writing
-  // the real response. If it calls another tool mid-stream, the text
-  // already yielded is real response content (not narration) — safe.
+  // This eliminates narration leaks that occurred when post-tool rounds
+  // streamed text in real-time before discovering Claude was calling
+  // another tool (e.g., "Let me try searching for their IDs first.Now
+  // let me pull prices...").
   //
   // Retry: If the stream fails before ANY events are emitted (connection
   // error, 529 overloaded), retry with exponential backoff. Once events
@@ -591,12 +592,7 @@ export async function* streamAdvisorResponse(
     const toolUseBlocks: Array<{ id: string; name: string; input: string }> = []
     let currentToolBlock: { id: string; name: string; input: string } | null = null
     const textChunks: string[] = []
-    let hasSeenToolBlock = false
     let streamSucceeded = false
-    // On post-tool rounds, yield text in real-time for actual streaming.
-    // Track how much text was already yielded (in case tools appear later).
-    const isPostToolRound = toolLoopCount > 0
-    let yieldedLength = 0
 
     // Retry loop for transient stream creation failures
     for (let attempt = 1; attempt <= STREAM_MAX_RETRIES; attempt++) {
@@ -604,8 +600,6 @@ export async function* streamAdvisorResponse(
       toolUseBlocks.length = 0
       currentToolBlock = null
       textChunks.length = 0
-      hasSeenToolBlock = false
-      yieldedLength = 0
       let eventsReceived = false
 
       const stream = client.messages.stream({
@@ -622,7 +616,6 @@ export async function* streamAdvisorResponse(
           eventsReceived = true
           if (event.type === 'content_block_start') {
             if (event.content_block.type === 'tool_use') {
-              hasSeenToolBlock = true
               currentToolBlock = {
                 id: event.content_block.id,
                 name: event.content_block.name,
@@ -632,14 +625,6 @@ export async function* streamAdvisorResponse(
           } else if (event.type === 'content_block_delta') {
             if (event.delta.type === 'text_delta') {
               textChunks.push(event.delta.text)
-              // STREAM mode: yield text in real-time on post-tool rounds
-              // (stop yielding once a tool block appears — remaining text
-              // will be handled by the next loop iteration)
-              if (isPostToolRound && !hasSeenToolBlock) {
-                fullResponse += event.delta.text
-                yieldedLength += event.delta.text.length
-                yield event.delta.text
-              }
             } else if (event.delta.type === 'input_json_delta' && currentToolBlock) {
               currentToolBlock.input += event.delta.partial_json
             }
@@ -670,40 +655,24 @@ export async function* streamAdvisorResponse(
       throw new Error('[yuri/stream] Stream retry loop exhausted')
     }
 
-    // No tools on this round — we're done.
+    // No tools on this round — yield all buffered text as the final response.
     if (toolUseBlocks.length === 0) {
-      // In BUFFER mode (first round), replay all text now.
-      // In STREAM mode (post-tool), text was already yielded in real-time;
-      // only replay chunks that arrived AFTER a tool block appeared (if any).
-      if (!isPostToolRound) {
-        for (const chunk of textChunks) {
-          fullResponse += chunk
-          yield chunk
-        }
+      for (const chunk of textChunks) {
+        fullResponse += chunk
+        yield chunk
       }
-      // If post-tool and some text arrived after a tool block was seen but
-      // no actual tool blocks ended up in the list (edge case), yield it
       break
     }
 
-    // Tools were found. On first round, discard "thinking" text ("Let me
-    // search..."). On post-tool rounds, text yielded before the tool block
-    // appeared is real response content — it's already in fullResponse and
-    // visible to the user. We keep it in fullResponse but strip it from
-    // the assistant message sent back to Claude (Claude sees only tool_use).
+    // Tools were found — discard all text from this round (it's narration
+    // like "Let me search..." or "Now let me pull prices..."). The real
+    // response will come on the final round after all tools have executed.
     toolLoopCount++
 
-    // Build assistant content from collected blocks instead of stream.finalMessage()
-    // since the stream was already consumed by the event loop above.
-    // Use ContentBlockParam (not ContentBlock) since we're constructing input for the
-    // next API call — ContentBlock has required fields (citations, caller) that only
-    // the API response populates.
+    // Build assistant content with only tool_use blocks for the next API
+    // call. Text is discarded to prevent Claude from seeing its own
+    // narration and continuing the pattern.
     const assistantContent: Anthropic.Messages.ContentBlockParam[] = []
-    // Include text block for API consistency (Claude needs to see its own text)
-    const allText = textChunks.join('')
-    if (allText) {
-      assistantContent.push({ type: 'text' as const, text: allText })
-    }
     for (const tb of toolUseBlocks) {
       let parsedToolInput: unknown = {}
       try { parsedToolInput = JSON.parse(tb.input || '{}') } catch { /* keep empty */ }
@@ -715,18 +684,12 @@ export async function* streamAdvisorResponse(
       })
     }
 
-    // On round 0 (BUFFER mode), text blocks are narration noise ("Let me
-    // search...") — drop them so Claude doesn't see them on the next round.
-    // On post-tool rounds (STREAM mode), text was already yielded to the
-    // client. Keep it in the assistant message so Claude sees what it already
-    // wrote and can continue with proper spacing/coherence.
-    const contentForHistory = isPostToolRound
-      ? assistantContent                                    // keep text + tool_use
-      : assistantContent.filter((b) => b.type === 'tool_use') // drop text (narration)
-
+    // Only tool_use blocks go into history — narration text is always
+    // discarded so Claude doesn't see "Let me search..." on the next round
+    // and continue the pattern.
     loopMessages.push({
       role: 'assistant',
-      content: contentForHistory.length > 0 ? contentForHistory : assistantContent,
+      content: assistantContent,
     })
 
     // Execute each tool and build tool_result blocks

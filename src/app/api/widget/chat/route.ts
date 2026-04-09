@@ -289,8 +289,6 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
           const toolUseBlocks: Array<{ id: string; name: string; input: string }> = []
           let currentToolBlock: { id: string; name: string; input: string } | null = null
           const textChunks: string[] = []
-          const isPostToolRound = toolLoopCount > 0
-          let hasSeenToolBlock = false
 
           const stream = anthropic.messages.stream({
             model: MODELS.primary,
@@ -304,19 +302,11 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
           for await (const event of stream) {
             if (event.type === 'content_block_start') {
               if (event.content_block.type === 'tool_use') {
-                hasSeenToolBlock = true
                 currentToolBlock = { id: event.content_block.id, name: event.content_block.name, input: '' }
               }
             } else if (event.type === 'content_block_delta') {
               if (event.delta.type === 'text_delta') {
                 textChunks.push(event.delta.text)
-                // STREAM mode: only yield text on post-tool rounds AND before any tool block
-                // This prevents narration like "let me search again" from leaking
-                if (isPostToolRound && !hasSeenToolBlock) {
-                  fullResponse += event.delta.text
-                  const data = JSON.stringify({ type: 'text', content: event.delta.text })
-                  await writer.write(encoder.encode(`data: ${data}\n\n`))
-                }
               } else if (event.delta.type === 'input_json_delta' && currentToolBlock) {
                 currentToolBlock.input += event.delta.partial_json
               }
@@ -326,28 +316,19 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
             }
           }
 
-          // No tools — stream is done
+          // No tools — send all buffered text as the final response
           if (toolUseBlocks.length === 0) {
-            if (!isPostToolRound) {
-              // First round, no tools — send all text
-              for (const chunk of textChunks) {
-                fullResponse += chunk
-                const data = JSON.stringify({ type: 'text', content: chunk })
-                await writer.write(encoder.encode(`data: ${data}\n\n`))
-              }
+            for (const chunk of textChunks) {
+              fullResponse += chunk
+              const data = JSON.stringify({ type: 'text', content: chunk })
+              await writer.write(encoder.encode(`data: ${data}\n\n`))
             }
             break
           }
 
-          // Tools found — execute and loop
+          // Tools found — discard narration text, execute tools, and loop
           toolLoopCount++
           const assistantContent: Anthropic.Messages.ContentBlockParam[] = []
-          const allText = textChunks.join('')
-          // Only include pre-tool text in the message history on post-tool rounds
-          // First-round narration (e.g. "let me search") is discarded
-          if (allText && isPostToolRound) {
-            assistantContent.push({ type: 'text' as const, text: allText })
-          }
           for (const tb of toolUseBlocks) {
             let parsedInput: unknown = {}
             try { parsedInput = JSON.parse(tb.input || '{}') } catch { /* keep empty */ }
