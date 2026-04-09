@@ -16,6 +16,7 @@ export default function OnboardingPage() {
   // progress tracked internally for completion detection only
   const [progress, setProgress] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
+  const [qualityScore, setQualityScore] = useState(0)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -180,6 +181,7 @@ export default function OnboardingPage() {
           if (data.conversation_id) setConversationId(data.conversation_id)
           if (typeof data.progress === 'number') setProgress(data.progress)
           if (data.is_complete) setIsComplete(true)
+          if (typeof data.quality_score === 'number') setQualityScore(data.quality_score)
 
           // Convert existing messages
           if (data.messages && data.messages.length > 0) {
@@ -295,6 +297,9 @@ export default function OnboardingPage() {
             if (progressData.is_complete) {
               setIsComplete(true)
             }
+            if (typeof progressData.quality_score === 'number') {
+              setQualityScore(progressData.quality_score as number)
+            }
           }
         )
       } catch (err) {
@@ -399,7 +404,7 @@ export default function OnboardingPage() {
           ))}
 
           {/* Completion prompt */}
-          {isComplete && !isStreaming && (
+          {isComplete && !isStreaming && qualityScore >= 65 && (
             <div className="flex justify-center py-6">
               <button
                 onClick={handleComplete}

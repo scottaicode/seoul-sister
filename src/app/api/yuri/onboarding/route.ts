@@ -175,6 +175,8 @@ export async function POST(request: NextRequest) {
       }
 
       // Return existing conversation state
+      const profileData = progress.skin_profile_data as ExtractedSkinProfile
+      const quality = calculateOnboardingQuality(profileData)
       return Response.json({
         status: progress.onboarding_status,
         conversation_id: progress.conversation_id,
@@ -182,7 +184,8 @@ export async function POST(request: NextRequest) {
         messages,
         extracted: progress.skin_profile_data,
         extracted_fields: progress.extracted_fields,
-        is_complete: checkOnboardingComplete(progress.skin_profile_data as ExtractedSkinProfile),
+        is_complete: checkOnboardingComplete(profileData),
+        quality_score: quality.overallScore,
       })
     }
 
@@ -245,6 +248,7 @@ export async function POST(request: NextRequest) {
                   type: 'progress',
                   percentage: result.percentage,
                   is_complete: result.isComplete,
+                  quality_score: result.qualityScore,
                   extracted_fields: result.capturedFields,
                 })
                 controller.enqueue(encoder.encode(`data: ${progressEvent}\n\n`))
@@ -341,7 +345,7 @@ async function extractAndUpdate(
   userId: string,
   messages: Array<{ role: 'user' | 'assistant'; content: string }>,
   existingProfile: ExtractedSkinProfile
-): Promise<{ percentage: number; isComplete: boolean; capturedFields: Record<string, boolean> } | null> {
+): Promise<{ percentage: number; isComplete: boolean; qualityScore: number; capturedFields: Record<string, boolean> } | null> {
   try {
     const newExtracted = await extractSkinProfileData(messages)
     const merged = mergeSkinProfileData(existingProfile, newExtracted)
@@ -364,7 +368,7 @@ async function extractAndUpdate(
       }
     }
 
-    return { percentage, isComplete, capturedFields }
+    return { percentage, isComplete, qualityScore: quality.overallScore, capturedFields }
   } catch (err) {
     console.error(`[yuri/onboarding] Extraction error for user ${userId}:`, err)
     return null

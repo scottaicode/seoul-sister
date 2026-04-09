@@ -47,10 +47,13 @@ const BANNED_PATTERNS: CleanupRule[] = [
   { pattern: /^Oh,?\s+I love /i, replacement: 'I love ' },
 
   // Mid-sentence filler phrases (Claude inserts these as transitions)
-  { pattern: /,? let me break (?:it|this|that) down[.,]?\s*/gi, replacement: '. ' },
-  { pattern: /,? let me walk you through[.,]?\s*/gi, replacement: '. ' },
-  { pattern: /,? let me explain[.,]?\s*/gi, replacement: '. ' },
-  { pattern: /,? here's the (?:thing|deal)[.,:]?\s*/gi, replacement: '. ' },
+  // Handle after comma, period, exclamation, colon, or line-start
+  { pattern: /[,!.:]?\s*[Ll]et me break (?:it|this|that) down[.,:]?\s*/g, replacement: '. ' },
+  { pattern: /[,!.:]?\s*[Ll]et me walk you through (?:this|that|it)[.,:]?\s*/g, replacement: '. ' },
+  { pattern: /[,!.:]?\s*[Ll]et me explain[.,:]?\s*/g, replacement: '. ' },
+  { pattern: /[,!.:]?\s*[Ll]et me unpack (?:this|that)[.,:]?\s*/g, replacement: '. ' },
+  { pattern: /[,!.:]?\s*[Hh]ere's the (?:thing|deal)[.,:]?\s*/g, replacement: '. ' },
+  { pattern: /[,!.:]?\s*[Hh]ere's what's going on[.,:]?\s*/g, replacement: '. ' },
   { pattern: /,? I'll be honest[.,:]?\s*/gi, replacement: '. ' },
   { pattern: /,? if I'm being honest[.,:]?\s*/gi, replacement: '. ' },
 
