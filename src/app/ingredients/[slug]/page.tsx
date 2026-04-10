@@ -13,6 +13,7 @@ import {
   BookOpen,
   Calendar,
 } from 'lucide-react'
+import LazyImage from '@/components/ui/LazyImage'
 import { toSlug } from '@/lib/utils/slug'
 import PublicNav from '@/components/layout/PublicNav'
 
@@ -797,13 +798,10 @@ export default async function IngredientDetailPage({
                   >
                     <div className="flex items-start gap-3">
                       {p.image_url && (
-                        <img
+                        <LazyImage
                           src={p.image_url}
                           alt={p.name_en}
                           className="w-12 h-12 rounded-lg object-cover shrink-0"
-                          loading="lazy"
-                          decoding="async"
-                          referrerPolicy="no-referrer"
                         />
                       )}
                       <div className="min-w-0">

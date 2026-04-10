@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Search, Package, Star, Heart, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import ProductCard from '@/components/products/ProductCard'
+import LazyImage from '@/components/ui/LazyImage'
 import type { TrendingInfo } from '@/components/products/ProductCard'
 import ProductFilters from '@/components/products/ProductFilters'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
@@ -225,13 +226,10 @@ export default function ProductsPage() {
               >
                 <div className="w-full h-20 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden mb-2">
                   {product.image_url ? (
-                    <img
+                    <LazyImage
                       src={product.image_url}
                       alt={product.name_en}
                       className="w-full h-full object-cover rounded-lg"
-                      loading="lazy"
-                      decoding="async"
-                      referrerPolicy="no-referrer"
                     />
                   ) : (
                     <Package className="w-5 h-5 text-gold" strokeWidth={1.5} />

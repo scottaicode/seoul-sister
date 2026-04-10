@@ -5,6 +5,7 @@ import { Star, TrendingUp, FlaskConical, Shield, ArrowRight } from 'lucide-react
 import PublicNav from '@/components/layout/PublicNav'
 import { notFound } from 'next/navigation'
 import { toSlug } from '@/lib/utils/slug'
+import LazyImage from '@/components/ui/LazyImage'
 
 export const revalidate = 3600
 
@@ -439,14 +440,22 @@ export default async function BestOfCategoryPage({ params }: Props) {
                 {product.image_url && (
                   <div className="shrink-0 w-14 h-14 rounded-lg overflow-hidden bg-white/10">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={product.image_url}
-                      alt={product.name_en}
-                      className="w-full h-full object-cover"
-                      loading={idx < 5 ? 'eager' : 'lazy'}
-                      decoding="async"
-                      referrerPolicy="no-referrer"
-                    />
+                    {idx < 5 ? (
+                      <img
+                        src={product.image_url}
+                        alt={product.name_en}
+                        className="w-full h-full object-cover"
+                        loading="eager"
+                        decoding="async"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <LazyImage
+                        src={product.image_url}
+                        alt={product.name_en}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
                   </div>
                 )}
 

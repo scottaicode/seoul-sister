@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Search, X, Plus, AlertTriangle, Loader2, PackageCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import LazyImage from '@/components/ui/LazyImage'
 
 interface Product {
   id: string
@@ -182,13 +183,10 @@ export function AddProductModal({ isOpen, onClose, onAdd, routineType, existingP
                   >
                     <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {product.image_url ? (
-                        <img
+                        <LazyImage
                           src={product.image_url}
                           alt=""
                           className="w-full h-full object-cover"
-                          loading="lazy"
-                          decoding="async"
-                          referrerPolicy="no-referrer"
                         />
                       ) : (
                         <PackageCheck className="w-4 h-4 text-emerald-400/40" />
@@ -238,13 +236,10 @@ export function AddProductModal({ isOpen, onClose, onAdd, routineType, existingP
               >
                 <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 overflow-hidden">
                   {product.image_url ? (
-                    <img
+                    <LazyImage
                       src={product.image_url}
                       alt=""
                       className="w-full h-full object-cover"
-                      loading="lazy"
-                      decoding="async"
-                      referrerPolicy="no-referrer"
                     />
                   ) : (
                     <span className="text-[10px] text-white/20">

@@ -17,6 +17,7 @@ import DupeCard from '@/components/dupes/DupeCard'
 import AiDupeCard from '@/components/dupes/AiDupeCard'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import EmptyState from '@/components/ui/EmptyState'
+import LazyImage from '@/components/ui/LazyImage'
 import { supabase } from '@/lib/supabase'
 import type { Product } from '@/types/database'
 
@@ -245,13 +246,10 @@ export default function DupesPage() {
                   >
                     <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {product.image_url ? (
-                        <img
+                        <LazyImage
                           src={product.image_url}
                           alt={product.name_en}
                           className="w-full h-full object-cover rounded-lg"
-                          loading="lazy"
-                          decoding="async"
-                          referrerPolicy="no-referrer"
                         />
                       ) : (
                         <Package className="w-3.5 h-3.5 text-gold/50" />

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Star, Shield, Package, TrendingUp, Sparkles } from 'lucide-react'
 import type { Product } from '@/types/database'
+import LazyImage from '@/components/ui/LazyImage'
 
 export interface TrendingInfo {
   source: string
@@ -85,13 +86,10 @@ export default function ProductCard({ product, trendingInfo, basePath = '/produc
       {/* Product image placeholder */}
       <div className="flex-shrink-0 w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center overflow-hidden">
         {product.image_url ? (
-          <img
+          <LazyImage
             src={product.image_url}
             alt={product.name_en}
             className="w-full h-full object-cover rounded-xl"
-            loading="lazy"
-            decoding="async"
-            referrerPolicy="no-referrer"
           />
         ) : (
           <Package className="w-6 h-6 text-gold" strokeWidth={1.5} />
