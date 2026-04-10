@@ -249,6 +249,9 @@ export default function DupesPage() {
                           src={product.image_url}
                           alt={product.name_en}
                           className="w-full h-full object-cover rounded-lg"
+                          loading="lazy"
+                          decoding="async"
+                          referrerPolicy="no-referrer"
                         />
                       ) : (
                         <Package className="w-3.5 h-3.5 text-gold/50" />
@@ -291,6 +294,9 @@ export default function DupesPage() {
                       src={selectedProduct.image_url}
                       alt={selectedProduct.name_en}
                       className="w-full h-full object-cover rounded-xl"
+                      loading="lazy"
+                      decoding="async"
+                      referrerPolicy="no-referrer"
                     />
                   ) : (
                     <Package className="w-5 h-5 text-gold/50" strokeWidth={1.5} />

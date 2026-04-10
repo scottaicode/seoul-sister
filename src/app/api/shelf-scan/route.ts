@@ -147,9 +147,15 @@ function buildSystemPrompt(
   return `You are Yuri's Shelf Scan specialist. You analyze photos of skincare product shelves and collections.
 
 Your task:
-1. Identify EVERY visible Korean beauty / skincare product in the photo
+1. Identify each visually distinct Korean beauty / skincare product in the photo
 2. For each product, determine: brand, product name, category, and your confidence level
 3. Analyze the collection as a whole
+
+DEDUPLICATION RULE (critical):
+- Only list each distinct product ONCE, even if you see it from multiple angles or if multiple bottles of the same product are visible
+- If a product might be a duplicate or variant of one you already listed, DO NOT include it a second time
+- Never include the phrase "duplicate", "variant", "or similar", or "(duplicate" in a product name
+- If unsure whether two items are the same product or different variants, pick the one you're most confident about and skip the other
 
 For each product, determine the category from this list:
 cleanser, toner, essence, serum, ampoule, moisturizer, sunscreen, mask, eye_care, lip_care, exfoliator, oil, mist, spot_treatment
@@ -158,7 +164,7 @@ Respond in JSON format:
 {
   "products_identified": [
     {
-      "name": "product name in English",
+      "name": "product name in English (NO parenthetical duplicate notes)",
       "brand": "brand name in English",
       "category": "one of the categories above",
       "confidence": 0.0 to 1.0,
@@ -183,7 +189,7 @@ Grading criteria:
 - D: Missing several categories or heavy redundancy with no clear routine structure
 - F: Very incomplete or entirely redundant with no skincare structure
 
-Be generous but honest in your grading. If you cannot identify a product with confidence, still include it with a lower confidence score and your best guess.${userContextSection}`
+Be generous but honest in your grading. If you cannot identify a product with confidence, still include it with a lower confidence score and your best guess — but only list each distinct product once.${userContextSection}`
 }
 
 // ---------------------------------------------------------------------------
@@ -307,6 +313,26 @@ export async function POST(request: NextRequest) {
     if (!validGrades.includes(analysis.collection_analysis?.overall_routine_grade)) {
       analysis.collection_analysis.overall_routine_grade = 'C'
     }
+
+    // Post-process: filter out Claude-flagged duplicates and dedupe by brand+name.
+    // Even with the DEDUPLICATION RULE in the prompt, Claude occasionally embeds
+    // "(duplicate or similar variant)" in names. Belt and suspenders.
+    const DUP_PATTERN = /\b(duplicate|similar variant|or variant|appears twice|same as)\b/i
+    const seenKeys = new Set<string>()
+    analysis.products_identified = (analysis.products_identified ?? []).filter((p) => {
+      if (!p?.name) return false
+      if (DUP_PATTERN.test(p.name)) return false
+      // Dedupe by normalized brand + first 3 meaningful tokens of name
+      const key = `${(p.brand || '').toLowerCase().trim()}|${p.name
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .split(/\s+/)
+        .slice(0, 3)
+        .join(' ')}`
+      if (seenKeys.has(key)) return false
+      seenKeys.add(key)
+      return true
+    })
 
     // Try to match identified products against our database
     const supabase = getServiceClient()

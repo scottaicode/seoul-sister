@@ -444,6 +444,8 @@ export default async function BestOfCategoryPage({ params }: Props) {
                       alt={product.name_en}
                       className="w-full h-full object-cover"
                       loading={idx < 5 ? 'eager' : 'lazy'}
+                      decoding="async"
+                      referrerPolicy="no-referrer"
                     />
                   </div>
                 )}

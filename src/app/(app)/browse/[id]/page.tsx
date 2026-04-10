@@ -229,6 +229,9 @@ export default function ProductDetailPage() {
               src={product.image_url}
               alt={product.name_en}
               className="w-full h-full object-cover rounded-2xl"
+              loading="eager"
+              decoding="async"
+              referrerPolicy="no-referrer"
             />
           ) : (
             <Package className="w-10 h-10 text-rose-gold/50" strokeWidth={1.25} />

@@ -69,6 +69,9 @@ export default function DupeCard({ original, dupe, rank }: DupeCardProps) {
                 src={dupe.product.image_url}
                 alt={dupe.product.name_en}
                 className="w-full h-full object-cover rounded-xl"
+                loading="lazy"
+                decoding="async"
+                referrerPolicy="no-referrer"
               />
             ) : (
               <Package className="w-5 h-5 text-gold/50" strokeWidth={1.5} />

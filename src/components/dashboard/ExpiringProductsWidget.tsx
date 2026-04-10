@@ -87,6 +87,9 @@ export default function ExpiringProductsWidget() {
                   src={item.product.image_url}
                   alt={name}
                   className="w-full h-full object-cover rounded-lg"
+                  loading="lazy"
+                  decoding="async"
+                  referrerPolicy="no-referrer"
                 />
               ) : (
                 <Package className={`w-3.5 h-3.5 ${isUrgent ? 'text-red-400' : 'text-amber-400'}`} />

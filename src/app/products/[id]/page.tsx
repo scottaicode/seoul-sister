@@ -403,6 +403,9 @@ export default async function PublicProductPage({ params }: Props) {
                     src={product.image_url}
                     alt={product.name_en}
                     className="w-full h-full object-cover rounded-xl"
+                    loading="eager"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
                   />
                 ) : (
                   <Package className="w-10 h-10 text-white/20" strokeWidth={1.25} />
@@ -590,7 +593,14 @@ export default async function PublicProductPage({ params }: Props) {
                   >
                     <div className="w-full h-16 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden mb-2">
                       {rp.image_url ? (
-                        <img src={rp.image_url} alt={rp.name_en} className="w-full h-full object-cover rounded-lg" />
+                        <img
+                          src={rp.image_url}
+                          alt={rp.name_en}
+                          className="w-full h-full object-cover rounded-lg"
+                          loading="lazy"
+                          decoding="async"
+                          referrerPolicy="no-referrer"
+                        />
                       ) : (
                         <Package className="w-5 h-5 text-white/20" strokeWidth={1.25} />
                       )}

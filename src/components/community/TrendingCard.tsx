@@ -139,6 +139,9 @@ export default function TrendingCard({
                 src={product.image_url}
                 alt={displayName}
                 className="w-full h-full object-cover rounded-lg"
+                loading="lazy"
+                decoding="async"
+                referrerPolicy="no-referrer"
               />
             ) : (
               <Package className="w-5 h-5 text-gold/50" strokeWidth={1.5} />
@@ -152,6 +155,9 @@ export default function TrendingCard({
               src={product.image_url}
               alt={displayName}
               className="w-full h-full object-cover rounded-xl"
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
             />
           ) : (
             <Package className="w-6 h-6 text-gold/50" strokeWidth={1.5} />

@@ -802,6 +802,8 @@ export default async function IngredientDetailPage({
                           alt={p.name_en}
                           className="w-12 h-12 rounded-lg object-cover shrink-0"
                           loading="lazy"
+                          decoding="async"
+                          referrerPolicy="no-referrer"
                         />
                       )}
                       <div className="min-w-0">

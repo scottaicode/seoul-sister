@@ -89,6 +89,9 @@ export default function ProductCard({ product, trendingInfo, basePath = '/produc
             src={product.image_url}
             alt={product.name_en}
             className="w-full h-full object-cover rounded-xl"
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
           />
         ) : (
           <Package className="w-6 h-6 text-gold" strokeWidth={1.5} />

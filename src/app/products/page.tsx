@@ -207,6 +207,9 @@ export default async function ProductsPage() {
                       src={product.image_url}
                       alt={product.name_en}
                       className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                      loading="lazy"
+                      decoding="async"
+                      referrerPolicy="no-referrer"
                     />
                   ) : (
                     <div className="w-16 h-16 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">

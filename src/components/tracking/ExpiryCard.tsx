@@ -77,6 +77,9 @@ export default function ExpiryCard({ item, onStatusChange, onDelete }: ExpiryCar
               src={item.product.image_url}
               alt={name}
               className="w-full h-full object-cover rounded-lg"
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
             />
           ) : (
             <Package className={`w-4 h-4 ${colors.text}`} />

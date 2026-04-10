@@ -68,6 +68,9 @@ export default function ReviewCard({ review, showProduct = false, onVote, effect
                 src={review.product.image_url}
                 alt={review.product.name_en}
                 className="w-full h-full object-cover"
+                loading="lazy"
+                decoding="async"
+                referrerPolicy="no-referrer"
               />
             ) : (
               <Sparkles className="w-3.5 h-3.5 text-gold/50" />

@@ -303,19 +303,35 @@ export default function ShelfScanPage() {
             </>
           ) : (
             <>
-              {/* Image preview */}
+              {/* Image preview — stays visible during analysis so users can
+                  confirm they uploaded the right shelf while Yuri works */}
               <div className="relative glass-card overflow-hidden">
                 <img
                   src={image}
                   alt="Skincare shelf for analysis"
-                  className="w-full max-h-72 object-contain bg-white/5"
+                  className={`w-full max-h-72 object-contain bg-white/5 transition-opacity duration-300 ${
+                    analyzing ? 'opacity-40' : 'opacity-100'
+                  }`}
                 />
-                <button
-                  onClick={resetAnalysis}
-                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors duration-200"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                {!analyzing && (
+                  <button
+                    onClick={resetAnalysis}
+                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors duration-200"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+                {/* Overlay spinner during analysis */}
+                {analyzing && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-black/60 backdrop-blur-sm rounded-2xl px-5 py-4 flex flex-col items-center gap-2">
+                      <Loader2 className="w-7 h-7 animate-spin text-gold" />
+                      <p className="text-xs font-semibold text-white">
+                        Yuri is analyzing your shelf
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Analyze button */}
@@ -329,15 +345,23 @@ export default function ShelfScanPage() {
                 </button>
               )}
 
-              {/* Analyzing state */}
+              {/* Analyzing state — duration-aware messaging */}
               {analyzing && (
-                <div className="glass-card p-6 flex flex-col items-center gap-3">
-                  <Loader2 className="w-8 h-8 animate-spin text-gold" />
-                  <p className="font-display font-semibold text-sm text-white">
-                    Analyzing your collection...
+                <div className="glass-card p-5 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-gold" />
+                    <p className="font-display font-semibold text-sm text-white">
+                      Identifying each product...
+                    </p>
+                  </div>
+                  <p className="text-xs text-white/50 leading-relaxed">
+                    This usually takes 15-25 seconds for rich photos. Yuri is reading
+                    each label, matching products against the Seoul Sister database,
+                    and analyzing your collection for gaps, redundancies, and
+                    personalized recommendations.
                   </p>
-                  <p className="text-xs text-white/40">
-                    Identifying products, checking for gaps and redundancies
+                  <p className="text-[10px] text-white/30 pt-1">
+                    Please keep this tab open until analysis completes.
                   </p>
                 </div>
               )}

@@ -16,6 +16,13 @@ const nextConfig = {
       { protocol: 'https', hostname: 'gzqjvbhmndnovhlgumdk.supabase.co' },
       { protocol: 'https', hostname: 'tjzhhfczyjvfjjmuvegd.supabase.co' }, // LGAAS Supabase — blog hero images
       { protocol: 'https', hostname: 'seoulsister.com' },
+      // Product image CDNs — mirrors the CSP img-src allowlist below.
+      // 5,294 products hotlink to cdn-image.oliveyoung.com; without these
+      // patterns, any future next/image usage falls back to plain <img>.
+      { protocol: 'https', hostname: 'cdn-image.oliveyoung.com' },
+      { protocol: 'https', hostname: 'image.oliveyoung.com' },
+      { protocol: 'https', hostname: 'cdn.shopify.com' },
+      { protocol: 'https', hostname: 'image.yesstyle.com' },
     ],
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [390, 640, 750, 828, 1080, 1200, 1920],

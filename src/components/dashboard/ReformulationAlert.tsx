@@ -85,6 +85,9 @@ export default function ReformulationAlertWidget() {
                     src={product.image_url}
                     alt={name}
                     className="w-full h-full object-cover rounded-lg"
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
                   />
                 ) : (
                   <Package className="w-3.5 h-3.5 text-amber-400" />
