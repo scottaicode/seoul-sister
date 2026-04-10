@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { handleApiError } from '@/lib/utils/error-handler'
 import { fetchSeasonalLearning } from '@/lib/intelligence/weather-routine'
+import { getServiceClient } from '@/lib/supabase'
 
 /**
  * GET /api/dashboard/intelligence
@@ -40,8 +41,9 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Load profile
-    const { data: profile } = await supabase
+    // Load profile via service client (RLS on ss_user_profiles blocks anon reads)
+    const db = getServiceClient()
+    const { data: profile } = await db
       .from('ss_user_profiles')
       .select('skin_type, skin_concerns, climate')
       .eq('user_id', userId)
@@ -50,11 +52,11 @@ export async function GET(request: NextRequest) {
     const skinType = profile?.skin_type ?? null
     const climate = profile?.climate ?? null
 
-    // Fetch all three datasets in parallel
+    // Fetch all three datasets in parallel (service client bypasses RLS)
     const [effectivenessResult, seasonalInsight, trendingResult] = await Promise.all([
       // 1. Top ingredients for skin type
       skinType
-        ? supabase
+        ? db
             .from('ss_ingredient_effectiveness')
             .select('ingredient_id, concern, effectiveness_score, sample_size')
             .eq('skin_type', skinType)
@@ -64,10 +66,10 @@ export async function GET(request: NextRequest) {
         : Promise.resolve({ data: null }),
 
       // 2. Seasonal insight for climate
-      fetchSeasonalLearning(supabase, climate),
+      fetchSeasonalLearning(db, climate),
 
       // 3. Trending products (for relevance cross-reference)
-      supabase
+      db
         .from('ss_trending_products')
         .select('product_id')
         .not('product_id', 'is', null)
@@ -89,7 +91,7 @@ export async function GET(request: NextRequest) {
       const ingredientIds = effRows.map(
         (r: { ingredient_id: string }) => r.ingredient_id,
       )
-      const { data: ingredients } = await supabase
+      const { data: ingredients } = await db
         .from('ss_ingredients')
         .select('id, name_en, name_inci')
         .in('id', ingredientIds)
@@ -130,7 +132,7 @@ export async function GET(request: NextRequest) {
       )
 
       // Find which trending products contain effective ingredients
-      const { data: links } = await supabase
+      const { data: links } = await db
         .from('ss_product_ingredients')
         .select('product_id, ingredient_id')
         .in('product_id', trendingProductIds)

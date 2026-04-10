@@ -110,6 +110,33 @@ export async function PUT(request: NextRequest) {
       updateData.weather_alerts_enabled = updates.weather_alerts_enabled
     }
 
+    // If the user captured new coordinates, reverse-geocode a display name
+    // so dashboard widgets can show "Sacramento, California" without re-fetching
+    if (updates.latitude !== undefined && updates.longitude !== undefined) {
+      try {
+        const geoRes = await fetch(
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${updates.latitude}&longitude=${updates.longitude}&localityLanguage=en`,
+          { next: { revalidate: 86400 } }
+        )
+        if (geoRes.ok) {
+          const geoData = (await geoRes.json()) as {
+            city?: string
+            locality?: string
+            principalSubdivision?: string
+            countryName?: string
+          }
+          const city = geoData.city || geoData.locality
+          if (city) {
+            const parts = [city]
+            if (geoData.principalSubdivision) parts.push(geoData.principalSubdivision)
+            updateData.location_text = parts.join(', ')
+          }
+        }
+      } catch {
+        // Reverse geocoding is non-critical — coordinates are still saved
+      }
+    }
+
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
     }
@@ -121,7 +148,10 @@ export async function PUT(request: NextRequest) {
 
     if (error) throw error
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      location_text: (updateData.location_text as string) ?? null,
+    })
   } catch (error) {
     return handleApiError(error)
   }

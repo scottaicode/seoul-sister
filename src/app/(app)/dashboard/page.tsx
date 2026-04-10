@@ -16,7 +16,6 @@ import {
   FlaskConical,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
-import EmptyState from '@/components/ui/EmptyState'
 import QuickActionCard from '@/components/dashboard/QuickActionCard'
 import TrendingProductCard from '@/components/dashboard/TrendingProductCard'
 import type { TrendingProduct } from '@/components/dashboard/TrendingProductCard'
@@ -28,6 +27,7 @@ import GlassSkinWidget from '@/components/dashboard/GlassSkinWidget'
 import WeatherRoutineWidget from '@/components/dashboard/WeatherRoutineWidget'
 import ShelfScanWidget from '@/components/dashboard/ShelfScanWidget'
 import IntelligenceWidgets from '@/components/dashboard/IntelligenceWidgets'
+import RecentScansWidget from '@/components/dashboard/RecentScansWidget'
 
 // ---------------------------------------------------------------------------
 // Helpers & data
@@ -361,15 +361,15 @@ export default function DashboardPage() {
           <h2 className="font-display font-semibold text-base text-white">
             Recent Scans
           </h2>
+          <Link
+            href="/scan"
+            className="text-xs text-gold-light font-medium hover:text-gold transition-colors duration-200 flex items-center gap-0.5"
+          >
+            Scan <ChevronRight className="w-3 h-3" />
+          </Link>
         </div>
 
-        <EmptyState
-          icon={Camera}
-          title="No scans yet"
-          description="Scan a Korean product label to get instant ingredient analysis, safety scoring, and personalised insights."
-          actionLabel="Scan a product"
-          actionHref="/scan"
-        />
+        <RecentScansWidget />
       </section>
 
       {/* Bottom spacer for mobile nav */}

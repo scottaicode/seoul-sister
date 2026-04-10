@@ -304,6 +304,28 @@ export async function POST(request: NextRequest) {
       // Reformulation detection is non-critical — don't fail the scan
     }
 
+    // Persist scan history (non-critical — don't fail the scan)
+    try {
+      const ingredients = analysis.ingredients as Array<{ name_inci: string }> | undefined
+      const ingredientNames = ingredients?.map((i) => i.name_inci) ?? []
+      const serviceClient = getServiceClient()
+      await serviceClient.from('ss_user_scans').insert({
+        user_id: user.id,
+        product_id: productMatch?.id ?? null,
+        scan_type: 'label',
+        extracted_text: (analysis.extracted_text as string) ?? null,
+        ingredients_found: ingredientNames,
+        analysis_result: {
+          analysis,
+          conflicts,
+          enrichment,
+          reformulation,
+        },
+      })
+    } catch {
+      // Scan history persistence is non-critical
+    }
+
     return NextResponse.json({
       success: true,
       analysis,

@@ -38,6 +38,7 @@ interface UserProfile {
   latitude: number | null
   longitude: number | null
   weather_alerts_enabled: boolean | null
+  location_text: string | null
 }
 
 function capitalize(s: string | null): string {
@@ -142,10 +143,12 @@ function CycleTrackingToggle({
 function WeatherLocationToggle({
   enabled,
   hasLocation,
+  locationText,
   onUpdate,
 }: {
   enabled: boolean
   hasLocation: boolean
+  locationText: string | null
   onUpdate: (updates: Partial<UserProfile>) => void
 }) {
   const [toggling, setToggling] = useState(false)
@@ -193,7 +196,13 @@ function WeatherLocationToggle({
             }),
           })
           if (res.ok) {
-            onUpdate({ latitude: lat, longitude: lng, weather_alerts_enabled: true })
+            const body = await res.json().catch(() => ({}))
+            onUpdate({
+              latitude: lat,
+              longitude: lng,
+              weather_alerts_enabled: true,
+              location_text: body?.location_text ?? null,
+            })
           }
         } finally {
           setLocating(false)
@@ -217,9 +226,11 @@ function WeatherLocationToggle({
           <p className="text-sm text-white font-medium">
             Weather-Adaptive Routine Tips
           </p>
-          <p className="text-[10px] text-white/30 mt-0.5">
+          <p className="text-[10px] text-white/30 mt-0.5 truncate">
             {enabled && hasLocation
-              ? 'Active \u00B7 Adjustments appear on your dashboard'
+              ? locationText
+                ? `Active \u00B7 ${locationText}`
+                : 'Active \u00B7 Adjustments appear on your dashboard'
               : 'Get skincare tips based on your local weather conditions'}
           </p>
         </div>
@@ -312,7 +323,7 @@ export default function ProfilePage() {
     async function load() {
       const { data } = await supabase
         .from('ss_user_profiles')
-        .select('skin_type, skin_concerns, allergies, fitzpatrick_scale, climate, age_range, budget_range, experience_level, onboarding_completed, plan, cycle_tracking_enabled, avg_cycle_length, latitude, longitude, weather_alerts_enabled')
+        .select('skin_type, skin_concerns, allergies, fitzpatrick_scale, climate, age_range, budget_range, experience_level, onboarding_completed, plan, cycle_tracking_enabled, avg_cycle_length, latitude, longitude, weather_alerts_enabled, location_text')
         .eq('user_id', user!.id)
         .maybeSingle()
       setProfile(data as UserProfile | null)
@@ -435,6 +446,7 @@ export default function ProfilePage() {
           <WeatherLocationToggle
             enabled={profile.weather_alerts_enabled ?? false}
             hasLocation={profile.latitude != null && profile.longitude != null}
+            locationText={profile.location_text ?? null}
             onUpdate={(updates) =>
               setProfile((prev) => prev ? { ...prev, ...updates } : prev)
             }

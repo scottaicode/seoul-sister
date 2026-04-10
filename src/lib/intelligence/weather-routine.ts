@@ -24,11 +24,6 @@ interface OpenMeteoResponse {
   current_units: Record<string, string>
 }
 
-interface GeocodingResult {
-  name: string
-  country: string
-}
-
 /** WMO Weather interpretation codes → human-readable descriptions */
 const WMO_CODES: Record<number, { description: string; icon: string }> = {
   0: { description: 'Clear sky', icon: 'clear' },
@@ -79,17 +74,26 @@ export async function fetchWeather(
   const data: OpenMeteoResponse = await weatherRes.json()
   const c = data.current
 
-  // Reverse-geocode to get a city name (best-effort)
+  // Reverse-geocode to get a city name (best-effort, BigDataCloud free API)
   let locationName = `${lat.toFixed(1)}, ${lng.toFixed(1)}`
   try {
     const geoRes = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?latitude=${lat}&longitude=${lng}&count=1&format=json`,
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`,
       { next: { revalidate: 86400 } } // cache 24 h
     )
     if (geoRes.ok) {
-      const geoData = await geoRes.json()
-      const result = (geoData.results as GeocodingResult[] | undefined)?.[0]
-      if (result) locationName = result.name
+      const geoData = (await geoRes.json()) as {
+        city?: string
+        locality?: string
+        principalSubdivision?: string
+        countryName?: string
+      }
+      const city = geoData.city || geoData.locality
+      if (city) {
+        const parts = [city]
+        if (geoData.principalSubdivision) parts.push(geoData.principalSubdivision)
+        locationName = parts.join(', ')
+      }
     }
   } catch {
     // Location name is non-critical
