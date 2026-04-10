@@ -116,7 +116,16 @@ export default function Header() {
                 </button>
 
                 {profileMenuOpen && (
-                  <div className="absolute right-0 top-11 w-48 bg-seoul-card border border-white/10 rounded-xl shadow-lg py-1 z-50">
+                  <div className="absolute right-0 top-11 w-56 bg-seoul-card border border-white/10 rounded-xl shadow-lg py-1 z-50">
+                    {user?.email && (
+                      <>
+                        <div className="px-4 py-2.5">
+                          <p className="text-[10px] text-white/30 uppercase tracking-wider mb-0.5">Signed in as</p>
+                          <p className="text-xs text-white/80 truncate" title={user.email}>{user.email}</p>
+                        </div>
+                        <div className="border-t border-white/10" />
+                      </>
+                    )}
                     <Link
                       href="/profile"
                       onClick={() => setProfileMenuOpen(false)}
@@ -188,6 +197,12 @@ export default function Header() {
           {/* Menu panel */}
           <div className="absolute top-16 left-0 right-0 bg-seoul-card/95 backdrop-blur-lg border-b border-white/10 animate-slide-down">
             <nav className="flex flex-col py-4 px-4 gap-1">
+              {user?.email && (
+                <div className="px-4 py-2 mb-1 border-b border-white/10">
+                  <p className="text-[10px] text-white/30 uppercase tracking-wider mb-0.5">Signed in as</p>
+                  <p className="text-xs text-white/80 truncate" title={user.email}>{user.email}</p>
+                </div>
+              )}
               {navLinks.map((link) => (
                 <Link
                   key={link.href}

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles, Loader2, Check, AlertTriangle } from 'lucide-react'
+import Link from 'next/link'
+import { Sparkles, Loader2, Check, AlertTriangle, ExternalLink } from 'lucide-react'
 
 interface GeneratedStep {
   step_order: number
@@ -162,16 +163,23 @@ export function RoutineGenerator({ routineType, onAccept, onCancel }: RoutineGen
 
       <p className="text-sm text-white/50">{generated.rationale}</p>
 
-      {/* Steps preview */}
+      {/* Steps preview — each row links to the product detail page so users
+          can verify ingredients, sunscreen type, price, etc. before accepting. */}
+      <p className="text-[10px] text-white/30 -mt-1">Tap any product to verify details before accepting.</p>
       <div className="space-y-2">
         {generated.steps.map((step, i) => (
           <div key={i}>
-            <div className="flex items-center gap-3 py-2 px-3 bg-white/5 rounded-lg">
+            <Link
+              href={`/products/${step.product_id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 py-2 px-3 bg-white/5 rounded-lg hover:bg-white/10 transition-colors group"
+            >
               <span className="w-5 h-5 rounded-full bg-gold/10 flex items-center justify-center text-[10px] font-bold text-gold flex-shrink-0">
                 {step.step_order}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-white font-medium truncate">
+                <p className="text-sm text-white font-medium truncate group-hover:text-gold-light transition-colors">
                   {step.product_name}
                 </p>
                 <p className="text-[10px] text-white/40">
@@ -179,7 +187,8 @@ export function RoutineGenerator({ routineType, onAccept, onCancel }: RoutineGen
                   {step.frequency !== 'daily' && ` &middot; ${step.frequency.replace(/_/g, ' ')}`}
                 </p>
               </div>
-            </div>
+              <ExternalLink className="w-3 h-3 text-white/20 group-hover:text-gold-light transition-colors flex-shrink-0" />
+            </Link>
             {step.wait_minutes_after > 0 && (
               <div className="flex items-center gap-2 py-1 px-3 ml-3 text-[10px] text-blue-400">
                 ⏱ Wait {step.wait_minutes_after} min before next step
