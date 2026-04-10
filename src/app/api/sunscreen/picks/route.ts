@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { handleApiError } from '@/lib/utils/error-handler'
+import { getServiceClient } from '@/lib/supabase'
 
 /**
  * GET /api/sunscreen/picks?skin_type=oily
@@ -18,10 +18,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ picks: [], reasoning: [] })
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+    // Service client — defensive against RLS on ss_ingredient_effectiveness.
+    // This endpoint returns public aggregate data (top sunscreens for a skin type),
+    // so no user-specific auth is required, but RLS may block anon reads.
+    const supabase = getServiceClient()
 
     // 1. Find sunscreen-relevant ingredients that are effective for this skin type
     const { data: effectiveness } = await supabase

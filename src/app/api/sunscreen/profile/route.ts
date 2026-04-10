@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { handleApiError } from '@/lib/utils/error-handler'
 import { fetchWeather } from '@/lib/intelligence/weather-routine'
+import { getServiceClient } from '@/lib/supabase'
 
 /**
  * GET /api/sunscreen/profile
@@ -17,17 +18,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ profile: null, uv: null })
     }
 
-    const supabase = createClient(
+    // Use anon client ONLY for token verification (auth.getUser is allowed on anon)
+    const authClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token)
     if (authError || !user) {
       return NextResponse.json({ profile: null, uv: null })
     }
 
-    const { data: profile } = await supabase
+    // Profile read via service client — RLS on ss_user_profiles blocks anon reads.
+    // Auth is enforced via the token check above.
+    const db = getServiceClient()
+    const { data: profile } = await db
       .from('ss_user_profiles')
       .select('skin_type, climate, latitude, longitude, skin_concerns, allergies, location_text')
       .eq('user_id', user.id)
