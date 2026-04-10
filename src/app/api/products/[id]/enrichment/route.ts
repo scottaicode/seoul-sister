@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getServiceClient } from '@/lib/supabase'
 import { handleApiError } from '@/lib/utils/error-handler'
 import { enrichScanResult } from '@/lib/scanning/enrich-scan'
 
@@ -14,17 +15,25 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid product ID' }, { status: 400 })
     }
 
-    const supabase = createClient(
+    // Anon client is ONLY used to verify the user's JWT token. All actual
+    // table reads below use the service client to bypass RLS on
+    // ss_user_profiles / ss_product_ingredients / ss_products. Without this,
+    // authenticated users silently get null profile data and the enrichment
+    // section falls through to the "complete your profile" gate even though
+    // their profile is fully filled out. Same recurring fix pattern as
+    // commits cc7491a, 2f4bec2, 6853f7c.
+    const authClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
+    const supabase = getServiceClient()
 
     // Soft auth — enrichment works for anonymous users too (minus personalization)
     let userId: string | null = null
     let skinType: string | undefined
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (token) {
-      const { data: { user } } = await supabase.auth.getUser(token)
+      const { data: { user } } = await authClient.auth.getUser(token)
       if (user) {
         userId = user.id
         const { data: profile } = await supabase

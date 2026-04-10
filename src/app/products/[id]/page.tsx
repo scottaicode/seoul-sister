@@ -10,6 +10,8 @@ import {
   TrendingUp,
   BookOpen,
   Calendar,
+  Sun,
+  AlertTriangle,
 } from 'lucide-react'
 import { toSlug } from '@/lib/utils/slug'
 import PublicNav from '@/components/layout/PublicNav'
@@ -109,7 +111,7 @@ export default async function PublicProductPage({ params }: Props) {
     supabase
       .from('ss_products')
       .select(
-        'id, name_en, name_ko, brand_en, description_en, category, price_usd, price_krw, image_url, rating_avg, review_count, volume_display, is_verified, last_reformulated_at, updated_at'
+        'id, name_en, name_ko, brand_en, description_en, category, price_usd, price_krw, image_url, rating_avg, review_count, volume_display, is_verified, last_reformulated_at, updated_at, spf_rating, pa_rating, sunscreen_type, white_cast, finish, under_makeup, water_resistant'
       )
       .eq('id', id)
       .single(),
@@ -479,6 +481,131 @@ export default async function PublicProductPage({ params }: Props) {
               </p>
             </div>
           )}
+
+          {/* Sunscreen-specific details — only renders for sunscreens.
+              Shows structured UV-filter data (chemical vs physical vs hybrid),
+              PA rating, white cast, finish, etc. For users with skin cancer
+              history or high Fitzpatrick sensitivity, the sunscreen_type field
+              is the single most important piece of product data on this page.
+              When data is NULL, we show a transparent "unverified" warning
+              instead of silently hiding the section — honesty beats pretending
+              the data exists. */}
+          {product.category === 'sunscreen' && (() => {
+            const hasAnySunscreenData =
+              product.spf_rating ||
+              product.pa_rating ||
+              product.sunscreen_type ||
+              product.white_cast ||
+              product.finish ||
+              product.under_makeup !== null ||
+              product.water_resistant !== null
+
+            const sunscreenTypeLabel: Record<string, { label: string; color: string; description: string }> = {
+              physical: {
+                label: 'Physical (Mineral)',
+                color: 'emerald',
+                description: 'Zinc oxide / titanium dioxide. Reflects UV rays at the skin surface. Generally preferred for sensitive skin and skin cancer history.',
+              },
+              chemical: {
+                label: 'Chemical',
+                color: 'amber',
+                description: 'Organic UV filters that absorb UV rays. Lighter texture, no white cast. Some users with skin cancer history prefer to avoid.',
+              },
+              hybrid: {
+                label: 'Hybrid (Chemical + Mineral)',
+                color: 'sky',
+                description: 'Blend of physical and chemical filters. Balances protection and cosmetic feel.',
+              },
+            }
+
+            const typeInfo = product.sunscreen_type
+              ? sunscreenTypeLabel[product.sunscreen_type]
+              : null
+
+            return (
+              <div className="bg-white/5 rounded-xl border border-white/10 p-5 mb-6">
+                <h2 className="font-display font-semibold text-lg text-white mb-3 flex items-center gap-2">
+                  <Sun className="w-4 h-4 text-amber-400" />
+                  Sunscreen Details
+                </h2>
+
+                {hasAnySunscreenData ? (
+                  <div className="space-y-3">
+                    {/* UV Filter Type — most important field */}
+                    {typeInfo && (
+                      <div className={`rounded-lg border p-3 bg-${typeInfo.color}-500/5 border-${typeInfo.color}-500/20`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] text-white/40 uppercase tracking-wider">UV Filter Type</span>
+                        </div>
+                        <p className={`text-sm font-semibold text-${typeInfo.color}-300`}>{typeInfo.label}</p>
+                        <p className="text-xs text-white/50 mt-1">{typeInfo.description}</p>
+                      </div>
+                    )}
+
+                    {/* Grid of secondary fields */}
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      {product.spf_rating && (
+                        <div>
+                          <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">SPF</p>
+                          <p className="text-white font-medium">SPF {product.spf_rating}</p>
+                        </div>
+                      )}
+                      {product.pa_rating && (
+                        <div>
+                          <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">PA Rating</p>
+                          <p className="text-white font-medium">{product.pa_rating}</p>
+                        </div>
+                      )}
+                      {product.white_cast && (
+                        <div>
+                          <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">White Cast</p>
+                          <p className="text-white font-medium capitalize">{product.white_cast}</p>
+                        </div>
+                      )}
+                      {product.finish && (
+                        <div>
+                          <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Finish</p>
+                          <p className="text-white font-medium capitalize">{product.finish}</p>
+                        </div>
+                      )}
+                      {product.under_makeup !== null && (
+                        <div>
+                          <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Under Makeup</p>
+                          <p className="text-white font-medium">{product.under_makeup ? 'Yes' : 'No'}</p>
+                        </div>
+                      )}
+                      {product.water_resistant !== null && (
+                        <div>
+                          <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Water Resistant</p>
+                          <p className="text-white font-medium">{product.water_resistant ? 'Yes' : 'No'}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Warn when type is unknown but other fields exist */}
+                    {!typeInfo && (
+                      <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-amber-200/80">
+                          UV filter type (chemical vs physical) is not verified for this product. If you need to avoid specific filters for medical reasons, check the ingredient list at the retailer before purchasing.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-200">Filter data unavailable</p>
+                      <p className="text-xs text-amber-200/70 mt-1 leading-relaxed">
+                        We don&apos;t have verified UV filter type, SPF, or PA rating data for this product yet. Our pipeline is still enriching ~700 listing-only products. For sun-protection-critical use cases (skin cancer history, high sensitivity, daily outdoor exposure), we recommend checking the full ingredient list at the retailer before purchasing. Look for zinc oxide or titanium dioxide if you need a mineral filter.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {/* Key Ingredients Preview — FREE (top 5 names only) */}
           {topIngredients.length > 0 && (

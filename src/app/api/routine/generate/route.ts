@@ -45,10 +45,14 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .eq('status', 'active')
 
-    // Get top catalog products as supplement (for gaps in user's collection)
+    // Get top catalog products as supplement (for gaps in user's collection).
+    // We include sunscreen-specific fields so the Routine Architect can reason
+    // about UV filter type (mineral vs chemical vs hybrid) when recommending
+    // sunscreens. This matters enormously for users with skin cancer history,
+    // high Fitzpatrick sensitivity, or known chemical-filter reactions.
     const { data: products } = await supabase
       .from('ss_products')
-      .select('id, name_en, brand_en, category, price_usd, rating_avg, description_en')
+      .select('id, name_en, brand_en, category, price_usd, rating_avg, description_en, sunscreen_type, spf_rating, pa_rating')
       .eq('is_verified', true)
       .order('rating_avg', { ascending: false })
       .limit(100)
@@ -130,11 +134,64 @@ Budget: ${budget_range ?? 'mid-range'}`
       })
       .join('\n')
 
-    // Catalog products (exclude ones user already owns)
-    const productCatalog = (products ?? [])
+    // Catalog products (exclude ones user already owns). For sunscreens we
+    // annotate each entry with its verified UV filter type so the Routine
+    // Architect can reason about medical fit. "UNVERIFIED FILTER TYPE" is an
+    // explicit signal — NOT a hidden NULL — because the AI should treat
+    // unverified sunscreens as higher-risk for users with skin cancer history
+    // or high Fitzpatrick sensitivity.
+    interface CatalogProduct {
+      id: string
+      name_en: string
+      brand_en: string
+      category: string
+      price_usd: number | null
+      rating_avg: number | null
+      description_en: string | null
+      sunscreen_type: string | null
+      spf_rating: number | null
+      pa_rating: string | null
+    }
+
+    const productCatalog = ((products ?? []) as CatalogProduct[])
       .filter((p) => !ownedProductIds.has(p.id))
-      .map((p) => `- ${p.name_en} by ${p.brand_en} [${p.category}] $${p.price_usd ?? '?'} (${p.rating_avg ?? '?'}/5) ID:${p.id}`)
+      .map((p) => {
+        const base = `- ${p.name_en} by ${p.brand_en} [${p.category}] $${p.price_usd ?? '?'} (${p.rating_avg ?? '?'}/5) ID:${p.id}`
+        if (p.category === 'sunscreen') {
+          const filterLabel = p.sunscreen_type
+            ? `filter:${p.sunscreen_type.toUpperCase()}`
+            : 'filter:UNVERIFIED'
+          const spf = p.spf_rating ? `SPF${p.spf_rating}` : ''
+          const pa = p.pa_rating || ''
+          const details = [filterLabel, spf, pa].filter(Boolean).join(' ')
+          return `${base} [${details}]`
+        }
+        return base
+      })
       .join('\n')
+
+    // Flag users where sunscreen filter type is medically critical so the
+    // Routine Architect can reason about it rather than ignoring the signal.
+    const allergiesList = (profile?.allergies ?? []) as string[]
+    const hasSkinCancerHistory = allergiesList.some((a) =>
+      /skin cancer|melanoma|basal cell|squamous cell|sun damage history/i.test(a)
+    )
+    const isHighSensitivity =
+      hasSkinCancerHistory ||
+      (profile?.skin_concerns as string[] | undefined)?.some((c) =>
+        /sun damage|sun spots|skin cancer/i.test(c)
+      )
+
+    const sunscreenMedicalContext = isHighSensitivity
+      ? `
+MEDICAL CONTEXT — SUNSCREEN SELECTION:
+This user has elevated sun-protection sensitivity (skin cancer history, sun damage concerns, or similar). When recommending a sunscreen:
+1. STRONGLY PREFER sunscreens marked [filter:PHYSICAL] in the catalog. Zinc oxide / titanium dioxide is the safer choice for this profile.
+2. [filter:HYBRID] is acceptable if physical options are unavailable.
+3. AVOID [filter:CHEMICAL] unless there is no alternative AND you explicitly note the tradeoff in the product notes.
+4. For [filter:UNVERIFIED] sunscreens: only recommend if nothing verified matches. Flag the unverified status in the product notes so the user knows to check the ingredient list at the retailer before buying. NEVER silently recommend an unverified sunscreen to this user — transparency is mandatory.
+5. Explain your sunscreen choice in the routine rationale. This is the single most important decision in this user's AM routine.`
+      : ''
 
     const conflictInfo = (conflicts ?? [])
       .map((c) => {
@@ -160,6 +217,7 @@ RULES:
 7. For beginners, recommend 4-5 products max. For advanced, up to 7-8.
 8. Include wait times where needed (vitamin C: 15 min, AHA/BHA: 20 min).
 9. Respect budget constraints.
+10. For sunscreens in the catalog, each entry is tagged with its filter type: [filter:PHYSICAL], [filter:CHEMICAL], [filter:HYBRID], or [filter:UNVERIFIED]. Use this data. When the user has medical sun-protection needs, match them to an appropriate filter type and explain your choice.${sunscreenMedicalContext}
 
 RESPOND WITH ONLY VALID JSON matching this structure:
 {
