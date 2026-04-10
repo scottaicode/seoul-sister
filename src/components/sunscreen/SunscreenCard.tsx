@@ -7,6 +7,8 @@ import LazyImage from '@/components/ui/LazyImage'
 
 interface SunscreenCardProps {
   product: Product
+  /** Eager-load image for above-the-fold LCP candidates */
+  priority?: boolean
 }
 
 const finishLabels: Record<string, string> = {
@@ -29,7 +31,7 @@ const whiteCastLabels: Record<string, string> = {
   heavy: 'Heavy cast',
 }
 
-export default function SunscreenCard({ product }: SunscreenCardProps) {
+export default function SunscreenCard({ product, priority = false }: SunscreenCardProps) {
   return (
     <Link
       href={`/products/${product.id}`}
@@ -44,6 +46,7 @@ export default function SunscreenCard({ product }: SunscreenCardProps) {
               src={product.image_url}
               alt={product.name_en}
               className="w-full h-full object-cover rounded-xl"
+              priority={priority}
             />
           ) : (
             <Sun className="w-6 h-6 text-gold" strokeWidth={1.5} />

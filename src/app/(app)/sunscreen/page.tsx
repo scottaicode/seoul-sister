@@ -308,8 +308,8 @@ export default function SunscreenFinderPage() {
         />
       ) : (
         <div className="flex flex-col gap-2.5">
-          {products.map((product) => (
-            <SunscreenCard key={product.id} product={product} />
+          {products.map((product, idx) => (
+            <SunscreenCard key={product.id} product={product} priority={idx < 5} />
           ))}
         </div>
       )}

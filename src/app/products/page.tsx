@@ -196,7 +196,7 @@ export default async function ProductsPage() {
             Highest rated K-beauty products based on real Olive Young reviews.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {featured.map((product) => (
+            {featured.map((product, idx) => (
               <Link
                 key={product.id}
                 href={`/products/${product.id}`}
@@ -208,6 +208,7 @@ export default async function ProductsPage() {
                       src={product.image_url}
                       alt={product.name_en}
                       className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                      priority={idx < 6}
                     />
                   ) : (
                     <div className="w-16 h-16 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">

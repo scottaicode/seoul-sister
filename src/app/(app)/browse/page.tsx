@@ -278,12 +278,13 @@ export default function ProductsPage() {
         />
       ) : (
         <div className="flex flex-col gap-2.5">
-          {products.map((product) => (
+          {products.map((product, idx) => (
             <ProductCard
               key={product.id}
               product={product}
               trendingInfo={trendingMap[product.id]}
               basePath="/browse"
+              priority={idx < 5}
             />
           ))}
         </div>

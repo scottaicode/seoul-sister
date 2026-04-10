@@ -16,6 +16,11 @@ interface ProductCardProps {
   trendingInfo?: TrendingInfo
   /** Base path for product links (default: '/products') */
   basePath?: string
+  /**
+   * Eager-load the product image for LCP. Pass true for the first 5-8 cards
+   * in a grid so above-the-fold images aren't held back by lazy loading.
+   */
+  priority?: boolean
 }
 
 const categoryLabels: Record<string, string> = {
@@ -63,7 +68,7 @@ function getTrendingBadge(info: TrendingInfo): { label: string; className: strin
   return null
 }
 
-export default function ProductCard({ product, trendingInfo, basePath = '/products' }: ProductCardProps) {
+export default function ProductCard({ product, trendingInfo, basePath = '/products', priority = false }: ProductCardProps) {
   const badge = trendingInfo ? getTrendingBadge(trendingInfo) : null
 
   return (
@@ -90,6 +95,7 @@ export default function ProductCard({ product, trendingInfo, basePath = '/produc
             src={product.image_url}
             alt={product.name_en}
             className="w-full h-full object-cover rounded-xl"
+            priority={priority}
           />
         ) : (
           <Package className="w-6 h-6 text-gold" strokeWidth={1.5} />

@@ -38,6 +38,15 @@ interface LazyImageProps {
   className?: string
   /** Distance from viewport to start loading (default 200px) */
   rootMargin?: string
+  /**
+   * Eager-load this image immediately, bypassing the IntersectionObserver.
+   * Use for above-the-fold images where lazy loading hurts LCP (Largest
+   * Contentful Paint). As a rule of thumb, the first 5-8 images in any list
+   * page should be marked priority — they're almost certainly in the initial
+   * viewport, and the observer's first-paint timing is unreliable enough in
+   * Firefox that eager-loading is the safer default for LCP candidates.
+   */
+  priority?: boolean
 }
 
 // Transparent 1x1 pixel placeholder — prevents broken image icons before load
@@ -49,11 +58,16 @@ export default function LazyImage({
   alt,
   className = '',
   rootMargin = '200px',
+  priority = false,
 }: LazyImageProps) {
-  const [inView, setInView] = useState(false)
+  // Priority images skip the observer entirely and load immediately. This is
+  // the Core Web Vitals-correct behavior for above-the-fold LCP candidates.
+  const [inView, setInView] = useState(priority)
   const imgRef = useRef<HTMLImageElement>(null)
 
   useEffect(() => {
+    if (priority) return // Already eager-loaded, no observer needed
+
     const node = imgRef.current
     if (!node) return
 
@@ -110,7 +124,7 @@ export default function LazyImage({
       cancelAnimationFrame(rafId)
       observer.disconnect()
     }
-  }, [rootMargin])
+  }, [rootMargin, priority])
 
   return (
     <img
@@ -118,9 +132,10 @@ export default function LazyImage({
       src={inView ? src : BLANK_PIXEL}
       alt={alt}
       className={className}
-      loading="lazy"
+      loading={priority ? 'eager' : 'lazy'}
       decoding="async"
       referrerPolicy="no-referrer"
+      {...(priority && { fetchPriority: 'high' })}
     />
   )
 }
