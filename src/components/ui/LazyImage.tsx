@@ -63,6 +63,17 @@ export default function LazyImage({
       return
     }
 
+    // Firefox-specific fix: IntersectionObserver can fail to fire on initial
+    // paint if the observed node has a zero-size bounding box at observation
+    // time (which happens when the parent container hasn't laid out yet).
+    // Chrome schedules an initial intersection check automatically; Firefox
+    // doesn't. Symptom: images stay as 1x1 placeholders until the user
+    // triggers a reflow (scroll, resize, or hard refresh).
+    //
+    // Fix: after observing, manually check the bounding box on the next
+    // animation frame (after layout has settled) and mark in-view if the
+    // element is within rootMargin of the viewport. This acts as a belt
+    // alongside the observer's suspenders.
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -77,7 +88,28 @@ export default function LazyImage({
     )
 
     observer.observe(node)
-    return () => observer.disconnect()
+
+    // Manual viewport check on next frame as Firefox fallback
+    const rafId = requestAnimationFrame(() => {
+      if (!imgRef.current) return
+      const rect = imgRef.current.getBoundingClientRect()
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight
+      const marginPx = parseInt(rootMargin, 10) || 200
+      const isWithinViewport =
+        rect.bottom >= -marginPx &&
+        rect.top <= viewportHeight + marginPx &&
+        rect.width > 0 &&
+        rect.height > 0
+      if (isWithinViewport) {
+        setInView(true)
+        observer.disconnect()
+      }
+    })
+
+    return () => {
+      cancelAnimationFrame(rafId)
+      observer.disconnect()
+    }
   }, [rootMargin])
 
   return (
