@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getServiceClient } from '@/lib/supabase'
 import { productSearchSchema } from '@/lib/utils/validation'
 import { handleApiError } from '@/lib/utils/error-handler'
 
@@ -90,7 +91,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (params.sort_by === 'recommended' && userId) {
-      return handleRecommendedQuery(supabase, params, userId)
+      // Use service client for recommended query — it reads ss_user_profiles
+      // and ss_ingredient_effectiveness which are blocked by RLS on the anon
+      // client. 7th instance of the recurring anon-client + RLS pattern.
+      return handleRecommendedQuery(getServiceClient(), params, userId)
     }
 
     return handleStandardQuery(supabase, params)

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getServiceClient } from '@/lib/supabase'
 import { handleApiError } from '@/lib/utils/error-handler'
 
 /**
@@ -13,17 +14,24 @@ import { handleApiError } from '@/lib/utils/error-handler'
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient(
+    // Anon client ONLY for auth.getUser token verification. All table reads
+    // use the service client to bypass RLS on ss_user_profiles and
+    // ss_ingredient_effectiveness. Without this, authenticated users silently
+    // get null profile data and the "Loved by your skin type" section returns
+    // empty. 6th instance of this recurring pattern (see commits cc7491a,
+    // 2f4bec2, 6853f7c, 977348d for prior fixes).
+    const authClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
+    const supabase = getServiceClient()
 
     // Soft auth
     let userId: string | null = null
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
     if (token) {
       try {
-        const { data: { user } } = await supabase.auth.getUser(token)
+        const { data: { user } } = await authClient.auth.getUser(token)
         userId = user?.id ?? null
       } catch {
         // Non-critical
