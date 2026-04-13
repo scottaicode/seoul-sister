@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     // Build query
     let dbQuery = supabase
       .from('ss_products')
-      .select('name_en, brand_en, category, price_usd, rating_avg, description_en, image_url')
+      .select('name_en, brand_en, category, price_usd, rating_avg, description_en, image_url, sunscreen_type, white_cast, finish')
 
     if (query) {
       // Text search: match product name or brand name
@@ -109,15 +109,22 @@ export async function POST(request: NextRequest) {
       throw new AppError('Database query failed', 500)
     }
 
-    const formatted = (products || []).map(p => ({
-      name: p.name_en,
-      brand: p.brand_en,
-      category: p.category,
-      us_price: p.price_usd,
-      rating: p.rating_avg,
-      description: p.description_en,
-      image_url: p.image_url,
-    }))
+    const formatted = (products || []).map(p => {
+      const product: Record<string, unknown> = {
+        name: p.name_en,
+        brand: p.brand_en,
+        category: p.category,
+        us_price: p.price_usd,
+        rating: p.rating_avg,
+        description: p.description_en,
+        image_url: p.image_url,
+      }
+      // Include sunscreen-specific fields when available
+      if (p.sunscreen_type) product.sunscreen_type = p.sunscreen_type
+      if (p.white_cast) product.white_cast = p.white_cast
+      if (p.finish) product.finish = p.finish
+      return product
+    })
 
     return NextResponse.json({
       products: formatted,
