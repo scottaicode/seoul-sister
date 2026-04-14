@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { Package, Star } from 'lucide-react'
 import PublicNav from '@/components/layout/PublicNav'
+import { proxyImageUrl } from '@/lib/utils/image-proxy'
 
 export const metadata: Metadata = {
   title: 'K-Beauty Product Database | 5,800+ Korean Skincare Products',
@@ -219,12 +220,11 @@ export default async function ProductsPage() {
                   {product.image_url ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
-                      src={product.image_url}
+                      src={proxyImageUrl(product.image_url) || product.image_url}
                       alt={product.name_en}
                       className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
                       loading="eager"
                       decoding="async"
-                      referrerPolicy="no-referrer"
                     />
                   ) : (
                     <div className="w-16 h-16 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
