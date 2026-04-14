@@ -57,10 +57,12 @@ export default async function ProductsPage() {
   const [countRes, featuredRes, ...categoryCountResults] = await Promise.all([
     supabase.from('ss_products').select('id', { count: 'exact', head: true }),
     // Only show products with images from CDN domains that reliably serve
-    // cross-origin (Olive Young CDN, Shopify CDN, YesStyle CDN). Brand-site
-    // images (medicube.us, cosrx.com, theisntree.com etc.) are blocked by
-    // Firefox's OpaqueResponseBlocking because those Shopify storefronts
-    // serve images through custom domains that strip CORS headers.
+    // cross-origin. Brand-site Shopify storefronts (medicube.us, cosrx.com,
+    // theisntree.com) strip CORS headers, triggering Firefox ORB. YesStyle
+    // proxy URLs (image.yesstyle.com/api/image?path=...) redirect through
+    // img.yesstyle.com which also triggers ORB. Olive Young CDN and Shopify
+    // CDN (cdn.shopify.com) are the only reliable cross-origin sources.
+    // Also exclude bundles/sets/deals — featured grid should show hero products.
     supabase
       .from('ss_products')
       .select('id, name_en, brand_en, category, rating_avg, review_count, price_usd, image_url, description_en')
@@ -68,7 +70,12 @@ export default async function ProductsPage() {
       .gte('rating_avg', 4.5)
       .not('description_en', 'is', null)
       .not('image_url', 'is', null)
-      .or('image_url.ilike.%cdn-image.oliveyoung%,image_url.ilike.%cdn.shopify.com%,image_url.ilike.%yesstyle%')
+      .or('image_url.ilike.%cdn-image.oliveyoung%,image_url.ilike.%cdn.shopify.com%')
+      .not('name_en', 'ilike', '%set%')
+      .not('name_en', 'ilike', '%deal%')
+      .not('name_en', 'ilike', '%duo%')
+      .not('name_en', 'ilike', '%bundle%')
+      .not('name_en', 'ilike', '%kit%')
       .order('review_count', { ascending: false })
       .limit(12),
     ...CATEGORIES.map((cat) =>
