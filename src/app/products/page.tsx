@@ -62,6 +62,7 @@ export default async function ProductsPage() {
       .not('rating_avg', 'is', null)
       .gte('rating_avg', 4.5)
       .not('description_en', 'is', null)
+      .not('image_url', 'is', null)
       .order('review_count', { ascending: false })
       .limit(12),
     ...CATEGORIES.map((cat) =>
