@@ -56,6 +56,11 @@ export default async function ProductsPage() {
   // Fetch total count, featured products, and per-category counts in parallel
   const [countRes, featuredRes, ...categoryCountResults] = await Promise.all([
     supabase.from('ss_products').select('id', { count: 'exact', head: true }),
+    // Only show products with images from CDN domains that reliably serve
+    // cross-origin (Olive Young CDN, Shopify CDN, YesStyle CDN). Brand-site
+    // images (medicube.us, cosrx.com, theisntree.com etc.) are blocked by
+    // Firefox's OpaqueResponseBlocking because those Shopify storefronts
+    // serve images through custom domains that strip CORS headers.
     supabase
       .from('ss_products')
       .select('id, name_en, brand_en, category, rating_avg, review_count, price_usd, image_url, description_en')
@@ -63,6 +68,7 @@ export default async function ProductsPage() {
       .gte('rating_avg', 4.5)
       .not('description_en', 'is', null)
       .not('image_url', 'is', null)
+      .or('image_url.ilike.%cdn-image.oliveyoung%,image_url.ilike.%cdn.shopify.com%,image_url.ilike.%yesstyle%')
       .order('review_count', { ascending: false })
       .limit(12),
     ...CATEGORIES.map((cat) =>
