@@ -3,7 +3,7 @@
 **Created**: February 28, 2026
 **Context**: Bailey's 10 conversations (42+ messages) with Yuri revealed systematic issues with routine assembly, product knowledge, and temporal reasoning. This plan addresses every identified problem with specific file-level changes.
 
-**Goal**: Any Claude Opus 4.6 AI model session can follow this plan and implement the fixes successfully.
+**Goal**: Any Claude Opus 4.7 AI model session can follow this plan and implement the fixes successfully.
 
 ---
 

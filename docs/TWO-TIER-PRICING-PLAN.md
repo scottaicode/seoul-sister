@@ -46,7 +46,7 @@ In March 2026, we explored moving Seoul Sister from a single $39.99/mo plan to a
 
 | Item | Pro ($79.99) | Elite ($149.99) |
 |------|-------------|-----------------|
-| Claude Opus 4.6 API | ~$4.00/mo | ~$8.00/mo |
+| Claude Opus 4.7 API | ~$1.40/mo | ~$2.80/mo |
 | Claude Vision | ~$1.50/mo | ~$6.00/mo |
 | Supabase | ~$0.50/mo | ~$0.75/mo |
 | Vercel | ~$0.25/mo | ~$0.50/mo |

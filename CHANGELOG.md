@@ -4,6 +4,26 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v10.1.0 (Apr 16, 2026) — Claude Opus 4.7 Migration
+
+### Changed
+- **Model upgrade**: All user-facing AI calls migrated from Claude Opus 4.6 (`claude-opus-4-6`) to Claude Opus 4.7 (`claude-opus-4-7`). Released by Anthropic April 14, 2026
+- **Single source of truth**: `MODELS.primary` in `src/lib/anthropic.ts` and 8 contexts in `src/lib/ai-config.ts` (YURI_CHAT, WIDGET_CHAT, SCAN_ANALYSIS, GLASS_SKIN_SCORE, SHELF_SCAN, ROUTINE_GENERATION, DUPE_FINDER_AI, CONTENT_GENERATION) updated
+- **Pricing map updated**: Opus 4.7 is $5/MTok input, $25/MTok output — 3x cheaper than Opus 4.6's $15/$75. `estimateCost()` and `pricing` map in `ai-config.ts` reflect new rates
+- **Unit economics improved**: Per-Pro-user variable cost drops from ~$7.71/mo to ~$4.11/mo. Margin per Pro user improves from 81% to 90%
+- **Quality gains**: Better literal instruction following, adaptive reasoning depth (model decides on the fly), better response calibration, +13% on coding benchmarks
+
+### Removed
+- **`temperature: 0` parameter on Glass Skin Score**: Opus 4.7 rejects `temperature`, `top_p`, and `top_k` parameters with 400 errors. Removed from `src/app/api/skin-score/route.ts`. NOTE: this reverts the v8.5.0 deterministic-scoring fix — Opus 4.7's improved calibration should make scoring more consistent than 4.6 even without temperature locking, but worth re-validating Glass Skin Score photo consistency in production
+
+### Verification
+- Pre-migration curl test against `claude-opus-4-7` with adaptive thinking returned 200
+- Post-migration curl test with EXACT request shape Yuri uses (system prompt + cache_control + tools + cache_control) returned 200
+- `tsc --noEmit` passes clean
+- No `top_p`/`top_k`/`budget_tokens`/`thinking.type: 'enabled'` usage existed in the codebase (nothing to strip)
+
+---
+
 ## v10.0.1 (Mar 11, 2026) — All Development Phases Complete
 
 ### Changed

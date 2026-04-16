@@ -209,9 +209,9 @@ Each specialist has deep domain prompts (200-400 words), extracts intelligence a
 
 | Layer | Technology | Notes |
 |-------|------------|-------|
-| AI Model (Primary) | Claude Opus 4.6 | All user-facing: Yuri, scanning, analysis -- NO FALLBACKS |
+| AI Model (Primary) | Claude Opus 4.7 | All user-facing: Yuri, scanning, analysis -- NO FALLBACKS |
 | AI Model (Background) | Claude Sonnet 4.5 | Data extraction, learning aggregation, translations |
-| AI Model (Vision) | Claude Opus 4.6 | Label scanning, counterfeit detection, skin analysis |
+| AI Model (Vision) | Claude Opus 4.7 | Label scanning, counterfeit detection, skin analysis |
 | Framework | Next.js 15 (App Router) | PWA-configured, TypeScript strict |
 | Database | Supabase PostgreSQL | RLS, real-time subscriptions |
 | Styling | Tailwind CSS 4 | Korean-inspired design system |
@@ -557,7 +557,7 @@ Seoul Sister is a paid-only platform. There is no free tier. Visitors get 20 fre
 **Registration Flow**: Register → Stripe Checkout ($39.99/mo) → Yuri onboarding → Full app access (no email verification)
 
 **What Subscribers Get**:
-- Unlimited AI label scanning (Claude Opus 4.6 Vision)
+- Unlimited AI label scanning (Claude Opus 4.7 Vision)
 - Full Yuri advisor conversations (all 6 specialist agents)
 - 8 database-backed tools (product search, price comparison, trending, conflicts, personalization, web search, weather)
 - Personalized routine builder with conflict detection
@@ -579,13 +579,13 @@ Seoul Sister is a paid-only platform. There is no free tier. Visitors get 20 fre
 ### Unit Economics (Pro at $39.99)
 | Item | Cost |
 |------|------|
-| Claude Opus 4.6 API (scans, Yuri, analysis) | ~$4.00/mo avg |
-| Claude Vision (scanning, counterfeit) | ~$1.50/mo avg |
+| Claude Opus 4.7 API (scans, Yuri, analysis) | ~$1.40/mo avg |
+| Claude Vision (scanning, counterfeit, Opus 4.7) | ~$0.50/mo avg |
 | Supabase (storage, queries, auth) | ~$0.50/mo |
 | Vercel (hosting, functions) | ~$0.25/mo |
 | Stripe processing (2.9% + $0.30) | ~$1.46/mo |
-| **Total variable cost** | **~$7.71/mo** |
-| **Margin per Pro user** | **~$32.28/mo (81%)** |
+| **Total variable cost** | **~$4.11/mo** |
+| **Margin per Pro user** | **~$35.88/mo (90%)** |
 
 ### Secondary Revenue: Affiliate Commissions
 - 5-15% on purchases through affiliate links to Olive Young, Soko Glam, YesStyle, Amazon
@@ -612,7 +612,7 @@ Seoul Sister is a paid-only platform. There is no free tier. Visitors get 20 fre
 
 ## AI Model Usage
 
-- **Claude Opus 4.6** (`claude-opus-4-6`): ALL user-facing interactions -- NO FALLBACKS
+- **Claude Opus 4.7** (`claude-opus-4-7`): ALL user-facing interactions -- NO FALLBACKS
   - Yuri conversations
   - Label scanning and translation
   - Ingredient analysis
@@ -739,14 +739,14 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 - [x] Product search API with filters, pagination, sorting
 - [x] Product detail API with joined ingredients, prices, review summary
 - [x] Ingredient search/list API with function, safety, active filters
-- [x] Korean Label Scanner API (Claude Opus 4.6 Vision, base64 image analysis)
+- [x] Korean Label Scanner API (Claude Opus 4.7 Vision, base64 image analysis)
 - [x] Price comparison API across 6 retailers with best deal, savings %
 - [x] 130 product-ingredient links, 35 retailer price records
 - [x] ProductCard, ProductFilters, IngredientList, PriceComparison components
 - [x] Full product browse, product detail (tabbed), and scan pages
 
 ### Phase 3: Yuri AI Advisor (COMPLETE)
-- [x] Yuri conversation system (SSE streaming via Claude Opus 4.6)
+- [x] Yuri conversation system (SSE streaming via Claude Opus 4.7)
 - [x] 6 specialist agents with deep domain prompts (200-400 words each)
 - [x] Keyword-based specialist routing
 - [x] Cross-session memory (skin profile, past conversations, product reactions)
@@ -1036,7 +1036,7 @@ Body: { routine_type: 'am'|'pm', concerns?: string[], budget_range?: string }
 ```
 - Reads user's skin profile from `ss_user_profiles`
 - Reads user's existing routines to avoid conflicts
-- Calls Claude Opus 4.6 with the Routine Architect system prompt
+- Calls Claude Opus 4.7 with the Routine Architect system prompt
 - Claude returns structured JSON with recommended products (matched from `ss_products` database)
 - Returns routine suggestion with products, order, wait times, and rationale
 - User can then accept (creates routine) or modify
@@ -1111,7 +1111,7 @@ Algorithm:
 3. Calculate ingredient overlap score: `shared_key_actives / total_key_actives` (only count active ingredients and functional ingredients, not fillers like water/glycerin)
 4. Filter to products with >40% active ingredient overlap AND lower price
 5. Sort by match_score descending
-6. Optionally: Call Claude Opus 4.6 for nuanced comparison (texture, feel, notable differences)
+6. Optionally: Call Claude Opus 4.7 for nuanced comparison (texture, feel, notable differences)
 7. Return top 5 dupes with savings calculations
 
 Create `src/app/api/dupes/ai/route.ts`:
@@ -1585,7 +1585,7 @@ Body: { image: base64 data URL }
 Response: { overall_score: number, dimensions: { luminosity, smoothness, clarity, hydration, evenness }, recommendations: string[], comparison_to_previous: { score_change, improved, declined } }
 ```
 
-Uses Claude Opus 4.6 Vision with specialized prompt:
+Uses Claude Opus 4.7 Vision with specialized prompt:
 - Analyze skin photo for 5 glass skin dimensions (each 0-100)
 - Overall glass skin score (weighted average)
 - Compare to previous score if exists
@@ -1723,7 +1723,7 @@ Response: {
 }
 ```
 
-Uses Claude Opus 4.6 Vision with specialized prompt:
+Uses Claude Opus 4.7 Vision with specialized prompt:
 - Identify all visible Korean beauty products in the photo
 - Match against Seoul Sister product database where possible
 - Analyze the collection as a whole: gaps, redundancies, conflicts, estimated value
@@ -5617,7 +5617,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 10.0.1 (All phases complete)
+**Version**: 10.1.0 (All phases complete + Opus 4.7 migration)
 **Status**: ALL PHASES COMPLETE (1-14). Phase 8 all 11 features built (including previously deferred 8.1, 8.2, 8.5, 8.6). Phase 13 all 6 features built (prompt caching, API retry, decision memory, intent-based context, onboarding quality, voice cleanup). Phase 14 all 5 features built (widget persistence, cross-session memory, intent signals, specialist preview, admin dashboard). Memory denial bug fixed (v8.0.1). 5,800+ products (skincare only), 14,400+ ingredients, 207,000+ links, 550+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 14 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level. GA4 (G-L3VXSLT781) + Vercel Analytics + SpeedInsights live. **Monetization hardened**: Free tier eliminated, payment-first registration flow (Register → Stripe $39.99/mo → Onboarding, no email verification), widget system prompt rewritten AI-First with 20 preview messages and natural conversion.
 **AI Advisor**: Yuri (유리) - "Glass"
 
@@ -5636,6 +5636,14 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v10.1.0 (Apr 16, 2026): Claude Opus 4.7 Migration
+  - **Model upgrade**: All user-facing AI calls migrated from Claude Opus 4.6 (`claude-opus-4-6`) to Claude Opus 4.7 (`claude-opus-4-7`). Released by Anthropic April 14, 2026
+  - **Verification first**: Pre-migration curl test against `claude-opus-4-7` with adaptive thinking returned 200. Post-migration curl test with EXACT request shape Yuri uses (system prompt + cache_control + tools + cache_control) returned 200. `tsc --noEmit` passes clean
+  - **Files updated**: `src/lib/anthropic.ts` (`MODELS.primary`), `src/lib/ai-config.ts` (8 contexts: YURI_CHAT, WIDGET_CHAT, SCAN_ANALYSIS, GLASS_SKIN_SCORE, SHELF_SCAN, ROUTINE_GENERATION, DUPE_FINDER_AI, CONTENT_GENERATION + pricing map + `estimateCost()` fallback). Comment fixes: `src/lib/yuri/onboarding.ts`, `src/lib/ai-usage-logger.ts`
+  - **Pricing dropped 3x**: Opus 4.7 is $5/MTok input, $25/MTok output (vs Opus 4.6's $15/$75). Per-Pro-user variable cost ~$7.71/mo → ~$4.11/mo. Margin 81% → 90%
+  - **`temperature: 0` removed from Glass Skin Score**: Opus 4.7 rejects `temperature`, `top_p`, `top_k` with 400 errors. Removed from `src/app/api/skin-score/route.ts`. NOTE: this reverts the v8.5.0 deterministic-scoring fix — Opus 4.7's improved calibration should make scoring more consistent than 4.6 even without temperature locking, but worth re-validating Glass Skin Score photo consistency in production
+  - **No other breaking parameters used**: Codebase had no `top_p`/`top_k`/`budget_tokens`/`thinking.type: 'enabled'` usage, so nothing else to strip
+  - **Quality gains**: Better literal instruction following, adaptive reasoning depth (model decides on the fly), better response calibration, +13% on coding benchmarks
 - v10.0.1 (Mar 11, 2026): All Development Phases Complete — Status Update
   - **Phase 13 confirmed COMPLETE**: All 6 conversation engine hardening features built and deployed — prompt caching (20-30% token cost reduction), API retry with exponential backoff, structured decision memory, intent-based context loading, onboarding quality scoring, voice quality post-processing
   - **Deferred Phase 8 features confirmed COMPLETE**: All 4 previously deferred features built and deployed — Feature 8.1 (Product Detail Page Enrichment), Feature 8.2 (Routine Builder Intelligence), Feature 8.5 (Expiration/PAO Tracking), Feature 8.6 (Reformulation Tracker). Phase 8 now 11/11 features complete

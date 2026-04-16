@@ -22,52 +22,52 @@ export interface AIContext {
  */
 export const AI_CONTEXTS = {
   // ---------------------------------------------------------------
-  // User-facing (Claude Opus 4.6) — quality is paramount
+  // User-facing (Claude Opus 4.7) — quality is paramount
   // ---------------------------------------------------------------
   YURI_CHAT: {
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-7',
     maxTokens: 2048,
     caching: true,
     streaming: true,
     costNote: 'Primary Yuri conversation. ~$0.02-0.05 per message.',
   },
   WIDGET_CHAT: {
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-7',
     maxTokens: 600,
     caching: true,
     streaming: false, // streams via manual loop, not SDK streaming
     costNote: 'Anonymous widget. Shorter responses, 300 max for anon.',
   },
   SCAN_ANALYSIS: {
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-7',
     maxTokens: 4096,
     caching: false,
     streaming: false,
     costNote: 'Vision analysis of product labels. ~$0.03-0.08 per scan.',
   },
   GLASS_SKIN_SCORE: {
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-7',
     maxTokens: 2048,
     caching: false,
     streaming: false,
     costNote: 'Vision analysis of selfies. ~$0.03-0.06 per score.',
   },
   SHELF_SCAN: {
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-7',
     maxTokens: 4096,
     caching: false,
     streaming: false,
     costNote: 'Vision analysis of product shelves. ~$0.05-0.10 per scan.',
   },
   ROUTINE_GENERATION: {
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-7',
     maxTokens: 2048,
     caching: false,
     streaming: false,
     costNote: 'AI routine building. ~$0.03-0.06 per generation.',
   },
   DUPE_FINDER_AI: {
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-7',
     maxTokens: 2048,
     caching: false,
     streaming: false,
@@ -113,7 +113,7 @@ export const AI_CONTEXTS = {
     costNote: 'Generate cross-session memory for anonymous visitors. ~$0.002 per generation.',
   },
   CONTENT_GENERATION: {
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-7',
     maxTokens: 4096,
     caching: false,
     streaming: false,
@@ -169,11 +169,11 @@ export function estimateCost(
 ): number {
   // Pricing as of April 2026
   const pricing: Record<string, { input: number; output: number }> = {
-    'claude-opus-4-6': { input: 15 / 1_000_000, output: 75 / 1_000_000 },
+    'claude-opus-4-7': { input: 5 / 1_000_000, output: 25 / 1_000_000 },
     'claude-sonnet-4-5-20250929': { input: 3 / 1_000_000, output: 15 / 1_000_000 },
     'claude-haiku-4-5-20251001': { input: 0.8 / 1_000_000, output: 4 / 1_000_000 },
   }
 
-  const rate = pricing[model] ?? pricing['claude-opus-4-6']
+  const rate = pricing[model] ?? pricing['claude-opus-4-7']
   return inputTokens * rate.input + outputTokens * rate.output
 }

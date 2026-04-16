@@ -14,7 +14,7 @@ export function getAnthropicClient(): Anthropic {
 }
 
 export const MODELS = {
-  primary: 'claude-opus-4-6' as const,
+  primary: 'claude-opus-4-7' as const,
   background: 'claude-sonnet-4-5-20250929' as const,
 } as const
 

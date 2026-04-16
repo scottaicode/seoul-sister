@@ -494,7 +494,6 @@ export async function POST(request: NextRequest) {
     const response = await anthropic.messages.create({
       model: MODELS.primary,
       max_tokens: 2048,
-      temperature: 0,
       system: systemPrompt,
       messages: [
         {
