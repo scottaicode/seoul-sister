@@ -66,48 +66,94 @@ export async function POST(request: NextRequest) {
 
     // Build query
     // Include `id` so we can fetch ingredient lists per product (LGAAS Blueprint 44).
-    let dbQuery = supabase
-      .from('ss_products')
-      .select('id, name_en, brand_en, category, price_usd, rating_avg, description_en, image_url, sunscreen_type, white_cast, finish')
+    const selectFields = 'id, name_en, brand_en, category, price_usd, rating_avg, description_en, image_url, sunscreen_type, white_cast, finish'
 
-    if (query) {
-      // Text search: match product name or brand name
-      const terms = query.trim().split(/\s+/).filter(t => t.length > 1)
-      if (terms.length > 0) {
-        const nameFilters = terms.map(t => `name_en.ilike.%${t}%`).join(',')
-        const brandFilters = terms.map(t => `brand_en.ilike.%${t}%`).join(',')
-        dbQuery = dbQuery.or(`${nameFilters},${brandFilters}`)
-      }
-    } else {
-      // Structured search: categories, skin types (brands handled below, regardless of query)
-      if (allCategories.size > 0) {
-        dbQuery = dbQuery.in('category', Array.from(allCategories))
+    // Blueprint 44 follow-up (Gap 3c, Apr 21) — text-query ranking.
+    //
+    // Previously a multi-word query like "Purito bamboo cream" built an OR
+    // of ilike matches across name+brand and ranked results by rating_avg.
+    // A highly-rated product matching only ONE word (e.g., Eucerin Volume
+    // Lift Night *Cream*) would outrank the actual target product that
+    // matched all three words. LGAAS then saw contaminated PRODUCT KNOWLEDGE
+    // for Reddit response generation, which left Opus to confabulate
+    // ingredients from adjacent SKUs.
+    //
+    // Fix: two-pass search for multi-word queries.
+    //   Pass 1 — AND semantics: require every term to appear in name OR
+    //            brand. Best precision when OP writes a real product name.
+    //   Pass 2 — OR fallback: if Pass 1 returns zero (typo, close-but-not-
+    //            exact casual phrasing), fall back to OR ranking. Preserves
+    //            the pre-fix behavior as a safety net.
+    //
+    // Single-word queries skip Pass 1 (AND == OR for one term).
+    const runSearch = async (useAndSemantics: boolean) => {
+      let q = supabase.from('ss_products').select(selectFields)
+
+      if (query) {
+        const terms = query.trim().split(/\s+/).filter(t => t.length > 1)
+        if (terms.length > 0) {
+          if (useAndSemantics && terms.length >= 2) {
+            // AND across terms: each term must appear in name OR brand.
+            // PostgREST chains .or() calls as AND-of-OR-groups, so each
+            // term becomes its own OR group (match-in-name OR match-in-brand),
+            // and all groups must match together.
+            for (const t of terms) {
+              q = q.or(`name_en.ilike.%${t}%,brand_en.ilike.%${t}%`)
+            }
+          } else {
+            // Original OR semantics — any term matches.
+            const nameFilters = terms.map(t => `name_en.ilike.%${t}%`).join(',')
+            const brandFilters = terms.map(t => `brand_en.ilike.%${t}%`).join(',')
+            q = q.or(`${nameFilters},${brandFilters}`)
+          }
+        }
+      } else {
+        // Structured search: categories, skin types (brands handled below, regardless of query)
+        if (allCategories.size > 0) {
+          q = q.in('category', Array.from(allCategories))
+        }
+        if (skin_types?.length) {
+          q = q.or(skin_types.map(t => `description_en.ilike.%${t}%`).join(','))
+        }
       }
 
-      if (skin_types?.length) {
-        // Skin type matching via description or name (ss_products doesn't have a skin_type column)
-        dbQuery = dbQuery.or(skin_types.map(t => `description_en.ilike.%${t}%`).join(','))
+      // Blueprint 44 Gap 3b — brands filter is a constraint, not an alternative to query.
+      // Previously this lived inside the `else` branch so query+brands silently dropped brands.
+      // Now it applies in both modes: with a text query, it narrows the text matches to the
+      // requested brand(s); without a text query, it behaves as before.
+      if (brands?.length) {
+        q = q.or(brands.map(b => `brand_en.ilike.%${b}%`).join(','))
       }
+
+      if (price_max !== undefined) {
+        q = q.lte('price_usd', price_max)
+      }
+
+      q = q
+        .not('price_usd', 'is', null)
+        .order('rating_avg', { ascending: false, nullsFirst: false })
+        .limit(limit)
+
+      return q
     }
 
-    // Blueprint 44 Gap 3b — brands filter is a constraint, not an alternative to query.
-    // Previously this lived inside the `else` branch so query+brands silently dropped brands.
-    // Now it applies in both modes: with a text query, it narrows the text matches to the
-    // requested brand(s); without a text query, it behaves as before.
-    if (brands?.length) {
-      dbQuery = dbQuery.or(brands.map(b => `brand_en.ilike.%${b}%`).join(','))
+    // Pass 1 — AND semantics for multi-word queries
+    let { data: products, error } = await runSearch(true)
+    if (error) {
+      console.error('Product search error (AND pass):', error)
+      throw new AppError('Database query failed', 500)
     }
 
-    if (price_max !== undefined) {
-      dbQuery = dbQuery.lte('price_usd', price_max)
+    // Pass 2 — OR fallback if AND returned empty (typo-tolerance)
+    const queryTermCount = query ? query.trim().split(/\s+/).filter(t => t.length > 1).length : 0
+    if ((!products || products.length === 0) && queryTermCount >= 2) {
+      const fallback = await runSearch(false)
+      if (fallback.error) {
+        console.error('Product search error (OR fallback):', fallback.error)
+        throw new AppError('Database query failed', 500)
+      }
+      products = fallback.data
     }
-
-    dbQuery = dbQuery
-      .not('price_usd', 'is', null)
-      .order('rating_avg', { ascending: false, nullsFirst: false })
-      .limit(limit)
-
-    const { data: products, error } = await dbQuery
 
     if (error) {
       console.error('Product search error:', error)
