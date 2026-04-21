@@ -65,9 +65,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Build query
+    // Include `id` so we can fetch ingredient lists per product (LGAAS Blueprint 44).
     let dbQuery = supabase
       .from('ss_products')
-      .select('name_en, brand_en, category, price_usd, rating_avg, description_en, image_url, sunscreen_type, white_cast, finish')
+      .select('id, name_en, brand_en, category, price_usd, rating_avg, description_en, image_url, sunscreen_type, white_cast, finish')
 
     if (query) {
       // Text search: match product name or brand name
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
         dbQuery = dbQuery.or(`${nameFilters},${brandFilters}`)
       }
     } else {
-      // Structured search: categories, skin types, brands
+      // Structured search: categories, skin types (brands handled below, regardless of query)
       if (allCategories.size > 0) {
         dbQuery = dbQuery.in('category', Array.from(allCategories))
       }
@@ -87,10 +88,14 @@ export async function POST(request: NextRequest) {
         // Skin type matching via description or name (ss_products doesn't have a skin_type column)
         dbQuery = dbQuery.or(skin_types.map(t => `description_en.ilike.%${t}%`).join(','))
       }
+    }
 
-      if (brands?.length) {
-        dbQuery = dbQuery.or(brands.map(b => `brand_en.ilike.%${b}%`).join(','))
-      }
+    // Blueprint 44 Gap 3b — brands filter is a constraint, not an alternative to query.
+    // Previously this lived inside the `else` branch so query+brands silently dropped brands.
+    // Now it applies in both modes: with a text query, it narrows the text matches to the
+    // requested brand(s); without a text query, it behaves as before.
+    if (brands?.length) {
+      dbQuery = dbQuery.or(brands.map(b => `brand_en.ilike.%${b}%`).join(','))
     }
 
     if (price_max !== undefined) {
@@ -109,6 +114,53 @@ export async function POST(request: NextRequest) {
       throw new AppError('Database query failed', 500)
     }
 
+    // Blueprint 44 Gap 3a — batch-fetch ingredient lists for all returned products
+    // so LGAAS-style consumers can ground ingredient claims in real data instead of
+    // training-knowledge-extending from adjacent SKUs. Top 15 ingredients per product
+    // by INCI position (position 1 = highest concentration). Fast single query using
+    // PostgREST's .in() over the product ID list; costs one extra round-trip.
+    const productIds = (products || []).map(p => p.id).filter(Boolean)
+    const ingredientsByProductId = new Map<string, Array<Record<string, unknown>>>()
+    if (productIds.length > 0) {
+      const { data: pi, error: piError } = await supabase
+        .from('ss_product_ingredients')
+        .select('product_id, position, ingredient:ss_ingredients(name_inci, name_en, function, is_active, safety_rating)')
+        .in('product_id', productIds)
+        .order('position')
+        .limit(productIds.length * 15)
+      if (piError) {
+        console.warn('Product ingredient fetch failed (non-fatal):', piError.message)
+      } else if (pi) {
+        // Supabase's typegen infers the embedded `ingredient` relation as an
+        // array even for a single-row relationship, so normalize defensively.
+        for (const row of pi as unknown as Array<{
+          product_id: string
+          position: number
+          ingredient:
+            | { name_inci: string; name_en: string | null; function: string | null; is_active: boolean | null; safety_rating: number | null }
+            | Array<{ name_inci: string; name_en: string | null; function: string | null; is_active: boolean | null; safety_rating: number | null }>
+            | null
+        }>) {
+          if (!row.product_id || !row.ingredient) continue
+          const ing = Array.isArray(row.ingredient) ? row.ingredient[0] : row.ingredient
+          if (!ing) continue
+          if (!ingredientsByProductId.has(row.product_id)) {
+            ingredientsByProductId.set(row.product_id, [])
+          }
+          const existing = ingredientsByProductId.get(row.product_id)!
+          if (existing.length >= 15) continue
+          existing.push({
+            position: row.position,
+            inci_name: ing.name_inci,
+            common_name: ing.name_en,
+            function: ing.function,
+            is_active: ing.is_active,
+            safety_rating: ing.safety_rating,
+          })
+        }
+      }
+    }
+
     const formatted = (products || []).map(p => {
       const product: Record<string, unknown> = {
         name: p.name_en,
@@ -123,6 +175,11 @@ export async function POST(request: NextRequest) {
       if (p.sunscreen_type) product.sunscreen_type = p.sunscreen_type
       if (p.white_cast) product.white_cast = p.white_cast
       if (p.finish) product.finish = p.finish
+      // Blueprint 44 Gap 3a — expose ingredient list (top 15 by INCI position) when
+      // available. Empty array if no ingredient linkage exists for this product
+      // (not all products in ss_products have been INCI-mapped into
+      // ss_product_ingredients yet).
+      product.ingredients = ingredientsByProductId.get(p.id) || []
       return product
     })
 
