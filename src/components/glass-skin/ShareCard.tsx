@@ -27,8 +27,10 @@ function getScoreEmoji(score: number): string {
   return '🌱'
 }
 
+type ShareStatus = 'idle' | 'shared' | 'copied' | 'downloaded'
+
 export default function ShareCard({ score }: Props) {
-  const [copied, setCopied] = useState(false)
+  const [status, setStatus] = useState<ShareStatus>('idle')
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const generateShareImage = useCallback(() => {
@@ -127,50 +129,76 @@ export default function ShareCard({ score }: Props) {
     return canvas.toDataURL('image/png')
   }, [score])
 
+  const flashStatus = useCallback((next: ShareStatus) => {
+    setStatus(next)
+    setTimeout(() => setStatus('idle'), 2000)
+  }, [])
+
+  const downloadImage = useCallback((dataUrl: string) => {
+    const link = document.createElement('a')
+    link.download = `glass-skin-score-${score.overall_score}.png`
+    link.href = dataUrl
+    link.click()
+  }, [score.overall_score])
+
   const handleShare = useCallback(async () => {
     const emoji = getScoreEmoji(score.overall_score)
     const label = getScoreLabel(score.overall_score)
-    const text = `${emoji} My Glass Skin Score: ${score.overall_score}/100 — ${label}\n\nLuminosity: ${score.luminosity_score} · Smoothness: ${score.smoothness_score} · Clarity: ${score.clarity_score} · Hydration: ${score.hydration_score} · Evenness: ${score.evenness_score}\n\nCheck yours at seoulsister.com`
+    const text = `${emoji} My Glass Skin Score: ${score.overall_score}/100, ${label}\n\nLuminosity: ${score.luminosity_score} · Smoothness: ${score.smoothness_score} · Clarity: ${score.clarity_score} · Hydration: ${score.hydration_score} · Evenness: ${score.evenness_score}\n\nCheck yours at seoulsister.com`
 
-    if (navigator.share) {
-      const imageData = generateShareImage()
-      if (imageData) {
-        try {
-          const blob = await (await fetch(imageData)).blob()
-          const file = new File([blob], 'glass-skin-score.png', { type: 'image/png' })
-          await navigator.share({ text, files: [file] })
-          return
-        } catch {
-          // Fallback to text-only share
-        }
-      }
+    const imageData = generateShareImage()
+    if (!imageData) return
+
+    let blob: Blob | null = null
+    try {
+      blob = await (await fetch(imageData)).blob()
+    } catch {
+      downloadImage(imageData)
+      flashStatus('downloaded')
+      return
+    }
+
+    const file = new File([blob], `glass-skin-score-${score.overall_score}.png`, { type: 'image/png' })
+
+    // Path 1: native share sheet with image (iOS/Android and share-capable desktop)
+    if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
       try {
-        await navigator.share({ text })
+        await navigator.share({ text, files: [file] })
+        flashStatus('shared')
+        return
+      } catch (err) {
+        // AbortError = user cancelled, don't fall through
+        if ((err as { name?: string })?.name === 'AbortError') return
+      }
+    }
+
+    // Path 2: clipboard image write (modern desktop Chrome/Edge/Safari)
+    if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+        flashStatus('copied')
         return
       } catch {
-        // User cancelled or share failed
+        // Fall through to download
       }
     }
 
-    // Fallback: copy to clipboard
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Clipboard unavailable
-    }
-  }, [score, generateShareImage])
+    // Path 3: trigger download as final fallback
+    downloadImage(imageData)
+    flashStatus('downloaded')
+  }, [score, generateShareImage, downloadImage, flashStatus])
 
   const handleDownload = useCallback(() => {
     const imageData = generateShareImage()
     if (!imageData) return
+    downloadImage(imageData)
+  }, [generateShareImage, downloadImage])
 
-    const link = document.createElement('a')
-    link.download = `glass-skin-score-${score.overall_score}.png`
-    link.href = imageData
-    link.click()
-  }, [score, generateShareImage])
+  const confirmationLabel =
+    status === 'shared' ? 'Shared!' :
+    status === 'copied' ? 'Image copied, paste anywhere' :
+    status === 'downloaded' ? 'Image downloaded' :
+    null
 
   return (
     <div className="flex gap-2">
@@ -178,10 +206,10 @@ export default function ShareCard({ score }: Props) {
         onClick={handleShare}
         className="glass-card flex-1 py-2.5 flex items-center justify-center gap-2 text-sm font-medium text-white/70 hover:text-gold transition-colors duration-200"
       >
-        {copied ? (
+        {confirmationLabel ? (
           <>
             <Check className="w-4 h-4 text-emerald-400" />
-            <span className="text-emerald-400">Copied!</span>
+            <span className="text-emerald-400">{confirmationLabel}</span>
           </>
         ) : (
           <>
