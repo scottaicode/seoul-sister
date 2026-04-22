@@ -76,6 +76,12 @@ const BANNED_PATTERNS: CleanupRule[] = [
   { pattern: /\butilizing\b/gi, replacement: 'using' },
   { pattern: /\butilization\b/gi, replacement: 'use' },
 
+  // Trailing filler questions — anchored to end-of-response so diagnostic
+  // questions mid-paragraph are never touched. Only strip the closer-at-end
+  // pattern. System prompt is the primary fix; this is a safety net.
+  // Matches: optional leading newline/space, the filler, optional trailing punctuation.
+  { pattern: /\s*(?:Sound good|Sounds good|Does that sound good|Does that feel doable|Want me to [^?]{1,80}|Make sense|Does that make sense|Sound like a plan|Ready to (?:dive in|get started))\??\s*$/i, replacement: '' },
+
   // Double spaces from removal
   { pattern: /  +/g, replacement: ' ' },
 ]
