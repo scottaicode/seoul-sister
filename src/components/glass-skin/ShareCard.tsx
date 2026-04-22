@@ -33,7 +33,7 @@ export default function ShareCard({ score }: Props) {
   const [status, setStatus] = useState<ShareStatus>('idle')
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const generateShareImage = useCallback(() => {
+  const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return null
 
@@ -126,19 +126,29 @@ export default function ShareCard({ score }: Props) {
     ctx.textAlign = 'center'
     ctx.fillText('seoulsister.com', 300, 380)
 
-    return canvas.toDataURL('image/png')
+    return canvas
   }, [score])
+
+  const getShareBlob = useCallback((): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      const canvas = renderCanvas()
+      if (!canvas) return resolve(null)
+      canvas.toBlob((blob) => resolve(blob), 'image/png')
+    })
+  }, [renderCanvas])
 
   const flashStatus = useCallback((next: ShareStatus) => {
     setStatus(next)
     setTimeout(() => setStatus('idle'), 2000)
   }, [])
 
-  const downloadImage = useCallback((dataUrl: string) => {
+  const downloadBlob = useCallback((blob: Blob) => {
+    const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.download = `glass-skin-score-${score.overall_score}.png`
-    link.href = dataUrl
+    link.href = url
     link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
   }, [score.overall_score])
 
   const handleShare = useCallback(async () => {
@@ -146,17 +156,8 @@ export default function ShareCard({ score }: Props) {
     const label = getScoreLabel(score.overall_score)
     const text = `${emoji} My Glass Skin Score: ${score.overall_score}/100, ${label}\n\nLuminosity: ${score.luminosity_score} · Smoothness: ${score.smoothness_score} · Clarity: ${score.clarity_score} · Hydration: ${score.hydration_score} · Evenness: ${score.evenness_score}\n\nCheck yours at seoulsister.com`
 
-    const imageData = generateShareImage()
-    if (!imageData) return
-
-    let blob: Blob | null = null
-    try {
-      blob = await (await fetch(imageData)).blob()
-    } catch {
-      downloadImage(imageData)
-      flashStatus('downloaded')
-      return
-    }
+    const blob = await getShareBlob()
+    if (!blob) return
 
     const file = new File([blob], `glass-skin-score-${score.overall_score}.png`, { type: 'image/png' })
 
@@ -184,15 +185,15 @@ export default function ShareCard({ score }: Props) {
     }
 
     // Path 3: trigger download as final fallback
-    downloadImage(imageData)
+    downloadBlob(blob)
     flashStatus('downloaded')
-  }, [score, generateShareImage, downloadImage, flashStatus])
+  }, [score, getShareBlob, downloadBlob, flashStatus])
 
-  const handleDownload = useCallback(() => {
-    const imageData = generateShareImage()
-    if (!imageData) return
-    downloadImage(imageData)
-  }, [generateShareImage, downloadImage])
+  const handleDownload = useCallback(async () => {
+    const blob = await getShareBlob()
+    if (!blob) return
+    downloadBlob(blob)
+  }, [getShareBlob, downloadBlob])
 
   const confirmationLabel =
     status === 'shared' ? 'Shared!' :
