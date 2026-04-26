@@ -12,6 +12,13 @@ interface UseYuriReturn {
   isStreaming: boolean
   isLoadingHistory: boolean
   error: string | null
+  /**
+   * Last user message that failed to send before any text streamed back.
+   * Phase 15.3 — surfaced so ChatInput can restore the typed draft after a
+   * network/auth failure instead of silently losing what the user typed.
+   * Cleared by clearFailedDraft() once consumed.
+   */
+  lastFailedDraft: string | null
   sendMessage: (
     message: string,
     options?: {
@@ -25,6 +32,7 @@ interface UseYuriReturn {
   deleteConversation: (conversationId: string) => Promise<void>
   renameConversation: (conversationId: string, title: string) => Promise<void>
   clearError: () => void
+  clearFailedDraft: () => void
 }
 
 export function useYuri(): UseYuriReturn {
@@ -34,6 +42,7 @@ export function useYuri(): UseYuriReturn {
   const [isStreaming, setIsStreaming] = useState(false)
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [lastFailedDraft, setLastFailedDraft] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
   // Abort any in-flight stream when the component unmounts
@@ -234,6 +243,11 @@ export function useYuri(): UseYuriReturn {
         // Only show error if no partial content was preserved
         if (!hadPartialContent) {
           setError(errMsg)
+          // Phase 15.3 — preserve the user's typed message so ChatInput can
+          // restore it after the failure. Don't overwrite an existing draft
+          // (e.g. if a previous failure already populated one and the user
+          // hasn't dismissed it yet — they might be mid-edit).
+          setLastFailedDraft((prev) => prev ?? message)
         }
       } finally {
         setIsStreaming(false)
@@ -378,6 +392,7 @@ export function useYuri(): UseYuriReturn {
   )
 
   const clearError = useCallback(() => setError(null), [])
+  const clearFailedDraft = useCallback(() => setLastFailedDraft(null), [])
 
   return {
     messages,
@@ -386,6 +401,7 @@ export function useYuri(): UseYuriReturn {
     isStreaming,
     isLoadingHistory,
     error,
+    lastFailedDraft,
     sendMessage,
     loadConversations,
     loadConversation,
@@ -393,5 +409,6 @@ export function useYuri(): UseYuriReturn {
     deleteConversation,
     renameConversation,
     clearError,
+    clearFailedDraft,
   }
 }

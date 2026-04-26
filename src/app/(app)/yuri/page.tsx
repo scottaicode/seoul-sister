@@ -30,6 +30,7 @@ export default function YuriPage() {
     isStreaming,
     isLoadingHistory,
     error,
+    lastFailedDraft,
     sendMessage,
     loadConversations,
     loadConversation,
@@ -37,6 +38,7 @@ export default function YuriPage() {
     deleteConversation,
     renameConversation,
     clearError,
+    clearFailedDraft,
   } = useYuri()
 
   const [showHistory, setShowHistory] = useState(false)
@@ -270,7 +272,12 @@ export default function YuriPage() {
             </p>
           </div>
         ) : (
-          <ChatInput onSend={handleSend} disabled={isStreaming} />
+          <ChatInput
+            onSend={handleSend}
+            disabled={isStreaming}
+            restoredValue={lastFailedDraft}
+            onRestoreConsumed={clearFailedDraft}
+          />
         )}
       </div>
     </div>

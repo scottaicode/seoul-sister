@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Send, Loader2, ImagePlus, X } from 'lucide-react'
 import { compressImageToDataUrl } from '@/lib/utils/image-compress'
 
@@ -9,6 +9,13 @@ interface ChatInputProps {
   disabled?: boolean
   placeholder?: string
   showImageUpload?: boolean
+  /**
+   * Phase 15.3 — when a previous send failed before any text streamed back,
+   * the parent surfaces the lost user message here so the textarea can
+   * restore it. Restored once per non-null value.
+   */
+  restoredValue?: string | null
+  onRestoreConsumed?: () => void
 }
 
 const MAX_IMAGES = 4
@@ -18,12 +25,39 @@ export default function ChatInput({
   disabled = false,
   placeholder = 'Ask Yuri anything about K-beauty...',
   showImageUpload = true,
+  restoredValue = null,
+  onRestoreConsumed,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
   const [pendingImages, setPendingImages] = useState<string[]>([])
   const [isCompressing, setIsCompressing] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Phase 15.3 — restore the user's typed message after a send failure.
+  // Skip restore if they've already typed something new (don't clobber active input).
+  useEffect(() => {
+    if (!restoredValue) return
+    if (value.trim()) {
+      // User is mid-typing — leave their current draft alone, just consume the signal
+      onRestoreConsumed?.()
+      return
+    }
+    setValue(restoredValue)
+    onRestoreConsumed?.()
+    // Resize textarea to fit the restored content
+    requestAnimationFrame(() => {
+      const textarea = textareaRef.current
+      if (textarea) {
+        textarea.style.height = 'auto'
+        textarea.style.height = `${Math.min(textarea.scrollHeight, 400)}px`
+        textarea.focus()
+      }
+    })
+    // Intentionally omit `value` from deps — this should fire when restoredValue
+    // arrives, not every keystroke. The early-return above handles the conflict case.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restoredValue, onRestoreConsumed])
 
   const canSend = (value.trim() || pendingImages.length > 0) && !disabled && !isCompressing
 

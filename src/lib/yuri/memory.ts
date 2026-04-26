@@ -69,7 +69,13 @@ export type CorrectionCategory =
 
 export interface DecisionMemory {
   decisions: Array<{ topic: string; decision: string; date: string }>
-  preferences: Array<{ topic: string; preference: string }>
+  /**
+   * Phase 15.4 — preferences now carry a `date` so the rendering layer can
+   * surface "you told me this on YYYY-MM-DD" inline. Date defaults to the
+   * extraction date when Sonnet doesn't provide one (Sonnet prompt isn't
+   * asked for it to avoid wasting tokens on something rarely relevant).
+   */
+  preferences: Array<{ topic: string; preference: string; date: string }>
   commitments: Array<{ item: string; date: string }>
   corrections: Array<{
     topic: string
@@ -137,6 +143,12 @@ export interface ConversationMemory {
 export interface ProductReaction {
   productName: string
   reaction: 'holy_grail' | 'good' | 'okay' | 'bad' | 'broke_me_out'
+  /**
+   * Phase 15.4 — when the user logged this reaction. Surfaced inline so Yuri
+   * can calibrate confidence (a 90-day-old "broke me out" deserves "is this
+   * still happening?" before re-recommending the product).
+   */
+  recordedAt: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -190,9 +202,11 @@ export async function loadUserContext(
         .select(`
           reaction,
           product_id,
+          created_at,
           ss_products (name_en)
         `)
         .eq('user_id', userId)
+        .order('created_at', { ascending: false })
         .limit(50)
     : Promise.resolve({ data: null })
 
@@ -303,6 +317,7 @@ export async function loadUserContext(
     (r: Record<string, unknown>) => ({
       productName: (r.ss_products as Record<string, string>)?.name_en || 'Unknown',
       reaction: r.reaction as ProductReaction['reaction'],
+      recordedAt: (r.created_at as string) || null,
     })
   )
 
@@ -508,20 +523,25 @@ export function formatContextForPrompt(context: UserContext): string {
     sections.push(`## Your Product Inventory\nThese are products the user currently owns and uses. Use texture_weight for layering order when building routines:\n${productLines.join('\n')}`)
   }
 
-  // Product reactions
+  // Product reactions — Phase 15.4 surfaces the recorded date inline so Yuri
+  // can calibrate confidence without being told how. A 90-day-old "broke me
+  // out" warrants a different response than one from yesterday; let Opus
+  // notice the dates and adjust on its own.
   if (context.productReactions.length > 0) {
-    const holyGrails = context.productReactions
-      .filter((r) => r.reaction === 'holy_grail')
-      .map((r) => r.productName)
-    const brokeMeOut = context.productReactions
-      .filter((r) => r.reaction === 'broke_me_out')
-      .map((r) => r.productName)
+    const holyGrails = context.productReactions.filter((r) => r.reaction === 'holy_grail')
+    const brokeMeOut = context.productReactions.filter((r) => r.reaction === 'broke_me_out')
+
+    const formatReactionLine = (r: ProductReaction) => {
+      if (!r.recordedAt) return `- ${r.productName}`
+      const date = r.recordedAt.split('T')[0]
+      return `- ${r.productName} (recorded ${date})`
+    }
 
     if (holyGrails.length > 0) {
-      sections.push(`## Holy Grail Products\n${holyGrails.map((p) => `- ${p}`).join('\n')}`)
+      sections.push(`## Holy Grail Products\nDates show when the user logged each reaction. Older entries may be stale — feel free to ask if it's still working for them before re-recommending.\n${holyGrails.map(formatReactionLine).join('\n')}`)
     }
     if (brokeMeOut.length > 0) {
-      sections.push(`## Products That Caused Reactions\n${brokeMeOut.map((p) => `- ${p}`).join('\n')}`)
+      sections.push(`## Products That Caused Reactions\nDates show when the user logged each reaction. A reaction from many months ago might not still apply (skin changes, reformulations) — surface the date naturally if you bring it up.\n${brokeMeOut.map(formatReactionLine).join('\n')}`)
     }
   }
 
@@ -601,10 +621,14 @@ When making skincare recommendations, factor in the user's current cycle phase. 
   }
 
   // Specialist insights from past conversations (accumulated intelligence)
+  // Phase 15.4 — surface the createdAt date on each block so Yuri can sense
+  // staleness (a routine insight from 6 months ago may not reflect current
+  // skin, products, or seasonal needs).
   if (context.specialistInsights.length > 0) {
     const insightLines = context.specialistInsights.map((si) => {
       const data = si.data
-      const parts: string[] = [`### ${si.specialistType.replace(/_/g, ' ')}`]
+      const dateLabel = si.createdAt ? si.createdAt.split('T')[0] : 'unknown date'
+      const parts: string[] = [`### ${si.specialistType.replace(/_/g, ' ')} (recorded ${dateLabel})`]
       // Format known data fields from specialist extractions
       for (const [key, value] of Object.entries(data)) {
         if (Array.isArray(value) && value.length > 0) {
@@ -615,7 +639,7 @@ When making skincare recommendations, factor in the user's current cycle phase. 
       }
       return parts.join('\n')
     }).join('\n')
-    sections.push(`## Past Specialist Intelligence (From Previous Conversations)\nThis user has had specialist conversations before. Use these insights to build on previous advice — don't ask about things you already learned:\n${insightLines}`)
+    sections.push(`## Past Specialist Intelligence (From Previous Conversations)\nThis user has had specialist conversations before. Use these insights to build on previous advice — don't ask about things you already learned. The recorded date on each block lets you weigh how current the insight is; older insights may need a quick check-in before you act on them.\n${insightLines}`)
   }
 
   // Decision memory — structured corrections, decisions, preferences, and commitments
@@ -654,8 +678,15 @@ When making skincare recommendations, factor in the user's current cycle phase. 
     }
 
     if (dm.preferences.length > 0) {
+      // Phase 15.4 — surface the date the user first stated each preference so
+      // Yuri can calibrate. Tastes shift; a "fragrance-free only" from a year
+      // ago is probably still load-bearing, but a "I want to try retinol"
+      // from 8 months ago may have already been acted on.
       const prefLines = dm.preferences
-        .map((p) => `- **${p.topic}**: ${p.preference}`)
+        .map((p) => {
+          const dateLabel = p.date ? ` (stated ${p.date})` : ''
+          return `- **${p.topic}**: ${p.preference}${dateLabel}`
+        })
         .join('\n')
       dmParts.push(`### User Preferences\n${prefLines}`)
     }
@@ -992,10 +1023,28 @@ export function mergeDecisionMemory(
   for (const d of incoming.decisions) decisionMap.set(d.topic.toLowerCase(), d)
   const decisions = Array.from(decisionMap.values())
 
-  // Preferences: latest per topic wins
-  const prefMap = new Map<string, { topic: string; preference: string }>()
-  for (const p of base.preferences) prefMap.set(p.topic.toLowerCase(), p)
-  for (const p of incoming.preferences) prefMap.set(p.topic.toLowerCase(), p)
+  // Preferences: latest per topic wins, but preserve the original date when the
+  // preference content is unchanged — that lets the rendering layer truthfully
+  // say "you told me this on YYYY-MM-DD" rather than resetting the date every
+  // time the user mentions the same preference. New or changed content gets
+  // today's date.
+  const prefMap = new Map<string, { topic: string; preference: string; date: string }>()
+  for (const p of base.preferences) {
+    // Backwards-compat: older rows may lack `date`. Default to today.
+    prefMap.set(p.topic.toLowerCase(), {
+      ...p,
+      date: p.date || new Date().toISOString().split('T')[0],
+    })
+  }
+  for (const p of incoming.preferences) {
+    const key = p.topic.toLowerCase()
+    const prev = prefMap.get(key)
+    if (prev && prev.preference.trim() === p.preference.trim()) {
+      // Same preference content as before — keep the older date so age renders accurately
+      continue
+    }
+    prefMap.set(key, p)
+  }
   const preferences = Array.from(prefMap.values())
 
   // Commitments: append with dedup by lowercase item text
@@ -1179,11 +1228,15 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
           }))
       : [],
     preferences: Array.isArray(extracted.preferences)
-      ? (extracted.preferences as Array<{ topic?: string; preference?: string }>)
+      ? (extracted.preferences as Array<{ topic?: string; preference?: string; date?: string }>)
           .filter((p) => p.topic && p.preference)
           .map((p) => ({
             topic: String(p.topic),
             preference: String(p.preference),
+            // Sonnet prompt doesn't request a date for preferences, so default
+            // to today. Merge logic preserves the original date if a preference
+            // already exists for this topic (see mergeDecisionMemory).
+            date: String(p.date || new Date().toISOString().split('T')[0]),
           }))
       : [],
     commitments: Array.isArray(extracted.commitments)
