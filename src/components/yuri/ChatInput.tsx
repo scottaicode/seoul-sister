@@ -54,11 +54,15 @@ export default function ChatInput({
   )
 
   const handleInput = useCallback(() => {
-    const textarea = textareaRef.current
-    if (textarea) {
-      textarea.style.height = 'auto'
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`
-    }
+    // rAF-batched resize prevents dictation/IME freeze on high-frequency input events.
+    // Max-height 400px accommodates dictated paragraphs without cramping the viewport.
+    requestAnimationFrame(() => {
+      const textarea = textareaRef.current
+      if (textarea) {
+        textarea.style.height = 'auto'
+        textarea.style.height = `${Math.min(textarea.scrollHeight, 400)}px`
+      }
+    })
   }, [])
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,7 +162,7 @@ export default function ChatInput({
           placeholder={pendingImages.length > 0 ? 'Add a message (optional)...' : placeholder}
           disabled={disabled}
           rows={1}
-          className="flex-1 resize-none dark-input text-sm py-2.5 px-4 max-h-[120px] rounded-2xl"
+          className="flex-1 resize-none dark-input text-sm py-2.5 px-4 max-h-[400px] rounded-2xl"
           aria-label="Message Yuri"
         />
 

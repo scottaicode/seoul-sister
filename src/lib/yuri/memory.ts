@@ -59,10 +59,25 @@ export function classifyIntent(
 // Types
 // ---------------------------------------------------------------------------
 
+export type CorrectionCategory =
+  | 'reformulation'
+  | 'discontinued'
+  | 'price'
+  | 'ingredient'
+  | 'brand_identity'
+  | 'other'
+
 export interface DecisionMemory {
   decisions: Array<{ topic: string; decision: string; date: string }>
   preferences: Array<{ topic: string; preference: string }>
   commitments: Array<{ item: string; date: string }>
+  corrections: Array<{
+    topic: string
+    yuri_said: string
+    truth: string
+    category: CorrectionCategory
+    date: string
+  }>
   extracted_at: string
 }
 
@@ -603,12 +618,30 @@ When making skincare recommendations, factor in the user's current cycle phase. 
     sections.push(`## Past Specialist Intelligence (From Previous Conversations)\nThis user has had specialist conversations before. Use these insights to build on previous advice — don't ask about things you already learned:\n${insightLines}`)
   }
 
-  // Decision memory — structured decisions, preferences, and commitments
+  // Decision memory — structured corrections, decisions, preferences, and commitments
   if (context.decisionMemory) {
     const dm = context.decisionMemory
     const dmParts: string[] = []
 
     const now = new Date()
+    const SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000
+
+    // Corrections render FIRST (highest trust — these override training data).
+    // Phase 15.1 — K-beauty brands reformulate every 2-3 years; corrections are
+    // the durable fix for stale training knowledge.
+    if (dm.corrections && dm.corrections.length > 0) {
+      const correctionLines = dm.corrections
+        .map((cor) => {
+          const ageMs = cor.date ? now.getTime() - new Date(cor.date).getTime() : 0
+          const ageTag = ageMs > SIXTY_DAYS_MS ? ' [60+ days ago — verify with a tool if still current]' : ''
+          const initial = cor.yuri_said ? ` [you had said: "${cor.yuri_said}"]` : ''
+          return `- [${cor.topic}] (${cor.category})${ageTag}: ${cor.truth}${initial}`
+        })
+        .join('\n')
+      dmParts.push(
+        `### Corrections That Stick (Trust These Over Your Training Data)\nThe user corrected you on these items in past conversations. Treat each correction as ground truth. K-beauty brands reformulate constantly and your training data goes stale fast. If you catch yourself about to repeat the original wrong claim, STOP and use the corrected version. For corrections older than 60 days, verify with a tool (search_products, get_product_details) before quoting — the brand may have changed again.\n${correctionLines}`
+      )
+    }
 
     if (dm.decisions.length > 0) {
       const decisionLines = dm.decisions
@@ -937,12 +970,15 @@ const EMPTY_DECISION_MEMORY: DecisionMemory = {
   decisions: [],
   preferences: [],
   commitments: [],
+  corrections: [],
   extracted_at: '',
 }
 
 /**
  * Merge two DecisionMemory objects. Latest decision per topic wins.
  * Preferences: latest per topic wins. Commitments: append with dedup by item text.
+ * Corrections: latest per topic wins (Phase 15.1 — preserves K-beauty factual
+ * corrections like reformulations and discontinuations across re-extraction runs).
  */
 export function mergeDecisionMemory(
   existing: DecisionMemory | null,
@@ -973,10 +1009,18 @@ export function mergeDecisionMemory(
     }
   }
 
+  // Corrections: latest per topic wins. Backwards-compatible — older rows may
+  // lack the corrections field, so default to [] before iterating.
+  const correctionMap = new Map<string, DecisionMemory['corrections'][number]>()
+  for (const c of base.corrections || []) correctionMap.set(c.topic.toLowerCase(), c)
+  for (const c of incoming.corrections || []) correctionMap.set(c.topic.toLowerCase(), c)
+  const corrections = Array.from(correctionMap.values())
+
   return {
     decisions,
     preferences,
     commitments,
+    corrections,
     extracted_at: incoming.extracted_at || base.extracted_at,
   }
 }
@@ -1004,7 +1048,13 @@ async function loadDecisionMemory(
     // Process oldest first so newest overwrites on merge
     for (const conv of conversations.reverse()) {
       const raw = conv.decision_memory as DecisionMemory | null
-      if (!raw || (!raw.decisions?.length && !raw.preferences?.length && !raw.commitments?.length)) {
+      if (
+        !raw ||
+        (!raw.decisions?.length &&
+          !raw.preferences?.length &&
+          !raw.commitments?.length &&
+          !raw.corrections?.length)
+      ) {
         continue
       }
       merged = mergeDecisionMemory(merged, raw)
@@ -1045,7 +1095,7 @@ export async function extractAndSaveDecisionMemory(
         messages: [
           {
             role: 'user',
-            content: `Analyze this K-beauty advisor conversation and extract structured data in three categories. Only extract what is EXPLICITLY stated — never infer or assume.
+            content: `Analyze this K-beauty advisor conversation and extract structured data in four categories. Only extract what is EXPLICITLY stated — never infer or assume.
 
 1. **DECISIONS**: Specific skincare decisions the user or Yuri agreed on. Each needs a short topic label and the decision text.
    Examples: { "topic": "barrier_repair", "decision": "3-phase approach starting with ceramides before reintroducing actives" }
@@ -1058,6 +1108,24 @@ export async function extractAndSaveDecisionMemory(
 3. **COMMITMENTS**: Specific actions the user committed to trying or doing. Each needs the item and today's date.
    Examples: { "item": "Try COSRX Snail Mucin for 2 weeks", "date": "${new Date().toISOString().split('T')[0]}" }
 
+4. **CORRECTIONS**: Moments where Yuri said something FACTUALLY WRONG and the user corrected her. These are the highest-value memory items — they prevent repeating outdated K-beauty claims. K-beauty brands reformulate every 2-3 years, so Yuri's training knowledge goes stale fast. Each correction MUST capture BOTH what Yuri originally said AND the truth (without both, the correction is useless next session).
+
+   Categories:
+   - "reformulation": Yuri quoted an old formula spec — e.g., she said "COSRX Snail Mucin is 96% snail secretion filtrate" and user corrected: "they reformulated in 2024 — it's now 92% with added niacinamide"
+   - "discontinued": Yuri recommended a product that no longer exists — e.g., "Innisfree Green Tea Seed Serum was discontinued, the replacement is Hyaluronic Acid Cica Serum"
+   - "price": Yuri quoted a stale price from training (rare since price tools exist, but capture if it happens)
+   - "ingredient": Yuri claimed something about a product's ingredients that contradicts the actual INCI list — e.g., said "fragrance-free" when parfum is listed
+   - "brand_identity": Yuri confused two brands or got a brand fact wrong — e.g., said "Anua is owned by Amorepacific" when it's actually independent
+   - "other": Anything else factual that should never be repeated
+
+   Look for user phrases like: "actually it's X", "no that's wrong", "you're outdated on this", "they changed that", "that was the old version", "stand corrected", "good catch" — followed by Yuri acknowledging the error.
+
+   Do NOT extract corrections for opinion disagreements ("I prefer the gel texture over the cream") — only for factual errors that should NEVER be gotten wrong again.
+
+   Examples:
+   { "topic": "cosrx_snail_concentration", "yuri_said": "96% snail secretion filtrate", "truth": "Reformulated in 2024 — now 92% with added niacinamide", "category": "reformulation" }
+   { "topic": "innisfree_green_tea_seed", "yuri_said": "Recommended Green Tea Seed Serum", "truth": "Discontinued — replaced by Hyaluronic Acid Cica Serum", "category": "discontinued" }
+
 CONVERSATION:
 ${transcript}
 
@@ -1065,7 +1133,8 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
 {
   "decisions": [{ "topic": "...", "decision": "...", "date": "${new Date().toISOString().split('T')[0]}" }],
   "preferences": [{ "topic": "...", "preference": "..." }],
-  "commitments": [{ "item": "...", "date": "${new Date().toISOString().split('T')[0]}" }]
+  "commitments": [{ "item": "...", "date": "${new Date().toISOString().split('T')[0]}" }],
+  "corrections": [{ "topic": "...", "yuri_said": "...", "truth": "...", "category": "reformulation|discontinued|price|ingredient|brand_identity|other", "date": "${new Date().toISOString().split('T')[0]}" }]
 }`,
           },
         ],
@@ -1076,13 +1145,27 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
   const block = response.content[0]
   if (block.type !== 'text') return
 
-  let extracted: { decisions?: unknown[]; preferences?: unknown[]; commitments?: unknown[] }
+  let extracted: {
+    decisions?: unknown[]
+    preferences?: unknown[]
+    commitments?: unknown[]
+    corrections?: unknown[]
+  }
   try {
     const text = block.text.trim().replace(/^```json?\s*/, '').replace(/\s*```$/, '')
     extracted = JSON.parse(text)
   } catch {
     return // Parse failed — skip silently
   }
+
+  const validCategories: ReadonlySet<CorrectionCategory> = new Set([
+    'reformulation',
+    'discontinued',
+    'price',
+    'ingredient',
+    'brand_identity',
+    'other',
+  ])
 
   // Validate and normalize the extracted data
   const incoming: DecisionMemory = {
@@ -1111,6 +1194,29 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
             date: String(c.date || new Date().toISOString().split('T')[0]),
           }))
       : [],
+    corrections: Array.isArray(extracted.corrections)
+      ? (extracted.corrections as Array<{
+          topic?: string
+          yuri_said?: string
+          truth?: string
+          category?: string
+          date?: string
+        }>)
+          .filter((c) => c.topic && c.yuri_said && c.truth)
+          .map((c) => {
+            const rawCategory = String(c.category || 'other').toLowerCase()
+            const category = (validCategories.has(rawCategory as CorrectionCategory)
+              ? rawCategory
+              : 'other') as CorrectionCategory
+            return {
+              topic: String(c.topic),
+              yuri_said: String(c.yuri_said),
+              truth: String(c.truth),
+              category,
+              date: String(c.date || new Date().toISOString().split('T')[0]),
+            }
+          })
+      : [],
     extracted_at: new Date().toISOString(),
   }
 
@@ -1118,7 +1224,8 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
   if (
     incoming.decisions.length === 0 &&
     incoming.preferences.length === 0 &&
-    incoming.commitments.length === 0
+    incoming.commitments.length === 0 &&
+    incoming.corrections.length === 0
   ) {
     return
   }

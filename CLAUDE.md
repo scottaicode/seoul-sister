@@ -5535,6 +5535,64 @@ MEDIUM. 3 API endpoints + 1 page with visualization components. The analytics qu
 
 ---
 
+## Phase 15: LGAAS Memory Architecture Port — Cross-Application Audit Findings
+
+**Strategic Rationale**: A line-by-line audit of LGAAS AriaStar's memory architecture (advisor-prompt-helpers.js 2,553 lines, advisor-conversation.js 4,616 lines) against Yuri's (memory.ts 1,326 lines, advisor.ts 1,118 lines) confirmed Yuri is more architecturally complete than expected. She already has structured tools, Sonnet bridge summaries, recent message excerpts, smart truncation, and explicit price/packaging confabulation guards. **Most LGAAS Blueprints don't apply** — Yuri solved the equivalent problems differently or already.
+
+**Five real gaps identified, ranked by impact**. Each is self-contained for a fresh Claude Code session.
+
+### Phase 15 Implementation Priority Summary
+
+| # | Feature | Impact | Complexity | Status |
+|---|---------|--------|-----------|--------|
+| 15.1 | Corrections Memory | HIGHEST | Low | COMPLETE (v10.2.0) |
+| 15.2 | Heat Check / Tempo Matching | HIGH | Low | Pending |
+| 15.3 | Draft Preservation on Send Error | MEDIUM | Low | Pending |
+| 15.4 | Age-Aware Memory Rendering | MEDIUM | Low-Med | Pending |
+| 15.5 | Textarea Max-Height Conflict Fix | LOW | Trivial | COMPLETE (v10.2.0) |
+
+### Feature 15.1: Corrections Memory — Persistent "You Were Wrong" Records (COMPLETE)
+
+**Problem**: Yuri's `decision_memory` JSONB schema captured decisions/preferences/commitments but had no field for "user told me X was wrong." K-beauty brands reformulate every 2-3 years (Yuri's own system prompt admits this), so when a user said "actually the COSRX Snail Mucin was reformulated to 92% with added niacinamide last year," the correction never persisted — Yuri repeated the outdated 96% claim in the next session. Same memory denial pattern as v8.0.1, but for factual corrections instead of past recommendations.
+
+**LGAAS reference**: `advisor-conversation.js:369-394` (extraction prompt), `advisor-prompt-helpers.js:1898-1908` (rendering with 60-day age tag), `advisor-conversation.js:308-316` (merge logic).
+
+**Solution shipped (v10.2.0)**:
+- Extended `DecisionMemory` interface (`memory.ts:62-79`) with `corrections: Array<{ topic, yuri_said, truth, category, date }>`. New `CorrectionCategory` type union: `reformulation | discontinued | price | ingredient | brand_identity | other` (K-beauty-tuned, replacing LGAAS's `factual | brand_identity | platform_rule | timeline | other`).
+- Updated Sonnet extraction prompt (`memory.ts:~1060`) to extract corrections as 4th category. Prompt explicitly distinguishes opinion disagreements (NOT extracted) from factual errors (extracted). Includes K-beauty-specific examples for each category.
+- Added corrections normalization in incoming pipeline with `validCategories` Set and graceful fallback to `'other'` for unknown categories.
+- Added topic-keyed merge logic in `mergeDecisionMemory()` — latest correction per topic wins, defaults `base.corrections || []` for backwards compat with rows lacking the field.
+- Updated `loadDecisionMemory` empty-row skip guard to count corrections so a corrections-only row still loads.
+- Updated incoming-empty skip guard so a corrections-only extraction still saves.
+- Rendered new section **above** decisions/preferences/commitments (highest trust): `### Corrections That Stick (Trust These Over Your Training Data)`. Includes 60-day age tag (`[60+ days ago — verify with a tool if still current]`) prompting Yuri to use `search_products` / `get_product_details` for stale corrections rather than blindly trusting.
+
+**Why corrections render first**: They override training data. Decisions/preferences are choices made WITH Yuri; corrections are facts Yuri got WRONG. Higher trust ranking.
+
+**Backwards compatibility**: Old `decision_memory` JSONB rows lack the `corrections` field. The rendering guard `dm.corrections && dm.corrections.length > 0` handles this cleanly. The merge logic uses `base.corrections || []` so old rows merge without throwing.
+
+### Feature 15.5: Textarea Max-Height Conflict Fix (COMPLETE)
+
+**Problem**: `ChatInput.tsx:165` had `max-h-[120px]` Tailwind class while the inline `style.height` recalc capped at 400px (`:63`). CSS `max-height` always wins regardless of inline `style.height`, so users were capped at 120px — the inline 400px calc was dead code. For long product histories (skincare users do this constantly), 120px was painfully cramped.
+
+**Solution shipped (v10.2.0)**: Replaced `max-h-[120px]` with `max-h-[400px]` so the Tailwind class matches the inline JS calc. Users now get up to 400px of textarea height for long messages.
+
+### Skipped After Verification
+
+- **Dictation rAF wrap** (LGAAS Blueprint 45) — Already implemented at `ChatInput.tsx:59-65`. The audit confirmed correct `requestAnimationFrame` usage. (Real bug found there was the max-height conflict, fixed as 15.5.)
+- **Validation guidance** — Already at `advisor.ts:221-227` ("Validate their feeling first. One sentence of genuine empathy"). Heat Check (15.2) is the narrower companion for the specific heat + accusation + evidence pattern.
+- **Confabulation guards** — Already at `advisor.ts:63-78` with explicit price + packaging rules.
+- **Recent excerpts / smart truncation** — Already implemented (`memory.ts:1149-1204` for excerpts, `:811-896` for truncation with bridge summaries).
+
+### Remaining Phase 15 Work
+
+- **15.2 Heat Check**: Add `## Heat Check: Match Tempo, Not Temperature` section to `advisor.ts` system prompt. Trigger: user message with all three of (1) emotional heat (2) accusation about third party (3) cited evidence → ask ONE clarifying question instead of building a takedown case. Adapted from LGAAS `advisor-prompt-helpers.js:2320-2347` with skincare examples (brands, dermatologists, influencers, retailers).
+- **15.3 Draft Preservation**: When SSE stream fails before any events emit, the typed text is currently cleared optimistically and lost. Add `lastFailedDraft` state to `useYuri.ts` + restore-on-mount effect in `ChatInput.tsx`. ~30 lines total.
+- **15.4 Age-Aware Memory**: Surface `updated_at` timestamps inline on preferences, product reactions, and specialist insights (decisions + commitments already have age labels). Add canonical observational sentence per LGAAS Blueprint 46. Don't bucket, don't instruct — let Opus 4.7 calibrate confidence from raw dates.
+
+**Build Order for Remaining**: 15.2 (own session, narrow prompt addition + careful testing) → 15.3 + 15.4 (one session, both touch related UI/memory rendering paths).
+
+---
+
 ## Competitive Landscape
 
 ### Why Seoul Sister Wins
@@ -5617,8 +5675,8 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 10.1.0 (All phases complete + Opus 4.7 migration)
-**Status**: ALL PHASES COMPLETE (1-14). Phase 8 all 11 features built (including previously deferred 8.1, 8.2, 8.5, 8.6). Phase 13 all 6 features built (prompt caching, API retry, decision memory, intent-based context, onboarding quality, voice cleanup). Phase 14 all 5 features built (widget persistence, cross-session memory, intent signals, specialist preview, admin dashboard). Memory denial bug fixed (v8.0.1). 5,800+ products (skincare only), 14,400+ ingredients, 207,000+ links, 550+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 14 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level. GA4 (G-L3VXSLT781) + Vercel Analytics + SpeedInsights live. **Monetization hardened**: Free tier eliminated, payment-first registration flow (Register → Stripe $39.99/mo → Onboarding, no email verification), widget system prompt rewritten AI-First with 20 preview messages and natural conversion.
+**Version**: 10.2.0 (Phase 15 Session 1 — Corrections Memory + textarea fix)
+**Status**: ALL PHASES COMPLETE (1-14) + Phase 15 Session 1 shipped (15.1 corrections memory, 15.5 textarea max-height fix). Phase 8 all 11 features built (including previously deferred 8.1, 8.2, 8.5, 8.6). Phase 13 all 6 features built (prompt caching, API retry, decision memory, intent-based context, onboarding quality, voice cleanup). Phase 14 all 5 features built (widget persistence, cross-session memory, intent signals, specialist preview, admin dashboard). Phase 15 remaining work documented (15.2 heat check, 15.3 draft preservation, 15.4 age-aware memory). Memory denial bug fixed (v8.0.1) + corrections memory now persists factual user-corrected K-beauty facts across sessions (v10.2.0). 5,800+ products (skincare only), 14,400+ ingredients, 207,000+ links, 550+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 14 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level. GA4 (G-L3VXSLT781) + Vercel Analytics + SpeedInsights live. **Monetization hardened**: Free tier eliminated, payment-first registration flow (Register → Stripe $39.99/mo → Onboarding, no email verification), widget system prompt rewritten AI-First with 20 preview messages and natural conversion.
 **AI Advisor**: Yuri (유리) - "Glass"
 
 **Changelog**: See `CHANGELOG.md` for full version history.
@@ -5636,6 +5694,19 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v10.2.0 (Apr 26, 2026): Phase 15 Session 1 — Corrections Memory + Textarea Max-Height Fix
+  - **Origin**: Cross-application audit of LGAAS AriaStar's memory architecture vs Yuri identified 5 real gaps (corrections memory, heat check, draft preservation, age-aware memory, textarea conflict). Most LGAAS Blueprints didn't apply because Yuri already solved the equivalent problem. This release ships the 2 highest-leverage / lowest-risk ports: Feature 15.1 (corrections memory) and Feature 15.5 (textarea fix)
+  - **Feature 15.1 — Corrections Memory** (`src/lib/yuri/memory.ts`): Yuri's `decision_memory` JSONB schema captured decisions/preferences/commitments but had no field for "user told me X was wrong." K-beauty brands reformulate every 2-3 years and her training knowledge goes stale fast. Without persistent corrections, she repeated outdated claims (e.g., "COSRX Snail Mucin is 96%") session after session even when corrected (e.g., "they reformulated to 92% with niacinamide last year")
+  - **Schema extension**: Added `corrections: Array<{ topic, yuri_said, truth, category, date }>` to `DecisionMemory` interface. New `CorrectionCategory` type: `reformulation | discontinued | price | ingredient | brand_identity | other` (K-beauty-tuned)
+  - **Extraction prompt updated**: Sonnet now extracts a 4th category (CORRECTIONS) alongside decisions/preferences/commitments. Prompt explicitly distinguishes opinion disagreements ("I prefer gel texture" — NOT extracted) from factual errors that should never be repeated (extracted). Includes K-beauty-specific examples for each category
+  - **Normalization + merge logic**: `validCategories` Set with graceful fallback to `'other'` for unknown categories. Topic-keyed merge (latest correction per topic wins) defaulting `base.corrections || []` for backwards compat with rows lacking the field
+  - **Skip guards**: Both `loadDecisionMemory` empty-row check and `extractAndSaveDecisionMemory` skip guard updated to count corrections — corrections-only rows now load and corrections-only extractions now save
+  - **Rendering** (renders FIRST in decision memory block — highest trust, overrides training data): `### Corrections That Stick (Trust These Over Your Training Data)` section. Includes 60-day age tag (`[60+ days ago — verify with a tool if still current]`) prompting Yuri to use `search_products` / `get_product_details` for stale corrections rather than blindly trusting (brands can reformulate again)
+  - **Backwards compatibility**: Old `decision_memory` JSONB rows lacking the `corrections` field are handled cleanly by `dm.corrections && dm.corrections.length > 0` guard and `base.corrections || []` defaults
+  - **Feature 15.5 — Textarea Max-Height Conflict Fix** (`src/components/yuri/ChatInput.tsx`): The Tailwind class `max-h-[120px]` was overriding the inline JS `style.height` calc that capped at 400px. CSS `max-height` always wins regardless of inline `style.height`, so users were stuck at 120px (the inline 400px calc was dead code). For long product histories — common in skincare conversations — 120px was painfully cramped. Replaced with `max-h-[400px]` to match the JS calc
+  - **LGAAS reference patterns ported from**: `lgaas/api/advisor-conversation.js:369-394` (extraction prompt schema), `lgaas/utils/advisor-prompt-helpers.js:1898-1908` (corrections rendering with 60-day age tag), `lgaas/api/advisor-conversation.js:308-316` (correction merge logic)
+  - **Phase 15 documentation**: New "Phase 15: LGAAS Memory Architecture Port" section added to CLAUDE.md with implementation priority summary, completed feature details, and remaining work blueprint (15.2 heat check, 15.3 draft preservation, 15.4 age-aware memory)
+  - **Build verified**: `npx tsc --noEmit` and `next build` both pass clean
 - v10.1.0 (Apr 16, 2026): Claude Opus 4.7 Migration
   - **Model upgrade**: All user-facing AI calls migrated from Claude Opus 4.6 (`claude-opus-4-6`) to Claude Opus 4.7 (`claude-opus-4-7`). Released by Anthropic April 14, 2026
   - **Verification first**: Pre-migration curl test against `claude-opus-4-7` with adaptive thinking returned 200. Post-migration curl test with EXACT request shape Yuri uses (system prompt + cache_control + tools + cache_control) returned 200. `tsc --noEmit` passes clean
