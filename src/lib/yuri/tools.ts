@@ -1400,8 +1400,8 @@ async function executeWebSearch(
   const apiKey = process.env.BRAVE_SEARCH_API_KEY
   if (!apiKey) {
     return JSON.stringify({
-      error: 'Web search is not configured. BRAVE_SEARCH_API_KEY is missing.',
-      fallback: 'Answer based on your training knowledge instead.',
+      error: 'Web search is not configured (BRAVE_SEARCH_API_KEY missing).',
+      instruction: 'Tell the user web search is unavailable right now and suggest they verify externally. Do NOT silently use your training knowledge for time-sensitive facts (current prices, latest formulations, recent reformulations, current product specs, latest research). For evergreen K-beauty knowledge that does not depend on current data, you may answer from training but cite that limitation explicitly.',
     })
   }
 
@@ -1425,7 +1425,8 @@ async function executeWebSearch(
       const statusText = response.statusText || response.status
       console.error(`[yuri/tools] Brave Search API error: ${statusText}`)
       return JSON.stringify({
-        error: `Web search failed (${statusText}). Answer from your knowledge instead.`,
+        error: `Web search failed (${statusText}).`,
+        instruction: 'Tell the user web search returned an error and suggest they verify externally. Do NOT silently use training knowledge for time-sensitive facts (prices, current formulations, recent reformulations, latest research).',
       })
     }
 
@@ -1477,7 +1478,8 @@ async function executeWebSearch(
   } catch (err) {
     console.error('[yuri/tools] Web search error:', err)
     return JSON.stringify({
-      error: `Web search failed: ${err instanceof Error ? err.message : 'unknown error'}. Answer from your knowledge instead.`,
+      error: `Web search failed: ${err instanceof Error ? err.message : 'unknown error'}.`,
+      instruction: 'Tell the user web search hit an error (likely network/timeout) and suggest they verify externally. Do NOT silently use training knowledge for time-sensitive facts.',
     })
   }
 }
