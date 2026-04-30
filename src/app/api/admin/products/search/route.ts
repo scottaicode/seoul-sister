@@ -11,6 +11,12 @@ const searchSchema = z.object({
   price_max: z.number().positive().optional(),
   brands: z.array(z.string()).optional(),
   limit: z.number().int().min(1).max(20).optional().default(10),
+  // When true, only return products with a known US price. Defaults to false so
+  // ingredient/scent/safety queries can still ground responses in real INCI data
+  // for products that lack US pricing (~14% of catalog as of Apr 2026). Price
+  // comparison and dupe-finder flows should pass `require_price: true` to keep
+  // the previous strict behavior. Implicitly enabled when `price_max` is set.
+  require_price: z.boolean().optional().default(false),
 })
 
 // Skin concern → product category mapping (lowercase to match ss_products.category)
@@ -47,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const params = searchSchema.parse(body)
-    const { query, categories, skin_types, skin_concerns, price_max, brands, limit } = params
+    const { query, categories, skin_types, skin_concerns, price_max, brands, limit, require_price } = params
 
     if (!query && !categories?.length && !skin_types?.length && !skin_concerns?.length && !brands?.length) {
       throw new AppError('At least one filter is required', 400)
@@ -129,8 +135,15 @@ export async function POST(request: NextRequest) {
         q = q.lte('price_usd', price_max)
       }
 
+      // Only require a known US price when the caller opts in or when a price
+      // ceiling was specified (a price ceiling is meaningless without a price).
+      // Defaulting to `false` lets ingredient/scent/safety queries reach the
+      // ~14% of products that have full INCI data but lack US pricing.
+      if (require_price || price_max !== undefined) {
+        q = q.not('price_usd', 'is', null)
+      }
+
       q = q
-        .not('price_usd', 'is', null)
         .order('rating_avg', { ascending: false, nullsFirst: false })
         .limit(limit)
 
