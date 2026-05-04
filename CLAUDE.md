@@ -905,11 +905,57 @@ Seoul Sister must rank when someone asks ChatGPT/Perplexity: "What's the best Ko
 - [ ] **Price staleness UX warning** (~30 min of work). When `compare_prices` tool returns a price with `last_checked > 14 days ago`, append "(price last verified X days ago)" to the response. Same honesty pattern as v10.2.1 tool-call honesty rule. Trigger condition: when traffic grows to the point where stale price citations become a noticeable share of conversations.
 - [ ] **Trend signal generation at scale** (no work needed yet — this is monitoring). `ss_trend_signals` table currently has 8 rows from Feb 23. The `scan-trends` cron runs daily but produces 0 signals because Seoul Sister has ~2 active users — there's no community activity to detect trends from. Working as designed for current scale. Re-audit when monthly active users exceed 100 — at that point the cron should start producing signals. If it doesn't, investigate the detection thresholds in `src/lib/learning/trends.ts`.
 
-**Cron Pipeline Health** (verified Apr 26 2026, no action needed)
+**Cron Pipeline Health** (verified Apr 26 2026, NOTE: superseded by May 5 2026 audit below — cron health has degraded since)
 - All 14 crons in `vercel.json` are running on schedule. Most recent successful runs visible in `ss_pipeline_runs` and via downstream table writes (`ss_price_history` showed 14,001 snapshots in the last 7 days across 6 retailers).
 - Pricing pipeline writing to `ss_price_history` daily for Soko Glam, YesStyle, Stylevana, Amazon, iHerb. Olive Young also writing daily but on a slow rolling cycle.
 - Reddit + Olive Young bestseller scrapers actively populating `ss_trending_products` (670 Reddit + 76 Olive Young entries, 126+45 updated last 7 days).
 - Aggregate-learning + update-effectiveness writing to `ss_ingredient_effectiveness` daily.
+
+---
+
+### Database & Pipeline Health Audit — May 5 2026 (post-Bailey diagnostic)
+
+Captured at the end of a 7-release session focused on Bailey's account. Surfaced multiple silent regressions that the Apr 26 audit didn't catch because they happened *after* that audit. **Do these in priority order when next session opens.**
+
+**Database snapshot (May 5 2026):**
+- Products: 5,901 (588 verified — only 10%)
+- Brands: 569
+- Ingredient links: 209,230 across 5,204 products (~88% linked)
+- Ingredients master: 14,468
+- Price records: 5,047 across 6 retailers
+- Trending: 411 Reddit rows + 82 Olive Young bestsellers, both fresh in last 7 days
+- Ingredient effectiveness: 143 rows total
+
+**P0 — Olive Young scrapers silently broken**
+- **Olive Young product scraper has been zero-result for 2+ weeks**. Apr 22-30 returned 96 products/run all duplicates (no NEW products); May 1-4 returns 0 products. Either Olive Young changed their HTML structure, hit rate-limit/CAPTCHA, or the scraper script is silently failing. Pipeline fires, looks "completed" in `ss_pipeline_runs`, but produces nothing. **This is a v10.3.4-class silent failure** — the v10.3.5 fire-and-forget logging audit did NOT cover scraper success-with-zero-results paths.
+- **Olive Young price scraping stopped Apr 7** (~28 days stale). 4,917 Olive Young price rows, ZERO fresh in last 7 days. Soko Glam (Shopify API) and YesStyle (Playwright) ARE still updating, so the working-scraper paths function. Olive Young is the largest pricing source — when Yuri quotes Olive Young prices via `compare_prices`, she's quoting month-old data. K-beauty prices fluctuate monthly.
+- **Action**: 30-60 min investigation of `src/lib/pipeline/sources/olive-young.ts` and `olive-young-bestsellers.ts`. Check what response Olive Young is actually returning. Look for HTML structure changes, IP blocks, or selector-mismatch silent failures. Add `console.error('[olive-young scrape] expected products, got 0')` so future regressions surface in Vercel logs.
+
+**P1 — Verification rate is suppressing search visibility**
+- Only 588 of 5,901 products have `is_verified = true`. The widget's `search_products` tool filters by verified by default. **~90% of catalog is invisible to public Yuri's search results.**
+- Most thin: lip_care (10/284 verified, 4%), spot_treatment (8/197, 4%), mist (8/76, 11%), eye_care (20/206, 10%), exfoliator (20/177, 11%).
+- Verification was a manual flag set during the original Feb 17 seed; never auto-bumped by the Sonnet pipeline. Products with full data (name, brand, category, ingredients, AND a price record) are structurally complete and should be auto-promoted.
+- **Action**: Single SQL update — `UPDATE ss_products SET is_verified = true WHERE name_en IS NOT NULL AND brand_en IS NOT NULL AND category IS NOT NULL AND ingredients_raw IS NOT NULL AND id IN (SELECT product_id FROM ss_product_prices)`. Estimated impact: 5,000+ products newly visible in search. Spot-check sample for false positives before running.
+
+**P2 — Combination skin effectiveness data is sparse**
+- `ss_ingredient_effectiveness` skin-type distribution: dry 85 rows, sensitive 31, oily 12, **combination 9**, normal 6.
+- Bailey is combination. The "Missing high-value ingredients" widget rotates the same 5 ingredients (HA / Tranexamic / Retinol / Salicylic Acid / Snail Mucin) because that's effectively all the combination-skin data available. Once those are excluded by phase filter or already in routine, the widget runs out.
+- Phase 11.4 originally bootstrapped this; combination got under-seeded.
+- **Action**: Run a research-backed seed script adding 30-40 combination-skin effectiveness rows covering more concerns (sebum control, pore visibility, T-zone shine, combination dehydration). Estimated cost ~$1 in Sonnet. Pattern is already in `scripts/seed-learning-data.ts` (Phase 11.4 reference).
+
+**P3 — `not_skincare` cleanup**
+- 18 products tagged `category = 'not_skincare'` (8 with ingredients_raw). Either contamination from the Olive Young scraper or correctly-classified makeup/hair/body. Quick query to inspect, then delete or recategorize.
+- **Action**: 10 min. Query: `SELECT id, name_en, brand_en, description_en FROM ss_products WHERE category = 'not_skincare' ORDER BY created_at`. Manually classify and either recategorize or delete.
+
+**P4 — Stale price retailers (Amazon, Stylevana, iHerb)**
+- Amazon: 10 rows, all from Feb 17 seed, never updated.
+- Stylevana: 4 rows, same.
+- iHerb: 1 row, same.
+- These retailers never had working scrapers. Either build them, mark them as "unsupported retailer" in the price-quoting logic, or remove the rows so Yuri stops citing 3-month-old prices.
+- **Action**: Lower priority. Either build scrapers (~half-day per retailer) or delete the rows and remove from `ss_retailers` allowlist.
+
+**Cross-cutting observation: scraper-zero-result is its own bug class.**
+The Olive Young silent failure (P0) is structurally the same shape as the v10.3.4 decision memory crash — fire-and-forget with success-on-empty masking real failures. The v10.3.5 logging audit added `console.error` to fire-and-forget catches but did NOT add "expected non-zero, got zero" alerts. Worth adding a generic pattern: any scraper job that returns 0 rows when historical baseline is >0 should log a warning. ~2 hours of work, prevents another 2-week silent regression.
 
 ## Phase 8: Value Enrichment Features (11 Features)
 
