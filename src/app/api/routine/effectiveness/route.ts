@@ -48,10 +48,14 @@ export async function GET(request: NextRequest) {
     const skinConcerns: string[] = (profile?.skin_concerns as string[]) ?? []
     const climate = profile?.climate ?? null
 
-    // Run effectiveness, missing ingredients, and seasonal in parallel
+    // Run effectiveness, missing ingredients, and seasonal in parallel.
+    // user.id passed to getMissingHighValueIngredients so it can filter out
+    // ingredients Yuri has explicitly excluded in the active treatment plan
+    // (decision_memory). Without this, the widget recommended ingredients
+    // Yuri had told the user to skip — see CHANGELOG v10.3.6 origin.
     const [concerns, missingIngredients, seasonalInsight] = await Promise.all([
       calculateRoutineEffectiveness(supabase, routineId, skinType, skinConcerns),
-      getMissingHighValueIngredients(supabase, routineId, skinType),
+      getMissingHighValueIngredients(supabase, routineId, skinType, user.id),
       fetchSeasonalLearning(supabase, climate),
     ])
 

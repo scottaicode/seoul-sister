@@ -4,6 +4,50 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v10.3.6 (May 5, 2026) — Phase-Aware Routine Recommendations: Stop Telling Users to Add What Yuri Excluded
+
+### Origin
+On May 4, Bailey opened a conversation with Yuri because the routine page told her she was missing tranexamic acid, retinol, and hyaluronic acid. All three were ingredients Yuri had explicitly excluded from her current treatment plan: HA was redundant with her existing Anua serum, tranexamic was deferred to Phase 3 to avoid stacking actives with Goodal Vita C, and retinol was already covered by her prescription tretinoin (paused during Phase 1 barrier repair). Yuri had to spend three messages overriding the dashboard's confident recommendations because the widget was contradicting her own treatment plan.
+
+This is the same class of issue v8.5.0 fixed for Glass Skin scoring (which was recommending actives during barrier repair). The Glass Skin fix added `loadTreatmentPlanContext()` to read decision memory and inject phase guidance into the Vision prompt. The same gap existed on the routine page; this release closes it.
+
+The fix was unblocked by v10.3.4 — without working decision memory, there was no source-of-truth to filter against. v10.3.4 made decision memory actually persist; v10.3.6 makes the routine widget honor it.
+
+### Changed
+- **`getMissingHighValueIngredients` is now phase-aware** (`src/lib/intelligence/routine-effectiveness.ts`):
+  - New optional `userId` parameter. When provided, the function loads the user's 5 most recent conversations with non-empty `decision_memory` and extracts a token list of currently-excluded ingredients.
+  - **Exclusion detection**: scans `decisions[]`, `preferences[]`, and `corrections[]` for any text containing one of 22 phase-marker phrases (`skip`, `defer`, `phase 2`, `phase 3`, `pause`, `wait`, `until`, `revisit`, `not yet`, `discontinue`, `on hold`, etc.). Text matching one of these markers contributes its meaningful tokens (4+ chars, not stop words) to the exclusion set.
+  - **Filter logic**: each candidate ingredient's name is tokenized; the candidate is dropped if any of its name tokens appears in the exclusion set. "Tranexamic Acid" tokenizes to `[tranexamic, acid]`; if decision memory says "skip tranexamic acid for now," `tranexamic` is in the exclusion set, the row is dropped.
+  - **Over-fetch from 20 to 40** so phase filtering still leaves enough candidates to return a meaningful top 3.
+  - **Backward compatible**: `userId` is optional. Callers that don't pass it get the unfiltered behavior.
+
+- **API route passes `user.id`** (`src/app/api/routine/effectiveness/route.ts`): one-line change adding `user.id` to the `getMissingHighValueIngredients` call so the filter activates for every authenticated request.
+
+### Verification
+- `npx tsc --noEmit` passes clean
+- End-to-end test against Bailey's actual Phase 2 AM routine (`scripts/verify-phase-aware-widget.ts`):
+  - Pre-fix (without userId): returns Hyaluronic Acid (84%), Retinol (84%), Tranexamic Acid (83%) — exactly what Bailey saw on May 4
+  - Post-fix (with userId): returns Snail Mucin (78%) — an ingredient Yuri has not excluded
+  - All three excluded ingredients correctly filtered
+
+### What this does NOT do
+- **No AI call to detect exclusions.** Keyword matching is sufficient for Yuri's standard phrasing and avoids ~$0.005 + ~1s latency on every routine page load. False positives (over-filtering) are guarded by the conservative marker list. False negatives (missing an exclusion) degrade to pre-fix behavior, which is acceptable.
+- **No global treatment-plan abstraction.** v8.5.0 has its own `loadTreatmentPlanContext` for Glass Skin. This release reads the same source (`decision_memory`) but with a different extraction shape (token list vs. prompt context). If a third surface needs the same data later, that's the time to extract a shared helper.
+- **No UI changes.** The `RoutineEffectiveness` component already handles empty `missingIngredients` gracefully — when filtering removes all candidates, the section just doesn't render.
+
+### Deferred (documented for later)
+- **Apply same filter to other recommendation surfaces.** Products page (`/api/products?sort_by=recommended`), dupe finder, scan enrichment all use the same effectiveness data. They'd benefit from the same filter. This release scopes to the most user-visible surface (routine widget) and the one Bailey actually saw broken.
+- **Surface the filter as a hint to the user.** When the system filters out an ingredient, it could optionally show "Yuri's plan currently excludes: tranexamic acid (revisits in Phase 3)" so the user understands why the recommendation isn't there. Better UX, but adds complexity. Holding for now.
+
+### Files modified
+- `src/lib/intelligence/routine-effectiveness.ts` — phase-aware filter + new private helper `loadCurrentlyExcludedIngredients`
+- `src/app/api/routine/effectiveness/route.ts` — pass user.id through
+- `scripts/verify-phase-aware-widget.ts` (new) — verification harness, kept on disk for future regression checks
+- `CHANGELOG.md` — this entry
+- `CLAUDE.md` — version line + cross-reference
+
+---
+
 ## v10.3.5 (May 5, 2026) — Fire-and-forget Audit: Add Error Logging to High-Risk Background Tasks
 
 ### Origin
