@@ -4,6 +4,80 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v10.3.3 (May 5, 2026) — Schema Fix: Allow Null product_id on Routine Steps
+
+### Origin
+Discovered while attempting to apply Bailey Donmartin's manual routine correction (the data follow-up to v10.3.2). The `ss_routine_products.product_id` column was `NOT NULL`, which forced every device step (LED mask, ice roller) and action step (cool water rinse, shower / cleanse) to point at *some* `ss_products` row. The routine save path (`executeSaveRoutine` in `src/lib/yuri/tools.ts`) was reaching `resolveProductByName` with non-product strings and getting fuzzy matches that produced exactly the wrong-product symptom v10.3.2 set out to fix. **The schema was the root cause; v10.3.2 was a partial mitigation that couldn't fully work until this column was made nullable.**
+
+### Changed
+- **`ss_routine_products.product_id` is now nullable** (`supabase/migrations/20260505000001_routine_products_allow_null_product_id.sql`). Routine steps that have no product (devices, actions, custom-named items not in the catalog) save with `product_id = NULL` and the step content lives in the `notes` column. The existing `executeSaveRoutine` logic from v10.3.2 already passed `product_id: null` for unmatched names — it just hit the schema constraint and rolled back. Now those inserts succeed.
+- **Routine page UI patched for nullable product_id** (`src/app/(app)/routine/page.tsx`):
+  - Reorder up/down and remove buttons hide on null-product rows. The routine API addresses rows by `product_id` (POST/DELETE/PUT all key on it), so null rows are unaddressable until a future refactor migrates the addressing key to `ss_routine_products.id`.
+  - When `rp.product` is null and `rp.notes` is populated, the notes render as the step content instead of the "Product removed" fallback. This is what surfaces "Cool water rinse" / "Ice roller" / "LED mask Blue/Red" in the UI.
+  - `RoutineProduct.product_id` typed as `string | null`.
+  - `handleMoveProduct` and `handleRemoveProduct` accept null and early-return; reorder builds `productIds` from the filtered (non-null) array so positions stay aligned.
+  - `existingProductIds` passed into the Add Product modal is filtered to drop nulls.
+
+### Read-path audit (no changes required)
+All other consumers of `ss_routine_products` were verified safe before the migration:
+- `src/app/api/routine/route.ts` — already had `.filter(Boolean)` on the productIds array
+- `src/app/api/routine/[id]/route.ts` — pass-through GET, page handles null products
+- `src/app/api/routine/[id]/products/route.ts` — addresses by product_id; null rows are immutable through this API but won't crash. Future work: migrate addressing key to `ss_routine_products.id`.
+- `src/lib/intelligence/{conflict-detector,routine-effectiveness,reformulation-detector}.ts` — `.in('product_id', [...with nulls])` silently drops null entries; doesn't crash.
+- `src/lib/yuri/{memory,actions,tools}.ts` — already null-safe (`if (product?.name_en)` patterns).
+- `src/app/api/{cycle,scan}/route.ts` — null-safe via existing guards.
+- `src/lib/learning/recommendations.ts` — uses Set lookups; null in the set is harmless because no real product_id equals null.
+
+### Verification
+- `npx tsc --noEmit` passes clean
+- Type narrowing verified: `RoutineProduct.product_id: string | null` propagates correctly through handlers; reorder API still receives only valid UUIDs.
+- Migration is reversible: `ALTER TABLE ss_routine_products ALTER COLUMN product_id SET NOT NULL` would re-add the constraint (would require deleting null rows first).
+
+### Files modified
+- `supabase/migrations/20260505000001_routine_products_allow_null_product_id.sql` (new)
+- `scripts/fix-bailey-phase2-routines.sql` (combined: migration + Bailey's data fix in one transaction for one-paste Supabase Studio run)
+- `src/app/(app)/routine/page.tsx` — null-safe rendering and handlers
+- `CHANGELOG.md` — this entry
+- `CLAUDE.md` — version line + cross-reference
+
+### Deferred
+- **Routine API addressing refactor**: `/api/routine/[id]/products/route.ts` should eventually key by `ss_routine_products.id` (the row UUID) instead of `product_id`, so null-product steps can be reordered/removed through the UI. Current behavior: null-product steps display in the routine but can only be modified via Yuri (rebuilding the routine). Acceptable interim state.
+
+---
+
+## v10.3.2 (May 5, 2026) — Routine Save Honesty: Resolver Fix + Mismatch Reporting + Optional product_id
+
+### Origin
+Diagnostic of Bailey Donmartin's account on May 5 surfaced that her active Phase 2 AM and PM routines did not match what Yuri promised in chat. On May 4, Yuri described a 9-step Phase 2 AM routine including Goodal Green Tangerine Vita C in slot 4 and a PM routine with COSRX BHA Blackhead Power Liquid in slot 4 (Mon/Wed/Fri). The actual `ss_routine_products` rows showed Torriden DIVE-IN HA Serum and COSRX Advanced Snail 96 Mucin Essence in those slots — wrong products, with Phase 2 notes attached. Yuri's "Saved ✨" message claimed success without acknowledging any mismatch.
+
+Investigation traced this to three stacked failures in the save path. This release addresses the two most leveraged ones.
+
+### Changed
+- **`resolveProductByName` tiebreaker (`src/lib/yuri/tools.ts`)**: When multiple products match every query term, the resolver now sorts candidates by combined `brand_en + name_en` length ascending (closer-fitting names first), then by `rating_avg` descending. The previous behavior — sort by rating only — actively penalized products without ratings and routinely picked the wrong variant. Concretely: a query for "Goodal Green Tangerine Vita C" used to resolve to the highest-rated *Cream* (4.50 stars) over the more specific *Serum* (no rating). Now the resolver prefers names that don't overshoot the query.
+- **`executeSaveRoutine` user-facing message (`src/lib/yuri/tools.ts`)**: The tool now classifies each step into one of three buckets — `matched` (every query term appears in the chosen product's brand+name), `matched_loose` (DB row found but query terms don't all appear, so the match is dangerous), and `no_db_match` (no row at all, saved as a custom entry). The returned `message` field explicitly names every loose match and unmatched entry inline so a user can never be told "Saved ✨" while a wrong product silently sits in their routine.
+
+### Added
+- **Optional `product_id` on `save_routine` steps (`src/lib/yuri/tools.ts` + `advisor.ts` system prompt)**: The save tool input schema now accepts an optional `product_id` per step. When provided, save bypasses name-based resolution entirely and uses the ID directly. Tool description and the advisor system prompt teach Yuri the search-first pattern: search_products → grab the product_id → pass it on the save call. Falling back to product_name alone is reserved for items genuinely outside the database (devices like "ice roller", actions like "shower / cleanse").
+- **Two new system-prompt rules** (`src/lib/yuri/advisor.ts`): (1) Yuri must pass `product_id` on save_routine steps unless the item isn't in the DB, (2) after save_routine returns, Yuri's reply MUST quote the tool's `message` field verbatim — paraphrasing or omitting the loose-match warning is forbidden. The reply rule is the structural fix that prevents Bailey's class of failure: Yuri cannot tell the user "Saved ✨" without surfacing the tool's authoritative report on what actually happened.
+
+### Not changed (deliberately deferred)
+- **No automatic chat-history coupling**: Considered enforcing that every `product_name` in a save_routine call must appear in Yuri's immediately preceding chat message. Rejected because it requires fragile parsing and creates tight coupling between presentation and persistence layers. The "quote the tool message verbatim" rule achieves the same trust goal without the parsing cost.
+- **No ambiguity surfacing on `resolveProductByName`**: Considered returning all candidates when 2+ products match every query term so Yuri can disambiguate explicitly. Deferred — adds chattiness to common cases. Revisit if the length tiebreaker proves insufficient.
+- **Bailey's existing routine rows are NOT corrected by this release**: Her active Phase 2 AM/PM rows in `ss_routine_products` still reflect the pre-fix mismatch. A separate manual data correction (or asking Yuri to redo the save with the new code) is required.
+
+### Verification
+- `npx tsc --noEmit` passes clean
+- Bug reproduction: simulated `resolveProductByName("Goodal Green Tangerine Vita C")` against the live DB. Pre-fix matched the Cream (rating 4.50) over the more specific Serum. Post-fix matches the shortest-name candidate.
+- Tool-execution logic verified: a save with one in-DB product (clean match), one ambiguous product (loose match), and one nonexistent product (no DB match) produces a single `message` string with three labeled sections that Yuri must quote.
+
+### Files modified
+- `src/lib/yuri/tools.ts` — `resolveProductByName` tiebreaker + `SaveRoutineStep` interface (added `product_id`) + `save_routine` schema + `executeSaveRoutine` rewrite
+- `src/lib/yuri/advisor.ts` — two new system-prompt rules under `**save_routine**`
+- `CHANGELOG.md` — this entry
+- `CLAUDE.md` — version line + cross-reference
+
+---
+
 ## v10.1.0 (Apr 16, 2026) — Claude Opus 4.7 Migration
 
 ### Changed

@@ -128,25 +128,45 @@ async function smartProductSearch(
 /**
  * Resolve a product name to a single product ID (best match).
  * Used by compare_prices, get_product_details, get_personalized_match, etc.
+ *
+ * Tiebreaker (when multiple products match all query terms): prefer the
+ * product whose combined brand+name has the FEWEST extra characters beyond
+ * the query — i.e., the closest-fitting match. Falls back to rating when
+ * lengths tie. Without this, a query like "Goodal Green Tangerine Vita C"
+ * resolves to the highest-rated *Cream* over the more specific *Serum* the
+ * user actually asked for.
  */
 async function resolveProductByName(
   db: SupabaseClient,
   productName: string
 ): Promise<{ id: string; name_en: string; brand_en: string } | null> {
   const results = await smartProductSearch(db, productName, {
-    limit: 5,
-    selectCols: 'id, name_en, brand_en',
+    limit: 10,
+    selectCols: 'id, name_en, brand_en, rating_avg',
   })
   if (!results.length) return null
 
-  // Prefer exact-ish match: product where ALL query terms appear in brand+name
   const terms = productName.toLowerCase().split(/\s+/).filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
-  const bestMatch = results.find(p => {
+
+  // Filter to candidates where ALL query terms appear in combined brand+name
+  const allTermMatches = results.filter(p => {
     const combined = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`.toLowerCase()
     return terms.every(t => combined.includes(t))
   })
 
-  const chosen = bestMatch || results[0]
+  const candidates = allTermMatches.length > 0 ? allTermMatches : results
+
+  // Sort: shorter combined brand+name first (closer fit), then higher rating
+  candidates.sort((a, b) => {
+    const aLen = `${(a.brand_en as string) || ''} ${(a.name_en as string) || ''}`.length
+    const bLen = `${(b.brand_en as string) || ''} ${(b.name_en as string) || ''}`.length
+    if (aLen !== bLen) return aLen - bLen
+    const aRating = (a.rating_avg as number | null) ?? 0
+    const bRating = (b.rating_avg as number | null) ?? 0
+    return bRating - aRating
+  })
+
+  const chosen = candidates[0]
   return {
     id: chosen.id as string,
     name_en: chosen.name_en as string,
@@ -454,7 +474,8 @@ export const YURI_TOOLS: ToolDef[] = [
   {
     name: 'save_routine',
     description:
-      'Save a complete routine to the user\'s app. Call when the user approves a routine you presented, or when they ask to save it. Ask first: "Want me to save this to your Routine page?"',
+      'Save a complete routine to the user\'s app. Call when the user approves a routine you presented, or when they ask to save it. Ask first: "Want me to save this to your Routine page?"\n\n' +
+      'CRITICAL: For each step, prefer passing product_id (obtained from search_products or get_product_details earlier in this conversation). Falling back to product_name alone risks the wrong DB product being saved when names are ambiguous (e.g. multiple Goodal Vita C variants). After the tool returns, your reply MUST quote the tool\'s `message` field verbatim — it explicitly names any loose matches or unmatched products that the user needs to see.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -465,7 +486,14 @@ export const YURI_TOOLS: ToolDef[] = [
           items: {
             type: 'object',
             properties: {
-              product_name: { type: 'string' },
+              product_id: {
+                type: 'string',
+                description: 'PREFERRED: Product UUID from a prior search_products / get_product_details call this conversation. When provided, the save bypasses name-based resolution and uses this product directly.',
+              },
+              product_name: {
+                type: 'string',
+                description: 'Product name. Required as a fallback identifier and for display when product_id is missing or the product isn\'t in the DB (custom entry).',
+              },
               product_brand: { type: 'string' },
               category: { type: 'string' },
               step_order: { type: 'number' },
@@ -2096,6 +2124,7 @@ async function executeGetRoutineContext(
 // ---------------------------------------------------------------------------
 
 interface SaveRoutineStep {
+  product_id?: string
   product_name: string
   product_brand?: string
   category?: string
@@ -2146,13 +2175,61 @@ async function executeSaveRoutine(
   }
 
   // Resolve product IDs and insert steps
-  const savedSteps: Array<{ step_order: number; product_name: string; matched: boolean }> = []
+  // Track which steps mapped cleanly to a DB product, which fell back to the
+  // user's name with no DB match, and (the dangerous case) which resolved to
+  // a DB product whose name doesn't actually match what was requested — that
+  // last bucket is the routine-mismatch class of bug Bailey hit.
+  type StepResult = {
+    step_order: number
+    requested_name: string
+    requested_brand: string | null
+    matched_name: string | null
+    matched_brand: string | null
+    status: 'matched' | 'matched_loose' | 'no_db_match'
+  }
+  const savedSteps: StepResult[] = []
 
   for (const step of steps) {
     let productId: string | null = null
-    const match = await resolveProductByName(db, step.product_name)
-    if (match) {
-      productId = match.id
+    let matchedName: string | null = null
+    let matchedBrand: string | null = null
+    let status: StepResult['status'] = 'no_db_match'
+
+    // If Yuri passed an explicit product_id, trust it directly — this is the
+    // search-first pattern. Otherwise resolve by name.
+    if (step.product_id) {
+      const { data: byId } = await db
+        .from('ss_products')
+        .select('id, name_en, brand_en')
+        .eq('id', step.product_id)
+        .single()
+      if (byId) {
+        productId = byId.id
+        matchedName = byId.name_en
+        matchedBrand = byId.brand_en
+        status = 'matched'
+      }
+    }
+
+    if (!productId) {
+      const match = await resolveProductByName(db, step.product_name)
+      if (match) {
+        productId = match.id
+        matchedName = match.name_en
+        matchedBrand = match.brand_en
+
+        // Loose-match check: did EVERY meaningful term from the requested name
+        // actually appear in the matched product's brand+name? If not, this is
+        // a dangerous match (e.g., "Goodal Green Tangerine Vita C" resolving to
+        // a Torriden product). Flag it so the user-facing message can warn.
+        const requestedTerms = step.product_name
+          .toLowerCase()
+          .split(/\s+/)
+          .filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
+        const combined = `${matchedBrand || ''} ${matchedName || ''}`.toLowerCase()
+        const allTermsHit = requestedTerms.every(t => combined.includes(t))
+        status = allTermsHit ? 'matched' : 'matched_loose'
+      }
     }
 
     const { error: stepError } = await db.from('ss_routine_products').insert({
@@ -2169,8 +2246,11 @@ async function executeSaveRoutine(
 
     savedSteps.push({
       step_order: step.step_order,
-      product_name: step.product_name,
-      matched: !!productId,
+      requested_name: step.product_name,
+      requested_brand: step.product_brand || null,
+      matched_name: matchedName,
+      matched_brand: matchedBrand,
+      status,
     })
 
     // Also ensure the product is in ss_user_products
@@ -2197,14 +2277,47 @@ async function executeSaveRoutine(
     }
   }
 
+  // Build an authoritative user-facing message. Yuri MUST quote this verbatim
+  // (per system prompt rule). It explicitly names mismatches so a user can't
+  // be told "Saved ✨" while the routine page silently shows wrong products.
+  const looseMatches = savedSteps.filter(s => s.status === 'matched_loose')
+  const noMatches = savedSteps.filter(s => s.status === 'no_db_match')
+  const cleanCount = savedSteps.filter(s => s.status === 'matched').length
+
+  let message = `Saved "${routineName}" with ${savedSteps.length} steps`
+  if (replaceExisting) message += ' (previous routine deactivated)'
+  message += '.'
+
+  if (looseMatches.length > 0) {
+    message += `\n\n⚠️ ${looseMatches.length} step${looseMatches.length > 1 ? 's' : ''} matched loosely — the closest product in our database may not be what you asked for:`
+    for (const s of looseMatches) {
+      message += `\n- Step ${s.step_order}: requested "${s.requested_name}" → saved as "${s.matched_brand} ${s.matched_name}"`
+    }
+    message += '\n\nIf any of these are wrong, ask me to fix that step and I\'ll search the database properly.'
+  }
+
+  if (noMatches.length > 0) {
+    message += `\n\nℹ️ ${noMatches.length} step${noMatches.length > 1 ? 's were' : ' was'} saved without a database match (custom entries — they\'ll show in your routine but without prices/ingredients):`
+    for (const s of noMatches) {
+      message += `\n- Step ${s.step_order}: "${s.requested_name}"`
+    }
+  }
+
+  if (looseMatches.length === 0 && noMatches.length === 0) {
+    message += ` All ${cleanCount} products matched cleanly. View on the Routine page.`
+  }
+
   return JSON.stringify({
     success: true,
     routine_id: newRoutine.id,
     routine_name: routineName,
     routine_type: routineType,
     steps_saved: savedSteps.length,
+    steps_clean: cleanCount,
+    steps_loose: looseMatches.length,
+    steps_unmatched: noMatches.length,
     steps: savedSteps,
     replaced_existing: !!replaceExisting,
-    message: `Saved "${routineName}" with ${savedSteps.length} steps. ${replaceExisting ? 'Previous routine deactivated.' : ''} The user can view it on the Routine page.`,
+    message,
   })
 }

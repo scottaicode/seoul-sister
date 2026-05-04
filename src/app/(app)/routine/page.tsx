@@ -49,7 +49,9 @@ interface RoutineProduct {
   step_order: number
   frequency: string | null
   notes: string | null
-  product_id: string
+  // Nullable: custom steps (devices, actions like "shower / cleanse") have no
+  // backing ss_products row. Schema allows NULL here as of v10.3.3.
+  product_id: string | null
   product: ProductInfo | null
   ownership: ProductOwnership | null
 }
@@ -170,7 +172,8 @@ function RoutineCard({
     return { has_conflicts: data.has_conflicts, conflicts: data.conflicts }
   }
 
-  async function handleRemoveProduct(productId: string) {
+  async function handleRemoveProduct(productId: string | null) {
+    if (!productId) return  // Custom steps can't be removed via this API
     setRemoving(productId)
     try {
       const headers = await getAuthHeaders()
@@ -184,13 +187,21 @@ function RoutineCard({
     }
   }
 
-  async function handleMoveProduct(productId: string, direction: 'up' | 'down') {
-    const currentIndex = routine.products.findIndex((rp) => rp.product_id === productId)
+  async function handleMoveProduct(productId: string | null, direction: 'up' | 'down') {
+    if (!productId) return  // Custom steps (null product_id) can't be reordered via this API
+
+    // Reorder API addresses rows by product_id, so we work entirely in the
+    // filtered (non-null) space and let null-product steps keep their saved
+    // positions on the server.
+    const productIds = routine.products
+      .map((rp) => rp.product_id)
+      .filter((id): id is string => id !== null)
+    const currentIndex = productIds.indexOf(productId)
     if (currentIndex === -1) return
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
-    if (targetIndex < 0 || targetIndex >= routine.products.length) return
+    if (targetIndex < 0 || targetIndex >= productIds.length) return
 
-    const newOrder = routine.products.map((rp) => rp.product_id)
+    const newOrder = [...productIds]
     ;[newOrder[currentIndex], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[currentIndex]]
 
     const headers = await getAuthHeaders()
@@ -259,22 +270,30 @@ function RoutineCard({
               .map((rp, index) => (
                 <div key={rp.id}>
                   <div className="flex items-center gap-2.5 py-2 px-1 group">
-                    {/* Reorder buttons */}
+                    {/* Reorder buttons — only render for steps with a real product_id (the
+                        routine API addresses rows by product_id, so null-product custom
+                        entries can't be reordered through this UI). */}
                     <div className="flex flex-col gap-0.5">
-                      <button
-                        onClick={() => handleMoveProduct(rp.product_id, 'up')}
-                        disabled={index === 0}
-                        className="p-0.5 rounded text-white/20 hover:text-white/50 disabled:opacity-0 transition-all"
-                      >
-                        <ChevronUp className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => handleMoveProduct(rp.product_id, 'down')}
-                        disabled={index === routine.products.length - 1}
-                        className="p-0.5 rounded text-white/20 hover:text-white/50 disabled:opacity-0 transition-all"
-                      >
-                        <ChevronDown className="w-3 h-3" />
-                      </button>
+                      {rp.product_id ? (
+                        <>
+                          <button
+                            onClick={() => handleMoveProduct(rp.product_id, 'up')}
+                            disabled={index === 0}
+                            className="p-0.5 rounded text-white/20 hover:text-white/50 disabled:opacity-0 transition-all"
+                          >
+                            <ChevronUp className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => handleMoveProduct(rp.product_id, 'down')}
+                            disabled={index === routine.products.length - 1}
+                            className="p-0.5 rounded text-white/20 hover:text-white/50 disabled:opacity-0 transition-all"
+                          >
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
+                        </>
+                      ) : (
+                        <div className="w-3 h-6" />
+                      )}
                     </div>
 
                     <span className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-bold text-white/40 flex-shrink-0">
@@ -305,6 +324,8 @@ function RoutineCard({
                             }
                           </p>
                         </>
+                      ) : rp.notes ? (
+                        <p className="text-sm text-white/70">{rp.notes}</p>
                       ) : (
                         <p className="text-sm text-white/50 italic">Product removed</p>
                       )}
@@ -335,17 +356,19 @@ function RoutineCard({
                       <Clock className="w-3.5 h-3.5" />
                     </button>
 
-                    <button
-                      onClick={() => handleRemoveProduct(rp.product_id)}
-                      disabled={removing === rp.product_id}
-                      className="p-1 rounded text-white/15 hover:text-red-400 md:opacity-0 md:group-hover:opacity-100 transition-all"
-                    >
-                      {removing === rp.product_id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <X className="w-3.5 h-3.5" />
-                      )}
-                    </button>
+                    {rp.product_id && (
+                      <button
+                        onClick={() => handleRemoveProduct(rp.product_id)}
+                        disabled={removing === rp.product_id}
+                        className="p-1 rounded text-white/15 hover:text-red-400 md:opacity-0 md:group-hover:opacity-100 transition-all"
+                      >
+                        {removing === rp.product_id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <X className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    )}
                   </div>
 
                   {/* Wait time indicator */}
@@ -363,7 +386,7 @@ function RoutineCard({
         onClose={() => setShowAddModal(false)}
         onAdd={handleAddProduct}
         routineType={routine.routine_type}
-        existingProductIds={routine.products.map((rp) => rp.product_id)}
+        existingProductIds={routine.products.map((rp) => rp.product_id).filter(Boolean) as string[]}
       />
     </>
   )

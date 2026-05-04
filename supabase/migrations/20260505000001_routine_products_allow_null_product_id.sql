@@ -1,0 +1,30 @@
+-- ============================================================
+-- Migration: routine_products_allow_null_product_id
+-- Date: 2026-05-05
+-- Version: v10.3.3
+--
+-- Allow ss_routine_products rows to exist without a product_id reference.
+--
+-- Rationale: Routines include device steps (LED masks, ice rollers) and
+-- action steps (cool water rinse, shower / cleanse) that have no backing
+-- ss_products row. Before this migration the NOT NULL constraint forced
+-- the routine save path (executeSaveRoutine in src/lib/yuri/tools.ts) to
+-- pick the wrong product when fuzzy-matching device names against the
+-- catalog — confirmed root cause of the v10.3.2 routine mismatch incident
+-- (Bailey Donmartin's Phase 2 AM/PM routines, May 4 2026).
+--
+-- Read paths audited as of v10.3.3:
+--  - src/app/(app)/routine/page.tsx — patched to gate buttons on product_id
+--  - src/app/api/routine/route.ts — already filters nulls via .filter(Boolean)
+--  - src/app/api/routine/[id]/products/route.ts — keys by product_id; null
+--    rows are unaddressable by this API and remain immutable until a future
+--    refactor migrates the addressing key to ss_routine_products.id
+--  - src/lib/intelligence/{conflict-detector,routine-effectiveness,reformulation-detector}.ts
+--    — safe; .in('product_id', [...with nulls]) silently drops null rows
+--  - src/lib/yuri/{memory,actions,tools}.ts — already null-safe
+--  - src/app/api/{cycle,scan}/route.ts — null-safe via existing guards
+--
+-- See CHANGELOG.md v10.3.3 entry for full incident postmortem.
+-- ============================================================
+
+ALTER TABLE ss_routine_products ALTER COLUMN product_id DROP NOT NULL;
