@@ -261,17 +261,100 @@ export function suggestWaitTimes(
 }
 
 /**
+ * Infer a category from custom step notes when the routine_product row has
+ * no DB-backed product_id. Bailey's Phase 2 PM has "Shower / cleanse" as a
+ * custom step — the function has no product to read category from, but the
+ * note text is unambiguous about what step it represents.
+ *
+ * Returns null when the note doesn't map to any category (e.g. "Wait 10 min").
+ */
+function inferCategoryFromNotes(notes: string | null | undefined): string | null {
+  if (!notes) return null
+  const text = notes.toLowerCase()
+
+  // Cleansing actions / micellar / shower step
+  if (
+    text.includes('cleanse') ||
+    text.includes('cleanser') ||
+    text.includes('shower') ||
+    text.includes('water rinse') ||
+    text.includes('micellar')
+  ) {
+    return 'cleanser'
+  }
+
+  // Sunscreen mentions
+  if (text.includes('sunscreen') || text.includes('spf') || /\bsun\b/.test(text)) {
+    return 'sunscreen'
+  }
+
+  // Toner application
+  if (text.includes('toner')) return 'toner'
+
+  // Moisturizer / cream / sealant references
+  if (
+    text.includes('moisturizer') ||
+    text.includes('moisturiser') ||
+    text.includes('cream') ||
+    text.includes('sleeping mask') ||
+    text.includes('occlusive')
+  ) {
+    return 'moisturizer'
+  }
+
+  // Devices and tools — these are NOT layering steps; skip
+  if (
+    text.includes('led') ||
+    text.includes('ice roller') ||
+    text.includes('cold spoon') ||
+    text.includes('microcurrent') ||
+    text.includes('booster wand') ||
+    text.includes('red light') ||
+    text.includes('blue light')
+  ) {
+    return 'device'
+  }
+
+  return null
+}
+
+/**
  * Detect missing essential steps in a routine.
+ *
+ * Phase-aware (v10.3.7): custom steps with informative notes count toward
+ * the category-present set. Bailey's PM routine has "Shower / cleanse" as
+ * a null-product custom step — pre-fix the cleanser-missing warning fired
+ * even though her treatment plan deliberately puts cleansing in the shower.
+ *
+ * Treatment-plan-aware (v10.3.7): if the user's decision memory contains
+ * an explicit exclusion of a category ("no cleanser AM", "barrier still
+ * healing"), the warning is suppressed. We accept an optional excluded
+ * categories set so the caller can pass in phase-derived exclusions
+ * computed from decision_memory.
  */
 export function detectMissingSteps(
   routineType: 'am' | 'pm',
-  products: ProductWithCategory[]
+  products: ProductWithCategory[],
+  options?: {
+    /** Custom step notes (for null-product routine entries) */
+    customStepNotes?: Array<string | null | undefined>
+    /** Categories the user has explicitly excluded from this routine (from decision memory) */
+    excludedCategories?: Set<string>
+  }
 ): MissingStepAlert[] {
-  const categoriesPresent = new Set(products.map((p) => p.category))
+  const categoriesPresent = new Set<string>(products.map((p) => p.category))
+
+  // Walk custom step notes and infer categories — they count toward presence.
+  for (const note of options?.customStepNotes || []) {
+    const inferred = inferCategoryFromNotes(note)
+    if (inferred && inferred !== 'device') categoriesPresent.add(inferred)
+  }
+
+  const excluded = options?.excludedCategories || new Set<string>()
   const alerts: MissingStepAlert[] = []
 
   // Required steps
-  if (!categoriesPresent.has('cleanser')) {
+  if (!categoriesPresent.has('cleanser') && !excluded.has('cleanser')) {
     alerts.push({
       category: 'cleanser',
       label: 'Cleanser',
@@ -280,7 +363,11 @@ export function detectMissingSteps(
     })
   }
 
-  if (!categoriesPresent.has('moisturizer') && !categoriesPresent.has('oil')) {
+  if (
+    !categoriesPresent.has('moisturizer') &&
+    !categoriesPresent.has('oil') &&
+    !excluded.has('moisturizer')
+  ) {
     alerts.push({
       category: 'moisturizer',
       label: 'Moisturizer',
@@ -289,7 +376,7 @@ export function detectMissingSteps(
     })
   }
 
-  if (routineType === 'am' && !categoriesPresent.has('sunscreen')) {
+  if (routineType === 'am' && !categoriesPresent.has('sunscreen') && !excluded.has('sunscreen')) {
     alerts.push({
       category: 'sunscreen',
       label: 'Sunscreen (SPF 50+ PA++++)',
@@ -299,7 +386,7 @@ export function detectMissingSteps(
   }
 
   // Recommended steps
-  if (!categoriesPresent.has('toner')) {
+  if (!categoriesPresent.has('toner') && !excluded.has('toner')) {
     alerts.push({
       category: 'toner',
       label: 'Toner',

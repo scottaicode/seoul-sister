@@ -1100,7 +1100,10 @@ async function loadDecisionMemory(
       .select('decision_memory')
       .eq('user_id', userId)
       .not('decision_memory', 'eq', '{}')
-      .order('updated_at', { ascending: false })
+      // created_at, not updated_at: backfill scripts touch updated_at on
+      // historical rows en masse, which can evict recent conversations from
+      // this 3-row window. created_at is immutable.
+      .order('created_at', { ascending: false })
       .limit(3)
 
     if (!conversations || conversations.length === 0) return null

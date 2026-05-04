@@ -172,7 +172,12 @@ async function loadCurrentlyExcludedIngredients(
     .select('decision_memory')
     .eq('user_id', userId)
     .not('decision_memory', 'eq', '{}')
-    .order('updated_at', { ascending: false })
+    // Order by created_at, not updated_at: backfill scripts (decision memory
+    // backfill, date repair) touch updated_at on historical rows. With
+    // updated_at, those mass-touches can evict recent decisions from this
+    // 5-row window. created_at is immutable, so the most recent conversation
+    // is always the most recent.
+    .order('created_at', { ascending: false })
     .limit(5)
 
   if (!data?.length) return []
@@ -253,13 +258,43 @@ export async function getMissingHighValueIngredients(
 
   // 2. Get ingredient IDs already in the routine
   let routineIngredientIds: string[] = []
+  let routineIngredientNames: string[] = []
   if (productIds.length > 0) {
     const { data: links } = await supabase
       .from('ss_product_ingredients')
-      .select('ingredient_id')
+      .select('ingredient_id, ingredient:ingredient_id (name_en, name_inci)')
       .in('product_id', productIds)
 
     routineIngredientIds = [...new Set((links ?? []).map((l) => l.ingredient_id))]
+
+    // Collect normalized ingredient name tokens from the routine for alias matching.
+    // Bailey's COSRX BHA contains "Betaine Salicylate" — functionally a salicylic
+    // acid but stored as a separate ingredient_id from "Salicylic Acid (BHA)" in
+    // the effectiveness table. Without this token-level alias check the widget
+    // recommends "Salicylic Acid (BHA)" as missing even though the user just
+    // added a betaine salicylate product.
+    const nameTokens = new Set<string>()
+    for (const l of links ?? []) {
+      const ing = l.ingredient as unknown as { name_en?: string; name_inci?: string } | null
+      const text = `${ing?.name_en || ''} ${ing?.name_inci || ''}`.toLowerCase()
+      // Salicylate family — treat as salicylic acid for missing-ingredient detection
+      if (text.includes('salicylate') || text.includes('salicylic')) {
+        nameTokens.add('salicylic')
+      }
+      if (text.includes('hyaluronate') || text.includes('hyaluronic')) {
+        nameTokens.add('hyaluronic')
+      }
+      if (text.includes('niacinamide')) {
+        nameTokens.add('niacinamide')
+      }
+      if (text.includes('retinol') || text.includes('retinal') || text.includes('retinyl')) {
+        nameTokens.add('retinol')
+      }
+      if (text.includes('ascorbic') || text.includes('ascorbyl') || text.includes('vitamin c')) {
+        nameTokens.add('vitamin_c')
+      }
+    }
+    routineIngredientNames = [...nameTokens]
   }
 
   // 3. Get high-value ingredients for user's skin type. Over-fetch (40 vs the
@@ -275,21 +310,42 @@ export async function getMissingHighValueIngredients(
 
   if (!highValue?.length) return []
 
-  // 4. Filter out ingredients already in the routine
+  // 4. Filter out ingredients already in the routine (by ID)
   const routineIngSet = new Set(routineIngredientIds)
   let missing = highValue.filter((h) => !routineIngSet.has(h.ingredient_id))
 
   if (missing.length === 0) return []
 
-  // 5. Resolve ingredient names — needed for both display AND phase filtering
-  //    (we match by name tokens since decision_memory is text-keyed, not ID-keyed).
+  // 5. Resolve ingredient names — needed for display, phase filtering, AND
+  //    alias-matching against routineIngredientNames.
   const missingIds = missing.map((m) => m.ingredient_id)
   const { data: ingredients } = await supabase
     .from('ss_ingredients')
-    .select('id, name_en')
+    .select('id, name_en, name_inci')
     .in('id', missingIds)
 
   const nameMap = new Map((ingredients ?? []).map((i) => [i.id, i.name_en]))
+
+  // 4b. Alias filter: drop high-value candidates that the routine already
+  //     covers via a functionally-equivalent ingredient with a different ID.
+  //     Bailey's COSRX BHA has "Betaine Salicylate" (ID A); the effectiveness
+  //     table recommends "Salicylic Acid (BHA)" (ID B). Both are salicylic-acid-
+  //     family BHAs. The user has the chemistry covered.
+  if (routineIngredientNames.length > 0) {
+    const routineTokens = new Set(routineIngredientNames)
+    missing = missing.filter((m) => {
+      const ing = (ingredients ?? []).find((i) => i.id === m.ingredient_id)
+      const text = `${ing?.name_en || ''} ${ing?.name_inci || ''}`.toLowerCase()
+      if ((text.includes('salicylic') || text.includes('salicylate')) && routineTokens.has('salicylic')) return false
+      if ((text.includes('hyaluronic') || text.includes('hyaluronate')) && routineTokens.has('hyaluronic')) return false
+      if (text.includes('niacinamide') && routineTokens.has('niacinamide')) return false
+      if ((text.includes('retinol') || text.includes('retinal') || text.includes('retinyl')) && routineTokens.has('retinol')) return false
+      if ((text.includes('ascorbic') || text.includes('ascorbyl') || text.includes('vitamin c')) && routineTokens.has('vitamin_c')) return false
+      return true
+    })
+  }
+
+  if (missing.length === 0) return []
 
   // 6. Phase-aware filter: drop ingredients Yuri has explicitly excluded in
   //    the user's current treatment plan. Skipped if userId not provided

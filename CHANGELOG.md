@@ -4,6 +4,63 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v10.3.7 (May 5, 2026) — Routine Page Polish: Missing Steps Phase-Awareness, BHA Aliasing, updated_at Eviction Fix
+
+### Origin
+Visual review of Bailey's `/routine` page (browser screenshots) surfaced four issues we couldn't see from DB queries alone:
+
+1. **"Missing Steps — Cleanser" warning fired on AM and PM routines** even though her treatment plan deliberately uses cool water rinse (AM) and shower-cleansing (PM). `detectMissingSteps` only saw DB-backed products, not custom steps.
+2. **"Missing High-Value Ingredients" still recommended Salicylic Acid (BHA)** for the PM routine that already has COSRX BHA Blackhead Power Liquid. The product contains Betaine Salicylate; the effectiveness table flags "Salicylic Acid" (separate ingredient_id). No alias check.
+3. **`ss_user_products` corrupted from May 3 broken save**. Custom names ("Ice roller", "Cool water rinse") had product_id pointers pointing at random DB products. Routine page's ownership join surfaced wrong custom names on real products (step 9 sunscreen showed "Ice roller or cold spoon" as heading).
+4. **Caught during fix verification**: the v10.3.4 backfill date repair had bumped `updated_at` to a single timestamp on 7 historical conversations. `loadCurrentlyExcludedIngredients` ordered by `updated_at DESC LIMIT 5`, which evicted Bailey's recent decisions when Postgres broke the timestamp tie in favor of older rows. v10.3.6's phase filter silently regressed for any user who'd had a backfill run.
+
+### Changed
+- **`detectMissingSteps` is now phase-aware** (`src/lib/intelligence/layering-order.ts`):
+  - Accepts optional `customStepNotes: string[]` so null-product routine steps count toward category-present detection. New `inferCategoryFromNotes` helper maps note text to category (e.g., "Shower / cleanse" → cleanser, "Cool water rinse" → cleanser, "LED mask" → device).
+  - Accepts optional `excludedCategories: Set<string>` for explicit treatment-plan exclusions (placeholder for future use; wired into the call chain now).
+  - Routine page (`src/app/(app)/routine/page.tsx`) passes notes from null-product steps so the warning correctly suppresses on Bailey's PM (shower step) and AM (cool water rinse).
+
+- **Ingredient alias filter for missing-ingredients widget** (`src/lib/intelligence/routine-effectiveness.ts`):
+  - When checking which high-value ingredients are already covered by the routine, the function now collects normalized name tokens from all linked ingredients ('salicylic', 'hyaluronic', 'niacinamide', 'retinol', 'vitamin_c').
+  - A second filter pass drops candidate ingredients whose name matches a routine-token alias. Bailey's COSRX BHA contains Betaine Salicylate, which now blocks "Salicylic Acid (BHA)" from showing as missing. Same family relationships caught for HA (Sodium Hyaluronate), retinol (retinal/retinyl), vitamin C (ascorbic/ascorbyl).
+
+- **`loadCurrentlyExcludedIngredients` and `loadDecisionMemory` order by created_at, not updated_at** (`src/lib/intelligence/routine-effectiveness.ts`, `src/lib/yuri/memory.ts`):
+  - Backfill scripts (decision memory backfill, date repair) bulk-touch `updated_at` on historical rows. With `updated_at` ordering, those mass-touches can evict recent conversations from the LIMIT N window. `created_at` is immutable on conversation rows, so "most recently created" is always the right signal of recency.
+  - Caught when the verify-phase-aware-widget script started returning HA/Tranexamic/Salicylic instead of the expected Snail Mucin fallthrough. Bailey's 7 February conversations all had identical updated_at timestamps from this evening's date-repair SQL, evicting her May 4 Phase 2 decisions from the window.
+
+- **Bailey's `ss_user_products` cleaned up** (`scripts/fix-bailey-user-products.sql`): NULLed product_id on 5 device/action rows that had wrong DB pointers from the May 3 broken save. Fixed product_id mappings on Acwell Toner, Medicube PDRN Pink Peptide Serum, Illiyoon Ceramide Ato Concentrate Cream. NULLed product_id on Anua Heartleaf 70% Rice Ceramide Serum and Medicube PDRN Pink Peptide Eye Cream (no exact DB matches; preserved as custom inventory entries). One Supabase Studio paste, idempotent.
+
+### Verification
+- `npx tsc --noEmit` passes clean
+- `scripts/verify-phase-aware-widget.ts` against AM routine: filters HA, Retinol, Tranexamic correctly. Returns Snail Mucin fallthrough.
+- `scripts/verify-bailey-pm.ts` against PM routine: filters Retinol, Tranexamic, Vitamin C correctly. Returns Snail Mucin fallthrough.
+- Production confirmed live: Vercel deploy hash dpl_ALwsYVsJ35b8uUeS6m65CGBT13TF responds 200. The screenshot of cached state was 9-minute-old CDN cache; hard-refresh would have shown the v10.3.6 fix.
+
+### Files modified
+- `src/lib/intelligence/layering-order.ts` — phase-aware detectMissingSteps + inferCategoryFromNotes helper
+- `src/lib/intelligence/routine-effectiveness.ts` — alias filter, created_at ordering on excluded-ingredients load
+- `src/lib/yuri/memory.ts` — created_at ordering on decision memory load
+- `src/app/(app)/routine/page.tsx` — pass customStepNotes to detectMissingSteps
+- `scripts/fix-bailey-user-products.sql` (new) — one-off data fix
+- `scripts/verify-bailey-pm.ts` (new) — PM routine verification harness
+- `scripts/debug-bailey-exclusions.ts` (new) — exclusion-token debugger (kept for future regression checks)
+- `CHANGELOG.md` — this entry
+- `CLAUDE.md` — version line + cross-reference
+
+### Bailey-specific impact
+After this release + the SQL paste:
+- "Missing Steps — Cleanser" warning suppresses correctly on Phase 2 AM/PM routines
+- "Missing High-Value Ingredients" returns Snail Mucin (single fallthrough, not three excluded items)
+- Step 9 sunscreen shows correct "Beauty of Joseon Relief Sun" heading instead of "Ice roller or cold spoon"
+- Custom step entries display their notes-as-content correctly (already worked from v10.3.3)
+- Yuri's next conversation will load her actual recent decisions, not get evicted by the date-repair side-effect
+
+### Known limits / future work
+- Alias-token list is hardcoded for the 5 highest-frequency K-beauty active families. Adding more families (peptides, ceramides, AHA) would extend coverage. Current scope is what affects Bailey's specific routine.
+- `inferCategoryFromNotes` uses keyword matching, not semantic detection. "Shower / cleanse" works; an unusual phrasing like "splash twice" wouldn't infer cleanser. Conservative defaults (returns null) are safer than aggressive false positives.
+
+---
+
 ## v10.3.6 (May 5, 2026) — Phase-Aware Routine Recommendations: Stop Telling Users to Add What Yuri Excluded
 
 ### Origin

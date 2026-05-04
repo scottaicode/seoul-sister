@@ -128,10 +128,18 @@ function RoutineCard({
     waitTimeByStep.set(wt.after_step, wt)
   }
 
+  // Custom step notes for category inference (v10.3.7) — null-product routine
+  // steps (devices, actions like "shower/cleanse") need to count toward
+  // category-present detection even though they have no DB-backed product.
+  const customStepNotes = routine.products
+    .filter((rp) => !rp.product)
+    .map((rp) => rp.notes)
+
   const missingSteps = routine.products.length > 0
     ? detectMissingSteps(
         routine.routine_type as 'am' | 'pm',
-        productsForAnalysis
+        productsForAnalysis,
+        { customStepNotes }
       )
     : []
 
