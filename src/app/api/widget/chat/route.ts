@@ -265,7 +265,9 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
           detectedSpecialist,
           []
         )
-      } catch { /* persistence failure is non-critical */ }
+      } catch (err) {
+        console.error('[widget/chat] saveUserMessage failed:', err)
+      }
     }
 
     // --- SSE Streaming with tool use loop ---
@@ -453,6 +455,8 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
       }
     })()
 
+    // Stream errors are already caught + logged inside the IIFE above.
+    // This outer catch only suppresses unhandled-rejection warnings.
     streamPromise.catch(() => {})
 
     return new Response(readable, {

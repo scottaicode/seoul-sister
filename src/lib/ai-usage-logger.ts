@@ -54,13 +54,17 @@ interface AIUsageParams {
 
 /**
  * Log an AI API call. Fire-and-forget — never throws, never blocks.
+ *
+ * Logs errors via console.error (visible in Vercel function logs) so
+ * silent breakage doesn't go unnoticed. cf. v10.3.4: an empty catch in
+ * mergeDecisionMemory hid three months of decision memory failures.
  */
 export async function logAIUsage(params: AIUsageParams): Promise<void> {
   try {
     const cost = estimateCost(params.model, params.inputTokens, params.outputTokens)
 
     const db = getServiceClient()
-    await db.from('ss_ai_usage').insert({
+    const { error } = await db.from('ss_ai_usage').insert({
       feature: params.feature,
       model: params.model,
       tokens_in: params.inputTokens,
@@ -72,7 +76,10 @@ export async function logAIUsage(params: AIUsageParams): Promise<void> {
       conversation_id: params.conversationId ?? null,
       cached: params.cached ?? false,
     })
-  } catch {
-    // Fire-and-forget: never break the app for usage logging
+    if (error) {
+      console.error('[logAIUsage] insert failed:', error)
+    }
+  } catch (err) {
+    console.error('[logAIUsage] threw:', err)
   }
 }

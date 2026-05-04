@@ -5709,7 +5709,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 10.3.4 (Decision memory crash fix — Phase 13.3 and 15.1 had silently failed for 3 months; mergeDecisionMemory now handles `{}` first-write case)
+**Version**: 10.3.5 (Fire-and-forget audit — added console.error to 6 high-risk catch sites so silent failures self-announce in Vercel logs)
 **Status**: ALL PHASES COMPLETE (1-14) + Phase 15 Session 1 shipped (15.1 corrections memory, 15.5 textarea max-height fix). Phase 8 all 11 features built (including previously deferred 8.1, 8.2, 8.5, 8.6). Phase 13 all 6 features built (prompt caching, API retry, decision memory, intent-based context, onboarding quality, voice cleanup). Phase 14 all 5 features built (widget persistence, cross-session memory, intent signals, specialist preview, admin dashboard). Phase 15 remaining work documented (15.2 heat check, 15.3 draft preservation, 15.4 age-aware memory). Memory denial bug fixed (v8.0.1) + corrections memory now persists factual user-corrected K-beauty facts across sessions (v10.2.0). 5,800+ products (skincare only), 14,400+ ingredients, 207,000+ links, 550+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 14 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level. GA4 (G-L3VXSLT781) + Vercel Analytics + SpeedInsights live. **Monetization hardened**: Free tier eliminated, payment-first registration flow (Register → Stripe $39.99/mo → Onboarding, no email verification), widget system prompt rewritten AI-First with 20 preview messages and natural conversion.
 **AI Advisor**: Yuri (유리) - "Glass"
 
@@ -5728,6 +5728,12 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v10.3.5 (May 5, 2026): Fire-and-forget audit — error logging on high-risk background tasks
+  - **Origin**: v10.3.4 incident (3 months of lost decision memory hidden by `.catch(() => {})`) prompted an audit pass for the same pattern across the codebase. 184 catch sites total, filtered to 10 high-risk (fire-and-forget background tasks doing real work).
+  - **Anomaly investigation first**: ss_ai_usage's Apr 9 cutoff is explained by the AI usage logger feature shipping Apr 7 — not a bug. ss_specialist_insights' apparent 24:2 ratio is misleading framing — insights are tagged by detected specialist mode and spread across 14 conversations. Both anomalies cleared, no additional bugs surfaced.
+  - **Changes**: 6 catch sites in `advisor.ts`, `ai-usage-logger.ts`, and `widget/chat/route.ts` now log via console.error (visible in Vercel function logs). 2 outer-stream wrapper catches left silent because inner streams already log.
+  - **Not shipped**: lint rule for the pattern, periodic health metrics, medium-risk catch audit (7 sites in memory.ts that fall back to UI degradation rather than silent data loss). Documented as future work.
+  - **Build verified**: `npx tsc --noEmit` clean.
 - v10.3.4 (May 5, 2026): Decision memory crash — `mergeDecisionMemory` first-write bug
   - **Origin**: A diagnostic of Bailey's account surfaced empty `decision_memory` on all 17 of her conversations. DB query confirmed it was systemic — 30 conversations from 3 users, zero successful writes since Phase 13.3 shipped Feb 23. Conversation summaries (running alongside in the same fire-and-forget block) succeeded 17/30 times, so the issue was specific to the decision-memory extraction path.
   - **Root cause** (`src/lib/yuri/memory.ts`): `mergeDecisionMemory(existing, incoming)` treated `existing === {}` (the JSONB schema default) as truthy and tried to iterate `base.decisions` which was undefined. Threw `TypeError: base.decisions is not iterable` on every first-write call. The fire-and-forget `.catch(() => {})` in `advisor.ts:838` silently swallowed every throw. Three months of decision memory data lost (Feb 23 — May 5 2026).

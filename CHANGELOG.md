@@ -4,6 +4,61 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v10.3.5 (May 5, 2026) — Fire-and-forget Audit: Add Error Logging to High-Risk Background Tasks
+
+### Origin
+The v10.3.4 incident — three months of lost decision memory hidden by `.catch(() => {})` — exposed a class of risk: every fire-and-forget background task in the codebase that did meaningful work but swallowed errors silently. This release audits the codebase for that pattern and adds `console.error` (visible in Vercel function logs) to the high-risk subset, so the next silent failure announces itself instead of accumulating for months.
+
+### Audit scope
+- 184 catch sites total in `src/` (160 bare `} catch {`, 22 explicit `.catch(() => {...})`, 2 `void`-prefix fire-and-forget)
+- Filtered to **HIGH-RISK**: fire-and-forget background tasks that do meaningful work (DB writes, paid Sonnet/Opus API calls, external service calls). 10 sites identified.
+- LOW-RISK sites (UI fallbacks, JSON parse defaults, Playwright selector timeouts, retry-strategy paths) intentionally left silent — those are correct silence patterns, not silent failures.
+
+### Anomaly investigation (no bugs surfaced)
+Two suspicious data signals investigated before changing code:
+- **`ss_ai_usage` Apr 9 cutoff**: explained by the AI usage logger feature shipping Apr 7 (commit `3fbbcc8`). Pre-Apr 7 conversations weren't logged because the logger didn't exist. Not a bug. No backfill (we'd be inventing fake usage data).
+- **`ss_specialist_insights` 24:2 ratio**: misleading initial framing. Insights are tagged by *detected specialist mode* (which can rotate within a single conversation as topics shift), not by the top-level `conversation.specialist_type` field which is only set when a user opens a specialist via the picker UI. Insights spread across 14 distinct conversations with reasonable distribution (routine_architect 25, ingredient_analyst 14, trend_scout 5, others 4). Working as designed.
+
+### Changed
+Added `console.error` logging to fire-and-forget catch sites where silent failure would hide real bugs:
+
+| File:Line | Before | After |
+|---|---|---|
+| `src/lib/yuri/advisor.ts:801` | `.catch(() => {})` | logs `[advisor] extractAndSaveInsight failed:` |
+| `src/lib/yuri/advisor.ts:809` | `.catch(() => {})` | logs `[advisor] extractContinuousLearning failed:` |
+| `src/lib/yuri/advisor.ts:825` | `.catch(() => {})` | logs `[advisor] generateAndSaveSummary failed:` |
+| `src/lib/yuri/advisor.ts:838` | `.catch(() => {})` | logs `[advisor] extractAndSaveDecisionMemory failed:` |
+| `src/lib/ai-usage-logger.ts:75` | bare `catch {}` | logs `[logAIUsage] threw:` AND surfaces Supabase insert errors via `[logAIUsage] insert failed:` |
+| `src/app/api/widget/chat/route.ts:268` | bare `catch {}` | logs `[widget/chat] saveUserMessage failed:` |
+
+Two additional `streamPromise.catch(() => {})` sites left as-is at `src/app/api/widget/chat/route.ts:458` and `src/app/api/yuri/chat/route.ts:171`. Their inner streams already log to `console.error`; the outer catch only suppresses unhandled-rejection warnings. Added clarifying comments.
+
+`logAIUsage` flows through to two void-prefix call sites (`advisor.ts:766`, `widget/chat:378`), so fixing it once benefits both.
+
+### What this does NOT do
+- **No structural refactoring of error handling.** Just adding visibility. Replacing `try/catch` with `Result<T, E>` patterns or migrating to a centralized error tracking service is out of scope.
+- **No periodic health checks.** "If Yuri ran X messages but only Y summaries got generated, alert" is a real engineering investment worth doing eventually but not in this sweep. Documented as future work.
+- **No fix for the bug class itself.** A future contributor could still write `.catch(() => {})` and ship a silent failure. A lint rule catching empty arrow catches would prevent regressions but isn't shipped here.
+
+### Verification
+- `npx tsc --noEmit` passes clean
+- All 6 changed catch sites preserve the original "non-blocking" semantics — the application path can still continue even when the background task fails
+
+### Files modified
+- `src/lib/yuri/advisor.ts` — 4 catch sites now log to console.error
+- `src/lib/ai-usage-logger.ts` — internal try/catch logs failures; insert error path explicitly checked
+- `src/app/api/widget/chat/route.ts` — saveUserMessage catch logs; clarifying comment on stream wrapper catch
+- `src/app/api/yuri/chat/route.ts` — clarifying comment on stream wrapper catch (no behavior change)
+- `CHANGELOG.md` — this entry
+- `CLAUDE.md` — version line + cross-reference
+
+### Future work (documented for later sessions)
+- **Lint rule**: forbid `.catch(() => {})` and `.catch(() => undefined)` patterns. Force callers to either log or explicitly accept silence with an inline comment.
+- **Periodic health metric**: cron job that compares (conversations with N messages) vs (conversations with summary) vs (conversations with decision_memory) and alerts when ratios diverge. Catches future v10.3.4-class regressions before they accumulate for months.
+- **Audit medium-risk catches**: 7 sites in `memory.ts` swallow Sonnet errors but fall back to "Yuri runs without that data." User-visible degradation rather than silent loss; lower urgency.
+
+---
+
 ## v10.3.4 (May 5, 2026) — Decision Memory Crash: Three Months of Lost Cross-Session Memory
 
 ### Origin

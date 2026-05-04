@@ -792,22 +792,25 @@ export async function* streamAdvisorResponse(
   }
 
   // 9. Extract specialist insights (background, non-blocking)
+  // Fire-and-forget: never block the stream, but log failures so silent
+  // breakage doesn't accumulate (cf. v10.3.4 — same pattern hid 3 months
+  // of decision memory failures because nobody saw the throws)
   if (specialistType) {
     extractAndSaveInsight(
       conversationId,
       specialistType,
       message,
       fullResponse
-    ).catch(() => {
-      // Insight extraction is non-critical
+    ).catch((err) => {
+      console.error('[advisor] extractAndSaveInsight failed:', err)
     })
   }
 
   // 10. Continuous learning: extract profile updates + product reactions
   //     Runs on EVERY conversation (not just specialist ones) to catch new
   //     information the user reveals over time. Fire-and-forget.
-  extractContinuousLearning(userId, message, fullResponse).catch(() => {
-    // Learning extraction is non-critical — never block the stream
+  extractContinuousLearning(userId, message, fullResponse).catch((err) => {
+    console.error('[advisor] extractContinuousLearning failed:', err)
   })
 
   // 11. Generate/update conversation summary for cross-session memory.
@@ -822,8 +825,8 @@ export async function* streamAdvisorResponse(
       conversationId,
       [...conversationHistory, { content: message, role: 'user' as const } as YuriMessage],
       fullResponse
-    ).catch(() => {
-      // Summary generation is non-critical
+    ).catch((err) => {
+      console.error('[advisor] generateAndSaveSummary failed:', err)
     })
   }
 
@@ -835,8 +838,8 @@ export async function* streamAdvisorResponse(
       { role: 'user', content: message },
       { role: 'assistant', content: fullResponse },
     ]
-    extractAndSaveDecisionMemory(userId, conversationId, transcriptForDecisions).catch(() => {
-      // Decision memory extraction is non-critical
+    extractAndSaveDecisionMemory(userId, conversationId, transcriptForDecisions).catch((err) => {
+      console.error('[advisor] extractAndSaveDecisionMemory failed:', err)
     })
   }
 }
