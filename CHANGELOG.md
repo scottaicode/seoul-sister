@@ -4,6 +4,52 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v10.3.4 (May 5, 2026) — Decision Memory Crash: Three Months of Lost Cross-Session Memory
+
+### Origin
+A diagnostic of Bailey Donmartin's account surfaced that `decision_memory` was empty (`{}`) on every one of her 17 conversations. A follow-up DB query confirmed the same was true across all 30 conversations from all 3 users in the system — Phase 13.3 (shipped Feb 23 in v8.1.0) and Phase 15.1 corrections memory (shipped Apr 26 in v10.2.0) had produced exactly zero successful writes in three months of production. Conversation summaries (which run alongside decision-memory extraction in the same fire-and-forget block of `streamAdvisorResponse`) had populated correctly 17/30 times, so the issue was specific to the decision-memory path.
+
+### Root cause
+A direct end-to-end test of `extractAndSaveDecisionMemory` against Bailey's onboarding conversation surfaced the bug:
+
+```
+TypeError: base.decisions is not iterable
+    at mergeDecisionMemory (src/lib/yuri/memory.ts:1022)
+    at extractAndSaveDecisionMemory (src/lib/yuri/memory.ts:1295)
+```
+
+The merge function read existing `decision_memory` from the DB. The schema default is JSONB `{}` — an empty object, NOT null. Line 1018's `existing || EMPTY_DECISION_MEMORY` only swapped to the empty-default constant when `existing` was null/undefined. For every "first write" call, `base` was therefore `{}`, and `base.decisions` was `undefined`. Iterating undefined threw, the fire-and-forget `.catch(() => {})` in `advisor.ts:838` silently swallowed it, and the summary path next to it succeeded so the system *appeared* healthy.
+
+The v10.2.0 corrections memory release noticed this exact pattern for `corrections` specifically (`base.corrections || []` at the old line 1064) but missed that `decisions`, `preferences`, and `commitments` had the same issue from the original v8.1.0 ship.
+
+### Changed
+- **`mergeDecisionMemory` defensive defaults** (`src/lib/yuri/memory.ts`): Added explicit `|| []` defaults for all four arrays (`decisions`, `preferences`, `commitments`, `corrections`) before iteration. Now correctly handles three input shapes: (1) `existing === null`, (2) `existing === {}` (the schema-default first-write case that was broken), and (3) `existing` is a fully populated `DecisionMemory`. Inline comment documents the failure mode so a future contributor doesn't re-introduce the regression.
+- **`extracted_at` fallback**: Returned object's `extracted_at` now defaults to `''` if both incoming and base are missing it. Was previously assuming `base.extracted_at` was always defined.
+
+### Backfill
+Created `scripts/backfill-decision-memory.ts` that re-runs the (now-fixed) extraction against all conversations with ≥4 messages and missing `decision_memory`. Cost estimate ~$1 in Sonnet 4.5 to backfill ~19 affected conversations. Operationally safe to re-run; idempotent via topic-keyed merge.
+
+### Verification
+- `npx tsc --noEmit` passes clean
+- Direct end-to-end test (`scripts/diagnose-decision-memory-2.ts`) re-run against Bailey's onboarding conversation: pre-state `{}`, post-state populated with 5 decisions, 6 preferences, 4 commitments. Function returned without throwing.
+- Three input shapes verified by code review: null, `{}`, fully populated.
+
+### Impact
+- Going forward, every Yuri conversation will populate `decision_memory` correctly at the same cadence as summary generation (every 5 messages after initial exchange)
+- Yuri's system prompt will start receiving the structured `## Your Decisions & Preferences` and `## Corrections That Stick` sections that have been silently empty for three months
+- Phase 13.3 (Decision Memory), Phase 15.1 (Corrections Memory), Phase 15.4 (Age-Aware Memory Rendering — the date fields it expects on preferences) all begin actually working
+
+### Files modified
+- `src/lib/yuri/memory.ts` — `mergeDecisionMemory` defensive defaults
+- `scripts/backfill-decision-memory.ts` (new) — operational backfill
+- `CHANGELOG.md` — this entry
+- `CLAUDE.md` — version line + cross-reference
+
+### Lesson
+Fire-and-forget `.catch(() => {})` patterns are silent failure traps. The summary path next to the broken extraction succeeded loudly enough that nobody noticed half the system was dead. Worth a future audit pass to add at least a `console.error` (visible in Vercel logs) to every fire-and-forget catch in the codebase, and ideally a periodic health metric for the table writes these tasks are supposed to produce.
+
+---
+
 ## v10.3.3 (May 5, 2026) — Schema Fix: Allow Null product_id on Routine Steps
 
 ### Origin

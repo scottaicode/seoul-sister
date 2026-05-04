@@ -1015,11 +1015,24 @@ export function mergeDecisionMemory(
   existing: DecisionMemory | null,
   incoming: DecisionMemory
 ): DecisionMemory {
+  // The DB schema default for decision_memory is JSONB '{}', which means
+  // `existing` will be the truthy empty object `{}` for any conversation that
+  // has never had memory written before — NOT null. Without explicit array
+  // defaults below, every "first write" call into this function threw
+  // `TypeError: base.decisions is not iterable` and the fire-and-forget
+  // .catch(() => {}) in advisor.ts silently swallowed it. Three months of
+  // decision memory was lost in production this way (Feb 23 - May 5 2026).
+  // Defensive defaults below ensure a `{}` base, an old row missing fields,
+  // and a fully populated row all merge correctly.
   const base = existing || EMPTY_DECISION_MEMORY
+  const baseDecisions = base.decisions || []
+  const basePreferences = base.preferences || []
+  const baseCommitments = base.commitments || []
+  const baseCorrections = base.corrections || []
 
   // Decisions: latest per topic wins
   const decisionMap = new Map<string, { topic: string; decision: string; date: string }>()
-  for (const d of base.decisions) decisionMap.set(d.topic.toLowerCase(), d)
+  for (const d of baseDecisions) decisionMap.set(d.topic.toLowerCase(), d)
   for (const d of incoming.decisions) decisionMap.set(d.topic.toLowerCase(), d)
   const decisions = Array.from(decisionMap.values())
 
@@ -1029,7 +1042,7 @@ export function mergeDecisionMemory(
   // time the user mentions the same preference. New or changed content gets
   // today's date.
   const prefMap = new Map<string, { topic: string; preference: string; date: string }>()
-  for (const p of base.preferences) {
+  for (const p of basePreferences) {
     // Backwards-compat: older rows may lack `date`. Default to today.
     prefMap.set(p.topic.toLowerCase(), {
       ...p,
@@ -1050,7 +1063,7 @@ export function mergeDecisionMemory(
   // Commitments: append with dedup by lowercase item text
   const commitmentSet = new Set<string>()
   const commitments: Array<{ item: string; date: string }> = []
-  for (const c of [...base.commitments, ...incoming.commitments]) {
+  for (const c of [...baseCommitments, ...incoming.commitments]) {
     const key = c.item.toLowerCase().trim()
     if (!commitmentSet.has(key)) {
       commitmentSet.add(key)
@@ -1058,10 +1071,9 @@ export function mergeDecisionMemory(
     }
   }
 
-  // Corrections: latest per topic wins. Backwards-compatible — older rows may
-  // lack the corrections field, so default to [] before iterating.
+  // Corrections: latest per topic wins.
   const correctionMap = new Map<string, DecisionMemory['corrections'][number]>()
-  for (const c of base.corrections || []) correctionMap.set(c.topic.toLowerCase(), c)
+  for (const c of baseCorrections) correctionMap.set(c.topic.toLowerCase(), c)
   for (const c of incoming.corrections || []) correctionMap.set(c.topic.toLowerCase(), c)
   const corrections = Array.from(correctionMap.values())
 
@@ -1070,7 +1082,7 @@ export function mergeDecisionMemory(
     preferences,
     commitments,
     corrections,
-    extracted_at: incoming.extracted_at || base.extracted_at,
+    extracted_at: incoming.extracted_at || base.extracted_at || '',
   }
 }
 
