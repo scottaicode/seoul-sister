@@ -11,14 +11,16 @@
  *   npx tsx --tsconfig tsconfig.json scripts/run-prices.ts --retailer yesstyle --batch 50
  *   npx tsx --tsconfig tsconfig.json scripts/run-prices.ts --retailer all --batch 25
  *   npx tsx --tsconfig tsconfig.json scripts/run-prices.ts --retailer soko_glam --brands "COSRX,Laneige"
+ *   npx tsx --tsconfig tsconfig.json scripts/run-prices.ts --retailer yesstyle --product-ids "uuid1,uuid2,uuid3"
  *   npx tsx --tsconfig tsconfig.json scripts/run-prices.ts --stats
  *
  * Options:
- *   --retailer <name>   Which retailer to scrape: yesstyle, soko_glam, amazon, stylekorean, all
- *   --batch <n>         Number of products to search per retailer (default: 50)
- *   --brands <list>     Comma-separated brand names to filter by
- *   --stale <hours>     Skip products priced within N hours (default: 24)
- *   --stats             Show price coverage stats and exit
+ *   --retailer <name>     Which retailer to scrape: yesstyle, soko_glam, amazon, stylekorean, all
+ *   --batch <n>           Number of products to search per retailer (default: 50)
+ *   --brands <list>       Comma-separated brand names to filter by
+ *   --product-ids <list>  Comma-separated product UUIDs to scrape exactly (overrides --brands)
+ *   --stale <hours>       Skip products priced within N hours (default: 24)
+ *   --stats               Show price coverage stats and exit
  */
 
 import { createClient } from '@supabase/supabase-js'
@@ -69,6 +71,7 @@ function parseArgs() {
     retailer: getArg('--retailer') || 'all',
     batchSize: parseInt(getArg('--batch') || '50', 10),
     brands: getArg('--brands')?.split(',').map(b => b.trim()).filter(Boolean),
+    productIds: getArg('--product-ids')?.split(',').map(s => s.trim()).filter(Boolean),
     staleHours: parseInt(getArg('--stale') || '24', 10),
     statsOnly: args.includes('--stats'),
   }
@@ -164,6 +167,7 @@ async function main() {
   console.log(`Batch size:  ${opts.batchSize}`)
   console.log(`Stale hours: ${opts.staleHours}`)
   if (opts.brands) console.log(`Brands:      ${opts.brands.join(', ')}`)
+  if (opts.productIds) console.log(`Product IDs: ${opts.productIds.length} specified`)
   console.log('')
 
   try {
@@ -171,6 +175,7 @@ async function main() {
       const results = await pipeline.runAll(supabase, {
         batch_size: opts.batchSize,
         brands: opts.brands,
+        product_ids: opts.productIds,
         stale_hours: opts.staleHours,
       })
 
@@ -207,6 +212,7 @@ async function main() {
         retailer: retailerArg as ValidRetailer,
         batch_size: opts.batchSize,
         brands: opts.brands,
+        product_ids: opts.productIds,
         stale_hours: opts.staleHours,
       })
 

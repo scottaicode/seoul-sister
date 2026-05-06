@@ -115,10 +115,19 @@ export class OliveYoungScraper {
     try {
       await browserPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 })
 
-      // Wait for Vue to render initial product cards
+      // Wait for Vue to render initial product cards. If this throws, we still
+      // continue (page may render slowly), but we record that it threw so we
+      // can distinguish "render failed" from "category genuinely empty" in the
+      // post-scrape check below. Since v9.0.0 the scraper has been failing
+      // silently when Olive Young's HTML structure shifts — every category
+      // returned 0 products for 2+ weeks before anyone noticed.
+      let selectorTimedOut = false
       await browserPage.waitForSelector('li.prdt-unit input[name="prdtNo"]', { timeout: 15000 })
-        .catch(() => {})
+        .catch(() => { selectorTimedOut = true })
       await browserPage.waitForTimeout(2000)
+      if (selectorTimedOut) {
+        console.warn(`[olive-young] WARNING: prdt-unit selector timed out for category ${categoryId} — Olive Young may have changed their HTML structure or rate-limited us. Continuing anyway.`)
+      }
 
       // Click the "MORE" button repeatedly to load all products
       for (let click = 0; click < maxClicks; click++) {
@@ -195,6 +204,15 @@ export class OliveYoungScraper {
 
         return items
       })
+
+      // Loud zero-result alarm. If we set out to scrape a category and the DOM
+      // contained no recognizable products, that's almost always a scraper
+      // regression (HTML changed, IP blocked, JS failed to render in headless),
+      // NOT a genuinely empty category. The May 5 2026 audit identified this
+      // as a P0 silent-failure bug class.
+      if (products.length === 0) {
+        console.error(`[olive-young] ZERO-RESULT ALARM: category ${categoryId} returned 0 products. URL: ${url}. selectorTimedOut=${selectorTimedOut}. This usually means Olive Young changed their HTML or blocked the request — investigate before trusting downstream pipeline output.`)
+      }
 
       return products.map(p => ({
         ...p,

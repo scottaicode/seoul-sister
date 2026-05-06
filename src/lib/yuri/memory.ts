@@ -100,12 +100,24 @@ export interface RecentConversationExcerpt {
 }
 
 export interface UserProduct {
+  product_id: string | null
   custom_name: string | null
   custom_brand: string | null
   category: string | null
   texture_weight: number | null
   notes: string | null
   status: string
+}
+
+/**
+ * A routine entry with explicit ownership status. Yuri must distinguish
+ * "in the user's saved plan" from "in the user's actual inventory" to avoid
+ * confidently claiming a user owns a product they only have on a routine card.
+ */
+export interface RoutineProductEntry {
+  productId: string | null
+  display: string             // "Goodal Vita C (Goodal) — serum"
+  ownership: 'owned' | 'planned_only' | 'unknown'
 }
 
 export interface UserContext {
@@ -115,7 +127,7 @@ export interface UserContext {
   productReactions: ProductReaction[]
   knownAllergies: string[]
   knownPreferences: string[]
-  routineProducts: string[]
+  routineProducts: RoutineProductEntry[]
   userProducts: UserProduct[]
   learningInsights: LearningContextData[]
   specialistInsights: SpecialistInsightMemory[]
@@ -229,11 +241,15 @@ export async function loadUserContext(
     : Promise.resolve({ data: null })
 
   // CONDITIONAL: user product inventory (needed for routine, products, or general)
+  // product_id is selected so we can mark routine products as owned vs.
+  // planned-but-not-yet-owned. (Bailey hit this on May 3 when Yuri claimed she
+  // owned Torriden DIVE-IN — it was in her saved routine but she'd never
+  // bought it. ss_user_routines is the plan; ss_user_products is the inventory.)
   const loadUserProducts = loadAll || topics.has('routine') || topics.has('products')
   const userProductsPromise = loadUserProducts
     ? db
         .from('ss_user_products')
-        .select('custom_name, custom_brand, category, texture_weight, notes, status')
+        .select('product_id, custom_name, custom_brand, category, texture_weight, notes, status')
         .eq('user_id', userId)
         .eq('status', 'active')
         .order('custom_name')
@@ -321,27 +337,11 @@ export async function loadUserContext(
     })
   )
 
-  // Extract routine products
-  const routineProducts: string[] = []
-  for (const routine of routineResult.data || []) {
-    const products = (routine as Record<string, unknown>).ss_routine_products as
-      | Record<string, unknown>[]
-      | null
-    if (products) {
-      for (const rp of products) {
-        const product = rp.ss_products as Record<string, string> | null
-        if (product) {
-          routineProducts.push(
-            `${product.name_en} (${product.brand_en}) - ${product.category}`
-          )
-        }
-      }
-    }
-  }
-
-  // Extract user product inventory
+  // Extract user product inventory FIRST so we can build an ownership set
+  // for the routine extraction below.
   const userProducts: UserProduct[] = (userProductsResult.data || []).map(
     (r: Record<string, unknown>) => ({
+      product_id: (r.product_id as string | null) || null,
       custom_name: r.custom_name as string | null,
       custom_brand: r.custom_brand as string | null,
       category: r.category as string | null,
@@ -350,6 +350,50 @@ export async function loadUserContext(
       status: r.status as string,
     })
   )
+
+  // Build a Set of product_ids the user actually owns (from ss_user_products)
+  // so the routine extraction can mark each routine entry as owned vs.
+  // planned-but-not-yet-owned.
+  const ownedProductIds = new Set<string>(
+    userProducts
+      .map((up) => up.product_id)
+      .filter((id): id is string => id != null)
+  )
+  const ownedNameTokens = userProducts
+    .flatMap((up) => [up.custom_name, up.custom_brand])
+    .filter((s): s is string => !!s)
+    .map((s) => s.toLowerCase())
+
+  // Extract routine products — distinguish owned vs. planned-only.
+  const routineProducts: RoutineProductEntry[] = []
+  for (const routine of routineResult.data || []) {
+    const products = (routine as Record<string, unknown>).ss_routine_products as
+      | Record<string, unknown>[]
+      | null
+    if (products) {
+      for (const rp of products) {
+        const product = rp.ss_products as Record<string, string> | null
+        const productId = (rp.product_id as string | null) || null
+        if (product) {
+          // Owned if product_id is in inventory, OR if a custom_name in
+          // inventory matches the product name (handles legacy custom entries).
+          const matchesInventoryName = ownedNameTokens.some((tok) =>
+            product.name_en.toLowerCase().includes(tok) ||
+            (product.brand_en && product.brand_en.toLowerCase().includes(tok))
+          )
+          const ownership: RoutineProductEntry['ownership'] =
+            (productId && ownedProductIds.has(productId)) || matchesInventoryName
+              ? 'owned'
+              : 'planned_only'
+          routineProducts.push({
+            productId,
+            display: `${product.name_en} (${product.brand_en}) - ${product.category}`,
+            ownership,
+          })
+        }
+      }
+    }
+  }
 
   // Extract specialist insights — deduplicate by specialist type (keep most recent)
   const specialistInsights: SpecialistInsightMemory[] = []
@@ -499,9 +543,25 @@ export function formatContextForPrompt(context: UserContext): string {
     sections.push(`## User's Skin Profile\nNot yet created. Encourage them to complete their skin profile for personalized advice. You can suggest they go through the onboarding conversation with you.`)
   }
 
-  // Current routine
+  // Current routine — explicitly separates "owned" from "planned but not yet
+  // owned." Saved routines can include products the user planned to buy but
+  // never did. Treating routine membership as ownership produced a real bug
+  // (May 3 2026): Yuri said "you have Torriden DIVE-IN" when the user had
+  // never bought it. Fix: render ownership inline so Yuri sees the distinction.
   if (context.routineProducts.length > 0) {
-    sections.push(`## Current Routine Products\n${context.routineProducts.map((p) => `- ${p}`).join('\n')}`)
+    const owned = context.routineProducts.filter((p) => p.ownership === 'owned')
+    const planned = context.routineProducts.filter((p) => p.ownership === 'planned_only')
+    const lines: string[] = []
+    if (owned.length > 0) {
+      lines.push('### In their plan AND owned (use these freely):')
+      for (const p of owned) lines.push(`- ${p.display}`)
+    }
+    if (planned.length > 0) {
+      lines.push('\n### In their plan but NOT in their inventory (do NOT claim they own these):')
+      for (const p of planned) lines.push(`- ${p.display}`)
+      lines.push('\nThese are products the user previously planned to use but never confirmed buying. Do not say "you have X" or "since you have X" for these. If relevant, ask whether they ended up buying it before recommending around it.')
+    }
+    sections.push(`## Current Routine Products\n${lines.join('\n')}`)
   }
 
   // User product inventory (products the user owns, with texture data for layering)
@@ -610,6 +670,18 @@ export function formatContextForPrompt(context: UserContext): string {
 - Skin behavior: ${cp.skin_behavior}
 - Key recommendations for this phase: ${cp.recommendations.slice(0, 3).join('; ')}
 When making skincare recommendations, factor in the user's current cycle phase. This is especially relevant for actives, exfoliation, moisturizer weight, and breakout prevention.`)
+  } else if (context.skinProfile) {
+    // No cycle tracking enabled. If their concerns include hormonal triggers,
+    // give Yuri permission to mention the feature ONCE per conversation when
+    // a cycle/hormonal topic comes up. The decision-memory feature-repetition
+    // rule (v8.1.2) prevents re-mentioning across sessions.
+    const concerns = (context.skinProfile.skin_concerns || []).map((c) => c.toLowerCase())
+    const hormonalCues = ['hormonal', 'cycle', 'period', 'menstrual', 'pms', 'breakout']
+    const hasHormonalConcern = concerns.some((c) => hormonalCues.some((cue) => c.includes(cue)))
+    if (hasHormonalConcern) {
+      sections.push(`## Cycle Tracking Available (Not Enabled)
+This user has hormonal/cycle-related concerns in their profile but has NOT enabled cycle tracking. If — and only if — the conversation touches on hormonal breakouts, cycle-aware skincare, or "phase of my period," you may briefly mention ONCE that they can log their cycle dates at /profile so you can anticipate hormonal weeks instead of reacting to flare photos. Frame as an offer, not a sales pitch ("if you want, you can…"). Do not mention again in this session if they decline or change topic.`)
+    }
   }
 
   // Learning engine insights (makes Yuri smarter over time)

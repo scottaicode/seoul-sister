@@ -28,6 +28,7 @@ import WeatherRoutineWidget from '@/components/dashboard/WeatherRoutineWidget'
 import ShelfScanWidget from '@/components/dashboard/ShelfScanWidget'
 import IntelligenceWidgets from '@/components/dashboard/IntelligenceWidgets'
 import RecentScansWidget from '@/components/dashboard/RecentScansWidget'
+import ScannerDiscoveryBanner from '@/components/dashboard/ScannerDiscoveryBanner'
 
 // ---------------------------------------------------------------------------
 // Helpers & data
@@ -145,6 +146,9 @@ export default function DashboardPage() {
           Your K-beauty intelligence advisor is ready.
         </p>
       </section>
+
+      {/* One-time scanner discovery callout (only shows for users with 0 scans this period) */}
+      <ScannerDiscoveryBanner />
 
       {/* Quick Actions */}
       <section>

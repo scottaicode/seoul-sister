@@ -261,15 +261,19 @@ function buildSystemPrompt(
   const parts: string[] = [YURI_SYSTEM_PROMPT]
 
   // Inject current date so Claude can do accurate date math
-  // (e.g. "you started this 2 days ago" not "2.5 weeks ago")
+  // (e.g. "you started this 2 days ago" not "2.5 weeks ago").
+  // Also pre-compute Tomorrow / Yesterday so Yuri never has to do weekday
+  // arithmetic — Bailey hit "Tomorrow is monday?" → "tomorrow is Tuesday"
+  // on May 4 2026 (it was Sunday). Pre-computing removes the math step.
   const now = new Date()
-  const dateStr = now.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   })
-  parts.push(`\n---\n**Today's date: ${dateStr}**\nWhen referencing dates or durations (e.g. how long a user has been on a plan), calculate precisely from the dates in their decision memory or conversation history. Do NOT estimate or round up — count the actual days.`)
+  const tomorrow = new Date(now)
+  tomorrow.setDate(now.getDate() + 1)
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  parts.push(`\n---\n**Today's date: ${fmt(now)}**\n**Tomorrow: ${fmt(tomorrow)}**\n**Yesterday: ${fmt(yesterday)}**\nWhen referencing dates or durations (e.g. how long a user has been on a plan), calculate precisely from the dates in their decision memory or conversation history. Do NOT estimate or round up — count the actual days. When the user asks about today / tomorrow / yesterday, use the values above directly — never compute the weekday yourself.`)
 
   // Add user context
   const contextText = formatContextForPrompt(userContext)

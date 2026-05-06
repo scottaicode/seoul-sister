@@ -1216,8 +1216,13 @@ async function executeComparePrices(
     })
   }
 
+  const now = Date.now()
   const formatted = prices.map((p: Record<string, unknown>) => {
     const r = p.retailer as Record<string, unknown> | null
+    const lastChecked = p.last_checked as string | null
+    const ageDays = lastChecked
+      ? Math.floor((now - new Date(lastChecked).getTime()) / 86_400_000)
+      : null
     return {
       retailer: r?.name || 'Unknown',
       price_usd: p.price_usd,
@@ -1225,13 +1230,21 @@ async function executeComparePrices(
       url: p.url || r?.website || null,
       trust_score: r?.trust_score,
       is_authorized: r?.is_authorized,
-      last_checked: p.last_checked,
+      last_checked: lastChecked,
+      age_days: ageDays,
+      // Phase 15.x staleness honesty: flag prices >14 days old. K-beauty
+      // pricing fluctuates monthly. Bailey came close to acting on stale
+      // COSRX BHA pricing on May 2 2026 — the platform must surface this
+      // uncertainty rather than confidently quote month-old data.
+      is_stale: ageDays !== null && ageDays > 14,
     }
   })
 
   const inStockPrices = formatted.filter((p) => p.in_stock)
   const cheapest = inStockPrices[0] || formatted[0]
   const maxPrice = Math.max(...formatted.map((p) => p.price_usd as number))
+  const staleCount = formatted.filter((p) => p.is_stale).length
+  const oldestAge = Math.max(...formatted.map((p) => p.age_days ?? 0))
 
   return JSON.stringify({
     prices: formatted,
@@ -1241,8 +1254,18 @@ async function executeComparePrices(
       savings_pct: maxPrice > (cheapest.price_usd as number)
         ? Math.round(((maxPrice - (cheapest.price_usd as number)) / maxPrice) * 100)
         : 0,
+      is_stale: cheapest.is_stale,
+      age_days: cheapest.age_days,
     },
     total_retailers: formatted.length,
+    freshness: {
+      stale_count: staleCount,
+      oldest_age_days: oldestAge,
+      // Honesty instruction surfaced via tool result so Yuri sees it inline.
+      honesty_note: staleCount > 0
+        ? `${staleCount} of ${formatted.length} prices are >14 days old. When citing these, mention the price's age (e.g. "last verified ${oldestAge} days ago") so the user knows it may have shifted.`
+        : null,
+    },
   })
 }
 
