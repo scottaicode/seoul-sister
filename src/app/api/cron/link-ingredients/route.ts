@@ -2,22 +2,27 @@ import { NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
 import { linkBatch } from '@/lib/pipeline/ingredient-linker'
+import { autoPromoteVerified } from '@/lib/pipeline/auto-promote-verified'
 
 /**
  * POST /api/cron/link-ingredients
  *
  * Runs daily at 7:30 AM UTC (via vercel.json), after translate-and-index (7 AM).
  *
- * SINGLE responsibility: Link products to ingredients.
- * Finds products that have ingredients_raw but no ss_product_ingredients rows,
- * parses INCI strings, matches/creates ingredients, and inserts links.
+ * Two responsibilities (sequential — order matters):
+ * 1. Link products to ingredients (linkBatch). Parses INCI strings, matches
+ *    or creates ingredients in ss_ingredients, inserts ss_product_ingredients
+ *    rows. Uses Sonnet for new ingredient enrichment (~$0.01-0.05/run).
+ * 2. Auto-promote products to is_verified=true (autoPromoteVerified). Newly
+ *    linked products may now meet the verified criteria; this step flips them
+ *    so Yuri's tools can find them on the next conversation. Without this,
+ *    new products would silently stay invisible (the May 5 P1 audit finding).
  *
- * Previously this was crammed into the translate-and-index cron sharing a
- * 60-second window. Now it gets its own full 60-second budget so ingredient
- * linking never gets skipped due to Sonnet extraction running long.
+ * Order matters: linking happens first because newly-linked products need
+ * the link rows to exist before they can pass the ≥8 links auto-promote
+ * threshold.
  *
  * Processes up to 50 products per run (conservative for 60s timeout).
- * Uses Sonnet for new ingredient enrichment (~$0.01-0.05 per run).
  *
  * Secured with CRON_SECRET header.
  */
@@ -49,6 +54,15 @@ export async function POST(request: Request) {
       console.error('[cron:link-ingredients] Linking error:', error)
     }
 
+    // Auto-promote newly linked products to is_verified=true if they meet
+    // the hardened criteria. Non-critical — log on failure, don't break the cron.
+    let promoteResult = { promoted: 0, checked: 0 }
+    try {
+      promoteResult = await autoPromoteVerified(db)
+    } catch (error) {
+      console.error('[cron:link-ingredients] Auto-promote error:', error)
+    }
+
     return NextResponse.json({
       success: true,
       linking: {
@@ -60,6 +74,10 @@ export async function POST(request: Request) {
         remaining: linkingResult.remaining,
         cost_usd: linkingResult.cost.estimated_cost_usd,
         errors: linkingResult.errors.slice(0, 5),
+      },
+      auto_promote: {
+        promoted: promoteResult.promoted,
+        checked: promoteResult.checked,
       },
       duration_ms: Date.now() - startedAt,
       processed_at: new Date().toISOString(),

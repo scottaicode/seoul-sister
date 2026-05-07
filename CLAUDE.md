@@ -509,11 +509,12 @@ seoul-sister/
 
 ## Cron Jobs (Automated Intelligence Pipeline)
 
-### Implemented Cron Jobs (14 active in vercel.json, 1 disabled)
+### Implemented Cron Jobs (15 active in vercel.json, 1 disabled)
 
 | Cron Job | Schedule | Purpose |
 |----------|----------|---------|
 | `seasonal-adjustments` | Monthly 1st 3 AM UTC | Generate seasonal skincare recommendations for 5 climate zones (Sonnet) |
+| `retry-enrichment-queue` | Monthly 1st 4:30 AM UTC | Retry stub-enrichment for products in `ss_enrichment_review_queue` due for retry. Currently a placeholder pending pipeline-helper refactor — first real retry due June 6 2026. |
 | `data-quality` | Weekly Sunday 4 AM UTC | Comprehensive DB health audit: coverage, staleness, gaps, health score 0-100 |
 | `aggregate-learning` | Daily 5 AM UTC | Extract patterns from reviews + Yuri conversations via Sonnet |
 | `update-effectiveness` | Daily 5:30 AM UTC | Recalculate ingredient/product effectiveness from review data |
@@ -521,7 +522,7 @@ seoul-sister/
 | `scan-korean-bestsellers` | Daily 6:30 AM UTC | Olive Young Global bestseller rankings (real Korean sales data) |
 | `backfill-trending` | Daily 6:45 AM UTC | Backfill trending product data from external sources |
 | `translate-and-index` | Daily 7 AM UTC | Sonnet extraction: categorize, describe, normalize pending products |
-| `link-ingredients` | Daily 7:30 AM UTC | Parse INCI strings, match/create ingredients, link to products |
+| `link-ingredients` | Daily 7:30 AM UTC | Parse INCI strings, match/create ingredients, link to products. **Also auto-promotes products to `is_verified=true`** when they meet hardened criteria (≥8 ingredient links, has price, has INCI raw, category != not_skincare). Prevents the May 5 P1 verified-flag gap from re-opening. |
 | `scan-trends` | Daily 8 AM UTC | Detect trending products from review/reaction spikes |
 | `scan-reddit-mentions` | Daily 8:30 AM UTC | Reddit K-beauty mention scanning (6 subreddits, sentiment analysis) |
 | `calculate-gap-scores` | Daily 9 AM UTC | Korea-vs-US trend gap detection (emerging products intelligence) |
@@ -5755,7 +5756,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 10.3.8 (Bailey-prep weekend hardening — date precision, routine/ownership separation, scanner discoverability banner, price-staleness honesty in compare_prices tool, cycle-tracking soft nudge, Olive Young zero-result alarm)
+**Version**: 10.3.9 (Stub enrichment + verified-flag auto-promote — May 7 catalog cleanup: 573 stub products enriched with verified INCI ($11.63 Sonnet cost), 4,723 products auto-promoted from is_verified=false→true (10%→90% catalog visibility), new ss_enrichment_review_queue table for the 112 products that couldn't be confidently enriched, monthly retry cron, automated daily auto-promote in link-ingredients cron prevents the May 5 P1 gap from re-opening)
 **Status**: ALL PHASES COMPLETE (1-14) + Phase 15 Session 1 shipped (15.1 corrections memory, 15.5 textarea max-height fix). Phase 8 all 11 features built (including previously deferred 8.1, 8.2, 8.5, 8.6). Phase 13 all 6 features built (prompt caching, API retry, decision memory, intent-based context, onboarding quality, voice cleanup). Phase 14 all 5 features built (widget persistence, cross-session memory, intent signals, specialist preview, admin dashboard). Phase 15 remaining work documented (15.2 heat check, 15.3 draft preservation, 15.4 age-aware memory). Memory denial bug fixed (v8.0.1) + corrections memory now persists factual user-corrected K-beauty facts across sessions (v10.2.0). 5,800+ products (skincare only), 14,400+ ingredients, 207,000+ links, 550+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 14 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level. GA4 (G-L3VXSLT781) + Vercel Analytics + SpeedInsights live. **Monetization hardened**: Free tier eliminated, payment-first registration flow (Register → Stripe $39.99/mo → Onboarding, no email verification), widget system prompt rewritten AI-First with 20 preview messages and natural conversion.
 **AI Advisor**: Yuri (유리) - "Glass"
 
@@ -5774,6 +5775,19 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v10.3.9 (May 7, 2026): Stub enrichment + verified-flag auto-promote (P0 P1 catalog repair)
+  - **Origin**: Yesterday afternoon (May 6) a widget visitor asked Yuri "Best serum for glass skin?" and two of three tool calls returned 0 results. Investigation surfaced two stacked bugs: (a) Phase 15.1 follow-up needed — 696 products had stub ingredient links from the original Feb 19 brand-expansion seed, never enriched by Phase 9 because they bypassed `ss_product_staging`. (b) The May 5 audit's P1 finding had reproduced in production — only 588 of 5,904 products (10%) had `is_verified=true`, and Yuri's tools filter by that flag, making 90% of the catalog invisible.
+  - **Stub enrichment run** (`scripts/enrich-stub-products.ts`, ~3 hours, $11.63 Sonnet cost): 685 stub products processed via Brave Search + Incidecoder page fetch + Sonnet 4.5 verification at 0.7 confidence gate. 573 succeeded (83.6%), 111 skipped at low confidence (most caught wrong-product-page mismatches via Sonnet's self-validation), 1 hit a confidence-out-of-range error. **Inserted 19,426 verified ingredient links and 353 new master ingredients.** The Reddit-confabulation product (Haruharu Wonder Black Rice Hyaluronic Toner) now has 27 verified ingredients linked — closing the original incident that triggered Phase 15.1.
+  - **Pre-flight cleanup**: 10 `not_skincare` contaminated stubs (eyelashes, food, hair tools) deleted before backfill — bypassed v9.0.0's cosmetics cleanup. Cascade-deleted 2 trending records, 0 user data affected.
+  - **Migration `20260507000001`**: Added Haruharu Wonder Black Rice Hyaluronic Toner Plus (Fragrance-Free) — the FF variant was missing from the catalog despite being on the brand's bestseller list. Backed by 22 verified ingredients at 1.00 confidence.
+  - **Verified-flag auto-promote** (`src/lib/pipeline/auto-promote-verified.ts`): Wired into `link-ingredients` cron (7:30 AM UTC). After daily ingredient linking, products are automatically promoted to `is_verified=true` if they meet hardened criteria: name+brand+category present, category != 'not_skincare', `ingredients_raw` populated, ≥1 price record, ≥8 ingredient links. RPC `auto_promote_verified_products()` does the SQL in one shot for performance; JS fallback runs if RPC missing. **One-shot UPDATE flipped 4,723 products from unverified→verified (10%→90% catalog visibility).** Daily cron prevents this gap from re-opening as new products enter via Olive Young pipeline.
+  - **Review queue infrastructure** (`ss_enrichment_review_queue` table): Persistent record of the 112 products the script couldn't enrich. Fields: product_id, source_url, confidence, reasoning, retry_count (max 6), retry_after (default +30 days), status (pending/in_progress/resolved/permanent_skip). RLS: service-role write, admin read. Replaces the ephemeral `/tmp` log.
+  - **Monthly retry cron** (`/api/cron/retry-enrichment-queue`, 1st of month 4:30 AM UTC): Currently a placeholder that logs what would be retried. First real retry batch is due June 6, 2026 (30 days from backfill). TODO before then: refactor `enrich-stub-products.ts` pipeline helpers into a shared module (`src/lib/pipeline/stub-enrichment.ts`) so the cron can run real enrichment.
+  - **Original bug fixed**: Yesterday's failing Yuri query (`category=serum, min_rating=4.3, niacinamide`) returned 0 visible products. Same query today returns 283. Per-category visibility now: mask 946, moisturizer 911, cleanser 731, sunscreen 622, serum 489, toner 438.
+  - **Bailey-relevant outcome**: Aestura Atobarrier 365 Cream and 7 other Aestura barrier-repair products now have verified INCI lists. Yuri can ground her Phase 2 recommendations in real data instead of training-knowledge guesses.
+  - **Files modified**: `src/app/api/cron/link-ingredients/route.ts` (auto-promote step added), `vercel.json` (new monthly cron entry, 14→15 active crons). **Files created**: `src/lib/pipeline/auto-promote-verified.ts`, `src/app/api/cron/retry-enrichment-queue/route.ts`, `supabase/migrations/20260507120001_add_auto_promote_rpc_and_review_queue.sql`, `scripts/build-review-queue-backfill.ts`, `scripts/review-queue-backfill.sql` (112 INSERT statements).
+  - **Honest assessment**: 111 review-queue products are documented but won't get retried until June 6 (placeholder cron). 585 products remain unverified — they legitimately fail the criteria (no price, fewer than 8 ingredient links, or no INCI raw) and will be promoted naturally as the daily pipeline fills them in. The Olive Young scraper P0 issue (silent zero-result for 2+ weeks per May 5 audit) is unrelated and still pending.
+  - **Build verified**: `tsc --noEmit` passes clean.
 - v10.3.8 (May 6, 2026): Bailey-prep weekend hardening — date precision, routine/ownership separation, scanner discoverability, price-staleness honesty, OY zero-result alarm
   - **Origin**: Deep dive on Bailey's 3-month usage ahead of an in-person visit surfaced 6 fixable friction points without changing any user-visible feature. All ship together because they're independent and low-risk: each touches a different file, all type-check and build clean.
   - **Date precision** (`src/lib/yuri/advisor.ts`): Yuri's system prompt now injects pre-computed Today / Tomorrow / Yesterday with full weekday names on every turn. Bailey hit "Tomorrow is monday?" → Yuri said Tuesday on May 4 2026 (it was Sunday). The fresh-per-turn date was already correct; the bug was Claude doing weekday arithmetic and getting it wrong. Pre-computing removes the math step. Same defensive pattern as v8.5.0 but stronger.

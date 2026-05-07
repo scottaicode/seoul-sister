@@ -1,13 +1,19 @@
 /**
- * Phase 15.1 follow-up: Re-enrich the 43 stub products from the original Feb 17 2026 manual seed.
+ * Phase 15.1 follow-up: Re-enrich stub products that have NULL ingredients_raw.
  *
  * Background:
  *   - 43 flagship K-beauty products were manually seeded into ss_products on Feb 17 2026
- *   - Each has only 1-7 stub ingredient links and NULL ingredients_raw
- *   - The Phase 9 Sonnet pipeline never re-enriched them because they bypass staging
- *   - COSRX Snail 96 (already fixed in v10.2.1) was the canary — Yuri confidently
- *     cited beta-glucan at position 5 when actual ingredient is betaine
- *   - All 43 products will produce identical hallucinations until enriched
+ *     with 1-7 stub ingredient links each.
+ *   - 50+ additional products were seeded Feb 19 2026 in the brand-expansion batch
+ *     (20260219000007–20260219000011) with ZERO ingredient links — bare product rows.
+ *   - The Phase 9 Sonnet pipeline never re-enriched any of them because they bypass staging.
+ *   - COSRX Snail 96 (fixed in v10.2.1) was the original canary — Yuri confidently
+ *     cited beta-glucan at position 5 when actual ingredient is betaine.
+ *   - May 6 2026: a Reddit response draft cited "alcohol and lavender oil pretty far down
+ *     the list" of Haruharu Wonder Black Rice Hyaluronic Toner — same training-data
+ *     adjacency confabulation pattern. Haruharu Wonder is one of the Feb 19 batch brands
+ *     with bare product rows (zero links). Loader was filtering count >= 1 which skipped
+ *     the entire Feb 19 batch. Loader now picks them up via count >= 0.
  *
  * Methodology (Approach 3b — Brave + page fetch + Sonnet verification):
  *   1. For each product: Brave web search for "{brand} {name} ingredients incidecoder"
@@ -18,7 +24,7 @@
  *   6. Skip if confidence < 0.7 (manual review required)
  *   7. UPSERT ingredients_raw + replace stub link rows with verified list
  *
- * Cost: ~$0.013 per product × 43 = ~$0.56 total. Brave free tier covers it.
+ * Cost: ~$0.013 per product × N. Brave free tier covers a Feb 19 backfill (~50 products).
  *
  * Run: npx tsx --tsconfig tsconfig.json scripts/enrich-stub-products.ts
  *      npx tsx --tsconfig tsconfig.json scripts/enrich-stub-products.ts --dry-run
@@ -363,7 +369,11 @@ async function loadStubProducts(): Promise<StubProduct[]> {
     return [{ ...data, link_count: 0 }]
   }
 
-  // Fetch all 43 stubs: NULL ingredients_raw + 1-7 ingredient links
+  // Fetch all stubs: NULL ingredients_raw + 0-7 ingredient links.
+  // 0 links = Feb 19 brand-expansion batch (bare product rows from
+  //   20260219000007–20260219000011, never went through Phase 9 ingestion).
+  // 1-7 links = original Feb 17 manual seed stubs.
+  // Both classes need the same Brave + Incidecoder + Sonnet enrichment.
   const { data: products, error } = await supabase
     .from('ss_products')
     .select('id, brand_en, name_en, category')
@@ -373,14 +383,15 @@ async function loadStubProducts(): Promise<StubProduct[]> {
   if (error) throw new Error(`Failed to load products: ${error.message}`)
   if (!products) return []
 
-  // Filter to those with 1-7 links (the actual stubs)
+  // Filter to those with 0-7 links. Products with >7 links are already enriched
+  // via the Phase 9 Sonnet pipeline and shouldn't be touched.
   const results: StubProduct[] = []
   for (const p of products) {
     const { count } = await supabase
       .from('ss_product_ingredients')
       .select('*', { count: 'exact', head: true })
       .eq('product_id', p.id)
-    if (count !== null && count >= 1 && count <= 7) {
+    if (count !== null && count >= 0 && count <= 7) {
       results.push({ ...p, link_count: count })
     }
   }
