@@ -43,6 +43,14 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Supabase CLI temp files
+supabase/.temp/
+
+# Editor / IDE backup files
+*.bak
+*.swp
+*~
+
 # Cache directories
 .npm
 .yarn/cache
