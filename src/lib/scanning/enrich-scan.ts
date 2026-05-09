@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js'
+import { detectScanOverlap, type IngredientOverlapResult } from '@/lib/intelligence/ingredient-overlap'
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -17,6 +18,13 @@ export interface ScanEnrichment {
   ingredientInsights: IngredientInsightsData | null
   seasonalContext: SeasonalContextData | null
   ownership: OwnershipData | null
+  /**
+   * Feature 16.1 — Active ingredients in the scanned product that already
+   * exist in the user's routine + inventory. Lets the user see "you already
+   * have niacinamide in 3 products" before deciding to add a 4th. Null when
+   * no overlap or when the user has no existing products to compare against.
+   */
+  overlapPreview: IngredientOverlapResult | null
 }
 
 export interface PersonalizationData {
@@ -107,7 +115,7 @@ export async function enrichScanResult(
   ingredientNames: string[],
   skinType?: string
 ): Promise<ScanEnrichment> {
-  // Run all 8 enrichment queries in parallel
+  // Run all 9 enrichment queries in parallel
   const [
     personalization,
     pricing,
@@ -117,6 +125,7 @@ export async function enrichScanResult(
     ingredientInsights,
     seasonalContext,
     ownership,
+    overlapPreview,
   ] = await Promise.all([
     fetchPersonalization(supabase, userId, ingredientNames),
     productId ? fetchPricing(supabase, productId, brand) : Promise.resolve(null),
@@ -126,7 +135,13 @@ export async function enrichScanResult(
     fetchIngredientInsights(supabase, userId, ingredientNames),
     fetchSeasonalContext(supabase, userId, ingredientNames),
     productId ? fetchOwnership(supabase, userId, productId) : Promise.resolve(null),
+    fetchOverlapPreview(supabase, userId, ingredientNames, productId),
   ])
+
+  // Drop the overlap preview if it has no entries — the UI shouldn't render
+  // an empty section.
+  const overlap =
+    overlapPreview && overlapPreview.entries.length > 0 ? overlapPreview : null
 
   return {
     personalization,
@@ -137,6 +152,66 @@ export async function enrichScanResult(
     ingredientInsights,
     seasonalContext,
     ownership,
+    overlapPreview: overlap,
+  }
+}
+
+// ─── Overlap Preview (Feature 16.1) ──────────────────────────────────
+
+/**
+ * Resolves the scanned product's ingredient names to ingredient IDs in our
+ * catalog, then asks the overlap detector which of those actives the user
+ * already has elsewhere. Names that don't match a catalog row (new or unknown
+ * ingredients) are simply skipped — the user just won't see a stacking note
+ * for them.
+ *
+ * The `excludeProductId` argument prevents the scanned product itself from
+ * counting as a "second product with this ingredient" if the user happens to
+ * already own it.
+ */
+async function fetchOverlapPreview(
+  supabase: SupabaseClient,
+  userId: string,
+  ingredientNames: string[],
+  scannedProductId: string | null
+): Promise<IngredientOverlapResult | null> {
+  if (!ingredientNames.length) return null
+
+  try {
+    // Resolve names -> IDs. Use both name_en and name_inci so we catch the
+    // catalog regardless of how the scan returned the ingredient string.
+    // Lowercase comparison via or() with ilike is too noisy at scale — we
+    // rely on exact name_en/name_inci matches, which is good enough because
+    // Sonnet pulls the canonical INCI strings from the label during scanning.
+    const lowerNames = ingredientNames.map((n) => n.trim()).filter(Boolean)
+    if (!lowerNames.length) return null
+
+    // Pull candidate ingredients in two passes (name_en, name_inci) and union
+    // them. Avoid ilike loops to keep this a single round trip.
+    const { data: byEn } = await supabase
+      .from('ss_ingredients')
+      .select('id, name_en')
+      .in('name_en', lowerNames)
+
+    const { data: byInci } = await supabase
+      .from('ss_ingredients')
+      .select('id, name_inci')
+      .in('name_inci', lowerNames)
+
+    const idSet = new Set<string>()
+    for (const r of byEn ?? []) idSet.add(r.id as string)
+    for (const r of byInci ?? []) idSet.add(r.id as string)
+
+    if (idSet.size === 0) return null
+
+    return await detectScanOverlap(
+      supabase,
+      userId,
+      Array.from(idSet),
+      scannedProductId
+    )
+  } catch {
+    return null
   }
 }
 

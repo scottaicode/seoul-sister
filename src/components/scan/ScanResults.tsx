@@ -23,6 +23,7 @@ import {
   TrendContext,
   IngredientInsights,
   SeasonalContext,
+  OverlapPreview,
 } from '@/components/shared/EnrichmentSections'
 import type { ScanEnrichment } from '@/lib/scanning/enrich-scan'
 
@@ -298,6 +299,11 @@ export default function ScanResults({ result, onReset }: ScanResultsProps) {
       {/* ── Ownership Status ────────────────────────────────────── */}
       {enrichment?.ownership && (
         <OwnershipStatus data={enrichment.ownership} />
+      )}
+
+      {/* ── Active-Ingredient Overlap with Existing Routine ─────── */}
+      {enrichment?.overlapPreview && (
+        <OverlapPreview data={enrichment.overlapPreview} />
       )}
 
       {/* ── Ingredient Effectiveness Insights ───────────────────── */}

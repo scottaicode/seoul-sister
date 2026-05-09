@@ -11,6 +11,7 @@ import {
   TrendContext,
   IngredientInsights,
   SeasonalContext,
+  OverlapPreview,
 } from '@/components/shared/EnrichmentSections'
 import type { ScanEnrichment } from '@/lib/scanning/enrich-scan'
 
@@ -66,7 +67,8 @@ export default function ProductEnrichment({ productId }: ProductEnrichmentProps)
     enrichment.counterfeit ||
     enrichment.trending ||
     enrichment.ingredientInsights ||
-    enrichment.seasonalContext
+    enrichment.seasonalContext ||
+    enrichment.overlapPreview
   )
 
   if (!hasData && isAuthenticated) return null
@@ -109,6 +111,10 @@ export default function ProductEnrichment({ productId }: ProductEnrichmentProps)
 
       {enrichment?.personalization && (
         <PersonalizedMatch data={enrichment.personalization} />
+      )}
+
+      {enrichment?.overlapPreview && (
+        <OverlapPreview data={enrichment.overlapPreview} />
       )}
 
       {enrichment?.ingredientInsights && (

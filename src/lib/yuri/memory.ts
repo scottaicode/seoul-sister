@@ -1,6 +1,7 @@
 import { getServiceClient } from '@/lib/supabase'
 import type { SkinProfile, YuriConversation, YuriMessage, SpecialistType, CyclePhaseInfo, UserCycleTracking } from '@/types/database'
 import { getCyclePhase, getPhaseLabel } from '@/lib/intelligence/cycle-routine'
+import { detectRoutineOverlap, type IngredientOverlapResult } from '@/lib/intelligence/ingredient-overlap'
 
 // ---------------------------------------------------------------------------
 // Intent classification for conditional context loading
@@ -134,6 +135,14 @@ export interface UserContext {
   decisionMemory: DecisionMemory | null
   cyclePhase: CyclePhaseInfo | null
   locationName: string | null
+  /**
+   * Feature 16.1 — Ingredient stacking analysis across the user's active
+   * routines + inventory. Surfaces active ingredients that appear in 2+
+   * products so Yuri can flag redundancy proactively (Bailey's gap, May 8 2026).
+   * Null when overlap detection isn't loaded for this conversation turn (intent
+   * classification deemed it irrelevant) or when no overlap exists.
+   */
+  ingredientOverlap: IngredientOverlapResult | null
 }
 
 export interface LearningContextData {
@@ -266,6 +275,16 @@ export async function loadUserContext(
         .limit(20)
     : Promise.resolve({ data: null })
 
+  // CONDITIONAL: ingredient overlap (Feature 16.1). Load whenever routine,
+  // ingredients, or products topics are active — these are the moments Yuri
+  // benefits from knowing the user has niacinamide stacked across 5 products.
+  // Skipped on focused queries about pricing/trending/counterfeit where it's
+  // irrelevant noise. Always loaded on first message ('general').
+  const loadOverlap = loadAll || topics.has('routine') || topics.has('ingredients') || topics.has('products')
+  const overlapPromise: Promise<IngredientOverlapResult | null> = loadOverlap
+    ? detectRoutineOverlap(db, userId)
+    : Promise.resolve(null)
+
   // Execute all queries in parallel
   const [
     [profileResult, conversationsResult],
@@ -273,12 +292,14 @@ export async function loadUserContext(
     routineResult,
     userProductsResult,
     specialistInsightsResult,
+    overlapResult,
   ] = await Promise.all([
     alwaysPromises,
     reactionsPromise,
     routinePromise,
     userProductsPromise,
     specialistInsightsPromise,
+    overlapPromise,
   ])
 
   const skinProfile = profileResult.data as SkinProfile | null
@@ -428,6 +449,12 @@ export async function loadUserContext(
   // Load structured decision memory across recent conversations (always load — cheap and critical)
   const decisionMemory = await loadDecisionMemory(db, userId)
 
+  // Only surface overlap when entries actually exist (worth flagging). An
+  // empty result -> null so formatContextForPrompt skips the section cleanly.
+  const ingredientOverlap = overlapResult && overlapResult.entries.length > 0
+    ? overlapResult
+    : null
+
   return {
     skinProfile,
     recentConversations,
@@ -442,6 +469,7 @@ export async function loadUserContext(
     decisionMemory,
     cyclePhase,
     locationName,
+    ingredientOverlap,
   }
 }
 
@@ -562,6 +590,32 @@ export function formatContextForPrompt(context: UserContext): string {
       lines.push('\nThese are products the user previously planned to use but never confirmed buying. Do not say "you have X" or "since you have X" for these. If relevant, ask whether they ended up buying it before recommending around it.')
     }
     sections.push(`## Current Routine Products\n${lines.join('\n')}`)
+  }
+
+  // Ingredient stacking analysis (Feature 16.1) — Surfaces ACTIVE ingredients
+  // that appear in 2+ products across the user's routine and inventory. Only
+  // active ingredients (is_active=true) — fillers like water, butylene glycol,
+  // and 1,2-hexanediol are filtered out at the source. This is raw data; Yuri
+  // decides whether to mention it, when, and how. The Quick Reminders section
+  // in the system prompt tells her she's allowed to surface this proactively.
+  if (context.ingredientOverlap && context.ingredientOverlap.entries.length > 0) {
+    const ov = context.ingredientOverlap
+    const lines: string[] = []
+    for (const entry of ov.entries) {
+      const fnPart = entry.ingredientFunction
+        ? ` — ${entry.ingredientFunction}`
+        : ''
+      const productList = entry.productDisplays.join('; ')
+      lines.push(
+        `- **${entry.ingredientName}** appears in ${entry.productCount} products${fnPart}\n  Products: ${productList}`
+      )
+    }
+    sections.push(`## Active Ingredient Stacking in Their Routine
+${ov.totalProducts} products analyzed across their routines + inventory. The actives below appear in multiple products — only active ingredients are listed (humectants, solvents, and fillers like water, butylene glycol, 1,2-hexanediol are filtered out because stacking those is normal and unworthy of attention).
+
+${lines.join('\n')}
+
+This is information about THEIR routine, not advice. Some stacking is fine (a niacinamide cleanser + niacinamide moisturizer at low concentration may be unremarkable). Some is wasteful (4 products driving the same active hard). Some is risky (3 products with sensitizing actives at high concentration). Use your judgment about whether to mention this, when in the conversation, and how. If they ask about adding another product or are wondering if their routine is too heavy, this is the data you'd want to reference.`)
   }
 
   // User product inventory (products the user owns, with texture data for layering)

@@ -16,6 +16,7 @@ import {
   Flame,
   Eye,
   PackageCheck,
+  Layers,
 } from 'lucide-react'
 import type {
   PersonalizationData,
@@ -27,6 +28,7 @@ import type {
   SeasonalContextData,
   OwnershipData,
 } from '@/lib/scanning/enrich-scan'
+import type { IngredientOverlapResult } from '@/lib/intelligence/ingredient-overlap'
 
 // ─── Section Header ────────────────────────────────────────────────────
 
@@ -480,6 +482,77 @@ export function TrendContext({ data }: { data: TrendingData }) {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Overlap Preview Section (Feature 16.1) ───────────────────────────
+
+/**
+ * Renders the active-ingredient overlap between the scanned product and the
+ * user's existing routine + inventory. AI-First — surfaces facts ("you already
+ * have niacinamide in 3 products"), not prescriptions ("you should drop X").
+ * The user decides what to do with the information; Yuri provides the nuance.
+ */
+export function OverlapPreview({ data }: { data: IngredientOverlapResult }) {
+  if (!data.entries.length) return null
+
+  const hasExcessive = data.entries.some((e) => e.severity === 'likely_excessive')
+  const accent = hasExcessive ? 'text-amber-400' : 'text-sky-400'
+  const ring = hasExcessive ? 'ring-amber-500/20' : 'ring-sky-500/20'
+
+  return (
+    <div className={`glass-card p-4 ring-1 ${ring}`}>
+      <SectionHeader
+        icon={Layers}
+        title="You Already Have This Ingredient"
+        color={accent}
+      />
+      <p className="text-[11px] text-white/50 mb-3">
+        Active ingredients in this product that already appear in your routine
+        or inventory. Stacking actives isn&apos;t always bad — but it&apos;s
+        worth seeing the picture before adding another.
+      </p>
+      <div className="space-y-3">
+        {data.entries.map((entry, i) => {
+          const isExcessive = entry.severity === 'likely_excessive'
+          const dotColor = isExcessive ? 'bg-amber-400' : 'bg-sky-400'
+          return (
+            <div key={i} className="rounded-lg bg-white/5 p-3">
+              <div className="flex items-start justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={`w-1.5 h-1.5 rounded-full ${dotColor} flex-shrink-0`} />
+                  <p className="text-[12px] font-semibold text-white truncate">
+                    {entry.ingredientName}
+                  </p>
+                </div>
+                <span className={`text-[10px] font-medium ${accent} flex-shrink-0`}>
+                  {entry.productCount} products total
+                </span>
+              </div>
+              {entry.ingredientFunction && (
+                <p className="text-[10px] text-white/40 mb-2 ml-3.5">
+                  {entry.ingredientFunction}
+                </p>
+              )}
+              <div className="ml-3.5 space-y-0.5">
+                {entry.productDisplays.map((p, j) => (
+                  <p key={j} className="text-[11px] text-white/60">
+                    • {p}
+                  </p>
+                ))}
+                <p className="text-[11px] text-white/40 italic">
+                  • + the product you just scanned
+                </p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <p className="text-[10px] text-white/30 mt-3 italic">
+        Ask Yuri whether this stacking is helping or hurting — she has the full
+        picture of your routine.
+      </p>
     </div>
   )
 }
