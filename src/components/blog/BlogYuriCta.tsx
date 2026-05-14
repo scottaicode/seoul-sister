@@ -1,14 +1,19 @@
 'use client'
 
-import Link from 'next/link'
 import { Sparkles } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function BlogYuriCta() {
   const { user } = useAuth()
+  const router = useRouter()
 
   const openYuriBubble = () => {
-    window.dispatchEvent(new CustomEvent('open-yuri'))
+    if (user) {
+      router.push('/yuri')
+    } else {
+      window.dispatchEvent(new CustomEvent('open-yuri'))
+    }
   }
 
   return (
@@ -28,16 +33,8 @@ export default function BlogYuriCta() {
             className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-amber-500 text-black font-medium hover:bg-amber-400 transition-colors"
           >
             <Sparkles className="w-4 h-4" />
-            Ask Yuri
+            {user ? 'Open Yuri' : 'Ask Yuri'}
           </button>
-          {user && (
-            <Link
-              href="/yuri"
-              className="inline-flex items-center justify-center px-6 py-3 rounded-full border border-white/20 text-white/70 text-sm font-medium hover:border-amber-500/40 hover:text-white transition-colors"
-            >
-              Full conversation
-            </Link>
-          )}
         </div>
       </div>
     </div>

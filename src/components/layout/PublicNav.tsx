@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Sparkles } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -15,9 +15,19 @@ const publicLinks = [
 export default function PublicNav() {
   const { user } = useAuth()
   const pathname = usePathname()
+  const router = useRouter()
 
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/')
+
+  // Signed-in users get the full Yuri experience; the bubble doesn't render for them.
+  const handleAskYuri = () => {
+    if (user) {
+      router.push('/yuri')
+    } else {
+      window.dispatchEvent(new CustomEvent('open-yuri'))
+    }
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/10">
@@ -53,7 +63,7 @@ export default function PublicNav() {
             </Link>
           ))}
           <button
-            onClick={() => window.dispatchEvent(new CustomEvent('open-yuri'))}
+            onClick={handleAskYuri}
             className="hidden md:inline-flex items-center gap-1.5 text-sm font-medium text-amber-400 hover:text-amber-300 transition-colors"
           >
             <Sparkles className="w-3.5 h-3.5" />

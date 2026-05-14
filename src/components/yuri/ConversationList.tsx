@@ -30,11 +30,28 @@ export default function ConversationList({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
   const editInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     onLoad()
   }, [onLoad])
+
+  // Split conversations into live and dead-start groups.
+  // Dead start: <3 messages AND updated >24h ago — i.e., an abandoned thread.
+  // Bailey had 11+ conversations, most 2-msg dead starts cluttering her list.
+  const DEAD_START_AGE_MS = 24 * 60 * 60 * 1000
+  const now = Date.now()
+  const isDeadStart = (c: ConversationSummary) => {
+    if (c.message_count >= 3) return false
+    const age = now - new Date(c.updated_at).getTime()
+    return age > DEAD_START_AGE_MS
+  }
+  const liveConversations = conversations.filter((c) => !isDeadStart(c))
+  const archivedConversations = conversations.filter(isDeadStart)
+  const visibleConversations = showArchived
+    ? conversations
+    : liveConversations
 
   // Focus input when editing starts
   useEffect(() => {
@@ -117,9 +134,20 @@ export default function ConversationList({
             <p className="text-sm text-white/40">No conversations yet</p>
             <p className="text-xs text-white/30 mt-1">Start chatting with Yuri!</p>
           </div>
+        ) : visibleConversations.length === 0 && archivedConversations.length > 0 ? (
+          <div className="flex flex-col items-center justify-center p-8 text-center">
+            <MessageCircle className="w-10 h-10 text-white/30 mb-3" strokeWidth={1.5} />
+            <p className="text-sm text-white/40">No active threads</p>
+            <button
+              onClick={() => setShowArchived(true)}
+              className="text-xs text-gold/80 hover:text-gold mt-2 underline-offset-2 hover:underline"
+            >
+              Show {archivedConversations.length} archived start{archivedConversations.length !== 1 ? 's' : ''}
+            </button>
+          </div>
         ) : (
           <ul className="divide-y divide-white/10">
-            {conversations.map((conv) => {
+            {visibleConversations.map((conv) => {
               const isActive = conv.id === currentConversationId
               const isEditing = editingId === conv.id
               const isDeleting = deletingId === conv.id
@@ -191,7 +219,10 @@ export default function ConversationList({
                             </button>
                           </form>
                         ) : (
-                          <p className="font-medium text-sm text-white truncate">
+                          <p
+                            className="font-medium text-sm text-white line-clamp-2 leading-snug"
+                            title={conv.title || 'New conversation'}
+                          >
                             {conv.title || 'New conversation'}
                           </p>
                         )}
@@ -205,8 +236,12 @@ export default function ConversationList({
                       {!isEditing && (
                         <div className="flex flex-col items-end gap-1 flex-shrink-0">
                           <div className="flex items-center gap-0.5">
-                            {/* Action buttons - visible on hover/touch */}
-                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/*
+                              Action buttons. On touch devices (no hover), keep them softly visible
+                              so Bailey-style real users can actually find rename/delete. On sm+ they
+                              fade in on hover (Scott's desktop experience unchanged).
+                            */}
+                            <div className="flex items-center gap-0.5 opacity-50 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
                                 onClick={(e) => handleStartEdit(conv, e)}
                                 className="p-1 rounded text-white/30 hover:text-gold hover:bg-gold/10 transition-colors"
@@ -239,6 +274,23 @@ export default function ConversationList({
               )
             })}
           </ul>
+        )}
+
+        {/*
+          Archived-starts toggle. Only shows when there are dead-start conversations to surface.
+          Hidden when nothing to toggle to keep the chrome clean.
+        */}
+        {archivedConversations.length > 0 && visibleConversations.length > 0 && (
+          <div className="px-4 py-3 border-t border-white/10 text-center">
+            <button
+              onClick={() => setShowArchived((v) => !v)}
+              className="text-xs text-white/40 hover:text-white/70 transition-colors"
+            >
+              {showArchived
+                ? `Hide ${archivedConversations.length} archived start${archivedConversations.length !== 1 ? 's' : ''}`
+                : `Show ${archivedConversations.length} archived start${archivedConversations.length !== 1 ? 's' : ''}`}
+            </button>
+          </div>
         )}
       </div>
     </div>

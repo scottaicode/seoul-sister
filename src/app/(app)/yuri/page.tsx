@@ -43,6 +43,15 @@ export default function YuriPage() {
 
   const [showHistory, setShowHistory] = useState(false)
   const [usage, setUsage] = useState<UsageStatus | null>(null)
+  const [welcomeContext, setWelcomeContext] = useState<{
+    first_name: string | null
+    active_phase: string | null
+    total_conversations: number
+    has_profile: boolean
+    last_conversation_id: string | null
+    last_conversation_title: string | null
+  } | null>(null)
+  const [newChatToast, setNewChatToast] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
 
@@ -64,6 +73,28 @@ export default function YuriPage() {
     }
     fetchUsage()
   }, [user, messages.length]) // Re-fetch after each message
+
+  // Fetch lightweight welcome context (first_name, active_phase, history count, last conversation)
+  // Only when authenticated and in the empty welcome state — avoids redundant calls during active chats.
+  useEffect(() => {
+    if (!user || messages.length > 0) return
+    let cancelled = false
+    async function fetchWelcomeContext() {
+      try {
+        const { data } = await import('@/lib/supabase').then(m => m.supabase.auth.getSession())
+        const token = data.session?.access_token
+        if (!token) return
+        const res = await fetch('/api/yuri/welcome-context', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (res.ok && !cancelled) {
+          setWelcomeContext(await res.json())
+        }
+      } catch { /* non-critical */ }
+    }
+    fetchWelcomeContext()
+    return () => { cancelled = true }
+  }, [user, messages.length])
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -134,6 +165,8 @@ export default function YuriPage() {
               onNew={() => {
                 startNewConversation()
                 setShowHistory(false)
+                setNewChatToast(true)
+                window.setTimeout(() => setNewChatToast(false), 1800)
               }}
               onClose={() => setShowHistory(false)}
               onLoad={loadConversations}
@@ -175,7 +208,11 @@ export default function YuriPage() {
           )}
           {hasMessages && (
             <button
-              onClick={() => startNewConversation()}
+              onClick={() => {
+                startNewConversation()
+                setNewChatToast(true)
+                window.setTimeout(() => setNewChatToast(false), 1800)
+              }}
               className="text-xs text-gold font-medium hover:text-gold transition-colors"
             >
               New chat
@@ -183,6 +220,16 @@ export default function YuriPage() {
           )}
         </div>
       </div>
+
+      {/* New-chat confirmation toast — fades in after + New is tapped */}
+      {newChatToast && (
+        <div className="px-4 pt-2 animate-fade-in" aria-live="polite">
+          <div className="mx-auto max-w-2xl flex items-center gap-2 text-xs text-gold/90 bg-gold/10 border border-gold/20 rounded-full px-3 py-1.5 w-fit">
+            <Sparkles className="w-3 h-3" />
+            <span>Started a fresh chat</span>
+          </div>
+        </div>
+      )}
 
       {/* Error banner */}
       {error && (
@@ -214,20 +261,56 @@ export default function YuriPage() {
         ) : (
           /* Welcome state */
           <div className="max-w-2xl mx-auto flex flex-col items-center justify-center h-full gap-8 animate-fade-in">
-            {/* Yuri avatar */}
+            {/* Yuri avatar + returning-user greeting */}
             <div className="flex flex-col items-center gap-3">
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center shadow-glow-gold">
                 <Sparkles className="w-7 h-7 text-seoul-dark" strokeWidth={1.75} />
               </div>
               <div className="text-center">
-                <h2 className="font-display font-bold text-xl text-white">
-                  Meet Yuri
-                </h2>
-                <p className="text-sm text-white/40 mt-1 max-w-xs">
-                  Your personal K-beauty advisor — ask me anything.
-                </p>
+                {welcomeContext && welcomeContext.total_conversations > 0 ? (
+                  <>
+                    <h2 className="font-display font-bold text-xl text-white">
+                      {welcomeContext.first_name
+                        ? `Welcome back, ${welcomeContext.first_name}`
+                        : 'Welcome back'}
+                    </h2>
+                    {welcomeContext.active_phase ? (
+                      <p className="text-sm text-white/60 mt-1 max-w-sm">
+                        Picking up where we left off — {welcomeContext.active_phase}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-white/40 mt-1 max-w-xs">
+                        Ready when you are.
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <h2 className="font-display font-bold text-xl text-white">
+                      Meet Yuri
+                    </h2>
+                    <p className="text-sm text-white/40 mt-1 max-w-xs">
+                      Your personal K-beauty advisor — ask me anything.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
+
+            {/* Continue last thread — only when there's existing history */}
+            {welcomeContext && welcomeContext.last_conversation_id && welcomeContext.last_conversation_title && (
+              <button
+                onClick={() => loadConversation(welcomeContext.last_conversation_id!)}
+                className="w-full glass-card px-4 py-3 text-left transition-all duration-300 border-l-2 border-l-gold/40 hover:border-l-gold hover:bg-white/[0.07] group"
+              >
+                <p className="text-[10px] uppercase tracking-wide text-gold/70 font-medium mb-1">
+                  Continue last thread
+                </p>
+                <p className="text-sm text-white/80 line-clamp-2 group-hover:text-white">
+                  {welcomeContext.last_conversation_title}
+                </p>
+              </button>
+            )}
 
             {/* Specialist quick-start */}
             <div className="w-full">

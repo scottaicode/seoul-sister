@@ -1,6 +1,8 @@
 'use client'
 
 import { Sparkles } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks/useAuth'
 
 interface BlogInlineYuriPromptProps {
   category?: string | null
@@ -26,8 +28,14 @@ function getPromptText(category?: string | null): string {
 }
 
 export default function BlogInlineYuriPrompt({ category }: BlogInlineYuriPromptProps) {
+  const { user } = useAuth()
+  const router = useRouter()
   const openYuri = () => {
-    window.dispatchEvent(new CustomEvent('open-yuri'))
+    if (user) {
+      router.push('/yuri')
+    } else {
+      window.dispatchEvent(new CustomEvent('open-yuri'))
+    }
   }
 
   return (

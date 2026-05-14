@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { MessageCircle, X, Send, Loader2, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAuth } from '@/hooks/useAuth'
 import {
   getMessageCount,
   setMessageCount,
@@ -36,6 +37,7 @@ function saveSessionMessages(msgs: WidgetMessage[]) {
 }
 
 export default function YuriBubble() {
+  const { user, loading: authLoading } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<WidgetMessage[]>(loadSessionMessages)
   const [input, setInput] = useState('')
@@ -221,6 +223,10 @@ export default function YuriBubble() {
   )
 
   const remainingMessages = MAX_FREE_MESSAGES - messageCount
+
+  // Don't render for signed-in users — they have the full Yuri at /yuri.
+  // Skip during auth bootstrap to avoid a flash of the anonymous widget.
+  if (authLoading || user) return null
 
   return (
     <>

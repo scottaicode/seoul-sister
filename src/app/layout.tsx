@@ -119,10 +119,10 @@ export default function RootLayout({
         <AuthProvider>
           {children}
           <ServiceWorkerRegistration />
+          <YuriBubble />
         </AuthProvider>
         <Analytics />
         <SpeedInsights />
-        <YuriBubble />
       </body>
     </html>
   )
