@@ -226,19 +226,26 @@ async function loadCurrentlyExcludedIngredients(
 
 /**
  * Finds ingredients with effectiveness_score > 0.70 for the user's skin type
- * that are NOT present in any product in the given routine AND that have
- * NOT been explicitly excluded by the user's active treatment plan
- * (read from decision_memory).
+ * that are NOT present in any product the user has access to (routine OR
+ * inventory) AND that have NOT been explicitly excluded by the user's active
+ * treatment plan (read from decision_memory).
  *
  * Returns top 3 missing ingredients.
+ *
+ * Coverage source-of-truth: union of (a) ss_routine_products for this routine
+ * and (b) ss_user_products inventory. Bailey hit a bug on May 3 2026 where
+ * Torriden DIVE-IN was in her saved routine but she didn't own it — the old
+ * implementation incorrectly counted it as HA coverage. The inventory union
+ * fixes both the phantom-coverage case (planned but unowned) and the
+ * phantom-missing case (owned but not in any saved routine).
  *
  * Without the decision_memory filter, this widget recommends ingredients
  * Yuri has explicitly told the user to skip during the current phase
  * (e.g., tranexamic acid before Phase 3 barrier repair completes). v10.3.6
  * fixed this; same class of issue as v8.5.0 Glass Skin phase-awareness.
  *
- * @param userId — required for decision_memory filtering. If null/undefined,
- *   no filtering is applied (backward-compatible fallback).
+ * @param userId — required for inventory coverage AND decision_memory filtering.
+ *   If null/undefined, both filters are skipped (backward-compatible fallback).
  */
 export async function getMissingHighValueIngredients(
   supabase: SupabaseClient,
@@ -254,16 +261,37 @@ export async function getMissingHighValueIngredients(
     .select('product_id')
     .eq('routine_id', routineId)
 
-  const productIds = (routineProducts?.map((rp) => rp.product_id) ?? []).filter(Boolean) as string[]
+  const routineProductIds = (routineProducts?.map((rp) => rp.product_id) ?? []).filter(Boolean) as string[]
 
-  // 2. Get ingredient IDs already in the routine
+  // 1b. ALSO get product IDs from the user's inventory (ss_user_products).
+  // Without this, the widget produces phantom "missing" warnings for ingredients
+  // the user already owns but hasn't added to a saved routine. And it overstates
+  // coverage when a saved routine includes a planned-but-unowned product.
+  // Bailey hit both sides of this on May 3 2026.
+  //
+  // Source-of-truth chain for "what ingredients does the user have access to":
+  //   user inventory (owned) UNION saved routine products.
+  let inventoryProductIds: string[] = []
+  if (userId) {
+    const { data: userProducts } = await supabase
+      .from('ss_user_products')
+      .select('product_id')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .not('product_id', 'is', null)
+    inventoryProductIds = (userProducts?.map((up) => up.product_id) ?? []).filter(Boolean) as string[]
+  }
+
+  const allCoveredProductIds = [...new Set([...routineProductIds, ...inventoryProductIds])]
+
+  // 2. Get ingredient IDs covered by the user's routine OR inventory
   let routineIngredientIds: string[] = []
   let routineIngredientNames: string[] = []
-  if (productIds.length > 0) {
+  if (allCoveredProductIds.length > 0) {
     const { data: links } = await supabase
       .from('ss_product_ingredients')
       .select('ingredient_id, ingredient:ingredient_id (name_en, name_inci)')
-      .in('product_id', productIds)
+      .in('product_id', allCoveredProductIds)
 
     routineIngredientIds = [...new Set((links ?? []).map((l) => l.ingredient_id))]
 

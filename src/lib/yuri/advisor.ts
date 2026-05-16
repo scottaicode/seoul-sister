@@ -261,21 +261,6 @@ function buildSystemPrompt(
 ): string {
   const parts: string[] = [YURI_SYSTEM_PROMPT]
 
-  // Inject current date so Claude can do accurate date math
-  // (e.g. "you started this 2 days ago" not "2.5 weeks ago").
-  // Also pre-compute Tomorrow / Yesterday so Yuri never has to do weekday
-  // arithmetic — Bailey hit "Tomorrow is monday?" → "tomorrow is Tuesday"
-  // on May 4 2026 (it was Sunday). Pre-computing removes the math step.
-  const now = new Date()
-  const fmt = (d: Date) => d.toLocaleDateString('en-US', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-  })
-  const tomorrow = new Date(now)
-  tomorrow.setDate(now.getDate() + 1)
-  const yesterday = new Date(now)
-  yesterday.setDate(now.getDate() - 1)
-  parts.push(`\n---\n**Today's date: ${fmt(now)}**\n**Tomorrow: ${fmt(tomorrow)}**\n**Yesterday: ${fmt(yesterday)}**\nWhen referencing dates or durations (e.g. how long a user has been on a plan), calculate precisely from the dates in their decision memory or conversation history. Do NOT estimate or round up — count the actual days. When the user asks about today / tomorrow / yesterday, use the values above directly — never compute the weekday yourself.`)
-
   // Add user context
   const contextText = formatContextForPrompt(userContext)
   if (contextText) {
@@ -287,6 +272,58 @@ function buildSystemPrompt(
     const specialist = SPECIALISTS[specialistType]
     parts.push(`\n---\n# ACTIVE SPECIALIST: ${specialist.name}\nYou are now operating with the ${specialist.name} specialist's deep expertise. Apply this specialized knowledge:\n\n${specialist.systemPrompt}\n\n## Perspective Reminder\nEven in specialist mode, start from the user's perspective. What have they already tried? What are they worried about? Prove you understand their specific situation before deploying your deep expertise. The expertise lands harder when they feel understood first.`)
   }
+
+  // RIGHT NOW tail — placed last so it carries the most authority. Adopted from
+  // LGAAS's advisor-conversation.js pattern (working in production). Uses the
+  // user's IANA timezone (from ss_user_profiles.timezone) when available, falls
+  // back to UTC. Pre-computes Today/Tomorrow/Yesterday in their local clock so
+  // Claude never has to do weekday arithmetic.
+  //
+  // Bailey hit the timezone bug on May 4 2026 — messaged at 10:01 PM Austin time
+  // (Sun May 3 locally) but server saw Mon May 4 UTC. v10.3.8 pre-computed dates
+  // but ignored timezone; this fix uses Intl.DateTimeFormat with the user's tz.
+  const tz: string = ((userContext.skinProfile as unknown as Record<string, unknown> | null)?.timezone as string | null) || 'UTC'
+  const now = new Date()
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+  const fmtDate = (d: Date) => {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      }).formatToParts(d)
+      const map: Record<string, string> = {}
+      for (const p of parts) map[p.type] = p.value
+      return `${map.weekday}, ${map.month} ${map.day}, ${map.year}`
+    } catch {
+      return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+    }
+  }
+  const fmtTime = (d: Date) => {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true,
+      }).formatToParts(d)
+      const map: Record<string, string> = {}
+      for (const p of parts) map[p.type] = p.value
+      return `${map.hour}:${map.minute} ${map.dayPeriod}`
+    } catch {
+      return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    }
+  }
+  const todayStr = fmtDate(now)
+  const tomorrowStr = fmtDate(tomorrow)
+  const yesterdayStr = fmtDate(yesterday)
+  const nowTime = fmtTime(now)
+  const tzLabel = tz === 'UTC' ? 'UTC' : `${tz}`
+
+  parts.push(`\n---\n## RIGHT NOW
+It is **${todayStr}, ${nowTime}** (${tzLabel}). This is the AUTHORITATIVE current date and time — it overrides any date mentioned earlier in this conversation. If you said a different day/date earlier in this thread, you were wrong then and this is correct now.
+
+- **Today**: ${todayStr}
+- **Tomorrow**: ${tomorrowStr}
+- **Yesterday**: ${yesterdayStr}
+
+When the user asks about today / tomorrow / yesterday, use the values above directly — never compute the weekday yourself. When referencing durations (e.g. "9 days into Phase 2"), count actual days from the dates in their decision memory or conversation history. Do not estimate or round.`)
 
   return parts.join('\n')
 }

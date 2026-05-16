@@ -1,0 +1,18 @@
+-- Add photo_quality JSONB column to Glass Skin Scores for tracking how
+-- reliable each score is. Vision prompt now assesses lighting/conditions
+-- and returns a confidence_modifier (0-1). The /glass-skin UI can warn the
+-- user when conditions were poor and the score should be interpreted with
+-- a grain of salt.
+--
+-- Shape:
+--   {
+--     "lighting_quality": "natural" | "artificial" | "mixed" | "uncertain",
+--     "conditions": string[],  -- e.g. ["bathroom lighting", "post-shower flush"]
+--     "confidence_modifier": number  -- 0.0-1.0, default 1.0 (no degradation)
+--   }
+--
+-- Default '{}' so existing rows render as unknown quality (UI shows no banner).
+-- Bailey scored 48 then 49 back-to-back on Feb 25 2026 — we have no way to
+-- know if those photos were lit consistently. Going forward, every score
+-- carries this metadata.
+ALTER TABLE ss_glass_skin_scores ADD COLUMN IF NOT EXISTS photo_quality JSONB DEFAULT '{}'::jsonb;

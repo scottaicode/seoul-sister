@@ -672,6 +672,12 @@ export interface CycleRoutineAdjustment {
 
 export type GlassSkinDimension = 'luminosity' | 'smoothness' | 'clarity' | 'hydration' | 'evenness'
 
+export interface GlassSkinPhotoQuality {
+  lighting_quality: 'natural' | 'artificial' | 'mixed' | 'uncertain'
+  conditions: string[]
+  confidence_modifier: number
+}
+
 export interface GlassSkinScore {
   id: string
   user_id: string
@@ -683,6 +689,7 @@ export interface GlassSkinScore {
   evenness_score: number
   recommendations: string[]
   analysis_notes: string | null
+  photo_quality?: GlassSkinPhotoQuality | Record<string, never>
   created_at: string
   updated_at: string
 }
@@ -716,6 +723,7 @@ export interface GlassSkinAnalysisResult {
   analysis_notes: string
   recommended_ingredients?: string[]
   recommended_categories?: string[]
+  photo_quality?: GlassSkinPhotoQuality
 }
 
 export interface GlassSkinComparison {

@@ -143,6 +143,26 @@ export interface UserContext {
    * classification deemed it irrelevant) or when no overlap exists.
    */
   ingredientOverlap: IngredientOverlapResult | null
+  /**
+   * Glass Skin Score history — most recent 3 scores. Lets Yuri reference past
+   * scores naturally ("you were at 49 in February, ready for a new baseline?")
+   * and identify stale-baseline situations during active treatment. Empty array
+   * when user has never taken a score. Bailey's gap (May 16 2026): Yuri had
+   * zero awareness her last score was 80+ days old mid-Phase 2.
+   */
+  glassSkinHistory: GlassSkinScoreSummary[]
+}
+
+export interface GlassSkinScoreSummary {
+  takenAt: string                // ISO timestamp
+  takenDate: string              // YYYY-MM-DD
+  daysAgo: number                // computed at load time
+  overall: number                // 0-100
+  luminosity: number
+  smoothness: number
+  clarity: number
+  hydration: number
+  evenness: number
 }
 
 export interface LearningContextData {
@@ -285,6 +305,20 @@ export async function loadUserContext(
     ? detectRoutineOverlap(db, userId)
     : Promise.resolve(null)
 
+  // CONDITIONAL: Glass Skin Score history. Lightweight (3 rows max). Load when
+  // topics touch routine/skin_profile/general — these are the moments where
+  // referencing past scores or suggesting a fresh baseline is appropriate.
+  // Skipped on focused pricing/trending queries.
+  const loadGlassSkin = loadAll || topics.has('routine') || topics.has('skin_profile')
+  const glassSkinPromise = loadGlassSkin
+    ? db
+        .from('ss_glass_skin_scores')
+        .select('created_at, overall_score, luminosity_score, smoothness_score, clarity_score, hydration_score, evenness_score')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(3)
+    : Promise.resolve({ data: null })
+
   // Execute all queries in parallel
   const [
     [profileResult, conversationsResult],
@@ -293,6 +327,7 @@ export async function loadUserContext(
     userProductsResult,
     specialistInsightsResult,
     overlapResult,
+    glassSkinResult,
   ] = await Promise.all([
     alwaysPromises,
     reactionsPromise,
@@ -300,6 +335,7 @@ export async function loadUserContext(
     userProductsPromise,
     specialistInsightsPromise,
     overlapPromise,
+    glassSkinPromise,
   ])
 
   const skinProfile = profileResult.data as SkinProfile | null
@@ -455,6 +491,26 @@ export async function loadUserContext(
     ? overlapResult
     : null
 
+  // Glass Skin Score history — normalize timestamps + compute days-ago at load
+  // time so the formatter doesn't have to. Empty array if user never scored.
+  const glassSkinHistory: GlassSkinScoreSummary[] = (glassSkinResult.data || []).map((r) => {
+    const row = r as Record<string, unknown>
+    const takenAt = row.created_at as string
+    const takenDate = takenAt.slice(0, 10)
+    const daysAgo = Math.floor((Date.now() - new Date(takenAt).getTime()) / (1000 * 60 * 60 * 24))
+    return {
+      takenAt,
+      takenDate,
+      daysAgo,
+      overall: Number(row.overall_score) || 0,
+      luminosity: Number(row.luminosity_score) || 0,
+      smoothness: Number(row.smoothness_score) || 0,
+      clarity: Number(row.clarity_score) || 0,
+      hydration: Number(row.hydration_score) || 0,
+      evenness: Number(row.evenness_score) || 0,
+    }
+  })
+
   return {
     skinProfile,
     recentConversations,
@@ -470,6 +526,7 @@ export async function loadUserContext(
     cyclePhase,
     locationName,
     ingredientOverlap,
+    glassSkinHistory,
   }
 }
 
@@ -635,6 +692,23 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
       return `- ${parts.join(' ')}`
     })
     sections.push(`## Your Product Inventory\nThese are products the user currently owns and uses. Use texture_weight for layering order when building routines:\n${productLines.join('\n')}`)
+  }
+
+  // Glass Skin Score history — gives Yuri concrete data points to reference
+  // ("you were at 49 on Feb 25") and lets her notice when a baseline is stale
+  // mid-treatment so she can suggest a fresh photo organically. Raw dates +
+  // dimension scores; let Opus decide when to bring them up.
+  if (context.glassSkinHistory.length > 0) {
+    const latest = context.glassSkinHistory[0]
+    const lines = context.glassSkinHistory.map((s, i) => {
+      const ageLabel = s.daysAgo === 0 ? 'today' : s.daysAgo === 1 ? '1 day ago' : `${s.daysAgo} days ago`
+      const tag = i === 0 ? ' (most recent)' : ''
+      return `- **${s.takenDate}** (${ageLabel})${tag}: overall ${s.overall}/100 — luminosity ${s.luminosity}, smoothness ${s.smoothness}, clarity ${s.clarity}, hydration ${s.hydration}, evenness ${s.evenness}`
+    })
+    const stalenessNote = latest.daysAgo >= 30
+      ? `\nLatest score is ${latest.daysAgo} days old. If they are in an active treatment phase, a fresh score would give you a real comparison point — feel free to suggest taking a new photo when it fits the conversation. One observation, not a lecture.`
+      : ''
+    sections.push(`## Glass Skin Score History\n${lines.join('\n')}${stalenessNote}`)
   }
 
   // Product reactions — Phase 15.4 surfaces the recorded date inline so Yuri

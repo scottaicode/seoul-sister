@@ -116,7 +116,14 @@ Analyze the photo and score each dimension from 0-100:
 
 Be honest but constructive. Scores should reflect realistic assessment — most people will score 40-75 on each dimension. A score of 90+ means exceptionally glass-like skin in that dimension.
 
-For recommendations, provide 3-5 specific, actionable K-beauty tips targeting the lowest-scoring dimensions. Reference specific product categories or ingredients.${userContextSection}
+For recommendations, provide 3-5 specific, actionable K-beauty tips targeting the lowest-scoring dimensions. Reference specific product categories or ingredients.
+
+## Photo Quality Assessment
+Before scoring, assess the photo conditions. Suboptimal lighting and skin states distort scores — bathroom lighting reads pinker, post-hot-shower flushes vascular tone, harsh shadows hide texture, makeup/filters mask the true picture. Flag what you observe so the user knows whether to trust this score or retake.
+
+- **lighting_quality**: "natural" (window/daylight, even), "artificial" (lamp/overhead indoor), "mixed", or "uncertain"
+- **conditions**: array of observations that affect score reliability. Examples: "bathroom lighting", "post-shower vascular flush", "yellow indoor lighting", "harsh shadow on one side", "appears to have residual makeup", "phone flash", "filter detected". Empty array if photo conditions look clean.
+- **confidence_modifier**: 0.85-1.00 for good photos, 0.70-0.84 if conditions noticeably affect reliability, 0.50-0.69 if scoring is largely guesswork. Score the dimensions honestly anyway — this just signals how much weight to put on the result.${userContextSection}
 
 Respond in JSON format ONLY:
 {
@@ -126,6 +133,11 @@ Respond in JSON format ONLY:
   "clarity_score": number,
   "hydration_score": number,
   "evenness_score": number,
+  "photo_quality": {
+    "lighting_quality": "natural" | "artificial" | "mixed" | "uncertain",
+    "conditions": ["string"],
+    "confidence_modifier": number
+  },
   "recommendations": ["string"],
   "analysis_notes": "Brief 2-3 sentence overall assessment personalized to the user's skin type and concerns",
   "recommended_ingredients": ["ingredient name"],
@@ -567,6 +579,10 @@ export async function POST(request: NextRequest) {
         evenness_score: analysis.evenness_score,
         recommendations: analysis.recommendations || [],
         analysis_notes: analysis.analysis_notes || null,
+        // Photo quality assessment from Vision (lighting, conditions,
+        // confidence_modifier). Defaults to {} when older clients send no
+        // photo_quality block (backward compatible).
+        photo_quality: analysis.photo_quality || {},
       })
       .select('*')
       .single()

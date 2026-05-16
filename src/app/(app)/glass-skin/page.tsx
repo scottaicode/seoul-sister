@@ -221,6 +221,22 @@ export default function GlassSkinPage() {
       {/* Result display */}
       {result && (
         <section className="space-y-5">
+          {/* Photo quality banner — surfaces when Vision flagged suboptimal
+              conditions. Empty conditions array = clean photo, no banner. */}
+          {result.photo_quality && result.photo_quality.confidence_modifier < 0.85 && (
+            <div className="glass-card p-4 border border-amber-500/30 bg-amber-500/5">
+              <p className="text-xs font-semibold text-amber-300 mb-1">
+                Photo conditions note
+              </p>
+              <p className="text-xs text-white/60 leading-relaxed">
+                This score is calibrated against suboptimal conditions
+                {result.photo_quality.conditions.length > 0
+                  ? ` (${result.photo_quality.conditions.join(', ')})`
+                  : ''}. For the most reliable trend data, try retaking in natural light with a clean, bare face.
+              </p>
+            </div>
+          )}
+
           {/* Overall score hero */}
           <div className="glass-card-strong p-6 text-center">
             <div className="relative inline-flex items-center justify-center w-28 h-28 mb-3">
