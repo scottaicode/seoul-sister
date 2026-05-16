@@ -12,7 +12,7 @@ import {
   type UserContext,
 } from './memory'
 import { YURI_TOOLS, executeYuriTool, resetWebSearchCounter } from './tools'
-import { cleanYuriResponse } from './voice-cleanup'
+import { cleanYuriResponse, stripPhantomToolCallNarration } from './voice-cleanup'
 import type { SpecialistType, YuriMessage } from '@/types/database'
 import type Anthropic from '@anthropic-ai/sdk'
 
@@ -248,7 +248,11 @@ The move: ask ONE clarifying question that surfaces the missing context BEFORE r
 - "Hold on — when did you buy it? They reformulated the cream version in late 2024 and the new INCI is different."
 - "Before we go after them — can you screenshot the ingredient list you're seeing? Want to make sure I'm reading the same thing you are."
 
-If they confirm the context and the accusation still holds, then engage substantively. But the clarifying question protects both of you from amplifying a wrong call. This is NOT defending the third party — it's defending the user from looking foolish later.`
+If they confirm the context and the accusation still holds, then engage substantively — with full strategic fire. You held the line; you earned the right to escalate. Don't keep hedging once the frame is verified.
+
+If the frame softens after the question, reframe gently with what the evidence actually shows. Do not over-apologize for asking — the question itself was the right move. "Just want to make sure" or "sorry to push back" undercuts the value. Just ask, accept the answer, adjust.
+
+This is NOT defending the third party — it's defending the user from looking foolish later.`
 
 // ---------------------------------------------------------------------------
 // Build the full system prompt with user context + specialist
@@ -465,19 +469,50 @@ function shouldForceToolUse(
   return false
 }
 
-function messagesToApiFormat(messages: YuriMessage[]): ApiMessage[] {
+/**
+ * Format a UTC timestamp as a short, human-readable tag in the user's timezone.
+ * Output: "[Mon 9:57 AM]" — compact (~5 tokens) but gives Claude clear temporal
+ * anchors for every message. Without these, Claude sees a flat wall of text
+ * and can't tell which messages are from today vs. 5 days ago — root cause of
+ * day/time confusion in long multi-day conversations.
+ *
+ * Pattern ported from LGAAS advisor-conversation.js:142 (working in production).
+ */
+function formatMessageTimestamp(utcTimestamp: string, timezone: string = 'UTC'): string {
+  if (!utcTimestamp) return ''
+  try {
+    const date = new Date(utcTimestamp)
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      weekday: 'short',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).formatToParts(date)
+    const map: Record<string, string> = {}
+    for (const p of parts) map[p.type] = p.value
+    return `[${map.weekday} ${map.hour}:${map.minute} ${map.dayPeriod}]`
+  } catch {
+    return ''
+  }
+}
+
+function messagesToApiFormat(messages: YuriMessage[], timezone: string = 'UTC'): ApiMessage[] {
   return messages.map((m) => {
+    const tsTag = formatMessageTimestamp(m.created_at, timezone)
+    const prefixedText = tsTag ? `${tsTag} ${m.content}` : m.content
+
     if (m.role === 'user' && m.image_urls && m.image_urls.length > 0) {
       const imageBlocks = m.image_urls.map(imageUrlToBlock).filter((b): b is ImageBlock => b !== null)
       if (imageBlocks.length > 0) {
         const content: ContentBlock[] = [
           ...imageBlocks,
-          { type: 'text', text: m.content },
+          { type: 'text', text: prefixedText },
         ]
         return { role: m.role, content }
       }
     }
-    return { role: m.role, content: m.content }
+    return { role: m.role, content: prefixedText }
   })
 }
 
@@ -562,8 +597,12 @@ export async function* streamAdvisorResponse(
     conversationHistory
   )
 
-  // 4. Build message history for Claude
-  const apiMessages = messagesToApiFormat(conversationHistory)
+  // 4. Build message history for Claude — pass user's timezone so each
+  // historical message gets a [Mon 9:57 AM] tag (LGAAS pattern). This is the
+  // companion to the RIGHT NOW tail block in buildSystemPrompt; without it,
+  // Claude sees a wall of un-anchored history.
+  const userTz = ((userContext.skinProfile as unknown as Record<string, unknown> | null)?.timezone as string | null) || 'UTC'
+  const apiMessages = messagesToApiFormat(conversationHistory, userTz)
 
   // Add current user message with optional images
   if (imageUrls.length > 0) {
@@ -657,6 +696,11 @@ export async function* streamAdvisorResponse(
   // start flowing, errors are not retried (partial data consumed).
 
   const STREAM_MAX_RETRIES = 3
+
+  // Track total tools fired across all loop iterations. Used at the end to
+  // decide whether to run the phantom tool-call narration stripper — if any
+  // real tool fired, an apology might be legitimate, so skip the strip.
+  let totalToolsFired = 0
 
   while (toolLoopCount <= MAX_TOOL_LOOPS) {
     const cachedMessages = applyCacheControl(loopMessages)
@@ -774,6 +818,7 @@ export async function* streamAdvisorResponse(
     })
 
     // Execute each tool and build tool_result blocks
+    totalToolsFired += toolUseBlocks.length
     const toolResults: Anthropic.Messages.ToolResultBlockParam[] = []
     for (const toolBlock of toolUseBlocks) {
       let parsedInput: Record<string, unknown> = {}
@@ -815,7 +860,14 @@ export async function* streamAdvisorResponse(
     cached: true, // System prompt is cached
   })
 
-  // 7b. Clean AI artifacts before saving (users see raw stream; saved text is polished)
+  // 7b. Strip phantom tool-call narration when no real tool fired (LGAAS pattern).
+  // Only run when totalToolsFired === 0 so we don't accidentally strip a
+  // legitimate apology about a real tool failure.
+  if (totalToolsFired === 0) {
+    fullResponse = stripPhantomToolCallNarration(fullResponse)
+  }
+
+  // 7c. Clean AI artifacts before saving (users see raw stream; saved text is polished)
   fullResponse = cleanYuriResponse(fullResponse)
 
   // 8. Save assistant response to DB
@@ -932,12 +984,24 @@ Structure the summary in TWO sections (both required):
 - Allergies or bad reactions
 - Questions left unanswered or follow-ups promised
 
-Write in second person ("User has...", "Yuri recommended..."). Be specific — exact product names matter more than general topics. Max 500 words.
+**SECTION 3 — NEXT SESSION OPENER (one sentence, separated by line):**
+Write a single short sentence Yuri could use to naturally pick up the next time this user opens a fresh conversation. Be specific — reference what was just discussed, what's pending, or what's worth checking on. Examples:
+- "Hey — you're 10 days into Phase 2 now, how's the chin congestion looking?"
+- "Curious how the BHA went on Wednesday — any flaking or all calm?"
+- "Want to check in on the Goodal Vita C — still tolerating it well?"
+Bad examples (too generic, don't use these patterns):
+- "Hi! How can I help you today?"
+- "Welcome back!"
+- "Let me know if you have questions."
+Format as a separate line at the very end of your output, prefixed exactly with:
+NEXT_SESSION_OPENER: <the sentence>
+
+Write in second person ("User has...", "Yuri recommended..."). Be specific — exact product names matter more than general topics. Max 500 words for SECTION 1 and 2 combined; SECTION 3 is one sentence.
 
 CONVERSATION:
 ${fullTranscript}
 
-Return ONLY the summary text, no JSON or code formatting.`,
+Return ONLY the summary text, no JSON or code formatting. End with the NEXT_SESSION_OPENER: line.`,
           },
         ],
       }),
@@ -947,7 +1011,22 @@ Return ONLY the summary text, no JSON or code formatting.`,
   const block = response.content[0]
   if (block.type !== 'text') return
 
-  await saveConversationSummary(conversationId, block.text.trim())
+  const fullText = block.text.trim()
+
+  // Parse out the NEXT_SESSION_OPENER line, store separately. The summary body
+  // is everything before the marker; the opener is the rest of that line.
+  // If Sonnet didn't emit the marker (older runs or generation glitches), the
+  // whole text becomes the summary and opener stays null.
+  const openerMatch = fullText.match(/^NEXT_SESSION_OPENER:\s*(.+?)\s*$/m)
+  let summaryBody = fullText
+  let openerText: string | null = null
+  if (openerMatch) {
+    openerText = openerMatch[1].trim()
+    // Remove the marker line from the summary body so we don't double-store
+    summaryBody = fullText.replace(/\n?^NEXT_SESSION_OPENER:.*$/m, '').trim()
+  }
+
+  await saveConversationSummary(conversationId, summaryBody, openerText)
 }
 
 // ---------------------------------------------------------------------------

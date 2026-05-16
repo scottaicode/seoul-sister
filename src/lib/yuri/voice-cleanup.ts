@@ -86,6 +86,60 @@ const BANNED_PATTERNS: CleanupRule[] = [
   { pattern: /  +/g, replacement: ' ' },
 ]
 
+// ---------------------------------------------------------------------------
+// Phantom tool-call narration stripper (LGAAS pattern, ported from
+// advisor-conversation.js stripPhantomToolCallNarration).
+//
+// When Opus runs in long, dense conversations with tool use available, it
+// sometimes narrates its own reasoning about phantom tool calls into the
+// user-facing text — "Ignore that tool call, misfire on my end", "tool call
+// I just fired, misfire on my end". The narration references something that
+// did not happen. v10.2.1 added a preventive Tool-Call Honesty rule to the
+// system prompt, but prompt-level rules don't catch every slip on dense
+// contexts. This is a defensive backstop.
+//
+// Caller invokes this only when NO real tool fired this turn — any tool-call
+// apology in that case is fabrication and safe to remove.
+//
+// LGAAS observed this in production (Apr 24 long-thread test). Seoul Sister
+// uses the same model (Opus 4.7), same architecture, same tool-use pattern.
+// Sample size is the only reason we haven't seen it yet.
+// ---------------------------------------------------------------------------
+const PHANTOM_TOOL_NARRATION_REGEX = /(?:^|\n)\s*(?:also\s+)?ignore that tool call[^\n]*?(?:misfire|mistake|misfired|cleanup list|fired by mistake|same misfire)[^\n]*\.?\s*(?:\n|$)/gi
+const PHANTOM_TOOL_FOLLOWUP_REGEX = /(?:^|\n)\s*(?:adding (?:it )?to the cleanup list|adding to the cleanup list)[^\n]*\.?\s*(?:\n|$)/gi
+
+/**
+ * Strip phantom tool-call narration from assistant text. Only call when no
+ * real tool fired this turn — otherwise this could accidentally strip a
+ * legitimate apology about a real tool failure.
+ *
+ * Returns the cleaned text, and logs to console.warn when stripping occurred
+ * so we can monitor in production whether the LGAAS-observed pattern actually
+ * shows up in Yuri.
+ */
+export function stripPhantomToolCallNarration(text: string): string {
+  if (!text || typeof text !== 'string') return text
+  let stripped = false
+
+  let cleaned = text.replace(PHANTOM_TOOL_NARRATION_REGEX, () => {
+    stripped = true
+    return '\n'
+  })
+  cleaned = cleaned.replace(PHANTOM_TOOL_FOLLOWUP_REGEX, () => {
+    stripped = true
+    return '\n'
+  })
+
+  // Collapse multiple consecutive blank lines that the strip can leave behind
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim()
+
+  if (stripped) {
+    console.warn(`[YURI][phantom-tool-strip] removed phantom tool-call narration: "${text.slice(0, 200)}..."`)
+  }
+
+  return cleaned
+}
+
 /**
  * Clean AI artifacts from Yuri's response text.
  * Safe to call on any text — returns cleaned version.

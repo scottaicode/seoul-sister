@@ -4,7 +4,7 @@ import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { checkRateLimit } from '@/lib/utils/rate-limiter'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
-import { cleanYuriResponse } from '@/lib/yuri/voice-cleanup'
+import { cleanYuriResponse, stripPhantomToolCallNarration } from '@/lib/yuri/voice-cleanup'
 import { detectSpecialist, SPECIALISTS } from '@/lib/yuri/specialists'
 import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit } from '@/lib/widget/visitor'
 import { createSession, getSession, incrementSessionCounters, updateSessionMetadata } from '@/lib/widget/session'
@@ -374,7 +374,12 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
           await writer.write(encoder.encode(`data: ${data}\n\n`))
         }
 
-        const cleanedResponse = cleanYuriResponse(fullResponse)
+        // Strip phantom tool-call narration when no real tool fired (LGAAS pattern)
+        let processedResponse = fullResponse
+        if (toolNamesUsed.length === 0) {
+          processedResponse = stripPhantomToolCallNarration(processedResponse)
+        }
+        const cleanedResponse = cleanYuriResponse(processedResponse)
 
         // Log AI usage (fire-and-forget)
         void logAIUsage({

@@ -179,6 +179,14 @@ export interface ConversationMemory {
   keyInsights: string[]
   timestamp: string
   aiSummary: string | null
+  /**
+   * Pre-stored natural opener from this conversation's summary generation.
+   * When the user starts a fresh conversation, Yuri can use this to pick up
+   * naturally (e.g. "you're 10 days into Phase 2 now, how's the chin?")
+   * instead of starting cold. Null when no summary has been generated yet,
+   * or when extraction failed to produce a clean opener.
+   */
+  nextSessionOpener: string | null
 }
 
 export interface ProductReaction {
@@ -229,7 +237,7 @@ export async function loadUserContext(
     // Recent conversations (last 10) for memory context
     db
       .from('ss_yuri_conversations')
-      .select('id, title, specialist_type, conversation_type, updated_at, summary')
+      .select('id, title, specialist_type, conversation_type, updated_at, summary, next_session_opener')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false })
       .limit(10),
@@ -373,7 +381,7 @@ export async function loadUserContext(
 
   // Build conversation memories from recent conversations
   const recentConversations: ConversationMemory[] = (conversationsResult.data || []).map(
-    (conv: { id: string; title: string | null; specialist_type: SpecialistType | null; conversation_type: string | null; updated_at: string; summary: string | null }) => ({
+    (conv: { id: string; title: string | null; specialist_type: SpecialistType | null; conversation_type: string | null; updated_at: string; summary: string | null; next_session_opener: string | null }) => ({
       conversationId: conv.id,
       title: conv.title,
       specialistType: conv.specialist_type,
@@ -382,6 +390,7 @@ export async function loadUserContext(
       keyInsights: [],
       timestamp: conv.updated_at,
       aiSummary: conv.summary || null,
+      nextSessionOpener: conv.next_session_opener || null,
     })
   )
 
@@ -757,6 +766,17 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
         .join('\n\n')
       sections.push(`## Previous Conversations (Your Memory)\nThese are YOUR OWN conversations with this user. The summaries document what YOU said — products you recommended, routines you built, warnings you gave. This is your memory. Own it.\n\n${summaryText}`)
 
+      // Surface the most recent non-current conversation's pre-stored opener
+      // (LGAAS pattern). If this conversation is fresh and the user hasn't
+      // sent a substantive first message yet, Yuri can use this to pick up
+      // naturally from the prior thread instead of starting cold. Otherwise
+      // she ignores it. Skip the onboarding opener — that thread is the
+      // foundational baseline, not a typical pick-up point.
+      const candidateForOpener = nonOnboarding.find((c) => c.nextSessionOpener && c.nextSessionOpener.length > 0)
+      if (candidateForOpener?.nextSessionOpener) {
+        sections.push(`## Suggested Opener (If This Is a Fresh Conversation)\nFrom your last non-onboarding conversation with this user, the pre-generated natural opener is:\n\n> ${candidateForOpener.nextSessionOpener}\n\nThis is a suggestion, not a script. Use it if the user opens with a greeting or "checking in" type message. If they jump straight into a question or topic, answer that directly instead — don't force the opener.`)
+      }
+
       // Extract specific product recommendations from summaries into a structured section
       // so Claude sees them as clear, undeniable facts rather than buried in prose
       const productRecommendations = extractProductRecommendations(pinnedSummaries)
@@ -1024,15 +1044,22 @@ export async function deleteConversation(
 
 export async function saveConversationSummary(
   conversationId: string,
-  summary: string
+  summary: string,
+  nextSessionOpener: string | null = null
 ): Promise<void> {
   const db = getServiceClient()
+  const update: Record<string, unknown> = {
+    summary,
+    summary_generated_at: new Date().toISOString(),
+  }
+  // Only update opener when one was extracted — never overwrite a good
+  // previous opener with null if the latest run failed to produce one.
+  if (nextSessionOpener) {
+    update.next_session_opener = nextSessionOpener
+  }
   await db
     .from('ss_yuri_conversations')
-    .update({
-      summary,
-      summary_generated_at: new Date().toISOString(),
-    })
+    .update(update)
     .eq('id', conversationId)
 }
 
