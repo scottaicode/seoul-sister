@@ -27,21 +27,32 @@ export default function ProgressTimeline({ scores }: Props) {
   const chronological = [...scores].reverse()
   const maxScore = 100
   const chartHeight = 120
-  const chartPadding = 24
+  // Horizontal viewBox is 0-100. Reserve `chartXPad` units of padding on each
+  // side so the first/last dots aren't flush against the edge.
+  const chartXPad = 8
 
-  // Calculate SVG line chart
-  const pointSpacing = chronological.length > 1
-    ? (100 - chartPadding * 2 / 3) / (chronological.length - 1)
-    : 50
-  const points = chronological.map((s, i) => ({
-    x: chronological.length === 1 ? 50 : chartPadding / 3 * 100 / chartHeight + pointSpacing * i,
-    y: chartHeight - (s.overall_score / maxScore) * (chartHeight - 20) - 10,
-    score: s.overall_score,
-    date: s.created_at,
-  }))
+  // Calculate SVG line chart. v10.5.2 fix: previous version had a broken
+  // x-coordinate expression (operator precedence collapsed the padding math)
+  // AND used percentage strings inside `<path d>`, which is silently invalid
+  // SVG — the line and area never rendered, leaving Bailey looking at two
+  // floating dots with no curve between them.
+  const points = chronological.map((s, i) => {
+    let x: number
+    if (chronological.length === 1) {
+      x = 50
+    } else {
+      x = chartXPad + (i * (100 - chartXPad * 2)) / (chronological.length - 1)
+    }
+    return {
+      x,
+      y: chartHeight - (s.overall_score / maxScore) * (chartHeight - 20) - 10,
+      score: s.overall_score,
+      date: s.created_at,
+    }
+  })
 
   const pathD = points
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x}% ${p.y}`)
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
     .join(' ')
 
   // Overall trend
@@ -104,7 +115,7 @@ export default function ProgressTimeline({ scores }: Props) {
               </linearGradient>
             </defs>
             <path
-              d={`${pathD} L ${points[points.length - 1].x}% ${chartHeight} L ${points[0].x}% ${chartHeight} Z`}
+              d={`${pathD} L ${points[points.length - 1].x} ${chartHeight} L ${points[0].x} ${chartHeight} Z`}
               fill="url(#scoreGradient)"
             />
 
@@ -123,7 +134,7 @@ export default function ProgressTimeline({ scores }: Props) {
             {points.map((p, i) => (
               <circle
                 key={i}
-                cx={`${p.x}%`}
+                cx={p.x}
                 cy={p.y}
                 r={3}
                 fill="#D4A574"

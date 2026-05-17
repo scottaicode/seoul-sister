@@ -1,20 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { Activity, Leaf, TrendingUp, Loader2, Snowflake } from 'lucide-react'
+import { Activity, Loader2, Snowflake } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 interface ConcernEffectiveness {
   concern: string
   averageScore: number
   sampleSize: number
-}
-
-interface MissingIngredient {
-  ingredientName: string
-  concern: string
-  effectivenessScore: number
 }
 
 interface SeasonalInsight {
@@ -28,7 +21,6 @@ interface SeasonalInsight {
 
 interface EffectivenessData {
   concerns: ConcernEffectiveness[]
-  missingIngredients: MissingIngredient[]
   seasonalInsight: SeasonalInsight | null
 }
 
@@ -92,10 +84,9 @@ export function RoutineEffectiveness({ routineId }: { routineId: string }) {
   if (!data) return null
 
   const hasConcerns = data.concerns.length > 0
-  const hasMissing = data.missingIngredients.length > 0
   const hasSeasonal = data.seasonalInsight !== null
 
-  if (!hasConcerns && !hasMissing && !hasSeasonal) return null
+  if (!hasConcerns && !hasSeasonal) return null
 
   return (
     <div className="glass-card p-4 space-y-3">
@@ -126,40 +117,12 @@ export function RoutineEffectiveness({ routineId }: { routineId: string }) {
         </div>
       )}
 
-      {/* Missing high-value ingredients */}
-      {hasMissing && (
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-1.5">
-            <Leaf className="w-3 h-3 text-emerald-400/70" />
-            <p className="text-[10px] text-white/40 uppercase tracking-wider">
-              Missing high-value ingredients
-            </p>
-          </div>
-          {data.missingIngredients.map((m) => (
-            <div
-              key={m.ingredientName}
-              className="flex items-center justify-between text-[11px]"
-            >
-              <span className="text-white/60">
-                <span className="text-emerald-400/80 font-medium">
-                  {m.ingredientName}
-                </span>
-                {' '}
-                <span className="text-white/30">
-                  ({m.effectivenessScore}% for {m.concern})
-                </span>
-              </span>
-              <Link
-                href={`/products?include_ingredients=${encodeURIComponent(m.ingredientName)}`}
-                className="text-gold-light hover:text-gold text-[10px] font-medium flex items-center gap-0.5 flex-shrink-0 ml-2"
-              >
-                <TrendingUp className="w-3 h-3" />
-                Find products
-              </Link>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Missing-ingredients widget removed in v10.5.2 (Bailey feedback).
+          Recommendations now flow through Yuri, who has full treatment-phase
+          context. The standalone algorithmic recommender surfaced fillers
+          (Arginine, Candelilla Wax, Stearalkonium Hectorite) as "high-value"
+          because bootstrap data scored frequency-in-products rather than
+          actual active-ingredient effectiveness. */}
 
       {/* Seasonal suggestion */}
       {hasSeasonal && data.seasonalInsight && (
