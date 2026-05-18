@@ -16,6 +16,7 @@ import {
 import { toSlug } from '@/lib/utils/slug'
 import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { ShareButton } from '@/components/ui/ShareButton'
+import { IngredientEnrichmentSection } from '@/components/ingredients/IngredientEnrichmentSection'
 
 export const revalidate = 3600
 
@@ -557,6 +558,14 @@ export default async function IngredientDetailPage({
             </div>
           </div>
         </div>
+
+        {/* Subscriber-aware enrichment — renders only when authenticated.
+            Public visitors see nothing here, preserving SEO surface exactly.
+            v10.6.4 (May 18 2026) — Phase 13.G. */}
+        <IngredientEnrichmentSection
+          ingredientId={ingredient.id}
+          ingredientName={displayName}
+        />
 
         <div className="max-w-4xl mx-auto px-4 py-8 space-y-10">
           {/* Rich Content: Overview */}
