@@ -387,12 +387,20 @@ async function runOpusSynthesis(
   const client = getAnthropicClient()
   const userMsg = buildUserMessage(inputs)
 
+  // Prompt cache the ~1,800-token creative brief. It's static across every
+  // user and every regeneration. With 5-minute ephemeral TTL, regenerations
+  // happening close together (e.g., a "Refresh" tap after a normal page load)
+  // get the cache hit. Even cold-start regenerations a week apart still pay
+  // for cache creation once instead of full input pricing each time.
+  // Mirrors the cache_control pattern in src/lib/yuri/advisor.ts:734.
   const response = await callAnthropicWithRetry(
     () =>
       client.messages.create({
         model: MODELS.primary,
         max_tokens: 1600,
-        system: SKIN_BREAKDOWN_BRIEF,
+        system: [
+          { type: 'text', text: SKIN_BREAKDOWN_BRIEF, cache_control: { type: 'ephemeral' } },
+        ],
         messages: [{ role: 'user', content: userMsg }],
       }),
     2 // 2 retries for user-facing synthesis
