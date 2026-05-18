@@ -30,7 +30,7 @@ Each entry includes:
 
 **Bailey's context**: Day 13 of Phase 2 BHA treatment. Had just had a long Yuri conversation that produced a deep, climate/cycle/Fitzpatrick-aware skin breakdown ("You're combination, Fitzpatrick 3, humid climate Austin...T-zone vs cheeks split is hormonal not just sebum-driven...Fitzpatrick 3 is the PIH danger zone...Humid Austin climate changes the math..."). The response was screenshot-worthy and made Bailey want to capture/revisit it outside the chat window.
 
-**Status**: RESOLVED in v10.6.0 (shipped May 18, 2026)
+**Status**: RESOLVED in v10.6.0 (shipped May 18, 2026, commit `157e763`)
 
 **Resolution**: New `/skin-profile` page with 7 sections: header with active phase + day count, Skin Breakdown (Opus 4.7-generated prose in Yuri's voice, regenerated on phase change or 7-day floor), Phase Journey Timeline (expandable phase cards with protocol/decisions/watch-for/outcomes), Phase Photo Gallery, Current Routine Snapshot, What Yuri Has Learned (Holy Grail / Broke-Me-Out / allergies), thin-profile footer hint. New `ss_treatment_phases` and `ss_skin_breakdown_history` tables. Bailey backfilled with her actual Phase 1 + Phase 2 data. Phase extraction pipeline runs Sonnet 4.5 fire-and-forget after each Yuri conversation to keep the page alive going forward. Files: `src/app/(app)/skin-profile/page.tsx`, `src/lib/intelligence/skin-breakdown.ts`, `src/lib/yuri/treatment-phase-extractor.ts`, `src/components/skin-profile/PhasePhotoGallery.tsx`, `src/app/api/skin-profile/route.ts`, `supabase/migrations/20260518000001_add_treatment_phases_and_skin_breakdown.sql`, `scripts/backfill-bailey-phases.ts`.
 
@@ -45,7 +45,7 @@ Each entry includes:
 
 **Bailey's context**: Sent 3 photos of her chin to Yuri for a Phase 2 check-in assessment. Wanted to review them after Yuri responded but couldn't enlarge in-chat.
 
-**Status**: RESOLVED in v10.6.0 (shipped May 18, 2026)
+**Status**: RESOLVED in v10.6.0 (shipped May 18, 2026, commit `157e763`)
 
 **Resolution**: New reusable `<ImageLightbox />` component (`src/components/ui/ImageLightbox.tsx`) with portal-mounted modal, ESC + click-outside close, left/right arrow navigation, captions. Wired into TWO surfaces in the same release: (a) the new Phase Photo Gallery on /skin-profile, (b) `src/components/yuri/ChatMessage.tsx` photo thumbnails — Bailey can now tap any photo in any Yuri conversation to view it full-size. One component, two surfaces, both fixes shipped together.
 
