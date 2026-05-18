@@ -18,6 +18,32 @@ Each entry includes:
 
 ---
 
+## May 18, 2026 (12:28 PM Central) — Browse-by-Category cards don't navigate [RESOLVED in v10.6.3]
+
+**Source**: iMessage to Scott, ~12:28 PM Central after exploring /products page
+
+**Verbatim opening**:
+> "Amazing!!!"
+
+**Verbatim critique** (with screenshot of /products showing the Browse-by-Category grid):
+> "Hm this area isn't letting me pick one"
+
+**Bailey's context**: After receiving Scott's v10.6.2 update summary, Bailey was exploring the app and ended up on the public marketing /products page (got there via the dashboard "Your Top Ingredients" widget's Browse button, which was incorrectly linking to /products instead of /browse). She tapped the category cards (Serums 547, Sunscreens 672, etc.) expecting them to filter to that category. Nothing happened — the cards linked to /products?category=X but /products is a static SEO page that doesn't read the query param.
+
+**Status**: RESOLVED in v10.6.3 (shipped May 18, 2026)
+
+**Resolution**: Investigation surfaced a bigger architectural seam than the immediate bug. Scott brainstormed with Richard about whether the public surfaces could deliver MORE value to both subscribers AND non-subscriber friends/family being shared content. Established the **auth-aware shared surfaces** pattern:
+- Same page content for both audiences (preserves SEO for unauthenticated bots)
+- Nav chrome swaps based on auth (PublicNav for visitors, Header for subscribers) — new `AuthAwareNav` component
+- Subscriber-shared URLs work for non-subscribers via fallback redirects (e.g., shared /browse?category=cleanser routes friends to /products?category=cleanser instead of bouncing through /login)
+- Web Share API buttons on product + ingredient detail pages turn every subscriber into a potential brand ambassador with no referral-system infrastructure
+
+7 items shipped covering: broken card fix, subscriber-link repoints (dashboard + community), /browse URL state initialization, auth-aware nav on 8 public surfaces, AppShell fallback redirect system, native share buttons. AI-First audit performed before AND after build — all changes are pure routing + display work, no AI logic touched, no recommendations generated, Yuri Sole Authority Principle preserved.
+
+Files: new `AuthAwareNav.tsx` + `ShareButton.tsx`, modified 8 public page files + `IntelligenceWidgets.tsx` + `CommunityInsights.tsx` + `browse/page.tsx` + `AppShell.tsx` + 2 product/ingredient detail pages.
+
+---
+
 ## May 18, 2026 (morning, 7:58 AM) — Weather widget recommendations are generic [RESOLVED in v10.6.2]
 
 **Source**: iMessage to Scott after opening Seoul Sister for the first time post-v10.6.0 ship

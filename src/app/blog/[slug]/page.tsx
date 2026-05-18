@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { Calendar, Clock, ArrowLeft, Tag } from 'lucide-react'
-import PublicNav from '@/components/layout/PublicNav'
+import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import BlogYuriCta from '@/components/blog/BlogYuriCta'
 import BlogInlineYuriPrompt from '@/components/blog/BlogInlineYuriPrompt'
 import { marked } from 'marked'
@@ -236,7 +236,7 @@ export default async function BlogPostPage({
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">
-        <PublicNav />
+        <AuthAwareNav />
 
         {/* Back link */}
         <div className="border-b border-white/10 pt-16">

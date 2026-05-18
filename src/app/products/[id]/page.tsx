@@ -14,7 +14,8 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import { toSlug } from '@/lib/utils/slug'
-import PublicNav from '@/components/layout/PublicNav'
+import AuthAwareNav from '@/components/layout/AuthAwareNav'
+import { ShareButton } from '@/components/ui/ShareButton'
 import ProductIntelligenceSection from '@/components/products/ProductIntelligenceSection'
 import { proxyImageUrl } from '@/lib/utils/image-proxy'
 
@@ -384,7 +385,7 @@ export default async function PublicProductPage({ params }: Props) {
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">
-        <PublicNav />
+        <AuthAwareNav />
 
         <div className="max-w-4xl mx-auto px-4 pt-20 pb-16">
           {/* Breadcrumb */}
@@ -416,9 +417,16 @@ export default async function PublicProductPage({ params }: Props) {
 
               {/* Info */}
               <div className="flex-1 text-center sm:text-left">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-sky-500/20 text-sky-300 mb-2">
-                  {categoryLabel}
-                </span>
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-sky-500/20 text-sky-300">
+                    {categoryLabel}
+                  </span>
+                  <ShareButton
+                    title={`${product.name_en} by ${product.brand_en}`}
+                    text={`${product.brand_en} ${product.name_en} on Seoul Sister — ingredients, prices, and skin-type analysis`}
+                    variant="icon"
+                  />
+                </div>
                 <h1 className="font-display font-bold text-2xl md:text-3xl text-white leading-tight mb-1">
                   {product.name_en}
                 </h1>
@@ -813,7 +821,7 @@ export default async function PublicProductPage({ params }: Props) {
             </Link>
             <span className="text-white/20 hidden sm:inline">·</span>
             <Link
-              href={`/products?category=${product.category}`}
+              href={`/browse?category=${product.category}`}
               className="text-white/50 hover:text-white/70 transition-colors"
             >
               All {categoryLabel}s

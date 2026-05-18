@@ -14,7 +14,8 @@ import {
   Calendar,
 } from 'lucide-react'
 import { toSlug } from '@/lib/utils/slug'
-import PublicNav from '@/components/layout/PublicNav'
+import AuthAwareNav from '@/components/layout/AuthAwareNav'
+import { ShareButton } from '@/components/ui/ShareButton'
 
 export const revalidate = 3600
 
@@ -452,7 +453,7 @@ export default async function IngredientDetailPage({
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">
-        <PublicNav />
+        <AuthAwareNav />
 
         {/* Back link */}
         <div className="border-b border-white/10 pt-16">
@@ -470,17 +471,24 @@ export default async function IngredientDetailPage({
         {/* Header */}
         <div className="border-b border-white/10 bg-gradient-to-b from-amber-500/5 to-transparent">
           <div className="max-w-4xl mx-auto px-4 py-8">
-            <div className="flex flex-wrap items-center gap-2 mb-3">
-              {ingredient.is_active && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/20 text-emerald-300">
-                  Active Ingredient
-                </span>
-              )}
-              {ingredient.is_fragrance && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-500/20 text-rose-300">
-                  Fragrance
-                </span>
-              )}
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="flex flex-wrap items-center gap-2">
+                {ingredient.is_active && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/20 text-emerald-300">
+                    Active Ingredient
+                  </span>
+                )}
+                {ingredient.is_fragrance && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-500/20 text-rose-300">
+                    Fragrance
+                  </span>
+                )}
+              </div>
+              <ShareButton
+                title={`${displayName} — K-Beauty Ingredient Analysis`}
+                text={`${displayName} on Seoul Sister — function, safety, effectiveness by skin type, and products containing it`}
+                variant="icon"
+              />
             </div>
 
             <h1 className="ingredient-headline font-display font-bold text-3xl md:text-4xl text-white mb-2">

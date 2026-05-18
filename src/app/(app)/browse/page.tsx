@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Search, Package, Star, Heart, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import ProductCard from '@/components/products/ProductCard'
@@ -26,12 +27,18 @@ interface LovedProduct {
   concern: string
 }
 
-export default function ProductsPage() {
+function ProductsPageInner() {
   const { user } = useAuth()
+  // Read initial filter state from URL on first render so shared/linked URLs
+  // (/browse?category=cleanser, /browse?q=cosrx) apply their filter on landing.
+  // Same pattern used in /yuri page for ?ask= prefill (v10.6.2).
+  const searchParams = useSearchParams()
+  const initialQuery = searchParams?.get('q') || ''
+  const initialCategory = searchParams?.get('category') || ''
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
-  const [query, setQuery] = useState('')
-  const [category, setCategory] = useState('')
+  const [query, setQuery] = useState(initialQuery)
+  const [category, setCategory] = useState(initialCategory)
   const [sortBy, setSortBy] = useState('rating')
   const [showFilters, setShowFilters] = useState(false)
   const [page, setPage] = useState(1)
@@ -316,5 +323,16 @@ export default function ProductsPage() {
       {/* Bottom spacer */}
       <div className="h-4" />
     </div>
+  )
+}
+
+// Suspense wrapper required because ProductsPageInner uses useSearchParams.
+// Next.js needs a fallback during static prerender to handle the
+// client-side query-param read. Bare LoadingSpinner during the boundary.
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <ProductsPageInner />
+    </Suspense>
   )
 }

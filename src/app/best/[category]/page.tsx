@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { Star, TrendingUp, FlaskConical, Shield, ArrowRight } from 'lucide-react'
-import PublicNav from '@/components/layout/PublicNav'
+import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { notFound } from 'next/navigation'
 import { toSlug } from '@/lib/utils/slug'
 import LazyImage from '@/components/ui/LazyImage'
@@ -353,7 +353,7 @@ export default async function BestOfCategoryPage({ params }: Props) {
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">
-        <PublicNav />
+        <AuthAwareNav />
 
         {/* Hero */}
         <div className="border-b border-white/10 bg-gradient-to-b from-amber-500/5 to-transparent pt-16">

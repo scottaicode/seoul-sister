@@ -11,6 +11,19 @@ interface AppShellProps {
   children: React.ReactNode
 }
 
+// Public-equivalent fallback routes. When an unauthenticated visitor lands
+// on a subscriber-only surface (e.g., shared by a subscriber), route them
+// to the public surface that delivers comparable value, preserving query
+// params. Better than bouncing every shared URL through /login.
+//
+// Shipped v10.6.3 (May 18 2026) — Scott explicitly asked for subscriber-
+// driven sharing to add value for friends/family even when they're not
+// signed in. /browse → /products preserves category/q filters so shared
+// filtered views land on the right marketing page.
+const SHARED_FALLBACKS: Record<string, string> = {
+  '/browse': '/products',
+}
+
 export default function AppShell({ children }: AppShellProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
@@ -19,9 +32,20 @@ export default function AppShell({ children }: AppShellProps) {
 
   useEffect(() => {
     if (!loading && !user) {
+      // If this is a surface with a public equivalent, route there instead
+      // of /login so subscriber-shared URLs work for friends/family.
+      // Read query string directly from window.location to avoid the
+      // useSearchParams Suspense requirement during static prerender.
+      const fallback = pathname ? SHARED_FALLBACKS[pathname] : null
+      if (fallback) {
+        const params =
+          typeof window !== 'undefined' ? window.location.search : ''
+        router.replace(`${fallback}${params}`)
+        return
+      }
       router.replace('/login')
     }
-  }, [user, loading, router])
+  }, [user, loading, router, pathname])
 
   // Check subscription + onboarding before showing app content
   useEffect(() => {

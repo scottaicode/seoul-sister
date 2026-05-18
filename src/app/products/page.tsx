@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { Package, Star } from 'lucide-react'
-import PublicNav from '@/components/layout/PublicNav'
+import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { proxyImageUrl } from '@/lib/utils/image-proxy'
 
 export const metadata: Metadata = {
@@ -141,7 +141,7 @@ export default async function ProductsPage() {
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">
-        <PublicNav />
+        <AuthAwareNav />
 
         {/* Hero */}
         <div className="border-b border-white/10 bg-gradient-to-b from-sky-500/5 to-transparent pt-16">
@@ -187,7 +187,7 @@ export default async function ProductsPage() {
             {CATEGORIES.map((cat) => (
               <Link
                 key={cat.slug}
-                href={`/products?category=${cat.slug}`}
+                href={`/browse?category=${cat.slug}`}
                 className="group bg-white/5 rounded-xl border border-white/10 p-4 text-center hover:border-sky-500/30 hover:bg-white/[0.07] transition-all"
               >
                 <div className="font-medium text-sm text-white group-hover:text-sky-400 transition-colors">

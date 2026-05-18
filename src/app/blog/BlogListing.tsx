@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Clock } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
-import PublicNav from '@/components/layout/PublicNav'
+import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import type { BlogPost } from './page'
 
 // Category badge colors matching Seoul Sister's amber/gold palette
@@ -45,7 +45,7 @@ export default function BlogListing({ posts }: { posts: BlogPost[] }) {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
-      <PublicNav />
+      <AuthAwareNav />
 
       {/* Hero Section */}
       <section className="pt-32 pb-10 text-center px-4">

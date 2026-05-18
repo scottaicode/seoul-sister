@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { Trophy, ArrowRight } from 'lucide-react'
-import PublicNav from '@/components/layout/PublicNav'
+import AuthAwareNav from '@/components/layout/AuthAwareNav'
 
 export const revalidate = 3600
 
@@ -126,7 +126,7 @@ export default async function BestOfIndexPage() {
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">
-        <PublicNav />
+        <AuthAwareNav />
 
         {/* Hero */}
         <div className="border-b border-white/10 bg-gradient-to-b from-amber-500/5 to-transparent pt-16">

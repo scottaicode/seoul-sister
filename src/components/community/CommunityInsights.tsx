@@ -109,7 +109,7 @@ export default function CommunityInsights({ productIds, onEffectivenessData }: C
           </span>
         </div>
         <Link
-          href="/products"
+          href="/browse"
           className="text-[10px] text-gold-light hover:text-gold font-medium flex items-center gap-0.5"
         >
           Browse <span className="hidden sm:inline">products</span>
