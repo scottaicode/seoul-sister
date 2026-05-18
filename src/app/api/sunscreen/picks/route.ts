@@ -5,9 +5,15 @@ import { getServiceClient } from '@/lib/supabase'
 /**
  * GET /api/sunscreen/picks?skin_type=oily
  *
- * Returns Yuri's top 3 sunscreen picks matched to the user's skin type.
- * Cross-references ss_ingredient_effectiveness for sunscreen-relevant
+ * Returns the top 3 sunscreens algorithmically matched to the user's skin
+ * type. Cross-references ss_ingredient_effectiveness for sunscreen-relevant
  * ingredients effective for the given skin type.
+ *
+ * Phase 13.E — Yuri Sole Authority Principle (v10.6.2): this is data-backed
+ * discovery, NOT Yuri's curation. Yuri doesn't see this endpoint's output;
+ * the page labels these as "Top matches for {skin_type} skin," not as
+ * Yuri's picks. The UI also surfaces an "Ask Yuri" handoff so users can
+ * route any match into a phase-aware conversation.
  */
 export async function GET(request: NextRequest) {
   try {

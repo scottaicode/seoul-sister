@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { History, Sparkles, X, AlertCircle, MessageCircle } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
@@ -54,6 +55,17 @@ export default function YuriPage() {
   const [newChatToast, setNewChatToast] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
+
+  // ?ask= URL prefill (Yuri Sole Authority Principle infrastructure).
+  // CTAs from /dashboard (weather widget), /routine (cycle adjustment),
+  // /skin-profile, etc. route here with ?ask=<message>. We surface the
+  // message through the existing ChatInput.restoredValue mechanism so the
+  // user lands with the question already typed — they can edit or send.
+  // Consumed once per page load via askConsumed flag.
+  const searchParams = useSearchParams()
+  const askParam = searchParams?.get('ask') || null
+  const [askConsumed, setAskConsumed] = useState(false)
+  const pendingAsk = !askConsumed && askParam ? askParam : null
 
   // Fetch usage status
   useEffect(() => {
@@ -358,8 +370,14 @@ export default function YuriPage() {
           <ChatInput
             onSend={handleSend}
             disabled={isStreaming}
-            restoredValue={lastFailedDraft}
-            onRestoreConsumed={clearFailedDraft}
+            restoredValue={pendingAsk || lastFailedDraft}
+            onRestoreConsumed={() => {
+              if (pendingAsk) {
+                setAskConsumed(true)
+              } else {
+                clearFailedDraft()
+              }
+            }}
           />
         )}
       </div>

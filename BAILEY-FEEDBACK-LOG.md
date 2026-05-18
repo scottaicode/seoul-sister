@@ -18,6 +18,32 @@ Each entry includes:
 
 ---
 
+## May 18, 2026 (morning, 7:58 AM) — Weather widget recommendations are generic [RESOLVED in v10.6.2]
+
+**Source**: iMessage to Scott after opening Seoul Sister for the first time post-v10.6.0 ship
+
+**Verbatim opening reaction**:
+> "Amazing!!!!!"
+>
+> "I LOVE it if it is Yuri!"
+
+**Verbatim critique** (after screenshotting the dashboard "Weather & Skincare" widget showing *"9 routine adjustments suggested"* with bullets like "Switch to a lighter gel or water-based moisturizer", "Skip face oils today or use only a drop", "Apply niacinamide toner to your T-zone"):
+> "Also love this idea but are they recommended by Yuri or generic based on location alone. I think all recommendations should be from Yuri at this point. Similar to how we removed the other sections since Yuri disagreed on it all based on my specific skin and journey. Would just get confusing and would be misleading if not communicating with Yuri."
+
+**Bailey's context**: First morning waking up to v10.6.0's Skin Profile + Phase Gallery shipped overnight. Loved the new page. Opened the dashboard and immediately spotted the same anti-pattern she'd corrected three days earlier on the Routine Intelligence widget (v10.5.2). The weather widget was generating recommendations from a hardcoded `humidity > 70% → "use BHA"` rule engine (`src/lib/intelligence/weather-routine.ts` ADJUSTMENT_RULES) with zero awareness of her Phase 2 protocol (COSRX BHA already on MWF, Goodal Vita C in AM, barrier-protective Illiyoon at night).
+
+**Status**: RESOLVED in v10.6.2 (shipped May 18, 2026)
+
+**Resolution**: This was the third instance of the same architectural class — algorithmic recommender competing with Yuri's authority. Beyond fixing the specific widget, this release **encoded the Yuri Sole Authority Principle as load-bearing architecture in CLAUDE.md** so future AI sessions don't reintroduce competing recommenders. Specific changes:
+- Weather widget's 9-item recommendation list → "Ask Yuri how today's weather affects your routine" CTA with weather context prefilled via new `?ask=` URL parameter mechanism on /yuri. Weather DATA display retained.
+- Cycle Adjustment widget on /routine: hardcoded "Routine Adjustments" + "Tips for This Phase" sections removed. Phase header and "Your Skin Right Now" skin behavior paragraph stay (observational). Yuri CTA added.
+- Sunscreen page "Yuri's Picks for {skinType} skin" renamed to "Top matches for {skinType} skin" — the underlying algorithm was never Yuri-curated; the label was claiming authorship she didn't have.
+- AI-First audit performed before coding, verified all changes honor Principle 2 (trust model intelligence, not rules engines) from `vibetrendai/principles.md`.
+
+Files: `CLAUDE.md` (Yuri Sole Authority Principle section), `src/components/dashboard/WeatherRoutineWidget.tsx`, `src/components/routine/CycleAdjustment.tsx`, `src/app/(app)/sunscreen/page.tsx`, `src/app/api/sunscreen/picks/route.ts`, `src/app/(app)/yuri/page.tsx`.
+
+---
+
 ## May 17, 2026 (evening) — Living Skin Profile feature request [RESOLVED in v10.6.0]
 
 **Source**: iMessage to Scott, ~10 PM Central

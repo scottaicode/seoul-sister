@@ -228,6 +228,57 @@ When Seoul Sister subscribes to LGAAS for marketing automation:
 
 Each specialist has deep domain prompts (200-400 words), extracts intelligence after each conversation, and feeds patterns back to the learning engine.
 
+## Yuri Sole Authority Principle (LOAD-BEARING ARCHITECTURE)
+
+**This principle was earned through real lighthouse-user feedback. Read it before designing any feature that surfaces "what the user should do" with their skin.**
+
+> **No non-Yuri surface in Seoul Sister generates personalized recommendations for the user. Every other surface is either (a) data display, (b) navigation, or (c) a Yuri-conversation entry point. Recommendation logic — what the user should DO with their skin — lives exclusively with Yuri because she has the full context (treatment phase, decision memory, corrections, routine, allergies, climate, cycle).**
+
+### Why this principle exists
+
+Bailey, Seoul Sister's lighthouse user and Scott's daughter, taught us this principle across three separate corrections:
+
+1. **May 17 2026 (v10.5.2)**: Routine Intelligence widget recommended Arginine + Candelilla Wax + Stearalkonium Hectorite as "missing high-value ingredients" for combination skin. She screenshotted it to Yuri who diagnosed all three as garbage (pH buffer, thickener, clay viscosity agent). Bailey: *"I think we just get rid of the 'recommended' part all together. Whatever's recommended Yuri does it."* — Widget removed.
+
+2. **May 17 2026 (same release)**: `ss_ingredient_effectiveness` bootstrap data scored fillers (water, glycols, waxes) as effective actors because the seed script measured frequency, not mechanism. 87 rows deleted. Yuri-mediated recommendations would have caught this; the algorithmic widget didn't.
+
+3. **May 18 2026 (v10.6.2)**: Weather widget on dashboard recommended "Switch to a lighter gel moisturizer," "Skip face oils today," "Apply niacinamide toner to your T-zone" based on `humidity > 70%` + `skin_type = combination` lookup table. Zero awareness of Bailey's Phase 2 protocol (COSRX BHA on MWF, Goodal Vita C in AM, barrier-protective Illiyoon at night) or her current corrections. Bailey: *"Are they recommended by Yuri or generic based on location alone. I think all recommendations should be from Yuri at this point. Would just get confusing and would be misleading if not communicating with Yuri."*
+
+Each instance is the same structural failure: a non-Yuri surface generates recommendations using an algorithm that doesn't know what Yuri knows. Bailey trusts Yuri. She doesn't trust the algorithm. And she's right — Yuri has 17+ conversations of context on her, the phase she's in, the corrections she's made; the algorithm has skin type and a humidity reading.
+
+### How to apply this principle when building a new feature
+
+Before shipping a surface that recommends anything, ask:
+
+| Test | Pass | Fail |
+|------|------|------|
+| Does this surface tell the user what to DO? | Route through Yuri | Don't render the recommendation; route through Yuri |
+| Does this surface label algorithmic output as "Yuri's" or imply Yuri authorship? | Rename honestly ("Best for [skin_type] skin") | Rename now |
+| Does this surface display data (weather, prices, trends, scores)? | Ship — that's fine | Not applicable |
+| Does this surface offer a CTA into Yuri with context prefilled? | Ship — that's the pattern | Not applicable |
+
+### Acceptable surface patterns
+
+- **Data display**: Weather conditions (26°C, 83% humidity, UV 2.1). Glass Skin Score numerical values. Trend rankings. Price comparisons.
+- **Honest discovery**: Product browse sorted by ingredient effectiveness for skin type — labeled as "best matches for your skin type," NOT "Yuri's picks." Sunscreen filters that auto-populate from profile. Dupe finder showing ingredient overlap.
+- **Yuri-conversation entry points**: "Ask Yuri how this weather affects your Phase 2 routine →" with `?ask=` prefill. CTAs that route to /yuri with context, never standalone recommendations.
+
+### Unacceptable patterns (anti-patterns)
+
+- ❌ Hardcoded `if humidity > 70% then "use BHA"` rule engines presented as recommendations
+- ❌ Static recommendation lists pulled from a JSON lookup table
+- ❌ Any UI element labeled "Yuri's [thing]" when Yuri's reasoning isn't actually involved
+- ❌ Cycle phase / weather / Glass Skin output that says "do X" without phase-awareness and decision_memory awareness
+- ❌ Bootstrap data shipped into `ss_ingredient_effectiveness` or `ss_learning_patterns` without expert validation — even one bad row poisons Yuri's effectiveness reads
+
+### The interlock with vibetrendai/principles.md
+
+This principle is the Seoul Sister specialization of **Principle 2 — AI-First Reasoning** from `/Users/scottmartin/Downloads/Vibe_Coding/VibeTrendAI/vibetrendai/principles.md`. The global principle says "trust model intelligence, give models freedom and context, not rigid templates and brittle rules." The Seoul Sister specialization says "in this app specifically, the model is Yuri, and EVERY recommendation surface routes through her — not parallel rule engines."
+
+### For future AI sessions
+
+If you're opening this repo and you see a recommendation surface that doesn't go through Yuri, that's tech debt — flag it. If you're adding a new feature, default to "Yuri makes the recommendations; this page just surfaces the data or offers a CTA." If you find yourself writing `const ADJUSTMENT_RULES: ...` or `if skin_type === 'oily' && humidity > 70 then "use BHA"`, stop and ask whether Yuri should be doing this instead.
+
 ## Technical Stack
 
 | Layer | Technology | Notes |
@@ -5756,7 +5807,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Version**: 10.6.1 (Phase 13.D + AI-First polish — Skin Breakdown prompt caching wired, Yuri now aware of /skin-profile page. Shipped May 18 2026.
+**Version**: 10.6.2 (Phase 13.E — Yuri Sole Authority Principle enforcement. Killed hardcoded recommendation surfaces on weather widget + cycle adjustment widget per Bailey's May 18 morning feedback; renamed sunscreen "Yuri's Picks" → "Top matches for {skin_type} skin" (algorithm was never Yuri-curated); added `?ask=` prefill infrastructure so Yuri-conversation CTAs carry context; encoded Yuri Sole Authority Principle as load-bearing architecture in CLAUDE.md so future AI sessions don't reintroduce competing recommenders. Shipped May 18 2026.
 
 Phase 13.D core (v10.6.0): Bailey-driven feature delivering: (a) a /skin-profile page that surfaces Opus 4.7-generated prose synthesis of the user's skin in Yuri's voice, regenerated when phase state or decision memory shifts, (b) phase-tagged Glass Skin photo gallery with reusable lightbox component — same lightbox solved Bailey's text 3 paper-cut about not being able to tap photos in Yuri chat to enlarge. New `ss_treatment_phases` table captures Yuri's phased treatment plan as a first-class entity (outcomes JSONB enables future cohort learning per Principle 3). Phase extraction pipeline runs Sonnet 4.5 fire-and-forget after every Yuri conversation, conservative threshold (requires verbatim supporting quote), feeds phase transitions back into decision_memory so Yuri sees them via existing context-load path. Bailey backfilled with Phase 1 Barrier Repair (completed Feb 23 → May 4) + Phase 2 Active Treatment (active May 5 → present, Day 14). AI-First audit applied before coding — six revisions to enforce Opus on user-facing surfaces, creative-brief prompts vs templates, and learning feedback loops.)
 **Status**: ALL PHASES COMPLETE (1-14) + Phase 15 Sessions 1+2 shipped (15.1-15.5 all complete) + Phase 16.1 (overlap detection) + v10.5.0-v10.5.2 Bailey audit and user-feedback fixes + v10.6.0 Phase 13.D Living Skin Profile (Bailey's iMessage requests from May 17 2026 — RESOLVED). Memory denial bug fixed (v8.0.1) + corrections memory now persists factual user-corrected K-beauty facts across sessions (v10.2.0). 5,800+ products (skincare only), 14,400+ ingredients, 207,000+ links, 550+ brands, 5,550+ products with ingredient links (89%), 52 price records across 6 retailers. 14 cron jobs configured and verified working. Pre-launch health audit complete: RLS hardened (69 policies optimized), cron pipeline fixed (auth header + HTTP method), 3 FK indexes added, 3 ghost functions dropped, search input sanitized. Skincare-only extraction filter deployed and hardened with exhaustive cosmetic rejection rules — non-skincare products automatically rejected at pipeline level. GA4 (G-L3VXSLT781) + Vercel Analytics + SpeedInsights live. **Monetization hardened**: Free tier eliminated, payment-first registration flow (Register → Stripe $39.99/mo → Onboarding, no email verification), widget system prompt rewritten AI-First with 20 preview messages and natural conversion.
@@ -5777,6 +5828,17 @@ Run in Supabase SQL Editor (Dashboard > SQL Editor > New Query) in this order:
 3. `supabase/migrations/20260216000003_seed_product_ingredients_prices.sql` -- ingredient links + prices
 
 **Changelog**:
+- v10.6.2 (May 18, 2026): Phase 13.E — Yuri Sole Authority Principle enforcement
+  - **Origin**: Bailey's iMessage feedback the morning after the v10.6.0/v10.6.1 ship. She opened the app, said *"Amazing!!!!!"* and *"I LOVE it if it is Yuri!"* — clear thumbs-up on the Skin Profile work. But she screenshotted the dashboard's "Weather & Skincare" widget showing *"9 routine adjustments suggested"* (Switch to lighter moisturizer, Skip face oils, Apply niacinamide toner to T-zone) and asked: *"Are they recommended by Yuri or generic based on location alone. I think all recommendations should be from Yuri at this point. Similar to how we removed the other sections since Yuri disagreed on it all based on my specific skin and journey. Would just get confusing and would be misleading if not communicating with Yuri."* She identified the exact same architectural class as v10.5.2's Routine Intelligence widget removal — algorithmic recommenders competing with Yuri's authority.
+  - **AI-First audit performed before coding**: Verified the proposed changes against vibetrendai/principles.md. All four changes either (a) remove hardcoded rule engines (`src/lib/intelligence/weather-routine.ts` ADJUSTMENT_RULES, `src/lib/intelligence/cycle-routine.ts` PHASE_META hardcoded recommendations) replacing them with raw data + Yuri CTAs, or (b) correct labels so algorithmic discovery surfaces don't impersonate Yuri. Audit surfaced one additional issue not in the original report — the sunscreen page's "Yuri's Pick" section, which literally puts Yuri's name on pure-algorithmic ranking. Added to scope.
+  - **Yuri Sole Authority Principle encoded in CLAUDE.md**: New ~80-line section between the Specialists table and Technical Stack. Captures the architectural principle Bailey has been teaching us across three corrections (v10.5.2 routine widget, May 17 bootstrap data cleanup, v10.6.2 weather widget): no non-Yuri surface generates personalized recommendations; every other surface is either data display, navigation, or a Yuri-conversation entry point. Includes the test matrix for future feature decisions, acceptable patterns, anti-patterns, the interlock with vibetrendai/principles.md Principle 2, and explicit instructions for future AI sessions. This is the structural-encoding pattern from `vibetrendai/patterns.md` (Pattern 4: Single Instance → Structural Insight → System-Wide Encoding).
+  - **Fix 1 — Weather widget recommendations killed** (`src/components/dashboard/WeatherRoutineWidget.tsx`): The 9-item hardcoded recommendation list ("Switch to lighter moisturizer," "Apply niacinamide toner") and seasonal-insight bottom row are replaced with a single CTA: *"Ask Yuri how today's weather affects your routine"* with `?ask=` prefill carrying the weather data (temp + humidity + UV + location + condition). Weather DATA display retained (temperature, humidity, UV, wind, location, condition) — that's observational and at-a-glance useful. Yuri reads the prefilled context and synthesizes a phase-aware, decision-memory-aware, routine-aware response. The `ADJUSTMENT_RULES` engine in `weather-routine.ts` remains in the codebase for now (still called by the API route's `/api/weather/routine`), but the widget no longer renders its output. Cleanup of the unused engine is deferred — the API endpoint may be repurposed for Yuri's tool context later.
+  - **Fix 2 — Cycle adjustment recommendations killed** (`src/components/routine/CycleAdjustment.tsx`): The "Routine Adjustments" section (hardcoded `CycleRoutineAdjustment[]` array) and "Tips for This Phase" section (hardcoded `PHASE_META[phase].recommendations` string list) are replaced with a single Yuri CTA. The phase header (label, day-in-cycle, days-until-next-phase) and "Your Skin Right Now" skin behavior paragraph stay — those are observational descriptions of hormonal state, true regardless of treatment phase. Removed unused imports (`ArrowRight`, `CycleRoutineAdjustment`) and the `ADJUSTMENT_TYPE_LABELS` constant. Yuri already sees cycle phase via her existing `memory.ts:374` context-load, so she gives phase-aware advice that respects Bailey's Phase 2 protocol (BHA on MWF, etc.) instead of conflicting with it.
+  - **Fix 3 — "Yuri's Pick" renamed honestly** (`src/app/(app)/sunscreen/page.tsx` + `src/app/api/sunscreen/picks/route.ts`): The "Yuri's Picks for {skinType} skin" section header is renamed to *"Top matches for {skinType} skin"* with a subtitle: *"Ranked by ingredient effectiveness for your skin type. Ask Yuri about any of these to see if they fit your current routine."* Interface and component names updated: `YuriPick` → `SkinTypePick`, `YuriPicksSection` → `SkinTypePicksSection`, `YuriPickCard` → `SkinTypePickCard`. Underlying algorithm (ranking sunscreens by `ss_ingredient_effectiveness` matches against skin type) is fine and remains — the rename just stops the surface from claiming Yuri authored output she didn't generate. API route docstring updated to clarify this is data-backed discovery, not Yuri curation.
+  - **Fix 4 — `?ask=` prefill on /yuri** (`src/app/(app)/yuri/page.tsx`): New URL-based message prefill infrastructure. Reads `searchParams.get('ask')` on mount, pipes through the existing `ChatInput.restoredValue` mechanism (originally added in v8.1.2 Phase 15.3 for failed-send recovery). User lands on /yuri with the question prefilled in the textarea — can edit or send. Single-use per page load (consumed via `askConsumed` flag). Enables the CTAs from weather widget, cycle adjustment, and future Yuri-entry-point surfaces to carry context naturally without forcing the user to retype.
+  - **Files modified**: `CLAUDE.md` (Yuri Sole Authority Principle encoded), `src/components/dashboard/WeatherRoutineWidget.tsx` (recommendations → Yuri CTA), `src/components/routine/CycleAdjustment.tsx` (adjustments + tips → Yuri CTA), `src/app/(app)/sunscreen/page.tsx` ("Yuri's Picks" → "Top matches"), `src/app/api/sunscreen/picks/route.ts` (docstring), `src/app/(app)/yuri/page.tsx` (`?ask=` prefill)
+  - **NOT in scope**: Products page "For You" toggle stays (already accurately labeled as effectiveness-ranked discovery, not Yuri authorship). Dupes "AI-recommended dupes" copy stays (genuinely AI-generated, not Yuri-claimed). Glass Skin Score recommendations stay for now (v10.5.0 added phase-awareness to the Vision prompt; future session can decide whether to fully kill recommendations and route to Yuri). Cleanup of unused `weather-routine.ts` ADJUSTMENT_RULES and `cycle-routine.ts` PHASE_META recommendation strings deferred — they're no longer rendered but still exist for potential re-use as Yuri tool context.
+  - **Build verified**: `tsc --noEmit` and `next build` both pass clean.
 - v10.6.1 (May 18, 2026): Phase 13.D polish — Skin Breakdown prompt caching + Yuri awareness of /skin-profile
   - **Origin**: Two AI-First follow-ups identified at the end of the v10.6.0 ship session. Neither user-driven; both are quality-bar items the build flagged as next-actions.
   - **Fix 1 — Prompt caching on Skin Breakdown Opus call** (`src/lib/intelligence/skin-breakdown.ts`): The ~1,800-token `SKIN_BREAKDOWN_BRIEF` system prompt is static across every user and every regeneration. Added `cache_control: { type: 'ephemeral' }` mirroring the existing pattern at `advisor.ts:734`. With a 5-min ephemeral TTL, regenerations happening close together (a Refresh tap after a normal page load, or two users hitting the synthesis in the same window) hit cache. Even cold-start regenerations a week apart still pay cache-creation once instead of full input pricing every time. Same Principle 1 + cost-discipline pattern that's been in place app-wide since v8.1.0.

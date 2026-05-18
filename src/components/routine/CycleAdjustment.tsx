@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import {
   Heart,
   ChevronDown,
@@ -8,21 +9,38 @@ import {
   Calendar,
   Loader2,
   Plus,
-  ArrowRight,
+  Sparkles,
+  ChevronRight,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import type {
-  CyclePhaseInfo,
-  CycleRoutineAdjustment,
-} from '@/types/database'
-import {
-  getPhaseLabel,
-} from '@/lib/intelligence/cycle-routine'
+import type { CyclePhaseInfo } from '@/types/database'
+import { getPhaseLabel } from '@/lib/intelligence/cycle-routine'
+
+/**
+ * Phase 13.E — Yuri Sole Authority Principle compliance (v10.6.2).
+ *
+ * Previously this widget rendered "Routine Adjustments" + "Tips for This Phase"
+ * sections populated by hardcoded strings in src/lib/intelligence/cycle-routine.ts
+ * (e.g., luteal phase = "Increase BHA/salicylic acid frequency"). Those
+ * recommendations had zero awareness of the user's treatment phase, current
+ * protocol, or what Yuri had been telling them. A user on Phase 2 active
+ * treatment with COSRX BHA already on MWF cadence would see "increase BHA
+ * frequency" as a luteal-phase tip — confusing and potentially conflicting
+ * with Yuri's protocol.
+ *
+ * Bailey (lighthouse user, May 18 2026):
+ *   "All recommendations should be from Yuri at this point."
+ *
+ * Fix: keep the cycle phase display + "Your Skin Right Now" skin behavior
+ * paragraph (observational — true regardless of treatment phase), but
+ * replace the prescriptive sections with a single Yuri CTA. Yuri reads the
+ * cycle phase via her existing context-load (memory.ts:374) and gives a
+ * synthesized, phase-aware response.
+ */
 
 interface CycleData {
   enabled: boolean
   phase: CyclePhaseInfo | null
-  adjustments: CycleRoutineAdjustment[]
   message?: string
 }
 
@@ -44,14 +62,6 @@ const PHASE_ICONS: Record<string, string> = {
   follicular: '\uD83C\uDF31',
   ovulatory: '\u2728',
   luteal: '\uD83C\uDF3F',
-}
-
-const ADJUSTMENT_TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  add: { label: 'Add', color: 'text-emerald-400' },
-  reduce: { label: 'Reduce', color: 'text-amber-400' },
-  swap: { label: 'Swap', color: 'text-blue-400' },
-  avoid: { label: 'Avoid', color: 'text-red-400' },
-  emphasize: { label: 'Emphasize', color: 'text-violet-400' },
 }
 
 function LogCycleModal({
@@ -257,7 +267,8 @@ export function CycleAdjustment() {
         {/* Expanded details */}
         {expanded && (
           <div className="mt-4 space-y-3">
-            {/* Skin behavior */}
+            {/* Skin behavior — observational, stays. This describes what's
+                happening hormonally, not what the user should do about it. */}
             <div className="bg-white/3 rounded-lg p-3">
               <p className="text-[10px] text-white/30 uppercase tracking-wider mb-1">
                 Your Skin Right Now
@@ -267,50 +278,26 @@ export function CycleAdjustment() {
               </p>
             </div>
 
-            {/* Routine adjustments */}
-            {data.adjustments.length > 0 && (
-              <div>
-                <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2">
-                  Routine Adjustments
+            {/* Yuri CTA — replaces the old hardcoded "Routine Adjustments"
+                + "Tips for This Phase" sections. Yuri already sees the
+                cycle phase via her context-load (memory.ts:374) and can
+                synthesize phase-aware advice that respects the user's
+                actual treatment phase and protocol. */}
+            <Link
+              href={`/yuri?ask=${encodeURIComponent(`I'm in the ${getPhaseLabel(phase.phase).toLowerCase()} phase of my cycle (Day ${phase.day_in_cycle}). How should I adjust my current routine?`)}`}
+              className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-gold/15 to-amber-500/10 border border-gold/25 hover:border-gold/40 px-3 py-2.5 transition-colors group"
+            >
+              <Sparkles className="w-4 h-4 text-gold flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-white">
+                  Ask Yuri how to adjust for this phase
                 </p>
-                <div className="space-y-2">
-                  {data.adjustments.map((adj, i) => {
-                    const typeInfo = ADJUSTMENT_TYPE_LABELS[adj.type] || { label: adj.type, color: 'text-white/60' }
-                    return (
-                      <div key={i} className="flex items-start gap-2">
-                        <ArrowRight className={`w-3 h-3 mt-0.5 flex-shrink-0 ${typeInfo.color}`} />
-                        <div>
-                          <span className={`text-[10px] font-semibold uppercase ${typeInfo.color}`}>
-                            {typeInfo.label}
-                          </span>
-                          <span className="text-[10px] text-white/30 ml-1.5">
-                            {adj.product_category.replace(/_/g, ' ')}
-                          </span>
-                          <p className="text-xs text-white/60 mt-0.5">
-                            {adj.suggestion}
-                          </p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                <p className="text-[10px] text-white/50 mt-0.5">
+                  She'll factor in your treatment phase and current routine
+                </p>
               </div>
-            )}
-
-            {/* Tips */}
-            <div>
-              <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2">
-                Tips for This Phase
-              </p>
-              <ul className="space-y-1">
-                {phase.recommendations.slice(0, 3).map((rec, i) => (
-                  <li key={i} className="text-xs text-white/50 flex items-start gap-1.5">
-                    <span className="text-white/20 mt-0.5">&#x2022;</span>
-                    {rec}
-                  </li>
-                ))}
-              </ul>
-            </div>
+              <ChevronRight className="w-4 h-4 text-gold/60 group-hover:text-gold transition-colors flex-shrink-0" />
+            </Link>
           </div>
         )}
       </div>

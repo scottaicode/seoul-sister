@@ -22,7 +22,7 @@ interface UvData {
   location: string
 }
 
-interface YuriPick {
+interface SkinTypePick {
   product: Product
   reasoning: string
 }
@@ -47,7 +47,7 @@ export default function SunscreenFinderPage() {
 
   // Profile-aware state
   const [uv, setUv] = useState<UvData | null>(null)
-  const [picks, setPicks] = useState<YuriPick[]>([])
+  const [picks, setPicks] = useState<SkinTypePick[]>([])
   const [picksLoading, setPicksLoading] = useState(false)
   const [personalized, setPersonalized] = useState(false)
   const [profileSkinType, setProfileSkinType] = useState<string | null>(null)
@@ -120,7 +120,7 @@ export default function SunscreenFinderPage() {
     loadProfile()
   }, [user])
 
-  // Fetch Yuri's Picks when skin type is known
+  // Fetch best-for-skin-type sunscreens (algorithmic match, not Yuri-curated)
   useEffect(() => {
     if (!profileSkinType) return
 
@@ -200,9 +200,11 @@ export default function SunscreenFinderPage() {
       {/* UV Index Banner */}
       {uv && <UvBanner uvIndex={uv.uv_index} location={uv.location} />}
 
-      {/* Yuri's Pick Section */}
+      {/* Best matches for skin type — algorithmic ranking via ss_ingredient_effectiveness,
+          NOT Yuri's curation. Yuri Sole Authority Principle: don't claim Yuri authorship
+          on output she didn't generate. v10.6.2 rename. */}
       {(picks.length > 0 || picksLoading) && profileSkinType && (
-        <YuriPicksSection
+        <SkinTypePicksSection
           picks={picks}
           skinType={profileSkinType}
           loading={picksLoading}
@@ -444,15 +446,23 @@ function UvBanner({ uvIndex, location }: { uvIndex: number; location: string }) 
 }
 
 // ---------------------------------------------------------------------------
-// Yuri's Picks Section Component
+// Best-for-skin-type Section Component
+//
+// Phase 13.E — Yuri Sole Authority Principle compliance (v10.6.2).
+// Previously labeled "Yuri's Picks for {skinType} skin" which implied
+// Yuri-authored curation. The underlying data is an algorithmic ranking
+// against ss_ingredient_effectiveness — no Yuri context, no decision
+// memory. Renamed to describe what the data actually is. The CTA at the
+// section header invites the user to take any pick into a Yuri
+// conversation for plan-aware evaluation.
 // ---------------------------------------------------------------------------
 
-function YuriPicksSection({
+function SkinTypePicksSection({
   picks,
   skinType,
   loading,
 }: {
-  picks: YuriPick[]
+  picks: SkinTypePick[]
   skinType: string
   loading: boolean
 }) {
@@ -461,9 +471,12 @@ function YuriPicksSection({
       <div className="flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-gold" />
         <h2 className="font-display font-semibold text-sm text-white">
-          Yuri&apos;s Picks for {skinType} skin
+          Top matches for {skinType} skin
         </h2>
       </div>
+      <p className="text-[10px] text-white/40 -mt-1">
+        Ranked by ingredient effectiveness for your skin type. Ask Yuri about any of these to see if they fit your current routine.
+      </p>
 
       {loading ? (
         <div className="flex items-center justify-center py-4">
@@ -471,12 +484,12 @@ function YuriPicksSection({
         </div>
       ) : picks.length === 0 ? (
         <p className="text-xs text-white/40">
-          No personalized picks available yet.
+          No matches available yet.
         </p>
       ) : (
         <div className="flex flex-col gap-2">
           {picks.map((pick, index) => (
-            <YuriPickCard key={pick.product.id} pick={pick} rank={index + 1} />
+            <SkinTypePickCard key={pick.product.id} pick={pick} rank={index + 1} />
           ))}
         </div>
       )}
@@ -484,7 +497,7 @@ function YuriPicksSection({
   )
 }
 
-function YuriPickCard({ pick, rank }: { pick: YuriPick; rank: number }) {
+function SkinTypePickCard({ pick, rank }: { pick: SkinTypePick; rank: number }) {
   const { product, reasoning } = pick
   return (
     <a
