@@ -30,7 +30,7 @@ Each entry includes:
 
 **Bailey's context**: After receiving Scott's v10.6.2 update summary, Bailey was exploring the app and ended up on the public marketing /products page (got there via the dashboard "Your Top Ingredients" widget's Browse button, which was incorrectly linking to /products instead of /browse). She tapped the category cards (Serums 547, Sunscreens 672, etc.) expecting them to filter to that category. Nothing happened — the cards linked to /products?category=X but /products is a static SEO page that doesn't read the query param.
 
-**Status**: RESOLVED in v10.6.3 (shipped May 18, 2026)
+**Status**: RESOLVED in v10.6.3 (shipped May 18, 2026, commit `bf39765`)
 
 **Resolution**: Investigation surfaced a bigger architectural seam than the immediate bug. Scott brainstormed with Richard about whether the public surfaces could deliver MORE value to both subscribers AND non-subscriber friends/family being shared content. Established the **auth-aware shared surfaces** pattern:
 - Same page content for both audiences (preserves SEO for unauthenticated bots)
