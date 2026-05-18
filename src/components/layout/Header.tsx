@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 
 const navLinks = [
   { label: 'Dashboard', href: '/dashboard' },
+  { label: 'Skin Profile', href: '/skin-profile' },
   { label: 'Scan', href: '/scan' },
   { label: 'Products', href: '/browse' },
   { label: 'Sunscreen', href: '/sunscreen' },

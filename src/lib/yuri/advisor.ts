@@ -11,6 +11,7 @@ import {
   extractAndSaveDecisionMemory,
   type UserContext,
 } from './memory'
+import { extractAndSaveTreatmentPhases } from './treatment-phase-extractor'
 import { YURI_TOOLS, executeYuriTool, resetWebSearchCounter } from './tools'
 import { cleanYuriResponse, stripPhantomToolCallNarration } from './voice-cleanup'
 import type { SpecialistType, YuriMessage } from '@/types/database'
@@ -934,6 +935,15 @@ export async function* streamAdvisorResponse(
     ]
     extractAndSaveDecisionMemory(userId, conversationId, transcriptForDecisions).catch((err) => {
       console.error('[advisor] extractAndSaveDecisionMemory failed:', err)
+    })
+
+    // 13. Extract treatment phase state changes (Phase 13.D).
+    //     Sonnet judges whether the conversation established a new phase,
+    //     completed the current one, or updated the active protocol.
+    //     Conservative — requires verbatim supporting quote. Same cadence
+    //     as decision memory.
+    extractAndSaveTreatmentPhases(userId, conversationId, transcriptForDecisions).catch((err) => {
+      console.error('[advisor] extractAndSaveTreatmentPhases failed:', err)
     })
   }
 }

@@ -3,6 +3,7 @@
 import { memo } from 'react'
 import { Sparkles, User } from 'lucide-react'
 import SpecialistBadge from './SpecialistBadge'
+import { useImageLightbox } from '@/components/ui/ImageLightbox'
 import type { ChatMessage as ChatMessageType } from '@/types/yuri'
 
 interface ChatMessageProps {
@@ -245,6 +246,7 @@ function formatContent(content: string): React.ReactNode[] {
 
 function ChatMessageComponent({ message }: ChatMessageProps) {
   const isUser = message.role === 'user'
+  const lightbox = useImageLightbox()
 
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
@@ -278,7 +280,7 @@ function ChatMessageComponent({ message }: ChatMessageProps) {
           </div>
         )}
 
-        {/* Images */}
+        {/* Images — tap to enlarge (Bailey's text 3 fix, May 17 2026) */}
         {message.image_urls && message.image_urls.length > 0 && (
           <div className={`flex flex-wrap gap-2 ${message.content ? 'mb-2' : ''}`}>
             {message.image_urls.map((url, i) => (
@@ -287,9 +289,11 @@ function ChatMessageComponent({ message }: ChatMessageProps) {
                 key={i}
                 src={url}
                 alt={`Shared image ${i + 1}`}
-                className="max-w-[200px] max-h-[200px] rounded-lg object-cover border border-white/10"
+                onClick={() => lightbox.open(message.image_urls || [], i)}
+                className="max-w-[200px] max-h-[200px] rounded-lg object-cover border border-white/10 cursor-zoom-in hover:opacity-90 transition"
               />
             ))}
+            {lightbox.render({ altPrefix: 'Shared image' })}
           </div>
         )}
 

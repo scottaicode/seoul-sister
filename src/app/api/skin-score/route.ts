@@ -565,11 +565,52 @@ export async function POST(request: NextRequest) {
       // Non-critical — return analysis without product links
     }
 
-    // Save to database
+    // Save to database. Phase 13.D: also tag with active treatment phase
+    // and persist photo to private storage bucket for the Phase Photo Gallery.
     const db = getServiceClient()
+
+    // Look up the user's active phase (nullable — most users won't have one yet)
+    let activePhaseId: string | null = null
+    try {
+      const { data: activePhase } = await db
+        .from('ss_treatment_phases')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle()
+      activePhaseId = activePhase?.id ?? null
+    } catch {
+      // Non-critical: no active phase = photo isn't tagged, gallery shows
+      // under "All photos" but not under any specific phase tab
+    }
+
+    // Generate a UUID for the score so the photo can use it as its path.
+    // Bucket policy excludes gif, so we don't persist gifs (rare for selfies).
+    const scoreId = crypto.randomUUID()
+    let storedPhotoPath: string | null = null
+    if (mediaType !== 'image/gif') {
+      const photoExt = mediaType === 'image/png' ? 'png' : mediaType === 'image/webp' ? 'webp' : 'jpg'
+      const photoPath = `${user.id}/${scoreId}.${photoExt}`
+      try {
+        const photoBuffer = Buffer.from(imageBase64, 'base64')
+        const { error: uploadErr } = await db.storage
+          .from('glass-skin-photos')
+          .upload(photoPath, photoBuffer, {
+            contentType: mediaType,
+            upsert: false,
+          })
+        if (!uploadErr) storedPhotoPath = photoPath
+        else console.error('Glass skin photo upload failed:', uploadErr.message)
+      } catch (err) {
+        console.error('Glass skin photo upload threw:', err)
+      }
+    }
+
     const { data: score, error: insertError } = await db
       .from('ss_glass_skin_scores')
       .insert({
+        id: scoreId,
         user_id: user.id,
         overall_score: analysis.overall_score,
         luminosity_score: analysis.luminosity_score,
@@ -583,6 +624,9 @@ export async function POST(request: NextRequest) {
         // confidence_modifier). Defaults to {} when older clients send no
         // photo_quality block (backward compatible).
         photo_quality: analysis.photo_quality || {},
+        // Phase 13.D
+        treatment_phase_id: activePhaseId,
+        photo_url: storedPhotoPath,
       })
       .select('*')
       .single()
