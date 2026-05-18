@@ -32,7 +32,7 @@ Each entry includes:
 
 **Bailey's context**: First morning waking up to v10.6.0's Skin Profile + Phase Gallery shipped overnight. Loved the new page. Opened the dashboard and immediately spotted the same anti-pattern she'd corrected three days earlier on the Routine Intelligence widget (v10.5.2). The weather widget was generating recommendations from a hardcoded `humidity > 70% → "use BHA"` rule engine (`src/lib/intelligence/weather-routine.ts` ADJUSTMENT_RULES) with zero awareness of her Phase 2 protocol (COSRX BHA already on MWF, Goodal Vita C in AM, barrier-protective Illiyoon at night).
 
-**Status**: RESOLVED in v10.6.2 (shipped May 18, 2026)
+**Status**: RESOLVED in v10.6.2 (shipped May 18, 2026, commit `99620ff`)
 
 **Resolution**: This was the third instance of the same architectural class — algorithmic recommender competing with Yuri's authority. Beyond fixing the specific widget, this release **encoded the Yuri Sole Authority Principle as load-bearing architecture in CLAUDE.md** so future AI sessions don't reintroduce competing recommenders. Specific changes:
 - Weather widget's 9-item recommendation list → "Ask Yuri how today's weather affects your routine" CTA with weather context prefilled via new `?ask=` URL parameter mechanism on /yuri. Weather DATA display retained.
