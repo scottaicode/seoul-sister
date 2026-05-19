@@ -707,6 +707,16 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
   // ("you were at 49 on Feb 25") and lets her notice when a baseline is stale
   // mid-treatment so she can suggest a fresh photo organically. Raw dates +
   // dimension scores; let Opus decide when to bring them up.
+  //
+  // v10.7.0 Phase H (photo cadence lite) — Bailey explicitly asked for Yuri to
+  // proactively prompt photos on a weekly cadence: "Currently, Yuri hasn't
+  // asked for many photos, seems like every time it's me just sending them...
+  // I think Yuri should be asking for a weekly photo the start of each week."
+  // The strategic vision is weekly Sunday/Monday nudges; the lite version just
+  // gives Yuri awareness — she already knows the day of week from the RIGHT
+  // NOW block, so combined with staleness she can naturally suggest a photo
+  // at the right moment. No cron, no notifications — Opus decides when it
+  // lands. The threshold drops from 30 days to 7 to match Bailey's cadence ask.
   if (context.glassSkinHistory.length > 0) {
     const latest = context.glassSkinHistory[0]
     const lines = context.glassSkinHistory.map((s, i) => {
@@ -714,10 +724,25 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
       const tag = i === 0 ? ' (most recent)' : ''
       return `- **${s.takenDate}** (${ageLabel})${tag}: overall ${s.overall}/100 — luminosity ${s.luminosity}, smoothness ${s.smoothness}, clarity ${s.clarity}, hydration ${s.hydration}, evenness ${s.evenness}`
     })
-    const stalenessNote = latest.daysAgo >= 30
-      ? `\nLatest score is ${latest.daysAgo} days old. If they are in an active treatment phase, a fresh score would give you a real comparison point — feel free to suggest taking a new photo when it fits the conversation. One observation, not a lecture.`
-      : ''
-    sections.push(`## Glass Skin Score History\n${lines.join('\n')}${stalenessNote}`)
+
+    let cadenceNote = ''
+    if (latest.daysAgo >= 7) {
+      cadenceNote =
+        `\nLatest score is ${latest.daysAgo} days old. Photos are the platform's strongest signal of real progress — when 5-12 weeks of phased treatment pass without a fresh score, the user loses the felt-sense of how their skin has changed. ` +
+        `If a momentum-positive moment surfaces in the conversation (a phase milestone, a routine adjustment they're committing to, an off-handed "I think my skin is calming down"), suggest a new Glass Skin Score photo at /glass-skin and frame it as their journey, not a chore. ` +
+        `Weekly is a natural cadence — if today is a Sunday or Monday and they haven't checked in this week, that's an organic opening. Don't ask if they just took one or if they're in distress about a flare-up; lean in if they're celebrating. One observation, not a lecture.`
+    } else if (context.glassSkinHistory.length === 1) {
+      cadenceNote =
+        `\nThey have a baseline score but no comparison points yet. As they progress through treatment phases, a fresh score every 7-14 days becomes the comparison data — when a natural opening surfaces, suggest one.`
+    }
+    sections.push(`## Glass Skin Score History\n${lines.join('\n')}${cadenceNote}`)
+  } else {
+    // No history at all — strongest cadence signal. Bailey said visible progress
+    // is "what continues to sell the app"; without a baseline there's nothing
+    // to progress AGAINST. Make sure Yuri knows.
+    sections.push(
+      `## Glass Skin Score History\nNo Glass Skin Score photos taken yet. If the user is actively treating skin or in a phased protocol, a baseline photo at /glass-skin is the single most valuable thing they can do next — without it, there's no comparison point as their skin changes. Surface it naturally when the conversation hits a "starting point" moment (kicking off a new phase, committing to a routine change, asking "how will I know it's working?").`
+    )
   }
 
   // Product reactions — Phase 15.4 surfaces the recorded date inline so Yuri
@@ -1417,6 +1442,18 @@ export async function extractAndSaveDecisionMemory(
    { "topic": "cosrx_snail_concentration", "yuri_said": "96% snail secretion filtrate", "truth": "Reformulated in 2024 — now 92% with added niacinamide", "category": "reformulation" }
    { "topic": "innisfree_green_tea_seed", "yuri_said": "Recommended Green Tea Seed Serum", "truth": "Discontinued — replaced by Hyaluronic Acid Cica Serum", "category": "discontinued" }
 
+5. **CLEANUP ACTIONS (correction feedback loop)**: When a correction reveals that the SYSTEM made a mistake about a specific product — most commonly an auto-extracted reaction tag the user never agreed to (e.g. "I never owned that product", "I've never used X", "system glitch tagged X as my holy grail") — include the specific data-cleanup action needed. This closes the loop: corrections aren't just memory, they drive cleanup of the underlying bad data.
+
+   Supported actions:
+   { "action": "clear_reaction", "product_name": "exact product name", "brand": "exact brand name" }
+
+   Include cleanup_actions ONLY when the correction's truth field unambiguously indicates a data error tied to a specific product. Do NOT include cleanup actions for:
+   - General factual corrections (reformulations, brand identity, ingredient list errors) — those are handled by memory alone
+   - Hypothetical complaints ("I wish it weren't tagged")
+   - Vague references without specific product names
+
+   Example: Bailey said "Skin&Lab Retinol Lifting Roller Cream is shown as a holy grail but I don't own it and never have." That correction implies cleanup_actions: [{ "action": "clear_reaction", "product_name": "Skin&Lab Retinol Lifting Roller Cream", "brand": "Skin&Lab" }]
+
 CONVERSATION:
 ${transcript}
 
@@ -1425,7 +1462,7 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
   "decisions": [{ "topic": "...", "decision": "...", "date": "${new Date().toISOString().split('T')[0]}" }],
   "preferences": [{ "topic": "...", "preference": "..." }],
   "commitments": [{ "item": "...", "date": "${new Date().toISOString().split('T')[0]}" }],
-  "corrections": [{ "topic": "...", "yuri_said": "...", "truth": "...", "category": "reformulation|discontinued|price|ingredient|brand_identity|other", "date": "${new Date().toISOString().split('T')[0]}" }]
+  "corrections": [{ "topic": "...", "yuri_said": "...", "truth": "...", "category": "reformulation|discontinued|price|ingredient|brand_identity|other", "date": "${new Date().toISOString().split('T')[0]}", "cleanup_actions": [ { "action": "clear_reaction", "product_name": "...", "brand": "..." } ] }]
 }`,
           },
         ],
@@ -1541,6 +1578,74 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
     .from('ss_yuri_conversations')
     .update({ decision_memory: merged })
     .eq('id', conversationId)
+
+  // v10.7.0 Phase E — Correction feedback loop.
+  // Per Principle 3 (Moat Through Learning), corrections aren't just memory; they
+  // drive cleanup of the underlying bad data that caused them. When a correction
+  // names a specific product and the cleanup intent is unambiguous (Sonnet
+  // emitted a cleanup_action), execute the cleanup so the bad row doesn't
+  // survive future Library views.
+  //
+  // Bailey's Feb 14 Skin&Lab Retinol Lifting Roller Cream false-positive is the
+  // canonical case: she corrected Yuri ("I don't own it and never have"), and
+  // Phase 15.1 corrections memory has been recording that correction — but the
+  // underlying ss_user_product_reactions row never got scrubbed, so the holy
+  // grail tag survived. This loop now scrubs it on the very next extraction
+  // cycle after the correction is captured.
+  try {
+    const cleanupActions: Array<{ action: string; product_name?: string; brand?: string }> =
+      Array.isArray(extracted.corrections)
+        ? (extracted.corrections as Array<{ cleanup_actions?: unknown[] }>)
+            .flatMap((c) => (Array.isArray(c.cleanup_actions) ? c.cleanup_actions : []))
+            .filter(
+              (a): a is { action: string; product_name?: string; brand?: string } =>
+                !!a && typeof a === 'object' && typeof (a as Record<string, unknown>).action === 'string'
+            )
+        : []
+
+    if (cleanupActions.length > 0) {
+      // Lazy import to avoid pulling tools surface into the memory hot path.
+      const { resolveProductByNameStrict } = await import('./tools')
+
+      for (const action of cleanupActions) {
+        if (action.action !== 'clear_reaction' || !action.product_name) continue
+
+        // Strict resolution — never substitute a wrong product when scrubbing.
+        // Better to leave a bad row in place than to delete a good one for a
+        // different product the user actually does have a reaction for.
+        const fullName = action.brand
+          ? `${action.brand} ${action.product_name}`
+          : action.product_name
+        const match = await resolveProductByNameStrict(db, fullName)
+        if (!match) {
+          console.warn(
+            `[memory/cleanup] No confident catalog match for "${fullName}" — skipping clear_reaction cleanup`
+          )
+          continue
+        }
+
+        const { error: deleteError } = await db
+          .from('ss_user_product_reactions')
+          .delete()
+          .eq('user_id', userId)
+          .eq('product_id', match.id)
+
+        if (deleteError) {
+          console.error(
+            `[memory/cleanup] Failed to clear reaction for "${match.brand_en} ${match.name_en}":`,
+            deleteError.message
+          )
+        } else {
+          console.log(
+            `[memory/cleanup] Cleared reaction for "${match.brand_en} ${match.name_en}" (correction feedback loop)`
+          )
+        }
+      }
+    }
+  } catch (err) {
+    // Non-critical: cleanup failure must not break the main memory save above.
+    console.error('[memory/cleanup] Correction cleanup loop error:', err)
+  }
 }
 
 // ---------------------------------------------------------------------------

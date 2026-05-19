@@ -1,6 +1,6 @@
 'use client'
 
-import { Heart, AlertTriangle } from 'lucide-react'
+import { Heart, AlertTriangle, X } from 'lucide-react'
 import ProductLibraryCard from './ProductLibraryCard'
 
 export interface TagEntry {
@@ -17,6 +17,7 @@ export interface TagEntry {
 interface Props {
   holyGrail: TagEntry[]
   brokeMeOut: TagEntry[]
+  onClearReaction: (productId: string, name: string) => void
 }
 
 function formatDate(iso: string): string {
@@ -30,12 +31,14 @@ function Column({
   accent,
   emptyHint,
   items,
+  onClearReaction,
 }: {
   title: string
   icon: React.ReactNode
   accent: string
   emptyHint: string
   items: TagEntry[]
+  onClearReaction: (productId: string, name: string) => void
 }) {
   return (
     <div className="space-y-3">
@@ -61,6 +64,23 @@ function Column({
                 imageUrl={entry.image_url}
                 category={entry.category}
                 metadata={meta}
+                actionSlot={
+                  entry.product_id ? (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        onClearReaction(entry.product_id!, entry.display_name)
+                      }}
+                      aria-label="Untag"
+                      title="Clear this tag"
+                      className="inline-flex items-center gap-1 text-[11px] text-white/40 hover:text-white/80 transition"
+                    >
+                      <X className="w-3 h-3" />
+                      Untag
+                    </button>
+                  ) : null
+                }
               />
             )
           })}
@@ -70,13 +90,13 @@ function Column({
   )
 }
 
-export default function TaggedSection({ holyGrail, brokeMeOut }: Props) {
+export default function TaggedSection({ holyGrail, brokeMeOut, onClearReaction }: Props) {
   return (
     <section id="section-tagged" className="space-y-4">
       <div>
         <h2 className="text-xl font-semibold text-white">Tagged</h2>
         <p className="text-sm text-white/60 mt-0.5">
-          What you’ve loved and what hasn’t worked.
+          What you&rsquo;ve loved and what hasn&rsquo;t worked. Tag from the Owned section above; untag any time.
         </p>
       </div>
 
@@ -85,15 +105,17 @@ export default function TaggedSection({ holyGrail, brokeMeOut }: Props) {
           title="Holy Grail"
           icon={<Heart className="w-4 h-4" fill="currentColor" />}
           accent="text-emerald-300"
-          emptyHint="No Holy Grails tagged yet — tag a product you love from its detail page."
+          emptyHint="No Holy Grails tagged yet — tag a product you love from the Owned section above."
           items={holyGrail}
+          onClearReaction={onClearReaction}
         />
         <Column
           title="Broke Me Out"
           icon={<AlertTriangle className="w-4 h-4" />}
           accent="text-rose-300"
-          emptyHint="No reactions logged. Tag any product that didn’t work from its detail page."
+          emptyHint="No reactions logged. Tag from the Owned section above."
           items={brokeMeOut}
+          onClearReaction={onClearReaction}
         />
       </div>
     </section>

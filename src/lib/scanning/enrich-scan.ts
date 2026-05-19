@@ -127,7 +127,7 @@ export async function enrichScanResult(
     ownership,
     overlapPreview,
   ] = await Promise.all([
-    fetchPersonalization(supabase, userId, ingredientNames),
+    fetchPersonalization(supabase, userId, ingredientNames, productId),
     productId ? fetchPricing(supabase, productId, brand) : Promise.resolve(null),
     productId ? fetchCommunity(supabase, productId, skinType) : Promise.resolve(null),
     fetchCounterfeit(supabase, brand),
@@ -217,10 +217,62 @@ async function fetchOverlapPreview(
 
 // ─── Personalization (database-driven) ──────────────────────────────
 
+/**
+ * Resolve scanned/displayed ingredient name strings to actual ss_ingredients
+ * records. Returns the union of name_en and name_inci matches.
+ *
+ * v10.7.0: This replaces the bidirectional substring matching that produced
+ * Bailey's false-positive warnings on the SoonJung pH 5.6 Cleansing Milk —
+ * "Carbon Black Matt Brown Water (3/5)" was firing because parsing-artifact
+ * blob records in ss_ingredients contained substrings of real SoonJung
+ * ingredients. Resolving by exact name match (mirroring fetchOverlapPreview)
+ * filters out those artifacts entirely.
+ */
+async function resolveIngredientNames(
+  supabase: SupabaseClient,
+  ingredientNames: string[]
+): Promise<
+  Array<{
+    id: string
+    name_en: string | null
+    name_inci: string | null
+    comedogenic_rating: number | null
+    safety_rating: number | null
+    is_fragrance: boolean | null
+  }>
+> {
+  const trimmed = ingredientNames.map((n) => n.trim()).filter(Boolean)
+  if (!trimmed.length) return []
+
+  const cols = 'id, name_en, name_inci, comedogenic_rating, safety_rating, is_fragrance'
+
+  // Two passes: name_en, then name_inci. Union results.
+  const [byEn, byInci] = await Promise.all([
+    supabase.from('ss_ingredients').select(cols).in('name_en', trimmed),
+    supabase.from('ss_ingredients').select(cols).in('name_inci', trimmed),
+  ])
+
+  const dedup = new Map<string, Record<string, unknown>>()
+  for (const r of (byEn.data ?? []) as Array<Record<string, unknown>>) dedup.set(r.id as string, r)
+  for (const r of (byInci.data ?? []) as Array<Record<string, unknown>>) {
+    if (!dedup.has(r.id as string)) dedup.set(r.id as string, r)
+  }
+
+  return Array.from(dedup.values()).map((r) => ({
+    id: r.id as string,
+    name_en: (r.name_en as string | null) ?? null,
+    name_inci: (r.name_inci as string | null) ?? null,
+    comedogenic_rating: (r.comedogenic_rating as number | null) ?? null,
+    safety_rating: (r.safety_rating as number | null) ?? null,
+    is_fragrance: (r.is_fragrance as boolean | null) ?? null,
+  }))
+}
+
 async function fetchPersonalization(
   supabase: SupabaseClient,
   userId: string,
-  ingredientNames: string[]
+  ingredientNames: string[],
+  productId: string | null = null
 ): Promise<PersonalizationData | null> {
   const { data: profile } = await supabase
     .from('ss_user_profiles')
@@ -232,119 +284,149 @@ async function fetchPersonalization(
 
   const warnings: string[] = []
   const notes: string[] = []
-  const lowerIngredients = ingredientNames.map(n => n.toLowerCase())
 
-  // Check allergies against ingredients
+  // --- Resolve the product's ingredients to actual catalog records ---
+  // When productId is known (product detail page case), use the ss_product_ingredients
+  // JOIN — most accurate, only legit linked ingredients. When productId is unknown
+  // (scan flow), fall back to exact-name resolution against ss_ingredients.
+  // Either way we end up with a clean set of catalog records to evaluate.
+  let resolved: Awaited<ReturnType<typeof resolveIngredientNames>> = []
+  if (productId) {
+    try {
+      const { data: linked } = await supabase
+        .from('ss_product_ingredients')
+        .select(
+          'ingredient:ss_ingredients(id, name_en, name_inci, comedogenic_rating, safety_rating, is_fragrance)'
+        )
+        .eq('product_id', productId)
+
+      if (linked) {
+        const seen = new Set<string>()
+        for (const row of linked as unknown as Array<{ ingredient: Record<string, unknown> | null }>) {
+          const ing = row.ingredient
+          if (!ing) continue
+          const id = ing.id as string
+          if (seen.has(id)) continue
+          seen.add(id)
+          resolved.push({
+            id,
+            name_en: (ing.name_en as string | null) ?? null,
+            name_inci: (ing.name_inci as string | null) ?? null,
+            comedogenic_rating: (ing.comedogenic_rating as number | null) ?? null,
+            safety_rating: (ing.safety_rating as number | null) ?? null,
+            is_fragrance: (ing.is_fragrance as boolean | null) ?? null,
+          })
+        }
+      }
+    } catch {
+      // Fall through — non-critical, will try name-based resolution below
+    }
+  }
+
+  // Fallback (or supplement) for scan flow / partial product links: resolve
+  // remaining ingredient names by exact catalog lookup.
+  if (resolved.length === 0 && ingredientNames.length > 0) {
+    resolved = await resolveIngredientNames(supabase, ingredientNames)
+  }
+
+  const resolvedIds = new Set(resolved.map((r) => r.id))
+  const displayName = (r: (typeof resolved)[number]) => r.name_en || r.name_inci || 'this ingredient'
+
+  // --- Allergy check ---
+  // Allergies are user-supplied free text — keep substring matching against the
+  // raw ingredient strings here (a "Glycerin" allergy should still match
+  // "Glyceryl Stearate" in the product). This is the one place where bidirectional
+  // matching is actually correct because the user wrote the allergy.
   if (profile.allergies?.length) {
     for (const allergy of profile.allergies) {
       const allergyLower = allergy.toLowerCase()
-      const match = ingredientNames.find(n => n.toLowerCase().includes(allergyLower))
+      const match = ingredientNames.find((n) => n.toLowerCase().includes(allergyLower))
       if (match) {
         warnings.push(`Contains ${match} — you listed "${allergy}" as an allergy`)
       }
     }
   }
 
-  // --- Database-driven comedogenic warnings ---
-  // Query ingredients with high comedogenic ratings (3+) from the database
-  try {
-    const { data: comedogenicIngredients } = await supabase
-      .from('ss_ingredients')
-      .select('name_inci, name_en, comedogenic_rating')
-      .gte('comedogenic_rating', 3)
-
-    if (comedogenicIngredients?.length && (profile.skin_type === 'oily' || profile.skin_type === 'combination')) {
-      for (const ci of comedogenicIngredients) {
-        const ciNameLower = (ci.name_en || ci.name_inci).toLowerCase()
-        if (lowerIngredients.some(i => i.includes(ciNameLower) || ciNameLower.includes(i))) {
-          warnings.push(`Contains ${ci.name_en || ci.name_inci} (comedogenic rating ${ci.comedogenic_rating}/5) — can clog pores for ${profile.skin_type} skin`)
-        }
+  // --- Comedogenic warnings (resolved ingredients only) ---
+  // Only flags ingredients actually linked to this product. Previously, ALL
+  // catalog rows with comedogenic_rating >= 3 were substring-matched against
+  // the product's ingredients, which produced wild false positives because
+  // parsing-artifact blobs in ss_ingredients can substring-match real ingredients.
+  if (profile.skin_type === 'oily' || profile.skin_type === 'combination') {
+    for (const r of resolved) {
+      if ((r.comedogenic_rating ?? 0) >= 3) {
+        warnings.push(
+          `Contains ${displayName(r)} (comedogenic rating ${r.comedogenic_rating}/5) — can clog pores for ${profile.skin_type} skin`
+        )
       }
     }
-  } catch {
-    // Fall through — non-critical
   }
 
-  // --- Database-driven irritant warnings ---
-  // Query ingredients with low safety ratings (1-2) or flagged as fragrance
-  try {
-    const { data: irritantIngredients } = await supabase
-      .from('ss_ingredients')
-      .select('name_inci, name_en, safety_rating, is_fragrance')
-      .or('safety_rating.lte.2,is_fragrance.eq.true')
-
-    if (irritantIngredients?.length && profile.skin_type === 'sensitive') {
-      for (const ir of irritantIngredients) {
-        const irNameLower = (ir.name_en || ir.name_inci).toLowerCase()
-        if (lowerIngredients.some(i => i.includes(irNameLower) || irNameLower.includes(i))) {
-          const reason = ir.is_fragrance
-            ? 'fragrance ingredient'
-            : `safety rating ${ir.safety_rating}/5`
-          warnings.push(`Contains ${ir.name_en || ir.name_inci} (${reason}) — may irritate sensitive skin`)
-        }
+  // --- Irritant warnings for sensitive skin (resolved ingredients only) ---
+  if (profile.skin_type === 'sensitive') {
+    for (const r of resolved) {
+      const lowSafety = r.safety_rating !== null && r.safety_rating <= 2
+      if (lowSafety || r.is_fragrance) {
+        const reason = r.is_fragrance ? 'fragrance ingredient' : `safety rating ${r.safety_rating}/5`
+        warnings.push(`Contains ${displayName(r)} (${reason}) — may irritate sensitive skin`)
       }
     }
-  } catch {
-    // Fall through — non-critical
   }
 
-  // --- Database-driven beneficial ingredient notes ---
-  // Query ingredient effectiveness for the user's skin type
-  try {
-    const { data: effectiveIngredients } = await supabase
-      .from('ss_ingredient_effectiveness')
-      .select(`
-        effectiveness_score, concern,
-        ingredient:ss_ingredients(name_en, name_inci)
-      `)
-      .or(`skin_type.eq.${profile.skin_type || 'normal'},skin_type.eq.__all__`)
-      .gte('effectiveness_score', 0.70)
-      .gte('sample_size', 5)
-      .order('effectiveness_score', { ascending: false })
-
-    if (effectiveIngredients?.length) {
-      for (const ei of effectiveIngredients) {
-        const ing = ei.ingredient as unknown as Record<string, unknown> | null
-        if (!ing) continue
-        const ingName = (ing.name_en as string) || (ing.name_inci as string) || ''
-        const ingNameLower = ingName.toLowerCase()
-        if (lowerIngredients.some(i => i.includes(ingNameLower) || ingNameLower.includes(i))) {
-          const pct = Math.round((ei.effectiveness_score as number) * 100)
-          notes.push(`Contains ${ingName} — ${pct}% effective for ${ei.concern} with ${profile.skin_type} skin`)
-        }
-      }
-    }
-  } catch {
-    // Fall through — non-critical
-  }
-
-  // --- Database-driven concern-specific notes ---
-  // If the effectiveness query above didn't find concern-specific matches,
-  // check if the user's concerns match ingredient effectiveness data
-  if (profile.skin_concerns?.length) {
+  // --- Beneficial ingredient notes (effectiveness data, resolved-only) ---
+  // Pull effectiveness rows scoped to the user's skin type, then filter to
+  // ingredients actually in this product (resolvedIds). No more substring
+  // matching against the full catalog.
+  if (resolvedIds.size > 0) {
     try {
-      for (const concern of profile.skin_concerns) {
-        const { data: concernEffective } = await supabase
-          .from('ss_ingredient_effectiveness')
-          .select(`
-            effectiveness_score, concern,
-            ingredient:ss_ingredients(name_en, name_inci)
-          `)
-          .eq('concern', concern.toLowerCase())
-          .gte('effectiveness_score', 0.60)
-          .gte('sample_size', 5)
-          .order('effectiveness_score', { ascending: false })
-          .limit(10)
+      const { data: effectiveIngredients } = await supabase
+        .from('ss_ingredient_effectiveness')
+        .select('ingredient_id, effectiveness_score, concern')
+        .eq('skin_type', profile.skin_type || 'normal')
+        .gte('effectiveness_score', 0.7)
+        .gte('sample_size', 5)
+        .in('ingredient_id', Array.from(resolvedIds))
+        .order('effectiveness_score', { ascending: false })
 
-        if (concernEffective?.length) {
-          for (const ce of concernEffective) {
-            const ing = ce.ingredient as unknown as Record<string, unknown> | null
-            if (!ing) continue
-            const ingName = (ing.name_en as string) || (ing.name_inci as string) || ''
-            const ingNameLower = ingName.toLowerCase()
-            if (lowerIngredients.some(i => i.includes(ingNameLower) || ingNameLower.includes(i))) {
-              notes.push(`Contains ${ingName} — targets your concern: ${concern}`)
-            }
+      if (effectiveIngredients?.length) {
+        const resolvedById = new Map(resolved.map((r) => [r.id, r]))
+        for (const ei of effectiveIngredients) {
+          const r = resolvedById.get(ei.ingredient_id as string)
+          if (!r) continue
+          const pct = Math.round((ei.effectiveness_score as number) * 100)
+          notes.push(
+            `Contains ${displayName(r)} — ${pct}% effective for ${ei.concern} with ${profile.skin_type} skin`
+          )
+        }
+      }
+    } catch {
+      // Fall through — non-critical
+    }
+  }
+
+  // --- Concern-specific notes (resolved-only) ---
+  if (profile.skin_concerns?.length && resolvedIds.size > 0) {
+    try {
+      const concernsLower = profile.skin_concerns.map((c: string) => c.toLowerCase())
+      const { data: concernEffective } = await supabase
+        .from('ss_ingredient_effectiveness')
+        .select('ingredient_id, effectiveness_score, concern')
+        .in('concern', concernsLower)
+        .gte('effectiveness_score', 0.6)
+        .gte('sample_size', 5)
+        .in('ingredient_id', Array.from(resolvedIds))
+        .order('effectiveness_score', { ascending: false })
+
+      if (concernEffective?.length) {
+        const resolvedById = new Map(resolved.map((r) => [r.id, r]))
+        const alreadyNoted = new Set(notes)
+        for (const ce of concernEffective) {
+          const r = resolvedById.get(ce.ingredient_id as string)
+          if (!r) continue
+          const line = `Contains ${displayName(r)} — targets your concern: ${ce.concern}`
+          if (!alreadyNoted.has(line)) {
+            notes.push(line)
+            alreadyNoted.add(line)
           }
         }
       }

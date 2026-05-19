@@ -47,6 +47,15 @@ interface LazyImageProps {
    * Firefox that eager-loading is the safer default for LCP candidates.
    */
   priority?: boolean
+  /**
+   * v10.7.0 Phase I: fallback element rendered when the image fails to load
+   * (404, CORS, network error). Stale Olive Young CDN hot-links produced the
+   * browser's broken-image glyph on Library + Browse surfaces; this prop lets
+   * the caller hand in a Package icon (or any node) so the card stays clean
+   * when the URL doesn't resolve. When omitted, a transparent pixel renders
+   * (legacy behavior).
+   */
+  fallback?: React.ReactNode
 }
 
 // Transparent 1x1 pixel placeholder — prevents broken image icons before load
@@ -59,10 +68,12 @@ export default function LazyImage({
   className = '',
   rootMargin = '200px',
   priority = false,
+  fallback,
 }: LazyImageProps) {
   // Priority images skip the observer entirely and load immediately. This is
   // the Core Web Vitals-correct behavior for above-the-fold LCP candidates.
   const [inView, setInView] = useState(priority)
+  const [errored, setErrored] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
 
   useEffect(() => {
@@ -95,6 +106,20 @@ export default function LazyImage({
     return () => observer.disconnect()
   }, [rootMargin, priority])
 
+  // Reset error state when src changes so the next URL gets a fair attempt.
+  useEffect(() => {
+    setErrored(false)
+  }, [src])
+
+  // When the image fails to load AND a fallback is provided, render the
+  // fallback in place of the broken-image glyph. Stale CDN hot-links are
+  // common across the 5,800+ catalog (Olive Young, Soko Glam, etc.), and
+  // without an onError handler the browser shows the "?" / broken-image
+  // icon Bailey complained about on every Library card.
+  if (errored && fallback) {
+    return <>{fallback}</>
+  }
+
   return (
     <img
       ref={imgRef}
@@ -104,6 +129,7 @@ export default function LazyImage({
       loading={priority ? 'eager' : 'lazy'}
       decoding="async"
       referrerPolicy="no-referrer"
+      onError={() => setErrored(true)}
       {...(priority && { fetchPriority: 'high' })}
     />
   )

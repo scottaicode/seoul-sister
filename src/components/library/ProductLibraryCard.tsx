@@ -86,7 +86,12 @@ export default function ProductLibraryCard({
       )}
       <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-white/5 flex items-center justify-center">
         {imageUrl ? (
-          <LazyImage src={imageUrl} alt={displayName} className="w-full h-full object-cover" />
+          <LazyImage
+            src={imageUrl}
+            alt={displayName}
+            className="w-full h-full object-cover"
+            fallback={<Package className="w-7 h-7 text-white/30" />}
+          />
         ) : (
           <Package className="w-7 h-7 text-white/30" />
         )}

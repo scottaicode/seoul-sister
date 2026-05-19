@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, X } from 'lucide-react'
+import { Plus, X, Heart, AlertTriangle } from 'lucide-react'
 import ProductLibraryCard from './ProductLibraryCard'
 
 export interface OwnedItem {
@@ -15,13 +15,19 @@ export interface OwnedItem {
   created_at: string
 }
 
+export type ReactionType = 'holy_grail' | 'broke_me_out'
+
 interface Props {
   items: OwnedItem[]
+  /** Map of product_id → current reaction tag (if any). Null product_ids never have reactions. */
+  reactions: Map<string, ReactionType>
   onAdd: () => void
   onRemove: (id: string, name: string) => void
+  /** Toggle a reaction on a product. If current === new reaction, clears it; otherwise sets it. */
+  onToggleReaction: (productId: string, name: string, reaction: ReactionType, currentReaction: ReactionType | null) => void
 }
 
-export default function OwnedSection({ items, onAdd, onRemove }: Props) {
+export default function OwnedSection({ items, reactions, onAdd, onRemove, onToggleReaction }: Props) {
   return (
     <section id="section-owned" className="space-y-4">
       <div className="flex items-center justify-between">
@@ -50,30 +56,78 @@ export default function OwnedSection({ items, onAdd, onRemove }: Props) {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {items.map((item) => (
-            <ProductLibraryCard
-              key={item.id}
-              productId={item.product_id}
-              displayName={item.display_name}
-              displayBrand={item.display_brand}
-              imageUrl={item.image_url}
-              category={item.category}
-              metadata={item.notes}
-              actionSlot={
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    onRemove(item.id, item.display_name)
-                  }}
-                  className="inline-flex items-center gap-1 text-[11px] text-white/50 hover:text-rose-300 transition"
-                >
-                  <X className="w-3 h-3" />
-                  Remove
-                </button>
-              }
-            />
-          ))}
+          {items.map((item) => {
+            const currentReaction = item.product_id ? reactions.get(item.product_id) ?? null : null
+            return (
+              <ProductLibraryCard
+                key={item.id}
+                productId={item.product_id}
+                displayName={item.display_name}
+                displayBrand={item.display_brand}
+                imageUrl={item.image_url}
+                category={item.category}
+                metadata={item.notes}
+                actionSlot={
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {/* Reaction buttons — disabled for custom (null product_id) entries
+                        because reactions are keyed by product_id in ss_user_product_reactions. */}
+                    {item.product_id && (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            onToggleReaction(item.product_id!, item.display_name, 'holy_grail', currentReaction)
+                          }}
+                          aria-label={currentReaction === 'holy_grail' ? 'Clear Holy Grail tag' : 'Tag as Holy Grail'}
+                          title={currentReaction === 'holy_grail' ? 'Clear Holy Grail tag' : 'Tag as Holy Grail'}
+                          className={`inline-flex items-center gap-1 text-[11px] transition ${
+                            currentReaction === 'holy_grail'
+                              ? 'text-emerald-300 hover:text-emerald-200'
+                              : 'text-white/40 hover:text-emerald-300'
+                          }`}
+                        >
+                          <Heart
+                            className="w-3 h-3"
+                            fill={currentReaction === 'holy_grail' ? 'currentColor' : 'none'}
+                          />
+                          Holy Grail
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            onToggleReaction(item.product_id!, item.display_name, 'broke_me_out', currentReaction)
+                          }}
+                          aria-label={currentReaction === 'broke_me_out' ? 'Clear Broke Me Out tag' : 'Tag as Broke Me Out'}
+                          title={currentReaction === 'broke_me_out' ? 'Clear Broke Me Out tag' : 'Tag as Broke Me Out'}
+                          className={`inline-flex items-center gap-1 text-[11px] transition ${
+                            currentReaction === 'broke_me_out'
+                              ? 'text-rose-300 hover:text-rose-200'
+                              : 'text-white/40 hover:text-rose-300'
+                          }`}
+                        >
+                          <AlertTriangle className="w-3 h-3" />
+                          Broke me out
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        onRemove(item.id, item.display_name)
+                      }}
+                      className="inline-flex items-center gap-1 text-[11px] text-white/40 hover:text-rose-300 transition ml-auto"
+                    >
+                      <X className="w-3 h-3" />
+                      Remove
+                    </button>
+                  </div>
+                }
+              />
+            )
+          })}
         </div>
       )}
     </section>

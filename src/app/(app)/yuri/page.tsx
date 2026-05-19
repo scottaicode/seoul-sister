@@ -189,8 +189,11 @@ export default function YuriPage() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-white/10 backdrop-blur-md border-b border-white/10 flex-shrink-0">
+      {/* Header — v10.7.0 Phase I: extra top padding (pt-5 vs py-3) so the
+          "Yuri / AI Beauty Advisor" subheader doesn't visually crash into the
+          AppShell logo above. Bailey caught the crowding on May 19 ("can you
+          scoot Seoul sister over its bugging me how close they are 🥺"). */}
+      <div className="flex items-center justify-between px-4 pt-5 pb-3 bg-white/10 backdrop-blur-md border-b border-white/10 flex-shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowHistory(true)}

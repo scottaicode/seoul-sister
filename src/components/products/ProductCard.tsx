@@ -96,6 +96,7 @@ export default function ProductCard({ product, trendingInfo, basePath = '/produc
             alt={product.name_en}
             className="w-full h-full object-cover rounded-xl"
             priority={priority}
+            fallback={<Package className="w-6 h-6 text-gold" strokeWidth={1.5} />}
           />
         ) : (
           <Package className="w-6 h-6 text-gold" strokeWidth={1.5} />

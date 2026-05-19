@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Sparkles, Loader2, BookOpen } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import OwnedSection, { type OwnedItem } from '@/components/library/OwnedSection'
+import OwnedSection, { type OwnedItem, type ReactionType } from '@/components/library/OwnedSection'
 import SavedSection, { type SavedItem } from '@/components/library/SavedSection'
 import InRoutineSection, { type RoutineStep } from '@/components/library/InRoutineSection'
 import TaggedSection, { type TagEntry } from '@/components/library/TaggedSection'
@@ -134,6 +134,90 @@ function LibraryPageInner() {
     [load]
   )
 
+  // v10.7.0 Phase C: Manual reaction controls. Toggles holy_grail/broke_me_out
+  // tags via the new POST/DELETE /api/library/reactions endpoints. Replaces the
+  // user's old trap where the only way to clear a bad auto-tag was to ask Yuri
+  // (whose only mutation path was the same buggy auto-extraction that wrote
+  // the bad tag in the first place).
+  const handleToggleReaction = useCallback(
+    async (
+      productId: string,
+      name: string,
+      reaction: ReactionType,
+      currentReaction: ReactionType | null
+    ) => {
+      const isClearing = currentReaction === reaction
+      const label = reaction === 'holy_grail' ? 'Holy Grail' : 'Broke Me Out'
+      const confirmed = window.confirm(
+        isClearing
+          ? `Remove the ${label} tag from "${name}"?`
+          : currentReaction
+            ? `Replace the current tag on "${name}" with ${label}?`
+            : `Tag "${name}" as ${label}?`
+      )
+      if (!confirmed) return
+
+      setBusyAction(`react-${productId}`)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) return
+
+        const res = isClearing
+          ? await fetch(`/api/library/reactions?product_id=${encodeURIComponent(productId)}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            })
+          : await fetch('/api/library/reactions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({ product_id: productId, reaction_type: reaction }),
+            })
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({ error: 'Failed' }))
+          throw new Error(body.error || 'Failed to update tag')
+        }
+        await load()
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Failed to update tag')
+      } finally {
+        setBusyAction(null)
+      }
+    },
+    [load]
+  )
+
+  const handleClearReaction = useCallback(
+    async (productId: string, name: string) => {
+      const confirmed = window.confirm(`Remove the tag from "${name}"?`)
+      if (!confirmed) return
+
+      setBusyAction(`react-${productId}`)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) return
+
+        const res = await fetch(
+          `/api/library/reactions?product_id=${encodeURIComponent(productId)}`,
+          { method: 'DELETE', headers: { Authorization: `Bearer ${session.access_token}` } }
+        )
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({ error: 'Failed' }))
+          throw new Error(body.error || 'Failed to clear tag')
+        }
+        await load()
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Failed to clear tag')
+      } finally {
+        setBusyAction(null)
+      }
+    },
+    [load]
+  )
+
   const handleRemove = useCallback(
     async (id: string, displayName: string) => {
       const confirmed = window.confirm(`Remove "${displayName}" from your collection?`)
@@ -204,8 +288,21 @@ function LibraryPageInner() {
 
       <OwnedSection
         items={data.owned}
+        reactions={(() => {
+          // Build product_id → reaction map from both tagged buckets so the
+          // Owned cards can show current tag state.
+          const m = new Map<string, ReactionType>()
+          for (const t of data.tagged.holy_grail) {
+            if (t.product_id) m.set(t.product_id, 'holy_grail')
+          }
+          for (const t of data.tagged.broke_me_out) {
+            if (t.product_id) m.set(t.product_id, 'broke_me_out')
+          }
+          return m
+        })()}
         onAdd={() => setAddOpen(true)}
         onRemove={handleRemove}
+        onToggleReaction={handleToggleReaction}
       />
 
       <SavedSection items={data.saved} />
@@ -216,7 +313,11 @@ function LibraryPageInner() {
         onMarkOwned={handleMarkOwned}
       />
 
-      <TaggedSection holyGrail={data.tagged.holy_grail} brokeMeOut={data.tagged.broke_me_out} />
+      <TaggedSection
+        holyGrail={data.tagged.holy_grail}
+        brokeMeOut={data.tagged.broke_me_out}
+        onClearReaction={handleClearReaction}
+      />
 
       <ExpiringSection items={data.expiring} total={data.expiring_total} />
 

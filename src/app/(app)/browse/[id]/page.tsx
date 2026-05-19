@@ -373,7 +373,15 @@ export default function ProductDetailPage() {
       )}
 
       {/* Personalized Enrichment Intelligence */}
-      <ProductEnrichment productId={id} />
+      {/* v10.7.0 Phase G: passing product name/brand surfaces the "Ask Yuri if
+          this is right for you" CTA at the top of the enrichment, prefilled
+          with product context. Per the Yuri Sole Authority Principle, this is
+          the single recommendation surface on the page. */}
+      <ProductEnrichment
+        productId={id}
+        productName={product.name_en}
+        productBrand={product.brand_en}
+      />
 
       {/* Formulation History */}
       <FormulationHistory productId={id} />

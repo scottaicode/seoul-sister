@@ -16,28 +16,46 @@ import ProductEnrichment from './ProductEnrichment'
 
 interface Props {
   productId: string
+  productName: string | null
+  productBrand: string | null
   ingredientCount: number
 }
 
-export default function ProductIntelligenceSection({ productId, ingredientCount }: Props) {
+export default function ProductIntelligenceSection({ productId, productName, productBrand, ingredientCount }: Props) {
   const [isSubscriber, setIsSubscriber] = useState<boolean | null>(null)
 
   useEffect(() => {
     async function checkAuth() {
+      // v10.7.0 Phase F: server-side subscription check via /api/me/subscription.
+      // The previous client-side `supabase.from('ss_user_profiles').select('plan')`
+      // path was unreliable on the public /products/[id] route — Bailey hit a
+      // false-negative despite plan='pro_monthly' in the DB, which surfaced as
+      // permanently-blurred gated teasers on every product detail page she
+      // opened. The server endpoint uses the same hasActiveSubscription helper
+      // every AI route uses (Yuri chat, scan, etc.), so behavior is consistent
+      // across auth-gated surfaces.
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      if (!session?.access_token) {
         setIsSubscriber(false)
         return
       }
 
-      // Check if user has an active subscription
-      const { data: profile } = await supabase
-        .from('ss_user_profiles')
-        .select('plan')
-        .eq('user_id', session.user.id)
-        .maybeSingle()
-
-      setIsSubscriber(!!profile?.plan && profile.plan !== 'free')
+      try {
+        const res = await fetch('/api/me/subscription', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          cache: 'no-store',
+        })
+        if (!res.ok) {
+          setIsSubscriber(false)
+          return
+        }
+        const body = (await res.json()) as { active: boolean }
+        setIsSubscriber(!!body.active)
+      } catch {
+        // Network failure — fail closed (treat as non-subscriber) rather than
+        // accidentally flashing premium content to a non-subscriber.
+        setIsSubscriber(false)
+      }
     }
 
     checkAuth()
@@ -50,7 +68,11 @@ export default function ProductIntelligenceSection({ productId, ingredientCount 
   if (isSubscriber) {
     return (
       <div className="mb-8">
-        <ProductEnrichment productId={productId} />
+        <ProductEnrichment
+          productId={productId}
+          productName={productName ?? undefined}
+          productBrand={productBrand ?? undefined}
+        />
       </div>
     )
   }

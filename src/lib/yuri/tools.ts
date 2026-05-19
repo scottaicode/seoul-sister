@@ -135,18 +135,31 @@ async function smartProductSearch(
  * lengths tie. Without this, a query like "Goodal Green Tangerine Vita C"
  * resolves to the highest-rated *Cream* over the more specific *Serum* the
  * user actually asked for.
+ *
+ * Returns `match_quality`:
+ *  - 'exact'     — chosen product's brand+name contains the full query as a substring
+ *  - 'all_terms' — every non-stop-word term from the query appears in brand+name (but not as a contiguous substring)
+ *  - 'partial'   — fell back to single-term match; query terms don't all appear (DANGEROUS for write ops)
+ *
+ * Write-path callers (update_user_product, mark/clear_product_reaction, etc.)
+ * must treat 'partial' as "do not silently substitute" — the right behavior is
+ * to save as a custom entry or refuse, not write the product_id.
  */
 async function resolveProductByName(
   db: SupabaseClient,
   productName: string
-): Promise<{ id: string; name_en: string; brand_en: string } | null> {
+): Promise<
+  | { id: string; name_en: string; brand_en: string; match_quality: 'exact' | 'all_terms' | 'partial' }
+  | null
+> {
   const results = await smartProductSearch(db, productName, {
     limit: 10,
     selectCols: 'id, name_en, brand_en, rating_avg',
   })
   if (!results.length) return null
 
-  const terms = productName.toLowerCase().split(/\s+/).filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
+  const queryLower = productName.toLowerCase()
+  const terms = queryLower.split(/\s+/).filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
 
   // Filter to candidates where ALL query terms appear in combined brand+name
   const allTermMatches = results.filter(p => {
@@ -167,10 +180,43 @@ async function resolveProductByName(
   })
 
   const chosen = candidates[0]
+  const combinedLower = `${(chosen.brand_en as string) || ''} ${(chosen.name_en as string) || ''}`.toLowerCase()
+
+  // Determine match quality from the chosen result
+  let match_quality: 'exact' | 'all_terms' | 'partial'
+  if (combinedLower.includes(queryLower)) {
+    match_quality = 'exact'
+  } else if (terms.length > 0 && terms.every(t => combinedLower.includes(t))) {
+    match_quality = 'all_terms'
+  } else {
+    match_quality = 'partial'
+  }
+
   return {
     id: chosen.id as string,
     name_en: chosen.name_en as string,
     brand_en: chosen.brand_en as string,
+    match_quality,
+  }
+}
+
+/**
+ * Strict variant exported for background extraction paths (Phase D auto-detection
+ * hardening). Only returns a result when the match quality is 'exact' or
+ * 'all_terms' — returns null on 'partial' matches. Callers can use the return
+ * directly as "confident product ID" without having to inspect match_quality.
+ */
+export async function resolveProductByNameStrict(
+  db: SupabaseClient,
+  productName: string
+): Promise<{ id: string; name_en: string; brand_en: string } | null> {
+  const match = await resolveProductByName(db, productName)
+  if (!match) return null
+  if (match.match_quality === 'partial') return null
+  return {
+    id: match.id,
+    name_en: match.name_en,
+    brand_en: match.brand_en,
   }
 }
 
@@ -453,6 +499,51 @@ export const YURI_TOOLS: ToolDef[] = [
       required: ['product_name'],
     },
   },
+  // --- v10.7.0: mark_product_reaction (Phase A.3) ---
+  {
+    name: 'mark_product_reaction',
+    description:
+      'Tag a product in the user\'s library as a holy_grail (a product they love and would repurchase) or broke_me_out (a product that caused a negative reaction). Use when the user clearly states one of these reactions — not for casual mentions. The product must already be in their library; if it isn\'t, refuse and offer to add it first. After the tool returns, your reply MUST quote the tool\'s `message` field verbatim — it tells the user exactly what was tagged or why the tag was refused.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        product_id: {
+          type: 'string',
+          description: 'PREFERRED: Product UUID from a prior search_products / get_product_details call. Bypasses name resolution.',
+        },
+        product_name: {
+          type: 'string',
+          description: 'Product name (used when product_id isn\'t available). Required if product_id is missing.',
+        },
+        reaction_type: {
+          type: 'string',
+          enum: ['holy_grail', 'broke_me_out'],
+          description: 'holy_grail = user loves this and would repurchase. broke_me_out = product caused breakouts, irritation, or other negative reaction.',
+        },
+        notes: { type: 'string', description: 'Optional context (e.g., "use it every PM, never breaks me out")' },
+      },
+      required: ['reaction_type'],
+    },
+  },
+  // --- v10.7.0: clear_product_reaction (Phase A.3) ---
+  {
+    name: 'clear_product_reaction',
+    description:
+      'Remove a holy_grail or broke_me_out tag from a product. Use when the user corrects a previous tag, or when a tag was set by mistake (auto-detection glitch, misextraction). After the tool returns, your reply MUST quote the tool\'s `message` field verbatim.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        product_id: {
+          type: 'string',
+          description: 'PREFERRED: Product UUID from a prior search_products / get_product_details call.',
+        },
+        product_name: {
+          type: 'string',
+          description: 'Product name (used when product_id isn\'t available).',
+        },
+      },
+    },
+  },
   // --- get_routine_context: AI-First data tool (replaces rigid verify_routine) ---
   {
     name: 'get_routine_context',
@@ -548,6 +639,10 @@ export async function executeYuriTool(
         return await executeRemoveFromRoutine(input, userId)
       case 'update_user_product':
         return await executeUpdateUserProduct(input, userId)
+      case 'mark_product_reaction':
+        return await executeMarkProductReaction(input, userId)
+      case 'clear_product_reaction':
+        return await executeClearProductReaction(input, userId)
       case 'get_routine_context':
         return await executeGetRoutineContext(input, userId)
       case 'save_routine':
@@ -1968,17 +2063,27 @@ async function executeUpdateUserProduct(
     return JSON.stringify({ error: 'product_name is required' })
   }
 
-  // Try to resolve against ss_products
-  let productId: string | null = null
+  // Resolve against ss_products with match-quality awareness.
+  // Bailey's v10.7.0 bug: resolver returned Dr.ppae Honey Heel Patch for "Hero Mighty
+  // Patches" (loose token-match), and the old code silently saved that wrong
+  // product_id with Bailey's custom_name. Now we only trust the catalog ID when
+  // the match is confident; loose matches fall back to custom-entry behavior.
   const match = await resolveProductByName(db, productName)
-  if (match) {
-    productId = match.id
-  }
+  const isConfidentMatch = match !== null && (match.match_quality === 'exact' || match.match_quality === 'all_terms')
+  const productId = isConfidentMatch ? match!.id : null
+  const matchClassification: 'matched' | 'matched_loose' | 'no_db_match' = match === null
+    ? 'no_db_match'
+    : isConfidentMatch
+      ? 'matched'
+      : 'matched_loose'
 
-  // Check if the user already has this product tracked
+  // Check if the user already has this product tracked.
+  // - If we have a confident product_id, look for an existing row by that ID.
+  // - Otherwise look by custom_name (case-insensitive) so duplicate destashes
+  //   of the same custom entry don't pile up.
   let existingQuery = db
     .from('ss_user_products')
-    .select('id')
+    .select('id, product_id, custom_name, status')
     .eq('user_id', userId)
 
   if (productId) {
@@ -1987,24 +2092,17 @@ async function executeUpdateUserProduct(
     existingQuery = existingQuery.ilike('custom_name', productName)
   }
 
-  const { data: existing } = await existingQuery.limit(1).single()
+  const { data: existing } = await existingQuery
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
-  const record: Record<string, unknown> = {
-    user_id: userId,
-    custom_name: productName,
-    custom_brand: brand || (match ? (match as Record<string, unknown>).brand_en : null),
-    category: category || (match ? (match as Record<string, unknown>).category : null),
-    texture_weight: textureWeight ?? null,
-    notes: notes ?? null,
-    status,
-    learned_from: 'conversation',
-  }
-  if (productId) {
-    record.product_id = productId
-  }
+  // Build display labels for the authoritative message.
+  const displayLabel = productName // Always echo what the user said
+  const matchedLabel = match ? `${match.brand_en} ${match.name_en}` : null
 
   if (existing) {
-    // Update existing record — only set fields that were explicitly provided
+    // Update existing record — only set fields that were explicitly provided.
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
     if (brand !== undefined) updates.custom_brand = brand
     if (category !== undefined) updates.category = category
@@ -2019,28 +2117,300 @@ async function executeUpdateUserProduct(
 
     if (error) return JSON.stringify({ error: `Failed to update product: ${error.message}` })
 
+    // Authoritative message. Yuri must quote this verbatim per advisor system prompt.
+    let message: string
+    if (status === 'destashed' || status === 'finished') {
+      message = `Marked "${displayLabel}" as ${status} in your library.`
+    } else if (textureWeight) {
+      message = `Updated "${displayLabel}" in your library — texture weight set to ${textureWeight}/10.`
+    } else {
+      message = `Updated "${displayLabel}" in your library.`
+    }
+
     return JSON.stringify({
       success: true,
       action: 'updated',
-      message: `Updated ${productName}${textureWeight ? ` — texture weight set to ${textureWeight}/10` : ''}.`,
-      product_name: productName,
-      texture_weight: textureWeight,
-    })
-  } else {
-    // Insert new record
-    const { error } = await db.from('ss_user_products').insert(record)
-
-    if (error) return JSON.stringify({ error: `Failed to save product: ${error.message}` })
-
-    return JSON.stringify({
-      success: true,
-      action: 'created',
-      message: `Saved ${productName} to your product inventory${textureWeight ? ` with texture ${textureWeight}/10` : ''}.`,
-      product_name: productName,
+      matched: matchClassification,
+      message,
+      product_name: displayLabel,
       matched_in_db: !!productId,
       texture_weight: textureWeight,
     })
   }
+
+  // No existing row — insert a new one. The status field decides whether this
+  // is a fresh acquisition (active) or a tracked-but-not-owned entry (destashed/finished).
+  const record: Record<string, unknown> = {
+    user_id: userId,
+    product_id: productId, // NULL when match is loose or no match — never silently substitute
+    custom_name: productName,
+    custom_brand: brand || (productId && match ? match.brand_en : null),
+    category: category || null,
+    texture_weight: textureWeight ?? null,
+    notes: notes ?? null,
+    status,
+    learned_from: 'conversation',
+  }
+
+  const { error } = await db.from('ss_user_products').insert(record)
+  if (error) return JSON.stringify({ error: `Failed to save product: ${error.message}` })
+
+  // Authoritative message construction. Honest about what was saved and why.
+  let message: string
+  if (matchClassification === 'matched') {
+    message = `Added "${matchedLabel}" to your library${status !== 'active' ? ` (status: ${status})` : ''}.`
+    if (textureWeight) message += ` Texture weight: ${textureWeight}/10.`
+  } else if (matchClassification === 'matched_loose') {
+    // The dangerous case — closest catalog match isn't quite what was asked for.
+    // Save as custom entry (product_id=NULL) and surface the partial match honestly.
+    message =
+      `Saved "${displayLabel}" to your library as a custom entry${status !== 'active' ? ` (status: ${status})` : ''}.\n\n` +
+      `⚠️ Closest catalog match was "${matchedLabel}", but the names don't fully overlap — kept yours as a custom entry to avoid mixing the wrong product into your skin file. If you meant the catalog product, say so and I'll switch it.`
+  } else {
+    // No catalog hit at all — clean custom entry path.
+    message =
+      `Saved "${displayLabel}" to your library as a custom entry${status !== 'active' ? ` (status: ${status})` : ''}. ` +
+      `It's not in our K-beauty catalog (might be a non-Korean brand or a newer release), but it's logged for your records.`
+    if (textureWeight) message += ` Texture weight: ${textureWeight}/10.`
+  }
+
+  return JSON.stringify({
+    success: true,
+    action: 'created',
+    matched: matchClassification,
+    matched_catalog_name: matchedLabel,
+    message,
+    product_name: displayLabel,
+    matched_in_db: !!productId,
+    texture_weight: textureWeight,
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Tool: mark_product_reaction (v10.7.0 Phase A)
+// ---------------------------------------------------------------------------
+// Tags a product in ss_user_product_reactions as holy_grail or broke_me_out.
+// Replaces the auto-detection path for Bailey's manual cases — Yuri can now
+// honestly tag/clear without relying on the buggy 50-char ilike extraction.
+//
+// Honesty rules:
+//   - Ownership check: only tag if the product is in the user's inventory
+//     (ss_user_products, any status). If not owned, refuse and offer to add.
+//   - Catalog match must be 'exact' or 'all_terms' — never tag based on a
+//     partial fuzzy match. The whole point of this tool is to undo bugs that
+//     loose matches caused; making it loose-tolerant would reintroduce them.
+//   - Tool result includes a `message` field the system prompt requires Yuri
+//     to quote verbatim. If something refused or was loose-matched, the user
+//     sees it.
+
+async function executeMarkProductReaction(
+  input: Record<string, unknown>,
+  userId: string
+): Promise<string> {
+  const db = getServiceClient()
+  const inputProductId = input.product_id as string | undefined
+  const productName = input.product_name as string | undefined
+  const reactionType = input.reaction_type as string | undefined
+  const notes = input.notes as string | undefined
+
+  if (!reactionType || (reactionType !== 'holy_grail' && reactionType !== 'broke_me_out')) {
+    return JSON.stringify({
+      error: 'reaction_type must be holy_grail or broke_me_out',
+      message: 'I need to know whether to tag this as a holy_grail or broke_me_out — could you clarify?',
+    })
+  }
+
+  // Resolve to a product_id. Trust an explicit product_id; otherwise resolve by name
+  // with strict matching (no loose substitutions).
+  let productId: string | null = null
+  let resolvedLabel: string | null = null
+
+  if (inputProductId) {
+    const { data: byId } = await db
+      .from('ss_products')
+      .select('id, name_en, brand_en')
+      .eq('id', inputProductId)
+      .maybeSingle()
+    if (byId) {
+      productId = byId.id
+      resolvedLabel = `${byId.brand_en} ${byId.name_en}`
+    }
+  }
+
+  if (!productId && productName) {
+    const match = await resolveProductByName(db, productName)
+    if (match && (match.match_quality === 'exact' || match.match_quality === 'all_terms')) {
+      productId = match.id
+      resolvedLabel = `${match.brand_en} ${match.name_en}`
+    } else if (match) {
+      // Loose match — refuse rather than silently substitute.
+      return JSON.stringify({
+        success: false,
+        matched: 'matched_loose',
+        message:
+          `I didn't tag anything. The closest catalog match for "${productName}" is "${match.brand_en} ${match.name_en}", but the names don't fully overlap — I don't want to mark the wrong product as your ${reactionType}. ` +
+          `If you meant the catalog product, tell me and I'll search again with the exact name.`,
+      })
+    } else {
+      return JSON.stringify({
+        success: false,
+        matched: 'no_db_match',
+        message:
+          `I couldn't find "${productName}" in our K-beauty catalog, so I can't tag it. Want me to add it to your library first as a custom entry, then tag it from there?`,
+      })
+    }
+  }
+
+  if (!productId) {
+    return JSON.stringify({
+      error: 'Could not resolve product',
+      message: 'I need either the product ID or a product name to tag this. Tell me which product you meant.',
+    })
+  }
+
+  // Ownership check — only tag products the user owns or has owned.
+  const { data: ownership } = await db
+    .from('ss_user_products')
+    .select('id, status')
+    .eq('user_id', userId)
+    .eq('product_id', productId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!ownership) {
+    return JSON.stringify({
+      success: false,
+      matched: 'not_in_library',
+      message:
+        `I don't see "${resolvedLabel}" in your library yet, so I can't tag it as your ${reactionType}. Want me to add it to your library first?`,
+    })
+  }
+
+  // Upsert reaction. Unique on (user_id, product_id) — replaces any prior reaction.
+  // Column is `reaction` (not `reaction_type`); no `source` column on this table.
+  const { error } = await db
+    .from('ss_user_product_reactions')
+    .upsert(
+      {
+        user_id: userId,
+        product_id: productId,
+        reaction: reactionType,
+        notes: notes || `Tagged via Yuri (${reactionType})`,
+      },
+      { onConflict: 'user_id,product_id' }
+    )
+
+  if (error) {
+    return JSON.stringify({
+      error: `Failed to mark reaction: ${error.message}`,
+      message: `Something went wrong saving the ${reactionType} tag for "${resolvedLabel}". Try again in a moment.`,
+    })
+  }
+
+  const reactionLabel = reactionType === 'holy_grail' ? 'Holy Grail' : 'Broke Me Out'
+  return JSON.stringify({
+    success: true,
+    matched: 'matched',
+    product_id: productId,
+    reaction_type: reactionType,
+    message: `Tagged "${resolvedLabel}" as ${reactionLabel} in your library.`,
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Tool: clear_product_reaction (v10.7.0 Phase A)
+// ---------------------------------------------------------------------------
+
+async function executeClearProductReaction(
+  input: Record<string, unknown>,
+  userId: string
+): Promise<string> {
+  const db = getServiceClient()
+  const inputProductId = input.product_id as string | undefined
+  const productName = input.product_name as string | undefined
+
+  // Resolve target product.
+  let productId: string | null = null
+  let resolvedLabel: string | null = null
+
+  if (inputProductId) {
+    const { data: byId } = await db
+      .from('ss_products')
+      .select('id, name_en, brand_en')
+      .eq('id', inputProductId)
+      .maybeSingle()
+    if (byId) {
+      productId = byId.id
+      resolvedLabel = `${byId.brand_en} ${byId.name_en}`
+    }
+  }
+
+  if (!productId && productName) {
+    const match = await resolveProductByName(db, productName)
+    if (match && (match.match_quality === 'exact' || match.match_quality === 'all_terms')) {
+      productId = match.id
+      resolvedLabel = `${match.brand_en} ${match.name_en}`
+    } else if (match) {
+      return JSON.stringify({
+        success: false,
+        matched: 'matched_loose',
+        message:
+          `I didn't clear anything. The closest catalog match for "${productName}" is "${match.brand_en} ${match.name_en}", but the names don't fully overlap. Confirm which product you mean and I'll try again.`,
+      })
+    } else {
+      return JSON.stringify({
+        success: false,
+        matched: 'no_db_match',
+        message: `I couldn't find "${productName}" in the catalog. If it's a custom library entry, mention that and I can clear it differently.`,
+      })
+    }
+  }
+
+  if (!productId) {
+    return JSON.stringify({
+      error: 'Could not resolve product',
+      message: 'I need either the product ID or a product name to clear a reaction. Which product did you mean?',
+    })
+  }
+
+  // Find what reaction (if any) is currently set, for honest reporting.
+  // Column name is `reaction` (not `reaction_type`).
+  const { data: existing } = await db
+    .from('ss_user_product_reactions')
+    .select('id, reaction')
+    .eq('user_id', userId)
+    .eq('product_id', productId)
+    .maybeSingle()
+
+  if (!existing) {
+    return JSON.stringify({
+      success: true,
+      matched: 'no_reaction',
+      message: `"${resolvedLabel}" didn't have a reaction tag, so there was nothing to clear. You're good.`,
+    })
+  }
+
+  const { error } = await db
+    .from('ss_user_product_reactions')
+    .delete()
+    .eq('id', existing.id)
+
+  if (error) {
+    return JSON.stringify({
+      error: `Failed to clear reaction: ${error.message}`,
+      message: `Something went wrong clearing the tag for "${resolvedLabel}". Try again in a moment.`,
+    })
+  }
+
+  const reactionLabel = existing.reaction === 'holy_grail' ? 'Holy Grail' : 'Broke Me Out'
+  return JSON.stringify({
+    success: true,
+    matched: 'matched',
+    product_id: productId,
+    cleared_reaction: existing.reaction,
+    message: `Cleared the ${reactionLabel} tag from "${resolvedLabel}".`,
+  })
 }
 
 // ---------------------------------------------------------------------------

@@ -709,6 +709,8 @@ export default async function PublicProductPage({ params }: Props) {
           {/* Personalized Intelligence — shows enrichment for subscribers, gate for anonymous */}
           <ProductIntelligenceSection
             productId={product.id}
+            productName={product.name_en}
+            productBrand={product.brand_en}
             ingredientCount={ingredients.length}
           />
 

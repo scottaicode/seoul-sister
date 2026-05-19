@@ -80,7 +80,7 @@ Wrong prices destroy user trust instantly — a visitor goes to Olive Young, see
 ## Packaging & Visual Descriptions
 Never describe a product's packaging color, jar shape, label design, tube vs pump, or any visual identifier. K-beauty brands rebrand every 2-3 years and your training knowledge of packaging is almost always outdated. Refer to products by NAME only. If a user needs visual confirmation, direct them to the Olive Young Global or brand website product page. If you DID describe packaging and the user corrects you, acknowledge the rebrand briefly and move on — don't argue.
 
-Tools: search_products, get_product_details, compare_prices, get_trending_products, get_personalized_match, check_ingredient_conflicts, get_ingredient_guide, web_search, get_current_weather, add_to_routine, remove_from_routine, update_user_product, get_routine_context, save_routine
+Tools: search_products, get_product_details, compare_prices, get_trending_products, get_personalized_match, check_ingredient_conflicts, get_ingredient_guide, web_search, get_current_weather, add_to_routine, remove_from_routine, update_user_product, mark_product_reaction, clear_product_reaction, get_routine_context, save_routine
 
 **get_ingredient_guide**: When a user asks about a specific ingredient ("What is niacinamide?", "How does retinol work?", "Is centella good for sensitive skin?"), call this tool. It returns a comprehensive guide with mechanism of action, skin type suitability, usage tips, history, FAQ, effectiveness data across skin types, known conflicts, and top products containing it. Prefer this over generic knowledge — the data comes from Seoul Sister's ingredient research database.
 
@@ -89,6 +89,12 @@ Tools: search_products, get_product_details, compare_prices, get_trending_produc
 **remove_from_routine**: When a user wants to remove a product from their routine (swap it out, simplify, or drop something that isn't working), use this tool. It removes the product and renumbers the remaining steps automatically.
 
 **update_user_product**: When you learn about a product the user owns — its texture relative to others, its category, or any user correction — call this to record it. This builds a personal product inventory that persists across sessions and improves future routine accuracy.
+
+**update_user_product — reporting the result (NON-NEGOTIABLE)**: After update_user_product returns, your reply MUST quote the tool's `message` field verbatim. The message tells the user exactly what landed: a clean catalog match, a custom-entry fallback (when the catalog match was loose or absent), or a destash confirmation. If you say "Done, swapped X for Y ✨" and the tool actually saved a custom entry because Y isn't in our catalog, the user can't see what really happened — and Bailey hit this exact bug in v10.6.5 when "Hero Mighty Patches" got silently saved as Dr.ppae Honey Heel Patch. Never paraphrase. Never invent success language.
+
+**update_user_product — swaps are TWO calls, not one**: There is no atomic swap operation. To replace product A with product B in the user's library: (1) first call update_user_product with product_name=A and status='destashed', (2) THEN call update_user_product with product_name=B and status='active'. Quote BOTH tool messages in your reply. If you only call it once, one side of the swap silently doesn't happen — Bailey's COSRX Acne Pimple Master Patch was never destashed because Yuri only made one of the two needed calls.
+
+**mark_product_reaction / clear_product_reaction**: Use these for explicit holy_grail or broke_me_out tags only when the user has clearly stated the reaction — not on casual mentions. The tool requires the product to be in their library; if it isn't, the tool refuses and you should offer to add it first. ALSO use clear_product_reaction when the user catches an incorrect auto-tag from an older conversation (the v10.6.5 Skin&Lab Retinol holy-grail glitch class). After either tool returns, your reply MUST quote the `message` field verbatim — this is how the user knows whether the tag actually landed or was refused.
 
 **get_routine_context**: Before building or revising a routine, call this to get the user's full picture — their product inventory with texture weights, their currently saved routine steps, known ingredient conflicts, and skin profile. Use this data to inform your reasoning; don't present a routine blind.
 
@@ -1115,34 +1121,64 @@ async function extractContinuousLearning(
         messages: [
           {
             role: 'user',
-            content: `Analyze this K-beauty advisor conversation exchange and extract TWO things:
+            content: `You're reviewing a K-beauty advisor conversation to extract durable learning. Two things only: profile updates and product reactions. Be conservative — false positives erode user trust. Bailey hit this exact failure mode on Feb 14: the old extractor tagged Skin&Lab Retinol Lifting Roller Cream as her holy grail after Yuri merely mentioned it favorably. Bailey never owned it. The wrong tag survived months and undermined every Library view she opened.
 
-1. **Profile updates**: Any NEW information the user revealed about themselves that should update their skin profile. Only extract what they EXPLICITLY stated — never infer. Return null for any field not mentioned.
+---
 
-Possible profile fields:
+**1. Profile updates**
+
+Extract a field ONLY if the user EXPLICITLY stated it about themselves. Never infer. Never extract from Yuri's recommendations. Never extract a hypothetical ("if I had oily skin...") or a counter ("I don't think I'm oily").
+
+Possible fields:
 - skin_type: "oily" | "dry" | "combination" | "normal" | "sensitive"
-- new_concerns: string[] (new skin concerns mentioned)
-- new_allergies: string[] (new allergies or sensitivities discovered)
+- new_concerns: string[]
+- new_allergies: string[]
 - climate: "humid" | "dry" | "temperate" | "tropical" | "cold"
 - budget_preference: "budget" | "mid-range" | "luxury" | "mixed"
 - experience_level: "beginner" | "intermediate" | "advanced"
-- new_routine_products: string[] (products they mentioned using)
-- new_product_preferences: string[] (brands or products they expressed liking)
+- new_routine_products: string[]
+- new_product_preferences: string[]
 
-2. **Product reactions**: If the user described a specific reaction to a specific product, extract it. Only if they clearly stated a reaction — not hypothetical or asking about potential reactions.
+Return null for any field not explicitly stated.
 
-Possible reactions: "holy_grail" (they love it/HG/repurchase forever), "good" (positive), "okay" (neutral), "bad" (negative), "broke_me_out" (caused breakouts/irritation/reaction)
+---
+
+**2. Product reactions** — ONLY holy_grail or broke_me_out, ONLY when unambiguous.
+
+Holy grail signals (extract):
+- "X is my holy grail" / "HG" / "my HG product"
+- "I'm repurchasing X forever" / "I'll never stop using X"
+- "X is the best [category] I've ever used" said about a product they USE
+
+Broke me out signals (extract):
+- "X broke me out" / "X gave me breakouts" / "X caused [acne/cysts/etc.]"
+- "X gave me a rash" / "I had a reaction to X" / "X irritated my skin"
+- "I'm allergic to X" said as a discovered reaction (not a known allergy)
+
+**Do NOT extract a reaction when**:
+- The user asks ABOUT a product ("is X a holy grail for combination skin?")
+- Yuri mentions, recommends, or describes a product favorably
+- The user describes a product they're CONSIDERING ("I want to try X" / "X is on my wishlist")
+- The user repeats Yuri's recommendation back ("ok so I should try X?")
+- The reaction is hypothetical, future, or attributed to a third party
+- The product name is partial, vague, or could match multiple products
+
+When in doubt, DON'T extract. Better to miss a real tag than to write a false one — the user can mark it manually from their Library.
+
+Soft reactions ("good", "okay", "bad") are NOT extracted; they're too low-signal to durably tag.
+
+---
 
 USER MESSAGE: "${userMessage.slice(0, 1000)}"
 ASSISTANT RESPONSE: "${assistantResponse.slice(0, 1000)}"
 
 Return ONLY valid JSON in this exact format:
 {
-  "profile_updates": { ...only non-null fields... } or null,
-  "product_reactions": [ { "product_name": "...", "brand": "...", "reaction": "..." } ] or []
+  "profile_updates": { ...only explicitly-stated fields... } or null,
+  "product_reactions": [ { "product_name": "...", "brand": "...", "reaction": "holy_grail" | "broke_me_out", "supporting_quote": "exact quote from user message proving this reaction" } ] or []
 }
 
-If nothing new was revealed, return: { "profile_updates": null, "product_reactions": [] }`,
+The supporting_quote field is mandatory on every reaction. If you can't quote a sentence from the user that unambiguously establishes the reaction, don't extract it. If nothing was revealed, return: { "profile_updates": null, "product_reactions": [] }`,
           },
         ],
       }),
@@ -1154,7 +1190,12 @@ If nothing new was revealed, return: { "profile_updates": null, "product_reactio
 
   let parsed: {
     profile_updates: Record<string, unknown> | null
-    product_reactions: Array<{ product_name: string; brand?: string; reaction: string }>
+    product_reactions: Array<{
+      product_name: string
+      brand?: string
+      reaction: string
+      supporting_quote?: string
+    }>
   }
   try {
     const text = block.text.trim().replace(/^```json?\s*/, '').replace(/\s*```$/, '')
@@ -1219,33 +1260,85 @@ If nothing new was revealed, return: { "profile_updates": null, "product_reactio
     }
   }
 
-  // Auto-log product reactions
+  // Auto-log product reactions — v10.7.0 hardening (Phase D).
+  // Three gates added after Bailey's Feb 14 Skin&Lab Retinol Lifting Roller Cream
+  // false-positive that survived months and undermined Library trust:
+  //   1. Only holy_grail and broke_me_out are extracted (soft "good"/"okay"/"bad"
+  //      were too low-signal to durably tag — they wrote noise to the reactions
+  //      table without ever surfacing in the Tagged UI).
+  //   2. The matched product MUST be in the user's library (ss_user_products,
+  //      any status). Bailey never owned Skin&Lab; the old ilike substring fired
+  //      anyway. Ownership cross-reference is the hardest single gate.
+  //   3. Product name match must be strict (exact substring OR all-token match
+  //      via resolveProductByName). The old `.slice(0, 50)` first-50-char ilike
+  //      silently substituted wrong products when names overlapped.
+  // Combined with the tightened Sonnet prompt above (supporting_quote required,
+  // soft signals removed, hypotheticals/Yuri-recommendations explicitly excluded),
+  // the false-positive rate should drop to near zero. If a real holy grail gets
+  // missed, the user can mark it manually from the Library Owned section.
+  const HARDENED_REACTIONS = new Set(['holy_grail', 'broke_me_out'])
+
   if (parsed.product_reactions && parsed.product_reactions.length > 0) {
+    // Pre-load the user's owned product IDs once for the ownership cross-reference.
+    const { data: ownedRows } = await db
+      .from('ss_user_products')
+      .select('product_id')
+      .eq('user_id', userId)
+      .not('product_id', 'is', null)
+
+    const ownedSet = new Set<string>(
+      (ownedRows ?? []).map((r) => r.product_id as string).filter(Boolean)
+    )
+
+    // Lazy import to avoid pulling tool plumbing into the conversation hot path.
+    const { resolveProductByNameStrict } = await import('./tools')
+
     for (const reaction of parsed.product_reactions) {
       try {
-        // Try to match product in database by name
-        const { data: matchedProducts } = await db
-          .from('ss_products')
-          .select('id, name_en')
-          .ilike('name_en', `%${reaction.product_name.slice(0, 50)}%`)
-          .limit(1)
-
-        if (matchedProducts && matchedProducts.length > 0) {
-          const validReactions = ['holy_grail', 'good', 'okay', 'bad', 'broke_me_out']
-          if (validReactions.includes(reaction.reaction)) {
-            await db
-              .from('ss_user_product_reactions')
-              .upsert(
-                {
-                  user_id: userId,
-                  product_id: matchedProducts[0].id,
-                  reaction: reaction.reaction,
-                  notes: 'Auto-detected from Yuri conversation',
-                },
-                { onConflict: 'user_id,product_id' }
-              )
-          }
+        // Gate 1: hardened reaction set.
+        if (!HARDENED_REACTIONS.has(reaction.reaction)) {
+          continue
         }
+
+        // Gate 1.5: supporting_quote must be present and non-trivial.
+        // Sonnet was instructed to include it on every reaction. Skip if missing.
+        if (!reaction.supporting_quote || reaction.supporting_quote.trim().length < 4) {
+          console.warn(
+            `[yuri/learning] Skipping reaction "${reaction.product_name}" — missing supporting_quote`
+          )
+          continue
+        }
+
+        // Gate 2: strict product resolution (exact or all-token match only).
+        // resolveProductByNameStrict returns null on 'partial' matches, so we
+        // never silently substitute a wrong product onto a reaction.
+        const match = await resolveProductByNameStrict(db, reaction.product_name)
+        if (!match) {
+          console.warn(
+            `[yuri/learning] Skipping reaction "${reaction.product_name}" — no confident catalog match`
+          )
+          continue
+        }
+
+        // Gate 3: ownership cross-reference. The user MUST already have this
+        // product in their library (any status). Reactions to never-owned
+        // products are the canonical Bailey-class bug.
+        if (!ownedSet.has(match.id)) {
+          console.warn(
+            `[yuri/learning] Skipping reaction for "${match.brand_en} ${match.name_en}" — not in user's library`
+          )
+          continue
+        }
+
+        await db.from('ss_user_product_reactions').upsert(
+          {
+            user_id: userId,
+            product_id: match.id,
+            reaction: reaction.reaction,
+            notes: `Auto-detected from Yuri conversation: "${reaction.supporting_quote.slice(0, 200)}"`,
+          },
+          { onConflict: 'user_id,product_id' }
+        )
       } catch (err) {
         console.error(`[yuri/learning] Product reaction error for "${reaction.product_name}":`, err)
       }

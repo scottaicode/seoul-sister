@@ -87,9 +87,17 @@ export async function POST(request: NextRequest) {
  * DELETE /api/library/owned?id=<uuid>
  *
  * Remove a product from the subscriber's collection. Ownership is verified
- * (user_id must match). Does NOT cascade to routines or reactions — those
- * are separate concerns. Soft delete via status='discarded' to preserve
+ * (user_id must match). Soft delete via status='discarded' to preserve
  * history rather than hard delete.
+ *
+ * v10.7.0: Now ALSO cascades to ss_user_product_reactions for the same
+ * (user_id, product_id) pair. Before this, destashing a product left its
+ * holy_grail / broke_me_out tag orphaned in the reactions table — Bailey
+ * hit this on the Skin&Lab Retinol Lifting Roller Cream auto-tag glitch,
+ * and Yuri herself diagnosed it: "the destash didn't fully clear the holy
+ * grail flag, those are two separate fields in the system." The cascade
+ * closes that gap. Routines are still untouched — a user might want to
+ * preserve a saved routine config even when no longer using a product.
  */
 export async function DELETE(request: NextRequest) {
   try {
@@ -103,10 +111,10 @@ export async function DELETE(request: NextRequest) {
 
     const db = getServiceClient()
 
-    // Verify ownership before deletion
+    // Verify ownership AND grab product_id for the reaction cascade.
     const row = await db
       .from('ss_user_products')
-      .select('id, user_id')
+      .select('id, user_id, product_id')
       .eq('id', id)
       .maybeSingle()
 
@@ -126,7 +134,26 @@ export async function DELETE(request: NextRequest) {
       throw new AppError(`Delete failed: ${update.error.message}`, 500)
     }
 
-    return NextResponse.json({ success: true })
+    // Cascade: clear any reactions tied to this product for this user.
+    // Only fires when product_id is non-null (custom entries don't have linked reactions).
+    // Non-critical — if it fails, we log it and still return success on the destash.
+    let reactionsCleared = 0
+    if (row.data.product_id) {
+      const { data: deleted, error: reactionError } = await db
+        .from('ss_user_product_reactions')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('product_id', row.data.product_id)
+        .select('id')
+
+      if (reactionError) {
+        console.error('[library/owned DELETE] Reaction cascade failed:', reactionError.message)
+      } else {
+        reactionsCleared = deleted?.length ?? 0
+      }
+    }
+
+    return NextResponse.json({ success: true, reactions_cleared: reactionsCleared })
   } catch (error) {
     return handleApiError(error)
   }
