@@ -11,7 +11,6 @@ import {
   TrendingUp,
   Sparkles,
   ChevronRight,
-  Lightbulb,
   Loader2,
   FlaskConical,
 } from 'lucide-react'
@@ -19,7 +18,6 @@ import { useAuth } from '@/hooks/useAuth'
 import QuickActionCard from '@/components/dashboard/QuickActionCard'
 import TrendingProductCard from '@/components/dashboard/TrendingProductCard'
 import type { TrendingProduct } from '@/components/dashboard/TrendingProductCard'
-import YuriInsightsWidget from '@/components/dashboard/YuriInsightsWidget'
 import SkinProfileWidget from '@/components/dashboard/SkinProfileWidget'
 import ExpiringProductsWidget from '@/components/dashboard/ExpiringProductsWidget'
 import ReformulationAlertWidget from '@/components/dashboard/ReformulationAlert'
@@ -185,25 +183,14 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* Yuri's Insights */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Lightbulb className="w-4 h-4 text-gold" strokeWidth={1.75} />
-            <h2 className="font-display font-semibold text-base text-white">
-              Yuri&apos;s Insights
-            </h2>
-          </div>
-          <Link
-            href="/yuri"
-            className="text-xs text-gold-light font-medium hover:text-gold transition-colors duration-200 flex items-center gap-0.5"
-          >
-            Ask Yuri <ChevronRight className="w-3 h-3" />
-          </Link>
-        </div>
-
-        <YuriInsightsWidget />
-      </section>
+      {/* "Yuri's Insights" section removed in v10.7.1 (Yuri Sole Authority
+          Principle, Bailey proactive sweep May 20 2026). The old widget
+          rendered algorithmic product recommendations from
+          /api/learning/recommendations under a heading that impersonated
+          Yuri — pure ss_product_effectiveness sort, no Yuri reasoning, no
+          phase awareness, no decision memory. The IntelligenceWidgets
+          section below (Top Ingredients + Seasonal Tip) keeps the
+          observational data display; prescriptive advice goes through Yuri. */}
 
       {/* Intelligence Widgets (Top Ingredients + Seasonal Tip) */}
       <IntelligenceWidgets onRelevantTrendingIds={handleRelevantTrendingIds} />

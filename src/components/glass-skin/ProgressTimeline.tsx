@@ -172,7 +172,9 @@ function ScoreHistoryList({ scores }: { scores: GlassSkinScore[] }) {
         const prev = scores[i + 1]
         const change = prev ? s.overall_score - prev.overall_score : null
         const isExpanded = expandedId === s.id
-        const hasDetails = (s.recommendations?.length ?? 0) > 0 || s.analysis_notes
+        // Expand-affordance is gated on analysis_notes only — recommendations
+        // are no longer rendered (Yuri Sole Authority, v10.7.1).
+        const hasDetails = !!s.analysis_notes
 
         return (
           <div key={s.id} className="rounded-lg bg-white/[0.03] overflow-hidden">
@@ -218,23 +220,14 @@ function ScoreHistoryList({ scores }: { scores: GlassSkinScore[] }) {
                     {s.analysis_notes}
                   </p>
                 )}
-                {(s.recommendations?.length ?? 0) > 0 && (
-                  <div className="space-y-1 mt-2">
-                    <span className="text-[10px] uppercase tracking-wider text-white/30">
-                      Recommendations
-                    </span>
-                    <ul className="space-y-1">
-                      {s.recommendations.map((rec, ri) => (
-                        <li
-                          key={ri}
-                          className="text-xs text-white/60 pl-3 relative before:content-['•'] before:absolute before:left-0 before:text-gold/60"
-                        >
-                          {rec}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                {/* Old "Recommendations" bullet list removed (v10.7.1,
+                    Yuri Sole Authority Principle). The Vision engine that
+                    generated these recs didn't know the user's treatment
+                    phase or decision memory at the time the score was
+                    taken. Historic recs surfaced as if they were current
+                    advice created confusion. The analysis_notes above
+                    remain — those are observational descriptions of the
+                    photo, not prescriptive advice. */}
               </div>
             )}
           </div>

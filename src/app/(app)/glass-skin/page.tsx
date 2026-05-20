@@ -283,34 +283,34 @@ export default function GlassSkinPage() {
             />
           </div>
 
-          {/* Recommendations */}
-          {result.recommendations && result.recommendations.length > 0 && (
-            <div className="glass-card p-4 space-y-3">
-              <h3 className="font-display font-semibold text-sm text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-gold" />
-                Recommendations
-              </h3>
-              <ul className="space-y-2">
-                {result.recommendations.map((rec, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-white/60">
-                    <span className="text-gold mt-0.5 flex-shrink-0">
-                      {i + 1}.
-                    </span>
-                    <span>{rec}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {lowestDim && (
-                <Link
-                  href={`/yuri?ask=Help me improve my ${lowestDim.key} score (currently ${lowestDim.value}/100). What K-beauty products and routine steps would you recommend?`}
-                  className="flex items-center justify-center gap-2 mt-3 py-2 rounded-xl bg-gold/10 text-gold text-xs font-medium hover:bg-gold/20 transition-colors duration-200"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  Ask Yuri to improve your {lowestDim.key}
-                </Link>
-              )}
-            </div>
+          {/* Ask Yuri CTA — replaces the old algorithmic Recommendations bullets.
+              Yuri Sole Authority Principle (v10.7.1): the Vision engine doesn't
+              read this user's conversation history, treatment phase, or decision
+              memory. Yuri does. Route prescriptive advice through her.
+              Bailey audit, May 20 2026: she screenshotted the old bullets to
+              Yuri who tore them apart point-by-point (PHA on top of BHA = acid
+              6-7 days/week; niacinamide already in 5 products; glycolic already
+              rejected). Said: "This kinda stuff that's not Yuri I think we
+              need to get rid of." */}
+          {lowestDim && (
+            <Link
+              href={`/yuri?ask=I just got my Glass Skin Score — overall ${result.overall_score}/100. My lowest dimension is ${lowestDim.key} at ${lowestDim.value}/100. What does this mean for where I am in my routine right now?`}
+              className="glass-card p-4 flex items-center gap-3 hover:border-gold/30 transition-colors duration-200"
+            >
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gold/15 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-gold" strokeWidth={1.75} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-display font-semibold text-sm text-white">
+                  Ask Yuri what this score means
+                </p>
+                <p className="text-xs text-white/50 mt-0.5">
+                  She knows your phase, routine, and history — she&apos;ll give you
+                  advice grounded in all of it.
+                </p>
+              </div>
+              <MessageCircle className="w-4 h-4 text-gold/70 flex-shrink-0" strokeWidth={1.75} />
+            </Link>
           )}
 
           {/* Analysis notes */}

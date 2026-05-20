@@ -33,6 +33,13 @@ export default function ChatInput({
   const [isCompressing, setIsCompressing] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // Synchronous guard against iOS Safari "ghost click" — when the soft
+  // keyboard dismisses, the resulting touchend → click sequence can fire
+  // twice in the same tick. The `disabled={!canSend}` prop depends on
+  // React state (value, isStreaming) which hasn't updated yet between
+  // the two events. This ref flips synchronously and blocks the second
+  // call before any duplicate work happens.
+  const submittingRef = useRef(false)
 
   // Phase 15.3 — restore the user's typed message after a send failure.
   // Skip restore if they've already typed something new (don't clobber active input).
@@ -62,19 +69,37 @@ export default function ChatInput({
   const canSend = (value.trim() || pendingImages.length > 0) && !disabled && !isCompressing
 
   const handleSubmit = useCallback(() => {
+    // Block iOS Safari ghost-clicks BEFORE checking canSend — even if the
+    // React-state-driven `disabled` hasn't caught up, this synchronous flag
+    // catches the duplicate at the door.
+    if (submittingRef.current) return
     if (!canSend) return
 
     const trimmed = value.trim()
     const message = trimmed || (pendingImages.length > 0 ? 'Analyze this image' : '')
     if (!message) return
 
+    submittingRef.current = true
     onSend(message, pendingImages.length > 0 ? pendingImages : undefined)
     setValue('')
     setPendingImages([])
 
+    // Force the textarea's DOM value to empty synchronously. Controlled
+    // inputs normally sync via React state, but iOS Safari's redraw can
+    // lag visibly after `setValue('')` — long enough that Bailey saw the
+    // text "still there" and tapped Send again. Touching the DOM directly
+    // closes the visual gap.
     if (textareaRef.current) {
+      textareaRef.current.value = ''
       textareaRef.current.style.height = 'auto'
     }
+
+    // Release the guard on the next animation frame — by then React has
+    // re-rendered with disabled={true} (from parent's isStreaming), and
+    // any iOS Safari ghost-click in this tick is safely past.
+    requestAnimationFrame(() => {
+      submittingRef.current = false
+    })
   }, [value, pendingImages, canSend, onSend])
 
   const handleKeyDown = useCallback(

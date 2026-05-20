@@ -44,6 +44,13 @@ export function useYuri(): UseYuriReturn {
   const [error, setError] = useState<string | null>(null)
   const [lastFailedDraft, setLastFailedDraft] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  // Synchronous guard against same-tick double-send.
+  // React state (isStreaming) updates async — between the user's tap and the
+  // next render, two synchronous sendMessage calls (e.g. iOS Safari ghost
+  // click on keyboard dismiss) both pass the `if (isStreaming) return` check
+  // because the closure value hasn't refreshed yet. This ref flips
+  // synchronously and blocks the duplicate at the entry point.
+  const isSendingRef = useRef(false)
 
   // Abort any in-flight stream when the component unmounts
   useEffect(() => {
@@ -70,7 +77,10 @@ export function useYuri(): UseYuriReturn {
         specialistType?: SpecialistType | null
       }
     ) => {
-      if (isStreaming) return
+      // Synchronous guard catches same-tick duplicates that the async
+      // isStreaming state can't block (see isSendingRef declaration above).
+      if (isSendingRef.current || isStreaming) return
+      isSendingRef.current = true
 
       setError(null)
       setIsStreaming(true)
@@ -252,6 +262,7 @@ export function useYuri(): UseYuriReturn {
       } finally {
         setIsStreaming(false)
         abortControllerRef.current = null
+        isSendingRef.current = false
       }
     },
     [isStreaming, currentConversationId, getToken]

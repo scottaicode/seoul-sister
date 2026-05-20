@@ -18,6 +18,81 @@ Each entry includes:
 
 ---
 
+## May 20, 2026 (morning) — Duplicate user-message bubble + Glass Skin recommender lives + bad catalog-match prose [RESOLVED in v10.7.1]
+
+**Source**: 10 iMessage screenshots to Scott across the morning
+
+**Verbatim quotes**:
+> "This kinda stuff that's not Yuri I think we need to get rid of" (re: Glass Skin Score Recommendations panel showing PHA toner / niacinamide / vitamin C / humectant essence — Yuri herself tore them apart point-by-point because they conflicted with her Phase 2 protocol)
+>
+> "On the bright side she said my skins the best it's been since we started and I scored 13 points higher on glass skin 😏"
+>
+> "If you can see if you can send Richard my last conversation with Yuri. It keeps sending, then says she's tying then just retyped it in the box like I need to resend it"
+>
+> "This response also confuses me." (re: Yuri saying "Closest catalog match was 'NEEDLY Mild Enzyme Cleansing Powder', but the names don't fully overlap" when Bailey had said she used Ma:nyo Pure Cleansing Oil before Medicube)
+>
+> "Twice in a row (first time I thought was on me cause I left the app but then it kept happening)... She also forgot about a past conversation but I reminded her... Every since message it twice"
+
+**Bailey's context**: Day 23 of Phase 2 (her score went up 13 points — Phase 2 is working). Was trying to swap out her Medicube PDRN cleanser. Hit three independent product issues in one session: (1) every message sent appeared as a duplicate user bubble with the textarea visually retaining the text, making her tap Send twice; (2) the Glass Skin Score recommendations panel was rendering algorithmic advice that conflicted with her treatment phase; (3) when Yuri tried to save Ma:nyo Pure Cleansing Oil to her library, the resolver returned NEEDLY Mild Enzyme Cleansing Powder as "closest match" — cross-brand false positive that Yuri surfaced honestly but Bailey found confusing.
+
+**Status**: RESOLVED in v10.7.1 (shipped May 20, 2026)
+
+**Resolution context — parallel sessions**: Scott's primary PC failed to boot during this period, forcing him to a second machine where another Claude Opus 4.7 session shipped v10.7.0 on May 19 (9 coordinated fixes covering library mutation hardening, comedogenic data accuracy, holy-grail auto-detection, photo cadence, polish — addressing different Bailey iMessages from May 18-19). v10.7.0 included a strictly-better architectural fix for issue (3) above (the Ma:nyo→NEEDLY catalog-match confusion) — `resolveProductByName` extended with `match_quality` enum, new `resolveProductByNameStrict` for write paths, `executeUpdateUserProduct` rewritten with full Tool-Call Honesty. When the May 20 audit started, the working draft v10.6.6 had its own Issue C fix that returned null on cross-brand fallback — lossy by comparison. The right move on merge was to DROP the Issue C draft entirely in favor of v10.7.0's superior architecture (preserves match_quality information for Yuri to reason about — more AI-First). Issues (1) and (2) plus a proactive sweep finding had no v10.7.0 equivalent and shipped as v10.7.1 on top.
+
+**Resolution**:
+
+**Issue A — Duplicate user-message bubble (iOS Safari ghost-click race)**: Root cause was a synchronous double-trigger of `handleSubmit` on iOS Safari — touchend → click can fire twice on keyboard dismiss — layered on top of React state lag. Both `useYuri.sendMessage` and `ChatInput.handleSubmit` checked async React state (`isStreaming`, `canSend`) but those states don't update synchronously between two events in the same tick. Fix: added `useRef`-based synchronous guards at both layers (`isSendingRef.current` in useYuri, `submittingRef.current` in ChatInput) that flip BEFORE any work and block duplicate calls. Also force-clear `textareaRef.current.value = ''` synchronously after submit so iOS Safari's redraw lag doesn't visually retain the text and trick Bailey into re-tapping. Files: `src/hooks/useYuri.ts`, `src/components/yuri/ChatInput.tsx`.
+
+**Issue B — Glass Skin Score Recommendations panel killed**: Fourth instance of the Yuri Sole Authority Principle being earned through a Bailey-caught violation (after Routine Intelligence v10.5.2, Weather v10.6.2, Cycle Adjustment v10.6.2). v10.6.2 explicitly deferred this fix; Bailey caught what was punted. Fix mirrors v10.6.2 weather widget pattern: KEPT the score, radar chart, dimension breakdown, analysis_notes prose, ShareCard, photo. KILLED the Recommendations bullet list on both the main results panel AND the historic-recommendations accordion in ProgressTimeline. Replaced with single CTA: *"Ask Yuri what this score means"* with `?ask=` prefill carrying overall score + lowest dimension. The Vision endpoint still generates recommendations server-side; no surface renders them. Files: `src/app/(app)/glass-skin/page.tsx`, `src/components/glass-skin/ProgressTimeline.tsx`.
+
+**Issue C (superseded by v10.7.0, not part of v10.7.1)**: My v10.6.6 draft included a `resolveProductByName` null-on-cross-brand fix for the Ma:nyo→NEEDLY confusion. v10.7.0 shipped a strictly-better architectural fix (`match_quality` enum + `resolveProductByNameStrict` for write paths + `executeUpdateUserProduct` Tool-Call Honesty rewrite) that supersedes it. Draft dropped in merge.
+
+**Proactive sweep — Dashboard "Yuri's Insights" widget killed**: Audit of all UI surfaces for additional Yuri Sole Authority Principle violations surfaced the worst-class instance — a widget literally named "Yuri's Insights" with a Lightbulb icon that rendered 3 product cards from `/api/learning/recommendations` as if Yuri had generated them. Pure `ss_product_effectiveness` skin-type sort. Empty state copy actively lied: *"Yuri is learning."* — fifth instance of the principle being violated, this one with explicit Yuri impersonation. Found and killed BEFORE Bailey reached it. Files: `src/app/(app)/dashboard/page.tsx`, `src/components/dashboard/YuriInsightsWidget.tsx` (deleted).
+
+**Memory miss (Bailey's "she forgot a past conversation")**: Image 8 — Yuri said *"Hold up, I don't have a Medicube PDRN face wash swap in our conversation history"* but Bailey had discussed this previously. Logged as observation, NOT fixed this release. Yuri's behavior was actually correct per the v10.2.1 Tool-Call Honesty rule — she refused to confabulate, admitted the memory gap, accepted Bailey's reminder, and immediately gave great advice (the Zero Pore line / Phase 1 cheek-compromise callback proves she had broader phase memory intact). The miss was a Sonnet summary extraction quality issue.
+
+**Pattern observation**: This is now the FIFTH instance of Yuri Sole Authority Principle being earned through Bailey-caught violations. The principle in CLAUDE.md is now backed by five supporting incidents. The proactive sweep added the dimension of *finding violations before Bailey does* — a discipline worth repeating each release.
+
+---
+
+## May 18–19, 2026 — Library mutation bugs + comedogenic false positives + subscriber detection + photo cadence [RESOLVED in v10.7.0]
+
+**Source**: Two-day iMessage testing session with Scott (May 18–19), screenshots + verbatim quotes captured in v10.7.0 commit message (`3bf8a5d`).
+
+**Verbatim quotes** (excerpted from v10.7.0 commit context):
+> Hero Mighty Patches save came back as "Dr.ppae Honey Heel Patch" — wrong product silently substituted by fuzzy resolver
+>
+> COSRX Acne Pimple Master Patch never destashed — Yuri only made one of the two needed update_user_product calls during a swap
+>
+> Skin&Lab Retinol Lifting Roller Cream persistently tagged as Holy Grail — auto-extraction false positive from Feb 14 survived months
+>
+> Comedogenic warnings on SoonJung pH 5.6 Cleansing Milk: Glycerin (3/5), Carbon Black (3/5) — both false positives from bidirectional substring matching against the ss_ingredients table
+>
+> "This section doesn't look like its loading" — Pro subscriber Bailey was being mis-read as non-subscriber on /products/[id], shown gated teaser cards
+>
+> "Currently, Yuri hasn't asked for many photos, seems like every time it's me just sending them... I think Yuri should be asking for a weekly photo the start of each week"
+>
+> "I LOVE the ingredients sections and how there's the 'ask Yuri how it fits in your routine' much more personalized... we should have 'ask Yuri if this specific product would be good for you' once they choose a product"
+>
+> "can you scoot Seoul sister over its bugging me how close they are 🥺" (Yuri page header spacing)
+
+**Status**: RESOLVED in v10.7.0 (shipped May 19, 2026, commits `3bf8a5d` + `b0eff2b`)
+
+**Resolution**: Nine coordinated fixes across nine phases (A through I) — see CLAUDE.md v10.7.0 changelog entry for the full per-phase detail. High-level summary:
+- **Phase A**: Library mutation hardening — `resolveProductByName` extended with `match_quality` (exact/all_terms/partial), new `resolveProductByNameStrict` for write paths, `executeUpdateUserProduct` rewritten with Tool-Call Honesty, DELETE cascade on library destash, two new tools (`mark_product_reaction` + `clear_product_reaction`) with ownership cross-references.
+- **Phase B**: Comedogenic warning rewrite — bidirectional substring matching against `ss_ingredients` replaced with proper `ss_product_ingredients` JOIN. Glycerin and Carbon Black false positives fixed at the matching logic.
+- **Phase C**: Manual reaction controls in Library UI — Heart / AlertTriangle toggle buttons on Owned cards, Untag X buttons on Tagged cards.
+- **Phase D**: Holy grail auto-detection hardening — Sonnet prompt rewritten as creative brief with Skin&Lab incident as anti-example, required `supporting_quote` field, soft reactions dropped, three runtime gates (hardened reaction set + strict product resolution + ownership cross-reference).
+- **Phase E**: Correction feedback loop — Sonnet extraction now produces `cleanup_actions` on corrections, automatically scrubs underlying bad data (Principle 3 closure).
+- **Phase F**: Subscriber detection fix on /products/[id] — new `/api/me/subscription` endpoint using canonical `hasActiveSubscription` helper, eliminates RLS-via-anon-client path.
+- **Phase G**: Product detail subscriber enrichment — Yuri CTA at top of `ProductEnrichment` with `?ask=` prefill carrying product brand + name.
+- **Phase H**: Photo cadence (lite) — staleness threshold dropped from 30 to 7 days, system prompt teaches Yuri to suggest photos organically on momentum-positive moments.
+- **Phase I**: Polish — LazyImage onError + fallback prop, Yuri page header spacing fix, Bailey's data cleanup via migration `v10_7_0_bailey_library_cleanup`.
+
+**Cross-cutting principle encodings** (per Pattern 4): Tool-Call Honesty is now the rule for ALL library mutation tools, not just save_routine. Bidirectional substring matching against the master ingredients table is the wrong primitive — JOINs are the right primitive. Corrections without cleanup loops are half-built. Auto-extraction features need supporting_quote + confidence floor + cross-reference checks.
+
+---
+
 ## May 18, 2026 (12:28 PM Central) — Browse-by-Category cards don't navigate [RESOLVED in v10.6.3]
 
 **Source**: iMessage to Scott, ~12:28 PM Central after exploring /products page
