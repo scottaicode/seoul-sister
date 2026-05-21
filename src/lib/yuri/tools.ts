@@ -63,10 +63,65 @@ async function smartProductSearch(
 
   if (fullMatch?.length) return fullMatch as unknown as Array<Record<string, unknown>>
 
+  // Strategy 1.5: Brand-prefix composite lookup (BP76 follow-up, May 20 2026).
+  //
+  // Real Reddit drafts (and the Haiku extractor in LGAAS) routinely write
+  // product names as "COSRX BHA Blackhead Power Liquid" or "Anua BHA 2%
+  // Gentle Exfoliating Toner" — brand prefix included. Brand and product
+  // name are stored in separate columns (brand_en, name_en), so neither
+  // column alone contains the full string. Strategy 1's single-column ilike
+  // returns zero, and Strategy 2's broad OR + ORDER BY rating_avg DESC
+  // NULLS LAST + LIMIT can truncate the target SKU out of the candidate
+  // window when many high-rated products match a short common token like
+  // "bha" or "cosrx" while the actual target row has rating_avg=NULL.
+  // (LGAAS BP76 e2e Stage 4 surfaced exactly this gap — COSRX BHA and Anua
+  // BHA 2% rows have NULL rating, get sorted to the end, and never appear
+  // in the LIMIT * 5 window of "anua-or-bha" matches.)
+  //
+  // Fix: for any 2+ term query, try splitting (first 1, 2, or 3 tokens =
+  // brand candidate, rest = product name candidate) and check whether the
+  // catalog has a row where brand_en matches the prefix AND name_en
+  // contains all rest-tokens. This is a precise filter so it never
+  // returns noise — if it matches, the result is high-confidence. Each
+  // split is one ILIKE-pair query; we try 1-token, 2-token, and 3-token
+  // brand prefixes since SS catalog has 48 multi-word brand names. Stops
+  // on the first non-empty result.
+  if (terms.length >= 2) {
+    for (const brandTokenCount of [1, 2, 3]) {
+      if (terms.length <= brandTokenCount) continue
+      const brandCandidate = terms.slice(0, brandTokenCount).join(' ')
+      const nameTerms = terms.slice(brandTokenCount)
+      // Filter shape: brand_en ILIKE %brandCandidate% AND name_en ILIKE %t1% AND name_en ILIKE %t2% ...
+      // Supabase chains .ilike() calls as AND. Each subsequent .ilike on
+      // the same column produces an additive predicate.
+      let q = db
+        .from('ss_products')
+        .select(cols)
+        .eq('is_verified', true)
+        .ilike('brand_en', `%${brandCandidate}%`)
+      for (const t of nameTerms) {
+        q = q.ilike('name_en', `%${t}%`)
+      }
+      if (options?.category) q = q.eq('category', options.category)
+      const { data: compositeMatch } = await q.limit(limit)
+      if (compositeMatch?.length) {
+        return compositeMatch as unknown as Array<Record<string, unknown>>
+      }
+    }
+  }
+
   // Strategy 2: ALL non-stop-word terms must appear in brand_en || ' ' || name_en
   // Supabase doesn't support concat in filters, so we fetch a broader set and
   // post-filter in JS. Fetch products matching ANY term, then keep only rows
   // where ALL terms appear.
+  //
+  // Note (BP76 follow-up): Strategy 1.5 above handles the common
+  // brand-prefixed shape directly. This strategy is the fallback for queries
+  // that don't fit the "brand + name" pattern (e.g., partial names without
+  // brand, or descriptive queries). We still over-fetch and post-filter
+  // here, but the candidate window no longer needs to be huge because the
+  // brand-prefix cases (which used to compete with hundreds of unrelated
+  // matches in the 75-row window) now resolve in Strategy 1.5 instead.
   if (terms.length >= 2) {
     // Build OR filter: each term checked against name_en and brand_en
     const orClauses = terms
