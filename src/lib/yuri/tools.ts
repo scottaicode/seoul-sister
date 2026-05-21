@@ -42,11 +42,26 @@ async function smartProductSearch(
   const limit = options?.limit || 15
 
   // Clean and tokenize
+  //
+  // Two-stage tokenization (BP76 v10.7.5 follow-up to Strategy 1.5):
+  //
+  //   originalTokens — punctuation-normalized but stop-words PRESERVED.
+  //   Used to reconstruct multi-word brand prefixes ("Beauty of Joseon"
+  //   must keep "of"; "Some By Mi" must keep "by"; otherwise the brand
+  //   candidate string can't ILIKE-match the catalog's brand_en row).
+  //
+  //   terms — stop-words AND short tokens removed. Used for ILIKE
+  //   predicates against name_en (we don't want "in" / "of" / "the"
+  //   turning into noisy name predicates).
+  //
+  // Punctuation normalization: hyphens, em-dashes, underscores, and dots
+  // collapse to spaces. Real-world example — Reddit/marketing copy writes
+  // "Torriden Dive-In Low Molecular..." but the catalog stores "Dive In"
+  // (no hyphen). Without normalization, name_en ILIKE %dive-in% fails.
   const cleaned = rawQuery.trim()
-  const terms = cleaned
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
+  const normalized = cleaned.toLowerCase().replace(/[-/_.]+/g, ' ')
+  const originalTokens = normalized.split(/\s+/).filter(t => t.length > 0)
+  const terms = originalTokens.filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
 
   // Strategy 1: Full-string ilike on name_en, brand_en, description_en
   let baseQuery = db
@@ -88,9 +103,17 @@ async function smartProductSearch(
   // on the first non-empty result.
   if (terms.length >= 2) {
     for (const brandTokenCount of [1, 2, 3]) {
-      if (terms.length <= brandTokenCount) continue
-      const brandCandidate = terms.slice(0, brandTokenCount).join(' ')
-      const nameTerms = terms.slice(brandTokenCount)
+      // Use originalTokens for brand candidate so multi-word brands containing
+      // stop words ("Beauty of Joseon", "Some By Mi") reconstruct correctly.
+      if (originalTokens.length <= brandTokenCount) continue
+      const brandCandidate = originalTokens.slice(0, brandTokenCount).join(' ')
+      // Name terms: everything AFTER the brand window, with stop-word /
+      // short-token filtering applied (we don't want "in" / "of" / "the"
+      // becoming ILIKE predicates against name_en).
+      const nameTerms = originalTokens
+        .slice(brandTokenCount)
+        .filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
+      if (nameTerms.length === 0) continue
       // Filter shape: brand_en ILIKE %brandCandidate% AND name_en ILIKE %t1% AND name_en ILIKE %t2% ...
       // Supabase chains .ilike() calls as AND. Each subsequent .ilike on
       // the same column produces an additive predicate.
@@ -213,12 +236,19 @@ async function resolveProductByName(
   })
   if (!results.length) return null
 
+  // Punctuation normalization (BP76 v10.7.5): hyphens / underscores / dots in
+  // the query (e.g. "Dive-In") must match unhyphenated catalog storage
+  // ("Dive In"). Normalize BOTH the query and the catalog field we compare
+  // against. Same normalization function used in smartProductSearch above.
+  const normalizePunct = (s: string) => s.toLowerCase().replace(/[-/_.]+/g, ' ')
   const queryLower = productName.toLowerCase()
-  const terms = queryLower.split(/\s+/).filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
+  const queryNormalized = normalizePunct(productName)
+  const terms = queryNormalized.split(/\s+/).filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
 
   // Filter to candidates where ALL query terms appear in combined brand+name
+  // (normalized on both sides so hyphen variants match).
   const allTermMatches = results.filter(p => {
-    const combined = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`.toLowerCase()
+    const combined = normalizePunct(`${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`)
     return terms.every(t => combined.includes(t))
   })
 
@@ -236,12 +266,21 @@ async function resolveProductByName(
 
   const chosen = candidates[0]
   const combinedLower = `${(chosen.brand_en as string) || ''} ${(chosen.name_en as string) || ''}`.toLowerCase()
+  const combinedNormalized = normalizePunct(`${(chosen.brand_en as string) || ''} ${(chosen.name_en as string) || ''}`)
 
-  // Determine match quality from the chosen result
+  // Determine match quality from the chosen result.
+  // 'exact' check uses normalized strings on both sides so "Torriden Dive-In"
+  // queries can match "Torriden Dive In" catalog rows exactly.
   let match_quality: 'exact' | 'all_terms' | 'partial'
+  // Try exact match against raw query first (preserves the original strict
+  // "query IS a contiguous substring" semantics). Then try exact against
+  // normalized strings (so "Dive-In" query matches "Dive In" catalog).
+  // Finally fall back to all_terms.
   if (combinedLower.includes(queryLower)) {
     match_quality = 'exact'
-  } else if (terms.length > 0 && terms.every(t => combinedLower.includes(t))) {
+  } else if (combinedNormalized.includes(queryNormalized)) {
+    match_quality = 'exact'
+  } else if (terms.length > 0 && terms.every(t => combinedNormalized.includes(t))) {
     match_quality = 'all_terms'
   } else {
     match_quality = 'partial'
