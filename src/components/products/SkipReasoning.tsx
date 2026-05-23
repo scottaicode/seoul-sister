@@ -17,8 +17,22 @@ import { useState, useCallback } from 'react'
 import { Loader2, AlertCircle, MessageCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
+/**
+ * v10.8.5: extended with 'category_conflict' to mirror the server-side
+ * MatchedItem.type union in product-curation.ts. v10.8.2 added category-level
+ * conflict detection (Bailey's Phase 2 BHA-on-BHA / "no new actives" judgment)
+ * but the UI DTO wasn't extended, so category_conflict items leaked through
+ * the switch in chip rendering and displayed as bare slugs ("spot_treatment",
+ * "bha") with no icon.
+ *
+ * The `item` field is the human-readable phrase (e.g. "no new active products
+ * this phase", "BHA already at protocol cadence", "stay-the-course Phase 2
+ * protocol") — what should display as primary chip text. The `matchedIngredient`
+ * field is the underlying schema slug (category name or class name); useful
+ * for debugging but not user-facing.
+ */
 export interface MatchedItemDTO {
-  type: 'watch_for' | 'allergen' | 'decision_memory'
+  type: 'watch_for' | 'allergen' | 'decision_memory' | 'category_conflict'
   item: string
   matchedIngredient: string
 }
@@ -83,18 +97,26 @@ export default function SkipReasoning({ productId, initialMatchedItems }: SkipRe
 
   return (
     <div className="mt-2.5 border-t border-white/5 pt-2.5">
-      {/* Matched items chips — always visible since they come with the list */}
+      {/* Matched items chips — always visible since they come with the list.
+       *  v10.8.5: renders m.item (human-readable phrase) as primary text, not
+       *  m.matchedIngredient (schema slug). For category_conflicts, the phrase
+       *  is the source text extracted from Yuri's own decision_memory or the
+       *  CATEGORY_SIGNAL_PATTERNS label — e.g. "no new active products this
+       *  phase", "BHA already at protocol cadence". The slug ("spot_treatment",
+       *  "bha") goes into title="" for debugging/hover. */}
       {initialMatchedItems.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
           {initialMatchedItems.slice(0, 4).map((m, idx) => (
             <span
               key={`${m.type}-${idx}`}
               className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/15 text-amber-200 ring-1 ring-amber-400/20"
+              title={`${m.type}: ${m.matchedIngredient}`}
             >
               {m.type === 'allergen' && '⚠️ '}
               {m.type === 'watch_for' && '👁 '}
               {m.type === 'decision_memory' && '📌 '}
-              {m.matchedIngredient}
+              {m.type === 'category_conflict' && '🧪 '}
+              {m.item}
             </span>
           ))}
         </div>

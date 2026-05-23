@@ -312,7 +312,7 @@ function CuratedBrowseInner() {
               {skipExpanded && (
                 <div className="flex flex-col gap-3 animate-slide-down">
                   <p className="text-[11px] text-white/40 px-1">
-                    These products conflict with your declared allergens, Yuri's past corrections, or your current phase&apos;s watch_for items. Expand any card for her reasoning.
+                    These products conflict with your declared allergens, Yuri's past corrections, or your current phase&apos;s watch_for items. Expand any card for Yuri&apos;s reasoning.
                   </p>
                   {data.skipped.map((product, idx) => (
                     <CuratedProductCard
