@@ -90,8 +90,9 @@ export async function GET(request: NextRequest) {
 
     // ---------------------------------------------------------------
     // Candidate query — pull filtered product IDs from ss_products
+    // v10.8.2: also fetch category + name for the Layer 1.5 category filter
     // ---------------------------------------------------------------
-    let candidateQuery = db.from('ss_products').select('id')
+    let candidateQuery = db.from('ss_products').select('id, category, name_en')
     if (parsed.query) {
       const q = sanitizeLikeInput(parsed.query.trim())
       candidateQuery = candidateQuery.or(`name_en.ilike.%${q}%,brand_en.ilike.%${q}%`)
@@ -116,6 +117,14 @@ export async function GET(request: NextRequest) {
     if (candError) throw candError
 
     const candidateIds = (candidates || []).map((r) => r.id as string)
+    // v10.8.2: build product → category + name maps for Layer 1.5 filter
+    const productCategories = new Map<string, string>()
+    const productNames = new Map<string, string>()
+    for (const c of candidates || []) {
+      const row = c as { id: string; category: string | null; name_en: string | null }
+      if (row.category) productCategories.set(row.id, row.category)
+      if (row.name_en) productNames.set(row.id, row.name_en)
+    }
     if (candidateIds.length === 0) {
       return NextResponse.json({
         fits: [],
@@ -168,7 +177,9 @@ export async function GET(request: NextRequest) {
     const verdicts: CurationVerdictResult[] = applyPhaseFilter(
       candidateIds,
       productIngredients,
-      context
+      context,
+      productCategories,
+      productNames
     )
 
     const fitsIds: string[] = []

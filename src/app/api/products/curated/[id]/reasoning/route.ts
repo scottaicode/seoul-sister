@@ -136,7 +136,13 @@ export async function GET(
     }
 
     const productIngMap = new Map<string, string[]>([[productId, ingredientNames]])
-    const verdicts = applyPhaseFilter([productId], productIngMap, curationContext)
+    // v10.8.2: also pass product category + name so Layer 1.5 category filter
+    // can match category_conflict matched_items (BHA-on-BHA, etc.)
+    const productCatMap = new Map<string, string>()
+    const productNameMap = new Map<string, string>()
+    if (productRow.category) productCatMap.set(productId, productRow.category as string)
+    if (productRow.name_en) productNameMap.set(productId, productRow.name_en as string)
+    const verdicts = applyPhaseFilter([productId], productIngMap, curationContext, productCatMap, productNameMap)
     const verdict = verdicts[0]!
 
     // ---------------------------------------------------------------

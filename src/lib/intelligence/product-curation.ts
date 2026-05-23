@@ -65,13 +65,41 @@ export interface CurationContext {
   excludedSubstances: string[]
   /** Ingredient name tokens currently in any active routine product. */
   routineIngredientTokens: string[]
+  /**
+   * v10.8.2: category-level exclusions extracted from decision_memory.
+   * When Yuri's exclusion intent is category-level rather than substance-level
+   * ("stacking acids would risk PIH", "already using BHA 3x/week", "rejected
+   * additional niacinamide serum"), this captures the product categories +
+   * ingredient classes the user shouldn't be shown MORE of. Empty array means
+   * no category-level exclusions are active.
+   *
+   * Distinct from `excludedSubstances` because the gap that Bailey's Phase 2
+   * surfaced is category-level judgment: she has COSRX BHA, so another BHA
+   * toner shouldn't show as a "fit" even though the literal word "salicylic
+   * acid" isn't in her exclusion intent text.
+   */
+  excludedCategories: ExcludedCategory[]
+}
+
+/**
+ * A category/class exclusion the curation layer should honor.
+ * Either `category` (matches ss_products.category) or `ingredientClass`
+ * (matches against ingredient class membership) — at least one is set.
+ */
+export interface ExcludedCategory {
+  /** ss_products.category to skip (e.g., 'spot_treatment', 'exfoliator'). Optional. */
+  category?: string
+  /** Ingredient class to skip — products containing any class member skip (e.g., 'bha', 'pha', 'aha', 'retinoid'). Optional. */
+  ingredientClass?: string
+  /** The decision_memory/watch_for text that produced this exclusion (for reasoning surface). */
+  sourceText: string
 }
 
 export interface MatchedItem {
-  type: 'watch_for' | 'allergen' | 'decision_memory'
+  type: 'watch_for' | 'allergen' | 'decision_memory' | 'category_conflict'
   /** The user-state item that triggered (e.g. "BHA on cheeks 6+ days/wk"). */
   item: string
-  /** Which ingredient on the product matched. */
+  /** Which ingredient on the product matched (or product category for category_conflict). */
   matchedIngredient: string
 }
 
@@ -188,6 +216,17 @@ const NEVER_EXCLUDE_SUBSTANCES = new Set<string>([
   // Bases
   'water', 'aqua',
   'sea water',
+
+  // v10.8.2: fragrance/parfum is intentionally NEVER_EXCLUDE at the
+  // decision-memory level. Many K-beauty products contain fragrance, and
+  // Yuri often mentions it in context-specific notes ("skip Zero Pore Oil
+  // due to astringent oils AND fragrance") without meaning the user has a
+  // global fragrance avoidance. If the user actually wants fragrance-free
+  // only, that signal belongs on ss_user_profiles.allergies, where it gets
+  // captured via the allergen check path (which IS surfaced to the user as
+  // explicit declared input rather than inferred from chat). This avoids
+  // false-positive skips on products Yuri herself has recommended.
+  'fragrance', 'parfum', 'perfume', 'aroma',
 
   // Other K-beauty staples
   'niacinamide', 'nicotinamide',
@@ -362,6 +401,295 @@ async function extractExcludedSubstancesFromDecisionMemory(
 }
 
 // ---------------------------------------------------------------------------
+// Category-level exclusion extraction (v10.8.2 — Bailey Phase 2 BHA-on-BHA gap)
+// ---------------------------------------------------------------------------
+//
+// Layer 1 substance extractor (above) catches literal-word exclusions in
+// Yuri's decision_memory: "Not adding glycolic acid" → exclude glycolic acid.
+// But Yuri's higher-order judgment is often category-level:
+//
+//   "already using BHA 3x/week" → don't add more BHA, period
+//   "stacking acids would risk PIH" → no more acids of any class
+//   "rejected additional niacinamide serum" → no more niacinamide-as-feature
+//   "wrong tool for current phase with BHA 3x/week" → no astringent/pore actives
+//   "Stay the course on Phase 2, don't add anything new" → conservative skip on
+//     active-category products (spot treatment, exfoliator, peeling, etc.)
+//
+// Bailey's Phase 2 decision_memory contains all of these statements. The
+// substance extractor only catches glycolic acid (the one literal substance).
+// The remaining category-level judgment is what produces "Aloe BHA Skin Toner
+// in fits while user has COSRX BHA active" — mechanically correct at the
+// substance level (Yuri never literally said "salicylic acid"), but visibly
+// wrong at the user-experience level.
+//
+// AI-First note: this is structural data extraction from Yuri's own writing.
+// We're parsing exclusion intent at the category level from her decision_memory
+// + watch_for. We are NOT writing rules like "if user has BHA then block BHA"
+// — that would be a rule engine. The category exclusions ONLY exist because
+// Yuri's text said "stacking acids" or "no more actives" or equivalent. If
+// her text doesn't say it, the category isn't blocked.
+
+/**
+ * Maps category-signal phrases that appear in Yuri's decision_memory or
+ * watch_for items to the categories + ingredient classes they imply.
+ *
+ * Each entry: phrase pattern → categories to block + ingredient classes.
+ * Phrases are checked against text that already passed exclusion-intent
+ * detection (so we know there's a skip/reject/avoid verb nearby).
+ */
+const CATEGORY_SIGNAL_PATTERNS: Array<{
+  pattern: RegExp
+  /** ss_products.category values to skip */
+  categories?: string[]
+  /** Ingredient classes (membership checked via INGREDIENT_CLASS_MEMBERSHIP) */
+  ingredientClasses?: string[]
+  /** Human-readable label for the matched_items.item field */
+  label: string
+}> = [
+  // BHA-related
+  {
+    pattern: /\b(?:already (?:using|on)|currently using|on)\s+bha\b/i,
+    ingredientClasses: ['bha'],
+    label: 'already running BHA',
+  },
+  {
+    pattern: /\bbha\s+(?:3x|2x|4x|\d+x|three times|twice|four times)\s*(?:\/?\s*week|a week)\b/i,
+    ingredientClasses: ['bha'],
+    label: 'BHA already at protocol cadence',
+  },
+
+  // Acid stacking
+  {
+    pattern: /\bstacking\s+acid/i,
+    ingredientClasses: ['bha', 'aha', 'pha'],
+    label: 'no acid stacking',
+  },
+  {
+    pattern: /\bno (?:more )?acids?\b/i,
+    ingredientClasses: ['bha', 'aha', 'pha'],
+    label: 'no more acids',
+  },
+
+  // Additional-X-serum-style rejections
+  {
+    pattern: /\badditional\s+niacinamide\b/i,
+    ingredientClasses: ['niacinamide_feature'],
+    label: 'no additional niacinamide serum',
+  },
+  {
+    pattern: /\badditional\s+vitamin\s*c\b/i,
+    ingredientClasses: ['vitamin_c'],
+    label: 'no additional vitamin C',
+  },
+  {
+    pattern: /\bvitamin\s*c\s+ampoule\b/i,
+    ingredientClasses: ['vitamin_c'],
+    label: 'no additional vitamin C ampoule',
+  },
+  {
+    pattern: /\bmore\s+vitamin\s*c\b/i,
+    ingredientClasses: ['vitamin_c'],
+    label: 'no more vitamin C',
+  },
+
+  // PHA / future-phase deferrals
+  {
+    pattern: /\bpha\s+toner\b/i,
+    ingredientClasses: ['pha'],
+    label: 'rejected PHA toner',
+  },
+  {
+    pattern: /\bgentle\s+pha\b.*\b(?:phase\s*[34]|later\s+phase|future)/i,
+    ingredientClasses: ['pha'],
+    label: 'PHAs deferred to future phase',
+  },
+
+  // Category-level "no new" / "stay the course" language
+  {
+    pattern: /\bdon'?t\s+add\s+anything\s+new\b/i,
+    categories: ['spot_treatment', 'exfoliator', 'ampoule'],
+    label: 'no new active products this phase',
+  },
+  {
+    pattern: /\bstay\s+the\s+course\b/i,
+    categories: ['spot_treatment', 'exfoliator', 'ampoule'],
+    label: 'stay-the-course Phase 2 protocol',
+  },
+  {
+    pattern: /\bno\s+(?:more|additional)\s+actives?\b/i,
+    categories: ['spot_treatment', 'exfoliator', 'ampoule'],
+    label: 'no more active products',
+  },
+
+  // Sleeping mask + humectant essence (Glass Skin rejection list)
+  {
+    pattern: /\bsleeping\s+mask\b/i,
+    categories: ['mask'],
+    ingredientClasses: ['sleeping_mask_pack'],
+    label: 'rejected sleeping mask',
+  },
+  {
+    pattern: /\bhumectant\s+essence\b/i,
+    categories: ['essence'],
+    label: 'rejected additional humectant essence',
+  },
+
+  // Astringent pore products (Zero Pore Oil class)
+  {
+    pattern: /\bastringent\s+oils?\b/i,
+    ingredientClasses: ['astringent_oil'],
+    label: 'no astringent oils (Phase 2 with BHA)',
+  },
+  {
+    pattern: /\bwrong\s+tool\s+for\s+current\s+phase/i,
+    categories: ['oil'],
+    ingredientClasses: ['astringent_oil'],
+    label: 'wrong tool for current phase',
+  },
+]
+
+/**
+ * Ingredient class → list of canonical ingredient names that belong to the
+ * class. Used by applyPhaseFilter to check if a candidate product contains
+ * any ingredient in a blocked class.
+ *
+ * Note: these are CONSERVATIVE class definitions. We include obvious members
+ * only; if Yuri ever recommends one of these specifically by name, the
+ * NEVER_EXCLUDE_SUBSTANCES allowlist on the substance side wins anyway.
+ */
+const INGREDIENT_CLASS_MEMBERSHIP: Record<string, string[]> = {
+  bha: [
+    'salicylic acid',
+    'betaine salicylate',
+    // Note: salix alba / willow bark intentionally NOT included. Willow bark
+    // contains natural salicylates but at concentrations that don't trigger
+    // the BHA-stacking risk Yuri is protecting against. Including "salix alba
+    // bark water" would also produce false-positive matches via substring
+    // collisions with "water". If Yuri ever specifically excludes willow bark,
+    // it'll appear in her decision_memory as a substance exclusion.
+  ],
+  aha: [
+    'glycolic acid',
+    'lactic acid',
+    'mandelic acid',
+    // Note: citric acid intentionally NOT in AHA class. At cosmetic
+    // concentrations it's a pH adjuster, not an exfoliating acid. Treating
+    // citric acid as an AHA produces false-positive skips on virtually every
+    // K-beauty product (it's in everything as a buffer). If a product
+    // actually features citric acid as an active, Yuri will catch it via
+    // substance-level reasoning.
+    'malic acid',
+    'tartaric acid',
+  ],
+  pha: [
+    'gluconolactone',
+    'lactobionic acid',
+    // 'galactose' removed — too generic, false positives on milk-derived
+    // ingredients that aren't PHA actives.
+  ],
+  retinoid: [
+    'retinol',
+    'retinal',
+    'retinaldehyde',
+    'retinyl palmitate',
+    'retinoic acid',
+    'tretinoin',
+    'adapalene',
+    'bakuchiol', // bakuchiol is the natural retinoid alternative
+  ],
+  vitamin_c: [
+    'ascorbic acid',
+    'l-ascorbic acid',
+    'ethyl ascorbic acid',
+    'magnesium ascorbyl phosphate',
+    'sodium ascorbyl phosphate',
+    'ascorbyl glucoside',
+    'tetrahexyldecyl ascorbate',
+    'thd ascorbate',
+    'ascorbyl palmitate',
+    '3-o-ethyl ascorbic acid',
+  ],
+  // Note: niacinamide_feature targets products where niacinamide is the
+  // headline active (e.g., "10% niacinamide serum"). We can't tell from
+  // ingredient lists alone whether niacinamide is the feature or just a
+  // supporting ingredient; we use product name + category as a proxy.
+  // Handled in applyPhaseFilter via name pattern, not ingredient match.
+  niacinamide_feature: [],
+  astringent_oil: [
+    'tea tree oil',
+    'eucalyptus oil',
+    'witch hazel',
+    'peppermint oil',
+    'camphor',
+    'menthol',
+  ],
+  sleeping_mask_pack: [], // category-only match
+}
+
+/**
+ * Extract category-level exclusions from decision_memory + watch_for items
+ * by matching exclusion-intent text against the CATEGORY_SIGNAL_PATTERNS map.
+ */
+function extractExcludedCategoriesFromText(textBlocks: string[]): ExcludedCategory[] {
+  const result: ExcludedCategory[] = []
+  const seenKeys = new Set<string>()
+
+  for (const text of textBlocks) {
+    if (!text || !entryHasExclusionIntent(text)) continue
+    for (const sig of CATEGORY_SIGNAL_PATTERNS) {
+      if (!sig.pattern.test(text)) continue
+
+      if (sig.categories) {
+        for (const cat of sig.categories) {
+          const key = `cat:${cat}|${sig.label}`
+          if (seenKeys.has(key)) continue
+          seenKeys.add(key)
+          result.push({ category: cat, sourceText: sig.label })
+        }
+      }
+      if (sig.ingredientClasses) {
+        for (const cls of sig.ingredientClasses) {
+          const key = `cls:${cls}|${sig.label}`
+          if (seenKeys.has(key)) continue
+          seenKeys.add(key)
+          result.push({ ingredientClass: cls, sourceText: sig.label })
+        }
+      }
+    }
+  }
+
+  return result
+}
+
+/**
+ * Convenience wrapper: pull all candidate text blocks from a decision_memory
+ * object (decisions[].decision + corrections[].truth) for category extraction.
+ */
+function collectDecisionMemoryTextBlocks(
+  decisionMemory: Record<string, unknown> | null
+): string[] {
+  if (!decisionMemory) return []
+  const blocks: string[] = []
+
+  type DecisionEntry = { topic?: string; decision?: string }
+  type CorrectionEntry = { topic?: string; truth?: string }
+
+  const decisions = (decisionMemory.decisions as DecisionEntry[] | undefined) || []
+  for (const d of decisions) {
+    const text = `${d.topic || ''} ${d.decision || ''}`.trim()
+    if (text) blocks.push(text)
+  }
+
+  const corrections = (decisionMemory.corrections as CorrectionEntry[] | undefined) || []
+  for (const c of corrections) {
+    const text = `${c.topic || ''} ${c.truth || ''}`.trim()
+    if (text) blocks.push(text)
+  }
+
+  return blocks
+}
+
+// ---------------------------------------------------------------------------
 // Context loader
 // ---------------------------------------------------------------------------
 
@@ -450,13 +778,26 @@ export async function buildCurationContext(userId: string): Promise<CurationCont
     .limit(5)
 
   const excludedSet = new Set<string>()
+  const allDecisionTextBlocks: string[] = []
   for (const row of convRows || []) {
     const dm = row.decision_memory as Record<string, unknown> | null
     const subs = await extractExcludedSubstancesFromDecisionMemory(dm)
     for (const sub of subs) {
       excludedSet.add(sub)
     }
+    // v10.8.2: collect text blocks for category-level extraction below
+    allDecisionTextBlocks.push(...collectDecisionMemoryTextBlocks(dm))
   }
+
+  // v10.8.2: extract category-level exclusions across all decision_memory
+  // text + watch_for items. Same exclusion-intent gate as the substance
+  // extractor — text must contain a skip/avoid/reject verb before any
+  // category signal matches.
+  const categoryTextBlocks = [
+    ...allDecisionTextBlocks,
+    ...(activePhase?.watchFor || []),
+  ]
+  const excludedCategories = extractExcludedCategoriesFromText(categoryTextBlocks)
 
   // Current routine ingredient tokens (so reasoning can flag duplication)
   const { data: routineProducts } = await db
@@ -498,6 +839,7 @@ export async function buildCurationContext(userId: string): Promise<CurationCont
     activePhase,
     excludedSubstances: Array.from(excludedSet),
     routineIngredientTokens: Array.from(routineIngredientTokens),
+    excludedCategories,
   }
 }
 
@@ -537,7 +879,7 @@ async function getActiveRoutineIds(userId: string): Promise<string[]> {
  *   - Cost-tracking changes
  *   - Adding new fields to the curation payload that don't affect verdicts
  */
-const CURATION_LOGIC_VERSION = 'v10.8.1' as const
+const CURATION_LOGIC_VERSION = 'v10.8.2' as const
 
 /**
  * Deterministic sha256 over the load-bearing inputs. When user state changes
@@ -585,31 +927,64 @@ export function computeCacheKeyHash(context: CurationContext): string {
  * Returns verdicts for every candidate product. Pure data filtering — no
  * ranking, no judgment, no rule engine.
  *
- * Caller is responsible for fetching ingredient data; this function operates
- * on a pre-fetched map of product_id → ingredient names to avoid N+1 queries.
+ * v10.8.2 adds Layer 1.5 — category-level conflict checks against
+ * context.excludedCategories. Caller passes optional `productCategories` and
+ * `productNames` maps to enable this; if omitted, only substance-level
+ * filtering runs (backward compat).
+ *
+ * Caller is responsible for fetching ingredient + category data; this
+ * function operates on pre-fetched maps to avoid N+1 queries.
  */
 export function applyPhaseFilter(
   candidateProductIds: string[],
   productIngredients: Map<string, string[]>,
-  context: CurationContext
+  context: CurationContext,
+  productCategories?: Map<string, string>,
+  productNames?: Map<string, string>
 ): CurationVerdictResult[] {
   const results: CurationVerdictResult[] = []
 
   const allergyTokens = context.allergies.map((a) => a.toLowerCase().trim()).filter(Boolean)
   const excludedTokens = context.excludedSubstances.map((s) => s.toLowerCase().trim()).filter(Boolean)
-  // v10.8.1: watch_for excluded substances are pre-extracted at context-build
-  // time using the same exclusion-intent parser as decision_memory. Avoids the
-  // v10.8.0 bug where every word in a watch_for phrase got treated as a
-  // substance ("fitzpatrick", "danger", "marks" all became false-positive
-  // exclusion chips).
   const watchForSubstances = (context.activePhase?.watchForExcludedSubstances || [])
     .map((s) => s.toLowerCase().trim())
     .filter((s) => s.length >= 4)
 
+  // v10.8.2: pre-compute the category/class blocklists from context once
+  const blockedCategories = new Set<string>()
+  const blockedClasses = new Map<string, string>() // class → sourceText label
+  for (const ex of context.excludedCategories || []) {
+    if (ex.category) blockedCategories.add(ex.category.toLowerCase())
+    if (ex.ingredientClass) blockedClasses.set(ex.ingredientClass, ex.sourceText)
+  }
+  // Maps class → set of canonical ingredient names that belong to the class
+  const classMembershipLookup = new Map<string, Set<string>>()
+  for (const cls of blockedClasses.keys()) {
+    const members = INGREDIENT_CLASS_MEMBERSHIP[cls] || []
+    classMembershipLookup.set(cls, new Set(members.map((m) => m.toLowerCase())))
+  }
+
   for (const productId of candidateProductIds) {
     const ingNames = (productIngredients.get(productId) || []).map((n) => n.toLowerCase())
     if (ingNames.length === 0) {
-      // No ingredient data — neutral verdict (don't hide, don't promote)
+      // No ingredient data — neutral verdict (don't hide, don't promote).
+      // Exception: even without ingredient data we can still block on
+      // category if the caller provided productCategories.
+      const productCategory = productCategories?.get(productId)?.toLowerCase()
+      if (productCategory && blockedCategories.has(productCategory)) {
+        const sourceText = (context.excludedCategories || [])
+          .find((ex) => ex.category?.toLowerCase() === productCategory)?.sourceText || productCategory
+        results.push({
+          productId,
+          verdict: 'skip',
+          matchedItems: [{
+            type: 'category_conflict',
+            item: sourceText,
+            matchedIngredient: productCategory,
+          }],
+        })
+        continue
+      }
       results.push({ productId, verdict: 'neutral', matchedItems: [] })
       continue
     }
@@ -637,10 +1012,79 @@ export function applyPhaseFilter(
     for (const subToken of watchForSubstances) {
       const hit = ingNames.find((n) => n.includes(subToken))
       if (hit && !matched.find((m) => m.matchedIngredient === hit)) {
-        // Find the original watch_for phrase that contained this substance
         const sourcePhrase = (context.activePhase?.watchFor || [])
           .find((w) => w.toLowerCase().includes(subToken)) || subToken
         matched.push({ type: 'watch_for', item: sourcePhrase, matchedIngredient: hit })
+      }
+    }
+
+    // v10.8.2 — Layer 1.5: category + ingredient-class conflicts
+    const productCategory = productCategories?.get(productId)?.toLowerCase()
+    const productName = productNames?.get(productId)?.toLowerCase() || ''
+
+    // Category-level blocks (e.g., spot_treatment when "no new actives")
+    if (productCategory && blockedCategories.has(productCategory)) {
+      const sourceText = (context.excludedCategories || [])
+        .find((ex) => ex.category?.toLowerCase() === productCategory)?.sourceText || productCategory
+      if (!matched.find((m) => m.type === 'category_conflict' && m.matchedIngredient === productCategory)) {
+        matched.push({
+          type: 'category_conflict',
+          item: sourceText,
+          matchedIngredient: productCategory,
+        })
+      }
+    }
+
+    // Ingredient-class blocks (BHA/AHA/PHA/retinoid/vitamin_c)
+    for (const [cls, label] of blockedClasses) {
+      // Special-case: niacinamide_feature — name-based, not ingredient-based
+      // (we can't distinguish "10% niacinamide serum" from a moisturizer that
+      // contains niacinamide as a supporting ingredient via INCI alone)
+      if (cls === 'niacinamide_feature') {
+        if (
+          /\bniacinamide\b/.test(productName) &&
+          (productCategory === 'serum' || productCategory === 'ampoule' || productCategory === 'essence')
+        ) {
+          if (!matched.find((m) => m.type === 'category_conflict' && m.matchedIngredient === 'niacinamide')) {
+            matched.push({
+              type: 'category_conflict',
+              item: label,
+              matchedIngredient: 'niacinamide',
+            })
+          }
+        }
+        continue
+      }
+      if (cls === 'sleeping_mask_pack') {
+        // Category-only — already covered by blockedCategories pass above
+        continue
+      }
+
+      const classMembers = classMembershipLookup.get(cls)
+      if (!classMembers) continue
+      // Does any product ingredient belong to the blocked class?
+      // v10.8.2 directional match: a product ingredient counts as a class
+      // member ONLY when (a) it equals a class member exactly, or (b) it
+      // CONTAINS a class member as a substring (e.g., "salicylic acid (and
+      // willow extract)" contains "salicylic acid"). We do NOT match the
+      // reverse direction ("water" being a substring of "salix alba bark
+      // water") — that produced false positives in v10.8.2-dev1 where every
+      // product containing water was matching the BHA class.
+      const hit = ingNames.find((n) => {
+        if (n.length < 3) return false // skip super-short tokens
+        for (const member of classMembers) {
+          if (member.length < 4) continue // skip class members too short to be safe substrings
+          if (n === member) return true
+          if (n.includes(member)) return true
+        }
+        return false
+      })
+      if (hit && !matched.find((m) => m.type === 'category_conflict' && m.matchedIngredient === hit)) {
+        matched.push({
+          type: 'category_conflict',
+          item: label,
+          matchedIngredient: hit,
+        })
       }
     }
 
@@ -814,6 +1258,12 @@ Hard constraints:
 - If the verdict is 'fits', explain the fit briefly — what about the product aligns with her current phase or routine.
 - If the verdict is 'neutral' (no ingredient data available), say so honestly: "I don't have a full ingredient read on this one — ask me in chat if you want me to dig."
 - Match the precomputed verdict. Do not flip 'skip' to 'fits' or vice versa; the structural filter already made that call.
+
+Category-conflict matched items (v10.8.2+) need a different framing than substance-level matches. If you see a matched item with type=category_conflict, the issue isn't "this product contains a banned ingredient" — it's HIGHER-ORDER: she's already running enough of this category and adding more would conflict with what you told her in past conversations. Examples of category_conflict reasoning, in your voice:
+- "She's already running COSRX BHA on MWF — adding another BHA toner stacks acids on Fitzpatrick 3 skin, which is exactly the PIH risk she's protecting against right now."
+- "She has Goodal Vita C in her AM already. Another vitamin C ampoule isn't more brightening, just more sting."
+- "Phase 2 is 'stay the course' — adding a new active product mid-phase is the move she explicitly told me not to make."
+The matched_ingredient field on a category_conflict will be a category name (spot_treatment, exfoliator) or a class name (bha, aha, pha, vitamin c). The item field will be the source text (e.g., "already running BHA", "no acid stacking", "stay-the-course Phase 2 protocol"). Use these to anchor your reasoning in her own words.
 
 Output format — return ONLY valid JSON, no markdown fences, no prose wrapper:
 {
