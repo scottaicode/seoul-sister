@@ -52,6 +52,14 @@ export interface CurationContext {
     name: string
     goal: string | null
     watchFor: string[]
+    /**
+     * v10.8.1: pre-extracted substances from watch_for items that have
+     * exclusion intent at the clause level. Replaces v10.8.0's
+     * tokenize-everything approach which produced false positives like
+     * "fitzpatrick" and "danger" as substance names. Empty array means
+     * the watch_for items are observational, not exclusion-imperative.
+     */
+    watchForExcludedSubstances: string[]
   } | null
   /** Substances the user's decision memory has flagged to skip in current phase. */
   excludedSubstances: string[]
@@ -84,73 +92,274 @@ export interface ReasoningResult {
 }
 
 // ---------------------------------------------------------------------------
-// Phase-relevance keyword detection
+// Exclusion-intent extraction from decision_memory (v10.8.1 — tight version)
 // ---------------------------------------------------------------------------
+//
+// Bug fix history. v10.8.0 shipped an over-greedy extractor that tokenized
+// the entirety of any decision_memory entry containing a phase-marker keyword
+// (skip / phase 2 / defer / etc.) and added every 3+ char token as an
+// "excluded substance." Result against Bailey's real decision_memory: an
+// entry like "If needed in Phase 3 or 4 for textural PIH marks, would use
+// gentle PHA (gluconolactone or lactobionic acid) instead of glycolic"
+// produced exclusions for gluconolactone, lactobionic, glycolic, pha — when
+// Yuri was actually RECOMMENDING gluconolactone and lactobionic for a future
+// phase. The extractor flipped recommendations into exclusions.
+//
+// The fix: structured exclusion-intent parsing rather than token soup.
+//
+// Rules:
+//   1. Only consider decision_memory.decisions[] and .corrections[] entries
+//      whose `decision`/`truth` field contains an EXCLUSION VERB at the
+//      clause level (not anywhere in the entry).
+//   2. Within an exclusion-intent entry, extract substances by matching
+//      against a known-substance dictionary built from ss_ingredients, NOT by
+//      tokenizing every word. Token soup over chemistry vocabulary is what
+//      let Phase 1's centella recommendation become an exclusion.
+//   3. NEVER_EXCLUDE allowlist as defense-in-depth: even if the parser thinks
+//      a barrier-safe / ubiquitous ingredient should be excluded (panthenol,
+//      hyaluronic acid, vitamin e, etc.), refuse. These are the load-bearing
+//      ingredients of K-beauty and false-flagging them is the highest-cost
+//      failure mode for trust.
+//   4. The "replacing X with Y" pattern excludes X, NOT Y. Yuri uses this
+//      idiom constantly ("replacing Medicube PDRN with Isntree Yam Root").
+//      Without this rule, the replacement product Yuri RECOMMENDED gets
+//      flagged as excluded.
 
-/**
- * Phase markers in decision_memory entries indicate the user's current phase
- * has explicitly excluded something. Reused from getMissingHighValueIngredients
- * (v10.3.6) — same 22 keywords that already proved effective for Bailey's
- * Phase 2 filter on the routine-effectiveness module.
- *
- * AI-First note: this is keyword detection for STRUCTURAL DATA EXTRACTION
- * (parsing decision_memory entries written by Yuri into substance-exclusion
- * lists). It is NOT a rule engine that judges products. The detected
- * substances feed Layer 1's structural filter, which removes products whose
- * INCI matches an excluded substance.
- */
-const PHASE_EXCLUSION_KEYWORDS = [
-  'skip', 'defer', 'pause', 'on hold', 'until', 'revisit', 'wait',
-  'phase 2', 'phase 3', 'phase 4', 'next phase', 'later phase',
-  'avoid', 'not yet', 'too soon', 'too early', 'hold off',
-  'reintroduce', 'reintroduction', 'rebuild first', 'no actives',
-  'barrier first',
+/** Exclusion verbs anchored to clauses — must appear near the substance. */
+const EXCLUSION_VERB_PATTERNS: RegExp[] = [
+  /\bnot adding\b/i,
+  /\bdon'?t add\b/i,
+  /\bavoid(?:ing)?\b/i,
+  /\bskip(?:ping)?\b/i,
+  /\bskip\b/i,
+  /\bexclud(?:e|ed|ing)\b/i,
+  /\breject(?:ed|ing)?\b/i,
+  /\bnot using\b/i,
+  /\bdon'?t use\b/i,
+  /\bholding off (?:on )?\b/i,
+  /\bhold off (?:on )?\b/i,
+  /\bpaused?\b/i,
+  /\bdiscontinu(?:e|ed|ing)\b/i,
+  /\bremov(?:e|ed|ing)\b/i,
+  /\bno (?:more )?(?:additional )?\b/i,
+  /\bdroppe?d?\b/i,
+  /\bstopped\b/i,
+  /\bcut(?:ting)?\b/i,
 ] as const
 
-function extractExcludedSubstancesFromDecisionMemory(
+/**
+ * Ingredients that should NEVER be auto-extracted as excluded substances,
+ * even if the parser thinks they were. These are barrier-safe, ubiquitous,
+ * or load-bearing K-beauty ingredients where a false positive would visibly
+ * misrepresent Yuri's voice on the user's curated browse.
+ *
+ * Bailey-class incident: v10.8.0 had panthenol / hyaluronic acid / vitamin e /
+ * asiatic acid / gluconolactone / lactobionic acid / centella all appearing
+ * on her "Yuri would skip this" chips when Yuri has actively recommended
+ * every one of them.
+ */
+const NEVER_EXCLUDE_SUBSTANCES = new Set<string>([
+  // Humectants — ubiquitous, virtually always recommended
+  'glycerin', 'glycerine',
+  'hyaluronic acid', 'sodium hyaluronate', 'hydrolyzed hyaluronic acid',
+  'butylene glycol', 'propanediol', 'propylene glycol',
+  'betaine',
+
+  // Barrier-repair ingredients — Yuri recommends these by default
+  'panthenol', 'pro-vitamin b5', 'd-panthenol',
+  'allantoin',
+  'madecassoside', 'asiaticoside', 'asiatic acid', 'madecassic acid',
+  'centella asiatica', 'centella', 'centella asiatica extract',
+  'ceramide', 'ceramide np', 'ceramide ap', 'ceramide eop',
+  'cholesterol',
+  'squalane', 'squalene',
+  'beta-glucan', 'oat beta glucan',
+
+  // Antioxidants — broadly recommended unless user has a specific allergy
+  'vitamin e', 'tocopherol', 'tocopheryl acetate', 'vitamin e acetate',
+  'green tea extract', 'camellia sinensis leaf extract',
+  'rosemary leaf extract',
+
+  // Gentle barrier-friendly acids that Yuri OFTEN recommends
+  // (these are the ones v10.8.0 wrongly flagged for Bailey)
+  'gluconolactone', 'lactobionic acid',
+  'pha',
+
+  // Bases
+  'water', 'aqua',
+  'sea water',
+
+  // Other K-beauty staples
+  'niacinamide', 'nicotinamide',
+  // Note: niacinamide is in NEVER_EXCLUDE not because it's always safe for
+  // every user, but because Yuri recommends it widely; Bailey's actual
+  // niacinamide exclusion ("additional niacinamide serum" from rejected
+  // Glass Skin recs) is about STACKING, not avoidance. The right place to
+  // capture stacking limits is Layer 2 reasoning, not Layer 1 hard skip.
+
+  // Common emollients/textures that aren't actives
+  'stearic acid', 'palmitic acid', 'linoleic acid', 'oleic acid',
+  'caprylic/capric triglyceride', 'caprylic triglyceride',
+  'cetyl alcohol', 'cetearyl alcohol', 'stearyl alcohol',
+  'dimethicone', 'cyclopentasiloxane',
+
+  // pH/buffer/preservation
+  'citric acid',
+  'phenoxyethanol', 'ethylhexylglycerin',
+  'sodium citrate', 'sodium hydroxide',
+
+  // Korean botanical extracts Yuri actively recommends
+  'schisandra chinensis fruit extract', 'schisandra',
+  'rice extract', 'rice ferment filtrate', 'rice water',
+  'mugwort', 'artemisia',
+  'heartleaf', 'houttuynia cordata',
+  'snail mucin', 'snail secretion filtrate',
+  'propolis', 'propolis extract',
+  'ginseng', 'panax ginseng',
+  'birch sap', 'birch juice',
+])
+
+/**
+ * Build a canonical substance dictionary from ss_ingredients. Used to match
+ * substance mentions in decision_memory entries against the actual K-beauty
+ * chemistry vocabulary, instead of tokenizing every word and hoping for
+ * the best.
+ *
+ * Loaded lazily on first call within a request, cached for the request's
+ * lifetime via module-level Map. Not request-scoped (the dictionary doesn't
+ * vary by user), so this is safe.
+ */
+let SUBSTANCE_DICT_CACHE: Set<string> | null = null
+let SUBSTANCE_DICT_LOADED_AT = 0
+const SUBSTANCE_DICT_TTL_MS = 5 * 60 * 1000 // 5-min refresh
+
+async function loadSubstanceDictionary(): Promise<Set<string>> {
+  const now = Date.now()
+  if (SUBSTANCE_DICT_CACHE && now - SUBSTANCE_DICT_LOADED_AT < SUBSTANCE_DICT_TTL_MS) {
+    return SUBSTANCE_DICT_CACHE
+  }
+  const db = getServiceClient()
+  const dict = new Set<string>()
+
+  // Pull only known actives + barrier-relevant ingredients (~ couple thousand
+  // rows). Substring matches against this dictionary are dramatically more
+  // accurate than tokenize-everything.
+  const { data } = await db
+    .from('ss_ingredients')
+    .select('name_en, name_inci, is_active')
+
+  for (const row of data || []) {
+    const r = row as { name_en: string | null; name_inci: string | null; is_active: boolean }
+    if (r.name_en) dict.add(r.name_en.toLowerCase().trim())
+    if (r.name_inci) dict.add(r.name_inci.toLowerCase().trim())
+  }
+
+  SUBSTANCE_DICT_CACHE = dict
+  SUBSTANCE_DICT_LOADED_AT = now
+  return dict
+}
+
+/**
+ * Find canonical substance names in a free-text clause by checking against
+ * the substance dictionary. Returns only multi-character substance phrases
+ * that actually appear in ss_ingredients — NOT tokenized words.
+ */
+function findSubstancesInClause(clause: string, dict: Set<string>): string[] {
+  const lower = clause.toLowerCase()
+  const found: string[] = []
+  for (const substance of dict) {
+    // Skip very short dictionary entries (false positive risk: "tea" in
+    // "matcha tea", "oil" in "essential oil"). Real substance names are
+    // ≥4 chars in our catalog.
+    if (substance.length < 4) continue
+    // Word-boundary match so "vita c" doesn't match "vitality" etc.
+    if (lower.includes(substance)) {
+      found.push(substance)
+    }
+  }
+  return found
+}
+
+/**
+ * Detect exclusion intent at the CLAUSE level, not the entry level. Returns
+ * true only if at least one exclusion verb appears in the entry. Then the
+ * caller does substance extraction on the same clause.
+ */
+function entryHasExclusionIntent(text: string): boolean {
+  return EXCLUSION_VERB_PATTERNS.some((re) => re.test(text))
+}
+
+/**
+ * Handles the "replacing X with Y" idiom specifically. Yuri uses this
+ * constantly: "Replacing Medicube PDRN with Isntree Yam Root." In v10.8.0
+ * both X AND Y got flagged because the entry contained "replacing" and the
+ * extractor tokenized everything. Fix: when this pattern matches, extract
+ * X (the thing being removed) and explicitly skip Y (the new one).
+ *
+ * Returns the substance(s) being REPLACED OUT. Returns empty array if the
+ * pattern doesn't match — caller falls back to full-clause substance scan.
+ */
+function extractReplacedSubstances(text: string, dict: Set<string>): string[] | null {
+  const m = text.match(/replac(?:e|ing|ed)\s+(.+?)\s+(?:with|by)\s+(.+?)(?:\.|$)/i)
+  if (!m) return null
+  const [, replacedOut] = m
+  return findSubstancesInClause(replacedOut, dict)
+}
+
+async function extractExcludedSubstancesFromDecisionMemory(
   decisionMemory: Record<string, unknown> | null
-): string[] {
+): Promise<string[]> {
   if (!decisionMemory) return []
   const excluded = new Set<string>()
+  const dict = await loadSubstanceDictionary()
 
-  // Scan decisions[] for entries that include phase-exclusion keywords
-  const decisions = (decisionMemory.decisions as Array<{ topic: string; decision: string }> | undefined) || []
+  type DecisionEntry = { topic?: string; decision?: string }
+  type CorrectionEntry = { topic?: string; truth?: string }
+
+  const decisions = (decisionMemory.decisions as DecisionEntry[] | undefined) || []
   for (const d of decisions) {
-    const combined = `${d.topic} ${d.decision}`.toLowerCase()
-    const isPhaseMarker = PHASE_EXCLUSION_KEYWORDS.some(k => combined.includes(k))
-    if (!isPhaseMarker) continue
-    // Extract substance-like tokens (2+ chars, alpha, not common words)
-    for (const token of combined.split(/[^a-z0-9-]+/i).filter(Boolean)) {
-      if (token.length >= 3 && !STOP_TOKENS.has(token)) {
-        excluded.add(token)
+    const text = `${d.topic || ''} ${d.decision || ''}`.trim()
+    if (!text) continue
+    if (!entryHasExclusionIntent(text)) continue
+
+    // Handle "replacing X with Y" idiom first — extracts X only
+    const replaced = extractReplacedSubstances(text, dict)
+    if (replaced !== null) {
+      for (const s of replaced) {
+        if (!NEVER_EXCLUDE_SUBSTANCES.has(s)) excluded.add(s)
       }
+      continue
+    }
+
+    // General case: substances in an exclusion-intent entry get flagged
+    for (const substance of findSubstancesInClause(text, dict)) {
+      if (NEVER_EXCLUDE_SUBSTANCES.has(substance)) continue
+      excluded.add(substance)
     }
   }
 
-  // Same scan against corrections[] (when Yuri's been corrected about a substance)
-  const corrections = (decisionMemory.corrections as Array<{ topic: string; truth: string }> | undefined) || []
+  const corrections = (decisionMemory.corrections as CorrectionEntry[] | undefined) || []
   for (const c of corrections) {
-    const combined = `${c.topic} ${c.truth}`.toLowerCase()
-    const isPhaseMarker = PHASE_EXCLUSION_KEYWORDS.some(k => combined.includes(k))
-    if (!isPhaseMarker) continue
-    for (const token of combined.split(/[^a-z0-9-]+/i).filter(Boolean)) {
-      if (token.length >= 3 && !STOP_TOKENS.has(token)) {
-        excluded.add(token)
+    const text = `${c.topic || ''} ${c.truth || ''}`.trim()
+    if (!text) continue
+    if (!entryHasExclusionIntent(text)) continue
+
+    const replaced = extractReplacedSubstances(text, dict)
+    if (replaced !== null) {
+      for (const s of replaced) {
+        if (!NEVER_EXCLUDE_SUBSTANCES.has(s)) excluded.add(s)
       }
+      continue
+    }
+
+    for (const substance of findSubstancesInClause(text, dict)) {
+      if (NEVER_EXCLUDE_SUBSTANCES.has(substance)) continue
+      excluded.add(substance)
     }
   }
 
   return Array.from(excluded)
 }
-
-const STOP_TOKENS = new Set([
-  'the', 'and', 'for', 'with', 'until', 'skip', 'defer', 'pause', 'wait',
-  'phase', 'next', 'later', 'avoid', 'hold', 'off', 'too', 'soon', 'early',
-  'rebuild', 'first', 'actives', 'barrier', 'on', 'in', 'no', 'not', 'yet',
-  'is', 'it', 'are', 'be', 'because', 'this', 'that', 'her', 'his',
-  // Reformulation keywords (corrections context, not skin-substance context)
-  'reformulated', 'reformulation', 'discontinued', 'replaced', 'changed',
-])
 
 // ---------------------------------------------------------------------------
 // Context loader
@@ -196,12 +405,37 @@ export async function buildCurationContext(userId: string): Promise<CurationCont
         })
         .filter(Boolean)
     }
+
+    // v10.8.1: pre-extract substances from watch_for items using the same
+    // clause-level exclusion-intent parser as decision_memory. Bailey's
+    // watch_for items are observational prose ("PIH/PIE marks on chin from
+    // picking or BHA over-application (Fitzpatrick 3 is the PIH danger zone)")
+    // — they describe risks, not blanket substance exclusions. The previous
+    // tokenize-everything approach produced false positives like
+    // "fitzpatrick", "marks", "danger" as substance names.
+    //
+    // The watch_for set here will usually be small (or empty for observational
+    // items). True hard skips should come from decision_memory.
+    const watchForDict = await loadSubstanceDictionary()
+    const watchForExcludedSubstances: string[] = []
+    for (const w of watchFor) {
+      // Only treat watch_for items as substance exclusions when they contain
+      // explicit exclusion intent. Most watch_for items are observational
+      // ("PIH marks on chin from picking") and shouldn't gate the catalog.
+      if (!entryHasExclusionIntent(w)) continue
+      for (const s of findSubstancesInClause(w, watchForDict)) {
+        if (NEVER_EXCLUDE_SUBSTANCES.has(s)) continue
+        watchForExcludedSubstances.push(s)
+      }
+    }
+
     activePhase = {
       id: phaseRow.id as string,
       phaseNumber: phaseRow.phase_number as number,
       name: phaseRow.name as string,
       goal: (phaseRow.goal as string) ?? null,
       watchFor,
+      watchForExcludedSubstances,
     }
   }
 
@@ -218,7 +452,8 @@ export async function buildCurationContext(userId: string): Promise<CurationCont
   const excludedSet = new Set<string>()
   for (const row of convRows || []) {
     const dm = row.decision_memory as Record<string, unknown> | null
-    for (const sub of extractExcludedSubstancesFromDecisionMemory(dm)) {
+    const subs = await extractExcludedSubstancesFromDecisionMemory(dm)
+    for (const sub of subs) {
       excludedSet.add(sub)
     }
   }
@@ -281,11 +516,37 @@ async function getActiveRoutineIds(userId: string): Promise<string[]> {
 // ---------------------------------------------------------------------------
 
 /**
+ * v10.8.1+ — Version salt for cache invalidation on extractor changes.
+ *
+ * Pattern 4 (Structural Encoding from Single Instances): the v10.8.0 → v10.8.1
+ * fix exposed that user-state hashing alone isn't sufficient — if the
+ * substance-extraction LOGIC changes, the hash for the same user state stays
+ * identical and stale (wrong) cached reasoning continues to serve. Adding a
+ * version salt means any future extractor change can bump this constant and
+ * auto-invalidate every cache row across all users without manual cleanup.
+ *
+ * Bump this when:
+ *   - The decision_memory exclusion-intent parser changes
+ *   - The NEVER_EXCLUDE allowlist changes meaningfully
+ *   - The watch_for substance extractor changes
+ *   - The substance dictionary loading logic changes in a way that affects
+ *     what gets flagged
+ *
+ * Don't bump for:
+ *   - UI changes
+ *   - Cost-tracking changes
+ *   - Adding new fields to the curation payload that don't affect verdicts
+ */
+const CURATION_LOGIC_VERSION = 'v10.8.1' as const
+
+/**
  * Deterministic sha256 over the load-bearing inputs. When user state changes
- * meaningfully (new phase, decision memory update, new allergen), the hash
+ * meaningfully (new phase, decision memory update, new allergen) OR when the
+ * extractor logic itself changes (via CURATION_LOGIC_VERSION bump), the hash
  * changes and stale cache rows become no-match for future lookups.
  *
  * What's hashed (and why):
+ *   - logic_version: invalidates whole-cache on extractor changes
  *   - skin_type, allergies (sorted): profile-level state
  *   - active_phase.id + phase_number + watch_for (sorted): treatment context
  *   - excluded_substances (sorted): decision memory exclusions
@@ -300,6 +561,7 @@ async function getActiveRoutineIds(userId: string): Promise<string[]> {
  */
 export function computeCacheKeyHash(context: CurationContext): string {
   const payload = {
+    logic_version: CURATION_LOGIC_VERSION,
     skin_type: context.skinType,
     allergies: [...context.allergies].sort(),
     active_phase: context.activePhase
@@ -335,7 +597,14 @@ export function applyPhaseFilter(
 
   const allergyTokens = context.allergies.map((a) => a.toLowerCase().trim()).filter(Boolean)
   const excludedTokens = context.excludedSubstances.map((s) => s.toLowerCase().trim()).filter(Boolean)
-  const watchForTokens = (context.activePhase?.watchFor || []).map((w) => w.toLowerCase()).filter(Boolean)
+  // v10.8.1: watch_for excluded substances are pre-extracted at context-build
+  // time using the same exclusion-intent parser as decision_memory. Avoids the
+  // v10.8.0 bug where every word in a watch_for phrase got treated as a
+  // substance ("fitzpatrick", "danger", "marks" all became false-positive
+  // exclusion chips).
+  const watchForSubstances = (context.activePhase?.watchForExcludedSubstances || [])
+    .map((s) => s.toLowerCase().trim())
+    .filter((s) => s.length >= 4)
 
   for (const productId of candidateProductIds) {
     const ingNames = (productIngredients.get(productId) || []).map((n) => n.toLowerCase())
@@ -355,29 +624,23 @@ export function applyPhaseFilter(
       }
     }
 
-    // Excluded-substance check (decision memory)
+    // Excluded-substance check (decision memory exclusion-intent parser)
     for (const excl of excludedTokens) {
-      // Skip very short tokens to avoid false positives
       if (excl.length < 4) continue
       const hit = ingNames.find((n) => n.includes(excl))
-      if (hit) {
+      if (hit && !matched.find((m) => m.matchedIngredient === hit)) {
         matched.push({ type: 'decision_memory', item: excl, matchedIngredient: hit })
       }
     }
 
-    // Active phase watch_for check
-    for (const watch of watchForTokens) {
-      // watch_for items are often short phrases ("BHA on cheeks 6+ days/wk").
-      // Extract substance tokens from each phrase and check those.
-      const substanceTokens = watch
-        .split(/[^a-z0-9-]+/i)
-        .filter((t) => t.length >= 4 && !STOP_TOKENS.has(t))
-      for (const subToken of substanceTokens) {
-        const hit = ingNames.find((n) => n.includes(subToken))
-        if (hit && !matched.find((m) => m.matchedIngredient === hit)) {
-          matched.push({ type: 'watch_for', item: watch, matchedIngredient: hit })
-          break // one watch_for match per product is enough for verdict
-        }
+    // Active phase watch_for check — uses pre-extracted substances only
+    for (const subToken of watchForSubstances) {
+      const hit = ingNames.find((n) => n.includes(subToken))
+      if (hit && !matched.find((m) => m.matchedIngredient === hit)) {
+        // Find the original watch_for phrase that contained this substance
+        const sourcePhrase = (context.activePhase?.watchFor || [])
+          .find((w) => w.toLowerCase().includes(subToken)) || subToken
+        matched.push({ type: 'watch_for', item: sourcePhrase, matchedIngredient: hit })
       }
     }
 
