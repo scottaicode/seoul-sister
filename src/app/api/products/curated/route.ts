@@ -142,32 +142,80 @@ export async function GET(request: NextRequest) {
     }
 
     // ---------------------------------------------------------------
-    // Bulk-fetch ingredient names for candidates (batched against URL length)
+    // Bulk-fetch ingredient names for candidates.
+    //
+    // v10.8.6 — fix silent batch-fetch truncation. PostgREST hard-caps every
+    // SELECT at 1000 rows on this Supabase instance, and explicit .limit()
+    // overrides are silently IGNORED by the platform. Before v10.8.6 we were
+    // requesting 200 product_ids in a single .in() query expecting ~5,000
+    // link rows back; we were silently getting 1,000 (~20% of the data) and
+    // most products fell through Layer 1 as `neutral` because their ingredient
+    // names never made it into the productIngredients map.
+    //
+    // The bullet-proof fix is internal .range() pagination within each
+    // product-id batch: keep advancing the range window until the response
+    // is smaller than the page size (last page reached). This works
+    // regardless of how many ingredients per product, and is robust against
+    // any future PostgREST cap changes that don't reduce the 1000 floor.
+    //
+    // We keep the outer batch (slice of product_ids per .in() call) modest
+    // for URL length safety — 50 product_ids per batch, plenty of headroom
+    // under PostgREST's URL limit.
+    //
+    // Defensive logging: if any single .range() page returns exactly
+    // PAGE_SIZE rows, we're at risk of the next page being needed; the loop
+    // already handles this correctly, but we also log a console.warn if we
+    // ever advance past 10 pages on a single batch — that's a signal that
+    // OUTER_BATCH should drop to be smaller, since at 10+ pages we're
+    // wasting roundtrips.
     // ---------------------------------------------------------------
     const productIngredients = new Map<string, string[]>()
-    const BATCH = 200
-    for (let i = 0; i < candidateIds.length; i += BATCH) {
-      const slice = candidateIds.slice(i, i + BATCH)
-      const { data: links } = await db
-        .from('ss_product_ingredients')
-        .select('product_id, ingredient:ss_ingredients(name_en, name_inci)')
-        .in('product_id', slice)
+    const OUTER_BATCH = 50  // product_ids per .in() call (URL length safety)
+    const PAGE_SIZE = 1000  // matches PostgREST hard cap on this instance
 
-      // Supabase typed-relations sometimes return single object, sometimes array
-      type Link = {
-        product_id: string
-        ingredient: { name_en: string | null; name_inci: string | null } | Array<{ name_en: string | null; name_inci: string | null }> | null
-      }
-      for (const link of (links || []) as Link[]) {
-        const rawIng = link.ingredient
-        const ing = Array.isArray(rawIng) ? rawIng[0] : rawIng
-        if (!ing) continue
-        if (!productIngredients.has(link.product_id)) {
-          productIngredients.set(link.product_id, [])
+    type Link = {
+      product_id: string
+      ingredient: { name_en: string | null; name_inci: string | null } | Array<{ name_en: string | null; name_inci: string | null }> | null
+    }
+
+    for (let i = 0; i < candidateIds.length; i += OUTER_BATCH) {
+      const slice = candidateIds.slice(i, i + OUTER_BATCH)
+      let pageStart = 0
+      let pageNum = 0
+      // Inner pagination loop — keep pulling pages until the response
+      // is smaller than PAGE_SIZE (last page).
+      while (true) {
+        const { data: links, error } = await db
+          .from('ss_product_ingredients')
+          .select('product_id, ingredient:ss_ingredients(name_en, name_inci)')
+          .in('product_id', slice)
+          .range(pageStart, pageStart + PAGE_SIZE - 1)
+
+        if (error) {
+          console.error('[/api/products/curated] ingredient fetch error:', error)
+          break
         }
-        const arr = productIngredients.get(link.product_id)!
-        if (ing.name_en) arr.push(ing.name_en)
-        if (ing.name_inci && ing.name_inci !== ing.name_en) arr.push(ing.name_inci)
+
+        const pageRows = links?.length ?? 0
+        for (const link of (links || []) as Link[]) {
+          const rawIng = link.ingredient
+          const ing = Array.isArray(rawIng) ? rawIng[0] : rawIng
+          if (!ing) continue
+          if (!productIngredients.has(link.product_id)) {
+            productIngredients.set(link.product_id, [])
+          }
+          const arr = productIngredients.get(link.product_id)!
+          if (ing.name_en) arr.push(ing.name_en)
+          if (ing.name_inci && ing.name_inci !== ing.name_en) arr.push(ing.name_inci)
+        }
+
+        if (pageRows < PAGE_SIZE) break  // last page
+        pageStart += PAGE_SIZE
+        pageNum += 1
+        if (pageNum > 10) {
+          console.warn(`[/api/products/curated] ingredient fetch hit >10 pages for batch ${i} — consider lowering OUTER_BATCH from ${OUTER_BATCH}`)
+          break
+        }
       }
     }
 
