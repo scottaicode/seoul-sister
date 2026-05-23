@@ -31,14 +31,16 @@ async function main() {
   const { getServiceClient } = await import('../src/lib/supabase')
   const db = getServiceClient()
 
-  // Replicate the API's exact candidate query (v10.8.7+): verified-only,
-  // image-bearing first via image_url ordering, then limit 400. Same as a
-  // default /browse load with no query/category.
+  // Replicate the API's exact candidate query (v10.8.8+): verified-only,
+  // image-bearing first via ASC image_url ordering (ascending puts
+  // cdn-image.oliveyoung.com URLs ahead of brand-direct Shopify URLs
+  // lexically — see v10.8.8 changelog for the v10.8.7 regression story),
+  // then limit 400.
   const { data: candidates } = await db
     .from('ss_products')
     .select('id, category, name_en, brand_en, image_url')
     .eq('is_verified', true)
-    .order('image_url', { ascending: false, nullsFirst: false })
+    .order('image_url', { ascending: true, nullsFirst: false })
     .limit(400)
 
   console.log(`Candidates fetched: ${candidates?.length}`)

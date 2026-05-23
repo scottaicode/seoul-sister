@@ -113,18 +113,30 @@ export async function GET(request: NextRequest) {
     // uses. Prevents noise from un-enriched listings.
     candidateQuery = candidateQuery.eq('is_verified', true)
 
-    // v10.8.7: order by image_url (non-null first) before limit. This is a
-    // visual-quality choice, NOT a Yuri-curated ranking — it just ensures
-    // the candidate set surfaces image-bearing products first within the
-    // 400-row pool. Image-less products (416 of 5,311 verified) still
-    // appear, just further down the page. Without this, default ordering
-    // was query-plan dependent and Bailey's fits list rendered ~56% as
-    // the gold Package fallback icon despite 92% catalog image coverage.
+    // v10.8.8 (fixes v10.8.7 critical regression): order by image_url
+    // ascending with nulls last. This puts image-bearing products first
+    // (nullsFirst:false) AND lexically surfaces cdn-image.oliveyoung.com
+    // URLs ahead of brand-direct Shopify slug URLs because 'cdn-i' sorts
+    // before 'us.' / 'www.' / brand domain names in ascending order.
     //
-    // Layer 1 verdicts are unchanged — this only orders WHICH 400
-    // candidates get evaluated by the filter. Same products still
-    // classify the same way.
-    candidateQuery = candidateQuery.order('image_url', { ascending: false, nullsFirst: false })
+    // v10.8.7 shipped this with ascending:false — descending alphabetical
+    // sort put www.cosrx.com / medicube.us / theisntree.com / us.laneige.com
+    // (all Shopify slug-based URLs with high CDN drift rate) at the TOP
+    // of the candidate window, and pushed cdn-image.oliveyoung.com
+    // (content-hashed UUIDs, ~100% reachable) to the bottom past the 400
+    // limit. Reachability sample under v10.8.7 ordering: 0 of 30 returned
+    // HTTP 200. Under ASC ordering: 27 of 30.
+    //
+    // Pattern 4 lesson encoded in changelog: don't conflate "ORDER BY
+    // is_not_null" with "ORDER BY value asc/desc". For visual-quality
+    // NULL-vs-non-NULL ordering, the value direction matters because
+    // PostgreSQL sorts the non-null values lexically. ASC here happens
+    // to surface reliable Olive Young CDN first as a fortunate
+    // side-effect of cdn-image.* preceding brand-direct hostnames
+    // alphabetically. A more architecturally correct fix would be a
+    // reliability key column or CASE expression — deferred to a future
+    // session.
+    candidateQuery = candidateQuery.order('image_url', { ascending: true, nullsFirst: false })
 
     const { data: candidates, error: candError } = await candidateQuery.limit(400)
     if (candError) throw candError
