@@ -113,6 +113,19 @@ export async function GET(request: NextRequest) {
     // uses. Prevents noise from un-enriched listings.
     candidateQuery = candidateQuery.eq('is_verified', true)
 
+    // v10.8.7: order by image_url (non-null first) before limit. This is a
+    // visual-quality choice, NOT a Yuri-curated ranking — it just ensures
+    // the candidate set surfaces image-bearing products first within the
+    // 400-row pool. Image-less products (416 of 5,311 verified) still
+    // appear, just further down the page. Without this, default ordering
+    // was query-plan dependent and Bailey's fits list rendered ~56% as
+    // the gold Package fallback icon despite 92% catalog image coverage.
+    //
+    // Layer 1 verdicts are unchanged — this only orders WHICH 400
+    // candidates get evaluated by the filter. Same products still
+    // classify the same way.
+    candidateQuery = candidateQuery.order('image_url', { ascending: false, nullsFirst: false })
+
     const { data: candidates, error: candError } = await candidateQuery.limit(400)
     if (candError) throw candError
 

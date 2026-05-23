@@ -31,15 +31,24 @@ async function main() {
   const { getServiceClient } = await import('../src/lib/supabase')
   const db = getServiceClient()
 
-  // Replicate the API's exact candidate query: verified-only, no filters,
-  // limit 400. Same as a default /browse load with no query/category.
+  // Replicate the API's exact candidate query (v10.8.7+): verified-only,
+  // image-bearing first via image_url ordering, then limit 400. Same as a
+  // default /browse load with no query/category.
   const { data: candidates } = await db
     .from('ss_products')
-    .select('id, category, name_en, brand_en')
+    .select('id, category, name_en, brand_en, image_url')
     .eq('is_verified', true)
+    .order('image_url', { ascending: false, nullsFirst: false })
     .limit(400)
 
   console.log(`Candidates fetched: ${candidates?.length}`)
+
+  // v10.8.7 visual quality check — how many candidates have images?
+  const candidatesWithImage = (candidates || []).filter((c) => {
+    const url = (c as { image_url: string | null }).image_url
+    return url && url.trim().length > 0
+  }).length
+  console.log(`Candidates with image_url: ${candidatesWithImage} (${candidates?.length ? ((candidatesWithImage / candidates.length) * 100).toFixed(1) : 0}%)`)
 
   const candidateIds = (candidates || []).map((r) => r.id as string)
   const productCategories = new Map<string, string>()
