@@ -1,6 +1,20 @@
 'use client'
 
-import { Search, SlidersHorizontal, Sparkles, X } from 'lucide-react'
+/**
+ * Product filters component.
+ *
+ * v10.8.0 Path B: the "For You" button and sort-row UI have been removed.
+ * Browse is now curated by default (phase + decision_memory + allergens),
+ * so an algorithmic ingredient-effectiveness sort would compete with Yuri's
+ * authority. This is the sixth Yuri Sole Authority Principle compliance
+ * step in the codebase. Component now surfaces: search, category, and
+ * ingredient include/exclude — additive filters on top of curation.
+ *
+ * The `sortBy` and `onSortChange` props are retained for backward
+ * compatibility but currently unused; sort is always 'curated' from /browse.
+ */
+
+import { Search, SlidersHorizontal, X } from 'lucide-react'
 import IngredientPicker from '@/components/products/IngredientPicker'
 import type { ProductCategory } from '@/types/database'
 
@@ -20,13 +34,6 @@ const CATEGORIES: { value: ProductCategory; label: string }[] = [
   { value: 'mist', label: 'Mist' },
   { value: 'spot_treatment', label: 'Spot Treatment' },
 ]
-
-const SORT_OPTIONS = [
-  { value: 'rating', label: 'Top Rated' },
-  { value: 'price_asc', label: 'Price: Low to High' },
-  { value: 'price_desc', label: 'Price: High to Low' },
-  { value: 'newest', label: 'Newest' },
-] as const
 
 interface ProductFiltersProps {
   query: string
@@ -51,16 +58,13 @@ interface ProductFiltersProps {
 export default function ProductFilters({
   query,
   category,
-  sortBy,
   showFilters,
   includeIngredients,
   excludeIngredients,
   fragranceFree,
   comedogenicMax,
-  isAuthenticated,
   onQueryChange,
   onCategoryChange,
-  onSortChange,
   onToggleFilters,
   onIncludeIngredientsChange,
   onExcludeIngredientsChange,
@@ -68,7 +72,6 @@ export default function ProductFilters({
   onComedogenicMaxChange,
 }: ProductFiltersProps) {
   const hasIngredientFilters = includeIngredients.length > 0 || excludeIngredients.length > 0 || fragranceFree || comedogenicMax !== null
-  const isRecommended = sortBy === 'recommended'
 
   return (
     <div className="flex flex-col gap-3">
@@ -92,19 +95,6 @@ export default function ProductFilters({
             </button>
           )}
         </div>
-        {isAuthenticated && (
-          <button
-            onClick={() => onSortChange(isRecommended ? 'rating' : 'recommended')}
-            className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-              isRecommended
-                ? 'bg-gradient-to-r from-gold to-amber-500 text-white shadow-lg shadow-gold/20'
-                : 'bg-white/10 border border-white/20 text-white/80 hover:bg-white/15 hover:text-white'
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            <span className="hidden sm:inline">For You</span>
-          </button>
-        )}
         <button
           onClick={onToggleFilters}
           className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
@@ -149,26 +139,6 @@ export default function ProductFilters({
                   }`}
                 >
                   {cat.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Sort */}
-          <div>
-            <p className="text-xs font-medium text-white mb-2">Sort by</p>
-            <div className="flex flex-wrap gap-1.5">
-              {SORT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => onSortChange(opt.value)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
-                    sortBy === opt.value
-                      ? 'bg-glass-500 text-white'
-                      : 'bg-white/5 text-white/40 hover:bg-glass-100'
-                  }`}
-                >
-                  {opt.label}
                 </button>
               ))}
             </div>

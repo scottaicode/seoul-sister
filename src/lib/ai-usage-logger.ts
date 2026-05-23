@@ -39,6 +39,10 @@ export type AIFeature =
   | 'product_extraction'
   | 'reddit_sentiment'
   | 'voice_cleanup'
+  // v10.8.0 Path B — Products as Yuri's shortlist (cache + telemetry)
+  | 'product_curation_reasoning'
+  | 'curated_browse_view'
+  | 'skip_reasoning_expanded'
 
 interface AIUsageParams {
   feature: AIFeature

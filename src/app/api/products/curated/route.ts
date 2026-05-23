@@ -1,0 +1,272 @@
+/**
+ * v10.8.0 Path B — GET /api/products/curated
+ *
+ * Returns subscriber-curated product list split into `fits` and `skipped`
+ * based on Layer 1 structural phase filter (allergens + decision memory
+ * exclusions + active treatment phase watch_for items).
+ *
+ * No AI calls. Pure SQL + JS structural filtering. The Opus reasoning for
+ * individual skipped products is lazy-fetched on demand via the
+ * /api/products/curated/[id]/reasoning endpoint.
+ *
+ * Architecture: PATH-B-PRODUCTS-AS-YURIS-SHORTLIST.md
+ */
+
+export const maxDuration = 30
+
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { getServiceClient } from '@/lib/supabase'
+import { hasActiveSubscription } from '@/lib/subscription'
+import { logAIUsage } from '@/lib/ai-usage-logger'
+import {
+  buildCurationContext,
+  applyPhaseFilter,
+  type CurationVerdictResult,
+} from '@/lib/intelligence/product-curation'
+
+const curatedQuerySchema = z.object({
+  query: z.string().max(200).optional(),
+  category: z.string().max(50).optional(),
+  brand: z.string().max(100).optional(),
+  min_price: z.number().min(0).max(10000).optional(),
+  max_price: z.number().min(0).max(10000).optional(),
+  page: z.number().int().min(1).max(50).default(1),
+  limit: z.number().int().min(1).max(40).default(20),
+})
+
+function sanitizeLikeInput(input: string): string {
+  return input.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    // ---------------------------------------------------------------
+    // Auth + subscription gate
+    // ---------------------------------------------------------------
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const db = getServiceClient()
+    const { data: { user }, error: authError } = await db.auth.getUser(token)
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const isSubscribed = await hasActiveSubscription(user.id)
+    if (!isSubscribed) {
+      return NextResponse.json(
+        { error: 'Active subscription required for curated browse.' },
+        { status: 403 }
+      )
+    }
+
+    // ---------------------------------------------------------------
+    // Parse + validate query params
+    // ---------------------------------------------------------------
+    const { searchParams } = new URL(request.url)
+    const parsed = curatedQuerySchema.parse({
+      query: searchParams.get('query') || undefined,
+      category: searchParams.get('category') || undefined,
+      brand: searchParams.get('brand') || undefined,
+      min_price: searchParams.get('min_price') ? Number(searchParams.get('min_price')) : undefined,
+      max_price: searchParams.get('max_price') ? Number(searchParams.get('max_price')) : undefined,
+      page: searchParams.get('page') ? Number(searchParams.get('page')) : 1,
+      limit: searchParams.get('limit') ? Number(searchParams.get('limit')) : 20,
+    })
+
+    // ---------------------------------------------------------------
+    // Build curation context (profile + phase + decision memory + routine)
+    // ---------------------------------------------------------------
+    const context = await buildCurationContext(user.id)
+    if (!context) {
+      return NextResponse.json(
+        { error: 'Set up your skin profile before using curated browse.' },
+        { status: 400 }
+      )
+    }
+
+    // ---------------------------------------------------------------
+    // Candidate query — pull filtered product IDs from ss_products
+    // ---------------------------------------------------------------
+    let candidateQuery = db.from('ss_products').select('id')
+    if (parsed.query) {
+      const q = sanitizeLikeInput(parsed.query.trim())
+      candidateQuery = candidateQuery.or(`name_en.ilike.%${q}%,brand_en.ilike.%${q}%`)
+    }
+    if (parsed.category) {
+      candidateQuery = candidateQuery.eq('category', parsed.category)
+    }
+    if (parsed.brand) {
+      candidateQuery = candidateQuery.ilike('brand_en', `%${sanitizeLikeInput(parsed.brand)}%`)
+    }
+    if (parsed.min_price !== undefined) {
+      candidateQuery = candidateQuery.gte('price_usd', parsed.min_price)
+    }
+    if (parsed.max_price !== undefined) {
+      candidateQuery = candidateQuery.lte('price_usd', parsed.max_price)
+    }
+    // Verified-only by default — same filter the public products surface
+    // uses. Prevents noise from un-enriched listings.
+    candidateQuery = candidateQuery.eq('is_verified', true)
+
+    const { data: candidates, error: candError } = await candidateQuery.limit(400)
+    if (candError) throw candError
+
+    const candidateIds = (candidates || []).map((r) => r.id as string)
+    if (candidateIds.length === 0) {
+      return NextResponse.json({
+        fits: [],
+        skipped: [],
+        total_fits: 0,
+        total_skipped: 0,
+        page: parsed.page,
+        active_phase: context.activePhase
+          ? {
+              phase_number: context.activePhase.phaseNumber,
+              name: context.activePhase.name,
+            }
+          : null,
+      })
+    }
+
+    // ---------------------------------------------------------------
+    // Bulk-fetch ingredient names for candidates (batched against URL length)
+    // ---------------------------------------------------------------
+    const productIngredients = new Map<string, string[]>()
+    const BATCH = 200
+    for (let i = 0; i < candidateIds.length; i += BATCH) {
+      const slice = candidateIds.slice(i, i + BATCH)
+      const { data: links } = await db
+        .from('ss_product_ingredients')
+        .select('product_id, ingredient:ss_ingredients(name_en, name_inci)')
+        .in('product_id', slice)
+
+      // Supabase typed-relations sometimes return single object, sometimes array
+      type Link = {
+        product_id: string
+        ingredient: { name_en: string | null; name_inci: string | null } | Array<{ name_en: string | null; name_inci: string | null }> | null
+      }
+      for (const link of (links || []) as Link[]) {
+        const rawIng = link.ingredient
+        const ing = Array.isArray(rawIng) ? rawIng[0] : rawIng
+        if (!ing) continue
+        if (!productIngredients.has(link.product_id)) {
+          productIngredients.set(link.product_id, [])
+        }
+        const arr = productIngredients.get(link.product_id)!
+        if (ing.name_en) arr.push(ing.name_en)
+        if (ing.name_inci && ing.name_inci !== ing.name_en) arr.push(ing.name_inci)
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // Layer 1 — Deterministic phase filter
+    // ---------------------------------------------------------------
+    const verdicts: CurationVerdictResult[] = applyPhaseFilter(
+      candidateIds,
+      productIngredients,
+      context
+    )
+
+    const fitsIds: string[] = []
+    const skippedVerdicts = new Map<string, CurationVerdictResult>()
+    for (const v of verdicts) {
+      if (v.verdict === 'skip') {
+        skippedVerdicts.set(v.productId, v)
+      } else {
+        // 'fits' and 'neutral' both show in the curated list
+        fitsIds.push(v.productId)
+      }
+    }
+    const skippedIds = Array.from(skippedVerdicts.keys())
+
+    // ---------------------------------------------------------------
+    // Paginate over the `fits` list. Skipped products returned in full
+    // (toggle is collapsed by default, lazy-fetched reasoning).
+    // ---------------------------------------------------------------
+    const totalFits = fitsIds.length
+    const totalSkipped = skippedIds.length
+    const offset = (parsed.page - 1) * parsed.limit
+    const pageFitsIds = fitsIds.slice(offset, offset + parsed.limit)
+
+    // Fetch full product records (only for what we'll actually render —
+    // page of fits + ALL skipped to keep the toggle responsive without
+    // a second request).
+    const idsToFetch = [...pageFitsIds, ...skippedIds]
+    let fitsProducts: Record<string, unknown>[] = []
+    let skippedProducts: Record<string, unknown>[] = []
+
+    if (idsToFetch.length > 0) {
+      const { data: prods, error: prodError } = await db
+        .from('ss_products')
+        .select('*')
+        .in('id', idsToFetch)
+      if (prodError) throw prodError
+
+      const prodMap = new Map(
+        (prods || []).map((p) => [(p as { id: string }).id, p as Record<string, unknown>])
+      )
+      fitsProducts = pageFitsIds
+        .map((id) => prodMap.get(id))
+        .filter(Boolean) as Record<string, unknown>[]
+      skippedProducts = skippedIds
+        .map((id) => {
+          const prod = prodMap.get(id)
+          if (!prod) return null
+          // Attach matched_items preview so the UI can show skip reason chips
+          // without a second round trip
+          const verdict = skippedVerdicts.get(id)
+          return {
+            ...prod,
+            skip_preview: {
+              matched_items: verdict?.matchedItems || [],
+            },
+          }
+        })
+        .filter(Boolean) as Record<string, unknown>[]
+    }
+
+    // ---------------------------------------------------------------
+    // Telemetry — fire-and-forget per v10.3.5 audit pattern
+    // ---------------------------------------------------------------
+    void logAIUsage({
+      feature: 'curated_browse_view',
+      model: 'n/a',
+      inputTokens: 0,
+      outputTokens: 0,
+      userId: user.id,
+    }).catch(() => {
+      // logger swallows its own errors; this catch is defensive belt+suspenders
+    })
+
+    return NextResponse.json({
+      fits: fitsProducts,
+      skipped: skippedProducts,
+      total_fits: totalFits,
+      total_skipped: totalSkipped,
+      page: parsed.page,
+      total_pages: Math.ceil(totalFits / parsed.limit),
+      active_phase: context.activePhase
+        ? {
+            phase_number: context.activePhase.phaseNumber,
+            name: context.activePhase.name,
+            goal: context.activePhase.goal,
+          }
+        : null,
+      has_decision_memory_exclusions: context.excludedSubstances.length > 0,
+      allergens: context.allergies,
+    })
+  } catch (error) {
+    console.error('[/api/products/curated] error:', error)
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Invalid query parameters', details: error.issues }, { status: 400 })
+    }
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Internal error' },
+      { status: 500 }
+    )
+  }
+}

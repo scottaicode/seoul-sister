@@ -1,167 +1,221 @@
 'use client'
 
+/**
+ * v10.8.0 Path B — Browse becomes Yuri's curated shortlist.
+ *
+ * Default view: products that don't structurally conflict with the subscriber's
+ * active treatment phase, decision_memory exclusions, or allergens (Layer 1
+ * deterministic filter, $0 cost). Single "Ask Yuri about my browse" CTA at top.
+ *
+ * Skip toggle (default collapsed): reveals products Yuri would skip, with a
+ * lazy-fetched "Why Yuri would skip this" expander per card that fetches
+ * Opus 4.7 reasoning on demand.
+ *
+ * What's been killed from the pre-v10.8.0 /browse:
+ *   - "For You" sort button (algorithmic ingredient-effectiveness rank with
+ *     zero phase awareness — same shape as the 5 Yuri Sole Authority Principle
+ *     violations earned through Bailey-caught misses)
+ *   - "Loved by Combination Skin" carousel (same algorithmic rank, different
+ *     UI shape)
+ *   - "Sorted by ingredient effectiveness for your skin type" indicator
+ *
+ * Architecture: PATH-B-PRODUCTS-AS-YURIS-SHORTLIST.md
+ * Origin: Bailey iMessage May 20-22 2026 + May 22 deep audit
+ */
+
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Search, Package, Star, Heart, Sparkles } from 'lucide-react'
 import Link from 'next/link'
-import ProductCard from '@/components/products/ProductCard'
-import LazyImage from '@/components/ui/LazyImage'
-import type { TrendingInfo } from '@/components/products/ProductCard'
+import { Package, Sparkles, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
 import ProductFilters from '@/components/products/ProductFilters'
+import CuratedProductCard from '@/components/products/CuratedProductCard'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import EmptyState from '@/components/ui/EmptyState'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import type { Product } from '@/types/database'
+import type { MatchedItemDTO } from '@/components/products/SkipReasoning'
 
-interface LovedProduct {
-  id: string
-  name_en: string
-  brand_en: string
-  category: string
-  rating_avg: number | null
-  price_usd: number | null
-  image_url: string | null
-  volume_display: string | null
-  effectiveness_score: number
-  concern: string
+interface ActivePhase {
+  phase_number: number
+  name: string
+  goal: string | null
 }
 
-function ProductsPageInner() {
-  const { user } = useAuth()
-  // Read initial filter state from URL on first render so shared/linked URLs
-  // (/browse?category=cleanser, /browse?q=cosrx) apply their filter on landing.
-  // Same pattern used in /yuri page for ?ask= prefill (v10.6.2).
+interface CuratedSkippedProduct extends Product {
+  skip_preview?: {
+    matched_items: MatchedItemDTO[]
+  }
+}
+
+interface CuratedPayload {
+  fits: Product[]
+  skipped: CuratedSkippedProduct[]
+  total_fits: number
+  total_skipped: number
+  page: number
+  total_pages: number
+  active_phase: ActivePhase | null
+  has_decision_memory_exclusions: boolean
+  allergens: string[]
+}
+
+function buildBrowseYuriPrefill(payload: CuratedPayload, query: string, category: string): string {
+  const parts: string[] = []
+  parts.push(`I'm looking at the curated browse page.`)
+  if (payload.active_phase) {
+    parts.push(`I'm on Phase ${payload.active_phase.phase_number} (${payload.active_phase.name}).`)
+  }
+  if (query) parts.push(`Searching for "${query}".`)
+  if (category) parts.push(`Filtered to category: ${category}.`)
+  parts.push(`You've classified ${payload.total_fits} products as fits and ${payload.total_skipped} as skips. What's the smartest thing to focus on right now?`)
+  return parts.join(' ')
+}
+
+function CuratedBrowseInner() {
+  const { user, loading: authLoading } = useAuth()
   const searchParams = useSearchParams()
   const initialQuery = searchParams?.get('q') || ''
   const initialCategory = searchParams?.get('category') || ''
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
+
   const [query, setQuery] = useState(initialQuery)
   const [category, setCategory] = useState(initialCategory)
-  const [sortBy, setSortBy] = useState('rating')
   const [showFilters, setShowFilters] = useState(false)
   const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [total, setTotal] = useState(0)
 
-  // Ingredient filter state
+  // Filter state retained from v10.7.x for compatibility — UI still surfaces
+  // ingredient filters even on curated browse (additive on top of the
+  // phase-filter, not a replacement).
   const [includeIngredients, setIncludeIngredients] = useState<string[]>([])
   const [excludeIngredients, setExcludeIngredients] = useState<string[]>([])
   const [fragranceFree, setFragranceFree] = useState(false)
   const [comedogenicMax, setComedogenicMax] = useState<number | null>(null)
 
-  // Discovery data (fetched once)
-  const [trendingMap, setTrendingMap] = useState<Record<string, TrendingInfo>>({})
-  const [lovedProducts, setLovedProducts] = useState<LovedProduct[]>([])
-  const [lovedSkinType, setLovedSkinType] = useState<string | null>(null)
-  const [discoveryLoaded, setDiscoveryLoaded] = useState(false)
+  const [data, setData] = useState<CuratedPayload | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [skipExpanded, setSkipExpanded] = useState(false) // default collapsed
 
-  // Fetch discovery data (trending map + loved products) once on mount
-  useEffect(() => {
-    async function loadDiscovery() {
-      try {
-        const headers: Record<string, string> = {}
-        if (user) {
-          const { data: { session } } = await supabase.auth.getSession()
-          if (session?.access_token) {
-            headers['Authorization'] = `Bearer ${session.access_token}`
-          }
-        }
-
-        const res = await fetch('/api/products/discovery', { headers })
-        if (res.ok) {
-          const data = await res.json()
-          setTrendingMap(data.trendingMap ?? {})
-          setLovedProducts(data.lovedProducts ?? [])
-          setLovedSkinType(data.skinType ?? null)
-        }
-      } catch {
-        // Discovery is non-critical
-      } finally {
-        setDiscoveryLoaded(true)
-      }
-    }
-
-    loadDiscovery()
-  }, [user])
-
-  const fetchProducts = useCallback(async () => {
+  const fetchCurated = useCallback(async () => {
+    if (!user) return
     setLoading(true)
+    setError(null)
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        setError('Please sign in to use curated browse.')
+        setLoading(false)
+        return
+      }
+
       const params = new URLSearchParams()
       if (query) params.set('query', query)
       if (category) params.set('category', category)
-      if (sortBy) params.set('sort_by', sortBy)
       params.set('page', String(page))
       params.set('limit', '20')
 
-      // Ingredient filters
-      if (includeIngredients.length > 0) {
-        params.set('include_ingredients', includeIngredients.join(','))
-      }
-      if (excludeIngredients.length > 0) {
-        params.set('exclude_ingredients', excludeIngredients.join(','))
-      }
-      if (fragranceFree) {
-        params.set('fragrance_free', 'true')
-      }
-      if (comedogenicMax !== null) {
-        params.set('comedogenic_max', String(comedogenicMax))
-      }
-
-      // Add auth header for recommended sort
-      const headers: Record<string, string> = {}
-      if (sortBy === 'recommended' && user) {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.access_token) {
-          headers['Authorization'] = `Bearer ${session.access_token}`
+      const res = await fetch(`/api/products/curated?${params}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: 'Failed' }))
+        // 400 = no profile yet (graceful onboarding nudge)
+        if (res.status === 400) {
+          setError(body.error || 'Set up your skin profile first.')
+          setData(null)
+          setLoading(false)
+          return
         }
+        // 403 = no subscription
+        if (res.status === 403) {
+          setError('Curated browse requires an active subscription.')
+          setData(null)
+          setLoading(false)
+          return
+        }
+        throw new Error(body.error || 'Failed to load curated browse')
       }
-
-      const res = await fetch(`/api/products?${params}`, { headers })
-      if (!res.ok) throw new Error('Failed to fetch products')
-      const data = await res.json()
-
-      setProducts(data.products)
-      setTotalPages(data.total_pages)
-      setTotal(data.total)
+      const payload = (await res.json()) as CuratedPayload
+      setData(payload)
     } catch (err) {
-      console.error('Failed to fetch products:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load')
     } finally {
       setLoading(false)
     }
-  }, [query, category, sortBy, page, includeIngredients, excludeIngredients, fragranceFree, comedogenicMax, user])
+  }, [user, query, category, page])
 
   useEffect(() => {
-    const timeout = setTimeout(fetchProducts, query ? 300 : 0)
-    return () => clearTimeout(timeout)
-  }, [fetchProducts, query])
+    if (authLoading) return
+    if (!user) return
+    const t = setTimeout(fetchCurated, query ? 300 : 0)
+    return () => clearTimeout(t)
+  }, [authLoading, user, fetchCurated, query])
 
-  // Reset page when filters change
+  // Reset to page 1 on filter change
   useEffect(() => {
     setPage(1)
-  }, [query, category, sortBy, includeIngredients, excludeIngredients, fragranceFree, comedogenicMax])
+  }, [query, category])
+
+  if (authLoading) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-12 flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  // Curated browse is subscriber-only by design. AuthAwareNav handles routing
+  // non-subscribers to /products (the public marketing surface) via the
+  // SHARED_FALLBACKS mapping in AppShell.tsx.
+  if (!user) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-12">
+        <div className="glass-card p-6 text-center">
+          <p className="text-sm text-white/70">Please sign in to access curated browse.</p>
+          <Link href="/login" className="mt-3 inline-block text-xs text-rose-300 underline">Sign in</Link>
+        </div>
+      </div>
+    )
+  }
 
   const hasIngredientFilters = includeIngredients.length > 0 || excludeIngredients.length > 0 || fragranceFree || comedogenicMax !== null
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col gap-1">
-        <h1 className="font-display font-bold text-2xl text-white">
-          Product Database
-        </h1>
-        <p className="text-white/40 text-sm">
-          {total > 0 ? `${total} K-beauty products` : 'Explore K-beauty products'} with full ingredient analysis.
-        </p>
+      <div className="flex flex-col gap-2">
+        <h1 className="font-display font-bold text-2xl text-white">Browse</h1>
+        {data?.active_phase ? (
+          <p className="text-white/55 text-sm leading-relaxed">
+            Filtered against your <span className="text-rose-200">Phase {data.active_phase.phase_number} — {data.active_phase.name}</span> protocol
+            {data.allergens.length > 0 ? `, your declared allergens,` : ''}
+            {data.has_decision_memory_exclusions ? ` and what Yuri's flagged in past conversations` : ''}.
+            {' '}Want a deeper read? Ask her.
+          </p>
+        ) : (
+          <p className="text-white/55 text-sm leading-relaxed">
+            Filtered against your skin profile and allergens. For phase-aware curation, talk to Yuri about your treatment plan.
+          </p>
+        )}
+
+        {/* Single page-level Ask Yuri CTA (Library pattern from v10.6.5) */}
+        {data && (
+          <Link
+            href={`/yuri?ask=${encodeURIComponent(buildBrowseYuriPrefill(data, query, category))}`}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-rose-500/20 hover:bg-rose-500/30 text-rose-100 ring-1 ring-rose-400/30 transition text-sm font-medium self-start mt-1"
+          >
+            <Sparkles className="w-4 h-4" />
+            Ask Yuri about my browse
+          </Link>
+        )}
       </div>
 
-      {/* Filters */}
+      {/* Filters — ingredient picker etc. still useful additively on top of curation */}
       <ProductFilters
         query={query}
         category={category}
-        sortBy={sortBy}
+        sortBy="curated"
         showFilters={showFilters}
         includeIngredients={includeIngredients}
         excludeIngredients={excludeIngredients}
@@ -170,7 +224,7 @@ function ProductsPageInner() {
         isAuthenticated={!!user}
         onQueryChange={setQuery}
         onCategoryChange={setCategory}
-        onSortChange={setSortBy}
+        onSortChange={() => { /* sort is curated; ignore */ }}
         onToggleFilters={() => setShowFilters(!showFilters)}
         onIncludeIngredientsChange={setIncludeIngredients}
         onExcludeIngredientsChange={setExcludeIngredients}
@@ -178,161 +232,144 @@ function ProductsPageInner() {
         onComedogenicMaxChange={setComedogenicMax}
       />
 
-      {/* Recommended sort indicator */}
-      {sortBy === 'recommended' && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gold/10 border border-gold/20">
-          <Sparkles className="w-3.5 h-3.5 text-gold" />
-          <span className="text-xs text-gold">
-            Sorted by ingredient effectiveness for your skin type
-          </span>
-        </div>
-      )}
-
-      {/* Active ingredient filter summary (visible when filter panel is closed) */}
+      {/* Active ingredient filter summary */}
       {!showFilters && hasIngredientFilters && (
-        <div className="flex flex-wrap gap-1.5 items-center">
-          <span className="text-[10px] text-white/30 mr-1">Filtering by:</span>
-          {includeIngredients.map(name => (
-            <span key={`inc-${name}`} className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300">
-              + {name}
-            </span>
-          ))}
-          {excludeIngredients.map(name => (
-            <span key={`exc-${name}`} className="px-2 py-0.5 rounded-full text-[10px] bg-rose-500/20 text-rose-300">
-              - {name}
-            </span>
-          ))}
-          {fragranceFree && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] bg-rose-500/20 text-rose-300">
-              Fragrance-free
-            </span>
-          )}
-          {comedogenicMax !== null && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300">
-              Low comedogenic
-            </span>
-          )}
+        <p className="text-[11px] text-white/40">
+          Ingredient filters are client-side only on curated browse for now. Open Filters to adjust.
+        </p>
+      )}
+
+      {/* Error states */}
+      {error && (
+        <div className="glass-card p-4 text-center">
+          <p className="text-sm text-rose-300">{error}</p>
+          <Link href="/profile" className="mt-2 inline-block text-xs text-white/70 underline">
+            Update profile
+          </Link>
         </div>
       )}
 
-      {/* "People With Your Skin Type Love" section */}
-      {discoveryLoaded && lovedProducts.length > 0 && lovedSkinType && !query && !hasIngredientFilters && (
-        <div className="space-y-2.5">
-          <div className="flex items-center gap-2">
-            <Heart className="w-4 h-4 text-rose-400" />
-            <h2 className="font-display font-semibold text-sm text-white">
-              Loved by {lovedSkinType} skin
-            </h2>
-          </div>
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-            {lovedProducts.map(product => (
-              <Link
-                key={product.id}
-                href={`/browse/${product.id}`}
-                className="flex-shrink-0 w-36 glass-card p-3 transition-all duration-300 hover:bg-white/10 group"
-              >
-                <div className="w-full h-20 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden mb-2">
-                  {product.image_url ? (
-                    <LazyImage
-                      src={product.image_url}
-                      alt={product.name_en}
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                  ) : (
-                    <Package className="w-5 h-5 text-gold" strokeWidth={1.5} />
-                  )}
-                </div>
-                <p className="font-display font-semibold text-xs text-white truncate group-hover:text-gold transition-colors">
-                  {product.name_en}
-                </p>
-                <p className="text-[10px] text-white/40 truncate">{product.brand_en}</p>
-                <div className="flex items-center justify-between mt-1.5">
-                  {product.rating_avg && (
-                    <span className="flex items-center gap-0.5 text-[10px] text-white/40">
-                      <Star className="w-2.5 h-2.5 fill-gold text-gold" />
-                      {Number(product.rating_avg).toFixed(1)}
-                    </span>
-                  )}
-                  <span className="text-[10px] text-emerald-400 font-medium">
-                    {Math.round(product.effectiveness_score * 100)}%
-                  </span>
-                </div>
-                <p className="text-[9px] text-white/30 mt-0.5 truncate capitalize">
-                  {product.concern}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Product list */}
-      {loading ? (
+      {/* Loading */}
+      {loading && !data && (
         <div className="flex items-center justify-center py-12">
           <LoadingSpinner size="lg" />
         </div>
-      ) : products.length === 0 ? (
-        <EmptyState
-          icon={query || hasIngredientFilters ? Search : Package}
-          title={query || hasIngredientFilters ? 'No results found' : 'No products yet'}
-          description={
-            query
-              ? `No products matching "${query}". Try a different search term.`
-              : hasIngredientFilters
-                ? 'No products match your ingredient filters. Try adjusting your criteria.'
-                : 'Products are being added to the database.'
-          }
-        />
-      ) : (
-        <div className="flex flex-col gap-2.5">
-          {products.map((product, idx) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              trendingInfo={trendingMap[product.id]}
-              basePath="/browse"
-              priority={idx < 5}
+      )}
+
+      {/* Curated fits list */}
+      {data && (
+        <>
+          {data.fits.length === 0 ? (
+            <EmptyState
+              icon={Package}
+              title="No matches in your current state"
+              description={`Nothing in this filter avoided your Phase ${data.active_phase?.phase_number || ''} watch_for items. Try a different category, or ask Yuri what would actually work right now.`}
             />
-          ))}
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-white/40">
+                  {data.total_fits} product{data.total_fits === 1 ? '' : 's'} that fit your current state
+                </p>
+              </div>
+              <div className="flex flex-col gap-3">
+                {data.fits.map((product, idx) => (
+                  <CuratedProductCard
+                    key={product.id}
+                    product={product}
+                    activePhase={data.active_phase}
+                    priority={idx < 5}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Skip toggle — default collapsed per Scott's May 22 decision */}
+          {data.total_skipped > 0 && (
+            <div className="space-y-3 pt-4">
+              <button
+                onClick={() => setSkipExpanded(!skipExpanded)}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] ring-1 ring-white/10 transition-colors"
+                aria-expanded={skipExpanded}
+              >
+                <div className="flex items-center gap-2.5">
+                  {skipExpanded
+                    ? <ChevronDown className="w-4 h-4 text-white/60" />
+                    : <ChevronRight className="w-4 h-4 text-white/60" />
+                  }
+                  <span className="text-sm text-white/85">
+                    Show products Yuri would skip ({data.total_skipped})
+                  </span>
+                </div>
+                {!skipExpanded && (
+                  <span className="text-[11px] text-white/35">
+                    Click to see what conflicts with your protocol
+                  </span>
+                )}
+              </button>
+
+              {skipExpanded && (
+                <div className="flex flex-col gap-3 animate-slide-down">
+                  <p className="text-[11px] text-white/40 px-1">
+                    These products conflict with your declared allergens, Yuri's past corrections, or your current phase&apos;s watch_for items. Expand any card for her reasoning.
+                  </p>
+                  {data.skipped.map((product, idx) => (
+                    <CuratedProductCard
+                      key={product.id}
+                      product={product}
+                      activePhase={data.active_phase}
+                      showSkipReasoning={true}
+                      priority={idx < 2}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Pagination — only over the fits list */}
+          {data.total_pages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={data.page === 1}
+                className="px-4 py-2 rounded-xl text-sm font-medium bg-white/10 border border-white/20 text-white/80 hover:bg-white/15 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-white/60 px-3">
+                {data.page} of {data.total_pages}
+              </span>
+              <button
+                onClick={() => setPage(p => Math.min(data.total_pages, p + 1))}
+                disabled={data.page === data.total_pages}
+                className="px-4 py-2 rounded-xl text-sm font-medium bg-white/10 border border-white/20 text-white/80 hover:bg-white/15 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Inline loading indicator on subsequent fetches */}
+      {loading && data && (
+        <div className="fixed bottom-4 right-4 bg-zinc-900 ring-1 ring-white/10 px-3 py-2 rounded-full text-xs text-white/80 flex items-center gap-2">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Re-filtering…
         </div>
       )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-2">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="px-4 py-2 rounded-xl text-sm font-medium bg-white/10 border border-white/20 text-white/80 hover:bg-white/15 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
-          >
-            Previous
-          </button>
-          <span className="text-sm text-white/60 px-3">
-            {page} of {totalPages}
-          </span>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className="px-4 py-2 rounded-xl text-sm font-medium bg-white/10 border border-white/20 text-white/80 hover:bg-white/15 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
-          >
-            Next
-          </button>
-        </div>
-      )}
-
-      {/* Bottom spacer */}
       <div className="h-4" />
     </div>
   )
 }
 
-// Suspense wrapper required because ProductsPageInner uses useSearchParams.
-// Next.js needs a fallback during static prerender to handle the
-// client-side query-param read. Bare LoadingSpinner during the boundary.
-export default function ProductsPage() {
+export default function BrowsePage() {
   return (
     <Suspense fallback={<LoadingSpinner />}>
-      <ProductsPageInner />
+      <CuratedBrowseInner />
     </Suspense>
   )
 }

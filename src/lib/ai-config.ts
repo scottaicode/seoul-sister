@@ -73,6 +73,23 @@ export const AI_CONTEXTS = {
     streaming: false,
     costNote: 'AI-powered dupe analysis. ~$0.02-0.04 per query.',
   },
+  /**
+   * v10.8.0 Path B — Products as Yuri's shortlist.
+   * Generates 2-3 sentence Yuri-voice reasoning for whether a specific product
+   * fits or conflicts with the subscriber's active treatment phase + decision
+   * memory + allergens. Cached in ss_product_curation_reasoning per state-hash.
+   *
+   * Opus 4.7 chosen over Sonnet 4.5 per Principle 1 + Scott's May 22 decision:
+   * voice consistency with /yuri chat matters more than the ~$0.10/sub/month
+   * delta. Cost projection in PATH-B-PRODUCTS-AS-YURIS-SHORTLIST.md.
+   */
+  PRODUCT_CURATION_REASONING: {
+    model: 'claude-opus-4-7',
+    maxTokens: 400,
+    caching: false,
+    streaming: false,
+    costNote: 'Per-product reasoning for /browse skip toggle. ~$0.011-0.016 per generation, 80%+ cache hit rate.',
+  },
 
   // ---------------------------------------------------------------
   // Background processing (Claude Sonnet 4.5) — cost efficiency
