@@ -65,8 +65,12 @@ export async function GET(request: NextRequest) {
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; SeoulSister/1.0)',
-        'Accept': 'image/*',
+        // v10.8.3: browser-style UA reduces Cloudflare bot-management
+        // challenges in front of Olive Young's CDN. Generic UAs like
+        // "SeoulSister/1.0" were getting passed but occasionally challenged.
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
       },
     })
 
@@ -74,18 +78,69 @@ export async function GET(request: NextRequest) {
       return new NextResponse(null, { status: response.status })
     }
 
-    const contentType = response.headers.get('content-type') || 'image/jpeg'
     const buffer = await response.arrayBuffer()
+    const bytes = new Uint8Array(buffer)
+    const upstreamCT = response.headers.get('content-type') || ''
+
+    // v10.8.3: override application/octet-stream + missing/wrong content-type
+    // with sniffed image/*. Olive Young CDN returns octet-stream for every
+    // image, which Bailey's browser correctly refused to render — this was
+    // root cause of "why don't most products have images?" surfaced May 23.
+    const contentType = upstreamCT.startsWith('image/')
+      ? upstreamCT
+      : sniffImageContentType(bytes, 'image/jpeg')
 
     return new NextResponse(buffer, {
       status: 200,
       headers: {
         'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=2592000, immutable', // 30 days
+        'Content-Length': String(bytes.byteLength),
+        // 1 year, immutable — Olive Young paths are content-hashed UUIDs.
+        // Vercel edge caches aggressively after first request.
+        'Cache-Control': 'public, max-age=31536000, immutable, s-maxage=31536000',
         'Access-Control-Allow-Origin': '*',
+        'Referrer-Policy': 'no-referrer',
       },
     })
-  } catch {
+  } catch (err) {
+    console.error('[/api/img] proxy error:', err)
     return new NextResponse(null, { status: 502 })
   }
+}
+
+/**
+ * Sniff image content type from magic bytes. Used when upstream returns
+ * application/octet-stream (Olive Young CDN). Browsers refuse to render
+ * <img> tags whose Content-Type is octet-stream regardless of byte content,
+ * so we must rewrite the header.
+ */
+function sniffImageContentType(bytes: Uint8Array, fallback: string): string {
+  if (bytes.length < 4) return fallback
+  // JPEG: FF D8 FF
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg'
+  // PNG: 89 50 4E 47
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png'
+  // WebP: RIFF....WEBP
+  if (
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  ) {
+    return 'image/webp'
+  }
+  // GIF: GIF8
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) return 'image/gif'
+  // AVIF: ftyp box with avif brand
+  if (bytes.length >= 12 && bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70) {
+    return 'image/avif'
+  }
+  // SVG: starts with '<'
+  if (bytes[0] === 0x3c) return 'image/svg+xml'
+  return fallback
 }

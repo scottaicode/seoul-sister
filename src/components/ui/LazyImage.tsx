@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { proxyImageUrl } from '@/lib/utils/image-proxy'
 
 /**
  * LazyImage — IntersectionObserver-backed lazy loading for product images.
@@ -70,6 +71,15 @@ export default function LazyImage({
   priority = false,
   fallback,
 }: LazyImageProps) {
+  // v10.8.3: route product CDN images through our same-origin /api/img proxy.
+  // Bailey opened /browse May 23 and asked "why don't most products have
+  // images?" Diagnosis: Olive Young's CDN returns application/octet-stream
+  // for every image, which browsers refuse to render. The proxy fetches
+  // server-side, sniffs the magic bytes, and serves the response with a
+  // correct image/* Content-Type. Non-CDN URLs (data URIs, Supabase storage,
+  // same-origin) pass through unchanged.
+  const proxiedSrc = proxyImageUrl(src) || src
+
   // Priority images skip the observer entirely and load immediately. This is
   // the Core Web Vitals-correct behavior for above-the-fold LCP candidates.
   const [inView, setInView] = useState(priority)
@@ -123,7 +133,7 @@ export default function LazyImage({
   return (
     <img
       ref={imgRef}
-      src={inView ? src : BLANK_PIXEL}
+      src={inView ? proxiedSrc : BLANK_PIXEL}
       alt={alt}
       className={className}
       loading={priority ? 'eager' : 'lazy'}
