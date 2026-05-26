@@ -5,10 +5,8 @@ import Link from 'next/link'
 import {
   Beaker,
   ChevronRight,
-  Leaf,
   Loader2,
   Search,
-  Snowflake,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
@@ -23,18 +21,8 @@ interface TopIngredient {
   sampleSize: number
 }
 
-interface SeasonalInsight {
-  pattern_description: string
-  texture_advice: string
-  ingredients_to_emphasize: string[]
-  ingredients_to_reduce: string[]
-  season: string
-  climate: string
-}
-
 interface IntelligenceData {
   topIngredients: TopIngredient[]
-  seasonalInsight: SeasonalInsight | null
   relevantTrendingIds: string[]
 }
 
@@ -58,12 +46,6 @@ function EffectivenessBar({ score }: { score: number }) {
       />
     </div>
   )
-}
-
-function seasonIcon(season: string) {
-  // Snowflake for winter, Leaf for fall/spring, generic for summer
-  if (season === 'winter') return <Snowflake className="w-3 h-3 text-sky-400/70" />
-  return <Leaf className="w-3 h-3 text-emerald-400/70" />
 }
 
 // ---------------------------------------------------------------------------
@@ -126,10 +108,9 @@ export default function IntelligenceWidgets({ onRelevantTrendingIds }: Intellige
   if (!data) return null
 
   const hasIngredients = data.topIngredients.length > 0
-  const hasSeasonal = data.seasonalInsight !== null
 
   // Nothing useful to render
-  if (!hasIngredients && !hasSeasonal) return null
+  if (!hasIngredients) return null
 
   return (
     <div className="space-y-4">
@@ -181,35 +162,13 @@ export default function IntelligenceWidgets({ onRelevantTrendingIds }: Intellige
         </div>
       )}
 
-      {/* Seasonal Tip */}
-      {hasSeasonal && data.seasonalInsight && (
-        <div className="glass-card p-4 space-y-2">
-          <div className="flex items-center gap-2">
-            {seasonIcon(data.seasonalInsight.season)}
-            <span className="text-xs font-medium text-white/70 capitalize">
-              {data.seasonalInsight.season} Skincare Tip
-            </span>
-          </div>
-
-          <p className="text-[11px] text-white/50 leading-relaxed">
-            {data.seasonalInsight.texture_advice}
-          </p>
-
-          {data.seasonalInsight.ingredients_to_emphasize.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {data.seasonalInsight.ingredients_to_emphasize.slice(0, 3).map((ing) => (
-                <Link
-                  key={ing}
-                  href={`/products?include_ingredients=${encodeURIComponent(ing)}`}
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
-                >
-                  + {ing}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {/* Seasonal "Skincare Tip" recommender removed in v10.8.9 (Bailey feedback,
+          May 26 2026). Same algorithmic prescription as the routine-page SPRING TIP —
+          "switch to lightweight gel," "+ niacinamide" chips — keyed only on season +
+          climate, phase-blind. Per the Yuri Sole Authority Principle, recommendations
+          flow through Yuri. "Your Top Ingredients" above is preserved: it DISPLAYS
+          effectiveness data and links to product search (navigation), it does not
+          tell the user what to do. */}
     </div>
   )
 }

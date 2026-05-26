@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Activity, Loader2, Snowflake } from 'lucide-react'
+import { Activity, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 interface ConcernEffectiveness {
@@ -10,18 +10,8 @@ interface ConcernEffectiveness {
   sampleSize: number
 }
 
-interface SeasonalInsight {
-  pattern_description: string
-  texture_advice: string
-  ingredients_to_emphasize: string[]
-  ingredients_to_reduce: string[]
-  season: string
-  climate: string
-}
-
 interface EffectivenessData {
   concerns: ConcernEffectiveness[]
-  seasonalInsight: SeasonalInsight | null
 }
 
 function BarFill({ score }: { score: number }) {
@@ -84,9 +74,8 @@ export function RoutineEffectiveness({ routineId }: { routineId: string }) {
   if (!data) return null
 
   const hasConcerns = data.concerns.length > 0
-  const hasSeasonal = data.seasonalInsight !== null
 
-  if (!hasConcerns && !hasSeasonal) return null
+  if (!hasConcerns) return null
 
   return (
     <div className="glass-card p-4 space-y-3">
@@ -118,32 +107,13 @@ export function RoutineEffectiveness({ routineId }: { routineId: string }) {
       )}
 
       {/* Missing-ingredients widget removed in v10.5.2 (Bailey feedback).
-          Recommendations now flow through Yuri, who has full treatment-phase
-          context. The standalone algorithmic recommender surfaced fillers
-          (Arginine, Candelilla Wax, Stearalkonium Hectorite) as "high-value"
-          because bootstrap data scored frequency-in-products rather than
-          actual active-ingredient effectiveness. */}
-
-      {/* Seasonal suggestion */}
-      {hasSeasonal && data.seasonalInsight && (
-        <div className="bg-sky-500/5 border border-sky-500/10 rounded-lg p-2.5">
-          <div className="flex items-center gap-1.5 mb-1">
-            <Snowflake className="w-3 h-3 text-sky-400/70" />
-            <span className="text-[10px] font-medium text-sky-400/80 uppercase tracking-wider">
-              {data.seasonalInsight.season} tip
-            </span>
-          </div>
-          <p className="text-[11px] text-white/50">
-            {data.seasonalInsight.texture_advice}
-          </p>
-          {data.seasonalInsight.ingredients_to_emphasize.length > 0 && (
-            <p className="text-[10px] text-white/30 mt-1">
-              Emphasize:{' '}
-              {data.seasonalInsight.ingredients_to_emphasize.join(', ')}
-            </p>
-          )}
-        </div>
-      )}
+          Seasonal "SPRING TIP" recommender removed in v10.8.9 (Bailey feedback,
+          May 26 2026). Both were algorithmic prescriptions ("switch to lightweight
+          gel," "emphasize niacinamide") that ignored the user's treatment phase and
+          decision memory. The seasonal tip survived the v10.5.2 and v10.6.2 sweeps.
+          Per the Yuri Sole Authority Principle, prescriptions route through Yuri;
+          this widget now only DISPLAYS effectiveness-by-concern data (observational,
+          derived from the user's own routine ingredients). */}
     </div>
   )
 }

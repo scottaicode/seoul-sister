@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { handleApiError } from '@/lib/utils/error-handler'
-import { fetchSeasonalLearning } from '@/lib/intelligence/weather-routine'
 import { getServiceClient } from '@/lib/supabase'
 
 /**
  * GET /api/dashboard/intelligence
  *
- * Returns three datasets in one call:
- * 1. topIngredients — top 5 effective ingredients for user's skin type
- * 2. seasonalInsight — current season's advice for user's climate
- * 3. trendingRelevance — trending product IDs flagged as "good for your skin"
+ * Returns two datasets in one call:
+ * 1. topIngredients — top 5 effective ingredients for user's skin type (data display)
+ * 2. relevantTrendingIds — trending product IDs that match the user's skin type
+ *
+ * v10.8.9 (Bailey feedback, May 26 2026): dropped `seasonalInsight`. The
+ * dashboard "Skincare Tip" was an algorithmic prescription keyed only on season
+ * + climate, phase-blind, contradicting Yuri's protocol. Recommendations flow
+ * exclusively through Yuri (Yuri Sole Authority Principle). The two surfaces
+ * that remain are observational data, not advice.
  *
  * Soft auth: returns null/empty for unauthenticated users.
  */
@@ -36,7 +40,6 @@ export async function GET(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({
         topIngredients: [],
-        seasonalInsight: null,
         relevantTrendingIds: [],
       })
     }
@@ -45,15 +48,14 @@ export async function GET(request: NextRequest) {
     const db = getServiceClient()
     const { data: profile } = await db
       .from('ss_user_profiles')
-      .select('skin_type, skin_concerns, climate')
+      .select('skin_type, skin_concerns')
       .eq('user_id', userId)
       .maybeSingle()
 
     const skinType = profile?.skin_type ?? null
-    const climate = profile?.climate ?? null
 
-    // Fetch all three datasets in parallel (service client bypasses RLS)
-    const [effectivenessResult, seasonalInsight, trendingResult] = await Promise.all([
+    // Fetch both datasets in parallel (service client bypasses RLS)
+    const [effectivenessResult, trendingResult] = await Promise.all([
       // 1. Top ingredients for skin type
       skinType
         ? db
@@ -65,10 +67,7 @@ export async function GET(request: NextRequest) {
             .limit(5)
         : Promise.resolve({ data: null }),
 
-      // 2. Seasonal insight for climate
-      fetchSeasonalLearning(db, climate),
-
-      // 3. Trending products (for relevance cross-reference)
+      // 2. Trending products (for relevance cross-reference)
       db
         .from('ss_trending_products')
         .select('product_id')
@@ -148,7 +147,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       topIngredients,
-      seasonalInsight,
       relevantTrendingIds,
     })
   } catch (error) {
