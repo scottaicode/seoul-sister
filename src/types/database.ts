@@ -774,11 +774,23 @@ export interface SeasonalInsight {
   climate: string
 }
 
+/**
+ * Response shape for GET /api/weather/routine.
+ *
+ * v10.8.10: reduced to `{ weather }`. The route no longer returns the
+ * `adjustments` rules-engine output, `summary`, or `seasonal_insight` — none
+ * had been rendered since v10.6.2 (Yuri Sole Authority Principle), and shipping
+ * the unrendered prescription payload was both dead weight and a re-surfacing
+ * hazard. The WeatherRoutineWidget reads only `weather`; Yuri receives the raw
+ * weather context via the Ask-Yuri CTA prefill and is the sole recommender.
+ *
+ * WeatherRoutineAdjustment / SeasonalInsight / WeatherTrigger remain defined
+ * because the weather-routine.ts library still exports the functions that
+ * produce them (currently uncalled by any route — candidate future input to a
+ * Yuri weather tool, not a rendered surface).
+ */
 export interface WeatherRoutineResponse {
   weather: WeatherData
-  adjustments: WeatherRoutineAdjustment[]
-  summary: string
-  seasonal_insight?: SeasonalInsight | null
 }
 
 // =============================================================================

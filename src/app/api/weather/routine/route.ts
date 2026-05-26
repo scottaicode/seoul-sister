@@ -3,16 +3,20 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/auth'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError } from '@/lib/utils/error-handler'
-import {
-  fetchWeather,
-  fetchSeasonalLearning,
-  getWeatherAdjustments,
-  getWeatherSummary,
-} from '@/lib/intelligence/weather-routine'
-import type { SkinProfile } from '@/types/database'
+import { fetchWeather } from '@/lib/intelligence/weather-routine'
 
 // ---------------------------------------------------------------------------
-// GET /api/weather/routine — Weather data + skincare routine adjustments
+// GET /api/weather/routine — Live weather data for the dashboard widget
+//
+// v10.8.10 (Bailey-feedback sweep, May 26 2026): this route previously also
+// computed `adjustments` (the getWeatherAdjustments rules engine), `summary`,
+// and `seasonal_insight`. None of those have been rendered since v10.6.2, when
+// the WeatherRoutineWidget was reduced to weather-data display + an Ask-Yuri
+// CTA per the Yuri Sole Authority Principle. The unrendered prescription
+// payload was dead weight AND a re-surfacing hazard (the same shape of bug let
+// the seasonal "SPRING TIP" survive two prior kills before v10.8.9). Response
+// is now just `{ weather }` — the only field the widget reads. Yuri is the
+// sole recommender; she receives the raw weather context via the CTA prefill.
 // ---------------------------------------------------------------------------
 
 const querySchema = z.object({
@@ -30,10 +34,11 @@ export async function GET(request: NextRequest) {
     const latParam = searchParams.get('lat')
     const lngParam = searchParams.get('lng')
 
-    // Load full profile (coordinates, skin type, climate, location_text)
+    // Load profile coordinates + display name (skin_type/climate no longer
+    // needed — the unrendered adjustments/seasonal payload was removed)
     const { data: profile } = await db
       .from('ss_user_profiles')
-      .select('latitude, longitude, skin_type, climate, location_text')
+      .select('latitude, longitude, location_text')
       .eq('user_id', user.id)
       .maybeSingle()
 
@@ -58,28 +63,12 @@ export async function GET(request: NextRequest) {
     // Fetch current weather
     const weather = await fetchWeather(lat, lng)
 
-    const skinType = (profile?.skin_type as SkinProfile['skin_type']) ?? null
-    const climate = (profile?.climate as string) ?? null
-
     // Use location_text from profile if available, else keep reverse-geocoded name
     if (profile?.location_text) {
       weather.location = profile.location_text as string
     }
 
-    // Get weather adjustments with seasonal learning patterns merged in
-    const adjustments = await getWeatherAdjustments(weather, skinType, {
-      supabase: db,
-      climate,
-    })
-    const summary = getWeatherSummary(weather, adjustments.length)
-
-    // Fetch seasonal insight for the response (displayed separately in the widget)
-    let seasonal_insight = null
-    if (climate) {
-      seasonal_insight = await fetchSeasonalLearning(db, climate)
-    }
-
-    return NextResponse.json({ weather, adjustments, summary, seasonal_insight })
+    return NextResponse.json({ weather })
   } catch (error) {
     return handleApiError(error)
   }
