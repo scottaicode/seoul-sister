@@ -78,17 +78,24 @@ export default function Header() {
     <>
       <header className="sticky top-0 z-50 bg-seoul-dark/90 backdrop-blur-md border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center justify-between h-16 gap-4">
+            {/* Logo — mr-2 + the parent gap-4 guarantees the wordmark never
+                butts against the first nav link ("Dashboard"). With 13 nav
+                links the nav is wide enough that justify-between's leftover
+                space can collapse to ~0, which produced the "Seoul SisterDashboard"
+                jam Bailey reported. The explicit gap can't collapse. */}
+            <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0 mr-2">
               <Sparkles className="w-5 h-5 text-gold" />
-              <span className="font-display font-bold text-xl bg-gradient-to-r from-gold to-gold-light bg-clip-text text-transparent">
+              <span className="font-display font-bold text-xl bg-gradient-to-r from-gold to-gold-light bg-clip-text text-transparent whitespace-nowrap">
                 Seoul Sister
               </span>
             </Link>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-6">
+            {/* Desktop Navigation — single line (header is fixed h-16, so no
+                wrapping). gap-5 between links. flex-1 + justify-center lets the
+                nav take the middle space and centers the links, keeping clear
+                air between the logo (left) and the profile menu (right). */}
+            <nav className="hidden md:flex flex-1 items-center justify-center gap-5">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}

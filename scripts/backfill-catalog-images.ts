@@ -61,7 +61,8 @@ function normalize(s: string): string {
   return (s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
-async function pageAll(db: ReturnType<typeof createClient>, table: string, cols: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function pageAll(db: any, table: string, cols: string) {
   let all: any[] = []
   let from = 0
   while (true) {

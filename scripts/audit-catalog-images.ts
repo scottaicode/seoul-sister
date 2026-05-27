@@ -22,7 +22,8 @@ function host(u: string): string {
   try { return new URL(u).hostname } catch { return '(invalid)' }
 }
 
-async function pageAll(db: ReturnType<typeof createClient>, table: string, cols: string, filter?: (q: any) => any) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function pageAll(db: any, table: string, cols: string, filter?: (q: any) => any) {
   let all: any[] = []
   let from = 0
   while (true) {
