@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import {
   Lock,
   ArrowRight,
@@ -22,47 +23,74 @@ interface Props {
 }
 
 export default function ProductIntelligenceSection({ productId, productName, productBrand, ingredientCount }: Props) {
+  // v10.8.11 (Bailey, "This isn't loading"): gate on the app-wide useAuth()
+  // context instead of a one-shot supabase.auth.getSession() in this component.
+  //
+  // The bug: on the PUBLIC /products/[id] route (outside the authenticated
+  // AppShell), the Supabase client often hasn't rehydrated the localStorage
+  // session by the time a one-shot getSession() fires — so it returned null,
+  // setIsSubscriber(false) ran, /api/me/subscription was NEVER called, and a
+  // PAYING subscriber (Bailey, plan='pro_monthly') saw the anonymous
+  // "Subscribe to unlock" GatedTeaser blur cards. Those blurred cards read as
+  // skeleton placeholders stuck loading — hence "This isn't loading."
+  //
+  // This was the v10.7.0 Phase F bug only half-fixed: Phase F moved the
+  // SUBSCRIPTION CHECK to a server endpoint (correct) but left the SESSION
+  // DETECTION as a racy one-shot getSession(). useAuth() subscribes to
+  // onAuthStateChange (via AuthContext), so it catches the session the moment
+  // it hydrates — no race. We only decide subscriber state after auth.loading
+  // settles; until then we render null (no flash), same as before.
+  const { user, loading: authLoading } = useAuth()
   const [isSubscriber, setIsSubscriber] = useState<boolean | null>(null)
 
   useEffect(() => {
-    async function checkAuth() {
-      // v10.7.0 Phase F: server-side subscription check via /api/me/subscription.
-      // The previous client-side `supabase.from('ss_user_profiles').select('plan')`
-      // path was unreliable on the public /products/[id] route — Bailey hit a
-      // false-negative despite plan='pro_monthly' in the DB, which surfaced as
-      // permanently-blurred gated teasers on every product detail page she
-      // opened. The server endpoint uses the same hasActiveSubscription helper
-      // every AI route uses (Yuri chat, scan, etc.), so behavior is consistent
-      // across auth-gated surfaces.
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) {
-        setIsSubscriber(false)
-        return
-      }
+    // Wait for the auth context to finish hydrating before deciding anything.
+    if (authLoading) return
 
+    // No authenticated user — anonymous visitor, show gated teasers.
+    if (!user) {
+      setIsSubscriber(false)
+      return
+    }
+
+    let cancelled = false
+
+    async function checkSubscription() {
       try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) {
+          // user is set but session token unavailable — treat as non-subscriber
+          if (!cancelled) setIsSubscriber(false)
+          return
+        }
+
         const res = await fetch('/api/me/subscription', {
           headers: { Authorization: `Bearer ${session.access_token}` },
           cache: 'no-store',
         })
         if (!res.ok) {
-          setIsSubscriber(false)
+          if (!cancelled) setIsSubscriber(false)
           return
         }
         const body = (await res.json()) as { active: boolean }
-        setIsSubscriber(!!body.active)
+        if (!cancelled) setIsSubscriber(!!body.active)
       } catch {
         // Network failure — fail closed (treat as non-subscriber) rather than
         // accidentally flashing premium content to a non-subscriber.
-        setIsSubscriber(false)
+        if (!cancelled) setIsSubscriber(false)
       }
     }
 
-    checkAuth()
-  }, [])
+    checkSubscription()
+    return () => {
+      cancelled = true
+    }
+  }, [authLoading, user])
 
-  // Still checking auth — show nothing (avoids flash)
-  if (isSubscriber === null) return null
+  // Still resolving auth or subscription — show nothing (avoids flash + the
+  // "stuck loading" perception). The gated teasers only render once we KNOW
+  // the visitor is not a subscriber.
+  if (authLoading || isSubscriber === null) return null
 
   // Subscriber — show full enrichment
   if (isSubscriber) {

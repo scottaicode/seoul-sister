@@ -44,7 +44,7 @@ function StepGroup({
       {steps.length === 0 ? (
         <p className="text-xs text-white/50 italic">No steps</p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {steps.map((step) => (
             <ProductLibraryCard
               key={step.id}
@@ -116,7 +116,12 @@ export default function InRoutineSection({ am, pm, onMarkOwned }: Props) {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        // v10.8.11 (Bailey, "It still bugs me how crowded this is"): single
+        // stacked column — AM section, then PM section — instead of the old
+        // 2-column AM|PM grid that squeezed long Korean product names into
+        // narrow columns. Matches the /routine page's single-column rhythm and
+        // gives each step room to breathe.
+        <div className="space-y-8">
           <StepGroup title="AM" icon={<Sun className="w-4 h-4 text-amber-300" />} steps={am} onMarkOwned={onMarkOwned} />
           <StepGroup title="PM" icon={<Moon className="w-4 h-4 text-indigo-300" />} steps={pm} onMarkOwned={onMarkOwned} />
         </div>
