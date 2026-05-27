@@ -22,7 +22,6 @@ import {
   AuthenticityCheck,
   TrendContext,
   IngredientInsights,
-  SeasonalContext,
   OverlapPreview,
 } from '@/components/shared/EnrichmentSections'
 import type { ScanEnrichment } from '@/lib/scanning/enrich-scan'
@@ -311,10 +310,12 @@ export default function ScanResults({ result, onReset }: ScanResultsProps) {
         <IngredientInsights data={enrichment.ingredientInsights} />
       )}
 
-      {/* ── Seasonal Context ────────────────────────────────────── */}
-      {enrichment?.seasonalContext && (
-        <SeasonalContext data={enrichment.seasonalContext} />
-      )}
+      {/* Seasonal Context removed v10.8.16 — it rendered phase-blind "switch to
+          lightweight gel" / "consider reducing this season" prescriptions from a
+          season+climate lookup (ss_learning_patterns), a Yuri Sole Authority
+          violation. Same data source killed on routine+dashboard in v10.8.9; this
+          was the surviving Scan/Product-Detail instance. Yuri handles seasonal
+          nuance with full phase/decision-memory/routine context. */}
 
       {/* ── Trend Context ─────────────────────────────────────────── */}
       {enrichment?.trending && (

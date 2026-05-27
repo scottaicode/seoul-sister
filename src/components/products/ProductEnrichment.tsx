@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import { Loader2, Lock, UserCircle, Sparkles } from 'lucide-react'
 import {
   PersonalizedMatch,
@@ -11,7 +12,6 @@ import {
   AuthenticityCheck,
   TrendContext,
   IngredientInsights,
-  SeasonalContext,
   OverlapPreview,
 } from '@/components/shared/EnrichmentSections'
 import type { ScanEnrichment } from '@/lib/scanning/enrich-scan'
@@ -42,15 +42,20 @@ function buildYuriProductPrefill(name: string, brand: string): string {
 }
 
 export default function ProductEnrichment({ productId, productName, productBrand }: ProductEnrichmentProps) {
+  // v10.8.16: auth state comes from the useAuth() context (listens to
+  // onAuthStateChange) rather than a one-shot getSession() — race-safe on public
+  // routes regardless of where this component is mounted (the v10.8.11 pattern).
+  // getSession() below is still used, but ONLY to grab the token for the fetch
+  // header — not to decide what to render.
+  const { user, loading: authLoading } = useAuth()
   const [enrichment, setEnrichment] = useState<ScanEnrichment | null>(null)
   const [loading, setLoading] = useState(true)
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+  const isAuthenticated = authLoading ? null : !!user
 
   useEffect(() => {
     async function fetchEnrichment() {
       try {
         const { data: { session } } = await supabase.auth.getSession()
-        setIsAuthenticated(!!session)
 
         const headers: Record<string, string> = {}
         if (session?.access_token) {
@@ -72,7 +77,9 @@ export default function ProductEnrichment({ productId, productName, productBrand
     fetchEnrichment()
   }, [productId])
 
-  if (loading) {
+  // Wait for both the enrichment fetch AND auth to settle before deciding what
+  // to render — avoids flashing the "Sign in" gate to a subscriber mid-hydration.
+  if (loading || isAuthenticated === null) {
     return (
       <div className="glass-card p-6 flex items-center justify-center gap-2">
         <Loader2 className="w-4 h-4 animate-spin text-gold" />
@@ -89,7 +96,6 @@ export default function ProductEnrichment({ productId, productName, productBrand
     enrichment.counterfeit ||
     enrichment.trending ||
     enrichment.ingredientInsights ||
-    enrichment.seasonalContext ||
     enrichment.overlapPreview
   )
 
@@ -175,9 +181,9 @@ export default function ProductEnrichment({ productId, productName, productBrand
         <IngredientInsights data={enrichment.ingredientInsights} />
       )}
 
-      {enrichment?.seasonalContext && (
-        <SeasonalContext data={enrichment.seasonalContext} />
-      )}
+      {/* Seasonal Context removed v10.8.16 — phase-blind season+climate
+          prescription, a Yuri Sole Authority violation (see ScanResults note).
+          Seasonal nuance routes through the Yuri CTA on this surface. */}
 
       {enrichment?.trending && (
         <TrendContext data={enrichment.trending} />

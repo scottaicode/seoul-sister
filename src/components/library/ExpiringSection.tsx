@@ -70,7 +70,10 @@ export default function ExpiringSection({ items, total }: Props) {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        // v10.8.16: no 2-up at sm (matches the v10.8.12 Owned/Saved fix — the
+        // same ProductLibraryCard crowds at sm:grid-cols-2). These cards are
+        // sparse (no action buttons), so 2-up on genuinely wide screens is fine.
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {items.map((item) => {
             const { label, tone } = bucketCopy(item)
             return (

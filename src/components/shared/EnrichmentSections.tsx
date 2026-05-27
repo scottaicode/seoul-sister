@@ -25,7 +25,6 @@ import type {
   CounterfeitData,
   TrendingData,
   IngredientInsightsData,
-  SeasonalContextData,
   OwnershipData,
 } from '@/lib/scanning/enrich-scan'
 import type { IngredientOverlapResult } from '@/lib/intelligence/ingredient-overlap'
@@ -392,51 +391,8 @@ export function IngredientInsights({ data }: { data: IngredientInsightsData }) {
   )
 }
 
-// ─── Seasonal Context Section ─────────────────────────────────────────
-
-export function SeasonalContext({ data }: { data: SeasonalContextData }) {
-  return (
-    <div className="glass-card p-4 border-sky-500/20">
-      <SectionHeader icon={Eye} title={`Seasonal Note (${data.season}, ${data.climate})`} color="text-sky-400" />
-
-      {data.textureAdvice && (
-        <p className="text-[11px] text-white/60 mb-2.5">{data.textureAdvice}</p>
-      )}
-
-      {data.goodIngredients.length > 0 && (
-        <div className="mb-2">
-          <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">Good for this season</p>
-          <div className="flex flex-wrap gap-1.5">
-            {data.goodIngredients.map((name, i) => (
-              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-500/10 text-green-400 border border-green-500/20">
-                <CheckCircle2 className="w-2.5 h-2.5" />
-                {name}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {data.cautionIngredients.length > 0 && (
-        <div>
-          <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">Consider reducing this season</p>
-          <div className="flex flex-wrap gap-1.5">
-            {data.cautionIngredients.map((name, i) => (
-              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                <AlertTriangle className="w-2.5 h-2.5" />
-                {name}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {data.patternDescription && (
-        <p className="text-[10px] text-white/30 mt-2.5 italic">{data.patternDescription}</p>
-      )}
-    </div>
-  )
-}
+// SeasonalContext section removed v10.8.16 — phase-blind season+climate
+// prescription (Yuri Sole Authority violation). Yuri owns seasonal nuance.
 
 // ─── Trend Context Section ─────────────────────────────────────────────
 

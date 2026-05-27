@@ -16,7 +16,6 @@ export interface ScanEnrichment {
   counterfeit: CounterfeitData | null
   trending: TrendingData | null
   ingredientInsights: IngredientInsightsData | null
-  seasonalContext: SeasonalContextData | null
   ownership: OwnershipData | null
   /**
    * Feature 16.1 — Active ingredients in the scanned product that already
@@ -86,24 +85,9 @@ export interface IngredientInsightsData {
   skinType: string
 }
 
-export interface SeasonalContextData {
-  season: string
-  climate: string
-  textureAdvice: string
-  goodIngredients: string[]
-  cautionIngredients: string[]
-  patternDescription: string
-}
-
-// ─── Season Helper ──────────────────────────────────────────────────
-
-function getCurrentSeason(): string {
-  const month = new Date().getMonth() + 1
-  if (month >= 3 && month <= 5) return 'spring'
-  if (month >= 6 && month <= 8) return 'summer'
-  if (month >= 9 && month <= 11) return 'fall'
-  return 'winter'
-}
+// SeasonalContextData + getCurrentSeason + fetchSeasonalContext removed
+// v10.8.16 — the seasonal block was a phase-blind season+climate prescription
+// (Yuri Sole Authority violation). Yuri owns seasonal nuance.
 
 // ─── Main Enrichment Function ────────────────────────────────────────
 
@@ -115,7 +99,10 @@ export async function enrichScanResult(
   ingredientNames: string[],
   skinType?: string
 ): Promise<ScanEnrichment> {
-  // Run all 9 enrichment queries in parallel
+  // Run enrichment queries in parallel.
+  // NOTE: seasonal-context fetch removed v10.8.16 — it produced a phase-blind
+  // season+climate prescription (Yuri Sole Authority violation, see
+  // ScanResults/ProductEnrichment). Yuri owns seasonal nuance.
   const [
     personalization,
     pricing,
@@ -123,7 +110,6 @@ export async function enrichScanResult(
     counterfeit,
     trending,
     ingredientInsights,
-    seasonalContext,
     ownership,
     overlapPreview,
   ] = await Promise.all([
@@ -133,7 +119,6 @@ export async function enrichScanResult(
     fetchCounterfeit(supabase, brand),
     productId ? fetchTrending(supabase, productId, brand) : Promise.resolve(null),
     fetchIngredientInsights(supabase, userId, ingredientNames),
-    fetchSeasonalContext(supabase, userId, ingredientNames),
     productId ? fetchOwnership(supabase, userId, productId) : Promise.resolve(null),
     fetchOverlapPreview(supabase, userId, ingredientNames, productId),
   ])
@@ -150,7 +135,6 @@ export async function enrichScanResult(
     counterfeit,
     trending,
     ingredientInsights,
-    seasonalContext,
     ownership,
     overlapPreview: overlap,
   }
@@ -521,72 +505,6 @@ async function fetchIngredientInsights(
     return {
       insights: deduped.slice(0, 8),
       skinType: profile.skin_type,
-    }
-  } catch {
-    return null
-  }
-}
-
-// ─── Seasonal Context (7th fetcher) ─────────────────────────────────
-
-async function fetchSeasonalContext(
-  supabase: SupabaseClient,
-  userId: string,
-  ingredientNames: string[]
-): Promise<SeasonalContextData | null> {
-  try {
-    // Get user's climate
-    const { data: profile } = await supabase
-      .from('ss_user_profiles')
-      .select('climate')
-      .eq('user_id', userId)
-      .maybeSingle()
-
-    if (!profile?.climate) return null
-
-    const currentSeason = getCurrentSeason()
-
-    // Query seasonal patterns for user's climate
-    const { data: patterns } = await supabase
-      .from('ss_learning_patterns')
-      .select('data, pattern_description')
-      .eq('pattern_type', 'seasonal')
-      .eq('skin_type', profile.climate)
-
-    if (!patterns?.length) return null
-
-    // Find the pattern for the current season
-    const currentPattern = patterns.find(p => {
-      const d = p.data as Record<string, unknown>
-      return d.season === currentSeason
-    })
-
-    if (!currentPattern) return null
-
-    const data = currentPattern.data as Record<string, unknown>
-    const toEmphasize = (data.ingredients_to_emphasize as string[]) || []
-    const toReduce = (data.ingredients_to_reduce as string[]) || []
-
-    // Cross-reference scanned ingredients against seasonal advice
-    const lowerIngredients = ingredientNames.map(n => n.toLowerCase())
-
-    const goodIngredients = lowerIngredients.filter(i =>
-      toEmphasize.some(e => i.includes(e.toLowerCase()) || e.toLowerCase().includes(i))
-    )
-    const cautionIngredients = lowerIngredients.filter(i =>
-      toReduce.some(r => i.includes(r.toLowerCase()) || r.toLowerCase().includes(i))
-    )
-
-    // Only return if there's something relevant to show
-    if (goodIngredients.length === 0 && cautionIngredients.length === 0) return null
-
-    return {
-      season: currentSeason,
-      climate: profile.climate,
-      textureAdvice: (data.texture_advice as string) || '',
-      goodIngredients,
-      cautionIngredients,
-      patternDescription: currentPattern.pattern_description || '',
     }
   } catch {
     return null
