@@ -25,6 +25,7 @@ import ReviewCard from '@/components/community/ReviewCard'
 import ReviewForm, { type ReviewFormData } from '@/components/community/ReviewForm'
 import ReviewFilters from '@/components/community/ReviewFilters'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
+import { proxyImageUrl } from '@/lib/utils/image-proxy'
 import type { Product, Review } from '@/types/database'
 
 const ProductEnrichment = dynamic(() => import('@/components/products/ProductEnrichment'), {
@@ -226,7 +227,11 @@ export default function ProductDetailPage() {
         <div className="flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-white/5 flex items-center justify-center overflow-hidden mx-auto sm:mx-0">
           {product.image_url ? (
             <img
-              src={product.image_url}
+              // v10.8.17: route through the /api/img proxy (same as the public
+              // page + LazyImage) so Olive Young octet-stream + brand-direct
+              // images render instead of breaking. This page was the lone
+              // product surface still hot-linking raw image_url.
+              src={proxyImageUrl(product.image_url) || product.image_url}
               alt={product.name_en}
               className="w-full h-full object-cover rounded-2xl"
               loading="eager"
