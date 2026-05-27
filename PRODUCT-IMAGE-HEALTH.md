@@ -142,10 +142,11 @@ data. They need a live Olive-Young-search scrape.
 
 Plus structural gaps:
 
-1. **No image-health cron.** Once a brand URL goes dead, nothing re-detects it. The
-   ~153 remaining non-OY URLs will keep rotting silently. Dead-URL is invisible by
-   nature (no error), so without active monitoring it only surfaces when a user
-   like Bailey screenshots it.
+1. ~~**No image-health cron.**~~ **DONE (v10.8.15).** `/api/cron/image-health`
+   runs daily 4:15 AM UTC, re-checks non-OY URLs, re-points newly-dead ones from
+   staging, and logs unfixable ones to `ss_pipeline_runs.metadata.unfixable_sample`
+   + `console.warn`. The dead-URL bug is now monitored, not silent. The cron's
+   unfixable logs ARE the work queue for gap #2 below.
 2. **No live-scrape backfill.** Olive Young search is JS-rendered, so it needs
    Playwright. The infra exists (`OliveYoungScraper`) but only does category-listing
    and product-detail-by-URL, not search-by-name.
@@ -158,8 +159,10 @@ Plus structural gaps:
 
 ## 6. Reusable tooling
 
-| Script | Purpose | Usage |
+| File | Purpose | Usage |
 |---|---|---|
+| `src/lib/pipeline/image-health.ts` | **Reusable module** — `runImageHealthRepair()`, `matchStagingImage()`, `imageReachable()`. Backs the cron. | imported by the cron + callable from scripts |
+| `src/app/api/cron/image-health/route.ts` | **Daily cron (4:15 AM UTC)** — sweeps the catalog via keyset cursor, repairs dead/null images, logs unfixable to `ss_pipeline_runs` | runs automatically; query `ss_pipeline_runs` where `run_type='image_health'` to see results |
 | `scripts/audit-catalog-images.ts` | Catalog-wide image health: null count, host distribution, sampled dead-URL rate, staging-fixability estimate | `npx tsx --tsconfig tsconfig.json scripts/audit-catalog-images.ts` |
 | `scripts/backfill-catalog-images.ts` | Re-point dead/null images to own Olive Young image from staging. Strict matcher, write-time reachability, dry-run default | add `--apply` to write; `--sample=N` to limit |
 | `scripts/check-bailey-library-images.ts` | Per-user (Bailey) owned + routine image state | diagnostic |
@@ -179,11 +182,11 @@ any new query over `ss_products`/`ss_product_staging` must paginate.
 See the "Recommended next steps" section the assistant delivered alongside this
 doc. In short:
 
-1. **Image-health cron** (highest leverage, ~half day) — periodically re-check
-   image URLs, re-point newly-dead ones from staging, and **log what it can't fix
-   so failures are visible, not silent** (v10.3.5 fire-and-forget lesson). This
-   converts the invisible dead-URL bug into a monitored, self-healing one.
-2. **Live-scrape backfill for the ~507 no-staging-match products** (~1 day) —
+1. ~~**Image-health cron**~~ — **DONE (v10.8.15).** See §6. Daily monitor that
+   re-points newly-dead/null images from staging and logs the unfixable ones.
+2. **Live-scrape backfill for the ~507 no-staging-match products** (~1 day) — NEXT
+   image project. The image-health cron's `unfixable_sample` logs are the work
+   queue (query `ss_pipeline_runs` where `run_type='image_health'`). —
    extend `OliveYoungScraper` with search-by-name (Playwright), confidence-gate
    the match, write Olive Young images. Closes the "all products eventually have
    photos" promise for real catalog products.

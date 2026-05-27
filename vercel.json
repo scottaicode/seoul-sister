@@ -9,6 +9,10 @@
       "schedule": "0 4 * * 0"
     },
     {
+      "path": "/api/cron/image-health",
+      "schedule": "15 4 * * *"
+    },
+    {
       "path": "/api/cron/aggregate-learning",
       "schedule": "0 5 * * *"
     },
