@@ -55,7 +55,11 @@ export default function OwnedSection({ items, reactions, onAdd, onRemove, onTogg
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        // v10.8.12 (Bailey, "still squished together"): single column. These
+        // cards are information-dense (brand + name + category + notes + three
+        // action buttons), so the old sm:grid-cols-2 cramped them on every
+        // screen wider than mobile. One roomy column reads cleanly.
+        <div className="space-y-3">
           {items.map((item) => {
             const currentReaction = item.product_id ? reactions.get(item.product_id) ?? null : null
             return (

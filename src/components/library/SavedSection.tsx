@@ -41,7 +41,8 @@ export default function SavedSection({ items }: Props) {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        // v10.8.12 (Bailey): single column, matching Owned, for consistent rhythm.
+        <div className="space-y-3">
           {items.map((item) => (
             <ProductLibraryCard
               key={item.id}
