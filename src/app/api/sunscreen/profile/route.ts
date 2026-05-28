@@ -115,8 +115,19 @@ function buildFilterDefaults(
   switch (climate) {
     case 'tropical':
     case 'humid':
+      // PA++++ is the real signal for humid/tropical climates: high UV index +
+      // humid air = need maximum UVA protection. This is a confident default.
       defaults.pa_rating = 'PA++++'
-      defaults.water_resistant = true
+      // v10.8.25 — water_resistant DELIBERATELY REMOVED from humid/tropical
+      // auto-defaults. Humid climate ≠ sport-grade need. Most K-beauty users
+      // in humid climates want lightweight gel-cream daily sunscreens that
+      // survive humidity through formula, NOT water-resistant (which is
+      // sport/beach grade and often heavier/stickier). Bailey (humid Austin,
+      // combination skin) hit a 0-result trap because tinted+water_resistant
+      // categories don't intersect in K-beauty — and she'd never opted into
+      // water resistance, the system applied it silently. Water resistance
+      // is a separate need (surf, swim, athletic) that should be opted-in
+      // explicitly, never inferred from climate alone.
       break
     case 'cold':
     case 'dry':
