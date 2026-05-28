@@ -34,9 +34,17 @@ function formatContent(content: string): React.ReactNode[] {
   const nextKey = () => `el-${keyIdx++}`
 
   // ── Inline formatting ──────────────────────────────────────────────
+  // v10.8.19 (Bailey): added markdown links [text](url) AND bare-URL auto-linking
+  // so URLs like "https://global.oliveyoung.com/..." in Yuri's responses
+  // become clickable anchors instead of plain text. Markdown links are tried
+  // first so a URL inside [text](url) doesn't get double-matched as a bare URL.
   function formatInline(text: string): React.ReactNode {
     const parts: React.ReactNode[] = []
-    const regex = /(\*\*(.+?)\*\*)|(\*(.+?)\*)|(`(.+?)`)/g
+    // Order matters: markdown link FIRST, then bold/italic/code, then bare URL.
+    // [text](url) — markdown link
+    // **bold** | *italic* | `code`
+    // bare https?:// URL — terminates at whitespace or common trailing punctuation
+    const regex = /(\[([^\]]+)\]\((https?:\/\/[^\s)]+)\))|(\*\*(.+?)\*\*)|(\*(.+?)\*)|(`(.+?)`)|(https?:\/\/[^\s<>"')\]]+)/g
     let lastIndex = 0
     let match: RegExpExecArray | null
 
@@ -44,16 +52,50 @@ function formatContent(content: string): React.ReactNode[] {
       if (match.index > lastIndex) {
         parts.push(text.slice(lastIndex, match.index))
       }
-      if (match[2]) {
-        parts.push(<strong key={match.index} className="font-semibold text-white">{match[2]}</strong>)
-      } else if (match[4]) {
-        parts.push(<em key={match.index}>{match[4]}</em>)
-      } else if (match[6]) {
+      if (match[1]) {
+        // Markdown link [text](url)
+        parts.push(
+          <a
+            key={match.index}
+            href={match[3]}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gold-light underline underline-offset-2 hover:text-gold transition-colors break-words"
+          >
+            {match[2]}
+          </a>
+        )
+      } else if (match[5]) {
+        parts.push(<strong key={match.index} className="font-semibold text-white">{match[5]}</strong>)
+      } else if (match[7]) {
+        parts.push(<em key={match.index}>{match[7]}</em>)
+      } else if (match[9]) {
         parts.push(
           <code key={match.index} className="bg-white/10 px-1.5 py-0.5 rounded text-[13px] font-mono text-gold-light">
-            {match[6]}
+            {match[9]}
           </code>
         )
+      } else if (match[10]) {
+        // Bare URL — strip trailing punctuation that's almost certainly sentence
+        // punctuation rather than part of the URL (period, comma, semicolon).
+        let url = match[10]
+        let trailing = ''
+        while (url.length > 0 && /[.,;:!?]$/.test(url)) {
+          trailing = url.slice(-1) + trailing
+          url = url.slice(0, -1)
+        }
+        parts.push(
+          <a
+            key={match.index}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gold-light underline underline-offset-2 hover:text-gold transition-colors break-words"
+          >
+            {url}
+          </a>
+        )
+        if (trailing) parts.push(trailing)
       }
       lastIndex = match.index + match[0].length
     }

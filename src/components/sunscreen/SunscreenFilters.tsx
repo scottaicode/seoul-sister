@@ -3,6 +3,11 @@
 import { Sun, X, Sparkles } from 'lucide-react'
 import type { PaRating, SunscreenType, WhiteCast, SunscreenFinish, SunscreenActivity } from '@/types/database'
 
+/** v10.8.19 (Bailey): "tinted" tri-state filter — null = any, true = tinted only,
+ * false = untinted only. Tri-state because both directions are meaningful
+ * (someone seeking tinted coverage AND someone avoiding it). */
+export type TintedFilter = boolean | null
+
 interface SunscreenFiltersProps {
   paRating: PaRating | ''
   whiteCast: WhiteCast | ''
@@ -10,6 +15,7 @@ interface SunscreenFiltersProps {
   sunscreenType: SunscreenType | ''
   underMakeup: boolean
   waterResistant: boolean
+  tinted: TintedFilter
   activity: SunscreenActivity | ''
   sortBy: string
   personalized?: boolean
@@ -19,6 +25,7 @@ interface SunscreenFiltersProps {
   onSunscreenTypeChange: (value: SunscreenType | '') => void
   onUnderMakeupChange: (value: boolean) => void
   onWaterResistantChange: (value: boolean) => void
+  onTintedChange: (value: TintedFilter) => void
   onActivityChange: (value: SunscreenActivity | '') => void
   onSortChange: (value: string) => void
   onClearAll: () => void
@@ -94,6 +101,7 @@ export default function SunscreenFilters({
   sunscreenType,
   underMakeup,
   waterResistant,
+  tinted,
   activity,
   sortBy,
   personalized,
@@ -103,12 +111,13 @@ export default function SunscreenFilters({
   onSunscreenTypeChange,
   onUnderMakeupChange,
   onWaterResistantChange,
+  onTintedChange,
   onActivityChange,
   onSortChange,
   onClearAll,
 }: SunscreenFiltersProps) {
   const hasActiveFilters =
-    paRating || whiteCast || finish || sunscreenType || underMakeup || waterResistant || activity
+    paRating || whiteCast || finish || sunscreenType || underMakeup || waterResistant || tinted !== null || activity
 
   return (
     <div className="glass-card p-4 flex flex-col gap-4">
@@ -140,6 +149,37 @@ export default function SunscreenFilters({
             }`}
           >
             Water resistant
+          </button>
+        </div>
+      </div>
+
+      {/* Tinted — tri-state (v10.8.19, Bailey: "Can we add tinted as an option") */}
+      <div>
+        <p className="text-xs font-medium text-white/60 mb-2">Tinted</p>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => onTintedChange(null)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+              tinted === null ? 'bg-gold text-white' : 'bg-white/5 text-white/40 hover:bg-gold/10'
+            }`}
+          >
+            Any
+          </button>
+          <button
+            onClick={() => onTintedChange(true)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+              tinted === true ? 'bg-gold text-white' : 'bg-white/5 text-white/40 hover:bg-gold/10'
+            }`}
+          >
+            Tinted only
+          </button>
+          <button
+            onClick={() => onTintedChange(false)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+              tinted === false ? 'bg-gold text-white' : 'bg-white/5 text-white/40 hover:bg-gold/10'
+            }`}
+          >
+            Untinted only
           </button>
         </div>
       </div>

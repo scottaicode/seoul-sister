@@ -1,7 +1,21 @@
 'use client'
 
 import Link from 'next/link'
-import { Package } from 'lucide-react'
+import {
+  Package,
+  Droplet,
+  Sparkles,
+  FlaskConical,
+  Sun,
+  Layers,
+  Eye,
+  Smile,
+  Wind,
+  Zap,
+  Snowflake,
+  Bandage,
+  ShowerHead,
+} from 'lucide-react'
 import LazyImage from '@/components/ui/LazyImage'
 
 export interface LibraryCardProps {
@@ -44,6 +58,67 @@ const categoryLabels: Record<string, string> = {
   device: 'Device',
 }
 
+/**
+ * v10.8.19 (Bailey, "should still put something there other than those boxes"):
+ * category-aware placeholders for null-image / null-product entries (devices,
+ * actions, custom-entry products). Each category gets a meaningful lucide icon
+ * over a subtle tinted background so the card reads as intentional — "this is
+ * a device" or "this is a cleansing step" — instead of "this looks broken."
+ *
+ * Falls back to a generic Package icon when category is null/unknown. The
+ * tinted-background approach mirrors the ribbon-color palette so cards keep
+ * visual coherence with the rest of the Library.
+ */
+function CategoryPlaceholder({ category, name }: { category: string | null; name: string }) {
+  // Heuristic for null-category items: detect from name text.
+  // Routine custom steps come through with category set (v10.3.7 inferCategoryFromNotes),
+  // but defense-in-depth lets us still render the right icon if a caller forgets.
+  const lowerName = (name || '').toLowerCase()
+  const inferred =
+    category ??
+    (lowerName.includes('led mask') || lowerName.includes('red light') || lowerName.includes('blue light')
+      ? 'device'
+      : lowerName.includes('ice roller') || lowerName.includes('cold spoon') || lowerName.includes('gua sha')
+        ? 'device'
+        : lowerName.includes('shower') || lowerName.includes('rinse') || lowerName.includes('cleanse')
+          ? 'cleanser'
+          : null)
+
+  const config = (() => {
+    switch (inferred) {
+      case 'cleanser':       return { Icon: ShowerHead,    bg: 'bg-sky-500/10',     ring: 'ring-sky-400/20',     fg: 'text-sky-300' }
+      case 'toner':          return { Icon: Droplet,       bg: 'bg-cyan-500/10',    ring: 'ring-cyan-400/20',    fg: 'text-cyan-300' }
+      case 'essence':        return { Icon: Sparkles,      bg: 'bg-blue-500/10',    ring: 'ring-blue-400/20',    fg: 'text-blue-300' }
+      case 'serum':          return { Icon: FlaskConical,  bg: 'bg-violet-500/10',  ring: 'ring-violet-400/20',  fg: 'text-violet-300' }
+      case 'ampoule':        return { Icon: FlaskConical,  bg: 'bg-fuchsia-500/10', ring: 'ring-fuchsia-400/20', fg: 'text-fuchsia-300' }
+      case 'moisturizer':    return { Icon: Layers,        bg: 'bg-emerald-500/10', ring: 'ring-emerald-400/20', fg: 'text-emerald-300' }
+      case 'sunscreen':      return { Icon: Sun,           bg: 'bg-amber-500/10',   ring: 'ring-amber-400/20',   fg: 'text-amber-300' }
+      case 'mask':           return { Icon: Layers,        bg: 'bg-rose-500/10',    ring: 'ring-rose-400/20',    fg: 'text-rose-300' }
+      case 'eye_care':       return { Icon: Eye,           bg: 'bg-indigo-500/10',  ring: 'ring-indigo-400/20',  fg: 'text-indigo-300' }
+      case 'lip_care':       return { Icon: Smile,         bg: 'bg-pink-500/10',    ring: 'ring-pink-400/20',    fg: 'text-pink-300' }
+      case 'exfoliator':     return { Icon: Sparkles,      bg: 'bg-orange-500/10',  ring: 'ring-orange-400/20',  fg: 'text-orange-300' }
+      case 'oil':            return { Icon: Droplet,       bg: 'bg-yellow-500/10',  ring: 'ring-yellow-400/20',  fg: 'text-yellow-300' }
+      case 'mist':           return { Icon: Wind,          bg: 'bg-teal-500/10',    ring: 'ring-teal-400/20',    fg: 'text-teal-300' }
+      case 'spot_treatment': return { Icon: Bandage,       bg: 'bg-red-500/10',     ring: 'ring-red-400/20',     fg: 'text-red-300' }
+      case 'device':
+        // Distinguish LED mask (Zap) from ice roller (Snowflake) when possible.
+        if (lowerName.includes('ice') || lowerName.includes('cold') || lowerName.includes('cool')) {
+          return { Icon: Snowflake, bg: 'bg-sky-500/10', ring: 'ring-sky-400/20', fg: 'text-sky-300' }
+        }
+        return { Icon: Zap, bg: 'bg-purple-500/10', ring: 'ring-purple-400/20', fg: 'text-purple-300' }
+      default:
+        return { Icon: Package, bg: 'bg-white/5', ring: 'ring-white/10', fg: 'text-white/30' }
+    }
+  })()
+
+  const { Icon, bg, ring, fg } = config
+  return (
+    <div className={`w-full h-full flex items-center justify-center ${bg} ring-1 ${ring}`}>
+      <Icon className={`w-7 h-7 ${fg}`} strokeWidth={1.5} />
+    </div>
+  )
+}
+
 const ribbonStyles: Record<NonNullable<LibraryCardProps['ribbonTone']>, string> = {
   rose: 'bg-rose-500/20 text-rose-200 ring-1 ring-rose-400/30',
   amber: 'bg-amber-500/20 text-amber-200 ring-1 ring-amber-400/30',
@@ -84,16 +159,16 @@ export default function ProductLibraryCard({
           {ribbonLabel}
         </span>
       )}
-      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-white/5 flex items-center justify-center">
+      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center">
         {imageUrl ? (
           <LazyImage
             src={imageUrl}
             alt={displayName}
             className="w-full h-full object-cover"
-            fallback={<Package className="w-7 h-7 text-white/30" />}
+            fallback={<CategoryPlaceholder category={category} name={displayName} />}
           />
         ) : (
-          <Package className="w-7 h-7 text-white/30" />
+          <CategoryPlaceholder category={category} name={displayName} />
         )}
       </div>
       <div className="flex-1 min-w-0">

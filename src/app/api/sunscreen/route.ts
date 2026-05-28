@@ -14,6 +14,11 @@ export async function GET(request: NextRequest) {
       sunscreen_type: searchParams.get('sunscreen_type') || undefined,
       under_makeup: searchParams.get('under_makeup') === 'true' ? true : undefined,
       water_resistant: searchParams.get('water_resistant') === 'true' ? true : undefined,
+      // v10.8.19 (Bailey): 'tinted' filter — accepts 'true' (tinted only) or
+      // 'false' (untinted only). Absence = no filter (any tint state).
+      tinted: searchParams.get('tinted') === 'true' ? true
+        : searchParams.get('tinted') === 'false' ? false
+        : undefined,
       activity: searchParams.get('activity') || undefined,
       min_spf: searchParams.get('min_spf') ? Number(searchParams.get('min_spf')) : undefined,
       sort_by: searchParams.get('sort_by') || undefined,
@@ -63,6 +68,10 @@ export async function GET(request: NextRequest) {
 
     if (params.water_resistant) {
       query = query.eq('water_resistant', true)
+    }
+
+    if (params.tinted !== undefined) {
+      query = query.eq('is_tinted', params.tinted)
     }
 
     if (params.activity) {

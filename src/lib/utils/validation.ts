@@ -90,6 +90,7 @@ export const sunscreenSearchSchema = z.object({
   sunscreen_type: z.enum(['chemical', 'physical', 'hybrid']).optional(),
   under_makeup: z.boolean().optional(),
   water_resistant: z.boolean().optional(),
+  tinted: z.boolean().optional(),
   activity: z.enum(['daily', 'outdoor', 'water_sports']).optional(),
   min_spf: z.number().min(1).optional(),
   sort_by: z.enum(['rating', 'price_asc', 'price_desc', 'spf']).optional(),
