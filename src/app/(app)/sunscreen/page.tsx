@@ -15,7 +15,6 @@ import type {
   SunscreenType,
   WhiteCast,
   SunscreenFinish,
-  SunscreenActivity,
 } from '@/types/database'
 
 interface UvData {
@@ -63,7 +62,7 @@ export default function SunscreenFinderPage() {
   const [waterResistant, setWaterResistant] = useState(false)
   // v10.8.19 (Bailey): tinted is tri-state — null = any, true/false = only that kind
   const [tinted, setTinted] = useState<boolean | null>(null)
-  const [activity, setActivity] = useState<SunscreenActivity | ''>('')
+  // v10.8.24: activity filter removed. See SunscreenFilters.tsx for rationale.
   const [sortBy, setSortBy] = useState('rating')
 
   const clearAll = () => {
@@ -74,7 +73,6 @@ export default function SunscreenFinderPage() {
     setUnderMakeup(false)
     setWaterResistant(false)
     setTinted(null)
-    setActivity('')
     setSortBy('rating')
     setPersonalized(false)
   }
@@ -156,7 +154,6 @@ export default function SunscreenFinderPage() {
       if (underMakeup) params.set('under_makeup', 'true')
       if (waterResistant) params.set('water_resistant', 'true')
       if (tinted !== null) params.set('tinted', tinted ? 'true' : 'false')
-      if (activity) params.set('activity', activity)
       if (sortBy) params.set('sort_by', sortBy)
       params.set('page', String(page))
       params.set('limit', '20')
@@ -173,7 +170,7 @@ export default function SunscreenFinderPage() {
     } finally {
       setLoading(false)
     }
-  }, [paRating, whiteCast, finish, sunscreenType, underMakeup, waterResistant, tinted, activity, sortBy, page])
+  }, [paRating, whiteCast, finish, sunscreenType, underMakeup, waterResistant, tinted, sortBy, page])
 
   useEffect(() => {
     fetchSunscreens()
@@ -182,10 +179,10 @@ export default function SunscreenFinderPage() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1)
-  }, [paRating, whiteCast, finish, sunscreenType, underMakeup, waterResistant, tinted, activity, sortBy])
+  }, [paRating, whiteCast, finish, sunscreenType, underMakeup, waterResistant, tinted, sortBy])
 
   const hasActiveFilters =
-    paRating || whiteCast || finish || sunscreenType || underMakeup || waterResistant || tinted !== null || activity
+    paRating || whiteCast || finish || sunscreenType || underMakeup || waterResistant || tinted !== null
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
@@ -242,7 +239,6 @@ export default function SunscreenFinderPage() {
           underMakeup={underMakeup}
           waterResistant={waterResistant}
           tinted={tinted}
-          activity={activity}
           sortBy={sortBy}
           personalized={personalized}
           onPaRatingChange={setPaRating}
@@ -252,7 +248,6 @@ export default function SunscreenFinderPage() {
           onUnderMakeupChange={setUnderMakeup}
           onWaterResistantChange={setWaterResistant}
           onTintedChange={setTinted}
-          onActivityChange={setActivity}
           onSortChange={setSortBy}
           onClearAll={clearAll}
         />
@@ -292,11 +287,6 @@ export default function SunscreenFinderPage() {
               Water resistant
             </span>
           )}
-          {activity && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/10 text-white/50">
-              {activity === 'water_sports' ? 'Water sports' : activity}
-            </span>
-          )}
         </div>
       )}
 
@@ -319,7 +309,6 @@ export default function SunscreenFinderPage() {
             if (underMakeup) active.push({ key: 'under_makeup', label: 'Under makeup', clear: () => setUnderMakeup(false) })
             if (waterResistant) active.push({ key: 'water_resistant', label: 'Water resistant', clear: () => setWaterResistant(false) })
             if (tinted !== null) active.push({ key: 'tinted', label: tinted ? 'Tinted only' : 'Untinted only', clear: () => setTinted(null) })
-            if (activity) active.push({ key: 'activity', label: activity === 'water_sports' ? 'Water sports' : activity === 'outdoor' ? 'Outdoor' : 'Daily wear', clear: () => setActivity('') })
 
             const baseParams = new URLSearchParams()
             if (paRating) baseParams.set('pa_rating', paRating)
@@ -329,7 +318,6 @@ export default function SunscreenFinderPage() {
             if (underMakeup) baseParams.set('under_makeup', 'true')
             if (waterResistant) baseParams.set('water_resistant', 'true')
             if (tinted !== null) baseParams.set('tinted', tinted ? 'true' : 'false')
-            if (activity) baseParams.set('activity', activity)
 
             return <SunscreenEmptyState active={active} baseQueryParams={baseParams} />
           })()

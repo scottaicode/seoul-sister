@@ -1,7 +1,7 @@
 'use client'
 
 import { Sun, X, Sparkles } from 'lucide-react'
-import type { PaRating, SunscreenType, WhiteCast, SunscreenFinish, SunscreenActivity } from '@/types/database'
+import type { PaRating, SunscreenType, WhiteCast, SunscreenFinish } from '@/types/database'
 
 /** v10.8.19 (Bailey): "tinted" tri-state filter — null = any, true = tinted only,
  * false = untinted only. Tri-state because both directions are meaningful
@@ -16,7 +16,6 @@ interface SunscreenFiltersProps {
   underMakeup: boolean
   waterResistant: boolean
   tinted: TintedFilter
-  activity: SunscreenActivity | ''
   sortBy: string
   personalized?: boolean
   onPaRatingChange: (value: PaRating | '') => void
@@ -26,7 +25,6 @@ interface SunscreenFiltersProps {
   onUnderMakeupChange: (value: boolean) => void
   onWaterResistantChange: (value: boolean) => void
   onTintedChange: (value: TintedFilter) => void
-  onActivityChange: (value: SunscreenActivity | '') => void
   onSortChange: (value: string) => void
   onClearAll: () => void
 }
@@ -55,11 +53,14 @@ const TYPE_OPTIONS: { value: SunscreenType; label: string; desc: string }[] = [
   { value: 'hybrid', label: 'Hybrid', desc: 'Best of both' },
 ]
 
-const ACTIVITY_OPTIONS: { value: SunscreenActivity; label: string }[] = [
-  { value: 'daily', label: 'Daily wear' },
-  { value: 'outdoor', label: 'Outdoor' },
-  { value: 'water_sports', label: 'Water sports' },
-]
+// v10.8.24: Activity-level filter removed. 664/672 sunscreens had NULL
+// `suitable_for_activity`, only 6 daily + 2 outdoor + 0 water_sports were
+// classified. Three dead UI buttons returning 0-6 results created false
+// expectations. K-beauty doesn't market by activity — daily wear is the
+// default culture; sport-grade sunscreens are surfaced via the
+// `water_resistant` filter, which is the honest signal. The
+// `suitable_for_activity` column stays in the schema for future use
+// (Hwahae-curated sport rankings, etc.) but is no longer user-facing.
 
 const SORT_OPTIONS = [
   { value: 'rating', label: 'Top Rated' },
@@ -102,7 +103,6 @@ export default function SunscreenFilters({
   underMakeup,
   waterResistant,
   tinted,
-  activity,
   sortBy,
   personalized,
   onPaRatingChange,
@@ -112,12 +112,11 @@ export default function SunscreenFilters({
   onUnderMakeupChange,
   onWaterResistantChange,
   onTintedChange,
-  onActivityChange,
   onSortChange,
   onClearAll,
 }: SunscreenFiltersProps) {
   const hasActiveFilters =
-    paRating || whiteCast || finish || sunscreenType || underMakeup || waterResistant || tinted !== null || activity
+    paRating || whiteCast || finish || sunscreenType || underMakeup || waterResistant || tinted !== null
 
   return (
     <div className="glass-card p-4 flex flex-col gap-4">
@@ -243,22 +242,6 @@ export default function SunscreenFilters({
               current={finish}
               label={opt.label}
               onChange={onFinishChange}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Activity */}
-      <div>
-        <p className="text-xs font-medium text-white/60 mb-2">Activity level</p>
-        <div className="flex flex-wrap gap-1.5">
-          {ACTIVITY_OPTIONS.map((opt) => (
-            <FilterPill
-              key={opt.value}
-              value={opt.value}
-              current={activity}
-              label={opt.label}
-              onChange={onActivityChange}
             />
           ))}
         </div>

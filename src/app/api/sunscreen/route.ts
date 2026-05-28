@@ -74,6 +74,11 @@ export async function GET(request: NextRequest) {
       query = query.eq('is_tinted', params.tinted)
     }
 
+    // v10.8.24 — activity filter retained at API level but no longer
+    // wired into the UI (suitable_for_activity is 99% NULL in catalog and
+    // can't be heuristically backfilled honestly). The endpoint still
+    // accepts the param so future expert-curated activity rankings can
+    // surface here without re-plumbing.
     if (params.activity) {
       if (params.activity === 'water_sports') {
         query = query.eq('suitable_for_activity', 'water_sports')
