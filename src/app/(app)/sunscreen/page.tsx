@@ -6,6 +6,7 @@ import SunscreenCard from '@/components/sunscreen/SunscreenCard'
 import SunscreenFilters from '@/components/sunscreen/SunscreenFilters'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import EmptyState from '@/components/ui/EmptyState'
+import SunscreenEmptyState, { type ActiveFilter } from '@/components/sunscreen/SunscreenEmptyState'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import type {
@@ -305,15 +306,40 @@ export default function SunscreenFinderPage() {
           <LoadingSpinner size="lg" />
         </div>
       ) : products.length === 0 ? (
-        <EmptyState
-          icon={hasActiveFilters ? Sun : ShieldCheck}
-          title={hasActiveFilters ? 'No sunscreens match your filters' : 'No sunscreens yet'}
-          description={
-            hasActiveFilters
-              ? 'Try adjusting your filters to see more results.'
-              : 'Sunscreen products are being added to the database.'
-          }
-        />
+        hasActiveFilters ? (
+          // v10.8.21: smart empty-state that probes "what if I remove filter X"
+          // and tells the user which filter is binding. Bailey hit
+          // tinted+PA++++ +water_resistant and saw 0 results with no clue why.
+          (() => {
+            const active: ActiveFilter[] = []
+            if (paRating) active.push({ key: 'pa_rating', label: `Min ${paRating}`, clear: () => setPaRating('') })
+            if (whiteCast) active.push({ key: 'white_cast', label: whiteCast === 'none' ? 'No white cast' : 'Minimal white cast', clear: () => setWhiteCast('') })
+            if (finish) active.push({ key: 'finish', label: `${finish.charAt(0).toUpperCase()}${finish.slice(1)} finish`, clear: () => setFinish('') })
+            if (sunscreenType) active.push({ key: 'sunscreen_type', label: `${sunscreenType.charAt(0).toUpperCase()}${sunscreenType.slice(1)} type`, clear: () => setSunscreenType('') })
+            if (underMakeup) active.push({ key: 'under_makeup', label: 'Under makeup', clear: () => setUnderMakeup(false) })
+            if (waterResistant) active.push({ key: 'water_resistant', label: 'Water resistant', clear: () => setWaterResistant(false) })
+            if (tinted !== null) active.push({ key: 'tinted', label: tinted ? 'Tinted only' : 'Untinted only', clear: () => setTinted(null) })
+            if (activity) active.push({ key: 'activity', label: activity === 'water_sports' ? 'Water sports' : activity === 'outdoor' ? 'Outdoor' : 'Daily wear', clear: () => setActivity('') })
+
+            const baseParams = new URLSearchParams()
+            if (paRating) baseParams.set('pa_rating', paRating)
+            if (whiteCast) baseParams.set('white_cast', whiteCast)
+            if (finish) baseParams.set('finish', finish)
+            if (sunscreenType) baseParams.set('sunscreen_type', sunscreenType)
+            if (underMakeup) baseParams.set('under_makeup', 'true')
+            if (waterResistant) baseParams.set('water_resistant', 'true')
+            if (tinted !== null) baseParams.set('tinted', tinted ? 'true' : 'false')
+            if (activity) baseParams.set('activity', activity)
+
+            return <SunscreenEmptyState active={active} baseQueryParams={baseParams} />
+          })()
+        ) : (
+          <EmptyState
+            icon={ShieldCheck}
+            title="No sunscreens yet"
+            description="Sunscreen products are being added to the database."
+          />
+        )
       ) : (
         <div className="flex flex-col gap-2.5">
           {products.map((product, idx) => (
