@@ -240,9 +240,13 @@ export default async function PublicProductPage({ params }: Props) {
   }
 
   // Build ingredient effectiveness summary for FAQ answers (stats boost AI citation 30-40%)
+  // v10.8.20: reframed from "user reports" → "research baseline" — see CLAUDE.md
+  // for the effectiveness-data-honesty investigation. The sample sizes are
+  // editorial bootstrap (Phase 11.4 research-backed seed), not real subscriber
+  // reports yet, and the FAQ text feeds JSON-LD that AI search engines crawl.
   const topEffective = effectivenessData.slice(0, 3)
   const effectivenessSummary = topEffective.length > 0
-    ? ` Based on Seoul Sister's analysis of ${topEffective[0].sample_size}+ user reports, key ingredients show ${Math.round(topEffective[0].effectiveness_score * 100)}% effectiveness for ${topEffective[0].concern} in ${topEffective[0].skin_type} skin types.`
+    ? ` Drawing on K-beauty research and community consensus, key ingredients show ${Math.round(topEffective[0].effectiveness_score * 100)}% effectiveness for ${topEffective[0].concern} in ${topEffective[0].skin_type} skin types.`
     : ''
 
   // Build FAQ questions — expanded with skin-type-specific questions and statistics
@@ -671,7 +675,8 @@ export default async function PublicProductPage({ params }: Props) {
                 Ingredient Effectiveness Data
               </h2>
               <p className="text-xs text-white/40 mb-3">
-                Based on aggregated user reports across Seoul Sister&apos;s community
+                Editorial baseline from K-beauty clinical research and community
+                consensus. Real subscriber reports layer on as the community grows.
               </p>
               <div className="space-y-2">
                 {Array.from(effectivenessMap.entries()).slice(0, 5).map(([ingId, entries]) => {

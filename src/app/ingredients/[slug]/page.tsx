@@ -692,7 +692,7 @@ export default async function IngredientDetailPage({
               </h2>
               {/* Citation-friendly summary paragraph for AI search engines */}
               <p className="text-white/70 text-sm leading-relaxed mb-4">
-                Based on {effectiveness.reduce((sum, e) => sum + e.sample_size, 0)} user reports across Seoul Sister&apos;s community, {displayName} shows the highest effectiveness for{' '}
+                Drawing on K-beauty clinical research and community consensus, {displayName} shows the highest effectiveness for{' '}
                 {effectiveness.slice(0, 2).map((e, i) => (
                   <span key={`${e.skin_type}-${e.concern}`}>
                     {i > 0 && ' and '}

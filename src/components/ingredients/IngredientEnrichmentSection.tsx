@@ -212,7 +212,7 @@ export function IngredientEnrichmentSection({
                 for {effectiveness.concern.replace(/_/g, ' ')}
               </p>
               <p className="text-[10px] text-white/30 mt-1">
-                Based on {effectiveness.sample_size}+ community reports
+                Editorial baseline from K-beauty research
               </p>
             </div>
           )}
