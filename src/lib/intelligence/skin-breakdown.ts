@@ -1,14 +1,14 @@
 /**
  * Phase 13.D — Skin Breakdown Synthesis
  *
- * The headline section of the /skin-profile page. Opus 4.7 generates a
+ * The headline section of the /skin-profile page. Opus 4.8 generates a
  * personalized prose read of the user's skin in Yuri's voice — the kind of
  * deep climate/cycle/Fitzpatrick-aware breakdown Bailey screenshotted on
  * May 17 2026 and asked to be able to revisit anytime.
  *
  * AI-First design principles applied:
  *
- *   Principle 1 — Opus 4.7 (not Sonnet). This is user-facing intelligence,
+ *   Principle 1 — Opus 4.8 (not Sonnet). This is user-facing intelligence,
  *   the screenshot-worthy thing the user comes to the page TO READ.
  *
  *   Principle 2 — The prompt is a creative brief, not a structural template.
@@ -336,7 +336,7 @@ async function gatherInputs(userId: string): Promise<BreakdownInputs> {
 /**
  * Determines what to do for this user right now:
  *   - "use_cached": return the existing latest row, no regeneration needed
- *   - "regenerate": kick off a new Opus 4.7 synthesis
+ *   - "regenerate": kick off a new Opus 4.8 synthesis
  *   - "first_time": no breakdown exists yet, synchronous generation needed
  */
 async function classifyCacheState(

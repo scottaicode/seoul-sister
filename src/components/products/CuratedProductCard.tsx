@@ -3,7 +3,7 @@
 /**
  * v10.8.0 Path B — Wraps ProductCard with curation-specific UI:
  *   - Per-card "Ask Yuri about this" inline CTA (pure HTML <Link>, $0 cost)
- *   - Optional SkipReasoning expander (lazy-fetched, Opus 4.7 reasoning)
+ *   - Optional SkipReasoning expander (lazy-fetched, Opus 4.8 reasoning)
  *
  * Used by /browse for both `fits` and `skipped` lists. Skip reasoning only
  * renders when `showSkipReasoning` is true (passed by the skip toggle expand).

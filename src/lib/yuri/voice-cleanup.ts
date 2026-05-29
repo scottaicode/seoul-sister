@@ -102,7 +102,7 @@ const BANNED_PATTERNS: CleanupRule[] = [
 // apology in that case is fabrication and safe to remove.
 //
 // LGAAS observed this in production (Apr 24 long-thread test). Seoul Sister
-// uses the same model (Opus 4.7), same architecture, same tool-use pattern.
+// uses the same model (Opus 4.8), same architecture, same tool-use pattern.
 // Sample size is the only reason we haven't seen it yet.
 // ---------------------------------------------------------------------------
 const PHANTOM_TOOL_NARRATION_REGEX = /(?:^|\n)\s*(?:also\s+)?ignore that tool call[^\n]*?(?:misfire|mistake|misfired|cleanup list|fired by mistake|same misfire)[^\n]*\.?\s*(?:\n|$)/gi

@@ -3,7 +3,7 @@
 /**
  * v10.8.0 Path B — Lazy expander for "Why Yuri would skip this" on /browse.
  *
- * Renders nothing until expanded. On first expand, fetches Opus 4.7 reasoning
+ * Renders nothing until expanded. On first expand, fetches Opus 4.8 reasoning
  * from /api/products/curated/[id]/reasoning. Subsequent expands on the same
  * card use the cached state in this component.
  *

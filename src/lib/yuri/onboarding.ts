@@ -513,7 +513,7 @@ export async function skipOnboarding(userId: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Stream Yuri's onboarding response via Claude Opus 4.7
+// Stream Yuri's onboarding response via Claude Opus 4.8
 // ---------------------------------------------------------------------------
 
 export async function* streamOnboardingResponse(

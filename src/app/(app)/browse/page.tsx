@@ -9,7 +9,7 @@
  *
  * Skip toggle (default collapsed): reveals products Yuri would skip, with a
  * lazy-fetched "Why Yuri would skip this" expander per card that fetches
- * Opus 4.7 reasoning on demand.
+ * Opus 4.8 reasoning on demand.
  *
  * What's been killed from the pre-v10.8.0 /browse:
  *   - "For You" sort button (algorithmic ingredient-effectiveness rank with

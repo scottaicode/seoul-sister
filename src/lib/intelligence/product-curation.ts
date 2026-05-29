@@ -8,7 +8,7 @@
  *     state: allergens, decision_memory exclusions, active treatment phase
  *     `watch_for` items. Pure structural filtering, no AI, no rule engine.
  *
- *   Layer 2 — On-demand Opus 4.7 reasoning
+ *   Layer 2 — On-demand Opus 4.8 reasoning
  *     When a subscriber expands "Why Yuri would skip this" on a specific
  *     product card, this module generates a 2-3 sentence reasoning in Yuri's
  *     voice. Cached in ss_product_curation_reasoning, keyed by user-state hash
@@ -1096,7 +1096,7 @@ export function applyPhaseFilter(
 }
 
 // ---------------------------------------------------------------------------
-// Layer 2 — Opus 4.7 reasoning (cached)
+// Layer 2 — Opus 4.8 reasoning (cached)
 // ---------------------------------------------------------------------------
 
 interface ProductForReasoning {
@@ -1168,7 +1168,7 @@ export async function saveReasoning(
 }
 
 /**
- * Generates fresh Opus 4.7 reasoning for a specific product × user-state
+ * Generates fresh Opus 4.8 reasoning for a specific product × user-state
  * combination. The prompt is a creative brief (per Principle 2): it gives
  * Opus identity, voice context, and inputs — and trusts Opus to produce
  * Yuri's reasoning in her natural register.
@@ -1235,7 +1235,7 @@ export async function generateReasoning(
 }
 
 /**
- * Creative brief for Opus 4.7. Establishes identity, voice, inputs, and
+ * Creative brief for Opus 4.8. Establishes identity, voice, inputs, and
  * output contract. Does NOT script response structure — trusts the model
  * to articulate naturally within Yuri's voice (Principle 2).
  */

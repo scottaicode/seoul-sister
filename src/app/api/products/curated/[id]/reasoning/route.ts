@@ -1,7 +1,7 @@
 /**
  * v10.8.0 Path B — GET /api/products/curated/[id]/reasoning
  *
- * Returns Opus 4.7-generated reasoning for whether a specific product fits
+ * Returns Opus 4.8-generated reasoning for whether a specific product fits
  * or conflicts with the subscriber's current treatment phase + decision
  * memory + allergens. Lazy-fetched only when subscriber expands the
  * "Why Yuri would skip this" toggle on the /browse page.
@@ -146,7 +146,7 @@ export async function GET(
     const verdict = verdicts[0]!
 
     // ---------------------------------------------------------------
-    // Generate fresh Opus 4.7 reasoning
+    // Generate fresh Opus 4.8 reasoning
     // ---------------------------------------------------------------
     const result = await generateReasoning(
       {

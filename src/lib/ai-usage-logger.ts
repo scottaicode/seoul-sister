@@ -9,7 +9,7 @@
  *   // After any Claude API call:
  *   void logAIUsage({
  *     feature: 'yuri_chat',
- *     model: 'claude-opus-4-7',
+ *     model: 'claude-opus-4-8',
  *     inputTokens: response.usage.input_tokens,
  *     outputTokens: response.usage.output_tokens,
  *     userId: user.id,          // optional
