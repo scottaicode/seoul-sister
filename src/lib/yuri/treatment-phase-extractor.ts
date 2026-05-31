@@ -101,6 +101,58 @@ Return ONLY valid JSON. Either:
 or an array of one or more action objects:
   { "actions": [{ "action": "create_phase", "phase_number": N, "name": "...", ... }, { "action": "complete_phase", "phase_number": N-1, ... }] }`
 
+/**
+ * Normalize a Sonnet-produced create_phase payload into the shapes the four
+ * downstream consumers expect (product-curation, skin-breakdown, ingredient
+ * enrichment, skin-profile). Sonnet occasionally returns `decisions` as a bare
+ * string or omits `protocol`/`watch_for` — writing that verbatim produced a thin
+ * Phase 3 record for the lighthouse user (May 2026). product-curation reads
+ * `watch_for` for phase substance-exclusions and skin-breakdown does
+ * `watch_for.map(...)`, so a null/string here silently strips phase context.
+ * This coerces to the canonical shapes so a malformed payload can't ship.
+ */
+function normalizePhasePayload(input: {
+  protocol?: unknown
+  decisions?: unknown
+  watch_for?: unknown
+}): {
+  protocol: Record<string, unknown>
+  decisions: Array<{ decision: string; date: string }>
+  watch_for: string[]
+} {
+  const today = new Date().toISOString().slice(0, 10)
+
+  const protocol =
+    input.protocol && typeof input.protocol === 'object' && !Array.isArray(input.protocol)
+      ? (input.protocol as Record<string, unknown>)
+      : {}
+
+  let decisions: Array<{ decision: string; date: string }> = []
+  if (Array.isArray(input.decisions)) {
+    decisions = input.decisions
+      .map((d) => {
+        if (typeof d === 'string') return { decision: d, date: today }
+        if (d && typeof d === 'object') {
+          const o = d as Record<string, unknown>
+          const decision = typeof o.decision === 'string' ? o.decision : null
+          if (!decision) return null
+          return { decision, date: typeof o.date === 'string' ? o.date : today }
+        }
+        return null
+      })
+      .filter((d): d is { decision: string; date: string } => d !== null)
+  } else if (typeof input.decisions === 'string' && input.decisions.trim()) {
+    // Sonnet sometimes returns a single sentence instead of an array.
+    decisions = [{ decision: input.decisions.trim(), date: today }]
+  }
+
+  const watch_for = Array.isArray(input.watch_for)
+    ? input.watch_for.map((w) => String(w)).filter((w) => w.trim().length > 0)
+    : []
+
+  return { protocol, decisions, watch_for }
+}
+
 export async function extractAndSaveTreatmentPhases(
   userId: string,
   conversationId: string,
@@ -212,6 +264,7 @@ Return JSON only.`,
     try {
       if (action.action === 'create_phase') {
         const existing = phases.find((p) => p.phase_number === action.phase_number)
+        const norm = normalizePhasePayload(action)
         if (existing) {
           // Already exists — treat as update instead.
           await db
@@ -219,9 +272,9 @@ Return JSON only.`,
             .update({
               name: action.name,
               goal: action.goal,
-              protocol: action.protocol,
-              decisions: action.decisions,
-              watch_for: action.watch_for,
+              protocol: norm.protocol,
+              decisions: norm.decisions,
+              watch_for: norm.watch_for,
               status: existing.status === 'completed' ? 'completed' : 'active',
               created_from_conversation_id: conversationId,
               last_yuri_update_at: new Date().toISOString(),
@@ -235,9 +288,9 @@ Return JSON only.`,
             goal: action.goal,
             status: 'active',
             started_at: new Date().toISOString(),
-            protocol: action.protocol,
-            decisions: action.decisions,
-            watch_for: action.watch_for,
+            protocol: norm.protocol,
+            decisions: norm.decisions,
+            watch_for: norm.watch_for,
             created_from_conversation_id: conversationId,
             last_yuri_update_at: new Date().toISOString(),
           })
