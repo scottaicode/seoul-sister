@@ -139,13 +139,20 @@ async function handler(request: Request) {
   const authError = verifyCronAuth(request)
   if (authError) return authError
 
-  // ?test=1 bypasses ONLY the timezone daytime gate (still CRON_SECRET-protected
-  // above). Every other guard — eligibility, cap, spacing, dedup, conservative
-  // null-default — stays fully active, so a test-triggered nudge is a genuine one.
-  // Used to verify the pipeline outside the user's 9am-8pm window during QA.
-  // Scheduled cron runs never pass ?test, so the timezone gate is always live in
-  // production. Safe to leave in place.
-  const bypassTimezone = new URL(request.url).searchParams.get('test') === '1'
+  // QA-only timezone-gate bypass. Lets us verify the pipeline outside a user's
+  // 9am-8pm window. Hardened so it CANNOT be triggered with the cron secret alone:
+  // it requires BOTH ?test=1 AND a separate `x-nudge-test-key` header matching the
+  // dedicated NUDGE_TEST_KEY env var. If NUDGE_TEST_KEY is unset, the bypass is
+  // simply unavailable (fails closed) — so the timezone gate is always live for
+  // the scheduled Vercel cron (which never sends the test key). This keeps the QA
+  // tool without coupling it to CRON_SECRET, so a leaked cron secret can't queue
+  // off-hours nudges. Every OTHER guard (eligibility, cap, spacing, dedup) stays
+  // active regardless, so a test-triggered nudge is still a genuine one.
+  const testKey = process.env.NUDGE_TEST_KEY
+  const bypassTimezone =
+    !!testKey &&
+    new URL(request.url).searchParams.get('test') === '1' &&
+    request.headers.get('x-nudge-test-key') === testKey
 
   const startedAt = Date.now()
   const db = getServiceClient()
