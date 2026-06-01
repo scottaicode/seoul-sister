@@ -75,6 +75,10 @@
     {
       "path": "/api/cron/audit-memory-health",
       "schedule": "30 7 * * 0"
+    },
+    {
+      "path": "/api/cron/grade-nudge-outcomes",
+      "schedule": "0 8 * * 0"
     }
   ]
 }

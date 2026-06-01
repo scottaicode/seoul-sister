@@ -4,6 +4,29 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v10.11.0 (May 31, 2026) — Nudge Outcome Teacher (Measured Skin-Result Grading)
+
+### Origin
+After v10.10.0 shipped the proactive nudge engine, the question was whether it represented real "learning" toward a moat. The engine had a *soft* teacher (engagement: acted/dismissed). Per the owner's Learning Loop principle ("a measured outcome beats a thumbs-up beats engagement; find the least-gameable teacher"), the strongest available teacher in this domain is a measured skin result: did the user's Glass Skin Score move in the weeks after she acted on a nudge. This upgrades the loop from "engagement learning" to "did-it-actually-help learning."
+
+### Added — measured outcome teacher (two-tier)
+- `outcome_grade` / delta / baseline+followup score ids / notes columns on `ss_user_nudges` (migration `20260531000002`).
+- `src/lib/intelligence/nudge-outcome-grader.ts` + weekly `grade-nudge-outcomes` cron: for each acted-but-ungraded nudge, grades the Glass Skin Score delta ≥14 days after acting. Pure deterministic, no AI.
+- **Attribution + confounder gates** (the honesty): only `acted` nudges; phase-consistent follow-up (no regression/abandonment); `photo_quality.confidence_modifier ≥ 0.85`; ±4-point noise band. ABSTAINS (`insufficient_data`) rather than fabricate when data is sparse — coverage grows over time, no coincidental grades.
+
+### Added — the loop closes (calibration feedback)
+- `getNudgeTypePerformance()` → per-type helped-rate among graded outcomes.
+- `pickNudgeOpportunity` refactored to candidate-collection + suppression: a clearly-underperforming type (helped-rate < 0.25, ≥5 sample) is deprioritized in favor of the next viable candidate. Conservative — null/small-sample never suppresses; all-suppressed falls back to top (discount, not hard kill).
+
+### Notes
+- Two-tier teacher: Tier 1 engagement (dense/soft, on `status`) + Tier 2 skin-outcome (sparse/measured). Tier 2 strictly gates Tier 1.
+- Honest limitations: low initial coverage (correct), observational not randomized (A/B is the strongest teacher, revisit at higher MAU), engagement remains the fallback.
+- Migration `20260531000002` applies via Supabase Studio (MCP read-only); grader + calibration no-op gracefully until then.
+- Calibration + grader logic unit-tested; all v10.10.0 regressions pass. `tsc` + `next build` clean.
+- See `NUDGE-OUTCOME-TEACHER-BLUEPRINT.md` for the full design and the three traps it guards against.
+
+---
+
 ## v10.10.0 (May 31, 2026) — Proactive Nudge Engine + Durable Memory + Memory Observability
 
 ### Origin
