@@ -139,6 +139,14 @@ async function handler(request: Request) {
   const authError = verifyCronAuth(request)
   if (authError) return authError
 
+  // ?test=1 bypasses ONLY the timezone daytime gate (still CRON_SECRET-protected
+  // above). Every other guard — eligibility, cap, spacing, dedup, conservative
+  // null-default — stays fully active, so a test-triggered nudge is a genuine one.
+  // Used to verify the pipeline outside the user's 9am-8pm window during QA.
+  // Scheduled cron runs never pass ?test, so the timezone gate is always live in
+  // production. Safe to leave in place.
+  const bypassTimezone = new URL(request.url).searchParams.get('test') === '1'
+
   const startedAt = Date.now()
   const db = getServiceClient()
 
@@ -171,8 +179,9 @@ async function handler(request: Request) {
       stats.subscribersScanned++
       try {
         // --- Timezone gate: only queue during local daytime ---
+        // (?test=1 bypasses this gate only — see handler top.)
         const hour = localHour(p.timezone)
-        if (hour < DAYTIME_START_HOUR || hour >= DAYTIME_END_HOUR) {
+        if (!bypassTimezone && (hour < DAYTIME_START_HOUR || hour >= DAYTIME_END_HOUR)) {
           stats.skippedTimezone++
           continue
         }
@@ -350,7 +359,7 @@ async function handler(request: Request) {
       products_processed: stats.nudgesCreated,
       products_failed: stats.errors,
       completed_at: new Date().toISOString(),
-      metadata: { trigger: 'cron', schedule: 'daily', ...stats, duration_ms: Date.now() - startedAt },
+      metadata: { trigger: bypassTimezone ? 'manual_test' : 'cron', schedule: 'daily', timezone_bypassed: bypassTimezone, ...stats, duration_ms: Date.now() - startedAt },
     }).then(({ error }) => {
       if (error) console.error('[proactive-nudge] run log insert failed:', error.message)
     })
