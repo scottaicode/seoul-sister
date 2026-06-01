@@ -9,8 +9,10 @@ import {
   pickNudgeOpportunity,
   type NudgeEligibilityInput,
   type NudgeOpportunity,
+  type NudgeTypePerformanceMap,
   type OpenLoop,
 } from '@/lib/intelligence/nudge-eligibility'
+import { getNudgeTypePerformance } from '@/lib/intelligence/nudge-outcome-grader'
 import type { DecisionMemory } from '@/lib/yuri/memory'
 
 export const maxDuration = 60
@@ -182,6 +184,12 @@ async function handler(request: Request) {
 
     const todayIso = new Date().toISOString().slice(0, 10)
 
+    // v10.11.0 — measured-outcome calibration. Load once; passed into every
+    // eligibility call so the engine deprioritizes nudge types that the outcome
+    // teacher has shown don't move skin. Empty map until enough graded data exists,
+    // in which case it has no effect (conservative — see nudge-eligibility.ts).
+    const typePerformance: NudgeTypePerformanceMap = await getNudgeTypePerformance()
+
     for (const p of (profiles ?? []) as ProfileRow[]) {
       stats.subscribersScanned++
       try {
@@ -303,6 +311,7 @@ async function handler(request: Request) {
           daysSinceLastGlassScore,
           cycle,
           todayIso,
+          typePerformance,
         })
 
         if (!opportunity) {
