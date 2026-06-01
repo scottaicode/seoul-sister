@@ -63,6 +63,18 @@
     {
       "path": "/api/cron/retry-enrichment-queue",
       "schedule": "30 4 1 * *"
+    },
+    {
+      "path": "/api/cron/proactive-nudge",
+      "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/rollup-durable-memory",
+      "schedule": "0 7 * * 0"
+    },
+    {
+      "path": "/api/cron/audit-memory-health",
+      "schedule": "30 7 * * 0"
     }
   ]
 }

@@ -27,6 +27,7 @@ import ShelfScanWidget from '@/components/dashboard/ShelfScanWidget'
 import IntelligenceWidgets from '@/components/dashboard/IntelligenceWidgets'
 import RecentScansWidget from '@/components/dashboard/RecentScansWidget'
 import ScannerDiscoveryBanner from '@/components/dashboard/ScannerDiscoveryBanner'
+import YuriNudgeCard from '@/components/dashboard/YuriNudgeCard'
 
 // ---------------------------------------------------------------------------
 // Helpers & data
@@ -144,6 +145,11 @@ export default function DashboardPage() {
           Your K-beauty intelligence advisor is ready.
         </p>
       </section>
+
+      {/* Proactive nudge from Yuri (v10.10.0) — surfaces a pending check-in at the
+          right moment (open loop, phase/routine mismatch, cycle-timed actives,
+          glass-skin cadence). Renders nothing when there's no pending nudge. */}
+      <YuriNudgeCard />
 
       {/* One-time scanner discovery callout (only shows for users with 0 scans this period) */}
       <ScannerDiscoveryBanner />

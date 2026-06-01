@@ -85,6 +85,20 @@ export interface DecisionMemory {
     category: CorrectionCategory
     date: string
   }>
+  /**
+   * v10.10.0 — things Yuri left UNRESOLVED in the conversation: a next step she
+   * named but the user didn't take, a question she asked that went unanswered, a
+   * follow-up she said she'd do. Distinct from `commitments` (what the USER
+   * committed to). The proactive-nudge engine reads these to fire on the right
+   * unfinished thing instead of raw inactivity. An open loop disappears when a
+   * later extraction no longer surfaces it (Sonnet judges resolution).
+   * Adapted from LGAAS's handoff-summary `unfinished_items`.
+   */
+  open_loops: Array<{
+    topic: string
+    summary: string
+    opened_date: string
+  }>
   extracted_at: string
 }
 
@@ -492,7 +506,39 @@ export async function loadUserContext(
   const locationName = await reverseGeocodeUserLocation(skinProfile)
 
   // Load structured decision memory across recent conversations (always load — cheap and critical)
-  const decisionMemory = await loadDecisionMemory(db, userId)
+  let decisionMemory = await loadDecisionMemory(db, userId)
+
+  // v10.10.0 — union durable corrections (per-user store that never ages) into the
+  // windowed corrections. A correction the user made many conversations ago has
+  // aged out of the recent-3-conversation window above, but corrections are ground
+  // truth and must survive. The weekly rollup cron promotes them into ss_user_memory;
+  // here we merge them back in (durable wins on topic conflict — it's the canonical
+  // record). Non-critical: empty/missing store just leaves windowed corrections as-is.
+  try {
+    const { loadDurableCorrections } = await import('./durable-memory')
+    const durable = await loadDurableCorrections(db, userId)
+    if (durable.length > 0) {
+      const corrMap = new Map<string, DecisionMemory['corrections'][number]>()
+      for (const c of decisionMemory?.corrections ?? []) corrMap.set(c.topic.toLowerCase(), c)
+      for (const c of durable) corrMap.set(c.topic.toLowerCase(), c) // durable is canonical
+      const mergedCorrections = Array.from(corrMap.values())
+      if (decisionMemory) {
+        decisionMemory.corrections = mergedCorrections
+      } else {
+        // No windowed memory but durable corrections exist — surface them anyway.
+        decisionMemory = {
+          decisions: [],
+          preferences: [],
+          commitments: [],
+          corrections: mergedCorrections,
+          open_loops: [],
+          extracted_at: '',
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[memory] durable corrections union failed (non-critical):', err)
+  }
 
   // Only surface overlap when entries actually exist (worth flagging). An
   // empty result -> null so formatContextForPrompt skips the section cleanly.
@@ -961,6 +1007,25 @@ This user has hormonal/cycle-related concerns in their profile but has NOT enabl
       dmParts.push(`### User Commitments\n${commitLines}`)
     }
 
+    // v10.10.0 — open loops: things you left unresolved. Surfacing these lets you
+    // close them naturally without the user having to re-raise them. The proactive
+    // nudge engine also reads these, but rendering them here means an engaged user
+    // who returns on their own gets the loop closed in-conversation too.
+    if (dm.open_loops && dm.open_loops.length > 0) {
+      const loopLines = dm.open_loops
+        .map((l) => {
+          const daysAgo = Math.floor(
+            (now.getTime() - new Date(l.opened_date).getTime()) / (1000 * 60 * 60 * 24)
+          )
+          const ageLabel = daysAgo > 0 ? ` (opened ${daysAgo} day${daysAgo !== 1 ? 's' : ''} ago)` : ' (opened today)'
+          return `- **${l.topic}**: ${l.summary}${ageLabel}`
+        })
+        .join('\n')
+      dmParts.push(
+        `### Open Loops (Things You Left Unresolved)\nThese are threads from past conversations that never got closed — a next step you named, a question you asked, a plan waiting on the user. If the moment is right, pick one back up naturally ("hey, did you ever get a chance to..."). Don't force all of them; read the room. If the user already resolved one, just let it go.\n${loopLines}`
+      )
+    }
+
     if (dmParts.length > 0) {
       sections.push(`## Your Decisions & Preferences (Structured Memory)\nThese are structured decisions, preferences, and commitments extracted from your conversations with this user. Reference them when relevant — they represent agreed-upon plans and stated preferences.\n\n${dmParts.join('\n\n')}`)
     }
@@ -1254,6 +1319,7 @@ const EMPTY_DECISION_MEMORY: DecisionMemory = {
   preferences: [],
   commitments: [],
   corrections: [],
+  open_loops: [],
   extracted_at: '',
 }
 
@@ -1281,6 +1347,7 @@ export function mergeDecisionMemory(
   const basePreferences = base.preferences || []
   const baseCommitments = base.commitments || []
   const baseCorrections = base.corrections || []
+  const baseOpenLoops = base.open_loops || []
 
   // Decisions: latest per topic wins
   const decisionMap = new Map<string, { topic: string; decision: string; date: string }>()
@@ -1329,11 +1396,32 @@ export function mergeDecisionMemory(
   for (const c of incoming.corrections || []) correctionMap.set(c.topic.toLowerCase(), c)
   const corrections = Array.from(correctionMap.values())
 
+  // Open loops: union by topic, latest opened_date wins. Resolution is handled at
+  // EXTRACTION time (Sonnet won't re-surface a loop the conversation closed), and
+  // aging/staleness is handled at READ time by the nudge engine. Preserve the
+  // earliest opened_date so "stale for N days" math is honest — a loop that keeps
+  // reappearing is still the same unresolved loop, not a fresh one.
+  const openLoopMap = new Map<string, DecisionMemory['open_loops'][number]>()
+  for (const l of baseOpenLoops) openLoopMap.set(l.topic.toLowerCase(), l)
+  for (const l of incoming.open_loops || []) {
+    const key = l.topic.toLowerCase()
+    const prev = openLoopMap.get(key)
+    // Keep the earliest opened_date so the loop's true age is preserved; take the
+    // newer summary (Yuri's most recent phrasing of what's still unresolved).
+    openLoopMap.set(key, {
+      ...l,
+      opened_date:
+        prev?.opened_date && prev.opened_date < l.opened_date ? prev.opened_date : l.opened_date,
+    })
+  }
+  const open_loops = Array.from(openLoopMap.values())
+
   return {
     decisions,
     preferences,
     commitments,
     corrections,
+    open_loops,
     extracted_at: incoming.extracted_at || base.extracted_at || '',
   }
 }
@@ -1369,7 +1457,8 @@ async function loadDecisionMemory(
         (!raw.decisions?.length &&
           !raw.preferences?.length &&
           !raw.commitments?.length &&
-          !raw.corrections?.length)
+          !raw.corrections?.length &&
+          !raw.open_loops?.length)
       ) {
         continue
       }
@@ -1454,6 +1543,17 @@ export async function extractAndSaveDecisionMemory(
 
    Example: Bailey said "Skin&Lab Retinol Lifting Roller Cream is shown as a holy grail but I don't own it and never have." That correction implies cleanup_actions: [{ "action": "clear_reaction", "product_name": "Skin&Lab Retinol Lifting Roller Cream", "brand": "Skin&Lab" }]
 
+6. **OPEN LOOPS**: Things Yuri left UNRESOLVED in this conversation — a next step she named that the user didn't take yet, a question Yuri asked that the user never answered, a follow-up Yuri said she'd do, or a plan that's waiting on the user. These are distinct from COMMITMENTS (what the USER actively committed to). Open loops are what's hanging, unfinished, at the end of the conversation. Each needs a short topic slug, a plain-language summary of what's unresolved, and the date it was opened (today).
+
+   Be CONSERVATIVE: only genuinely unresolved threads, and only if you can point to where Yuri raised it. If the conversation reached a clean stopping point with nothing pending, return an empty array.
+
+   If a previously-open thread got RESOLVED in this conversation (the user answered the question, took the step, made the decision), do NOT include it — leaving it out is how a loop closes.
+
+   Examples:
+   { "topic": "phase_3_routine", "summary": "Yuri moved the user to Phase 3 (brightening) but hasn't built the new AM/PM routine yet — user is still running the Phase 2 routine", "opened_date": "${new Date().toISOString().split('T')[0]}" }
+   { "topic": "under_eye_plan", "summary": "Yuri ran the press test and identified pigmented + structural under-eye darkness; said to treat the pigmented part with the brightening active but the user hasn't started it", "opened_date": "${new Date().toISOString().split('T')[0]}" }
+   { "topic": "sleeping_mask_pick", "summary": "Yuri offered to pull a couple of hydrating sleeping masks for menstrual week; user hasn't said yes/no yet", "opened_date": "${new Date().toISOString().split('T')[0]}" }
+
 CONVERSATION:
 ${transcript}
 
@@ -1462,7 +1562,8 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
   "decisions": [{ "topic": "...", "decision": "...", "date": "${new Date().toISOString().split('T')[0]}" }],
   "preferences": [{ "topic": "...", "preference": "..." }],
   "commitments": [{ "item": "...", "date": "${new Date().toISOString().split('T')[0]}" }],
-  "corrections": [{ "topic": "...", "yuri_said": "...", "truth": "...", "category": "reformulation|discontinued|price|ingredient|brand_identity|other", "date": "${new Date().toISOString().split('T')[0]}", "cleanup_actions": [ { "action": "clear_reaction", "product_name": "...", "brand": "..." } ] }]
+  "corrections": [{ "topic": "...", "yuri_said": "...", "truth": "...", "category": "reformulation|discontinued|price|ingredient|brand_identity|other", "date": "${new Date().toISOString().split('T')[0]}", "cleanup_actions": [ { "action": "clear_reaction", "product_name": "...", "brand": "..." } ] }],
+  "open_loops": [{ "topic": "...", "summary": "...", "opened_date": "${new Date().toISOString().split('T')[0]}" }]
 }`,
           },
         ],
@@ -1478,6 +1579,7 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
     preferences?: unknown[]
     commitments?: unknown[]
     corrections?: unknown[]
+    open_loops?: unknown[]
   }
   try {
     const text = block.text.trim().replace(/^```json?\s*/, '').replace(/\s*```$/, '')
@@ -1549,6 +1651,15 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
             }
           })
       : [],
+    open_loops: Array.isArray(extracted.open_loops)
+      ? (extracted.open_loops as Array<{ topic?: string; summary?: string; opened_date?: string }>)
+          .filter((l) => l.topic && l.summary)
+          .map((l) => ({
+            topic: String(l.topic),
+            summary: String(l.summary),
+            opened_date: String(l.opened_date || new Date().toISOString().split('T')[0]),
+          }))
+      : [],
     extracted_at: new Date().toISOString(),
   }
 
@@ -1557,7 +1668,8 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
     incoming.decisions.length === 0 &&
     incoming.preferences.length === 0 &&
     incoming.commitments.length === 0 &&
-    incoming.corrections.length === 0
+    incoming.corrections.length === 0 &&
+    incoming.open_loops.length === 0
   ) {
     return
   }

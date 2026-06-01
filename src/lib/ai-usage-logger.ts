@@ -43,6 +43,8 @@ export type AIFeature =
   | 'product_curation_reasoning'
   | 'curated_browse_view'
   | 'skip_reasoning_expanded'
+  // v10.10.0 — proactive nudge engine
+  | 'proactive_nudge'
 
 interface AIUsageParams {
   feature: AIFeature

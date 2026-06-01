@@ -90,6 +90,19 @@ export const AI_CONTEXTS = {
     streaming: false,
     costNote: 'Per-product reasoning for /browse skip toggle. ~$0.011-0.016 per generation, 80%+ cache hit rate.',
   },
+  PROACTIVE_NUDGE: {
+    // v10.10.0 — the nudge message IS Yuri speaking to the subscriber about her
+    // skin. User-facing => Opus 4.8 (Principle 1). Deliberately NOT Sonnet, even
+    // though LGAAS generates its nudge emails with Sonnet — LGAAS's nudges are
+    // lower-stakes re-engagement for trial members of someone else's business;
+    // Seoul Sister's nudge is Yuri's own voice to a paying sub. Do not "optimize"
+    // this back to Sonnet. See PROACTIVE-NUDGE-BLUEPRINT.md.
+    model: 'claude-opus-4-8',
+    maxTokens: 350,
+    caching: false,
+    streaming: false,
+    costNote: 'Proactive nudge copy in Yuri voice. ~$0.01-0.02 per nudge, capped at 3/user with multi-day spacing.',
+  },
 
   // ---------------------------------------------------------------
   // Background processing (Claude Sonnet 4.5) — cost efficiency
