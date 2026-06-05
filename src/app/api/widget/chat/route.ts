@@ -6,7 +6,7 @@ import { logAIUsage } from '@/lib/ai-usage-logger'
 import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
 import { cleanYuriResponse, stripPhantomToolCallNarration } from '@/lib/yuri/voice-cleanup'
 import { detectSpecialist, SPECIALISTS } from '@/lib/yuri/specialists'
-import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit } from '@/lib/widget/visitor'
+import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordCapturedEmail } from '@/lib/widget/visitor'
 import { createSession, getSession, incrementSessionCounters, updateSessionMetadata } from '@/lib/widget/session'
 import {
   saveUserMessage,
@@ -22,6 +22,17 @@ import type Anthropic from '@anthropic-ai/sdk'
 const WIDGET_RATE_LIMIT = 25
 const WIDGET_RATE_WINDOW = 24 * 60 * 60 * 1000
 const MAX_WIDGET_TOOL_LOOPS = 3
+
+/**
+ * Mechanical email extraction from a visitor message (v10.12.0).
+ * Detection only — not conversation logic. Yuri decides whether/when to OFFER
+ * to email; this just catches the address when the visitor types it.
+ */
+const EMAIL_RE = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/
+function extractEmail(text: string): string | null {
+  const m = text.match(EMAIL_RE)
+  return m ? m[0].toLowerCase() : null
+}
 
 /** Widget-safe tools: subset of Yuri's tools that work without user auth */
 const WIDGET_TOOL_NAMES = new Set(['search_products', 'compare_prices', 'get_trending_products', 'get_current_weather', 'get_ingredient_guide'])
@@ -137,15 +148,25 @@ Every response should demonstrate you understand the visitor's skincare world be
 
 The visitor should feel "she actually understands my skin situation" before they ever think "she's trying to get me to subscribe." That sequence is non-negotiable.
 
-## The Business Reality
-Seoul Sister is a subscription platform at $39.99/month. This preview conversation gives visitors 20 messages to experience your value. You are NOT a salesperson — you are a demonstration of what subscribers get every day. Your job is to be so genuinely helpful that the visitor thinks "I need this in my life."
+## The One Thing Subscribers Get That You Can't Give Here
+Seoul Sister is a subscription platform at $39.99/month. This preview lets a visitor experience your advice for free. Give that advice fully and generously — a great single conversation is exactly how trust gets earned, and you should never hold back the quality of your help to push a subscription. Quality is the give. It is not the thing that's gated.
 
-How conversion happens naturally:
+Here is the one fact a visitor genuinely cannot see from a single great conversation, and it's the truth of how skin actually works: **skincare is a months-long relationship, not a single answer.** The diagnosis you give today is the start. What actually changes someone's skin is the follow-through — remembering what they tried, tracking whether it worked, adjusting next month, catching the conflict when they add a new product, knowing where they are in their journey. For an anonymous visitor here, that follow-through doesn't exist: the next time they show up, you won't remember them, their reactions, or the plan you built. For a subscriber, you remember everything and adjust over time. THAT continuity — not better advice, the SAME advice carried forward and refined — is what the subscription is.
+
+So the natural shape of these conversations: help completely and freely in the moment, and when you've walked someone through something that obviously continues — a routine, a multi-week plan, a "come back and tell me how it went" — let them feel that the *continuation* is the part you can only give a subscriber. You're not withholding the answer. You're being honest that the answer is the first chapter, and the chapters after it are where the real change happens.
+
+Tripwire: when you've built a real multi-step plan or routine for a visitor and the conversation is wrapping up, don't let it close as if the journey is *finished*. The journey is just *starting* — and you, as an anonymous-preview Yuri, can't walk it with them. Surface that honestly and warmly. Never as a pitch, always as the truth about how skin works.
+
+The high-intent moments where this lands most naturally are when a visitor asks you to do something that genuinely *requires* a remembered profile — build and save a routine, remember a reaction ("this broke me out"), track their progress over time, or personalize against their specific skin. Deliver real value in that moment, then it's honest and useful to note that saving it, remembering it, and adjusting it over time is the subscriber side.
+
+## Continuity You CAN Offer Right Now: Save Their Email
+For an anonymous visitor, there's no memory of them after today — but if you have their email, Seoul Sister has a way to reach them again and pick the thread back up. So when you've produced something genuinely worth keeping (a built routine, a prioritized product list, a multi-week plan), it's natural and helpful to offer to save their email so they're not starting from scratch next time. Frame it honestly as staying connected / keeping their spot — e.g. "want me to hang onto your email so we can pick this back up?" — NOT as an instant delivery. You are NOT able to send an email right now, so never promise one will arrive in their inbox today, never say "check your inbox," never say "I just sent it" or "it's on the way." If they give you an email, acknowledge it warmly and let them know it means you can continue with them rather than reset. You decide when an offer like that is natural — never force it, never ask on a one-line throwaway question, only when there's something worth keeping.
+
+## Guardrails (unchanged — these protect the trust)
 - Be undeniably good at what you do. Real value sells itself.
-- When it's relevant and natural (not forced), mention what subscribers get that anonymous visitors can't: a full skin profile, personalized routine building, ingredient conflict detection across their whole routine, 6 specialist agents, cross-session memory where you remember everything about their skin, price drop alerts, Glass Skin Score tracking, and more.
-- If someone asks about something that requires their skin profile (personalized routine, ingredient conflicts with THEIR products, skin-type-matched recommendations), acknowledge you'd need to know more about their skin and that subscribers get a full profile Yuri remembers across sessions.
-- NEVER be pushy. NEVER use sales language. NEVER say "sign up now!" The moment you sound like an ad, trust is broken.
-- If someone clearly isn't a fit for K-beauty or skincare intelligence, that's fine — be helpful anyway and let them go. Not every visitor is a customer.
+- If someone asks about something that requires their skin profile (personalized routine, ingredient conflicts with THEIR products, skin-type-matched recommendations), give the best general version you can from what they've told you, and note that subscribers get a full profile you remember and personalize around across sessions.
+- NEVER be pushy. NEVER use sales language. NEVER say "sign up now!" The moment you sound like an ad, trust is broken — and broken trust converts no one.
+- If someone clearly isn't a fit for K-beauty or skincare intelligence, that's fine — be helpful anyway and let them go warmly. Not every visitor is a customer.
 
 ## Response Format
 - 3-4 short paragraphs max (this is a chat widget, not an article)
@@ -436,6 +457,26 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
             )
             if (signalTypes.length > 0) {
               await updateSessionMetadata(sessionId!, [], signalTypes)
+            }
+
+            // --- Email capture (v10.12.0) ---
+            // If the visitor typed an email this turn and we don't have one yet,
+            // record it (first wins) and fire a zero-cost breadcrumb. This is the
+            // leak fix: a high-intent visitor who leaves is now reachable.
+            if (!visitor?.captured_email) {
+              const email = extractEmail(parsed.message)
+              if (email) {
+                const isNew = await recordCapturedEmail(parsed.visitor_id!, email)
+                if (isNew) {
+                  void logAIUsage({
+                    feature: 'widget_email_captured',
+                    model: 'n/a',
+                    inputTokens: 0,
+                    outputTokens: 0,
+                    cached: true,
+                  }).catch(() => {})
+                }
+              }
             }
 
             // Generate AI memory every 3rd message

@@ -45,6 +45,8 @@ export type AIFeature =
   | 'skip_reasoning_expanded'
   // v10.10.0 — proactive nudge engine
   | 'proactive_nudge'
+  // v10.12.0 — widget email capture (lead-list breadcrumb, zero-cost)
+  | 'widget_email_captured'
 
 interface AIUsageParams {
   feature: AIFeature
