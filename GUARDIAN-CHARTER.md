@@ -116,7 +116,63 @@ The Guardian is built in two layers with very different risk and cost:
 - *Optional small always-on compute box* (if Vercel function timeouts prove too tight for a full agent run): **~$5–7/mo.**
 - *Realistic all-in for autonomous-fix:* **~$5–15/mo.** Negligible against Seoul Sister's ~90% subscriber margin, but a cost-bearing change — so it ships only on Scott's explicit go, never auto-assumed.
 
-The honest staging: watch + alert for $0 now (laptop-independent), graduate to autonomous-fix after the report-only week + cost approval.
+The honest staging: watch for $0 now (laptop-independent), graduate to autonomous-fix after the report-only week + cost approval.
+
+---
+
+## DEFERRED FEATURE 1 — Push/email alerting (build spec, NOT built)
+
+**Status:** Deferred by Scott (June 5 2026) — "not necessary at this time," documented so it's ready if needed later. Cost: **~$0** (uses the existing unused `RESEND_API_KEY`; no new infra).
+
+**The gap it closes:** the always-on watcher (`/api/cron/guardian-watch`) records a `critical` verdict to `ss_pipeline_runs.metadata` + Vercel logs 24/7, but does NOT actively notify Scott. If something critical trips at 3am with his machine off, he won't know until he's back at the keyboard. Alerting closes that.
+
+**Build spec (for whoever picks this up):**
+1. Resend is the provider (`RESEND_API_KEY` already in env, SDK NOT yet installed — `npm i resend`). Requires a verified sending domain (see WIDGET-CONVERSION-BLUEPRINT.md "DEFERRED FEATURE" — the email-send and alerting features share the same domain-verification prerequisite; do them together if both are ever built).
+2. In `/api/cron/guardian-watch/route.ts`, after `runHealthCheck`, if `report.overall === 'critical'` (NOT on `warn` — avoid alert fatigue; warn stays log-only), send Scott a one-email digest: the flagged signals + their summaries. Keep it to critical-only and de-dupe (don't re-alert the same unresolved condition every run — check the prior run's metadata).
+3. Recipient is Scott's email; put it in env (`GUARDIAN_ALERT_EMAIL`), never hardcoded.
+4. This is a **notification**, not an action — it does not change the autonomous-fix tiers. It just makes a Tier 2/3 escalation reach Scott faster.
+
+**AI-First note:** pure plumbing (deterministic send on a deterministic condition). No model, no judgment. `ai-first-check` is a formality here but still run it.
+
+---
+
+## DEFERRED FEATURE 2 — Autonomous fix-while-you-sleep (ACTIVATION RUNBOOK)
+
+**Status:** This is the feature Scott most wants live after the report-only week (his words, June 5 2026: "anxious after a week of data to have it find and fix problems 24/7"). It is DEFERRED until two conditions are both met. **This section is a complete, self-contained activation procedure so ANY AI model — including one with zero memory of this project — can execute it correctly if contact with the original session is lost.**
+
+### Activation pre-conditions (BOTH required — do not activate without both)
+
+1. **The report-only week has elapsed AND its logs prove the judgment sound.** Read `GUARDIAN-LOG.md`. There must be ≥5–7 days of run entries. Review every entry's "WOULD HAVE ACTED" items: would each proposed Tier 1 fix have been correct and safe? If any would-have-action looks wrong, misclassified, or risky, **do NOT activate** — surface the concern to Scott instead. The week is the test; passing it is the gate.
+2. **Scott has explicitly approved the recurring cost** (~$5–15/mo, see "Two-layer deployment" above). This is a cost-bearing change = Tier 3 = never auto-activated. Scott must say go. If you cannot confirm his approval, do NOT activate — present the plan and wait.
+
+### What "autonomous fix" actually requires (the build, for a fresh AI)
+
+The current `/guardian-run` reasoning agent only fires inside an open Claude Code session. To make it run server-side 24/7 (the thing Scott wants), you must build a **headless agent invocation** that the always-on watcher can trigger. Two viable architectures — pick based on cost/effort tradeoff at the time:
+
+- **Option A (recommended — cheapest):** Extend `/api/cron/guardian-watch`. When `report.overall === 'critical'` (or `warn` on a known-safe Tier-1 class), it invokes the Claude Agent SDK (`@anthropic-ai/claude-agent-sdk` or successor) server-side with: the charter, the healthcheck report, and the `/guardian-run` playbook as the system prompt. The agent reasons, fixes Tier 1 under the non-skippable gates, commits, and writes to `GUARDIAN-LOG.md`. Reads `ANTHROPIC_API_KEY` from env. Cost = Opus tokens only when a signal trips (~$1–5/mo on a healthy system). **Caveat:** Vercel function timeout (max 60s here, 300s on Pro) may be too short for a full agent run that includes `next build`. If it times out, fall back to Option B.
+- **Option B (if Vercel timeouts are too tight):** A small always-on compute box (Railway / Render / Fly.io, ~$5–7/mo) running a tiny scheduler (node-cron) that does the same agent invocation with no timeout ceiling and full repo access (it `git clone`s the repo, runs the gates, pushes). More moving parts, but no timeout risk.
+
+### The activation steps (in order)
+
+1. **Confirm both pre-conditions above.** If either fails, STOP — do not activate; report to Scott.
+2. **Flip the mode flag.** In `GUARDIAN-LOG.md`, change `MODE: REPORT-ONLY` → `MODE: AUTONOMOUS`. This is the master switch the `/guardian-run` playbook reads. (Even after this, Tier 2 and Tier 3 remain escalate-only forever — only Tier 1 acts.)
+3. **Build the headless invocation** (Option A or B above). It MUST embed the existing non-skippable gates verbatim — `/ai-first-guard` on the plan, `/ai-first-check` on the diff, `tsc`, `next build`, reproduce-before-fix, logged trail. **No green, no ship.** The gates are the entire safety model; an autonomous agent without them is forbidden.
+4. **Bound the blast radius in code, not just in the prompt.** The headless agent must be hard-prevented (not merely instructed) from: writing to the learning corpus or any user data, touching auth/payments/RLS/secrets, running schema-destructive migrations, `--force` pushing, or making cost-bearing changes. Belt-and-suspenders: the prompt forbids it AND the runtime should refuse those operations.
+5. **Renew the schedule.** The server watcher cron already runs 24/7; the autonomous agent rides on its `critical` triggers (Option A) or its own scheduler (Option B). The 7-day-expiring session cron is NOT the mechanism for autonomous fixing — that was only for the report-only reasoning runs.
+6. **Run it in shadow for 2–3 days first if possible:** let it produce the fix + run all gates + write the would-commit diff to the log, but hold the actual push behind one more flag. Confirm a few real autonomous fixes look right before letting it push unsupervised. (Optional but recommended — the report-only week tests *classification*; this tests *execution*.)
+7. **Update this charter** to record activation (date, which option, who approved) and bump the version.
+
+### The hard invariants that survive activation (never relax these)
+
+- **Tier 3 is untouchable, autonomously, forever.** The moat (graded-outcome corpus, decision memory, treatment phases, nudge grades, glass-skin scores, effectiveness tables, Bailey's data), auth, payments, security, cost, schema-destruction. The Guardian may diagnose and escalate these; it may never act on them.
+- **The gates are non-negotiable.** Every autonomous change passes `ai-first-check` + `tsc` + `build` + targeted verification, or it does not ship.
+- **One fix = one commit.** Every autonomous action is independently reversible via git. Nothing hidden, nothing bundled.
+- **Yuri Sole Authority Principle.** The agent may never introduce a non-Yuri recommender, even as a "quick win."
+- **When unsure of a tier, treat it as the higher tier.** Conservatism protects the moat.
+
+### If you are a fresh AI reading this with no other context
+
+You have everything you need here. The charter (this file) is the contract. `GUARDIAN-LOG.md` is the history + mode switch. `.claude/commands/guardian-run.md` is the per-run playbook. `src/lib/guardian/healthcheck.ts` is the probe. `/api/cron/guardian-watch` is the always-on watcher. Do not activate autonomous fixing without both pre-conditions met. When in doubt, escalate to Scott rather than act. The goal is a guardian that makes Seoul Sister better while protecting the irreplaceable asset — the learning corpus and the trust of its users. Protect first, improve second.
 
 ## The promise
 
