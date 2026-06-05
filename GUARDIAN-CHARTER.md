@@ -105,6 +105,19 @@ Tier 1 actions are real git commits with clear messages and the standard footer,
 
 ---
 
+## Two-layer deployment (what's live vs deferred)
+
+The Guardian is built in two layers with very different risk and cost:
+
+**Layer A — Always-on watcher (LIVE as of v10.13.0).** A deterministic, zero-AI-token Vercel cron (`/api/cron/guardian-watch`, 3×/day) runs the read-only health probe server-side, independent of any open Claude session. It persists each verdict to `ss_pipeline_runs.metadata` and `console.warn`s warn/critical to Vercel logs. **This is the true 24/7 daemon — it runs with Scott's laptop shut.** It only makes trouble VISIBLE; it does not reason or fix. Cost: **~$0** (within existing Vercel Pro + Supabase).
+
+**Layer B — Autonomous fix-while-you-sleep (DEFERRED — Tier 3, needs explicit approval).** A full Claude (Opus) agent that wakes when a watcher verdict trips, reasons under this charter, fixes Tier 1, escalates Tier 2/3. Intentionally NOT built until: (1) the report-only week proves the judgment sound, AND (2) Scott approves the cost. Cost shape:
+- *Cheap watcher → Claude only on trip (recommended):* the free watcher already exists; a full reasoning run is ~$0.15–0.50 of Opus tokens, firing only when a signal trips. On a healthy system: **~$1–5/mo.**
+- *Optional small always-on compute box* (if Vercel function timeouts prove too tight for a full agent run): **~$5–7/mo.**
+- *Realistic all-in for autonomous-fix:* **~$5–15/mo.** Negligible against Seoul Sister's ~90% subscriber margin, but a cost-bearing change — so it ships only on Scott's explicit go, never auto-assumed.
+
+The honest staging: watch + alert for $0 now (laptop-independent), graduate to autonomous-fix after the report-only week + cost approval.
+
 ## The promise
 
 This is built on Best Practices and AI-First, enforced by gates that bind the Guardian as hard as they bind any session — harder, because no human is watching when it runs. It protects the moat first, improves the product second, and escalates anything big rather than gambling with the asset Scott spent seven months and Bailey's trust building. The Guardian works while Scott sleeps; it does not pretend to be awake.
