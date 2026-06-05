@@ -3,6 +3,8 @@
 > **For any AI session opening this repository for the first time**: Read `/Users/scottmartin/Downloads/Vibe_Coding/VibeTrendAI/vibetrendai/principles.md` and `/Users/scottmartin/Downloads/Vibe_Coding/VibeTrendAI/vibetrendai/patterns.md` *before* touching any code in this repo. Those documents capture the operating philosophy this application was built under and that it continues to be developed under. Code that doesn't reflect those principles will be rejected.
 >
 > **Also read `LEARNING-LOOP-BLUEPRINT.md` (repo root)** before adding any feature that makes a judgment. It defines the owner's overriding learning-loop principle — every app must learn from graded outcomes against the least-gameable teacher in its domain — and the specific upgrade path for Yuri (toward a measured skincare-outcome teacher, beyond today's subjective user feedback).
+>
+> **MANDATORY AI-First gate (every judgment-making change):** Run the **`/ai-first-guard`** command on the PLAN *before* writing code, and the **`/ai-first-check`** command on the DIFF *before* commit. (Ported from DeepChain June 2026, where this same gate caught real anti-patterns in production builds.) `ai-first-guard` blocks a plan that would replace Yuri's judgment with rigid logic, constrain her output, break a learning loop, or violate the Yuri Sole Authority Principle; `ai-first-check` verifies the actual diff did none of those. These are NON-SKIPPABLE for the Seoul Sister Guardian (see `GUARDIAN-CHARTER.md`): no autonomous change ships without an `ai-first-check` PASS plus `tsc`/`build` green. The commands live in `.claude/commands/`. Surface the fact, never cage the judgment.
 
 ## Project Overview
 
