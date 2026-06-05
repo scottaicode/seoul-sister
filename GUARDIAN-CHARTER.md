@@ -111,12 +111,16 @@ The Guardian is built in two layers with very different risk and cost:
 
 **Layer A — Always-on watcher (LIVE as of v10.13.0).** A deterministic, zero-AI-token Vercel cron (`/api/cron/guardian-watch`, 3×/day) runs the read-only health probe server-side, independent of any open Claude session. It persists each verdict to `ss_pipeline_runs.metadata` and `console.warn`s warn/critical to Vercel logs. **This is the true 24/7 daemon — it runs with Scott's laptop shut.** It only makes trouble VISIBLE; it does not reason or fix. Cost: **~$0** (within existing Vercel Pro + Supabase).
 
-**Layer B — Autonomous fix-while-you-sleep (DEFERRED — Tier 3, needs explicit approval).** A full Claude (Opus) agent that wakes when a watcher verdict trips, reasons under this charter, fixes Tier 1, escalates Tier 2/3. Intentionally NOT built until: (1) the report-only week proves the judgment sound, AND (2) Scott approves the cost. Cost shape:
-- *Cheap watcher → Claude only on trip (recommended):* the free watcher already exists; a full reasoning run is ~$0.15–0.50 of Opus tokens, firing only when a signal trips. On a healthy system: **~$1–5/mo.**
-- *Optional small always-on compute box* (if Vercel function timeouts prove too tight for a full agent run): **~$5–7/mo.**
-- *Realistic all-in for autonomous-fix:* **~$5–15/mo.** Negligible against Seoul Sister's ~90% subscriber margin, but a cost-bearing change — so it ships only on Scott's explicit go, never auto-assumed.
+**Layer B — Autonomous fix-while-you-sleep (DEFERRED — needs the report-only week, NOT a new bill).** A full Claude (Opus) agent that wakes when a watcher verdict trips, reasons under this charter, fixes Tier 1, escalates Tier 2/3. Intentionally NOT built until the report-only week proves the judgment sound. **Cost — corrected June 5 2026 after research:**
 
-The honest staging: watch for $0 now (laptop-independent), graduate to autonomous-fix after the report-only week + cost approval.
+- Scott is on **Claude Max 20x ($200/mo)**. As of the **June 15 2026 Anthropic billing change**, headless/Agent-SDK usage (the `claude -p` / Agent SDK path this autonomous layer would use) is split onto a **separate monthly Agent-SDK credit pool** — but Max 20x **includes a $200/month agent credit that refreshes each billing cycle**, on top of interactive Claude Code usage. Headless agent calls drain that included credit first.
+- A guardian that fires only when a signal trips uses **~$1–5/mo of tokens** on a healthy system — far under the included $200 credit. **So in practice the autonomous-fix layer runs at $0 marginal cost**, inside the plan Scott already pays for.
+- Overflow only bills at API rates if the *entire* $200 monthly agent credit is exhausted AND "extra usage" is opted in. A guardian this lightweight won't approach that; if extra usage is off, calls simply pause until the credit refreshes (no surprise charge possible).
+- The ONLY potential real cost is infra, not AI: an optional small always-on box (Railway/Render/Fly, **~$5–7/mo**) ONLY IF Vercel function timeouts prove too tight for a full agent run (Option B below). Option A (extend the Vercel cron) avoids even that.
+
+**Correction to the original estimate:** an earlier draft of this charter said "~$5–15/mo, needs Scott's cost approval." That was based on the outdated assumption that headless agents require a separate metered API key. They don't for a Max subscriber — the included agent credit covers normal guardian usage. **The cost gate is therefore downgraded** (see Graduation pre-conditions): it is NOT "approve a recurring charge," it is "confirm the one-time agent-credit opt-in is claimed and confirm no surprise infra cost." The **report-only-week gate is the real gate** and is unchanged — that one is about safety, not money.
+
+The honest staging: watch for $0 now (laptop-independent), graduate to autonomous-fix after the report-only week proves judgment sound (cost is a non-issue under the Max plan's included agent credit).
 
 ---
 
@@ -143,7 +147,7 @@ The honest staging: watch for $0 now (laptop-independent), graduate to autonomou
 ### Activation pre-conditions (BOTH required — do not activate without both)
 
 1. **The report-only week has elapsed AND its logs prove the judgment sound.** Read `GUARDIAN-LOG.md`. There must be ≥5–7 days of run entries. Review every entry's "WOULD HAVE ACTED" items: would each proposed Tier 1 fix have been correct and safe? If any would-have-action looks wrong, misclassified, or risky, **do NOT activate** — surface the concern to Scott instead. The week is the test; passing it is the gate.
-2. **Scott has explicitly approved the recurring cost** (~$5–15/mo, see "Two-layer deployment" above). This is a cost-bearing change = Tier 3 = never auto-activated. Scott must say go. If you cannot confirm his approval, do NOT activate — present the plan and wait.
+2. **Cost is confirmed a non-issue (corrected June 5 2026 — this is NOT a recurring-charge approval).** Research established that Scott's Max 20x ($200/mo) plan includes a $200/month Agent-SDK credit (post-June-15-2026 billing model) that covers normal headless guardian usage (~$1–5/mo of tokens) at **$0 marginal cost**. So this gate is small: (a) confirm the one-time Agent-SDK-credit opt-in is claimed on Scott's account (opens at the first billing cycle after June 15 2026), and (b) if Option B's ~$5–7/mo compute box is needed (only if Vercel timeouts force it), get Scott's nod on that infra line specifically. If you build Option A (Vercel cron, no extra box) and the credit opt-in is done, there is no cost to approve. Do not block activation on a cost that doesn't exist — but do confirm the credit opt-in so the agent isn't silently paused for lack of it.
 
 ### What "autonomous fix" actually requires (the build, for a fresh AI)
 
