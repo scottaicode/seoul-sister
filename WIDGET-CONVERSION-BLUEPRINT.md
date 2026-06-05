@@ -81,6 +81,29 @@ FROM ss_widget_visitors;
 
 ---
 
+## Deferred follow-up — Real automated email send (three-gate sequence)
+
+**Status:** Intentionally NOT built. Capture is live (v10.12.0); sending is the next chapter. Documented here so it's built in the right order, not prematurely.
+
+**Why deferred, not skipped:** Yuri currently *captures* an email (stores a lead) but cannot *send* anything. Wiring an automated send pipeline before any lead exists, and before the nurture message is decided, is building the delivery truck before there's a package. Per "verify the bottleneck before you build" (LGAAS discipline) and the 2026 freemium research, *what* the nurture email says drives conversion far more than the fact one was sent — so the message is the real design work, not the plumbing.
+
+**What real sending requires (for reference):**
+1. **Install the Resend SDK** — trivial (~2 min). `RESEND_API_KEY` already exists in env.
+2. **Build a send function + routine/plan email template** — small, contained build.
+3. **Verify a sending domain in Resend** — the real gate, and it's a Scott-only DNS task: pick a from-address (`hello@seoulsister.com` or `yuri@seoulsister.com`), add SPF + DKIM records at the registrar, wait for propagation. Until verified, Resend can only send from its `onboarding@resend.dev` sandbox, which lands in spam and reads as fake to a cold prospect. **No automated email should go to a real lead before this is done.**
+
+**The three gates (do them in order):**
+
+- **Gate 1 — now → next few days: let capture run, build nothing.** Migration is live. The next visitor who shares an email proves the loop works. Watch `with_email` tick up from 0.
+- **Gate 2 — at ~5–10 captured emails: decide the *message*, not the code.** What does the email *do*? Lean: not just a routine PDF — a warm "pick up where we left off, Yuri remembers the plan, here's your spot" that pulls them back into a *conversation* (the conversation is what converts), with a subscribe path. This is a strategy decision to make with real leads in front of you.
+- **Gate 3 — once the message is decided: build it.** Only now does the domain work pay off. Claude builds SDK + template + send function; Scott does the DNS (Claude supplies exact SPF/DKIM values to paste); test end-to-end against a throwaway address before any real lead.
+
+**Optional runway-smoother (low effort, anytime):** start the Resend domain verification now — purely because DNS propagation can take hours-to-a-day and it's annoying to be blocked on it at Gate 3. Costs nothing to have `hello@seoulsister.com` verified and waiting. Not required.
+
+**Honest caveat:** until Gate 3 ships, the prompt (Option A) is correct to forbid Yuri from promising a send. If sending is ever built, the prompt's "## Continuity You CAN Offer Right Now: Save Their Email" block must be upgraded *in the same change* to allow the delivery promise — otherwise Yuri keeps saying "I can't send" while the system can.
+
+---
+
 ## What this deliberately does NOT do
 
 - **No worse / more withholding Yuri.** The research is explicit that gating the aha-moment kills conversion. Yuri gives advice quality fully and freely. Only continuity is gated.
