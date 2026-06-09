@@ -35,8 +35,45 @@ const hoursAgoIso = (h: number) => new Date(Date.now() - h * 3600_000).toISOStri
 const daysAgoIso = (d: number) => new Date(Date.now() - d * 86400_000).toISOString()
 
 /**
+ * Extract a human-readable message from any thrown value. Supabase errors are
+ * plain objects, so `String(err)` yields "[object Object]" and hides the real
+ * cause. This surfaces the actual message (v10.13.1 — make failures visible,
+ * the v10.3.5 fire-and-forget lesson applied to the Guardian's own tooling).
+ */
+function errMsg(err: unknown): string {
+  if (err == null) return 'unknown error'
+  if (typeof err === 'string') return err
+  if (err instanceof Error) return err.message
+  const o = err as { message?: unknown; error?: unknown; details?: unknown }
+  if (typeof o.message === 'string') return o.message
+  if (typeof o.error === 'string') return o.error
+  if (typeof o.details === 'string') return o.details
+  try {
+    return JSON.stringify(err)
+  } catch {
+    return String(err)
+  }
+}
+
+/**
+ * Run a query thunk, retrying ONCE on failure before giving up (v10.13.1).
+ * A single transient connectivity/timeout blip on the standalone CLI Supabase
+ * client should NOT trip a false `warn` (the Run #12 false-alarm class). A real
+ * outage fails both the attempt and the retry; a blip clears on the retry.
+ */
+async function withRetry<T>(fn: () => PromiseLike<T>): Promise<T> {
+  try {
+    return await fn()
+  } catch {
+    await new Promise((r) => setTimeout(r, 400))
+    return await fn() // second failure propagates to the caller's catch
+  }
+}
+
+/**
  * Run the full read-only health probe. Never throws — a query failure
- * becomes its own `warn` signal so the watcher always produces a report.
+ * (after one retry) becomes its own `warn` signal so the watcher always
+ * produces a report.
  */
 export async function runHealthCheck(db: SupabaseClient): Promise<HealthReport> {
   const signals: Signal[] = []
@@ -44,11 +81,13 @@ export async function runHealthCheck(db: SupabaseClient): Promise<HealthReport> 
 
   // 1. Yuri response health (last 24h)
   try {
-    const { data, error } = await db
-      .from('ss_yuri_messages')
-      .select('content, role')
-      .eq('role', 'assistant')
-      .gte('created_at', hoursAgoIso(24))
+    const { data, error } = await withRetry(() =>
+      db
+        .from('ss_yuri_messages')
+        .select('content, role')
+        .eq('role', 'assistant')
+        .gte('created_at', hoursAgoIso(24))
+    )
     if (error) throw error
     const total = data?.length ?? 0
     const empty = (data ?? []).filter((m) => !m.content || String(m.content).trim().length < 5).length
@@ -63,15 +102,17 @@ export async function runHealthCheck(db: SupabaseClient): Promise<HealthReport> 
       detail: { total, empty, errorish },
     })
   } catch (err) {
-    push({ key: 'yuri_response_health_24h', severity: 'warn', summary: 'Could not assess Yuri response health', detail: { error: String(err) } })
+    push({ key: 'yuri_response_health_24h', severity: 'warn', summary: 'Could not assess Yuri response health', detail: { error: errMsg(err) } })
   }
 
   // 2. Decision-memory silent-extraction failures (v10.3.4 class), last 7d
   try {
-    const { data: convos, error } = await db
-      .from('ss_yuri_conversations')
-      .select('id, decision_memory')
-      .gte('created_at', daysAgoIso(7))
+    const { data: convos, error } = await withRetry(() =>
+      db
+        .from('ss_yuri_conversations')
+        .select('id, decision_memory')
+        .gte('created_at', daysAgoIso(7))
+    )
     if (error) throw error
     let suspect = 0
     for (const c of convos ?? []) {
@@ -90,15 +131,17 @@ export async function runHealthCheck(db: SupabaseClient): Promise<HealthReport> 
       detail: { suspect },
     })
   } catch (err) {
-    push({ key: 'decision_memory_extraction_7d', severity: 'warn', summary: 'Could not assess decision-memory extraction', detail: { error: String(err) } })
+    push({ key: 'decision_memory_extraction_7d', severity: 'warn', summary: 'Could not assess decision-memory extraction', detail: { error: errMsg(err) } })
   }
 
   // 3. AI usage + model-tier sanity (last 24h)
   try {
-    const { data, error } = await db
-      .from('ss_ai_usage')
-      .select('feature, model')
-      .gte('created_at', hoursAgoIso(24))
+    const { data, error } = await withRetry(() =>
+      db
+        .from('ss_ai_usage')
+        .select('feature, model')
+        .gte('created_at', hoursAgoIso(24))
+    )
     if (error) throw error
     const byModel: Record<string, number> = {}
     for (const r of data ?? []) byModel[String(r.model)] = (byModel[String(r.model)] || 0) + 1
@@ -110,16 +153,18 @@ export async function runHealthCheck(db: SupabaseClient): Promise<HealthReport> 
       detail: { byModel, yuri_chat_non_opus: downgraded },
     })
   } catch (err) {
-    push({ key: 'ai_usage_24h', severity: 'info', summary: 'Could not assess AI usage', detail: { error: String(err) } })
+    push({ key: 'ai_usage_24h', severity: 'info', summary: 'Could not assess AI usage', detail: { error: errMsg(err) } })
   }
 
   // 4. Cron / pipeline health (last 48h)
   try {
-    const { data, error } = await db
-      .from('ss_pipeline_runs')
-      .select('source, status, started_at, products_scraped')
-      .gte('started_at', hoursAgoIso(48))
-      .order('started_at', { ascending: false })
+    const { data, error } = await withRetry(() =>
+      db
+        .from('ss_pipeline_runs')
+        .select('source, status, started_at, products_scraped')
+        .gte('started_at', hoursAgoIso(48))
+        .order('started_at', { ascending: false })
+    )
     if (error) throw error
     // Exclude the Guardian's own watch runs from the pipeline-health view.
     const rows = (data ?? []).filter((r) => String(r.source) !== 'guardian-watch')
@@ -133,16 +178,18 @@ export async function runHealthCheck(db: SupabaseClient): Promise<HealthReport> 
       detail: { failed: failed.map((r) => r.source), stuck: stuck.map((r) => r.source), zeroResult: zeroResult.map((r) => r.source) },
     })
   } catch (err) {
-    push({ key: 'pipeline_health_48h', severity: 'info', summary: 'Could not assess pipeline health', detail: { error: String(err) } })
+    push({ key: 'pipeline_health_48h', severity: 'info', summary: 'Could not assess pipeline health', detail: { error: errMsg(err) } })
   }
 
   // 5. Product image health — null images on verified products
   try {
-    const { count, error } = await db
-      .from('ss_products')
-      .select('id', { count: 'exact', head: true })
-      .is('image_url', null)
-      .eq('is_verified', true)
+    const { count, error } = await withRetry(() =>
+      db
+        .from('ss_products')
+        .select('id', { count: 'exact', head: true })
+        .is('image_url', null)
+        .eq('is_verified', true)
+    )
     if (error) throw error
     const nullImg = count ?? 0
     push({
@@ -152,12 +199,14 @@ export async function runHealthCheck(db: SupabaseClient): Promise<HealthReport> 
       detail: { nullImg },
     })
   } catch (err) {
-    push({ key: 'product_null_images', severity: 'info', summary: 'Could not assess image health', detail: { error: String(err) } })
+    push({ key: 'product_null_images', severity: 'info', summary: 'Could not assess image health', detail: { error: errMsg(err) } })
   }
 
   // 6. Widget funnel (report-only; strategy is Tier 2/3 per charter)
   try {
-    const { data, error } = await db.from('ss_widget_visitors').select('captured_email, converted_at')
+    const { data, error } = await withRetry(() =>
+      db.from('ss_widget_visitors').select('captured_email, converted_at')
+    )
     if (error) throw error
     const visitors = data?.length ?? 0
     const withEmail = (data ?? []).filter((v) => v.captured_email).length
@@ -169,16 +218,18 @@ export async function runHealthCheck(db: SupabaseClient): Promise<HealthReport> 
       detail: { visitors, withEmail, converted },
     })
   } catch (err) {
-    push({ key: 'widget_funnel', severity: 'info', summary: 'Could not assess widget funnel', detail: { error: String(err) } })
+    push({ key: 'widget_funnel', severity: 'info', summary: 'Could not assess widget funnel', detail: { error: errMsg(err) } })
   }
 
   // 7. Bailey activity sanity (READ-ONLY)
   try {
-    const { count } = await db
-      .from('ss_yuri_conversations')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', BAILEY)
-      .gte('updated_at', daysAgoIso(7))
+    const { count } = await withRetry(() =>
+      db
+        .from('ss_yuri_conversations')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', BAILEY)
+        .gte('updated_at', daysAgoIso(7))
+    )
     push({
       key: 'bailey_activity_7d',
       severity: 'info',
@@ -186,7 +237,7 @@ export async function runHealthCheck(db: SupabaseClient): Promise<HealthReport> 
       detail: { conversations_7d: count ?? 0 },
     })
   } catch (err) {
-    push({ key: 'bailey_activity_7d', severity: 'info', summary: 'Could not assess Bailey activity', detail: { error: String(err) } })
+    push({ key: 'bailey_activity_7d', severity: 'info', summary: 'Could not assess Bailey activity', detail: { error: errMsg(err) } })
   }
 
   // Roll up
