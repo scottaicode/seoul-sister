@@ -6,9 +6,9 @@ import { logAIUsage } from '@/lib/ai-usage-logger'
 import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
 import { cleanYuriResponse, stripPhantomToolCallNarration } from '@/lib/yuri/voice-cleanup'
 import { detectSpecialist, SPECIALISTS } from '@/lib/yuri/specialists'
-import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordCapturedEmail } from '@/lib/widget/visitor'
+import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordCapturedEmail, isEmailCapturedByAnotherVisitor } from '@/lib/widget/visitor'
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
-import { generateLeadEmail, type VisitorMemoryFacts } from '@/lib/email/lead-email'
+import { generateLeadEmail, type VisitorMemoryFacts, type ConversationTurn } from '@/lib/email/lead-email'
 import { createSession, getSession, incrementSessionCounters, updateSessionMetadata } from '@/lib/widget/session'
 import {
   saveUserMessage,
@@ -496,22 +496,51 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
                     cached: true,
                   }).catch(() => {})
 
-                  // Send ONE Yuri-voiced follow-up, grounded in this visitor's
-                  // real conversation facts (ai_memory). AWAITED — Vercel kills
-                  // the function after writer.close(), so a fire-and-forget send
-                  // would be terminated before completing. Best-effort: if the
-                  // AI body can't be generated honestly, generateLeadEmail
-                  // returns null and we send nothing (no fabricated template),
-                  // and if RESEND_API_KEY is unset sendEmail no-ops gracefully.
+                  // Send ONE Yuri-voiced follow-up. AWAITED — Vercel kills the
+                  // function after writer.close(), so a fire-and-forget send
+                  // would be terminated before completing.
+                  //
+                  // v10.13.3 hardening:
+                  // - Grounded in the CURRENT session conversation (primary)
+                  //   plus ai_memory from prior sessions (supplementary). The
+                  //   v10.13.2 version grounded only in ai_memory, which is
+                  //   empty for first-session visitors — the email silently
+                  //   never fired in the most common capture case.
+                  // - Yuri judges CONSENT (should_send) with the conversation
+                  //   in view — a third-party address mentioned incidentally
+                  //   gets no email. Fail-safe: any failure = send nothing.
+                  // - Cross-visitor dedup: same email under a different
+                  //   visitor row (cleared cookies) → no second email.
+                  // sendEmail no-ops gracefully when RESEND_API_KEY is unset.
                   try {
-                    const facts = (visitor?.ai_memory || {}) as VisitorMemoryFacts
-                    const generated = await generateLeadEmail(facts, parsed.visitor_id!)
-                    if (generated) {
-                      await sendEmail(
-                        email,
-                        generated.subject,
-                        wrapEmailHtml(generated.bodyHtml)
+                    const alreadyEmailed = await isEmailCapturedByAnotherVisitor(
+                      email,
+                      parsed.visitor_id!
+                    )
+                    if (alreadyEmailed) {
+                      console.warn(
+                        `[widget/chat] lead email skipped — address already captured under another visitor`
                       )
+                    } else {
+                      const facts = (visitor?.ai_memory || {}) as VisitorMemoryFacts
+                      const conversation: ConversationTurn[] = [
+                        ...(parsed.history || []),
+                        { role: 'user', content: parsed.message },
+                        { role: 'assistant', content: cleanedResponse },
+                      ]
+                      const generated = await generateLeadEmail(
+                        facts,
+                        conversation,
+                        email,
+                        parsed.visitor_id!
+                      )
+                      if (generated) {
+                        await sendEmail(
+                          email,
+                          generated.subject,
+                          wrapEmailHtml(generated.bodyHtml)
+                        )
+                      }
                     }
                   } catch (err) {
                     console.error('[widget/chat] lead email send failed:', err)

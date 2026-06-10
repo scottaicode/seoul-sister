@@ -1,8 +1,9 @@
 # Email + Conversion Activation Checklist
 
-**Status:** ⏸️ DEFERRED — code shipped (v10.13.2, June 10 2026), email-send intentionally OFF until traffic starts.
-**Activate when:** the Yuri HeyGen/ElevenLabs avatar is ready and you're about to drive real traffic (est. ~1–2 weeks out from June 10 2026, so target window ~June 17–24 2026).
+**Status:** 🟢 **MOSTLY ACTIVATED June 10 2026** — Scott completed Steps 1–4 same-day (migration applied ✅, Resend Pro + `seoulsister.com` domain **Verified** ✅, `seoul-sister-prod` key created ✅, `RESEND_API_KEY` + `EMAIL_FROM` set in Vercel ✅). v10.13.3 hardened the pipeline (conversation grounding, consent judgment, Reply-To).
+**Remaining (see "FINAL STEPS" at the bottom):** set `EMAIL_REPLY_TO` in Vercel → redeploy → run the live end-to-end test.
 **Owner:** Scott (all steps below are account/billing/DNS actions only you can do).
+**Related:** `YURI-NURTURE-AGENT-BLUEPRINT.md` — the future autonomous reply-handling agent (GATED, not built). Phase 0 of that blueprint = the `EMAIL_REPLY_TO` safety net below.
 
 ---
 
@@ -84,10 +85,16 @@ In the **Seoul Sister** Vercel project → Settings → Environment Variables (P
 
 ---
 
+## ✅ FINAL STEPS (the only things left, as of June 10 2026)
+
+Steps 1–4 above are **DONE**. What remains:
+
+1. **Set `EMAIL_REPLY_TO` in Vercel** (Production): e.g. `vibetrendai@gmail.com` — or any inbox you actually check. This is the **Reply-To safety net** (v10.13.3): `yuri@seoulsister.com` is send-only, so without this, a motivated lead who hits "reply" vanishes. With it, replies land in your inbox (exactly like the LGAAS→sales@softcom.net flow). Not sensitive; Production + Preview.
+2. **Redeploy** (Vercel → Deployments → latest → ⋯ → Redeploy) so `RESEND_API_KEY`, `EMAIL_FROM`, and `EMAIL_REPLY_TO` all take effect.
+3. **Live end-to-end test:** chat with Yuri at seoulsister.com for 3–4 substantive messages about a specific product/concern, then type one of your own email addresses into the chat. Within ~2 min: (a) a Yuri-voiced follow-up referencing the actual conversation should land in that inbox, (b) the send appears in Resend → Emails as Delivered, (c) hitting "reply" on it should arrive at your `EMAIL_REPLY_TO` inbox. If any leg fails, check Vercel logs for `[email]` lines (suppression reasons are logged too — Yuri may legitimately decline to send if the chat was too thin; have a real conversation first).
+
 ## ⏰ Reminder / nudge
 
-A reminder to run this checklist has been set for **~1-2 weeks out** (when the avatar work wraps and traffic begins). When it fires — or whenever you start the avatar push — open this file and work Steps 1→4.
+The cloud nudge (June 23, 9am Pacific) has been updated to a **pre-launch verification** reminder reflecting the above.
 
-If you're reading this and the avatar is ready but you haven't activated: **do Step 1 now** (free, lights up measurement instantly), then 2–4 when you're ready to spend the $20 and send.
-
-_Last updated: June 10 2026 (v10.13.2)._
+_Last updated: June 10 2026 (v10.13.3 — Reply-To + conversation grounding + consent judgment)._

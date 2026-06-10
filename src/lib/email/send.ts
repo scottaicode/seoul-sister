@@ -16,7 +16,13 @@
  *   1. Set RESEND_API_KEY in Vercel (Production).
  *   2. Verify a sending domain at resend.com and set EMAIL_FROM
  *      (e.g. "Yuri at Seoul Sister <yuri@seoulsister.com>").
- *   Until both are done, sends no-op gracefully.
+ *   3. Set EMAIL_REPLY_TO (e.g. an inbox Scott actually checks) so visitor
+ *      replies land somewhere instead of bouncing off the send-only
+ *      yuri@ address. The Reply-To safety net (v10.13.3): yuri@seoulsister.com
+ *      can SEND but has no inbox; without a Reply-To, a motivated lead who
+ *      hits "reply" vanishes. Graceful: when unset, replies go to the
+ *      from-address (current behavior) and a one-line warn surfaces in logs.
+ *   Until 1+2 are done, sends no-op gracefully.
  */
 
 export interface SendEmailResult {
@@ -34,13 +40,16 @@ export async function sendEmail(
   to: string,
   subject: string,
   html: string,
-  options: { from?: string } = {}
+  options: { from?: string; replyTo?: string } = {}
 ): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY
   const from =
     options.from ||
     process.env.EMAIL_FROM ||
     'Yuri at Seoul Sister <yuri@seoulsister.com>'
+  // Reply-To safety net: route visitor replies to a monitored inbox.
+  // yuri@seoulsister.com is send-only — without this, replies vanish.
+  const replyTo = options.replyTo || process.env.EMAIL_REPLY_TO
 
   // No provider configured — graceful no-op (don't break the capture path).
   if (!apiKey) {
@@ -51,6 +60,13 @@ export async function sendEmail(
     return { sent: false, reason: 'no_provider' }
   }
 
+  if (!replyTo) {
+    console.warn(
+      '[email] EMAIL_REPLY_TO unset — replies to this email will go to the ' +
+        'send-only from-address and be lost. Set EMAIL_REPLY_TO in Vercel.'
+    )
+  }
+
   try {
     const response = await fetch(RESEND_ENDPOINT, {
       method: 'POST',
@@ -58,7 +74,13 @@ export async function sendEmail(
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ from, to, subject, html }),
+      body: JSON.stringify({
+        from,
+        to,
+        subject,
+        html,
+        ...(replyTo ? { reply_to: replyTo } : {}),
+      }),
     })
 
     if (!response.ok) {

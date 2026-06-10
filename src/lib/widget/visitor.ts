@@ -162,6 +162,41 @@ export function isVisitorAtLimit(visitor: WidgetVisitor): boolean {
 }
 
 /**
+ * Cross-visitor duplicate-send guard (v10.13.3): the same human can appear as
+ * two visitor rows (cleared cookies, new device). captured_email is first-wins
+ * PER VISITOR, so a second row would trigger a second follow-up email to the
+ * same address. Deterministic identity dedup — not judgment.
+ *
+ * Fail-open: on query error we return false (send proceeds). An occasional
+ * duplicate email beats silently never sending due to a transient error.
+ */
+export async function isEmailCapturedByAnotherVisitor(
+  email: string,
+  visitorId: string
+): Promise<boolean> {
+  const supabase = getServiceClient()
+  try {
+    const { data, error } = await supabase
+      .from('ss_widget_visitors')
+      .select('visitor_id')
+      .ilike('captured_email', email)
+      .neq('visitor_id', visitorId)
+      .limit(1)
+
+    if (error) {
+      if (!/captured_email/.test(error.message || '')) {
+        console.error('[Widget] isEmailCapturedByAnotherVisitor failed:', error.message)
+      }
+      return false
+    }
+    return Array.isArray(data) && data.length > 0
+  } catch (err) {
+    console.error('[Widget] isEmailCapturedByAnotherVisitor threw:', err)
+    return false
+  }
+}
+
+/**
  * Attribute a paid subscription back to a Yuri widget conversation.
  *
  * Called from the Stripe webhook on conversion. Matches the new subscriber's
