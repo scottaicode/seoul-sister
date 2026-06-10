@@ -191,19 +191,41 @@ export function getAIContext(key: AIContextKey): AIContext {
 /**
  * Compute estimated cost for a Claude API call.
  * Returns cost in USD.
+ *
+ * Cache token pricing (Anthropic prompt caching):
+ *   - cache-read tokens bill at 10% of the base input rate
+ *   - cache-creation (write) tokens bill at 125% of the base input rate
+ * `inputTokens` should be the NON-cached input tokens only (the SDK reports
+ * cache-read/cache-creation separately from `input_tokens`). Passing cache
+ * tokens is optional and backward-compatible — older 3-arg callers compute
+ * the uncached cost exactly as before.
+ *
+ * NOTE (June 2026): Prior to this fix the Yuri streaming path logged
+ * inputTokens:0 and a char-length output estimate, so ss_ai_usage.cost_usd
+ * understated true spend by ~2-4x (input is the dominant cost per turn).
+ * Real per-round usage is now captured from stream.finalMessage().usage.
  */
 export function estimateCost(
   model: string,
   inputTokens: number,
-  outputTokens: number
+  outputTokens: number,
+  cacheReadTokens = 0,
+  cacheCreationTokens = 0
 ): number {
   // Pricing as of May 2026 (Opus 4.8 same as 4.7: $5/$25 per MTok)
+  // Older opus-4-7 rows fall back to the 4.8 rate (identical pricing).
   const pricing: Record<string, { input: number; output: number }> = {
     'claude-opus-4-8': { input: 5 / 1_000_000, output: 25 / 1_000_000 },
+    'claude-opus-4-7': { input: 5 / 1_000_000, output: 25 / 1_000_000 },
     'claude-sonnet-4-5-20250929': { input: 3 / 1_000_000, output: 15 / 1_000_000 },
     'claude-haiku-4-5-20251001': { input: 0.8 / 1_000_000, output: 4 / 1_000_000 },
   }
 
   const rate = pricing[model] ?? pricing['claude-opus-4-8']
-  return inputTokens * rate.input + outputTokens * rate.output
+  return (
+    inputTokens * rate.input +
+    outputTokens * rate.output +
+    cacheReadTokens * rate.input * 0.1 +
+    cacheCreationTokens * rate.input * 1.25
+  )
 }

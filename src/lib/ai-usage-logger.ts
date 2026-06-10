@@ -69,7 +69,13 @@ interface AIUsageParams {
  */
 export async function logAIUsage(params: AIUsageParams): Promise<void> {
   try {
-    const cost = estimateCost(params.model, params.inputTokens, params.outputTokens)
+    const cost = estimateCost(
+      params.model,
+      params.inputTokens,
+      params.outputTokens,
+      params.cacheReadTokens ?? 0,
+      params.cacheCreationTokens ?? 0
+    )
 
     const db = getServiceClient()
     const { error } = await db.from('ss_ai_usage').insert({

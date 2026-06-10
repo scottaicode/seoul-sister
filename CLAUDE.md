@@ -1127,7 +1127,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Current version**: 10.13.0 (Seoul Sister Guardian — governance + always-on watcher, June 5 2026; plus v10.12.0 Widget Conversion / Continuity-Is-the-Gate, June 4 2026).
+**Current version**: 10.13.1 (AI usage logger fix — real per-call token cost now captured from `stream.finalMessage().usage`; the logger had recorded `tokens_in=0`, understating true spend ~2-4x, June 9 2026; plus v10.13.0 Seoul Sister Guardian, June 5 2026).
 **AI Advisor**: Yuri (유리) — "Glass"
 
 **Full version history**: See `CHANGELOG.md` (repo root). The detailed, dated changelog — every version from v3.0.0 through the current release — lives there, not in this file. Per the project's documentation standard: CLAUDE.md is for current architecture and how the system works NOW; CHANGELOG.md is for what changed and when. When shipping a feature, update the relevant architecture section here and put the detailed entry in CHANGELOG.md.

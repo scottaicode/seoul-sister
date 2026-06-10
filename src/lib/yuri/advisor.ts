@@ -713,6 +713,18 @@ export async function* streamAdvisorResponse(
   // real tool fired, an apology might be legitimate, so skip the strip.
   let totalToolsFired = 0
 
+  // Accumulate real token usage across ALL tool-loop rounds. Each round is a
+  // separate API call with its own (cache-heavy) input cost, so true spend is
+  // the sum across rounds — a tool-using turn can cost several rounds' input.
+  // Captured from stream.finalMessage().usage; replaces the old hardcoded
+  // inputTokens:0 + char-length output estimate that understated cost ~2-4x.
+  const usageTotals = {
+    input: 0,
+    output: 0,
+    cacheRead: 0,
+    cacheCreation: 0,
+  }
+
   while (toolLoopCount <= MAX_TOOL_LOOPS) {
     const cachedMessages = applyCacheControl(loopMessages)
 
@@ -768,6 +780,19 @@ export async function* streamAdvisorResponse(
             toolUseBlocks.push(currentToolBlock)
             currentToolBlock = null
           }
+        }
+        // Capture real token usage for this round (cost observability).
+        // finalMessage() resolves once the stream is fully consumed; the
+        // SDK reports cache-read/cache-creation separately from input_tokens.
+        try {
+          const finalMessage = await stream.finalMessage()
+          const u = finalMessage.usage
+          usageTotals.input += u.input_tokens ?? 0
+          usageTotals.output += u.output_tokens ?? 0
+          usageTotals.cacheRead += u.cache_read_input_tokens ?? 0
+          usageTotals.cacheCreation += u.cache_creation_input_tokens ?? 0
+        } catch {
+          // Usage capture is best-effort — never let it break the response.
         }
         streamSucceeded = true
         break // Stream completed successfully — exit retry loop
@@ -860,15 +885,21 @@ export async function* streamAdvisorResponse(
     yield fullResponse
   }
 
-  // 7. Log AI usage (fire-and-forget, non-blocking)
+  // 7. Log AI usage (fire-and-forget, non-blocking).
+  // Real per-round usage accumulated across the tool-loop from
+  // stream.finalMessage().usage — input is the dominant cost per turn, and
+  // tool-using turns span multiple rounds. cacheRead > 0 confirms prompt
+  // caching is firing in production (the prior log hardcoded these to 0).
   void logAIUsage({
     feature: 'yuri_chat',
     model: MODELS.primary,
-    inputTokens: 0, // Streaming doesn't expose tokens directly; tracked for feature attribution
-    outputTokens: Math.ceil(fullResponse.length / 4), // Rough estimate: ~4 chars per token
+    inputTokens: usageTotals.input,
+    outputTokens: usageTotals.output,
+    cacheReadTokens: usageTotals.cacheRead,
+    cacheCreationTokens: usageTotals.cacheCreation,
     userId,
     conversationId,
-    cached: true, // System prompt is cached
+    cached: usageTotals.cacheRead > 0,
   })
 
   // 7b. Strip phantom tool-call narration when no real tool fired (LGAAS pattern).

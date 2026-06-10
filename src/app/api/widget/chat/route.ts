@@ -312,6 +312,9 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
         const forceToolUse = shouldWidgetForceToolUse(parsed.message)
         const toolCallLogs: ToolCallLog[] = []
         const toolNamesUsed: string[] = []
+        // Accumulate real token usage across all tool-loop rounds for cost
+        // observability (captured from stream.finalMessage().usage).
+        const usageTotals = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 }
 
         function applyCacheControl(msgs: Anthropic.Messages.MessageParam[]) {
           return msgs.map((msg, idx) => {
@@ -358,6 +361,17 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
               toolUseBlocks.push(currentToolBlock)
               currentToolBlock = null
             }
+          }
+          // Capture real token usage for this round (cost observability).
+          try {
+            const finalMessage = await stream.finalMessage()
+            const u = finalMessage.usage
+            usageTotals.input += u.input_tokens ?? 0
+            usageTotals.output += u.output_tokens ?? 0
+            usageTotals.cacheRead += u.cache_read_input_tokens ?? 0
+            usageTotals.cacheCreation += u.cache_creation_input_tokens ?? 0
+          } catch {
+            // Best-effort — never break the response over usage capture.
           }
 
           // No tools — send all buffered text as the final response
@@ -410,13 +424,16 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
         }
         const cleanedResponse = cleanYuriResponse(processedResponse)
 
-        // Log AI usage (fire-and-forget)
+        // Log AI usage (fire-and-forget) — real per-round usage accumulated
+        // across the tool loop from stream.finalMessage().usage.
         void logAIUsage({
           feature: 'widget_chat',
           model: MODELS.primary,
-          inputTokens: 0,
-          outputTokens: Math.ceil(fullResponse.length / 4),
-          cached: true,
+          inputTokens: usageTotals.input,
+          outputTokens: usageTotals.output,
+          cacheReadTokens: usageTotals.cacheRead,
+          cacheCreationTokens: usageTotals.cacheCreation,
+          cached: usageTotals.cacheRead > 0,
         })
 
         // Include session_id in done event so client can send it back
