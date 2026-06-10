@@ -7,6 +7,8 @@ import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
 import { cleanYuriResponse, stripPhantomToolCallNarration } from '@/lib/yuri/voice-cleanup'
 import { detectSpecialist, SPECIALISTS } from '@/lib/yuri/specialists'
 import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordCapturedEmail } from '@/lib/widget/visitor'
+import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
+import { generateLeadEmail, type VisitorMemoryFacts } from '@/lib/email/lead-email'
 import { createSession, getSession, incrementSessionCounters, updateSessionMetadata } from '@/lib/widget/session'
 import {
   saveUserMessage,
@@ -476,10 +478,11 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
               await updateSessionMetadata(sessionId!, [], signalTypes)
             }
 
-            // --- Email capture (v10.12.0) ---
+            // --- Email capture + send (v10.12.0 capture, v10.13.2 send) ---
             // If the visitor typed an email this turn and we don't have one yet,
-            // record it (first wins) and fire a zero-cost breadcrumb. This is the
-            // leak fix: a high-intent visitor who leaves is now reachable.
+            // record it (first wins), fire a zero-cost breadcrumb, AND send a
+            // single Yuri-voiced follow-up so the lead is actually reachable
+            // (the v10.13.2 leak fix — capture without send left leads stranded).
             if (!visitor?.captured_email) {
               const email = extractEmail(parsed.message)
               if (email) {
@@ -492,6 +495,27 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
                     outputTokens: 0,
                     cached: true,
                   }).catch(() => {})
+
+                  // Send ONE Yuri-voiced follow-up, grounded in this visitor's
+                  // real conversation facts (ai_memory). AWAITED — Vercel kills
+                  // the function after writer.close(), so a fire-and-forget send
+                  // would be terminated before completing. Best-effort: if the
+                  // AI body can't be generated honestly, generateLeadEmail
+                  // returns null and we send nothing (no fabricated template),
+                  // and if RESEND_API_KEY is unset sendEmail no-ops gracefully.
+                  try {
+                    const facts = (visitor?.ai_memory || {}) as VisitorMemoryFacts
+                    const generated = await generateLeadEmail(facts, parsed.visitor_id!)
+                    if (generated) {
+                      await sendEmail(
+                        email,
+                        generated.subject,
+                        wrapEmailHtml(generated.bodyHtml)
+                      )
+                    }
+                  } catch (err) {
+                    console.error('[widget/chat] lead email send failed:', err)
+                  }
                 }
               }
             }

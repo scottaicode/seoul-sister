@@ -1129,7 +1129,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Current version**: 10.13.1 (AI usage logger fix — real per-call token cost now captured from `stream.finalMessage().usage`; the logger had recorded `tokens_in=0`, understating true spend ~2-4x, June 9 2026; plus v10.13.0 Seoul Sister Guardian, June 5 2026).
+**Current version**: 10.13.2 (Conversion measurement + email-send — Stripe→widget attribution, `lead_source`, Yuri-voiced AI lead email via Resend [gated on `RESEND_API_KEY`, no-ops until set], and the "⭐ One Metric" visitor→paid conversion panel at `/admin/widget`. First work cleared by the `NORTH-STAR.md` / `/ship-guard` gate. Email activation deferred — see `EMAIL-ACTIVATION-CHECKLIST.md`. June 10 2026; plus v10.13.1 usage-logger fix, June 9 2026).
 **AI Advisor**: Yuri (유리) — "Glass"
 
 **Full version history**: See `CHANGELOG.md` (repo root). The detailed, dated changelog — every version from v3.0.0 through the current release — lives there, not in this file. Per the project's documentation standard: CLAUDE.md is for current architecture and how the system works NOW; CHANGELOG.md is for what changed and when. When shipping a feature, update the relevant architecture section here and put the detailed entry in CHANGELOG.md.

@@ -21,7 +21,16 @@ interface Analytics {
     returning_visitors: number
     returning_pct: number
   }
-  funnel: { visitors: number; sent_message: number; multi_message: number; high_engagement: number }
+  conversion?: {
+    total_visitors: number
+    captured_emails: number
+    converted_visitors: number
+    email_capture_rate_pct: number
+    visitor_to_paid_pct: number
+    email_to_paid_pct: number
+    lead_source_breakdown: Array<{ source: string; count: number }>
+  }
+  funnel: { visitors: number; sent_message: number; multi_message: number; high_engagement: number; captured_email?: number; converted_paid?: number }
   top_signals: Array<{ signal_type: string; count: number }>
   top_specialists: Array<{ specialist: string; count: number }>
   recent_visitors: Array<{
@@ -345,6 +354,46 @@ export default function AdminWidgetPage() {
             <AnalyticsLoadingSkeleton />
           ) : analytics ? (
             <div className="space-y-6">
+              {/* The One Metric (NORTH-STAR.md) — visitor → paid conversion.
+                  This is the number building is frozen until it moves. */}
+              {analytics.conversion && (
+                <div className="dark-card p-5 border border-gold/30">
+                  <h3 className="text-sm font-semibold text-gold mb-3 flex items-center gap-1.5">
+                    ⭐ The One Metric — Visitor → Paid Conversion
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { label: 'Visitors', value: analytics.conversion.total_visitors },
+                      { label: 'Captured emails', value: `${analytics.conversion.captured_emails} (${analytics.conversion.email_capture_rate_pct}%)` },
+                      { label: 'Paid (from widget)', value: analytics.conversion.converted_visitors },
+                      { label: 'Visitor → paid', value: `${analytics.conversion.visitor_to_paid_pct}%` },
+                    ].map((c) => (
+                      <div key={c.label}>
+                        <span className="text-xs text-white/40">{c.label}</span>
+                        <p className="text-2xl font-bold text-white">{c.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {analytics.conversion.lead_source_breakdown.length > 0 && (
+                    <div className="mt-4 pt-3 border-t border-white/10">
+                      <span className="text-xs text-white/40">Active paid subscriptions by source</span>
+                      <div className="flex flex-wrap gap-2 mt-1.5">
+                        {analytics.conversion.lead_source_breakdown.map((s) => (
+                          <span key={s.source} className="text-xs px-2 py-1 rounded bg-white/5 text-white/70">
+                            {s.source}: <strong className="text-white">{s.count}</strong>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {analytics.conversion.converted_visitors === 0 && (
+                    <p className="mt-3 text-xs text-white/40">
+                      No widget-attributed conversions yet. This is the number the North Star charter freezes building until it moves — drive a real cohort, then read it here.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Overview cards */}
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {[

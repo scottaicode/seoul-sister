@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripeClient, planFromStripePriceId, type TierKey } from '@/lib/stripe'
 import { getServiceClient } from '@/lib/supabase'
+import { attributeConversion } from '@/lib/widget/visitor'
 import type Stripe from 'stripe'
 
 /** Map plan key to the ss_subscriptions.tier column value */
@@ -77,6 +78,14 @@ export async function POST(request: NextRequest) {
           const priceId = subscription.items.data[0]?.price?.id
           const plan = planFromStripePriceId(priceId ?? '')
 
+          // Attribution (NORTH-STAR.md One Metric): tie this paid subscription
+          // back to a Yuri widget conversation by matching the buyer's email
+          // to a captured widget lead. Best-effort — never blocks the webhook.
+          // The buyer email comes from the Stripe session (collected at checkout).
+          const buyerEmail =
+            session.customer_details?.email || session.customer_email || null
+          const leadSource = await attributeConversion(buyerEmail, userId)
+
           await supabase.from('ss_subscriptions').upsert(
             {
               user_id: userId,
@@ -84,6 +93,7 @@ export async function POST(request: NextRequest) {
               stripe_subscription_id: subscriptionId,
               tier: planToTier(plan),
               status: 'active',
+              lead_source: leadSource, // 'widget' if matched, else null (organic/unknown)
               current_period_start: new Date(
                 subscription.current_period_start * 1000
               ).toISOString(),

@@ -160,3 +160,51 @@ export async function incrementVisitorCounters(
 export function isVisitorAtLimit(visitor: WidgetVisitor): boolean {
   return visitor.total_messages >= MAX_FREE_MESSAGES
 }
+
+/**
+ * Attribute a paid subscription back to a Yuri widget conversation.
+ *
+ * Called from the Stripe webhook on conversion. Matches the new subscriber's
+ * email against ss_widget_visitors.captured_email and, if a match exists,
+ * stamps converted_at + converted_user_id on that visitor row. This is the
+ * irreducibly-SS-side link (LGAAS never sees seoulsister.com signups) that
+ * turns "0 of 22" into a MEASURED conversion rate (NORTH-STAR.md One Metric).
+ *
+ * Best-effort: returns the matched lead_source ('widget') or null. Never
+ * throws — attribution failure must never break subscription processing.
+ * Deterministic identity-matching, not judgment (AI-First note: data linkage).
+ */
+export async function attributeConversion(
+  email: string | null | undefined,
+  userId: string
+): Promise<'widget' | null> {
+  if (!email) return null
+  const supabase = getServiceClient()
+
+  try {
+    // Match any widget visitor who typed this email and isn't already
+    // marked converted. Case-insensitive on email.
+    const { data, error } = await supabase
+      .from('ss_widget_visitors')
+      .update({
+        converted_at: new Date().toISOString(),
+        converted_user_id: userId,
+      })
+      .ilike('captured_email', email)
+      .is('converted_at', null)
+      .select('visitor_id')
+
+    if (error) {
+      // Column-missing (pre-migration) or other — log non-schema errors only.
+      if (!/converted_at|converted_user_id|captured_email/.test(error.message || '')) {
+        console.error('[Widget] attributeConversion failed:', error.message)
+      }
+      return null
+    }
+    // A matched-and-stamped row means this paid sub came from the widget.
+    return Array.isArray(data) && data.length > 0 ? 'widget' : null
+  } catch (err) {
+    console.error('[Widget] attributeConversion threw:', err)
+    return null
+  }
+}

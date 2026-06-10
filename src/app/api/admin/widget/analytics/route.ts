@@ -20,6 +20,9 @@ export async function GET(request: NextRequest) {
       recentVisitorsResult,
       returningResult,
       specialistResult,
+      capturedEmailResult,
+      convertedResult,
+      subscriptionSourceResult,
     ] = await Promise.all([
       // Total unique visitors
       db.from('ss_widget_visitors').select('*', { count: 'exact', head: true }),
@@ -53,6 +56,22 @@ export async function GET(request: NextRequest) {
         .select('specialist_domains_detected')
         .not('specialist_domains_detected', 'eq', '{}')
         .limit(500),
+
+      // --- The One Metric (NORTH-STAR.md): conversion ---
+      // Visitors who handed over an email (lead capture)
+      db.from('ss_widget_visitors')
+        .select('*', { count: 'exact', head: true })
+        .not('captured_email', 'is', null),
+
+      // Visitors attributed to a paid subscription (widget → Stripe)
+      db.from('ss_widget_visitors')
+        .select('*', { count: 'exact', head: true })
+        .not('converted_at', 'is', null),
+
+      // Active paid subscriptions broken down by lead source
+      db.from('ss_subscriptions')
+        .select('lead_source')
+        .eq('status', 'active'),
     ])
 
     // Aggregate signal counts
@@ -84,6 +103,21 @@ export async function GET(request: NextRequest) {
       v => v.total_messages >= 5
     ).length
 
+    // --- The One Metric: visitor → email → paid conversion (NORTH-STAR.md) ---
+    const capturedEmails = capturedEmailResult.count || 0
+    const convertedVisitors = convertedResult.count || 0
+    const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 10000) / 100 : 0)
+
+    // Lead-source breakdown of active paid subscriptions (null = organic/unknown)
+    const sourceCounts: Record<string, number> = {}
+    for (const row of subscriptionSourceResult.data || []) {
+      const src = (row.lead_source as string | null) || 'organic_or_unknown'
+      sourceCounts[src] = (sourceCounts[src] || 0) + 1
+    }
+    const leadSourceBreakdown = Object.entries(sourceCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([source, count]) => ({ source, count }))
+
     return Response.json({
       overview: {
         total_visitors: totalVisitors,
@@ -92,11 +126,23 @@ export async function GET(request: NextRequest) {
         returning_visitors: returningVisitors,
         returning_pct: totalVisitors > 0 ? Math.round((returningVisitors / totalVisitors) * 100) : 0,
       },
+      // The number the whole charter is keyed to. Until this moves, building is frozen.
+      conversion: {
+        total_visitors: totalVisitors,
+        captured_emails: capturedEmails,
+        converted_visitors: convertedVisitors,
+        email_capture_rate_pct: pct(capturedEmails, totalVisitors),
+        visitor_to_paid_pct: pct(convertedVisitors, totalVisitors),
+        email_to_paid_pct: pct(convertedVisitors, capturedEmails),
+        lead_source_breakdown: leadSourceBreakdown,
+      },
       funnel: {
         visitors: totalVisitors,
         sent_message: totalVisitors, // all visitors with records sent at least 1
         multi_message: returningVisitors,
         high_engagement: highEngagement,
+        captured_email: capturedEmails,
+        converted_paid: convertedVisitors,
       },
       top_signals: topSignals,
       top_specialists: topSpecialists,
