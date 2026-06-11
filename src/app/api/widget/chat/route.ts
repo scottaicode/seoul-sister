@@ -6,7 +6,7 @@ import { logAIUsage } from '@/lib/ai-usage-logger'
 import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
 import { cleanYuriResponse, stripPhantomToolCallNarration } from '@/lib/yuri/voice-cleanup'
 import { detectSpecialist, SPECIALISTS } from '@/lib/yuri/specialists'
-import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordCapturedEmail, isEmailCapturedByAnotherVisitor } from '@/lib/widget/visitor'
+import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordCapturedEmail, isEmailCapturedByAnotherVisitor, clearCapturedEmail } from '@/lib/widget/visitor'
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
 import { generateLeadEmail, type VisitorMemoryFacts, type ConversationTurn } from '@/lib/email/lead-email'
 import { createSession, getSession, incrementSessionCounters, updateSessionMetadata } from '@/lib/widget/session'
@@ -120,6 +120,9 @@ You have access to Seoul Sister's product database — thousands of K-beauty pro
 Do NOT use tools for general skincare education your training knowledge already covers (basic concepts like "what is double cleansing"). But DO use get_ingredient_guide for specific-ingredient questions — it returns Seoul Sister's effectiveness data for that ingredient across skin types, known interactions, and top products containing it. That's grounded data; your training is general knowledge.
 
 IMPORTANT: When recommending multiple products (e.g., a routine), search for ALL of them in a SINGLE tool call using a broad query rather than making separate searches for each product. But if the user asks about DIFFERENT things (e.g., a product recommendation AND what's trending), use the appropriate different tools for each.
+
+## Pacing
+Default shorter than you think. Lead with the answer, give your single best insight well, and offer depth instead of delivering it unasked ("want me to pull prices on that?" beats three more paragraphs). A visitor skimming a chat widget reads two tight paragraphs; they skim past five. When a question genuinely deserves depth, take the space — but make every paragraph earn its place, and land your closing thought instead of stacking one more point on top of it.
 
 ## What You Can and Can't Do in This Preview
 Be honest about your scope so a visitor doesn't expect personalized analysis you can't deliver:
@@ -341,7 +344,11 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
 
           const stream = anthropic.messages.stream({
             model: MODELS.primary,
-            max_tokens: 800,
+            // v10.13.4: was 800, which amputated responses mid-sentence in live
+            // testing — twice, once mid-word during the conversion ask. 1500 is
+            // a safety ceiling, not a target; the Pacing section in the prompt
+            // keeps typical responses well under it.
+            max_tokens: 1500,
             system: [{ type: 'text' as const, text: systemPrompt, cache_control: { type: 'ephemeral' as const } }],
             messages: cachedMessages,
             tools: CACHED_WIDGET_TOOLS,
@@ -528,19 +535,28 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
                         { role: 'user', content: parsed.message },
                         { role: 'assistant', content: cleanedResponse },
                       ]
-                      const generated = await generateLeadEmail(
+                      const result = await generateLeadEmail(
                         facts,
                         conversation,
                         email,
                         parsed.visitor_id!
                       )
-                      if (generated) {
+                      if (result.outcome === 'send') {
                         await sendEmail(
                           email,
-                          generated.subject,
-                          wrapEmailHtml(generated.bodyHtml)
+                          result.email.subject,
+                          wrapEmailHtml(result.email.bodyHtml)
+                        )
+                      } else if (result.outcome === 'not_their_address') {
+                        // v10.13.4: Yuri judged this isn't the visitor's own
+                        // address — reopen the capture slot so their REAL
+                        // email can land later, and keep the lead list clean.
+                        await clearCapturedEmail(parsed.visitor_id!, email)
+                        console.warn(
+                          '[widget/chat] capture slot cleared — Yuri judged the address is not the visitor\'s own'
                         )
                       }
+                      // 'suppressed' and 'failed': no send, capture kept.
                     }
                   } catch (err) {
                     console.error('[widget/chat] lead email send failed:', err)

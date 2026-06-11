@@ -162,6 +162,37 @@ export function isVisitorAtLimit(visitor: WidgetVisitor): boolean {
 }
 
 /**
+ * Clear a poisoned capture slot (v10.13.4). When Yuri judges a captured
+ * address is NOT the visitor's own (third-party address mentioned
+ * incidentally), the slot must reopen so the visitor's REAL email can be
+ * captured later — and the lead list stays free of non-consenting addresses.
+ * Deterministic execution of the model's ownership verdict (v10.7.0
+ * corrections-drive-cleanup pattern). The email match guard ensures we only
+ * clear the address Yuri actually judged, never a newer capture.
+ */
+export async function clearCapturedEmail(
+  visitorId: string,
+  email: string
+): Promise<void> {
+  const supabase = getServiceClient()
+  try {
+    const { error } = await supabase
+      .from('ss_widget_visitors')
+      .update({ captured_email: null, email_captured_at: null })
+      .eq('visitor_id', visitorId)
+      .ilike('captured_email', email)
+
+    if (error) {
+      if (!/captured_email/.test(error.message || '')) {
+        console.error('[Widget] clearCapturedEmail failed:', error.message)
+      }
+    }
+  } catch (err) {
+    console.error('[Widget] clearCapturedEmail threw:', err)
+  }
+}
+
+/**
  * Cross-visitor duplicate-send guard (v10.13.3): the same human can appear as
  * two visitor rows (cleared cookies, new device). captured_email is first-wins
  * PER VISITOR, so a second row would trigger a second follow-up email to the
