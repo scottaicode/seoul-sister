@@ -2,12 +2,22 @@
 
 > Everything to paste into ElevenLabs to make Yuri's voice real, the "Meet Yuri" debut film scripts, and the HeyGen avatar + Gemini image-prompt workflow.
 > Created June 14 2026. Merged with the AriaStar build playbook June 15 2026.
-> Status: **Voice 3 selected from Voice Design, pending Bailey blind-listen + convergence test (the gate).**
+> Status: **VOICE LOCKED June 15 — "Yuri" V1 @ Natural stability, Eleven v3. Pending only Bailey confirm. Next: render production MP3s → HeyGen.**
 > Face is LOCKED (K-Beauty Insider #1). See `project_yuri_visual_identity_locked` memory + deployment roadmap.
 
 > **Path decision (settled):** Yuri uses **Path B (Voice Design — fully synthetic)**, NOT Path A (clone a real human). The AriaStar playbook leans toward cloning Scott's daughter Bailey's voice, but Yuri is a synthetic persona with a locked synthetic face — she gets a synthetic voice to match, and the strategy is built to NOT depend on Bailey. **Do not record anyone.** The "Instant/Professional Voice Clone" screen in ElevenLabs is Path A — ignore it.
 
-> **Voice candidate (settled-pending-Bailey, June 15):** TWO "Yuri" voices exist in My Voices. Lead candidate = **the stronger-accent one** ("A warm, bright, and friendly female... soft Korean accent", tagged English+Korean) — it grew on Scott and is understandable. The other (very-faint-accent "Korean-American woman, early twenties") is the backup. **Reasoning (validated by Kristy/AriaStar's "uncanny proximity" lesson — see below): a distinct, characterful accent reads as authentic & intentional; a near-neutral voice on Yuri's unmistakably-Korean face is the uncanny middle zone.** Do NOT try to "combine" the two — ElevenLabs has no merge-two-finished-voices feature, and re-rolling risks losing the one that's working. Both go into the convergence test (§1); Bailey + a second ear pick the winner.
+> **VOICE LOCKED (June 15 2026, pending Bailey confirm): "Yuri" V1 at NATURAL stability, Eleven v3.** This is the original stronger-accent Voice-Design voice (the plain "Yuri" in My Voices, NOT "Yuri (New)"). Rubric scores via Google AI Studio (Gemini): Comprehension 10, Naturalness 8.5, Warmth 9.5, Age 10, Accent 8 (total 46).
+>
+> **How it was chosen — the full bracketing exercise (don't redo this):** Ran ~5 Voice-Design rolls spanning the accent spectrum (too-soft → too-strong/unintelligible) + multiple Gemini rubric evals on the same six-register script. Key findings that are now SETTLED:
+> - **Accent ceiling = 8/10 in v3.** Every voice + every setting renders the accent to the same "soft but present, 1.5-gen Korean-American" zone. v3's expressive English rendering sands down heavy accents no matter how hard you push them in Voice Design. More re-rolls will NOT move this. (Proven across ~8 evals.)
+> - **"Yuri (New)" (a stronger-accent re-roll) LOST to V1** — same accent (8), but lower naturalness (7) and warmth (8). Re-rolling for accent traded away quality and didn't gain accent.
+> - **Creative stability did NOT beat Natural** — tied/slightly lower (45 vs 46), didn't fix the "metronomic firm-warning" it was meant to, and was less consistent take-to-take (one Creative take drifted to age-30s). Natural was already right.
+> - **The "preview sounds accented, production sounds neutral" effect is the v3 expressiveness trade-off, not a bug.** Judge accent on the PRODUCTION (tagged-script) render, never the Voice-Design preview.
+> - **Per-word phonetic misspelling is the surgical accent lever** (e.g. spell a casual word slightly Korean) for when a specific line needs more lilt — use in scripts, don't re-roll the whole voice.
+> - Do NOT "combine" voices — ElevenLabs has no merge feature.
+>
+> **Still open: Bailey confirm.** Send her V1 (the locked one) + optionally "Yuri (New)" (slightly-more-Korean flavor) so she settles the only remaining taste question: warm-vs-authentic-accent. Her ear is load-bearing. After she picks, DELETE the reject voices from My Voices (4+ are cluttering it). The validated reasoning (Kristy "uncanny proximity"): a distinct characterful accent reads authentic; near-neutral on Yuri's Korean face is uncanny — but comprehension is the hard gate, and 8/10 soft-present clears it.
 
 ---
 
@@ -16,7 +26,7 @@
 
 1. **Uncanny proximity (Pattern 1) → validates the stronger accent.** Kristy's near-miss was making her advisor sound *almost like her*; the brain reads almost-real as "off." The fix is a clearly-distinct, intentional voice. For Yuri the parallel: a distinct Korean accent = authentic & intentional; near-neutral American on a Korean face = uncanny. Scott's stronger-accent instinct is correct.
 2. **Convergence beats one ear (Patterns 2 & 9) → upgrade the gate.** Kristy locked via 5-way convergence (her ear + independent listener + Gemini rubric-scored + ChatGPT rubric-scored blind + advisor self-assessment). **Decision rule: wait for 2-of-3 agreement on a SPECIFIC failure mode before touching a slider.** Divergent reads = noise to resolve, not data to act on. Applied below in §1.
-3. **Stability is an audio AND visual decision (Pattern 6).** Lower-stability (looser) audio makes the HeyGen avatar read as a *captured moment*; higher stability makes it read as a *rendered animation*. So Yuri's low ~33% lean also makes the VIDEO feel alive — a second reason to keep it low. (Kristy = 46% for a mid-40s register; Yuri's younger/warmer register may want lower — confirm by ear.)
+3. **Stability is an audio AND visual decision (Pattern 6).** Lower-stability (looser) audio makes the HeyGen avatar read as a *captured moment*; higher stability makes it read as a *rendered animation*. Worth knowing when watching the first HeyGen renders — if Yuri reads as "rendered animation," the Natural setting is the lever. (We tested Creative for exactly this and it didn't beat Natural on audio; revisit only if the *video* looks stiff.)
 4. **HeyGen API trap (Pattern 5) — the #1 landmine.** HeyGen's ElevenLabs *API integration* silently reverts to default stability and erases all tuning, with NO error. ALWAYS: generate in ElevenLabs → download MP3 → upload to HeyGen as custom audio. (See §5.)
 
 **One variable per tuning run (Pattern 3):** when adjusting sliders, change exactly ONE thing per generation, listen, then move the next. If you change two and it improves, you don't know which fixed it.
@@ -29,9 +39,9 @@
 
 | Setting | Value | Why |
 |---|---|---|
-| **Voice** | "Yuri" (Voice 3, from Voice Design June 14) | The one Scott connected with |
+| **Voice** | **"Yuri" V1** (the plain "Yuri" in My Voices — NOT "Yuri (New)") | Highest rubric score (46): warmth 9.5, naturalness 8.5, comprehension 10, age 10, accent 8 |
 | **Model** | **Eleven v3** | v2 sounded AI-ish; v3 cleared Scott's bar |
-| **Stability** | ~1/3 toward Creative (≈30–35%) | Lower = real emotion, not flat AI delivery |
+| **Stability** | **Natural** (the middle of v3's Creative/Natural/Robust) | Tested: Natural beat Creative (46 vs 45) and was more consistent take-to-take. v3 snaps to 3 named zones, not a %. |
 | **Similarity** | High | Keeps her consistent across renders |
 | **Style Exaggeration** | Low / off | Exaggeration makes her sound forced |
 | **Output Format** | MP3 44.1kHz 128kbps (or higher for final) | Fine for web + HeyGen |
@@ -54,16 +64,20 @@
 | `"quotes"` | Slight mock-cadence on quoted phrases — good for distancing language (e.g. a "dupe," "expensive water"). |
 | **Trailing `...` at END of every script** | Gives ElevenLabs AND HeyGen breathing room so the final word never cuts off. **Always end scripts with `...`** |
 
-### Stability — Yuri vs AriaStar
-The AriaStar playbook landed on **44–46%** stability (English coaching register). **Yuri runs lower (~33%, one-third toward Creative)** because higher stability made her sound flat/AI to Scott's ear. Keep ~33–40% as the zone, but during the convergence test (§1) A/B **35% vs 45%** on the same script and pick by ear. Change ONE slider at a time, listen, then move the next — never tune multiple variables at once.
+### Stability — SETTLED: Natural
+Eleven v3's stability slider snaps to three named zones (Creative / **Natural** / Robust), not a percentage. **Yuri = Natural, locked by testing:** Natural scored 46 vs Creative's 45 on the same six-register script, Creative didn't fix the "metronomic firm-warning" it was meant to, and Creative was less consistent (one take drifted to age-30s). (The AriaStar playbook's 44–46% is a v2-era percentage; ignore — different model.) When tuning anything in future, change ONE variable at a time, listen, then move the next.
 
 ---
 
-## 1. THE GATE — Bailey blind-listen (do this before anything ships)
+## 1. THE GATE — Bailey confirm (the voice is already chosen; this is her sign-off)
 
-Render the **audition script** below on Voice 3, download the MP3, and send Bailey 2–3 MP3s of the *same script* with NO labels and NO "here's my pick." Her ear is K-beauty-native and load-bearing. Decision rule: **most human/relatable voice wins; accent is a tiebreaker, never a blocker.**
+**The voice selection is DONE** (V1/Natural, via the bracketing + Gemini-rubric process in the top banner). The convergence methodology below was already run by Scott + Gemini across ~8 evals. **All that remains is Bailey's confirm** — her ear is K-beauty-native and load-bearing, so she's the final sign-off on the only open taste question (warm-vs-authentic accent).
 
-### Audition / standard test script (paste into Text to Speech)
+**Send Bailey:** the locked **V1** render of the audition script below (and optionally "Yuri (New)" as a slightly-more-Korean B-option). One question: *"Does she sound like a Korean skincare expert you'd trust — and can you understand her easily?"*
+- If Bailey says yes → fully locked, delete the reject voices, proceed to render the production MP3s (§2/§3).
+- If Bailey says "needs more Korean accent" → note that v3's accent ceiling is 8/10 (proven); the lever is per-word phonetic spelling in scripts (§0), NOT another voice re-roll.
+
+### Audition script (paste into Text to Speech, V1 @ Natural)
 ```
 [warm] Hi... I'm Yuri.
 
@@ -76,21 +90,10 @@ If yours doesn't... we should talk. [soft smile]
 Honestly? I've read the ingredient list so you don't have to. I've got you...
 ```
 
-If Bailey says "needs more Korean accent," re-roll Voice Design with the prompt phrase changed to *"light but clearly present Korean lilt, still easy to understand"* and Guidance Scale bumped one notch. Otherwise — **lock it.**
+### Reference: the convergence methodology that was used (Kristy/AriaStar — archived, already executed)
+This is how the voice was locked (kept for the record + for future voice work, e.g. a second persona). Multi-evaluator convergence: rubric (Conversational Humanity 30% · Warmth 25% · Authentic-Insider read 20% · Comprehension 15% · Distinctiveness 10%) scored independently by Gemini + Scott's ear across multiple candidates, **2-of-3 agreement on a specific point before acting.** Divergence = noise to resolve, not data to act on. The six-register script below was the test instrument.
 
-### The convergence test (Kristy's methodology — the rigorous version; do NOT skip)
-A single listen misses "sounds fine to one ear, flat to another." Kristy locked AriaStar via multi-evaluator convergence, and every convergence point predicted production success. Run BOTH Yuri candidates (stronger-accent + faint-accent) through this:
-
-1. **Generate the six-register script** (below, ~1–2 min) on **both** candidates, same settings. It stress-tests whether each voice holds Yuri's archetype across every mode she'll need — plus stress blocks (interruption, dense data, emotional shift). If a register cracks (flat, robotic, off-character), that's a stability issue — retune one variable and re-listen.
-2. **Score against a rubric** (don't just "does it sound good"). Suggested weights for Yuri: **Conversational Humanity 30% · Warmth & Relatability 25% · Authentic-Insider read (accent lands as expertise, not barrier) 20% · Comprehension/Clarity 15% · Distinctiveness 10%.**
-3. **Run it past multiple independent evaluators, blind to each other:**
-   - **Bailey** — primary, load-bearing ear (K-beauty-native, the exact target viewer). Send BOTH MP3s unlabeled. One question: *"Which sounds more like someone you'd actually take skincare advice from?"*
-   - **Gemini** — upload MP3s, score against the rubric.
-   - **ChatGPT** — same rubric, separate window, blind to Gemini.
-   - **(optional) one more human ear.**
-4. **Decision rule (load-bearing): wait for 2-of-3 convergence on a SPECIFIC point before acting.** If evaluators converge → lock. If one disagrees → that's the variable to investigate; divergence is noise to resolve, not data to act on. Don't ship on Scott's ear alone, and don't tune sliders off a single dissent.
-
-**Six-register convergence script (paste into Text to Speech):**
+**Six-register test script (the instrument used; reuse for any future voice eval):**
 ```
 [warm] Hi... I'm Yuri.
 
@@ -138,7 +141,7 @@ So... what's confusing you right now?
 Match the spoken lines, clean type, glass-skin brand. Break captions at the ellipses and tag boundaries for natural rhythm.
 
 ### Visual / cutaway plan (for HeyGen + editor)
-- **Talking-head segments:** HeyGen avatar (locked portrait + Yuri Voice 3), looking at camera. Hold 1 beat of eye contact before the first "Hi."
+- **Talking-head segments:** HeyGen avatar (locked portrait + Yuri V1 voice), looking at camera. Hold 1 beat of eye contact before the first "Hi."
 - **Cutaways** (generate as Nano Banana 2 stills + light motion): Korean product shelves; a phone scanning a label; an ingredient list close-up; bright Seoul-apartment aesthetic. Cut to cutaways during the "problem" section (5–20s), back to her face for the trust lines.
 - **End card:** logo + "Yuri — your K-beauty advisor at seoulsister.com" hold 2s.
 - **Make a 9:16 vertical cut too** — TikTok/Reels/Shorts is where the audience actually is.
@@ -189,7 +192,7 @@ Render these once, keep the MP3s as brand assets.
 
 **The correct workflow every time:**
 1. Write/finalize the script (with audio tags + trailing `...`)
-2. Generate in **ElevenLabs** on the locked settings (§0), Voice 3
+2. Generate in **ElevenLabs** on the locked settings (§0): V1 voice, v3, Natural
 3. **Download the tuned MP3**
 4. In HeyGen → select the Yuri avatar → **"Upload Custom Audio"** → upload your MP3
 5. HeyGen lip-syncs the avatar to YOUR audio
@@ -201,9 +204,9 @@ The avatar source frame is the locked K-Beauty Insider #1 portrait. It already h
 
 ## 6. PRODUCTION SEQUENCE (where each piece goes)
 
-1. ✅ Voice 3 selected.
-2. ⏳ **Bailey blind-listen + convergence test** (§1) — the gate. Don't lock or build the film until this clears.
-3. Render §2 + §3 voice tracks on locked settings → download MP3s.
+1. ✅ Voice LOCKED — V1 @ Natural, v3 (via bracketing + Gemini rubric, ~8 evals).
+2. ⏳ **Bailey confirm** (§1) — her sign-off on the locked voice. Can run in parallel with step 3.
+3. Render §2 + §3 voice tracks on locked settings → download MP3s. **(← NEXT ACTION)**
 4. HeyGen: upload Yuri avatar (locked portrait), **upload tuned MP3 as custom audio** (§5 — never HeyGen's default audio), render talking-head segments.
 5. Generate cutaway B-roll (Nano Banana 2, using the §8 DNA + variation prompts) + burn captions + add soft music (ElevenLabs Music tool or licensed track — single piano/synth pad, "morning light," low in mix).
 6. Assemble in CapCut/Descript. Export 16:9 + 9:16.
