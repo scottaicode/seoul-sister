@@ -202,13 +202,24 @@ Render these once, keep the MP3s as brand assets.
 
 The avatar source frame is the locked K-Beauty Insider #1 portrait. It already has a soft closed-lip, front-facing composition — likely usable as-is. Only do a Nano Banana image-edit ("same woman, soft closed-lip resting mouth, facing camera") if HeyGen's lipsync drifts on the resting mouth.
 
+### HeyGen PIPELINE VALIDATED (June 17 2026) — first Yuri render successful
+- **Setup that works:** HeyGen Creator plan ($24-29/mo, monthly). Photo Avatar named **"Yuri"** created from `Yuri_master_locked.jpg` (6 looks). Build in **AI Studio** (left sidebar → AI Studio → blank video), NOT Quick Create — Quick Create has a bug where the uploaded audio repeatedly clears and it silently swaps in a stock avatar ("Lina"). AI Studio's "Upload audio" (left panel under the Script box) holds the audio reliably.
+- **The exact working flow:** AI Studio → blank video → right panel Avatar = Yuri → left panel "Upload audio" → select `Yuri.mp3` (NOT type a script, NOT pick a HeyGen voice, NOT "Voice Mirroring" — that re-renders through a different voice) → Generate (1080p, 25fps, MP4, Watermark OFF).
+- **Gotcha — Free plan caps videos at 10 seconds.** The 16s hero clip silently failed on Free (field cleared, upgrade wall popped). Creator removes the cap. If ever stuck on a sub-10s limit again, that's the paywall, not a bug.
+- **QUALITY VERDICT (Gemini video eval, 1–10):** Lip-sync 6, Eye/expression life 5 (glassy, few micro-expressions), Identity stability 6 (jaw/chin warps on wide mouth ~0:07), **Head/body movement 4 (mechanical sway, head moves but shoulders frozen — the worst tell)**, **Overall believability 5 ("a skeptical Gen Z viewer would clock it as AI within ~3 seconds")**. Scott's gut was "pretty good" — true of the STILL face; the weakness is MOTION, which a first-watch impression glosses over.
+- **What this means (strategic):** the still face + voice are fine; HeyGen Photo-Avatar MOTION is the ceiling (one still can't produce natural body movement). So the avatar is **good enough for bookend / autoplay-muted-loop use, NOT good enough as a standalone talking-head hero.** This CONFIRMS the launch-brief architecture (`SEOUL-SISTER-LAUNCH-VIDEO-BRIEF.md`): the launch video is mostly screen-recordings of Bailey's real conversations + VO, with Yuri's avatar only as a short motion-light bookend — exactly the format that minimizes the avatar's weakness. Do NOT make a pure talking-head launch piece.
+- **Levers to try IF more avatar motion is needed later (not tonight):** Avatar IV engine, motion/expressiveness settings, or a different one of the 6 looks. One test render each, max — don't loop.
+
 ---
 
 ## 6. PRODUCTION SEQUENCE (where each piece goes)
 
-1. ✅ Voice LOCKED — V1 @ Natural, v3 (via bracketing + Gemini rubric, ~8 evals).
-2. ⏳ **Bailey confirm** (§1) — her sign-off on the locked voice. Can run in parallel with step 3.
-3. Render §2 + §3 voice tracks on locked settings → download MP3s. **(← NEXT ACTION)**
+1. ✅ Voice LOCKED — V1 @ Natural, v3 (via bracketing + Gemini rubric, ~8 evals). Master: `Yuri.mp3`.
+2. ✅ Face exported durable — `Yuri_master_locked.jpg`.
+3. ✅ HeyGen pipeline VALIDATED (June 17) — first Yuri render good-for-bookend (see §5 quality verdict). Setup: Creator plan, "Yuri" Photo Avatar, build in AI Studio.
+4. ⏳ **Bailey confirm** (§1) — her sign-off on the locked voice. The one open gate. Can run in parallel.
+5. **(← NEXT ACTION)** Re-render in **9:16 vertical** to confirm the avatar holds cropped (test was landscape).
+6. Then build the LAUNCH VIDEO per `SEOUL-SISTER-LAUNCH-VIDEO-BRIEF.md`: Yuri avatar = short motion-light bookend; the body = screen-recordings of Bailey's real conversations + VO + captions, assembled in CapCut/Descript.
 4. HeyGen: upload Yuri avatar (locked portrait), **upload tuned MP3 as custom audio** (§5 — never HeyGen's default audio), render talking-head segments.
 5. Generate cutaway B-roll (Nano Banana 2, using the §8 DNA + variation prompts) + burn captions + add soft music (ElevenLabs Music tool or licensed track — single piano/synth pad, "morning light," low in mix).
 6. Assemble in CapCut/Descript. Export 16:9 + 9:16.
