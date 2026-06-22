@@ -1,0 +1,206 @@
+# Seoul Sister — GEO (Generative Engine Optimization) Audit
+
+**Date:** June 22, 2026
+**Auditor:** Claude (Opus 4.8), live fetches against production seoulsister.com
+**Why:** AI search is the fastest-growing, highest-converting traffic channel in 2026 (AI chatbot
+referrals to storefronts +8x YoY, AI-referred orders +13x, AI visitors convert ~50% higher than
+organic — Shopify/Goodie data, June 2026). Seoul Sister is an *intelligence platform* (5,800+
+products, 14,900+ ingredient pages, counterfeit data) — structurally the kind of content AI engines
+cite. Most beauty BRANDS can't win this channel (nothing to cite); Seoul Sister can. This audit checks
+whether the AI-discoverability infrastructure CLAUDE.md claims is actually live and working.
+**Governs under:** `NORTH-STAR.md` (growth/measurement work — clears the build freeze).
+
+---
+
+## VERDICT: Infrastructure is ~80% built and well-executed — but TWO settings are actively
+## blocking the highest-value AI engines from seeing the site at all. Both are one-line fixes.
+
+The content layer is genuinely strong (server-rendered, ingredient-rich, blog content already
+indexed). The problem is the *permission* layer: `robots.txt` is hand-cuffing the exact crawlers that
+power the channel we want to win. This is a self-inflicted block, not a missing-capability gap — which
+is good news: it's cheap to fix and explains why AI-search traffic isn't showing up.
+
+---
+
+## FINDINGS
+
+### 🔴 P0 — `robots.txt` BLOCKS GPTBot and Google-Extended entirely
+
+Live `robots.txt` (verified June 22 2026) contains:
+```
+User-Agent: GPTBot
+Disallow: /
+User-Agent: Google-Extended
+Disallow: /
+User-Agent: CCBot
+Disallow: /
+User-Agent: anthropic-ai
+Disallow: /
+```
+- **GPTBot `Disallow: /`** blocks OpenAI's primary training+retrieval crawler. ChatGPT is still the
+  largest AI-referral source (~63% of AI referrals even after losing share). Blocking GPTBot is the
+  single most damaging line in the file.
+- **Google-Extended `Disallow: /`** blocks Google Gemini / AI Overviews grounding. Gemini is a top-4
+  AI referrer. AI Overviews increasingly mediate Google itself.
+- `CCBot` (Common Crawl) and `anthropic-ai` blocked too — these feed multiple downstream models.
+
+**This directly contradicts CLAUDE.md**, which claims: *"Dynamic robots.txt allowing GPTBot,
+Claude-Web, PerplexityBot."* The doc says GPTBot is allowed; production blocks it. The architecture
+intent was right; the deployed file drifted (or was authored defensively to block *training* without
+realizing it also blocks *retrieval/citation*). **Either way, today the two biggest AI engines are
+told to stay out.**
+
+**Nuance worth a human decision:** some sites intentionally block GPTBot to keep content out of
+*training data* while still allowing *search/retrieval* bots (OAI-SearchBot, which IS allowed here).
+But in 2026 the citation/referral value of being in GPTBot's index outweighs the training-data
+concern for a discovery-funnel business — you WANT to be the cited source. Recommend allowing GPTBot
+(scoped, like the others), and allowing Google-Extended, unless there's a deliberate
+keep-out-of-training stance Scott wants to hold. Flagging, not auto-deciding.
+
+**Fix:** change the four `Disallow: /` blocks to the same scoped allow the other AI bots already get
+(allow `/`, disallow `/api/`, `/dashboard/`, `/admin/`, `/onboarding/`, `/settings/`). One-line-per-bot
+edit in the dynamic robots route. ~15 min.
+
+### ✅ RESOLVED (was flagged P0, was a FALSE ALARM) — `llms.txt` exists and is excellent
+
+Initial automated fetch returned the SPA shell, suggesting `/llms.txt` was missing. **Code inspection
+proved otherwise:** a real, static, comprehensive `public/llms.txt` (74 lines) exists and is served —
+site summary, all 12 best-of category links, ingredient encyclopedia links, database stats, brand
+list, the 6 specialist agents, pricing. This is well above average GEO hygiene. The false alarm was a
+fetch-tool artifact (the WebFetch follows the SPA render rather than reading the raw static file). **No
+action needed.** Optional later polish: add 3-5 direct links to the highest-traffic blog posts.
+
+### 🟡 P1 — Ingredient index renders server-side (GOOD) but carries NO JSON-LD
+
+The `/ingredients` index is **server-rendered and content-rich** (verified: "14,907 Total
+Ingredients," 590+ alphabetized entries with safety/comedogenic/function data in the served HTML —
+excellent, crawlable without JS). **But the fetched HTML showed no JSON-LD / schema.org markup on the
+index page.** CLAUDE.md claims ingredient pages carry Article/FAQPage/BreadcrumbList JSON-LD — that
+may be true on individual `/ingredients/[slug]` pages (not separately verified here) but the index
+itself appears bare. Structured data is what lets an engine parse "this is an ingredient guide with
+these facts" vs. "some text." Worth confirming the per-ingredient and per-product pages actually emit
+the claimed JSON-LD in production (CLAUDE.md's claim is unverified for individual pages in this audit).
+
+**Fix:** verify JSON-LD renders on a sample `/ingredients/[slug]` and `/products/[id]` in production
+(view-source, not just the React tree). If missing, that's a separate fix. If present, add
+ItemList/CollectionPage JSON-LD to the index. ~1-2 hrs to verify + patch.
+
+### 🟢 GOOD — what's already working (don't touch)
+
+- **Sitemap is live, valid, ~1,000+ URLs** (`/sitemap.xml`), referenced from robots.txt. Covers
+  products, 11 best-of category pages, ~25 blog posts, 950+ ingredient pages. Strong.
+- **Scoped AI bots already allowed**: OAI-SearchBot, ChatGPT-User, Claude-Web, PerplexityBot,
+  Applebot-Extended all get a sane scoped allow (block only private/app routes). This is correct and
+  well thought out — it's only GPTBot/Google-Extended/CCBot that are over-blocked.
+- **Content is server-rendered and substantive** — the ingredient encyclopedia delivers real text in
+  the initial HTML (not a JS shell). This is the hardest part to get right and it's done.
+- **Already appearing in conventional search** for branded queries: blog posts (glass skin, dark
+  spots, Korean vs American sunscreen, sebaceous filaments), product pages, and an ingredient guide
+  (Mugwort/Artemisia) all index and surface. The *content* earns citations; the *permission layer* is
+  throttling the AI-specific crawlers.
+
+---
+
+## PRIORITIZED FIX LIST (all clear the build freeze — growth/measurement)
+
+| # | Fix | Effort | Impact | Blocks today? |
+|---|-----|--------|--------|---------------|
+| 1 | **Unblock GPTBot + Google-Extended** in robots.txt (scope them like the allowed AI bots) | ~15 min | HIGHEST — unblocks the two biggest AI engines | YES |
+| 2 | **Ship a real `/llms.txt`** (plain text, summary + key links) | ~30-60 min | HIGH — the file AI agents look for; currently 404→app shell | YES |
+| 3 | **Verify JSON-LD on live product + ingredient detail pages**; patch if missing; add ItemList to indexes | ~1-2 hrs | MEDIUM — improves parse quality of already-crawlable content | Partial |
+| 4 | **Establish a citation baseline + re-test** after fixes 1-2 deploy (run fixed K-beauty buyer queries against ChatGPT/Perplexity/Gemini monthly; log whether SS is cited) | ~ongoing | MEASUREMENT — makes the channel readable (North Star) | n/a |
+
+**Decision needed from Scott (fix #1):** confirm you WANT GPTBot/Google-Extended allowed (citation
+value) vs. a deliberate keep-out-of-AI-training stance. Recommendation: allow them — Seoul Sister's
+whole GEO thesis is to BE the cited source, and the training-vs-retrieval distinction is mostly moot
+for a discovery funnel. But it's your call, not mine to flip unilaterally.
+
+---
+
+## Why this matters (the strategic frame)
+
+Seoul Sister's structural edge in 2026 is that it's an *intelligence platform*, not a product brand —
+it has exactly the citable, factual, ingredient-level content AI engines reward, and competitors
+(individual brands) don't. AI-referred visitors convert ~50% higher and arrive pre-trusting ("ChatGPT
+told me to check Seoul Sister"). This channel needs no video, no virality, and no dependency on
+Bailey — it's the lowest-dependency, highest-ROI traffic lane available. The content is built. The
+only thing standing between Seoul Sister and this channel is a robots.txt file telling the two biggest
+engines to leave. **Fixing two settings could open the single best-aligned traffic source the platform
+has.**
+
+---
+
+## DATA-EXPOSURE QUESTION (Scott asked: "is enough public data available to AI engines?")
+
+Answer after code inspection: **the data exposure is already well-tuned for AI citation — with ONE
+strategic lever worth considering.**
+
+**What allowed AI crawlers already get (FULLY public, no paywall, server-rendered):**
+- Every **ingredient page** (`/ingredients/[slug]`): INCI + English + Korean name, safety rating,
+  comedogenic score, mechanism of action, skin-type effectiveness, conflicts, products containing it.
+- Every **product detail page** (`/products/[id]`) reachable via sitemap/URL: full ingredient list
+  (names, INCI, function, safety, comedogenic, concentration), price range across retailers, rating,
+  review summary, SPF/PA/filter data. The product API (`/api/products/[id]`) returns all of this to an
+  anonymous request (anon key, no auth gate).
+- All **best-of category pages** and the **ingredient encyclopedia index**.
+- GATED (correctly): only *personalized* matching ("your skin match score"), subscriber review
+  compilation, and Yuri specialist dives — i.e. the PRODUCT, not the facts. This is the right line:
+  give away the citable facts, gate the personalization. (Note: product pages mark
+  `isAccessibleForFree: 'False'` on the *gated* sub-sections via schema — fine — but the overall
+  WebPage node also carries that flag, which slightly under-sells how much IS free; minor, optional.)
+
+**The ONE strategic lever — the `is_verified` search filter (the ~90% question Scott raised):**
+- Public product **search** (`/api/products`) and the widget's `search_products` tool both filter
+  `is_verified = true` (`src/app/robots.ts` n/a — see `api/products/route.ts:70`, `lib/yuri/tools.ts:70`).
+  Per CLAUDE.md only ~588 of ~5,900 products are verified (**~10%**), so **~90% of the catalog is
+  invisible to in-site search and to the widget** — but those products' **detail pages are still
+  fully public and in the sitemap**, so a crawler that lands on the URL gets full content.
+- **Net effect on GEO:** ingredient-level citation is already maximized (all ingredient data public).
+  Product-level citation is partially throttled: AI engines can cite any product they reach by URL
+  (sitemap covers products with a description), but the on-site discovery surface only promotes 10%.
+- **The lever:** the **May 5 2026 DB audit (in CLAUDE.md) already prescribes the fix** — auto-promote
+  structurally-complete products (name + brand + category + INCI + a price record) to `is_verified`,
+  est. **+5,000 products newly visible in search**. That is a *data-quality/coverage* change, not a
+  GEO code change, and it benefits BOTH public search AND AI discovery. **Recommend running that
+  promotion (with the spot-check for false positives the audit specifies) as a follow-up** — it's the
+  highest-leverage way to "make more product data available," exactly Scott's instinct. Gate: spot-
+  check a sample first so low-quality rows don't get promoted into citable surfaces.
+
+**Bottom line on exposure:** don't expose *more raw data* (it's already generous and correctly
+gated); instead **widen product DISCOVERABILITY** via the verified-flag auto-promotion the DB audit
+already specified. Ingredient data needs nothing. Verify per-page JSON-LD (P1 above) to improve how
+well engines *parse* what's already public.
+
+---
+
+## GUARDIAN MONITORING REQUIREMENT (Scott's directive, Jun 22 2026)
+
+Scott: *"I hope in the future the Guardian can always monitor this feature/functionality so it's always
+working at high level with the AI Search Models."* **This is the right instinct — GEO health is
+exactly the kind of silent-drift surface the Guardian exists to catch.** This audit itself proved the
+drift risk: production `robots.txt` had blocked GPTBot for an unknown period while CLAUDE.md claimed it
+was allowed. No alarm fired because nothing watched it. Capture as a **deferred Guardian probe** (build
+when the Guardian's autonomous layer is activated; see `GUARDIAN-CHARTER.md`):
+
+**Proposed `geo-health` probe (read-only, zero-AI-token, deterministic — fits the Guardian's Layer-A
+pattern):**
+1. Fetch `/robots.txt` → assert GPTBot, Google-Extended, OAI-SearchBot, Claude-Web, PerplexityBot,
+   ChatGPT-User are NOT `Disallow: /`. Alarm if any high-value AI bot gets re-blocked.
+2. Fetch `/llms.txt` → assert it returns plain text (not the SPA shell) and is non-trivial length.
+3. Fetch `/sitemap.xml` → assert valid XML + URL count above a floor (catch a collapsed sitemap).
+4. Spot-fetch one product + one ingredient page → assert expected JSON-LD `@type` present in raw HTML
+   (catch a render/schema regression).
+5. (Optional, low-freq, NOT zero-token) run a few canonical K-beauty buyer queries against an AI
+   engine monthly; log whether seoulsister.com is cited → the closest thing to a real GEO "teacher."
+Log verdicts to `ss_pipeline_runs.metadata` like the existing guardian-watch; warn on regression.
+This makes GEO a *monitored* surface so the robots.txt-drift class of failure can never silently
+recur. Effort when built: ~half a day. Trigger: Guardian autonomous layer activation + this being
+prioritized.
+
+---
+
+## Related
+- `SEOUL-SISTER-LEAD-GEN-PLAN.md` (the execution layer — GEO is "Layer 1", lowest dependency)
+- `NORTH-STAR.md` (the One Metric — GEO is the fastest path to readable visitor volume)
+- `GUARDIAN-CHARTER.md` (where the geo-health probe lands when the Guardian autonomous layer ships)
+- CLAUDE.md "AI Discoverability" section + the May 5 2026 DB audit (the `is_verified` promotion)
