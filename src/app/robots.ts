@@ -35,10 +35,6 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: 'CCBot',
         disallow: '/',
       },
-      {
-        userAgent: 'anthropic-ai',
-        disallow: '/',
-      },
 
       // ALLOW: Real-time retrieval bots (these cite us in AI search results)
       {
@@ -51,8 +47,22 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
         disallow: ['/api/', '/onboarding/', '/settings/', '/dashboard/', '/admin/'],
       },
+      // Anthropic's current (2026) crawler fleet — replaces the deprecated 2024-era
+      // Claude-Web/anthropic-ai names. ClaudeBot (training), Claude-User (user browsing
+      // on claude.ai), Claude-SearchBot (search/citation). Scoped identically to the other
+      // allowed AI search bots so Anthropic's models get the same access as OpenAI/Google.
       {
-        userAgent: 'Claude-Web',
+        userAgent: 'ClaudeBot',
+        allow: '/',
+        disallow: ['/api/', '/onboarding/', '/settings/', '/dashboard/', '/admin/'],
+      },
+      {
+        userAgent: 'Claude-User',
+        allow: '/',
+        disallow: ['/api/', '/onboarding/', '/settings/', '/dashboard/', '/admin/'],
+      },
+      {
+        userAgent: 'Claude-SearchBot',
         allow: '/',
         disallow: ['/api/', '/onboarding/', '/settings/', '/dashboard/', '/admin/'],
       },

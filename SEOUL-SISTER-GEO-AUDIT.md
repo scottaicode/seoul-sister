@@ -61,6 +61,12 @@ keep-out-of-training stance Scott wants to hold. Flagging, not auto-deciding.
 (allow `/`, disallow `/api/`, `/dashboard/`, `/admin/`, `/onboarding/`, `/settings/`). One-line-per-bot
 edit in the dynamic robots route. ~15 min.
 
+> **✅ Update (June 22 2026):** GPTBot + Google-Extended unblocked (scoped) earlier today. The stale
+> 2024-era Anthropic user-agent names were then corrected: the deprecated `Claude-Web` allow rule and
+> the `anthropic-ai` `Disallow: /` block were removed and replaced with Anthropic's current 2026 fleet
+> — `ClaudeBot` (training), `Claude-User` (user browsing), `Claude-SearchBot` (search/citation) —
+> each scoped identically to the other allowed AI search bots. `CCBot` remains blocked.
+
 ### ✅ RESOLVED (was flagged P0, was a FALSE ALARM) — `llms.txt` exists and is excellent
 
 Initial automated fetch returned the SPA shell, suggesting `/llms.txt` was missing. **Code inspection
