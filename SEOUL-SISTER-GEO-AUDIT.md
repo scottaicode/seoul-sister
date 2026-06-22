@@ -149,27 +149,55 @@ strategic lever worth considering.**
   `isAccessibleForFree: 'False'` on the *gated* sub-sections via schema — fine — but the overall
   WebPage node also carries that flag, which slightly under-sells how much IS free; minor, optional.)
 
-**The ONE strategic lever — the `is_verified` search filter (the ~90% question Scott raised):**
+**The `is_verified` search filter (the "~90% invisible" question Scott raised) — ALREADY RESOLVED:**
 - Public product **search** (`/api/products`) and the widget's `search_products` tool both filter
-  `is_verified = true` (`src/app/robots.ts` n/a — see `api/products/route.ts:70`, `lib/yuri/tools.ts:70`).
-  Per CLAUDE.md only ~588 of ~5,900 products are verified (**~10%**), so **~90% of the catalog is
-  invisible to in-site search and to the widget** — but those products' **detail pages are still
-  fully public and in the sitemap**, so a crawler that lands on the URL gets full content.
-- **Net effect on GEO:** ingredient-level citation is already maximized (all ingredient data public).
-  Product-level citation is partially throttled: AI engines can cite any product they reach by URL
-  (sitemap covers products with a description), but the on-site discovery surface only promotes 10%.
-- **The lever:** the **May 5 2026 DB audit (in CLAUDE.md) already prescribes the fix** — auto-promote
-  structurally-complete products (name + brand + category + INCI + a price record) to `is_verified`,
-  est. **+5,000 products newly visible in search**. That is a *data-quality/coverage* change, not a
-  GEO code change, and it benefits BOTH public search AND AI discovery. **Recommend running that
-  promotion (with the spot-check for false positives the audit specifies) as a follow-up** — it's the
-  highest-leverage way to "make more product data available," exactly Scott's instinct. Gate: spot-
-  check a sample first so low-quality rows don't get promoted into citable surfaces.
+  `is_verified = true` (`api/products/route.ts:70`, `lib/yuri/tools.ts:70`).
+- **CLAUDE.md is STALE on this.** It cites the May 5 2026 figure of 588/5,901 verified (~10%) and
+  warns ~90% of catalog is invisible. **Live DB query June 22 2026 shows the opposite — the
+  auto-promotion the May-5 audit prescribed HAS SINCE BEEN RUN:**
 
-**Bottom line on exposure:** don't expose *more raw data* (it's already generous and correctly
-gated); instead **widen product DISCOVERABILITY** via the verified-flag auto-promotion the DB audit
-already specified. Ingredient data needs nothing. Verify per-page JSON-LD (P1 above) to improve how
-well engines *parse* what's already public.
+  | Metric | CLAUDE.md (May 5) | **Live DB (Jun 22 2026)** |
+  |---|---|---|
+  | Total products | 5,901 | **5,946** |
+  | Verified (visible in search + widget) | 588 (~10%) | **5,311 (~89%)** |
+  | Not verified | ~5,300 | **635** |
+
+- **So ~89% of the catalog is ALREADY discoverable.** The visibility barrier described in CLAUDE.md
+  no longer exists. Of the 635 still-unverified, only **153** are structurally complete *with a price*
+  and **557** complete without one — the genuine long tail (mostly missing price or INCI). These
+  should NOT be force-promoted: pushing thin records into citable surfaces *hurts* citation quality.
+  The daily `translate-and-index` / `link-ingredients` crons already enrich new/incomplete products at
+  $0 marginal AI cost, so the tail shrinks automatically.
+- **Cost to "make more products visible":** promoting is a SQL boolean flip (`is_verified = true`) —
+  **$0 AI tokens.** Enriching the incomplete tail with Sonnet would be ~635 × ~$0.01 ≈ **~$6-7 one-
+  time**, but is largely unnecessary (daily crons handle it). **Recommendation: do NOT invest here —
+  it's solved; forcing the last 635 risks citation quality for ~zero upside.**
+
+**Bottom line on exposure:** data exposure is already generous and correctly gated (facts public,
+personalization gated), AND product discoverability is already ~89% (not 10%). Nothing to build here.
+The real acceleration levers are crawl-submission + backlinks (below), not more data exposure.
+
+### 🟢 CRAWL-ACCELERATION — manual actions only Scott can do (highest-value next step, $0)
+
+The robots unblock is live, but engines re-index on their own schedule (days→weeks). To expedite:
+1. **Google Search Console** (https://search.google.com/search-console) — add/verify the
+   `seoulsister.com` property, submit `https://www.seoulsister.com/sitemap.xml`. Drives Google
+   indexing + Google AI Overviews (now that Google-Extended is unblocked).
+2. **Bing Webmaster Tools** (https://www.bing.com/webmasters) — add the site, submit the same sitemap.
+   **Bing's index feeds ChatGPT search** — highest-leverage for ChatGPT citation.
+3. **Backlinks accelerate crawl + citation** — when Bailey's Reddit/social links point at
+   seoulsister.com, engines follow those links and re-crawl faster. Ties into `SEOUL-SISTER-LEAD-GEN-PLAN.md`.
+These need account logins (Scott-only); no script/agent can do them.
+
+### 📊 BASELINE CITATION TEST (recorded Jun 22 2026, immediately post-unblock = pre-crawl "before")
+
+Ran 3 canonical K-beauty buyer queries. **Seoul Sister cited in 0 of 3.** Competitors own all three:
+- "best Korean serum for dark spots" → UMMA, I DEW CARE, Soko Glam, Skinsider
+- "how to tell if COSRX snail mucin is fake" → Mercelbay, COSRX official, Lemon8, TikTok
+- "English K-beauty ingredient database" → INCIDecoder, Demythskin, Hwahae Global, SkinSort, CosDNA
+Expected (engines hadn't been allowed to crawl until this date). **RE-RUN these exact 3 queries in
+2-4 weeks**; any appearance is directly attributable to the unblock + crawl-submission. This is the
+GEO teacher — the closest thing to an objective "are we cited" signal.
 
 ---
 
