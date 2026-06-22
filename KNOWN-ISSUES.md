@@ -43,3 +43,40 @@ page or in the Yuri widget is affected. Verified the widget streams end-to-end t
 **The genuinely-ours, harmless-standard warnings in the same console** (ignore — every
 Next.js + GA4 site logs these): font `preload was not used within a few seconds`, the
 `_ga_*` cookie `expires` overwrite, and the GTM `Referrer Policy` notice.
+
+---
+
+## DISMISSED — Console CSS errors: `Dangling combinator` / `Ruleset ignored due to bad selector` / `Expected attribute name but found 'x('`
+
+**Reported:** June 22 2026, surfaced in a Firefox **private-window** test (extensions OFF,
+so NOT the extension issue above — this is a separate, real-looking error class).
+**Symptom:** repeated warnings against `ffd3bd8e987a9a13.css`:
+- `Dangling combinator. Ruleset ignored due to bad selector.` (many)
+- `Selector expected. Ruleset ignored due to bad selector.`
+- `Expected attribute name or namespace but found 'x('. Ruleset ignored due to bad selector.`
+
+**Verdict: NOT a Seoul Sister bug. The CSS is valid; the local Firefox build is too old to
+parse it. Do not change the CSS.**
+
+**Why (evidence gathered June 22 2026):**
+1. Fetched the real production `ffd3bd8e987a9a13.css` (96 KB) and inspected it directly:
+   - **Zero dangling combinators** (no selector ends in `>`, `+`, or `~` before `{`).
+   - **Zero malformed `x(` attribute selectors.** The `'x('` the parser quoted is just a
+     fragment of a longer VALID token (inside a `:where(...)`) that the old engine bailed on
+     mid-parse.
+2. The file contains **237 `:is()` / `:where()` selectors** — emitted by the official
+   `@tailwindcss/typography` plugin for the blog `prose` classes (`:where([class~=not-prose])`,
+   `:where([class~=lead])`, etc.). This is standard, spec-valid modern CSS.
+3. `:is()` / `:where()` shipped in Firefox 78+ (2020). When an OLDER Firefox hits one it can't
+   parse, it emits exactly this symptom set ("dangling combinator", "selector expected",
+   "expected attribute name but found 'x('") because it bails mid-selector and misreads the
+   tail. No `@property`, `@container`, `:has()`, or `&`-nesting is present (none of the truly
+   bleeding-edge stuff) — so the only candidate is `:is()`/`:where()` on an old engine.
+4. The page renders **fully styled** in the same normal-window screenshots — proof the CSS
+   parses correctly on a current engine. Real visitors on current Chrome/Safari/Firefox see
+   none of these.
+
+**If you ever want a true-zero console** (cosmetic only, not worth it now): `@tailwindcss/typography`'s
+`:where()` wrapping is intentional (keeps `prose` specificity low so it's easy to override).
+Removing it isn't advisable. The right move is simply to update the local Firefox; do NOT
+hand-edit generated CSS.
