@@ -66,6 +66,19 @@ edit in the dynamic robots route. ~15 min.
 > the `anthropic-ai` `Disallow: /` block were removed and replaced with Anthropic's current 2026 fleet
 > — `ClaudeBot` (training), `Claude-User` (user browsing), `Claude-SearchBot` (search/citation) —
 > each scoped identically to the other allowed AI search bots. `CCBot` remains blocked.
+>
+> **✅ Update (June 22 2026, Chinese AI engines):** Added scoped allows for the legitimate,
+> robots.txt-compliant Chinese search/AI bots — `PetalBot` (Huawei Petal Search) and `Baiduspider`
+> (Baidu / ERNIE grounding) — for parity with the OpenAI/Google/Anthropic invites. Rationale: K-beauty
+> has a large Asia-facing, English-curious audience and Seoul Sister's content is non-proprietary, so
+> the citation-traffic upside extends to these engines. Only DOCUMENTED, robots.txt-honoring crawlers
+> were named. **Deliberately omitted:** `Bytespider` (ByteDance — no vendor docs, documented
+> robots.txt non-compliance + UA-spoofing; left under the default `*` allow, not endorsed with a named
+> invite), DeepSeek (publishes no compliant crawler — fetches present as ordinary browser traffic),
+> and Alibaba's `QwenBot`/`Qwen-User`/`Quark-Spider` (named tokens exist but field reports show
+> proxy-rotation + faked-Chrome-UA — they fail the "respectful" bar; revisit if compliance improves).
+> Note: robots.txt is advisory — naming a bot is an explicit invite + scope signal, not enforcement;
+> non-compliant crawlers reach public pages regardless.
 
 ### ✅ RESOLVED (was flagged P0, was a FALSE ALARM) — `llms.txt` exists and is excellent
 

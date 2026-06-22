@@ -76,6 +76,25 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
         disallow: ['/api/', '/onboarding/', '/settings/', '/dashboard/', '/admin/'],
       },
+      // ALLOW (scoped): legitimate, robots.txt-compliant Chinese search/AI bots.
+      // K-beauty has a large Asia-facing, English-curious audience; Seoul Sister's content is
+      // non-proprietary, so the citation-traffic upside applies to these engines too. Only bots
+      // with a DOCUMENTED user-agent that HONORS robots.txt are named here — parity with the
+      // OpenAI/Google/Anthropic invites above. PetalBot = Huawei Petal Search; Baiduspider = Baidu
+      // (powers ERNIE grounding). DELIBERATELY OMITTED: Bytespider (no docs, robots.txt non-compliant
+      // — left under the default * rule, not endorsed with a named allow), DeepSeek (publishes no
+      // compliant crawler), and Alibaba's Qwen/Quark bots (documented but report proxy-rotation +
+      // UA-spoofing — fail the "respectful" bar; revisit if their compliance improves).
+      {
+        userAgent: 'PetalBot',
+        allow: '/',
+        disallow: ['/api/', '/onboarding/', '/settings/', '/dashboard/', '/admin/'],
+      },
+      {
+        userAgent: 'Baiduspider',
+        allow: '/',
+        disallow: ['/api/', '/onboarding/', '/settings/', '/dashboard/', '/admin/'],
+      },
     ],
     sitemap: 'https://www.seoulsister.com/sitemap.xml',
   }
