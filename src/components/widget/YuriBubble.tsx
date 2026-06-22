@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { MessageCircle, X, Send, Loader2, Sparkles } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/hooks/useAuth'
@@ -37,6 +38,7 @@ function saveSessionMessages(msgs: WidgetMessage[]) {
 }
 
 export default function YuriBubble() {
+  const pathname = usePathname()
   const { user, loading: authLoading } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<WidgetMessage[]>(loadSessionMessages)
@@ -227,6 +229,11 @@ export default function YuriBubble() {
   // Don't render for signed-in users — they have the full Yuri at /yuri.
   // Skip during auth bootstrap to avoid a flash of the anonymous widget.
   if (authLoading || user) return null
+
+  // Suppress the floating bubble on the homepage — the hero widget
+  // (TryYuriSection) is already the primary Yuri surface there, and a second
+  // floating chat collides with it and creates "which box do I use?" confusion.
+  if (pathname === '/') return null
 
   return (
     <>
