@@ -749,11 +749,13 @@ export async function* streamAdvisorResponse(
 
     // Retry loop for transient stream creation failures
     for (let attempt = 1; attempt <= STREAM_MAX_RETRIES; attempt++) {
-      // Reset state for each attempt
+      // Reset state for each attempt. Note: this loop ALWAYS BUFFERS — text is
+      // collected into textChunks and only yielded to the user after the stream
+      // fully succeeds — so a failed attempt has shown the user nothing and is
+      // safe to retry (see the catch block below).
       toolUseBlocks.length = 0
       currentToolBlock = null
       textChunks.length = 0
-      let eventsReceived = false
 
       const stream = client.messages.stream({
         model: MODELS.primary,
@@ -766,7 +768,6 @@ export async function* streamAdvisorResponse(
 
       try {
         for await (const event of stream) {
-          eventsReceived = true
           if (event.type === 'content_block_start') {
             if (event.content_block.type === 'tool_use') {
               currentToolBlock = {
@@ -802,10 +803,29 @@ export async function* streamAdvisorResponse(
         streamSucceeded = true
         break // Stream completed successfully — exit retry loop
       } catch (streamError: unknown) {
-        // Only retry if no events were received (connection-level failure)
-        // and the error is retryable. If text was already yielded to the
-        // client, we can't retry (partial response visible to user).
-        if (!eventsReceived && isRetryableError(streamError) && attempt < STREAM_MAX_RETRIES) {
+        // Retry transient failures (529 overloaded, 502/503, connection resets)
+        // with exponential backoff. The safety condition is "nothing has been
+        // yielded to the USER yet" — NOT "no events received."
+        //
+        // This loop ALWAYS BUFFERS: text chunks accumulate in `textChunks` and
+        // are only yielded to the client AFTER the stream fully succeeds (the
+        // yield at line ~828, post `streamSucceeded = true`). So no matter where
+        // the failure lands — including an Anthropic `overloaded_error` that
+        // arrives as a mid-stream event after the first content block — the user
+        // has seen nothing, and retrying produces a clean, non-duplicated reply.
+        //
+        // The old guard also required `!eventsReceived`, which wrongly refused to
+        // retry mid-stream overloads and threw the raw error to the UI instead.
+        // That was the cause of the user-visible `{"type":"overloaded_error"...}`
+        // banner during Anthropic busy windows (Bailey, Jun 23 2026) — the only
+        // recovery was the user manually resending. With buffering, a mid-stream
+        // overload is just as safe to retry as a pre-stream one, so the
+        // events-received check was removed.
+        //
+        // INVARIANT: this is only safe while the loop buffers. If a future change
+        // makes it yield text incrementally, this MUST be tightened to a real
+        // `yieldedToUser` flag to preserve the no-retry-after-partial-output rule.
+        if (isRetryableError(streamError) && attempt < STREAM_MAX_RETRIES) {
           const delay = Math.pow(2, attempt) * 1000
           console.warn(
             `[yuri/stream] Attempt ${attempt}/${STREAM_MAX_RETRIES} failed (${(streamError as Error).message || 'unknown'}), retrying in ${delay}ms...`
@@ -813,7 +833,7 @@ export async function* streamAdvisorResponse(
           await new Promise((resolve) => setTimeout(resolve, delay))
           continue
         }
-        throw streamError // Non-retryable or events already consumed
+        throw streamError // Non-retryable, or retries exhausted
       }
     }
 

@@ -3,9 +3,9 @@ export const maxDuration = 60
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { streamAdvisorResponse } from '@/lib/yuri/advisor'
+import { isRetryableError } from '@/lib/anthropic'
 import { loadConversationMessages, createConversation } from '@/lib/yuri/memory'
 import { cleanYuriResponse } from '@/lib/yuri/voice-cleanup'
-import { AppError } from '@/lib/utils/error-handler'
 import { supabase, getServiceClient } from '@/lib/supabase'
 import { hasActiveSubscription } from '@/lib/subscription'
 import { incrementYuriMessageCount } from '@/lib/usage'
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     const withinLimit = await incrementYuriMessageCount(user.id)
     if (!withinLimit) {
       return new Response(
-        JSON.stringify({ error: 'Monthly message limit reached (500). Your limit resets at the start of your next billing period.' }),
+        JSON.stringify({ error: "You've reached this month's message limit. It resets at the start of your next billing period." }),
         { status: 429, headers: { 'Content-Type': 'application/json' } }
       )
     }
@@ -153,14 +153,20 @@ export async function POST(request: NextRequest) {
         })
         await writer.write(encoder.encode(`data: ${meta}\n\n`))
       } catch (err) {
+        // Full detail goes to the server logs (Vercel) for debugging.
         console.error(`[yuri/chat] Stream error for user ${user.id}, conv ${conversationId}:`, err)
-        const errMsg =
-          err instanceof AppError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : 'Stream error'
-        const errorData = JSON.stringify({ type: 'error', message: errMsg })
+        // The USER never sees a raw error object. Anthropic surfaces overloads
+        // as a JSON string (`{"type":"error","error":{"type":"overloaded_error"...}}`)
+        // in err.message; shipping that to the client produced the ugly red
+        // `{"type":"error"...}` banner Bailey hit (Jun 23 2026) when Claude was
+        // busy. The advisor now auto-retries transient overloads, so reaching
+        // here means retries were exhausted (Claude still busy) or it's a genuine
+        // failure. Either way, show a calm, honest, human message — and tell
+        // retryable cases they can just resend.
+        const friendlyMessage = isRetryableError(err)
+          ? "Yuri's servers are unusually busy right now. Give it a moment and resend your message — it usually clears within a minute."
+          : "Something went wrong on Yuri's end. Please resend your message, and if it keeps happening, try again in a few minutes."
+        const errorData = JSON.stringify({ type: 'error', message: friendlyMessage })
         await writer.write(encoder.encode(`data: ${errorData}\n\n`))
       } finally {
         await writer.close()
