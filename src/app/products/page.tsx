@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { Package, Star } from 'lucide-react'
 import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { proxyImageUrl } from '@/lib/utils/image-proxy'
+import { PRICING } from '@/lib/pricing'
 
 export const metadata: Metadata = {
   title: 'K-Beauty Product Database | 5,800+ Korean Skincare Products',
@@ -271,7 +272,7 @@ export default async function ProductsPage() {
               href="/register"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold text-sm hover:opacity-90 transition-opacity"
             >
-              Start Your K-Beauty Journey — $39.99/mo
+              Start Your K-Beauty Journey — {PRICING.monthly_display}
             </Link>
           </div>
         </div>

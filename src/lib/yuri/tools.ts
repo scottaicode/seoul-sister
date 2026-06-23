@@ -3,6 +3,8 @@ import { fetchWeather } from '@/lib/intelligence/weather-routine'
 import {
   getProductPosition,
 } from '@/lib/intelligence/layering-order'
+import { findSunscreens } from '@/lib/intelligence/sunscreen-finder'
+import { findDupes } from '@/lib/intelligence/dupe-finder'
 import type Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -696,6 +698,70 @@ export const YURI_TOOLS: ToolDef[] = [
       required: ['routine_type', 'steps'],
     },
   },
+  // --- find_sunscreen_match: folds the standalone Sunscreen Finder into Yuri ---
+  {
+    name: 'find_sunscreen_match',
+    description:
+      'Find K-beauty sunscreens matching specific attributes (PA rating, white cast, finish, tint, under-makeup, SPF). Use when a user asks you to find or recommend a sunscreen, or asks "what sunscreen should I use" with any preferences. Returns the products that MATCH the filters — YOU decide which to actually recommend based on their skin profile, concerns, and routine (do not just hand back the raw list). Set the filters from what the user tells you (e.g. "no white cast" → white_cast: "none"; "goes under makeup" → under_makeup: true; "matte for oily skin" → finish: "matte").',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        pa_rating: {
+          type: 'string',
+          enum: ['PA+', 'PA++', 'PA+++', 'PA++++'],
+          description: 'Minimum PA rating (UVA protection). PA++++ is highest.',
+        },
+        white_cast: {
+          type: 'string',
+          enum: ['none', 'minimal'],
+          description: 'Maximum acceptable white cast. "none" = no white cast only; "minimal" = none or minimal. Important for deeper skin tones.',
+        },
+        finish: {
+          type: 'string',
+          enum: ['matte', 'dewy', 'natural'],
+          description: 'Desired finish. matte for oily skin, dewy for dry skin.',
+        },
+        sunscreen_type: {
+          type: 'string',
+          enum: ['chemical', 'physical', 'hybrid'],
+          description: 'Filter type. physical (mineral) for sensitive skin; chemical for no white cast.',
+        },
+        under_makeup: {
+          type: 'boolean',
+          description: 'Only sunscreens that work well as a makeup base',
+        },
+        water_resistant: { type: 'boolean', description: 'Only water-resistant sunscreens' },
+        tinted: { type: 'boolean', description: 'true = tinted only, false = untinted only, omit = either' },
+        min_spf: { type: 'number', description: 'Minimum SPF (e.g. 30, 50)' },
+        sort_by: {
+          type: 'string',
+          enum: ['price_asc', 'price_desc', 'spf', 'rating'],
+          description: 'How to sort matches. Defaults to rating.',
+        },
+        limit: { type: 'number', description: 'Max results (default 8, max 15)' },
+      },
+    },
+  },
+  // --- find_product_dupes: folds the standalone Dupe Finder into Yuri ---
+  {
+    name: 'find_product_dupes',
+    description:
+      'Find cheaper K-beauty products with similar ingredients to a target product ("dupes"). Use when a user asks for a dupe, a cheaper alternative, or "something like X but less expensive." Returns same-category products ranked by ingredient overlap, with shared/unique ingredients and price savings. For an authenticated user, results are weighted by ingredient effectiveness for their skin type. YOU interpret these facts and tell the user whether a dupe is genuinely worth it given their skin — do not just echo the list.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        product_id: {
+          type: 'string',
+          description: 'PREFERRED: Product UUID from a prior search_products / get_product_details call.',
+        },
+        product_name: {
+          type: 'string',
+          description: 'Product name to find dupes for (used when product_id is not known).',
+        },
+        max_dupes: { type: 'number', description: 'Max dupes to return (default 5, max 10)' },
+      },
+    },
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -741,6 +807,10 @@ export async function executeYuriTool(
         return await executeGetRoutineContext(input, userId)
       case 'save_routine':
         return await executeSaveRoutine(input, userId)
+      case 'find_sunscreen_match':
+        return await executeFindSunscreenMatch(input)
+      case 'find_product_dupes':
+        return await executeFindProductDupes(input, userId)
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` })
     }
@@ -2806,5 +2876,137 @@ async function executeSaveRoutine(
     steps: savedSteps,
     replaced_existing: !!replaceExisting,
     message,
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Tool: find_sunscreen_match (folds the Sunscreen Finder page into Yuri)
+// ---------------------------------------------------------------------------
+// Returns sunscreens MATCHING the requested attributes. This is data — Yuri
+// decides which to actually recommend given the user's profile (Yuri Sole
+// Authority Principle). Verified products only (catalog-citation quality).
+
+async function executeFindSunscreenMatch(
+  input: Record<string, unknown>
+): Promise<string> {
+  const limit = Math.min((input.limit as number) || 8, 15)
+  const { products, total } = await findSunscreens({
+    pa_rating: input.pa_rating as string | undefined,
+    white_cast: input.white_cast as string | undefined,
+    finish: input.finish as string | undefined,
+    sunscreen_type: input.sunscreen_type as string | undefined,
+    under_makeup: input.under_makeup as boolean | undefined,
+    water_resistant: input.water_resistant as boolean | undefined,
+    tinted: input.tinted as boolean | undefined,
+    min_spf: input.min_spf as number | undefined,
+    sort_by: input.sort_by as 'price_asc' | 'price_desc' | 'spf' | 'rating' | undefined,
+    limit,
+    verifiedOnly: true,
+  })
+
+  if (!products.length) {
+    return JSON.stringify({
+      matches: [],
+      total_matched: 0,
+      message:
+        'No sunscreens in the database match all of those filters. Try relaxing the strictest one (e.g. allow "minimal" white cast instead of "none", or drop the finish requirement), then decide what to suggest.',
+    })
+  }
+
+  const matches = products.map((r) => ({
+    id: r.id,
+    name: r.name_en,
+    brand: r.brand_en,
+    price_usd: r.price_usd,
+    rating: r.rating_avg,
+    review_count: r.review_count,
+    spf: r.spf_rating,
+    pa_rating: r.pa_rating,
+    white_cast: r.white_cast,
+    finish: r.finish,
+    type: r.sunscreen_type,
+    under_makeup: r.under_makeup,
+    water_resistant: r.water_resistant,
+    tinted: r.is_tinted,
+    volume: r.volume_display,
+  }))
+
+  return JSON.stringify({
+    matches,
+    total_matched: total,
+    note: 'These MATCH the filters. Recommend from them based on the user\'s skin type, concerns, allergies, and current routine — do not just list all of them.',
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Tool: find_product_dupes (folds the Dupe Finder page into Yuri)
+// ---------------------------------------------------------------------------
+// Returns ingredient-overlap facts for cheaper same-category products. Yuri
+// interprets whether a dupe is genuinely worth it for THIS user.
+
+async function executeFindProductDupes(
+  input: Record<string, unknown>,
+  userId: string
+): Promise<string> {
+  const db = getServiceClient()
+  let productId = input.product_id as string | undefined
+  const productName = input.product_name as string | undefined
+  const maxDupes = Math.min((input.max_dupes as number) || 5, 10)
+
+  if (!productId && productName) {
+    const match = await resolveProductByName(db, productName)
+    if (match) {
+      productId = match.id
+    } else {
+      return JSON.stringify({
+        error: `No product found matching "${productName}". Ask the user to confirm the exact product name, or search for it first.`,
+      })
+    }
+  }
+  if (!productId) {
+    return JSON.stringify({ error: 'No product_id or product_name provided' })
+  }
+
+  const result = await findDupes({ productId, userId, maxDupes })
+
+  if (result.error) {
+    return JSON.stringify({ error: result.error })
+  }
+
+  if (!result.dupes.length) {
+    return JSON.stringify({
+      original: result.original
+        ? { name: result.original.name_en, brand: result.original.brand_en }
+        : null,
+      dupes: [],
+      message:
+        'No close ingredient-overlap dupes found in the same category. Tell the user honestly that nothing in the database is a strong match rather than forcing a weak one.',
+    })
+  }
+
+  // Trim to the facts Yuri needs to reason — cap ingredient lists so the tool
+  // result stays compact.
+  const dupes = result.dupes.map((d) => ({
+    name: d.product.name_en,
+    brand: d.product.brand_en,
+    price_usd: d.product.price_usd,
+    rating: d.product.rating_avg,
+    match_pct: Math.round(d.match_score * 100),
+    price_savings_pct: d.price_savings_pct,
+    shared_ingredients: d.shared_ingredients.slice(0, 12),
+    unique_to_dupe: d.unique_to_dupe.slice(0, 8),
+    effectiveness_insight: d.effectiveness_insight,
+  }))
+
+  return JSON.stringify({
+    original: result.original
+      ? {
+          name: result.original.name_en,
+          brand: result.original.brand_en,
+          price_usd: result.original.price_usd,
+        }
+      : null,
+    dupes,
+    note: 'match_pct = ingredient overlap, NOT a verdict. Judge whether each dupe is genuinely worth it for THIS user (skin type, what shared vs missing ingredients actually matter, whether the savings justify any tradeoff). Be honest if a "dupe" drops a key active.',
   })
 }

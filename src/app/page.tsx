@@ -173,15 +173,15 @@ export default function LandingPage() {
           {/* Left — Value Proposition */}
           <motion.div variants={stagger} initial="hidden" animate="show" className="pt-4 lg:pt-8">
             <motion.div variants={fadeUp}>
-              <span className="badge-gold mb-4 inline-block">World&apos;s First English K-Beauty Intelligence Platform</span>
+              <span className="badge-gold mb-4 inline-block">Your Korean Skincare Advisor — On Call 24/7</span>
             </motion.div>
             <motion.h1 variants={fadeUp} className="font-display font-bold text-3xl md:text-5xl lg:text-5xl text-white leading-tight mb-5">
-              K-Beauty Intelligence,
+              Your K-Beauty Expert,
               <br />
-              <span className="text-gradient">Powered by AI</span>
+              <span className="text-gradient">On Call 24/7</span>
             </motion.h1>
             <motion.p variants={fadeUp} className="text-white/50 text-base md:text-lg max-w-lg mb-8 leading-relaxed">
-              5,800+ products. 14,400+ ingredients decoded. 6 AI specialist agents. Ask Yuri anything about Korean skincare — she&apos;s ready now.
+              Meet Yuri — she reads your Korean labels, builds your routine, catches ingredient conflicts before they reach your face, and remembers your skin between every chat. Like texting a friend who happens to work in a Seoul skincare lab. She&apos;s ready now.
             </motion.p>
 
             {/* Quick stats row */}

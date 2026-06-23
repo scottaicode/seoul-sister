@@ -30,6 +30,7 @@
 
 import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
 import { logAIUsage } from '@/lib/ai-usage-logger'
+import { PRICING } from '@/lib/pricing'
 
 export interface VisitorMemoryFacts {
   summary?: string
@@ -81,7 +82,7 @@ JOB 2 — If (and only if) sending, write ONE short, warm follow-up email — th
 
 What this email IS:
 - A genuine continuation of YOUR conversation with THIS person, grounded in what they actually told you (their concern, the products they were curious about, where you left off).
-- An open door back to the conversation — they get unlimited chats, a routine that remembers them, and progress tracking if they subscribe ($39.99/mo), but lead with the relationship, not the pitch.
+- An open door back to the conversation — they get unlimited chats, a routine that remembers them, and progress tracking if they subscribe (${PRICING.monthly_display}), but lead with the relationship, not the pitch.
 
 What this email is NOT:
 - Not a generic newsletter. Not a hard sell. Not a list of features. Not "Dear valued customer."

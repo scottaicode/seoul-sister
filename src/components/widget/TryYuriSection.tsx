@@ -15,6 +15,7 @@ import {
 } from '@/lib/utils/widget-session'
 import { renderMarkdown, parseWidgetStream } from '@/lib/utils/widget-shared'
 import type { WidgetMessage } from '@/lib/utils/widget-shared'
+import { PRICING } from '@/lib/pricing'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -306,7 +307,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                   href="/register?plan=pro_monthly"
                   className="inline-flex items-center gap-1.5 glass-button-primary text-xs py-2 px-5"
                 >
-                  Subscribe — $39.99/mo <ArrowRight className="w-3 h-3" />
+                  Subscribe — {PRICING.monthly_display} <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
             )}

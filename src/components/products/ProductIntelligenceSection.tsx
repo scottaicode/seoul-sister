@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import ProductEnrichment from './ProductEnrichment'
+import { PRICING } from '@/lib/pricing'
 
 interface Props {
   productId: string
@@ -149,7 +150,7 @@ export default function ProductIntelligenceSection({ productId, productName, pro
           href="/register"
           className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold text-sm hover:opacity-90 transition-opacity"
         >
-          Start Your K-Beauty Journey — $39.99/mo
+          Start Your K-Beauty Journey — {PRICING.monthly_display}
           <ArrowRight className="w-4 h-4" />
         </Link>
         <p className="text-xs text-white/30 mt-3">

@@ -1,4 +1,8 @@
 import { getServiceClient } from './supabase'
+// Pricing + usage caps live in a client-safe module; re-exported here so existing
+// server-side importers (`import { USAGE_CAPS } from './subscription'`) keep working.
+import { PRICING, USAGE_CAPS } from './pricing'
+export { PRICING, USAGE_CAPS }
 
 export type Feature =
   | 'unlimited_yuri'
@@ -60,12 +64,6 @@ export async function checkFeatureAccess(
   const active = await hasActiveSubscription(userId)
   return checkFeatureAccessBySubscription(active, feature)
 }
-
-/** Monthly usage caps for active subscribers */
-export const USAGE_CAPS = {
-  yuri_messages_per_month: 500,
-  scans_per_month: 30,
-} as const
 
 export function getYuriMessageLimit(): number {
   return USAGE_CAPS.yuri_messages_per_month

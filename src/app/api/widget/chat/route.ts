@@ -8,6 +8,7 @@ import { cleanYuriResponse, stripPhantomToolCallNarration } from '@/lib/yuri/voi
 import { detectSpecialist, SPECIALISTS } from '@/lib/yuri/specialists'
 import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordCapturedEmail, isEmailCapturedByAnotherVisitor, clearCapturedEmail } from '@/lib/widget/visitor'
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
+import { PRICING } from '@/lib/pricing'
 import { generateLeadEmail, type VisitorMemoryFacts, type ConversationTurn } from '@/lib/email/lead-email'
 import { createSession, getSession, incrementSessionCounters, updateSessionMetadata } from '@/lib/widget/session'
 import {
@@ -163,7 +164,7 @@ Every response should demonstrate you understand the visitor's skincare world be
 The visitor should feel "she actually understands my skin situation" before they ever think "she's trying to get me to subscribe." That sequence is non-negotiable.
 
 ## The One Thing Subscribers Get That You Can't Give Here
-Seoul Sister is a subscription platform at $39.99/month. This preview lets a visitor experience your advice for free. Give that advice fully and generously — a great single conversation is exactly how trust gets earned, and you should never hold back the quality of your help to push a subscription. Quality is the give. It is not the thing that's gated.
+Seoul Sister is a subscription platform at ${PRICING.monthly_display_long}. This preview lets a visitor experience your advice for free. Give that advice fully and generously — a great single conversation is exactly how trust gets earned, and you should never hold back the quality of your help to push a subscription. Quality is the give. It is not the thing that's gated.
 
 Here is the one fact a visitor genuinely cannot see from a single great conversation, and it's the truth of how skin actually works: **skincare is a months-long relationship, not a single answer.** The diagnosis you give today is the start. What actually changes someone's skin is the follow-through — remembering what they tried, tracking whether it worked, adjusting next month, catching the conflict when they add a new product, knowing where they are in their journey. For an anonymous visitor here, that follow-through doesn't exist: the next time they show up, you won't remember them, their reactions, or the plan you built. For a subscriber, you remember everything and adjust over time. THAT continuity — not better advice, the SAME advice carried forward and refined — is what the subscription is.
 
@@ -233,7 +234,7 @@ export async function POST(request: NextRequest) {
         if (isVisitorAtLimit(visitor)) {
           return new Response(
             JSON.stringify({
-              error: 'Preview limit reached. Subscribe to Seoul Sister Pro ($39.99/mo) for unlimited Yuri conversations, personalized routines, and all 6 specialist agents.',
+              error: `Preview limit reached. Subscribe to ${PRICING.plan_name} (${PRICING.monthly_display}) for unlimited Yuri conversations, personalized routines, and all 6 specialist agents.`,
               limitReached: true,
             }),
             { status: 429, headers: { 'Content-Type': 'application/json' } }
@@ -260,7 +261,7 @@ export async function POST(request: NextRequest) {
       const msgCheck = await checkRateLimit(sessionKey, 20, 30 * 24 * 60 * 60 * 1000)
       if (!msgCheck.allowed) {
         return new Response(
-          JSON.stringify({ error: 'Preview limit reached. Subscribe to Seoul Sister Pro ($39.99/mo) for unlimited Yuri conversations.', limitReached: true }),
+          JSON.stringify({ error: `Preview limit reached. Subscribe to ${PRICING.plan_name} (${PRICING.monthly_display}) for unlimited Yuri conversations.`, limitReached: true }),
           { status: 429, headers: { 'Content-Type': 'application/json' } }
         )
       }

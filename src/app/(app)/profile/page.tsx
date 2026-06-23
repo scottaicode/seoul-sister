@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
+import { PRICING } from '@/lib/pricing'
 
 interface UserProfile {
   skin_type: string | null
@@ -466,7 +467,7 @@ export default function ProfilePage() {
                 </p>
                 <p className="text-xs text-white/40 mt-0.5">
                   {profile.plan && profile.plan !== 'free'
-                    ? '$39.99/month — Full AI intelligence suite'
+                    ? `${PRICING.monthly_display_long} — Yuri + full intelligence suite`
                     : 'Subscribe to unlock Yuri, scanning, and all features'}
                 </p>
               </div>

@@ -7,28 +7,43 @@ import { Menu, X, User, Sparkles, LogOut, Settings, Shield, MessageCircle } from
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 
-const navLinks = [
+// Yuri-centric nav (v11 repositioning). Yuri is the star — she orchestrates the
+// rest. Primary links are the everyday surfaces + the things Yuri reasons over
+// (Skin Profile, Library, Routine). The standalone feature pages that Yuri now
+// handles conversationally (Scan, Sunscreen, Glass Skin, Shelf Scan, Dupes) are
+// demoted to the "More" group — still reachable, no longer front doors. Usage
+// data (June 2026): of these, scans=0 / wishlists=0 across all users; everyone
+// lives in Yuri chat. Leading with Yuri matches how the product is actually used.
+const primaryNavLinks = [
   { label: 'Dashboard', href: '/dashboard' },
   { label: 'Skin Profile', href: '/skin-profile' },
   { label: 'Library', href: '/library' },
-  { label: 'Scan', href: '/scan' },
-  { label: 'Products', href: '/browse' },
-  { label: 'Sunscreen', href: '/sunscreen' },
   { label: 'Routine', href: '/routine' },
-  { label: 'Yuri', href: '/yuri' },
-  { label: 'Glass Skin', href: '/glass-skin' },
-  { label: 'Shelf Scan', href: '/shelf-scan' },
-  { label: 'Community', href: '/community' },
   { label: 'Trending', href: '/trending' },
+]
+
+// Secondary surfaces — data/browse pages + the feature pages Yuri now drives.
+const moreNavLinks = [
+  { label: 'Products', href: '/browse' },
   { label: 'Ingredients', href: '/ingredients' },
+  { label: 'Scan a label', href: '/scan' },
+  { label: 'Glass Skin Score', href: '/glass-skin' },
+  { label: 'Shelf Scan', href: '/shelf-scan' },
+  { label: 'Sunscreen Finder', href: '/sunscreen' },
+  { label: 'Community', href: '/community' },
   { label: 'Blog', href: '/blog' },
 ]
+
+// Combined list for mobile (which shows everything in one scrollable panel).
+const allNavLinks = [...primaryNavLinks, ...moreNavLinks]
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement>(null)
+  const moreMenuRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const router = useRouter()
   const { user, signOut } = useAuth()
@@ -62,6 +77,17 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [profileMenuOpen])
 
+  // Close "More" menu on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setMoreMenuOpen(false)
+      }
+    }
+    if (moreMenuOpen) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [moreMenuOpen])
+
   async function handleSignOut() {
     setProfileMenuOpen(false)
     try {
@@ -91,12 +117,27 @@ export default function Header() {
               </span>
             </Link>
 
-            {/* Desktop Navigation — single line (header is fixed h-16, so no
-                wrapping). gap-5 between links. flex-1 + justify-center lets the
-                nav take the middle space and centers the links, keeping clear
-                air between the logo (left) and the profile menu (right). */}
-            <nav className="hidden md:flex flex-1 items-center justify-center gap-5">
-              {navLinks.map((link) => (
+            {/* Desktop Navigation — Yuri-centric (v11). Yuri leads as a
+                visually distinct pill (she's the star), followed by the everyday
+                primary surfaces and a "More" dropdown holding browse/data pages
+                and the feature pages Yuri now drives conversationally. Collapsing
+                14 flat links → Yuri + 5 + More declutters the bar so the one
+                surface that converts isn't buried. */}
+            <nav className="hidden md:flex flex-1 items-center justify-center gap-4">
+              {/* Yuri — the star, always first, always distinct */}
+              <Link
+                href="/yuri"
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 ${
+                  isActive('/yuri')
+                    ? 'bg-gradient-to-r from-gold to-gold-light text-seoul-dark'
+                    : 'bg-gold/15 text-gold hover:bg-gold/25'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Ask Yuri
+              </Link>
+
+              {primaryNavLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -109,6 +150,42 @@ export default function Header() {
                   {link.label}
                 </Link>
               ))}
+
+              {/* More dropdown */}
+              <div className="relative" ref={moreMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setMoreMenuOpen((prev) => !prev)}
+                  className={`flex items-center gap-1 text-sm transition-colors duration-200 ${
+                    moreNavLinks.some((l) => isActive(l.href))
+                      ? 'text-gold font-semibold'
+                      : 'text-white/50 hover:text-white/80'
+                  }`}
+                >
+                  More
+                  <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+                    <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                {moreMenuOpen && (
+                  <div className="absolute left-1/2 -translate-x-1/2 top-9 w-52 bg-seoul-card border border-white/10 rounded-xl shadow-lg py-1 z-50">
+                    {moreNavLinks.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setMoreMenuOpen(false)}
+                        className={`block px-4 py-2.5 text-sm transition-colors ${
+                          isActive(link.href)
+                            ? 'text-gold bg-gold/5'
+                            : 'text-white/60 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             </nav>
 
             {/* Right side: Profile dropdown + mobile hamburger */}
@@ -212,7 +289,20 @@ export default function Header() {
                   <p className="text-xs text-white/80 truncate" title={user.email}>{user.email}</p>
                 </div>
               )}
-              {navLinks.map((link) => (
+              {/* Yuri — the star, leads the mobile menu, visually distinct */}
+              <Link
+                href="/yuri"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${
+                  isActive('/yuri')
+                    ? 'bg-gradient-to-r from-gold to-gold-light text-seoul-dark'
+                    : 'bg-gold/15 text-gold hover:bg-gold/25'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" />
+                Ask Yuri
+              </Link>
+              {allNavLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}

@@ -1,4 +1,5 @@
 import Stripe from 'stripe'
+import { PRICING, USAGE_CAPS } from './pricing'
 
 let stripeInstance: Stripe | null = null
 
@@ -18,25 +19,21 @@ export function getStripeClient(): Stripe {
 
 export const SUBSCRIPTION_TIERS = {
   pro_monthly: {
-    name: 'Seoul Sister Pro',
-    price: 39.99,
-    scans_per_month: 30,
-    yuri_messages_per_month: 500,
+    name: PRICING.plan_name,
+    price: PRICING.monthly_usd,
+    scans_per_month: USAGE_CAPS.scans_per_month,
+    yuri_messages_per_month: USAGE_CAPS.yuri_messages_per_month,
     features: [
-      'Full Yuri AI advisor (Claude Opus)',
-      '500 Yuri conversations/month',
-      'All 6 specialist agents',
-      '30 label scans/month (Vision AI)',
-      'Smart routine builder with conflict detection',
+      'Yuri — your K-beauty advisor, on call 24/7 (Claude Opus)',
+      'Unlimited conversations & label scans',
+      'All 6 specialist agents (ingredients, routines, authenticity & more)',
+      'Reads your Korean labels & builds conflict-aware routines',
+      'Remembers your skin across every session',
       'Glass Skin Score photo tracking',
-      'K-Beauty dupe finder',
-      'Sunscreen finder with PA/white cast filters',
-      'Shelf scan collection analysis',
-      'Ingredient include/exclude search',
-      'Expiration & weather-adaptive alerts',
-      'Counterfeit detection & price comparison',
-      'Community reviews & trending',
-      'Cross-session memory',
+      'Counterfeit detection & live price comparison',
+      'Finds dupes & the right sunscreen for your skin',
+      'Weather- & cycle-aware guidance',
+      'Trending in Korea before it hits the US',
     ],
   },
 } as const

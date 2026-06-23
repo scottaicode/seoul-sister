@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sunscreenSearchSchema } from '@/lib/utils/validation'
 import { handleApiError } from '@/lib/utils/error-handler'
+import { findSunscreens } from '@/lib/intelligence/sunscreen-finder'
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,102 +27,43 @@ export async function GET(request: NextRequest) {
       limit: searchParams.get('limit') ? Number(searchParams.get('limit')) : 20,
     })
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-
-    let query = supabase
-      .from('ss_products')
-      .select('*', { count: 'exact' })
-      .eq('category', 'sunscreen')
-
-    // Sunscreen-specific filters
-    if (params.pa_rating) {
-      // Filter for minimum PA rating: PA++++ >= PA+++ >= PA++ >= PA+
-      const paRankings = ['PA+', 'PA++', 'PA+++', 'PA++++']
-      const minIndex = paRankings.indexOf(params.pa_rating)
-      const validRatings = paRankings.slice(minIndex)
-      query = query.in('pa_rating', validRatings)
-    }
-
-    if (params.white_cast) {
-      if (params.white_cast === 'none') {
-        query = query.eq('white_cast', 'none')
-      } else if (params.white_cast === 'minimal') {
-        query = query.in('white_cast', ['none', 'minimal'])
-      }
-      // 'moderate' and 'heavy' = no filter (show all)
-    }
-
-    if (params.finish) {
-      query = query.eq('finish', params.finish)
-    }
-
-    if (params.sunscreen_type) {
-      query = query.eq('sunscreen_type', params.sunscreen_type)
-    }
-
-    if (params.under_makeup) {
-      query = query.eq('under_makeup', true)
-    }
-
-    if (params.water_resistant) {
-      query = query.eq('water_resistant', true)
-    }
-
-    if (params.tinted !== undefined) {
-      query = query.eq('is_tinted', params.tinted)
-    }
-
-    // v10.8.24 — activity filter retained at API level but no longer
-    // wired into the UI (suitable_for_activity is 99% NULL in catalog and
-    // can't be heuristically backfilled honestly). The endpoint still
-    // accepts the param so future expert-curated activity rankings can
-    // surface here without re-plumbing.
-    if (params.activity) {
-      if (params.activity === 'water_sports') {
-        query = query.eq('suitable_for_activity', 'water_sports')
-      } else if (params.activity === 'outdoor') {
-        query = query.in('suitable_for_activity', ['outdoor', 'water_sports'])
-      }
-      // 'daily' = no filter, all sunscreens work for daily
-    }
-
-    if (params.min_spf) {
-      query = query.gte('spf_rating', params.min_spf)
-    }
-
-    // Sorting
-    switch (params.sort_by) {
-      case 'price_asc':
-        query = query.order('price_usd', { ascending: true, nullsFirst: false })
-        break
-      case 'price_desc':
-        query = query.order('price_usd', { ascending: false, nullsFirst: false })
-        break
-      case 'spf':
-        query = query.order('spf_rating', { ascending: false, nullsFirst: false })
-        break
-      case 'rating':
-      default:
-        query = query.order('rating_avg', { ascending: false, nullsFirst: false })
-        break
-    }
-
-    // Pagination
+    // The 'activity' filter (suitable_for_activity) is retained in the schema for
+    // future expert-curated rankings but is 99% NULL in the catalog and not wired
+    // into the shared finder. When set, apply it as a post-filter here so the page
+    // contract is unchanged. The core attribute filtering lives in findSunscreens
+    // (shared with Yuri's find_sunscreen_match tool).
     const offset = (params.page - 1) * params.limit
-    query = query.range(offset, offset + params.limit - 1)
+    const { products: matched, total } = await findSunscreens({
+      pa_rating: params.pa_rating,
+      white_cast: params.white_cast,
+      finish: params.finish,
+      sunscreen_type: params.sunscreen_type,
+      under_makeup: params.under_makeup,
+      water_resistant: params.water_resistant,
+      tinted: params.tinted,
+      min_spf: params.min_spf,
+      sort_by: params.sort_by as 'price_asc' | 'price_desc' | 'spf' | 'rating' | undefined,
+      // over-fetch to support pagination + optional activity post-filter
+      limit: offset + params.limit,
+    })
 
-    const { data, error, count } = await query
+    let products = matched
+    if (params.activity && params.activity !== 'daily') {
+      const allowed = params.activity === 'water_sports'
+        ? ['water_sports']
+        : ['outdoor', 'water_sports']
+      products = products.filter(p =>
+        p.suitable_for_activity != null && allowed.includes(p.suitable_for_activity)
+      )
+    }
 
-    if (error) throw error
+    const page = products.slice(offset, offset + params.limit)
 
     return NextResponse.json({
-      products: data ?? [],
-      total: count ?? 0,
+      products: page,
+      total,
       page: params.page,
-      total_pages: Math.ceil((count ?? 0) / params.limit),
+      total_pages: Math.ceil(total / params.limit),
     })
   } catch (error) {
     return handleApiError(error)

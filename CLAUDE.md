@@ -112,7 +112,7 @@ Homepage Layout (v9.5.0):
   -> How It Works (4 steps)
   -> Why Seoul Sister Exists (3 differentiators)
   -> Social Proof (testimonials)
-  -> Pricing (Seoul Sister Pro — $39.99/mo)
+  -> Pricing (Seoul Sister Pro — $24.99/mo)
   -> Final CTA
   Footer
 ```
@@ -123,7 +123,7 @@ The hero widget includes:
 - 4 quick prompt buttons: "Is my COSRX Snail Mucin real?", "Best serum for glass skin?", "Build me a routine", "Find me a sunscreen dupe"
 - Live input field — visitor can type immediately without scrolling
 - Full SSE streaming with real-time responses
-- After 20 messages: conversion prompt to subscribe ($39.99/mo)
+- After 20 messages: conversion prompt to subscribe ($24.99/mo)
 - Min-height: 520px, max-height: 640px on desktop
 - Component: `TryYuriSection` with `variant="hero"` prop
 
@@ -142,7 +142,7 @@ The hero widget includes:
 ```
 After account creation + Stripe payment:
   -> Redirected to /subscribe (payment gate)
-  -> Stripe Checkout ($39.99/mo Seoul Sister Pro)
+  -> Stripe Checkout ($24.99/mo Seoul Sister Pro)
   -> On success: Yuri onboarding conversation (skin profile, preferences, concerns)
   -> /yuri page with full specialist routing
   -> 6 specialist agents (no message limits)
@@ -161,9 +161,9 @@ After account creation + Stripe payment:
    -> Backed by real product database (5,800+ products)
 4. OR visitor scrolls first, then clicks floating bubble at any point
 5. After 20 preview messages (shared across layers):
-   -> Conversion prompt: "Subscribe — $39.99/mo"
+   -> Conversion prompt: "Subscribe — $24.99/mo"
    -> Highlights: unlimited conversations, skin profile memory, 6 specialists, routine builder
-6. Visitor subscribes ($39.99/mo) -> Yuri onboarding conversation (Layer 3)
+6. Visitor subscribes ($24.99/mo) -> Yuri onboarding conversation (Layer 3)
 ```
 
 #### TryYuriSection Component Architecture
@@ -650,11 +650,15 @@ After 10,000 users, no competitor can replicate the dataset. After 100,000 users
 
 ## Pricing Model
 
-### Single Tier — Seoul Sister Pro ($39.99/mo)
+### Single Tier — Seoul Sister Pro ($24.99/mo)
 
 Seoul Sister is a paid-only platform. There is no free tier. Visitors get 20 free preview messages with Yuri on the landing page hero widget to experience the AI's quality before subscribing.
 
-**Registration Flow**: Register → Stripe Checkout ($39.99/mo) → Yuri onboarding → Full app access (no email verification)
+**The $24.99 price + Yuri-as-orchestrator architecture** (set June 22 2026) is the canonical pricing/positioning decision — see CHANGELOG for the full cost/market/elasticity research. Short version: the true cost to serve a typical sub is **~$1.50–2.75/mo** (grounded in real usage — the heaviest human user peaks at ~$2/mo in Claude tokens; light/bursty usage, near-zero scans). Seoul Sister's true competitive shelf is **teledermatology/Rx-skincare subscriptions** (Curology $19.95, Honeydew $25, Nurx $15–30) — a 24/7 conversational advisor with memory and specialist reasoning, NOT the freemium "scan-build-track" app shelf. $24.99 sits dead-center on that shelf, holds ~90% margin, filters out churn-prone tire-kickers (vs a $9.99 impulse tier), and the documented elasticity curve makes anything ≥$35 net *less* revenue. The single source of truth for the price is **`src/lib/pricing.ts`** (`PRICING` constant) — never hardcode the dollar amount; every UI/prompt/email string derives from it. Changing it is a one-line edit there PLUS a new Stripe Price + `STRIPE_PRICE_PRO_MONTHLY` env update (display price and charged price must not drift).
+
+**Yuri is the single orchestrating star.** The standalone feature pages (Scan, Sunscreen, Glass Skin, Shelf Scan, Dupes) are demoted from front-door nav to surfaces Yuri drives — usage data showed essentially everyone lives in Yuri chat (scans=0, wishlists=0 across all users historically). The Sunscreen Finder and Dupe Finder are now **Yuri tools** (`find_sunscreen_match`, `find_product_dupes`) backed by shared cores in `src/lib/intelligence/{sunscreen-finder,dupe-finder}.ts` (the API routes call the same cores — DRY). They return DATA; Yuri owns the recommendation (Yuri Sole Authority). The nav (`Header.tsx`/`BottomNav.tsx`) leads with Yuri; the demoted pages live under a "More" menu, still reachable. Folding the remaining image features (scan/glass-skin/shelf-scan) into in-chat photo tools is DEFERRED until real users ask (they require in-chat image-upload UI and wrap features with zero current usage).
+
+**Registration Flow**: Register → Stripe Checkout ($24.99/mo) → Yuri onboarding → Full app access (no email verification)
 
 **What Subscribers Get**:
 - Unlimited AI label scanning (Claude Opus 4.8 Vision)
@@ -676,16 +680,20 @@ Seoul Sister is a paid-only platform. There is no free tier. Visitors get 20 fre
 - Real, helpful answers backed by 5,800+ product database
 - No account required, no data stored
 
-### Unit Economics (Pro at $39.99)
+### Unit Economics (Pro at $24.99)
+> NOTE (June 22 2026): the table below is the ORIGINAL conservative estimate that assumed daily scanning. Real usage data shows the true blended cost is **lower** for a typical sub (~$1.50–2.75/mo all-in) — light/bursty Yuri use, near-zero scans (so vision cost ≈ $0), prompt caching active. A heavy daily power-user could reach ~$5–8/mo; even then $24.99 holds ~70%+ margin. Stripe's fixed $0.30/txn is the dominant variable cost at this price. Margin at $24.99 typical: ~90%.
+
 | Item | Cost |
 |------|------|
 | Claude Opus 4.8 API (scans, Yuri, analysis) | ~$1.40/mo avg |
 | Claude Vision (scanning, counterfeit, Opus 4.8) | ~$0.50/mo avg |
 | Supabase (storage, queries, auth) | ~$0.50/mo |
 | Vercel (hosting, functions) | ~$0.25/mo |
-| Stripe processing (2.9% + $0.30) | ~$1.46/mo |
-| **Total variable cost** | **~$4.11/mo** |
-| **Margin per Pro user** | **~$35.88/mo (90%)** |
+| Stripe processing (2.9% + $0.30) | ~$1.02/mo (at $24.99) |
+| **Total variable cost (conservative)** | **~$3.67/mo** |
+| **Margin per Pro user (conservative)** | **~$21.32/mo (85%)** |
+
+Using the realer cost (~$1.50–2.75 all-in for a typical sub), margin at $24.99 is **~$22–23/mo (~90%)**.
 
 ### Secondary Revenue: Affiliate Commissions
 - 5-15% on purchases through affiliate links to Olive Young, Soko Glam, YesStyle, Amazon
@@ -1129,7 +1137,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Current version**: 10.13.4 (Live-test fixes after the conversion funnel was PROVEN end-to-end on the live site June 10 2026 — capture → consent → conversation-grounded Yuri email → Resend Delivered → Reply-To routing all verified with a real test lead. Fixes from the test: widget `max_tokens` 800→1500 [P0 — the cap amputated Yuri mid-word during her conversion ask] + directional Pacing prompt section; capture-slot poisoning fix [Yuri's new `address_is_visitors_own` verdict reopens a slot occupied by a third-party address — explicit-false-only, logged]; GA4 CSP connect-src fix [service-worker fetch of GTM was blocked]; human email voice [LGAAS-adapted two-layer system: VOICE creative-brief in the email prompt + punctuation-only `scrubEmailVoice()` — the email path had bypassed chat's v13.6 voice-cleanup discipline]. Plus v10.13.3/.2 funnel build-out, June 10 2026).
+**Current version**: 11.0.0 (June 22 2026 — Price → **$24.99/mo** + **Yuri-as-orchestrator** repositioning. Research-backed cut from $39.99: true cost to serve a typical sub is ~$1.50–2.75/mo (real usage; heaviest human user peaks ~$2/mo tokens, near-zero scans), the true competitive shelf is teledermatology/Rx-skincare subs ($20–25, e.g. Curology $19.95 / Honeydew $25), and documented elasticity makes anything ≥$35 net LESS revenue. $24.99 is the revenue peak + a tire-kicker filter. Sunscreen + Dupe finders folded into Yuri tools (shared cores, DRY, Yuri Sole Authority encoded in the tool payloads); nav collapsed to a Yuri-centric shell with dead/folded pages demoted to "More"; hero+pricing copy repositioned to "your K-beauty expert, on call 24/7" (openly AI, no credential claim). Price centralized to `src/lib/pricing.ts`. Caps → feel-unlimited. Gates: ship-guard + ai-first-guard + ai-first-check all PASS; tsc + build clean. Scott's one manual step: create the $24.99 Stripe Price + update `STRIPE_PRICE_PRO_MONTHLY`. Prior: 10.13.4 — Live-test fixes after the conversion funnel was PROVEN end-to-end on the live site June 10 2026 — capture → consent → conversation-grounded Yuri email → Resend Delivered → Reply-To routing all verified with a real test lead. Fixes from the test: widget `max_tokens` 800→1500 [P0 — the cap amputated Yuri mid-word during her conversion ask] + directional Pacing prompt section; capture-slot poisoning fix [Yuri's new `address_is_visitors_own` verdict reopens a slot occupied by a third-party address — explicit-false-only, logged]; GA4 CSP connect-src fix [service-worker fetch of GTM was blocked]; human email voice [LGAAS-adapted two-layer system: VOICE creative-brief in the email prompt + punctuation-only `scrubEmailVoice()` — the email path had bypassed chat's v13.6 voice-cleanup discipline]. Plus v10.13.3/.2 funnel build-out, June 10 2026).
 **AI Advisor**: Yuri (유리) — "Glass"
 
 **Full version history**: See `CHANGELOG.md` (repo root). The detailed, dated changelog — every version from v3.0.0 through the current release — lives there, not in this file. Per the project's documentation standard: CLAUDE.md is for current architecture and how the system works NOW; CHANGELOG.md is for what changed and when. When shipping a feature, update the relevant architecture section here and put the detailed entry in CHANGELOG.md.

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, Check, Sparkles, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { PRICING } from '@/lib/pricing'
 
 function PasswordStrengthBar({ password }: { password: string }) {
   const checks = [
@@ -273,7 +274,7 @@ export default function RegisterPage() {
 
         {/* Subscription note */}
         <p className="text-xs text-center text-white/30 mt-4">
-          Subscription required after account creation. $39.99/month.
+          Subscription required after account creation. {PRICING.monthly_display_long}.
         </p>
 
         {/* Divider */}

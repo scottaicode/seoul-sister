@@ -363,7 +363,7 @@ export default function YuriPage() {
         {usage?.yuri_at_limit ? (
           <div className="px-4 py-4 bg-white/5 border-t border-white/10 text-center">
             <p className="text-sm text-white/60 mb-1">
-              You&apos;ve used all 500 Yuri messages this month.
+              You&apos;ve hit an unusually high number of messages this month.
             </p>
             <p className="text-xs text-white/30">
               Your messages reset on your next billing cycle. Product browsing, community, and trending remain available.

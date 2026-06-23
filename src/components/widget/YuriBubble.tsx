@@ -16,6 +16,7 @@ import {
 } from '@/lib/utils/widget-session'
 import { renderMarkdown, parseWidgetStream } from '@/lib/utils/widget-shared'
 import type { WidgetMessage } from '@/lib/utils/widget-shared'
+import { PRICING } from '@/lib/pricing'
 
 const SESSION_MESSAGES_KEY = 'yuri_widget_messages'
 
@@ -365,7 +366,7 @@ export default function YuriBubble() {
                     href="/register?plan=pro_monthly"
                     className="inline-block glass-button-primary text-xs py-2 px-5"
                   >
-                    Subscribe — $39.99/mo
+                    Subscribe — {PRICING.monthly_display}
                   </a>
                 </div>
               )}
