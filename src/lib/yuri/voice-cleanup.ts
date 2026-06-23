@@ -30,10 +30,25 @@ const BANNED_PATTERNS: CleanupRule[] = [
   { pattern: /^What a great question!\s*/i, replacement: '' },
   { pattern: /^That's an excellent question!\s*/i, replacement: '' },
 
-  // Limitation disclaimers — Yuri should state what she CAN do, not lead with can't
-  { pattern: /^So I can't [^.]+, but /i, replacement: '' },
-  { pattern: /^I can't [^.]+, but /i, replacement: '' },
-  { pattern: /^Unfortunately,? I (?:can't|don't have|am not able to) [^.]+, but /i, replacement: '' },
+  // Limitation disclaimers — Yuri should state what she CAN do, not lead with
+  // an "I can't help, but..." hedge preamble.
+  //
+  // IMPORTANT: these are scoped to ACTUAL capability hedges (can't help / do
+  // that / answer that / give you that), NOT any "I can't X, but Y." The old
+  // patterns used `[^.]+, but ` which greedily ate a whole legitimate first
+  // sentence — e.g. Yuri's real, honest "So I can't promise a truly clear one,
+  // but almost every no-cast SPF is tinted..." got its entire opening clause
+  // deleted, leaving the response starting with an orphaned "., almost every..."
+  // (Scott caught this live, Jun 23 2026). Stripping honest "I can't promise X"
+  // content is both a visible bug AND an honesty-moat violation. Keep the strip
+  // narrow: only true "I can't assist" preambles, bounded so they can't span a
+  // real sentence.
+  { pattern: /^(?:So,?\s*)?(?:Unfortunately,?\s*)?I (?:can't|cannot|am not able to|don't have a way to) (?:help (?:you )?with that|do that|answer that|give you that)(?: (?:directly|specifically|right now|here))?, but /i, replacement: '' },
+
+  // Safety net: if any upstream strip leaves an orphaned leading punctuation
+  // fragment (". ," or "., " or ", "), clean it so a response never opens mid-
+  // punctuation. Capitalize the new first letter.
+  { pattern: /^[\s]*[.,;:]+\s*/, replacement: '' },
 
   // Conversational filler openers (not caught by the "Great question" set)
   { pattern: /^Ha,?\s+/i, replacement: '' },
