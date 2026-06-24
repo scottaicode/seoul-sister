@@ -21,6 +21,9 @@ interface OpenMeteoResponse {
     weather_code: number
     uv_index: number
   }
+  daily?: {
+    uv_index_max?: number[]
+  }
   current_units: Record<string, string>
 }
 
@@ -61,6 +64,12 @@ export async function fetchWeather(
     `latitude=${lat}`,
     `longitude=${lng}`,
     'current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,uv_index',
+    // Daily peak UV — this is what consumer weather apps (Apple, etc.) display.
+    // The current-moment uv_index is cloud-adjusted and reads lower mid-morning,
+    // which made our number look "wrong" next to a user's phone (Bailey, Jun 24).
+    'daily=uv_index_max',
+    'timezone=auto',
+    'forecast_days=1',
     'wind_speed_unit=ms',
   ].join('&')
 
@@ -101,11 +110,17 @@ export async function fetchWeather(
 
   const wmo = WMO_CODES[c.weather_code] ?? { description: 'Unknown', icon: 'clear' }
 
+  // Display the day's PEAK UV (what phone weather apps show) rather than the
+  // cloud-adjusted current-moment value, which reads lower and looked wrong
+  // next to a user's iPhone. Fall back to the current value if daily is absent.
+  const dailyPeakUv = data.daily?.uv_index_max?.[0]
+  const displayUv = typeof dailyPeakUv === 'number' ? dailyPeakUv : c.uv_index
+
   return {
     temperature: Math.round(c.temperature_2m),
     feels_like: Math.round(c.apparent_temperature),
     humidity: c.relative_humidity_2m,
-    uv_index: Math.round(c.uv_index * 10) / 10,
+    uv_index: Math.round(displayUv * 10) / 10,
     wind_speed: Math.round(c.wind_speed_10m * 10) / 10,
     condition: wmo.description,
     icon: wmo.icon,
