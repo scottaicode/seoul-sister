@@ -211,7 +211,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
           <p className="text-sm font-semibold text-white">
             Yuri <span className="text-gold">(유리)</span>
           </p>
-          <p className="text-xs text-white/40">K-Beauty AI Advisor — ask me anything</p>
+          <p className="text-xs text-white/40">K-Beauty AI Advisor. Ask me anything.</p>
         </div>
         <span className="badge-gold text-[10px] animate-pulse-soft">Live</span>
       </div>
@@ -232,7 +232,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                   <Sparkles className="w-3 h-3 text-gold" />
                   <p className="font-semibold text-gold">Yuri</p>
                 </div>
-                Great question! Here&apos;s what to check: 1) The holographic sticker on the box should shift colors when tilted — fakes often have a static print. 2) Real COSRX has a subtle honey-like scent, not fragrance-free. 3) Check the batch code on the bottom — I can verify it if you share a photo. Amazon has had counterfeit issues with this product specifically. Want me to walk you through a full authenticity check?
+                Great question! Here&apos;s what to check: 1) The holographic sticker on the box should shift colors when tilted. Fakes often have a static print. 2) Real COSRX has a subtle honey-like scent, not fragrance-free. 3) Check the batch code on the bottom. I can verify it if you share a photo. Amazon has had counterfeit issues with this product specifically. Want me to walk you through a full authenticity check?
               </div>
             </div>
 
@@ -307,7 +307,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                   href="/register?plan=pro_monthly"
                   className="inline-flex items-center gap-1.5 glass-button-primary text-xs py-2 px-5"
                 >
-                  Subscribe — {PRICING.monthly_display} <ArrowRight className="w-3 h-3" />
+                  Subscribe at {PRICING.monthly_display}/mo <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
             )}
@@ -394,7 +394,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             Try Yuri <span className="text-gold">(유리)</span>
           </h2>
           <p className="section-subheading mx-auto">
-            Ask her anything about Korean skincare — no signup required.
+            Ask her anything about Korean skincare. No signup required.
           </p>
         </motion.div>
 

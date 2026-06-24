@@ -25,17 +25,17 @@ const stagger = {
 
 const coreFeatures = [
   { icon: Camera, title: 'Korean Label Decoder', desc: 'Point your camera at any Korean label for instant ingredient translation, safety scoring, and personalized skin match.' },
-  { icon: Sparkles, title: 'AI Beauty Advisor', desc: 'Yuri — your personal AI advisor backed by 6 specialist agents, cross-session memory, and your full skin profile.' },
+  { icon: Sparkles, title: 'AI Beauty Advisor', desc: 'Yuri is your personal AI advisor backed by 6 specialist agents, cross-session memory, and your full skin profile.' },
   { icon: ListOrdered, title: 'Smart Routine Builder', desc: 'AI-generated routines with ingredient conflict detection, layering order, wait times, and skin cycling schedules.' },
   { icon: ShieldCheck, title: 'Counterfeit Detection', desc: 'Spot fakes before you buy with AI-powered packaging analysis, batch code verification, and crowdsourced signals.' },
-  { icon: Search, title: 'Price Comparison', desc: 'Compare prices across Korea and US retailers — YesStyle, Soko Glam, Olive Young, Amazon, and more.' },
-  { icon: Users, title: 'Community Reviews', desc: 'Reviews filtered by skin type, Fitzpatrick scale, age, and concern — not just star ratings.' },
+  { icon: Search, title: 'Price Comparison', desc: 'Compare prices across Korea and US retailers: YesStyle, Soko Glam, Olive Young, Amazon, and more.' },
+  { icon: Users, title: 'Community Reviews', desc: 'Reviews filtered by skin type, Fitzpatrick scale, age, and concern. Not just star ratings.' },
 ]
 
 const advancedFeatures = [
   { icon: FlaskConical, title: 'Glass Skin Score', desc: 'AI photo analysis scores your skin across 5 dimensions. Track progress over time and share your results.', badge: 'Viral' },
   { icon: DollarSign, title: 'K-Beauty Dupe Finder', desc: 'Find $12 alternatives to $94 products. Ingredient-level matching shows exactly where the overlap is.', badge: 'Popular' },
-  { icon: Sun, title: 'Sunscreen Finder', desc: 'Filter by PA rating, white cast, finish, under-makeup compatibility — every detail K-beauty sunscreen lovers need.', badge: 'High Intent' },
+  { icon: Sun, title: 'Sunscreen Finder', desc: 'Filter by PA rating, white cast, finish, and under-makeup compatibility. Every detail K-beauty sunscreen lovers need.', badge: 'High Intent' },
   { icon: Package, title: 'Shelf Scan', desc: 'Photograph your entire collection. Get a routine grade, redundancy alerts, gap analysis, and estimated value.', badge: 'Unique' },
   { icon: Filter, title: 'Ingredient Filters', desc: 'Search 5,800+ products by ingredients you want and ingredients you avoid. Fragrance-free and low-comedogenic shortcuts built in.', badge: 'Power User' },
   { icon: Timer, title: 'Expiration Tracking', desc: 'Track when you opened each product. Get alerts before they expire. No more guessing if that serum is still good.', badge: 'Unique' },
@@ -44,12 +44,12 @@ const advancedFeatures = [
 ]
 
 const specialists = [
-  { icon: FlaskConical, name: 'Ingredient Analyst', desc: 'Deep ingredient science — safety ratings, comedogenic scores, interaction warnings, and INCI translation.' },
+  { icon: FlaskConical, name: 'Ingredient Analyst', desc: 'Deep ingredient science: safety ratings, comedogenic scores, interaction warnings, and INCI translation.' },
   { icon: Layers, name: 'Routine Architect', desc: 'Builds personalized AM/PM routines with Korean layering order, wait times, and skin cycling schedules.' },
   { icon: ShieldCheck, name: 'Authenticity Investigator', desc: 'Spots counterfeits through packaging analysis, batch codes, seller reputation, and crowdsourced signals.' },
   { icon: TrendingUp, name: 'Trend Scout', desc: 'Live Olive Young bestseller data and Reddit K-beauty mentions. Identifies products trending in Korea before they hit the US.' },
   { icon: PiggyBank, name: 'Budget Optimizer', desc: 'Finds ingredient-matched dupes at a fraction of the price. Same key actives, dramatically lower cost.' },
-  { icon: HeartPulse, name: 'Sensitivity Guardian', desc: 'Allergy and reaction prevention — flags irritants, cross-references your history, and protects sensitive skin.' },
+  { icon: HeartPulse, name: 'Sensitivity Guardian', desc: 'Allergy and reaction prevention. Flags irritants, cross-references your history, and protects sensitive skin.' },
 ]
 
 const steps = [
@@ -173,7 +173,7 @@ export default function LandingPage() {
           {/* Left — Value Proposition */}
           <motion.div variants={stagger} initial="hidden" animate="show" className="pt-4 lg:pt-8">
             <motion.div variants={fadeUp}>
-              <span className="badge-gold mb-4 inline-block">Your Korean Skincare Advisor — On Call 24/7</span>
+              <span className="badge-gold mb-4 inline-block">Your Korean Skincare Advisor, On Call 24/7</span>
             </motion.div>
             <motion.h1 variants={fadeUp} className="font-display font-bold text-3xl md:text-5xl lg:text-5xl text-white leading-tight mb-5">
               Your K-Beauty Expert,
@@ -181,7 +181,7 @@ export default function LandingPage() {
               <span className="text-gradient">On Call 24/7</span>
             </motion.h1>
             <motion.p variants={fadeUp} className="text-white/50 text-base md:text-lg max-w-lg mb-8 leading-relaxed">
-              Meet Yuri — she reads your Korean labels, builds your routine, catches ingredient conflicts before they reach your face, and remembers your skin between every chat. Like texting a friend who happens to work in a Seoul skincare lab. She&apos;s ready now.
+              Meet Yuri. She reads your Korean labels, builds your routine, catches ingredient conflicts before they reach your face, and remembers your skin between every chat. Like texting a friend who happens to work in a Seoul skincare lab. She&apos;s ready now.
             </motion.p>
 
             {/* Quick stats row */}
@@ -242,7 +242,7 @@ export default function LandingPage() {
           <div className="text-center mb-12">
             <span className="badge-gold mb-3 inline-block">Core Intelligence</span>
             <h2 className="section-heading mb-3">The Foundation of Smarter Skincare</h2>
-            <p className="section-subheading mx-auto">Six AI-powered pillars — from label to routine to community.</p>
+            <p className="section-subheading mx-auto">Six AI-powered pillars: from label to routine to community.</p>
           </div>
           <motion.div
             variants={stagger}
@@ -305,7 +305,7 @@ export default function LandingPage() {
           <div className="text-center mb-12">
             <span className="badge-gold mb-3 inline-block">Meet the Team</span>
             <h2 className="section-heading mb-3">6 Specialist AI Agents. One Advisor.</h2>
-            <p className="section-subheading mx-auto">Yuri routes every question to the right specialist — each with deep domain expertise in Korean beauty.</p>
+            <p className="section-subheading mx-auto">Yuri routes every question to the right specialist, each with deep domain expertise in Korean beauty.</p>
           </div>
           <motion.div
             variants={stagger}
@@ -331,7 +331,7 @@ export default function LandingPage() {
             ))}
           </motion.div>
           <div className="text-center mt-8">
-            <p className="text-white/30 text-sm">All specialists report to <span className="text-gold/70 font-medium">Yuri</span> — your personal AI beauty advisor who knows your skin profile, history, and preferences.</p>
+            <p className="text-white/30 text-sm">All specialists report to <span className="text-gold/70 font-medium">Yuri</span>, your personal AI beauty advisor who knows your skin profile, history, and preferences.</p>
           </div>
         </div>
       </section>
@@ -369,7 +369,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="section-heading mb-3">Why Seoul Sister Exists</h2>
-            <p className="section-subheading mx-auto">Korean consumers have deep skincare intelligence — ingredient analysis, safety ratings, millions of reviews filtered by skin type. English speakers have nothing equivalent. Until now.</p>
+            <p className="section-subheading mx-auto">Korean consumers have deep skincare intelligence: ingredient analysis, safety ratings, millions of reviews filtered by skin type. English speakers have nothing equivalent. Until now.</p>
           </div>
           <motion.div
             variants={stagger}
@@ -387,7 +387,7 @@ export default function LandingPage() {
               {
                 icon: BookOpen,
                 title: 'Learning Engine',
-                desc: 'Every scan, review, and routine adjustment teaches the system. Recommendations improve as the community grows — a dataset no competitor can replicate.',
+                desc: 'Every scan, review, and routine adjustment teaches the system. Recommendations improve as the community grows. A dataset no competitor can replicate.',
               },
               {
                 icon: TrendingUp,

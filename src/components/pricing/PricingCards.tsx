@@ -64,7 +64,7 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
           <p className="text-4xl font-bold text-white">${tier.price}</p>
           <span className="text-base font-normal text-white/40">/month</span>
         </div>
-        <p className="text-xs text-white/40 mb-1">Less than a single skin consult — unlimited, and she never closes.</p>
+        <p className="text-xs text-white/40 mb-1">Less than a single skin consult. Unlimited conversations, and she never closes.</p>
         <p className="text-xs text-white/40 mb-6">Cancel anytime. No commitment.</p>
 
         <ul className="space-y-3 mb-8">
