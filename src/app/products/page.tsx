@@ -7,15 +7,15 @@ import { proxyImageUrl } from '@/lib/utils/image-proxy'
 import { PRICING } from '@/lib/pricing'
 
 export const metadata: Metadata = {
-  title: 'K-Beauty Product Database | 5,800+ Korean Skincare Products',
+  title: 'K-Beauty Product Database | 5,900+ Korean Skincare Products',
   description:
-    'Browse 5,800+ Korean skincare products with ingredient analysis, safety ratings, and price comparison. Find the perfect K-beauty products for your skin type.',
+    'Browse 5,900+ Korean skincare products with ingredient analysis, safety ratings, and price comparison. Find the perfect K-beauty products for your skin type.',
   robots: { index: true, follow: true },
   alternates: { canonical: 'https://www.seoulsister.com/products' },
   openGraph: {
     title: 'K-Beauty Product Database | Seoul Sister',
     description:
-      'Browse 5,800+ Korean skincare products with ingredient analysis, safety ratings, and price comparison.',
+      'Browse 5,900+ Korean skincare products with ingredient analysis, safety ratings, and price comparison.',
     type: 'website',
     url: 'https://www.seoulsister.com/products',
   },
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'K-Beauty Product Database | Seoul Sister',
     description:
-      'Browse 5,800+ Korean skincare products with ingredient analysis, safety ratings, and price comparison.',
+      'Browse 5,900+ Korean skincare products with ingredient analysis, safety ratings, and price comparison.',
   },
 }
 
@@ -87,7 +87,7 @@ export default async function ProductsPage() {
     ),
   ])
 
-  const totalCount = countRes.count || 5800
+  const totalCount = countRes.count || 5900
   const featured = featuredRes.data || []
 
   // Map category counts from parallel queries
@@ -105,7 +105,7 @@ export default async function ProductsPage() {
         '@id': 'https://www.seoulsister.com/products#collection',
         name: 'K-Beauty Product Database',
         description:
-          'Browse 5,800+ Korean skincare products with ingredient analysis, safety ratings, and price comparison.',
+          'Browse 5,900+ Korean skincare products with ingredient analysis, safety ratings, and price comparison.',
         url: 'https://www.seoulsister.com/products',
         isPartOf: {
           '@type': 'WebSite',

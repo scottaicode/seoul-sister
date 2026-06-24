@@ -123,7 +123,7 @@ export default function LazyImage({
 
   // When the image fails to load AND a fallback is provided, render the
   // fallback in place of the broken-image glyph. Stale CDN hot-links are
-  // common across the 5,800+ catalog (Olive Young, Soko Glam, etc.), and
+  // common across the 5,900+ catalog (Olive Young, Soko Glam, etc.), and
   // without an onError handler the browser shows the "?" / broken-image
   // icon Bailey complained about on every Library card.
   if (errored && fallback) {

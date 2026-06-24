@@ -260,8 +260,8 @@ export default async function PublicProductPage({ params }: Props) {
           ? `The key active ingredients in ${product.name_en} by ${product.brand_en} include ${activeIngredients
               .slice(0, 5)
               .map((i) => `${i.ingredient?.name_en || i.ingredient?.name_inci}${i.ingredient?.function ? ` (${i.ingredient.function})` : ''}`)
-              .join(', ')}.${effectivenessSummary} Seoul Sister tracks ingredient effectiveness across 5,800+ K-beauty products to provide data-backed recommendations.`
-          : `${product.name_en} is a ${categoryLabel.toLowerCase()} by ${product.brand_en}. Subscribe to Seoul Sister for full ingredient analysis across our database of 5,800+ K-beauty products.`,
+              .join(', ')}.${effectivenessSummary} Seoul Sister tracks ingredient effectiveness across 5,900+ K-beauty products to provide data-backed recommendations.`
+          : `${product.name_en} is a ${categoryLabel.toLowerCase()} by ${product.brand_en}. Subscribe to Seoul Sister for full ingredient analysis across our database of 5,900+ K-beauty products.`,
       },
     },
     {

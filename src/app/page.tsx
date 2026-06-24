@@ -37,7 +37,7 @@ const advancedFeatures = [
   { icon: DollarSign, title: 'K-Beauty Dupe Finder', desc: 'Find $12 alternatives to $94 products. Ingredient-level matching shows exactly where the overlap is.', badge: 'Popular' },
   { icon: Sun, title: 'Sunscreen Finder', desc: 'Filter by PA rating, white cast, finish, and under-makeup compatibility. Every detail K-beauty sunscreen lovers need.', badge: 'High Intent' },
   { icon: Package, title: 'Shelf Scan', desc: 'Photograph your entire collection. Get a routine grade, redundancy alerts, gap analysis, and estimated value.', badge: 'Unique' },
-  { icon: Filter, title: 'Ingredient Filters', desc: 'Search 5,800+ products by ingredients you want and ingredients you avoid. Fragrance-free and low-comedogenic shortcuts built in.', badge: 'Power User' },
+  { icon: Filter, title: 'Ingredient Filters', desc: 'Search 5,900+ products by ingredients you want and ingredients you avoid. Fragrance-free and low-comedogenic shortcuts built in.', badge: 'Power User' },
   { icon: Timer, title: 'Expiration Tracking', desc: 'Track when you opened each product. Get alerts before they expire. No more guessing if that serum is still good.', badge: 'Unique' },
   { icon: CloudSun, title: 'Weather-Adaptive Alerts', desc: 'Real-time weather data adjusts your routine. High humidity? Skip the oil. UV spike? Reapply sunscreen reminder.', badge: 'Proactive' },
   { icon: Activity, title: 'Cycle-Aware Routine', desc: 'Opt-in hormonal cycle tracking adjusts your skincare by phase. Luteal breakouts get BHA, not just moisturizer.', badge: 'Unique' },
@@ -53,7 +53,7 @@ const specialists = [
 ]
 
 const steps = [
-  { icon: ScanLine, step: '01', title: 'Scan or Search', desc: 'Camera scan a Korean label or search 5,800+ products across 550+ brands.' },
+  { icon: ScanLine, step: '01', title: 'Scan or Search', desc: 'Camera scan a Korean label or search 5,900+ products across 575+ brands.' },
   { icon: Brain, step: '02', title: 'Get AI Intelligence', desc: 'Yuri and 6 specialist agents decode ingredients, flag conflicts, check authenticity, and compare prices.' },
   { icon: ListOrdered, step: '03', title: 'Build Your Routine', desc: 'Add to your personalized routine with conflict detection, layering order, wait times, and skin cycling.' },
   { icon: Heart, step: '04', title: 'Track and Improve', desc: 'Monitor your Glass Skin Score, track product expiry, get weather alerts, and discover dupes.' },
@@ -170,10 +170,10 @@ export default function LandingPage() {
             {/* Quick stats row */}
             <motion.div variants={fadeUp} className="grid grid-cols-2 gap-3 mb-8 max-w-sm">
               {[
-                { value: '5,800+', label: 'Products' },
-                { value: '14,400+', label: 'Ingredients' },
+                { value: '5,900+', label: 'Products' },
+                { value: '14,900+', label: 'Ingredients' },
                 { value: '6', label: 'AI Specialists' },
-                { value: '550+', label: 'Brands' },
+                { value: '575+', label: 'Brands' },
               ].map(({ value, label }) => (
                 <div key={label} className="dark-card p-3 text-center">
                   <p className="text-lg font-bold text-gradient">{value}</p>
@@ -192,7 +192,7 @@ export default function LandingPage() {
             </motion.div>
 
             <motion.p variants={fadeUp} className="text-xs text-white/30 mt-4">
-              Try Yuri free — 20 preview messages, no signup required.
+              Try Yuri free. 20 preview messages, no signup required.
             </motion.p>
           </motion.div>
 
@@ -365,7 +365,7 @@ export default function LandingPage() {
               {
                 icon: Beaker,
                 title: 'Ingredient-Level Intelligence',
-                desc: '14,400+ ingredients decoded with safety ratings, comedogenic scores, and function explanations. Every product analyzed down to the INCI list.',
+                desc: '14,900+ ingredients decoded with safety ratings, comedogenic scores, and function explanations. Every product analyzed down to the INCI list.',
               },
               {
                 icon: BookOpen,
@@ -394,7 +394,7 @@ export default function LandingPage() {
       <section className="py-20 px-4 bg-seoul-dark">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="section-heading mb-3">Trusted by K-Beauty Enthusiasts</h2>
+            <h2 className="section-heading mb-3">What Early Users Are Saying</h2>
             <p className="section-subheading mx-auto">The intelligence platform built for ingredient-literate skincare lovers.</p>
           </div>
 
@@ -458,7 +458,7 @@ export default function LandingPage() {
           >
             Start Your Journey <ArrowRight className="w-4 h-4" />
           </Link>
-          <p className="text-xs text-white/30 mt-4">Try Yuri free — 20 preview messages, no signup required.</p>
+          <p className="text-xs text-white/30 mt-4">Try Yuri free. 20 preview messages, no signup required.</p>
         </motion.div>
       </section>
 
