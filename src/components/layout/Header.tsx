@@ -280,9 +280,13 @@ export default function Header() {
             onClick={() => setMobileMenuOpen(false)}
           />
 
-          {/* Menu panel */}
+          {/* Menu panel — max-h + overflow lets it scroll; the extra pb-24
+              clears the fixed BottomNav (z-50, bottom-0) so the LAST items
+              (Community / Sign Out) aren't hidden underneath it. Without that
+              padding the panel scrolled but its tail rendered behind the nav
+              bar — the exact "can't scroll to Community" bug Bailey reported. */}
           <div className="absolute top-16 left-0 right-0 bg-seoul-card/95 backdrop-blur-lg border-b border-white/10 animate-slide-down max-h-[calc(100vh-4rem)] overflow-y-auto">
-            <nav className="flex flex-col py-4 px-4 gap-1">
+            <nav className="flex flex-col py-4 px-4 gap-1 pb-24">
               {user?.email && (
                 <div className="px-4 py-2 mb-1 border-b border-white/10">
                   <p className="text-[10px] text-white/30 uppercase tracking-wider mb-0.5">Signed in as</p>
