@@ -281,7 +281,7 @@ export default function Header() {
           />
 
           {/* Menu panel */}
-          <div className="absolute top-16 left-0 right-0 bg-seoul-card/95 backdrop-blur-lg border-b border-white/10 animate-slide-down">
+          <div className="absolute top-16 left-0 right-0 bg-seoul-card/95 backdrop-blur-lg border-b border-white/10 animate-slide-down max-h-[calc(100vh-4rem)] overflow-y-auto">
             <nav className="flex flex-col py-4 px-4 gap-1">
               {user?.email && (
                 <div className="px-4 py-2 mb-1 border-b border-white/10">

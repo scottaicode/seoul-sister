@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Users, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
+import { Users, ChevronDown, ChevronUp, Loader2, PenLine } from 'lucide-react'
 import ReviewCard from '@/components/community/ReviewCard'
 import ReviewFilters from '@/components/community/ReviewFilters'
 import PointsBadge from '@/components/community/PointsBadge'
 import CommunityInsights from '@/components/community/CommunityInsights'
 import type { ProductEffectivenessMap } from '@/components/community/CommunityInsights'
 import EmptyState from '@/components/ui/EmptyState'
+import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 import type { Review } from '@/types/database'
 
@@ -96,13 +97,22 @@ export default function CommunityPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col gap-1">
-        <h1 className="font-display font-semibold text-2xl text-white section-heading">
-          Community
-        </h1>
-        <p className="text-white/40 text-sm">
-          Reviews filtered by skin type, Fitzpatrick scale, and concern. Find people like you.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="font-display font-semibold text-2xl text-white section-heading">
+            Community
+          </h1>
+          <p className="text-white/40 text-sm">
+            Reviews filtered by skin type, Fitzpatrick scale, and concern. Find people like you.
+          </p>
+        </div>
+        <Link
+          href="/browse"
+          className="flex items-center gap-1.5 flex-shrink-0 px-3 py-2 rounded-xl bg-gold/15 text-gold hover:bg-gold/25 transition-colors text-sm font-medium"
+        >
+          <PenLine className="w-4 h-4" />
+          Add Review
+        </Link>
       </div>
 
       {/* Points badge */}

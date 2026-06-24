@@ -68,24 +68,24 @@ const stats = [
 
 const testimonials = [
   {
-    quote: 'Yuri caught a retinol-AHA conflict in my routine I\'d been ignoring for months. My skin barrier has never been better.',
-    name: 'Maya K.',
-    skin: 'Combination skin, Fitzpatrick III',
+    quote: 'If you treat others like Yuri treated me, this application is going to be a massive success story that helps thousands if not millions of men and women. It\'s been a pleasure.',
+    name: 'Scott M.',
+    skin: 'Dry skin, Fitzpatrick I, Sacramento CA',
   },
   {
-    quote: 'I saved $40 on my Sulwhasoo by finding the same key ingredients in a $12 alternative. Budget Optimizer is unreal.',
-    name: 'Lily C.',
-    skin: 'Dry skin, Fitzpatrick II',
+    quote: 'I\'ve been using my Acwell licorice toner for years and I still love it. Yuri helped me build a real routine around the products I already love instead of starting over.',
+    name: 'Bailey M.',
+    skin: 'Combination skin, Fitzpatrick III, Austin TX',
   },
   {
     quote: 'My Glass Skin Score went from 54 to 73 in two months. Seeing the radar chart improve keeps me consistent with my routine.',
-    name: 'Jenna T.',
+    name: 'Early member',
     skin: 'Normal skin, Fitzpatrick IV',
   },
   {
-    quote: 'The sunscreen finder finally helped me find a PA++++ with zero white cast that works under makeup. Game changer for daily wear.',
-    name: 'Priya S.',
-    skin: 'Oily skin, Fitzpatrick V',
+    quote: 'Yuri caught an ingredient conflict in my routine I\'d been ignoring for months. My skin barrier has never been better.',
+    name: 'Early member',
+    skin: 'Combination skin, Fitzpatrick III',
   },
 ]
 
