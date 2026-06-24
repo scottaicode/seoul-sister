@@ -506,12 +506,7 @@ export default function LandingPage() {
             <Link href="/support" className="hover:text-gold transition-colors">Support</Link>
           </div>
         </div>
-        <div className="flex justify-center mt-8 mb-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <a href="https://theresanaiforthat.com/ai/seoul-sister-k-beauty-intelligence/?ref=featured&amp;v=11410653" target="_blank" rel="nofollow">
-            <img width="300" src="https://media.theresanaiforthat.com/featured-on-taaft.png?width=600" alt="Featured on There's An AI For That" />
-          </a>
-        </div>
+        <div className="flex justify-center mt-8 mb-4" dangerouslySetInnerHTML={{__html: `<a href="https://theresanaiforthat.com/ai/seoul-sister-k-beauty-intelligence/?ref=featured&v=11410653" target="_blank" rel="nofollow"><img width="300" src="https://media.theresanaiforthat.com/featured-on-taaft.png?width=600" alt="Featured on There's An AI For That" /></a>`}} />
 
         <p className="text-center text-xs text-white/20 mt-4">&copy; 2026 Seoul Sister. All rights reserved.</p>
       </footer>
