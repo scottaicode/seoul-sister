@@ -55,6 +55,33 @@
 
 ---
 
+## 3B. THE SCRIPT (v2 — PUNCHED-UP, CANONICAL — record this)
+
+> Locked Jun 19 2026 after mining Bailey's real 358 messages (user `551569d3…`) + her real Glass Skin Score data (48 → 62, +14, Feb 25 → May 29). v2 adds stakes + a relief/transformation beat + the real measured proof + an honest identity close. v1 was "competent"; v2 is "must-have." Every added line is grounded in what really happened — no inflated claims, no medical claims (Yuri is an honest AI advisor, never "dermatologist-level"). New/changed beats marked ★.
+
+| # | Visual | Audio / On-screen | Source |
+|---|--------|-------------------|--------|
+| 1 | Black + kinetic text | **VO:** "You found it on TikTok. The reviews are in Korean. You're not even sure it's real… and the last dupe broke you out." | v1 |
+| ★1b | Black, one more kinetic line | **VO:** "You've spent hundreds. Tried everything. Still standing at the mirror, guessing." | Bailey's real words¹ |
+| 2 | Yuri avatar | **YURI:** "Hi, I'm Yuri." | v1 |
+| 3 | Chat: photo skin-read (scene-A) | **VO:** "She's not an influencer. She's read every ingredient list — all fourteen thousand of them." | v1 + the real number |
+| 4 | Chat: buy-less (scene-B) | **★ Text card:** "She'll tell you to buy *less*." | honesty hook |
+| ★4b | Chat scrolling back through months | **VO:** "Then someone finally knew your skin. Remembered every product. Every reaction. For months." | the moat / her real arc |
+| 5 | Chat: cycle (scene-C) | **VO:** "She knows your skin. Your routine. Your cycle." | v1 |
+| 6 | Chat: counterfeit (scene-D) | **VO:** "And she'll tell you the truth. She'll even talk you out of a sale." | v1 honesty beat, re-voiced² |
+| ★7 | Quote card | **Text:** *"I've invested so much over the years… now I just stick with what's actually working."* — a real subscriber, 4 months in | Bailey's real words¹ |
+| ★7b | Score reveal (scene-E proof) | **Text:** "Glass Skin Score: **48 → 62** in 4 months." | her real measured data ✅ |
+| 8 | Yuri avatar | **YURI:** "Korean skincare… finally making sense. Come ask me. I've got you." | v1 |
+| ★8b | End card | **VO/Text:** "The expertise of fourteen thousand ingredient lists — in your pocket, 24/7." | honest alt to "dermatologist" |
+| 9 | End card | seoulsister.com | v1 |
+
+¹ Bailey's actual message: *"I have invested a lot throughout the years trying different products… want to slow down now and just stick with the products I love and see changing my skin."* Tightened for screen; meaning preserved. Used as words only, attributed to "a real subscriber" — never her name or face.
+² The v1 line "even when it costs her a sale" was corporate/abstract; replaced with the punchier honest hook. Yuri genuinely steers users away from purchases that won't help them (buy-less) and won't vouch for unverified sellers. (Note: Seoul Sister earns affiliate commission, not product margin, so "her sale" is a fair compression of the real behavior, not a literal P&L claim.)
+
+**CLAIMS GUARDRAIL (applies to this and every future video):** Yuri is an honest AI *intelligence* advisor — never a clinician. NEVER claim or imply "dermatologist-level," "medical," diagnosis, or harm-prevention equivalence. Allowed because true + specific: "reads 14,000+ ingredient lists," "flags ingredient conflicts," "knows your routine for months," "24/7." Excitement comes from *dramatizing the real* (Bailey's lived 4-month arc), never from inflating it. If a claim can't be pointed back to Bailey's real conversations or the product's actual function, it does not ship.
+
+---
+
 ## 4. HEYGEN vs SCREEN-RECORDING — what gets made how
 
 **This is a HYBRID. HeyGen is one ingredient, not the whole video.**

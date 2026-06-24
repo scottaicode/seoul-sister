@@ -49,19 +49,19 @@
   .user {
     align-self:flex-end; max-width:80%;
     background:#C2A06E; color:#1a1208;       /* softened muted tan */
-    padding:12px 16px; font-size:15px; line-height:1.45;
+    padding:14px 18px; font-size:19px; line-height:1.45;
     border-radius:16px; font-weight:500;
   }
 
   .yuri-row { display:flex; gap:10px; align-items:flex-start; max-width:90%; }
   .yuri-av {
-    width:28px;height:28px;border-radius:50%;flex-shrink:0;margin-top:2px;
+    width:32px;height:32px;border-radius:50%;flex-shrink:0;margin-top:2px;
     background:#26262b; display:flex;align-items:center;justify-content:center;
-    color:#C9A574;font-size:14px;
+    color:#C9A574;font-size:16px;
   }
   .yuri-card {
     background:#1a1a1e; color:#dcdce0;
-    padding:13px 17px; font-size:15px; line-height:1.55;
+    padding:15px 19px; font-size:19px; line-height:1.55;
     border-radius:16px; border-top-left-radius:5px;
   }
   .yuri-card.muted { color:#9a9aa0; }          /* earlier/context lines dimmer */
@@ -91,6 +91,34 @@
   .proof .quote { font-family:'Playfair Display',serif; font-style:italic; font-weight:500;
                   font-size:33px;line-height:1.35;color:#f5f5f5;}
   .proof .sub { margin-top:30px;font-size:14px;color:#8a8a8a;letter-spacing:.3px;}
+
+  /* ===== END CARD ===== */
+  .endcard {
+    justify-content:center; align-items:center; text-align:center; padding:0 40px;
+    background:
+      radial-gradient(circle at 50% 34%, rgba(201,165,116,.16), transparent 58%),
+      radial-gradient(circle at 50% 78%, rgba(168,216,234,.07), transparent 55%),
+      #0d0d0f;
+  }
+  .endcard .star {
+    width:96px;height:96px;margin-bottom:30px;
+    filter:drop-shadow(0 6px 26px rgba(201,165,92,.45));
+  }
+  .endcard .wordmark {
+    font-family:'Playfair Display',serif; font-weight:600; font-style:normal;
+    font-size:52px; color:#f8f8f8; letter-spacing:.5px; line-height:1;
+  }
+  .endcard .tagline {
+    margin-top:24px; font-family:'Inter',sans-serif; font-weight:400;
+    font-size:19px; color:#b8b8be; line-height:1.5; max-width:380px;
+  }
+  .endcard .url {
+    margin-top:54px; font-family:'Inter',sans-serif; font-weight:600;
+    font-size:17px; letter-spacing:2.5px; color:#C9A574; text-transform:lowercase;
+  }
+  .endcard .hairline {
+    width:46px;height:1px;background:rgba(201,165,116,.4);margin:40px 0 0;
+  }
 
   .label { position:absolute; top:7px; left:11px; font-size:10px; color:rgba(255,255,255,.18); }
 </style>
@@ -167,7 +195,19 @@
   <div class="label">E · the proof</div>
   <div class="kicker">A REAL SUBSCRIBER · MONTH 4</div>
   <div class="quote">&ldquo;my skin's the best it's<br>been since we started&rdquo;</div>
-  <div class="sub">+13 points on her Glass Skin Score</div>
+  <div class="sub">Glass Skin Score: 48 &rarr; 62 in 4 months</div>
+</div>
+
+<!-- ===== SCENE F — END CARD ===== -->
+<div class="scene endcard">
+  <div class="label">F · end card</div>
+  <svg class="star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <path d="M256 112 L312 213 L420 229 L340 307 L360 415 L256 358 L152 415 L172 307 L92 229 L200 213 Z" fill="#C9A55C" stroke="#D4B87A" stroke-width="3"/>
+  </svg>
+  <div class="wordmark">Seoul Sister</div>
+  <div class="tagline">Korean skincare, finally<br>making sense.</div>
+  <div class="hairline"></div>
+  <div class="url">seoulsister.com</div>
 </div>
 
 </body>

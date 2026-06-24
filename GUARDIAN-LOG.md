@@ -16,6 +16,103 @@ Newest entries first. Each run appends one entry. Tier 1 actions in AUTONOMOUS m
 
 ---
 
+## 2026-06-11 16:49 UTC — Run #18 (scheduled, report-only)
+
+**Health summary:** All systems nominal. Overall severity: `info` (0 critical, 0 warn, 3 info, 4 ok). No action required.
+
+**ACTED:** none. **WOULD HAVE ACTED:** none. **ESCALATED:** none.
+
+**Noted:** Funnel holds at the new baseline — 23 visitors, **1 email captured** (stable from Run #17's first-capture milestone, confirming it persisted and wasn't a fluke), 0 converted. Bailey 3 → 4 conversations/7d (active again). Yuri 0 responses/24h = documented quiet-traffic pattern (7 AI calls incl. the email breadcrumb `n/a`, all clean, no non-Opus chat). 353 null images (stable). Decision-memory healthy; pipeline 48h clean.
+
+**Gate status:** healthcheck clean end-to-end. No fixes attempted.
+
+**Verdict:** Seoul Sister is healthy. Nothing for Scott to action. Eighteenth run. The first captured email persists in the data (the conversion-tracking machinery is verified durable, not transient). Still 0 conversions — expected at this trickle of organic traffic. Graduation to AUTONOMOUS Tier-1 stays ready whenever Scott flips the flag; the funnel now produces real signal, reinforcing the graduate-with-the-traffic-ramp timing.
+
+---
+
+## 2026-06-11 04:47 UTC — Run #17 (scheduled, report-only) — FIRST EMAIL CAPTURED 🎯
+
+**Health summary:** All systems nominal. Overall severity: `info` (0 critical, 0 warn, 3 info, 4 ok). No action required — but a genuine milestone in the funnel signal (see below).
+
+**ACTED:** none. **WOULD HAVE ACTED:** none. **ESCALATED:** none.
+
+**MILESTONE (info, but worth flagging clearly): the widget email-capture path fired for the first time in production.** Widget funnel moved from 22/0/0 (flat for 16 runs) to **23 visitors, 1 email captured, 0 converted**. A real visitor typed their email and it was recorded — the FIRST real-world proof that the v10.12.0 email-capture work (continuity-is-the-gate prompt → Yuri offers to save → server-side detection → `recordCapturedEmail`) functions end-to-end on an actual stranger. Corroborating evidence: AI usage shows `model: 'n/a' ×1` this window = the `widget_email_captured` zero-cost breadcrumb firing, confirming the capture went through the proper logged path, not a fluke. This is the metric Scott has been waiting to see move; the funnel machinery is verified live. (Still 0 conversions — capture ≠ conversion — but the leak Scott set out to fix is now demonstrably sealed: a visitor who'd otherwise be gone forever is now reachable.)
+
+**Noted (info):** Yuri 0 responses/24h (low-traffic pattern; 6 AI calls incl. the email breadcrumb, all clean, no non-Opus chat). 353 null images (stable). Bailey 3 conversations/7d. Decision-memory healthy; pipeline 48h clean.
+
+**Gate status:** healthcheck clean end-to-end. No fixes attempted.
+
+**Verdict:** Seoul Sister is healthy. Nothing for Scott to action — but worth knowing: the email-capture funnel just proved itself in the wild (first real capture). Seventeenth run. The leak-fix Scott prioritized is now demonstrably working on real traffic. Graduation to AUTONOMOUS Tier-1 stays ready; the funnel is now producing real signal, which strengthens the "graduate alongside the traffic ramp" timing.
+
+---
+
+## 2026-06-10 22:47 UTC — Run #16 (scheduled, report-only)
+
+**Health summary:** All systems nominal. Overall severity: `info` (0 critical, 0 warn, 3 info, 4 ok). No action required.
+
+**ACTED:** none. **WOULD HAVE ACTED:** none. **ESCALATED:** none.
+
+**Noted:** Entirely flat vs Run #15 — widget 22 / 0 / 0, Bailey 3 conversations/7d, 353 null images (stable), pipeline 48h clean, decision-memory healthy. Yuri 0 responses + 0 AI calls/24h = the documented quiet-traffic pattern (no unanswered message, so not a signal). The new conversion-tracking machinery from Run #15 remains in place; nothing regressed.
+
+**Gate status:** healthcheck clean end-to-end. No fixes attempted.
+
+**Verdict:** Seoul Sister is healthy. Nothing for Scott to action. Sixteenth run, all stable. The Guardian remains quiet because the system is genuinely steady; the consistent signal at this point is that the product is solid and waiting on traffic. Graduation to AUTONOMOUS Tier-1 stays ready whenever Scott flips the flag — sensible timing alongside the marketing/traffic ramp (now that the funnel can measure conversions).
+
+---
+
+## 2026-06-10 16:47 UTC — Run #15 (scheduled, report-only)
+
+**Health summary:** All systems nominal. Overall severity: `info` (0 critical, 0 warn, 3 info, 4 ok). No action required.
+
+**ACTED:** none. **WOULD HAVE ACTED:** none. **ESCALATED:** none.
+
+**Noted (info):**
+- Yuri: 0 responses + 0 AI calls in 24h — the documented low-traffic pattern (daytime run, but no user message went unanswered, so not a signal). Quiet day.
+- Widget funnel: 22 / 0 / 0 (flat). 353 null images (stable). Bailey 3 conversations/7d. Decision-memory healthy; pipeline clean.
+
+**Codebase awareness (NOT a health issue — flagging for context):** Since Run #14, another session shipped real new work — widget email-sending + conversion attribution (`attributeConversion` in the Stripe webhook, matching `captured_email` → `converted_at`), plus a `NORTH-STAR.md` charter and a `/ship-guard` build-freeze gate (commits `0765869`, `423bb11`). This is the v10.12.0 widget-conversion follow-through actually wired up (the email send + measured-conversion tracking we'd planned). **The Guardian verified it didn't introduce a health regression: `tsc --noEmit` is clean.** There is also active uncommitted work in progress (widget chat/visitor/Stripe webhook/admin analytics) — the Guardian correctly does NOT touch another session's working tree (report-only + charter hard limits). The widget funnel now has the full machinery to *measure* conversions once traffic arrives; healthcheck confirms it's not broken.
+
+**Gate status:** healthcheck clean end-to-end; `tsc` clean on the current tree. No fixes attempted; no working-tree interference.
+
+**Verdict:** Seoul Sister is healthy. Nothing for Scott to action. Fifteenth run. New conversion-tracking code compiles clean, no regression. Active development is in flight (left untouched, correctly). Graduation to AUTONOMOUS Tier-1 stays ready whenever Scott reviews + flips the flag — and now there's an even stronger reason to time it with the traffic ramp: the funnel can finally *measure* conversions, so real traffic will start producing the kind of Tier-1 paper-cuts (and the North-Star metric movement) the autonomous Guardian is built to watch.
+
+---
+
+## 2026-06-10 04:47 UTC — Run #14 (scheduled, report-only)
+
+**Health summary:** All systems nominal. Overall severity: `info` (0 critical, 0 warn, 3 info, 4 ok). No action required.
+
+**ACTED:** none. **WOULD HAVE ACTED:** none. **ESCALATED:** none.
+
+**Noted:** Flat vs Run #13, all healthy — Yuri 5 responses/24h (0 empty, 0 error-text, all Opus 4.8), widget 22 / 0 / 0, Bailey 3 conversations/7d, 353 null images (stable), pipeline 48h clean, decision-memory extraction healthy. The resilience fix (commit `80e2a14`) continues to hold — second consecutive clean run with no transient failures or `[object Object]` errors.
+
+**Gate status:** healthcheck clean end-to-end. No fixes attempted.
+
+**Verdict:** Seoul Sister is healthy. Nothing for Scott to action. Fourteenth run. The Guardian remains quiet because the system is genuinely stable; the post-fix runs (#13, #14) confirm the resilience improvement is solid. Graduation to AUTONOMOUS Tier-1 stays ready whenever Scott reviews + flips the flag — sensible timing alongside the marketing/traffic ramp.
+
+---
+
+## 2026-06-09 22:47 UTC — Run #13 (scheduled, report-only) — first run since the resilience fix
+
+**Health summary:** All systems nominal. Overall severity: `info` (0 critical, 0 warn, 3 info, 4 ok). No action required.
+
+**ACTED:** none. **WOULD HAVE ACTED:** none. **ESCALATED:** none.
+
+**The thing worth noting — the Run #12 fix is holding:** This is the FIRST run since the healthcheck resilience fix shipped (commit `80e2a14`, the retry-once + real-error-message improvements that closed the Run #12 false-alarm class). It ran completely clean — all 7 signals returned data, zero transient failures, zero `[object Object]` errors. The fix is working as intended. The false-alarm vulnerability that Run #12 exposed is closed, and the proof is a normal clean run with no recurrence.
+
+**Noted (info):**
+- Yuri: **5 responses/24h**, 0 empty, 0 error-text, all on Opus 4.8 — healthy and active (matches Bailey's real session today: she was working through her Phase 3 serum-repurchase decision with Yuri).
+- Widget funnel: 22 visitors (flat), 0 emails, 0 conversions.
+- 353 null-image products — stable.
+- Bailey: 3 conversations in 7d (was 4-5 — rolling 7-day window sliding past older conversations; she was active TODAY, so engagement is fine, the window just moved).
+- Decision-memory extraction healthy; pipeline 48h clean.
+
+**Gate status:** healthcheck clean end-to-end. No fixes attempted; ship-gates not exercised.
+
+**Verdict:** Seoul Sister is healthy. Nothing for Scott to action. Thirteenth run, and the first since the resilience fix — which is holding cleanly. The Guardian has now demonstrated the full loop in production: 11 clean runs → 1 false-alarm correctly diagnosed (not escalated) → fix shipped under the gates → confirmed working on the next run. That's the complete detect/diagnose/fix/verify cycle, proven. Graduation to AUTONOMOUS Tier-1 remains ready whenever Scott reviews + flips the flag; sensible timing stays alongside the marketing/traffic ramp.
+
+---
+
 ## 2026-06-09 16:55 UTC — Run #12 (scheduled, report-only) — FIRST NON-CLEAN RUN (false alarm, correctly diagnosed)
 
 **Health summary:** Initial healthcheck returned `warn` (2 warn, 5 info, 0 ok) — but **this was a FALSE ALARM in the Guardian's own tooling, NOT a Seoul Sister problem.** Verified and resolved. Net: Seoul Sister is healthy.

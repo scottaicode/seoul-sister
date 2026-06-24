@@ -12,7 +12,7 @@ const path = require('path');
   await page.goto(file, { waitUntil: 'networkidle0' });
   await new Promise(r => setTimeout(r, 800)); // let fonts settle
   const scenes = await page.$$('.scene');
-  const names = ['A-photo-read','B-buy-less','C-cycle-aware','D-counterfeit','E-proof'];
+  const names = ['A-photo-read','B-buy-less','C-cycle-aware','D-counterfeit','E-proof','F-endcard'];
   for (let i = 0; i < scenes.length; i++) {
     await scenes[i].screenshot({ path: `scene-${names[i]}.png` });
     console.log('wrote scene-' + names[i] + '.png');
