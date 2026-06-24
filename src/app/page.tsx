@@ -69,7 +69,7 @@ const stats = [
 const testimonials = [
   {
     quote: 'If you treat others like Yuri treated me, this application is going to be a massive success story that helps thousands if not millions of men and women. It\'s been a pleasure.',
-    name: 'Scott M.',
+    name: 'Scottie M.',
     skin: 'Dry skin, Fitzpatrick I, Sacramento CA',
   },
   {
