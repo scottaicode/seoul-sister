@@ -77,16 +77,6 @@ const testimonials = [
     name: 'Bailey M.',
     skin: 'Combination skin, Fitzpatrick III, Austin TX',
   },
-  {
-    quote: 'My Glass Skin Score went from 54 to 73 in two months. Seeing the radar chart improve keeps me consistent with my routine.',
-    name: 'Early member',
-    skin: 'Normal skin, Fitzpatrick IV',
-  },
-  {
-    quote: 'Yuri caught an ingredient conflict in my routine I\'d been ignoring for months. My skin barrier has never been better.',
-    name: 'Early member',
-    skin: 'Combination skin, Fitzpatrick III',
-  },
 ]
 
 const navLinks = [
