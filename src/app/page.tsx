@@ -62,12 +62,12 @@ const steps = [
 const testimonials = [
   {
     quote: 'I\'ve been using my Acwell licorice toner for years and I still love it. Yuri helped me build a real routine around the products I already love instead of starting over.',
-    name: 'Bailey M.',
+    name: 'Early user',
     skin: 'Combination skin, Fitzpatrick III, Austin TX',
   },
   {
     quote: 'I\'ve never felt this understood by a skincare recommendation. Yuri asks the questions no one ever has, then actually listens.',
-    name: 'Scottie M.',
+    name: 'Early user',
     skin: 'Dry skin, Fitzpatrick I, Sacramento CA',
   },
 ]
