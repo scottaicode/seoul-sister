@@ -59,23 +59,16 @@ const steps = [
   { icon: Heart, step: '04', title: 'Track and Improve', desc: 'Monitor your Glass Skin Score, track product expiry, get weather alerts, and discover dupes.' },
 ]
 
-const stats = [
-  { value: '5,800+', label: 'Products Tracked' },
-  { value: '550+', label: 'K-Beauty Brands' },
-  { value: '14,400+', label: 'Ingredients Decoded' },
-  { value: '6', label: 'AI Specialists' },
-]
-
 const testimonials = [
-  {
-    quote: 'If you treat others like Yuri treated me, this application is going to be a massive success story that helps thousands if not millions of men and women. It\'s been a pleasure.',
-    name: 'Scottie M.',
-    skin: 'Dry skin, Fitzpatrick I, Sacramento CA',
-  },
   {
     quote: 'I\'ve been using my Acwell licorice toner for years and I still love it. Yuri helped me build a real routine around the products I already love instead of starting over.',
     name: 'Bailey M.',
     skin: 'Combination skin, Fitzpatrick III, Austin TX',
+  },
+  {
+    quote: 'I\'ve never felt this understood by a skincare recommendation. Yuri asks the questions no one ever has, then actually listens.',
+    name: 'Scottie M.',
+    skin: 'Dry skin, Fitzpatrick I, Sacramento CA',
   },
 ]
 
