@@ -1,4 +1,35 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="102" fill="#0D0D0F"/>
-  <path d="M256 112 L312 213 L420 229 L340 307 L360 415 L256 358 L152 415 L172 307 L92 229 L200 213 Z" fill="#C9A55C" stroke="#D4B87A" stroke-width="3"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="#0D0D0F"/>
+
+  <!-- Outer gold ring -->
+  <circle cx="256" cy="220" r="140" fill="none" stroke="#C9A55C" stroke-width="2" opacity="0.4"/>
+
+  <!-- Inner gold ring -->
+  <circle cx="256" cy="220" r="110" fill="none" stroke="#C9A55C" stroke-width="1" opacity="0.25"/>
+
+  <!-- Glass orb - lighter so 유 pops -->
+  <circle cx="256" cy="220" r="92" fill="url(#orbGradient)"/>
+
+  <!-- Subtle soft highlight, no hard blob -->
+  <ellipse cx="232" cy="192" rx="32" ry="20" fill="white" opacity="0.05" transform="rotate(-15 232 192)"/>
+
+  <!-- Korean character 유 — brighter gold so it stands out -->
+  <text x="256" y="258" font-family="Georgia, serif" font-size="80" font-weight="700" text-anchor="middle" fill="#E8C97A">유</text>
+
+  <!-- Wordmark -->
+  <text x="256" y="378" font-family="Georgia, serif" font-size="34" font-weight="600" text-anchor="middle" fill="#C9A55C" letter-spacing="3">SEOUL</text>
+  <text x="256" y="414" font-family="Georgia, serif" font-size="20" font-weight="400" text-anchor="middle" fill="#8B7340" letter-spacing="7">SISTER</text>
+
+  <!-- Gold accent lines -->
+  <line x1="148" y1="393" x2="194" y2="393" stroke="#C9A55C" stroke-width="1" opacity="0.5"/>
+  <line x1="318" y1="393" x2="364" y2="393" stroke="#C9A55C" stroke-width="1" opacity="0.5"/>
+
+  <defs>
+    <radialGradient id="orbGradient" cx="38%" cy="34%" r="66%">
+      <stop offset="0%" stop-color="#3D2E14"/>
+      <stop offset="55%" stop-color="#241A0A"/>
+      <stop offset="100%" stop-color="#131008"/>
+    </radialGradient>
+  </defs>
 </svg>
