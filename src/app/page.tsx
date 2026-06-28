@@ -156,15 +156,15 @@ export default function LandingPage() {
           {/* Left — Value Proposition */}
           <motion.div variants={stagger} initial="hidden" animate="show" className="pt-4 lg:pt-8">
             <motion.div variants={fadeUp}>
-              <span className="badge-gold mb-4 inline-block">Your Korean Skincare Advisor, On Call 24/7</span>
+              <span className="badge-gold mb-4 inline-block">Free to talk to. No signup.</span>
             </motion.div>
             <motion.h1 variants={fadeUp} className="font-display font-bold text-3xl md:text-5xl lg:text-5xl text-white leading-tight mb-5">
-              Your K-Beauty Expert,
+              Stop guessing
               <br />
-              <span className="text-gradient">On Call 24/7</span>
+              <span className="text-gradient">which K-beauty actually works.</span>
             </motion.h1>
             <motion.p variants={fadeUp} className="text-white/50 text-base md:text-lg max-w-lg mb-8 leading-relaxed">
-              Meet Yuri. She reads your Korean labels, builds your routine, catches ingredient conflicts before they reach your face, and remembers your skin between every chat. Like texting a friend who happens to work in a Seoul skincare lab. She&apos;s ready now.
+              You&apos;ve got a shelf of Korean products and no idea what&apos;s working, what&apos;s clashing, or what&apos;s a $40 dupe of a $12 hero. Yuri&apos;s the Seoul-insider friend who tells you the truth. She reads your labels, spots the fakes, and builds your routine. Ask her anything, free.
             </motion.p>
 
             {/* Quick stats row */}
@@ -192,7 +192,7 @@ export default function LandingPage() {
             </motion.div>
 
             <motion.p variants={fadeUp} className="text-xs text-white/30 mt-4">
-              Try Yuri free. 20 preview messages, no signup required.
+              Talk to Yuri free. 20 messages, no signup.
             </motion.p>
           </motion.div>
 
@@ -458,7 +458,7 @@ export default function LandingPage() {
           >
             Start Your Journey <ArrowRight className="w-4 h-4" />
           </Link>
-          <p className="text-xs text-white/30 mt-4">Try Yuri free. 20 preview messages, no signup required.</p>
+          <p className="text-xs text-white/30 mt-4">Talk to Yuri free. 20 messages, no signup.</p>
         </motion.div>
       </section>
 
