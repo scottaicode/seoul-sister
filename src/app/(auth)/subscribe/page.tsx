@@ -6,6 +6,7 @@ import { Star, Loader2, Check, ArrowRight } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { SUBSCRIPTION_TIERS } from '@/lib/stripe'
+import { trackEvent, PaywallEvent } from '@/lib/analytics'
 
 export default function SubscribePage() {
   const router = useRouter()
@@ -37,6 +38,23 @@ export default function SubscribePage() {
       } catch {
         // Profile check failed — show subscribe page anyway
       }
+
+      // Free-plan user is actually seeing the wall. Record it both ways:
+      // GA4 (aggregate funnel) + set-once DB stamp (reachable bounce cohort).
+      trackEvent(PaywallEvent.view)
+      try {
+        const { data } = await supabase.auth.getSession()
+        const token = data.session?.access_token
+        if (token) {
+          await fetch('/api/me/paywall-reached', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          })
+        }
+      } catch {
+        // Measurement must never block the paywall.
+      }
+
       setChecking(false)
     }
 
@@ -49,6 +67,7 @@ export default function SubscribePage() {
       return
     }
 
+    trackEvent(PaywallEvent.checkoutClick)
     setLoading(true)
     try {
       const { data } = await supabase.auth.getSession()
@@ -67,6 +86,7 @@ export default function SubscribePage() {
       const result = await response.json()
       if (!response.ok) throw new Error(result.error)
 
+      trackEvent(PaywallEvent.checkoutRedirect)
       window.location.href = result.url
     } catch (err) {
       console.error('Checkout error:', err)
