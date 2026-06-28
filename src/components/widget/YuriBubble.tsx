@@ -77,12 +77,9 @@ export default function YuriBubble() {
     }
   }, [isOpen])
 
-  // Listen for custom 'open-yuri' events from other components (blog CTAs, nav, etc.)
-  useEffect(() => {
-    const handleOpenYuri = () => setIsOpen(true)
-    window.addEventListener('open-yuri', handleOpenYuri)
-    return () => window.removeEventListener('open-yuri', handleOpenYuri)
-  }, [])
+  // A prefill question queued by an 'open-yuri' event (blog CTAs), sent once the
+  // bubble has opened. Held in a ref so the listener effect stays stable.
+  const pendingPrefillRef = useRef<string | null>(null)
 
   const isAtLimit = messageCount >= MAX_FREE_MESSAGES
 
@@ -214,6 +211,31 @@ export default function YuriBubble() {
     },
     [isStreaming, isAtLimit, messageCount, messages]
   )
+
+  // Listen for 'open-yuri' events from other components (blog CTAs, nav, etc.).
+  // Optional event.detail.prefill carries the VISITOR's opening question so a
+  // reader coming from a blog post lands in a warm, in-progress conversation
+  // instead of a blank box (the re-type-from-scratch wall is the blog→Yuri leak).
+  // Yuri still reasons and answers freely — the prefill is just the user's first
+  // message, equivalent to them typing it themselves.
+  useEffect(() => {
+    const handleOpenYuri = (e: Event) => {
+      setIsOpen(true)
+      const prefill = (e as CustomEvent<{ prefill?: string }>).detail?.prefill
+      if (prefill && messageCount === 0) pendingPrefillRef.current = prefill.trim()
+    }
+    window.addEventListener('open-yuri', handleOpenYuri)
+    return () => window.removeEventListener('open-yuri', handleOpenYuri)
+  }, [messageCount])
+
+  // Once the bubble is open and not at the limit, fire any queued prefill once.
+  useEffect(() => {
+    if (isOpen && pendingPrefillRef.current && !isStreaming && !isAtLimit) {
+      const q = pendingPrefillRef.current
+      pendingPrefillRef.current = null
+      sendMessage(q)
+    }
+  }, [isOpen, isStreaming, isAtLimit, sendMessage])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

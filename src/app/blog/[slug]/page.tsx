@@ -317,6 +317,7 @@ export default async function BlogPostPage({
 
           {/* Inline Yuri prompt — subtle contextual CTA */}
           <BlogInlineYuriPrompt
+            title={blogPost.title}
             category={blogPost.category}
             primaryKeyword={blogPost.primary_keyword}
           />
@@ -388,7 +389,11 @@ export default async function BlogPostPage({
         </article>
 
         {/* CTA */}
-        <BlogYuriCta />
+        <BlogYuriCta
+          title={blogPost.title}
+          category={blogPost.category}
+          primaryKeyword={blogPost.primary_keyword}
+        />
       </div>
     </>
   )
