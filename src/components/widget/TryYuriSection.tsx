@@ -23,10 +23,10 @@ const fadeUp = {
 }
 
 const QUICK_PROMPTS = [
-  'Is my COSRX Snail Mucin real?',
-  'Best serum for glass skin?',
-  'Build me a routine',
-  'Find me a sunscreen dupe',
+  'Did I buy a fake?',
+  'What actually works for glass skin?',
+  'Am I overpaying? Find me a cheaper dupe',
+  'Build me a routine that makes sense',
 ]
 
 interface TryYuriSectionProps {
@@ -211,7 +211,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
           <p className="text-sm font-semibold text-white">
             Yuri <span className="text-gold">(유리)</span>
           </p>
-          <p className="text-xs text-white/40">K-Beauty AI Advisor. Ask me anything.</p>
+          <p className="text-xs text-white/40">Your honest K-beauty friend in Seoul. Ask me anything.</p>
         </div>
         <span className="badge-gold text-[10px] animate-pulse-soft">Live</span>
       </div>
@@ -223,7 +223,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
           <div className="p-4 space-y-3">
             <div className="flex justify-end">
               <div className="max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed bg-gradient-to-br from-gold to-gold-light text-seoul-dark">
-                Is the COSRX Snail Mucin I bought on Amazon real? The texture feels different.
+I bought COSRX Snail Mucin on Amazon and the texture feels off. Did I get a fake?
               </div>
             </div>
             <div className="flex justify-start">
@@ -232,7 +232,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                   <Sparkles className="w-3 h-3 text-gold" />
                   <p className="font-semibold text-gold">Yuri</p>
                 </div>
-                Great question! Here&apos;s what to check: 1) The holographic sticker on the box should shift colors when tilted. Fakes often have a static print. 2) Real COSRX has a subtle honey-like scent, not fragrance-free. 3) Check the batch code on the bottom. I can verify it if you share a photo. Amazon has had counterfeit issues with this product specifically. Want me to walk you through a full authenticity check?
+Trust that instinct, you&apos;re right to check. Amazon has a real fake problem with this exact one. Three quick tells: the holo sticker should shift color when you tilt it (fakes print it flat), real COSRX has a faint honey scent, and the batch code on the bottom should match COSRX&apos;s format. Snap a photo of yours and I&apos;ll tell you straight whether it&apos;s legit.
               </div>
             </div>
 
@@ -336,7 +336,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                 sendMessage(input)
               }
             }}
-            placeholder="Ask Yuri anything about K-beauty..."
+            placeholder="Ask me anything... what you're using, what's not working..."
             disabled={isStreaming}
             className="flex-1 text-sm py-2.5 px-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-gold/30 placeholder:text-white/30"
             aria-label="Ask Yuri a question"

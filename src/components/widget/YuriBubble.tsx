@@ -273,7 +273,7 @@ export default function YuriBubble() {
           >
             <MessageCircle className="w-6 h-6" />
             <span className="absolute -top-10 right-0 bg-seoul-card text-white text-xs font-medium px-3 py-1.5 rounded-full shadow-glass whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/10">
-              Ask me about K-beauty
+Ask me anything about K-beauty
             </span>
           </motion.button>
         )}
@@ -320,13 +320,13 @@ export default function YuriBubble() {
                     Hi! I&apos;m Yuri
                   </p>
                   <p className="text-xs text-white/40 max-w-[240px] mx-auto leading-relaxed">
-                    Ask me anything about Korean skincare — ingredients, routines, trending products, or authenticity.
+                    Your honest K-beauty friend in Seoul. Tell me what you&apos;re using and I&apos;ll tell you what&apos;s actually working, what&apos;s a waste, and what&apos;s fake.
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2 justify-center">
                     {[
-                      'Best serum for glass skin?',
-                      'Is this sunscreen legit?',
-                      'Build me a routine',
+                      'What actually works for glass skin?',
+                      'Did I buy a fake?',
+                      'Am I overpaying? Find me a dupe',
                     ].map((q) => (
                       <button
                         key={q}
@@ -388,7 +388,7 @@ export default function YuriBubble() {
                     href="/register?plan=pro_monthly"
                     className="inline-block glass-button-primary text-xs py-2 px-5"
                   >
-                    Subscribe — {PRICING.monthly_display}
+                    Subscribe for {PRICING.monthly_display}
                   </a>
                 </div>
               )}
@@ -411,7 +411,7 @@ export default function YuriBubble() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask about K-beauty..."
+                  placeholder="Ask me anything... what you're using, what's not working..."
                   disabled={isStreaming}
                   rows={1}
                   className="flex-1 resize-none text-sm py-2 px-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-gold/30 placeholder:text-white/30"
