@@ -16,8 +16,13 @@ interface ContextualYuriNudgeProps {
 
 // Engagement thresholds — only nudge an INTERESTED visitor, never on instant
 // arrival (that reads as a popup ad and breaks the honest-insider trust).
-const SCROLL_TRIGGER = 0.4 // 40% down the page
-const DWELL_TRIGGER_MS = 18000 // or 18s, whichever comes first
+// `ratio` below = the viewport's BOTTOM edge as a fraction of the page, so on a
+// scrollable page any real scroll past 40% fires it. SHORT pages (e.g. an
+// ingredient with little to scroll) can't meaningfully scroll, so the 9s dwell
+// timer is what surfaces it there — short enough that engaged readers see it
+// before they leave, long enough not to feel like an instant popup.
+const SCROLL_TRIGGER = 0.4
+const DWELL_TRIGGER_MS = 9000
 
 /**
  * Contextual, engagement-triggered nudge that feeds the landing Yuri widget.
