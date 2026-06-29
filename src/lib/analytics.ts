@@ -36,3 +36,15 @@ export const PaywallEvent = {
   checkoutClick: 'paywall_checkout_click',
   checkoutRedirect: 'paywall_checkout_redirect',
 } as const
+
+/** Landing-page Yuri demo events. The hero widget shows one of two demo angles
+ *  (owner vs beginner) at random per load. These two events let GA4 grade which
+ *  demo earns engagement: `demo_shown` fires once on display with the variant,
+ *  `demo_first_message` fires when the visitor actually sends their first
+ *  message. The display→first-message rate per `demo_variant` is the objective
+ *  teacher for which angle resonates — turning the random rotation into a real,
+ *  measured experiment (Learning Loop principle). */
+export const DemoEvent = {
+  shown: 'yuri_demo_shown',
+  firstMessage: 'yuri_demo_first_message',
+} as const
