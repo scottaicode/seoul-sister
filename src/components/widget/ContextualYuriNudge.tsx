@@ -1,0 +1,135 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import { Sparkles, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { AnimatePresence, motion } from 'framer-motion'
+import { trackEvent, NudgeEvent } from '@/lib/analytics'
+
+interface ContextualYuriNudgeProps {
+  kind: 'product' | 'ingredient'
+  /** Display name of the thing on this page (e.g. product name or ingredient name). */
+  name: string
+  /** Optional brand, for products. */
+  brand?: string | null
+}
+
+// Engagement thresholds — only nudge an INTERESTED visitor, never on instant
+// arrival (that reads as a popup ad and breaks the honest-insider trust).
+const SCROLL_TRIGGER = 0.4 // 40% down the page
+const DWELL_TRIGGER_MS = 18000 // or 18s, whichever comes first
+
+/**
+ * Contextual, engagement-triggered nudge that feeds the landing Yuri widget.
+ * References the specific product/ingredient on the page, appears only after the
+ * visitor shows interest (scroll depth or dwell), is dismissible (and stays
+ * dismissed for the session), and routes to the single front door
+ * (/?ask=<question>&from=<kind>) with the visitor's question prefilled.
+ * Yuri owns the answer from there (AI-First).
+ */
+export default function ContextualYuriNudge({ kind, name, brand }: ContextualYuriNudgeProps) {
+  const router = useRouter()
+  const [visible, setVisible] = useState(false)
+  const shownTrackedRef = useRef(false)
+  const dismissKey = `yuri_nudge_dismissed_${kind}`
+
+  // The visitor's seeded opening question (not a Yuri script — Yuri answers freely).
+  const question =
+    kind === 'product'
+      ? `Is ${[brand, name].filter(Boolean).join(' ')} right for my skin?`
+      : `Is ${name} good for my skin, and how should I use it?`
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    // Respect a prior dismissal for this page-type this session.
+    if (sessionStorage.getItem(dismissKey)) return
+
+    let done = false
+    const reveal = () => {
+      if (done) return
+      done = true
+      setVisible(true)
+      cleanup()
+    }
+
+    const onScroll = () => {
+      const scrolled = window.scrollY + window.innerHeight
+      const ratio = scrolled / document.documentElement.scrollHeight
+      if (ratio >= SCROLL_TRIGGER) reveal()
+    }
+
+    const timer = window.setTimeout(reveal, DWELL_TRIGGER_MS)
+    window.addEventListener('scroll', onScroll, { passive: true })
+
+    function cleanup() {
+      window.clearTimeout(timer)
+      window.removeEventListener('scroll', onScroll)
+    }
+    return cleanup
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dismissKey])
+
+  // Fire the shown event once, when it actually becomes visible.
+  useEffect(() => {
+    if (visible && !shownTrackedRef.current) {
+      shownTrackedRef.current = true
+      trackEvent(NudgeEvent.shown, { kind })
+    }
+  }, [visible, kind])
+
+  const dismiss = () => {
+    setVisible(false)
+    try {
+      sessionStorage.setItem(dismissKey, '1')
+    } catch {
+      // sessionStorage can throw in private mode — non-critical.
+    }
+  }
+
+  const accept = () => {
+    trackEvent(NudgeEvent.click, { kind })
+    router.push(`/?ask=${encodeURIComponent(question)}&from=${kind}`)
+  }
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 24 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100vw-2rem)] max-w-md
+                     rounded-2xl bg-seoul-card/95 backdrop-blur-xl border border-gold/30 shadow-glow-gold
+                     p-4 flex items-start gap-3"
+          role="dialog"
+          aria-label="Ask Yuri"
+        >
+          <Sparkles className="w-5 h-5 text-gold shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-white/90 leading-relaxed">
+              {kind === 'product'
+                ? `Want to know if ${name} actually fits your skin?`
+                : `Curious whether ${name} is right for your skin?`}{' '}
+              <span className="text-white/50">Ask Yuri, free.</span>
+            </p>
+            <button
+              onClick={accept}
+              className="mt-3 inline-flex items-center gap-1.5 glass-button-primary text-xs py-2 px-4"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Ask Yuri about this
+            </button>
+          </div>
+          <button
+            onClick={dismiss}
+            aria-label="Dismiss"
+            className="shrink-0 text-white/30 hover:text-white/60 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}

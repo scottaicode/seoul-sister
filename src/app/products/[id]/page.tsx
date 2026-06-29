@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
+import ContextualYuriNudge from '@/components/widget/ContextualYuriNudge'
 import {
   Star,
   Package,
@@ -843,6 +844,10 @@ export default async function PublicProductPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Contextual feeder to the landing Yuri widget (Phase 4). Engagement-
+          triggered, references this product, routes to the single front door. */}
+      <ContextualYuriNudge kind="product" name={product.name_en} brand={product.brand_en} />
     </>
   )
 }

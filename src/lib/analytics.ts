@@ -52,3 +52,13 @@ export const DemoEvent = {
   // tags which feeder sent them, so we can measure the funnel each page drives.
   prefillArrived: 'yuri_prefill_arrived',
 } as const
+
+/** Contextual Yuri nudge on Products/Ingredients detail pages (Phase 4). The
+ *  nudge is a feeder to the landing widget: `shown` fires when an engaged
+ *  visitor (scroll/dwell triggered) sees it, `click` when they take it. Combined
+ *  with `yuri_prefill_arrived` (source=product/ingredient), this gives the full
+ *  feeder funnel: shown → click → arrived → first message. `kind` = which page. */
+export const NudgeEvent = {
+  shown: 'yuri_nudge_shown',
+  click: 'yuri_nudge_click',
+} as const
