@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
+import ContextualYuriNudge from '@/components/widget/ContextualYuriNudge'
 import {
   FlaskConical,
   Shield,
@@ -976,6 +977,10 @@ export default async function IngredientDetailPage({
           </section>
         </div>
       </div>
+
+      {/* Contextual feeder to the landing Yuri widget (Phase 4). Engagement-
+          triggered, references this ingredient, routes to the single front door. */}
+      <ContextualYuriNudge kind="ingredient" name={ingredient.name_en || ingredient.name_inci} />
     </>
   )
 }
