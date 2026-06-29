@@ -163,9 +163,17 @@ export default function LandingPage() {
               <br />
               <span className="text-gradient">which K-beauty actually works.</span>
             </motion.h1>
-            <motion.p variants={fadeUp} className="text-white/50 text-base md:text-lg max-w-lg mb-8 leading-relaxed">
-              Whether your shelf is overflowing or you&apos;re starting from zero, Yuri&apos;s the Seoul-insider friend who actually helps. Tell her what&apos;s bugging you about your skin and what you can spend, and she&apos;ll build you a routine that fits, flag what&apos;s breaking you out, and tell you what&apos;s worth it and what to skip. No clue required. The more she knows you, the better she gets. Try her free, no signup.
-            </motion.p>
+            <motion.div variants={fadeUp} className="text-white/50 text-base md:text-lg max-w-lg mb-8 leading-relaxed space-y-3">
+              <p>
+                Whether you&apos;re drowning in products or don&apos;t own a single one yet, Yuri makes skincare simple.
+              </p>
+              <p>
+                She gets to know your skin, your life, and what you&apos;re actually after, then builds a routine that fits. She&apos;ll tell you what&apos;s working, what&apos;s holding your skin back, and which products are worth your money. Snap a photo as you go and watch your skin change month to month.
+              </p>
+              <p className="text-white/40 text-sm">
+                Talk to her free, no signup. She just gets sharper once she really knows you.
+              </p>
+            </motion.div>
 
             {/* Quick stats row */}
             <motion.div variants={fadeUp} className="grid grid-cols-2 gap-3 mb-8 max-w-sm">

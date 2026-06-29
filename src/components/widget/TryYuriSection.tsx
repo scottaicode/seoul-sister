@@ -16,6 +16,7 @@ import {
 import { renderMarkdown, parseWidgetStream } from '@/lib/utils/widget-shared'
 import type { WidgetMessage } from '@/lib/utils/widget-shared'
 import { PRICING } from '@/lib/pricing'
+import { trackEvent, DemoEvent } from '@/lib/analytics'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -80,6 +81,12 @@ const DEMO_BEGINNER: DemoMessage[] = [
 
 const DEMO_SCRIPTS: DemoMessage[][] = [DEMO_OWNER, DEMO_BEGINNER]
 
+// Stable label for the shown demo, used as the `demo_variant` GA4 dimension so
+// we can read display→engagement rate per angle.
+function demoVariantLabel(script: DemoMessage[]): 'owner' | 'beginner' {
+  return script === DEMO_BEGINNER ? 'beginner' : 'owner'
+}
+
 interface TryYuriSectionProps {
   /** "hero" renders as embedded widget card; default renders as full-width section */
   variant?: 'hero' | 'section'
@@ -104,10 +111,16 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
     return onMessageCountChange((count) => setMessageCountState(count))
   }, [])
 
-  // Pick a random demo angle on mount (client-only, post-hydration).
+  // Pick a random demo angle on mount (client-only, post-hydration) and record
+  // which one was shown so GA4 can grade engagement per variant.
   useEffect(() => {
-    setDemoScript(DEMO_SCRIPTS[Math.floor(Math.random() * DEMO_SCRIPTS.length)])
+    const picked = DEMO_SCRIPTS[Math.floor(Math.random() * DEMO_SCRIPTS.length)]
+    setDemoScript(picked)
+    trackEvent(DemoEvent.shown, { demo_variant: demoVariantLabel(picked) })
   }, [])
+
+  // Fire the first-message engagement event once per session.
+  const firstMessageTrackedRef = useRef(false)
 
   // Abort any in-flight stream when component unmounts
   useEffect(() => {
@@ -132,6 +145,14 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
 
       const trimmed = text.trim()
       setError(null)
+
+      // Record the visitor's first engagement against the demo that was on
+      // screen — this is the conversion signal GA4 grades each variant by.
+      if (!firstMessageTrackedRef.current) {
+        firstMessageTrackedRef.current = true
+        trackEvent(DemoEvent.firstMessage, { demo_variant: demoVariantLabel(demoScript) })
+      }
+
       setShowLive(true)
 
       // Abort any previous in-flight stream
@@ -255,7 +276,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
         setIsStreaming(false)
       }
     },
-    [isStreaming, isAtLimit, messageCount, messages]
+    [isStreaming, isAtLimit, messageCount, messages, demoScript]
   )
 
   // ---------- Chat content (shared between both variants) ----------
