@@ -25,7 +25,7 @@ function getPromptText(category?: string | null): string {
   if (cat.includes('trend'))
     return 'Curious what else is worth trying? Yuri tracks live Korean bestseller data.'
 
-  return 'Have a question about your own skin? Ask Yuri — she has our full product database.'
+  return 'Have a question about your own skin? Ask Yuri. She knows our full product database.'
 }
 
 export default function BlogInlineYuriPrompt({ title, category, primaryKeyword }: BlogInlineYuriPromptProps) {
