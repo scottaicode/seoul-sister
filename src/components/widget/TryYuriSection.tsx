@@ -29,6 +29,31 @@ const QUICK_PROMPTS = [
   'Build me a routine that makes sense',
 ]
 
+// Demo conversation shown before the visitor types. This is the "Yuri knows you"
+// ceiling — memory of your routine + live weather + real INCI reads — condensed
+// from an actual subscriber conversation. Nothing here is fabricated; every move
+// (pulling your weather, reading your AM lineup, ranking your products' INCI for
+// clog risk) is something paid Yuri genuinely does. The point is to show the
+// upgrade ceiling, then invite the free try below.
+const DEMO_MESSAGES: { role: 'user' | 'assistant'; text: string }[] = [
+  {
+    role: 'user',
+    text: 'My chin keeps breaking out in these little bumps. Is something in my routine doing it in this heat?',
+  },
+  {
+    role: 'assistant',
+    text: "I think I see it. It's 64% humidity where you are right now, and you've been wearing that MISSHA BB cream every single day as your only sunscreen. So it's basically sat on your chin and clogged it back up faster than your BHA can clear it at night. The good news: your Colorescience showed up, so you don't actually need the BB cream for sun protection anymore. Want to drop it for a couple weeks and see if your chin calms down?",
+  },
+  {
+    role: 'user',
+    text: 'Yes please. Are any of my other products gonna clog me too?',
+  },
+  {
+    role: 'assistant',
+    text: "I went through the ingredients on all six. Honestly? You're clean. Your Acwell toner, the Goodal Vita C, your COSRX BHA, all good (the BHA is actually the thing un-clogging you). The one I'd just keep an eye on is your Anua milky toner, it's a little rich, so if anything's still acting up after we pull the BB cream, that's the next one to test. Colorescience stays, it won't clog you. Let's give it two weeks and check back.",
+  },
+]
+
 interface TryYuriSectionProps {
   /** "hero" renders as embedded widget card; default renders as full-width section */
   variant?: 'hero' | 'section'
@@ -221,20 +246,37 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
         {/* Demo conversation (before first interaction) */}
         {!showLive && (
           <div className="p-4 space-y-3">
-            <div className="flex justify-end">
-              <div className="max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed bg-gradient-to-br from-gold to-gold-light text-seoul-dark">
-I bought COSRX Snail Mucin online and the texture feels off. Did I get a fake?
-              </div>
-            </div>
-            <div className="flex justify-start">
-              <div className="max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed bg-white/5 border border-white/10 text-white/80">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Sparkles className="w-3 h-3 text-gold" />
-                  <p className="font-semibold text-gold">Yuri</p>
+            {/* Demo shows the memory-rich ceiling: Yuri reading your real routine,
+                your city's live weather, and your product INCI to diagnose a
+                problem. Condensed from a real subscriber conversation — every
+                capability shown is genuine (never fabricated). The soft caption +
+                the live "try free" widget below let the gap sell the upgrade. */}
+            {DEMO_MESSAGES.map((m, i) => (
+              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs leading-relaxed ${
+                    m.role === 'user'
+                      ? 'bg-gradient-to-br from-gold to-gold-light text-seoul-dark'
+                      : 'bg-white/5 border border-white/10 text-white/80'
+                  }`}
+                >
+                  {m.role === 'assistant' && (
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Sparkles className="w-3 h-3 text-gold" />
+                      <p className="font-semibold text-gold">Yuri</p>
+                    </div>
+                  )}
+                  {m.text}
                 </div>
-Trust that instinct, you&apos;re right to check. Counterfeit K-beauty is everywhere on the big marketplaces, and this one gets faked a lot. Three quick tells: the holo sticker should shift color when you tilt it (fakes print it flat), real COSRX has a faint honey scent, and the batch code on the bottom should match COSRX&apos;s format. Want me to walk you through checking yours step by step?
               </div>
-            </div>
+            ))}
+
+            {/* Soft caption: frames the demo as the with-an-account ceiling,
+                no hard paywall — the free widget sits right below. */}
+            <p className="text-[11px] text-white/40 italic pt-1 px-1 leading-relaxed">
+              This is Yuri once she knows your skin, your routine, even your weather. Talk to her free
+              below to see what she&apos;s like. She gets better once she actually knows you.
+            </p>
 
             {/* Quick prompts */}
             <div className="flex flex-wrap gap-2 pt-2">

@@ -164,7 +164,7 @@ export default function LandingPage() {
               <span className="text-gradient">which K-beauty actually works.</span>
             </motion.h1>
             <motion.p variants={fadeUp} className="text-white/50 text-base md:text-lg max-w-lg mb-8 leading-relaxed">
-              You&apos;ve got a shelf of Korean products and no idea what&apos;s working, what&apos;s clashing, or what&apos;s a $40 dupe of a $12 hero. Yuri&apos;s the Seoul-insider friend who tells you the truth. She reads your labels, spots the fakes, and builds your routine. Ask her anything, free.
+              You&apos;ve got a shelf of Korean products and no idea what&apos;s working, what&apos;s clashing, or what&apos;s a $40 dupe of a $12 hero. Yuri&apos;s the Seoul-insider friend who tells you the truth. She reads your labels, knows your routine, even checks your weather to figure out what&apos;s actually breaking you out. And she gets better the more she knows you. Try her free, no signup.
             </motion.p>
 
             {/* Quick stats row */}
