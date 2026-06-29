@@ -287,7 +287,7 @@ Ask me anything about K-beauty
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-4 right-4 md:bottom-5 md:right-5 z-50 w-[calc(100vw-2rem)] max-w-[400px] h-[70vh] md:h-[500px] max-h-[calc(100vh-6rem)] rounded-2xl overflow-hidden bg-seoul-card/95 backdrop-blur-xl border border-white/10 shadow-glow-gold flex flex-col"
+            className="fixed bottom-4 right-4 md:bottom-5 md:right-5 z-50 w-[calc(100vw-2rem)] max-w-[440px] h-[70vh] md:h-[600px] max-h-[calc(100vh-6rem)] rounded-2xl overflow-hidden bg-seoul-card/95 backdrop-blur-xl border border-white/10 shadow-glow-gold flex flex-col"
           >
             {/* Header */}
             <div className="flex items-center gap-3 px-4 py-3 bg-gold/5 border-b border-white/10">
@@ -316,10 +316,10 @@ Ask me anything about K-beauty
                   <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center mx-auto mb-3">
                     <Sparkles className="w-6 h-6 text-gold" />
                   </div>
-                  <p className="text-sm font-medium text-white mb-1">
+                  <p className="text-base font-semibold text-white mb-1">
                     Hi! I&apos;m Yuri
                   </p>
-                  <p className="text-xs text-white/40 max-w-[240px] mx-auto leading-relaxed">
+                  <p className="text-sm text-white/50 max-w-[280px] mx-auto leading-relaxed">
                     Your honest K-beauty friend in Seoul. Tell me what you&apos;re using and I&apos;ll tell you what&apos;s actually working, what&apos;s a waste, and what&apos;s fake.
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2 justify-center">
@@ -346,7 +346,7 @@ Ask me anything about K-beauty
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed ${
+                    className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                       msg.role === 'user'
                         ? 'bg-gradient-to-br from-gold to-gold-light text-seoul-dark'
                         : 'bg-white/5 border border-white/10 text-white/80'
