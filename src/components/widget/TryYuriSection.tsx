@@ -223,7 +223,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
           <div className="p-4 space-y-3">
             <div className="flex justify-end">
               <div className="max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed bg-gradient-to-br from-gold to-gold-light text-seoul-dark">
-I bought COSRX Snail Mucin on Amazon and the texture feels off. Did I get a fake?
+I bought COSRX Snail Mucin online and the texture feels off. Did I get a fake?
               </div>
             </div>
             <div className="flex justify-start">
@@ -232,7 +232,7 @@ I bought COSRX Snail Mucin on Amazon and the texture feels off. Did I get a fake
                   <Sparkles className="w-3 h-3 text-gold" />
                   <p className="font-semibold text-gold">Yuri</p>
                 </div>
-Trust that instinct, you&apos;re right to check. Amazon has a real fake problem with this exact one. Three quick tells: the holo sticker should shift color when you tilt it (fakes print it flat), real COSRX has a faint honey scent, and the batch code on the bottom should match COSRX&apos;s format. Snap a photo of yours and I&apos;ll tell you straight whether it&apos;s legit.
+Trust that instinct, you&apos;re right to check. Counterfeit K-beauty is everywhere on the big marketplaces, and this one gets faked a lot. Three quick tells: the holo sticker should shift color when you tilt it (fakes print it flat), real COSRX has a faint honey scent, and the batch code on the bottom should match COSRX&apos;s format. Want me to walk you through checking yours step by step?
               </div>
             </div>
 
