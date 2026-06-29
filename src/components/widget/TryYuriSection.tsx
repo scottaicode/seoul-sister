@@ -29,13 +29,18 @@ const QUICK_PROMPTS = [
   'Did I get a fake? / Am I overpaying?',
 ]
 
-// Demo conversation shown before the visitor types. This is the "Yuri knows you"
-// ceiling — memory of your routine + live weather + real INCI reads — condensed
-// from an actual subscriber conversation. Nothing here is fabricated; every move
-// (pulling your weather, reading your AM lineup, ranking your products' INCI for
-// clog risk) is something paid Yuri genuinely does. The point is to show the
-// upgrade ceiling, then invite the free try below.
-const DEMO_MESSAGES: { role: 'user' | 'assistant'; text: string }[] = [
+// Demo conversations shown before the visitor types. Two angles, one picked at
+// random per load so different visitors see themselves:
+//   1. "owner" — someone with a full shelf getting a real problem diagnosed
+//      (memory of routine + live weather + INCI reads). The upgrade ceiling.
+//   2. "beginner" — someone starting from zero, insecure, on a budget, getting a
+//      real starter routine built. The emotional-relief angle.
+// Nothing here is fabricated: every move (pulling weather, reading INCI, building
+// a budget routine from real catalog products) is something live Yuri genuinely
+// does. Beginner-demo product names + prices are real verified catalog entries.
+type DemoMessage = { role: 'user' | 'assistant'; text: string }
+
+const DEMO_OWNER: DemoMessage[] = [
   {
     role: 'user',
     text: 'My chin keeps breaking out in these little bumps. Is something in my routine doing it in this heat?',
@@ -54,6 +59,27 @@ const DEMO_MESSAGES: { role: 'user' | 'assistant'; text: string }[] = [
   },
 ]
 
+const DEMO_BEGINNER: DemoMessage[] = [
+  {
+    role: 'user',
+    text: "Honestly I have zero products and no idea where to start. Everyone online has a 10-step routine and it's overwhelming. I just don't want to make my skin worse.",
+  },
+  {
+    role: 'assistant',
+    text: "Okay, first, breathe. You do not need 10 steps, and most of the people posting them don't either. Starting from zero is actually the easy mode, you get to skip every mistake. What's your budget, and is there one thing about your skin that's been bugging you? That tells me where to point you.",
+  },
+  {
+    role: 'user',
+    text: "Maybe like $40 to start? My skin gets kind of dry and dull and I break out sometimes.",
+  },
+  {
+    role: 'assistant',
+    text: "$40 is plenty for a real starter routine, here's exactly what I'd get: COSRX Low pH Gel Cleanser ($12), Beauty of Joseon Relief Sun ($15, this one matters most, dullness and dryness are often just sun damage), and Etude SoonJung Barrier Cream ($12.50) for the dry patches. That's it, $39.50, three steps. We add actives later once your skin's happy. Want me to walk you through the morning order?",
+  },
+]
+
+const DEMO_SCRIPTS: DemoMessage[][] = [DEMO_OWNER, DEMO_BEGINNER]
+
 interface TryYuriSectionProps {
   /** "hero" renders as embedded widget card; default renders as full-width section */
   variant?: 'hero' | 'section'
@@ -66,6 +92,9 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   const [messageCount, setMessageCountState] = useState(0)
   const [showLive, setShowLive] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Which demo script to show (owner vs beginner). Init deterministically to
+  // avoid an SSR/client hydration mismatch, then randomize client-side on mount.
+  const [demoScript, setDemoScript] = useState<DemoMessage[]>(DEMO_OWNER)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -73,6 +102,11 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   useEffect(() => {
     setMessageCountState(getMessageCount())
     return onMessageCountChange((count) => setMessageCountState(count))
+  }, [])
+
+  // Pick a random demo angle on mount (client-only, post-hydration).
+  useEffect(() => {
+    setDemoScript(DEMO_SCRIPTS[Math.floor(Math.random() * DEMO_SCRIPTS.length)])
   }, [])
 
   // Abort any in-flight stream when component unmounts
@@ -251,7 +285,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                 problem. Condensed from a real subscriber conversation — every
                 capability shown is genuine (never fabricated). The soft caption +
                 the live "try free" widget below let the gap sell the upgrade. */}
-            {DEMO_MESSAGES.map((m, i) => (
+            {demoScript.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
                   className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs leading-relaxed ${
@@ -272,10 +306,12 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             ))}
 
             {/* Soft caption: frames the demo as the with-an-account ceiling,
-                no hard paywall — the free widget sits right below. */}
+                no hard paywall — the free widget sits right below. Adapts to the
+                demo angle (beginner-from-zero vs existing-shelf). */}
             <p className="text-[11px] text-white/40 italic pt-1 px-1 leading-relaxed">
-              This is Yuri once she knows your skin, your routine, even your weather. Talk to her free
-              below to see what she&apos;s like. She gets better once she actually knows you.
+              {demoScript === DEMO_BEGINNER
+                ? "No products, no clue, any budget — Yuri meets you right where you are. Talk to her free below. She gets better the more she knows you."
+                : 'This is Yuri once she knows your skin, your routine, even your weather. Talk to her free below to see what she’s like. She gets better once she actually knows you.'}
             </p>
 
             {/* Quick prompts */}
