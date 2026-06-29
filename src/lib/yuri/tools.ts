@@ -2778,23 +2778,45 @@ async function executeSaveRoutine(
         // Loose-match check: did EVERY meaningful term from the requested name
         // actually appear in the matched product's brand+name? If not, this is
         // a dangerous match (e.g., "Goodal Green Tangerine Vita C" resolving to
-        // a Torriden product). Flag it so the user-facing message can warn.
+        // a Torriden product, or an Anua toner grabbing "I'm From Rice Toner").
         const requestedTerms = step.product_name
           .toLowerCase()
           .split(/\s+/)
           .filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
         const combined = `${matchedBrand || ''} ${matchedName || ''}`.toLowerCase()
         const allTermsHit = requestedTerms.every(t => combined.includes(t))
-        status = allTermsHit ? 'matched' : 'matched_loose'
+
+        if (allTermsHit) {
+          status = 'matched'
+        } else {
+          // Loose match = the resolver returned the nearest catalog neighbor,
+          // NOT the product the user asked for. Do NOT persist the wrong
+          // product_id — that's the "saved under a wrong name" class Bailey
+          // kept hitting (Anua toner re-matching to I'm From Rice Toner). Drop
+          // the catalog match entirely and save this step as a custom entry
+          // under the requested name: correct name, no wrong prices/ingredients.
+          status = 'matched_loose'
+          productId = null
+          matchedName = null
+          matchedBrand = null
+        }
       }
     }
+
+    // For custom steps (no clean catalog match — loose or no-match), the
+    // routine page has no product to join on, so it renders the `notes` field
+    // as the step's display name (see routine/page.tsx). Store the requested
+    // name there so the step shows under what the user actually owns, not blank.
+    const stepNotes = productId
+      ? (step.notes || null)
+      : (step.notes ? `${step.product_name} — ${step.notes}` : step.product_name)
 
     const { error: stepError } = await db.from('ss_routine_products').insert({
       routine_id: newRoutine.id,
       product_id: productId,
       step_order: step.step_order,
       frequency: step.frequency || 'daily',
-      notes: step.notes || null,
+      notes: stepNotes,
     })
 
     if (stepError) {
@@ -2846,11 +2868,10 @@ async function executeSaveRoutine(
   message += '.'
 
   if (looseMatches.length > 0) {
-    message += `\n\n⚠️ ${looseMatches.length} step${looseMatches.length > 1 ? 's' : ''} matched loosely — the closest product in our database may not be what you asked for:`
+    message += `\n\nℹ️ ${looseMatches.length} step${looseMatches.length > 1 ? 's were' : ' was'} saved under the exact name you gave, as a custom entry — we don't have a clean catalog match for ${looseMatches.length > 1 ? 'them' : 'it'} yet, so ${looseMatches.length > 1 ? 'they\'ll' : 'it\'ll'} show in your routine by name but without prices/ingredients:`
     for (const s of looseMatches) {
-      message += `\n- Step ${s.step_order}: requested "${s.requested_name}" → saved as "${s.matched_brand} ${s.matched_name}"`
+      message += `\n- Step ${s.step_order}: "${s.requested_name}"`
     }
-    message += '\n\nIf any of these are wrong, ask me to fix that step and I\'ll search the database properly.'
   }
 
   if (noMatches.length > 0) {
