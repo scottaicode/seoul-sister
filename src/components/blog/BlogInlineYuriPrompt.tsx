@@ -36,8 +36,10 @@ export default function BlogInlineYuriPrompt({ title, category, primaryKeyword }
     if (user) {
       router.push('/yuri')
     } else {
+      // Route to the landing hero widget with the question prefilled (single
+      // front door funnel), not the corner bubble. Yuri answers freely there.
       const prefill = buildBlogPrefill({ title, category, primaryKeyword })
-      window.dispatchEvent(new CustomEvent('open-yuri', { detail: { prefill } }))
+      router.push(`/?ask=${encodeURIComponent(prefill)}&from=blog`)
     }
   }
 
