@@ -20,12 +20,14 @@ export default function PublicNav() {
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + '/')
 
-  // Signed-in users get the full Yuri experience; the bubble doesn't render for them.
+  // Signed-in users get the full Yuri experience. Everyone else goes to the
+  // landing hero widget (the single Yuri conversion surface). On the home page
+  // we focus the widget via ?ask= (empty intent); elsewhere we navigate home.
   const handleAskYuri = () => {
     if (user) {
       router.push('/yuri')
     } else {
-      window.dispatchEvent(new CustomEvent('open-yuri'))
+      router.push('/?ask=&from=nav')
     }
   }
 

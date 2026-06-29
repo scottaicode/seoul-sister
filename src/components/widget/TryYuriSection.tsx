@@ -122,6 +122,31 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   // Fire the first-message engagement event once per session.
   const firstMessageTrackedRef = useRef(false)
 
+  // Carry intent from a feeder page (blog/product/ingredient "Ask Yuri" CTA):
+  // ?ask=<question> drops the visitor's question into the input and focuses it,
+  // so they land on the big hero widget ready to send instead of cold-starting.
+  // We prefill (visitor sends) rather than auto-send — they stay in control and
+  // the demo conversation above stays visible. AI-First: Yuri owns the answer;
+  // this only seeds the visitor's opening message.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    // `ask` PRESENT (even empty) means the visitor clicked an "Ask Yuri" feeder
+    // CTA and wants the chat. Non-empty prefills their question; empty just
+    // focuses the widget (e.g. the nav "Ask Yuri" with no topic).
+    if (!params.has('ask')) return
+    const ask = (params.get('ask') || '').trim()
+    if (ask) setInput(ask)
+    requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+    trackEvent(DemoEvent.prefillArrived, {
+      source: params.get('from') || 'unknown',
+      has_question: ask.length > 0,
+    })
+  }, [])
+
   // Abort any in-flight stream when component unmounts
   useEffect(() => {
     return () => {

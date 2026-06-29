@@ -19,10 +19,12 @@ export default function BlogYuriCta({ title, category, primaryKeyword }: BlogYur
     if (user) {
       router.push('/yuri')
     } else {
-      // Carry the visitor's implied question into the widget so they land in a
-      // warm, in-progress conversation instead of a blank box. Yuri answers freely.
+      // Route the visitor to the LANDING hero widget (the big, immersive Yuri
+      // surface) with their implied question prefilled, instead of the small
+      // corner bubble. Single-front-door funnel: every "Ask Yuri" leads to the
+      // one conversion surface. Yuri answers freely from there (AI-First).
       const prefill = buildBlogPrefill({ title, category, primaryKeyword })
-      window.dispatchEvent(new CustomEvent('open-yuri', { detail: { prefill } }))
+      router.push(`/?ask=${encodeURIComponent(prefill)}&from=blog`)
     }
   }
 

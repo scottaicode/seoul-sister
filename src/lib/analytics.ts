@@ -47,4 +47,8 @@ export const PaywallEvent = {
 export const DemoEvent = {
   shown: 'yuri_demo_shown',
   firstMessage: 'yuri_demo_first_message',
+  // Visitor arrived at the hero widget from a feeder page (blog/product/
+  // ingredient "Ask Yuri" CTA) with a prefilled question via ?ask=. `source`
+  // tags which feeder sent them, so we can measure the funnel each page drives.
+  prefillArrived: 'yuri_prefill_arrived',
 } as const
