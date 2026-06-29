@@ -35,7 +35,7 @@ export default function BlogYuriCta({ title, category, primaryKeyword }: BlogYur
         <p className="text-white/60 mb-5">
           {user
             ? 'Yuri has access to our full product database: ingredients, prices, and personalized recommendations for your skin.'
-            : 'Ask Yuri. She knows 5,900+ K-beauty products inside out, what works, what is overpriced, and what to skip. Free, no account needed.'}
+            : 'Yuri builds your routine, tells you what is worth your money, and tracks your skin as it changes. Start a free chat right now, no account needed. She just gets sharper once she really knows you.'}
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <button
