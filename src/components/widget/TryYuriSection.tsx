@@ -23,10 +23,10 @@ const fadeUp = {
 }
 
 const QUICK_PROMPTS = [
-  'Did I buy a fake?',
+  "I'm new to K-beauty, where do I start?",
+  'Build me a routine on a budget',
   'What actually works for glass skin?',
-  'Am I overpaying? Find me a cheaper dupe',
-  'Build me a routine that makes sense',
+  'Did I get a fake? / Am I overpaying?',
 ]
 
 // Demo conversation shown before the visitor types. This is the "Yuri knows you"
