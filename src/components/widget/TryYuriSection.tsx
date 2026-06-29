@@ -137,9 +137,13 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
     if (!params.has('ask')) return
     const ask = (params.get('ask') || '').trim()
     if (ask) setInput(ask)
+    // Land at the TOP of the hero so the visitor sees the full headline + demo
+    // + their prefilled question as one first impression, then focus the input
+    // WITHOUT scrollIntoView (which would yank the hero up and clip the headline).
+    // preventScroll keeps the page at top while still focusing the field.
     requestAnimationFrame(() => {
-      inputRef.current?.focus()
-      inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      inputRef.current?.focus({ preventScroll: true })
     })
     trackEvent(DemoEvent.prefillArrived, {
       source: params.get('from') || 'unknown',
