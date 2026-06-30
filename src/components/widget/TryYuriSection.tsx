@@ -121,6 +121,11 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
 
   // Fire the first-message engagement event once per session.
   const firstMessageTrackedRef = useRef(false)
+  // The feeder source (blog/product/ingredient/nav/...) this visitor arrived
+  // from, captured from ?from= so it can be persisted onto the widget session
+  // for first-touch funnel attribution in our own data.
+  const sourceRef = useRef<string | null>(null)
+  const sourceSentRef = useRef(false)
 
   // Carry intent from a feeder page (blog/product/ingredient "Ask Yuri" CTA):
   // ?ask=<question> drops the visitor's question into the input and focuses it,
@@ -136,6 +141,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
     // focuses the widget (e.g. the nav "Ask Yuri" with no topic).
     if (!params.has('ask')) return
     const ask = (params.get('ask') || '').trim()
+    sourceRef.current = params.get('from') || 'landing'
     if (ask) setInput(ask)
     // Land at the TOP of the hero so the visitor sees the full headline + demo
     // + their prefilled question as one first impression, then focus the input
@@ -210,6 +216,8 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
           .filter((m) => !m.isStreaming)
           .map((m) => ({ role: m.role, content: m.content }))
 
+        const includeSource = !sourceSentRef.current && sourceRef.current
+        if (includeSource) sourceSentRef.current = true
         const response = await fetch('/api/widget/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -218,6 +226,9 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             history,
             visitor_id: getOrCreateVisitorId(),
             session_id: getWidgetSessionId(),
+            // First-touch feeder attribution: send the source once, on the
+            // request that will create the session. Server persists it.
+            ...(includeSource ? { source: sourceRef.current } : {}),
           }),
           signal: controller.signal,
         })

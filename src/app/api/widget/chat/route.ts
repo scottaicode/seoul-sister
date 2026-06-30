@@ -67,6 +67,10 @@ const widgetSchema = z.object({
   })).max(40).optional(),
   visitor_id: z.string().min(1).max(100).optional().nullable().transform(v => v ?? undefined),
   session_id: z.string().uuid().optional().nullable().transform(v => v ?? undefined),
+  // First-touch feeder attribution (blog/product/ingredient/nav/...). Sent once,
+  // on the request that creates the session. Bounded length, sanitized to a slug.
+  source: z.string().max(40).optional().nullable()
+    .transform(v => (v ? v.replace(/[^a-z0-9_]/gi, '').slice(0, 40) : undefined)),
 })
 
 // ---------------------------------------------------------------------------
@@ -246,7 +250,7 @@ export async function POST(request: NextRequest) {
           session = await getSession(sessionId)
         }
         if (!session) {
-          session = await createSession(parsed.visitor_id, visitor.total_sessions)
+          session = await createSession(parsed.visitor_id, visitor.total_sessions, parsed.source)
           sessionId = session.id
         }
       } catch (err) {
