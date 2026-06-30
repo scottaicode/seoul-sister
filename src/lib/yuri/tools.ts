@@ -35,6 +35,21 @@ const SEARCH_STOP_WORDS = new Set([
  *     (PostgreSQL concatenation via RPC or raw filter fallback)
  *  3. Fuzzy: ANY term matches brand_en or name_en (broadest, used as last resort)
  */
+// Seoul Sister's audience is women (Gen Z, per the product positioning), but the
+// catalog includes ~145 men's-line K-beauty products (Olive Young scrape). They
+// skew cheap, so a budget search floods with them and Yuri recommends men's
+// products to women — a real bug a stranger hit (had to correct Yuri twice,
+// June 30 2026). Filter them out of search results by default; an explicit
+// include_mens=true (when the user actually asks for men's products) keeps them.
+// Conservative pattern: word-grouped "for men", "homme", "men's" in name/brand —
+// avoids false positives on unrelated words containing "men".
+const MENS_LINE_RE = /\b(for men|men'?s|homme|pour homme)\b/i
+
+function isMensLineProduct(p: Record<string, unknown>): boolean {
+  const hay = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`
+  return MENS_LINE_RE.test(hay)
+}
+
 async function smartProductSearch(
   db: SupabaseClient,
   rawQuery: string,
@@ -360,6 +375,10 @@ export const YURI_TOOLS: ToolDef[] = [
         min_rating: {
           type: 'number',
           description: 'Minimum average rating (0-5)',
+        },
+        include_mens: {
+          type: 'boolean',
+          description: 'Men\'s-line products are EXCLUDED by default (Seoul Sister\'s audience is women). Only set true if the user explicitly asks for men\'s skincare. You almost never need this.',
         },
         limit: {
           type: 'number',
@@ -837,6 +856,7 @@ async function executeSearchProducts(
   const excludeIngredients = input.exclude_ingredients as string[] | undefined
   const maxPriceUsd = input.max_price_usd as number | undefined
   const minRating = input.min_rating as number | undefined
+  const includeMens = input.include_mens === true
   const limit = Math.min((input.limit as number) || 5, 10)
 
   let products: Array<Record<string, unknown>>
@@ -860,6 +880,12 @@ async function executeSearchProducts(
     const { data, error } = await dbQuery
     if (error) return JSON.stringify({ error: error.message })
     products = (data || []) as Array<Record<string, unknown>>
+  }
+
+  // Filter out men's-line products by default (audience is women). Yuri can
+  // opt in with include_mens=true when the user explicitly wants men's products.
+  if (!includeMens) {
+    products = products.filter(p => !isMensLineProduct(p))
   }
 
   // Apply min_rating post-filter (smart search doesn't filter by rating)
