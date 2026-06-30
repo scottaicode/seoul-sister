@@ -22,20 +22,31 @@ export interface WidgetSession {
  */
 export async function createSession(
   visitorId: string,
-  currentSessionCount: number
+  currentSessionCount: number,
+  source?: string
 ): Promise<WidgetSession> {
   const supabase = getServiceClient()
 
   const sessionNumber = currentSessionCount + 1
+  const selectCols =
+    'id, visitor_id, session_number, message_count, tool_calls_count, specialist_domains_detected, intent_signals_detected'
 
-  const { data, error } = await supabase
+  // Insert with `source` (first-touch feeder attribution). The column was added
+  // by a manual migration; if it isn't present yet, gracefully retry without it
+  // so conversations never break on a missing-column error.
+  let { data, error } = await supabase
     .from('ss_widget_sessions')
-    .insert({
-      visitor_id: visitorId,
-      session_number: sessionNumber,
-    })
-    .select('id, visitor_id, session_number, message_count, tool_calls_count, specialist_domains_detected, intent_signals_detected')
+    .insert({ visitor_id: visitorId, session_number: sessionNumber, source: source ?? null })
+    .select(selectCols)
     .single()
+
+  if (error && /source/i.test(error.message) && /column/i.test(error.message)) {
+    ;({ data, error } = await supabase
+      .from('ss_widget_sessions')
+      .insert({ visitor_id: visitorId, session_number: sessionNumber })
+      .select(selectCols)
+      .single())
+  }
 
   if (error || !data) {
     throw new Error(`Failed to create session: ${error?.message}`)
