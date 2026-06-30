@@ -257,23 +257,33 @@ export default async function ProductsPage() {
           </div>
         </div>
 
-        {/* Subscribe CTA */}
+        {/* CTA — lead with the FREE Yuri experience (single-front-door funnel),
+            keep the paid price visible as secondary context. Let them talk to
+            Yuri first; the paid ceiling sells itself from there. */}
         <div className="border-t border-white/10 bg-gradient-to-b from-sky-500/5 to-transparent">
           <div className="max-w-3xl mx-auto px-4 py-16 text-center">
             <h2 className="font-display font-bold text-2xl text-white mb-3">
-              Unlock Full Product Intelligence
+              Not sure which of these is right for you?
             </h2>
             <p className="text-white/60 mb-6 max-w-xl mx-auto">
-              Seoul Sister Pro subscribers get personalized skin-type matching,
-              AI-powered ingredient analysis, price alerts, counterfeit detection,
-              and unlimited access to Yuri, your K-beauty AI advisor.
+              Ask Yuri, your K-beauty AI advisor. Tell her your skin and your
+              budget and she&apos;ll tell you what actually fits, what&apos;s
+              worth your money, and what to skip. Free, no signup.
             </p>
-            <Link
-              href="/register"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold text-sm hover:opacity-90 transition-opacity"
-            >
-              Start Your K-Beauty Journey — {PRICING.monthly_display}
-            </Link>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/?ask=&from=products_cta"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold text-sm hover:opacity-90 transition-opacity"
+              >
+                Ask Yuri, free
+              </Link>
+              <Link
+                href="/#pricing"
+                className="text-sm text-white/50 hover:text-white/80 transition-colors"
+              >
+                Or see Pro plans — {PRICING.monthly_display}
+              </Link>
+            </div>
           </div>
         </div>
       </div>

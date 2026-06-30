@@ -959,20 +959,23 @@ export default async function IngredientDetailPage({
             </section>
           )}
 
-          {/* CTA */}
+          {/* CTA — routes to a FREE Yuri chat first (single-front-door funnel),
+              not straight to the paywall. Let them experience Yuri; the paid
+              ceiling sells itself from there. Question prefilled on the landing
+              widget via ?ask=. */}
           <section className="bg-gradient-to-r from-amber-500/10 to-rose-500/10 rounded-2xl border border-amber-500/20 p-6 text-center">
             <h2 className="font-display font-semibold text-lg text-white mb-2">
               Want personalized ingredient advice?
             </h2>
             <p className="text-white/60 text-sm mb-4 max-w-lg mx-auto">
-              Yuri, our AI beauty advisor, can analyze how {displayName}{' '}
+              Yuri, our AI beauty advisor, can tell you how {displayName}{' '}
               works with your specific skin type, routine, and concerns.
             </p>
             <Link
-              href="/subscribe"
+              href={`/?ask=${encodeURIComponent(`Is ${displayName} good for my skin, and how should I use it?`)}&from=ingredient_cta`}
               className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-amber-500 text-black font-semibold text-sm hover:bg-amber-400 transition-colors"
             >
-              Try Seoul Sister Pro
+              Ask Yuri, free
             </Link>
           </section>
         </div>
