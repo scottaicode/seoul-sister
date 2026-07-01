@@ -27,6 +27,7 @@ import ReviewFilters from '@/components/community/ReviewFilters'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import { proxyImageUrl } from '@/lib/utils/image-proxy'
 import type { Product, Review } from '@/types/database'
+import { serializeJsonLd } from '@/lib/utils/json-ld'
 
 const ProductEnrichment = dynamic(() => import('@/components/products/ProductEnrichment'), {
   loading: () => (
@@ -210,7 +211,7 @@ export default function ProductDetailPage() {
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       {/* Back nav */}
       <button

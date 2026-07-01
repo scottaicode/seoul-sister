@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
+import { secureCompare } from '@/lib/utils/secure-compare'
 
 const ingestSchema = z.object({
   lgaas_post_id: z.string().uuid(),
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
     const apiKey = request.headers.get('X-LGAAS-API-Key')
     const expectedKey = process.env.LGAAS_INGEST_API_KEY
 
-    if (!apiKey || !expectedKey || apiKey !== expectedKey) {
+    if (!apiKey || !expectedKey || !secureCompare(apiKey, expectedKey)) {
       throw new AppError('Unauthorized: invalid or missing API key', 401)
     }
 

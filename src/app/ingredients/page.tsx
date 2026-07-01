@@ -5,6 +5,7 @@ import { FlaskConical, Shield, Sparkles } from 'lucide-react'
 import { toSlug } from '@/lib/utils/slug'
 import IngredientSearch from './IngredientSearch'
 import AuthAwareNav from '@/components/layout/AuthAwareNav'
+import { serializeJsonLd } from '@/lib/utils/json-ld'
 
 export const metadata: Metadata = {
   title: 'K-Beauty Ingredient Encyclopedia | 14,000+ Ingredients',
@@ -164,7 +165,7 @@ export default async function IngredientsPage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">

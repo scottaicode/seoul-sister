@@ -5,6 +5,7 @@ import { Package, Star } from 'lucide-react'
 import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { proxyImageUrl } from '@/lib/utils/image-proxy'
 import { PRICING } from '@/lib/pricing'
+import { serializeJsonLd } from '@/lib/utils/json-ld'
 
 export const metadata: Metadata = {
   title: 'K-Beauty Product Database | 5,900+ Korean Skincare Products',
@@ -138,7 +139,7 @@ export default async function ProductsPage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">
