@@ -173,6 +173,24 @@ export default async function BestOfIndexPage() {
               </Link>
             ))}
           </div>
+
+          {/* CTA — single-front-door funnel: route AI-citation and search
+              landers into a free Yuri chat with a prefilled question. */}
+          <section className="mt-10 bg-gradient-to-r from-amber-500/10 to-rose-500/10 rounded-2xl border border-amber-500/20 p-6 text-center">
+            <h2 className="font-display font-semibold text-lg text-white mb-2">
+              Skip the browsing — just ask
+            </h2>
+            <p className="text-white/60 text-sm mb-4 max-w-lg mx-auto">
+              Tell Yuri your skin type and what you&apos;re trying to fix, and she&apos;ll
+              pick from all {totalProducts.toLocaleString()} products for you — free, no signup.
+            </p>
+            <Link
+              href={`/?ask=${encodeURIComponent('What are the best Korean skincare products for my skin type?')}&from=best_cta`}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-amber-500 text-black font-semibold text-sm hover:bg-amber-400 transition-colors"
+            >
+              Ask Yuri, free
+            </Link>
+          </section>
         </div>
       </div>
     </>
