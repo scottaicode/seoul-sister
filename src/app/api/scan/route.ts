@@ -8,6 +8,7 @@ import { detectReformulation, recordReformulation } from '@/lib/intelligence/ref
 import { getServiceClient } from '@/lib/supabase'
 import { hasActiveSubscription } from '@/lib/subscription'
 import { incrementScanCount } from '@/lib/usage'
+import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 
 // Allow larger request bodies (compressed images) and longer execution time
 export const maxDuration = 60
@@ -140,11 +141,11 @@ export async function POST(request: NextRequest) {
 
     let productMatch = null
     if (analysis.product_name_en || analysis.brand) {
-      const searchTerm = analysis.product_name_en || analysis.brand
+      const searchTerm = String(analysis.product_name_en || analysis.brand || '')
       const { data } = await supabase
         .from('ss_products')
         .select('*')
-        .or(`name_en.ilike.%${searchTerm}%,name_ko.ilike.%${searchTerm}%`)
+        .or(`name_en.ilike.%${sanitizeSearchTerm(searchTerm)}%,name_ko.ilike.%${sanitizeSearchTerm(searchTerm)}%`)
         .limit(1)
 
       if (data && data.length > 0) {

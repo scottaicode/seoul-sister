@@ -4,9 +4,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { analyzeCounterfeit } from '@/lib/counterfeit/analyzer'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
+import { requireAuth } from '@/lib/auth'
+import { hasActiveSubscription } from '@/lib/subscription'
+import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 
 export async function POST(request: NextRequest) {
   try {
+    // Gate BEFORE any Claude Vision work — this endpoint runs Opus and was
+    // previously callable anonymously (July 1 2026 OWASP review).
+    const user = await requireAuth(request)
+    if (!(await hasActiveSubscription(user.id))) {
+      throw new AppError('Active subscription required for counterfeit scanning.', 403)
+    }
+
     const body = await request.json()
     if (!body.image) {
       throw new AppError('Missing image data', 400)
@@ -44,11 +54,11 @@ export async function POST(request: NextRequest) {
     // Try to match against existing products
     let productMatch = null
     if (analysis.brand_detected || analysis.product_detected) {
-      const searchTerm = analysis.product_detected || analysis.brand_detected
+      const searchTerm = analysis.product_detected || analysis.brand_detected || ''
       const { data } = await supabase
         .from('ss_products')
         .select('id, name_en, brand_en, image_url')
-        .or(`name_en.ilike.%${searchTerm}%,brand_en.ilike.%${searchTerm}%`)
+        .or(`name_en.ilike.%${sanitizeSearchTerm(searchTerm)}%,brand_en.ilike.%${sanitizeSearchTerm(searchTerm)}%`)
         .limit(1)
 
       if (data && data.length > 0) {
@@ -56,27 +66,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Save the scan result if user is authenticated
-    const authHeader = request.headers.get('authorization')
-    if (authHeader) {
-      const token = authHeader.replace('Bearer ', '')
-      const { data: { user } } = await supabase.auth.getUser(token)
-
-      if (user) {
-        await supabase.from('ss_counterfeit_scans').insert({
-          user_id: user.id,
-          product_id: productMatch?.id || null,
-          image_urls: [body.image.substring(0, 100) + '...'], // Store truncated reference
-          brand_detected: analysis.brand_detected,
-          product_detected: analysis.product_detected,
-          authenticity_score: analysis.authenticity_score,
-          red_flags: analysis.red_flags,
-          green_flags: analysis.green_flags,
-          analysis_summary: analysis.analysis_summary,
-          recommendation: analysis.recommendation,
-        })
-      }
-    }
+    // Save the scan result
+    await supabase.from('ss_counterfeit_scans').insert({
+      user_id: user.id,
+      product_id: productMatch?.id || null,
+      image_urls: [body.image.substring(0, 100) + '...'], // Store truncated reference
+      brand_detected: analysis.brand_detected,
+      product_detected: analysis.product_detected,
+      authenticity_score: analysis.authenticity_score,
+      red_flags: analysis.red_flags,
+      green_flags: analysis.green_flags,
+      analysis_summary: analysis.analysis_summary,
+      recommendation: analysis.recommendation,
+    })
 
     return NextResponse.json({
       success: true,

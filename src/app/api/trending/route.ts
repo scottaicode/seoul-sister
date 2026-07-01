@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError } from '@/lib/utils/error-handler'
 import { trendingSearchSchema } from '@/lib/utils/validation'
+import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -332,7 +333,7 @@ export async function POST(request: NextRequest) {
     const { data: products, error } = await supabase
       .from('ss_products')
       .select('*')
-      .or(`name_en.ilike.%${query}%,brand_en.ilike.%${query}%,description_en.ilike.%${query}%`)
+      .or(`name_en.ilike.%${sanitizeSearchTerm(query)}%,brand_en.ilike.%${sanitizeSearchTerm(query)}%,description_en.ilike.%${sanitizeSearchTerm(query)}%`)
       .order('rating_avg', { ascending: false, nullsFirst: false })
       .limit(10)
 

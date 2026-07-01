@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { detectScanOverlap, type IngredientOverlapResult } from '@/lib/intelligence/ingredient-overlap'
+import { sanitizeSearchTerm } from '../utils/sanitize-search'
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -634,7 +635,7 @@ async function fetchCounterfeit(
   const { data: markers } = await supabase
     .from('ss_counterfeit_markers')
     .select('marker_type, description, severity')
-    .or(`brand.ilike.%${brand}%,brand.eq.generic`)
+    .or(`brand.ilike.%${sanitizeSearchTerm(brand)}%,brand.eq.generic`)
     .order('severity', { ascending: false })
 
   // Get verified retailers for this brand
@@ -691,7 +692,7 @@ async function fetchTrending(
   const { data: signals } = await supabase
     .from('ss_trend_signals')
     .select('trend_name, status, source')
-    .or(`keyword.ilike.%${brand}%,trend_name.ilike.%${brand}%`)
+    .or(`keyword.ilike.%${sanitizeSearchTerm(brand)}%,trend_name.ilike.%${sanitizeSearchTerm(brand)}%`)
     .in('status', ['emerging', 'growing', 'peak'])
     .order('signal_strength', { ascending: false })
     .limit(3)

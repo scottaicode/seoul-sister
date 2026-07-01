@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { secureCompare } from '@/lib/utils/secure-compare'
+import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 
 const searchSchema = z.object({
   query: z.string().max(200).optional(),
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
       let q = supabase.from('ss_products').select(selectFields)
 
       if (query) {
-        const terms = query.trim().split(/\s+/).filter(t => t.length > 1)
+        const terms = query.trim().split(/\s+/).map(sanitizeSearchTerm).filter(t => t.length > 1)
         if (terms.length > 0) {
           if (useAndSemantics && terms.length >= 2) {
             // AND across terms: each term must appear in name OR brand.

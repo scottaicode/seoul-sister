@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   XCircle,
 } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 import type { CounterfeitFlag, CounterfeitRecommendation } from '@/types/database'
 
 interface AnalysisResult {
@@ -106,9 +107,16 @@ export default function CounterfeitScanner() {
     setError(null)
 
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        throw new Error('Please log in to scan for counterfeits')
+      }
       const res = await fetch('/api/scan/counterfeit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ image, brand: brand || undefined }),
       })
       if (!res.ok) {

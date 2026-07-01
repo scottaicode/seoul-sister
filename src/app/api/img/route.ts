@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid URL' }, { status: 400 })
   }
 
-  if (!ALLOWED_DOMAINS.has(parsedUrl.hostname)) {
+  if (parsedUrl.protocol !== 'https:' || !ALLOWED_DOMAINS.has(parsedUrl.hostname)) {
     return NextResponse.json({ error: 'Domain not allowed' }, { status: 403 })
   }
 
@@ -76,6 +76,15 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       return new NextResponse(null, { status: response.status })
+    }
+
+    // fetch follows redirects — re-validate the FINAL URL so an allowlisted
+    // CDN can't bounce this proxy to an arbitrary host (SSRF via redirect).
+    if (response.url) {
+      const finalUrl = new URL(response.url)
+      if (finalUrl.protocol !== 'https:' || !ALLOWED_DOMAINS.has(finalUrl.hostname)) {
+        return NextResponse.json({ error: 'Redirect target not allowed' }, { status: 403 })
+      }
     }
 
     const buffer = await response.arrayBuffer()

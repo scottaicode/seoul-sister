@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { secureCompare } from '@/lib/utils/secure-compare'
+import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 
 const contextSchema = z.object({
   pain_points: z.array(z.string()).optional(),
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
           .select('id, name_inci, name_en, function, description, common_concerns, safety_rating, comedogenic_rating, is_active, rich_content')
           .eq('is_active', true)
           .not('rich_content', 'is', null)
-          .or(`name_inci.ilike.%${name.trim()}%,name_en.ilike.%${name.trim()}%`)
+          .or(`name_inci.ilike.%${sanitizeSearchTerm(name)}%,name_en.ilike.%${sanitizeSearchTerm(name)}%`)
           .limit(1)
 
         if (data?.[0] && !seen.has(data[0].id)) {
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
           .select('id, name_inci, name_en, function, description, common_concerns, safety_rating, comedogenic_rating, is_active, rich_content')
           .eq('is_active', true)
           .not('rich_content', 'is', null)
-          .or(`function.ilike.%${term}%,common_concerns.cs.{${term}}`)
+          .or(`function.ilike.%${sanitizeSearchTerm(term)}%,common_concerns.cs.{${sanitizeSearchTerm(term)}}`)
           .limit(3)
 
         for (const ing of data || []) {

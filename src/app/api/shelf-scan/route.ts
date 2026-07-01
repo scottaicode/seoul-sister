@@ -5,6 +5,7 @@ import { requireAuth } from '@/lib/auth'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { hasActiveSubscription } from '@/lib/subscription'
 import type { ShelfScanProduct, ShelfScanCollectionAnalysis, RoutineGradeLevel } from '@/types/database'
+import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 
 export const maxDuration = 60
 export const runtime = 'nodejs'
@@ -350,7 +351,7 @@ export async function POST(request: NextRequest) {
         const { data } = await supabase
           .from('ss_products')
           .select('id, name_en, brand_en, category, price_usd')
-          .or(`name_en.ilike.%${searchTerm}%,brand_en.ilike.%${searchTerm}%`)
+          .or(`name_en.ilike.%${sanitizeSearchTerm(searchTerm)}%,brand_en.ilike.%${sanitizeSearchTerm(searchTerm)}%`)
           .limit(1)
 
         if (data && data.length > 0) {

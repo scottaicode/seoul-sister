@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { handleApiError } from '@/lib/utils/error-handler'
+import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
     const dbQuery = supabase
       .from('ss_ingredients')
       .select('id, name_inci, name_en, function, is_active, is_fragrance, comedogenic_rating, safety_rating')
-      .or(`name_inci.ilike.%${query}%,name_en.ilike.%${query}%`)
+      .or(`name_inci.ilike.%${sanitizeSearchTerm(query)}%,name_en.ilike.%${sanitizeSearchTerm(query)}%`)
       .order('is_active', { ascending: false })
       .order('name_en', { ascending: true })
       .limit(20)
