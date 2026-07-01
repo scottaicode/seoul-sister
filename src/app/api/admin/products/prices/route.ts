@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { secureCompare } from '@/lib/utils/secure-compare'
+import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 
 const pricesSchema = z.object({
   product_ids: z.array(z.string().uuid()).max(20).optional(),
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
       // a single name string get AND-joined so "skin1004 madagascar centella
       // ampoule" only matches products containing all those tokens.
       for (const rawName of product_names) {
-        const tokens = rawName.trim().split(/\s+/).filter(t => t.length >= 3)
+        const tokens = rawName.trim().split(/\s+/).map(sanitizeSearchTerm).filter(t => t.length >= 3)
         if (tokens.length === 0) continue
         let q = supabase
           .from('ss_products')

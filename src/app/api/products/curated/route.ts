@@ -24,6 +24,7 @@ import {
   applyPhaseFilter,
   type CurationVerdictResult,
 } from '@/lib/intelligence/product-curation'
+import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 
 const curatedQuerySchema = z.object({
   query: z.string().max(200).optional(),
@@ -34,10 +35,6 @@ const curatedQuerySchema = z.object({
   page: z.number().int().min(1).max(50).default(1),
   limit: z.number().int().min(1).max(40).default(20),
 })
-
-function sanitizeLikeInput(input: string): string {
-  return input.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -94,14 +91,14 @@ export async function GET(request: NextRequest) {
     // ---------------------------------------------------------------
     let candidateQuery = db.from('ss_products').select('id, category, name_en')
     if (parsed.query) {
-      const q = sanitizeLikeInput(parsed.query.trim())
+      const q = sanitizeSearchTerm(parsed.query.trim())
       candidateQuery = candidateQuery.or(`name_en.ilike.%${q}%,brand_en.ilike.%${q}%`)
     }
     if (parsed.category) {
       candidateQuery = candidateQuery.eq('category', parsed.category)
     }
     if (parsed.brand) {
-      candidateQuery = candidateQuery.ilike('brand_en', `%${sanitizeLikeInput(parsed.brand)}%`)
+      candidateQuery = candidateQuery.ilike('brand_en', `%${sanitizeSearchTerm(parsed.brand)}%`)
     }
     if (parsed.min_price !== undefined) {
       candidateQuery = candidateQuery.gte('price_usd', parsed.min_price)

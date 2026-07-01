@@ -3,11 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getServiceClient } from '@/lib/supabase'
 import { productSearchSchema } from '@/lib/utils/validation'
 import { handleApiError } from '@/lib/utils/error-handler'
-
-/** Escape SQL LIKE/ILIKE wildcard characters to prevent pattern injection */
-function sanitizeLikeInput(input: string): string {
-  return input.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
-}
+import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 
 /** Stop-words to strip from multi-term product searches */
 const SEARCH_STOP_WORDS = new Set([
@@ -23,10 +19,10 @@ const SEARCH_STOP_WORDS = new Set([
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function applySmartSearch<T extends { or: (...args: any[]) => any }>(query: T, rawQuery: string): T {
-  const cleaned = sanitizeLikeInput(rawQuery.trim())
+  const cleaned = sanitizeSearchTerm(rawQuery.trim())
   const terms = rawQuery.trim().toLowerCase().split(/\s+/)
     .filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
-    .map(t => sanitizeLikeInput(t))
+    .map(t => sanitizeSearchTerm(t))
 
   if (terms.length >= 2) {
     // Multi-term: match ANY term against either column (post-filter ranks best matches)
@@ -148,7 +144,7 @@ async function handleStandardQuery(supabase: SupabaseClient, params: SearchParam
     query = query.eq('category', params.category)
   }
   if (params.brand) {
-    query = query.ilike('brand_en', `%${sanitizeLikeInput(params.brand)}%`)
+    query = query.ilike('brand_en', `%${sanitizeSearchTerm(params.brand)}%`)
   }
   if (params.min_price !== undefined) {
     query = query.gte('price_usd', params.min_price)
@@ -232,14 +228,14 @@ async function handleRecommendedQuery(
   // 3. Get candidate products matching basic filters
   let candidateQuery = supabase.from('ss_products').select('id')
   if (params.query) {
-    const q = sanitizeLikeInput(params.query)
+    const q = sanitizeSearchTerm(params.query)
     candidateQuery = candidateQuery.or(`name_en.ilike.%${q}%,brand_en.ilike.%${q}%`)
   }
   if (params.category) {
     candidateQuery = candidateQuery.eq('category', params.category)
   }
   if (params.brand) {
-    candidateQuery = candidateQuery.ilike('brand_en', `%${sanitizeLikeInput(params.brand)}%`)
+    candidateQuery = candidateQuery.ilike('brand_en', `%${sanitizeSearchTerm(params.brand)}%`)
   }
   if (params.min_price !== undefined) {
     candidateQuery = candidateQuery.gte('price_usd', params.min_price)
@@ -393,7 +389,7 @@ async function handleIngredientFilteredQuery(supabase: SupabaseClient, params: S
     candidateQuery = candidateQuery.eq('category', params.category)
   }
   if (params.brand) {
-    candidateQuery = candidateQuery.ilike('brand_en', `%${sanitizeLikeInput(params.brand)}%`)
+    candidateQuery = candidateQuery.ilike('brand_en', `%${sanitizeSearchTerm(params.brand)}%`)
   }
   if (params.min_price !== undefined) {
     candidateQuery = candidateQuery.gte('price_usd', params.min_price)
