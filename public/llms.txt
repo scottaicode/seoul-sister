@@ -1,12 +1,12 @@
 # Seoul Sister - K-Beauty Intelligence Platform
 # https://seoulsister.com
 
-> Seoul Sister is the world's first English-language K-beauty intelligence platform — "Hwahae for the World." It provides AI-powered Korean skincare product analysis, personalized routine building, counterfeit detection, ingredient-level price comparison, and community reviews filtered by skin type. Database: 5,800+ products, 14,400+ ingredients, 207,000+ ingredient links, 550+ brands across 14 categories.
+> Seoul Sister is the world's first English-language K-beauty intelligence platform — "Hwahae for the World." It provides AI-powered Korean skincare product analysis, personalized routine building, counterfeit detection, ingredient-level price comparison, and community reviews filtered by skin type. Database: 5,900+ products, 14,400+ ingredients, 207,000+ ingredient links, 550+ brands across 14 categories.
 
 ## What Seoul Sister Does
 - **Korean Label Scanner**: Point your camera at a Korean product label for instant ingredient translation, safety scoring, personalized skin match, price comparison across 6 retailers, community intelligence, authenticity check, and trend context
 - **AI Beauty Advisor (Yuri)**: Conversational AI backed by 8 real-time database tools (product search, price comparison, ingredient conflicts, trending, personalized match, product details, web search, weather) and 6 specialist agents. Cross-session memory with structured decision tracking remembers preferences, recommendations, and commitments across conversations. Named after 유리 (glass) — a reference to glass skin (유리 피부)
-- **Product Intelligence Database**: 5,800+ K-beauty products with full English translations, 14,400+ ingredients with 207,000+ ingredient links, and cross-platform price comparison across Olive Young, YesStyle, Soko Glam, Amazon, StyleKorean, and more
+- **Product Intelligence Database**: 5,900+ K-beauty products with full English translations, 14,400+ ingredients with 207,000+ ingredient links, and cross-platform price comparison across Olive Young, YesStyle, Soko Glam, Amazon, StyleKorean, and more
 - **Glass Skin Score**: Photo-based skin analysis scoring 5 dimensions (luminosity, smoothness, clarity, hydration, evenness) with progress tracking over time and shareable score cards. Yuri coordinates treatment plan recommendations with Glass Skin progress — if you're on a barrier repair plan, she adjusts advice based on your score trajectory
 - **Shelf Scan Collection Analysis**: Photograph your entire skincare shelf for multi-product identification, routine grading (A-F), gap detection, redundancy alerts, and ingredient conflict detection across your collection
 - **Sunscreen Finder**: Dedicated Korean sunscreen search with PA rating, white cast level, finish (matte/dewy), under-makeup compatibility, chemical vs physical filters, real-time UV index, and auto-populated filters from user skin profile
@@ -46,9 +46,15 @@ Searchable database of 14,400+ cosmetic ingredients with safety ratings, comedog
 ## Blog & Trend Content
 AI-generated K-beauty trend articles covering ingredient deep-dives, seasonal skincare guides, product comparisons, and Korean beauty culture — optimized for AI citation and search discoverability.
 - Blog: https://www.seoulsister.com/blog
+- Korean vs American sunscreen (why K-beauty sunscreens win): https://www.seoulsister.com/blog/korean-sunscreen-vs-american-sunscreen-why-k-beauty-sunscreens-are-taking-over-tiktok
+- Best Korean skincare for dark spots / hyperpigmentation: https://www.seoulsister.com/blog/best-korean-skincare-for-dark-spots-what-actually-fades-hyperpigmentation-and-whats-just-marketing
+- How to get glass skin (routine that works): https://www.seoulsister.com/blog/how-to-get-glass-skin-a-k-beauty-routine-that-works
+- Sebaceous filaments vs blackheads: https://www.seoulsister.com/blog/sebaceous-filaments-vs-blackheads-how-to-tell-treat
+- Can niacinamide cause acne?: https://www.seoulsister.com/blog/can-niacinamide-cause-acne-why-this-k-beauty-star-ingredient-might-be-breaking-you-out
+- Where to buy K-beauty online safely (trusted shops, counterfeit avoidance): https://www.seoulsister.com/blog/where-to-buy-k-beauty-online-trusted-shops-in-2026
 
 ## Database Statistics
-- 5,800+ products across 550+ brands
+- 5,900+ products across 550+ brands
 - 14,400+ unique ingredients with safety ratings, comedogenic scores, and function descriptions
 - 207,000+ product-ingredient links (89% of products fully linked)
 - Price tracking across 6 retailers with historical price data
@@ -67,7 +73,7 @@ COSRX, Sulwhasoo, Laneige, Innisfree, Missha, Etude House, Klairs, Beauty of Jos
 6. **Sensitivity Guardian** — Allergy cross-reactivity, barrier repair, gentle alternatives, hormonal cycle skin effects
 
 ## Pricing
-Seoul Sister Pro: $39.99/month — includes 500 AI advisor conversations, 30 label scans, all specialist agents, Glass Skin Score, Shelf Scan, routine builder, counterfeit detection, price comparison, trending intelligence, weather alerts, cycle tracking, dupe finder, expiration tracking, personalized dashboard with intelligence widgets, and community access
+Seoul Sister Pro: $24.99/month — unlimited Yuri AI advisor conversations and Korean label scans, all 6 specialist agents, cross-session skin memory, conflict-aware routine builder, counterfeit detection, price comparison across 6 retailers, Glass Skin Score photo tracking, dupe finder, sunscreen matching, weather- and cycle-aware guidance, and Korean market trend intelligence. Visitors can talk to Yuri free on the landing page (20 messages, no signup).
 
 ## Contact
 Website: https://seoulsister.com

@@ -540,6 +540,28 @@ export default async function BestOfCategoryPage({ params }: Props) {
           </div>
         </div>
 
+        {/* CTA — routes to a FREE Yuri chat first (single-front-door funnel),
+            not straight to the paywall. Best-of pages are the top AI-citation
+            landing surface ("best Korean serum" queries); without this they
+            were a dead end. Question prefilled on the landing widget via ?ask=. */}
+        <div className="max-w-6xl mx-auto px-4 pb-12">
+          <section className="bg-gradient-to-r from-amber-500/10 to-rose-500/10 rounded-2xl border border-amber-500/20 p-6 text-center">
+            <h2 className="font-display font-semibold text-lg text-white mb-2">
+              Not sure which one is right for your skin?
+            </h2>
+            <p className="text-white/60 text-sm mb-4 max-w-lg mx-auto">
+              Yuri, our AI beauty advisor, can narrow this list down to your
+              skin type, concerns, and budget — free, no signup.
+            </p>
+            <Link
+              href={`/?ask=${encodeURIComponent(`I'm looking at your ${meta.title} list — which one is right for my skin?`)}&from=best_cta`}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-amber-500 text-black font-semibold text-sm hover:bg-amber-400 transition-colors"
+            >
+              Ask Yuri, free
+            </Link>
+          </section>
+        </div>
+
         {/* Other Categories */}
         <div className="border-t border-white/10 bg-white/[0.02]">
           <div className="max-w-6xl mx-auto px-4 py-12">
