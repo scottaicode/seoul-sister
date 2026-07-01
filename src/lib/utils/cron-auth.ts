@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { timingSafeEqual } from 'crypto'
+import { secureCompare } from './secure-compare'
 
 /**
  * Verify cron job authentication using timing-safe comparison.
@@ -20,13 +20,7 @@ export function verifyCronAuth(request: Request): NextResponse | null {
   const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
   const provided = bearerToken || request.headers.get('x-cron-secret') || ''
 
-  if (provided.length !== secret.length) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const a = Buffer.from(provided)
-  const b = Buffer.from(secret)
-  if (!timingSafeEqual(a, b)) {
+  if (!secureCompare(provided, secret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

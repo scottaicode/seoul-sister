@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import BlogListing from './BlogListing'
+import { serializeJsonLd } from '@/lib/utils/json-ld'
 
 export const metadata: Metadata = {
   title: 'K-Beauty Blog',
@@ -96,7 +97,7 @@ export default async function BlogPage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogListingSchema) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(blogListingSchema) }}
       />
       <BlogListing posts={blogPosts} />
     </>

@@ -8,6 +8,7 @@ import BlogYuriCta from '@/components/blog/BlogYuriCta'
 import BlogInlineYuriPrompt from '@/components/blog/BlogInlineYuriPrompt'
 import { marked } from 'marked'
 import { linkIngredients, buildIngredientMap, type IngredientLink } from '@/lib/utils/ingredient-linker'
+import { serializeJsonLd } from '@/lib/utils/json-ld'
 
 // Configure marked: open external links in new tab, sanitize
 const renderer = new marked.Renderer()
@@ -232,7 +233,7 @@ export default async function BlogPostPage({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">

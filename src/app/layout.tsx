@@ -6,6 +6,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next'
 import { AuthProvider } from '@/contexts/AuthContext'
 import ServiceWorkerRegistration from '@/components/pwa/ServiceWorkerRegistration'
 import './globals.css'
+import { serializeJsonLd } from '@/lib/utils/json-ld'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -99,7 +100,7 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
+            __html: serializeJsonLd({
               '@context': 'https://schema.org',
               '@type': 'Organization',
               name: 'Seoul Sister',

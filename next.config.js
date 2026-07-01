@@ -64,10 +64,14 @@ const nextConfig = {
         source: '/:path*',
         headers: [
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
-          { key: 'X-XSS-Protection', value: '1; mode=block' },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'origin-when-cross-origin' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          // Explicit HSTS (Vercel sets a default, but pin it + cover subdomains).
+          // Mail-only subdomains (send, resend._domainkey, _dmarc) serve no HTTP, so includeSubDomains is safe.
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
+          // Camera stays self-allowed — label scanning / Glass Skin photos use getUserMedia.
+          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(), browsing-topics=()' },
           {
             key: 'Content-Security-Policy',
             value: [

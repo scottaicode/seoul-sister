@@ -6,6 +6,7 @@ import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { notFound } from 'next/navigation'
 import { toSlug } from '@/lib/utils/slug'
 import LazyImage from '@/components/ui/LazyImage'
+import { serializeJsonLd } from '@/lib/utils/json-ld'
 
 export const revalidate = 3600
 
@@ -349,7 +350,7 @@ export default async function BestOfCategoryPage({ params }: Props) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">

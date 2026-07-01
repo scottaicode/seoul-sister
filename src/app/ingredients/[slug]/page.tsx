@@ -18,6 +18,7 @@ import { toSlug } from '@/lib/utils/slug'
 import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { ShareButton } from '@/components/ui/ShareButton'
 import { IngredientEnrichmentSection } from '@/components/ingredients/IngredientEnrichmentSection'
+import { serializeJsonLd } from '@/lib/utils/json-ld'
 
 export const revalidate = 3600
 
@@ -451,7 +452,7 @@ export default async function IngredientDetailPage({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">

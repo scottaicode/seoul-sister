@@ -19,6 +19,7 @@ import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { ShareButton } from '@/components/ui/ShareButton'
 import ProductIntelligenceSection from '@/components/products/ProductIntelligenceSection'
 import { proxyImageUrl } from '@/lib/utils/image-proxy'
+import { serializeJsonLd } from '@/lib/utils/json-ld'
 
 export const revalidate = 3600
 
@@ -386,7 +387,7 @@ export default async function PublicProductPage({ params }: Props) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
 
       <div className="min-h-screen bg-[#0a0a0a]">

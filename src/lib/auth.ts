@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { supabase, getServiceClient } from './supabase'
 import { AppError } from './utils/error-handler'
+import { secureCompare } from './utils/secure-compare'
 import type { User, Session } from '@supabase/supabase-js'
 
 /**
@@ -40,7 +41,7 @@ export async function requireAdmin(request: NextRequest): Promise<User> {
   // Legacy path: service role key (for CLI scripts, cron-to-admin calls)
   const serviceKeyHeader = request.headers.get('x-service-key')
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (serviceKeyHeader && serviceKey && serviceKeyHeader === serviceKey) {
+  if (serviceKeyHeader && serviceKey && secureCompare(serviceKeyHeader, serviceKey)) {
     // Service key auth — return a synthetic user object for logging purposes
     // The caller is trusted (has the service role key)
     return { id: 'service-role', email: 'admin@service-role' } as User
