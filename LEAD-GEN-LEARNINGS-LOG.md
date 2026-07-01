@@ -6,6 +6,38 @@
 
 ---
 
+## July 1 2026 — GEO citations discovered LIVE + counterfeit content series + funnel myths killed
+
+### The headline discovery (changes the strategy picture)
+**Bing Webmaster Tools → "AI Performance (BETA)" shows Seoul Sister is ALREADY cited by AI engines**: 369 citations over 3 months via Microsoft Copilots and Partners, avg 25 cited pages. Top grounding query: "best korean serum" — 24 citations at a **20.69% citation share**. Product-specific/review-shaped queries hold the HIGHEST shares (purito centella 25%, multi-weight HA serums 30%). Top cited page: `/best/serums` (41 citations) — which until today had ZERO CTAs. **Bing AI Performance is now the GEO teacher: check monthly, read against `ss_widget_sessions WHERE source='best_cta'`.** (Manual 3-query citation spot-checks against ChatGPT/Google showed 0/3 the same day — don't conclude "not cited" from those alone; Copilot was where citations happened first.)
+
+### What we shipped (all verified live)
+- **Best-of pages got the single-front-door CTA** (`from=best_cta`, PR #24) — the #1-cited page type was a dead end; now it feeds the widget with a prefilled question.
+- **llms.txt fixed**: was advertising the pre-v11 $39.99 price with old caps to every AI engine; now $24.99 feel-unlimited + direct links to top posts.
+- **3 data-grounded counterfeit posts published** via LGAAS "+ New Blog" (custom topic + Additional Context carrying real `ss_counterfeit_markers` rows): COSRX snail mucin (4 markers), Sulwhasoo First Care (5), universal 5-point check (3 + heuristics). All indexed-requested in GSC + Bing same day. Targeting the query family where competition is weakest ("how to tell if X is fake") and citation shares run highest (product-specific).
+
+### What WORKED
+- **The custom-recipe workflow**: pull real marker rows from the DB → paste into LGAAS Additional Context → generate → REVIEW → AriaStar for edits → publish → auto-delivery to ss_content_posts → index request. Full cycle ~30 min/post.
+- **Baking prior lessons into the recipe**: post 3's context included "no marketplace names" + "no formulation claims" up front; the marketplace rule held (the formulation-claims rule was satisfied by LGAAS's own DB grounding — all product/ingredient claims verified true against ss_product_ingredients).
+- **The review step caught real problems every time** (see below). Publish-blind would have shipped all of them.
+
+### What DIDN'T work (and the standing fixes)
+- **Review is NOT optional.** Post 1 named Amazon/eBay as counterfeit channels (violates the no-Amazon-accusations rule — affiliate risk); post 2 fabricated a hyaluronic-acid claim about Sulwhasoo First Care (DB shows none) AND shipped 0 FAQ-schema items; post 3 had a malformed Quick Answer question + 0 FAQ items again + its COSRX cross-link fell back to `/blog` (LGAAS link-pattern allowlist lacks `/blog/{slug}`). All caught in review, all fixed via AriaStar before publish.
+- **Standing review checklist for every LGAAS product post**: (1) markers/claims verified against SS database (query ss_product_ingredients for any named product+ingredient), (2) zero marketplace names, (3) "FAQs: N items" ≠ 0, (4) Quick Answer is a clean question, (5) internal links point at deep URLs, (6) Yuri CTA present.
+- **LGAAS bugs to fix at root** (prompt handed to Scott for the LGAAS-side session): client_request path fails to populate faq_schema (2/3 posts); malformed Quick Answer question (1/3); `/blog/{slug}` missing from internal-link allowlist; no UI progress indicator during ~70s generation; slugs truncate mid-word ("...-a-2-minute-che").
+
+### Funnel myths killed today (from the morning's lead-gen review + live registration test)
+- **The "registration → paywall black hole" was a measurement artifact**: the paywall stamp only shipped June 27; it's 2-for-2 since. The register → subscribe → Stripe chain is verified healthy end-to-end (live test, $24.99 correct, new price env confirmed).
+- **Stripe checkout was wearing NeuroLink Bridge branding** — replaced with Seoul Sister logo/icon/colors (statement descriptor was already SEOULSISTER.COM). Test account deleted, funnel data clean.
+- **The real conversion gaps remain**: paywall→paid decision (0 conversions) and ZERO follow-up contact for the 14 registered-but-unpaid leads. Nurture email is still the cheapest unworked conversion lever.
+
+### Next reads
+- ~Jul 15–22: Bing AI Performance for the counterfeit query family + re-run the 3 GEO-audit citation queries in ChatGPT/Perplexity.
+- Ongoing: `SELECT source, count(*), avg(message_count) FROM ss_widget_sessions WHERE started_at >= '2026-07-01' GROUP BY source` — do best_cta/blog landers start and continue conversations?
+- Blocked/backlog: counterfeit-marker enrichment for Laneige + Dr. Jart+ (unlocks posts 4-5); nurture email to registered leads; TAAFT PPC credits.
+
+---
+
 ## June 29 2026 — Funnel consolidation ("single front door") + first measured stranger conversations
 
 ### What we built (7 PRs, all gated AI-First + tsc + build green)
