@@ -38,19 +38,19 @@ function unsubFooter(unsubscribeUrl: string, cohort: NurtureCohort): string {
 function email1(cohort: NurtureCohort, unsubscribeUrl: string): NurtureEmailContent {
   const opener =
     cohort === 'registered'
-      ? `<p>You created an account with us a little while back, and then we did the thing where the very next screen asked for $24.99 before you could try anything. If you closed the tab right there, honestly, fair.</p>`
+      ? `<p>You created an account with us a little while back, and then we did the thing where the very next screen asked you to subscribe before you could try anything. If you closed the tab right there, honestly, fair.</p>`
       : `<p>We talked for a bit on the site a while back and you left me your email so we could stay in touch. This is that, just later than either of us probably expected.</p>`
   return {
     subject:
       cohort === 'registered'
-        ? `You made an account, then we asked you to pay. Let's fix that.`
+        ? `The part we should have led with`
         : `Picking up where we left off`,
     bodyHtml: `
 <p>Hi, it's Yuri from Seoul Sister.</p>
 ${opener}
-<p>So here's the part we should have led with: you can talk to me free, right now, no card and no login. Ask me anything you'd ask a friend who knows Korean skincare inside out. What's actually worth it for your skin, whether that viral serum is right for you, how to tell if the snail mucin you bought is real. I'll give you a straight answer backed by a database of 5,900+ products, and I'll tell you when something is NOT worth your money too.</p>
-<p><a href="${SITE}/?from=nurture_1" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">Talk to Yuri free</a></p>
-<p>If it turns out I'm useful, the paid side is where I remember your skin, build your routine, and adjust it as your skin changes month to month. But try the free conversation first. That's the honest order to do it in.</p>
+<p>So here's the part we should have led with: you can talk to me right now, no account needed. Ask me anything you'd ask a friend who knows Korean skincare inside out. What's actually worth it for your skin, whether that viral serum is right for you, how to tell if the snail mucin you bought is real. I'll give you a straight answer backed by a database of 5,900+ products, and I'll tell you when something is not worth your money too.</p>
+<p><a href="${SITE}/?from=nurture_1" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">Talk to Yuri, free</a></p>
+<p>If it turns out I'm useful, the paid side is where I remember your skin, build your routine, and adjust it as your skin changes month to month. But try the conversation first. That's the honest order to do it in.</p>
 <p>Yuri</p>`,
   }
 }
@@ -99,8 +99,8 @@ export function buildNurtureEmail(
   step: 1 | 2 | 3,
   cohort: NurtureCohort,
   unsubscribeToken: string
-): NurtureEmailContent & { footerHtml: string } {
+): NurtureEmailContent & { footerHtml: string; unsubscribeUrl: string } {
   const unsubscribeUrl = `${SITE}/api/email/unsubscribe?token=${unsubscribeToken}`
   const content = STEPS[step - 1](cohort, unsubscribeUrl)
-  return { ...content, footerHtml: unsubFooter(unsubscribeUrl, cohort) }
+  return { ...content, footerHtml: unsubFooter(unsubscribeUrl, cohort), unsubscribeUrl }
 }

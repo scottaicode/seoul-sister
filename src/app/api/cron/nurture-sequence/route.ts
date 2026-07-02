@@ -34,8 +34,10 @@ async function handler(request: Request) {
     if (body?.test_email) {
       const step = ([1, 2, 3].includes(body.step) ? body.step : 1) as 1 | 2 | 3
       const cohort = body.cohort === 'widget' ? 'widget' : 'registered'
-      const { subject, bodyHtml, footerHtml } = buildNurtureEmail(step, cohort, 'test-token')
-      const result = await sendEmail(body.test_email, subject, wrapEmailHtml(bodyHtml, footerHtml))
+      const { subject, bodyHtml, footerHtml, unsubscribeUrl } = buildNurtureEmail(step, cohort, 'test-token')
+      const result = await sendEmail(body.test_email, subject, wrapEmailHtml(bodyHtml, footerHtml), {
+        unsubscribeUrl,
+      })
       return NextResponse.json({ test: true, step, cohort, ...result })
     }
   }

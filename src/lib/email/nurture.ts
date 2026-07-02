@@ -147,8 +147,14 @@ export async function processDueSends(
     }
 
     const step = (lead.sequence_step + 1) as 1 | 2 | 3
-    const { subject, bodyHtml, footerHtml } = buildNurtureEmail(step, lead.cohort, lead.unsubscribe_token)
-    const result = await sendEmail(lead.email, subject, wrapEmailHtml(bodyHtml, footerHtml))
+    const { subject, bodyHtml, footerHtml, unsubscribeUrl } = buildNurtureEmail(
+      step,
+      lead.cohort,
+      lead.unsubscribe_token
+    )
+    const result = await sendEmail(lead.email, subject, wrapEmailHtml(bodyHtml, footerHtml), {
+      unsubscribeUrl,
+    })
 
     if (result.sent) {
       await db

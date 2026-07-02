@@ -40,7 +40,7 @@ export async function sendEmail(
   to: string,
   subject: string,
   html: string,
-  options: { from?: string; replyTo?: string } = {}
+  options: { from?: string; replyTo?: string; unsubscribeUrl?: string } = {}
 ): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY
   const from =
@@ -79,7 +79,19 @@ export async function sendEmail(
         to,
         subject,
         html,
+        // Plain-text alternative — HTML-only email is a strong spam signal.
+        text: htmlToPlainText(html),
         ...(replyTo ? { reply_to: replyTo } : {}),
+        // RFC 2369/8058 one-click unsubscribe headers. Gmail/Yahoo weight
+        // these heavily when classifying anything list-shaped.
+        ...(options.unsubscribeUrl
+          ? {
+              headers: {
+                'List-Unsubscribe': `<${options.unsubscribeUrl}>`,
+                'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+              },
+            }
+          : {}),
       }),
     })
 
@@ -94,6 +106,21 @@ export async function sendEmail(
     console.error('[email] sendEmail threw:', err)
     return { sent: false, error: err instanceof Error ? err.message : 'unknown' }
   }
+}
+
+/** Derive a readable plain-text part from the HTML body (deterministic). */
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<a\s[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, '$2 ($1)')
+    .replace(/<(?:br|\/p|\/li|\/h[1-6]|\/div|\/ol|\/ul)>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '- ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 }
 
 /**
