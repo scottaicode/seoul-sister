@@ -31,7 +31,14 @@
 - **Stripe checkout was wearing NeuroLink Bridge branding** — replaced with Seoul Sister logo/icon/colors (statement descriptor was already SEOULSISTER.COM). Test account deleted, funnel data clean.
 - **The real conversion gaps remain**: paywall→paid decision (0 conversions) and ZERO follow-up contact for the 14 registered-but-unpaid leads. Nurture email is still the cheapest unworked conversion lever.
 
+### Evening addendum — the "Honest Three" nurture sequence shipped + live deliverability test
+- **Built and armed** (PRs #26, #27): 3-email sequence for registered-not-paid + widget-captured leads. Auto-enrollment, behavioral exits (converted → silent stop, one-click unsubscribe, replies → team@), Tue–Thu 9am PT cron, `from=nurture_N` attribution. Copy is fixed owner-approved Yuri voice in `nurture-copy.ts`. First send: Jul 2, 8 real leads (7 registered + 1 widget capture; internal/Bailey/TAAFT-staff/bot addresses excluded via `NURTURE_EXCLUDE_EMAILS`).
+- **Live Gmail placement test taught the deliverability stack** (test-mode sends to Scott's inbox): email 1 ("...we asked you to pay") → SPAM; email 2 → Promotions; email 3 (includes the $24.99 ask!) → Primary. Lesson: one honest price in context is fine; it's stacked money-trigger lexicon ("pay" in subject + $ amount + "no card" + "free"×4) on a young domain that kills. **Fixes that cleared Spam** (verified by re-test → Promotions): plain-text alternative part on every send (HTML-only is a top spam signal), RFC 8058 one-click List-Unsubscribe headers, de-triggered email-1 copy (subject → "The part we should have led with").
+- **Standing email rules**: never send HTML-only; always List-Unsubscribe headers; max one price mention per email and never in a subject; test placement in a real Gmail inbox before any new template goes to leads; excluding bot-pattern addresses protects sender reputation.
+- Promotions placement for cold sequence mail is ACCEPTABLE (it's the inbox); Primary comes from engagement, not tricks.
+
 ### Next reads
+- After Jul 2 9am PT: first real send — verify ss_pipeline_runs (run_type=nurture_sequence) + ss_nurture_leads; then watch `from=nurture_N` widget sessions + replies at team@ + unsubscribes.
 - ~Jul 15–22: Bing AI Performance for the counterfeit query family + re-run the 3 GEO-audit citation queries in ChatGPT/Perplexity.
 - Ongoing: `SELECT source, count(*), avg(message_count) FROM ss_widget_sessions WHERE started_at >= '2026-07-01' GROUP BY source` — do best_cta/blog landers start and continue conversations?
 - Blocked/backlog: counterfeit-marker enrichment for Laneige + Dr. Jart+ (unlocks posts 4-5); nurture email to registered leads; TAAFT PPC credits.
