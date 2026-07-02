@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
+import { logPipelineRun } from '@/lib/pipeline/log-run'
 
 export const maxDuration = 60
 
@@ -129,8 +130,7 @@ async function handler(request: Request) {
       console.warn('[audit-memory-health] ss_user_memory not applied yet (migration pending).')
     }
 
-    await db.from('ss_pipeline_runs').insert({
-      source: 'system',
+    await logPipelineRun(db, {
       run_type: 'memory_health_audit',
       status: 'completed',
       products_failed: emptyMemoryConvos, // reuse column as the headline alarm count
@@ -141,8 +141,6 @@ async function handler(request: Request) {
         ...findings,
         duration_ms: Date.now() - startedAt,
       },
-    }).then(({ error }) => {
-      if (error) console.error('[audit-memory-health] run log insert failed:', error.message)
     })
 
     return NextResponse.json({ success: true, ...findings })

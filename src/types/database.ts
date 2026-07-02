@@ -831,8 +831,18 @@ export interface ShelfScanResult {
 
 export type PipelineSource = 'olive_young' | 'yesstyle' | 'soko_glam' | 'amazon' | 'stylekorean'
 export type StagingStatus = 'pending' | 'processing' | 'processed' | 'failed' | 'duplicate'
-export type PipelineRunType = 'full_scrape' | 'incremental' | 'reprocess' | 'quality_check'
-export type PipelineRunStatus = 'running' | 'completed' | 'failed'
+export type PipelineRunType =
+  | 'full_scrape'
+  | 'incremental'
+  | 'reprocess'
+  | 'quality_check'
+  | 'image_health'
+  | 'memory_health_audit'
+  | 'durable_memory_rollup'
+  | 'nudge_outcome_grading'
+  | 'proactive_nudge'
+  | 'nurture_sequence'
+export type PipelineRunStatus = 'running' | 'completed' | 'completed_with_errors' | 'failed'
 
 export interface StagingRecord {
   id: string

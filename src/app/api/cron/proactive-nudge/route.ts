@@ -14,6 +14,7 @@ import {
 } from '@/lib/intelligence/nudge-eligibility'
 import { getNudgeTypePerformance } from '@/lib/intelligence/nudge-outcome-grader'
 import type { DecisionMemory } from '@/lib/yuri/memory'
+import { logPipelineRun } from '@/lib/pipeline/log-run'
 
 export const maxDuration = 60
 
@@ -367,8 +368,7 @@ async function handler(request: Request) {
       }
     }
 
-    await db.from('ss_pipeline_runs').insert({
-      source: 'system',
+    await logPipelineRun(db, {
       run_type: 'proactive_nudge',
       status: 'completed',
       products_scraped: stats.subscribersScanned,
@@ -376,8 +376,6 @@ async function handler(request: Request) {
       products_failed: stats.errors,
       completed_at: new Date().toISOString(),
       metadata: { trigger: bypassTimezone ? 'manual_test' : 'cron', schedule: 'daily', timezone_bypassed: bypassTimezone, ...stats, duration_ms: Date.now() - startedAt },
-    }).then(({ error }) => {
-      if (error) console.error('[proactive-nudge] run log insert failed:', error.message)
     })
 
     return NextResponse.json({ success: true, ...stats })
