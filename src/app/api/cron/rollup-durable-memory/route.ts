@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
 import { rollupDurableCorrections } from '@/lib/yuri/durable-memory'
+import { logPipelineRun } from '@/lib/pipeline/log-run'
 
 export const maxDuration = 60
 
@@ -30,8 +31,7 @@ async function handler(request: Request) {
     // Observability: record the run so a silent failure becomes visible
     // (v10.3.4 lesson — 3 months of memory was lost behind a fire-and-forget catch).
     const db = getServiceClient()
-    await db.from('ss_pipeline_runs').insert({
-      source: 'system',
+    await logPipelineRun(db, {
       run_type: 'durable_memory_rollup',
       status: result.tableMissing ? 'failed' : 'completed',
       products_scraped: result.usersScanned,
@@ -45,8 +45,6 @@ async function handler(request: Request) {
         table_missing: result.tableMissing,
         duration_ms: Date.now() - startedAt,
       },
-    }).then(({ error }) => {
-      if (error) console.error('[rollup-durable-memory] run log insert failed:', error.message)
     })
 
     if (result.tableMissing) {

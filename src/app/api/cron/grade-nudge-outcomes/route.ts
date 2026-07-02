@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
 import { gradeNudgeOutcomes } from '@/lib/intelligence/nudge-outcome-grader'
+import { logPipelineRun } from '@/lib/pipeline/log-run'
 
 export const maxDuration = 60
 
@@ -29,8 +30,7 @@ async function handler(request: Request) {
     const r = await gradeNudgeOutcomes()
 
     const db = getServiceClient()
-    await db.from('ss_pipeline_runs').insert({
-      source: 'system',
+    await logPipelineRun(db, {
       run_type: 'nudge_outcome_grading',
       status: r.tableMissing ? 'failed' : 'completed',
       products_scraped: r.scanned,
@@ -48,8 +48,6 @@ async function handler(request: Request) {
         table_missing: r.tableMissing,
         duration_ms: Date.now() - startedAt,
       },
-    }).then(({ error }) => {
-      if (error) console.error('[grade-nudge-outcomes] run log insert failed:', error.message)
     })
 
     if (r.tableMissing) {

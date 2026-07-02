@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
 import { runImageHealthRepair } from '@/lib/pipeline/image-health'
+import { logPipelineRun } from '@/lib/pipeline/log-run'
 
 /**
  * POST /api/cron/image-health  (also GET — Vercel cron sends GET)
@@ -65,8 +66,7 @@ async function handler(request: Request) {
 
     const totalUnfixable = result.unfixableDead + result.unfixableNull
 
-    await db.from('ss_pipeline_runs').insert({
-      source: 'system',
+    await logPipelineRun(db, {
       run_type: 'image_health',
       status: 'completed',
       products_scraped: result.scanned,

@@ -4,6 +4,7 @@ import { verifyCronAuth } from '@/lib/utils/cron-auth'
 import { processDueSends } from '@/lib/email/nurture'
 import { buildNurtureEmail } from '@/lib/email/nurture-copy'
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
+import { logPipelineRun } from '@/lib/pipeline/log-run'
 
 export const maxDuration = 60
 
@@ -45,8 +46,7 @@ async function handler(request: Request) {
   const startedAt = Date.now()
   const summary = await processDueSends(db)
 
-  await db.from('ss_pipeline_runs').insert({
-    source: 'system',
+  await logPipelineRun(db, {
     run_type: 'nurture_sequence',
     status: summary.errors > 0 ? 'completed_with_errors' : 'completed',
     completed_at: new Date().toISOString(),
