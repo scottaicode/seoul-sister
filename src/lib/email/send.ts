@@ -102,14 +102,17 @@ export async function sendEmail(
  * inside `bodyHtml`, which is AI-generated. Keep this wrapper plain so it never
  * competes with or constrains the generated content.
  */
-export function wrapEmailHtml(bodyHtml: string): string {
+export function wrapEmailHtml(bodyHtml: string, footerHtml?: string): string {
+  const footer =
+    footerHtml ??
+    `<p style="font-size:12px;color:#999;margin:0;">Seoul Sister — your K-beauty intelligence advisor. You're receiving this because you chatted with Yuri at seoulsister.com. Not interested? Just ignore this and we won't follow up.</p>`
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#2b2b2b;max-width:560px;margin:0 auto;padding:24px;">
 ${bodyHtml}
 <hr style="border:none;border-top:1px solid #eee;margin:28px 0 14px;">
-<p style="font-size:12px;color:#999;margin:0;">Seoul Sister — your K-beauty intelligence advisor. You're receiving this because you chatted with Yuri at seoulsister.com. Not interested? Just ignore this and we won't follow up.</p>
+${footer}
 </body>
 </html>`
 }
