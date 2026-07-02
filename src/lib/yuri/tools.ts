@@ -1,4 +1,5 @@
 import { getServiceClient } from '@/lib/supabase'
+import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 import { fetchWeather } from '@/lib/intelligence/weather-routine'
 import {
   getProductPosition,
@@ -499,6 +500,22 @@ export const YURI_TOOLS: ToolDef[] = [
     },
   },
   {
+    name: 'get_counterfeit_markers',
+    description:
+      "Look up Seoul Sister's verified counterfeit markers — the specific label, barcode, packaging, and texture checks that distinguish authentic product from fakes — plus the universal any-brand checks and the authorized-retailer list. Use whenever a user asks if a product might be fake, how to verify authenticity, or where to buy safely. The markers are DATA with stated confidence (severity): weigh them against the user's specific situation (where they bought it, export vs Korea-domestic packaging) rather than reciting them as verdicts.",
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        brand: {
+          type: 'string',
+          description:
+            'Brand to look up (e.g., "COSRX", "Sulwhasoo"). Omit to get only the universal any-brand checks.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'web_search',
     description:
       'Search the web for current K-beauty information, latest product reviews, ingredient research, brand news, or Korean skincare trends. Use when the question requires information more recent than your training data, or when you need to verify current product availability, reformulations, or pricing from sources outside the Seoul Sister database.',
@@ -808,6 +825,8 @@ export async function executeYuriTool(
         return await executeGetPersonalizedMatch(input, userId)
       case 'get_ingredient_guide':
         return await executeGetIngredientGuide(input)
+      case 'get_counterfeit_markers':
+        return await executeGetCounterfeitMarkers(input)
       case 'web_search':
         return await executeWebSearch(input)
       case 'get_current_weather':
@@ -3055,5 +3074,47 @@ async function executeFindProductDupes(
       : null,
     dupes,
     note: 'match_pct = ingredient overlap, NOT a verdict. Judge whether each dupe is genuinely worth it for THIS user (skin type, what shared vs missing ingredients actually matter, whether the savings justify any tradeoff). Be honest if a "dupe" drops a key active.',
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Tool: get_counterfeit_markers
+// ---------------------------------------------------------------------------
+
+async function executeGetCounterfeitMarkers(input: Record<string, unknown>): Promise<string> {
+  const db = getServiceClient()
+  const brand = (input.brand as string | undefined)?.trim()
+
+  let query = db
+    .from('ss_counterfeit_markers')
+    .select('brand, marker_type, severity, description')
+  if (brand) {
+    const term = sanitizeSearchTerm(brand)
+    query = query.or(`brand.ilike.%${term}%,brand.eq.ANY`)
+  } else {
+    query = query.eq('brand', 'ANY')
+  }
+  const { data: markers, error } = await query
+  if (error) {
+    return JSON.stringify({ error: `Marker lookup failed: ${error.message}` })
+  }
+
+  const { data: retailers } = await db
+    .from('ss_retailers')
+    .select('name, trust_score')
+    .eq('is_authorized', true)
+    .order('trust_score', { ascending: false })
+    .limit(6)
+
+  const brandSpecific = (markers ?? []).filter((m) => m.brand !== 'ANY')
+  const universal = (markers ?? []).filter((m) => m.brand === 'ANY')
+
+  return JSON.stringify({
+    brand_queried: brand || null,
+    brand_specific_markers: brandSpecific,
+    universal_markers: universal,
+    authorized_retailers: (retailers ?? []).map((r) => r.name),
+    note:
+      'Markers are graded signals, not verdicts — severity reflects confidence. Weigh each against where the user bought the product and whether it is export vs Korea-domestic packaging. If no brand-specific markers exist for this brand, say so honestly and lean on the universal checks.',
   })
 }
