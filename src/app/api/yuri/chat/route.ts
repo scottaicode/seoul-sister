@@ -11,6 +11,18 @@ import { hasActiveSubscription } from '@/lib/subscription'
 import { incrementYuriMessageCount } from '@/lib/usage'
 import type { SpecialistType } from '@/types/database'
 
+const scenarioSchema = z.object({
+  skin_type: z.string().max(40).nullable().optional(),
+  skin_concerns: z.array(z.string().max(60)).max(12).optional(),
+  fitzpatrick_scale: z.string().max(20).nullable().optional(),
+  climate: z.string().max(40).nullable().optional(),
+  age_range: z.string().max(20).nullable().optional(),
+  budget_range: z.string().max(40).nullable().optional(),
+  experience_level: z.string().max(40).nullable().optional(),
+  allergies: z.array(z.string().max(60)).max(20).optional(),
+  persona_note: z.string().max(400).nullable().optional(),
+})
+
 const chatSchema = z.object({
   message: z.string().min(1).max(10000),
   conversation_id: z.string().uuid().optional(),
@@ -26,6 +38,10 @@ const chatSchema = z.object({
     ])
     .nullable()
     .optional(),
+  // Scenario Mode (demo accounts only). Makes the turn ephemeral: real Yuri,
+  // scenario skin profile, zero persistence. Honored ONLY when the authed user
+  // has is_demo = true — a normal user passing this is ignored (see route body).
+  scenario: scenarioSchema.nullable().optional(),
 })
 
 /**
@@ -76,9 +92,35 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const parsed = chatSchema.parse(body)
 
-    // Get or create conversation
+    // --- Scenario Mode gate --------------------------------------------------
+    // Scenario Mode is honored ONLY for accounts explicitly flagged is_demo.
+    // A normal user who passes `scenario` is silently ignored (scenario stays
+    // null), so they get ordinary, persisted Yuri — never the ephemeral path.
+    let scenario: typeof parsed.scenario = null
+    if (parsed.scenario) {
+      const db = getServiceClient()
+      const { data: prof } = await db
+        .from('ss_user_profiles')
+        .select('is_demo')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (prof?.is_demo === true) {
+        scenario = parsed.scenario
+      }
+    }
+    const isScenario = scenario != null
+
+    // Get or create conversation.
+    // Scenario turns are ephemeral (nothing is persisted downstream), so we do
+    // NOT create or load a real conversation row — we use a throwaway UUID and
+    // an empty history. This keeps demo turns out of the account's thread list.
     let conversationId = parsed.conversation_id
-    if (conversationId) {
+    let history: Awaited<ReturnType<typeof loadConversationMessages>> = []
+
+    if (isScenario) {
+      conversationId = crypto.randomUUID()
+      history = []
+    } else if (conversationId) {
       // Verify ownership
       const db = getServiceClient()
       const { data: conv } = await db
@@ -93,15 +135,14 @@ export async function POST(request: NextRequest) {
           { status: 404, headers: { 'Content-Type': 'application/json' } }
         )
       }
+      history = await loadConversationMessages(conversationId)
     } else {
       conversationId = await createConversation(
         user.id,
         (parsed.specialist_type as SpecialistType) ?? null
       )
+      history = await loadConversationMessages(conversationId)
     }
-
-    // Load conversation history
-    const history = await loadConversationMessages(conversationId)
 
     // Create an SSE stream from the advisor async generator.
     //
@@ -127,6 +168,7 @@ export async function POST(request: NextRequest) {
             parsed.specialist_type !== undefined
               ? (parsed.specialist_type as SpecialistType | null)
               : undefined,
+          scenario,
         })
 
         let generatedTitle: string | undefined

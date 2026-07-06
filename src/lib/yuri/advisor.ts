@@ -575,6 +575,33 @@ Return ONLY the title text, nothing else. No quotes.`,
 // Main advisor: stream a response to a user message
 // ---------------------------------------------------------------------------
 
+/**
+ * Scenario Mode (Jul 5 2026) — a marketing/demo capability.
+ *
+ * When present, Yuri answers AS IF the user had this skin profile, for ANY skin
+ * type or persona, so a flagged demo account can screenshot real Yuri output
+ * across the full range of skin types WITHOUT creating fake customer accounts.
+ *
+ * Two guarantees, both enforced in streamAdvisorResponse:
+ *   1. The scenario skin context OVERRIDES the loaded profile for this turn only.
+ *   2. NOTHING is persisted on a scenario turn — no message save, no title, no
+ *      summary, no specialist insight, no continuous-learning profile writeback.
+ *      The turn is fully ephemeral, so it cannot pollute the real profile or the
+ *      cross-user learning loop. Yuri's reasoning + verified catalog are unchanged.
+ */
+export interface YuriScenario {
+  skin_type?: string | null
+  skin_concerns?: string[]
+  fitzpatrick_scale?: string | null
+  climate?: string | null
+  age_range?: string | null
+  budget_range?: string | null
+  experience_level?: string | null
+  allergies?: string[]
+  /** Free-text persona note, e.g. "22, oily acne-prone, humid climate, tight budget". */
+  persona_note?: string | null
+}
+
 export interface AdvisorStreamOptions {
   userId: string
   conversationId: string
@@ -582,6 +609,8 @@ export interface AdvisorStreamOptions {
   imageUrls?: string[]
   conversationHistory: YuriMessage[]
   requestedSpecialist?: SpecialistType | null
+  /** Present only for flagged demo accounts. Makes the whole turn ephemeral. */
+  scenario?: YuriScenario | null
 }
 
 export async function* streamAdvisorResponse(
@@ -594,7 +623,13 @@ export async function* streamAdvisorResponse(
     imageUrls = [],
     conversationHistory,
     requestedSpecialist,
+    scenario = null,
   } = options
+
+  // Scenario Mode makes the entire turn ephemeral: real Yuri reasoning, a
+  // scenario skin profile, and ZERO persistence. This flag gates every write
+  // below so a demo turn can never touch the real profile or the learning loop.
+  const isScenario = scenario != null
 
   // 1. Detect or use requested specialist
   const specialistType =
@@ -610,6 +645,27 @@ export async function* streamAdvisorResponse(
     message,
     isFirstMessage,
   })
+
+  // Scenario Mode: override the loaded skin profile with the scenario persona
+  // for THIS TURN ONLY. Nothing is written back (see the isScenario guards on
+  // every save below), so the demo account's real profile is untouched. We keep
+  // the real timezone so the RIGHT NOW / time tags still render sensibly.
+  if (isScenario) {
+    const realTz = (userContext.skinProfile as unknown as Record<string, unknown> | null)?.timezone ?? 'UTC'
+    userContext.skinProfile = {
+      ...(userContext.skinProfile as unknown as Record<string, unknown> | null),
+      skin_type: scenario!.skin_type ?? null,
+      skin_concerns: scenario!.skin_concerns ?? [],
+      fitzpatrick_scale: scenario!.fitzpatrick_scale ?? null,
+      climate: scenario!.climate ?? null,
+      age_range: scenario!.age_range ?? null,
+      budget_range: scenario!.budget_range ?? null,
+      experience_level: scenario!.experience_level ?? null,
+      allergies: scenario!.allergies ?? [],
+      timezone: realTz,
+      ...(scenario!.persona_note ? { persona_note: scenario!.persona_note } : {}),
+    } as unknown as typeof userContext.skinProfile
+  }
 
   // 3. Build system prompt with context + specialist
   const systemPrompt = buildSystemPrompt(
@@ -641,8 +697,10 @@ export async function* streamAdvisorResponse(
     apiMessages.push({ role: 'user', content: message })
   }
 
-  // 5. Save user message to DB
-  await saveMessage(conversationId, 'user', message, specialistType, imageUrls)
+  // 5. Save user message to DB (skipped in Scenario Mode — ephemeral demo turn)
+  if (!isScenario) {
+    await saveMessage(conversationId, 'user', message, specialistType, imageUrls)
+  }
 
   // 6. Call Claude with tool use support + prompt caching + retry
   const client = getAnthropicClient()
@@ -941,6 +999,16 @@ export async function* streamAdvisorResponse(
 
   // 7c. Clean AI artifacts before saving (users see raw stream; saved text is polished)
   fullResponse = cleanYuriResponse(fullResponse)
+
+  // --- Scenario Mode short-circuit ---------------------------------------
+  // Everything below this point persists state (assistant message, title,
+  // summary, specialist insight, continuous-learning profile writeback). On a
+  // scenario turn we skip ALL of it: the demo is ephemeral by construction, so
+  // it cannot pollute the real profile or the cross-user learning loop. We
+  // return immediately after streaming the response.
+  if (isScenario) {
+    return
+  }
 
   // 8. Save assistant response to DB
   await saveMessage(conversationId, 'assistant', fullResponse, specialistType)

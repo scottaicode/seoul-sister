@@ -45,3 +45,27 @@ Pure data capture (a `source` string) + the existing GA4 events. No AI logic, no
 3. From a blog "Ask Yuri" click → land on widget → send a message → query `ss_widget_sessions` and confirm the new row has `source = 'blog'`.
 4. Direct visitor (no `?ask=`) → session row has `source = NULL` (organic). Distinguishable from feeders.
 5. Query proves the read: `SELECT source, count(*), avg(message_count) FROM ss_widget_sessions GROUP BY source`.
+
+## External social attribution tags (added Jul 5 2026)
+
+The `from=` param has **no allowlist** — the widget persists whatever slug it receives (read at `TryYuriSection.tsx:144`, sanitized to `[a-z0-9_]` and capped at 40 chars in `api/widget/chat/route.ts:72`, written on session creation at `:259`). So an external social bio link works with **zero code change** — just point it at `seoulsister.com/?from=<tag>`.
+
+**Naming rule:** external tags must **never contain a person's name** (it sits in a public URL). Use a neutral, platform-parallel slug. Personal credit is derived from the tag → operator mapping below, read at query time — not exposed in the link.
+
+| Public tag (`?from=`) | Channel | Operated by | Bio link |
+|-----------------------|---------|-------------|----------|
+| `ig_ss` | Instagram (@seoulsisterskin) | Bailey | `seoulsister.com/?from=ig_ss` |
+| `tt_ss` | TikTok | Bailey | `seoulsister.com/?from=tt_ss` |
+
+Reason `ig_ss`/`tt_ss` were chosen over `bailey_ig`: Bailey asked that her name not appear anywhere public, and it was showing in the original `?from=bailey_ig` slug.
+
+**Read Bailey's credited social traffic:**
+```sql
+SELECT source, count(*) AS sessions, round(avg(message_count),1) AS avg_depth,
+       count(*) FILTER (WHERE intent_signals_detected > 0) AS intent_sessions
+FROM ss_widget_sessions
+WHERE source IN ('ig_ss','tt_ss')
+GROUP BY source;
+```
+
+When a new operator/channel is added, add a row here and pick a name-free slug. No code change is needed for the tag to start tracking.
