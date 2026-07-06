@@ -7,7 +7,7 @@ import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import BlogYuriCta from '@/components/blog/BlogYuriCta'
 import BlogInlineYuriPrompt from '@/components/blog/BlogInlineYuriPrompt'
 import { marked } from 'marked'
-import { linkIngredients, buildIngredientMap, type IngredientLink } from '@/lib/utils/ingredient-linker'
+import { linkIngredients, buildIngredientMap, extractIngredientChips, type IngredientLink } from '@/lib/utils/ingredient-linker'
 import { serializeJsonLd } from '@/lib/utils/json-ld'
 
 // Configure marked: open external links in new tab, sanitize
@@ -162,7 +162,12 @@ export default async function BlogPostPage({
 
   // Render body with ingredient links
   const rawHtml = renderMarkdown(blogPost.body)
-  const { html: linkedHtml, linked: linkedIngredients } = linkIngredients(rawHtml, ingredientLinks)
+  const { html: linkedHtml } = linkIngredients(rawHtml, ingredientLinks)
+
+  // "Key Ingredients Mentioned" chips: harvest every /ingredients/ link present in
+  // the final HTML (LGAAS-authored + linker-added), not just the linker's own
+  // additions — LGAAS pre-links most ingredients, which the linker skips.
+  const ingredientChips = extractIngredientChips(linkedHtml)
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -366,24 +371,21 @@ export default async function BlogPostPage({
           )}
 
           {/* Key Ingredients Mentioned */}
-          {linkedIngredients.length > 0 && (
+          {ingredientChips.length > 0 && (
             <div className="mt-12 pt-8 border-t border-white/10">
               <h2 className="font-display font-semibold text-xl text-white mb-4">
                 Key Ingredients Mentioned
               </h2>
               <div className="flex items-center gap-2 flex-wrap">
-                {linkedIngredients.map((name) => {
-                  const link = ingredientLinks.find((l) => l.name === name)
-                  return link ? (
-                    <Link
-                      key={name}
-                      href={`/ingredients/${link.slug}`}
-                      className="px-3 py-1.5 rounded-full text-sm bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/30 transition-colors"
-                    >
-                      {name}
-                    </Link>
-                  ) : null
-                })}
+                {ingredientChips.map(({ name, slug }) => (
+                  <Link
+                    key={slug}
+                    href={`/ingredients/${slug}`}
+                    className="px-3 py-1.5 rounded-full text-sm bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/30 transition-colors"
+                  >
+                    {name}
+                  </Link>
+                ))}
               </div>
             </div>
           )}
