@@ -52,9 +52,10 @@ async function handler(request: Request) {
       budgetMs: BUDGET_MS,
     })
 
-    // If we processed nothing past the cursor, we've reached the freshest end —
-    // wrap to the start (null) next run so the sweep is continuous.
-    const reachedEnd = result.scanned === 0 && cursor !== null
+    // Wrap on the SWEEP phase specifically: if the long-tail sweep found nothing
+    // past the cursor, reset to the start next run (a run can still have scanned
+    // popular phase-1 rows, so we key on sweptCount, not scanned).
+    const reachedEnd = result.sweptCount === 0 && cursor !== null
     const nextCursor = reachedEnd ? null : result.lastCheckedCursor
 
     await logPipelineRun(db, {

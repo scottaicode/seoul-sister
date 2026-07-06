@@ -33,6 +33,7 @@ export interface OyPriceRefreshResult {
   priceChanges: number // subset of `updated` where the price actually moved
   unscrapeable: number // rows we couldn't derive a prdtNo for (skipped)
   fetchFailed: number // prdtNo derived but the live page returned no price
+  sweptCount: number // phase-2 (long-tail sweep) rows seen this run; 0 => cursor wrap
   lastCheckedCursor: string | null // ISO of the last row's PRIOR last_checked (keyset)
 }
 
@@ -43,13 +44,29 @@ export function parsePrdtNo(url: string | null): string | null {
   return m ? m[1] : null
 }
 
+/** A product is "popular" (worth keeping fresh) at/above this OY review count. */
+const POPULAR_REVIEW_THRESHOLD = 500
+/** Re-refresh a popular product once its price is older than this. */
+const POPULAR_STALE_DAYS = 21
+
 /**
- * Refresh a bounded batch of the stalest Olive Young prices.
+ * Refresh a bounded batch of Olive Young prices, popular-first.
  *
- * The cursor is a `last_checked` timestamp: each run processes rows with
- * `last_checked > afterCheckedAt` (or all rows on the first run), ordered ascending,
- * so we always attack the stalest prices first and advance monotonically. When a
- * run finds nothing past the cursor, the caller wraps back to the start.
+ * Two phases per run, because with ~4,900 products and Playwright at ~8s/page a
+ * pure rolling sweep takes months — too slow for the products strangers actually
+ * ask Yuri about. So:
+ *
+ *   PHASE 1 (priority): refresh any POPULAR product (review_count >= threshold)
+ *   whose price is older than POPULAR_STALE_DAYS. This keeps the products Yuri
+ *   cites fresh on a ~3-week cadence. Self-balancing: once all popular products
+ *   are fresh, this phase finds nothing and the whole budget goes to phase 2.
+ *
+ *   PHASE 2 (sweep): the long tail, stalest-first, via a `last_checked` keyset
+ *   cursor (rows with `last_checked > afterCheckedAt`, ascending). Advances
+ *   monotonically across runs; the caller wraps to the start when it finds nothing.
+ *
+ * The cursor only governs phase 2 — phase 1 is a bounded top-up that re-queries
+ * fresh each run, so it needs no cursor of its own.
  */
 export async function runOliveYoungPriceRefresh(
   db: SupabaseClient,
@@ -67,27 +84,54 @@ export async function runOliveYoungPriceRefresh(
 
   if (!retailer) {
     console.error('[oy-price-refresh] Olive Young retailer row not found — aborting')
-    return { scanned: 0, updated: 0, priceChanges: 0, unscrapeable: 0, fetchFailed: 0, lastCheckedCursor: afterCheckedAt }
+    return { scanned: 0, updated: 0, priceChanges: 0, unscrapeable: 0, fetchFailed: 0, sweptCount: 0, lastCheckedCursor: afterCheckedAt }
   }
 
-  // Stalest-first page of OY price rows past the cursor. We over-select slightly
-  // vs `limit` is unnecessary — the batch size IS the network budget here.
-  let query = db
+  const popularCutoff = new Date(Date.now() - POPULAR_STALE_DAYS * 86_400_000).toISOString()
+
+  // PHASE 1 — stale popular products (review_count high, price aged past cutoff).
+  // Ordered most-reviewed first so the very top products refresh earliest.
+  const { data: popularRows } = await db
     .from('ss_product_prices')
-    .select('id, product_id, url, price_usd, last_checked')
+    .select('id, product_id, url, price_usd, last_checked, ss_products!inner(review_count)')
     .eq('retailer_id', retailer.id)
-    .order('last_checked', { ascending: true, nullsFirst: true })
+    .gte('ss_products.review_count', POPULAR_REVIEW_THRESHOLD)
+    .lt('last_checked', popularCutoff)
+    .order('review_count', { ascending: false, foreignTable: 'ss_products' })
     .limit(limit)
 
-  if (afterCheckedAt) {
-    query = query.gt('last_checked', afterCheckedAt)
+  // PHASE 2 — long-tail sweep, stalest-first, past the keyset cursor. Only fetch
+  // enough to top the batch up to `limit` after phase 1 takes its share.
+  const sweepBudget = Math.max(0, limit - (popularRows?.length ?? 0))
+  let sweepRows: typeof popularRows = []
+  if (sweepBudget > 0) {
+    let query = db
+      .from('ss_product_prices')
+      .select('id, product_id, url, price_usd, last_checked, ss_products!inner(review_count)')
+      .eq('retailer_id', retailer.id)
+      .order('last_checked', { ascending: true, nullsFirst: true })
+      .limit(sweepBudget)
+    if (afterCheckedAt) {
+      query = query.gt('last_checked', afterCheckedAt)
+    }
+    const { data } = await query
+    sweepRows = data ?? []
   }
 
-  const { data: rows, error } = await query
-  if (error) {
-    console.error(`[oy-price-refresh] Failed to read price rows: ${error.message}`)
-    return { scanned: 0, updated: 0, priceChanges: 0, unscrapeable: 0, fetchFailed: 0, lastCheckedCursor: afterCheckedAt }
-  }
+  // Only phase-2 sweep rows drive the keyset cursor. A phase-1 popular row can sit
+  // anywhere in the `last_checked` timeline, so advancing the cursor off it would
+  // corrupt the monotonic sweep. Track sweep ids so the loop knows which is which.
+  const sweepIds = new Set<string>((sweepRows ?? []).map((r) => r.id as string))
+
+  // Phase 1 rows first (priority), then phase 2 sweep rows. De-dupe by price id so
+  // a popular row that's also stalest isn't scraped twice in one run.
+  const seen = new Set<string>()
+  const rows = [...(popularRows ?? []), ...(sweepRows ?? [])].filter((r) => {
+    const id = r.id as string
+    if (seen.has(id)) return false
+    seen.add(id)
+    return true
+  })
 
   const result: OyPriceRefreshResult = {
     scanned: 0,
@@ -95,6 +139,7 @@ export async function runOliveYoungPriceRefresh(
     priceChanges: 0,
     unscrapeable: 0,
     fetchFailed: 0,
+    sweptCount: sweepIds.size,
     lastCheckedCursor: afterCheckedAt,
   }
 
@@ -144,9 +189,11 @@ export async function runOliveYoungPriceRefresh(
         break
       }
       result.scanned++
-      // Advance the cursor to this row's PRIOR last_checked regardless of outcome,
-      // so a persistently-unscrapeable row can't wedge the sweep forever.
-      result.lastCheckedCursor = (row.last_checked as string | null) ?? result.lastCheckedCursor
+      // Advance the sweep cursor only for phase-2 rows, and regardless of scrape
+      // outcome, so a persistently-unscrapeable tail row can't wedge the sweep.
+      if (sweepIds.has(row.id as string)) {
+        result.lastCheckedCursor = (row.last_checked as string | null) ?? result.lastCheckedCursor
+      }
 
       const prdtNo = parsePrdtNo(row.url as string | null)
       if (!prdtNo) {
