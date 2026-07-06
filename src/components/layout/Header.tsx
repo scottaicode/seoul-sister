@@ -42,6 +42,7 @@ export default function Header() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isDemo, setIsDemo] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const moreMenuRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
@@ -51,19 +52,21 @@ export default function Header() {
   // Check admin status
   useEffect(() => {
     if (!user) return
-    async function checkAdmin() {
+    async function checkFlags() {
       try {
         const { data } = await supabase
           .from('ss_user_profiles')
-          .select('is_admin')
+          .select('is_admin, is_demo')
           .eq('user_id', user!.id)
           .maybeSingle()
         setIsAdmin(data?.is_admin === true)
+        setIsDemo(data?.is_demo === true)
       } catch {
         setIsAdmin(false)
+        setIsDemo(false)
       }
     }
-    checkAdmin()
+    checkFlags()
   }, [user])
 
   // Close profile menu on outside click
@@ -169,6 +172,19 @@ export default function Header() {
                 </button>
                 {moreMenuOpen && (
                   <div className="absolute left-1/2 -translate-x-1/2 top-9 w-52 bg-seoul-card border border-white/10 rounded-xl shadow-lg py-1 z-50">
+                    {(isDemo || isAdmin) && (
+                      <Link
+                        href="/demo"
+                        onClick={() => setMoreMenuOpen(false)}
+                        className={`block px-4 py-2.5 text-sm transition-colors border-b border-white/10 ${
+                          isActive('/demo')
+                            ? 'text-gold bg-gold/5'
+                            : 'text-gold/90 hover:bg-gold/5 hover:text-gold'
+                        }`}
+                      >
+                        ✨ Demo Studio
+                      </Link>
+                    )}
                     {moreNavLinks.map((link) => (
                       <Link
                         key={link.href}
@@ -306,6 +322,19 @@ export default function Header() {
                 <Sparkles className="w-4 h-4" />
                 Ask Yuri
               </Link>
+              {(isDemo || isAdmin) && (
+                <Link
+                  href="/demo"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
+                    isActive('/demo')
+                      ? 'bg-gold/15 text-gold'
+                      : 'text-gold/90 hover:bg-gold/5 hover:text-gold'
+                  }`}
+                >
+                  ✨ Demo Studio
+                </Link>
+              )}
               {allNavLinks.map((link) => (
                 <Link
                   key={link.href}
