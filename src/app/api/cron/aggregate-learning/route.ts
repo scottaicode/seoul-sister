@@ -55,6 +55,15 @@ export async function POST(request: Request) {
     }
 
     // 2. Process unprocessed conversations (with sufficient messages)
+    // Exclude demo/internal accounts (is_demo) from the learning loop. Scenario
+    // Mode turns already persist nothing, but if a demo account is also used for
+    // ordinary chats, those must not train the cross-user corpus either.
+    const { data: demoProfiles } = await db
+      .from('ss_user_profiles')
+      .select('user_id')
+      .eq('is_demo', true)
+    const demoUserIds = new Set((demoProfiles || []).map((p) => p.user_id))
+
     const { data: conversations } = await db
       .from('ss_yuri_conversations')
       .select('id, specialist_type, user_id')
@@ -65,6 +74,15 @@ export async function POST(request: Request) {
 
     for (const conv of conversations || []) {
       try {
+        // Skip demo/internal accounts — mark processed so they don't re-queue,
+        // but never extract patterns from them into the shared corpus.
+        if (demoUserIds.has(conv.user_id)) {
+          await db
+            .from('ss_yuri_conversations')
+            .update({ learning_contributed: true })
+            .eq('id', conv.id)
+          continue
+        }
         // Load messages for this conversation
         const { data: messages } = await db
           .from('ss_yuri_messages')
