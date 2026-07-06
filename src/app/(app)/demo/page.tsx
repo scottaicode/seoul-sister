@@ -218,7 +218,7 @@ export default function ScenarioDemoPage() {
                   : 'border-white/15 hover:border-white/40'
               }`}
             >
-              <div className="text-sm font-semibold text-white">{p.label}</div>
+              <div className="text-sm font-semibold text-gold-light">{p.label}</div>
               <div className="mt-0.5 text-xs text-white/50">{p.blurb}</div>
             </button>
           ))}
