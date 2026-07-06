@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { secureCompare } from '@/lib/utils/secure-compare'
+import { submitToIndexNow } from '@/lib/utils/indexnow'
 
 const ingestSchema = z.object({
   lgaas_post_id: z.string().uuid(),
@@ -122,6 +123,11 @@ export async function POST(request: NextRequest) {
     // Revalidate blog pages so updated content appears immediately
     revalidatePath('/blog')
     revalidatePath(`/blog/${post.slug}`)
+
+    // Notify IndexNow (Bing/Yandex) so the new/updated post gets recrawled fast
+    // instead of waiting for an organic crawl. Non-critical: submitToIndexNow
+    // never throws, and a failed ping is logged but must not fail the ingest.
+    await submitToIndexNow([`/blog/${post.slug}`, '/blog'])
 
     return NextResponse.json({
       success: true,
