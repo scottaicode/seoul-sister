@@ -4,6 +4,7 @@ import { Sparkles, ArrowRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { buildBlogPrefill } from './blog-prefill'
+import { trackEvent, BlogEvent } from '@/lib/analytics'
 
 interface BlogInlineYuriPromptProps {
   title?: string | null
@@ -33,6 +34,7 @@ export default function BlogInlineYuriPrompt({ title, category, primaryKeyword }
   const router = useRouter()
 
   const openYuri = () => {
+    trackEvent(BlogEvent.ctaClick, { placement: 'inline_prompt', authed: !!user })
     if (user) {
       router.push('/yuri')
     } else {

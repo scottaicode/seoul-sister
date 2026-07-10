@@ -4,6 +4,7 @@ import { Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { buildBlogPrefill } from './blog-prefill'
+import { trackEvent, BlogEvent } from '@/lib/analytics'
 
 interface BlogYuriCtaProps {
   title?: string | null
@@ -16,6 +17,7 @@ export default function BlogYuriCta({ title, category, primaryKeyword }: BlogYur
   const router = useRouter()
 
   const openYuri = () => {
+    trackEvent(BlogEvent.ctaClick, { placement: 'hero_cta', authed: !!user })
     if (user) {
       router.push('/yuri')
     } else {

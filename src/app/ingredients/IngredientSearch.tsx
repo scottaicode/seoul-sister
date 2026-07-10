@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search } from 'lucide-react'
 import { toSlug } from '@/lib/utils/slug'
+import { trackEvent, SearchEvent } from '@/lib/analytics'
 
 interface SearchResult {
   id: string
@@ -40,8 +41,14 @@ export default function IngredientSearch() {
         const res = await fetch(`/api/ingredients/search?q=${encodeURIComponent(query)}`)
         if (res.ok) {
           const data = await res.json()
-          setResults(data.ingredients || [])
+          const ingredients = data.ingredients || []
+          setResults(ingredients)
           setOpen(true)
+          // Demand signal — metadata only, never the raw query (PII-safe).
+          trackEvent(SearchEvent.ingredient, {
+            query_length: query.length,
+            result_count: ingredients.length,
+          })
         }
       } catch {
         // silent

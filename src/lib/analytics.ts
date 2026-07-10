@@ -53,12 +53,33 @@ export const DemoEvent = {
   prefillArrived: 'yuri_prefill_arrived',
 } as const
 
-/** Contextual Yuri nudge on Products/Ingredients detail pages (Phase 4). The
+/** Contextual Yuri nudge on Products/Ingredients/Blog detail pages (Phase 4). The
  *  nudge is a feeder to the landing widget: `shown` fires when an engaged
  *  visitor (scroll/dwell triggered) sees it, `click` when they take it. Combined
- *  with `yuri_prefill_arrived` (source=product/ingredient), this gives the full
+ *  with `yuri_prefill_arrived` (source=product/ingredient/blog), this gives the full
  *  feeder funnel: shown → click → arrived → first message. `kind` = which page. */
 export const NudgeEvent = {
   shown: 'yuri_nudge_shown',
   click: 'yuri_nudge_click',
+} as const
+
+/** Free-surface search demand. Fires when a public search returns (debounced),
+ *  so GA4 can measure that strangers are actively searching the free content —
+ *  the top-of-funnel demand signal the DB can't see (anonymous page reads write
+ *  no rows). Metadata only: `query_length` + `result_count`, never the raw query
+ *  string, to keep GA4 free of PII. A high search volume with low widget
+ *  first-message rate = the flywheel is leaking between free content and Yuri. */
+export const SearchEvent = {
+  ingredient: 'ingredient_search',
+} as const
+
+/** Blog → Yuri feeder. Blog posts already route "Ask Yuri" CTAs to the landing
+ *  widget with `&from=blog` (the arrival is caught by `yuri_prefill_arrived`
+ *  source=blog), but the blog-SIDE click was invisible. `ctaClick` closes that:
+ *  it fires when a reader takes a blog CTA, tagged by `placement` (which CTA)
+ *  and `authed` (logged-in readers go to /yuri instead of the widget). Pairing
+ *  click→arrival measures how much of your GEO/blog traffic actually reaches
+ *  Yuri — the flywheel the free content exists to drive. */
+export const BlogEvent = {
+  ctaClick: 'blog_yuri_cta_click',
 } as const
