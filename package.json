@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test": "node --test tests/",
     "analyze": "ANALYZE=true next build"
   },
   "dependencies": {

@@ -765,16 +765,22 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
   // lands. The threshold drops from 30 days to 7 to match Bailey's cadence ask.
   if (context.glassSkinHistory.length > 0) {
     const latest = context.glassSkinHistory[0]
+    // Render the raw score date only, NOT a computed "N days ago" bucket — the
+    // bucket ticks daily and invalidates the cached prefix. takenDate is already
+    // YYYY-MM-DD; Yuri computes recency from it against ## RIGHT NOW.
     const lines = context.glassSkinHistory.map((s, i) => {
-      const ageLabel = s.daysAgo === 0 ? 'today' : s.daysAgo === 1 ? '1 day ago' : `${s.daysAgo} days ago`
       const tag = i === 0 ? ' (most recent)' : ''
-      return `- **${s.takenDate}** (${ageLabel})${tag}: overall ${s.overall}/100 — luminosity ${s.luminosity}, smoothness ${s.smoothness}, clarity ${s.clarity}, hydration ${s.hydration}, evenness ${s.evenness}`
+      return `- **${s.takenDate}**${tag}: overall ${s.overall}/100 — luminosity ${s.luminosity}, smoothness ${s.smoothness}, clarity ${s.clarity}, hydration ${s.hydration}, evenness ${s.evenness}`
     })
 
+    // The >= 7 gate is real behavior (fires at most once per photo, not a
+    // per-render tick), but do NOT embed "${daysAgo} days old" — that number
+    // ticks daily and invalidates the cached prefix. The latest score's raw
+    // date is already in `lines` above; Yuri reads staleness from it.
     let cadenceNote = ''
     if (latest.daysAgo >= 7) {
       cadenceNote =
-        `\nLatest score is ${latest.daysAgo} days old. Photos are the platform's strongest signal of real progress — when 5-12 weeks of phased treatment pass without a fresh score, the user loses the felt-sense of how their skin has changed. ` +
+        `\nThe latest score (dated ${latest.takenDate}) is over a week old. Photos are the platform's strongest signal of real progress — when 5-12 weeks of phased treatment pass without a fresh score, the user loses the felt-sense of how their skin has changed. ` +
         `If a momentum-positive moment surfaces in the conversation (a phase milestone, a routine adjustment they're committing to, an off-handed "I think my skin is calming down"), suggest a new Glass Skin Score photo at /glass-skin and frame it as their journey, not a chore. ` +
         `Weekly is a natural cadence — if today is a Sunday or Monday and they haven't checked in this week, that's an organic opening. Don't ask if they just took one or if they're in distress about a flare-up; lean in if they're celebrating. One observation, not a lecture.`
     } else if (context.glassSkinHistory.length === 1) {
@@ -938,19 +944,20 @@ This user has hormonal/cycle-related concerns in their profile but has NOT enabl
     const dm = context.decisionMemory
     const dmParts: string[] = []
 
-    const now = new Date()
-    const SIXTY_DAYS_MS = 60 * 24 * 60 * 60 * 1000
-
     // Corrections render FIRST (highest trust — these override training data).
     // Phase 15.1 — K-beauty brands reformulate every 2-3 years; corrections are
     // the durable fix for stale training knowledge.
     if (dm.corrections && dm.corrections.length > 0) {
+      // Render the raw correction date, NOT a computed "60+ days ago" tag. The
+      // tag flips at a day boundary, which invalidates the cached prefix; the
+      // raw date is byte-stable. The instruction below already tells Yuri to
+      // verify corrections older than 60 days — she applies that against ##
+      // RIGHT NOW using the date, no per-render bucket needed.
       const correctionLines = dm.corrections
         .map((cor) => {
-          const ageMs = cor.date ? now.getTime() - new Date(cor.date).getTime() : 0
-          const ageTag = ageMs > SIXTY_DAYS_MS ? ' [60+ days ago — verify with a tool if still current]' : ''
+          const dateLabel = cor.date ? ` (noted ${new Date(cor.date).toISOString().slice(0, 10)})` : ''
           const initial = cor.yuri_said ? ` [you had said: "${cor.yuri_said}"]` : ''
-          return `- [${cor.topic}] (${cor.category})${ageTag}: ${cor.truth}${initial}`
+          return `- [${cor.topic}] (${cor.category})${dateLabel}: ${cor.truth}${initial}`
         })
         .join('\n')
       dmParts.push(
@@ -959,11 +966,13 @@ This user has hormonal/cycle-related concerns in their profile but has NOT enabl
     }
 
     if (dm.decisions.length > 0) {
+      // Render the raw decision date only — NOT a computed "N days ago" bucket.
+      // A relative-age string ticks daily, which invalidates the cached system
+      // prefix; a fixed ISO date is byte-stable until the row changes. Yuri
+      // computes elapsed time from this date against the ## RIGHT NOW block, and
+      // does it more accurately than a floor()'d bucket. (Cache-cost + correctness.)
       const decisionLines = dm.decisions
-        .map((d) => {
-          const daysAgo = Math.floor((now.getTime() - new Date(d.date).getTime()) / (1000 * 60 * 60 * 24))
-          return `- **${d.topic}**: ${d.decision} (decided ${d.date}, which was ${daysAgo} day${daysAgo !== 1 ? 's' : ''} ago)`
-        })
+        .map((d) => `- **${d.topic}**: ${d.decision} (decided ${d.date})`)
         .join('\n')
       dmParts.push(`### Active Decisions\n${decisionLines}`)
     }
@@ -983,11 +992,13 @@ This user has hormonal/cycle-related concerns in their profile but has NOT enabl
     }
 
     if (dm.commitments.length > 0) {
+      // Render the raw commitment date and (when present) the parsed duration,
+      // NOT a computed "N days ago / M days remaining" bucket. Those tick daily
+      // and invalidate the cached prefix. Yuri computes elapsed and remaining
+      // from the start date + duration against ## RIGHT NOW — more accurately
+      // than a floor()'d bucket, and byte-stable until the row changes.
       const commitLines = dm.commitments
         .map((c) => {
-          const daysAgo = Math.floor((now.getTime() - new Date(c.date).getTime()) / (1000 * 60 * 60 * 24))
-          const elapsed = `committed ${c.date}, which was ${daysAgo} day${daysAgo !== 1 ? 's' : ''} ago`
-
           // Try to parse duration from commitment text (e.g. "for 2 weeks", "for 14 days")
           const weekMatch = c.item.match(/for\s+(\d+)\s+weeks?/i)
           const dayMatch = c.item.match(/for\s+(\d+)\s+days?/i)
@@ -995,13 +1006,9 @@ This user has hormonal/cycle-related concerns in their profile but has NOT enabl
             : dayMatch ? parseInt(dayMatch[1]) : null
 
           if (totalDays !== null) {
-            const remaining = totalDays - daysAgo
-            const remainingStr = remaining > 0
-              ? `${remaining} day${remaining !== 1 ? 's' : ''} remaining`
-              : 'duration completed'
-            return `- ${c.item} (${elapsed} — ${remainingStr})`
+            return `- ${c.item} (committed ${c.date}, duration ${totalDays} days — compute remaining from today's date)`
           }
-          return `- ${c.item} (${elapsed})`
+          return `- ${c.item} (committed ${c.date})`
         })
         .join('\n')
       dmParts.push(`### User Commitments\n${commitLines}`)
@@ -1012,14 +1019,11 @@ This user has hormonal/cycle-related concerns in their profile but has NOT enabl
     // nudge engine also reads these, but rendering them here means an engaged user
     // who returns on their own gets the loop closed in-conversation too.
     if (dm.open_loops && dm.open_loops.length > 0) {
+      // Render the raw open-loop date only, NOT a "N days ago" bucket (ticks
+      // daily → invalidates the cached prefix). Yuri gauges staleness from this
+      // date against ## RIGHT NOW.
       const loopLines = dm.open_loops
-        .map((l) => {
-          const daysAgo = Math.floor(
-            (now.getTime() - new Date(l.opened_date).getTime()) / (1000 * 60 * 60 * 24)
-          )
-          const ageLabel = daysAgo > 0 ? ` (opened ${daysAgo} day${daysAgo !== 1 ? 's' : ''} ago)` : ' (opened today)'
-          return `- **${l.topic}**: ${l.summary}${ageLabel}`
-        })
+        .map((l) => `- **${l.topic}**: ${l.summary} (opened ${l.opened_date.slice(0, 10)})`)
         .join('\n')
       dmParts.push(
         `### Open Loops (Things You Left Unresolved)\nThese are threads from past conversations that never got closed — a next step you named, a question you asked, a plan waiting on the user. If the moment is right, pick one back up naturally ("hey, did you ever get a chance to..."). Don't force all of them; read the room. If the user already resolved one, just let it go.\n${loopLines}`
