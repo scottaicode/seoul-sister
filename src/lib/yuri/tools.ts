@@ -893,7 +893,9 @@ async function executeSearchProducts(
       .select('id, name_en, brand_en, category, subcategory, description_en, rating_avg, review_count, price_usd, image_url')
       .eq('is_verified', true)
     if (category) dbQuery = dbQuery.eq('category', category)
-    if (minRating) dbQuery = dbQuery.gte('rating_avg', minRating)
+    // NOTE: do NOT filter min_rating at the DB level here — Postgres `>=` drops
+    // NULL ratings, which would hide unrated staples. The null-safe post-filter
+    // below (shared with the query branch) applies min_rating uniformly.
     dbQuery = dbQuery.order('rating_avg', { ascending: false, nullsFirst: false })
     dbQuery = dbQuery.limit(limit * 3)
     const { data, error } = await dbQuery
@@ -907,9 +909,17 @@ async function executeSearchProducts(
     products = products.filter(p => !isMensLineProduct(p))
   }
 
-  // Apply min_rating post-filter (smart search doesn't filter by rating)
+  // Apply min_rating post-filter (smart search doesn't filter by rating).
+  // A null rating means "not yet rated" (reviews not imported), NOT "below
+  // threshold" — excluding nulls silently hides real catalog staples (e.g.
+  // COSRX Low pH cleanser has rating_avg=null). Keep unrated products; only
+  // drop products whose KNOWN rating is below the floor. Yuri owns how to
+  // weigh an unrated product in her answer.
   if (minRating) {
-    products = products.filter(p => (p.rating_avg as number | null) !== null && (p.rating_avg as number) >= minRating)
+    products = products.filter(p => {
+      const r = p.rating_avg as number | null
+      return r === null || r >= minRating
+    })
   }
 
   if (!products.length) {
@@ -932,24 +942,53 @@ async function executeSearchProducts(
     })
   }
 
-  // Post-filter by price if needed
+  // Post-filter by price if needed.
+  // The TRUE cheapest price for a product is the lower of its inline
+  // price_usd and the cheapest ss_product_prices row — the price table can be
+  // stale/higher than the product's own inline price (e.g. COSRX lotion:
+  // table $20 but inline $13). Filtering on the table alone wrongly excludes a
+  // product the user CAN afford. Compute an effective (min) price per product
+  // and filter/rank on that. Retrieval-only — Yuri still owns the recommendation.
   let filtered = products
   if (maxPriceUsd) {
-    // Check product prices table for USD prices
     const productIds = products.map((p: Record<string, unknown>) => p.id as string)
-    const { data: prices } = await db
+    const { data: priceRows } = await db
       .from('ss_product_prices')
       .select('product_id, price_usd')
       .in('product_id', productIds)
-      .lte('price_usd', maxPriceUsd)
-    const affordableIds = new Set(
-      (prices || []).map((p: Record<string, unknown>) => p.product_id as string)
-    )
-    // Also check inline price_usd on product
-    filtered = filtered.filter(
-      (p: Record<string, unknown>) =>
-        affordableIds.has(p.id as string) ||
-        (p.price_usd && (p.price_usd as number) <= maxPriceUsd)
+
+    // Cheapest known price-table row per product
+    const minTablePrice = new Map<string, number>()
+    for (const row of priceRows || []) {
+      const pid = (row as Record<string, unknown>).product_id as string
+      const price = (row as Record<string, unknown>).price_usd as number | null
+      if (price === null) continue
+      const cur = minTablePrice.get(pid)
+      if (cur === undefined || price < cur) minTablePrice.set(pid, price)
+    }
+
+    // effectivePrice = min(inline price_usd, cheapest table row); undefined if
+    // neither exists (no price data at all).
+    const effectivePrice = (p: Record<string, unknown>): number | undefined => {
+      const inline = p.price_usd as number | null
+      const table = minTablePrice.get(p.id as string)
+      const candidates = [inline, table].filter(
+        (v): v is number => typeof v === 'number'
+      )
+      return candidates.length ? Math.min(...candidates) : undefined
+    }
+
+    filtered = filtered.filter((p: Record<string, unknown>) => {
+      const eff = effectivePrice(p)
+      return eff !== undefined && eff <= maxPriceUsd
+    })
+
+    // A price ceiling signals a budget-sensitive intent — order the DATA
+    // cheapest-first so the payload leads with the most affordable options.
+    // This reorders only; no variant is dropped (Yuri may need a pricier
+    // variant to explain a difference).
+    filtered = [...filtered].sort(
+      (a, b) => (effectivePrice(a) ?? Infinity) - (effectivePrice(b) ?? Infinity)
     )
   }
 
