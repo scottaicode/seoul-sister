@@ -279,11 +279,37 @@ This is NOT defending the third party — it's defending the user from looking f
 // Build the full system prompt with user context + specialist
 // ---------------------------------------------------------------------------
 
-function buildSystemPrompt(
+// Kill switch for the prompt-cache clock split (default ON). When the clock
+// (## RIGHT NOW, minute-granularity) lived at the tail of the cached system
+// block, its per-minute tick invalidated the whole ~22K-token cached prefix on
+// every message — warm turns paid a ~21K cache-WRITE floor instead of reading
+// cheaply (confirmed in prod: advisor warm-turn min cache-write was 21,240 vs
+// the healthy widget's 0). Splitting the volatile clock into a separate,
+// unmarked system block AFTER the cache breakpoint keeps the prefix byte-stable
+// so turns 2+ read the cache. Set YURI_CLOCK_SPLIT_ENABLED=false to fold the
+// clock back into the cached body (byte-identical to pre-fix) without a deploy.
+//
+// NOTE for the next person: this is the SIMPLER HALF of the LGAAS advisor fix.
+// Yuri's clock tail was already in `system` (the correct place), so she only
+// needed the clock split — NOT LGAAS's trailing-role:'system'-message machinery.
+// Do not port that complexity here.
+export const CLOCK_SPLIT_ENABLED = process.env.YURI_CLOCK_SPLIT_ENABLED !== 'false'
+
+export interface BuiltSystemPrompt {
+  // The stable, cacheable body. When the split is enabled this contains NO
+  // per-minute value; when disabled the clock is folded back in at the tail.
+  cachedPrompt: string
+  // The volatile ## RIGHT NOW block, delivered as a separate unmarked system
+  // block after the cache breakpoint. Empty string when the split is disabled
+  // (the clock is inside cachedPrompt in that case).
+  clockBlock: string
+}
+
+export function buildSystemPrompt(
   userContext: UserContext,
   specialistType: SpecialistType | null,
   conversationHistory: YuriMessage[]
-): string {
+): BuiltSystemPrompt {
   const parts: string[] = [YURI_SYSTEM_PROMPT]
 
   // Add user context
@@ -341,16 +367,29 @@ function buildSystemPrompt(
   const nowTime = fmtTime(now)
   const tzLabel = tz === 'UTC' ? 'UTC' : `${tz}`
 
-  parts.push(`\n---\n## RIGHT NOW
+  // The volatile clock. Its TEXT is byte-identical whether split or folded — we
+  // only move WHERE the bytes sit. `\n` prefix reproduces the exact join seam
+  // that `parts.join('\n')` used when this block was the last element, so the
+  // folded (kill-switch-off) path is byte-for-byte what production ships today.
+  const clockBlock = `\n---\n## RIGHT NOW
 It is **${todayStr}, ${nowTime}** (${tzLabel}). This is the AUTHORITATIVE current date and time — it overrides any date mentioned earlier in this conversation. If you said a different day/date earlier in this thread, you were wrong then and this is correct now.
 
 - **Today**: ${todayStr}
 - **Tomorrow**: ${tomorrowStr}
 - **Yesterday**: ${yesterdayStr}
 
-When the user asks about today / tomorrow / yesterday, use the values above directly — never compute the weekday yourself. When referencing durations (e.g. "9 days into Phase 2"), count actual days from the dates in their decision memory or conversation history. Do not estimate or round.`)
+When the user asks about today / tomorrow / yesterday, use the values above directly — never compute the weekday yourself. When referencing durations (e.g. "9 days into Phase 2"), count actual days from the dates in their decision memory or conversation history. Do not estimate or round.`
 
-  return parts.join('\n')
+  if (CLOCK_SPLIT_ENABLED) {
+    // Volatile clock delivered separately, after the cache breakpoint.
+    return { cachedPrompt: parts.join('\n'), clockBlock }
+  }
+
+  // Kill switch OFF: fold the clock back into the cached body exactly as before.
+  // Originally the clock was a `parts` element, so `join('\n')` inserted a '\n'
+  // separator BEFORE it. We reproduce that separator explicitly ('\n' + clock)
+  // so the folded body is byte-for-byte identical to what production ships today.
+  return { cachedPrompt: parts.join('\n') + '\n' + clockBlock, clockBlock: '' }
 }
 
 // ---------------------------------------------------------------------------
@@ -667,8 +706,11 @@ export async function* streamAdvisorResponse(
     } as unknown as typeof userContext.skinProfile
   }
 
-  // 3. Build system prompt with context + specialist
-  const systemPrompt = buildSystemPrompt(
+  // 3. Build system prompt with context + specialist. The volatile ## RIGHT NOW
+  // clock is returned SEPARATELY (clockBlock) so it can be delivered as an
+  // unmarked system block after the cache breakpoint — keeping the cached body
+  // byte-stable across the minute boundary. See CLOCK_SPLIT_ENABLED.
+  const { cachedPrompt, clockBlock } = buildSystemPrompt(
     userContext,
     specialistType,
     conversationHistory
@@ -820,10 +862,23 @@ export async function* streamAdvisorResponse(
       currentToolBlock = null
       textChunks.length = 0
 
+      // System blocks: the cached body carries the ephemeral breakpoint; the
+      // volatile clock (when split is enabled) is a SECOND, UNMARKED block after
+      // it — everything before the breakpoint stays byte-stable and reads from
+      // cache on warm turns, the uncached clock re-renders each minute for free.
+      // When the kill switch is off, clockBlock is '' and this is a single
+      // marked block identical to the pre-fix shape.
+      const systemBlocks: Anthropic.Messages.TextBlockParam[] = [
+        { type: 'text', text: cachedPrompt, cache_control: { type: 'ephemeral' } },
+      ]
+      if (clockBlock) {
+        systemBlocks.push({ type: 'text', text: clockBlock })
+      }
+
       const stream = client.messages.stream({
         model: MODELS.primary,
         max_tokens: 2048,
-        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+        system: systemBlocks,
         messages: cachedMessages,
         tools: cachedTools,
         tool_choice: toolChoice,
