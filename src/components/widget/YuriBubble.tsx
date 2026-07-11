@@ -77,9 +77,27 @@ export default function YuriBubble() {
     }
   }, [isOpen])
 
+  // Capture the feeder source from ?from= on mount so a visitor who arrives via
+  // a tagged link (e.g. /?from=blog) and opens the BUBBLE — not the hero — is
+  // still attributed. Falls back to 'landing' for untagged arrivals.
+  useEffect(() => {
+    const from = new URLSearchParams(window.location.search).get('from')
+    sourceRef.current = from || 'landing'
+  }, [])
+
   // A prefill question queued by an 'open-yuri' event (blog CTAs), sent once the
   // bubble has opened. Held in a ref so the listener effect stays stable.
   const pendingPrefillRef = useRef<string | null>(null)
+
+  // First-touch feeder source (blog/ingredient/nav/...) so bubble conversations
+  // are attributed like the hero widget. Read from ?from= on mount; an
+  // 'open-yuri' event may override it (event.detail.source). Sent once, on the
+  // request that creates the session. Mirrors TryYuriSection's source handling
+  // so both entry surfaces attribute identically instead of the bubble path
+  // silently writing NULL. Untagged visitors get 'landing' (an honest value,
+  // distinct from server-side organic NULL on sessions never touched here).
+  const sourceRef = useRef<string | null>(null)
+  const sourceSentRef = useRef(false)
 
   const isAtLimit = messageCount >= MAX_FREE_MESSAGES
 
@@ -117,6 +135,10 @@ export default function YuriBubble() {
           .filter((m) => !m.isStreaming)
           .map((m) => ({ role: m.role, content: m.content }))
 
+        // First-touch feeder attribution: send the source once, on the request
+        // that will create the session (server persists it on create only).
+        const includeSource = !sourceSentRef.current && sourceRef.current
+        if (includeSource) sourceSentRef.current = true
         const response = await fetch('/api/widget/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -125,6 +147,7 @@ export default function YuriBubble() {
             history,
             visitor_id: getOrCreateVisitorId(),
             session_id: getWidgetSessionId(),
+            ...(includeSource ? { source: sourceRef.current } : {}),
           }),
           signal: controller.signal,
         })
@@ -221,8 +244,13 @@ export default function YuriBubble() {
   useEffect(() => {
     const handleOpenYuri = (e: Event) => {
       setIsOpen(true)
-      const prefill = (e as CustomEvent<{ prefill?: string }>).detail?.prefill
+      const detail = (e as CustomEvent<{ prefill?: string; source?: string }>).detail
+      const prefill = detail?.prefill
       if (prefill && messageCount === 0) pendingPrefillRef.current = prefill.trim()
+      // A feeder may name itself more specifically than ?from= (e.g. an inline
+      // blog CTA passing source:'blog'). Honor it only before the session is
+      // attributed, so first-touch attribution stays stable.
+      if (detail?.source && !sourceSentRef.current) sourceRef.current = detail.source
     }
     window.addEventListener('open-yuri', handleOpenYuri)
     return () => window.removeEventListener('open-yuri', handleOpenYuri)
