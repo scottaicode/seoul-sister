@@ -8,7 +8,18 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.0.5 (July 10, 2026): Correction — the "floating bubble" doesn't exist; delete the dead component
+
+- **Origin**: Scott challenged the v11.0.4 "Fix 1" (below), which claimed to fix source attribution on a floating Yuri bubble. He was right: **there is no bubble on the site.** A hard-refreshed homepage shows only the hero widget. Verified in code — `<YuriBubble` is rendered NOWHERE (grep for the JSX tag is empty); the homepage renders only `TryYuriSection variant="hero"`. `YuriBubble.tsx` was orphaned dead code left over from before the widget-as-hero consolidation (v9.5.0).
+- **The v11.0.4 Fix 1 was worthless** — it edited a component that never mounts, so it changed nothing a visitor sees, and its premise (a bubble leaking attribution) was false. The real cause of 41/42 NULL-source sessions is simply **low feeder volume** (few visitors arrive via tagged links), NOT a bubble bug. The hero widget's attribution already works (the one tagged `ingredient_cta` session proves it). Root failure: the diagnosis anchored on the file *existing* without checking whether it *renders* — and CLAUDE.md still described the bubble as a live "Layer 2," reinforcing the false premise.
+- **This release**: deleted `src/components/widget/YuriBubble.tsx` (confirmed zero references anywhere). Rewrote the CLAUDE.md widget-architecture section: "Layer 2: Floating Yuri Bubble" now explicitly documents that the bubble was never wired in and was removed — with a note warning future sessions not to "fix" it. The hero widget is the ONLY anonymous Yuri surface.
+- **v11.0.4 Fix 2 stands** — the email-capture prompt edit was to `api/widget/chat/route.ts`, which the *real* hero widget uses. That improvement is live and correct; only Fix 1 was reverted (via file deletion).
+- **Gates**: cleanup/correction (freeze-allowed). `tsc --noEmit` clean.
+- **Files**: deleted `src/components/widget/YuriBubble.tsx`; `CLAUDE.md`, `CHANGELOG.md`.
+
 ## v11.0.4 (July 10, 2026): Widget source attribution leak + email-capture floor (lead-gen)
+
+> ⚠️ **Correction (v11.0.5, same day):** "Fix 1" below is WRONG — it fixed a floating bubble that is not rendered on the site (dead code, since deleted). The 41/42 NULL-source cause is low feeder volume, not a bubble leak. Fix 2 (email-capture prompt) is correct and stands. Kept for the honest record.
 
 - **Origin**: Scott asked why landing-page lead quality/quantity was hard to gauge. Audit of the already-built `FUNNEL-SOURCE-ATTRIBUTION.md` procedures found they're live and correct, but the data exposed two real gaps. Measurement/conversion lane — always allowed under the freeze. Full write-up: `LEAD-GEN-ATTRIBUTION-AND-CAPTURE-FIX.md`.
 - **The read (live DB)**: 36 widget visitors ever, 42 sessions, but **41 of 42 `source = NULL`** and **1 email captured ever / 0 in 30d** — despite 7 deep sessions (≥5 msgs) and 55 intent signals in 30d. GA4's 627 "users" is mostly Singapore/Direct bot noise; the DB (people who actually talked to Yuri) is the truth, which is why the GA4 numbers felt unreadable.

@@ -96,9 +96,9 @@ User registers
 
 **Previous reasoning** was that Seoul Sister has many features to showcase, so the conversation shouldn't dominate the hero. But features below the fold don't matter if visitors bounce before seeing them. Yuri IS the differentiator — she's what no competitor has. Leading with her is the right call.
 
-#### Two-Layer Architecture
+#### Widget Architecture (hero-only; the once-planned floating bubble was removed — see Layer 2 below)
 
-**Layer 1: Hero Widget (Above the Fold — Primary Conversion Mechanic)**
+**Layer 1: Hero Widget (Above the Fold — the ONLY anonymous Yuri surface)**
 
 ```
 Homepage Layout (v9.5.0):
@@ -127,16 +127,7 @@ The hero widget includes:
 - Min-height: 520px, max-height: 640px on desktop
 - Component: `TryYuriSection` with `variant="hero"` prop
 
-**Layer 2: Floating Yuri Bubble (Always Present — Secondary Access)**
-```
-- Bottom-right corner, all pages, always visible
-- Collapsed state: Yuri avatar + "Ask me about K-beauty" tooltip on hover
-- Expands to chat window on click (400px wide, 70vh tall)
-- 20 free preview messages (shared with hero widget via localStorage)
-- Quick prompts when empty: "Best serum for glass skin?", "Is this sunscreen legit?", "Build me a routine"
-- SSE streaming for real-time responses
-- Component: YuriBubble
-```
+**Layer 2: Floating Yuri Bubble — REMOVED (not rendered).** A floating bottom-right bubble (`YuriBubble` component) was originally planned as always-present secondary access. **It was never wired into the layout and the orphaned component was deleted July 10 2026.** The hero widget (Layer 1) is the ONLY anonymous Yuri surface on the site — everything lands there, by design (the widget-as-hero decision above). Do not re-introduce a bubble without an explicit decision to change this; a July 10 2026 session wasted a fix "attributing bubble conversations" against this dead code precisely because this doc still described the bubble as live. If you're reading this and considering a bubble, it does not currently exist.
 
 **Layer 3: Full Yuri Experience (Post-Signup)**
 ```
@@ -159,8 +150,8 @@ After account creation + Stripe payment:
 3. Visitor types a question OR clicks a quick prompt
    -> Yuri gives a genuinely helpful, streaming response
    -> Backed by real product database (5,800+ products)
-4. OR visitor scrolls first, then clicks floating bubble at any point
-5. After 20 preview messages (shared across layers):
+4. (Feeder pages — blog, ingredient, product, nav — route "Ask Yuri" CTAs to the hero widget with `?ask=`/`?from=` prefill; there is no floating bubble)
+5. After 20 preview messages:
    -> Conversion prompt: "Subscribe — $24.99/mo"
    -> Highlights: unlimited conversations, skin profile memory, 6 specialists, routine builder
 6. Visitor subscribes ($24.99/mo) -> Yuri onboarding conversation (Layer 3)
@@ -174,18 +165,18 @@ The `TryYuriSection` component (`src/components/widget/TryYuriSection.tsx`) supp
 Both variants share identical `chatContent` (demo conversation, live messages, input, error handling, streaming logic) to avoid code duplication. The variant only affects the outer container and header.
 
 #### Widget Specifications
-- **Preview messages**: 20 per session (IP+UA hash tracked, 30-day window, shared between hero widget and floating bubble)
+- **Preview messages**: 20 per session (IP+UA hash tracked, 30-day window; hero widget only)
 - **No login required**: Anonymous conversations streamed and forgotten (not stored)
 - **Genuine value**: Yuri gives real, helpful answers backed by database tools — not teaser responses
 - **Natural conversion**: After 20 messages, Yuri highlights what subscribers unlock (personalized routines, unlimited scans, specialist agents)
 - **Surface-level routing**: Anonymous questions get helpful answers but not deep specialist dives
 - **Data capture**: Anonymous conversation data feeds the learning engine
-- **Mobile-responsive**: Hero stacks to single column on mobile; floating bubble remains accessible
+- **Mobile-responsive**: Hero stacks to single column on mobile
 - **SSE streaming**: Real-time streamed responses (not waiting for full response)
-- **Quick prompts**: 4 in hero widget, 3 in floating bubble — reduce friction to first message
+- **Quick prompts**: 4 in hero widget — reduce friction to first message
 
 #### Rate Limiting (Cost Control)
-- 20 messages per session (IP+UA hash, 30-day window, shared across layers)
+- 20 messages per session (IP+UA hash, 30-day window)
 - 25 messages per IP per day (prevents abuse)
 - Shorter max_tokens for anonymous visitors (300 vs 600 for subscribers)
 - Anonymous conversations not saved to database (just streamed and forgotten)
