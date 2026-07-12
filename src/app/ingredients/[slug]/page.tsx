@@ -15,6 +15,7 @@ import {
   Calendar,
 } from 'lucide-react'
 import { toSlug } from '@/lib/utils/slug'
+import { isPollutedIngredientName } from '@/lib/pipeline/ingredient-parser'
 import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { ShareButton } from '@/components/ui/ShareButton'
 import { IngredientEnrichmentSection } from '@/components/ingredients/IngredientEnrichmentSection'
@@ -86,6 +87,18 @@ function getSupabase() {
   )
 }
 
+/**
+ * Treat unsplit-INCI-dump rows as nonexistent so their pages 404. These 6,000-char
+ * "ingredients" were in the sitemap before the July 12 2026 cleanup; crawlers
+ * (Bing/Copilot — the GEO channel) still hold the URLs, and deactivating the rows
+ * did NOT stop this page from rendering them. A 404 is what actually gets the
+ * dump pages dropped from the index.
+ */
+function asCleanRow(row: IngredientRow | null): IngredientRow | null {
+  if (!row) return null
+  return isPollutedIngredientName(row.name_inci) ? null : row
+}
+
 async function findIngredientBySlug(
   slug: string
 ): Promise<IngredientRow | null> {
@@ -102,7 +115,7 @@ async function findIngredientBySlug(
 
   if (exact && exact.length > 0) {
     const match = exact.find((i) => toSlug(i.name_inci) === slug)
-    if (match) return match as IngredientRow
+    if (match) return asCleanRow(match as IngredientRow)
   }
 
   // Broader search: fetch ingredients where any word matches
@@ -118,7 +131,9 @@ async function findIngredientBySlug(
     .limit(200)
 
   if (!broad) return null
-  return (broad.find((i) => toSlug(i.name_inci) === slug) as IngredientRow) || null
+  return asCleanRow(
+    (broad.find((i) => toSlug(i.name_inci) === slug) as IngredientRow) || null
+  )
 }
 
 export async function generateMetadata({

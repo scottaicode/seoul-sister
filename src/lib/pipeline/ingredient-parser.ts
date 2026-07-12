@@ -11,8 +11,20 @@ export interface ParsedIngredient {
   position: number
 }
 
-/** Longest plausible real INCI name. The longest legit one in the catalog is ~60 chars. */
-export const MAX_INCI_NAME_LENGTH = 60
+/**
+ * Longest plausible real INCI name.
+ *
+ * Verified against the live catalog (July 12 2026 audit): real names run up to
+ * 76 chars — e.g. "Hydroxyethyl Acrylate/Sodium Acryloyldimethyl Taurate
+ * Copolymer" (63 chars, 511 product links) and "Drometrizole Trisiloxane
+ * Methylene Bis-Benzotriazolyl Tetramethylbutylphenol" (76 chars). The
+ * previous value (60) was silently dropping those on ingest and hiding them
+ * from the read path. Actual unsplit dumps run to hundreds/thousands of chars,
+ * so 100 keeps a wide margin on both sides. If you change this, re-verify with:
+ * SELECT name_inci, length(name_inci) FROM ss_ingredients
+ * WHERE length(name_inci) > <new value> AND name_inci NOT LIKE '%@%' ...
+ */
+export const MAX_INCI_NAME_LENGTH = 100
 
 /**
  * True if a parsed name is clearly not a single ingredient but an unsplit INCI
@@ -34,6 +46,33 @@ export function isPollutedIngredientName(name: string): boolean {
     name.includes(']') ||
     name.length > MAX_INCI_NAME_LENGTH
   )
+}
+
+/**
+ * Apply the pollution guard to a Supabase query over ss_ingredients so no
+ * read path can serve an unsplit INCI dump, even if a bad row slips past the
+ * parser again. This is the ONE place the read-side filter lives — every
+ * route/tool that lists or searches ss_ingredients must go through it (the
+ * July 12 audit found the filter hand-rolled on one route while three other
+ * read paths served dump rows).
+ *
+ * The length guard uses a LIKE pattern of (MAX_INCI_NAME_LENGTH + 1)
+ * underscores: in SQL, `_` matches exactly one char, so any longer name
+ * matches. Keeping the filter server-side keeps `count` and pagination
+ * correct (filtering the fetched page in JS would leave holes).
+ *
+ * NOTE: distinct from `is_active`, which means "is an active skincare
+ * ingredient" (a solvent like 1,2-Hexanediol is legitimately is_active=false).
+ */
+export function excludePollutedIngredientRows<
+  T extends { not(column: string, operator: string, value: string): T },
+>(query: T, column = 'name_inci'): T {
+  const tooLong = '_'.repeat(MAX_INCI_NAME_LENGTH + 1) + '%'
+  return query
+    .not(column, 'ilike', '%@%')
+    .not(column, 'ilike', '%[%')
+    .not(column, 'ilike', '%]%')
+    .not(column, 'like', tooLong)
 }
 
 /**
@@ -78,11 +117,18 @@ export function parseInciString(inciString: string): ParsedIngredient[] {
     .replace(/\]/g, ',')
 
   // Protect commas that are INSIDE a chemical name rather than separating two
-  // ingredients: "1,2-Hexanediol", "1,3-Butanediol", "Niacinamide (20,000 ppm)".
-  // A digit-comma-digit is never an ingredient boundary. Without this, the
-  // catalog's most-linked ingredient (1,2-Hexanediol, 504 links) is split in half.
+  // ingredients: "1,2-Hexanediol", "1,3-Butanediol", "20,000" (thousands
+  // separator). Without this, the catalog's most-linked ingredient
+  // (1,2-Hexanediol, 504 links) is split in half.
+  //
+  // NOT every digit-comma-digit, though -- scraped lists sometimes omit the
+  // space after commas, so "PEG-100,1,2-Hexanediol" has a REAL boundary at the
+  // first comma (8 live products hit this). Protect only the two shapes that
+  // are verifiably in-name:
+  //   \d{1,2}-        locant lists: "1,2-", "1,3-", "1,10-"
+  //   \d{3}(?!\d)     thousands groups: "20,000 ppm"
   const COMMA_SENTINEL = '\u0000'
-  cleaned = cleaned.replace(/(\d),(\d)/g, `$1${COMMA_SENTINEL}$2`)
+  cleaned = cleaned.replace(/(\d),(?=\d{1,2}-|\d{3}(?!\d))/g, `$1${COMMA_SENTINEL}`)
 
   // Split by commas, respecting parentheses and brackets — then restore the
   // protected in-name commas.
@@ -172,20 +218,36 @@ function normalizeIngredientName(raw: string): string {
   // Strip a shade/variant label that got glued to the front of an ingredient:
   // "#03 Concealer: Titanium Dioxide" -> "Titanium Dioxide"
   // "As Moon: Calcium Titanium Borosilicate" -> "Calcium Titanium Borosilicate"
-  // Only strip a SHORT label ending in ":" — never touch a real name.
-  name = name.replace(/^#?\s*[A-Za-z0-9#][\w\s#-]{0,24}:\s*/, '')
+  // Only strip a SHORT label ending in ":" — never touch a real name. Two
+  // guards protect real names that contain a colon (July 12 audit):
+  //  - CI lake pigments: "CI 15850:1" is ONE ingredient (the ":1" is the lake
+  //    designation); stripping "CI 15850:" left "1", which then got dropped.
+  //  - Any label whose remainder is digits-only is the same shape — keep it.
+  const label = name.match(/^#?\s*([A-Za-z0-9#][\w\s#-]{0,24}):\s*(.+)$/)
+  if (label && !/^CI\s*\d+$/i.test(label[1].trim()) && !/^\d+$/.test(label[2].trim())) {
+    name = label[2].trim()
+  }
 
   // A shade block can run straight into the next block with no delimiter:
   // "Iron Oxide RedAround: Talc" -> take the part after the label.
   // Detect a lowercase->uppercase seam followed by a label colon.
-  const seam = name.match(/^(.*?[a-z])([A-Z][\w\s#-]{0,24}:\s*)(.+)$/)
-  if (seam) name = seam[3].trim()
+  // Same CI-lake / digits-only-remainder guards as above.
+  const seam = name.match(/^(.*?[a-z])([A-Z][\w\s#-]{0,24}):\s*(.+)$/)
+  if (seam && !/^CI\s*\d+$/i.test(seam[2].trim()) && !/^\d+$/.test(seam[3].trim())) {
+    name = seam[3].trim()
+  }
 
   // Remove leading numbering: "1. Water", "1) Water", "- Water"
   // NOTE: requires a "." or ")" — a bare leading digit must survive, or
   // "1,2-Hexanediol" (the most-linked ingredient in the catalog) is destroyed.
   name = name.replace(/^\d+[\.\)]\s*/, '')
   name = name.replace(/^[-•]\s*/, '')
+
+  // Strip a leading "may contain" marker orphaned by bracket splitting:
+  // "[+/- CI 77891, CI 77492]" splits into "+/- CI 77891" + "CI 77492" —
+  // keep the colorant, drop the marker. (A bare "+/-" is dropped later by
+  // isNonIngredient.)
+  name = name.replace(/^\+\/-\s*/, '').trim()
 
   // Remove organic/certified markers: asterisks, daggers
   name = name.replace(/[*†‡]+/g, '').trim()
