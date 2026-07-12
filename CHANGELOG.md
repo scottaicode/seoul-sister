@@ -8,6 +8,36 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.1.0 (July 12, 2026): The email ask can finally fire — and the ingredient pages stop serving garbage
+
+Two production bugs found by auditing the live funnel end-to-end (landing page, widget, product search, ingredient search, blog) against the database.
+
+### 1. Yuri's email ask was structurally impossible (`src/app/api/widget/chat/route.ts`)
+
+**Symptom**: 38 visitors, 253 widget messages, **1 email captured, 0 conversions**. Yuri mentioned email in only 15 of 125 assistant messages. The worst case: a genuinely high-intent stranger on July 7 (combination brown skin, 12 messages, 17 minutes) got a full personalized routine, a bacne plan, and a neck-hyperpigmentation triage — and was never asked for anything. He left with the entire value of the paid product and no way to reach him.
+
+**Root cause — not the prompt wording.** The prompt was already good: it told Yuri to make the offer ONCE, at the value moment, and never to nag. But `systemPrompt = YURI_WIDGET_SYSTEM` was **static**. She was never told how many turns deep she was, whether an email was already on file, or whether she'd already asked. Asked to time a once-per-conversation action while blind to the clock and to her own prior action, the safe play is to never ask. So she didn't. **Two earlier rounds of prompt-wording tuning failed because this was a state-visibility bug, not a persuasion bug.**
+
+**Fix**: inject a factual `## Conversation State` block each turn — message number, whether an email is captured — and let Yuri judge. Explicitly framed as "facts, not instructions… context, not a trigger." No `if turn >= N then ask` rule and no templated ask copy; she still owns whether, when, and how. She reads her own prior messages to see if she already offered, rather than us regex-classifying her intent (the AI-First gate specifically warned against building that classifier).
+
+**Also fixed: a prompt rule that had become a lie.** The prompt asserted *"You are NOT able to send an email right now… never say it's on the way."* But the route **does** send a Yuri-written conversation recap via `generateLeadEmail` + Resend on capture (verified live June 10). Yuri was being told the thing she was offering doesn't work — a self-defeating instruction. Replaced with an accurate description of what actually happens, keeping the anti-overpromise guardrails (never claim sent before capture; no timing promises).
+
+**Verified by replay** against the real July 7 conversation: the offer now fires when the routine lands and no email is on file (and lands *in her voice*, woven into the wrap-up — "this routine is genuinely worth keeping, and here's the honest part…"), is suppressed when an email is already captured, and is suppressed on a turn-1 throwaway question.
+
+### 2. Unsplit INCI dumps were polluting the public ingredient pages (`src/lib/pipeline/ingredient-parser.ts`, `src/app/api/ingredients/route.ts`)
+
+**Symptom**: searching `niacinamide` on `/ingredients` returned, as top hits, entire makeup ingredient lists ingested as single "ingredients" — the worst is **6,081 characters**.
+
+**Root cause**: `parseInciString()` only split on commas. Multi-shade makeup products delimit with `@`, or run shade blocks together with no comma at all (`…Caprylyl Glycol[#03 Concealer: Titanium Dioxide…`). Those lists never split, so a whole dump landed as one row. **2,614 such rows existed; 670 were `is_active`** — and both the sitemap (`sitemap.ts:66`) and the `/ingredients` listing gate on `is_active`, so this garbage was being fed to the AI crawlers on the exact channel that's citing us (Bing/Copilot, 369 citations).
+
+**Fix**: split on `@` and shade-block brackets, strip shade labels (`#03 Concealer: Titanium Dioxide` → `Titanium Dioxide`), dedupe repeated per-shade ingredients, and drop anything still dump-shaped rather than emit it. The read path (`/api/ingredients`) independently filters dumps so no consumer can render one even if a bad row slips in. 670 active polluted rows deactivated via `scripts/cleanup-polluted-ingredients.ts` (reversible; preserves FK links — polluted rows carry ~2.7K product links vs ~227K on clean rows).
+
+**Latent bug caught by the regression test**: the comma splitter was cutting **`1,2-Hexanediol`** — the catalog's most-linked ingredient (504 product links) — in half into `2-Hexanediol`. Digit-comma-digit is now protected as in-name. This is why commas are deliberately **not** a pollution signal: `1,2-Hexanediol` and `Niacinamide (20,000 ppm)` are legitimate and heavily linked, and a comma-based cleanup rule would have destroyed real data.
+
+Gates: `ai-first-guard` (plan) and `ai-first-check` (diff) both PASS; `tsc` + `build` clean.
+
+---
+
 ## v11.0.5 (July 10, 2026): Correction — the "floating bubble" doesn't exist; delete the dead component
 
 - **Origin**: Scott challenged the v11.0.4 "Fix 1" (below), which claimed to fix source attribution on a floating Yuri bubble. He was right: **there is no bubble on the site.** A hard-refreshed homepage shows only the hero widget. Verified in code — `<YuriBubble` is rendered NOWHERE (grep for the JSX tag is empty); the homepage renders only `TryYuriSection variant="hero"`. `YuriBubble.tsx` was orphaned dead code left over from before the widget-as-hero consolidation (v9.5.0).
