@@ -2046,14 +2046,30 @@ async function executeAddToRoutine(
     return JSON.stringify({ error: 'routine_type is required (am, pm, or weekly)' })
   }
 
-  // Resolve product by name if no ID provided
+  // Resolve product by name if no ID provided.
+  //
+  // MUST be the STRICT resolver. The loose one returns the nearest catalog
+  // neighbor, and this is a WRITE path — persisting that neighbor is exactly the
+  // bug Bailey watched happen twice in one conversation ("Removed I'm From Rice
+  // Toner… Added I'm From Rice Toner", when she'd asked for her Anua Ceramide
+  // Glow). save_routine was hardened against this; add_to_routine was missed.
+  //
+  // Unlike save_routine, this table row is a pure product_id join with nowhere to
+  // put a custom name, so on a loose match the honest move is to REFUSE and tell
+  // Yuri why — never to silently write the wrong product into the user's routine.
   if (!productId && productName) {
-    const match = await resolveProductByName(db, productName)
+    const match = await resolveProductByNameStrict(db, productName)
     if (match) {
       productId = match.id
     } else {
       return JSON.stringify({
-        error: `Could not find a product matching "${productName}" in the database. Try searching with search_products first to find the exact product.`,
+        error: `No confident catalog match for "${productName}" — refusing to add a near-miss product to the routine.`,
+        reason: 'no_confident_match',
+        guidance:
+          `Do NOT retry this tool with a reworded name; it will keep grabbing the closest neighbor. ` +
+          `Either call search_products to find the exact catalog product and pass its product_id, ` +
+          `or use save_routine, which can store this step as a custom entry under the user's own product name. ` +
+          `Tell the user plainly that "${productName}" isn't in the catalog rather than substituting something else.`,
       })
     }
   }
@@ -2198,14 +2214,21 @@ async function executeRemoveFromRoutine(
     return JSON.stringify({ error: 'routine_type is required (am, pm, or weekly)' })
   }
 
-  // Resolve product by name if no ID provided
+  // Resolve product by name if no ID provided — STRICT, same reasoning as
+  // add_to_routine. A loose match on a REMOVE is arguably worse than on an add:
+  // it silently deletes a different product than the one the user named.
   if (!productId && productName) {
-    const match = await resolveProductByName(db, productName)
+    const match = await resolveProductByNameStrict(db, productName)
     if (match) {
       productId = match.id
     } else {
       return JSON.stringify({
-        error: `Could not find a product matching "${productName}" in the database.`,
+        error: `No confident catalog match for "${productName}" — refusing to remove a near-miss product from the routine.`,
+        reason: 'no_confident_match',
+        guidance:
+          `Do NOT retry with a reworded name. Call get_routine_context to see the actual saved steps, ` +
+          `then remove by the exact product_id of the step you mean. If the step is a custom entry ` +
+          `(no catalog product), say so honestly instead of removing something else.`,
       })
     }
   }
