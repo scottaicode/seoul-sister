@@ -8,6 +8,44 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.2.0 (July 12, 2026): Adversarial audit of v11.1.0 — funnel self-injuries, GEO channel holes, and wrong-product safety blindness
+
+A Fable 5 adversarial audit of the four v11.1.0-day commits (prompted by `YURI-COST-FIX-INSTRUCTIONS.md`) tried to break each one against the live DB and the real widget transcripts. It found real defects in all of them, plus two verified causes of one-message widget deaths. All fixes below are bugfix/growth/cost lane (ship-guard PASS on every bucket; no new features).
+
+### 1. Widget: Yuri was denying the site's own blog guides to funnel visitors (`route.ts`)
+
+The blog CTA prefills *"I just read your guide on ${topic}"* (`blog-prefill.ts:24`) — and on June 29 a real stranger sent exactly that, and Yuri replied *"I don't actually have a 'sebaceous filaments guide' you read… crossed wires."* The funnel contradicted itself at message 1; the session died there. Root cause is the same state-visibility class as the v11.1.0 email fix: the `source` attribution was **stored on the session but never shown to Yuri**. Fix: `getSession`/`createSession` now return `source`, and the route injects a factual `## How This Visitor Arrived` block (facts + "never deny the guide exists"; no scripted response — she judges).
+
+### 2. Widget: within-session amnesia after navigation (`route.ts`, `persistence.ts`)
+
+History lives in client React state; the session id lives in `sessionStorage`. Same-tab navigation wiped the visible history while the session survived — the server trusted the empty client history and Yuri greeted mid-conversation visitors with "this might be our first exchange" (two verified one-message deaths: *"which of those dark spot products…"*, *"How about this brand…"*). New `getSessionTranscript()` rehydrates from `ss_widget_messages` when a session exists but the client history is empty. **Verified live**: turn 2 with empty history + "which of those two did you say adds peptides?" → Yuri correctly answered from her DB-recovered prior message.
+
+### 3. Widget: v11.1.0's Conversation State block broke the prompt cache every turn (`route.ts`)
+
+Appending the per-turn-varying turn number to the single `cache_control` system block meant the system-prompt cache could never hit (prefix caches don't survive a changing suffix), silently un-shipping Feature 13.1 for the widget. Fix: static `YURI_WIDGET_SYSTEM` stays alone in the cached block; ALL per-turn context (state, source, memory, specialist preview) moves to a second **uncached** system block. **Measured on the real payload** (Principle 5, `ss_ai_usage`): post-fix turn 2 read 7,626 tokens from cache with only 20 fresh input tokens; the pre-fix rows show cache creation ≥ cache reads every turn. Also fixed the turn-number unit bug (`message_count` counts exchanges; `history.length` counts both roles — the fallback reported ~2x) and dropped the hardcoded `>= 6 → "talking a while"` gloss (the number is the fact; Yuri interprets it).
+
+### 4. GEO channel: the v11.1.0 ingredient cleanup missed the surfaces that matter (`ingredient-parser.ts`, ingredient routes, `[slug]/page.tsx`, `tools.ts`)
+
+- **The 60-char cap was destroying real data.** "Longest legit name is ~60 chars" was false: `Hydroxyethyl Acrylate/Sodium Acryloyldimethyl Taurate Copolymer` is 63 chars with **511 product links**, plus ≥11 more legit names at 61–76 chars. The parser was silently dropping them on ingest and the read path hid them. Cap raised to 100 (verified live-DB margin on both sides).
+- **CI lake pigments were being destroyed**: the shade-label strip turned bare `CI 15850:1` into `1` → dropped (9 live products carry lakes — makeup, the exact category the fix targeted). Label/seam strips now guard CI-number labels and digits-only remainders.
+- **Digit-comma protection over-reached**: no-space lists like `PEG-100,1,2-Hexanediol` (8 live products) merged into one junk token. Protection narrowed to locant (`\d{1,2}-`) and thousands (`\d{3}`) shapes.
+- **The read-path guard was on the wrong route.** v11.1.0 guarded `/api/ingredients` — which has no first-party consumers — while the routes that actually serve users and crawlers had none: `/api/ingredients/search` (what the `/ingredients` search box calls; served inactive dump rows), **`/ingredients/[slug]` (the 670 deactivated dump pages STILL RENDERED at their already-crawled URLs — the exact Bing/Copilot surface the cleanup was for; they now 404)**, and `get_ingredient_guide` (could hand Yuri a dump row as grounded data). The filter now lives in ONE exported helper, `excludePollutedIngredientRows()`, applied on all four paths.
+- 20-case parser regression suite passes (1,2-Hexanediol, lakes, no-space boundaries, `[+/- CI …]` may-contain blocks, 75-char names, label strips, dedupe).
+
+### 5. Subscriber safety: read tools could deliver confidently wrong verdicts about the wrong product (`tools.ts`)
+
+v11.1.0 hardened the WRITE paths (add/remove_from_routine) but five READ tools still loose-resolve — correctly (refusing reads makes Yuri blinder) — while several returned **no product identity at all**: `get_personalized_match` returned "Good match"/allergen warnings with no indication of which product it analyzed; `compare_prices` returned prices with no product name; `check_ingredient_conflicts` **silently skipped** unresolvable names and reported `safe: true` over the incomplete set. All read tools now return `resolved_product` (`requested_name`, `matched_product`, `match_quality`, partial-match warning) so Yuri can see a near-miss substitution and judge it; the conflicts tool additionally returns `unresolved_names` + an explicit not-checked warning instead of a blanket all-clear. Also: `save_routine` now trusts the resolver's `match_quality` instead of a divergent hand-rolled term check (which skipped BP76 punctuation normalization — "Dive-In" names got falsely demoted to custom entries), and the add/remove refusal guidance now warns that `save_routine` creates a NEW routine (get_routine_context → re-save ALL steps with `replace_existing=true`), closing a clobber/duplicate trap the v11.1.0 guidance opened.
+
+### 6. Small structural fixes
+
+`nurture-copy.ts` hardcoded "$24.99 a month" → `PRICING.monthly_display_long` (single-source-of-truth rule); widget memory generation wrapped in `callAnthropicWithRetry` (a transient 529 silently lost the visitor memory).
+
+**Deferred, on the record**: (a) resolver return-type refactor that makes taking a loose id a deliberate typed act (the full structural fix for the bypass class); (b) retry-wrapping the remaining ~9 direct `messages.create` background call sites; (c) lint rules for `$XX.XX` literals / direct `messages.create`. (d) The ~10 "got a complete answer and left satisfied" one-message deaths are NOT treated as a bug — that's the documented "quality is the give" trade-off meeting low-intent traffic; revisit only with volume.
+
+Gates: `/ship-guard` PASS (all buckets), `/ai-first-guard` PASS on plan, `/ai-first-check` PASS on diff; `tsc` + `build` clean; live smoke test of both widget turns (incl. rehydration path) against the dev server, test rows removed after.
+
+---
+
 ## v11.1.0 (July 12, 2026): The email ask can finally fire — and the ingredient pages stop serving garbage
 
 Two production bugs found by auditing the live funnel end-to-end (landing page, widget, product search, ingredient search, blog) against the database.

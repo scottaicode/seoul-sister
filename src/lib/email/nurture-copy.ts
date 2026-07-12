@@ -17,6 +17,8 @@
  * copy rule), no fake urgency, no discounts, honest about the paywall.
  */
 
+import { PRICING } from '@/lib/pricing'
+
 export type NurtureCohort = 'registered' | 'widget'
 
 export interface NurtureEmailContent {
@@ -83,7 +85,7 @@ function email3(_cohort: NurtureCohort, _unsubscribeUrl: string): NurtureEmailCo
 <p>Hi, it's Yuri. Last email from me, as promised, so let me be straight about what's free and what isn't.</p>
 <p>The free conversation on the homepage is real. I'll diagnose, recommend, and warn you off wasted money, and none of that changes.</p>
 <p>But skin doesn't change in one conversation. It changes over months. The part of my job that actually moves skin is the follow-through: remembering what you're using and how you reacted, catching the conflict when you add a new product, adjusting your routine when the seasons change or your skin does, and tracking your progress photos so we know what's working instead of guessing.</p>
-<p>That follow-through is the subscriber side. It's $24.99 a month, cancel anytime, and it exists because an advisor who forgets you every conversation isn't really an advisor.</p>
+<p>That follow-through is the subscriber side. It's ${PRICING.monthly_display_long}, cancel anytime, and it exists because an advisor who forgets you every conversation isn't really an advisor.</p>
 <p><a href="${SITE}/subscribe?from=nurture_3" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">Start with Yuri</a></p>
 <p>And if Seoul Sister isn't for you, no hard feelings. This is the last email either way. It was good to meet you.</p>
 <p>Yuri</p>`,

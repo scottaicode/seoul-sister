@@ -1,5 +1,6 @@
 import { getServiceClient } from '@/lib/supabase'
 import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
+import { excludePollutedIngredientRows } from '@/lib/pipeline/ingredient-parser'
 import { fetchWeather } from '@/lib/intelligence/weather-routine'
 import {
   getProductPosition,
@@ -330,6 +331,36 @@ export async function resolveProductByNameStrict(
     name_en: match.name_en,
     brand_en: match.brand_en,
   }
+}
+
+/**
+ * Resolution transparency for READ tools (July 12 2026 audit).
+ *
+ * Read tools deliberately keep the LOOSE resolver — refusing reads would make
+ * Yuri blinder, not safer. But before this helper, several read tools returned
+ * their data with NO indication of WHICH product they resolved to, so a
+ * near-miss substitution was invisible: Yuri would relay prices, "good match"
+ * verdicts, or conflict checks for a neighbor product as if they were about
+ * the product the user named.
+ *
+ * Every read tool that resolves a product BY NAME must include this object in
+ * its result. Yuri owns the judgment of whether the match is really the user's
+ * product — this just surfaces the fact she needs to make it.
+ */
+function describeResolution(
+  requested: string,
+  match: { name_en: string; brand_en: string; match_quality: 'exact' | 'all_terms' | 'partial' }
+): Record<string, unknown> {
+  const base: Record<string, unknown> = {
+    requested_name: requested,
+    matched_product: `${match.brand_en} ${match.name_en}`,
+    match_quality: match.match_quality,
+  }
+  if (match.match_quality === 'partial') {
+    base.warning =
+      'PARTIAL MATCH — the names do not fully overlap, so this data may describe a DIFFERENT product than the user named. Tell the user which product this data is actually for, and confirm with them before treating it as being about their product.'
+  }
+  return base
 }
 
 // ---------------------------------------------------------------------------
@@ -1097,11 +1128,14 @@ async function executeGetProductDetails(
   let productId = input.product_id as string | undefined
   const productName = input.product_name as string | undefined
 
-  // Find by name if no ID
+  // Find by name if no ID — loose resolve is fine on a read, but Yuri must be
+  // told what it resolved to (see describeResolution).
+  let resolution: Record<string, unknown> | null = null
   if (!productId && productName) {
     const match = await resolveProductByName(db, productName)
     if (match) {
       productId = match.id
+      resolution = describeResolution(productName, match)
     } else {
       return JSON.stringify({ error: `No product found matching "${productName}"` })
     }
@@ -1173,6 +1207,7 @@ async function executeGetProductDetails(
   const brokeOutCount = reviews.filter((r: Record<string, unknown>) => r.reaction === 'broke_me_out').length
 
   return JSON.stringify({
+    ...(resolution ? { resolved_product: resolution } : {}),
     product: {
       id: product.id,
       name: product.name_en,
@@ -1213,13 +1248,18 @@ async function executeGetIngredientGuide(
     return JSON.stringify({ error: 'ingredient_name is required' })
   }
 
-  // Search for ingredient by name (INCI, English, or Korean)
+  // Search for ingredient by name (INCI, English, or Korean).
+  // Pollution guard: without it, an obscure term could hand Yuri a 6,000-char
+  // unsplit-INCI-dump row as "grounded data" (limit 5, no ordering — the dump
+  // could even be ingredients[0]).
   const term = ingredientName.trim()
-  const { data: ingredients } = await db
-    .from('ss_ingredients')
-    .select(
-      'id, name_inci, name_en, name_ko, function, description, safety_rating, comedogenic_rating, is_fragrance, is_active, common_concerns, rich_content, rich_content_generated_at'
-    )
+  const { data: ingredients } = await excludePollutedIngredientRows(
+    db
+      .from('ss_ingredients')
+      .select(
+        'id, name_inci, name_en, name_ko, function, description, safety_rating, comedogenic_rating, is_fragrance, is_active, common_concerns, rich_content, rich_content_generated_at'
+      )
+  )
     .or(
       `name_inci.ilike.%${term}%,name_en.ilike.%${term}%,name_ko.ilike.%${term}%`
     )
@@ -1363,12 +1403,24 @@ async function executeCheckIngredientConflicts(
   const productNames = input.product_names as string[] | undefined
   const ingredientNames = input.ingredient_names as string[] | undefined
 
-  // Resolve product names to IDs if needed
+  // Resolve product names to IDs. Two honesty requirements (July 12 audit):
+  //  - Surface WHAT each name resolved to (a loose match may be a different
+  //    product than the user named — Yuri must be able to see that).
+  //  - Never silently skip an unresolvable name. This is a SAFETY check; the
+  //    old `if (match) push` silently dropped unknown products and then
+  //    reported "safe" over an incomplete set.
   const resolvedIds: string[] = [...(productIds || [])]
+  const resolvedProducts: Array<Record<string, unknown>> = []
+  const unresolvedNames: string[] = []
   if (productNames?.length) {
     for (const name of productNames) {
       const match = await resolveProductByName(db, name)
-      if (match) resolvedIds.push(match.id)
+      if (match) {
+        resolvedIds.push(match.id)
+        resolvedProducts.push(describeResolution(name, match))
+      } else {
+        unresolvedNames.push(name)
+      }
     }
   }
 
@@ -1456,6 +1508,14 @@ async function executeCheckIngredientConflicts(
     allergy_warnings: allergyWarnings,
     safe: foundConflicts.length === 0 && allergyWarnings.length === 0,
     products_checked: resolvedIds.length,
+    resolved_products: resolvedProducts,
+    all_products_checked: unresolvedNames.length === 0,
+    unresolved_names: unresolvedNames,
+    ...(unresolvedNames.length > 0
+      ? {
+          warning: `These products could NOT be found in the catalog and were NOT checked: ${unresolvedNames.join(', ')}. "safe" only covers the products that WERE checked — tell the user honestly which ones you couldn't verify instead of giving a blanket all-clear.`,
+        }
+      : {}),
     ingredients_checked: lowerNames.size,
   })
 }
@@ -1533,10 +1593,15 @@ async function executeComparePrices(
   let productId = input.product_id as string | undefined
   const productName = input.product_name as string | undefined
 
+  // Loose resolve on a read is fine, but the result previously carried NO
+  // product identity at all — a near-miss substitution meant Yuri confidently
+  // quoted the wrong product's prices with no way to notice (July 12 audit).
+  let resolution: Record<string, unknown> | null = null
   if (!productId && productName) {
     const match = await resolveProductByName(db, productName)
     if (match) {
       productId = match.id
+      resolution = describeResolution(productName, match)
     } else {
       return JSON.stringify({ error: `No product found matching "${productName}"` })
     }
@@ -1554,6 +1619,7 @@ async function executeComparePrices(
 
   if (!prices?.length) {
     return JSON.stringify({
+      ...(resolution ? { resolved_product: resolution } : {}),
       message: 'No price data available for this product in our database.',
       prices: [],
     })
@@ -1590,6 +1656,7 @@ async function executeComparePrices(
   const oldestAge = Math.max(...formatted.map((p) => p.age_days ?? 0))
 
   return JSON.stringify({
+    ...(resolution ? { resolved_product: resolution } : {}),
     prices: formatted,
     best_deal: {
       retailer: cheapest.retailer,
@@ -1624,10 +1691,16 @@ async function executeGetPersonalizedMatch(
   let productId = input.product_id as string | undefined
   const productName = input.product_name as string | undefined
 
+  // Loose resolve on a read is fine, but this tool returns a SAFETY verdict
+  // ("Good match", allergen warnings) — before the July 12 audit it carried no
+  // product identity, so a near-miss substitution produced a confidently wrong
+  // verdict about a product the user actually owns, invisible to Yuri.
+  let resolution: Record<string, unknown> | null = null
   if (!productId && productName) {
     const match = await resolveProductByName(db, productName)
     if (match) {
       productId = match.id
+      resolution = describeResolution(productName, match)
     } else {
       return JSON.stringify({ error: `No product found matching "${productName}"` })
     }
@@ -1722,6 +1795,7 @@ async function executeGetPersonalizedMatch(
   }
 
   return JSON.stringify({
+    ...(resolution ? { resolved_product: resolution } : {}),
     skin_type: profile.skin_type,
     concerns: profile.skin_concerns,
     allergies: profile.allergies,
@@ -2068,7 +2142,9 @@ async function executeAddToRoutine(
         guidance:
           `Do NOT retry this tool with a reworded name; it will keep grabbing the closest neighbor. ` +
           `Either call search_products to find the exact catalog product and pass its product_id, ` +
-          `or use save_routine, which can store this step as a custom entry under the user's own product name. ` +
+          `or store it as a custom entry via save_routine — CAREFUL: save_routine creates a whole NEW routine, ` +
+          `so first call get_routine_context, then re-save ALL existing steps PLUS this one (with replace_existing=true), ` +
+          `or you will wipe or duplicate the user's routine. ` +
           `Tell the user plainly that "${productName}" isn't in the catalog rather than substituting something else.`,
       })
     }
@@ -2878,34 +2954,25 @@ async function executeSaveRoutine(
     if (!productId) {
       const match = await resolveProductByName(db, step.product_name)
       if (match) {
-        productId = match.id
-        matchedName = match.name_en
-        matchedBrand = match.brand_en
-
-        // Loose-match check: did EVERY meaningful term from the requested name
-        // actually appear in the matched product's brand+name? If not, this is
-        // a dangerous match (e.g., "Goodal Green Tangerine Vita C" resolving to
-        // a Torriden product, or an Anua toner grabbing "I'm From Rice Toner").
-        const requestedTerms = step.product_name
-          .toLowerCase()
-          .split(/\s+/)
-          .filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
-        const combined = `${matchedBrand || ''} ${matchedName || ''}`.toLowerCase()
-        const allTermsHit = requestedTerms.every(t => combined.includes(t))
-
-        if (allTermsHit) {
+        // Trust the resolver's own match_quality instead of re-deriving it.
+        // The old hand-rolled term check here DIVERGED from the resolver: it
+        // skipped the BP76 punctuation normalization, so a "Dive-In" style
+        // name the resolver classified as exact got re-classified loose and
+        // demoted to a custom entry (July 12 audit — the invariant must live
+        // in ONE place).
+        if (match.match_quality !== 'partial') {
+          productId = match.id
+          matchedName = match.name_en
+          matchedBrand = match.brand_en
           status = 'matched'
         } else {
           // Loose match = the resolver returned the nearest catalog neighbor,
           // NOT the product the user asked for. Do NOT persist the wrong
           // product_id — that's the "saved under a wrong name" class Bailey
-          // kept hitting (Anua toner re-matching to I'm From Rice Toner). Drop
-          // the catalog match entirely and save this step as a custom entry
-          // under the requested name: correct name, no wrong prices/ingredients.
+          // kept hitting (Anua toner re-matching to I'm From Rice Toner). Save
+          // this step as a custom entry under the requested name instead:
+          // correct name, no wrong prices/ingredients.
           status = 'matched_loose'
-          productId = null
-          matchedName = null
-          matchedBrand = null
         }
       }
     }
@@ -3081,10 +3148,12 @@ async function executeFindProductDupes(
   const productName = input.product_name as string | undefined
   const maxDupes = Math.min((input.max_dupes as number) || 5, 10)
 
+  let resolution: Record<string, unknown> | null = null
   if (!productId && productName) {
     const match = await resolveProductByName(db, productName)
     if (match) {
       productId = match.id
+      resolution = describeResolution(productName, match)
     } else {
       return JSON.stringify({
         error: `No product found matching "${productName}". Ask the user to confirm the exact product name, or search for it first.`,
@@ -3103,6 +3172,7 @@ async function executeFindProductDupes(
 
   if (!result.dupes.length) {
     return JSON.stringify({
+      ...(resolution ? { resolved_product: resolution } : {}),
       original: result.original
         ? { name: result.original.name_en, brand: result.original.brand_en }
         : null,
@@ -3127,6 +3197,7 @@ async function executeFindProductDupes(
   }))
 
   return JSON.stringify({
+    ...(resolution ? { resolved_product: resolution } : {}),
     original: result.original
       ? {
           name: result.original.name_en,
