@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { handleApiError } from '@/lib/utils/error-handler'
+import { MAX_INCI_NAME_LENGTH } from '@/lib/pipeline/ingredient-parser'
 
 const ingredientSearchSchema = z.object({
   query: z.string().optional(),
@@ -30,6 +31,24 @@ export async function GET(request: NextRequest) {
     )
 
     let query = supabase.from('ss_ingredients').select('*', { count: 'exact' })
+
+    // Never surface unsplit INCI dumps (rows containing "@" / "[" / "]" or longer
+    // than any real INCI name). A parser bug ingested whole multi-shade ingredient
+    // lists as single "ingredients" — one is 6,081 chars — and they were showing up
+    // as top hits in ingredient search. The parser is fixed, but this guards the
+    // read path so no consumer can render a dump even if a bad row slips in again.
+    // NOTE: distinct from `is_active`, which means "is an active skincare
+    // ingredient" (a solvent like 1,2-Hexanediol is legitimately is_active=false).
+    // The length guard uses a 61-underscore LIKE pattern: in SQL, `_` matches
+    // exactly one char, so any name longer than 60 chars matches it. This keeps
+    // the filter server-side so `count` and pagination stay correct (filtering
+    // the fetched page in JS would leave holes and a wrong total).
+    const TOO_LONG = '_'.repeat(MAX_INCI_NAME_LENGTH + 1) + '%'
+    query = query
+      .not('name_inci', 'ilike', '%@%')
+      .not('name_inci', 'ilike', '%[%')
+      .not('name_inci', 'ilike', '%]%')
+      .not('name_inci', 'like', TOO_LONG)
 
     if (params.query) {
       query = query.or(

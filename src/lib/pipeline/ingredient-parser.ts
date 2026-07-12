@@ -11,6 +11,31 @@ export interface ParsedIngredient {
   position: number
 }
 
+/** Longest plausible real INCI name. The longest legit one in the catalog is ~60 chars. */
+export const MAX_INCI_NAME_LENGTH = 60
+
+/**
+ * True if a parsed name is clearly not a single ingredient but an unsplit INCI
+ * dump — the failure that put 6,000-char makeup ingredient lists into
+ * ss_ingredients as individual "ingredients" and onto public /ingredients pages.
+ *
+ * Signals: an "@" delimiter (multi-shade products use it instead of commas),
+ * bracketed shade blocks ("[#03 Concealer: ...]"), or a name longer than any
+ * real INCI name.
+ *
+ * NOTE: a comma is deliberately NOT a signal. "1,2-Hexanediol" and
+ * concentration-annotated names like "Niacinamide (20,000 ppm)" are legitimate
+ * and among the most-linked ingredients in the catalog.
+ */
+export function isPollutedIngredientName(name: string): boolean {
+  return (
+    name.includes('@') ||
+    name.includes('[') ||
+    name.includes(']') ||
+    name.length > MAX_INCI_NAME_LENGTH
+  )
+}
+
 /**
  * Parse a raw INCI string into an ordered array of ingredient names.
  *
@@ -42,10 +67,31 @@ export function parseInciString(inciString: string): ParsedIngredient[] {
     cleaned = cleaned.slice(0, -1).trim()
   }
 
-  // Split by commas, respecting parentheses and brackets
-  const parts = splitByComma(cleaned)
+  // Multi-shade makeup products delimit with "@" instead of commas, and run
+  // shade blocks together ("...Caprylyl Glycol[#03 Concealer: Titanium Dioxide").
+  // Normalize both into commas BEFORE splitting, or the whole list parses as one
+  // giant "ingredient" (the bug that polluted 2,614 rows).
+  cleaned = cleaned
+    .replace(/@/g, ',')
+    // A "[" that opens a shade/variant block ends the previous ingredient.
+    .replace(/\[/g, ',')
+    .replace(/\]/g, ',')
+
+  // Protect commas that are INSIDE a chemical name rather than separating two
+  // ingredients: "1,2-Hexanediol", "1,3-Butanediol", "Niacinamide (20,000 ppm)".
+  // A digit-comma-digit is never an ingredient boundary. Without this, the
+  // catalog's most-linked ingredient (1,2-Hexanediol, 504 links) is split in half.
+  const COMMA_SENTINEL = '\u0000'
+  cleaned = cleaned.replace(/(\d),(\d)/g, `$1${COMMA_SENTINEL}$2`)
+
+  // Split by commas, respecting parentheses and brackets — then restore the
+  // protected in-name commas.
+  const parts = splitByComma(cleaned).map((p) =>
+    p.split(COMMA_SENTINEL).join(',')
+  )
 
   const ingredients: ParsedIngredient[] = []
+  const seen = new Set<string>()
 
   for (let i = 0; i < parts.length; i++) {
     const raw = parts[i].trim()
@@ -56,6 +102,16 @@ export function parseInciString(inciString: string): ParsedIngredient[] {
 
     // Skip entries that are clearly not ingredient names
     if (isNonIngredient(name)) continue
+
+    // Final guard: if anything still looks like an unsplit dump, drop it rather
+    // than create another 6,000-char "ingredient". Better to lose one entry than
+    // to poison the ingredient table and the public /ingredients pages.
+    if (isPollutedIngredientName(name)) continue
+
+    // A shade list repeats the same ingredients per shade — dedupe within a product.
+    const key = name.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
 
     ingredients.push({
       name_inci: name,
@@ -113,7 +169,21 @@ function normalizeIngredientName(raw: string): string {
     .trim()
     .replace(/\s+/g, ' ')
 
+  // Strip a shade/variant label that got glued to the front of an ingredient:
+  // "#03 Concealer: Titanium Dioxide" -> "Titanium Dioxide"
+  // "As Moon: Calcium Titanium Borosilicate" -> "Calcium Titanium Borosilicate"
+  // Only strip a SHORT label ending in ":" — never touch a real name.
+  name = name.replace(/^#?\s*[A-Za-z0-9#][\w\s#-]{0,24}:\s*/, '')
+
+  // A shade block can run straight into the next block with no delimiter:
+  // "Iron Oxide RedAround: Talc" -> take the part after the label.
+  // Detect a lowercase->uppercase seam followed by a label colon.
+  const seam = name.match(/^(.*?[a-z])([A-Z][\w\s#-]{0,24}:\s*)(.+)$/)
+  if (seam) name = seam[3].trim()
+
   // Remove leading numbering: "1. Water", "1) Water", "- Water"
+  // NOTE: requires a "." or ")" — a bare leading digit must survive, or
+  // "1,2-Hexanediol" (the most-linked ingredient in the catalog) is destroyed.
   name = name.replace(/^\d+[\.\)]\s*/, '')
   name = name.replace(/^[-•]\s*/, '')
 
