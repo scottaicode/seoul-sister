@@ -16,6 +16,7 @@ import {
   saveAssistantMessage,
   truncateToolResult,
   getPreviousConversationContext,
+  getSessionTranscript,
   generateAndSaveMemory,
   type ToolCallLog,
 } from '@/lib/widget/persistence'
@@ -286,41 +287,75 @@ export async function POST(request: NextRequest) {
     // --- Specialist detection ---
     const detectedSpecialist = detectSpecialist(parsed.message)
 
-    // --- Build system prompt with context ---
-    let systemPrompt = YURI_WIDGET_SYSTEM
+    // --- Rehydrate history when the client lost it (July 12 funnel audit) ---
+    // The client keeps chat history in React state but the session id in
+    // sessionStorage, so a same-tab navigation/reload wipes the visible history
+    // while the session lives on. Before this, the server trusted the empty
+    // client history and Yuri told a mid-conversation visitor "this might be
+    // our first exchange" — a verified one-message-death cause. The DB has the
+    // transcript; recover it.
+    let history: Array<{ role: 'user' | 'assistant'; content: string }> =
+      (parsed.history || []).map((m) => ({ role: m.role, content: m.content }))
+    if (session && session.message_count > 0 && history.length === 0) {
+      try {
+        history = await getSessionTranscript(session.id)
+      } catch (err) {
+        console.error('[widget/chat] Transcript rehydration failed:', err)
+      }
+    }
+
+    // --- Build system prompt: static (cached) + dynamic (uncached) ---
+    // The static YURI_WIDGET_SYSTEM goes in its own cache_control block. ALL
+    // per-turn context (conversation state, feeder source, visitor memory,
+    // specialist preview) goes in a SECOND, uncached system block. v11.1.0
+    // appended the per-turn state to the single cached block, which made the
+    // system-prompt cache miss on every turn (a prefix cache can't survive a
+    // changing turn number). Verify post-deploy in ss_ai_usage: cache_read
+    // tokens for feature widget_chat should rise, cache_creation fall.
+    let dynamicContext = ''
 
     // --- Conversation state (the fix for the silent email ask) ---
     // The prompt asks Yuri to make the email offer ONCE, at the value moment.
-    // She could do neither: the system prompt was static, so she had no idea how
-    // deep the conversation was, and no idea whether she'd already asked. Asked to
-    // time a once-per-conversation action while blind to the clock, the safe play
-    // is to never ask — and she didn't (15 of 125 assistant messages).
+    // She could do neither while blind to the clock — so give her the FACTS and
+    // let her judge. No "if turn >= N then ask" rule, no templated copy. She
+    // reads her own prior messages in `history` to see if she already offered.
     //
-    // So: give her the FACTS and let her judge. No "if turn >= N then ask" rule,
-    // no templated copy — she decides whether, when, and how. She can already read
-    // her own prior messages in `history` to see if she's offered, so we don't
-    // classify that for her (a keyword regex would misfire and would be exactly the
-    // rigid logic this codebase forbids).
-    const turnNumber = (session?.message_count ?? parsed.history?.length ?? 0) + 1
+    // Units: session.message_count counts EXCHANGES (+1 per request), while
+    // `history` holds individual messages (both roles) — divide by 2. The
+    // v11.1.0 fallback mixed the two and reported ~2x turn numbers.
+    const turnNumber = (session?.message_count ?? Math.floor(history.length / 2)) + 1
     const hasEmail = Boolean(visitor?.captured_email)
 
-    systemPrompt += `\n\n## Conversation State (facts, not instructions)
-- This is message ${turnNumber} of this conversation${turnNumber >= 6 ? ' — you have been talking with this person for a while now' : ''}.
-- Email on file for this visitor: ${hasEmail ? 'YES — you already have it. Do NOT ask again; just keep helping.' : 'NO — Seoul Sister has no way to reach them after they close this tab.'}
-- Your earlier messages in this conversation are above. If you already made the email offer, you can see it there — don't repeat it.
+    dynamicContext += `\n\n## Conversation State (facts, not instructions)
+- This is the visitor's message #${turnNumber} in this conversation.
+- Email on file for this visitor: ${hasEmail ? 'YES — you already have it. Do NOT ask again; just keep helping.' : 'NO — Seoul Sister has no way to reach them after they close this tab.'}${history.length > 0 ? `
+- Your earlier messages in this conversation are above. If you already made the email offer, you can see it there — don't repeat it.` : ''}
 
 Use these facts with the judgment described above. They are context, not a trigger: a long conversation doesn't obligate an ask, and a short one doesn't forbid it. You decide when the value has actually landed.`
+
+    // --- Feeder source (July 12 funnel audit) ---
+    // The visitor's arrival source was being stored on the session but never
+    // shown to Yuri. Result, verified in a real transcript: a stranger arrived
+    // from a Seoul Sister blog guide saying "I just read your guide on X" (the
+    // site's own CTA prefill) and Yuri DENIED the guide existed — the funnel
+    // contradicting itself at message 1. Same state-visibility bug class as the
+    // email ask. Facts only; she judges what to do with them.
+    const feederSource = parsed.source || session?.source || null
+    if (feederSource && feederSource !== 'landing') {
+      dynamicContext += `\n\n## How This Visitor Arrived
+They clicked an "Ask Yuri" link on a Seoul Sister page (source tag: "${feederSource}"). Seoul Sister publishes the blog guides, best-of lists, product pages, and ingredient pages on this site — so if they mention "your guide on X" or "the article I just read," that is one of Seoul Sister's real published guides. Treat it as real and build on it; never deny it exists or suggest they got crossed wires. You haven't read that specific page yourself, so don't invent its contents — take their word for what it said, or ask what stuck with them.`
+    }
 
     // Inject returning visitor memory
     if (visitor?.ai_memory) {
       const context = await getPreviousConversationContext(parsed.visitor_id!, visitor.ai_memory)
-      if (context) systemPrompt += context
+      if (context) dynamicContext += context
     }
 
     // Inject specialist preview (Feature 14.3)
     if (detectedSpecialist && SPECIALISTS[detectedSpecialist]) {
       const specialistName = SPECIALISTS[detectedSpecialist].name
-      systemPrompt += `\n\n## Specialist Knowledge Available
+      dynamicContext += `\n\n## Specialist Knowledge Available
 This question touches on ${specialistName} territory. You have deep expertise here and can give a solid answer. But subscribers get access to a dedicated ${specialistName} mode with even deeper analysis — ingredient-level formulation breakdowns, personalized conflict detection against their full routine, and intelligence extraction that improves over time.
 
 When answering, naturally weave in ONE brief mention of what the specialist mode adds. Keep it to ONE sentence, naturally embedded. Not a sales pitch. Just a glimpse of depth.`
@@ -329,8 +364,8 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
     const anthropic = getAnthropicClient()
 
     const messages: Anthropic.Messages.MessageParam[] = [
-      ...(parsed.history || []).map((m) => ({
-        role: m.role as 'user' | 'assistant',
+      ...history.map((m) => ({
+        role: m.role,
         content: m.content,
       })),
       { role: 'user' as const, content: parsed.message },
@@ -397,7 +432,15 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
             // a safety ceiling, not a target; the Pacing section in the prompt
             // keeps typical responses well under it.
             max_tokens: 1500,
-            system: [{ type: 'text' as const, text: systemPrompt, cache_control: { type: 'ephemeral' as const } }],
+            // Static prompt cached; per-turn context in a separate UNCACHED
+            // block so the cache breakpoint's prefix never changes between
+            // turns. Do not append anything per-turn to the first block.
+            system: [
+              { type: 'text' as const, text: YURI_WIDGET_SYSTEM, cache_control: { type: 'ephemeral' as const } },
+              ...(dynamicContext
+                ? [{ type: 'text' as const, text: dynamicContext }]
+                : []),
+            ],
             messages: cachedMessages,
             tools: CACHED_WIDGET_TOOLS,
             tool_choice: toolChoice,
@@ -579,7 +622,7 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
                     } else {
                       const facts = (visitor?.ai_memory || {}) as VisitorMemoryFacts
                       const conversation: ConversationTurn[] = [
-                        ...(parsed.history || []),
+                        ...history,
                         { role: 'user', content: parsed.message },
                         { role: 'assistant', content: cleanedResponse },
                       ]
@@ -619,7 +662,7 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
             const msgCount = (session?.message_count || 0) + 1
             if (msgCount % 3 === 0) {
               const sessionMessages = [
-                ...(parsed.history || []),
+                ...history,
                 { role: 'user', content: parsed.message },
                 { role: 'assistant', content: cleanedResponse },
               ]

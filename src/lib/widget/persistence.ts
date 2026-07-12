@@ -5,7 +5,7 @@
  */
 
 import { getServiceClient } from '@/lib/supabase'
-import { getAnthropicClient, MODELS } from '@/lib/anthropic'
+import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
 
 export interface ToolCallLog {
   name: string
@@ -77,6 +77,39 @@ export async function saveAssistantMessage(
   }
 
   return data.id
+}
+
+/**
+ * Load the saved transcript for a session, oldest first.
+ *
+ * Why this exists: the widget client keeps chat history in React state only,
+ * while the session id lives in sessionStorage — a same-tab navigation or
+ * reload wipes the visible history but keeps the session. Before this loader,
+ * the server trusted the (now empty) client history and Yuri greeted a
+ * mid-conversation visitor with "this might be our first exchange" — a real
+ * one-message-death cause in the July 12 funnel audit. The DB has the full
+ * transcript all along; this recovers it.
+ */
+export async function getSessionTranscript(
+  sessionId: string,
+  limit = 40
+): Promise<Array<{ role: 'user' | 'assistant'; content: string }>> {
+  const supabase = getServiceClient()
+
+  const { data, error } = await supabase
+    .from('ss_widget_messages')
+    .select('role, content')
+    .eq('session_id', sessionId)
+    .in('role', ['user', 'assistant'])
+    .order('created_at', { ascending: true })
+    .limit(limit)
+
+  if (error || !data) {
+    console.error('[widget/persistence] Failed to load session transcript:', error?.message)
+    return []
+  }
+
+  return data as Array<{ role: 'user' | 'assistant'; content: string }>
 }
 
 /**
@@ -152,7 +185,9 @@ export async function generateAndSaveMemory(
       ? `\n\nPrevious memory about this visitor:\n${JSON.stringify(existingMemory, null, 2)}`
       : ''
 
-    const response = await anthropic.messages.create({
+    // Retried (Feature 13.2 wrapper): a transient 529 here silently loses a
+    // visitor memory that never gets regenerated for this window otherwise.
+    const response = await callAnthropicWithRetry(() => anthropic.messages.create({
       model: MODELS.background,
       max_tokens: 400,
       system: `You are a memory extraction system for a K-beauty AI advisor. Given conversation messages and any previous memory, generate an updated memory profile for this anonymous visitor. Return ONLY valid JSON.`,
@@ -175,7 +210,7 @@ Return JSON with these fields:
 }`,
         },
       ],
-    })
+    }))
 
     const text = response.content[0]?.type === 'text' ? response.content[0].text : ''
 

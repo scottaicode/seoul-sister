@@ -14,6 +14,8 @@ export interface WidgetSession {
   tool_calls_count: number
   specialist_domains_detected: string[]
   intent_signals_detected: string[]
+  /** First-touch feeder attribution (blog/product/ingredient/nav/...). Null for direct hero visits. */
+  source: string | null
 }
 
 /**
@@ -29,23 +31,33 @@ export async function createSession(
 
   const sessionNumber = currentSessionCount + 1
   const selectCols =
-    'id, visitor_id, session_number, message_count, tool_calls_count, specialist_domains_detected, intent_signals_detected'
+    'id, visitor_id, session_number, message_count, tool_calls_count, specialist_domains_detected, intent_signals_detected, source'
 
   // Insert with `source` (first-touch feeder attribution). The column was added
   // by a manual migration; if it isn't present yet, gracefully retry without it
   // so conversations never break on a missing-column error.
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from('ss_widget_sessions')
     .insert({ visitor_id: visitorId, session_number: sessionNumber, source: source ?? null })
     .select(selectCols)
     .single()
 
   if (error && /source/i.test(error.message) && /column/i.test(error.message)) {
-    ;({ data, error } = await supabase
+    const fallback = await supabase
       .from('ss_widget_sessions')
       .insert({ visitor_id: visitorId, session_number: sessionNumber })
-      .select(selectCols)
-      .single())
+      .select(
+        'id, visitor_id, session_number, message_count, tool_calls_count, specialist_domains_detected, intent_signals_detected'
+      )
+      .single()
+    if (fallback.error || !fallback.data) {
+      throw new Error(`Failed to create session: ${fallback.error?.message}`)
+    }
+    await supabase
+      .from('ss_widget_visitors')
+      .update({ total_sessions: sessionNumber })
+      .eq('visitor_id', visitorId)
+    return { ...(fallback.data as unknown as WidgetSession), source: null }
   }
 
   if (error || !data) {
@@ -69,7 +81,7 @@ export async function getSession(sessionId: string): Promise<WidgetSession | nul
 
   const { data } = await supabase
     .from('ss_widget_sessions')
-    .select('id, visitor_id, session_number, message_count, tool_calls_count, specialist_domains_detected, intent_signals_detected')
+    .select('id, visitor_id, session_number, message_count, tool_calls_count, specialist_domains_detected, intent_signals_detected, source')
     .eq('id', sessionId)
     .single()
 
