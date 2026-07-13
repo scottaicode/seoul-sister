@@ -824,7 +824,22 @@ export async function* streamAdvisorResponse(
   // ---------------------------------------------------------------------------
   const forceToolUse = shouldForceToolUse(message, conversationHistory)
 
-  // Helper: apply cache_control to the last assistant message for cache reuse
+  // Helper: apply cache_control to the last assistant message for cache reuse.
+  //
+  // DO NOT "OPTIMIZE" THIS AWAY. It looks suspicious (a breakpoint at a position that
+  // moves every turn) and it was the prime suspect for a turn-2 cost spike on Jul 13
+  // 2026. It was A/B'd against two alternatives on the live API, warm, real payload
+  // (scripts/ab-yuri-message-breakpoint.ts) and this layout WON:
+  //
+  //   current (this)          $0.0250/warm turn
+  //   marker on last message  $0.0250/warm turn  (no better)
+  //   NO messages marker      $0.0278/warm turn  (11% WORSE — history gets re-read
+  //                                               as raw input every turn)
+  //
+  // The turn-2 spike that triggered the investigation was NOT this: it's a tool-loop
+  // artifact. ss_ai_usage sums every tool round into ONE row, so a tool-using turn
+  // shows cache_read == cache_write (round 1 writes it, round 2 reads it) — the
+  // healthy producer/consumer pair, not an invalidation. See CHANGELOG v11.3.0.
   function applyCacheControl(msgs: Anthropic.Messages.MessageParam[]) {
     return msgs.map((msg, idx) => {
       if (

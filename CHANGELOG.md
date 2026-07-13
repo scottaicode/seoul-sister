@@ -47,7 +47,27 @@ The real mechanism: **the cached system block's *composition* was a function of 
 
 **Instrumentation lesson (Principle 5, failure #4).** The first verify harness flipped `process.env` and re-imported to A/B in-process. The flags are module-level `const`s — frozen at import — so **both arms measured the same arm** and cheerfully reported the broken arm as "stable." It would have "proven" anything. Each arm now runs as its own child process. *Instrumentation that cannot distinguish the branches encodes the error.*
 
-**Known residual — turn 2 (tracked, not yet fixed).** `applyCacheControl` (advisor.ts) marks the assistant message at `idx === msgs.length - 2`. On turn 1 the array is `[user]` only, so `length - 2 = -1` → **no marker is placed**. Turn 2 is thus the first turn carrying a `messages`-level breakpoint, and introducing a new breakpoint reshuffles the cache layout: it read only the 6,300-token tools block and rewrote 23,487 tokens for a **9-input-token message** ($0.153). This is a **one-time** cost at turn 2, not the per-turn compounding bleed that was killed — marginal cost of turns 3+ is now ~$0.02. To be fixed and A/B'd separately; not shipped on reasoning.
+### The turn-2 "residual" — investigated, A/B'd, and NOT a bug. Do not "fix" it.
+
+The live test conversation showed turn 2 costing **$0.153** (`cache_read` 6,300 = tools-only, `cache_write` 23,487) for a **9-input-token** message. The obvious suspect was `applyCacheControl` (advisor.ts): it marks the assistant message at `idx === msgs.length - 2`, and on turn 1 the array is `[user]` only (`length - 2 = -1`), so **no marker is placed** — making turn 2 the first turn to carry a messages-level breakpoint.
+
+**That hypothesis was FALSIFIED by measurement** (`scripts/ab-yuri-message-breakpoint.ts` — 3 layouts, warm, live API, real payload):
+
+| layout | warm cost/turn | cache_write (warm) |
+|---|---|---|
+| **`current`** (today: assistant at `len-2`) | **$0.0250** | 1,742 |
+| `last` (marker always on final msg) | $0.0250 | 1,821 |
+| `none` (no messages-level marker) | $0.0278 (**11% WORSE**) | 0 |
+
+**Today's layout is already optimal.** Removing the breakpoint is *worse* (history gets re-read as raw input every turn). And replaying the exact live conversation through today's code reproduced turn 2 at **$0.0269 / 810 write** — the $0.153 pathology **did not reproduce**.
+
+**What actually happened:** turn 1 fired a tool. Usage is **summed across all tool-loop rounds into one `ss_ai_usage` row** (`usageTotals.cacheCreation += ...`, advisor.ts:967), so those rows are *sums of multiple API calls*, not single calls. This explains both anomalies:
+- turn 1 `cache_read == cache_write == 28,946`: round 1 *wrote* it, round 2 *read* it. Summed → equal. **Not a bug** (this is BP98.2's Simpson's-paradox trap — the producer and consumer of one cache entry, aggregated into one number).
+- turn 2's re-write: turn 1's tool rounds keyed the cache to a message array containing `tool_use`/`tool_result` blocks. Turn 2 rebuilds history as **clean text from the DB**, so that segment genuinely can't be reused and is written once. **The ~40K system+tools prefix still cache-HITS**; only the small history segment re-writes.
+
+This is a structural consequence of how the tool loop relates to the persisted transcript, not a defect. "Fixing" it would mean persisting raw tool blocks into conversation history — a real architectural change, with real risk, to recover a one-time cost on turns that follow a tool call. **Not worth it. Left alone deliberately.**
+
+**Reading `ss_ai_usage` correctly (for whoever audits cost next):** a tool-using turn produces ONE row that is the SUM of several API rounds. `cache_read == cache_write` on such a row is the healthy producer/consumer signature, not an invalidation. Do not diagnose the cache from an average over these rows — read them in timestamp order and account for rounds.
 
 ---
 
