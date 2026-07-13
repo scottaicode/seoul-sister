@@ -8,6 +8,49 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.3.0 (July 13, 2026): The 60× Yuri cost regression — the user's own message was rewriting the prompt cache every turn
+
+**The symptom.** Yuri's cost per message went from **$0.006 (Jun 5–9) to $0.35 (Jun 30)** — a ~60× regression. `ss_ai_usage` showed `cache_creation_tokens` of 30–55K on *every* message, even ones with 9 input tokens. The prompt cache was being invalidated and fully rewritten on every turn: paying cache-WRITE rates (1.25×) instead of cache-READ (0.1×) on ~24K tokens. A 12× penalty, every message.
+
+**This was NOT the clock bug.** `CLOCK_SPLIT_ENABLED` (v11.x) is correct and working — verified live: turn 3 of the test conversation crossed a minute boundary and still hit cache. This was a second, independent invalidator.
+
+**The diagnosis — follow the bytes, not the hypothesis.** The work-order blueprint named `## Recent Conversation Excerpts` (memory.ts:886) as the prime suspect, on the theory it mutated per turn. **A byte-diff of Bailey's real conversations falsified that.** The excerpts section explicitly excludes the current conversation (memory.ts:1789), so it is stable *within* a conversation. It was never mutating — it was being **withheld**.
+
+The real mechanism: **the cached system block's *composition* was a function of what the user just typed.** Two invalidators, both feeding message-derived content into the `cache_control`-marked prefix:
+
+1. **`classifyIntent(message)`** (Feature 13.4's token "optimization") gated which USER CONTEXT sections loaded. `loadAll` is true only for the `'general'` topic — which fires when a message matches **no** keywords. So "Great!" loaded every section (~88K chars) and "should I swap the Anua toner?" loaded a subset (~80K). Sections blinked in and out **mid-prefix**, turn to turn. Measured on conv `7e3abe74`: **9 of 11 turns broke the cache**, first diff as early as **char 36,469 (41% in), rewriting 58.7% of the prompt.**
+2. **`detectSpecialist(message)`** is recomputed every turn and its block was appended *inside* the cached body, appearing/vanishing as routing changed mid-conversation.
+
+**The economics of the "optimization."** Skipping the gated sections saves ~8K tokens of cache READ (~$0.004/turn at Opus rates) but forces a ~24K-token cache WRITE (~$0.150/turn). **It cost ~37× more than it saved.** A local token optimization that was catastrophic globally — exactly why Principle 5 exists.
+
+**The fix.**
+- `loadAll` is forced true (memory.ts) so the cached prefix's section list no longer depends on the message.
+- The ACTIVE SPECIALIST block moves out of the cached body into an **unmarked** system block **after** the breakpoint — same shape as the existing clock split. `system` blocks concatenate in order, so the model reads identical bytes in identical order.
+- Kill switch **`YURI_VOLATILE_SPLIT_ENABLED=false`** reverts BOTH halves to the pre-fix prompt without a deploy (defaults ON).
+
+**Measured, warm, A/B'd on the live API** (Principle 5 — three consecutive LGAAS cache "fixes" each shipped on locally-sound reasoning and each *raised* cost; the one that worked was A/B'd first). Real prompt, real tools, real history, two of Bailey's real conversations:
+
+| conversation | cache_write/warm turn | cost/warm turn |
+|---|---|---|
+| `7e3abe74` | 34K → **0** | $0.1654 → **$0.0278** (−83.2%) |
+| `9f047ae2` | 34K → **0** | $0.0813 → **$0.0336** (−58.7%) |
+
+`cache_read` is now large and **constant** (40,444 every turn) — write once, read thereafter.
+
+**Verified in production** (live conversation `486b1962`, Jul 13): the cached system block is **byte-identical across all 4 turns** (re-ran the byte-diff on the live transcript). Warm turns dropped to `cache_write` **1,109** and **1,310** tokens (just the incremental tail), **cost $0.024/turn**.
+
+**Behavior note, stated plainly: this is NOT purely a byte-position fix.** The specialist half is (assembled prompt byte-identical). The intent-gate half *cannot* be — the gate worked by **removing** context, so undoing it means **Yuri sees MORE on focused turns**. Verified as a strict superset, never a subset (`scripts/verify-yuri-cache-fix.ts`: "context LOST=none" on every turn). She now gets her Recent Conversation Excerpts, Past Specialist Intelligence, and routine/phase blocks on turns where a **regex keyword matcher was rationing her memory** — which is the AI-First direction (Principle 2), not a deviation from it.
+
+**Guards** (`tests/advisor-cache-shape.test.mjs`, 4 new tests): assert no per-turn-mutable content sits inside the cached block, the specialist block is delivered unmarked and after it, `loadAll` is not computed from `classifyIntent` alone, and the kill switch exists in both halves. **Each guard was PROVEN to fail by reintroducing the bug** (a test that has never failed is not a guard).
+
+**Tooling added** (reusable for the next cache regression): `scripts/diagnose-yuri-cache-bytediff.ts` (byte-diff the real prompt across real turns), `scripts/diagnose-yuri-cache-sections.ts` (show which per-turn inputs mutate the cached block), `scripts/verify-yuri-cache-fix.ts` (superset + prefix-stability proof), `scripts/ab-yuri-cache-fix.ts` (warm A/B on the live API).
+
+**Instrumentation lesson (Principle 5, failure #4).** The first verify harness flipped `process.env` and re-imported to A/B in-process. The flags are module-level `const`s — frozen at import — so **both arms measured the same arm** and cheerfully reported the broken arm as "stable." It would have "proven" anything. Each arm now runs as its own child process. *Instrumentation that cannot distinguish the branches encodes the error.*
+
+**Known residual — turn 2 (tracked, not yet fixed).** `applyCacheControl` (advisor.ts) marks the assistant message at `idx === msgs.length - 2`. On turn 1 the array is `[user]` only, so `length - 2 = -1` → **no marker is placed**. Turn 2 is thus the first turn carrying a `messages`-level breakpoint, and introducing a new breakpoint reshuffles the cache layout: it read only the 6,300-token tools block and rewrote 23,487 tokens for a **9-input-token message** ($0.153). This is a **one-time** cost at turn 2, not the per-turn compounding bleed that was killed — marginal cost of turns 3+ is now ~$0.02. To be fixed and A/B'd separately; not shipped on reasoning.
+
+---
+
 ## v11.2.0 (July 12, 2026): Adversarial audit of v11.1.0 — funnel self-injuries, GEO channel holes, and wrong-product safety blindness
 
 A Fable 5 adversarial audit of the four v11.1.0-day commits (prompted by `YURI-COST-FIX-INSTRUCTIONS.md`) tried to break each one against the live DB and the real widget transcripts. It found real defects in all of them, plus two verified causes of one-message widget deaths. All fixes below are bugfix/growth/cost lane (ship-guard PASS on every bucket; no new features).
