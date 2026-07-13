@@ -295,10 +295,32 @@ This is NOT defending the third party — it's defending the user from looking f
 // Do not port that complexity here.
 export const CLOCK_SPLIT_ENABLED = process.env.YURI_CLOCK_SPLIT_ENABLED !== 'false'
 
+// Kill switch for the volatile-composition prompt-cache fix (default ON).
+// See the long-form diagnosis on VOLATILE_SPLIT_ENABLED in src/lib/yuri/memory.ts
+// — that flag stabilizes the USER CONTEXT section list. This flag governs the
+// SECOND per-turn invalidator found in the same byte-diff: the ACTIVE SPECIALIST
+// block. `detectSpecialist(message)` is recomputed on every turn (advisor.ts, step
+// 1), so the specialist body appended into the cached prefix appeared and vanished
+// mid-conversation (measured on Bailey's conv 7e3abe74: turn 1 routed to
+// routine_architect, turn 2 to null — the block's disappearance moved the first
+// diff and invalidated the tail of the cached prefix).
+//
+// Both flags share one env var: they are two halves of one fix and must move
+// together. Setting YURI_VOLATILE_SPLIT_ENABLED=false restores BOTH the old intent
+// gating and the folded-in specialist block — byte-for-byte the pre-fix prompt.
+const VOLATILE_SPLIT_ENABLED = process.env.YURI_VOLATILE_SPLIT_ENABLED !== 'false'
+
 export interface BuiltSystemPrompt {
-  // The stable, cacheable body. When the split is enabled this contains NO
-  // per-minute value; when disabled the clock is folded back in at the tail.
+  // The stable, cacheable body. When the splits are enabled this contains NO
+  // per-turn-variable content: no per-minute clock, no message-dependent
+  // specialist block, and a section list that does not depend on what the user
+  // just typed. When disabled, the clock and specialist are folded back in.
   cachedPrompt: string
+  // The volatile ## ACTIVE SPECIALIST block, delivered as a separate unmarked
+  // system block after the cache breakpoint. Empty string when the split is
+  // disabled (the specialist is inside cachedPrompt in that case) or when no
+  // specialist is routed.
+  specialistBlock: string
   // The volatile ## RIGHT NOW block, delivered as a separate unmarked system
   // block after the cache breakpoint. Empty string when the split is disabled
   // (the clock is inside cachedPrompt in that case).
@@ -318,10 +340,19 @@ export function buildSystemPrompt(
     parts.push(`\n---\n# USER CONTEXT\n${contextText}`)
   }
 
-  // Add specialist instructions if routed
+  // The specialist block. Its TEXT is byte-identical whether split or folded — we
+  // only move WHERE the bytes sit. The leading '\n' reproduces the exact join seam
+  // that `parts.join('\n')` inserted when this was a `parts` element, so the folded
+  // (kill-switch-off) path is byte-for-byte what production shipped before.
+  let specialistBlock = ''
   if (specialistType && SPECIALISTS[specialistType]) {
     const specialist = SPECIALISTS[specialistType]
-    parts.push(`\n---\n# ACTIVE SPECIALIST: ${specialist.name}\nYou are now operating with the ${specialist.name} specialist's deep expertise. Apply this specialized knowledge:\n\n${specialist.systemPrompt}\n\n## Perspective Reminder\nEven in specialist mode, start from the user's perspective. What have they already tried? What are they worried about? Prove you understand their specific situation before deploying your deep expertise. The expertise lands harder when they feel understood first.`)
+    specialistBlock = `\n---\n# ACTIVE SPECIALIST: ${specialist.name}\nYou are now operating with the ${specialist.name} specialist's deep expertise. Apply this specialized knowledge:\n\n${specialist.systemPrompt}\n\n## Perspective Reminder\nEven in specialist mode, start from the user's perspective. What have they already tried? What are they worried about? Prove you understand their specific situation before deploying your deep expertise. The expertise lands harder when they feel understood first.`
+  }
+
+  // Kill switch OFF: fold the specialist back into the cached body exactly as before.
+  if (!VOLATILE_SPLIT_ENABLED && specialistBlock) {
+    parts.push(specialistBlock.slice(1)) // strip the seam '\n'; join('\n') re-adds it
   }
 
   // RIGHT NOW tail — placed last so it carries the most authority. Adopted from
@@ -380,16 +411,30 @@ It is **${todayStr}, ${nowTime}** (${tzLabel}). This is the AUTHORITATIVE curren
 
 When the user asks about today / tomorrow / yesterday, use the values above directly — never compute the weekday yourself. When referencing durations (e.g. "9 days into Phase 2"), count actual days from the dates in their decision memory or conversation history. Do not estimate or round.`
 
+  // The volatile blocks are delivered as separate, UNMARKED system blocks AFTER the
+  // cache breakpoint. Because `system` blocks are concatenated in order and render
+  // before `messages`, the model sees the exact same prompt text it sees today —
+  // base + context + specialist + clock — but only the stable prefix is cached.
+  //
+  // Order is load-bearing: specialist BEFORE clock, matching the original
+  // parts[] order (the clock is the authoritative tail and must stay last).
   if (CLOCK_SPLIT_ENABLED) {
-    // Volatile clock delivered separately, after the cache breakpoint.
-    return { cachedPrompt: parts.join('\n'), clockBlock }
+    return {
+      cachedPrompt: parts.join('\n'),
+      specialistBlock: VOLATILE_SPLIT_ENABLED ? specialistBlock : '',
+      clockBlock,
+    }
   }
 
   // Kill switch OFF: fold the clock back into the cached body exactly as before.
   // Originally the clock was a `parts` element, so `join('\n')` inserted a '\n'
   // separator BEFORE it. We reproduce that separator explicitly ('\n' + clock)
   // so the folded body is byte-for-byte identical to what production ships today.
-  return { cachedPrompt: parts.join('\n') + '\n' + clockBlock, clockBlock: '' }
+  return {
+    cachedPrompt: parts.join('\n') + '\n' + clockBlock,
+    specialistBlock: VOLATILE_SPLIT_ENABLED ? specialistBlock : '',
+    clockBlock: '',
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -710,7 +755,7 @@ export async function* streamAdvisorResponse(
   // clock is returned SEPARATELY (clockBlock) so it can be delivered as an
   // unmarked system block after the cache breakpoint — keeping the cached body
   // byte-stable across the minute boundary. See CLOCK_SPLIT_ENABLED.
-  const { cachedPrompt, clockBlock } = buildSystemPrompt(
+  const { cachedPrompt, specialistBlock, clockBlock } = buildSystemPrompt(
     userContext,
     specialistType,
     conversationHistory
@@ -871,6 +916,11 @@ export async function* streamAdvisorResponse(
       const systemBlocks: Anthropic.Messages.TextBlockParam[] = [
         { type: 'text', text: cachedPrompt, cache_control: { type: 'ephemeral' } },
       ]
+      // Volatile, UNMARKED blocks after the breakpoint, in the same order they
+      // occupied inside the old cached body: specialist first, clock last.
+      if (specialistBlock) {
+        systemBlocks.push({ type: 'text', text: specialistBlock })
+      }
       if (clockBlock) {
         systemBlocks.push({ type: 'text', text: clockBlock })
       }

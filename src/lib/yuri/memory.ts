@@ -225,6 +225,35 @@ export interface LoadUserContextOptions {
   isFirstMessage?: boolean
 }
 
+// Kill switch for the prompt-cache volatile-composition fix (default ON).
+//
+// THE BUG (measured Jul 13 2026, byte-diffed against Bailey's real conversations):
+// the intent-based conditional loading below (Feature 13.4) made the CONTENT of the
+// cache_control'd system block a function of the CURRENT USER MESSAGE. `loadAll` is
+// true only when classifyIntent() returns 'general' — which happens when the message
+// matches NO keywords ("Great!", "Sounds good!!"). So a vague turn loaded every
+// section (~88K chars) and a specific turn loaded a subset (~80K chars), and the
+// prompt oscillated turn to turn. Prompt caching is a PREFIX match: sections blinking
+// in and out mid-prefix invalidated everything after them.
+//
+// Measured on conv 7e3abe74: 9 of 11 turns broke the cache, first diff as early as
+// char 36,469 (41% in) — rewriting 59% of a ~24.5K-token prompt at cache-WRITE rates
+// (1.25x) instead of reading it at cache-READ rates (0.1x). A 12x penalty.
+//
+// The economics of the "optimization" it was performing: skipping the conditional
+// sections saves ~8K tokens of cache READ (~$0.004/turn at Opus rates) but forces a
+// ~24K-token cache WRITE (~$0.150/turn). It cost ~37x more than it saved.
+//
+// THE FIX: always load the full context, so the cached prefix is byte-identical
+// across turns regardless of what the user typed. The gated loads are parallel
+// Supabase queries inside one Promise.all — loading them all always costs a little
+// DB concurrency, not tokens, and they were already being loaded on every 'general'
+// turn anyway.
+//
+// Set YURI_VOLATILE_SPLIT_ENABLED=false to restore per-message intent gating
+// (byte-identical to the pre-fix behavior) without a deploy.
+export const VOLATILE_SPLIT_ENABLED = process.env.YURI_VOLATILE_SPLIT_ENABLED !== 'false'
+
 export async function loadUserContext(
   userId: string,
   currentConversationId?: string,
@@ -237,7 +266,11 @@ export async function loadUserContext(
     options?.message || '',
     options?.isFirstMessage ?? true // Default to loading everything if not specified
   )
-  const loadAll = topics.has('general')
+  // When the volatile-split fix is enabled, the cached block's COMPOSITION must not
+  // depend on the current message (see VOLATILE_SPLIT_ENABLED above). Forcing loadAll
+  // leaves every `loadAll || topics.has(...)` gate below untouched while making them
+  // all resolve the same way on every turn — a stable prefix.
+  const loadAll = VOLATILE_SPLIT_ENABLED || topics.has('general')
 
   // ALWAYS load: profile + conversations + decision memory (cheap, critical)
   const alwaysPromises = Promise.all([
