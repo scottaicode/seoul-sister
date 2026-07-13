@@ -980,6 +980,31 @@ export async function* streamAdvisorResponse(
           usageTotals.output += u.output_tokens ?? 0
           usageTotals.cacheRead += u.cache_read_input_tokens ?? 0
           usageTotals.cacheCreation += u.cache_creation_input_tokens ?? 0
+
+          // PER-ROUND cache observability (Vercel logs). ss_ai_usage stores ONE row
+          // per turn, SUMMED across tool-loop rounds — which makes the cache
+          // mechanism invisible: a tool turn's `cache_read == cache_write` is really
+          // round 1 WRITING and round 2 READING, and a summed row cannot show that.
+          // That is the exact aggregation trap that made LGAAS's BP98.2 delete the
+          // cache WRITER and keep the reader (Principle 5, failure #2 and #4:
+          // "instrumentation that describes a branch with a constant is a guess
+          // wearing a number").
+          //
+          // We log each ROUND separately with the inputs that determine the cache
+          // prefix, so a cost regression can be diagnosed from the logs instead of
+          // being inferred. Cheap: one console line per round, no tokens, no DB.
+          const cr = u.cache_read_input_tokens ?? 0
+          const cw = u.cache_creation_input_tokens ?? 0
+          // A read that lands in the low thousands means ONLY the tools block matched
+          // and the ~24K system block MISSED — the signature of a prefix that moved.
+          const systemMissed = cr > 0 && cr < 10_000
+          console.log(
+            `[yuri-cache] conv=${conversationId?.slice(0, 8)} round=${toolLoopCount} ` +
+            `sys_chars=${cachedPrompt.length} spec=${specialistBlock ? 'y' : 'n'} ` +
+            `msgs=${cachedMessages.length} raw_in=${u.input_tokens ?? 0} ` +
+            `cache_read=${cr} cache_write=${cw}` +
+            (systemMissed ? '  *** SYSTEM-BLOCK CACHE MISS ***' : '')
+          )
         } catch {
           // Usage capture is best-effort — never let it break the response.
         }
