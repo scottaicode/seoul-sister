@@ -7,8 +7,15 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { trackEvent, NudgeEvent } from '@/lib/analytics'
 
 interface ContextualYuriNudgeProps {
-  kind: 'product' | 'ingredient'
-  /** Display name of the thing on this page (e.g. product name or ingredient name). */
+  /**
+   * Which feeder page this is. `category` covers the /best/[category] "best Korean
+   * X" pages — which are the TOP AI-search landing pages (per Bing AI Performance,
+   * /best/serums is the #1 cited page) and had NO nudge at all until Jul 13 2026:
+   * their only Yuri path was a CTA at line 557 of a 587-line page that nobody
+   * scrolls to. That was the single highest-value leak in the funnel.
+   */
+  kind: 'product' | 'ingredient' | 'category'
+  /** Display name of the thing on this page (product, ingredient, or category title). */
   name: string
   /** Optional brand, for products. */
   brand?: string | null
@@ -39,10 +46,31 @@ export default function ContextualYuriNudge({ kind, name, brand }: ContextualYur
   const dismissKey = `yuri_nudge_dismissed_${kind}`
 
   // The visitor's seeded opening question (not a Yuri script — Yuri answers freely).
+  //
+  // WHY THIS WORDING (Jul 13 2026 — the feeder leak):
+  // 217 engaged readers saw this nudge; ~3 clicked (~1%). The mechanism was fine
+  // (engagement-gated, dismissible, prefilled, routes to FREE Yuri). The OFFER was
+  // the problem: it asked "curious whether X is right for your skin?" of someone who
+  // had just read a comprehensive page answering exactly that. We were offering them
+  // the thing they already had.
+  //
+  // The page can explain what an ingredient is, how it works, and how it scores by
+  // skin type. The one thing it structurally CANNOT know is WHAT ELSE IS IN THIS
+  // PERSON'S BATHROOM. That is Yuri's only real edge, and the nudge never mentioned
+  // it. So the seed now asks the question the page cannot answer: does this conflict
+  // with what I'm already using?
+  //
+  // AI-First: this seeds the VISITOR's opening message. Yuri still answers freely.
+  //
+  // The CATEGORY page ("best Korean serums") has a different gap: the reader is
+  // staring at 20 ranked options and cannot tell which one is for THEM. A list
+  // cannot answer "which of these, for my skin?" — Yuri can.
   const question =
     kind === 'product'
-      ? `Is ${[brand, name].filter(Boolean).join(' ')} right for my skin?`
-      : `Is ${name} good for my skin, and how should I use it?`
+      ? `I'm looking at ${[brand, name].filter(Boolean).join(' ')}. Will it conflict with what I'm already using?`
+      : kind === 'category'
+        ? `I'm looking at your ${name} list. Which one is actually right for my skin?`
+        : `Will ${name} conflict with anything already in my routine?`
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -112,18 +140,25 @@ export default function ContextualYuriNudge({ kind, name, brand }: ContextualYur
         >
           <Sparkles className="w-5 h-5 text-gold shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
+            {/* The offer must be what this PAGE CANNOT ANSWER. The page already
+                explains the ingredient/product; asking "curious whether it's right
+                for you?" offers the reader what they just finished reading. The gap
+                is their OWN routine — what they already own, and whether this
+                collides with it. That is the only thing worth clicking for. */}
             <p className="text-sm text-white/90 leading-relaxed">
               {kind === 'product'
-                ? `Want to know if ${name} actually fits your skin?`
-                : `Curious whether ${name} is right for your skin?`}{' '}
-              <span className="text-white/50">Ask Yuri, free.</span>
+                ? `Already using other actives? Yuri can check whether ${name} clashes with them.`
+                : kind === 'category'
+                  ? `Not sure which one is for you? Tell Yuri your skin type and what you already use.`
+                  : `Tell Yuri what you already use and she'll check whether ${name} conflicts with it.`}{' '}
+              <span className="text-white/50">Free, no signup.</span>
             </p>
             <button
               onClick={accept}
               className="mt-3 inline-flex items-center gap-1.5 glass-button-primary text-xs py-2 px-4"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              Ask Yuri about this
+              {kind === 'category' ? 'Which one for me?' : 'Check my routine'}
             </button>
           </div>
           <button

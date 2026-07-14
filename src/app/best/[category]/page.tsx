@@ -6,6 +6,7 @@ import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { notFound } from 'next/navigation'
 import { toSlug } from '@/lib/utils/slug'
 import LazyImage from '@/components/ui/LazyImage'
+import ContextualYuriNudge from '@/components/widget/ContextualYuriNudge'
 import { serializeJsonLd } from '@/lib/utils/json-ld'
 
 export const revalidate = 3600
@@ -582,6 +583,17 @@ export default async function BestOfCategoryPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Engagement-triggered feeder to the free Yuri widget.
+          The /best/* pages are the TOP AI-search landing pages (Bing AI Performance:
+          /best/serums is the #1 cited page, 501 citations in 7 days) and organic
+          search is by far the best-engaging channel (52% engagement, 50s dwell vs
+          Direct's 16%/2s). Yet until now this page's ONLY Yuri path was a CTA at
+          line ~557 of a 587-line page — below the fold, past 20 product cards,
+          effectively invisible. Result: 105 organic sessions, 3 reaching Yuri.
+          The nudge fires only on real engagement (40% scroll or 9s dwell) and is
+          dismissible, so it never reads as a popup ad. */}
+      <ContextualYuriNudge kind="category" name={meta.title} />
     </>
   )
 }
