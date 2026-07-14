@@ -219,6 +219,39 @@ This matters enormously for the deferred extraction (Piece B): an extractor that
 
 ---
 
+---
+
+## Before you call an LGAAS draft "fabricated" — check the instrument
+
+**I got this wrong twice in one evening (Jul 13 2026). Don't repeat it.**
+
+LGAAS enforces a hard grounding rule (`api/reddit-response.js:2754`): *any* ingredient / formulation / "contains X" claim **must** trigger `web_search` before a single word of the reply is written. And the outcome is **logged**, so you never have to guess whether she looked it up.
+
+**Query LGAAS's Supabase (not Seoul Sister's):**
+
+```sql
+select created_at,
+       metadata->>'web_search_fired'  as searched,
+       metadata->'web_search_queries' as queries,
+       metadata->'missing_products'   as flagged
+from lgaas_ai_usage
+where feature = 'REDDIT_SEARCH_OUTCOME'
+order by created_at desc limit 10;
+```
+
+⚠️ Use **`REDDIT_SEARCH_OUTCOME`**, not the `web_search_fired` field on `REDDIT_RESPONSE` rows — that one is a **pre-call snapshot** and reads `false` on all ~546 historical rows *even when search actually fired*. BP108 added the post-call breadcrumb precisely to fix that. (A textbook case of instrumentation encoding the error.)
+
+**My two misses, for the record:**
+1. Called the SKIN1004 cart draft "fabricated INCI" (vit C + tranexamic acid). It was **true** — my `ss_products` query used a `LIMIT 5` + name filter that excluded the exact product. The log showed 4 real searches.
+2. Said the Cetaphil niacinamide claim came from "model knowledge." The log showed `web_search_fired: true`, query `"Cetaphil gentle skin cleanser ingredients"`. She grounded it correctly (Cetaphil is a Western brand and legitimately **not** in `ss_products` — web search is the right fallback).
+
+**The rules that fall out:**
+- **"Absent from my sample" ≠ "absent from the data."** Query the full matching set before concluding a product isn't in the catalog.
+- **Check `REDDIT_SEARCH_OUTCOME` before alleging fabrication.** Ten seconds.
+- Verifying a specific checkable claim before posting is still correct and worth doing — just verify it *properly*, and don't turn a verification miss into a bug report against a system that behaved correctly.
+
+---
+
 ## What to do next (in order)
 
 1. **Apply the migration** — `psql "$DATABASE_URL" -f scripts/migrations/create_ss_reddit_intel.sql`
