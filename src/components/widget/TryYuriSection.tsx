@@ -136,12 +136,32 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
+
+    // ---- Source capture runs FOR EVERY ARRIVAL, not just feeder CTAs. --------
+    // This used to sit BELOW the `!params.has('ask')` early-return, which meant
+    // any visitor who landed WITHOUT an ?ask= was never tagged. That silently
+    // broke the one funnel we actually care about: the BP108 Reddit bridge sends
+    // people to `seoulsister.com/?utm_source=reddit&utm_medium=social&...` — no
+    // `ask` param — so every Reddit arrival fell through and their widget session
+    // was recorded as untagged. GA4 could see the LANDING, but our own data could
+    // never answer the question that matters: "did the Reddit visitor actually
+    // talk to Yuri?" ss_widget_sessions.source has never once said 'reddit'.
+    //
+    // utm_source is checked first (it's the standard the Reddit profile link and
+    // any future paid/social campaign already use); ?from= remains for the
+    // internal feeder CTAs (blog/product/ingredient/nav).
+    const utm = (params.get('utm_source') || '').trim()
+    const from = (params.get('from') || '').trim()
+    if (utm || from) {
+      sourceRef.current = utm || from
+    }
+
     // `ask` PRESENT (even empty) means the visitor clicked an "Ask Yuri" feeder
     // CTA and wants the chat. Non-empty prefills their question; empty just
     // focuses the widget (e.g. the nav "Ask Yuri" with no topic).
     if (!params.has('ask')) return
     const ask = (params.get('ask') || '').trim()
-    sourceRef.current = params.get('from') || 'landing'
+    if (!sourceRef.current) sourceRef.current = 'landing'
     if (ask) setInput(ask)
     // Land at the TOP of the hero so the visitor sees the full headline + demo
     // + their prefilled question as one first impression, then focus the input
@@ -152,7 +172,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
       inputRef.current?.focus({ preventScroll: true })
     })
     trackEvent(DemoEvent.prefillArrived, {
-      source: params.get('from') || 'unknown',
+      source: sourceRef.current || 'unknown',
       has_question: ask.length > 0,
     })
   }, [])

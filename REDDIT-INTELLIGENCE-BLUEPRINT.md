@@ -26,6 +26,43 @@ That is the top of the *only* live acquisition funnel Seoul Sister has, and it w
 
 ---
 
+## ⚠️ READ THIS BEFORE YOU INTERPRET THE ZERO
+
+**The 0 reddit-sourced sessions is NOT evidence the channel fails. It is the expected output of a deliberate four-month strategy that never pointed anywhere.**
+
+It is written into LGAAS's own operating instructions — `SEOUL_SISTER_ONBOARDING_PROMPT.md:432`:
+
+> *"Never link to seoulsister.com in Reddit responses (this triggers spam detection — let the helpful response build brand awareness organically)"*
+
+From roughly **March–early July 2026**, `glass_skin_atx` posted **~500 genuinely helpful comments with zero links, zero CTAs, and zero mention of Seoul Sister.** That was intentional — the fear was an "AI agent"/spam ban, and the play was pure trust accumulation.
+
+**The funnel opened in July 2026**, days before this document was written: a Social Link to Seoul Sister was added to the profile, and the bio copy now references the ingredient checker.
+
+**Therefore:**
+- The Reddit→site funnel has **never actually been tested**. It has existed for days, not months.
+- A future session (or a future me) looking at `attributed_sessions = 0` and concluding *"Reddit doesn't convert"* would be **drawing a conclusion from a period in which conversion was structurally impossible.** Do not do this. I nearly did.
+- The **4-month, 1,205-karma, Top-10%-Commenter, never-once-posted-a-link history is itself the asset.** It is exactly what makes a bio link read as credible rather than spammy. It is also exactly what gets burned by getting impatient.
+
+### The escalation ladder — ALREADY GOVERNED BY BP108. Don't freelance it.
+
+The instinct after a good week is *"next we'll put subtle Seoul Sister / product references inside the responses."* **BP108 already anticipated that and formally HELD it as Stage 2**, gated on two conditions (`BP108-SEOUL-SISTER-SITE-SIDE-SPEC.md` → "Stage 1 → Stage 2 checklist"):
+
+- [ ] GA4 shows a **non-trivial stream** of `utm_source=reddit` sessions (people actually click the profile link)
+- [ ] **Several more weeks of clean posting** on `glass_skin_atx` — zero new AI flags, zero mod removals
+
+That gate is correct and it should be honored. Independent of BP108, the same conclusion falls out of the economics:
+
+The comments earn 265–1,300 views **because they carry no agenda**. The bio link converts precisely *because* the comment doesn't sell: a reader is helped, gets curious about who helped them, clicks. That is **pull**. Seeding product mentions inside answers inverts it to **push** — and r/koreanskincare's explicit rules (No Spam/no links, No Selling) plus, far more dangerous, the community's nose, punish that quickly. You would be **spending the exact asset that makes the channel work** in order to marginally shorten a path that already exists in the bio.
+
+**The bar for "we got away with it" is NOT "I didn't get banned."** That bar is passed right up until it isn't, and by then the aged account is gone. **The bar is: does the bio link produce clicks?**
+
+- **Yes** → the highest-trust, lowest-risk version of the funnel works. There is no reason to buy ban risk for a marginal gain. **Stop escalating.**
+- **No**, after several weeks of active posting → the live question is whether the **CTA path** is weak (safely fixable: bio copy, link label, landing target) — *not* "I must sell inside comments." In-comment promotion is the **last** lever, pulled only on evidence the safe version failed.
+
+**The 4-month, 1,205-karma, Top-10%-Commenter, never-once-posted-a-link history is the asset.** It is what makes the bio link read as credible rather than spammy — and it is precisely what impatience burns.
+
+---
+
 ## The two loops (and why only one of them is Seoul Sister's)
 
 The instinct is to build "a Reddit learning loop." But there are **two** loops here with two different teachers, and conflating them is the design error:
@@ -52,14 +89,38 @@ Growth/measurement — the always-allowed lane under the `NORTH-STAR.md` freeze.
 - **`/api/cron/capture-reddit-intel`** — daily 8:45 AM UTC. $0 (Reddit API is free; no AI calls). Logs a loud `console.error` on a zero-result run when the corpus is non-empty — the scraper-zero-result silent-failure class that let Olive Young rot for two weeks.
 - **Attribution** — counts `ss_widget_sessions.source = 'reddit'`. **Currently zero. That is the finding, not a bug.**
 
-### THE OPEN ACTION (this is the whole point — do it)
+### ⚠️ THE LINK IS ALREADY TAGGED — DEFER TO BP108, NOT TO THIS DOC
 
-**The Reddit profile link must carry `?from=reddit`.** Right now it almost certainly doesn't, which is why every arrival lands as `(none)` and the channel is invisible.
+**This is the authority correction.** LGAAS already owns the Reddit-bridge design, and it is good work. Read it before touching anything here:
 
-- Profile "Social Link" → `https://seoulsister.com/?from=reddit`
-- Any in-comment link → `?from=reddit`
+- `lgaas/lgaas-blueprint/108-REDDIT-DISCOVERY-BRIDGE.md`
+- `lgaas/docs/BP108-SEOUL-SISTER-SITE-SIDE-SPEC.md`
+- `lgaas/docs/BP108-SEOUL-SISTER-GA4-VERIFY.md`
 
-Until that's done, `attributed_sessions` stays 0 whether or not Reddit is working, and we learn nothing. **This one edit is worth more than everything else in this document.**
+Per BP108 (Stage 1, executed and **verified end-to-end 2026-07-11**), the profile Social link is:
+
+```
+https://www.seoulsister.com/?utm_source=reddit&utm_medium=social&utm_campaign=profile
+```
+
+label: `Seoul Sister · ingredient checker`
+
+**It is `utm_source`, NOT `?from=`.** An earlier draft of this document told Scott to set `?from=reddit`. That was wrong, it contradicted a working spec, and it would have created a second, competing convention. Do not do it. The UTM params are what GA4 reads, and GA4 is BP108's attribution surface.
+
+### The real gap this feature found (SITE-SIDE BUG — now fixed)
+
+BP108's Action B assumed GA4 attribution is sufficient. It isn't, for the question we most need answered.
+
+`TryYuriSection.tsx` captured the visitor's source **only if the URL had an `?ask=` param** — the source read sat *below* an `if (!params.has('ask')) return` early-return. The BP108 Reddit link has **no `ask` param**. So every Reddit arrival fell straight through: `sourceRef` stayed null, and the widget session was written **untagged**.
+
+Consequence: GA4 could see the **landing**, but `ss_widget_sessions.source` could never say `reddit` — so we could not answer the step that actually matters, **"did the Reddit visitor talk to Yuri?"** That is why the table shows zero, and it would have kept showing zero forever no matter how well the channel performed.
+
+**Fixed (Jul 13 2026):** source capture now runs on *every* arrival and reads `utm_source` first, falling back to `?from=` for the internal feeder CTAs. Prefill/scroll behavior stays gated on `?ask=`, unchanged.
+
+### What Scott still needs to do
+
+1. **Verify GA4 attribution** — BP108 Action B / the GA4-VERIFY doc. Incognito → the profile link → GA4 Realtime → confirm `reddit / social`.
+2. **Then just post.** The link is live, the tagging is live, and the widget will now record `source='reddit'` for anyone who arrives and chats.
 
 ---
 
