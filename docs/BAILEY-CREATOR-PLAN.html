@@ -1,0 +1,361 @@
+<title>Bailey, here's the whole idea</title>
+<style>
+  :root {
+    --bg: #FBF9F7;
+    --surface: #F3EFEA;
+    --ink: #191714;
+    --ink-soft: #4A443D;
+    --ink-faint: #7A7268;
+    --rule: #E2DBD2;
+    --clay: #A85638;
+    --clay-soft: #F0E2DC;
+    --sage: #4F6049;
+    --sage-soft: #E6EBE3;
+    --flag: #8C3A3A;
+    --flag-soft: #F3E3E3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17150F;
+      --surface: #211E18;
+      --ink: #F2EDE5;
+      --ink-soft: #C2B9AC;
+      --ink-faint: #8C8377;
+      --rule: #34302A;
+      --clay: #DD8F70;
+      --clay-soft: #33231C;
+      --sage: #9DB394;
+      --sage-soft: #1D241A;
+      --flag: #D98585;
+      --flag-soft: #2C1C1C;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17150F;
+    --surface: #211E18;
+    --ink: #F2EDE5;
+    --ink-soft: #C2B9AC;
+    --ink-faint: #8C8377;
+    --rule: #34302A;
+    --clay: #DD8F70;
+    --clay-soft: #33231C;
+    --sage: #9DB394;
+    --sage-soft: #1D241A;
+    --flag: #D98585;
+    --flag-soft: #2C1C1C;
+  }
+  :root[data-theme="light"] {
+    --bg: #FBF9F7;
+    --surface: #F3EFEA;
+    --ink: #191714;
+    --ink-soft: #4A443D;
+    --ink-faint: #7A7268;
+    --rule: #E2DBD2;
+    --clay: #A85638;
+    --clay-soft: #F0E2DC;
+    --sage: #4F6049;
+    --sage-soft: #E6EBE3;
+    --flag: #8C3A3A;
+    --flag-soft: #F3E3E3;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    font-size: 18px;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 1.25rem 6rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 34rem; margin: 0 auto; }
+
+  header { padding: 4.5rem 0 0; }
+  .kicker {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 1.25rem;
+  }
+  h1 {
+    font-size: 2.1rem;
+    line-height: 1.2;
+    font-weight: 400;
+    text-wrap: balance;
+    margin: 0 0 1.5rem;
+    letter-spacing: -0.01em;
+  }
+  .standfirst {
+    font-size: 1.1rem;
+    color: var(--ink-soft);
+    font-style: italic;
+    margin: 0 0 3rem;
+  }
+
+  h2 {
+    font-size: 1.35rem;
+    font-weight: 400;
+    line-height: 1.3;
+    text-wrap: balance;
+    margin: 3.5rem 0 1rem;
+    padding-top: 1.75rem;
+    border-top: 1px solid var(--rule);
+    letter-spacing: -0.005em;
+  }
+  h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 2rem 0 0.5rem;
+  }
+  p { margin: 0 0 1.15rem; }
+  strong { font-weight: 700; }
+  em { font-style: italic; }
+
+  ul { padding-left: 1.1rem; margin: 0 0 1.15rem; }
+  li { margin-bottom: 0.5rem; }
+
+  .callout {
+    background: var(--sage-soft);
+    border-left: 3px solid var(--sage);
+    padding: 1.15rem 1.25rem;
+    margin: 1.75rem 0;
+    border-radius: 2px;
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout ul { margin-bottom: 0; }
+
+  .evidence {
+    background: var(--flag-soft);
+    border-left: 3px solid var(--flag);
+    padding: 1.15rem 1.25rem;
+    margin: 1.75rem 0;
+    border-radius: 2px;
+  }
+  .evidence p:last-child { margin-bottom: 0; }
+  .numbers {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.05rem;
+    color: var(--flag);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .biolink {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 1.25rem;
+    margin: 1.5rem 0;
+  }
+  .biolink .label {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 0.6rem;
+  }
+  code, .link-box {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.82rem;
+    line-height: 1.55;
+  }
+  code {
+    background: var(--clay-soft);
+    color: var(--clay);
+    padding: 0.1em 0.35em;
+    border-radius: 2px;
+    word-break: break-word;
+  }
+  .link-box {
+    display: block;
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 0.85rem;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--ink);
+    margin-bottom: 0.75rem;
+  }
+  .link-box .slug { color: var(--clay); font-weight: 700; }
+  .biolink p:last-child { margin-bottom: 0; }
+  .biolink p { font-size: 0.95rem; color: var(--ink-soft); }
+
+  .bio-quote {
+    font-size: 1.15rem;
+    padding: 0.9rem 1.2rem;
+    background: var(--clay-soft);
+    border-radius: 3px;
+    margin: 1.25rem 0;
+    color: var(--ink);
+  }
+
+  .close {
+    margin-top: 4rem;
+    padding-top: 1.75rem;
+    border-top: 1px solid var(--rule);
+    font-size: 1.15rem;
+  }
+  .signoff {
+    font-size: 0.95rem;
+    color: var(--ink-faint);
+    margin-top: 2.5rem;
+  }
+  a { color: var(--clay); }
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="kicker">For Bailey</p>
+  <h1>Here's the whole idea.</h1>
+  <p class="standfirst">Read it and tell me what you don't like. Genuinely. Nothing here is decided.</p>
+</header>
+
+<h2>First, an explanation you're owed</h2>
+
+<p>When you asked AriaStar for social advice and it told you to stay "on brand," that wasn't it dismissing you. I went and looked at why it did that.</p>
+
+<p>The system had you filed as a <strong>testimonial</strong>. A customer to be quoted. Not a creator, not the person making the content. So when you asked how to post, it thought a happy customer was asking how to sound like the company. "Stay on brand" is the correct answer to that question.</p>
+
+<p>It was answering the wrong question, because it didn't know who you were.</p>
+
+<p>You went and did the opposite, and got about 10x the followers in a day.</p>
+
+<p><strong>You were right.</strong> The system was working from a world where you didn't exist. That's fixed now.</p>
+
+<h2>What we are <em>not</em> asking you to do</h2>
+
+<p>Blunt about this first, because I think it's the part you'd worry about.</p>
+
+<div class="callout">
+  <p><strong>We are not asking you to be the face of Seoul Sister.</strong></p>
+  <ul>
+    <li>No spokesperson role</li>
+    <li>No "founder's daughter" story. That framing is gone, and I pulled it out of the system so it can't come back</li>
+    <li>No logo, no company colors, no designed graphics on your account</li>
+    <li>No script anyone approves</li>
+    <li>No content calendar, no assigned series</li>
+    <li>No demoing the product</li>
+    <li>No "link in bio to try Seoul Sister" in your captions</li>
+    <li>Nothing you wouldn't say to a friend</li>
+  </ul>
+</div>
+
+<p>If any of that starts happening, something has gone wrong and you should say so.</p>
+
+<h2>What we <em>are</em> asking</h2>
+
+<p><strong>Keep posting exactly what you're already posting.</strong></p>
+
+<p>That's it. That's the whole thing.</p>
+
+<p>Your account stays yours. You make what you were going to make anyway. The only thing Seoul Sister gets is one honest line in your bio, written the way you'd actually say it:</p>
+
+<p class="bio-quote">I use an ingredient checker called Seoul Sister</p>
+
+<p>Not "try Seoul Sister." Not a pitch. Just a true sentence about a thing you use. That single line is the entire commercial ask. There is no second one.</p>
+
+<h2>Why this is the right call, and not us being nice</h2>
+
+<p>This isn't generosity. The other version doesn't work, and we have the receipts.</p>
+
+<p>The Seoul Sister brand account has been posting static text cards. Those posts did:</p>
+
+<div class="evidence">
+  <p class="numbers">299 &nbsp; 484 &nbsp; 755 &nbsp; 186 &nbsp; 8</p>
+  <p style="margin-top:0.6rem;">Views. That's the whole run.</p>
+</div>
+
+<p>Your face on camera, on a brand new account, beat all of that combined by a wide margin, in a day.</p>
+
+<p>Static cards have no watch time. No watch time means no completion. No completion means the algorithm doesn't push them. They don't just do badly, they teach the algorithm the account is low quality, and then they drag down whatever gets posted next.</p>
+
+<p><strong>The moment your account starts looking like a brand account, the thing that made it work is gone.</strong> You didn't grow because of good marketing. You grew because nobody was managing you. Managing you is how we'd lose it.</p>
+
+<h2>So what do you actually post?</h2>
+
+<p>Whatever you were already going to post. But if it helps, the material you're sitting on is genuinely unusual:</p>
+
+<ul>
+  <li>Things you believed about your skin that turned out to be wrong</li>
+  <li>Products you bought that broke you out</li>
+  <li>The thing everyone recommends that did nothing for you</li>
+  <li>What an ingredient list actually said, versus what the marketing claimed</li>
+  <li>A routine you ran for two months, and what actually changed</li>
+  <li>The stuff that annoys you</li>
+</ul>
+
+<p>You've got 22 products in your tracked routine, four Glass Skin Score photos, and a real barrier repair protocol you actually lived through in two phases. That's months of material, and none of it requires mentioning the company or anyone's dad.</p>
+
+<p><strong>Seoul Sister shows up the way a tool shows up in a real person's video: by accident.</strong> You're checking an ingredient list on your phone mid-sentence and people can see what app it is. You're not demoing it. You're using it, because you were going to use it anyway.</p>
+
+<h3>What the videos look like</h3>
+
+<p>Sixty seconds. Vertical. Your phone propped up somewhere. You're on your bed or at a table. No lighting setup, no set, no script.</p>
+
+<p>You say the thing. If you're annoyed, you sound annoyed. If you wasted forty dollars, you say you wasted forty dollars.</p>
+
+<p>If something's on screen, it's real: an actual ingredient list, an actual before and after, an actual receipt. Evidence, not decoration. A nicely designed graphic with a serif font gets scrolled past. A screenshot of the thing that actually broke you out gets sent to a friend.</p>
+
+<h2>The one thing we need from you</h2>
+
+<p>This is small, it takes about a minute, and it's the only real ask here.</p>
+
+<p><strong>Use a different link in your bio for each video.</strong> Copy the one below and change the last bit each time you post.</p>
+
+<div class="biolink">
+  <p class="label">Your bio link</p>
+  <div class="link-box">https://www.seoulsister.com/?utm_source=tiktok&amp;utm_medium=bio&amp;utm_campaign=bailey&amp;utm_content=<span class="slug">VIDEO-SLUG</span></div>
+  <p>Swap <code>VIDEO-SLUG</code> for something short that describes the video. It never shows up anywhere public. It's just for us.</p>
+</div>
+
+<div class="biolink">
+  <p class="label">For example</p>
+  <div class="link-box">...&amp;utm_content=<span class="slug">broke-me-out-cosrx</span>
+...&amp;utm_content=<span class="slug">wasted-40-dollars</span>
+...&amp;utm_content=<span class="slug">everyone-is-wrong-about-niacinamide</span></div>
+  <p>Posting to Instagram instead? Change <code>utm_source=tiktok</code> to <code>utm_source=instagram</code>.</p>
+</div>
+
+<p>Here's why it matters. Right now, if someone watches you, likes you, and goes and signs up, <strong>we have no way of knowing it came from you.</strong> Your 10x day is completely invisible on our end. We can't see it, can't measure it, can't prove it happened.</p>
+
+<p>With a different link per video, we can finally see which posts actually bring people in, instead of guessing. Which means:</p>
+
+<ul>
+  <li>When you're right about something, there's proof</li>
+  <li>We stop guessing about what works</li>
+  <li>Nobody can tell you "the data says do it differently," because you'll <em>have</em> the data</li>
+</ul>
+
+<h2>How AriaStar helps you now</h2>
+
+<p>She won't hand you content. She'll help you dig. Ask her things like:</p>
+
+<ul>
+  <li>"Which of the products I was wrong about has the most interesting ingredient story?"</li>
+  <li>"What did the label actually say on the thing that broke me out?"</li>
+  <li>"Pull the ingredient conflict from that product so I can read it out loud."</li>
+</ul>
+
+<p>She's a research assistant, not a producer. She's there to make it faster to find the real thing. She isn't going to write your video, and she isn't going to tell you to stay on brand ever again.</p>
+
+<h2>The honest part</h2>
+
+<p>Your 10x day is one day, on one account. It's a real signal and I believe it. But it's one data point, and I'd be lying if I said it was proven.</p>
+
+<p>That's exactly why the links matter. They turn "Bailey thinks this works" into "we know this works." That's worth having, because it protects you the next time someone wants you to do it differently.</p>
+
+<div class="close">
+  <p><strong>And if you say no?</strong></p>
+  <p>Then we stop, and that's a completely fine answer. If you don't want Seoul Sister anywhere near your face, say so, and it won't be. Nobody's going to talk you into it.</p>
+  <p>The whole reason your account works is that it's yours. It stays that way whichever answer you give.</p>
+  <p class="signoff">What do you think?</p>
+</div>
+
+</div>
