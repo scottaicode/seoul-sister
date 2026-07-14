@@ -5,9 +5,17 @@
 > also published at claude.ai/code/artifact/7958f007-412f-45d1-94b1-bf0ba2f524f0.
 > The boundaries described here are recorded as data in
 > `lgaas_business_profiles.brand_data.creator_boundaries` (LGAAS project, separate Supabase
-> project from this repo) and AriaStar's config was regenerated from them (v21).
+> project from this repo) and AriaStar's config was regenerated from them (v23).
 > See LGAAS `lgaas-blueprint/117-CREATOR-LOOP-AND-CORPUS-CONCENTRATION.md` and
 > `scripts/bp118-set-creator-boundaries.mjs`.
+>
+> **Jul 14, second pass.** Two things in the first version were wrong and Scott caught both.
+> (1) Per-video UTM links in the bio are mechanically broken: a TikTok bio holds ONE link, so
+> a viewer watching an older video gets attributed to whatever link is live now. Replaced with
+> one stable link (`seoulsister.com`), with per-video answered by TikTok's own analytics.
+> (2) AriaStar was over-restricted to "research only" — a boundary Bailey never drew. She now
+> gives full content help (hooks, angles, structure, lead-gen), limited only by: Bailey asks,
+> and never brand voice.
 > **Everything below the line is written to Bailey and can be sent as is.**
 
 ---
@@ -96,47 +104,50 @@ If something's on screen, it's real: an actual ingredient list, an actual before
 
 ## The one thing we need from you
 
-This is small, it takes about a minute, and it's the only real ask here.
+This takes about a minute, once, and it's the only real ask here.
 
-**Use a different link in your bio for each video.** Copy this and change the last bit each time you post.
-
-### Your bio link
+**Put this in your bio:**
 
 ```
-https://www.seoulsister.com/?utm_source=tiktok&utm_medium=bio&utm_campaign=bailey&utm_content=VIDEO-SLUG
+seoulsister.com
 ```
 
-Swap `VIDEO-SLUG` for something short that describes the video. It never shows up anywhere public. It's just for us.
+That's it. One link, and you never touch it again.
 
-### For example
+It lands on the page where you can talk to Yuri free, no signup. Which matters, because think about who's clicking. They just watched you say a product broke you out and here's what was actually in it. **They want to know if it'll break *them* out.** That's a question about their face, not a question that a product database answers. So the link drops them somewhere that will actually answer it.
 
-```
-...&utm_content=broke-me-out-cosrx
-...&utm_content=wasted-40-dollars
-...&utm_content=everyone-is-wrong-about-niacinamide
-```
+Write the bio so it says what they're getting. Something like:
 
-Posting to Instagram instead? Change `utm_source=tiktok` to `utm_source=instagram`.
+> combination skin, mostly wrong about it
+> seoulsister.com <- ask Yuri what's actually in your stuff. free, no signup.
 
-### Why it matters
+### Why this matters
 
 Right now, if someone watches you, likes you, and goes and signs up, **we have no way of knowing it came from you.** Your 10x day is completely invisible on our end. We can't see it, can't measure it, can't prove it happened.
 
-With a different link per video, we can finally see which posts actually bring people in, instead of guessing. Which means:
+With the link in place, we can finally see that your videos bring people in, instead of guessing. Which means:
 
 - When you're right about something, there's proof
 - We stop guessing about what works
 - Nobody can tell you "the data says do it differently," because you'll *have* the data
 
+And if you want to know which specific video did the work, TikTok already tells you that in your own analytics. You don't need to do anything clever with links.
+
 ## How AriaStar helps you now
 
-She won't hand you content. She'll help you dig. Ask her things like:
+Anything you want, as long as you're the one asking.
+
+Hooks. How to open a video. Which angle on a story is actually the interesting one. What to cut. How to structure sixty seconds so people don't scroll. She's genuinely good at this, and you should use her for it.
+
+She'll also do the digging:
 
 - "Which of the products I was wrong about has the most interesting ingredient story?"
 - "What did the label actually say on the thing that broke me out?"
 - "Pull the ingredient conflict from that product so I can read it out loud."
 
-She's a research assistant, not a producer. She's there to make it faster to find the real thing. She isn't going to write your video, and she isn't going to tell you to stay on brand ever again.
+Two rules, and they're both about protecting you. **She never assigns you anything.** No calendars, no series, no "here's your week." You ask, she helps. And **she never makes it sound like an ad.** Her job is helping you say your thing better, not handing you a thing to say.
+
+She isn't going to tell you to stay on brand ever again.
 
 ## The honest part
 
