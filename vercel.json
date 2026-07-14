@@ -49,6 +49,10 @@
       "schedule": "30 8 * * *"
     },
     {
+      "path": "/api/cron/capture-reddit-intel",
+      "schedule": "45 8 * * *"
+    },
+    {
       "path": "/api/cron/calculate-gap-scores",
       "schedule": "0 9 * * *"
     },
