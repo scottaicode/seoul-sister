@@ -183,6 +183,42 @@ Claim types worth capturing (all observed in the real corpus):
 
 ---
 
+---
+
+## FIRST CAPTURE — Jul 13 2026 (the corpus is live)
+
+```
+fetched 500 · inserted 500 · negative 2 · reddit_attributed_sessions 0
+span: 2026-03-09 → 2026-07-14 · 6 subreddits · top score 89
+77 comments scored 5+   ·   31 scored 10+
+```
+
+**The corpus is real.** Highlights of what the community actually validated:
+
+| score | what it was |
+|---|---|
+| **89** | Centellian24 / Madeca is huge in Korea, in every Olive Young |
+| 68 | why K-beauty overwhelm is normal, and how to cut through it |
+| 57 | the clinic brands nobody reps (Aestura Atobarrier 365…) |
+| 55 | the water-sheeting test for checking sunscreen removal |
+| 49 | the pore angle nobody in the thread had mentioned |
+| **42** | **Hwahae (화해) is THE app Koreans use to research skincare** |
+
+That 42-upvote comment is Seoul Sister's founding thesis — *"Hwahae for the world"* — independently validated by 42 strangers who didn't know they were validating it.
+
+### The two graded errors, and a warning about how to read them
+
+Only **2 of 500** comments went negative, and **neither is factually wrong**:
+
+- **−3, "Barrier repair skincare"** — the Real Barrier Extreme Cream fragrance claim. It is **CORRECT** (verified against `ss_products` INCI on Jul 13: the regular Extreme Cream's only essential oil *is* lavender; the *Light* version and Special Set carry sage/patchouli/cardamom/chamomile/juniper). It was downvoted anyway.
+- **−3, "VT Reedle Shot 100"** — also substantively sound.
+
+**Do not naively treat `score < 0` as "the claim was wrong."** The Real Barrier comment was downvoted for **pushing back on another commenter**, not for being inaccurate. The teacher here is grading *social register*, not just factual accuracy, and it grades them on the same axis.
+
+This matters enormously for the deferred extraction (Piece B): an extractor that reads downvotes as "this claim is false" would learn the **opposite** of the truth from this exact row, and could teach Yuri to *unlearn* a correct fact. Any extraction pass **must separate "was the claim wrong" from "did the delivery land"** — and the only reliable way to grade the first is to check the claim against `ss_products` INCI, as was done here. Upvotes alone are not a fact-checker.
+
+---
+
 ## What to do next (in order)
 
 1. **Apply the migration** — `psql "$DATABASE_URL" -f scripts/migrations/create_ss_reddit_intel.sql`
