@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { captureAttribution, getAttribution } from '@/lib/attribution'
 
 interface AuthContextType {
   user: User | null
@@ -20,6 +21,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Record first-touch attribution on the visitor's FIRST landing — which is
+    // usually long before they create an account. Idempotent; never overwrites
+    // an existing first touch; fails silent if localStorage is unavailable.
+    captureAttribution()
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       setLoading(false)
@@ -42,7 +48,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const signUp = useCallback(async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    // First-touch attribution rides along with account creation. This is the one
+    // chokepoint EVERY signup passes through, regardless of which code path
+    // later creates the ss_user_profiles row (the Yuri onboarding flow uses a
+    // server-side service client and never sees the browser's localStorage).
+    // Landing it in auth.users.raw_user_meta_data means it survives to be read
+    // server-side, whichever path gets there.
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { attribution: getAttribution() ?? undefined } },
+    })
     if (error) throw error
     return { user: data.user, session: data.session }
   }, [])
@@ -52,7 +68,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
-      },
+        // Same attribution payload on the OAuth path, so a Google signup from
+        // Bailey's bio link is credited identically to an email signup.
+        queryParams: {},
+        data: { attribution: getAttribution() ?? undefined },
+      } as Parameters<typeof supabase.auth.signInWithOAuth>[0]['options'],
     })
     if (error) throw error
   }, [])

@@ -1,5 +1,6 @@
 import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
 import { getServiceClient } from '@/lib/supabase'
+import { buildAttributionFields } from '@/lib/attribution'
 import type { ExtractedSkinProfile, OnboardingProgress, YuriMessage } from '@/types/database'
 
 // ---------------------------------------------------------------------------
@@ -459,6 +460,20 @@ export async function finalizeOnboardingProfile(
   // Only set location_text if explicitly extracted (don't overwrite existing with null)
   if (extracted.location_text) {
     profileData.location_text = extracted.location_text
+  }
+
+  // First-touch attribution. signUp() stashed it on auth.users.raw_user_meta_data
+  // because THIS path (server-side service client) cannot see the browser's
+  // localStorage. Returns {} when absent or already stamped, so the spread is a
+  // no-op and existing behavior is unchanged.
+  try {
+    const { data: authUser } = await db.auth.admin.getUserById(userId)
+    Object.assign(
+      profileData,
+      await buildAttributionFields(db, userId, authUser?.user?.user_metadata)
+    )
+  } catch {
+    // Attribution is a measurement nicety. It must never block onboarding.
   }
 
   await db

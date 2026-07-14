@@ -23,6 +23,23 @@ export const skinProfileSchema = z.object({
 
 export type SkinProfileInput = z.infer<typeof skinProfileSchema>
 
+/**
+ * First-touch signup attribution. Every field optional and length-bounded — a
+ * signup must never fail because attribution was absent or malformed, and a
+ * hostile query string must not be able to write unbounded junk.
+ */
+export const attributionSchema = z.object({
+  utm_source: z.string().max(200).optional(),
+  utm_medium: z.string().max(200).optional(),
+  utm_campaign: z.string().max(200).optional(),
+  utm_content: z.string().max(200).optional(),
+  referrer: z.string().max(500).optional(),
+  landing_path: z.string().max(300).optional(),
+  first_seen_at: z.string().datetime().optional(),
+}).optional()
+
+export type AttributionInput = z.infer<typeof attributionSchema>
+
 export const reviewSchema = z.object({
   product_id: z.string().uuid(),
   rating: z.number().min(1).max(5),
