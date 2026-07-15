@@ -8,6 +8,26 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.4.0 (July 15, 2026): Move the paywall to the value moment — the funnel had never actually been run
+
+**The problem (LEAK 2 from `FUNNEL-LEAK-AUDIT-JUL13.md`).** The paywall sat *in front of* the product: `register → /subscribe ($24.99/mo) → onboarding → app`. A stranger was asked to buy before ever experiencing Yuri-with-memory. Proof from `ss_user_profiles`: every stranger who reached the wall hit it **before** onboarding, and the only 4 "conversions" were insiders provisioned around it (`paywall_reached_at IS NULL`). **No human being had ever encountered that paywall and paid.** The One Metric wasn't flat — the funnel had never been run.
+
+**The fix — move the wall to the earned value moment, don't add a free tier.** A "free tier" (permanent lesser product) raises the question "if free Yuri has memory, what does $24.99 buy?" Instead the wall *moves*: a stranger now registers, goes through Yuri's onboarding as a `free` user (she builds their skin profile + first routine — they *feel* the memory being created), and the subscribe ask fires at completion, framed as continuation ("Want me to keep going? I've built your profile and first routine — subscribe and I'll remember all of it").
+
+**Four edits, 50 lines, no Stripe/pricing/webhook change:**
+1. `register/page.tsx` — `router.push('/subscribe')` → `'/onboarding'`.
+2. `onboarding/page.tsx` — completion → `/subscribe?from=onboarding` (the value moment); skip → `/subscribe`. Both self-correcting: the subscribe page's existing on-mount plan check bounces already-paid insiders straight to `/dashboard`/`/yuri`, so one route is correct for free and paid.
+3. `subscribe/page.tsx` — headline/subcopy branch on `?from=onboarding` to open on continuation framing (reuses the free widget's proven "continuity IS the subscription" language) rather than a cold pricing wall. Read via `window.location.search` to avoid the `useSearchParams` Suspense requirement.
+4. `next.config.js` — added `/tt` → `/?from=tt_ss` and `/ig` → `/?from=ig_ss` vanity redirects (307) so Bailey's social bios show a clean `seoulsister.com/tt` while the source tag lands in `ss_widget_sessions.source` + GA4 server-side. Underscore form required (the widget sanitizer strips hyphens).
+
+**What is deliberately UNCHANGED — the "don't give away the memory" guarantee.** `AppShell.tsx`'s gate still blocks every paid surface (`/dashboard`, `/yuri`, `/skin-profile`, saved memory) behind `plan !== 'free'`. A free user *experiences* onboarding + their first routine but cannot **return** to it without subscribing. The subscription value — cross-session memory, saved profile, tracking over time — stays fully gated. Verified: `AppShell.tsx` diff is empty.
+
+**Verification (gate wall).** `tsc --noEmit` clean; `next build` clean (all routes compiled); runtime: `/tt`→307→`/?from=tt_ss`→200 and `/ig`→`/?from=ig_ss` confirmed against a live `next start`; value-moment copy present in the built server + client chunks; `AppShell` paid-gate confirmed intact.
+
+**The measurement (SHIP-GUARD hypothesis).** Falsifiable: strangers don't pay because they can't experience the product first. Read `ss_user_profiles` after a real cohort (via Bailey's now-tagged bio links) for the first stranger who completes onboarding as `free` → reaches the wall → converts. Kill condition per `NORTH-STAR.md`: if a real cohort reaches onboarding-complete and still 0 convert, the thesis is wrong at this price/positioning — change price/positioning/audience, not another feature.
+
+---
+
 ## v11.3.0 (July 13, 2026): The 60× Yuri cost regression — the user's own message was rewriting the prompt cache every turn
 
 **The symptom.** Yuri's cost per message went from **$0.006 (Jun 5–9) to $0.35 (Jun 30)** — a ~60× regression. `ss_ai_usage` showed `cache_creation_tokens` of 30–55K on *every* message, even ones with 9 input tokens. The prompt cache was being invalidated and fully rewritten on every turn: paying cache-WRITE rates (1.25×) instead of cache-READ (0.1×) on ~24K tokens. A 12× penalty, every message.

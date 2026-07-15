@@ -76,7 +76,14 @@ export default function RegisterPage() {
 
     try {
       await signUp(email, password)
-      router.push('/subscribe')
+      // Priority 2 (Jul 2026) — move the paywall to the VALUE MOMENT.
+      // Previously this pushed straight to '/subscribe', so a stranger hit the
+      // $24.99/mo wall BEFORE ever experiencing Yuri. FUNNEL-LEAK-AUDIT-JUL13
+      // proved no human ever paid from that position. New flow: register →
+      // onboarding (Yuri builds their skin profile + first routine as a free
+      // user) → the subscribe ask fires at completion, framed as continuation.
+      // The paid app (dashboard, memory, saved profile) stays gated in AppShell.
+      router.push('/onboarding')
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Failed to create account. Please try again.'

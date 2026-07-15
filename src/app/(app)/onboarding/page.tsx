@@ -333,7 +333,15 @@ export default function OnboardingPage() {
         throw new Error(err.error || 'Failed to complete onboarding')
       }
 
-      router.push('/yuri')
+      // Priority 2 — the VALUE MOMENT. Onboarding is done: Yuri has built the
+      // visitor's skin profile and first routine. Route to '/subscribe', which
+      // frames the ask as continuation ("I'll remember all this — want me to
+      // keep going?"). Self-correcting: '/subscribe' checks the plan on mount
+      // and bounces an already-paid user (insiders) straight to '/dashboard' or
+      // '/yuri', so this single route is correct for both free and paid.
+      // '?from=onboarding' lets the subscribe page open on continuation framing
+      // (the earned value moment) rather than the cold pricing wall.
+      router.push('/subscribe?from=onboarding')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to complete onboarding')
     }
@@ -351,9 +359,13 @@ export default function OnboardingPage() {
         },
         body: JSON.stringify({ action: 'skip_onboarding' }),
       })
-      router.push('/dashboard')
+      // Priority 2 — a free user who skips onboarding still can't enter the paid
+      // app; AppShell gates '/dashboard' behind a non-free plan and would bounce
+      // them to '/subscribe' regardless. Route there directly (self-correcting:
+      // paid insiders are bounced onward by the subscribe page's plan check).
+      router.push('/subscribe')
     } catch {
-      router.push('/dashboard')
+      router.push('/subscribe')
     }
   }, [getToken, router])
 

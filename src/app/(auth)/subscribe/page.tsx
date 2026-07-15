@@ -13,6 +13,15 @@ export default function SubscribePage() {
   const { user, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(true)
+  // Priority 2 — arriving straight from onboarding is the earned VALUE MOMENT:
+  // Yuri just built the visitor's profile + first routine. Read via window
+  // (client component) to avoid the useSearchParams Suspense requirement.
+  const [fromOnboarding, setFromOnboarding] = useState(false)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setFromOnboarding(new URLSearchParams(window.location.search).get('from') === 'onboarding')
+    }
+  }, [])
 
   // If user already has a subscription, skip to onboarding/dashboard
   useEffect(() => {
@@ -109,10 +118,12 @@ export default function SubscribePage() {
     <div className="w-full max-w-md mx-auto">
       <div className="text-center mb-6">
         <h1 className="font-display text-2xl font-bold text-gradient mb-2">
-          One last step
+          {fromOnboarding ? 'Want me to keep going?' : 'One last step'}
         </h1>
         <p className="text-white/50 text-sm">
-          Subscribe to unlock your full K-beauty intelligence suite.
+          {fromOnboarding
+            ? "I've built your skin profile and your first routine. Subscribe and I'll remember all of it — tracking what works and adjusting as your skin changes."
+            : 'Subscribe to unlock your full K-beauty intelligence suite.'}
         </p>
       </div>
 

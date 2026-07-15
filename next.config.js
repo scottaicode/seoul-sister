@@ -109,6 +109,20 @@ const nextConfig = {
       },
     ]
   },
+
+  // Clean bio-link vanity redirects (Priority 2, Jul 2026).
+  // Bailey's social bios show a short, non-scary link (seoulsister.com/tt);
+  // the redirect applies the source tag server-side so the visitor never sees
+  // '?from=tt_ss'. The tag lands in ss_widget_sessions.source (own-data moat)
+  // AND is readable by GA4, so TikTok vs Instagram is attributable even when
+  // in-app browsers strip the referrer (bio clicks otherwise read as "Direct").
+  // Underscore form is required — the widget's server sanitizer strips hyphens.
+  async redirects() {
+    return [
+      { source: '/tt', destination: '/?from=tt_ss', permanent: false },
+      { source: '/ig', destination: '/?from=ig_ss', permanent: false },
+    ]
+  },
 }
 
 module.exports = withBundleAnalyzer(nextConfig)
