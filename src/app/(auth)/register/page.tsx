@@ -279,9 +279,11 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        {/* Subscription note */}
+        {/* Post-registration flow note (Priority 2 — the paywall now sits AFTER
+            onboarding, not at account creation, so the old "subscription required
+            after account creation" copy was false). */}
         <p className="text-xs text-center text-white/30 mt-4">
-          Subscription required after account creation. {PRICING.monthly_display_long}.
+          Next, Yuri builds your skin profile and first routine. Keep it going with a subscription ({PRICING.monthly_display_long}).
         </p>
 
         {/* Divider */}
