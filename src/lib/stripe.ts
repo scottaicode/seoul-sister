@@ -24,7 +24,7 @@ export const SUBSCRIPTION_TIERS = {
     scans_per_month: USAGE_CAPS.scans_per_month,
     yuri_messages_per_month: USAGE_CAPS.yuri_messages_per_month,
     features: [
-      'Yuri, your K-beauty advisor, on call 24/7 (Claude Opus)',
+      'Yuri, your K-beauty advisor, on call 24/7',
       'Unlimited conversations & label scans',
       'All 6 specialist agents (ingredients, routines, authenticity & more)',
       'Reads your Korean labels & builds conflict-aware routines',

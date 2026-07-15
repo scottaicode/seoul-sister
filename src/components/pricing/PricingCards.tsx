@@ -91,7 +91,7 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
         </button>
 
         <p className="text-center text-[10px] text-white/30 mt-3">
-          Powered by Claude Opus AI. Try 20 free preview messages before subscribing.
+          Try 20 free preview messages before subscribing.
         </p>
       </div>
     </div>

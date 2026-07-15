@@ -167,7 +167,7 @@ export default function SubscribePage() {
         </button>
 
         <p className="text-center text-[10px] text-white/30 mt-3">
-          Powered by Claude Opus AI. Secure payment via Stripe.
+          Secure payment via Stripe.
         </p>
       </div>
     </div>
