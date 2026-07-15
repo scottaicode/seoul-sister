@@ -10,7 +10,7 @@ import { trackEvent, PaywallEvent } from '@/lib/analytics'
 
 export default function SubscribePage() {
   const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, signOut } = useAuth()
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(true)
   // Priority 2 — arriving straight from onboarding is the earned VALUE MOMENT:
@@ -169,6 +169,25 @@ export default function SubscribePage() {
         <p className="text-center text-[10px] text-white/30 mt-3">
           Secure payment via Stripe.
         </p>
+      </div>
+
+      {/* Escape hatch — a free user parked on the paywall must never be trapped.
+          /subscribe is under the (auth) group with no nav bar, so without this
+          there is NO link to manage or delete the account (right-to-erasure). */}
+      <div className="flex items-center justify-center gap-4 mt-6 text-[11px] text-white/40">
+        <button
+          onClick={() => router.push('/settings')}
+          className="hover:text-white/70 transition-colors underline underline-offset-2"
+        >
+          Manage account
+        </button>
+        <span className="text-white/20">·</span>
+        <button
+          onClick={async () => { await signOut(); router.push('/'); }}
+          className="hover:text-white/70 transition-colors underline underline-offset-2"
+        >
+          Log out
+        </button>
       </div>
     </div>
   )
