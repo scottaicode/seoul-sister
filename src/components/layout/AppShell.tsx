@@ -47,9 +47,15 @@ export default function AppShell({ children }: AppShellProps) {
     }
   }, [user, loading, router, pathname])
 
-  // Check subscription + onboarding before showing app content
+  // Check subscription + onboarding before showing app content.
+  // /onboarding and /settings are ALWAYS reachable regardless of plan:
+  // onboarding is the pre-paywall value-moment build (Priority 2), and a user
+  // must ALWAYS be able to manage and DELETE their account even on the free
+  // plan — gating /settings behind the paywall trapped unpaid users with no way
+  // to delete their data (a GDPR/CCPA right-to-erasure + trust problem).
+  const ALWAYS_ALLOWED = pathname === '/onboarding' || pathname.startsWith('/settings')
   useEffect(() => {
-    if (!user || loading || pathname === '/onboarding') {
+    if (!user || loading || ALWAYS_ALLOWED) {
       setReady(true)
       return
     }
@@ -82,7 +88,7 @@ export default function AppShell({ children }: AppShellProps) {
     }
 
     checkAccess()
-  }, [user, loading, pathname, router])
+  }, [user, loading, pathname, router, ALWAYS_ALLOWED])
 
   // Show nothing while checking auth or onboarding to prevent flash of protected content
   if (loading || !ready) {
