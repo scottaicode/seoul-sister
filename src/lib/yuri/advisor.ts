@@ -1,3 +1,4 @@
+import { after } from 'next/server'
 import { getAnthropicClient, MODELS, callAnthropicWithRetry, isRetryableError } from '@/lib/anthropic'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import { SPECIALISTS, detectSpecialist } from './specialists'
@@ -17,6 +18,24 @@ import { PRICING } from '@/lib/pricing'
 import { cleanYuriResponse, stripPhantomToolCallNarration } from './voice-cleanup'
 import type { SpecialistType, YuriMessage } from '@/types/database'
 import type Anthropic from '@anthropic-ai/sdk'
+
+/**
+ * Defer post-response background work so Vercel keeps the function alive until
+ * it settles (v11.7.0 — fixes the teardown race that silently dropped
+ * decision-memory writes; see the block in streamAdvisorResponse). Uses Next's
+ * `after()`. Belt-and-suspenders: if `after()` ever throws because it's called
+ * outside a request scope, fall back to bare fire-and-forget rather than let
+ * the throw break the user's response. The promise carries its own .catch, so
+ * this only guards the registration call itself.
+ */
+function deferBackgroundWork(work: Promise<unknown>): void {
+  try {
+    after(work)
+  } catch (err) {
+    console.error('[advisor] after() unavailable — falling back to fire-and-forget:', err)
+    void work
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Yuri's core system prompt
@@ -1170,65 +1189,73 @@ export async function* streamAdvisorResponse(
     }
   }
 
-  // 9. Extract specialist insights (background, non-blocking)
-  // Fire-and-forget: never block the stream, but log failures so silent
-  // breakage doesn't accumulate (cf. v10.3.4 — same pattern hid 3 months
-  // of decision memory failures because nobody saw the throws)
+  // 9–13. Background extraction (specialist insight, continuous learning,
+  // summary, decision memory, treatment phase). These run AFTER the response
+  // has streamed and must NOT block it.
+  //
+  // v11.7.0 — wrapped in Next's `after()` (was bare fire-and-forget `.catch()`).
+  // The old pattern lost writes: the generator returned, the route closed the
+  // SSE stream, and Vercel tore the function down BEFORE these 2–5s Sonnet
+  // calls settled — so the DB write never landed and decision_memory stayed
+  // `{}`. This is the EXACT v10.3.4 class the comment here used to warn about;
+  // the logging was added but the teardown race itself was never fixed, and the
+  // Guardian's decision_memory_extraction_7d signal finally surfaced it (a real
+  // Bailey conversation with a keep-the-toner decision + an open loop, lost).
+  // `after()` (Next 15.1+, Vercel-recommended over waitUntil) extends the
+  // function lifetime until the work settles, without blocking the response.
+  // Each task keeps its own .catch so one failure never sinks the others, and
+  // failures still surface in logs.
+
+  // 9. Specialist insight (only when a specialist handled the turn).
   if (specialistType) {
-    extractAndSaveInsight(
-      conversationId,
-      specialistType,
-      message,
-      fullResponse
-    ).catch((err) => {
-      console.error('[advisor] extractAndSaveInsight failed:', err)
-    })
+    deferBackgroundWork(
+      extractAndSaveInsight(conversationId, specialistType, message, fullResponse).catch((err) => {
+        console.error('[advisor] extractAndSaveInsight failed:', err)
+      })
+    )
   }
 
-  // 10. Continuous learning: extract profile updates + product reactions
-  //     Runs on EVERY conversation (not just specialist ones) to catch new
-  //     information the user reveals over time. Fire-and-forget.
-  extractContinuousLearning(userId, message, fullResponse).catch((err) => {
-    console.error('[advisor] extractContinuousLearning failed:', err)
-  })
+  // 10. Continuous learning: profile updates + product reactions. Every turn.
+  deferBackgroundWork(
+    extractContinuousLearning(userId, message, fullResponse).catch((err) => {
+      console.error('[advisor] extractContinuousLearning failed:', err)
+    })
+  )
 
-  // 11. Generate/update conversation summary for cross-session memory.
-  //     Runs on message 2, 6, then every 5 messages to keep summaries fresh.
-  //     At every-5, the summary is always within 4 messages of current state,
-  //     preventing the bug where a 37-message conversation's final recommendations
-  //     were never captured (old trigger: every 10, missed messages 31-37).
+  // 11–13. Summary + decision memory + treatment phase, on the summarize cadence
+  //        (msg 2, 6, then every 5 — keeps them within 4 messages of current state).
   const msgCount = conversationHistory.length + 2 // +2 for user + assistant just added
   const shouldSummarize = msgCount <= 2 || msgCount === 6 || msgCount % 5 === 0
   if (shouldSummarize) {
-    generateAndSaveSummary(
-      conversationId,
-      [...conversationHistory, { content: message, role: 'user' as const } as YuriMessage],
-      fullResponse
-    ).catch((err) => {
-      console.error('[advisor] generateAndSaveSummary failed:', err)
-    })
-  }
+    deferBackgroundWork(
+      generateAndSaveSummary(
+        conversationId,
+        [...conversationHistory, { content: message, role: 'user' as const } as YuriMessage],
+        fullResponse
+      ).catch((err) => {
+        console.error('[advisor] generateAndSaveSummary failed:', err)
+      })
+    )
 
-  // 12. Extract structured decision memory (decisions, preferences, commitments).
-  //     Same cadence as summary generation — every 5 messages after initial exchange.
-  if (shouldSummarize) {
     const transcriptForDecisions = [
       ...conversationHistory.map((m) => ({ role: m.role, content: m.content })),
       { role: 'user', content: message },
       { role: 'assistant', content: fullResponse },
     ]
-    extractAndSaveDecisionMemory(userId, conversationId, transcriptForDecisions).catch((err) => {
-      console.error('[advisor] extractAndSaveDecisionMemory failed:', err)
-    })
-
-    // 13. Extract treatment phase state changes (Phase 13.D).
-    //     Sonnet judges whether the conversation established a new phase,
-    //     completed the current one, or updated the active protocol.
-    //     Conservative — requires verbatim supporting quote. Same cadence
-    //     as decision memory.
-    extractAndSaveTreatmentPhases(userId, conversationId, transcriptForDecisions).catch((err) => {
-      console.error('[advisor] extractAndSaveTreatmentPhases failed:', err)
-    })
+    // 12. Structured decision memory (decisions, preferences, commitments,
+    //     corrections, open loops).
+    deferBackgroundWork(
+      extractAndSaveDecisionMemory(userId, conversationId, transcriptForDecisions).catch((err) => {
+        console.error('[advisor] extractAndSaveDecisionMemory failed:', err)
+      })
+    )
+    // 13. Treatment phase state changes (Phase 13.D). Conservative — requires a
+    //     verbatim supporting quote.
+    deferBackgroundWork(
+      extractAndSaveTreatmentPhases(userId, conversationId, transcriptForDecisions).catch((err) => {
+        console.error('[advisor] extractAndSaveTreatmentPhases failed:', err)
+      })
+    )
   }
 }
 

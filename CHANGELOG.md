@@ -8,6 +8,20 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.7.0 (July 15, 2026): Fix the decision-memory teardown race the Guardian caught (v10.3.4 class, still live)
+
+**How it surfaced.** The freshly-built Guardian alerting (v11.6.0) had a live `critical`: `decision_memory_extraction_7d` — 3 conversations (7d) with ≥6 messages but empty `decision_memory`. Investigated instead of dismissed.
+
+**What it was NOT.** Not the extraction prompt. Re-running the real extractor on the flagged conversation 3× produced the decision + preference + both open loops every time, stable. Not systemic either — most conversations extract fine.
+
+**Root cause — a fire-and-forget teardown race on the AUTHENTICATED advisor.** In `advisor.ts`, the five post-response background extractions (specialist insight, continuous learning, summary, decision memory, treatment phase) were launched as bare `.catch()` promises, **not awaited** and with no `after()`/`waitUntil`. The route finishes the SSE `for await`, closes the stream, returns — and Vercel tears the function down BEFORE those 2–5s Sonnet calls settle. The DB write never lands; `decision_memory` stays at its `{}` default. This is the EXACT v10.3.4 class — and the code comment right above the bug literally cited v10.3.4 ("same pattern hid 3 months of decision memory failures"). The v10.3.4 fix repaired the *merge function*; the *teardown race* was never fixed. A teardown kill produces no log, which is why it stayed invisible until the Guardian's ratio check caught it.
+
+**The fix.** Wrap all five background tasks in Next's `after()` (Next 15.1+, Vercel-recommended over `waitUntil`), via a `deferBackgroundWork()` helper that falls back to fire-and-forget if `after()` is ever called outside request scope (belt-and-suspenders — a context edge must never break Yuri's response). Each task keeps its own `.catch` so one failure never sinks the others; failures still log. `after()` extends the function lifetime until the work settles without blocking the already-streamed response. (The widget route was already safe — it `await`s its background memory work before `writer.close()`.)
+
+**Backfill.** Re-ran the existing `scripts/backfill-decision-memory.ts` (the v10.3.4 tool) against the empty-`{}` backlog: 14 candidates, **7 populated** (7 correctly empty, 0 failed). Recovered the flagged losses — the "keep the Anua toner" decision + the step-5-moisturizer and PM-rebuild open loops on one, and 3 decisions + 3 commitments on a Bailey conversation — plus a correction-feedback-loop cleanup (cleared a false Skin&Lab reaction tag). The Guardian signal now reads **0 suspect conversations** (will clear critical → ok next run).
+
+**Verification:** extractor re-run stable 3×; backfill 7/7 populated with 0 failures; signal recomputed to 0; tsc + build green; AI-First check PASS (restores a learning loop, replaces no judgment).
+
 ## v11.6.0 (July 15, 2026): Guardian push/email alerting — a bounced lead (or a critical) now reaches your inbox
 
 **The gap (GUARDIAN-CHARTER.md DEFERRED FEATURE 1, deferred June 5 2026).** The always-on watcher recorded a `critical` verdict to `ss_pipeline_runs.metadata` + Vercel logs 24/7 but never actively notified Scott — a 3am critical with his machine off stayed invisible until he was back at the keyboard. With v11.5.0 adding a lead-bounce signal, the same silence applied to a recap that hard-bounced to a hot lead.
