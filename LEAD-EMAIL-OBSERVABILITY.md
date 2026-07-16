@@ -144,6 +144,24 @@ ORDER BY recap_status_updated_at DESC;
   **never** in the Namecheap Private Email "Sent" folder — she sends via Resend,
   not that mailbox. An empty Private Email Sent folder is expected, not a bug.
 
+## Guardian alerting
+
+The always-on Guardian watcher (`/api/cron/guardian-watch`, 3×/day, zero AI
+tokens) runs a `lead_recap_delivery_7d` health signal (`src/lib/guardian/
+healthcheck.ts`, signal #8). For captures in the last 7 days it counts:
+- `bounced` / `complained` / `send_failed` → the lead didn't get their email →
+  **`warn`** (bumps the watcher's overall verdict, triggering its `console.warn`
+  alert in Vercel logs + a durable verdict in `ss_pipeline_runs.metadata`).
+- captured-but-`recap_status IS NULL` → the recording path may have silently
+  failed (the v10.3.4 class) → surfaced in the signal detail.
+
+**Caveat — where the alert lands today:** the Guardian's alert surface is Vercel
+logs + the DB verdict, NOT a push/email to your phone. Active push/email
+notification is `DEFERRED FEATURE 1` in `GUARDIAN-CHARTER.md`. So a bounced lead
+is now *visible and queryable* (and shows in any `/guardian-run`), but you won't
+be actively pinged until that alerting layer ships. Until then, the bounce query
+below is the manual check.
+
 ## Learning-loop note
 
 Persisted delivery/bounce outcomes are a harder signal than a captured address

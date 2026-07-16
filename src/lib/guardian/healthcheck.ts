@@ -221,6 +221,44 @@ export async function runHealthCheck(db: SupabaseClient): Promise<HealthReport> 
     push({ key: 'widget_funnel', severity: 'info', summary: 'Could not assess widget funnel', detail: { error: errMsg(err) } })
   }
 
+  // 8. Lead recap-email delivery health (last 7d captures) — v11.5.0.
+  // A recap that bounced/failed to a captured lead is a real problem: the lead
+  // handed over their email and never got the promised recap. Bounces/complaints
+  // are otherwise silently invisible (they live in a status column no one reads),
+  // so surface them here. Scoped to recent captures so old rows don't perpetually
+  // trip the signal. Tolerates the recap_* columns being absent (pre-migration).
+  try {
+    const { data, error } = await withRetry(() =>
+      db
+        .from('ss_widget_visitors')
+        .select('captured_email, recap_status')
+        .not('captured_email', 'is', null)
+        .gte('email_captured_at', daysAgoIso(7))
+    )
+    if (error) throw error
+    const rows = data ?? []
+    // Undelivered = the lead didn't get their email for a bad reason.
+    const failed = rows.filter((v) =>
+      ['bounced', 'complained', 'send_failed'].includes(String(v.recap_status))
+    )
+    // Captured but no send outcome recorded at all — the recording path may have
+    // silently failed (the v10.3.4 class), distinct from a deliberate suppression.
+    const noStatus = rows.filter((v) => v.recap_status == null)
+    push({
+      key: 'lead_recap_delivery_7d',
+      severity: failed.length > 0 ? 'warn' : 'info',
+      summary: `Lead recaps 7d: ${rows.length} captured, ${failed.length} bounced/failed, ${noStatus.length} no-status`,
+      detail: {
+        captured: rows.length,
+        failed: failed.map((v) => v.captured_email),
+        failed_count: failed.length,
+        no_status_count: noStatus.length,
+      },
+    })
+  } catch (err) {
+    push({ key: 'lead_recap_delivery_7d', severity: 'info', summary: 'Could not assess lead recap delivery', detail: { error: errMsg(err) } })
+  }
+
   // 7. Bailey activity sanity (READ-ONLY)
   try {
     const { count } = await withRetry(() =>
