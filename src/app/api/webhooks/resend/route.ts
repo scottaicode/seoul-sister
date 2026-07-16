@@ -12,8 +12,11 @@
  *
  * MANUAL SETUP (Scott-only, not automatable):
  *   1. resend.com → Webhooks → Add endpoint:
- *        https://seoulsister.com/api/webhooks/resend
+ *        https://www.seoulsister.com/api/webhooks/resend
  *      Subscribe to: email.delivered, email.bounced, email.complained.
+ *      NOTE: use the www. host — the apex seoulsister.com 307-redirects to www,
+ *      and webhook senders don't follow redirects, so the apex form silently
+ *      drops every event. (Verified in prod: apex → 307, www → 400/401.)
  *   2. Copy the endpoint's Signing Secret (starts with "whsec_") and set
  *        RESEND_WEBHOOK_SECRET   in Vercel (Production).
  *   Until the secret is set, this route rejects everything 401 (fail-closed) —
