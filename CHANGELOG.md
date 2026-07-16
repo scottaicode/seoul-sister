@@ -8,6 +8,22 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.5.0 (July 15, 2026): Lead-email send/delivery observability — stop losing track of whether a lead got their email
+
+**The problem (surfaced in a landing-page activity review).** A genuine high-intent stranger (`meyer.greg.pro`) had a 49-minute conversation with the widget Yuri, arrived from a blog guide, and handed over his email for a recap. Yuri generated and sent the recap — but there was **no way to confirm it from our own data**. The DB recorded only that the email was *captured* (`captured_email`, `email_captured_at`), never whether the recap *sent* or *delivered*. Confirming a send meant `ss_ai_usage` archaeology (finding the `content_generation` breadcrumb that fires ~9s after capture) or a Resend dashboard login. Bounces were **completely invisible** — a recap that hard-bounced to the best lead of the day would look identical to a delivered one.
+
+Also clarified (not a bug): Yuri's mail is sent via **Resend** (`yuri@seoulsister.com`, send-only), never through the Namecheap Private Email mailbox — so an empty Private Email "Sent" folder is expected. Delivery to Gmail was confirmed for the test send; the `content_generation` breadcrumb confirmed Greg's generation fired on the `should_send` path.
+
+**The fix — persist the send outcome + ingest provider delivery events.** Transport/observability only; Yuri's consent (`should_send`) and address-ownership (`address_is_visitors_own`) judgments are untouched (AI-First guard + check PASS).
+
+1. **Migration** `scripts/migrations/add_widget_recap_email_tracking.sql` — adds `recap_status` / `recap_sent_at` / `recap_provider_id` / `recap_status_updated_at` to `ss_widget_visitors`, plus partial indexes on provider-id and status. Backfills the two known July-15 captures as `sent` (proven by breadcrumb — never fabricates `delivered`). Status lifecycle: `suppressed` | `not_their_address` | `sent` | `send_failed` | `delivered` | `bounced` | `complained`.
+2. **`sendEmail()`** (`src/lib/email/send.ts`) now returns Resend's message id (`providerId`) — the key that ties a later webhook event to the visitor. Defensive parse: a missing id never turns a successful send into a failure.
+3. **`recordRecapStatus()` + `updateRecapStatusByProviderId()` + `RecapStatus`** (`src/lib/widget/visitor.ts`) — best-effort, never-throw DB writes; tolerate the columns being absent pre-migration (same defensive pattern as `captured_email`).
+4. **Widget route** (`src/app/api/widget/chat/route.ts`) records a status on *every* send branch: `send`→`sent`/`send_failed`, `not_their_address`→`not_their_address`, `suppressed`→`suppressed`, `failed`→`send_failed`. No never-recorded outcomes.
+5. **New webhook** `src/app/api/webhooks/resend/route.ts` — Svix-signature-verified (Node crypto, dependency-free), maps `email.delivered|bounced|complained` → status by provider id. **Fail-closed**: 401 on every request until `RESEND_WEBHOOK_SECRET` is set, so an unverified body never mutates lead data.
+
+**ONE manual step to activate delivery events (Scott-only):** resend.com → Webhooks → add `https://seoulsister.com/api/webhooks/resend` (subscribe delivered/bounced/complained), copy the Signing Secret, set `RESEND_WEBHOOK_SECRET` in Vercel. Until then, sends still record `sent`; you just don't get `delivered`/`bounced`. System of record: **`LEAD-EMAIL-OBSERVABILITY.md`** (status meanings, the manual step, and the "did this lead get their email" queries). tsc + build green; both new routes registered.
+
 ## v11.4.0 (July 15, 2026): Move the paywall to the value moment — the funnel had never actually been run
 
 **The problem (LEAK 2 from `FUNNEL-LEAK-AUDIT-JUL13.md`).** The paywall sat *in front of* the product: `register → /subscribe ($24.99/mo) → onboarding → app`. A stranger was asked to buy before ever experiencing Yuri-with-memory. Proof from `ss_user_profiles`: every stranger who reached the wall hit it **before** onboarding, and the only 4 "conversions" were insiders provisioned around it (`paywall_reached_at IS NULL`). **No human being had ever encountered that paywall and paid.** The One Metric wasn't flat — the funnel had never been run.

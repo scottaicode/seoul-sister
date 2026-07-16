@@ -6,7 +6,7 @@ import { logAIUsage } from '@/lib/ai-usage-logger'
 import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
 import { cleanYuriResponse, stripPhantomToolCallNarration } from '@/lib/yuri/voice-cleanup'
 import { detectSpecialist, SPECIALISTS } from '@/lib/yuri/specialists'
-import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordCapturedEmail, isEmailCapturedByAnotherVisitor, clearCapturedEmail } from '@/lib/widget/visitor'
+import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordCapturedEmail, isEmailCapturedByAnotherVisitor, clearCapturedEmail, recordRecapStatus } from '@/lib/widget/visitor'
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
 import { PRICING } from '@/lib/pricing'
 import { generateLeadEmail, type VisitorMemoryFacts, type ConversationTurn } from '@/lib/email/lead-email'
@@ -633,21 +633,38 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
                         parsed.visitor_id!
                       )
                       if (result.outcome === 'send') {
-                        await sendEmail(
+                        // v11.5.0: capture the send result so "did this lead
+                        // get their email" is a queryable fact, and stash
+                        // Resend's message id for the delivery/bounce webhook.
+                        const send = await sendEmail(
                           email,
                           result.email.subject,
                           wrapEmailHtml(result.email.bodyHtml)
+                        )
+                        await recordRecapStatus(
+                          parsed.visitor_id!,
+                          send.sent ? 'sent' : 'send_failed',
+                          { providerId: send.providerId }
                         )
                       } else if (result.outcome === 'not_their_address') {
                         // v10.13.4: Yuri judged this isn't the visitor's own
                         // address — reopen the capture slot so their REAL
                         // email can land later, and keep the lead list clean.
+                        await recordRecapStatus(parsed.visitor_id!, 'not_their_address')
                         await clearCapturedEmail(parsed.visitor_id!, email)
                         console.warn(
                           '[widget/chat] capture slot cleared — Yuri judged the address is not the visitor\'s own'
                         )
+                      } else if (result.outcome === 'suppressed') {
+                        // Yuri judged no send warranted — record it so a
+                        // deliberately-not-sent recap is visible, not silently
+                        // indistinguishable from a pending send. Capture kept.
+                        await recordRecapStatus(parsed.visitor_id!, 'suppressed')
+                      } else {
+                        // 'failed': generation/parse error — send-failed. Record
+                        // so the error is visible; capture kept for later retry.
+                        await recordRecapStatus(parsed.visitor_id!, 'send_failed')
                       }
-                      // 'suppressed' and 'failed': no send, capture kept.
                     }
                   } catch (err) {
                     console.error('[widget/chat] lead email send failed:', err)
