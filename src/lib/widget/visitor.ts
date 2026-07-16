@@ -193,6 +193,99 @@ export async function clearCapturedEmail(
 }
 
 /**
+ * Lead recap email lifecycle status (July 15 2026). Transport/observability
+ * only — records the RESULT of Yuri's send/ownership judgments, never a
+ * judgment itself. See scripts/migrations/add_widget_recap_email_tracking.sql.
+ *   suppressed         — Yuri judged no send warranted (should_send=false)
+ *   not_their_address  — Yuri judged the address wasn't the visitor's own
+ *   sent               — accepted by Resend for delivery
+ *   send_failed        — Resend rejected / transport error
+ *   delivered          — Resend delivery webhook confirmed
+ *   bounced            — Resend bounce webhook
+ *   complained         — recipient marked as spam
+ */
+export type RecapStatus =
+  | 'suppressed'
+  | 'not_their_address'
+  | 'sent'
+  | 'send_failed'
+  | 'delivered'
+  | 'bounced'
+  | 'complained'
+
+/**
+ * Record the outcome of a lead recap email send (v11.5.0 lead-gen observability).
+ *
+ * Persists "did this lead actually get their email" so it's a one-line query
+ * instead of ss_ai_usage archaeology or a Resend dashboard login. Writes the
+ * status, and (on an actual send) the send timestamp + Resend provider id so a
+ * later delivery/bounce webhook can be correlated back to this visitor.
+ *
+ * Best-effort and never throws — recap tracking must never break the stream or
+ * the send. Tolerates the recap_* columns being absent pre-migration (same
+ * defensive pattern as captured_email): a column-missing error is swallowed.
+ */
+export async function recordRecapStatus(
+  visitorId: string,
+  status: RecapStatus,
+  options: { providerId?: string; sentAt?: string } = {}
+): Promise<void> {
+  const supabase = getServiceClient()
+  const nowIso = new Date().toISOString()
+
+  const patch: Record<string, string> = {
+    recap_status: status,
+    recap_status_updated_at: nowIso,
+  }
+  if (status === 'sent') patch.recap_sent_at = options.sentAt || nowIso
+  if (options.providerId) patch.recap_provider_id = options.providerId
+
+  try {
+    const { error } = await supabase
+      .from('ss_widget_visitors')
+      .update(patch)
+      .eq('visitor_id', visitorId)
+
+    if (error && !/recap_status|recap_sent_at|recap_provider_id/.test(error.message || '')) {
+      console.error('[Widget] recordRecapStatus failed:', error.message)
+    }
+  } catch (err) {
+    console.error('[Widget] recordRecapStatus threw:', err)
+  }
+}
+
+/**
+ * Update recap status from a provider (Resend) delivery/bounce webhook event,
+ * matched to the visitor by Resend message id (v11.5.0). Best-effort; never
+ * throws. A `delivered` event never downgrades an already-terminal negative
+ * status (bounced/complained win) — provider events can arrive out of order.
+ */
+export async function updateRecapStatusByProviderId(
+  providerId: string,
+  status: RecapStatus
+): Promise<{ matched: boolean }> {
+  const supabase = getServiceClient()
+  try {
+    const { data, error } = await supabase
+      .from('ss_widget_visitors')
+      .update({ recap_status: status, recap_status_updated_at: new Date().toISOString() })
+      .eq('recap_provider_id', providerId)
+      .select('visitor_id')
+
+    if (error) {
+      if (!/recap_status|recap_provider_id/.test(error.message || '')) {
+        console.error('[Widget] updateRecapStatusByProviderId failed:', error.message)
+      }
+      return { matched: false }
+    }
+    return { matched: Array.isArray(data) && data.length > 0 }
+  } catch (err) {
+    console.error('[Widget] updateRecapStatusByProviderId threw:', err)
+    return { matched: false }
+  }
+}
+
+/**
  * Cross-visitor duplicate-send guard (v10.13.3): the same human can appear as
  * two visitor rows (cleared cookies, new device). captured_email is first-wins
  * PER VISITOR, so a second row would trigger a second follow-up email to the

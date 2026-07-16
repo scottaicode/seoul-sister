@@ -29,6 +29,9 @@ export interface SendEmailResult {
   sent: boolean
   reason?: string
   error?: string
+  /** Resend message id on a successful send — the key that ties a later
+   *  delivery/bounce webhook event back to the visitor. Undefined on no-op/fail. */
+  providerId?: string
 }
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails'
@@ -101,7 +104,18 @@ export async function sendEmail(
       return { sent: false, error: `resend_${response.status}` }
     }
 
-    return { sent: true }
+    // Resend returns { id: "<message-id>" }. Capture it so delivery/bounce
+    // webhook events can be correlated back to this send. Parse defensively —
+    // a missing id must not turn a successful send into a failure.
+    let providerId: string | undefined
+    try {
+      const body = (await response.json()) as { id?: string }
+      providerId = body?.id
+    } catch {
+      // Body unreadable/non-JSON — the send still succeeded; just no id to log.
+    }
+
+    return { sent: true, providerId }
   } catch (err) {
     console.error('[email] sendEmail threw:', err)
     return { sent: false, error: err instanceof Error ? err.message : 'unknown' }
