@@ -124,9 +124,13 @@ The honest staging: watch for $0 now (laptop-independent), graduate to autonomou
 
 ---
 
-## DEFERRED FEATURE 1 — Push/email alerting (build spec, NOT built)
+## DEFERRED FEATURE 1 — Push/email alerting (✅ BUILT July 15 2026)
 
-**Status:** Deferred by Scott (June 5 2026) — "not necessary at this time," documented so it's ready if needed later. Cost: **~$0** (uses the existing unused `RESEND_API_KEY`; no new infra).
+**Status:** BUILT July 15 2026 (Scott's go-ahead). Cost: **~$0** (reuses `RESEND_API_KEY` + the now-verified sending domain via the existing `sendEmail()`; no new infra, no SDK). Backed by `src/lib/guardian/alert.ts`, wired into `/api/cron/guardian-watch/route.ts`. Recipient in env `GUARDIAN_ALERT_EMAIL` (set in Vercel).
+
+**What was built (vs the original spec below):** alert fires on `overall === 'critical'` **OR** a bounced/failed lead recap (`lead_recap_delivery_7d` signal with `failed_count > 0`) — Scott's July 15 2026 choice to make the rare, high-value lead-bounce an exception to the charter's warn=log-only rule; all OTHER warns stay log-only as specified. De-dupe is by alert-signature (the sorted set of alert-worthy signal keys) compared against the immediately-preceding run's stored `alert_signature` in `ss_pipeline_runs.metadata`: a persistent condition alerts once and stays quiet; a cleared-then-reappeared or changed set re-alerts. Graceful no-op if `GUARDIAN_ALERT_EMAIL` unset. Pure plumbing, no AI. Decision logic unit-tested (9 cases: threshold + dedup edges). Original spec retained below for reference.
+
+**Original build spec (as written when deferred):**
 
 **The gap it closes:** the always-on watcher (`/api/cron/guardian-watch`) records a `critical` verdict to `ss_pipeline_runs.metadata` + Vercel logs 24/7, but does NOT actively notify Scott. If something critical trips at 3am with his machine off, he won't know until he's back at the keyboard. Alerting closes that.
 

@@ -8,6 +8,19 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.6.0 (July 15, 2026): Guardian push/email alerting — a bounced lead (or a critical) now reaches your inbox
+
+**The gap (GUARDIAN-CHARTER.md DEFERRED FEATURE 1, deferred June 5 2026).** The always-on watcher recorded a `critical` verdict to `ss_pipeline_runs.metadata` + Vercel logs 24/7 but never actively notified Scott — a 3am critical with his machine off stayed invisible until he was back at the keyboard. With v11.5.0 adding a lead-bounce signal, the same silence applied to a recap that hard-bounced to a hot lead.
+
+**Built now (Scott's go-ahead).** `src/lib/guardian/alert.ts`, wired into `/api/cron/guardian-watch/route.ts`. Pure deterministic plumbing — no AI, no judgment (the charter itself says `ai-first-check` is a formality here; run anyway, PASS).
+
+- **Threshold (Scott's July 15 choice):** email on `overall === 'critical'` **OR** a bounced/failed lead recap (`lead_recap_delivery_7d` with `failed_count > 0`). Lead bounces are rare + high-value, so they earn an exception to the charter's warn=log-only rule; ALL other warns stay log-only (no alert fatigue).
+- **De-dupe:** the alert signature (sorted set of alert-worthy signal keys) is compared to the immediately-preceding run's stored `alert_signature`. A persistent condition alerts once then stays quiet (3×/day would be spam); a cleared-then-reappeared or changed set re-alerts. Signature + `alert_sent` persisted to each run's metadata.
+- **Provider:** the existing raw-fetch `sendEmail()` (Resend) — no SDK, ~$0, reuses the now-verified sending domain. Recipient in env `GUARDIAN_ALERT_EMAIL` (never hardcoded); graceful no-op + log if unset.
+- **Verification:** decision logic unit-tested — 9 cases covering threshold (healthy/warn-0/warn-with-bounce/generic-warn/critical) and the dedup edges (persistent→quiet, clear-then-reappear→re-alert, changed-set→re-alert, critical+bounce combo). All pass. tsc + build green.
+
+**Manual (Scott):** set `GUARDIAN_ALERT_EMAIL` in Vercel (e.g. `team@seoulsister.com`). Autonomous *fixing* (DEFERRED FEATURE 2) remains deferred — this is notification only, it changes no fix tiers.
+
 ## v11.5.0 (July 15, 2026): Lead-email send/delivery observability — stop losing track of whether a lead got their email
 
 **The problem (surfaced in a landing-page activity review).** A genuine high-intent stranger (`meyer.greg.pro`) had a 49-minute conversation with the widget Yuri, arrived from a blog guide, and handed over his email for a recap. Yuri generated and sent the recap — but there was **no way to confirm it from our own data**. The DB recorded only that the email was *captured* (`captured_email`, `email_captured_at`), never whether the recap *sent* or *delivered*. Confirming a send meant `ss_ai_usage` archaeology (finding the `content_generation` breadcrumb that fires ~9s after capture) or a Resend dashboard login. Bounces were **completely invisible** — a recap that hard-bounced to the best lead of the day would look identical to a delivered one.
