@@ -99,6 +99,14 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   const [messageCount, setMessageCountState] = useState(0)
   const [showLive, setShowLive] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Server-enforced cap. The client `messageCount` (localStorage) and the
+  // server's lifetime `total_messages` per visitor_id can legitimately diverge
+  // (cleared storage, another device, a shared-IP fallback). The SERVER is the
+  // real gate — when it returns 429/`limitReached`, we flip this so the upsell
+  // card renders and the input closes even when the local counter says we're
+  // still under the limit. Without it, a server-blocked visitor saw only a
+  // generic "Something went wrong" error and no way to subscribe.
+  const [serverLimitReached, setServerLimitReached] = useState(false)
   // Which demo script to show (owner vs beginner). Init deterministically to
   // avoid an SSR/client hydration mismatch, then randomize client-side on mount.
   const [demoScript, setDemoScript] = useState<DemoMessage[]>(DEMO_OWNER)
@@ -192,7 +200,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
     }
   }, [messages])
 
-  const isAtLimit = messageCount >= MAX_FREE_MESSAGES
+  const isAtLimit = messageCount >= MAX_FREE_MESSAGES || serverLimitReached
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -255,6 +263,20 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
 
         if (!response.ok || !response.body) {
           const errBody = await response.json().catch(() => null)
+          // Preview cap hit server-side (429 + limitReached, or the per-IP/day
+          // rate limit). Flip to the limit state so the upsell card renders and
+          // the input closes — do NOT surface this as a generic error. This is
+          // the conversion moment, not a failure.
+          if (response.status === 429 || errBody?.limitReached) {
+            setServerLimitReached(true)
+            // Keep the local counter consistent so the "N remaining" copy and
+            // the isAtLimit-gated UI agree with the server.
+            setMessageCount(MAX_FREE_MESSAGES)
+            setMessageCountState(MAX_FREE_MESSAGES)
+            // Drop the empty placeholder assistant bubble we optimistically added.
+            setMessages((prev) => prev.filter((m) => !m.isStreaming))
+            return
+          }
           throw new Error(errBody?.error || 'Request failed')
         }
 
@@ -326,11 +348,9 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
           return prev.filter((m) => !m.isStreaming)
         })
         if (!hadPartialContent) {
-          setError(
-            err instanceof Error && (err.message.includes('Rate limit') || err.message.includes('rate limit'))
-              ? 'You\'ve used all your free preview messages for today. Subscribe for unlimited Yuri conversations!'
-              : 'Something went wrong. Please try again.'
-          )
+          // Preview-cap 429s are handled up front (serverLimitReached), so this
+          // path is now only genuine failures — network drops, 5xx, parse errors.
+          setError('Something went wrong. Please try again.')
         }
       } finally {
         setIsStreaming(false)
