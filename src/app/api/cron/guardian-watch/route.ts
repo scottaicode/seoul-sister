@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
 import { runHealthCheck } from '@/lib/guardian/healthcheck'
+import { maybeSendGuardianAlert } from '@/lib/guardian/alert'
 
 export const maxDuration = 60
 
@@ -36,6 +37,37 @@ async function handler(request: Request) {
   try {
     const report = await runHealthCheck(db)
 
+    // Push/email alerting (DEFERRED FEATURE 1, built Jul 15 2026). De-dupe
+    // against the last run that alerted: read its stored alert_signature so we
+    // don't re-email the same unresolved condition every run. Alert-worthy =
+    // critical OR a bounced/failed lead recap (all other warns stay log-only).
+    let alertSignature = ''
+    let alertSent = false
+    try {
+      const { data: priorRuns } = await db
+        .from('ss_pipeline_runs')
+        .select('metadata')
+        .eq('source', 'guardian-watch')
+        .order('started_at', { ascending: false })
+        .limit(1)
+      // De-dupe against the IMMEDIATELY preceding run's alert set (empty string
+      // included). Alert only when the set CHANGES run-over-run: a condition
+      // that clears (prev='' ) and re-appears correctly re-alerts, and a
+      // persistent condition (same signature two runs running) stays quiet.
+      const priorMeta = (priorRuns?.[0]?.metadata ?? null) as Record<string, unknown> | null
+      const priorSignature =
+        typeof priorMeta?.alert_signature === 'string' ? priorMeta.alert_signature : null
+      const alertResult = await maybeSendGuardianAlert(report, priorSignature)
+      alertSignature = alertResult.signature
+      alertSent = alertResult.sent
+      if (alertResult.sent) {
+        console.warn(`[guardian-watch] ALERT EMAILED — signature: ${alertResult.signature}`)
+      }
+    } catch (alertErr) {
+      // Alerting must never break the watcher.
+      console.error('[guardian-watch] alert step failed:', alertErr)
+    }
+
     // Surface warn/critical to Vercel logs (the visible-alert mechanism).
     if (report.overall === 'critical' || report.overall === 'warn') {
       const flagged = report.signals
@@ -61,6 +93,12 @@ async function handler(request: Request) {
         counts: report.counts,
         signals: report.signals,
         duration_ms: Date.now() - startedAt,
+        // Alert de-dupe: the signature of the alert-worthy signal set, and
+        // whether an email actually went out this run. The next run reads the
+        // most recent non-empty alert_signature to avoid re-alerting the same
+        // unresolved condition. Empty string = nothing alert-worthy this run.
+        alert_signature: alertSignature,
+        alert_sent: alertSent,
       },
       started_at: new Date(startedAt).toISOString(),
       completed_at: new Date().toISOString(),
