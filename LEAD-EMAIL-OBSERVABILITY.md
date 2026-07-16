@@ -93,7 +93,11 @@ if they're unset.
 
 2. **Delivery/bounce events** (NEW — do this to activate the webhook):
    1. resend.com → **Webhooks** → **Add endpoint**:
-      `https://seoulsister.com/api/webhooks/resend`
+      `https://www.seoulsister.com/api/webhooks/resend`
+      **Use the `www.` host** — the apex `seoulsister.com` 307-redirects to www,
+      and webhook senders don't follow redirects, so the apex form silently
+      drops every event. (Verified in prod: apex → 307, www → 400 unsigned /
+      401 bad-signature.)
    2. Subscribe to: `email.delivered`, `email.bounced`, `email.complained`.
    3. Copy the endpoint's **Signing Secret** (starts with `whsec_`) and set
       `RESEND_WEBHOOK_SECRET` in **Vercel (Production)**.
