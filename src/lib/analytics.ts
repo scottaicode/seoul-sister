@@ -53,6 +53,21 @@ export const DemoEvent = {
   prefillArrived: 'yuri_prefill_arrived',
 } as const
 
+/** Landing widget send outcomes. Before this, a visitor who tried to send but
+ *  hit a failure (server error, or the shared-IP abuse-429 that hid the input)
+ *  wrote NO row to ss_widget_sessions and looked identical to someone who simply
+ *  chose to leave — so "did my fixes work?" was unanswerable. `sendFailed` fires
+ *  whenever a send attempt does NOT produce a Yuri response, tagged by `reason`:
+ *    - 'rate_limited'  → per-IP/day abuse limit (transient; input stays open)
+ *    - 'limit_reached' → the real per-visitor preview cap (paywall shown)
+ *    - 'error'         → genuine failure (network/5xx/parse) with no content
+ *  Pairing this against `yuri_demo_first_message` finally separates ABANDONMENT
+ *  from FAILURE in GA4 — the measurement the v11.8.0 friction fixes need to be
+ *  proven or killed. Metadata only, no message content (keeps GA4 PII-free). */
+export const WidgetEvent = {
+  sendFailed: 'yuri_send_failed',
+} as const
+
 /** Contextual Yuri nudge on Products/Ingredients/Blog detail pages (Phase 4). The
  *  nudge is a feeder to the landing widget: `shown` fires when an engaged
  *  visitor (scroll/dwell triggered) sees it, `click` when they take it. Combined
