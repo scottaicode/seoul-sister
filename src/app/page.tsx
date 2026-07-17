@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -83,6 +83,17 @@ const navLinks = [
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  // Mobile-only: reveal the sticky "Ask Yuri" bar once the visitor scrolls past
+  // the hero. Without this the bar shipped permanently hidden (translate-y-full,
+  // never toggled), so a mobile visitor who scrolled past the buried widget had
+  // no one-tap route back to the input. Reveal after ~1 viewport of scroll.
+  const [showStickyCTA, setShowStickyCTA] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setShowStickyCTA(window.scrollY > window.innerHeight * 0.9)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   return (
     <div className="min-h-screen bg-seoul-dark font-sans">
@@ -215,7 +226,7 @@ export default function LandingPage() {
         </div>
 
         {/* Mobile sticky CTA bar — appears on scroll past hero */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-seoul-dark/95 backdrop-blur-md border-t border-gold/20 p-3 translate-y-full transition-transform duration-300" id="mobile-sticky-cta">
+        <div className={`lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-seoul-dark/95 backdrop-blur-md border-t border-gold/20 p-3 transition-transform duration-300 ${showStickyCTA ? 'translate-y-0' : 'translate-y-full'}`} id="mobile-sticky-cta">
           <button
             onClick={() => {
               document.getElementById('hero-yuri')?.scrollIntoView({ behavior: 'smooth' })

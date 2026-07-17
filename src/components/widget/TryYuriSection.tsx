@@ -107,6 +107,10 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   // still under the limit. Without it, a server-blocked visitor saw only a
   // generic "Something went wrong" error and no way to subscribe.
   const [serverLimitReached, setServerLimitReached] = useState(false)
+  // Transient "working…" status (e.g. a tool firing) shown inside the thinking
+  // indicator before Yuri's first token, so a multi-second tool round-trip shows
+  // motion instead of appearing frozen. Cleared the instant real text streams.
+  const [statusLabel, setStatusLabel] = useState<string | null>(null)
   // Which demo script to show (owner vs beginner). Init deterministically to
   // avoid an SSR/client hydration mismatch, then randomize client-side on mount.
   const [demoScript, setDemoScript] = useState<DemoMessage[]>(DEMO_OWNER)
@@ -171,12 +175,23 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
     const ask = (params.get('ask') || '').trim()
     if (!sourceRef.current) sourceRef.current = 'landing'
     if (ask) setInput(ask)
-    // Land at the TOP of the hero so the visitor sees the full headline + demo
-    // + their prefilled question as one first impression, then focus the input
-    // WITHOUT scrollIntoView (which would yank the hero up and clip the headline).
-    // preventScroll keeps the page at top while still focusing the field.
+    // Get the visitor to the INPUT, not just the page. On desktop the widget
+    // sits in the right hero column already above the fold, so top-of-page shows
+    // headline + widget together — keep that. On MOBILE the hero is single-column
+    // and the widget renders BELOW the entire value-prop column (headline, copy,
+    // stats, CTAs), so scrolling to top lands them on marketing copy with their
+    // prefilled question far below the fold — they never see where to send it.
+    // There, bring the widget itself into view. Breakpoint matches Tailwind `lg`.
     requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      const isMobile = window.matchMedia('(max-width: 1023px)').matches
+      if (isMobile) {
+        document.getElementById('hero-yuri')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
       inputRef.current?.focus({ preventScroll: true })
     })
     trackEvent(DemoEvent.prefillArrived, {
@@ -208,6 +223,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
 
       const trimmed = text.trim()
       setError(null)
+      setStatusLabel(null)
 
       // Record the visitor's first engagement against the demo that was on
       // screen — this is the conversion signal GA4 grades each variant by.
@@ -263,11 +279,15 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
 
         if (!response.ok || !response.body) {
           const errBody = await response.json().catch(() => null)
-          // Preview cap hit server-side (429 + limitReached, or the per-IP/day
-          // rate limit). Flip to the limit state so the upsell card renders and
-          // the input closes — do NOT surface this as a generic error. This is
-          // the conversion moment, not a failure.
-          if (response.status === 429 || errBody?.limitReached) {
+          // Two DIFFERENT server rejections both arrive as 429 — distinguish them
+          // by the `limitReached` flag, NOT the bare status:
+          //   • limitReached:true  → the per-VISITOR preview cap. This IS the
+          //     conversion moment: show the upsell card, close the input.
+          //   • rateLimited:true (limitReached false) → the per-IP/day ABUSE
+          //     limit, which can false-trip for a brand-new visitor behind
+          //     NAT/VPN. Show a transient retry message and KEEP the input open —
+          //     never show the paywall to someone who hasn't hit their own cap.
+          if (errBody?.limitReached) {
             setServerLimitReached(true)
             // Keep the local counter consistent so the "N remaining" copy and
             // the isAtLimit-gated UI agree with the server.
@@ -277,11 +297,24 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             setMessages((prev) => prev.filter((m) => !m.isStreaming))
             return
           }
+          if (errBody?.rateLimited) {
+            // Transient: drop the placeholder bubble, surface a soft retry,
+            // leave the input open so they can try again in a moment.
+            setMessages((prev) => prev.filter((m) => !m.isStreaming))
+            setError(errBody?.error || 'Yuri is getting a lot of traffic right now. Give it a moment and try again.')
+            return
+          }
           throw new Error(errBody?.error || 'Request failed')
         }
 
         await parseWidgetStream(response.body, controller.signal, {
+          onStatus(label) {
+            // Show the working status only until the first real token arrives.
+            setStatusLabel(label)
+          },
           onText(content) {
+            // First token — the status has served its purpose; clear it.
+            setStatusLabel(null)
             setMessages((prev) => {
               const updated = [...prev]
               const last = updated[updated.length - 1]
@@ -295,6 +328,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             })
           },
           onDone(cleanedMessage, sessionId) {
+            setStatusLabel(null)
             if (sessionId) setWidgetSessionId(sessionId)
             setMessages((prev) => {
               const updated = [...prev]
@@ -354,6 +388,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
         }
       } finally {
         setIsStreaming(false)
+        setStatusLabel(null)
       }
     },
     [isStreaming, isAtLimit, messageCount, messages, demoScript]
@@ -457,7 +492,9 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                   )}
                   {msg.isStreaming && msg.content.length === 0 && (
                     <span className="flex items-center gap-1.5 py-0.5">
-                      <span className="text-gold/70 text-xs italic">Yuri is thinking</span>
+                      {/* Show the live tool status if we have one (motion during a
+                          multi-second tool round-trip), else the default label. */}
+                      <span className="text-gold/70 text-xs italic">{statusLabel ?? 'Yuri is thinking'}</span>
                       <span className="flex items-center gap-0.5">
                         <span className="w-1 h-1 rounded-full bg-gold/50 animate-pulse" />
                         <span className="w-1 h-1 rounded-full bg-gold/50 animate-pulse [animation-delay:150ms]" />
