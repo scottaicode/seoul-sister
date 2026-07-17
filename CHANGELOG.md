@@ -8,6 +8,16 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.8.1 (July 17, 2026): `yuri_send_failed` — make the v11.8.0 fixes measurable
+
+**Why.** v11.8.0 fixed three first-message frictions by *inference* (code + GA4 screenshots), but the funnel couldn't tell whether they worked: a failed send (server error, or the shared-IP abuse-429 that hid the input) writes NO row to `ss_widget_sessions` and looks identical to a visitor who simply chose to leave. So "abandonment" and "failure" were the same inscrutable zero.
+
+**What.** A new GA4 event `yuri_send_failed` fires whenever a send attempt does NOT produce a Yuri response, tagged by `reason`: `rate_limited` (per-IP/day abuse limit — transient, input stays open), `limit_reached` (the real per-visitor preview cap — paywall shown), or `error` (genuine network/5xx/parse failure with zero content). Wired at the three client failure points in `TryYuriSection.tsx`; the user-initiated abort path is deliberately NOT tracked (a cancel isn't a failure), and a partial-content stream isn't either (they got some answer). Pairing `yuri_send_failed` against `yuri_demo_first_message` finally separates FAILURE from ABANDONMENT in GA4 — the measurement needed to prove or kill the v11.8.0 fixes.
+
+Metadata only, no message content (GA4 stays PII-free). `WidgetEvent` added to `src/lib/analytics.ts`. Pure measurement plumbing — no AI touched (AI-First: PASS). tsc + build green.
+
+---
+
 ## v11.8.0 (July 17, 2026): Three landing-widget first-message frictions — the top of the only funnel that matters
 
 **Why.** Diagnostic on live data: `ss_widget_sessions` only ever records visitors who *already sent* a first message (every row `message_count>=1`), while GA4 showed `yuri_demo_shown` / `yuri_prefill_arrived` firing for people who then left without sending (e.g. a Johor Bahru/Singapore spike: demo shown 9×, sends 0). So the biggest leak is entirely client-side, between "widget loaded / prefill armed" and "first send" — invisible in the DB. A code-level friction audit (Explore agent + manual verification) found three real, code-confirmed causes. All three are conversion/first-message-capture fixes (ship-guard: PASS — GROWTH/MEASUREMENT + BLOCKING BUGFIX), not new product. AI-First guard + check: PASS (transport/UI-layer only; Yuri's model call, tool choice, and output untouched).

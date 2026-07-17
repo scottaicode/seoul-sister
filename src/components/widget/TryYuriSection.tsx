@@ -16,7 +16,7 @@ import {
 import { renderMarkdown, parseWidgetStream } from '@/lib/utils/widget-shared'
 import type { WidgetMessage } from '@/lib/utils/widget-shared'
 import { PRICING } from '@/lib/pricing'
-import { trackEvent, DemoEvent } from '@/lib/analytics'
+import { trackEvent, DemoEvent, WidgetEvent } from '@/lib/analytics'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -295,6 +295,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             setMessageCountState(MAX_FREE_MESSAGES)
             // Drop the empty placeholder assistant bubble we optimistically added.
             setMessages((prev) => prev.filter((m) => !m.isStreaming))
+            trackEvent(WidgetEvent.sendFailed, { reason: 'limit_reached' })
             return
           }
           if (errBody?.rateLimited) {
@@ -302,6 +303,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             // leave the input open so they can try again in a moment.
             setMessages((prev) => prev.filter((m) => !m.isStreaming))
             setError(errBody?.error || 'Yuri is getting a lot of traffic right now. Give it a moment and try again.')
+            trackEvent(WidgetEvent.sendFailed, { reason: 'rate_limited' })
             return
           }
           throw new Error(errBody?.error || 'Request failed')
@@ -384,7 +386,10 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
         if (!hadPartialContent) {
           // Preview-cap 429s are handled up front (serverLimitReached), so this
           // path is now only genuine failures — network drops, 5xx, parse errors.
+          // Record it: a failed send with zero content is invisible in the DB
+          // (no session row) and otherwise looks identical to a chosen bounce.
           setError('Something went wrong. Please try again.')
+          trackEvent(WidgetEvent.sendFailed, { reason: 'error' })
         }
       } finally {
         setIsStreaming(false)
