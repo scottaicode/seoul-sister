@@ -45,6 +45,9 @@ interface StreamCallbacks {
   onText: (text: string) => void
   onDone: (cleanedMessage?: string, sessionId?: string) => void
   onError: (error: Error) => void
+  /** Optional: a transient working-status line (e.g. a tool firing) shown
+   *  before the first text token so the thinking indicator has motion. */
+  onStatus?: (label: string) => void
 }
 
 /**
@@ -78,6 +81,8 @@ export async function parseWidgetStream(
           const event = JSON.parse(line.slice(6))
           if (event.type === 'text') {
             callbacks.onText(event.content)
+          } else if (event.type === 'status') {
+            callbacks.onStatus?.(event.label)
           } else if (event.type === 'done') {
             callbacks.onDone(event.message, event.session_id)
           } else if (event.type === 'error') {

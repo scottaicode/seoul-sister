@@ -103,6 +103,28 @@ function shouldWidgetForceToolUse(message: string): boolean {
   return false
 }
 
+/**
+ * Human-readable working status for a tool that just started, shown to the
+ * visitor as a transient line BEFORE the first text token so the "thinking"
+ * indicator has motion during the tool round-trip (Opus + tool + 2nd call can
+ * be several seconds on first send). Factual system status, not Yuri's voice —
+ * it states the true action the tool performs, never fabricates reasoning.
+ */
+function widgetToolStatusLabel(toolName: string): string {
+  switch (toolName) {
+    case 'search_products':
+      return 'Searching the product database…'
+    case 'compare_prices':
+      return 'Checking prices across retailers…'
+    case 'get_trending':
+      return 'Pulling what’s trending in Korea…'
+    case 'get_weather':
+      return 'Checking your local weather…'
+    default:
+      return 'Checking Seoul Sister’s database…'
+  }
+}
+
 const YURI_WIDGET_SYSTEM = `You are Yuri (유리), Seoul Sister's AI beauty advisor. "Yuri" means "glass" in Korean — a reference to 유리 피부 (glass skin), the aspirational K-beauty standard. You've spent 20+ years across Korean formulation labs, cosmetic chemistry, and the K-beauty retail ecosystem.
 
 ## Where This Conversation Is Happening
@@ -226,8 +248,18 @@ export async function POST(request: NextRequest) {
       'unknown'
     const rateCheck = await checkRateLimit(`widget:${ip}`, WIDGET_RATE_LIMIT, WIDGET_RATE_WINDOW)
     if (!rateCheck.allowed) {
+      // ABUSE rate limit (25/IP/day), NOT the per-visitor preview cap. This is
+      // keyed on bare IP, so behind NAT/CGNAT/VPN it can trip for a brand-new
+      // visitor who never sent a message. It must NOT be shown as the subscribe
+      // paywall — `rateLimited:true` + `limitReached:false` tells the client to
+      // show a transient "too much traffic, try again shortly" and KEEP the
+      // input open, instead of slamming the paywall on a never-sent stranger.
       return new Response(
-        JSON.stringify({ error: 'Rate limit reached. You\'ve used all your free preview messages for today. Subscribe for unlimited Yuri conversations.' }),
+        JSON.stringify({
+          error: 'Yuri is getting a lot of traffic right now. Give it a moment and try again.',
+          rateLimited: true,
+          limitReached: false,
+        }),
         { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': String(Math.ceil(rateCheck.resetIn / 1000)) } }
       )
     }
@@ -397,6 +429,8 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
         const loopMessages: Anthropic.Messages.MessageParam[] = [...messages]
         let toolLoopCount = 0
         let fullResponse = ''
+        // Emit the tool "working…" status at most once, before the first text.
+        let statusSent = false
         const forceToolUse = shouldWidgetForceToolUse(parsed.message)
         const toolCallLogs: ToolCallLog[] = []
         const toolNamesUsed: string[] = []
@@ -450,6 +484,16 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
             if (event.type === 'content_block_start') {
               if (event.content_block.type === 'tool_use') {
                 currentToolBlock = { id: event.content_block.id, name: event.content_block.name, input: '' }
+                // Surface a working status the instant a tool starts — but only
+                // before any text has streamed (statusSent), so a mid-answer tool
+                // call doesn't flash a status over real content. Gives the
+                // "thinking" indicator motion during the tool round-trip.
+                if (!statusSent && fullResponse.length === 0) {
+                  statusSent = true
+                  const label = widgetToolStatusLabel(event.content_block.name)
+                  const statusData = JSON.stringify({ type: 'status', label })
+                  await writer.write(encoder.encode(`data: ${statusData}\n\n`))
+                }
               }
             } else if (event.type === 'content_block_delta') {
               if (event.delta.type === 'text_delta') {
