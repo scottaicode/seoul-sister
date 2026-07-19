@@ -523,7 +523,11 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                           <p className="font-semibold text-gold">Yuri</p>
                         </div>
                       )}
-                      {m.text}
+                      {/* Clamp so the whole pre-chat state fits the card height
+                          without scrolling — the exhibit shows her voice, it
+                          doesn't need the full answer (that clipped behind the
+                          input on common screen sizes). */}
+                      <p className="line-clamp-3">{m.text}</p>
                     </div>
                   </div>
                 ))}
