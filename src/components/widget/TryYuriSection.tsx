@@ -534,7 +534,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
               </div>
               <p className="text-[11px] text-white/40 italic pt-2 px-1 leading-relaxed">
                 She gets sharper once she actually knows you. That&apos;s the
-                subscriber side. Try her free above.
+                subscriber side. Ask her anything below, free.
               </p>
             </div>
           </div>
