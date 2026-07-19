@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import PricingCards from '@/components/pricing/PricingCards'
 import TryYuriSection from '@/components/widget/TryYuriSection'
+import { MAX_FREE_MESSAGES } from '@/lib/utils/widget-session'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -211,7 +212,7 @@ export default function LandingPage() {
             </motion.div>
 
             <motion.p variants={fadeUp} className="text-xs text-white/30 mt-4">
-              Talk to Yuri free. 20 messages, no signup.
+              Talk to Yuri free. {MAX_FREE_MESSAGES} messages, no signup.
             </motion.p>
           </motion.div>
 
@@ -477,7 +478,7 @@ export default function LandingPage() {
           >
             Start Your Journey <ArrowRight className="w-4 h-4" />
           </Link>
-          <p className="text-xs text-white/30 mt-4">Talk to Yuri free. 20 messages, no signup.</p>
+          <p className="text-xs text-white/30 mt-4">Talk to Yuri free. {MAX_FREE_MESSAGES} messages, no signup.</p>
         </motion.div>
       </section>
 

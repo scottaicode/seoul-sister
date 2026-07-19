@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Star, Loader2, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { SUBSCRIPTION_TIERS } from '@/lib/stripe'
+import { MAX_FREE_MESSAGES } from '@/lib/utils/widget-session'
 
 interface PricingCardsProps {
   /** If true, renders checkout CTAs for authenticated users */
@@ -91,7 +92,7 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
         </button>
 
         <p className="text-center text-[10px] text-white/30 mt-3">
-          Try 20 free preview messages before subscribing.
+          Try {MAX_FREE_MESSAGES} free preview messages before subscribing.
         </p>
       </div>
     </div>
