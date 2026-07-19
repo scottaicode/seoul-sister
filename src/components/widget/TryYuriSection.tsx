@@ -132,7 +132,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   // avoid an SSR/client hydration mismatch, then randomize client-side on mount.
   const [demoScript, setDemoScript] = useState<DemoMessage[]>(DEMO_OWNER)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
@@ -532,10 +532,6 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                   </div>
                 ))}
               </div>
-              <p className="text-[11px] text-white/40 italic pt-2 px-1 leading-relaxed">
-                She gets sharper once she actually knows you. That&apos;s the
-                subscriber side. Ask her anything below, free.
-              </p>
             </div>
           </div>
         )}
@@ -624,16 +620,18 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
         </div>
       )}
 
-      {/* Input */}
+      {/* Input — a two-row textarea, not a single skinny line: it reads as
+          "write to me about your skin" and fits how people actually ask
+          (full sentences). Enter sends, Shift+Enter adds a line. */}
       {!isAtLimit && (
-        <div className="flex items-center gap-2 p-3 border-t border-white/10 bg-seoul-card/80">
-          <input
+        <div className="flex items-end gap-2 p-3 border-t border-white/10 bg-seoul-card/80">
+          <textarea
             ref={inputRef}
-            type={emailGateActive ? 'email' : 'text'}
+            rows={2}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
                 sendMessage(input)
               }
@@ -646,7 +644,8 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                   : 'Type here to ask about your skin. Free, no signup.'
             }
             disabled={isStreaming}
-            className="flex-1 text-sm py-2.5 px-3 rounded-xl bg-white/10 border border-white/15 text-white focus:outline-none focus:ring-2 focus:ring-gold/30 placeholder:text-white/40"
+            inputMode={emailGateActive ? 'email' : 'text'}
+            className="flex-1 text-sm py-2.5 px-3 rounded-xl bg-white/10 border border-white/15 text-white focus:outline-none focus:ring-2 focus:ring-gold/30 placeholder:text-white/40 resize-none leading-snug"
             aria-label="Ask Yuri a question"
           />
           <button
