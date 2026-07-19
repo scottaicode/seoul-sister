@@ -508,7 +508,15 @@ export default function LandingPage() {
             <Link href="/support" className="hover:text-gold transition-colors">Support</Link>
           </div>
         </div>
-        <div className="flex justify-center mt-8 mb-4" dangerouslySetInnerHTML={{__html: `<a href="https://theresanaiforthat.com/ai/seoul-sister/?ref=featured&v=11410653" target="_blank" rel="nofollow"><img width="300" src="https://media.theresanaiforthat.com/featured-on-taaft.png?width=600" alt="Featured on There's An AI For That" /></a>`}} />
+        {/* Badge image is self-hosted (public/featured-on-taaft.png): the TAAFT CDN
+            domain is on common content-blocker lists, which rendered visitors an
+            empty broken-image box. Explicit dimensions prevent layout shift. */}
+        <div className="flex justify-center mt-8 mb-4">
+          <a href="https://theresanaiforthat.com/ai/seoul-sister/?ref=featured&v=11410653" target="_blank" rel="nofollow noopener">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img width={300} height={63} src="/featured-on-taaft.png" alt="Featured on There's An AI For That" />
+          </a>
+        </div>
 
         <p className="text-center text-xs text-white/20 mt-4">&copy; 2026 Seoul Sister. All rights reserved.</p>
       </footer>
