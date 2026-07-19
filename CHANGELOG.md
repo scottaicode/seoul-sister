@@ -8,6 +8,12 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.9.2 (July 19, 2026): Route the landing page back to Yuri
+
+Full below-the-fold review with Scott (system of record: `LANDING-PAGE-REVIEW-JUL19.md`). Two conversion-coherence fixes shipped: (1) the final CTA gains a **"Talk to Yuri Free" secondary button** scrolling back to `#hero-yuri` — its own caption promised a free no-signup chat while the only button led to `/register`, leaving the convinced-but-not-ready scroller with no path back to the widget (the funnel's actual converter); (2) **"How It Works" step 1 is now "Talk to Yuri"** (was "Scan or Search" — the pre-v11.0.0 story; measured scans ≈ 0, every real user starts in chat; scan/search folded into step 2). Deferred with explicit un-defer triggers in the review doc: insider testimonials (swap when first stranger quote exists), 20-card feature-story consolidation (next deliberate redesign only), Community Reviews card aspiration. Widget polish same day (post-v11.9.1 iterations with Scott): example bubbles line-clamped to fit the card, caption removed (duplicated hero copy, was clipping), input upgraded to a full-width two-row composer with embedded send button (ChatGPT-style pattern). ship-guard PASS (GROWTH), ai-first PASS (static copy/UI only), tsc + build green.
+
+---
+
 ## v11.9.1 (July 19, 2026): Widget greeting state — make it obvious the hero chat is usable
 
 **Why.** Lynndon (Bailey's boyfriend, live-testing July 18) reported he couldn't tell how to use the landing-page Yuri widget. The screenshot + code confirmed why: the card opened with an unlabeled scripted demo conversation under a "Live" badge (reads as someone else's real chat, or a fake one), and the two strongest engagement affordances — the explanatory caption and the 4 quick-prompt chips — rendered BELOW the demo, pushed out of view by the card's fixed height. Research is unambiguous: greetings with quick-reply buttons see ~3x higher completion / ~35% higher engagement, and the #1 chatbot UX failure is visitors not knowing what's possible.
