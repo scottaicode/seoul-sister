@@ -19,6 +19,12 @@ const searchSchema = z.object({
   // comparison and dupe-finder flows should pass `require_price: true` to keep
   // the previous strict behavior. Implicitly enabled when `price_max` is set.
   require_price: z.boolean().optional().default(false),
+  // LGAAS Blueprint 130 — when true, return the COMPLETE mapped INCI list per
+  // product instead of the top-15 cap. Used by LGAAS's post-generation
+  // ingredient-claim checker, where a claim missing from a truncated list can
+  // only ever be an advisory flag; the full list makes verdicts definitive.
+  // Default false keeps every existing consumer's payload byte-identical.
+  full_inci: z.boolean().optional().default(false),
 })
 
 // Skin concern → product category mapping (lowercase to match ss_products.category)
@@ -55,7 +61,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const params = searchSchema.parse(body)
-    const { query, categories, skin_types, skin_concerns, price_max, brands, limit, require_price } = params
+    const { query, categories, skin_types, skin_concerns, price_max, brands, limit, require_price, full_inci } = params
+    // Real INCI labels top out around ~150 entries (longest in-catalog is 112);
+    // 200 is an effectively-uncapped ceiling that still bounds a runaway query.
+    const inciCap = full_inci ? 200 : 15
 
     if (!query && !categories?.length && !skin_types?.length && !skin_concerns?.length && !brands?.length) {
       throw new AppError('At least one filter is required', 400)
@@ -188,7 +197,7 @@ export async function POST(request: NextRequest) {
         .select('product_id, position, ingredient:ss_ingredients(name_inci, name_en, function, is_active, safety_rating)')
         .in('product_id', productIds)
         .order('position')
-        .limit(productIds.length * 15)
+        .limit(productIds.length * inciCap)
       if (piError) {
         console.warn('Product ingredient fetch failed (non-fatal):', piError.message)
       } else if (pi) {
@@ -209,7 +218,7 @@ export async function POST(request: NextRequest) {
             ingredientsByProductId.set(row.product_id, [])
           }
           const existing = ingredientsByProductId.get(row.product_id)!
-          if (existing.length >= 15) continue
+          if (existing.length >= inciCap) continue
           existing.push({
             position: row.position,
             inci_name: ing.name_inci,
@@ -241,6 +250,10 @@ export async function POST(request: NextRequest) {
       // (not all products in ss_products have been INCI-mapped into
       // ss_product_ingredients yet).
       product.ingredients = ingredientsByProductId.get(p.id) || []
+      // BP130 — explicit completeness marker so consumers never have to infer
+      // "was this list truncated?" from its length. Only stamped on full_inci
+      // requests, keeping the default response shape byte-identical.
+      if (full_inci) product.inci_complete = true
       return product
     })
 
