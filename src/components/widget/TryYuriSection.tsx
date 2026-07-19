@@ -384,16 +384,20 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
         setMessageCount(newCount)
         setMessageCountState(newCount)
 
-        // Email gate satisfied: the message that just succeeded contained the
-        // address (the server let it through and captured it). Close the gate
-        // and restore the question that was blocked so they can just hit send.
-        if (emailGateActive && /\S+@\S+\.\S+/.test(trimmed)) {
+        // Email gate satisfied: ANY send the server accepted while the gate
+        // was showing means the gate is no longer binding (email captured, or
+        // the server judged it satisfied another way) — clear the gate UI.
+        // If the sent message was the email itself, also restore the stashed
+        // question; if they typed a question directly, they've moved on.
+        if (emailGateActive) {
           setEmailGateActive(false)
-          trackEvent(WidgetEvent.emailGateSubmitted)
-          if (pendingQuestion) {
-            setInput(pendingQuestion)
-            setPendingQuestion(null)
+          if (/\S+@\S+\.\S+/.test(trimmed)) {
+            trackEvent(WidgetEvent.emailGateSubmitted)
+            if (pendingQuestion) {
+              setInput(pendingQuestion)
+            }
           }
+          setPendingQuestion(null)
         }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
