@@ -438,7 +438,7 @@ export async function POST(request: NextRequest) {
 
     dynamicContext += `\n\n## Conversation State (facts, not instructions)
 - This is the visitor's message #${turnNumber} in this conversation.
-- Free preview usage: ${lifetimeUsed !== null ? `this is free message #${lifetimeUsed + 1} of ${MAX_FREE_MESSAGES} total (lifetime, across visits and devices).` : `the preview allows ${MAX_FREE_MESSAGES} total free messages; exact usage unavailable this turn.`} If they ask about limits, that's the honest answer — never claim the preview is unlimited. Don't volunteer a countdown unprompted; near the end (last 2-3 messages), it's fair and honest to mention the preview is almost up.
+- Free preview usage: ${lifetimeUsed !== null ? `this is free message #${lifetimeUsed + 1} of ${MAX_FREE_MESSAGES} total (lifetime, across visits and devices). After you reply, exactly ${Math.max(0, MAX_FREE_MESSAGES - lifetimeUsed - 1)} free message${MAX_FREE_MESSAGES - lifetimeUsed - 1 === 1 ? '' : 's'} remain. These numbers are authoritative — if you state a count, use THESE; never estimate or count the transcript's bubbles yourself.` : `the preview allows ${MAX_FREE_MESSAGES} total free messages; exact usage unavailable this turn — don't state a specific count.`} If they ask about limits, that's the honest answer — never claim the preview is unlimited. Don't volunteer a countdown unprompted; near the end (last 2-3 messages), it's fair and honest to mention the preview is almost up.
 - Email on file for this visitor: ${hasEmail ? 'YES — you already have it. Do NOT ask again; just keep helping.' : 'NO — Seoul Sister has no way to reach them after they close this tab.'}${history.length > 0 ? `
 - Your earlier messages in this conversation are above. If you already made the email offer, you can see it there — don't repeat it.` : ''}
 
@@ -659,8 +659,20 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
           cached: usageTotals.cacheRead > 0,
         })
 
-        // Include session_id in done event so client can send it back
-        const done = JSON.stringify({ type: 'done', message: cleanedResponse, session_id: sessionId })
+        // Include session_id in done event so client can send it back, plus
+        // the server-authoritative remaining free-message count (lifetime
+        // ledger) so the client counter syncs to truth instead of drifting on
+        // its 30-day localStorage window (found live: a returning visitor's
+        // client said 8 remaining while the server ledger said 4).
+        const remaining = visitor
+          ? Math.max(0, MAX_FREE_MESSAGES - (visitor.total_messages + 1))
+          : undefined
+        const done = JSON.stringify({
+          type: 'done',
+          message: cleanedResponse,
+          session_id: sessionId,
+          ...(remaining !== undefined ? { remaining } : {}),
+        })
         await writer.write(encoder.encode(`data: ${done}\n\n`))
 
         // --- Post-stream persistence ---

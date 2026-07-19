@@ -338,6 +338,10 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
           throw new Error(errBody?.error || 'Request failed')
         }
 
+        // Server-authoritative remaining count captured from the done event —
+        // used below to sync the local counter to the lifetime ledger.
+        let serverRemaining: number | null = null
+
         await parseWidgetStream(response.body, controller.signal, {
           onStatus(label) {
             // Show the working status only until the first real token arrives.
@@ -358,9 +362,10 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
               return updated
             })
           },
-          onDone(cleanedMessage, sessionId) {
+          onDone(cleanedMessage, sessionId, remaining) {
             setStatusLabel(null)
             if (sessionId) setWidgetSessionId(sessionId)
+            if (typeof remaining === 'number') serverRemaining = remaining
             setMessages((prev) => {
               const updated = [...prev]
               const last = updated[updated.length - 1]
@@ -379,8 +384,14 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
           },
         })
 
-        // Increment count only after successful stream
-        const newCount = messageCount + 1
+        // Sync the counter after a successful stream. Prefer the server's
+        // lifetime ledger (fixes the drift where a returning visitor's local
+        // 30-day counter said 8 remaining while the server said 4); fall back
+        // to a local increment when the server didn't send a count.
+        const newCount =
+          serverRemaining !== null
+            ? Math.max(0, MAX_FREE_MESSAGES - serverRemaining)
+            : messageCount + 1
         setMessageCount(newCount)
         setMessageCountState(newCount)
 
@@ -598,7 +609,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                   href="/register?plan=pro_monthly"
                   className="inline-flex items-center gap-1.5 glass-button-primary text-xs py-2 px-5"
                 >
-                  Subscribe at {PRICING.monthly_display}/mo <ArrowRight className="w-3 h-3" />
+                  Subscribe at {PRICING.monthly_display} <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
             )}

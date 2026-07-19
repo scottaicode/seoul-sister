@@ -43,7 +43,10 @@ export interface WidgetMessage {
 
 interface StreamCallbacks {
   onText: (text: string) => void
-  onDone: (cleanedMessage?: string, sessionId?: string) => void
+  /** remaining = server-authoritative free messages left for this visitor
+   *  (lifetime ledger), when the server knows it. Lets the client counter
+   *  sync to truth instead of drifting on its own 30-day localStorage count. */
+  onDone: (cleanedMessage?: string, sessionId?: string, remaining?: number) => void
   onError: (error: Error) => void
   /** Optional: a transient working-status line (e.g. a tool firing) shown
    *  before the first text token so the thinking indicator has motion. */
@@ -84,7 +87,11 @@ export async function parseWidgetStream(
           } else if (event.type === 'status') {
             callbacks.onStatus?.(event.label)
           } else if (event.type === 'done') {
-            callbacks.onDone(event.message, event.session_id)
+            callbacks.onDone(
+              event.message,
+              event.session_id,
+              typeof event.remaining === 'number' ? event.remaining : undefined
+            )
           } else if (event.type === 'error') {
             callbacks.onError(new Error(event.message))
           }
