@@ -8,6 +8,24 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.9.1 (July 19, 2026): Widget greeting state — make it obvious the hero chat is usable
+
+**Why.** Lynndon (Bailey's boyfriend, live-testing July 18) reported he couldn't tell how to use the landing-page Yuri widget. The screenshot + code confirmed why: the card opened with an unlabeled scripted demo conversation under a "Live" badge (reads as someone else's real chat, or a fake one), and the two strongest engagement affordances — the explanatory caption and the 4 quick-prompt chips — rendered BELOW the demo, pushed out of view by the card's fixed height. Research is unambiguous: greetings with quick-reply buttons see ~3x higher completion / ~35% higher engagement, and the #1 chatbot UX failure is visitors not knowing what's possible.
+
+**What shipped** (`TryYuriSection.tsx`, pre-conversation state only — zero changes to streaming, prompts, tools, or model calls):
+1. **Greeting state first**: Yuri welcomes the visitor in first person (identify + value + next step: "Hey, I'm Yuri… free, no signup. Start with one of these, or just type below"), with the 4 quick-prompt chips directly beneath — everything needed to act is visible without scrolling. The greeting is presentation copy, lives only in the pre-live render branch, and never enters the history sent to the server.
+2. **Demo becomes a labeled exhibit**: first exchange only (2 messages), under an explicit "Example — Yuri with a subscriber she's known for months" / "…building a starter routine with a new member" divider, dimmed, below the action layer. Owner/beginner A/B + GA4 `demo_variant` tracking preserved.
+3. **Honest badge**: "Free preview" until the visitor's own conversation starts streaming, then "Live". A "Live" badge over scripted content was a small trust defect for a brand whose moat is honesty.
+4. **Input affordance**: higher contrast, directive pre-conversation placeholder ("Type here to ask about your skin. Free, no signup.").
+
+Also in this release window (commit a9708d6): landing hero, final CTA, and pricing card had hardcoded "20 messages" — stale after v11.9.0's cap change, caught by Bailey on the live site. All three now derive from `MAX_FREE_MESSAGES` so copy can never drift from the enforced cap.
+
+**Feeder-path check**: the blog/product/ingredient "Ask Yuri" CTAs (`?ask=` prefill + `?from=` attribution) only set and focus the input — unaffected by the new state; the prefilled question is now MORE visible since no transcript buries the input. **Measurement**: `yuri_demo_shown → yuri_demo_first_message` rate (already instrumented, per-variant) is the kill-or-keep metric for this redesign.
+
+Gates: ship-guard PASS (GROWTH/MEASUREMENT), ai-first-guard PASS (presentation-layer welcome copy, same class as demo scripts; all real responses remain Opus), tsc + build green.
+
+---
+
 ## v11.9.0 (July 19, 2026): Widget give/gate redesign + preview-quota integrity — the "entire cow" fix
 
 **Why.** Bailey and her boyfriend Lynndon live-tested the landing widget July 18 and reported it gives away so much there's no reason to subscribe. The transcripts confirmed it, and worse: in a 12-message session Yuri audited his entire routine, delivered a complete AM/PM structure, specific product picks with prices, a week-by-week 6-week schedule — then EMAILED him the whole plan. Three structural failures compounded it, all verified in data: (1) 0 of 54 all-time sessions ever reached the 20-message cap — conversations complete and end at 12–15 messages, so the only conversion gate never once fired; (2) the cap is keyed to a client-minted UUID in localStorage/cookie, so switching desktop→phone minted a brand-new visitor with a fresh 20 (Lynndon's two rows share `ip_hash 9a0n8z`, different `user_agent_hash`); (3) Yuri was never told a cap exists — asked "how many questions do I have remaining?", she answered "there's no question limit here, ask me as much as you want."

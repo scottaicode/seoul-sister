@@ -39,6 +39,16 @@ const QUICK_PROMPTS = [
 // Nothing here is fabricated: every move (pulling weather, reading INCI, building
 // a budget routine from real catalog products) is something live Yuri genuinely
 // does. Beginner-demo product names + prices are real verified catalog entries.
+//
+// v11.9.1 (July 19 2026, Lynndon confusion report): the demo is no longer the
+// FIRST thing a visitor sees — an unlabeled scripted transcript read as a real
+// conversation already in progress, and pushed the quick prompts below the
+// card's scroll. The pre-conversation state now leads with a greeting from
+// Yuri + the quick prompts (the action layer), and renders only the demo's
+// FIRST exchange below an explicit "Example" divider (the exhibit layer). The
+// greeting lives ONLY in this render branch — it is never added to `messages`,
+// so it never enters the history sent to the server (no scripted words in
+// Yuri's real transcript).
 type DemoMessage = { role: 'user' | 'assistant'; text: string }
 
 const DEMO_OWNER: DemoMessage[] = [
@@ -444,50 +454,39 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
           </p>
           <p className="text-xs text-white/40">Your honest K-beauty friend in Seoul. Ask me anything.</p>
         </div>
-        <span className="badge-gold text-[10px] animate-pulse-soft">Live</span>
+        {/* "Live" only once a real conversation is streaming — a scripted
+            example under a "Live" badge read as a fake live chat (v11.9.1). */}
+        <span className="badge-gold text-[10px] animate-pulse-soft">
+          {showLive ? 'Live' : 'Free preview'}
+        </span>
       </div>
 
       {/* Messages area */}
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
-        {/* Demo conversation (before first interaction) */}
+        {/* Pre-conversation state: greeting + prompts first, labeled example below */}
         {!showLive && (
           <div className="p-4 space-y-3">
-            {/* Demo shows the memory-rich ceiling: Yuri reading your real routine,
-                your city's live weather, and your product INCI to diagnose a
-                problem. Condensed from a real subscriber conversation — every
-                capability shown is genuine (never fabricated). The soft caption +
-                the live "try free" widget below let the gap sell the upgrade. */}
-            {demoScript.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs leading-relaxed ${
-                    m.role === 'user'
-                      ? 'bg-gradient-to-br from-gold to-gold-light text-seoul-dark'
-                      : 'bg-white/5 border border-white/10 text-white/80'
-                  }`}
-                >
-                  {m.role === 'assistant' && (
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Sparkles className="w-3 h-3 text-gold" />
-                      <p className="font-semibold text-gold">Yuri</p>
-                    </div>
-                  )}
-                  {m.text}
+            {/* Yuri's greeting — the visitor's entry point. Identify + value +
+                clear next step (the welcome-message pattern that beats a bare
+                transcript for cold-visitor engagement). Static presentation
+                copy: honest claims only, never sent to the server as history. */}
+            <div className="flex justify-start">
+              <div className="max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed bg-white/5 border border-gold/25 text-white/85">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Sparkles className="w-3 h-3 text-gold" />
+                  <p className="font-semibold text-gold">Yuri</p>
                 </div>
+                Hey, I&apos;m Yuri, a K-beauty advisor who&apos;s honest to a fault.
+                Tell me what you&apos;re using or what&apos;s bugging your skin and
+                I&apos;ll give you my real read. Free, no signup. Start with one of
+                these, or just type below:
               </div>
-            ))}
+            </div>
 
-            {/* Soft caption: frames the demo as the with-an-account ceiling,
-                no hard paywall — the free widget sits right below. Adapts to the
-                demo angle (beginner-from-zero vs existing-shelf). */}
-            <p className="text-[11px] text-white/40 italic pt-1 px-1 leading-relaxed">
-              {demoScript === DEMO_BEGINNER
-                ? "No products, no clue, any budget — Yuri meets you right where you are. Talk to her free below. She gets better the more she knows you."
-                : 'This is Yuri once she knows your skin, your routine, even your weather. Talk to her free below to see what she’s like. She gets better once she actually knows you.'}
-            </p>
-
-            {/* Quick prompts */}
-            <div className="flex flex-wrap gap-2 pt-2">
+            {/* Quick prompts — directly under the greeting so they're visible
+                without scrolling (they were previously pushed below the demo,
+                out of view at the card's fixed height). */}
+            <div className="flex flex-wrap gap-2">
               {QUICK_PROMPTS.map((q) => (
                 <button
                   key={q}
@@ -497,6 +496,42 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                   {q}
                 </button>
               ))}
+            </div>
+
+            {/* Labeled example — the with-an-account ceiling as an exhibit,
+                never mistakable for the visitor's own conversation. First
+                exchange only; every capability shown is genuine. */}
+            <div className="pt-3 mt-1 border-t border-white/10">
+              <p className="text-[10px] uppercase tracking-wider text-white/35 mb-2">
+                {demoScript === DEMO_BEGINNER
+                  ? 'Example — Yuri building a starter routine with a new member'
+                  : 'Example — Yuri with a subscriber she’s known for months'}
+              </p>
+              <div className="space-y-3 opacity-80">
+                {demoScript.slice(0, 2).map((m, i) => (
+                  <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs leading-relaxed ${
+                        m.role === 'user'
+                          ? 'bg-gradient-to-br from-gold to-gold-light text-seoul-dark'
+                          : 'bg-white/5 border border-white/10 text-white/80'
+                      }`}
+                    >
+                      {m.role === 'assistant' && (
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Sparkles className="w-3 h-3 text-gold" />
+                          <p className="font-semibold text-gold">Yuri</p>
+                        </div>
+                      )}
+                      {m.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-white/40 italic pt-2 px-1 leading-relaxed">
+                She gets sharper once she actually knows you. That&apos;s the
+                subscriber side. Try her free above.
+              </p>
             </div>
           </div>
         )}
@@ -602,10 +637,12 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             placeholder={
               emailGateActive
                 ? 'your@email.com'
-                : "Ask me anything... what you're using, what's not working..."
+                : showLive
+                  ? "Ask me anything... what you're using, what's not working..."
+                  : 'Type here to ask about your skin. Free, no signup.'
             }
             disabled={isStreaming}
-            className="flex-1 text-sm py-2.5 px-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-gold/30 placeholder:text-white/30"
+            className="flex-1 text-sm py-2.5 px-3 rounded-xl bg-white/10 border border-white/15 text-white focus:outline-none focus:ring-2 focus:ring-gold/30 placeholder:text-white/40"
             aria-label="Ask Yuri a question"
           />
           <button
