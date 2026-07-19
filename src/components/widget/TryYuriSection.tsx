@@ -620,46 +620,48 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
         </div>
       )}
 
-      {/* Input — a two-row textarea, not a single skinny line: it reads as
-          "write to me about your skin" and fits how people actually ask
-          (full sentences). Enter sends, Shift+Enter adds a line. */}
+      {/* Input — a full-width two-row composer with the send button INSIDE the
+          field (the ChatGPT-style pattern visitors recognize as "write to me").
+          Enter sends, Shift+Enter adds a line. */}
       {!isAtLimit && (
-        <div className="flex items-end gap-2 p-3 border-t border-white/10 bg-seoul-card/80">
-          <textarea
-            ref={inputRef}
-            rows={2}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                sendMessage(input)
+        <div className="p-3 border-t border-white/10 bg-seoul-card/80">
+          <div className="relative">
+            <textarea
+              ref={inputRef}
+              rows={2}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  sendMessage(input)
+                }
+              }}
+              placeholder={
+                emailGateActive
+                  ? 'your@email.com'
+                  : showLive
+                    ? "Ask me anything... what you're using, what's not working..."
+                    : 'Type here to ask about your skin. Free, no signup.'
               }
-            }}
-            placeholder={
-              emailGateActive
-                ? 'your@email.com'
-                : showLive
-                  ? "Ask me anything... what you're using, what's not working..."
-                  : 'Type here to ask about your skin. Free, no signup.'
-            }
-            disabled={isStreaming}
-            inputMode={emailGateActive ? 'email' : 'text'}
-            className="flex-1 text-sm py-2.5 px-3 rounded-xl bg-white/10 border border-white/15 text-white focus:outline-none focus:ring-2 focus:ring-gold/30 placeholder:text-white/40 resize-none leading-snug"
-            aria-label="Ask Yuri a question"
-          />
-          <button
-            onClick={() => sendMessage(input)}
-            disabled={isStreaming || !input.trim()}
-            className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-gold to-gold-light text-seoul-dark flex items-center justify-center transition-all hover:shadow-glow-gold disabled:opacity-40"
-            aria-label="Send"
-          >
-            {isStreaming ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </button>
+              disabled={isStreaming}
+              inputMode={emailGateActive ? 'email' : 'text'}
+              className="w-full text-sm py-2.5 pl-3 pr-12 rounded-xl bg-white/10 border border-white/15 text-white focus:outline-none focus:ring-2 focus:ring-gold/30 placeholder:text-white/40 resize-none leading-snug block"
+              aria-label="Ask Yuri a question"
+            />
+            <button
+              onClick={() => sendMessage(input)}
+              disabled={isStreaming || !input.trim()}
+              className="absolute right-2 bottom-2 w-9 h-9 rounded-lg bg-gradient-to-br from-gold to-gold-light text-seoul-dark flex items-center justify-center transition-all hover:shadow-glow-gold disabled:opacity-40"
+              aria-label="Send"
+            >
+              {isStreaming ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </button>
+          </div>
         </div>
       )}
 
