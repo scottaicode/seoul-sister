@@ -107,6 +107,13 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   // still under the limit. Without it, a server-blocked visitor saw only a
   // generic "Something went wrong" error and no way to subscribe.
   const [serverLimitReached, setServerLimitReached] = useState(false)
+  // Email continue-gate (July 19 2026): the server blocks message N+ for a
+  // visitor with no email on file (429 `emailRequired`). We stash the question
+  // that got blocked, ask for the email, send the email THROUGH the chat (the
+  // server's capture pipeline records it and Yuri acknowledges in her own
+  // voice), then restore the stashed question into the input.
+  const [emailGateActive, setEmailGateActive] = useState(false)
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null)
   // Transient "working…" status (e.g. a tool firing) shown inside the thinking
   // indicator before Yuri's first token, so a multi-second tool round-trip shows
   // motion instead of appearing frozen. Cleared the instant real text streams.
@@ -298,6 +305,18 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             trackEvent(WidgetEvent.sendFailed, { reason: 'limit_reached' })
             return
           }
+          if (errBody?.emailRequired) {
+            // Continue-gate, not the paywall: drop BOTH optimistic bubbles
+            // (the server never processed this message), stash the question,
+            // and open the email ask. Input stays open.
+            setMessages((prev) => prev.filter((m) => m.id !== userMsg.id && m.id !== assistantMsg.id))
+            setPendingQuestion((prev) => prev ?? trimmed)
+            if (!emailGateActive) {
+              setEmailGateActive(true)
+              trackEvent(WidgetEvent.emailGateShown)
+            }
+            return
+          }
           if (errBody?.rateLimited) {
             // Transient: drop the placeholder bubble, surface a soft retry,
             // leave the input open so they can try again in a moment.
@@ -354,6 +373,18 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
         const newCount = messageCount + 1
         setMessageCount(newCount)
         setMessageCountState(newCount)
+
+        // Email gate satisfied: the message that just succeeded contained the
+        // address (the server let it through and captured it). Close the gate
+        // and restore the question that was blocked so they can just hit send.
+        if (emailGateActive && /\S+@\S+\.\S+/.test(trimmed)) {
+          setEmailGateActive(false)
+          trackEvent(WidgetEvent.emailGateSubmitted)
+          if (pendingQuestion) {
+            setInput(pendingQuestion)
+            setPendingQuestion(null)
+          }
+        }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           setMessages((prev) => {
@@ -396,7 +427,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
         setStatusLabel(null)
       }
     },
-    [isStreaming, isAtLimit, messageCount, messages, demoScript]
+    [isStreaming, isAtLimit, messageCount, messages, demoScript, emailGateActive, pendingQuestion]
   )
 
   // ---------- Chat content (shared between both variants) ----------
@@ -543,12 +574,23 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
         </div>
       )}
 
+      {/* Email continue-gate banner */}
+      {!isAtLimit && emailGateActive && (
+        <div className="px-4 py-2.5 bg-gold/10 border-t border-gold/20">
+          <p className="text-xs text-gold-light text-center leading-relaxed">
+            Your question is saved. Drop your email below so Yuri can keep the
+            conversation (and send you a recap) — then you&apos;ll pick up right
+            where you left off.
+          </p>
+        </div>
+      )}
+
       {/* Input */}
       {!isAtLimit && (
         <div className="flex items-center gap-2 p-3 border-t border-white/10 bg-seoul-card/80">
           <input
             ref={inputRef}
-            type="text"
+            type={emailGateActive ? 'email' : 'text'}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -557,7 +599,11 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                 sendMessage(input)
               }
             }}
-            placeholder="Ask me anything... what you're using, what's not working..."
+            placeholder={
+              emailGateActive
+                ? 'your@email.com'
+                : "Ask me anything... what you're using, what's not working..."
+            }
             disabled={isStreaming}
             className="flex-1 text-sm py-2.5 px-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-gold/30 placeholder:text-white/30"
             aria-label="Ask Yuri a question"

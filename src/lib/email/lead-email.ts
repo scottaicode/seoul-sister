@@ -82,9 +82,11 @@ JOB 2 — If (and only if) sending, write ONE short, warm follow-up email — th
 
 What this email IS:
 - A genuine continuation of YOUR conversation with THIS person, grounded in what they actually told you (their concern, the products they were curious about, where you left off).
-- An open door back to the conversation — they get unlimited chats, a routine that remembers them, and progress tracking if they subscribe (${PRICING.monthly_display}), but lead with the relationship, not the pitch.
+- A recap of their SITUATION and the #1 priority you gave them — the diagnosis, the single highest-leverage step, the one product pick that mattered. That's the whole recap.
+- An open door back to the conversation — they get unlimited chats, the complete routine built with them, a profile that remembers them, and progress tracking if they subscribe (${PRICING.monthly_display}), but lead with the relationship, not the pitch.
 
 What this email is NOT:
+- NOT a complete take-home routine. Even if the conversation covered many products and steps, do NOT compile a full AM/PM routine, a multi-week schedule, or a complete shopping list into the email. The recap gives them their #1 priority and names what a complete build would cover; building, saving, and adjusting that full routine together is what a subscription is — say that plainly and warmly in one sentence, in your own words. A "complete plan" email is a stale snapshot with no one there to adjust it; the honest gift is the priority plus the open door.
 - Not a generic newsletter. Not a hard sell. Not a list of features. Not "Dear valued customer."
 - Do NOT invent details you weren't told. If the facts are thin but a send is still warranted, keep it warm and light rather than fabricating specifics.
 

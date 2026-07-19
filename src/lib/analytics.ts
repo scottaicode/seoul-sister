@@ -66,6 +66,13 @@ export const DemoEvent = {
  *  proven or killed. Metadata only, no message content (keeps GA4 PII-free). */
 export const WidgetEvent = {
   sendFailed: 'yuri_send_failed',
+  // Email continue-gate (July 19 2026): after N free messages the server
+  // requires an email to continue. `emailGateShown` fires when a send is
+  // blocked into the gate; `emailGateSubmitted` when the visitor provides an
+  // address and the conversation resumes. shown→submitted is the gate's
+  // conversion rate — the measurement that proves or kills the gate placement.
+  emailGateShown: 'yuri_email_gate_shown',
+  emailGateSubmitted: 'yuri_email_gate_submitted',
 } as const
 
 /** Contextual Yuri nudge on Products/Ingredients/Blog detail pages (Phase 4). The

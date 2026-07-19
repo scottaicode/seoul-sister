@@ -16,7 +16,14 @@ export interface WidgetVisitor {
   captured_email?: string | null
 }
 
-const MAX_FREE_MESSAGES = 20
+/**
+ * Lifetime free preview messages per visitor (July 19 2026: 20 → 12).
+ * Measured: in 54 all-time sessions no visitor ever reached 20 — real
+ * consultations complete by message ~12-15, so the cap never functioned as a
+ * conversion moment. 12 still fits a full qualify-then-solve conversation.
+ * Exported so the chat route can surface honest usage facts to Yuri.
+ */
+export const MAX_FREE_MESSAGES = 12
 
 /** Columns selected for a visitor record. captured_email is included but tolerated-absent pre-migration. */
 const VISITOR_SELECT = 'id, visitor_id, total_messages, total_sessions, total_tool_calls, ai_memory, captured_email'
@@ -155,7 +162,7 @@ export async function incrementVisitorCounters(
 }
 
 /**
- * Check if visitor has reached the 20-message free limit.
+ * Check if visitor has reached the lifetime free-message limit.
  */
 export function isVisitorAtLimit(visitor: WidgetVisitor): boolean {
   return visitor.total_messages >= MAX_FREE_MESSAGES
