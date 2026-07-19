@@ -53,9 +53,13 @@ const specialists = [
   { icon: HeartPulse, name: 'Sensitivity Guardian', desc: 'Allergy and reaction prevention. Flags irritants, cross-references your history, and protects sensitive skin.' },
 ]
 
+// Step 1 is "Talk to Yuri", not "Scan or Search" (July 19 2026): usage data
+// showed essentially every real user starts (and lives) in Yuri chat — the
+// v11.0.0 Yuri-as-orchestrator repositioning. Scanning/search is a capability
+// inside the journey, not the front door.
 const steps = [
-  { icon: ScanLine, step: '01', title: 'Scan or Search', desc: 'Camera scan a Korean label or search 5,900+ products across 575+ brands.' },
-  { icon: Brain, step: '02', title: 'Get AI Intelligence', desc: 'Yuri and 6 specialist agents decode ingredients, flag conflicts, check authenticity, and compare prices.' },
+  { icon: Sparkles, step: '01', title: 'Talk to Yuri', desc: 'Tell her about your skin, your products, and your goals. Free to start, no signup.' },
+  { icon: Brain, step: '02', title: 'Get AI Intelligence', desc: 'Yuri and 6 specialist agents decode ingredients, flag conflicts, check authenticity, and compare prices — scan a Korean label or search 5,900+ products.' },
   { icon: ListOrdered, step: '03', title: 'Build Your Routine', desc: 'Add to your personalized routine with conflict detection, layering order, wait times, and skin cycling.' },
   { icon: Heart, step: '04', title: 'Track and Improve', desc: 'Monitor your Glass Skin Score, track product expiry, get weather alerts, and discover dupes.' },
 ]
@@ -472,12 +476,27 @@ export default function LandingPage() {
           <p className="text-white/40 text-base md:text-lg mb-8 leading-relaxed">
             Join the community of ingredient-literate K-beauty lovers who make smarter skincare decisions every day.
           </p>
-          <Link
-            href="/register"
-            className="inline-flex items-center gap-2 glass-button-primary text-base py-3.5 px-10"
-          >
-            Start Your Journey <ArrowRight className="w-4 h-4" />
-          </Link>
+          {/* Two exits, honestly labeled (July 19 2026): the caption promised a
+              free no-signup chat while the only button led to /register — the
+              convinced-but-not-ready scroller had no path back to the widget.
+              The secondary CTA returns them to the hero widget (#hero-yuri,
+              same anchor the mobile prefill flow uses). */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/register"
+              className="inline-flex items-center gap-2 glass-button-primary text-base py-3.5 px-10"
+            >
+              Start Your Journey <ArrowRight className="w-4 h-4" />
+            </Link>
+            <button
+              onClick={() =>
+                document.getElementById('hero-yuri')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              }
+              className="inline-flex items-center gap-2 dark-button-outline text-base py-3.5 px-10"
+            >
+              <Sparkles className="w-4 h-4 text-gold" /> Talk to Yuri Free
+            </button>
+          </div>
           <p className="text-xs text-white/30 mt-4">Talk to Yuri free. {MAX_FREE_MESSAGES} messages, no signup.</p>
         </motion.div>
       </section>
