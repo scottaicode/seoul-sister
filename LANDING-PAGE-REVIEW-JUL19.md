@@ -35,6 +35,24 @@ what was deliberately deferred with the trigger that would un-defer it.
    community is still tiny. Aspirational-but-buildable, not false. Leave.
    → **Trigger:** if a prospect or review ever calls it out, soften the card copy.
 
+6. **Widget feature-awareness — the "fact→feature pairing" idea (Scott + Claude brainstorm,
+   July 19, evening).** Scott asked whether Yuri should deliberately tour app features
+   matched to the visitor's shared profile before giving her advice. Conclusion: do NOT make
+   it a sequenced step (gather → pitch features → advise) — that's an infomercial break
+   before the value, and the measured funnel killer is visitors bailing before value lands.
+   The widget prompt ALREADY permits contextual feature mentions (subscriber-capabilities
+   list + specialist preview; see Lynndon's July 18 transcript where the conflict-scan
+   mention fired naturally). The approved-in-principle upgrade, IF data justifies it:
+   (a) **audit the prompt's subscriber-capabilities list for vividness** — label scanning,
+   counterfeit detection, dupe finding, weather/cycle-aware guidance are under-represented
+   vs. memory/conflict/routine concepts; (b) **add "fact→feature pairing" judgment guidance**
+   — when a visitor shares a life fact (buys from marketplaces, tracks photos, hormonal
+   breakouts), Yuri may connect that ONE fact to the ONE feature built for it, one sentence,
+   max a couple times per conversation. Judgment guidance, never a script (AI-First).
+   → **Trigger:** post-v11.9.x funnel data showing captured leads who do NOT convert — the
+   first hypothesis to test is "did they ever learn what the paid product does?" Do not
+   build before that data exists.
+
 ## Review discipline notes (for future sessions)
 
 - The page's conversion center of gravity is the HERO WIDGET; every below-fold change should
