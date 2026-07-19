@@ -14,6 +14,8 @@ export interface WidgetVisitor {
   ai_memory: Record<string, unknown> | null
   /** Optional — present once the email-capture migration is applied (v10.12.0). */
   captured_email?: string | null
+  /** Optional — present once the recap-tracking migration is applied (v11.5.0). */
+  recap_status?: string | null
 }
 
 /**
@@ -25,8 +27,8 @@ export interface WidgetVisitor {
  */
 export const MAX_FREE_MESSAGES = 12
 
-/** Columns selected for a visitor record. captured_email is included but tolerated-absent pre-migration. */
-const VISITOR_SELECT = 'id, visitor_id, total_messages, total_sessions, total_tool_calls, ai_memory, captured_email'
+/** Columns selected for a visitor record. captured_email/recap_status included but tolerated-absent pre-migration. */
+const VISITOR_SELECT = 'id, visitor_id, total_messages, total_sessions, total_tool_calls, ai_memory, captured_email, recap_status'
 const VISITOR_SELECT_FALLBACK = 'id, visitor_id, total_messages, total_sessions, total_tool_calls, ai_memory'
 
 /**
@@ -57,7 +59,7 @@ export async function getOrCreateVisitor(
     .select(VISITOR_SELECT)
     .single()
 
-  if (error && /captured_email/.test(error.message || '')) {
+  if (error && /captured_email|recap_status/.test(error.message || '')) {
     ;({ data, error } = await supabase
       .from('ss_widget_visitors')
       .upsert(

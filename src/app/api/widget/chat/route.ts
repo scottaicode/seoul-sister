@@ -335,8 +335,20 @@ export async function POST(request: NextRequest) {
         // existing capture pipeline records it and Yuri acknowledges it
         // naturally). Distinct flag so the client renders the email card, NOT
         // the paywall — this is a lead-capture moment, not the cap.
+        //
+        // recap_status === 'not_their_address' ALSO satisfies the gate: when
+        // Yuri's ownership judgment rules a captured address isn't the
+        // visitor's own, clearCapturedEmail reopens the slot (v10.13.4, so
+        // their real email can land later) — but an empty slot must not
+        // re-trip THIS gate, or the visitor is locked in a demand-email loop
+        // (found live, July 19 test). They complied; Yuri simply won't send a
+        // recap to a third-party address. Her judgment is kept, the door
+        // stays open.
+        const emailGateSatisfied =
+          Boolean(visitor.captured_email) ||
+          visitor.recap_status === 'not_their_address'
         if (
-          !visitor.captured_email &&
+          !emailGateSatisfied &&
           visitor.total_messages >= EMAIL_GATE_AFTER_MESSAGES &&
           !extractEmail(parsed.message)
         ) {
