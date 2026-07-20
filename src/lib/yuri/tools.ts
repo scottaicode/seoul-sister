@@ -52,6 +52,35 @@ function isMensLineProduct(p: Record<string, unknown>): boolean {
   return MENS_LINE_RE.test(hay)
 }
 
+// ---------------------------------------------------------------------------
+// Singular/plural term matching (July 20 2026)
+// ---------------------------------------------------------------------------
+// The catalog stores product nouns SINGULAR ("...Blemish Toner Pad"), but people
+// and models both say them plural ("Celimax BHA pads"). Because every strategy
+// here is substring ILIKE with no stemming, `name_en ILIKE '%pads%'` matched
+// ZERO Celimax rows while `%pad%` matched six — so the precise strategies (1.5
+// and 2) returned nothing and the query fell through to the last-resort
+// ANY-term search. Verified against the live catalog: this is exactly how
+// "Celimax BHA pads" resolved to "Celimax Makeup Retouching Booster Pad" in a
+// real widget conversation on July 19 2026, at the moment the visitor was about
+// to buy.
+//
+// Substring semantics do half the work for free: a singular query term matches a
+// plural catalog row already ("pad" is inside "Pads"). Only the reverse fails,
+// so we strip a trailing "s"/"es" and match on the STEM. Guarded to terms long
+// enough that the stem stays meaningful, so we never turn a 2-letter token into
+// a 1-letter wildcard.
+function singularize(term: string): string {
+  if (term.length > 4 && term.endsWith('es') && !term.endsWith('ses')) return term.slice(0, -2)
+  if (term.length > 3 && term.endsWith('s') && !term.endsWith('ss')) return term.slice(0, -1)
+  return term
+}
+
+/** True when `term` (or its singular stem) appears in `haystack`. */
+function termMatches(haystack: string, term: string): boolean {
+  return haystack.includes(term) || haystack.includes(singularize(term))
+}
+
 async function smartProductSearch(
   db: SupabaseClient,
   rawQuery: string,
@@ -141,8 +170,11 @@ async function smartProductSearch(
         .select(cols)
         .eq('is_verified', true)
         .ilike('brand_en', `%${brandCandidate}%`)
+      // Match on the singular stem so a plural query term ("pads") still hits
+      // the catalog's singular storage ("Pad"). Substring semantics cover the
+      // reverse case already.
       for (const t of nameTerms) {
-        q = q.ilike('name_en', `%${t}%`)
+        q = q.ilike('name_en', `%${singularize(t)}%`)
       }
       if (options?.category) q = q.eq('category', options.category)
       const { data: compositeMatch } = await q.limit(limit)
@@ -168,7 +200,10 @@ async function smartProductSearch(
     // Build OR filter: each term checked against name_en and brand_en
     const orClauses = terms
       .slice(0, 6) // cap to avoid absurdly long filter strings
-      .flatMap(t => [`name_en.ilike.%${t}%`, `brand_en.ilike.%${t}%`])
+      .flatMap(t => {
+        const stem = singularize(t)
+        return [`name_en.ilike.%${stem}%`, `brand_en.ilike.%${stem}%`]
+      })
       .join(',')
 
     let broadQuery = db
@@ -185,10 +220,15 @@ async function smartProductSearch(
 
     if (broadResults?.length) {
       const rows = broadResults as unknown as Array<Record<string, unknown>>
-      // Post-filter: ALL terms must appear in combined brand + name
+      // Post-filter: ALL terms must appear in combined brand + name.
+      // Normalize punctuation on the catalog side too (the query was already
+      // normalized during tokenization) so "Dive-In" queries match "Dive In"
+      // rows here the same way they do in resolveProductByName.
       const allTermMatch = rows.filter(p => {
-        const combined = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`.toLowerCase()
-        return terms.every(t => combined.includes(t))
+        const combined = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`
+          .toLowerCase()
+          .replace(/[-/_.]+/g, ' ')
+        return terms.every(t => termMatches(combined, t))
       })
       if (allTermMatch.length) return allTermMatch.slice(0, limit)
 
@@ -226,12 +266,24 @@ async function smartProductSearch(
  * Resolve a product name to a single product ID (best match).
  * Used by compare_prices, get_product_details, get_personalized_match, etc.
  *
- * Tiebreaker (when multiple products match all query terms): prefer the
- * product whose combined brand+name has the FEWEST extra characters beyond
- * the query — i.e., the closest-fitting match. Falls back to rating when
- * lengths tie. Without this, a query like "Goodal Green Tangerine Vita C"
- * resolves to the highest-rated *Cream* over the more specific *Serum* the
- * user actually asked for.
+ * Ranking (July 20 2026 — coverage before length):
+ *  1. TERM COVERAGE — how many query terms the product actually matches. A
+ *     product matching more of what the user said always wins.
+ *  2. Length — among equally-covering products, prefer the one with the FEWEST
+ *     extra characters beyond the query (the closest-fitting match). Without
+ *     this, "Goodal Green Tangerine Vita C" resolves to the highest-rated
+ *     *Cream* over the more specific *Serum* the user actually asked for.
+ *  3. Rating — final tiebreak.
+ *
+ * Coverage MUST outrank length. Previously length was the primary key, which
+ * meant a shorter product matching fewer terms beat a longer product matching
+ * more. Verified production failure (July 19 2026, live widget): "Celimax BHA
+ * pads" ranked "Celimax Makeup Retouching Booster Pad" (37 chars, matches
+ * neither "bha" nor "pad") ABOVE "Celimax Ji Woo Gae Cica BHA Blemish Toner
+ * Pad" (45 chars, matches both) — the correct product lost by 8 characters, and
+ * "BHA", the most discriminating token in the query, carried zero weight. Yuri
+ * caught the substitution via match_quality and warned the visitor, but she was
+ * compensating for the retrieval layer.
  *
  * Returns `match_quality`:
  *  - 'exact'     — chosen product's brand+name contains the full query as a substring
@@ -264,17 +316,29 @@ async function resolveProductByName(
   const queryNormalized = normalizePunct(productName)
   const terms = queryNormalized.split(/\s+/).filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
 
+  const combinedOf = (p: Record<string, unknown>) =>
+    normalizePunct(`${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`)
+
+  /** How many query terms this product matches (singular/plural aware). */
+  const coverageOf = (p: Record<string, unknown>) => {
+    const combined = combinedOf(p)
+    return terms.filter(t => termMatches(combined, t)).length
+  }
+
   // Filter to candidates where ALL query terms appear in combined brand+name
   // (normalized on both sides so hyphen variants match).
-  const allTermMatches = results.filter(p => {
-    const combined = normalizePunct(`${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`)
-    return terms.every(t => combined.includes(t))
-  })
+  const allTermMatches = results.filter(p => coverageOf(p) === terms.length)
 
+  // When nothing matches every term we rank the full result set rather than
+  // returning nothing — this is the loose read path, and coverage ordering is
+  // precisely what makes that fallback safe to rank.
   const candidates = allTermMatches.length > 0 ? allTermMatches : results
 
-  // Sort: shorter combined brand+name first (closer fit), then higher rating
+  // Sort: most query terms matched first, then closest fit by length, then rating.
   candidates.sort((a, b) => {
+    const aCoverage = coverageOf(a)
+    const bCoverage = coverageOf(b)
+    if (aCoverage !== bCoverage) return bCoverage - aCoverage
     const aLen = `${(a.brand_en as string) || ''} ${(a.name_en as string) || ''}`.length
     const bLen = `${(b.brand_en as string) || ''} ${(b.name_en as string) || ''}`.length
     if (aLen !== bLen) return aLen - bLen
@@ -299,7 +363,10 @@ async function resolveProductByName(
     match_quality = 'exact'
   } else if (combinedNormalized.includes(queryNormalized)) {
     match_quality = 'exact'
-  } else if (terms.length > 0 && terms.every(t => combinedNormalized.includes(t))) {
+  } else if (terms.length > 0 && terms.every(t => termMatches(combinedNormalized, t))) {
+    // Singular/plural aware: "Celimax BHA pads" fully covers the catalog's
+    // "...BHA Blemish Toner Pad", so this is a genuine all_terms match, not a
+    // 'partial' that would make write paths refuse and read paths warn.
     match_quality = 'all_terms'
   } else {
     match_quality = 'partial'
@@ -1596,10 +1663,25 @@ async function executeComparePrices(
   // Loose resolve on a read is fine, but the result previously carried NO
   // product identity at all — a near-miss substitution meant Yuri confidently
   // quoted the wrong product's prices with no way to notice (July 12 audit).
+  //
+  // Prices are the one read that fires at PURCHASE INTENT: whatever comes back
+  // is what the user is about to spend money on. So unlike the other read tools,
+  // this one does NOT return a 'partial' match's prices at all — quoting a
+  // different product's price at the moment of purchase is a wrong answer, not a
+  // caveat. We still return WHICH product we landed near, so Yuri can offer it
+  // as a question ("did you mean X?") instead of dead-ending the user.
   let resolution: Record<string, unknown> | null = null
   if (!productId && productName) {
     const match = await resolveProductByName(db, productName)
     if (match) {
+      if (match.match_quality === 'partial') {
+        return JSON.stringify({
+          error: `No confident price match for "${productName}".`,
+          nearest_match: `${match.brand_en} ${match.name_en}`,
+          guidance:
+            'This is a WEAK name match, so these are probably NOT the prices for the product the user named — no prices are returned. Do not quote a price. Either ask the user to confirm whether they meant the nearest match, or search for the correct product first and retry with its product_id.',
+        })
+      }
       productId = match.id
       resolution = describeResolution(productName, match)
     } else {
