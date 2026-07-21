@@ -103,7 +103,9 @@ You need to understand these aspects of their skin through natural conversation.
 - **skin_type**: Oily, dry, combination, normal, sensitive. Infer from how they describe their skin -- don't ask "what's your skin type?" Ask about their daily experience instead.
 - **skin_concerns**: What bothers them. Probe deeper -- most people have 2-3 concerns but lead with one. React with genuine insight when they share.
 - **age_range**: Matters for actives recommendations. If they don't volunteer it, weave it in naturally.
-- **fitzpatrick_scale**: Sun reactivity. Important for ingredient safety (hydroquinone, certain acids). Infer from context when possible.
+- **fitzpatrick_scale**: ASK, don't guess. The question is functional, not cosmetic: "when you're out in the sun without protection, do you burn, tan, or both?" This is the single highest-stakes fact you collect. In deeper tones an aggressive acid or retinoid leaves post-inflammatory hyperpigmentation that lasts months, so introduction must be slower and gentler. In very fair skin it drives skin-cancer caution and photoprotection urgency. Never assert a value nobody gave you — an unknown Fitzpatrick is a question to ask, not a number to invent.
+- **medical_history**: Standing medical facts, and you must ask rather than wait: skin cancer or precancers, rosacea, eczema, psoriasis, whether they see a dermatologist, and any prescriptions (tretinoin, isotretinoin). This is NOT the same as allergies — an allergy excludes an ingredient, a medical history reframes the whole approach. Someone with a skin cancer history needs protection-first advice, explicit caution around photosensitizing actives, and a low threshold for "that's a dermatologist question, not mine." Ask it the way a specialist would, plainly and without apology: this is their skin health, not small talk.
+- **sun_history**: Cumulative lifetime UV — where they grew up, years spent outdoors, whether they burned badly as a kid. Photoaging is driven by decades of exposure, not this week's weather. Someone raised in the Central Valley who now lives in Seattle still has Central Valley skin, and that is what you are actually treating.
 - **climate**: Humidity, temperature, seasons. Determines moisturizer weight, SPF reapplication, routine complexity.
 - **allergies**: Critical safety information. Ask directly but warmly -- "any ingredients your skin has told you to stay away from?"
 - **current_routine**: What they're doing now. This reveals experience level too.
@@ -157,7 +159,9 @@ Possible fields:
 - skin_type: one of "oily", "dry", "combination", "normal", "sensitive"
 - skin_concerns: array of concerns (e.g., ["acne", "dark spots", "dullness"]). Normalize to lowercase.
 - age_range: one of "18-24", "25-30", "31-35", "36-40", "41-50", "50+"
-- fitzpatrick_scale: integer 1-6 (1=very fair/always burns, 6=deep/never burns)
+- fitzpatrick_scale: integer 1-6 (1=very fair/always burns, 6=deep/never burns). Extract ONLY if they described their actual burn/tan response or stated it. Do NOT infer it from ethnicity, location, or a photo description — a guessed value is stored as fact and drives clinical decisions.
+- medical_history: array of standing medical facts — skin cancer/precancer history, rosacea, eczema, psoriasis, dermatologist care, prescriptions (tretinoin, isotretinoin). Keep the user's own phrasing where possible (e.g. "skin cancer history, 25+ excisions since early 30s"). NOT allergies — allergies exclude an ingredient, these reframe the approach.
+- sun_history: string, cumulative lifetime sun exposure in their words (e.g. "grew up in California's Central Valley, outdoors constantly through his 20s, burned often as a kid"). Distinct from climate, which is where they live now.
 - climate: one of "humid", "dry", "temperate", "tropical", "cold"
 - allergies: array of known allergens or ingredients they react to
 - current_routine: array of product names or categories they currently use
@@ -443,19 +447,43 @@ export async function finalizeOnboardingProfile(
 ): Promise<void> {
   const db = getServiceClient()
 
+  // CLINICAL FIELDS ARE NEVER DEFAULTED (July 21 2026).
+  //
+  // This previously wrote fitzpatrick_scale=3, age_range='25-30', and
+  // climate='temperate' for anything the user never answered, and memory.ts
+  // printed them to Yuri as bare fact. A fabricated Fitzpatrick III was
+  // indistinguishable from a stated one — the same fake-confidence class as the
+  // v10.2.1 "I checked our database" incident, and far more consequential:
+  // Fitzpatrick drives retinoid strength, acid aggressiveness, PIH risk in
+  // deeper tones, and skin-cancer caution in fair ones. Guessing III for a
+  // Fitzpatrick I user with a cancer history is a clinically wrong answer
+  // delivered confidently.
+  //
+  // Unknown now stays NULL, and Yuri is shown "not established yet" so she can
+  // ask instead of assert. Preference fields (budget, experience) keep their
+  // defaults — a wrong budget guess costs nothing.
   const profileData: Record<string, unknown> = {
     user_id: userId,
     skin_type: extracted.skin_type || 'normal',
     skin_concerns: extracted.skin_concerns || [],
     allergies: extracted.allergies || [],
-    fitzpatrick_scale: extracted.fitzpatrick_scale || 3,
-    climate: extracted.climate || 'temperate',
-    age_range: extracted.age_range || '25-30',
     budget_range: extracted.budget_preference || 'mid-range',
     experience_level: extracted.experience_level || 'beginner',
     onboarding_completed: true,
     updated_at: new Date().toISOString(),
   }
+
+  // Clinical fields: written ONLY when actually extracted, never invented.
+  if (extracted.fitzpatrick_scale) {
+    profileData.fitzpatrick_scale = extracted.fitzpatrick_scale
+    profileData.fitzpatrick_source = 'stated'
+  }
+  if (extracted.climate) profileData.climate = extracted.climate
+  if (extracted.age_range) profileData.age_range = extracted.age_range
+  if (extracted.medical_history?.length) {
+    profileData.medical_history = extracted.medical_history
+  }
+  if (extracted.sun_history) profileData.sun_history = extracted.sun_history
 
   // Only set location_text if explicitly extracted (don't overwrite existing with null)
   if (extracted.location_text) {
@@ -497,7 +525,10 @@ export async function finalizeOnboardingProfile(
 export async function skipOnboarding(userId: string): Promise<void> {
   const db = getServiceClient()
 
-  // Create a minimal profile with defaults
+  // Create a minimal profile. Clinical fields stay NULL — a user who SKIPPED
+  // onboarding has told us nothing, and inventing a Fitzpatrick/age/climate for
+  // them is exactly the fabrication this release removes. Yuri will see "not
+  // established yet" and ask when it matters.
   await db
     .from('ss_user_profiles')
     .upsert({
@@ -505,9 +536,6 @@ export async function skipOnboarding(userId: string): Promise<void> {
       skin_type: 'normal',
       skin_concerns: [],
       allergies: [],
-      fitzpatrick_scale: 3,
-      climate: 'temperate',
-      age_range: '25-30',
       budget_range: 'mid-range',
       experience_level: 'beginner',
       onboarding_completed: false,

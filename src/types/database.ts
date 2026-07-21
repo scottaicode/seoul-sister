@@ -632,6 +632,23 @@ export interface ExtractedSkinProfile {
   experience_level?: 'beginner' | 'intermediate' | 'advanced'
   product_preferences?: string[]
   location_text?: string
+  /**
+   * Standing medical facts that REFRAME advice rather than exclude an
+   * ingredient: skin cancer history, rosacea, eczema, psoriasis, current
+   * dermatologist care, prescriptions (tretinoin, isotretinoin). Deliberately
+   * separate from `allergies` — a live profile had "skin cancer history" stored
+   * as an allergy, so Yuri read a 25-excision history as a contact allergen
+   * (something not to apply) instead of the fact that should drive
+   * protection-first advice and a low referral threshold.
+   */
+  medical_history?: string[]
+  /**
+   * Cumulative lifetime sun exposure — where they grew up, outdoor years, burn
+   * history. Photoaging is driven by decades of UV, not today's weather:
+   * someone raised in the Central Valley now living in Seattle still has
+   * Central Valley skin. Distinct from `climate`, which is current conditions.
+   */
+  sun_history?: string
 }
 
 // =============================================================================

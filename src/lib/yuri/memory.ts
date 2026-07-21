@@ -703,15 +703,43 @@ export function formatContextForPrompt(context: UserContext): string {
       : context.locationName
         ? `\n- Location: ${context.locationName} (from GPS)`
         : ''
+    // Clinical fields render UNKNOWN honestly (July 21 2026). They used to be
+    // silently defaulted at onboarding (fitzpatrick=3, age='25-30') and printed
+    // here as bare fact, so Yuri could not tell a stated value from an invented
+    // one. Fitzpatrick drives retinoid strength, acid aggressiveness, PIH risk
+    // in deeper tones and cancer caution in fair ones — asserting a guess is the
+    // v10.2.1 fake-confidence failure with clinical consequences.
+    const fitz = p.fitzpatrick_scale
+    const fitzSource = (profileRaw.fitzpatrick_source as string | null) || null
+    const fitzLine = fitz
+      ? `${fitz}${fitzSource === 'estimated' ? ' (ESTIMATED, never confirmed by them — if it matters for what you\'re about to recommend, confirm it: "do you burn or tan?")' : ''}`
+      : 'NOT ESTABLISHED — you have never been told. Do not guess or state one. Ask ("do you burn, tan, or both?") whenever it affects what you recommend, which it does for any acid or retinoid.'
+
+    const medical = (profileRaw.medical_history as string[] | null) || []
+    const sunHistory = (profileRaw.sun_history as string | null) || null
+
     sections.push(`## User's Skin Profile${onboarded ? ' (built during your onboarding conversation -- you already know this user!)' : ''}
-- Skin type: ${p.skin_type}
+- Skin type: ${p.skin_type || 'not established'}
 - Concerns: ${p.skin_concerns?.join(', ') || 'none specified'}
-- Allergies: ${p.allergies?.join(', ') || 'none known'}
-- Fitzpatrick scale: ${p.fitzpatrick_scale}
-- Climate: ${p.climate}${locationLine}
-- Age range: ${p.age_range}
+- Allergies (ingredients to AVOID): ${p.allergies?.length ? p.allergies.join(', ') : 'none known'}
+- Fitzpatrick scale: ${fitzLine}
+- Climate: ${p.climate || 'not established'}${locationLine}
+- Age range: ${p.age_range || 'not established — ask if it changes your answer (retinoid strength, pigment timelines, collagen)'}
 - Budget: ${p.budget_range}
-- Experience level: ${p.experience_level}`)
+- Experience level: ${p.experience_level}${
+      sunHistory ? `\n- Lifetime sun exposure: ${sunHistory}` : ''
+    }`)
+
+    // Medical history is NOT an allergy list and must not be read as one. A
+    // real profile stored "skin cancer history" under allergies, so Yuri saw a
+    // 25-excision history as something not to put on his face rather than the
+    // fact that should reframe every recommendation she makes for him.
+    if (medical.length) {
+      sections.push(`## Medical History (standing facts — these REFRAME your advice, they are not allergens)
+- ${medical.join('\n- ')}
+
+This is not a list of things to avoid applying; it is who you are advising. Let it change your actual reasoning: a skin cancer or precancer history makes daily sun protection the treatment rather than a footnote, makes photosensitizing actives (retinoids, AHAs) something to introduce with explicit sun-exposure framing, and lowers your threshold for saying plainly "that's a dermatologist question, not mine." Rosacea, eczema, or psoriasis change what a "gentle" routine even means. You are not being cautious for its own sake — you are giving the advice a specialist who knew this would give.`)
+    }
   } else {
     sections.push(`## User's Skin Profile\nNot yet created. Encourage them to complete their skin profile for personalized advice. You can suggest they go through the onboarding conversation with you.`)
   }
