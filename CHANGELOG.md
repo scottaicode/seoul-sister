@@ -8,6 +8,56 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.10.0 (July 21, 2026): Bailey + Lynndon's live test — a silent lead blacklist, an emergent giveaway, and fabricated clinical data
+
+**How it surfaced.** Bailey's partner Lynndon ran a real 14-message preview conversation on the landing widget; Bailey watched. Three observations from them drove the whole release, and pulling on the third one uncovered two safety defects nobody was looking for.
+
+### 1. The recap email that silently never sent (worst, and invisible in our own data)
+
+Lynndon gave his email at message 11 and Yuri told him three times the recap was on its way. It never sent. `ss_widget_visitors.recap_status` was **NULL** — not `send_failed`, not `suppressed` — meaning no send branch ran at all.
+
+**Root cause:** `isEmailCapturedByAnotherVisitor()` (`src/lib/widget/visitor.ts`) matched **any prior visitor row with that address, forever, with no time bound**. Its legitimate job is narrow — stop ONE conversation producing TWO emails when the same human appears as two visitor rows (cleared cookies, switched device mid-chat). Lynndon had used the same address on **July 18** (`recap_status: delivered`); on **July 21** he had a fresh visitor UUID, so the guard matched the 3-day-old row and skipped the send. The skip path only `console.warn`'d and never called `recordRecapStatus()`, so the failure was indistinguishable in the database from a visitor who never gave an email at all.
+
+Consequence beyond one lost email: **anyone who clears cookies, switches device, or returns later was permanently blacklisted from ever receiving a recap.** Pre-existing, not a v11.9.x regression — it stayed hidden because Lynndon is the first person who ever entered the same address twice.
+
+**Fix:** `RECAP_DEDUP_WINDOW_HOURS = 48` bounds the guard (still covers the real duplicate case; lets a genuine return visit through), and the skip records a new `suppressed_duplicate` status — kept distinct from `suppressed` (Yuri's own judgment not to send) so mechanical dedup is never confused with her judgment. A spike in `suppressed_duplicate` now signals the window is eating real visits. Replayed against the production rows: old predicate blocks, new predicate sends. `scripts/send-missed-recap.ts` added to recover a swallowed lead (reuses the production `generateLeadEmail()`/`sendEmail()` so a pass is evidence the live path works).
+
+### 2. The give/gate leak was an INSTRUMENT problem, not a prompt problem
+
+Lynndon: *"she may be giving slightly too much… she gave me a full process."* Across 14 messages Yuri delivered the complete AM/PM routine, the Night A/B/C rotation, a keep/cut/add shelf audit, three priced picks, the multi-week introduction schedule, and lineup conflict-checking — **the entire subscriber deliverable**.
+
+**This was NOT a missing instruction.** The gate at `route.ts` already names those exact artifacts and says *"Do NOT deliver that complete blueprint in the preview, even when asked directly and even when you could."*
+
+**The actual mechanism: the giveaway is emergent.** No single reply crossed the line — turn 5 gave a rotation, turn 7 a dryness ranking, turn 9 a shelf audit, turn 11 the assembled scorecard, each a reasonable answer to a direct question. The complete build existed only in aggregate, and Yuri sees one turn at a time. She was asked to hold a cumulative boundary with no cumulative instrument. **Proof it is visibility and not wording:** the recap email (`src/lib/email/lead-email.ts`) carries the identical policy and never breaks it — because a recap is ONE artifact generated in ONE pass, where the model can see the whole thing it is producing.
+
+**Fix:** `src/lib/widget/cumulative-give.ts` reads Yuri's OWN already-sent replies, counts which of five gated artifacts have appeared, and injects the running total as a FACT — the same shape as the preview counter, email-capture state, and feeder source, each of which fixed a failure that prompt rewording could not. It blocks nothing, inspects no drafts, and ends by handing the decision back (*"not a rule and not a cap"*). Replayed against the real transcript it reaches 5/5 and would have flagged at reply 3. Validated against three other real conversations (single-reply chats correctly produce nothing; two other long consultations read 3/5 and 4/5 — the pattern is systemic, not unique to Lynndon). Design recorded in `WIDGET-CUMULATIVE-GIVE-BLUEPRINT.md`.
+
+### 3. Bailey's *"No gender!!?? No age?!!"* → two clinical-safety defects
+
+Bailey noticed Yuri asked only where Lynndon lived before recommending a retinoid. Pulling that thread found the qualification gap was the smallest part of the problem.
+
+**Defect A — medical history stored as an ALLERGY.** A subscriber profile held `allergies: ["skin cancer history"]`, because the schema had nowhere else to put it. `memory.ts` injects allergies under *"ALWAYS check for these before recommending any product"* — so Yuri read a cancer history as a **contact allergen, something not to apply**, rather than the standing fact that should reframe every recommendation (sun protection as treatment rather than footnote, photosensitizer caution, low referral threshold).
+
+**Defect B — fabricated clinical data.** `finalizeOnboardingProfile` wrote `fitzpatrick_scale: extracted.fitzpatrick_scale || 3`, `age_range || '25-30'`, `climate || 'temperate'`, and `memory.ts` printed them to Yuri as bare fact — a guessed Fitzpatrick III indistinguishable from a stated one. The onboarding prompt made it worse: *"Infer from context when possible"* instead of asking. **Verified real:** profile `69f19b14` had `extracted_fitz: NULL` but stored `3` — a live user receiving advice against a skin type they never gave. Same fake-confidence class as the v10.2.1 "I checked our database" incident, with clinical consequences: Fitzpatrick drives retinoid strength, acid aggressiveness, PIH risk in deeper tones, and skin-cancer caution in fair ones.
+
+**Defect C — no lesion referral anywhere.** The words *mole*, *lesion*, and *melanoma* appeared **nowhere** in any Yuri prompt. The referral rule named only "pain, spreading rashes, suspected infections," so a changing or bleeding spot could be answered with an exfoliant.
+
+**Fixes:** migration `add_medical_history_and_provenance.sql` adds `medical_history TEXT[]`, `sun_history TEXT`, and `fitzpatrick_source` (`'stated' | 'estimated' | NULL`). Clinical fields are written ONLY when actually extracted — unknown stays NULL and renders as *"NOT ESTABLISHED — do not guess or state one; ask whenever it affects what you recommend."* Medical history gets its own context block explicitly framed *"these REFRAME your advice, they are not allergens."* The extractor is forbidden from inferring Fitzpatrick from ethnicity or location. Lesion referral added to BOTH surfaces: a changing, bleeding, crusting, or new-and-unresolving spot is always a referral, said early, never answered with a product or a reassurance. Widget qualification now covers sun response, lifetime UV (photoaging is cumulative — current weather is a different question), and medical history, with a calibration rule: reason from population base rates, but let the individual override them (*"a stereotype in a lab coat"* is the failure to avoid).
+
+`scripts/backfill-fitzpatrick-provenance.ts` recovers truth from `ss_onboarding_progress.skin_profile_data` (the record of what the extractor actually pulled): stated values keep their number and are marked `stated`; fabricated ones are **CLEARED, not relabelled** — leaving a fabricated 3 marked "estimated" would keep feeding Yuri a number nobody supplied.
+
+### 4. Product resolver: coverage before length
+
+`compare_prices("Celimax BHA pads")` returned the **Celimax Makeup Retouching Booster Pad** — a makeup prep pad, not an exfoliant — at the exact moment of purchase intent. Two causes, both reproduced against the live catalog: (a) **plural** — every strategy is substring ILIKE with no stemming, so `%pads%` matched ZERO Celimax rows while `%pad%` matched six, dropping the query to the last-resort ANY-term search; (b) **ranking** — the sort was length-first, so a 37-char product matching neither "bha" nor "pad" beat the 45-char product matching both. Coverage now outranks length (length still breaks ties, preserving the documented Goodal Cream-vs-Serum case); strategies match on the singular stem; and `compare_prices` refuses to return prices on a `partial` match, returning the nearest match so Yuri can ask rather than dead-end.
+
+### 5. The paywall sells continuity
+
+The limit-reached card listed features ("6 specialist agents, routine building with ingredient conflict detection") at the one moment we know the most about a visitor. Rewritten to name what they lose: *"Everything you just told me about your skin disappears when you close this tab."* Matches the 2026 evidence (Curology, Noom): diagnosis free, ongoing relationship paid.
+
+**Verification:** 40/40 guard tests, **each verified to fail when its bug is reintroduced** (including one that catches converting the cumulative-give fact into a command — the AI-First tripwire). `tsc` + `build` clean. Migration applied and verified against live rows. ship-guard PASS (blocking bugfix + lead capture). ai-first-check PASS — the cumulative-give detector observes and reports, gating no code path and inspecting no drafts; the clinical work REMOVES fabricated inputs and EXPANDS what Yuri may reason from.
+
+**Methodological note worth keeping:** none of the clinical defects were findable by code review. They surfaced because a real user described his own history (Fitzpatrick I, decades of Central Valley sun, a long skin cancer history) and pushed back on a too-narrow first answer about which demographics matter. When a user offers their own case, treat it as a test fixture and follow it into the data, not just the prompt.
+
 ## v11.9.3 (July 19, 2026): Live end-to-end test of the v11.9.0 gates — findings + fixes
 
 Scott ran the full 12-message funnel live (fresh-looking Chrome profile, real Opus, real emails) with Claude grading each turn. **The redesign held everywhere it mattered**: qualify-before-prescribe fired on message 1 (three qualifying questions, zero premature picks); the give/gate line held under the exact "give me the complete routine, I don't want to sign up" bait that produced the July 18 full-blueprint giveaway (structure named, picks/schedule withheld, zero pushiness); the ask-once email rule held after a decline; the email continue-gate fired at the lifetime threshold; history rehydration survived a hard refresh; the recap email delivered (Resend webhook → `recap_status='delivered'`) correctly scoped to diagnosis + #1 priority — and Yuri *explained the gate honestly inside the email* unprompted; the price pull surfaced near-miss-match transparency + 103-day staleness honesty; and the 12-cap paywall fired — the first cap hit in the product's history.
