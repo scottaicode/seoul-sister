@@ -43,6 +43,28 @@ From roughly **March–early July 2026**, `glass_skin_atx` posted **~500 genuine
 - A future session (or a future me) looking at `attributed_sessions = 0` and concluding *"Reddit doesn't convert"* would be **drawing a conclusion from a period in which conversion was structurally impossible.** Do not do this. I nearly did.
 - The **4-month, 1,205-karma, Top-10%-Commenter, never-once-posted-a-link history is itself the asset.** It is exactly what makes a bio link read as credible rather than spammy. It is also exactly what gets burned by getting impatient.
 
+### ADDENDUM Jul 21 2026 — there is a SECOND reason the zero is uninterpretable: the account went quiet
+
+The section above explains the zero as *policy* (no link existed). True, but incomplete. A corpus review on Jul 21 found the channel also **stopped posting for seven weeks**:
+
+| Period | Comments | Note |
+|---|---|---|
+| Mar 9 – May 18 (10 wks) | ~486 | Full cadence, ~50/wk |
+| **May 19 – Jul 5 (7 wks)** | **0** | Channel silent |
+| Jul 6 – Jul 14 | 14 | Thin restart |
+| **Since the bio link went live (Jul 11)** | **~6** | |
+
+**Roughly six comments have been posted since the funnel opened.** Reddit profile click-through runs ~1–2% of comment views; the three most recent comments drew 110 + 44 + 24 = 178 views, predicting **1–3 profile visits** before the further drop-off of scrolling to a sidebar link.
+
+**Zero attributed sessions is the statistically expected outcome of ~6 comments.** It is not a weak CTA, not a broken link, and not a failed channel.
+
+Verified Jul 21, so nobody re-derives it:
+- Site side works — `TryYuriSection.tsx:182` reads `utm_source` first, ungated by `?ask=` (the Jul 13 fix `f1c1b3e` is live). A Reddit arrival *would* be tagged `source='reddit'`.
+- The bio link is live and correctly labeled (`Seoul Sister · ingredient checker`), per BP108 spec. It sits below the fold in the profile sidebar, under Achievements/Settings — a real friction, but downstream of the volume problem.
+- Account state: 1,270 karma, 535 contributions, 10 followers, 4 months age.
+
+**Do not spend diagnostic effort on the CTA path until volume is restored.** You cannot measure a conversion rate on a denominator of six.
+
 ### The escalation ladder — ALREADY GOVERNED BY BP108. Don't freelance it.
 
 The instinct after a good week is *"next we'll put subtle Seoul Sister / product references inside the responses."* **BP108 already anticipated that and formally HELD it as Stage 2**, gated on two conditions (`BP108-SEOUL-SISTER-SITE-SIDE-SPEC.md` → "Stage 1 → Stage 2 checklist"):
@@ -219,6 +241,41 @@ This matters enormously for the deferred extraction (Piece B): an extractor that
 
 ---
 
+## THE REACH FINDING — top-level beats replies, and it is not close (Jul 21 2026)
+
+The corpus answered a question nobody had asked it: **what distinguishes the comments that got reach from the ones that didn't?** It is not topic, subreddit, or length. It is **format**.
+
+**All 15 of the top-scoring comments in the corpus are top-level (`is_reply = false`). All fifteen.** The corpus is 51% replies, so chance alone would put ~7 replies in that set. It put zero.
+
+| Format | n | Avg score | Median | Comments ≥15 pts | Hit rate |
+|---|---|---|---|---|---|
+| **Top-level** | 246 | **5.84** | 2 | **21** | **8.5%** |
+| **Reply** | 254 | **1.59** | 1 | **0** | **0.0%** |
+
+**A reply has never once scored ≥15 in 254 attempts.**
+
+**This was checked for the obvious confound and survives it.** r/AsianBeauty is both the best-performing sub *and* the lowest-reply sub, so the effect could have been AsianBeauty in disguise. It is not — it holds independently **within every single subreddit**:
+
+| Subreddit | Top-level avg | Reply avg | Ratio |
+|---|---|---|---|
+| AsianBeauty | **14.61** (n=31) | 1.60 (n=20) | 9.1× |
+| koreanskincare | **5.87** (n=103) | 1.64 (n=121) | 3.6× |
+| KoreanBeauty | **4.08** (n=37) | 1.48 (n=29) | 2.8× |
+| 30PlusSkinCare | **3.67** (n=15) | 1.00 (n=5) | 3.7× |
+| SkincareAddiction | **2.95** (n=58) | 1.58 (n=78) | 1.9× |
+
+**Current behavior is inverted**: the Jul restart comments are all deep-thread replies. They are *good* comments — helpful, specific, ending on a question — just in the format that has never produced reach.
+
+**Subreddit allocation is also misallocated.** r/AsianBeauty (avg 9.51, n=51) is the best sub and under-served; r/SkincareAddiction (avg 2.16, n=136) is the worst and consumes 27% of all effort.
+
+**Why this matters for the escalation question**: reach is the safe lever and it is **untouched**. Two zero-risk changes (post top-level; reweight subs) sit in front of the risky one (in-comment promotion). Trading a 4-month aged account for marginal gain while the free levers are unused would be a bad trade. Note also that the **89-point all-time best comment is the *least* promotional thing in the corpus** — pure Korea-vs-international information gap, zero product push. The evidence says promotion is not what earns reach here.
+
+**Actioned**: `LGAAS-WORK-ORDER-REDDIT-REACH.md` (Jul 21 2026) — the work order for the LGAAS model, with the top 5 winning comments verbatim as format models, their shared anatomy, the three targeting changes, and a dated prediction + review date (~Aug 11) under the Learning Loop principle. It restates the no-links/no-mentions guardrails explicitly, because "improve our results" is exactly the phrasing a model could over-read as license to promote.
+
+⚠️ **`views` is NULL on all 500 rows** — the Reddit API does not expose it to this capture path, so **score is a proxy for reach, not reach itself.** Live profile screenshots showed a 3-upvote comment at 24 views and a 1-upvote at 110. Correlated, not identical. Do not over-fit to score alone; if view data ever becomes capturable, re-run this analysis against it.
+
+---
+
 ---
 
 ## Before you call an LGAAS draft "fabricated" — check the instrument
@@ -252,10 +309,14 @@ order by created_at desc limit 10;
 
 ---
 
-## What to do next (in order)
+## What to do next (in order) — REVISED Jul 21 2026
 
-1. **Apply the migration** — `psql "$DATABASE_URL" -f scripts/migrations/create_ss_reddit_intel.sql`
-2. **Add `?from=reddit` to the Reddit profile link.** ← highest-leverage action in this document
-3. **Let the cron run.** Corpus banks daily at $0.
-4. **Read `attributed_sessions` in ~2 weeks.** That number decides whether Reddit is a real channel or a beloved hobby.
-5. **Then, and only then**, revisit Piece B.
+> **The original list is superseded.** Steps 1–3 are done, and step 2 was the `?from=reddit` error this document corrects above (it is `utm_source`, per BP108 — never re-add it). Step 4's premise — "read `attributed_sessions` in ~2 weeks and let it decide whether Reddit is a real channel" — was **wrong given ~6 comments posted**. Reading a conversion rate off that denominator would retire a channel that was never given a chance to perform. The corrected sequence:
+
+1. ✅ **DONE** — migration applied, corpus live (500 comments, Mar 9 – Jul 14), `capture-reddit-intel` cron banking daily at $0.
+2. ✅ **DONE** — profile link live and correctly tagged (`utm_source=reddit&utm_medium=social&utm_campaign=profile`); site-side capture fixed Jul 13 (`f1c1b3e`).
+3. **RESTORE VOLUME.** ← highest-leverage action in this document. Nothing else here matters at ~1 comment/day. Target the March cadence.
+4. **Ship the format change** — `LGAAS-WORK-ORDER-REDDIT-REACH.md`: ≥70% top-level, reweight toward r/AsianBeauty, cut r/SkincareAddiction, drop r/tretinoin. Zero added risk.
+5. **THEN read attribution, ~Aug 11 2026** (or once 100+ comments have accumulated) — GA4 `utm_source=reddit` first (did they arrive?), then `ss_widget_sessions.source='reddit'` (did they talk to Yuri?). Only a number built on real volume is worth interpreting.
+6. **Route the outcome correctly.** Reach up + sessions > 0 → Stage 1 works, don't escalate. Reach up + sessions still 0 → the **CTA path** is the problem (bio copy, link label, landing target) — *still not Stage 2*. Reach flat → the format change failed; diagnose that before considering anything riskier.
+7. **Then, and only then**, revisit Piece B (extraction → Yuri) and the BP108 Stage 2 gate.
