@@ -40,7 +40,13 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       email: user.email!,
       plan: parsed.data.plan as TierKey,
-      successUrl: `${origin}/onboarding`,
+      // {CHECKOUT_SESSION_ID} is substituted by Stripe on redirect. It lets the
+      // app confirm payment DIRECTLY with Stripe when the buyer returns, instead
+      // of waiting on the out-of-band webhook (Stripe's documented dual-trigger
+      // fulfillment pattern). Without it the only path to "you are paid" is the
+      // webhook, so a delayed or failed webhook leaves a paying customer
+      // looking at a paywall. See /api/stripe/confirm.
+      successUrl: `${origin}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${origin}/subscribe?canceled=true`,
     })
 

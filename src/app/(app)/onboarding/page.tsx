@@ -26,6 +26,40 @@ export default function OnboardingPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [])
 
+  // Second fulfillment trigger (July 21 2026). Stripe sends the buyer here with
+  // ?session_id=cs_... the instant payment succeeds, but the plan is flipped by
+  // the out-of-band webhook — so a paying customer could finish onboarding and
+  // get bounced to the paywall. This confirms payment DIRECTLY with Stripe on
+  // arrival (Stripe's documented dual-trigger fulfillment). Idempotent and
+  // safe: the endpoint verifies ownership and payment_status server-side, so
+  // it grants nothing to someone who simply types the URL. Fire-and-forget —
+  // onboarding must never be blocked by it, because the webhook is still a
+  // second chance and /subscribe self-corrects.
+  useEffect(() => {
+    const sessionId = new URLSearchParams(window.location.search).get('session_id')
+    if (!sessionId) return
+    ;(async () => {
+      try {
+        const { data } = await supabase.auth.getSession()
+        const token = data.session?.access_token
+        if (!token) return
+        await fetch('/api/stripe/confirm', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ session_id: sessionId }),
+        })
+      } catch (err) {
+        console.error('[onboarding] payment confirm failed:', err)
+      } finally {
+        // Drop the id from the URL so a refresh or a shared link doesn't replay it.
+        window.history.replaceState({}, '', '/onboarding')
+      }
+    })()
+  }, [])
+
   useEffect(() => {
     scrollToBottom()
   }, [messages, scrollToBottom])
