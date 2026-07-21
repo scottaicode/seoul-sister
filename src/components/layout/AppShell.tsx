@@ -62,13 +62,39 @@ export default function AppShell({ children }: AppShellProps) {
 
     async function checkAccess() {
       try {
-        const { data } = await supabase
+        let { data } = await supabase
           .from('ss_user_profiles')
           .select('plan, onboarding_completed')
           .eq('user_id', user!.id)
           .maybeSingle()
 
-        // No subscription → redirect to subscribe page
+        // WEBHOOK-LAG RETRY (July 21 2026).
+        //
+        // Stripe redirects the buyer back the instant payment succeeds, but the
+        // plan is flipped to paid by the checkout.session.completed WEBHOOK,
+        // which arrives out-of-band a moment later. In that window the profile
+        // still reads 'free', so a customer who JUST PAID would be bounced to
+        // /subscribe and asked to pay again — the single worst experience this
+        // funnel can produce, and it lands on the first real customers.
+        //
+        // /subscribe self-corrects once the webhook lands, so this was never a
+        // permanent lock; it was a jarring flash of the paywall at the moment
+        // of highest trust. A short bounded re-check absorbs the normal lag.
+        // Deliberately NOT optimistic: we never grant access without a real
+        // paid plan in the database — we just give the webhook a beat to land.
+        if (!data?.plan || data.plan === 'free') {
+          for (let attempt = 0; attempt < 3 && (!data?.plan || data.plan === 'free'); attempt++) {
+            await new Promise((r) => setTimeout(r, 1200))
+            const retry = await supabase
+              .from('ss_user_profiles')
+              .select('plan, onboarding_completed')
+              .eq('user_id', user!.id)
+              .maybeSingle()
+            data = retry.data
+          }
+        }
+
+        // Still free after the grace window → genuinely unpaid.
         if (!data?.plan || data.plan === 'free') {
           router.replace('/subscribe')
           return
