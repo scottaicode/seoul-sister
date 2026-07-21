@@ -266,11 +266,34 @@ The corpus answered a question nobody had asked it: **what distinguishes the com
 
 **Current behavior is inverted**: the Jul restart comments are all deep-thread replies. They are *good* comments — helpful, specific, ending on a question — just in the format that has never produced reach.
 
+### ⚠️ CORRECTION (same day) — the replies are MANUAL. LGAAS already posts 100% top-level.
+
+**The first version of this section concluded "tell LGAAS to post top-level." That was wrong, and the error was analyzing Seoul Sister's data without reading LGAAS's code.**
+
+`lgaas/api/reddit-response.js:1571` — the pipeline's only call to `postComment()`:
+
+```js
+// Reddit fullname format: t3_postid for posts
+const parentFullname = `t3_${response.post.reddit_post_id}`;
+```
+
+`t3_` = a **post**; `t1_` = a **comment**. The prefix is hardcoded, so **the LGAAS pipeline cannot post a reply to another comment.** Everything it generates is top-level.
+
+**So the 254 replies in this corpus were hand-posted**, not generated. The finding holds; its owner changes. The high-performing format is already automated — **the low-performing one is the human.**
+
+Second reply source, and it is legitimate: `lgaas/api/reddit-reply-tracker.js` has `generate_followup` / `mark_followup_posted` — LGAAS *drafts* replies to people who respond to us, a human posts them. That is a **conversational obligation, not a reach play.** Answering someone who asked you a direct question is correct even at avg 1.59. Do not optimize it away by ignoring people.
+
+The split is stable across all 13 weeks of the corpus (top-level beat replies every single week, no exceptions), so this is not a phase or a drift — it is structural.
+
 **Subreddit allocation is also misallocated.** r/AsianBeauty (avg 9.51, n=51) is the best sub and under-served; r/SkincareAddiction (avg 2.16, n=136) is the worst and consumes 27% of all effort.
+
+⚠️ **Also already known to LGAAS.** `lgaas/api/reddit-response.js:1462-1470` (Blueprint 39) documents the identical finding from LGAAS's own data — *"r/AsianBeauty avg 14.48 upvotes/reply vs r/SkincareAddiction avg 2.87"* — and `handleSubredditStats` already surfaces per-sub avg/median/hit-rate as review-queue chips. Seoul Sister's independent numbers (14.61 / 2.95) **confirm** it rather than discover it. It is decision support for whoever works the queue, not automatic weighting.
 
 **Why this matters for the escalation question**: reach is the safe lever and it is **untouched**. Two zero-risk changes (post top-level; reweight subs) sit in front of the risky one (in-comment promotion). Trading a 4-month aged account for marginal gain while the free levers are unused would be a bad trade. Note also that the **89-point all-time best comment is the *least* promotional thing in the corpus** — pure Korea-vs-international information gap, zero product push. The evidence says promotion is not what earns reach here.
 
-**Actioned**: `LGAAS-WORK-ORDER-REDDIT-REACH.md` (Jul 21 2026) — the work order for the LGAAS model, with the top 5 winning comments verbatim as format models, their shared anatomy, the three targeting changes, and a dated prediction + review date (~Aug 11) under the Learning Loop principle. It restates the no-links/no-mentions guardrails explicitly, because "improve our results" is exactly the phrasing a model could over-read as license to promote.
+**Actioned**: `LGAAS-WORK-ORDER-REDDIT-REACH.md` (Jul 21 2026) — top 5 winning comments verbatim as format models, their shared anatomy, and a dated prediction + review date (~Aug 11) under the Learning Loop principle. It restates the no-links/no-mentions guardrails explicitly, because "improve our results" is exactly the phrasing a model could over-read as license to promote. **Read its §0.5 correction first** — two of its three actions were already built, and the net LGAAS model work is close to zero.
+
+**METHOD LESSON — worth more than the finding itself.** Two of three recommendations in that work order were already shipped in LGAAS, because the analysis ran on Seoul Sister's data without reading LGAAS's code. Convergent evidence across two independent datasets (SS 14.61/2.95 vs LGAAS 14.48/2.87) confirmed the *finding* was real — and that felt like validation, which made it easier to skip checking whether the *fix* already existed. **A cross-system recommendation is not finished until you have read the other system's code.** The same trap is live for any future Seoul Sister → LGAAS work order.
 
 ⚠️ **`views` is NULL on all 500 rows** — the Reddit API does not expose it to this capture path, so **score is a proxy for reach, not reach itself.** Live profile screenshots showed a 3-upvote comment at 24 views and a 1-upvote at 110. Correlated, not identical. Do not over-fit to score alone; if view data ever becomes capturable, re-run this analysis against it.
 
@@ -316,7 +339,7 @@ order by created_at desc limit 10;
 1. ✅ **DONE** — migration applied, corpus live (500 comments, Mar 9 – Jul 14), `capture-reddit-intel` cron banking daily at $0.
 2. ✅ **DONE** — profile link live and correctly tagged (`utm_source=reddit&utm_medium=social&utm_campaign=profile`); site-side capture fixed Jul 13 (`f1c1b3e`).
 3. **RESTORE VOLUME.** ← highest-leverage action in this document. Nothing else here matters at ~1 comment/day. Target the March cadence.
-4. **Ship the format change** — `LGAAS-WORK-ORDER-REDDIT-REACH.md`: ≥70% top-level, reweight toward r/AsianBeauty, cut r/SkincareAddiction, drop r/tretinoin. Zero added risk.
+4. **Manual posting habit** — when commenting by hand, prefer top-level on a rising post over a deep-thread reply, and follow the BP39 subreddit chips already in the LGAAS review queue. ⚠️ This is NOT a pipeline change: LGAAS already posts 100% top-level and already surfaces the sub stats. Optionally feed the §5 format anatomy from `LGAAS-WORK-ORDER-REDDIT-REACH.md` into the drafting prompt — lowest priority, the pipeline already produced the 89-point winner.
 5. **THEN read attribution, ~Aug 11 2026** (or once 100+ comments have accumulated) — GA4 `utm_source=reddit` first (did they arrive?), then `ss_widget_sessions.source='reddit'` (did they talk to Yuri?). Only a number built on real volume is worth interpreting.
 6. **Route the outcome correctly.** Reach up + sessions > 0 → Stage 1 works, don't escalate. Reach up + sessions still 0 → the **CTA path** is the problem (bio copy, link label, landing target) — *still not Stage 2*. Reach flat → the format change failed; diagnose that before considering anything riskier.
 7. **Then, and only then**, revisit Piece B (extraction → Yuri) and the BP108 Stage 2 gate.
