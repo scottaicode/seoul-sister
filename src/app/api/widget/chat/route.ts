@@ -751,8 +751,14 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
                       parsed.visitor_id!
                     )
                     if (alreadyEmailed) {
+                      // Record the skip. Before July 21 2026 this branch only
+                      // console.warn'd, so recap_status stayed NULL — identical
+                      // to "never gave an email." A lead who was promised a
+                      // recap and silently didn't get one was invisible in our
+                      // own data. Every path out of here now leaves a status.
+                      await recordRecapStatus(parsed.visitor_id!, 'suppressed_duplicate')
                       console.warn(
-                        `[widget/chat] lead email skipped — address already captured under another visitor`
+                        `[widget/chat] lead email skipped — address captured under another visitor within the dedup window`
                       )
                     } else {
                       const facts = (visitor?.ai_memory || {}) as VisitorMemoryFacts

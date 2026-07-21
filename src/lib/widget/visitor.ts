@@ -215,6 +215,15 @@ export async function clearCapturedEmail(
  */
 export type RecapStatus =
   | 'suppressed'
+  /**
+   * The address was already captured under another visitor row INSIDE the
+   * dedup window, so no second recap was sent. Distinct from 'suppressed'
+   * (which is Yuri's judgment that no send was warranted) — this one is
+   * deterministic identity dedup. Split out July 21 2026 so a duplicate-skip
+   * is never again indistinguishable from a lead who simply never gave an
+   * email; a spike here means the dedup window is eating real return visits.
+   */
+  | 'suppressed_duplicate'
   | 'not_their_address'
   | 'sent'
   | 'send_failed'
@@ -295,10 +304,32 @@ export async function updateRecapStatusByProviderId(
 }
 
 /**
+ * How long a prior capture of the same address suppresses a new recap send.
+ *
+ * The guard below exists to stop ONE conversation from producing two emails
+ * (same human, two visitor rows). It was never meant to stop a genuine RETURN
+ * visit — but with no time bound it did exactly that, permanently.
+ *
+ * 48h covers the real duplicate case (cleared cookies / switched device
+ * mid-consultation, or a same-evening retry) while letting someone who comes
+ * back days later with a new question get the recap they were promised.
+ */
+const RECAP_DEDUP_WINDOW_HOURS = 48
+
+/**
  * Cross-visitor duplicate-send guard (v10.13.3): the same human can appear as
  * two visitor rows (cleared cookies, new device). captured_email is first-wins
  * PER VISITOR, so a second row would trigger a second follow-up email to the
  * same address. Deterministic identity dedup — not judgment.
+ *
+ * TIME-BOUNDED as of July 21 2026. The original guard matched ANY prior row
+ * forever, which silently blacklisted returning visitors from ever receiving a
+ * recap again. Found in production: a tester gave the same address on Jul 18
+ * (recap delivered) and again on Jul 21 under a new visitor UUID — the guard
+ * matched the 3-day-old row, the send was skipped, and Yuri told him three
+ * times the recap was "on its way." It never was. A permanent blacklist also
+ * made the failure invisible: no send branch ran, so recap_status stayed NULL,
+ * indistinguishable from "never gave an email."
  *
  * Fail-open: on query error we return false (send proceeds). An occasional
  * duplicate email beats silently never sending due to a transient error.
@@ -308,16 +339,26 @@ export async function isEmailCapturedByAnotherVisitor(
   visitorId: string
 ): Promise<boolean> {
   const supabase = getServiceClient()
+  const since = new Date(
+    Date.now() - RECAP_DEDUP_WINDOW_HOURS * 60 * 60 * 1000
+  ).toISOString()
   try {
     const { data, error } = await supabase
       .from('ss_widget_visitors')
       .select('visitor_id')
       .ilike('captured_email', email)
       .neq('visitor_id', visitorId)
+      // Only a RECENT capture suppresses the send. Older rows are return
+      // visits, not duplicates. Uses email_captured_at (when the address
+      // landed) rather than recap_sent_at, so a prior capture whose send
+      // failed still suppresses a retry storm inside the window.
+      .gte('email_captured_at', since)
       .limit(1)
 
     if (error) {
-      if (!/captured_email/.test(error.message || '')) {
+      // Tolerate the pre-migration case for BOTH columns this query touches —
+      // a missing email_captured_at must fail open quietly, same as captured_email.
+      if (!/captured_email|email_captured_at/.test(error.message || '')) {
         console.error('[Widget] isEmailCapturedByAnotherVisitor failed:', error.message)
       }
       return false
