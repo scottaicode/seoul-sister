@@ -597,19 +597,33 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
               </div>
             ))}
 
+            {/* The paywall moment. This used to be a generic feature list, shown
+                at the one instant we know the most about this visitor: Yuri has
+                just spent a whole conversation on their actual skin. A visitor
+                who has told her about their oily T-zone, their Austin humidity
+                and the three products they already own does not need to be told
+                what "6 specialist agents" are — they need to know that all of
+                it is about to be lost, and that keeping it is what they'd be
+                paying for. Continuity is the product; the feature list was
+                answering a question nobody asked. (July 21 2026) */}
             {isAtLimit && (
               <div className="bg-gold/5 rounded-2xl p-4 border border-gold/20 text-center">
                 <p className="text-sm text-white font-medium mb-1">
-                  This is just the preview.
+                  That&apos;s everything I can remember for free.
+                </p>
+                <p className="text-xs text-white/60 mb-1">
+                  Everything you just told me about your skin disappears when you close this tab.
                 </p>
                 <p className="text-xs text-white/50 mb-3">
-                  Subscribers get unlimited Yuri conversations, a personalized skin profile she remembers across sessions, 6 specialist agents, routine building with ingredient conflict detection, and more.
+                  Subscribe and I keep all of it — your skin, what you already own, what
+                  we ruled out — and we pick up here instead of starting over. That&apos;s
+                  when I can actually build your routine and adjust it as your skin responds.
                 </p>
                 <Link
                   href="/register?plan=pro_monthly"
                   className="inline-flex items-center gap-1.5 glass-button-primary text-xs py-2 px-5"
                 >
-                  Subscribe at {PRICING.monthly_display} <ArrowRight className="w-3 h-3" />
+                  Keep going at {PRICING.monthly_display} <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
             )}

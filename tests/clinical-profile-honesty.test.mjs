@@ -155,3 +155,22 @@ test('widget reasons from population patterns but stays calibrated', () => {
     'confidence-calibration guidance missing'
   )
 })
+
+test('the paywall converts on continuity, not a feature list', () => {
+  const widget = readFileSync(
+    join(root, 'src', 'components', 'widget', 'TryYuriSection.tsx'),
+    'utf8'
+  )
+  const start = widget.indexOf('{isAtLimit && (')
+  assert.ok(start > 0, 'paywall card not found')
+  const card = widget.slice(start, start + 1400)
+
+  assert.ok(
+    /disappears when you close this tab|keep all of it/i.test(card),
+    'the paywall must name what the visitor LOSES — it fires at the one moment we know their actual skin'
+  )
+  assert.ok(
+    !/6 specialist agents/.test(card),
+    'reverted to the generic feature list; a visitor who just discussed their own skin does not need a feature tour'
+  )
+})
