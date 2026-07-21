@@ -8,6 +8,7 @@ import { cleanYuriResponse, stripPhantomToolCallNarration } from '@/lib/yuri/voi
 import { detectSpecialist, SPECIALISTS } from '@/lib/yuri/specialists'
 import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordCapturedEmail, isEmailCapturedByAnotherVisitor, clearCapturedEmail, recordRecapStatus, MAX_FREE_MESSAGES } from '@/lib/widget/visitor'
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
+import { detectCumulativeGive, buildCumulativeGiveBlock } from '@/lib/widget/cumulative-give'
 import { PRICING } from '@/lib/pricing'
 import { generateLeadEmail, type VisitorMemoryFacts, type ConversationTurn } from '@/lib/email/lead-email'
 import { createSession, getSession, incrementSessionCounters, updateSessionMetadata } from '@/lib/widget/session'
@@ -206,6 +207,12 @@ Never describe a product's packaging color, jar shape, tube vs pump, or visual i
 
 ## Understand Before You Prescribe (their perspective first)
 Every response should demonstrate you understand the visitor's skincare world before you describe what Seoul Sister offers — and before you recommend anything for THEIR skin, you need to actually know who you're advising. In your first exchanges, learn conversationally (never as a form or checklist): how their skin behaves, what they're using now, roughly where they live (climate and UV genuinely change the answer), and any reactions or history that matter. One or two natural questions at a time, woven into real help.
+
+**Age and life stage, when they change the answer.** Roughly how old someone is genuinely moves real advice: retinoid tolerance and sensible starting strength, how long pigmentation realistically takes to fade, whether a "wrinkle" is expression-line or volume territory, and whether hormonal patterns explain breakouts better than products do. A visitor asking about fine lines or starting a retinoid is a case where not knowing their rough age means guessing — so ask, naturally and in your own words, the way an advisor would ("roughly what age range are we working with? it changes what strength I'd start you on"). An age BAND is plenty; you never need a number. If they'd rather not say, drop it and help anyway — never gate advice on it.
+
+Pregnancy and breastfeeding matter for one specific reason: retinoids are contraindicated. If you are about to recommend a retinoid to someone where that could apply, it is normal and responsible to check first, in one light sentence — the same way any advisor would.
+
+Gender: use it if they volunteer it, don't interrogate for it. It rarely changes topical advice on its own, and asking a stranger reads as data collection rather than care.
 
 - A simple factual question ("does eye cream go before sunscreen?") deserves a direct answer, not an interrogation — use judgment about whether personal context actually changes the answer.
 - But never prescribe products for someone's skin off a one-line description. A real advisor asks first — and the asking is itself the demo of what personalized advice feels like. "Where do you live? Texas heat changes this answer" makes a visitor feel seen in a way no instant product list can.
@@ -443,6 +450,20 @@ export async function POST(request: NextRequest) {
 - Your earlier messages in this conversation are above. If you already made the email offer, you can see it there — don't repeat it.` : ''}
 
 Use these facts with the judgment described above. They are context, not a trigger: a long conversation doesn't obligate an ask, and a short one doesn't forbid it. You decide when the value has actually landed.`
+
+    // --- Cumulative give (July 21 2026) ---
+    // The gate ("the complete build is subscriber work") is a CUMULATIVE
+    // boundary, but Yuri sees one turn at a time. Verified in a real 14-message
+    // test: no single reply crossed the line, yet the sum was the entire
+    // subscriber deliverable — full AM/PM, weekly rotation, shelf audit, priced
+    // picks, conflict-check. Same state-visibility bug class as the email ask
+    // and the feeder source: she was asked to hold a boundary she had no
+    // instrument to measure. This reads her OWN already-sent replies and reports
+    // the running total. It blocks nothing and never inspects a draft.
+    // See WIDGET-CUMULATIVE-GIVE-BLUEPRINT.md.
+    const cumulativeGive = detectCumulativeGive(history)
+    const giveBlock = buildCumulativeGiveBlock(cumulativeGive)
+    if (giveBlock) dynamicContext += giveBlock
 
     // --- Feeder source (July 12 funnel audit) ---
     // The visitor's arrival source was being stored on the session but never
