@@ -106,7 +106,10 @@ export default function ContextualYuriNudge({ kind, name, brand }: ContextualYur
   useEffect(() => {
     if (visible && !shownTrackedRef.current) {
       shownTrackedRef.current = true
-      trackEvent(NudgeEvent.shown, { kind })
+      // Carry the page identity (name + brand for products) so GA4 can segment
+      // the search->Yuri funnel by specific page (e.g. /best/serums vs
+      // /best/cleansers), not just by broad kind. Telemetry enrichment only.
+      trackEvent(NudgeEvent.shown, { kind, name, ...(brand ? { brand } : {}) })
     }
   }, [visible, kind])
 
@@ -120,7 +123,7 @@ export default function ContextualYuriNudge({ kind, name, brand }: ContextualYur
   }
 
   const accept = () => {
-    trackEvent(NudgeEvent.click, { kind })
+    trackEvent(NudgeEvent.click, { kind, name, ...(brand ? { brand } : {}) })
     router.push(`/?ask=${encodeURIComponent(question)}&from=${kind}`)
   }
 
