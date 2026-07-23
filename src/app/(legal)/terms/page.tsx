@@ -129,7 +129,7 @@ export default function TermsPage() {
         <h2 className="text-white font-semibold text-lg mb-3 pt-4 border-t border-white/10">
           8. Affiliate Links &amp; Recommendations
         </h2>
-        <p>Seoul Sister may include affiliate links to third-party retailers (Olive Young, Soko Glam, YesStyle, Amazon, etc.). When you purchase through these links, we may earn a commission at no additional cost to you. Affiliate relationships do not influence our AI recommendations or ingredient analysis.</p>
+        <p>Seoul Sister may include affiliate links to third-party retailers (Olive Young, Soko Glam, iHerb, and other K-beauty retailers). When you purchase through these links, we may earn a commission at no additional cost to you. Affiliate relationships do not influence our AI recommendations or ingredient analysis.</p>
       </section>
 
       <section>

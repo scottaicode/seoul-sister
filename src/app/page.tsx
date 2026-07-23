@@ -29,7 +29,7 @@ const coreFeatures = [
   { icon: Sparkles, title: 'AI Beauty Advisor', desc: 'Yuri is your personal AI advisor backed by 6 specialist agents, cross-session memory, and your full skin profile.' },
   { icon: ListOrdered, title: 'Smart Routine Builder', desc: 'AI-generated routines with ingredient conflict detection, layering order, wait times, and skin cycling schedules.' },
   { icon: ShieldCheck, title: 'Counterfeit Detection', desc: 'Spot fakes before you buy with AI-powered packaging analysis, batch code verification, and crowdsourced signals.' },
-  { icon: Search, title: 'Price Comparison', desc: 'Compare prices across Korea and US retailers: YesStyle, Soko Glam, Olive Young, Amazon, and more.' },
+  { icon: Search, title: 'Price Comparison', desc: 'Compare prices across Korea and US retailers: Olive Young, Soko Glam, iHerb, and more.' },
   { icon: Users, title: 'Community Reviews', desc: 'Reviews filtered by skin type, Fitzpatrick scale, age, and concern. Not just star ratings.' },
 ]
 
