@@ -40,7 +40,7 @@ const RESEND_ENDPOINT = 'https://api.resend.com/emails'
  * Send one HTML email. Never throws — returns a result object.
  */
 export async function sendEmail(
-  to: string,
+  to: string | string[],
   subject: string,
   html: string,
   options: { from?: string; replyTo?: string; unsubscribeUrl?: string } = {}

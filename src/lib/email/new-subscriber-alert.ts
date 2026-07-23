@@ -9,9 +9,12 @@
  * Design (mirrors src/lib/guardian/alert.ts):
  *  - Provider is Resend via the existing raw-fetch sendEmail() — NO new SDK, ~$0
  *    (reuses RESEND_API_KEY + the verified sending domain).
- *  - Recipient in env (GUARDIAN_ALERT_EMAIL — the same owner inbox the Guardian
- *    already alerts; no new env to configure). Graceful no-op if unset (logs
- *    what it would have sent), same discipline as sendEmail().
+ *  - Recipients in env: NEW_SUBSCRIBER_ALERT_EMAIL if set, else falls back to
+ *    GUARDIAN_ALERT_EMAIL (the owner inbox the Guardian already uses). Either
+ *    may be a comma-separated list — split into an array so every address gets
+ *    the alert. Using a separate var lets new-sub alerts fan out to more inboxes
+ *    (e.g. + a personal Gmail) WITHOUT also redirecting the Guardian's 3x/day
+ *    health alerts. Graceful no-op if neither is set (logs what it would send).
  *  - Never throws. A notification failure must NEVER break the Stripe webhook —
  *    the caller awaits this only to log the result.
  *
@@ -48,15 +51,22 @@ function escapeHtml(s: string): string {
  * best-effort, never throws. Returns whether it sent so the caller can log it.
  */
 export async function notifyNewSubscriber(info: NewSubscriberInfo): Promise<NotifyResult> {
-  const to = process.env.GUARDIAN_ALERT_EMAIL
+  // NEW_SUBSCRIBER_ALERT_EMAIL wins; fall back to the shared owner inbox.
+  // Either may be a comma-separated list.
+  const raw = process.env.NEW_SUBSCRIBER_ALERT_EMAIL || process.env.GUARDIAN_ALERT_EMAIL || ''
+  const recipients = raw
+    .split(',')
+    .map((e) => e.trim())
+    .filter(Boolean)
+
   const who = info.email ? escapeHtml(info.email) : 'unknown email'
   const source = info.leadSource
     ? `attributed to: ${escapeHtml(info.leadSource)}`
     : 'source: direct / organic (no widget lead matched)'
 
-  if (!to) {
+  if (recipients.length === 0) {
     console.warn(
-      `[new-subscriber-alert] GUARDIAN_ALERT_EMAIL unset — would have notified: new ${info.tier} subscriber ${info.email ?? '(no email)'}, ${source}`
+      `[new-subscriber-alert] no recipient env set (NEW_SUBSCRIBER_ALERT_EMAIL / GUARDIAN_ALERT_EMAIL) — would have notified: new ${info.tier} subscriber ${info.email ?? '(no email)'}, ${source}`
     )
     return { sent: false, reason: 'no_recipient' }
   }
@@ -76,7 +86,7 @@ ${amountLine}
   )
 
   try {
-    const result = await sendEmail(to, subject, html)
+    const result = await sendEmail(recipients, subject, html)
     if (!result.sent) {
       console.error(`[new-subscriber-alert] send failed: ${result.error || result.reason}`)
     }
