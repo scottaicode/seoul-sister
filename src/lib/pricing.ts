@@ -12,6 +12,17 @@
 // Price object referenced by STRIPE_PRICE_PRO_MONTHLY (env var). When you change
 // the number here you MUST also create a new Stripe Price at the same amount and
 // update that env var — otherwise the displayed price and the charged price drift.
+//
+// REPRICING CHECKLIST — when you change the number, update these too:
+//   1. Create a new Stripe Price at the same amount + set STRIPE_PRICE_PRO_MONTHLY.
+//   2. LGAAS mirrors this automatically. It pulls GET /api/lgaas/pricing (which
+//      reads THIS file) via a daily sync + a regen-time guard, so the LGAAS
+//      business-profile price is NO LONGER a manual step — do NOT hand-edit it.
+//      The ONE human step on the LGAAS side is its `price_history_note` prose
+//      ("repriced from $X on <date>"), which is authored, not synced.
+//   (History: a June 2026 repricing left a stale $39.99 in the hand-mirrored
+//    LGAAS profile and it reached real users. The auto-sync exists so that can't
+//    recur — see lgaas/lgaas-blueprint/129-*.md §129.1.)
 export const PRICING = {
   /** Monthly price in USD (numeric, for math) */
   monthly_usd: 24.99,
