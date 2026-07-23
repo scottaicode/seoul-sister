@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getStripeClient, planFromStripePriceId, type TierKey } from '@/lib/stripe'
 import { getServiceClient } from '@/lib/supabase'
 import { attributeConversion } from '@/lib/widget/visitor'
+import { notifyNewSubscriber } from '@/lib/email/new-subscriber-alert'
 import type Stripe from 'stripe'
 
 /** Map plan key to the ss_subscriptions.tier column value */
@@ -108,6 +109,24 @@ export async function POST(request: NextRequest) {
             .from('ss_user_profiles')
             .update({ plan })
             .eq('user_id', userId)
+
+          // Notify the owner — a paying customer is the most important event on
+          // the platform. Best-effort; never blocks or fails the webhook.
+          // Fired only here (once per checkout), not on subscription.created,
+          // to avoid double-notifying the same new subscription.
+          try {
+            const notify = await notifyNewSubscriber({
+              email: buyerEmail,
+              plan,
+              tier: planToTier(plan),
+              leadSource,
+            })
+            if (!notify.sent) {
+              console.warn(`[stripe webhook] new-subscriber notify not sent: ${notify.reason}`)
+            }
+          } catch (notifyErr) {
+            console.error('[stripe webhook] new-subscriber notify threw:', notifyErr)
+          }
         }
         break
       }
