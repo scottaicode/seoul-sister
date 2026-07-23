@@ -9,6 +9,7 @@ import { detectSpecialist, SPECIALISTS } from '@/lib/yuri/specialists'
 import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordCapturedEmail, isEmailCapturedByAnotherVisitor, clearCapturedEmail, recordRecapStatus, MAX_FREE_MESSAGES } from '@/lib/widget/visitor'
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
 import { detectCumulativeGive, buildCumulativeGiveBlock } from '@/lib/widget/cumulative-give'
+import { detectValueDensity, buildValueDensityFact } from '@/lib/widget/value-density'
 import { PRICING } from '@/lib/pricing'
 import { generateLeadEmail, type VisitorMemoryFacts, type ConversationTurn } from '@/lib/email/lead-email'
 import { createSession, getSession, incrementSessionCounters, updateSessionMetadata } from '@/lib/widget/session'
@@ -448,6 +449,17 @@ export async function POST(request: NextRequest) {
     const turnNumber = (session?.message_count ?? Math.floor(history.length / 2)) + 1
     const hasEmail = Boolean(visitor?.captured_email)
 
+    // Value density (July 23 2026): turn number is a weak proxy for value
+    // delivered. A visitor who front-loads a full self-diagnosis + product shelf
+    // reaches the value peak at message 3-4, before the slow-burn consult the
+    // counter assumes — and leaves before any count-based moment arrives. This
+    // reads the VISITOR's own messages and reports, as a FACT, when they've
+    // supplied that rich context, so Yuri can see the moment may already be here.
+    // Not a trigger, not a classifier of her intent — see value-density.ts.
+    const valueDensityFact = hasEmail
+      ? null // once captured, the offer question is moot — don't add noise.
+      : buildValueDensityFact(detectValueDensity(history, parsed.message))
+
     // Preview-usage facts: Yuri must never deny the cap exists (verified July 18
     // failure: asked "how many questions do I have remaining?", she answered
     // "there's no question limit here" — she'd never been told there was one).
@@ -456,10 +468,11 @@ export async function POST(request: NextRequest) {
     dynamicContext += `\n\n## Conversation State (facts, not instructions)
 - This is the visitor's message #${turnNumber} in this conversation.
 - Free preview usage: ${lifetimeUsed !== null ? `this is free message #${lifetimeUsed + 1} of ${MAX_FREE_MESSAGES} total (lifetime, across visits and devices). After you reply, exactly ${Math.max(0, MAX_FREE_MESSAGES - lifetimeUsed - 1)} free message${MAX_FREE_MESSAGES - lifetimeUsed - 1 === 1 ? '' : 's'} remain. These numbers are authoritative — if you state a count, use THESE; never estimate or count the transcript's bubbles yourself.` : `the preview allows ${MAX_FREE_MESSAGES} total free messages; exact usage unavailable this turn — don't state a specific count.`} If they ask about limits, that's the honest answer — never claim the preview is unlimited. Don't volunteer a countdown unprompted; near the end (last 2-3 messages), it's fair and honest to mention the preview is almost up.
-- Email on file for this visitor: ${hasEmail ? 'YES — you already have it. Do NOT ask again; just keep helping.' : 'NO — Seoul Sister has no way to reach them after they close this tab.'}${history.length > 0 ? `
-- Your earlier messages in this conversation are above. If you already made the email offer, you can see it there — don't repeat it.` : ''}
+- Email on file for this visitor: ${hasEmail ? 'YES — you already have it. Do NOT ask again; just keep helping.' : 'NO — Seoul Sister has no way to reach them after they close this tab.'}${!hasEmail && history.length > 0 ? `
+- Your earlier messages are above. If you made a clean, standalone offer to save their email and they clearly passed on it, let it rest. But if an earlier mention got buried — tacked onto another question, or lost in a longer answer so they never actually responded to it — a single clear, standalone offer as this piece of work lands is not nagging; it's the one that should have been made. No email is captured yet, so the question is still genuinely open.` : ''}${valueDensityFact ? `
+${valueDensityFact}` : ''}
 
-Use these facts with the judgment described above. They are context, not a trigger: a long conversation doesn't obligate an ask, and a short one doesn't forbid it. You decide when the value has actually landed.`
+Use these facts with the judgment described above. They are context, not a trigger: a long conversation doesn't obligate an ask, and a short one doesn't forbid it. You decide when the value has actually landed. One placement rule when you do offer: let the email ask stand on its own — never staple it to another open question in the same message, or the other question gets answered and the offer gets missed.`
 
     // --- Cumulative give (July 21 2026) ---
     // The gate ("the complete build is subscriber work") is a CUMULATIVE
