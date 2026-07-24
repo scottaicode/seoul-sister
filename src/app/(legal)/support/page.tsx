@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'Support - Seoul Sister',
+  title: 'Support',
   description: 'Get help with your Seoul Sister account, billing, or K-beauty questions.',
 }
 

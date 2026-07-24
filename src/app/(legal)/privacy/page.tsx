@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'Privacy Policy - Seoul Sister',
+  title: 'Privacy Policy',
   description: 'How Seoul Sister collects, uses, and protects your personal information.',
 }
 
