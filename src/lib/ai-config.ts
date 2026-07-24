@@ -103,6 +103,18 @@ export const AI_CONTEXTS = {
     streaming: false,
     costNote: 'Proactive nudge copy in Yuri voice. ~$0.01-0.02 per nudge, capped at 3/user with multi-day spacing.',
   },
+  SEO_GUARDIAN: {
+    // v11.11.0 — weekly SEO strategist over Search Console data. Internal
+    // audience (owner email), but this is judgment-heavy strategic work whose
+    // bets get GRADED against real GSC outcomes weeks later — the PROACTIVE_NUDGE
+    // reasoning applies: quality over cost for graded judgment. Weekly cadence
+    // makes Opus cost trivial (~$0.30-0.60/run). Do not "optimize" to Sonnet.
+    model: 'claude-opus-4-8',
+    maxTokens: 6000,
+    caching: false,
+    streaming: false,
+    costNote: 'Weekly SEO strategy report + dated bets. ~$0.30-0.60 per run, 1 run/week.',
+  },
 
   // ---------------------------------------------------------------
   // Background processing (Claude Sonnet 4.5) — cost efficiency

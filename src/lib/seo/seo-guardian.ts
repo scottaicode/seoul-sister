@@ -1,0 +1,326 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { getAnthropicClient, callAnthropicWithRetry } from '@/lib/anthropic'
+import { getAIContext, estimateCost } from '@/lib/ai-config'
+import { logAIUsage } from '@/lib/ai-usage-logger'
+import { getGscConfig, fetchSearchAnalytics, type GscRow } from './gsc-client'
+
+// ---------------------------------------------------------------------------
+// SEO Guardian — weekly Search Console strategist (Phase 1, report-only).
+//
+// Deterministic code prepares FACTS (aggregates, striking-distance list,
+// deltas vs the prior run); the Opus strategist owns ALL judgment: which
+// clusters matter, what to bet on, expected outcomes. The facts must never
+// pre-filter what the AI can see or bet on — it receives the dataset with
+// remainder totals disclosed, and is free to bet on a position-60 query.
+// Every bet is stored dated with reasoning so a future grading cron can score
+// it against later GSC snapshots (Learning Loop: judgment -> objective
+// teacher -> self-calibration). See LGAAS-WORK-ORDER-SEO-GUARDIAN.md.
+// ---------------------------------------------------------------------------
+
+export interface SeoBet {
+  id: string
+  action: string
+  action_type: 'new_content' | 'content_refresh' | 'metadata' | 'internal_links' | 'other'
+  target_queries: string[]
+  target_page: string | null
+  reasoning: string
+  expected_outcome: string
+  confidence: 'low' | 'medium' | 'high'
+  review_after: string // YYYY-MM-DD
+}
+
+export interface SeoGuardianResult {
+  status: 'completed' | 'failed' | 'not_configured'
+  reportId?: string
+  reportMd?: string
+  bets?: SeoBet[]
+  error?: string
+  costUsd?: number
+}
+
+interface QueryAgg {
+  query: string
+  clicks: number
+  impressions: number
+  position: number // impressions-weighted average
+  topPage: string
+}
+
+function aggregateByQuery(rows: GscRow[]): QueryAgg[] {
+  const map = new Map<string, { clicks: number; impressions: number; posWeight: number; pages: Map<string, number> }>()
+  for (const r of rows) {
+    const cur = map.get(r.query) ?? { clicks: 0, impressions: 0, posWeight: 0, pages: new Map() }
+    cur.clicks += r.clicks
+    cur.impressions += r.impressions
+    cur.posWeight += r.position * r.impressions
+    cur.pages.set(r.page, (cur.pages.get(r.page) ?? 0) + r.impressions)
+    map.set(r.query, cur)
+  }
+  return [...map.entries()]
+    .map(([query, v]) => ({
+      query,
+      clicks: Math.round(v.clicks),
+      impressions: Math.round(v.impressions),
+      position: v.impressions > 0 ? +(v.posWeight / v.impressions).toFixed(1) : 0,
+      topPage: [...v.pages.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '',
+    }))
+    .sort((a, b) => b.impressions - a.impressions)
+}
+
+function aggregateByPage(rows: GscRow[]): Array<{ page: string; clicks: number; impressions: number; position: number }> {
+  const map = new Map<string, { clicks: number; impressions: number; posWeight: number }>()
+  for (const r of rows) {
+    const cur = map.get(r.page) ?? { clicks: 0, impressions: 0, posWeight: 0 }
+    cur.clicks += r.clicks
+    cur.impressions += r.impressions
+    cur.posWeight += r.position * r.impressions
+    map.set(r.page, cur)
+  }
+  return [...map.entries()]
+    .map(([page, v]) => ({
+      page: page.replace('https://www.seoulsister.com', '').replace('https://seoulsister.com', '') || '/',
+      clicks: Math.round(v.clicks),
+      impressions: Math.round(v.impressions),
+      position: v.impressions > 0 ? +(v.posWeight / v.impressions).toFixed(1) : 0,
+    }))
+    .sort((a, b) => b.impressions - a.impressions)
+}
+
+const STRATEGIST_SYSTEM = `You are the SEO Guardian for seoulsister.com — Seoul Sister, the English-language K-beauty intelligence platform (AI advisor Yuri, 5,900+ product database, 8,200+ ingredient pages, counterfeit-detection data, /best/[category] pages, /blog, /ingredients/[slug]).
+
+Every week you receive real Google Search Console data and produce the weekly SEO strategy report for the owner, Scott. Your report is read by a human and your content recommendations feed a blog-generation pipeline (LGAAS), so be specific and actionable, never generic.
+
+Business context you must respect:
+- Seoul Sister is an intelligence platform, NOT a store. Never propose commerce content.
+- The site is young with low domain authority: long-tail and question-form queries are winnable now; head terms ("k-beauty", "korean skincare") are not — say so honestly if tempted. Backlink building is a human job; you may note when it's the real bottleneck, but don't pretend content alone fixes authority.
+- AI-search (Bing/Copilot citations, ChatGPT grounding) is a proven working channel for this site; classic Google is the slower channel. Full-sentence/LLM-shaped queries in the data are AI assistants grounding on the site — treat them as a distinct, valuable signal.
+- Retailer policy for any content suggestion: recommend Olive Young, Soko Glam, iHerb only. Never YesStyle, Stylevana, StyleKorean, and no Amazon/eBay links.
+
+YOUR JUDGMENT IS THE PRODUCT. The computed facts (striking-distance list, aggregates) are conveniences, not constraints — you may bet on anything in the data, including low-position queries, if your reasoning is sound. Prior ungraded bets are listed so you don't duplicate them; graded outcomes (when present) tell you which of your bet types actually work — calibrate accordingly and say when you're discounting a bet type because its track record is weak.
+
+Output format:
+1. A markdown report (this is emailed to Scott): lead with the 3-5 things that matter this week — movements, wins, threats, opportunities. Use tables sparingly. Be direct about what NOT to chase. Close with a short "what LGAAS should generate this week" list.
+2. Then a fenced \`\`\`json code block containing ONLY an array of bet objects, each:
+   {"id": "<short-slug>", "action": "<one imperative sentence>", "action_type": "new_content|content_refresh|metadata|internal_links|other", "target_queries": ["..."], "target_page": "</path or null>", "reasoning": "<why this, why now>", "expected_outcome": "<falsifiable: metric + direction + rough timeframe>", "confidence": "low|medium|high", "review_after": "<YYYY-MM-DD, typically 3 weeks out>"}
+Make 2-5 bets per week — fewer, better-reasoned bets beat a scatter. Each expected_outcome must be checkable against future Search Console data (position, CTR, clicks on named queries/pages).`
+
+function buildUserPrompt(input: {
+  windowStart: string
+  windowEnd: string
+  queryAggs: QueryAgg[]
+  pageAggs: Array<{ page: string; clicks: number; impressions: number; position: number }>
+  strikingDistance: QueryAgg[]
+  totals: { clicks: number; impressions: number; queries: number }
+  priorComparison: string
+  priorBets: string
+  today: string
+}): string {
+  const QUERY_LIMIT = 300
+  const PAGE_LIMIT = 100
+  const shownQueries = input.queryAggs.slice(0, QUERY_LIMIT)
+  const remainder = input.queryAggs.slice(QUERY_LIMIT)
+  const remainderNote =
+    remainder.length > 0
+      ? `\n(+${remainder.length} further queries not listed, totaling ${Math.round(remainder.reduce((s, q) => s + q.impressions, 0))} impressions / ${Math.round(remainder.reduce((s, q) => s + q.clicks, 0))} clicks — ask for nothing; this is full disclosure of what you are not seeing.)`
+      : ''
+
+  const fmtQ = (q: QueryAgg) => `${q.query} | ${q.clicks} clicks | ${q.impressions} impr | pos ${q.position} | ${q.topPage.replace('https://www.seoulsister.com', '').replace('https://seoulsister.com', '') || '/'}`
+
+  return `Today is ${input.today}. GSC window: ${input.windowStart} to ${input.windowEnd} (28 days, data lags ~3 days).
+
+TOTALS: ${input.totals.clicks} clicks, ${input.totals.impressions} impressions, ${input.totals.queries} distinct queries.
+
+VS PRIOR RUN:
+${input.priorComparison}
+
+PRIOR BETS (do not duplicate; graded outcomes included when available):
+${input.priorBets}
+
+COMPUTED STRIKING-DISTANCE LIST (position 4-20, sorted by impressions — a convenience, not a boundary):
+${input.strikingDistance.slice(0, 60).map(fmtQ).join('\n')}
+
+TOP QUERIES (query | clicks | impressions | avg position | top page):
+${shownQueries.map(fmtQ).join('\n')}${remainderNote}
+
+TOP PAGES (path | clicks | impressions | avg position):
+${input.pageAggs.slice(0, PAGE_LIMIT).map((p) => `${p.page} | ${p.clicks} | ${p.impressions} | ${p.position}`).join('\n')}
+
+Write this week's report and bets.`
+}
+
+function parseBets(text: string): { reportMd: string; bets: SeoBet[]; parseError?: string } {
+  // Take the LAST json fence — report prose may legitimately contain a json
+  // example; the bets block is instructed to come last.
+  const fences = [...text.matchAll(/```json\s*([\s\S]*?)```/g)]
+  const fence = fences[fences.length - 1]
+  if (!fence) return { reportMd: text.trim(), bets: [], parseError: 'no json fence found' }
+  const reportMd = text.slice(0, fence.index).trim()
+  try {
+    const parsed = JSON.parse(fence[1]) as unknown
+    if (!Array.isArray(parsed)) return { reportMd, bets: [], parseError: 'bets JSON is not an array' }
+    // Envelope validation only — the reasoning inside is free text by design.
+    // `id` is load-bearing (grades key on it — the whole learning loop), so a
+    // missing/duplicate id is synthesized rather than dropping the bet.
+    const bets = parsed
+      .filter(
+        (b): b is SeoBet =>
+          typeof b === 'object' && b !== null &&
+          typeof (b as SeoBet).action === 'string' &&
+          typeof (b as SeoBet).reasoning === 'string' &&
+          typeof (b as SeoBet).expected_outcome === 'string'
+      )
+      .map((b, i) => ({
+        ...b,
+        id: typeof b.id === 'string' && b.id.length > 0 ? b.id : `bet-${i + 1}`,
+        confidence: b.confidence ?? 'medium',
+        review_after: typeof b.review_after === 'string' ? b.review_after : '',
+      }))
+    return { reportMd, bets }
+  } catch (err) {
+    return { reportMd, bets: [], parseError: err instanceof Error ? err.message : 'JSON parse failed' }
+  }
+}
+
+export async function runSeoGuardian(db: SupabaseClient): Promise<SeoGuardianResult> {
+  const config = getGscConfig()
+
+  if (!config) {
+    console.warn(
+      '[seo-guardian] GSC_CLIENT_EMAIL / GSC_PRIVATE_KEY not set — would have pulled 28d Search Console data and generated the weekly strategy report. See SEO-GUARDIAN-SETUP.md.'
+    )
+    const { error: ncError } = await db.from('ss_seo_reports').insert({
+      window_start: new Date().toISOString().slice(0, 10),
+      window_end: new Date().toISOString().slice(0, 10),
+      status: 'not_configured',
+      error: 'GSC service-account credentials not configured',
+    })
+    if (ncError) console.error('[seo-guardian] not_configured record insert failed:', ncError.message)
+    return { status: 'not_configured' }
+  }
+
+  // GSC data lags ~3 days; 28-day window ending today-3d
+  const end = new Date(Date.now() - 3 * 86400_000)
+  const start = new Date(end.getTime() - 27 * 86400_000)
+  const windowEnd = end.toISOString().slice(0, 10)
+  const windowStart = start.toISOString().slice(0, 10)
+
+  const rows = await fetchSearchAnalytics(config, windowStart, windowEnd)
+
+  // Zero rows from an authorized property is the repo's named
+  // "scraper-zero-result" bug class — make it loud, skip the Opus spend, and
+  // leave a visible record instead of emailing a zeros report.
+  if (rows.length === 0) {
+    console.warn(`[seo-guardian] GSC returned 0 rows for ${windowStart}→${windowEnd} — wrong property, no Google presence, or API issue`)
+    const { error: zrError } = await db.from('ss_seo_reports').insert({
+      window_start: windowStart,
+      window_end: windowEnd,
+      status: 'completed',
+      error: 'gsc_returned_zero_rows',
+    })
+    if (zrError) console.error('[seo-guardian] zero-rows record insert failed:', zrError.message)
+    return { status: 'completed', bets: [] }
+  }
+
+  const queryAggs = aggregateByQuery(rows)
+  const pageAggs = aggregateByPage(rows)
+  const strikingDistance = queryAggs.filter((q) => q.position >= 4 && q.position <= 20)
+  const totals = {
+    clicks: Math.round(rows.reduce((s, r) => s + r.clicks, 0)),
+    impressions: Math.round(rows.reduce((s, r) => s + r.impressions, 0)),
+    queries: queryAggs.length,
+  }
+
+  // Prior run: totals delta + outstanding bets (so the strategist sees its own
+  // track record — the learning-loop feedback channel; grades appear once the
+  // Phase 3 grader exists)
+  const { data: prior } = await db
+    .from('ss_seo_reports')
+    .select('window_start, window_end, computed_facts, bets, grades, created_at')
+    .eq('status', 'completed')
+    .order('created_at', { ascending: false })
+    .limit(3)
+
+  let priorComparison = 'No prior run — this is the baseline week.'
+  const lastRun = prior?.[0]
+  if (lastRun) {
+    const pt = (lastRun.computed_facts as { totals?: { clicks: number; impressions: number; queries: number } })?.totals
+    if (pt) {
+      priorComparison = `Prior window ${lastRun.window_start}→${lastRun.window_end}: ${pt.clicks} clicks, ${pt.impressions} impressions, ${pt.queries} queries. Delta this window: ${totals.clicks - pt.clicks >= 0 ? '+' : ''}${totals.clicks - pt.clicks} clicks, ${totals.impressions - pt.impressions >= 0 ? '+' : ''}${totals.impressions - pt.impressions} impressions.`
+    }
+  }
+
+  const priorBetLines: string[] = []
+  for (const run of prior ?? []) {
+    const bets = (run.bets as SeoBet[]) ?? []
+    const grades = (run.grades as Record<string, { verdict: string; notes?: string }> | null) ?? null
+    for (const b of bets) {
+      const grade = grades?.[b.id]
+      priorBetLines.push(
+        `- [${run.created_at?.slice(0, 10)}] ${b.action} (${b.confidence}) → expected: ${b.expected_outcome}${grade ? ` | GRADED: ${grade.verdict}${grade.notes ? ` — ${grade.notes}` : ''}` : ' | ungraded'}`
+      )
+    }
+  }
+  const priorBets = priorBetLines.length > 0 ? priorBetLines.join('\n') : 'None yet.'
+
+  const userPrompt = buildUserPrompt({
+    windowStart,
+    windowEnd,
+    queryAggs,
+    pageAggs,
+    strikingDistance,
+    totals,
+    priorComparison,
+    priorBets,
+    today: new Date().toISOString().slice(0, 10),
+  })
+
+  const client = getAnthropicClient()
+  const ctx = getAIContext('SEO_GUARDIAN')
+  const response = await callAnthropicWithRetry(
+    () =>
+      client.messages.create({
+        model: ctx.model,
+        max_tokens: ctx.maxTokens,
+        system: STRATEGIST_SYSTEM,
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+    1
+  )
+
+  const block = response.content[0]
+  if (!block || block.type !== 'text') {
+    throw new Error('SEO strategist returned no text block')
+  }
+
+  const inputTokens = response.usage?.input_tokens ?? 0
+  const outputTokens = response.usage?.output_tokens ?? 0
+  void logAIUsage({ feature: 'seo_guardian', model: ctx.model, inputTokens, outputTokens })
+  const costUsd = estimateCost(ctx.model, inputTokens, outputTokens)
+
+  const { reportMd, bets, parseError } = parseBets(block.text)
+  if (parseError) console.warn(`[seo-guardian] bets parse issue: ${parseError}`)
+
+  const { data: inserted, error: insertError } = await db
+    .from('ss_seo_reports')
+    .insert({
+      window_start: windowStart,
+      window_end: windowEnd,
+      // Full raw snapshot — required so Phase 3 can grade bets and any bet can
+      // be audited against exactly what the strategist saw
+      gsc_snapshot: { rows },
+      computed_facts: { totals, strikingDistanceCount: strikingDistance.length, queryCount: queryAggs.length, pageCount: pageAggs.length },
+      report_md: reportMd,
+      bets,
+      model_used: ctx.model,
+      status: 'completed',
+      error: parseError ?? null,
+    })
+    .select('id')
+    .single()
+
+  if (insertError) {
+    console.error('[seo-guardian] report insert failed:', insertError.message)
+  }
+
+  return { status: 'completed', reportId: inserted?.id, reportMd, bets, costUsd }
+}

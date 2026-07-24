@@ -43,6 +43,8 @@ export type AIFeature =
   | 'product_curation_reasoning'
   | 'curated_browse_view'
   | 'skip_reasoning_expanded'
+  // v11.11.0 SEO Guardian weekly strategist
+  | 'seo_guardian'
   // v10.10.0 — proactive nudge engine
   | 'proactive_nudge'
   // v10.12.0 — widget email capture (lead-list breadcrumb, zero-cost)

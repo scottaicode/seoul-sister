@@ -8,6 +8,23 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.11.0 (July 24, 2026): SEO Guardian — a weekly learning loop against Google's own grades
+
+**Why now.** Scott searched "K-beauty skincare" through 8 Google pages and found nothing — which prompted the real diagnosis: the site IS indexed and Search Console shows avg position ~10.7 with 47.3K impressions/28d at 0.9% CTR — hovering just off page 1 on long-tail queries (PIE cluster, Beauty of Joseon Aqua Fresh, sebaceous filaments, counterfeit-checks), while Bing/Copilot citations accelerated to 611/week. The bottleneck is not indexing; it's (a) nobody systematically working the striking-distance queries and (b) domain authority (a human backlink job, not automatable). This release automates (a).
+
+**What shipped (Phase 1, report-only).** Weekly `seo-guardian` cron (Sun 10:00 UTC):
+- `src/lib/seo/gsc-client.ts` — zero-dependency Google Search Console client: service-account JWT (RS256 via node:crypto, no `sub` claim, `\n`-restored PEM) → OAuth token → paginated `searchanalytics.query` (query+page dims, 28-day window ending today−3d for GSC's data lag, handles `rows` being absent vs empty).
+- `src/lib/seo/seo-guardian.ts` — deterministic aggregation (impressions-weighted positions, striking-distance 4–20 list) prepares FACTS; **Opus 4.8 strategist** (`SEO_GUARDIAN` in ai-config; deliberately not Sonnet — judgment that gets graded) owns ALL strategy and writes the weekly report + 2–5 dated bets, each with free-text reasoning and a falsifiable `expected_outcome`. AI-First guardrails locked by guard test: unshown rows are disclosed (no silent truncation) and the computed list is framed "a convenience, not a boundary" — the strategist may bet on anything in the data. Prior runs' bets (and grades, once the Phase 3 grader exists) are injected so the strategist self-calibrates — the Learning Loop with Google as the least-gameable teacher.
+- `ss_seo_reports` table (migration applied to prod): raw GSC snapshot + computed facts + report + bets JSONB + grades/graded_at for Phase 3.
+- Report emailed to `GUARDIAN_ALERT_EMAIL` (marked-rendered, plain transport chrome per the send.ts convention). `ss_pipeline_runs` logging via logPipelineRun with real `run_type: 'seo_guardian'` (recon verified the old run_type CHECK constraint no longer exists).
+- Fail-soft everywhere: missing GSC creds → `not_configured` row + loud warn (cron stays green pre-setup); zero GSC rows → warn + skip the Opus spend (the named scraper-zero-result bug class); no json fence → report still ships, bets empty, parse error recorded.
+
+**Fable 5 review (pre-ship) found and fixed:** zero-rows silence, bets missing `id` being permanently ungradable (grades key on `id` — now synthesized when absent), swallowed `not_configured` insert errors, first-vs-last json fence parsing.
+
+**Division of labor:** Seoul Sister owns measurement + strategy + grading; LGAAS executes content bets through its "+ New Blog" recipe workflow — `LGAAS-WORK-ORDER-SEO-GUARDIAN.md` is the cross-app contract (retailer policy, DB grounding, review checklist all restated there). Scott's setup steps (service account + Search Console permission + 3 env vars) in `SEO-GUARDIAN-SETUP.md`.
+
+Gates: ship-guard PASS (growth/measurement), ai-first-guard PASS on plan, ai-first-check PASS on diff. 88 tests green, tsc + build clean.
+
 ## v11.10.1 (July 24, 2026): Cap the one unsubscribed Yuri surface — and the first organic run of the value-moment funnel
 
 **How it surfaced.** A routine 24-hour activity review found a free account (registered that morning) had completed a full 23-message Yuri onboarding with zero Stripe events — which read as a paywall breach. It wasn't: commit `68acafe` (July 15, v11.4.0) deliberately moved the paywall AFTER onboarding, and CLAUDE.md still described the old Register → Stripe → onboarding order. The false alarm delivered two real findings:
