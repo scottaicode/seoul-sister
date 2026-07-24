@@ -50,6 +50,13 @@ const requestSchema = z.discriminatedUnion('action', [
   completeSchema,
 ])
 
+// Onboarding is the one Yuri surface reachable WITHOUT a subscription (the
+// paywall moved to after onboarding — commit 68acafe), so this endpoint must
+// bound its own cost: without a cap it is unlimited free Opus for any
+// registered account. Real completions run ~11-12 user messages; 50 is ~4x
+// headroom, so no genuine onboarding ever reaches it.
+const ONBOARDING_USER_MESSAGE_CAP = 50
+
 // ---------------------------------------------------------------------------
 // Auth helper
 // ---------------------------------------------------------------------------
@@ -222,6 +229,28 @@ export async function POST(request: NextRequest) {
 
       if (!progress.conversation_id) {
         return Response.json({ error: 'No onboarding conversation found' }, { status: 400 })
+      }
+
+      // Counted with an exact query, NOT from `history`:
+      // loadConversationMessages bridge-truncates past 50 total messages, so a
+      // history-derived count saturates near ~22 and the cap would never fire.
+      // A count error fails open — never block a real onboarding on a
+      // transient DB hiccup.
+      const { count: userMessageCount } = await getServiceClient()
+        .from('ss_yuri_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('conversation_id', progress.conversation_id)
+        .eq('role', 'user')
+
+      if ((userMessageCount ?? 0) >= ONBOARDING_USER_MESSAGE_CAP) {
+        return Response.json(
+          {
+            error:
+              "We've covered a lot — Yuri has everything she needs to build your profile. Subscribe to keep working with her, or tap \"I'll fill in details later\" to continue.",
+            code: 'onboarding_message_cap',
+          },
+          { status: 429 }
+        )
       }
 
       // Load conversation history

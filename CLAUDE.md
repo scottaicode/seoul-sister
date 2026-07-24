@@ -131,10 +131,10 @@ The hero widget includes:
 
 **Layer 3: Full Yuri Experience (Post-Signup)**
 ```
-After account creation + Stripe payment:
-  -> Redirected to /subscribe (payment gate)
+After account creation (paywall sits at the VALUE MOMENT — commit 68acafe, July 15 2026):
+  -> Redirected straight to Yuri onboarding conversation (free — skin profile, preferences, concerns; capped at 50 user messages to bound Opus cost)
+  -> On completion: /subscribe (payment gate, framed as continuation)
   -> Stripe Checkout ($24.99/mo Seoul Sister Pro)
-  -> On success: Yuri onboarding conversation (skin profile, preferences, concerns)
   -> /yuri page with full specialist routing
   -> 6 specialist agents (no message limits)
   -> Cross-session memory and personalization
@@ -675,7 +675,7 @@ Seoul Sister is a paid-only platform. There is no free tier. Visitors get 20 fre
 
 **Yuri is the single orchestrating star.** The standalone feature pages (Scan, Sunscreen, Glass Skin, Shelf Scan, Dupes) are demoted from front-door nav to surfaces Yuri drives — usage data showed essentially everyone lives in Yuri chat (scans=0, wishlists=0 across all users historically). The Sunscreen Finder and Dupe Finder are now **Yuri tools** (`find_sunscreen_match`, `find_product_dupes`) backed by shared cores in `src/lib/intelligence/{sunscreen-finder,dupe-finder}.ts` (the API routes call the same cores — DRY). They return DATA; Yuri owns the recommendation (Yuri Sole Authority). The nav (`Header.tsx`/`BottomNav.tsx`) leads with Yuri; the demoted pages live under a "More" menu, still reachable. Folding the remaining image features (scan/glass-skin/shelf-scan) into in-chat photo tools is DEFERRED until real users ask (they require in-chat image-upload UI and wrap features with zero current usage).
 
-**Registration Flow**: Register → Stripe Checkout ($24.99/mo) → Yuri onboarding → Full app access (no email verification)
+**Registration Flow** (paywall at the value moment — commit 68acafe, July 15 2026): Register → Yuri onboarding (free, capped at 50 user messages) → Stripe Checkout ($24.99/mo, framed as continuation) → Full app access (no email verification). AppShell gates all paid surfaces behind `plan != 'free'`; `/api/yuri/chat` checks `hasActiveSubscription` server-side — the free window is onboarding only.
 
 **What Subscribers Get**:
 - Unlimited AI label scanning (Claude Opus 4.8 Vision)

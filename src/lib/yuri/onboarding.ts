@@ -525,6 +525,18 @@ export async function finalizeOnboardingProfile(
 export async function skipOnboarding(userId: string): Promise<void> {
   const db = getServiceClient()
 
+  // A user with a FINALIZED profile can still reach the skip path (the skip
+  // link is always visible, and the message-cap copy points at it). Skipping
+  // must never downgrade an extracted profile back to defaults — the upsert
+  // below would overwrite their real skin_type with 'normal'.
+  const { data: existing } = await db
+    .from('ss_user_profiles')
+    .select('onboarding_completed')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (existing?.onboarding_completed) return
+
   // Create a minimal profile. Clinical fields stay NULL — a user who SKIPPED
   // onboarding has told us nothing, and inventing a Fitzpatrick/age/climate for
   // them is exactly the fabrication this release removes. Yuri will see "not
