@@ -112,8 +112,35 @@ export async function POST(request: NextRequest) {
         }))
       }
 
-      // If no messages yet, generate Yuri's opening message
-      if (messages.length === 0 && progress.conversation_id) {
+      // If no messages yet, generate Yuri's opening message — but claim the
+      // right to do so ATOMICALLY first. The greeting is saved only after the
+      // ~0.9s stream finishes, so two concurrent start_onboarding calls (React
+      // Strict Mode / fast re-mount fires the client effect twice) would both
+      // read zero messages and both generate a greeting. This conditional
+      // UPDATE flips greeting_started_at null -> now() and returns a row ONLY to
+      // the request that won; Postgres serializes the concurrent UPDATEs so
+      // exactly one wins. The loser falls through to "return existing state".
+      let greetingClaimed = messages.length === 0 && Boolean(progress.conversation_id)
+      if (greetingClaimed) {
+        const nowIso = new Date().toISOString()
+        const { data: claim, error: claimError } = await getServiceClient()
+          .from('ss_onboarding_progress')
+          .update({ greeting_started_at: nowIso })
+          .eq('conversation_id', progress.conversation_id!)
+          .is('greeting_started_at', null)
+          .select('conversation_id')
+        // Tolerate the column not existing yet (pre-migration): fail OPEN so
+        // onboarding still greets. The client ran-once guard is the fallback
+        // protection until the migration lands.
+        if (claimError && !/greeting_started_at/.test(claimError.message || '')) {
+          console.error(`[yuri/onboarding] greeting claim failed for user ${user.id}:`, claimError.message)
+        }
+        if (!claimError && (!claim || claim.length === 0)) {
+          greetingClaimed = false // another request already claimed it — don't double-greet
+        }
+      }
+
+      if (greetingClaimed && progress.conversation_id) {
         const encoder = new TextEncoder()
         const stream = new ReadableStream({
           async start(controller) {

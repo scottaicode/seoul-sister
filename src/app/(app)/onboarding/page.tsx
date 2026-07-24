@@ -21,6 +21,11 @@ export default function OnboardingPage() {
   const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  // Ran-once guard for the start-onboarding effect. React 18 Strict Mode (and
+  // fast re-mounts) fire the mount effect twice; without this the client POSTs
+  // start_onboarding twice, which (pre server-side lock) produced two different
+  // greetings 0.9s apart. Survives re-renders; resets only on a true remount.
+  const startedRef = useRef(false)
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -126,6 +131,13 @@ export default function OnboardingPage() {
 
   // Start onboarding on mount
   useEffect(() => {
+    // Guard against React Strict Mode's double-invoke and fast re-mounts: only
+    // the first run may fire start_onboarding. The server also claims the
+    // greeting atomically (defense in depth), but stopping the duplicate POST
+    // here avoids a wasted request + a discarded Claude generation.
+    if (startedRef.current) return
+    startedRef.current = true
+
     let cancelled = false
 
     async function init() {
