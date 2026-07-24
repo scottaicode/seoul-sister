@@ -8,6 +8,24 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.10.1 (July 24, 2026): Cap the one unsubscribed Yuri surface — and the first organic run of the value-moment funnel
+
+**How it surfaced.** A routine 24-hour activity review found a free account (registered that morning) had completed a full 23-message Yuri onboarding with zero Stripe events — which read as a paywall breach. It wasn't: commit `68acafe` (July 15, v11.4.0) deliberately moved the paywall AFTER onboarding, and CLAUDE.md still described the old Register → Stripe → onboarding order. The false alarm delivered two real findings:
+
+1. **The value-moment funnel got its first organic stranger run** — a 66-year-old Canadian with heavy sun-exposure history completed onboarding naturally (~11-12 user messages) and was routed to /subscribe. No payment yet, but this is the first data point the July 15 redesign was built to collect.
+2. **`/api/yuri/onboarding` `send_message` was unbounded** — the funnel change made it the only Yuri endpoint reachable without a subscription, and it had no message cap, no rate limit, no completed-status check: unlimited free Opus behind a free email signup, scriptable.
+
+**Fix: 50-lifetime-user-message cap** (~4x observed natural completion; no genuine onboarding ever reaches it), returning 429 with continue-to-subscribe copy. Two would-be silent no-ops were caught in pre-implementation review (a second Fable 5 pass over the plan, reading the actual code):
+
+- The cap **must count via an exact `ss_yuri_messages` query, never from loaded history** — `loadConversationMessages` bridge-truncates past 50 total messages (head 4 + tail 40), so a history-derived user count saturates near ~22 and a 50-cap would never fire. Shipped-but-dead protection is the v10.3.4/P0-scraper silent-failure class this repo keeps documenting.
+- A planned post-completion grace window (6 messages after `completed_at`) was **dropped as permanently unenforceable**: both `updateOnboardingProgress` and `finalizeOnboardingProfile` re-stamp `completed_at` on every message once complete, so "messages after completed_at" is always ~0. The UI already redirects completed users away from the chat; the lifetime cap bounds direct API callers.
+
+**Also fixed: `skipOnboarding` clobbered finalized profiles.** The always-visible skip link (which the cap copy points at) overwrote a completed user's extracted profile with defaults (`skin_type: 'normal'`, `onboarding_completed: false`). Now returns early when the profile is already finalized; genuine skippers keep the v11.10.0 clinical-honesty semantics (NULL clinical fields).
+
+**Known residual, accepted:** `ss_yuri_messages` owner-delete RLS lets a determined abuser reset their own count — but free account minting is an equal-cost bypass anyway; per-account caps bound casual abuse, not determined abuse (same posture as the widget caps).
+
+Guard tests: `tests/onboarding-message-cap.test.mjs` locks the exact-count shape, cap-before-save ordering, and the skip guard; the count test verified to fail when the role filter is broken. 87 tests pass, tsc + build clean, ai-first-guard PASS on plan, ai-first-check PASS on diff. CLAUDE.md registration-flow text corrected in both stale places.
+
 ## v11.10.0 (July 21, 2026): Bailey + Lynndon's live test — a silent lead blacklist, an emergent giveaway, and fabricated clinical data
 
 **How it surfaced.** Bailey's partner Lynndon ran a real 14-message preview conversation on the landing widget; Bailey watched. Three observations from them drove the whole release, and pulling on the third one uncovered two safety defects nobody was looking for.
