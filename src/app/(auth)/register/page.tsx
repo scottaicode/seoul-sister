@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, Check, Sparkles, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { PRICING } from '@/lib/pricing'
+import { signupEmailRejection } from '@/lib/utils/email-normalize'
 
 function PasswordStrengthBar({ password }: { password: string }) {
   const checks = [
@@ -69,6 +70,16 @@ export default function RegisterPage() {
 
     if (password.length < 8) {
       setError('Password must be at least 8 characters.')
+      return
+    }
+
+    // Signup-abuse gate (July 23 2026): reject the Gmail dot-abuse pattern that
+    // minted 11 dead-on-arrival accounts (a third of all signups). Gmail ignores
+    // dots, so one inbox spawns unlimited "unique" addresses. Only Gmail 3+-dot
+    // localparts are refused — real addresses (first.last@company.com) pass.
+    const emailRejection = signupEmailRejection(email)
+    if (emailRejection) {
+      setError(emailRejection)
       return
     }
 
