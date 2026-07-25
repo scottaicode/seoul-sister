@@ -26,9 +26,28 @@ local copy so it's discoverable from inside this repo.
    clicks > saves/shares > views > likes.** A 50K-view video with 0 Yuri chats is a LOSS. Optimize
    for the chat, not the reach. (North Star + `SOCIAL-VIDEO-ENGINE.md`.)
 4. **HOLD for Bailey's distribution gate.** No video posts anywhere until Bailey green-lights
-   (`project_distribution_gate`). Building/assembling is fine; posting is gated.
-5. **Bailey's name/face never appear.** Her words may be used, attributed to "a real subscriber."
+   (`project_distribution_gate`). Building/assembling is fine; posting is gated. **Note (July 24
+   2026):** Bailey IS the gatekeeper, and she is now actively producing and posting on her own
+   creator channel — treat the gate as satisfied for her own account. It still governs
+   Seoul-Sister-produced videos.
+5. **Bailey's name/face never appear — SCOPED (July 24 2026) to Seoul-Sister-PRODUCED videos.**
+   This rule was written June 21 2026, before Bailey launched her own TikTok creator channel
+   (@baileyydonn, 1,000+ followers in week one, seoulsister.com/tt in bio). On **her own channel**
+   she appears openly as co-creator by her and Scott's explicit decision — face on camera, telling
+   her own story and others' stories. That is the channel's whole premise and the disclosure
+   posture the FTC requires of an owner-promoter. For SS-produced marketing videos the original
+   rule stands: her words may be used, attributed to "a real subscriber."
 6. **No em-dashes in any drafted copy/captions/script** (AI tell).
+7. **The medical line, restated for creator content (July 24 2026).** Non-Negotiable #2's CLAIMS
+   GUARDRAIL is often misread as "don't tell personal skin stories." It is not. Bailey telling her
+   own experience, and other people's experiences, is encouraged — it is the channel. The banned
+   move is narrower and purely structural: **never convert a story into a symptom checklist.**
+   - ❌ "Here's how you know if YOUR barrier is damaged: stinging, redness, tightness" (diagnosis —
+     a viewer with a different condition self-diagnoses off it)
+   - ✅ "I wrecked my skin last year. For me it was stinging and that tight feeling, and it took me
+     way too long to realize I was over-exfoliating" (same facts, first-person, no diagnosis)
+   Same shape for counterfeits: teach what a marker MEANS, never frame it as harm-prevention. This
+   costs a creator ~2 sentences per 12 scripts and generally sounds MORE natural, not less.
 
 ---
 
