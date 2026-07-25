@@ -37,7 +37,10 @@ Let the viewer read it.
 > *(NO alternative product. Do not pivot to a rec. That's the whole differentiator.)*
 
 **30-33s**
-> "I built this with my dad. It's called Seoul Sister."
+> "It's called Seoul Sister. Six thousand products, and it tells you which four are yours."
+
+*(Demo closer — you just showed it refusing a sale, so close on capability, not on the family
+story. Closer table in `BAILEY-TIKTOK-BLUEPRINT.md`.)*
 
 **On screen:** `POV: your own app tells you not to buy things`
 

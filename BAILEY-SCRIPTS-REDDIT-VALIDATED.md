@@ -86,7 +86,11 @@ transfers; the FORMAT must be rebuilt for 25 seconds.
 > easy. A beach day and a desk day don't need the same cleanse."
 
 **28-31s**
-> "I built this with my dad, it's called Seoul Sister."
+> "It's called Seoul Sister. It reads about fifteen thousand ingredients so you don't have to."
+
+*(Demo closer, not the origin closer — see the closer table in `BAILEY-TIKTOK-BLUEPRINT.md`. "I
+built this with my dad" belongs on origin-story videos; after a capability demo it shrinks what you
+just showed.)*
 
 **On screen:** `the 10-second sunscreen test`
 **Why it wins:** visual, testable tonight, zero product purchase required. Pure utility.

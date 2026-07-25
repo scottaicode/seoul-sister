@@ -78,9 +78,31 @@ the real app inside a human-fronted video are fine and are the point.
 
 ### CTA language
 
-**Works:** "I built this with my dad, it's called Seoul Sister." · "seoulsister.com if you want Yuri
-to look at your routine." · URL simply visible in the screen recording · pinned comment with the URL
-· reply-to-comment videos answering "what app is that?"
+⚠️ **"I built this with my dad" is NOT the default closer — it is the ORIGIN-STORY closer.**
+(Corrected July 25 2026 after Scott flagged it.) It is true, warm, unfakeable, and satisfies FTC
+disclosure in five words. But it carries a real cost in the wrong slot: it can read as *"my dad has
+a hobby project,"* it shrinks a 6,000-product database to a family anecdote, and it casts Bailey as
+the **daughter** rather than the **co-creator** who drove product decisions and got a whole feature
+deleted by calling it garbage.
+
+**Match the closer to what the video just showed:**
+
+| Video type | Closer | Why |
+|---|---|---|
+| **Origin story** (SS-5, R-7 Hwahae) | "I built this with my dad." | The video IS the origin. It lands. |
+| **Product demo** (SS-1, R-1, R-3) | "It's called Seoul Sister. It reads about fifteen thousand ingredients." | A demo of sophisticated software must not close on a phrase that shrinks it. |
+| **Authority / contrarian** (R-6, R-8) | "I co-created this. Six thousand products, and it tells you which four are yours." | Establishes she is the builder, not the helper. |
+| **Short / low-key** (R-4, R-10) | "It's called Seoul Sister." | Name alone. Nothing needed. |
+
+**Verified numbers she can say on camera** (live DB, July 25 2026 — re-check before filming, these
+grow): **6,051 products · 598 brands · 14,952 ingredients · 230,492 ingredient links · 5,114 price
+records.** Round down when speaking ("about six thousand," "around fifteen thousand"). These are
+true+specific capability claims, which the video playbook's CLAIMS GUARDRAIL explicitly permits —
+unlike "dermatologist-level," which it bans.
+
+**Other CTAs that work:** "seoulsister.com if you want Yuri to look at your routine." · URL simply
+visible in the screen recording · pinned comment with the URL · reply-to-comment videos answering
+"what app is that?"
 
 **Say the brand name ALOUD.** Not because "link in bio" is penalized — that's unmeasured folklore,
 and the phrase is allowed — but because a spoken name survives Duets, reposts and screen-recordings

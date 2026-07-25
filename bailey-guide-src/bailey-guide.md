@@ -63,6 +63,25 @@ Avoid leading with a title. Say the specific thing instead:
 
 Specific beats a title. It is more credible, more interesting, and it holds up if anyone pushes back. Your very first video already had the right voice, the "me one random Sunday deciding to post" one. Trust that instinct.
 
+## One important caution about "with my dad"
+
+Your dad raised this and he was right to. **"I built this with my dad" is the right line for an origin-story video and the wrong line to end a demo on.**
+
+It is true, it is warm, and nobody can fake it. But it has a cost in the wrong spot. If you have just spent twenty seconds showing the app catch a counterfeit or pull apart an ingredient list, and then you close with "I built this with my dad," it can shrink what you just showed into a family hobby project. It also quietly makes you the daughter in the story rather than the person who actually shaped the product. You are the one who told them the recommendation feature was garbage and got it deleted. That is a co-creator, not a helper.
+
+**So match the ending to what the video showed.**
+
+| What the video was | How to end it |
+|---|---|
+| Your origin story | "I built this with my dad." |
+| A demo of the app doing something | "It is called Seoul Sister. It reads about fifteen thousand ingredients so you do not have to." |
+| A contrarian or authority take | "I co-created this. Six thousand products, and it tells you which four are yours." |
+| Something short and low key | "It is called Seoul Sister." |
+
+**Numbers you can say out loud, because they are real:** about 6,000 products, 598 brands, roughly 15,000 ingredients, and 230,000 ingredient links connecting them. Round down when you say them. These are worth using because they are specific and true, and they make it obvious this is a real database and not a side project.
+
+What you should never say is anything medical, like "dermatologist level." That is both untrue and a legal problem. Capability claims are fine. Medical claims are not.
+
 \newpage
 
 # 2. The two hard rules
@@ -182,7 +201,7 @@ These are not guesses. Every topic below already worked on Reddit with a real sk
 
 **28 to 31s.**
 
-> "I built this with my dad, it is called Seoul Sister."
+> "It is called Seoul Sister. It reads about fifteen thousand ingredients so you do not have to."
 
 **On screen:** `the 10-second sunscreen test`
 
@@ -365,7 +384,7 @@ These are not guesses. Every topic below already worked on Reddit with a real sk
 
 **30 to 33s.**
 
-> "I built this with my dad. It is called Seoul Sister."
+> "It is called Seoul Sister. Six thousand products, and it tells you which four are yours."
 
 ## SS-2. The niacinamide myth
 
