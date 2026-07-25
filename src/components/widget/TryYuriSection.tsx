@@ -675,7 +675,11 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
               }
               disabled={isStreaming}
               inputMode={emailGateActive ? 'email' : 'text'}
-              className="w-full text-sm py-2.5 pl-3 pr-12 rounded-xl bg-white/10 border border-white/15 text-white focus:outline-none focus:ring-2 focus:ring-gold/30 placeholder:text-white/40 resize-none leading-snug block"
+              /* text-base (16px) on mobile prevents iOS Safari from auto-zooming
+                 the viewport on focus — any input under 16px triggers it, which
+                 shifts the entire conversion surface at the exact moment a
+                 visitor starts typing. sm:text-sm keeps the 14px desktop look. */
+              className="w-full text-base sm:text-sm py-2.5 pl-3 pr-12 rounded-xl bg-white/10 border border-white/15 text-white focus:outline-none focus:ring-2 focus:ring-gold/30 placeholder:text-white/40 resize-none leading-snug block"
               aria-label="Ask Yuri a question"
             />
             <button

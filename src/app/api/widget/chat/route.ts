@@ -38,12 +38,28 @@ const EMAIL_GATE_AFTER_MESSAGES = 8
 // IP BACKSTOP: verified July 18 — a tester switched desktop→phone and got a
 // brand-new visitor UUID with a fresh quota (same ip_hash, new ua_hash in
 // ss_widget_visitors). This 30-day per-IP ceiling caps total preview messages
-// an IP can mint across ALL visitor identities. Set well above the per-visitor
-// cap (12) so a shared household/NAT with 2-3 genuine visitors never
-// false-trips before each hits their own cap; it exists to stop quota-farming
+// an IP can mint across ALL visitor identities. It exists to stop quota-farming
 // via device/browser hopping, not to be the primary gate.
 const PREVIEW_IP_BACKSTOP = 40
 const PREVIEW_IP_WINDOW = 30 * 24 * 60 * 60 * 1000
+
+// CARRIER-NAT SOFTENING (July 24 2026): the backstop above was sized for "a
+// shared household/NAT with 2-3 genuine visitors" — an assumption that mobile
+// traffic violates by orders of magnitude. Carrier-grade NAT routinely puts
+// thousands of subscribers behind ONE egress IP, so at 40 msgs / 12 per visitor
+// only ~3-4 genuine strangers per carrier IP per 30 days could talk to Yuri
+// before message #41 slammed the SUBSCRIBE PAYWALL on a brand-new visitor who
+// had never sent a word. That is the worst possible first impression, and it
+// fails silently: a paywalled stranger never creates a message row, so a
+// NAT-throttled campaign and a dead campaign look IDENTICAL in ss_widget_sessions.
+//
+// Fix: an exhausted IP no longer hard-blocks. A visitor who has NOT personally
+// consumed a preview still gets a real (shorter) conversation — enough to
+// experience Yuri and convert — while a device-hopping farmer, who must keep
+// minting fresh UUIDs to farm, is still bounded to this much smaller allowance
+// per identity. Quota-farming stays capped; genuine strangers stop being
+// punished for their carrier's IP. Never trip the paywall on total_messages === 0.
+const PREVIEW_IP_EXHAUSTED_ALLOWANCE = 4
 
 /**
  * Mechanical email extraction from a visitor message (v10.12.0).
@@ -311,22 +327,15 @@ export async function POST(request: NextRequest) {
     // IP-level preview backstop (30-day, Supabase-persisted). Closes the
     // device-switch reset: a new browser/device mints a new visitor UUID with a
     // fresh per-visitor quota, but every device behind the same IP draws from
-    // this shared 30-day pool. Trips as the PAYWALL (limitReached), not the
-    // transient abuse message — someone here has genuinely consumed the preview.
+    // this shared 30-day pool. NOTE: this only RECORDS consumption here — it no
+    // longer blocks on its own. Enforcement moved below, after the visitor
+    // record loads, so an exhausted IP can be judged against whether THIS
+    // visitor has personally used any preview (see PREVIEW_IP_EXHAUSTED_ALLOWANCE).
     const previewIpCheck = await checkRateLimit(
       `widget-preview-ip:${ip}`,
       PREVIEW_IP_BACKSTOP,
       PREVIEW_IP_WINDOW
     )
-    if (!previewIpCheck.allowed) {
-      return new Response(
-        JSON.stringify({
-          error: `Preview limit reached. Subscribe to ${PRICING.plan_name} (${PRICING.monthly_display}) for unlimited Yuri conversations, personalized routines, and all 6 specialist agents.`,
-          limitReached: true,
-        }),
-        { status: 429, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
 
     const body = await request.json()
     const parsed = widgetSchema.parse(body)
@@ -345,6 +354,22 @@ export async function POST(request: NextRequest) {
         visitor = await getOrCreateVisitor(parsed.visitor_id, ipHash, uaHash)
 
         if (isVisitorAtLimit(visitor)) {
+          return new Response(
+            JSON.stringify({
+              error: `Preview limit reached. Subscribe to ${PRICING.plan_name} (${PRICING.monthly_display}) for unlimited Yuri conversations, personalized routines, and all 6 specialist agents.`,
+              limitReached: true,
+            }),
+            { status: 429, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+
+        // IP backstop enforcement — softened for carrier-grade NAT (July 24 2026).
+        // Only applies once the shared 30-day IP pool is exhausted. Rather than
+        // hard-blocking (which paywalled never-messaged strangers behind a
+        // carrier IP), each visitor identity still gets a small real allowance.
+        // A genuine stranger gets a conversation; a farmer minting fresh UUIDs
+        // to reset quota is bounded to 4 instead of 12 per identity.
+        if (!previewIpCheck.allowed && visitor.total_messages >= PREVIEW_IP_EXHAUSTED_ALLOWANCE) {
           return new Response(
             JSON.stringify({
               error: `Preview limit reached. Subscribe to ${PRICING.plan_name} (${PRICING.monthly_display}) for unlimited Yuri conversations, personalized routines, and all 6 specialist agents.`,
