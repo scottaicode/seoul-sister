@@ -16,14 +16,20 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Writes to BOTH: docs/ (tracked in git, so the deliverable travels with the
+# repo and Bailey can be sent a GitHub link) and ~/Downloads (convenient to
+# attach to a text/email).
+REPO_OUT="$(cd .. && pwd)/docs/Baileys-TikTok-Playbook"
 OUT="$HOME/Downloads/Baileys-TikTok-Playbook"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+mkdir -p "$(dirname "$REPO_OUT")"
 
 command -v pandoc >/dev/null || { echo "pandoc not found: brew install pandoc"; exit 1; }
 
 # DOCX — pandoc handles this directly
 pandoc bailey-guide.md -o "$OUT.docx" --toc --toc-depth=1
 echo "wrote $OUT.docx"
+cp "$OUT.docx" "$REPO_OUT.docx" && echo "wrote $REPO_OUT.docx"
 
 # PDF — via styled HTML + headless Chrome
 pandoc bailey-guide.md -o /tmp/bg.html --standalone --toc --toc-depth=1 \
@@ -47,6 +53,7 @@ if [ -x "$CHROME" ]; then
   "$CHROME" --headless --disable-gpu --no-pdf-header-footer \
     --print-to-pdf="$OUT.pdf" "file:///tmp/bg_inline.html" 2>/dev/null
   echo "wrote $OUT.pdf"
+  cp "$OUT.pdf" "$REPO_OUT.pdf" && echo "wrote $REPO_OUT.pdf"
 else
   echo "Chrome not found; DOCX written but PDF skipped."
 fi

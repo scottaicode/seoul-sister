@@ -115,7 +115,12 @@ INCI list, talking Bailey out of a purchase. Then name the product once, plainly
 register. What kills conversion is hard-sell tone ("subscribe now, $24.99!") and a CTA with no
 demo behind it (nothing to want).
 
-**CTA language that works:** "I built this with my dad, it's called Seoul Sister." /
+**CTA language that works** (⚠️ **the closer must MATCH THE VIDEO TYPE** — see the closer table in
+`BAILEY-TIKTOK-BLUEPRINT.md`, corrected July 25 2026. "I built this with my dad" is the
+ORIGIN-STORY closer; ending a capability *demo* with it shrinks a 6,000-product database to a
+family hobby project and casts Bailey as the daughter rather than the co-creator. Demos close on
+capability instead: "It's called Seoul Sister. It reads about fifteen thousand ingredients."):
+"I built this with my dad, it's called Seoul Sister." /
 "seoulsister.com if you want Yuri to look at your routine." / URL simply visible in the screen
 recording. **Say the brand name ALOUD** rather than relying on "link in bio" — not because
 "link in bio" is penalized (that claim is creator folklore with no measurement behind it; it is
