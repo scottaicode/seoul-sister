@@ -12,6 +12,45 @@ references to Reddit).
 **Source:** `ss_reddit_intel` — 500 comments, Mar 9 → Jul 14 2026, 6 subreddits, top score 89.
 Scores refreshed daily by `capture-reddit-intel` cron.
 
+### ⚠️ Two systems hold this data — LGAAS is the authoritative one
+
+**`lgaas_reddit_responses` (LGAAS Supabase) is the AUTHORING system; `ss_reddit_intel` is the
+mirror.** Verified July 25 2026 by querying both: the top rows are the same comments, same text.
+LGAAS holds **340 Seoul Sister rows (271 posted, 63 archived-unposted, 4 rejected, 2 skipped)**,
+filtered by `client_id = b577e4df-1549-45ea-bb25-b2167d4f3292`, persona `glass_skin_atx`.
+
+**Query LGAAS, not the mirror, when sourcing new topics.** It has:
+- **Fresher karma** — the top comment reads **92** in LGAAS vs 89 in the mirror
+- **~10 days more data** — LGAAS runs to Jul 24; the mirror stops Jul 14
+- **`replies` per comment** — the mirror's `reply_count` is 0 on every row
+- **Draft status** — 63 generated-but-never-posted drafts the mirror never saw
+- **Rejection reasons** — see below
+
+⚠️ **Always filter by `client_id`.** LGAAS is multi-tenant; the overall top comment (391 upvotes)
+belongs to a different client's persona in r/careerguidance. Cross-client rows will contaminate
+topic mining.
+
+⚠️ `lgaas_reddit_posts.subreddit_id` (not `subreddit`). Response text is `response_text`.
+
+### The engagement finding — 599 replies, ZERO AI callouts
+
+`lgaas_reddit_thread_replies` holds **599 replies** received on glass_skin_atx comments:
+**179 question · 132 positive · 113 thanks_only · 111 sharing · 48 neutral · 16 negative.**
+
+**`is_ai_callout` is false on all 599.** Nobody has ever accused the persona of being AI, across
+five months on AI-skeptical subs. That is stronger than the documented <0.3% detection figure, and
+it is direct evidence for the proud-AI thesis: Yuri-assisted writing reads as human even to a
+hostile audience. **179 replies were questions** — the strongest engagement signal available, and
+the reason reply-to-comment videos (SS-6) have real material behind them.
+
+### What the rejected drafts teach
+
+Only 6 drafts were ever killed. The only *systematic* kill reason is **ungrounded product-mechanism
+claims** — two `wrong_mechanism` rejections, one for claiming composition facts about three products
+absent from `ss_products`, one for getting a sunscreen-pilling mechanism backwards on r/tretinoin
+"where users will catch it." That is the same failure mode the ground-in-data rule exists to
+prevent, and it is why every product claim below was verified against the catalog before writing.
+
 ---
 
 ## ⚠️ How to read the scores (do not skip)
