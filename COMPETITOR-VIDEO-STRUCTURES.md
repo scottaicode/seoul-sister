@@ -88,7 +88,60 @@ than the beat is worth.
 
 ---
 
-## Summary — what to actually take
+---
+
+## ⚠️ CORRECTION (July 25 2026) — the 7-beat template WAS judged against the wrong lane
+
+Everything above evaluates the 7-beat template against **Seoul Sister** constraints. Scott's
+follow-up made the obvious point: the template was never meant for that lane. It is a **TikTok Shop
+physical-product template**, and Bailey **has a TikTok Shop lane.**
+
+Judged against the Shop lane, the verdict changes substantially. Her funnel and Bailey's Shop funnel
+are the same funnel: impulse purchase of a physical product, in-app checkout, see-it-want-it-buy-it.
+Most of what was rejected above was rejected for reasons that **do not apply to Shop content.**
+
+### Re-scored for the SHOP lane
+
+| # | Beat | vs Seoul Sister | vs Shop lane |
+|---|---|---|---|
+| 1 | Hook, verbal + visual | ✅ take | ✅ **take** — universal |
+| 2 | Social proof / name-drop | ⚠️ conditional | ✅ **take** — normal product-review behavior |
+| 3 | Sell the dream | ✅ take | ✅ **take** |
+| 4 | Objection split (product vs decision) | ✅ the gem | ✅ **take, and it is the gem here too** |
+| 5 | Price / urgency (sale, BOGO) | ❌ reject | ✅ **take** — TikTok Shop sales are REAL and are a legitimate fact |
+| 6 | Social proof again, personal | ⚠️ conditional | ✅ **take** if true |
+| 7 | Soft CTA | ❌ reject | ⚠️ **restructure** — see below |
+
+**Beat 5 flips from reject to take.** There is no BOGO on a $24.99 subscription, which is why it was
+rejected for Seoul Sister. But TikTok Shop genuinely runs sales and bundles constantly, and saying
+"this is on sale right now" about a product that IS on sale right now is a true statement, not
+manufactured urgency. The honesty rule bans *fabricating* scarcity, not *reporting* a real discount.
+
+**Beats 2 and 6 flip from conditional to take.** The conditional was about Seoul Sister's thin social
+proof (2 paying subscribers). For a lip gloss, "my friends all asked about this" is ordinary
+product-review content and needs no company metrics behind it. Still must be true.
+
+**Beat 7 stays modified, for a different reason than before.** Her stated intent is to disguise
+commercial intent ("so people don't know I'm trying to sell them"). For an FTC-disclosed Shop
+affiliate this is not merely off-brand, it is backwards: affiliate content requires the Branded
+Content toggle and clear disclosure regardless of lane. **Keep her CASUAL REGISTER, drop the
+concealment.** "It's linked below if you want it" is casual and disclosed. That costs nothing in
+conversion and removes the compliance problem entirely.
+
+### The one beat that carries across BOTH lanes
+
+Beat 4's split is the gem in either lane, but it points at different things:
+- **Shop:** "I don't know which shade" → answer the decision, not just the product
+- **Seoul Sister:** "I don't know which of 6,000 products is for my skin" → the product thesis
+
+Same mechanism, two applications.
+
+**Net:** for Shop content, adopt the template nearly whole. Take 1-6, restructure 7 for disclosure.
+The Seoul-Sister-lane analysis above remains correct **for the Seoul Sister lane only.**
+
+---
+
+## Summary — what to actually take (SEOUL SISTER lane)
 
 | Take | Leave |
 |---|---|
