@@ -3,6 +3,15 @@
 **Created:** July 25 2026. Working script bank. Pairs with `BAILEY-TIKTOK-BLUEPRINT.md` (the
 strategy + the 3-arm CTA test) and `BAILEY-CONTENT-PLAYBOOK.md` (the primary doc).
 
+> **Bailey-facing deliverable:** these files are the working source. The assembled, Bailey-facing
+> version is generated to `~/Downloads/Baileys-TikTok-Playbook.pdf` / `.docx`. **If you edit a
+> script here, regenerate the deliverable** — see "Regenerating Bailey's document" at the bottom of
+> `BAILEY-TIKTOK-BLUEPRINT.md`. Keeping them in sync matters: the PDF is what Bailey actually
+> films from.
+>
+> **Script inventory (29 total):** 10 Reddit-validated (`BAILEY-SCRIPTS-REDDIT-VALIDATED.md`) ·
+> 6 Seoul Sister + 9 life + 4 Shop (this file).
+
 **Format key:** 🟢 Seoul Sister, no Shop tag · 🔴 Shop-tagged, ZERO SS mention · ⚪️ life/neutral
 
 **Universal rules.** 20-35s. Hook under 12 words with hands moving. On-screen text from frame one
@@ -225,9 +234,79 @@ including about things she loved.
 **Absolute rule: no Seoul Sister mention, no off-platform pointer, not even implied.** TikTok Shop
 penalizes sending traffic off app in shop-tagged content; 24 points in 90 days = ban.
 
-- **S-1 — Honest review.** *"Three weeks with this. Two things work, one doesn't."* Name the flaw.
-- **S-2 — Texture ASMR.** No talking for the first 5s. Swatch slow and close. Text only.
-- **S-3 — "Don't buy this if..."** *"Do not buy this if you have oily skin."* Qualify the buyer.
+**The Shop lane is a DIFFERENT JOB from the Seoul Sister lane.** Seoul Sister is a considered
+subscription, so those videos demo the product and let it speak. Shop is impulse purchase of a
+physical product, and the 7-beat template in `COMPETITOR-VIDEO-STRUCTURES.md` (re-scored July 25
+2026) applies here nearly whole — it was built for exactly this funnel.
+
+## The 7-beat Shop template
+
+| # | Beat | What it does |
+|---|---|---|
+| 1 | Hook, verbal AND visual | Slightly surprising claim said **while hands are doing something** (applying, swatching, removing). Motion holds the eye while the claim lands. |
+| 2 | Social proof | "The one everyone's talking about." Borrows credibility instantly. |
+| 3 | Sell the dream | Name the category's problems, then why this one solves them. |
+| 4 | **Both objections** | Product objection ("is it sticky?") AND **decision objection** ("which shade do I even pick?"). |
+| 5 | Price / deal | If it's genuinely on sale or bundled, say so. |
+| 6 | Social proof, personal | "My friends keep asking about this." |
+| 7 | Casual close | Low-key, not a hard sell. |
+
+**Beat 4 is the one most creators miss** and it's the gem in both lanes. Two different reasons
+someone doesn't buy: a problem with the product, or they can't decide which version is theirs, so
+they close the app and never return. The second is invisible and kills more sales. Answer it out
+loud.
+
+**Two modifications to the source template:**
+- **Beat 7 — keep the casual register, DROP the concealment.** The source teaches closing "so
+  people don't know I'm trying to sell them." An affiliate needs the Branded Content toggle and
+  clear disclosure in any lane, so concealment is backwards regardless of brand fit. "It's linked
+  below" is casual AND disclosed, and costs nothing in conversion.
+- **Beat 5 — report real deals only.** TikTok Shop runs genuine sales constantly, so mentioning one
+  is simply true. Reporting a real discount is fine; inventing urgency is the thing that burns
+  trust.
+
+## S-1 — Full 7-beat product video (~40s)
+**0-3s (hook, hands moving)** — already applying/swatching.
+> "I canceled a whole appointment because of this."
+
+*Use whatever is actually true for the product. A real claim that sounds surprising.*
+
+**3-8s (social proof)**
+> "This is the one that's been all over my feed for a month."
+
+**8-18s (sell the dream)**
+> "Most of these either feel sticky or disappear in an hour. This one's actually made with skincare
+> ingredients, so it feels like a balm and still looks glossy."
+
+**18-26s (both objections)**
+> "It's not sticky, which was my main worry. And if you're stuck on which one to get, the neutral
+> shade genuinely works on any skin tone."
+
+**26-31s (price)**
+> "They have it on a bundle right now, which is the only reason I got a second one."
+
+**31-36s (personal proof)**
+> "My friends keep asking me what I'm wearing."
+
+**36-40s (casual close)**
+> "It's linked below."
+
+## S-2 — Honest review
+> "Three weeks with this. Two things work, one doesn't."
+
+What worked, then the honest miss (texture, scent, pilling, price). Close with who should buy it and
+who shouldn't. **Naming a flaw is the fastest credibility builder there is** — people trust the yes
+more once they've seen a no.
+
+## S-3 — Texture ASMR
+No talking for the first 5s. Swatch slow and close. On-screen text only:
+`if you like this texture, keep watching`
+
+## S-4 — "Don't buy this if..."
+> "Do not buy this if you have oily skin. Seriously."
+
+Who it's wrong for and why, then who it's genuinely right for. This is beat 4 in disguise —
+qualifying the buyer.
 
 ---
 
@@ -237,7 +316,7 @@ penalizes sending traffic off app in shop-tagged content; 24 points in 90 days =
 |---|---|---|
 | Seoul Sister demo-led | 2 | 🟢 |
 | Skincare value (SS invisible) | 2 | 🟢/⚪️ |
-| Shop | 3 | 🔴 |
+| Shop (4 scripts available, rotate) | 3 | 🔴 |
 | Life / Lynndon / Milfred | 2-3 | ⚪️ |
 
 **The CTA test:** SS videos rotate ARM A (spoken) → ARM B (pinned comment) → ARM C (none), 4 each.

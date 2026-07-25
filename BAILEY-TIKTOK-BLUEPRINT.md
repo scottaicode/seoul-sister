@@ -172,3 +172,28 @@ distribution.
 **FTC:** Bailey is an owner-promoter. Material connection disclosed in-video AND above the caption
 fold. Not a hashtag. "I co-created this app" / "I built this with my dad" satisfies it and is also
 the best-performing framing.
+
+---
+
+## Regenerating Bailey's document
+
+The repo-root `.md` files are the **working source**. The **Bailey-facing deliverable** is a single
+assembled PDF/DOCX built from `bailey-guide-src/bailey-guide.md` — written in second person, no
+internal jargon, no file paths.
+
+```bash
+./bailey-guide-src/build.sh
+# → ~/Downloads/Baileys-TikTok-Playbook.pdf
+# → ~/Downloads/Baileys-TikTok-Playbook.docx
+```
+
+**These are maintained separately on purpose** (the working files carry evidence tiers, SQL, and
+internal rationale Bailey doesn't need). **So when a script changes, change it in BOTH** — the PDF
+is what she actually films from, and silent drift between them is the failure mode. It has already
+happened once: the Shop-lane 7-beat rewrite landed in the deliverable before the working files
+caught up.
+
+Requires `pandoc` plus Google Chrome. Chrome does the PDF because pandoc's PDF path needs LaTeX,
+which isn't installed — don't "simplify" the script to `pandoc -o out.pdf`, it will fail.
+
+**Script inventory (29):** 10 Reddit-validated · 6 Seoul Sister · 9 life · 4 Shop.
