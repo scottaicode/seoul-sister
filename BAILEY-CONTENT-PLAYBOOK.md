@@ -90,7 +90,46 @@ There's a real answer, and it isn't text cards. **Hands-only texture demos** —
 - **Your personal account = the front door.** Your face, your skin, your opinions, your regrets. **This is where growth happens.** Seoul Sister lives in your **bio**, not in your pitch. Exactly how the Reddit account works — the human earns the trust, the bio carries the link.
 - **@seoulsisterskin = the proof.** Yuri transcripts, ingredient decodes, dupe finds, counterfeit catches. Lower volume, higher intent. People land here **after** you've made them curious.
 
-**Never pitch the subscription in a video.** Nobody has ever subscribed to anything because a video told them to. They subscribe because they watched you for three weeks and got curious.
+**~~Never pitch the subscription in a video.~~ REVISED July 24 2026 — see below.** The original
+rule read: *"Nobody has ever subscribed to anything because a video told them to. They subscribe
+because they watched you for three weeks and got curious."* The instinct against hard-selling is
+right. The absolute never-pitch rule is not, and it was built on evidence that doesn't support it.
+
+**Why it was revised:**
+1. **The Reddit "test" wasn't a test.** Reddit ran ~4 months with NO links — that was policy, by
+   design (`project_reddit_funnel_opened_jul_2026`). The funnel opened July 2026. "We were subtle
+   and got no signups" is not evidence that subtle beats direct; for most of that window there was
+   nothing to click.
+2. **Our own research contradicts it.** `WIDGET-CONVERSION-BLUEPRINT.md` cites hard paywalls
+   converting ~5x better than freemium (10.7% vs 2.1%), with the top failure mode being "if the
+   free tier is too generous, users never upgrade."
+3. **A direct case study at this price class exists.** Cal AI (consumer subscription app, same
+   price class) reached ~$2M/mo overwhelmingly via TikTok organic — ~1,000 videos in 12 months that
+   **demo the product and name it**, with viewers converting from SINGLE videos, no parasocial
+   trust-building period. Founders fronted their own content. (Corroborated across Starter Story,
+   Growthcurve, whatastartup — Tier B.)
+
+**The corrected rule: the in-video DEMO is the conversion mechanism, not the pitch and not
+accumulated trust.** Show Yuri actually doing something — catching a counterfeit, tearing apart an
+INCI list, talking Bailey out of a purchase. Then name the product once, plainly, in a native
+register. What kills conversion is hard-sell tone ("subscribe now, $24.99!") and a CTA with no
+demo behind it (nothing to want).
+
+**CTA language that works:** "I built this with my dad, it's called Seoul Sister." /
+"seoulsister.com if you want Yuri to look at your routine." / URL simply visible in the screen
+recording. **Say the brand name ALOUD** rather than relying on "link in bio" — not because
+"link in bio" is penalized (that claim is creator folklore with no measurement behind it; it is
+allowed, just not load-bearing) but because a spoken name survives Duets, reposts, and
+screen-recordings where the bio is lost, and captures people who search the name instead of
+clicking (Seoul Sister already has 369 Bing AI citations — `project_geo_citations_live`).
+
+**Avoid:** price in the hook, "sign up now", follow/like/share asks (that IS documented
+engagement bait), and judging the strategy on per-video averages instead of outlier economics.
+
+**⚠️ UNSETTLED — this is a hypothesis, not a finding.** No controlled explicit-CTA vs no-CTA study
+exists for organic TikTok (no Tier A evidence either way). **The 3-arm test in
+`BAILEY-TIKTOK-BLUEPRINT.md` settles it with our own data.** Until that test reads out, treat the
+above as the best available prior, not proven fact.
 
 ---
 
