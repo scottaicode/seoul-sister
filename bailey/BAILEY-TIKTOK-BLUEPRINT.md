@@ -200,13 +200,13 @@ the best-performing framing.
 ## Regenerating Bailey's document
 
 The repo-root `.md` files are the **working source**. The **Bailey-facing deliverable** is a single
-assembled PDF/DOCX built from `bailey-guide-src/bailey-guide.md` — written in second person, no
+assembled PDF/DOCX built from `bailey/guide-src/bailey-guide.md` — written in second person, no
 internal jargon, no file paths.
 
 ```bash
-./bailey-guide-src/build.sh
-# → ~/Downloads/Baileys-TikTok-Playbook.pdf
-# → ~/Downloads/Baileys-TikTok-Playbook.docx
+./bailey/guide-src/build.sh
+# → bailey/Baileys-TikTok-Playbook.pdf
+# → bailey/Baileys-TikTok-Playbook.docx
 ```
 
 **These are maintained separately on purpose** (the working files carry evidence tiers, SQL, and

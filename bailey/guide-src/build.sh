@@ -16,10 +16,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-# Writes to BOTH: docs/ (tracked in git, so the deliverable travels with the
+# Writes to BOTH: bailey/ (tracked in git, so the deliverable travels with the
 # repo and Bailey can be sent a GitHub link) and ~/Downloads (convenient to
 # attach to a text/email).
-REPO_OUT="$(cd .. && pwd)/docs/Baileys-TikTok-Playbook"
+REPO_OUT="$(cd .. && pwd)/Baileys-TikTok-Playbook"
 OUT="$HOME/Downloads/Baileys-TikTok-Playbook"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 mkdir -p "$(dirname "$REPO_OUT")"

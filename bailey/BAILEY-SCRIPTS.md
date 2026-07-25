@@ -4,7 +4,7 @@
 strategy + the 3-arm CTA test) and `BAILEY-CONTENT-PLAYBOOK.md` (the primary doc).
 
 > **Bailey-facing deliverable:** these files are the working source. The assembled, Bailey-facing
-> version is generated to `~/Downloads/Baileys-TikTok-Playbook.pdf` / `.docx`. **If you edit a
+> version is generated to `bailey/Baileys-TikTok-Playbook.pdf` / `.docx`. **If you edit a
 > script here, regenerate the deliverable** — see "Regenerating Bailey's document" at the bottom of
 > `BAILEY-TIKTOK-BLUEPRINT.md`. Keeping them in sync matters: the PDF is what Bailey actually
 > films from.
