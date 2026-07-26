@@ -74,7 +74,7 @@ export async function generateMetadata({
 
   const { data: post } = await supabase
     .from('ss_content_posts')
-    .select('title, meta_description, excerpt, featured_image_url, published_at, author')
+    .select('title, meta_title, meta_description, excerpt, featured_image_url, published_at, author')
     .eq('slug', slug)
     .not('published_at', 'is', null)
     .single()
@@ -88,7 +88,16 @@ export async function generateMetadata({
     post.meta_description || post.excerpt || 'K-beauty insights from Seoul Sister'
 
   return {
-    title: post.title,
+    // The <title> tag has a ~60-char display budget and the layout appends
+    // " | Seoul Sister", so a long reader-facing H1 truncates mid-phrase.
+    // meta_title is the short search-display variant; `title` remains the H1
+    // shown on the page itself. Falls back when absent, so posts delivered
+    // before this column existed are unchanged.
+    //
+    // Deliberately NOT applied to the openGraph/twitter titles below: those are
+    // social share cards, not search results. They have no 60-char budget and
+    // render the full headline better.
+    title: post.meta_title || post.title,
     description,
     authors: post.author ? [{ name: post.author }] : undefined,
     robots: { index: true, follow: true },

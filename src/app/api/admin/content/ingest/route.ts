@@ -10,6 +10,9 @@ const ingestSchema = z.object({
   lgaas_post_id: z.string().uuid(),
   title: z.string().min(1).max(500),
   slug: z.string().min(1).max(200),
+  // Short SEO display title; falls back to `title` when absent. Nullable
+  // because LGAAS sends an explicit null for posts that have none.
+  meta_title: z.string().max(200).nullable().optional(),
   meta_description: z.string().max(500).optional(),
   content: z.string().min(50),
   excerpt: z.string().max(1000).optional(),
@@ -55,6 +58,7 @@ export async function POST(request: NextRequest) {
       lgaas_post_id: data.lgaas_post_id,
       title: data.title,
       slug: sanitizeSlug(data.slug),
+      meta_title: data.meta_title || null,
       meta_description: data.meta_description || null,
       body: data.content,
       excerpt: data.excerpt || generateExcerpt(data.content),
