@@ -19,7 +19,10 @@ const ingestSchema = z.object({
   featured_image_url: z.string().url().optional().nullable(),
   word_count: z.number().int().positive().optional(),
   source_type: z.string().optional(),
-  published_at: z.string().optional(),
+  // Nullable as well as optional: LGAAS omits this key for a post that is not
+  // published on its side. `.optional()` alone would reject an explicit null
+  // and 400 the delivery.
+  published_at: z.string().nullable().optional(),
 })
 
 /**
@@ -63,7 +66,18 @@ export async function POST(request: NextRequest) {
       featured_image_url: data.featured_image_url || null,
       read_time_minutes: readTimeMinutes,
       source: 'lgaas',
-      published_at: data.published_at || new Date().toISOString(),
+      // NULL = draft (see the foundation schema's own comment on this column,
+      // and the RLS policy `published_at IS NOT NULL AND published_at <= NOW()`).
+      //
+      // Jul 26 2026: this previously defaulted to now(), which meant an ingest
+      // of a post that LGAAS still considered a DRAFT went live immediately —
+      // the ingest endpoint was overriding this table's own draft concept.
+      // LGAAS now omits the key for anything it has not published, so
+      // undefined must stay NULL here rather than become a timestamp.
+      //
+      // For an UPDATE this key is deleted below rather than written as null —
+      // a re-delivery must never retract a post that is already live here.
+      published_at: data.published_at ?? null,
       author: 'Seoul Sister Team',
     }
 
@@ -88,6 +102,16 @@ export async function POST(request: NextRequest) {
           row.previous_slugs = [...prev, existing.slug]
         }
         console.log(`[content-ingest] Slug changed: "${existing.slug}" -> "${row.slug}" (old slug saved for redirect)`)
+      }
+
+      // NEVER retract a live post on re-delivery. LGAAS omits published_at for
+      // anything it does not consider published, and a hero-image regeneration
+      // or a webhook retry re-delivers an ALREADY-PUBLISHED post through this
+      // same path. Writing null there would silently unpublish real content —
+      // strictly worse than the draft leak this change exists to prevent.
+      // Unpublishing stays a deliberate action, never a delivery side effect.
+      if (row.published_at == null) {
+        delete row.published_at
       }
 
       const result = await supabase
