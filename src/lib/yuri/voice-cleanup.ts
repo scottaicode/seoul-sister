@@ -51,8 +51,10 @@ const BANNED_PATTERNS: CleanupRule[] = [
   { pattern: /^[\s]*[.,;:]+\s*/, replacement: '' },
 
   // Conversational filler openers (not caught by the "Great question" set)
-  { pattern: /^Ha,?\s+/i, replacement: '' },
-  { pattern: /^Haha,?\s+/i, replacement: '' },
+  // "Ha" / "Haha" as a standalone laugh opener only. Requires a comma or a
+  // following sentence-start, so it can't decapitate a real word.
+  { pattern: /^Ha,\s+/i, replacement: '' },
+  { pattern: /^Haha[,!.]?\s+/i, replacement: '' },
   { pattern: /^Love to hear that\.?\s*/i, replacement: '' },
   { pattern: /^Love that\.?\s*/i, replacement: '' },
   { pattern: /^So glad to hear that\.?\s*/i, replacement: '' },
@@ -61,16 +63,32 @@ const BANNED_PATTERNS: CleanupRule[] = [
   { pattern: /^Ooh,?\s+/i, replacement: '' },
   { pattern: /^Oh,?\s+I love /i, replacement: 'I love ' },
 
-  // Mid-sentence filler phrases (Claude inserts these as transitions)
-  // Handle after comma, period, exclamation, colon, or line-start
-  { pattern: /[,!.:]?\s*[Ll]et me break (?:it|this|that) down[.,:]?\s*/g, replacement: '. ' },
-  { pattern: /[,!.:]?\s*[Ll]et me walk you through (?:this|that|it)[.,:]?\s*/g, replacement: '. ' },
-  { pattern: /[,!.:]?\s*[Ll]et me explain[.,:]?\s*/g, replacement: '. ' },
-  { pattern: /[,!.:]?\s*[Ll]et me unpack (?:this|that)[.,:]?\s*/g, replacement: '. ' },
-  { pattern: /[,!.:]?\s*[Hh]ere's the (?:thing|deal)[.,:]?\s*/g, replacement: '. ' },
-  { pattern: /[,!.:]?\s*[Hh]ere's what's going on[.,:]?\s*/g, replacement: '. ' },
-  { pattern: /,? I'll be honest[.,:]?\s*/gi, replacement: '. ' },
-  { pattern: /,? if I'm being honest[.,:]?\s*/gi, replacement: '. ' },
+  // Mid-sentence filler phrases (Claude inserts these as transitions).
+  //
+  // IMPORTANT: these ONLY fire when the filler is a complete standalone
+  // sentence — i.e. preceded by start-of-text/sentence-end and followed by
+  // sentence-ending punctuation. The old patterns made the trailing
+  // punctuation optional (`[.,:]?`) and swallowed the following whitespace,
+  // so when the filler ran INTO the next clause ("Let me break this down, the
+  // thing that jumps out...") the regex consumed the comma and left a
+  // decapitated fragment (". the thing that jumps out..."). That destroyed
+  // Yuri's real opening clause on a live prospect's very first message
+  // (Caroline, Jul 25 2026) — the reply began mid-sentence with ". that jumps
+  // out immediately" and read as broken software. Same failure class as the
+  // Jun 23 2026 "I can't promise X, but" incident: a cosmetic cleanup rule
+  // eating load-bearing content. Requiring real terminal punctuation means a
+  // filler fused to a following clause is left alone (harmless) rather than
+  // taking the clause down with it.
+  { pattern: /(^|(?<=[.!?\n]))\s*[Ll]et me break (?:it|this|that) down[.!?]\s*/g, replacement: '' },
+  { pattern: /(^|(?<=[.!?\n]))\s*[Ll]et me walk you through (?:this|that|it)[.!?]\s*/g, replacement: '' },
+  { pattern: /(^|(?<=[.!?\n]))\s*[Ll]et me explain[.!?]\s*/g, replacement: '' },
+  { pattern: /(^|(?<=[.!?\n]))\s*[Ll]et me unpack (?:this|that)[.!?]\s*/g, replacement: '' },
+  { pattern: /(^|(?<=[.!?\n]))\s*[Hh]ere's the (?:thing|deal)[.!?]\s*/g, replacement: '' },
+  { pattern: /(^|(?<=[.!?\n]))\s*[Hh]ere's what's going on[.!?]\s*/g, replacement: '' },
+  // These two are parentheticals, not standalone sentences — strip the phrase
+  // and its leading comma, but never the following clause's punctuation.
+  { pattern: /,\s*I'll be honest\s*,/gi, replacement: ',' },
+  { pattern: /,\s*if I'm being honest\s*,/gi, replacement: ',' },
 
   // Em-dash overuse (replace with comma when between words)
   // Only replace spaced em-dashes, not unspaced ones used intentionally in Korean terms
