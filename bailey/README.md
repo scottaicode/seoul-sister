@@ -23,6 +23,7 @@ Everything else in this folder is working source.
 | `BAILEY-CREATOR-PLAN.md` / `.html` | The Jul 14 creator arrangement + boundaries |
 | `BAILEY-FEEDBACK-LOG.md` | Her product corrections, the record behind Yuri Sole Authority |
 | `COMPETITOR-VIDEO-STRUCTURES.md` | Teardowns of the creators she models, scored per lane |
+| **`POSTING-FREQUENCY-AND-REPOSTS.md`** | **Send-ready.** Jul 27 answer to the "post 30x/day + repost your viral videos" advice. Verdict: cadence 5-7/week (not 30/day — TikTok says 1-4/day, and median views FALL above ~10/week); **never re-upload a winner** (TikTok's Sept 15 2025 enforcement names it, with Creator Rewards clawback + Jul 2026 account-level detection); remake the concept instead. Written to her, sourced. |
 
 ## Regenerating the deliverable
 
