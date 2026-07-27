@@ -1,5 +1,33 @@
 # Bailey, here's the whole idea
 
+> # ⚠️ PARTIALLY SUPERSEDED — Jul 27 2026. DO NOT FILM FROM THIS DOC.
+>
+> **This is the Jul 14 2026 arrangement. Bailey has since pivoted, and the promotional
+> posture below is out of date.** The current guidance is
+> `Baileys-TikTok-Playbook.pdf` (built Jul 25 from `guide-src/bailey-guide.md`), which
+> answers Bailey's own three questions and reverses this document on the central point.
+>
+> **What changed — the pivot.** Bailey does not want to be the face of the *Seoul Sister
+> brand account*, and that boundary still holds. But she IS willing to be the face on
+> **her own account**, in posts that mention and show Seoul Sister. So the "Seoul Sister
+> shows up by accident" posture below is retired.
+>
+> | This doc (Jul 14) says | Current guidance (Jul 25 playbook) says |
+> |---|---|
+> | "No demoing the product" | **The in-video demo IS the conversion mechanism** |
+> | "No 'link in bio to try Seoul Sister' in your captions" | **Name it once, plainly. Say the brand name aloud** |
+> | Seoul Sister appears "by accident" | *"Should you soft-pedal it?"* → **"No, and this one has legal teeth"** |
+> | One bio line is "the entire commercial ask" | Disclose the co-creator role **in the post AND above the caption fold** (FTC) |
+>
+> **What in this doc IS still live:** the boundaries Bailey actually drew — her account
+> stays hers, no assigned calendars or series, no approved scripts, no brand colors or
+> logos on her account, AriaStar helps only when asked and never dictates voice, and she
+> can say no at any time. Those are recorded as data in
+> `lgaas_business_profiles.brand_data.creator_boundaries` and are unchanged.
+>
+> **Kept, not deleted, because it is the record of the boundaries she agreed to.** Read it
+> for those. Do not read it for promotional guidance.
+
 > **Internal note (not part of the message to Bailey):** this is the creator arrangement
 > agreed Jul 14 2026. The matching styled page is `BAILEY-CREATOR-PLAN.html` in this folder,
 > also published at claude.ai/code/artifact/7958f007-412f-45d1-94b1-bf0ba2f524f0.
