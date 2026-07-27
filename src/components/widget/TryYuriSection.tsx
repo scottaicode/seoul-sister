@@ -17,6 +17,7 @@ import { renderMarkdown, parseWidgetStream } from '@/lib/utils/widget-shared'
 import type { WidgetMessage } from '@/lib/utils/widget-shared'
 import { PRICING } from '@/lib/pricing'
 import { trackEvent, DemoEvent, WidgetEvent } from '@/lib/analytics'
+import { detectAiReferrer } from '@/lib/widget/ai-referrer'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -183,6 +184,20 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
     const from = (params.get('from') || '').trim()
     if (utm || from) {
       sourceRef.current = utm || from
+    } else {
+      // ---- AI-assistant referrer fallback (July 27 2026) -------------------
+      // Same class of blind spot as the Reddit gap above: an AI citation sends
+      // a visitor with NO utm and NO from, so they fell through to 'landing'
+      // and the channel was invisible in our own data. Bing Copilot alone was
+      // citing Seoul Sister 525x/week with no way to tell whether ANY of those
+      // readers reached Yuri.
+      //
+      // document.referrer is the only signal available for these arrivals. It
+      // is empty for many AI surfaces (in-app webviews, stripped referrers), so
+      // this RAISES the floor — it never claims certainty. A miss falls through
+      // to 'landing' exactly as before.
+      const ai = detectAiReferrer(document.referrer)
+      if (ai) sourceRef.current = ai
     }
 
     // `ask` PRESENT (even empty) means the visitor clicked an "Ask Yuri" feeder

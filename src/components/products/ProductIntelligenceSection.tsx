@@ -130,11 +130,16 @@ export default function ProductIntelligenceSection({ productId, productName, pro
           title="Community Reviews by Skin Type"
           description="Read reviews filtered by your skin type, age, and concerns. See Holy Grail and Broke Me Out counts."
         />
-        <GatedTeaser
-          icon={<Shield className="w-5 h-5 text-violet-400" />}
-          title="Ask Yuri About This Product"
-          description="Get AI-powered analysis from Yuri, your K-beauty advisor. Counterfeit detection, dupe suggestions, and routine placement."
-        />
+        {/* NOT a GatedTeaser (July 27 2026). This was a LOCKED "Ask Yuri About
+            This Product" panel whose only action was /register at full price —
+            on the one public surface AI assistants cite most for specific
+            product queries ("torriden cleansing milk", "COSRX snail mucin").
+            A stranger arriving from a Copilot citation was shown the exact
+            thing they wanted, locked, before ever meeting Yuri.
+            /products/[id] was also the ONLY public content page in the repo
+            with no `?ask=` link, contradicting the single-front-door funnel
+            every other feeder page follows. Yuri answers freely here. */}
+        <AskYuriAboutProduct productName={productName} productBrand={productBrand} />
       </div>
 
       <div className="bg-gradient-to-br from-amber-500/10 to-rose-500/10 rounded-2xl border border-amber-500/20 p-8 text-center mb-8">
@@ -158,6 +163,51 @@ export default function ProductIntelligenceSection({ productId, productName, pro
         </p>
       </div>
     </>
+  )
+}
+
+/**
+ * Free-Yuri entry point on the public product page (July 27 2026).
+ *
+ * Routes to the landing hero widget with the question prefilled — the same
+ * single-front-door pattern as the blog/best/ingredient feeders. The prefill
+ * seeds the VISITOR'S opening question only; Yuri's answer is always her own.
+ * This surface never advises (Yuri Sole Authority) — it describes what she can
+ * do and hands off.
+ */
+function AskYuriAboutProduct({
+  productName,
+  productBrand,
+}: {
+  productName: string | null
+  productBrand: string | null
+}) {
+  const label = [productBrand, productName].filter(Boolean).join(' ') || 'this product'
+  const prefill = `Is ${label} right for my skin?`
+
+  return (
+    <Link
+      href={`/?ask=${encodeURIComponent(prefill)}&from=product`}
+      className="block bg-white/[0.03] rounded-xl border border-violet-500/30 p-5 hover:border-violet-500/50 hover:bg-white/[0.05] transition-colors"
+    >
+      <div className="flex items-start gap-3">
+        <Shield className="w-5 h-5 text-violet-400 shrink-0 mt-0.5" />
+        <div className="min-w-0">
+          <h3 className="font-semibold text-white text-sm mb-1">
+            Ask Yuri about {label}
+          </h3>
+          <p className="text-white/60 text-xs mb-2">
+            Free, no signup. Yuri is Seoul Sister&apos;s AI K-beauty advisor — ask her whether
+            this suits your skin type, what it conflicts with, or what a cheaper equivalent
+            would be.
+          </p>
+          <span className="inline-flex items-center gap-1.5 text-xs text-violet-300 font-medium">
+            Ask about this product
+            <ArrowRight className="w-3 h-3" />
+          </span>
+        </div>
+      </div>
+    </Link>
   )
 }
 

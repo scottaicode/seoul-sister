@@ -241,6 +241,24 @@ export default async function BestOfCategoryPage({ params }: Props) {
   const totalCount = countRes.count || 0
   const uniqueBrands = new Set((brandsRes.data || []).map((b) => b.brand_en)).size
 
+  // Real price-check date for the products actually shown (July 27 2026).
+  // NEVER default or fabricate this — only 45 of ~5,100 price rows are fresh in
+  // any given week, so a blanket "refreshed daily" claim would be false. If no
+  // date comes back, the stamp simply doesn't render. Same discipline as the
+  // clinical-honesty rule: unknown renders as nothing, never as a guess.
+  let priceCheckedAt: string | null = null
+  if (products.length > 0) {
+    const { data: freshness } = await supabase
+      .from('ss_product_prices')
+      .select('last_checked')
+      .in('product_id', products.map((p) => p.id))
+      .not('last_checked', 'is', null)
+      .order('last_checked', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    priceCheckedAt = freshness?.last_checked ?? null
+  }
+
   // Build FAQ from data
   const faqQuestions = [
     {
@@ -384,6 +402,68 @@ export default async function BestOfCategoryPage({ params }: Props) {
             <p className="text-white/60 max-w-2xl text-lg leading-relaxed">
               {meta.description}
             </p>
+          </div>
+        </div>
+
+        {/* ---- What you can do on this page (July 27 2026) ------------------
+            Server-rendered in the initial HTML so AI assistants READ it. These
+            pages were being cited heavily (525 Bing Copilot citations/week,
+            33-66% share on commercial K-beauty queries) but cited purely as a
+            LIST OF FACTS — an AI answer can restate a ranking, so there was no
+            reason for a reader to ever visit. This names the things an answer
+            structurally CANNOT contain: live retailer pricing, a per-brand
+            counterfeit check, and a free conversation with Yuri.
+
+            It DESCRIBES and ROUTES. It must never advise — no "use X for oily
+            skin", no picks, no tips. Recommendations belong to Yuri alone
+            (Yuri Sole Authority Principle); this block is a door, not a
+            recommender. */}
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5">
+            <h2 className="text-sm font-medium text-white/80 mb-3">
+              What you can check here
+            </h2>
+            <ul className="space-y-2 text-sm text-white/60 leading-relaxed">
+              <li>
+                <strong className="text-white/80">Prices across retailers.</strong>{' '}
+                Every product below links to its own page with prices collected from
+                Olive Young, Soko Glam and YesStyle
+                {priceCheckedAt && (
+                  <> — last checked{' '}
+                    <time dateTime={new Date(priceCheckedAt).toISOString()}>
+                      {new Date(priceCheckedAt).toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </time>
+                  </>
+                )}
+                .
+              </li>
+              <li>
+                <strong className="text-white/80">Counterfeit markers.</strong>{' '}
+                Known packaging and batch-code red flags for the brands we hold data on,
+                so you can verify a product before buying from a marketplace seller.
+              </li>
+              <li>
+                <strong className="text-white/80">
+                  Ask Yuri, free and without an account.
+                </strong>{' '}
+                Yuri is Seoul Sister&apos;s AI K-beauty advisor. She can tell you which of
+                these suits your skin type, what conflicts with what you already use, and
+                where a cheaper formula does the same job.{' '}
+                <Link
+                  href={`/?ask=${encodeURIComponent(
+                    `Which ${meta.h1.toLowerCase()} would suit my skin?`
+                  )}&from=best`}
+                  className="text-amber-300 hover:text-amber-200 underline underline-offset-2"
+                >
+                  Ask Yuri about {meta.dbCategory}s
+                </Link>
+                .
+              </li>
+            </ul>
           </div>
         </div>
 
