@@ -86,15 +86,21 @@ export default function SkinProfileWidget() {
   }
 
   if (profile?.onboarding_completed) {
+    // Unknown renders as unknown (July 27 2026). These fallbacks used to print
+    // "Normal" and "Temperate" for fields the user never stated — under a gold
+    // "Profile Complete" badge, on the first screen after onboarding. That is
+    // the same fabrication the July 21 clinical fix removed from the WRITE path;
+    // it survived on this READ surface, and it contradicted /profile, which
+    // already renders "—" for the same unknown values.
     const skinType = profile.skin_type
       ? profile.skin_type.charAt(0).toUpperCase() + profile.skin_type.slice(1)
-      : 'Normal'
+      : 'Not set yet'
     const concerns = profile.skin_concerns?.length
       ? profile.skin_concerns.slice(0, 3).join(', ')
       : 'None set'
     const climate = profile.climate
       ? profile.climate.charAt(0).toUpperCase() + profile.climate.slice(1)
-      : 'Temperate'
+      : 'Not set yet'
 
     return (
       <div className="rounded-2xl border border-gold/20 bg-gold/5 p-5">

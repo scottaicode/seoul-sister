@@ -28,44 +28,13 @@ const REQUIRED_FIELDS = ['skin_type', 'skin_concerns', 'age_range'] as const
 // ---------------------------------------------------------------------------
 
 export function buildOnboardingSystemPrompt(
-  extractedSoFar: ExtractedSkinProfile,
-  extractedFields: Record<string, boolean>,
-  qualityScore?: number,
-  qualitySuggestions?: string[]
+  extractedFields: Record<string, boolean>
 ): string {
-  const capturedList = Object.entries(extractedFields)
-    .filter(([, v]) => v)
-    .map(([k]) => k)
-  const missingList = ALL_FIELDS.filter((f) => !extractedFields[f])
-  const requiredMissing = REQUIRED_FIELDS.filter((f) => !extractedFields[f])
-
-  const capturedSummary = capturedList.length > 0
-    ? `\nFields already captured: ${capturedList.join(', ')}
-Current data: ${JSON.stringify(extractedSoFar, null, 2)}`
-    : '\nNo fields captured yet -- this is the start of the conversation.'
-
-  const missingSummary = missingList.length > 0
-    ? `\nFields still needed: ${missingList.join(', ')}
-Required fields still missing: ${requiredMissing.length > 0 ? requiredMissing.join(', ') : 'NONE -- all required fields captured!'}`
-    : '\nAll fields captured!'
-
-  // Quality feedback: when fields are captured but answers are vague
-  let qualitySection = ''
-  if (
-    qualityScore !== undefined &&
-    qualityScore > 0 &&
-    qualityScore < 70 &&
-    qualitySuggestions &&
-    qualitySuggestions.length > 0 &&
-    requiredMissing.length === 0
-  ) {
-    qualitySection = `
-
-## Profile Quality Note
-The user's required fields are captured, but some answers are vague (quality score: ${qualityScore}/100). Before wrapping up, ask ONE natural follow-up to improve specificity. Pick the most impactful:
-${qualitySuggestions.map((s) => `- "${s}"`).join('\n')}
-Don't be clinical about it -- be curious and conversational. If they don't want to elaborate, that's fine -- move on.`
-  }
+  // STATIC ONLY. Per-turn state (captured/missing fields, the extracted-data
+  // JSON, quality notes) moved to buildOnboardingTurnState and is sent as a
+  // SEPARATE UNCACHED block — see that function for why. Nothing that changes
+  // between turns may be interpolated below.
+  void extractedFields
 
   return `You are Yuri (유리), Seoul Sister's AI beauty advisor with 20+ years in the Korean skincare industry. You are conducting a conversational onboarding to build this user's skin profile.
 
@@ -119,17 +88,54 @@ Get skin_type, skin_concerns, and age_range first -- these are required. Everyth
 ## Completion
 When you have enough to build a meaningful profile (at minimum: skin_type + 2 concerns + age_range), wrap up naturally. Don't announce "onboarding complete!" -- transition into showing them what you can do. Every wrap-up should feel organic to THAT conversation.
 
-## Current State
-${capturedSummary}
-${missingSummary}
-${qualitySection}
-
 ## Important Rules
 - NEVER make up or assume profile data the user hasn't shared
 - If they give vague answers, ask a gentle follow-up to clarify
 - If they want to skip something, respect that and move on
 - NEVER diagnose medical conditions -- recommend a dermatologist (피부과) for persistent issues
+- **Lesions are always a referral, never a skincare answer.** If they mention a mole or spot that is changing, growing, asymmetric, oddly coloured, irregularly edged, itching, bleeding, crusting, or simply new and not going away, say plainly that it needs a doctor's eyes -- early, not after a paragraph of skincare talk. Do not guess what it is, do not reassure them it is probably nothing, and do not offer a product for it. This matters most for the people least likely to raise it as urgent: fair skin, a heavy sun history, or an existing skin cancer history. Onboarding is often the first time someone mentions this out loud.
 - **Referrals land in English (LOAD-BEARING).** When you point someone toward getting seen, the English word comes BEFORE the Hangul: "see a dermatologist (피부과)", never "that's a 피부과 conversation." Every referral sentence in a message, including the last one -- the gloss-once allowance does NOT apply to referrals. A referral they cannot read is a referral you did not make. This changes wording only, never the threshold -- refer as readily as you otherwise would, and more if anything.`
+}
+
+/**
+ * Per-turn onboarding state, returned as a SEPARATE UNCACHED system block.
+ *
+ * PROMPT-CACHE RULE (July 27 2026): this content changes on nearly every turn —
+ * `extractedSoFar` is JSON-stringified and grows as fields are captured. It used
+ * to sit MID-PROMPT inside the single `cache_control` block, with ~800 chars of
+ * static rules after it. Because caching matches on PREFIX, every extraction
+ * invalidated the whole block, and cache CREATION bills at 1.25x base input —
+ * so the "cached" prompt cost more than not caching at all, on the one Yuri
+ * endpoint reachable without a subscription.
+ *
+ * This is the v11.1.0 regression (measured 60x on the widget) which was fixed
+ * there but never here. Keep this OUT of the cached block. See
+ * `src/app/api/widget/chat/route.ts` for the reference two-block shape.
+ */
+export function buildOnboardingTurnState(
+  extractedSoFar: ExtractedSkinProfile,
+  qualityNotes?: string[]
+): string {
+  const extractedFields = Object.fromEntries(
+    Object.entries(extractedSoFar).filter(([, v]) => v !== null && v !== undefined)
+  )
+  const capturedList = Object.entries(extractedFields).map(([k]) => k)
+  const missingList = ALL_FIELDS.filter((f) => !extractedFields[f])
+  const requiredMissing = REQUIRED_FIELDS.filter((f) => !extractedFields[f])
+
+  const captured = capturedList.length > 0
+    ? `Fields already captured: ${capturedList.join(', ')}\nCurrent data: ${JSON.stringify(extractedSoFar, null, 2)}`
+    : 'No fields captured yet -- this is the start of the conversation.'
+
+  const missing = missingList.length > 0
+    ? `Fields still needed: ${missingList.join(', ')}\nRequired fields still missing: ${requiredMissing.length > 0 ? requiredMissing.join(', ') : 'NONE -- all required fields captured!'}`
+    : 'All fields captured!'
+
+  const quality = qualityNotes && qualityNotes.length > 0
+    ? `\n\nQuality notes on what they have told you so far:\n${qualityNotes.map((n) => `- ${n}`).join('\n')}`
+    : ''
+
+  return `## Current State\n${captured}\n${missing}${quality}`
 }
 
 // ---------------------------------------------------------------------------
@@ -465,7 +471,13 @@ export async function finalizeOnboardingProfile(
   // defaults — a wrong budget guess costs nothing.
   const profileData: Record<string, unknown> = {
     user_id: userId,
-    skin_type: extracted.skin_type || 'normal',
+    // NOT defaulted. This line sat directly beneath the July 21 "CLINICAL FIELDS
+    // ARE NEVER DEFAULTED" block and defaulted anyway — the sweep listed
+    // fitzpatrick/age/climate/medical/sun and stopped one field short. skin_type
+    // keys ingredient effectiveness, scan personalization and every routine
+    // recommendation, so a fabricated 'normal' is the most consequential guess
+    // in the profile. NULL lets memory.ts say "not established" and Yuri ask.
+    ...(extracted.skin_type ? { skin_type: extracted.skin_type } : {}),
     skin_concerns: extracted.skin_concerns || [],
     allergies: extracted.allergies || [],
     budget_range: extracted.budget_preference || 'mid-range',
@@ -546,12 +558,24 @@ export async function skipOnboarding(userId: string): Promise<void> {
     .from('ss_user_profiles')
     .upsert({
       user_id: userId,
-      skin_type: 'normal',
+      // skin_type is NOT defaulted (July 27 2026). Writing 'normal' for someone
+      // who told us nothing is the same fabrication the July 21 clinical fix
+      // removed for fitzpatrick/age/climate — and skin_type is more load-bearing
+      // than any of them: it keys ingredient-effectiveness lookups, scan
+      // personalization and every routine recommendation. Left NULL, memory.ts
+      // renders "not established" and Yuri asks instead of assuming.
       skin_concerns: [],
       allergies: [],
       budget_range: 'mid-range',
       experience_level: 'beginner',
-      onboarding_completed: false,
+      // TRUE, not false (July 27 2026). Writing false here bricked the account:
+      // the message cap 429s every further onboarding message, while /subscribe
+      // and AppShell both bounce a non-free user back to /onboarding whenever
+      // onboarding_completed is false. Every exit led to a chat that could not
+      // accept input — unrecoverable without a DB edit. Skipping is a legitimate
+      // way to FINISH onboarding; the profile is simply sparse, which the
+      // context layer now states honestly.
+      onboarding_completed: true,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' })
 
@@ -582,12 +606,9 @@ export async function* streamOnboardingResponse(
   const extractedSoFar = currentProgress.skin_profile_data as ExtractedSkinProfile
   const extractedFields = currentProgress.extracted_fields as Record<string, boolean>
   const quality = calculateOnboardingQuality(extractedSoFar)
-  const systemPrompt = buildOnboardingSystemPrompt(
-    extractedSoFar,
-    extractedFields,
-    quality.overallScore,
-    quality.suggestions
-  )
+  const systemPrompt = buildOnboardingSystemPrompt(extractedFields)
+  // Per-turn state lives in its own UNCACHED block (see buildOnboardingTurnState).
+  const turnState = buildOnboardingTurnState(extractedSoFar, quality.suggestions)
 
   // Build message history for Claude
   const apiMessages: Array<{ role: 'user' | 'assistant'; content: string }> =
@@ -616,7 +637,13 @@ export async function* streamOnboardingResponse(
   const stream = client.messages.stream({
     model: MODELS.primary,
     max_tokens: 600,
-    system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+    // Two blocks: the STATIC prompt carries the cache breakpoint; per-turn state
+    // follows in an UNCACHED block. Appending turn state to the cached block
+    // silently destroys the cache (v11.1.0, measured 60x on the widget).
+    system: [
+      { type: 'text' as const, text: systemPrompt, cache_control: { type: 'ephemeral' as const } },
+      { type: 'text' as const, text: turnState },
+    ],
     messages: cachedMessages,
   })
 

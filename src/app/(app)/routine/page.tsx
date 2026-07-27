@@ -408,7 +408,14 @@ export default function RoutinePage() {
   const [creating, setCreating] = useState(false)
 
   const loadRoutines = useCallback(async () => {
-    if (!user) return
+    // Clear the spinner before bailing (July 27 2026). `loading` starts true and
+    // is only cleared in the try/finally below, so an early return on a null
+    // user (expired token, session hiccup) left the page spinning forever with
+    // no error and no timeout.
+    if (!user) {
+      setLoading(false)
+      return
+    }
     try {
       const headers = await getAuthHeaders()
       const res = await fetch('/api/routine', { headers })

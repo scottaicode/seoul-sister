@@ -87,7 +87,19 @@ test('skipOnboarding returns early for a completed profile before the defaults u
   const fnIdx = onboardingLibSrc.indexOf('export async function skipOnboarding')
   const fnSrc = onboardingLibSrc.slice(fnIdx, onboardingLibSrc.indexOf('export', fnIdx + 10))
   const guardIdx = fnSrc.indexOf('if (existing?.onboarding_completed) return')
-  const upsertIdx = fnSrc.indexOf("skin_type: 'normal'")
+  // Anchor on the profiles upsert itself, NOT on a specific defaulted value.
+  // This previously anchored on `skin_type: 'normal'`, which was removed on
+  // July 27 2026 — writing a skin type for someone who told us nothing was the
+  // same fabrication the July 21 clinical fix removed elsewhere, and skin_type
+  // keys ingredient effectiveness and every routine recommendation.
+  // NOTE: `from('ss_user_profiles')` appears TWICE in this function — first in
+  // the SELECT that reads the existing profile (before the guard), then in the
+  // defaults upsert (after it). Anchor on the upsert call specifically.
+  const upsertIdx = fnSrc.indexOf('.upsert({')
   assert.ok(guardIdx > 0, 'completed-profile early return must exist in skipOnboarding')
   assert.ok(upsertIdx > guardIdx, 'guard must precede the defaults upsert')
+  assert.ok(
+    !/skin_type: 'normal'/.test(fnSrc),
+    'skipOnboarding fabricates skin_type again — it must stay NULL so Yuri asks'
+  )
 })

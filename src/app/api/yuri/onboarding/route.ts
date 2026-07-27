@@ -97,8 +97,13 @@ export async function POST(request: NextRequest) {
         if (extracted && checkOnboardingComplete(extracted)) {
           try {
             await finalizeOnboardingProfile(user.id, extracted)
-          } catch {
-            // May already be finalized — safe to ignore
+          } catch (finalizeErr) {
+            // Usually a benign re-finalize, but log it: a persistent failure here
+            // means a completed onboarding never produced a usable profile.
+            console.warn(
+              '[onboarding] finalizeOnboardingProfile failed on completed-status path',
+              finalizeErr instanceof Error ? finalizeErr.message : String(finalizeErr)
+            )
           }
         }
         return Response.json({
@@ -309,8 +314,19 @@ export async function POST(request: NextRequest) {
                 })
                 controller.enqueue(encoder.encode(`data: ${progressEvent}\n\n`))
               }
-            } catch {
-              // Extraction failure is non-critical — continue to done event
+            } catch (extractErr) {
+              // NOT "non-critical": this is the call that writes the user's skin
+              // profile. When it throws, onboarding streams a normal reply and a
+              // normal done event while the profile silently never fills — the
+              // v10.3.4 silent-extraction class. The turn still completes (losing
+              // the user's message would be worse), but it must be VISIBLE.
+              console.error(
+                '[onboarding] skin-profile extraction FAILED — profile did not update',
+                JSON.stringify({
+                  userId: user.id,
+                  error: extractErr instanceof Error ? extractErr.message : String(extractErr),
+                })
+              )
             }
 
             // Send done event

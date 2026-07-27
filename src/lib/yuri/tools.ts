@@ -2635,6 +2635,15 @@ async function executeUpdateUserProduct(
     message = `Added "${matchedLabel}" to your library${status !== 'active' ? ` (status: ${status})` : ''}.`
     if (textureWeight) message += ` Texture weight: ${textureWeight}/10.`
   } else if (matchClassification === 'matched_loose') {
+    // Same silent-failure class fixed in save_routine on July 27: this function
+    // KNOWS the match was loose, tells the user in prose, and used to log
+    // nothing — so the loose-match rate on the PRIMARY library-write path was
+    // invisible while it was measurable for routines. Bailey's mis-joined rows
+    // lived seven weeks behind exactly this blind spot.
+    console.warn(
+      '[update_user_product] loose catalog match — saved as custom entry',
+      JSON.stringify({ userId, requested: displayLabel, matched: matchedLabel })
+    )
     // The dangerous case — closest catalog match isn't quite what was asked for.
     // Save as custom entry (product_id=NULL) and surface the partial match honestly.
     message =
