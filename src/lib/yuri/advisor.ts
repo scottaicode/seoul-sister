@@ -11,6 +11,7 @@ import {
   saveConversationSummary,
   extractAndSaveDecisionMemory,
   type UserContext,
+  type YuriToolCallLog,
 } from './memory'
 import { extractAndSaveTreatmentPhases } from './treatment-phase-extractor'
 import { YURI_TOOLS, executeYuriTool, resetWebSearchCounter } from './tools'
@@ -914,6 +915,10 @@ export async function* streamAdvisorResponse(
   // real tool fired, an apology might be legitimate, so skip the strip.
   let totalToolsFired = 0
 
+  // Every tool call this turn, persisted with the assistant message so the paid
+  // surface has the same diagnostic trail the free widget already had.
+  const toolCallLogs: YuriToolCallLog[] = []
+
   // Accumulate real token usage across ALL tool-loop rounds. Each round is a
   // separate API call with its own (cache-heavy) input cost, so true spend is
   // the sum across rounds — a tool-using turn can cost several rounds' input.
@@ -1137,6 +1142,16 @@ export async function* streamAdvisorResponse(
         tool_use_id: toolBlock.id,
         content: result,
       })
+
+      // Record the call for persistence (July 27 2026). Truncated because a
+      // tool result can be a large JSON blob and this is a diagnostic trail,
+      // not a cache — enough to answer "what did she call, with what, and did
+      // it come back loose?"
+      toolCallLogs.push({
+        name: toolBlock.name,
+        input: parsedInput,
+        result_summary: typeof result === 'string' ? result.slice(0, 1000) : String(result).slice(0, 1000),
+      })
     }
 
     // Add tool results as a user message (Claude API requirement)
@@ -1187,7 +1202,7 @@ export async function* streamAdvisorResponse(
   }
 
   // 8. Save assistant response to DB
-  await saveMessage(conversationId, 'assistant', fullResponse, specialistType)
+  await saveMessage(conversationId, 'assistant', fullResponse, specialistType, [], toolCallLogs)
 
   // 8. Generate title if this is the first exchange
   //    Yield a special __title__ sentinel so the SSE stream can propagate it

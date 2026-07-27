@@ -1170,28 +1170,65 @@ export async function createConversation(
   return data.id
 }
 
+/** One tool invocation, mirroring the widget's ToolCallLog shape. */
+export interface YuriToolCallLog {
+  name: string
+  input: Record<string, unknown>
+  result_summary: string
+}
+
 export async function saveMessage(
   conversationId: string,
   role: 'user' | 'assistant',
   content: string,
   specialistType: SpecialistType | null = null,
-  imageUrls: string[] = []
+  imageUrls: string[] = [],
+  toolCalls: YuriToolCallLog[] = []
 ): Promise<string> {
   const db = getServiceClient()
 
-  const { data, error } = await db
-    .from('ss_yuri_messages')
-    .insert({
-      conversation_id: conversationId,
-      role,
-      content,
-      specialist_type: specialistType,
-      image_urls: imageUrls,
-    })
-    .select('id')
-    .single()
+  const baseRow = {
+    conversation_id: conversationId,
+    role,
+    content,
+    specialist_type: specialistType,
+    image_urls: imageUrls,
+  }
+
+  // Tool-call observability (July 27 2026). The free widget has logged tool
+  // calls since Phase 14; the PAID surface logged none, so when save_routine
+  // mis-matched a routine step into a user's library the only trace was Yuri's
+  // prose. Diagnosing it took forensics instead of one query.
+  //
+  // The insert degrades gracefully when the `tool_calls` column is absent
+  // (migration not yet applied): a schema-cache error retries WITHOUT the
+  // column rather than failing the message save. Losing a log line is
+  // acceptable; losing the user's message is not.
+  let data: { id: string } | null = null
+  let error: { message: string; code?: string } | null = null
+
+  if (toolCalls.length > 0) {
+    const withTools = await db
+      .from('ss_yuri_messages')
+      .insert({ ...baseRow, tool_calls: toolCalls })
+      .select('id')
+      .single()
+    data = withTools.data
+    error = withTools.error
+    if (error && /tool_calls/.test(error.message)) {
+      console.warn('[yuri/saveMessage] tool_calls column missing — apply migration 20260727000001; saving without tool log')
+      const fallback = await db.from('ss_yuri_messages').insert(baseRow).select('id').single()
+      data = fallback.data
+      error = fallback.error
+    }
+  } else {
+    const plain = await db.from('ss_yuri_messages').insert(baseRow).select('id').single()
+    data = plain.data
+    error = plain.error
+  }
 
   if (error) throw new Error(`Failed to save message: ${error.message}`)
+  if (!data) throw new Error('Failed to save message: no row returned')
 
   // Update conversation timestamp (message_count managed via DB trigger or manual increment)
   await db
