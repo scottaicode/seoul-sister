@@ -122,6 +122,13 @@ export interface UserProduct {
   texture_weight: number | null
   notes: string | null
   status: string
+  /**
+   * How this entry entered the library. `conversation` means a fuzzy matcher
+   * inferred it from something the user said (often a routine STEP, not a
+   * product) — it is NOT a confirmation of ownership. Rendered as a provenance
+   * hedge so Yuri can tell a guess from a fact.
+   */
+  learned_from: string | null
 }
 
 /**
@@ -333,7 +340,14 @@ export async function loadUserContext(
   const userProductsPromise = loadUserProducts
     ? db
         .from('ss_user_products')
-        .select('product_id, custom_name, custom_brand, category, texture_weight, notes, status')
+        // `learned_from` is LOAD-BEARING, not decoration (July 27 2026). It is the
+        // product-side equivalent of `fitzpatrick_source`: it distinguishes a product
+        // the user actually confirmed from one a fuzzy matcher inferred. It existed
+        // and was populated on every insert, but was never SELECTed — so an inferred
+        // row reached Yuri byte-identical to a confirmed one, under a header saying
+        // "products the user currently owns." That is how a routine step literally
+        // named "Shower / cleanse" became "your nightly cleanser" in Bailey's face.
+        .select('product_id, custom_name, custom_brand, category, texture_weight, notes, status, learned_from')
         .eq('user_id', userId)
         .eq('status', 'active')
         .order('custom_name')
@@ -461,6 +475,7 @@ export async function loadUserContext(
       texture_weight: r.texture_weight as number | null,
       notes: r.notes as string | null,
       status: r.status as string,
+      learned_from: (r.learned_from as string | null) || null,
     })
   )
 
@@ -807,7 +822,40 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
       if (up.notes) parts.push(`— ${up.notes}`)
       return `- ${parts.join(' ')}`
     })
-    sections.push(`## Your Product Inventory\nThese are products the user currently owns and uses. Use texture_weight for layering order when building routines:\n${productLines.join('\n')}`)
+
+    // Split confirmed from inferred (July 27 2026). Same discipline the clinical
+    // fields got on July 21 and the routine block got on May 3 — a value the
+    // system GUESSED must never render identically to one the user CONFIRMED.
+    //
+    // This header used to read "products the user currently owns and uses" for
+    // every row, including rows a fuzzy matcher invented. Bailey's library
+    // contained a step instruction ("Shower / cleanse") joined to a real catalog
+    // cleanser, so Yuri called it "your nightly cleanser, the one I keep telling
+    // you to reach for" about a product Bailey had never heard of. Yuri was not
+    // overconfident — the context told her it was fact. This gives her the
+    // instrument to doubt it. It does NOT filter rows out or forbid using them:
+    // Yuri decides what to do with a low-confidence entry (Sole Authority).
+    const isInferred = (up: UserProduct) =>
+      up.learned_from === 'conversation' || up.learned_from === 'conversation_inferred'
+    // Pair each product with its rendered line by INDEX — never by object
+    // identity or indexOf(), which collapse on duplicate-shaped entries.
+    const confirmedLines = productLines.filter((_, i) => !isInferred(context.userProducts[i]))
+    const inferredLines = productLines.filter((_, i) => isInferred(context.userProducts[i]))
+
+    const blocks: string[] = []
+    if (confirmedLines.length > 0) {
+      blocks.push(`### Confirmed — they told you about these directly\n${confirmedLines.join('\n')}`)
+    }
+    if (inferredLines.length > 0) {
+      blocks.push(
+        `### Inferred from conversation — NOT confirmed, and some are wrong\n` +
+          `These were auto-matched to catalog products from things the user said, sometimes from a routine STEP rather than a product they own. Known failure shapes: an instruction ("Cool water rinse"), a device ("LED mask", "Ice roller"), or a placeholder ("Moisturizer (TBD)") matched to an unrelated leave-on product. **Do not say "your X" or claim they own these.** If one matters for what you're about to recommend, ask ("are you actually using X, or did I pick that up wrong?") — that question costs you nothing and asserting a wrong product costs you their trust.\n` +
+          inferredLines.join('\n')
+      )
+    }
+    sections.push(
+      `## Your Product Inventory\nUse texture_weight for layering order when building routines.\n${blocks.join('\n\n')}`
+    )
   }
 
   // Glass Skin Score history — gives Yuri concrete data points to reference

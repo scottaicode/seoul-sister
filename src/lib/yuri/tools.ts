@@ -28,6 +28,41 @@ const SEARCH_STOP_WORDS = new Set([
 ])
 
 /**
+ * Category/step words that describe a ROLE, not an identity (July 27 2026).
+ *
+ * These are contiguous substrings of hundreds of catalog rows — "serum" hits
+ * 668 products, "toner" 413, "cleanse" 276 — so a query made ONLY of these
+ * words matches an essentially arbitrary product while scoring `exact` (the
+ * `combinedLower.includes(queryLower)` test). That is how a routine step
+ * called "Shower / cleanse" was written into a real user's library as Beplain
+ * Makiol Foaming Cleanser, and read back to her seven weeks later as "your
+ * nightly cleanser."
+ *
+ * A match is only trustworthy if at least ONE query term identifies a specific
+ * product — a brand, a hero ingredient, a line name. This is a mechanical
+ * data-integrity floor, NOT a judgment rule: it constrains what the system
+ * silently WRITES as fact, never what Yuri is allowed to think or say.
+ */
+const GENERIC_PRODUCT_WORDS = new Set([
+  // Category nouns
+  'cleanser', 'cleansers', 'cleanse', 'cleansing', 'wash', 'foam', 'foaming',
+  'toner', 'toners', 'serum', 'serums', 'ampoule', 'ampule', 'essence',
+  'moisturizer', 'moisturiser', 'moisturizing', 'cream', 'creams', 'lotion',
+  'gel', 'oil', 'oils', 'balm', 'mask', 'masks', 'patch', 'patches',
+  'sunscreen', 'spf', 'sun', 'exfoliant', 'exfoliator', 'peel', 'pad', 'pads',
+  'eye', 'lip', 'mist', 'emulsion', 'treatment', 'booster',
+  // Step / instruction words that appear in routine steps but never identify a product
+  'shower', 'rinse', 'water', 'cool', 'warm', 'apply', 'step', 'routine',
+  'optional', 'needed', 'tbd', 'am', 'pm', 'morning', 'night', 'nightly',
+  'daily', 'weekly', 'roller', 'device', 'led', 'blue', 'red',
+])
+
+/** True when at least one term identifies a specific product (not just a category/step role). */
+function hasIdentifyingTerm(terms: string[]): boolean {
+  return terms.some((t) => !GENERIC_PRODUCT_WORDS.has(t))
+}
+
+/**
  * Search ss_products by name, splitting the query into terms so "Beauty of
  * Joseon Relief Sun" matches brand_en="Beauty of Joseon" + name_en="Relief Sun…".
  *
@@ -355,11 +390,21 @@ async function resolveProductByName(
   // 'exact' check uses normalized strings on both sides so "Torriden Dive-In"
   // queries can match "Torriden Dive In" catalog rows exactly.
   let match_quality: 'exact' | 'all_terms' | 'partial'
+  // IDENTITY FLOOR (July 27 2026) — must be checked BEFORE the substring tests.
+  // A query built only from category/step words ("Serum", "Shower / cleanse",
+  // "Cool water rinse") is a contiguous substring of hundreds of catalog rows,
+  // so it would score 'exact' and be written to the user's library as a product
+  // they own. Demote those to 'partial' so every write path refuses them and
+  // read paths flag them as loose. Nothing here restricts what Yuri may SAY —
+  // it only stops the system from silently recording a guess as a fact.
+  if (terms.length > 0 && !hasIdentifyingTerm(terms)) {
+    match_quality = 'partial'
+  }
   // Try exact match against raw query first (preserves the original strict
   // "query IS a contiguous substring" semantics). Then try exact against
   // normalized strings (so "Dive-In" query matches "Dive In" catalog).
   // Finally fall back to all_terms.
-  if (combinedLower.includes(queryLower)) {
+  else if (combinedLower.includes(queryLower)) {
     match_quality = 'exact'
   } else if (combinedNormalized.includes(queryNormalized)) {
     match_quality = 'exact'

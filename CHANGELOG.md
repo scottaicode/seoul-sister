@@ -8,6 +8,27 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.12.0 (July 27, 2026): The citation breakout — and the locked door behind it
+
+**Bing Copilot cited Seoul Sister 525 times in 7 days** (prior baseline: 369 in *3 months*) — 34 cited pages, **33.33% citation share** on `best korean cleanser`, **66.67%** on `best korean eye cream`, 100% on a long-tail blemish query. Long-tail product-research queries (`torriden cleansing milk`, `COSRX snail mucin disadvantages`, `how to spot fake Korean skincare products`) confirmed the free-database bet: Copilot cites us because no competing English structured source exists. It converted to ~3-4 sessions/week and **zero** leads.
+
+**The ratio itself is normal** — published benchmarks run 44:1 to 1,200:1 citations-to-clicks; we're ~150:1. So the fix was never "more citations." It was what happened to the few who did arrive.
+
+1. **`/products/[id]` sent AI arrivals to a paywall.** AI-referred visitors land on product/pricing pages ~80% of the time, and this was the ONLY public content surface in the repo with no `?ask=` link. Its "Ask Yuri About This Product" panel was a **locked `GatedTeaser`** whose only action was `/register` at full price — a stranger arriving from a citation about that exact product was shown the thing they wanted, locked, before ever meeting Yuri. Now a real free-Yuri card (`?ask=…&from=product`).
+2. **The channel was invisible.** AI citations arrive with no `utm` and no `?from=`, so every one fell through to `'landing'`. New `src/lib/widget/ai-referrer.ts` detects bing/copilot/chatgpt/perplexity/claude/gemini from `document.referrer`. **Raises the attribution floor — explicitly NOT a census** (referrer is empty on many AI surfaces). Deliberate utm/feeder tags still win; this is only the fallback.
+3. **Cited pages named nothing un-summarizable.** An answer can restate a ranking, so there was no reason to visit. New server-rendered block on `/best/[category]` names what an answer structurally cannot contain: retailer pricing, counterfeit markers, free Yuri. It **describes and routes — it never advises** (Yuri Sole Authority; prescriptive copy here would be Bailey-incident #8).
+4. **Price freshness renders real or nothing.** Only ~45 of ~5,114 price rows are fresh in a given week, so "refreshed daily" would be false. `priceCheckedAt` is `string | null` from real `last_checked`; unknown renders nothing — the never-default-a-fact discipline from v11.10.0 clinical honesty, applied to pricing.
+
+**Also shipped (same night): the global widget spend circuit breaker.** Every widget limit was per-visitor or per-IP (12/visitor lifetime, 40/IP/30d, 25/IP/day); **none bounded TOTAL spend**, so a surge across many IPs — each individually legal — was unbounded Opus cost with no circuit anywhere. `src/lib/widget/circuit-breaker.ts` adds a global rolling-24h ceiling (default 500, ~30x current volume, env-overridable via `WIDGET_GLOBAL_DAILY_CEILING`). Past it the widget degrades to email capture instead of calling Opus. Fails **open** (a broken meter must never take Yuri down), checked **after** the per-visitor cap (a visitor at their own limit sees the paywall, not our capacity problem) and **before** any model call. New `capacityLimited` flag never triggers the paywall. Trips log to `ss_pipeline_runs` + `console.warn`, deduped hourly.
+
+**GA4 is no longer readable as truth.** The same night, GA4 realtime showed 7 → 71 → **346** active users while the database recorded **0** widget visitors, 0 messages, 0 signups. Documented Singapore/China bot wave (Google-acknowledged, bypasses built-in filtering); The Dalles, Oregon in the city list is Google's own datacenter. Cost impact $0 — they load static pages and never touch Yuri. **The honest conversion denominator is `ss_widget_visitors WHERE total_messages > 0`.**
+
+**Documentation:** `GEO-STRATEGY.md` (execution record + everything deliberately NOT built: 1,242 ingredient×category / 214 brand / 63 subcategory pages, all real, all producing *more citations* — the number already working — on a substrate that dropped 41% industry-wide in one model update). `GEO-PLAYBOOK.md` (the transferable method, marked **unproven** pending one attributed citation→paid conversion).
+
+24 new guard tests (12 breaker + 12 GEO), each verified to fail when its bug is reintroduced. Notably my first version of the most important GEO test **passed with the bug reintroduced** (multi-line JSX never matched the regex) — rewritten to check the render site. 131/131 pass, tsc + build green.
+
+---
+
 ## v11.11.0 (July 24, 2026): SEO Guardian — a weekly learning loop against Google's own grades
 
 **Why now.** Scott searched "K-beauty skincare" through 8 Google pages and found nothing — which prompted the real diagnosis: the site IS indexed and Search Console shows avg position ~10.7 with 47.3K impressions/28d at 0.9% CTR — hovering just off page 1 on long-tail queries (PIE cluster, Beauty of Joseon Aqua Fresh, sebaceous filaments, counterfeit-checks), while Bing/Copilot citations accelerated to 611/week. The bottleneck is not indexing; it's (a) nobody systematically working the striking-distance queries and (b) domain authority (a human backlink job, not automatable). This release automates (a).
