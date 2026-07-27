@@ -3133,6 +3133,21 @@ async function executeSaveRoutine(
       status,
     })
 
+    // Surface loose/unmatched steps to the server log (July 27 2026). This
+    // function ALREADY computed the mismatch and told the user about it in
+    // prose — Yuri said "a few steps landed on the wrong product" on June 7 and
+    // "the same matching gremlin bit two steps" on June 29 — but nothing was
+    // ever logged, so the warning lived only inside a chat message nobody
+    // audited, and the bad rows survived seven weeks until Bailey hit them.
+    // Success-with-wrong-output is the silent-failure class this repo keeps
+    // relearning; make it greppable.
+    if (status !== 'matched') {
+      console.warn(
+        `[save_routine] step not confidently matched — saved as custom entry`,
+        JSON.stringify({ userId, step_order: step.step_order, requested: step.product_name, status })
+      )
+    }
+
     // Also ensure the product is in ss_user_products
     if (productId) {
       const { data: existing } = await db

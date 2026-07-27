@@ -86,8 +86,20 @@ export async function GET(request: NextRequest) {
       return {
         id: row.id,
         product_id: row.product_id,
-        display_name: linked?.name_en || row.custom_name || 'Unnamed item',
-        display_brand: linked?.brand_en || row.custom_brand || null,
+        // The USER'S own words win for conversation-inferred entries (July 27
+        // 2026). Catalog name used to take precedence unconditionally, so a row
+        // the fuzzy matcher mis-joined displayed as the catalog product rather
+        // than what the user actually said — Bailey's library showed "Makiol
+        // Foaming Cleanser" where she had written "Shower / cleanse", which is
+        // why the bad join was invisible to her for seven weeks.
+        display_name:
+          (row.learned_from === 'conversation' || row.learned_from === 'conversation_inferred'
+            ? row.custom_name || linked?.name_en
+            : linked?.name_en || row.custom_name) || 'Unnamed item',
+        display_brand:
+          (row.learned_from === 'conversation' || row.learned_from === 'conversation_inferred'
+            ? row.custom_brand || linked?.brand_en
+            : linked?.brand_en || row.custom_brand) || null,
         image_url: linked?.image_url || null,
         category: row.category || linked?.category || null,
         notes: row.notes || null,
