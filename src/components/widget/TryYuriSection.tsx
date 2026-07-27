@@ -327,6 +327,23 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             }
             return
           }
+          if (errBody?.capacityLimited) {
+            // GLOBAL capacity breaker — Yuri is off across the whole site, not
+            // this visitor's fault and NOT their cap. Never show the paywall
+            // here: upselling someone because we're over budget is backwards.
+            // Drop the placeholder, stash their question so it survives, and
+            // open the email card — during a surge, capturing the lead IS the
+            // degraded product. Input stays open so they can retry.
+            setMessages((prev) => prev.filter((m) => !m.isStreaming))
+            setPendingQuestion((prev) => prev ?? trimmed)
+            setError(errBody?.error || 'Yuri is at capacity right now.')
+            if (!emailGateActive) {
+              setEmailGateActive(true)
+              trackEvent(WidgetEvent.emailGateShown)
+            }
+            trackEvent(WidgetEvent.sendFailed, { reason: 'capacity_limited' })
+            return
+          }
           if (errBody?.rateLimited) {
             // Transient: drop the placeholder bubble, surface a soft retry,
             // leave the input open so they can try again in a moment.

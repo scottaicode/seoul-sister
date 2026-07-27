@@ -7,6 +7,7 @@ import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
 import { cleanYuriResponse, stripPhantomToolCallNarration } from '@/lib/yuri/voice-cleanup'
 import { detectSpecialist, SPECIALISTS } from '@/lib/yuri/specialists'
 import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordCapturedEmail, isEmailCapturedByAnotherVisitor, clearCapturedEmail, recordRecapStatus, MAX_FREE_MESSAGES } from '@/lib/widget/visitor'
+import { consumeGlobalBudget, logBreakerTrip, BREAKER_MESSAGE } from '@/lib/widget/circuit-breaker'
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
 import { detectCumulativeGive, buildCumulativeGiveBlock } from '@/lib/widget/cumulative-give'
 import { detectValueDensity, buildValueDensityFact } from '@/lib/widget/value-density'
@@ -438,6 +439,54 @@ export async function POST(request: NextRequest) {
           { status: 429, headers: { 'Content-Type': 'application/json' } }
         )
       }
+    }
+
+    // --- GLOBAL spend circuit breaker (July 27 2026) ---
+    // Every limit above is per-visitor or per-IP; none bounds TOTAL spend, so a
+    // surge across many IPs (all individually legal) is unbounded Opus cost.
+    // This is the only ceiling covering the whole surface. Sized ~30x normal
+    // volume, so it never fires in ordinary operation.
+    //
+    // Placed HERE deliberately: after visitor/session setup so a degraded turn
+    // is still recorded and the email still captures, but before any model work
+    // so a tripped breaker costs nothing. Checked last among the limits because
+    // it's the least specific — a visitor who's personally out of preview should
+    // see their own cap, not a global capacity message.
+    const budget = await consumeGlobalBudget()
+    if (budget.tripped) {
+      await logBreakerTrip(budget)
+
+      // Still capture the lead — a surge is when leads matter MOST, and the
+      // whole point of degrading to email capture is that traffic isn't wasted.
+      if (parsed.visitor_id) {
+        const email = extractEmail(parsed.message)
+        if (email) {
+          try {
+            await recordCapturedEmail(parsed.visitor_id, email)
+          } catch (err) {
+            console.error('[widget/chat] breaker-path email capture failed:', err)
+          }
+        }
+      }
+
+      // `capacityLimited` — a THIRD distinct 429 semantic. Not the paywall
+      // (limitReached: they haven't hit their own cap and must not be upsold on
+      // our capacity problem) and not the per-IP abuse trip. Input stays open.
+      return new Response(
+        JSON.stringify({
+          error: BREAKER_MESSAGE,
+          capacityLimited: true,
+          rateLimited: true,
+          limitReached: false,
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': String(Math.ceil(budget.resetIn / 1000)),
+          },
+        }
+      )
     }
 
     // --- Specialist detection ---
