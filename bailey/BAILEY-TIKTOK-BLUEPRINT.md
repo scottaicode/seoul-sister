@@ -40,6 +40,8 @@ case studies, **C** = content-mill filler.
 | Niche consistency: 3+ topics ≈ 45% lower reach | B/C | Directionally |
 | "Link in bio" phrasing suppresses reach | **C — folklore** | **No. Unmeasured creator anecdote.** |
 | Specific % (42% CTR drop, 47% AI-avatar penalty, 3.4% link CTR) | C | Hypotheses only |
+| Carousels beat video for dense screenshot text | B/C | Directionally — **untested here, n=1** |
+| Slide 1 = the feed thumbnail, so beat 1 applies to it | B | Yes — mechanical, not a performance claim |
 
 **No Tier A evidence exists on explicit-CTA vs no-CTA for organic TikTok.** That is exactly why the
 test below exists.
@@ -123,6 +125,41 @@ no tension between what converts and what the brand allows.
 **⚠️ Friction caveat on the Cal AI comparison.** Cal AI is an **iOS app impulse download**; Seoul
 Sister is a **$24.99/mo web subscription**. Materially higher friction. The demo-led *mechanism*
 transfers; **their conversion rates do not.** Expect worse, and plan for it.
+
+### If it's a photo carousel instead of a video — ⚠️ HYPOTHESIS, n=1
+
+**Status: untested on Bailey's account. Do not treat this as a finding.** Every script in this
+repo assumes video; nothing here or in the deliverable ever covered carousels. Bailey invented the
+format herself on the **Jul 27 2026 Medicube post** (`CAROUSEL-FEEDBACK-JUL27.md`), which is the
+entire evidence base for this subsection. One post, no performance data at time of writing.
+
+**The one rule that transfers with confidence:** *slide 1 IS the feed thumbnail, so it does the
+exact job the first 3 seconds does on video.* Beat 1 of the script formula applies unchanged — hook
+with the differentiator, not a generic question. The Jul 27 post put a soft-lit portrait and *"Are
+you SURE you want to buy another product just because it's viral?!!"* on slide 1 while the genuinely
+unusual asset (an AI citing the visitor's own two-week routine history) sat unseen on slides 3-4.
+
+**⚠️ The beige-text-card hazard is the specific risk here.** `BAILEY-CONTENT-PLAYBOOK.md` diagnosed
+the brand account's `299 · 484 · 755 · 186 · 8` view collapse as a **format** problem — static cards
+have no watch time, so no completion, so no promotion. A carousel whose slide 1 is a pretty photo
+with text on it is uncomfortably close to that failure mode. Motion is not available to hold the
+eye, so **slide 1 must carry a curiosity gap or the post is a text card with extra steps.**
+
+**Why the format may still be right, and is worth testing rather than banning:** dense screenshot
+text is the one thing carousels plausibly do *better* than video — people will read a screenshot
+they would never pause a video for, and a Yuri transcript is exactly that kind of artifact. Slides
+3-4 of the Jul 27 post are genuinely strong for this reason. Carousels also get slower, re-swipeable
+consumption. **Tier B/C at best — practitioner consensus, no hard data, and none of it measured on
+this account.**
+
+**What is NOT yet known and should not be invented:** optimal slide count, text density per slide,
+whether sound choice matters as much as on video, whether carousels out- or under-perform her own
+videos. Her TikTok analytics answer the last one for free.
+
+**Grade it the same way as everything else** — `tt` sessions per 1,000 views, split carousel vs
+video. **Write this subsection properly once 3-4 carousels have posted**, from her numbers rather
+than from general TikTok advice. Until then this stays marked as a hypothesis, per the evidence
+tiering above.
 
 ---
 

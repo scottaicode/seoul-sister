@@ -18,9 +18,10 @@ Everything else in this folder is working source.
 | `guide-src/` | Source of the deliverable + `build.sh` to regenerate it |
 | `BAILEY-SCRIPTS-REDDIT-VALIDATED.md` | 10 scripts from topics that already scored on Reddit |
 | `BAILEY-SCRIPTS.md` | 6 Seoul Sister + 9 life + 4 Shop scripts |
-| `BAILEY-TIKTOK-BLUEPRINT.md` | Strategy, CTA closer table, the 3-arm CTA test |
+| `BAILEY-TIKTOK-BLUEPRINT.md` | Strategy, CTA closer table, the 3-arm CTA test, **carousel hypothesis (n=1, untested)** |
+| **`CAROUSEL-FEEDBACK-JUL27.md`** + `Carousel-Feedback-Jul27.{pdf,docx}` | **Sent.** Jul 27 read on her first Seoul Sister post (Medicube). Substance excellent (steelmanned the product, no alternative offered, Yuri's memory receipts on screen); app never named, no AI mentioned, FTC co-creator disclosure absent. Built by `guide-src/build-carousel-feedback.sh` |
 | `BAILEY-CONTENT-PLAYBOOK.md` | Jul 13 diagnosis ("format problem, not voice problem") |
-| `BAILEY-CREATOR-PLAN.md` / `.html` | The Jul 14 creator arrangement + boundaries |
+| `BAILEY-CREATOR-PLAN.md` / `.html` | ⚠️ **PARTIALLY SUPERSEDED Jul 27.** Read for the boundaries she drew (still live). **Not** for promotional guidance — its "no demoing the product" / "no link in captions" posture is reversed by the Jul 25 deliverable. See the header. |
 | `BAILEY-FEEDBACK-LOG.md` | Her product corrections, the record behind Yuri Sole Authority |
 | `COMPETITOR-VIDEO-STRUCTURES.md` | Teardowns of the creators she models, scored per lane |
 | **`POSTING-FREQUENCY-AND-REPOSTS.md`** | **Send-ready.** Jul 27 answer to the "post 30x/day + repost your viral videos" advice. Verdict: cadence 5-7/week (not 30/day — TikTok says 1-4/day, and median views FALL above ~10/week); **never re-upload a winner** (TikTok's Sept 15 2025 enforcement names it, with Creator Rewards clawback + Jul 2026 account-level detection); remake the concept instead. Written to her, sourced. |
