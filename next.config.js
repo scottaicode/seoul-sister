@@ -76,7 +76,15 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://va.vercel-scripts.com", // Next.js + GA4 + Vercel Analytics
+              // challenges.cloudflare.com (Jul 28 2026): Cloudflare Turnstile on the
+              // auth forms. Turnstile needs THREE directives — script-src (loads
+              // api.js), frame-src (renders the challenge in an iframe), and
+              // connect-src (posts the verification). Miss any one and the widget
+              // fails SILENTLY: no visible captcha, no token, and once Supabase's
+              // Bot and Abuse Protection is on that means nobody can log in with no
+              // obvious cause. Same failure class as the v10.13.4 GTM/connect-src
+              // gap below — a missing CSP host breaking a third party invisibly.
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://va.vercel-scripts.com https://challenges.cloudflare.com", // Next.js + GA4 + Vercel Analytics + Turnstile
               "style-src 'self' 'unsafe-inline'", // Tailwind + framer-motion inject inline styles
               "img-src 'self' data: blob: https://images.unsplash.com https://gzqjvbhmndnovhlgumdk.supabase.co https://tjzhhfczyjvfjjmuvegd.supabase.co https://www.seoulsister.com https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://cdn-image.oliveyoung.com https://image.oliveyoung.com https://dist.oliveyoung.com https://cdn.shopify.com https://image.yesstyle.com https://img.yesstyle.com https://medicube.us https://www.cosrx.com https://theisntree.com https://heimish.us https://www.dodoskin.com https://neogenlab.us https://tonymoly.us https://us.laneige.com https://us.innisfree.com https://misshaus.com https://us.sulwhasoo.com https://www.wishtrend.com https://wishtrend.com https://beautyofjoseon.com https://dalba.com https://anua.com https://www.sephora.com https://d1flfk77wl2xk4.cloudfront.net https://media.theresanaiforthat.com",
               "font-src 'self'",
@@ -84,8 +92,8 @@ const nextConfig = {
               // of the GTM script is governed by connect-src (script-src only covers
               // <script> tags), and its absence was CSP-blocking GA4 for SW-active
               // visitors (caught in the June 10 live funnel test).
-              "connect-src 'self' https://gzqjvbhmndnovhlgumdk.supabase.co https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.google.com https://www.googletagmanager.com https://va.vercel-scripts.com",
-              "frame-src https://js.stripe.com https://hooks.stripe.com",
+              "connect-src 'self' https://gzqjvbhmndnovhlgumdk.supabase.co https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.google.com https://www.googletagmanager.com https://va.vercel-scripts.com https://challenges.cloudflare.com",
+              "frame-src https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",

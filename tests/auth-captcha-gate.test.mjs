@@ -37,6 +37,7 @@ const registerSrc = read('src', 'app', '(auth)', 'register', 'page.tsx')
 const loginSrc = read('src', 'app', '(auth)', 'login', 'page.tsx')
 const forgotSrc = read('src', 'app', '(auth)', 'forgot-password', 'page.tsx')
 const fixSql = read('scripts', 'migrations', 'fix_ss_real_users_exposure.sql')
+const nextConfig = read('next.config.js')
 
 // ---------------------------------------------------------------------------
 // Coverage: ALL THREE endpoints Supabase's Bot and Abuse Protection guards
@@ -140,6 +141,28 @@ test('expiry and error clear the held token', () => {
   // A stale token left in state submits and fails server-side.
   assert.ok(captchaSrc.includes('onExpire={() => onToken(null)}'), 'onExpire must clear the token')
   assert.ok(captchaSrc.includes('onError={() => onToken(null)}'), 'onError must clear the token')
+})
+
+// ---------------------------------------------------------------------------
+// CSP must admit Turnstile on ALL THREE directives it uses
+// ---------------------------------------------------------------------------
+
+test('CSP allows challenges.cloudflare.com in script-src, frame-src and connect-src', () => {
+  // Caught on the live production header before the site key was ever set: the
+  // CSP allowed only GTM/Vercel scripts and Stripe frames, so Turnstile would
+  // have failed SILENTLY — no widget, no token, and once Supabase's Bot and
+  // Abuse Protection is enabled, nobody can log in with no visible cause.
+  // Missing any ONE of the three is enough to break it, so assert each.
+  for (const directive of ['script-src', 'frame-src', 'connect-src']) {
+    const line = nextConfig
+      .split('\n')
+      .find((l) => l.includes(`"${directive} `) || l.trimStart().startsWith(`"${directive}`))
+    assert.ok(line, `${directive} must exist in the CSP`)
+    assert.ok(
+      line.includes('https://challenges.cloudflare.com'),
+      `${directive} must allow challenges.cloudflare.com or Turnstile fails silently`
+    )
+  }
 })
 
 // ---------------------------------------------------------------------------
