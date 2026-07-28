@@ -19,6 +19,17 @@ const ALL_FIELDS = [
   'experience_level',
   'product_preferences',
   'location_text',
+  // Clinical fields (added Jul 28 2026). They were extractable and writable but
+  // TRACKED NOWHERE — absent from this list, so they never appeared in "Fields
+  // still needed", never counted toward progress, and nothing ever noticed when
+  // one went missing. Caroline answered both sun questions and `sun_history`
+  // still landed NULL; the system was structurally blind to the gap. Listing
+  // them here is what makes an unanswered safety question visible to Yuri.
+  // NOTE: this widens the completion_percentage denominator, so in-flight
+  // onboardings show a lower %. REQUIRED_FIELDS is untouched, so nothing that
+  // gates completion changes.
+  'medical_history',
+  'sun_history',
 ] as const
 
 const REQUIRED_FIELDS = ['skin_type', 'skin_concerns', 'age_range'] as const
@@ -154,7 +165,7 @@ export async function extractSkinProfileData(
   const response = await callAnthropicWithRetry(() =>
     client.messages.create({
       model: MODELS.background,
-      max_tokens: 1024,
+      max_tokens: 2000,
       messages: [
         {
           role: 'user',
@@ -166,11 +177,12 @@ Possible fields:
 - skin_type: one of "oily", "dry", "combination", "normal", "sensitive"
 - skin_concerns: array of concerns (e.g., ["acne", "dark spots", "dullness"]). Normalize to lowercase.
 - age_range: one of "18-24", "25-30", "31-35", "36-40", "41-50", "50+"
-- fitzpatrick_scale: integer 1-6 (1=very fair/always burns, 6=deep/never burns). Extract ONLY if they described their actual burn/tan response or stated it. Do NOT infer it from ethnicity, location, or a photo description — a guessed value is stored as fact and drives clinical decisions.
+- fitzpatrick_scale: integer 1-6. Extract ONLY when you know BOTH halves of the burn/tan response — what happens first (burn) AND what happens after (tan or not). A HALF ANSWER IS NOT AN ANSWER: "I burn easily" alone is types 1 THROUGH 3 and you cannot tell which, so OMIT the field and let Yuri ask the tan half. "Burns at first, then tans" is 2-3, NEVER 1. Type 1 means always burns and NEVER tans — reserve it for someone who says they never tan at all. Do NOT infer from ethnicity, location, or a photo description. A guessed value is stored as fact, drives retinoid strength, acid aggressiveness and skin-cancer caution, and — because a captured field is never re-asked — SILENCES the very question that would have corrected it. When in doubt, omit.
 - medical_history: array of standing medical facts — skin cancer/precancer history, rosacea, eczema, psoriasis, dermatologist care, prescriptions (tretinoin, isotretinoin). Keep the user's own phrasing where possible (e.g. "skin cancer history, 25+ excisions since early 30s"). NOT allergies — allergies exclude an ingredient, these reframe the approach.
-- sun_history: string, cumulative lifetime sun exposure in their words (e.g. "grew up in California's Central Valley, outdoors constantly through his 20s, burned often as a kid"). Distinct from climate, which is where they live now.
+- fitzpatrick_source: "stated" ONLY if the user gave a COMPLETE burn AND tan response (or named their type outright). "estimated" if you derived the number from a partial answer. Omit when you omit fitzpatrick_scale.
+- sun_history: string, everything they've said about sun and their skin — burn/sunburn response ("burns easily, then tans"), childhood or cumulative exposure ("grew up in the Central Valley, outdoors constantly"), AND their answer about skin cancer, precancers, or changing moles. RECORD NEGATIVES EXPLICITLY: "no personal or family history of skin cancer, no moles or spots of concern" is a clinically valuable fact, not an absence of one — capture it in their words. Distinct from climate, which is where they live now. This field is the record of a SAFETY conversation; if they answered a sun or mole question at all, something belongs here.
 - climate: one of "humid", "dry", "temperate", "tropical", "cold"
-- allergies: array of known allergens or ingredients they react to
+- allergies: array of INGREDIENTS ONLY that the user reacts to (e.g. "fragrance", "essential oils", "denatured alcohol"). NEVER store a product or brand name here — this field is injected into Yuri's context under "ALWAYS check for these before recommending any product", so a whole cleanser listed as an allergen wrongly bans a product she may need. If they broke out from a PRODUCT but the culprit ingredient is unknown, do NOT put it here; it belongs in skin_concerns or current_routine context. Also EXCLUDE anything the conversation itself characterized as a formula mismatch rather than a true allergy — if Yuri said "I wouldn't call that a true allergy," honor her judgment and omit it.
 - current_routine: array of product names or categories they currently use
 - budget_preference: one of "budget", "mid-range", "luxury", "mixed"
 - experience_level: one of "beginner", "intermediate", "advanced"
@@ -192,7 +204,18 @@ Return ONLY valid JSON, no explanation or markdown. If nothing can be extracted,
   try {
     const cleaned = block.text.trim().replace(/^```json?\s*/, '').replace(/\s*```$/, '')
     return JSON.parse(cleaned) as ExtractedSkinProfile
-  } catch {
+  } catch (err) {
+    // Was a silent `return {}` — indistinguishable from "the conversation
+    // contained nothing to extract", which is the v10.3.4 silent-failure class.
+    // The realistic trigger is max_tokens truncating the JSON mid-object as the
+    // transcript grows, and a swallowed failure here means clinical fields go
+    // missing with no trace anywhere. Log loudly; still degrade gracefully.
+    console.error(
+      '[onboarding] extraction JSON parse FAILED — profile fields dropped this turn.',
+      'stop_reason:', response.stop_reason,
+      'raw head:', block.text.slice(0, 200),
+      err instanceof Error ? err.message : err
+    )
     return {}
   }
 }
@@ -346,9 +369,18 @@ export function mergeSkinProfileData(
     const typedKey = key as keyof ExtractedSkinProfile
 
     if (Array.isArray(value)) {
-      const existingArr = (merged[typedKey] as string[] | undefined) || []
-      const mergedArr = [...new Set([...existingArr, ...value])]
-      ;(merged as Record<string, unknown>)[typedKey] = mergedArr
+      // REPLACE, don't union. The extractor re-reads the ENTIRE transcript on
+      // every message, so each incoming array is already a complete snapshot —
+      // unioning it with the previous snapshot just accumulated the model's
+      // phrasing variance forever. Real damage, two users deep: medical_history
+      // held the same acne fact twice in two phrasings; current_routine had 13
+      // entries for ~7 products including THREE spellings of one retinol
+      // ("Kheils" the user's typo, "Kiehl's" corrected, "Kieils" which appears
+      // in no message at all); skin_concerns carried both "oily" and
+      // "oiliness". Every one of those is injected into Yuri's context.
+      // A union of exact strings can never converge because the strings differ.
+      // Replacing is self-healing: one clean pass fixes the record.
+      ;(merged as Record<string, unknown>)[typedKey] = value
     } else {
       ;(merged as Record<string, unknown>)[typedKey] = value
     }
@@ -489,7 +521,14 @@ export async function finalizeOnboardingProfile(
   // Clinical fields: written ONLY when actually extracted, never invented.
   if (extracted.fitzpatrick_scale) {
     profileData.fitzpatrick_scale = extracted.fitzpatrick_scale
-    profileData.fitzpatrick_source = 'stated'
+    // Provenance must describe what actually happened. This used to hardcode
+    // 'stated' for ANY extracted integer — so a value the MODEL inferred from
+    // half an answer was recorded as if the user had declared their type
+    // (Caroline, Jul 28: said only "I burn easily initially", stored as
+    // Fitzpatrick 1 / 'stated'). 'stated' now means the user gave a complete
+    // burn AND tan response; anything the extractor derived is 'estimated', so
+    // Yuri can see the difference and ask rather than assert.
+    profileData.fitzpatrick_source = extracted.fitzpatrick_source === 'stated' ? 'stated' : 'estimated'
   }
   if (extracted.climate) profileData.climate = extracted.climate
   if (extracted.age_range) profileData.age_range = extracted.age_range
@@ -636,7 +675,13 @@ export async function* streamOnboardingResponse(
 
   const stream = client.messages.stream({
     model: MODELS.primary,
-    max_tokens: 600,
+    // 600 cut a real reply off mid-sentence on the plain text "Anything you"
+    // (Caroline, Jul 28) — the plan-recap turn, which is exactly the turn that
+    // runs long: structured routine, Korean glosses (Hangul costs 1-2 tokens a
+    // character), brand names. The prompt itself tells Yuri that medical and
+    // safety topics deserve thorough answers, so the ceiling contradicted the
+    // instruction. Cost stays bounded by the 50-message onboarding cap.
+    max_tokens: 1200,
     // Two blocks: the STATIC prompt carries the cache breakpoint; per-turn state
     // follows in an UNCACHED block. Appending turn state to the cached block
     // silently destroys the cache (v11.1.0, measured 60x on the widget).

@@ -625,6 +625,14 @@ export interface ExtractedSkinProfile {
   skin_concerns?: string[]
   age_range?: '13-17' | '18-24' | '25-30' | '31-40' | '41-50' | '51+'
   fitzpatrick_scale?: 1 | 2 | 3 | 4 | 5 | 6
+  /**
+   * How `fitzpatrick_scale` was arrived at. 'stated' ONLY when the user gave a
+   * complete burn AND tan response; 'estimated' when the extractor derived it
+   * from a partial answer. Previously the writer hardcoded 'stated' for any
+   * extracted value, so a model inference from half an answer was recorded as
+   * the user's own declaration (Caroline, Jul 28 2026).
+   */
+  fitzpatrick_source?: 'stated' | 'estimated'
   climate?: 'humid' | 'dry' | 'temperate' | 'tropical' | 'cold'
   allergies?: string[]
   current_routine?: string[]

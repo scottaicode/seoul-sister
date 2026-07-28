@@ -50,23 +50,41 @@ function fnBody(src, signature) {
 
 test('onboarding never fabricates a Fitzpatrick, age, or climate', () => {
   const body = fnBody(onboardingSrc, 'export async function finalizeOnboardingProfile(')
+  // Match BOTH `field: extracted.field || x` (object-literal form, how the
+  // original v11.10.0 bug was written) and `profileData.field = extracted.field
+  // || x` (assignment form, how the code is written today). The old assertions
+  // only caught the literal form, so the exact same defect reintroduced as an
+  // assignment sailed through — found Jul 28 2026 by reverting the bug on
+  // purpose and watching the guard stay green.
+  const defaulted = (field) =>
+    new RegExp(`(${field}:|profileData\\.${field}\\s*=)\\s*extracted\\.${field}\\s*\\|\\|`).test(body)
+
   assert.ok(
-    !/fitzpatrick_scale:\s*extracted\.fitzpatrick_scale\s*\|\|\s*\d/.test(body),
+    !defaulted('fitzpatrick_scale'),
     'fitzpatrick_scale is being defaulted again — a guessed value is stored as fact and drives clinical decisions'
   )
   assert.ok(
-    !/age_range:\s*extracted\.age_range\s*\|\|\s*'/.test(body),
+    !defaulted('age_range'),
     "age_range is being defaulted again (was '25-30' for a 59-year-old)"
   )
   assert.ok(
-    !/climate:\s*extracted\.climate\s*\|\|\s*'/.test(body),
+    !defaulted('climate'),
     'climate is being defaulted again'
   )
   // Written only when actually extracted, and stamped with provenance.
+  // Jul 28 2026: this used to require the literal `fitzpatrick_source =
+  // 'stated'`, which the v11.10.0 code satisfied by HARDCODING it for every
+  // extracted value — so a number the model inferred from half an answer was
+  // labelled as the user's own declaration (Caroline). The provenance is now
+  // derived from the extractor, which is strictly stronger. Assert that a
+  // source is recorded and that BOTH labels are reachable, not the old literal.
   assert.ok(
-    /if \(extracted\.fitzpatrick_scale\)/.test(body) &&
-      /fitzpatrick_source = 'stated'|fitzpatrick_source\]?\s*=\s*'stated'/.test(body),
-    'a stated Fitzpatrick must be recorded with provenance so it is distinguishable from an estimate'
+    /if \(extracted\.fitzpatrick_scale\)/.test(body) && /fitzpatrick_source/.test(body),
+    'a Fitzpatrick must be recorded with provenance so it is distinguishable from an estimate'
+  )
+  assert.ok(
+    /'estimated'/.test(body),
+    "provenance must be able to say 'estimated' — a label that is always 'stated' carries no information"
   )
 })
 
@@ -135,8 +153,12 @@ test('lesion referral guidance exists on BOTH Yuri surfaces', () => {
 })
 
 test('the extractor is told not to infer Fitzpatrick from ancestry or location', () => {
+  // Wording tightened Jul 28 2026 ("Do NOT infer from ethnicity, location..."),
+  // so match the prohibition rather than one exact sentence. The v11.10.0 rule
+  // (never infer from ancestry) still holds; the newer text ALSO forbids
+  // assigning a value from a half-answer, which is how Caroline got a wrong 1.
   assert.ok(
-    /Do NOT infer it from ethnicity, location/.test(onboardingSrc),
+    /Do NOT infer (it )?from ethnicity, location/.test(onboardingSrc),
     'the extraction schema must forbid inferring Fitzpatrick — it was previously told to "Infer from context when possible"'
   )
   assert.ok(
