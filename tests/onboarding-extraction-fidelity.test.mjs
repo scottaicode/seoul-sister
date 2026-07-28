@@ -40,6 +40,7 @@ const read = (...p) => readFileSync(join(__dirname, '..', ...p), 'utf8')
 
 const src = read('src', 'lib', 'yuri', 'onboarding.ts')
 const types = read('src', 'types', 'database.ts')
+const memory = read('src', 'lib', 'yuri', 'memory.ts')
 
 // ---------------------------------------------------------------------------
 // 1. Fitzpatrick: both halves required, provenance must be honest
@@ -172,6 +173,28 @@ test('allergies extraction refuses product names and formula mismatches', () => 
   assert.ok(
     /mismatch/i.test(line),
     "must honor Yuri's own in-conversation judgment when she says it is not a true allergy"
+  )
+})
+
+// ---------------------------------------------------------------------------
+// 4b. Yuri must not read a stored PRODUCT as an ingredient allergy
+// ---------------------------------------------------------------------------
+
+test('the allergy context block distinguishes a product from an ingredient', () => {
+  // Two live profiles hold product names in `allergies` ("Anua Oil Cleanser",
+  // "innisfree green tea moisturizer"). The block used to say "Known
+  // Allergies/Sensitivities ... ALWAYS check for these", which reads a whole
+  // formula as an allergen and invites extrapolating the ban to anything
+  // sharing an ingredient with it. The reaction is real; the inference was not.
+  const block = memory.match(/## IMPORTANT: Things their skin reacted[\s\S]{0,700}/)?.[0] ?? ''
+  assert.ok(block, 'the reaction context block must exist')
+  assert.ok(
+    /INGREDIENTS or whole PRODUCTS/.test(block),
+    'must tell Yuri the list mixes ingredients and products'
+  )
+  assert.ok(
+    /do not extrapolate/i.test(block),
+    'must stop a product reaction becoming a blanket ingredient ban'
   )
 })
 

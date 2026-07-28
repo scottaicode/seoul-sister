@@ -736,7 +736,7 @@ export function formatContextForPrompt(context: UserContext): string {
     sections.push(`## User's Skin Profile${onboarded ? ' (built during your onboarding conversation -- you already know this user!)' : ''}
 - Skin type: ${p.skin_type || 'not established'}
 - Concerns: ${p.skin_concerns?.join(', ') || 'none specified'}
-- Allergies (ingredients to AVOID): ${p.allergies?.length ? p.allergies.join(', ') : 'none known'}
+- Allergies (ingredients to AVOID): ${p.allergies?.length ? p.allergies.join(', ') : 'none known'}${p.allergies?.length ? ' — NOTE: some entries are whole PRODUCTS rather than ingredients, because the extractor accepted product names. A product here means that formula broke them out; the culprit ingredient is unknown, so do not extrapolate the ban to everything sharing an ingredient with it. Ask what specifically went wrong when it matters.' : ''}
 - Fitzpatrick scale: ${fitzLine}
 - Climate: ${p.climate || 'not established'}${locationLine}
 - Age range: ${p.age_range || 'not established — ask if it changes your answer (retinoid strength, pigment timelines, collagen)'}
@@ -930,7 +930,15 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
 
   // Known allergies (emphasized)
   if (context.knownAllergies.length > 0) {
-    sections.push(`## IMPORTANT: Known Allergies/Sensitivities\nALWAYS check for these before recommending any product:\n${context.knownAllergies.map((a) => `- ${a}`).join('\n')}`)
+    // Heading and framing corrected Jul 28 2026. This said "Known
+    // Allergies/Sensitivities" and "ALWAYS check for these", but the field also
+    // holds whole PRODUCTS ("Anua Oil Cleanser", "innisfree green tea
+    // moisturizer") because the extractor accepted product names. Reading a
+    // product as an allergen bans a formula outright and can spread to anything
+    // sharing an ingredient with it — the mirror of the v11.10.0 defect where a
+    // skin cancer history was stored as an allergy. The reaction is REAL and
+    // must be respected; what it implies is narrower than "allergy".
+    sections.push(`## IMPORTANT: Things their skin reacted badly to\nCheck these before recommending any product:\n${context.knownAllergies.map((a) => `- ${a}`).join('\n')}\n\nEntries may be single INGREDIENTS or whole PRODUCTS. An ingredient means avoid it. A product means that formula broke them out — the culprit ingredient may be unknown, so do not extrapolate a ban to every product that shares an ingredient with it. When it matters, ask what specifically went wrong.`)
   }
 
   // Recent conversation summaries (cross-session memory)
