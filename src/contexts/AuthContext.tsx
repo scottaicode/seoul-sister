@@ -8,8 +8,17 @@ import { captureAttribution, getAttribution } from '@/lib/attribution'
 interface AuthContextType {
   user: User | null
   loading: boolean
-  signIn: (email: string, password: string) => Promise<Session | null>
-  signUp: (email: string, password: string) => Promise<{ user: User | null; session: Session | null }>
+  // captchaToken (July 28 2026): Cloudflare Turnstile token, forwarded to
+  // Supabase so it can verify the caller is human before minting an account or
+  // sending mail. Optional so callers that predate the captcha still compile;
+  // when Supabase's Bot and Abuse Protection is ON, a missing token is rejected
+  // server-side. See src/components/auth/AuthCaptcha.tsx for the full rationale.
+  signIn: (email: string, password: string, captchaToken?: string) => Promise<Session | null>
+  signUp: (
+    email: string,
+    password: string,
+    captchaToken?: string
+  ) => Promise<{ user: User | null; session: Session | null }>
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
 }
@@ -41,13 +50,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  const signIn = useCallback(async (email: string, password: string, captchaToken?: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: { captchaToken },
+    })
     if (error) throw error
     return data.session
   }, [])
 
-  const signUp = useCallback(async (email: string, password: string) => {
+  const signUp = useCallback(async (email: string, password: string, captchaToken?: string) => {
     // First-touch attribution rides along with account creation. This is the one
     // chokepoint EVERY signup passes through, regardless of which code path
     // later creates the ss_user_profiles row (the Yuri onboarding flow uses a
@@ -57,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { attribution: getAttribution() ?? undefined } },
+      options: { data: { attribution: getAttribution() ?? undefined }, captchaToken },
     })
     if (error) throw error
     return { user: data.user, session: data.session }

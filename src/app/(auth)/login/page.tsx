@@ -1,10 +1,15 @@
 'use client'
 
-import { useState, FormEvent } from 'react'
+import { useState, useRef, FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, Sparkles, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import {
+  AuthCaptcha,
+  requireCaptchaToken,
+  type AuthCaptchaHandle,
+} from '@/components/auth/AuthCaptcha'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -15,14 +20,27 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captchaRef = useRef<AuthCaptchaHandle>(null)
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
+
+    // Login is captcha'd too because Supabase's Bot and Abuse Protection applies
+    // to sign-in as well as signup/recovery — without a token here, enabling the
+    // dashboard toggle would lock every real user out. Also blunts credential
+    // stuffing against the accounts that already exist.
+    const captchaRejection = requireCaptchaToken(captchaToken)
+    if (captchaRejection) {
+      setError(captchaRejection)
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      const session = await signIn(email, password)
+      const session = await signIn(email, password, captchaToken ?? undefined)
 
       // Check if onboarding is completed
       if (session?.access_token) {
@@ -47,6 +65,9 @@ export default function LoginPage() {
       const message =
         err instanceof Error ? err.message : 'Failed to sign in. Please try again.'
       setError(message)
+      // Single-use token — a wrong-password retry must get a fresh one, or the
+      // second attempt fails on the captcha instead of the password.
+      captchaRef.current?.reset()
     } finally {
       setIsLoading(false)
     }
@@ -181,6 +202,9 @@ export default function LoginPage() {
               Forgot password?
             </Link>
           </div>
+
+          {/* Bot verification — renders nothing until Turnstile is configured */}
+          <AuthCaptcha ref={captchaRef} onToken={setCaptchaToken} />
 
           {/* Submit */}
           <button

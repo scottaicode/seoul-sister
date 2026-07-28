@@ -1,12 +1,17 @@
 'use client'
 
-import { useState, FormEvent } from 'react'
+import { useState, useRef, FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, Check, Sparkles, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { PRICING } from '@/lib/pricing'
 import { signupEmailRejection } from '@/lib/utils/email-normalize'
+import {
+  AuthCaptcha,
+  requireCaptchaToken,
+  type AuthCaptchaHandle,
+} from '@/components/auth/AuthCaptcha'
 
 function PasswordStrengthBar({ password }: { password: string }) {
   const checks = [
@@ -56,6 +61,8 @@ export default function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captchaRef = useRef<AuthCaptchaHandle>(null)
 
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword
 
@@ -83,10 +90,19 @@ export default function RegisterPage() {
       return
     }
 
+    // Bot gate (July 28 2026): a Tor-driven script minted 4 victim-email
+    // accounts in 21h purely to trigger password-reset mail from our domain.
+    // No-ops when Turnstile isn't configured. See AuthCaptcha.tsx.
+    const captchaRejection = requireCaptchaToken(captchaToken)
+    if (captchaRejection) {
+      setError(captchaRejection)
+      return
+    }
+
     setIsLoading(true)
 
     try {
-      await signUp(email, password)
+      await signUp(email, password, captchaToken ?? undefined)
       // Priority 2 (Jul 2026) — move the paywall to the VALUE MOMENT.
       // Previously this pushed straight to '/subscribe', so a stranger hit the
       // $24.99/mo wall BEFORE ever experiencing Yuri. FUNNEL-LEAK-AUDIT-JUL13
@@ -99,6 +115,10 @@ export default function RegisterPage() {
       const message =
         err instanceof Error ? err.message : 'Failed to create account. Please try again.'
       setError(message)
+      // Turnstile tokens are single-use. Without this reset a retry reuses a
+      // spent token, Supabase rejects it, and the user sees their valid details
+      // fail repeatedly for no visible reason.
+      captchaRef.current?.reset()
     } finally {
       setIsLoading(false)
     }
@@ -272,6 +292,9 @@ export default function RegisterPage() {
               </div>
             </div>
           </div>
+
+          {/* Bot verification — renders nothing until Turnstile is configured */}
+          <AuthCaptcha ref={captchaRef} onToken={setCaptchaToken} />
 
           {/* Submit */}
           <button

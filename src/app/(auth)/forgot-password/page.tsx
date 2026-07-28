@@ -1,15 +1,22 @@
 'use client'
 
-import { useState, FormEvent } from 'react'
+import { useState, useRef, FormEvent } from 'react'
 import Link from 'next/link'
 import { Mail, ArrowLeft, Check, AlertCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import {
+  AuthCaptcha,
+  requireCaptchaToken,
+  type AuthCaptchaHandle,
+} from '@/components/auth/AuthCaptcha'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captchaRef = useRef<AuthCaptchaHandle>(null)
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -20,11 +27,22 @@ export default function ForgotPasswordPage() {
       return
     }
 
+    // THE abused endpoint (July 28 2026): the attacker's script fired three
+    // /recover calls in 15 seconds per victim, trying to make our domain mail
+    // harvested strangers. Supabase's 429 limiter caught all 24 attempts, but
+    // this stops the script before it reaches the limiter at all.
+    const captchaRejection = requireCaptchaToken(captchaToken)
+    if (captchaRejection) {
+      setError(captchaRejection)
+      return
+    }
+
     setIsLoading(true)
 
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+        captchaToken: captchaToken ?? undefined,
       })
       if (resetError) throw resetError
       setSent(true)
@@ -32,6 +50,8 @@ export default function ForgotPasswordPage() {
       const message =
         err instanceof Error ? err.message : 'Failed to send reset email. Please try again.'
       setError(message)
+      // Single-use token — see register/page.tsx.
+      captchaRef.current?.reset()
     } finally {
       setIsLoading(false)
     }
@@ -96,6 +116,9 @@ export default function ForgotPasswordPage() {
             <span>{error}</span>
           </div>
         )}
+
+        {/* Bot verification — renders nothing until Turnstile is configured */}
+        <AuthCaptcha ref={captchaRef} onToken={setCaptchaToken} />
 
         <button
           type="submit"
