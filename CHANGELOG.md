@@ -8,6 +8,30 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.13.0 (July 28, 2026): The spam relay, and the door that was already open
+
+Scott asked a routine question — "any Yuri activity in the past 24 hours?" — and the answer was four new registrations. That reads like traction. It wasn't.
+
+**The attack.** All four signups came from **Tor exit nodes** (`185.220.101.14`, `185.220.101.53`, `171.25.193.78` — confirmed against the live `torbulkexitlist`). Each followed the same script: register as a harvested victim address, wait ~60 seconds, then fire **three `/recover` calls in 15 seconds** from a *different* range (`45.84.107.x`, bulletproof hosting) so signup and recovery IPs never correlate. Zero product engagement — not one replied to Yuri's greeting. **The account was never the goal.** The goal was making seoulsister.com mail strangers whose addresses were harvested elsewhere: Seoul Sister as a free spam relay. The victims are real people (`tmartin@locumtenens.com` is a corporate healthcare-staffing address).
+
+**Supabase's rate limiter held** — all 24 `/recover` attempts returned `429 over_email_send_rate_limit`, **no abuse mail was ever delivered**, $0 cost, no Opus tokens burned. But that limiter is the last line, not the first.
+
+**The worse bug, found while auditing.** `ss_real_users` — the Jul 23 analytics view over `auth.users` — was **readable by `anon` over PostgREST**. Verified live against production before the fix: `GET /rest/v1/ss_real_users?select=email` with the **publishable** key returned real subscriber emails, HTTP 200. That key ships in the browser bundle by design, so every user's address was public. Two Postgres defaults compounded: a view owned by `postgres` runs SECURITY DEFINER (bypassing the auth.users lockdown), and Supabase grants `anon` SELECT on public-schema objects. Both Supabase advisors had been firing (`auth_users_exposed`, `security_definer_view`) and nobody had read them. Fixed with `security_invoker = on` + REVOKE from anon/authenticated + service-role-only GRANT. **The row filter is byte-identical** — this changed *who reads*, never *which rows*, so signup analytics stay honest. Post-fix probe: `401 permission denied`. Both ERROR advisors cleared.
+
+**Why CAPTCHA, and why Turnstile.** IP blocking was rejected: Tor exit lists rotate constantly and would need forever-maintenance. Turnstile over hCaptcha because it is **invisible for most real users** — the measured problem in this funnel is strangers bouncing in seconds, so visible registration friction would be self-defeating. Free at unlimited volume. Gated on `NEXT_PUBLIC_TURNSTILE_SITE_KEY`: the widget **no-ops when unset**, so the code shipped ahead of the manual dashboard steps and a Cloudflare outage degrades to "auth still works" rather than "nobody can log in" — the same fail-open posture as the v11.12.0 widget circuit breaker. Login is gated too: without it, enabling Supabase's toggle would have locked out every real user.
+
+**The bug that deploying caught.** After shipping, the live CSP header showed `script-src` allowing only GTM/Vercel and `frame-src` only Stripe. **Turnstile needs three directives** — script-src (loads api.js), frame-src (the challenge iframe), connect-src (posts verification). Missing any one fails **silently**: no widget, no token, and the moment Supabase enforcement is switched on, every user including the owner is locked out with nothing in the UI explaining why. Same class as the v10.13.4 GTM/`connect-src` gap. Found by reading the production response header, not the config file — and before the site key was ever set, so it never reached a user.
+
+**Verified end to end** (Jul 28, after Scott completed Cloudflare + Vercel + Supabase): widget renders "Success!" on `/register` and `/login`; real login succeeds; and all three endpoints now reject token-less calls with `captcha_failed` — `/signup`, `/recover`, and `/token`. The bot's exact request is refused at the API.
+
+**21 guard tests**, each verified to fail when its bug is reintroduced. One assertion was caught passing on a code *comment* rather than the SQL clause and was strengthened.
+
+**Not fixed:** `leaked password protection` stays DISABLED — it requires custom SMTP, unrelated to this attack. The Jul 23 Gmail dot-abuse gate is untouched and test-locked; it missed `gsdhil.lon6.9@gmail.com` (2 dots vs the 3-dot threshold) and **the threshold is correct** — lowering it would block real `first.m.last@gmail.com` humans.
+
+**The honest reading.** 8 signups in 3 days looked like traction; at least 4 were bots. Across the same 24 hours the genuine human signal was **one** widget visitor who clicked a canned prompt and left in 10 seconds. This work protects the email reputation the lead-capture path depends on and closes a real data leak — it moves nobody toward paying. Same lesson as the GA4 phantom-user wave: count database engagement, not accounts.
+
+---
+
 ## v11.12.0 (July 27, 2026): The citation breakout — and the locked door behind it
 
 **Bing Copilot cited Seoul Sister 525 times in 7 days** (prior baseline: 369 in *3 months*) — 34 cited pages, **33.33% citation share** on `best korean cleanser`, **66.67%** on `best korean eye cream`, 100% on a long-tail blemish query. Long-tail product-research queries (`torriden cleansing milk`, `COSRX snail mucin disadvantages`, `how to spot fake Korean skincare products`) confirmed the free-database bet: Copilot cites us because no competing English structured source exists. It converted to ~3-4 sessions/week and **zero** leads.
