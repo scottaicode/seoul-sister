@@ -1,5 +1,21 @@
 // Seoul Sister Service Worker
-const CACHE_NAME = 'seoul-sister-v1'
+//
+// CACHE_NAME is a deploy fence. Bumping it makes the `activate` handler below
+// delete every older cache, so returning visitors get the new build instead of
+// a stale one. BUMP IT whenever a change must reach existing visitors
+// immediately — auth, security, or anything that would otherwise break a user
+// who has been here before.
+//
+// v2 (Jul 28 2026): a real user was LOCKED OUT of login by v1. The Turnstile
+// captcha shipped that morning, but `/_next/static/` is served cache-first
+// (below), so her browser kept replaying the PRE-captcha login chunk: no widget
+// rendered, no token could be produced, and the client-side guard refused the
+// submit with "Please complete the verification check below" — a check with
+// nothing to check. Server was correct the whole time; the stale bundle was the
+// entire bug. Cache-first on immutable hashed assets is right in general, but
+// it means a shipped fix does NOT reach a returning visitor until this name
+// changes.
+const CACHE_NAME = 'seoul-sister-v2'
 const STATIC_ASSETS = [
   '/',
   '/icons/icon-192.svg',
@@ -32,7 +48,26 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return
   if (url.pathname.startsWith('/api/')) return
 
-  // Static assets: cache-first
+  // Auth surfaces: ALWAYS network-first, never cached.
+  // These gate access to the product and can carry a security control (the
+  // Turnstile captcha). A stale auth bundle does not degrade gracefully — it
+  // locks a real user out with an error they cannot act on, which is exactly
+  // what happened on Jul 28 2026. Correctness beats offline support here;
+  // nobody logs in offline anyway.
+  if (
+    url.pathname === '/login' ||
+    url.pathname === '/register' ||
+    url.pathname === '/forgot-password' ||
+    url.pathname.startsWith('/auth/') ||
+    url.pathname.includes('/(auth)/')
+  ) {
+    event.respondWith(fetch(event.request))
+    return
+  }
+
+  // Static assets: cache-first (hashed filenames make them immutable, so this
+  // is safe — but see the CACHE_NAME note: a new build only reaches returning
+  // visitors when that name changes).
   if (
     url.pathname.startsWith('/_next/static/') ||
     url.pathname.startsWith('/icons/') ||

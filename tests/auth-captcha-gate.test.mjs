@@ -38,6 +38,7 @@ const loginSrc = read('src', 'app', '(auth)', 'login', 'page.tsx')
 const forgotSrc = read('src', 'app', '(auth)', 'forgot-password', 'page.tsx')
 const fixSql = read('scripts', 'migrations', 'fix_ss_real_users_exposure.sql')
 const nextConfig = read('next.config.js')
+const swSrc = read('public', 'sw.js')
 
 // ---------------------------------------------------------------------------
 // Coverage: ALL THREE endpoints Supabase's Bot and Abuse Protection guards
@@ -163,6 +164,43 @@ test('CSP allows challenges.cloudflare.com in script-src, frame-src and connect-
       `${directive} must allow challenges.cloudflare.com or Turnstile fails silently`
     )
   }
+})
+
+// ---------------------------------------------------------------------------
+// The service worker must never serve a stale auth page
+// ---------------------------------------------------------------------------
+
+test('service worker serves auth routes network-first, never from cache', () => {
+  // A REAL USER WAS LOCKED OUT by this on Jul 28 2026: `/_next/static/` is
+  // cache-first, so her browser replayed the pre-captcha login chunk. No widget
+  // rendered, no token could exist, and the submit guard refused with "Please
+  // complete the verification check below" — a check with nothing to check.
+  // The server was correct the entire time.
+  const authBlock = swSrc.match(/\/\/ Auth surfaces[\s\S]*?\n  \}/)?.[0] ?? ''
+  assert.ok(authBlock, 'sw.js must special-case auth routes before the cache-first branch')
+  for (const route of ['/login', '/register', '/forgot-password']) {
+    assert.ok(
+      authBlock.includes(route),
+      `${route} must bypass the service worker cache — a stale auth bundle locks users out`
+    )
+  }
+  assert.ok(
+    /event\.respondWith\(fetch\(event\.request\)\)/.test(authBlock),
+    'auth routes must go straight to the network with no cache fallback'
+  )
+})
+
+test('the auth bypass is registered BEFORE the cache-first static branch', () => {
+  // Order is the whole fix. Service worker fetch handlers return on first
+  // match, so an auth check placed after the `/_next/static/` branch never runs
+  // for the chunk that actually matters.
+  const authIdx = swSrc.indexOf('// Auth surfaces')
+  const staticIdx = swSrc.indexOf("url.pathname.startsWith('/_next/static/')")
+  assert.ok(authIdx > -1 && staticIdx > -1, 'both branches must exist')
+  assert.ok(
+    authIdx < staticIdx,
+    'the auth bypass must come first, or the cache-first branch wins and the bug returns'
+  )
 })
 
 // ---------------------------------------------------------------------------
