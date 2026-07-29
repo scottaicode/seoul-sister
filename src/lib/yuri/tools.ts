@@ -10,6 +10,66 @@ import { geocodeLocation } from '@/lib/geo/geocode'
  * cannot name is one Yuri should not reason from as fact.
  */
 const VALID_INGREDIENT_SOURCES = new Set(['label_scan', 'web_lookup'])
+
+/**
+ * Record that a subscriber owns a product our catalog doesn't have.
+ *
+ * The gap was previously invisible: a miss evaporated into the conversation, and
+ * the 13 known cases were found only by hand-querying the library. This makes
+ * the demand legible so a future catalog decision rests on evidence instead of a
+ * hunch — it is NOT wired to a scraper, and shouldn't be. Note that most gaps
+ * are Western products no K-beauty scrape could ever fill; they still belong
+ * here, because "what do our subscribers actually use" is the question.
+ *
+ * Best-effort by design. Never throws, never blocks the save the user asked for.
+ */
+async function logCatalogGap(
+  db: SupabaseClient,
+  userId: string,
+  productName: string,
+  brand: string | undefined,
+  category: string | undefined,
+  source: string
+): Promise<void> {
+  try {
+    const name = productName.trim()
+    if (!name) return
+
+    // Devices and routine steps are not catalog gaps — no product database
+    // contains "Ice roller" or "Shower / cleanse", and counting them would
+    // inflate the very number this table exists to measure honestly.
+    if (category === 'device') return
+
+    const { data: existing } = await db
+      .from('ss_catalog_requests')
+      .select('id, request_count')
+      .eq('user_id', userId)
+      .ilike('requested_name', name)
+      .maybeSingle()
+
+    if (existing?.id) {
+      await db
+        .from('ss_catalog_requests')
+        .update({
+          request_count: ((existing.request_count as number) ?? 1) + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+      return
+    }
+
+    await db.from('ss_catalog_requests').insert({
+      user_id: userId,
+      requested_name: name,
+      requested_brand: brand ?? null,
+      category: category ?? null,
+      source,
+    })
+  } catch (err) {
+    // Measurement must never cost a user their save.
+    console.error('[catalog-gap] failed to log missing product', err)
+  }
+}
 import {
   getProductPosition,
 } from '@/lib/intelligence/layering-order'
@@ -2673,6 +2733,13 @@ async function executeUpdateUserProduct(
 
   const { error } = await db.from('ss_user_products').insert(record)
   if (error) return JSON.stringify({ error: `Failed to save product: ${error.message}` })
+
+  // A save with no confident catalog match means this user owns something we
+  // don't carry. Record it as demand evidence — awaiting the save so a failed
+  // insert never produces a phantom request.
+  if (!productId) {
+    await logCatalogGap(db, userId, productName, brand, category, 'library_save')
+  }
 
   // Authoritative message construction. Honest about what was saved and why.
   let message: string
