@@ -122,7 +122,12 @@ export const WATCHED_RUN_TYPES: Array<{ runType: string; maxAgeHours: number }> 
   { runType: 'price_refresh_olive_young', maxAgeHours: 48 },
   { runType: 'proactive_nudge', maxAgeHours: 48 },
   { runType: 'nurture_sequence', maxAgeHours: 48 },
-  { runType: 'guardian-watch', maxAgeHours: 24 },
+  // NOTE: guardian-watch stores run_type 'reprocess', not 'guardian-watch' — it
+  // reuses a CHECK-allowed value to avoid a migration (see its route comment).
+  // Matching on the literal name produced a false "has NEVER logged a run"
+  // finding on the very first live run, which is why this is keyed by the value
+  // actually written. Verify against the DB before adding entries here.
+  { runType: 'reprocess', maxAgeHours: 24 },
 ]
 
 export interface StaleRunFinding {

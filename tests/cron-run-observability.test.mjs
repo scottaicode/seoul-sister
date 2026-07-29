@@ -142,6 +142,22 @@ test('the watch list is readable and non-empty', () => {
   )
 })
 
+test('the watch list keys on the run_type actually WRITTEN, not the cron name', () => {
+  // guardian-watch stores run_type 'reprocess' (a CHECK-allowed value reused to
+  // avoid a migration). Keying on the folder name produced a false "has NEVER
+  // logged a run" on the first live run — a monitor crying wolf is worse than
+  // no monitor, because it trains you to ignore it.
+  assert.match(
+    runLogSrc,
+    /runType: 'reprocess'/,
+    "guardian-watch must be watched under the run_type it writes ('reprocess')."
+  )
+  assert.ok(
+    !/runType: 'guardian-watch'/.test(runLogSrc),
+    "'guardian-watch' is never written as a run_type — watching it guarantees a false positive."
+  )
+})
+
 test('no cron makes email delivery a precondition for anything', () => {
   // Owner instruction: nothing may depend on mail arriving. Email paths must
   // no-op gracefully when unconfigured, never gate logic or throw.
