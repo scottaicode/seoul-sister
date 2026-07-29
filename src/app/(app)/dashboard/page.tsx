@@ -28,6 +28,7 @@ import IntelligenceWidgets from '@/components/dashboard/IntelligenceWidgets'
 import RecentScansWidget from '@/components/dashboard/RecentScansWidget'
 import ScannerDiscoveryBanner from '@/components/dashboard/ScannerDiscoveryBanner'
 import YuriNudgeCard from '@/components/dashboard/YuriNudgeCard'
+import AddToHomeScreenTip from '@/components/pwa/AddToHomeScreenTip'
 
 // ---------------------------------------------------------------------------
 // Helpers & data
@@ -150,6 +151,11 @@ export default function DashboardPage() {
           right moment (open loop, phase/routine mismatch, cycle-timed actives,
           glass-skin cadence). Renders nothing when there's no pending nudge. */}
       <YuriNudgeCard />
+
+      {/* "This installs as an app" — dismissible, hidden once installed. Bailey
+          asked for this after she and the most engaged subscriber BOTH used the
+          product for months without knowing it was possible (July 29 2026). */}
+      <AddToHomeScreenTip />
 
       {/* One-time scanner discovery callout (only shows for users with 0 scans this period) */}
       <ScannerDiscoveryBanner />
