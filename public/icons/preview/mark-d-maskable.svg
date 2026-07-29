@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Seoul Sister">
+  <title>Seoul Sister — Option D (maskable)</title>
+  <!--
+    Maskable variant. Android applies its OWN mask — circle, squircle, teardrop;
+    the launcher decides — and only the middle ~80% of the canvas is guaranteed to
+    survive. So the mark is scaled to 0.8 about the centre, giving it a safe-area
+    inset a circle crop cannot clip.
+
+    This is why maskable is a SEPARATE FILE rather than the same asset reused: the
+    standard icon deliberately fills more of its frame, which is right for iOS
+    (Apple masks corners only) and wrong for an Android circle.
+
+    Same path, same stroke, same open counters as mark-d.svg — only the scale
+    differs. KEEP THEM IN SYNC: if you change the path in one, change it in both.
+  -->
+  <rect width="512" height="512" fill="#0D0D0F"/>
+  <g transform="translate(256 256) scale(0.8) translate(-256 -256)">
+    <path
+      d="M286 156
+         A 106 106 0 1 0 256 256
+         A 106 106 0 1 1 226 356"
+      fill="none"
+      stroke="#C9A55C"
+      stroke-width="40"
+      stroke-linecap="round"
+    />
+  </g>
+</svg>

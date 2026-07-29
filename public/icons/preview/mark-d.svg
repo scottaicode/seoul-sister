@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Seoul Sister">
+  <title>Seoul Sister — Option D</title>
+  <!--
+    Option D — Bailey's interlocked double-S, drawn as ONE continuous ribbon.
+
+    Her concept (July 29 2026): a "fancy SS" monogram, benchmarked against rhode.
+    Her Canva original was genuinely lovely at 400px but fused into a gold blob at
+    60px — hairline strokes and tight negative space are the first casualties at
+    real home-screen size. This keeps the idea (an S doubling back on itself) as a
+    single unbroken stroke with wide-open counters, so nothing closes up small.
+
+    CONSTRUCTION — two arcs with OPPOSING sweep flags meeting at the centre.
+    That opposition is what makes the spine reverse; same-sweep arcs produce a
+    diagonal Z-stroke, and a long straight "waist" between two bowls produces two
+    disconnected C's. Both were tried and rejected. large-arc=1 makes each bowl
+    wrap past the vertical, which is what gives it real S counters.
+
+    MEASURED, not eyeballed (sampled the curve numerically):
+      - bounds 399 x 405 in a 512 frame -> ratio 0.98, visually square
+      - perfectly centred on (256, 256); the terminals are point-symmetric
+      - narrowest counter gap 50px at stroke 40 -> stays open at 29px
+      - stroke 40 renders 4.69px at 60px, 2.27px at 29px
+
+    DO NOT:
+      - thin the stroke below ~36 (it starts vanishing on a phone)
+      - deepen the wrap (the counters close and it fuses — this is exactly the
+        flaw that disqualified the original Canva mark)
+      - add a wordmark; iOS already prints the app name underneath the icon
+      - add rx/rounded corners; iOS and Android apply their own mask
+  -->
+  <rect width="512" height="512" fill="#0D0D0F"/>
+  <path
+    d="M286 156
+       A 106 106 0 1 0 256 256
+       A 106 106 0 1 1 226 356"
+    fill="none"
+    stroke="#C9A55C"
+    stroke-width="40"
+    stroke-linecap="round"
+  />
+</svg>

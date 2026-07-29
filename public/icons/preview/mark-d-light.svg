@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Seoul Sister">
+  <title>Seoul Sister — Option D (light)</title>
+  <!--
+    Light-background variant, for the landing page hero, press, print, and
+    anywhere the mark sits on cream rather than near-black. Bailey's original
+    Canva comp was dark-on-cream, so this is the version closest to what she drew.
+
+    Same path and stroke as mark-d.svg — only the two colours differ. Keep in sync.
+  -->
+  <rect width="512" height="512" fill="#FAF7F2"/>
+  <path
+    d="M286 156
+       A 106 106 0 1 0 256 256
+       A 106 106 0 1 1 226 356"
+    fill="none"
+    stroke="#1F2430"
+    stroke-width="40"
+    stroke-linecap="round"
+  />
+</svg>
