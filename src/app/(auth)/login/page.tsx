@@ -10,6 +10,7 @@ import {
   requireCaptchaToken,
   type AuthCaptchaHandle,
 } from '@/components/auth/AuthCaptcha'
+import WrongOriginNotice from '@/components/pwa/WrongOriginNotice'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -90,6 +91,10 @@ export default function LoginPage() {
         <p className="text-white/40 text-sm text-center mb-8">
           Sign in to your beauty intelligence dashboard
         </p>
+
+        {/* An apex-origin install cannot hold a session, and the dashboard card
+            that explains the fix sits behind this very screen. */}
+        <WrongOriginNotice />
 
         {/* Error Banner */}
         {error && (

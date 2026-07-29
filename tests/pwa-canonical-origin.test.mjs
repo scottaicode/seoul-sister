@@ -136,3 +136,95 @@ test('the worker is asked to update on every launch', () => {
     'Lost registration.update() — returning users can stay pinned to an old worker.'
   )
 })
+
+// ---------------------------------------------------------------------------
+// Recovery path for installs ALREADY anchored to the wrong origin
+// ---------------------------------------------------------------------------
+//
+// The manifest fix only governs NEW installs. An icon already added from the
+// apex keeps booting there forever, and — the trap — it really is running
+// standalone, so BOTH install surfaces suppress themselves via isStandalone().
+// Without an explicit wrong-origin branch, the one user who cannot log in is
+// the one user who gets told nothing.
+
+const tipSrc2 = read('src', 'components', 'pwa', 'AddToHomeScreenTip.tsx')
+const noticeSrc = read('src', 'components', 'pwa', 'WrongOriginNotice.tsx')
+const loginSrc2 = read('src', 'app', '(auth)', 'login', 'page.tsx')
+
+test('the tip card detects a wrong-origin install', () => {
+  assert.match(
+    tipSrc2,
+    /window\.location\.hostname/,
+    'Lost the origin read — the card must know which origin it is running on.'
+  )
+  assert.match(
+    tipSrc2,
+    /=== 'seoulsister\.com'/,
+    'Lost the wrong-origin comparison — a broken install is standalone, so the ' +
+      'card suppresses itself and the user is stranded with no way out.'
+  )
+})
+
+test('the wrong-origin branch is checked BEFORE the standalone suppression', () => {
+  // Order is the entire fix: isStandalone() returns true for a broken install,
+  // so a wrong-origin check placed after it is DEAD CODE for exactly the users
+  // who need it.
+  //
+  // Scoped to the useEffect body on purpose. An earlier version of this test
+  // used indexOf over the whole file, which matched the FUNCTION DEFINITION
+  // (declared above the effect) and therefore passed even with the call in the
+  // wrong place — it did not fail when the bug was reintroduced.
+  const effect = tipSrc2.match(/useEffect\(\(\) => \{([\s\S]*?)\n  \}, \[\]\)/)
+  assert.ok(effect, 'Could not locate the useEffect body — update this test.')
+  const body = effect[1]
+
+  const wrongIdx = body.indexOf('if (isWrongOrigin())')
+  const standaloneIdx = body.indexOf('if (isStandalone()) return')
+  assert.ok(
+    wrongIdx > -1,
+    'The wrong-origin branch must be CALLED inside the effect, not merely defined.'
+  )
+  assert.ok(standaloneIdx > -1, 'The standalone suppression must exist.')
+  assert.ok(
+    wrongIdx < standaloneIdx,
+    'isWrongOrigin() must be evaluated first. After the standalone early-return ' +
+      'it is unreachable for exactly the users who need it.'
+  )
+})
+
+test('the re-install card cannot be dismissed away', () => {
+  assert.match(
+    tipSrc2,
+    /\{!reinstall && \(/,
+    'The dismiss controls must be withheld on the re-install card — it is the ' +
+      'only route out of an app that cannot hold a login.'
+  )
+})
+
+test('the re-install instructions name the correct origin', () => {
+  assert.match(tipSrc2, /www\.seoulsister\.com/, 'The card must tell the user WHERE to re-add from.')
+  assert.match(
+    tipSrc2,
+    /delete it|Delete the/i,
+    'Re-adding without deleting the old icon leaves the broken one in place.'
+  )
+})
+
+test('the login screen also carries the escape route', () => {
+  // A user stuck in the loop may never reach the dashboard — that IS the symptom.
+  assert.match(
+    loginSrc2,
+    /<WrongOriginNotice \/>/,
+    'The login page must render the notice; the dashboard card sits behind this screen.'
+  )
+  assert.match(
+    noticeSrc,
+    /hostname === 'seoulsister\.com'/,
+    'The notice must gate on the apex origin.'
+  )
+  assert.match(
+    noticeSrc,
+    /www\.seoulsister\.com/,
+    'The notice must name the correct origin to re-add from.'
+  )
+})
