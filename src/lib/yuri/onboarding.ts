@@ -1,6 +1,7 @@
 import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
 import { getServiceClient } from '@/lib/supabase'
 import { buildAttributionFields } from '@/lib/attribution'
+import { geocodeLocation } from '@/lib/geo/geocode'
 import type { ExtractedSkinProfile, OnboardingProgress, YuriMessage } from '@/types/database'
 
 // ---------------------------------------------------------------------------
@@ -174,6 +175,7 @@ export async function extractSkinProfileData(
 Return a JSON object with ONLY the fields that have been explicitly mentioned. Omit any field where the data is unclear or not provided.
 
 Possible fields:
+- first_name: string, what the user wants to be called, ONLY if they volunteered it or signed off with it. Just the given name, properly capitalized ("Caroline", not "caroline" or "Caroline Smith"). NEVER infer a name from their email address, and never guess. If they didn't say it, omit it.
 - skin_type: one of "oily", "dry", "combination", "normal", "sensitive"
 - skin_concerns: array of concerns (e.g., ["acne", "dark spots", "dullness"]). Normalize to lowercase.
 - age_range: one of "18-24", "25-30", "31-35", "36-40", "41-50", "50+"
@@ -536,10 +538,53 @@ export async function finalizeOnboardingProfile(
     profileData.medical_history = extracted.medical_history
   }
   if (extracted.sun_history) profileData.sun_history = extracted.sun_history
+  if (extracted.first_name) profileData.first_name = extracted.first_name
 
   // Only set location_text if explicitly extracted (don't overwrite existing with null)
   if (extracted.location_text) {
     profileData.location_text = extracted.location_text
+
+    // Resolve the text to coordinates so weather actually works for this user.
+    //
+    // Onboarding captured location_text and stopped there. latitude/longitude
+    // were populated by exactly ONE path: the browser-geolocation button on
+    // /profile, which a user has to find and click. So the two newest paying
+    // subscribers (Caroline — "Kansas City"; Kim — "Iowa") had a location on
+    // file and no coordinates, which means get_current_weather fell through to
+    // "Could not determine location" and every UV/humidity-driven surface was
+    // dark for them. Yuri told Caroline that Kansas City's seasonal humidity
+    // swing was half of why her skin seesaws, while unable to read the weather
+    // there.
+    //
+    // Best-effort by design: a failed lookup leaves coordinates NULL, which is
+    // exactly the pre-existing state. Nobody is blocked from finishing
+    // onboarding because a geocoder was slow or didn't recognize "Kansas City".
+    // City-level coordinates must never overwrite device-level ones. This path
+    // can run more than once (the completed-status path in the onboarding route
+    // also calls finalize), and the /profile geolocation button resolves the
+    // user's actual position — downgrading that to a city centroid would be a
+    // silent regression for the users who took the trouble to grant location.
+    try {
+      const { data: existingGeo } = await db
+        .from('ss_user_profiles')
+        .select('latitude, longitude')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      const hasCoords =
+        existingGeo?.latitude != null && existingGeo?.longitude != null
+
+      if (!hasCoords) {
+        const geo = await geocodeLocation(extracted.location_text)
+        if (geo) {
+          profileData.latitude = geo.lat
+          profileData.longitude = geo.lng
+          if (geo.timezone) profileData.timezone = geo.timezone
+        }
+      }
+    } catch (err) {
+      console.error('[onboarding] geocode failed, continuing without coordinates', err)
+    }
   }
 
   // First-touch attribution. signUp() stashed it on auth.users.raw_user_meta_data

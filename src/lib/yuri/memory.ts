@@ -733,7 +733,15 @@ export function formatContextForPrompt(context: UserContext): string {
     const medical = (profileRaw.medical_history as string[] | null) || []
     const sunHistory = (profileRaw.sun_history as string | null) || null
 
-    sections.push(`## User's Skin Profile${onboarded ? ' (built during your onboarding conversation -- you already know this user!)' : ''}
+    // Their name, when they gave one. Rapport, not clinical data — so it is
+    // simply absent when unknown, with no instruction to go fishing for it.
+    const firstName = (profileRaw.first_name as string | null) || null
+
+    sections.push(`## User's Skin Profile${onboarded ? ' (built during your onboarding conversation -- you already know this user!)' : ''}${
+      firstName
+        ? `\n- Name: ${firstName} — use it the way you'd use a friend's name: naturally, occasionally, never in every message and never as a sales tic.`
+        : ''
+    }
 - Skin type: ${p.skin_type || 'not established'}
 - Concerns: ${p.skin_concerns?.join(', ') || 'none specified'}
 - Allergies (ingredients to AVOID): ${p.allergies?.length ? p.allergies.join(', ') : 'none known'}${p.allergies?.length ? ' — NOTE: some entries are whole PRODUCTS rather than ingredients, because the extractor accepted product names. A product here means that formula broke them out; the culprit ingredient is unknown, so do not extrapolate the ban to everything sharing an ingredient with it. Ask what specifically went wrong when it matters.' : ''}

@@ -2,6 +2,7 @@ import { getServiceClient } from '@/lib/supabase'
 import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 import { excludePollutedIngredientRows } from '@/lib/pipeline/ingredient-parser'
 import { fetchWeather } from '@/lib/intelligence/weather-routine'
+import { geocodeLocation } from '@/lib/geo/geocode'
 import {
   getProductPosition,
 } from '@/lib/intelligence/layering-order'
@@ -2083,29 +2084,21 @@ async function executeWebSearch(
 // Tool: get_current_weather
 // ---------------------------------------------------------------------------
 
-/** Geocode a city name to lat/lng using Open-Meteo's free geocoding API */
+/**
+ * Geocode a city name to lat/lng.
+ *
+ * Delegates to the shared `geocodeLocation` (lib/geo/geocode.ts) so this tool
+ * and the onboarding-finalize path resolve a location identically. They used to
+ * be separate implementations; the profile's stored coordinates are what every
+ * weather surface reads, so two geocoders that disagree would put a user in two
+ * different places depending on which code path ran.
+ */
 async function geocodeCity(
   city: string
 ): Promise<{ lat: number; lng: number; name: string } | null> {
-  try {
-    const res = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`,
-      { signal: AbortSignal.timeout(5000) }
-    )
-    if (!res.ok) return null
-    const data = (await res.json()) as {
-      results?: Array<{ latitude: number; longitude: number; name: string; country: string }>
-    }
-    const result = data.results?.[0]
-    if (!result) return null
-    return {
-      lat: result.latitude,
-      lng: result.longitude,
-      name: `${result.name}, ${result.country}`,
-    }
-  } catch {
-    return null
-  }
+  const geo = await geocodeLocation(city)
+  if (!geo) return null
+  return { lat: geo.lat, lng: geo.lng, name: geo.name }
 }
 
 async function executeGetCurrentWeather(

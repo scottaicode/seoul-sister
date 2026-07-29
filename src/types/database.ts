@@ -621,6 +621,15 @@ export interface ReformulationDetectionResult {
 }
 
 export interface ExtractedSkinProfile {
+  /**
+   * What the user wants to be called. Captured ONLY when volunteered — a name
+   * is rapport, not clinical data, and Yuri must never interrogate for one.
+   *
+   * Added July 29 2026: there was no name field anywhere in the schema, so Yuri
+   * advised a subscriber across two days, a full onboarding and a returning
+   * session without ever knowing what to call her.
+   */
+  first_name?: string
   skin_type?: 'oily' | 'dry' | 'combination' | 'normal' | 'sensitive'
   skin_concerns?: string[]
   age_range?: '13-17' | '18-24' | '25-30' | '31-40' | '41-50' | '51+'

@@ -1,236 +1,275 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import {
-  Camera,
-  Upload,
-  X,
-  Loader2,
-  AlertTriangle,
-} from 'lucide-react'
+import { Camera, X, Loader2, AlertTriangle } from 'lucide-react'
 import ScanResults from './ScanResults'
 import type { ScanResultData } from './ScanResults'
+import UploadDropZone from './UploadDropZone'
+import ScanQueueGrid from './ScanQueueGrid'
+import BatchScanResults from './BatchScanResults'
+import {
+  MAX_FILE_BYTES,
+  compressImage,
+  makeQueueId,
+  readFileAsDataUrl,
+  type ScanQueueItem,
+} from './scan-upload'
 
-/**
- * Compress an image data URL to JPEG at a target max dimension and quality.
- * Returns a compressed base64 data URL suitable for API upload.
- */
-function compressImage(dataUrl: string, maxDimension = 1500, quality = 0.8): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => {
-      let { width, height } = img
-      if (width > maxDimension || height > maxDimension) {
-        const ratio = Math.min(maxDimension / width, maxDimension / height)
-        width = Math.round(width * ratio)
-        height = Math.round(height * ratio)
-      }
-      const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        reject(new Error('Canvas context unavailable'))
-        return
-      }
-      ctx.drawImage(img, 0, 0, width, height)
-      resolve(canvas.toDataURL('image/jpeg', quality))
+/** One POST to /api/scan for a single image — the route is one-image-per-call. */
+async function scanImage(image: string): Promise<ScanResultData> {
+  const { data: { session } } = await supabase.auth.getSession()
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 60000) // 60s client timeout
+
+  try {
+    const res = await fetch('/api/scan', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` }),
+      },
+      body: JSON.stringify({ image }),
+      signal: controller.signal,
+    })
+
+    if (!res.ok) {
+      const data: { error?: string } | null = await res.json().catch(() => null)
+      throw new Error(data?.error || `Scan failed (${res.status})`)
     }
-    img.onerror = () => reject(new Error('Failed to load image for compression'))
-    img.src = dataUrl
-  })
+
+    const data: ScanResultData = await res.json()
+    return data
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+function scanErrorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    if (err.name === 'AbortError') {
+      return 'Scan timed out. Please try again with a clearer photo.'
+    }
+    if (err.message === 'Load failed' || err.message === 'Failed to fetch') {
+      return 'Connection lost during scan. Please check your network and try again.'
+    }
+    return err.message
+  }
+  return 'Failed to scan label. Please try again.'
 }
 
 export default function LabelScanner() {
-  const [image, setImage] = useState<string | null>(null)
+  const [queue, setQueue] = useState<ScanQueueItem[]>([])
   const [scanning, setScanning] = useState(false)
-  const [result, setResult] = useState<ScanResultData | null>(null)
+  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const cameraInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFile = useCallback((file: File) => {
-    if (!file.type.startsWith('image/')) {
-      setError('Please select an image file.')
-      return
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Image must be under 10MB.')
-      return
-    }
+  const handleFiles = useCallback(async (files: File[]) => {
+    setError(null)
+    const problems: string[] = []
+    const newItems: ScanQueueItem[] = []
+    const single = files.length === 1
 
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      const rawDataUrl = e.target?.result as string
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) {
+        problems.push(single ? 'Please select an image file.' : `${file.name}: not an image file.`)
+        continue
+      }
+      if (file.size > MAX_FILE_BYTES) {
+        problems.push(single ? 'Image must be under 10MB.' : `${file.name}: image must be under 10MB.`)
+        continue
+      }
       try {
+        const rawDataUrl = await readFileAsDataUrl(file)
         // Compress to max 1500px, JPEG 80% — keeps detail for text reading
         // while staying well under Vercel's 4.5MB body limit
         const compressed = await compressImage(rawDataUrl, 1500, 0.8)
-        setImage(compressed)
-        setResult(null)
-        setError(null)
+        newItems.push({
+          id: makeQueueId(),
+          dataUrl: compressed,
+          fileName: file.name,
+          status: 'ready',
+          result: null,
+          error: null,
+        })
       } catch {
-        setError('Failed to process image. Please try another photo.')
+        problems.push(
+          single
+            ? 'Failed to process image. Please try another photo.'
+            : `${file.name}: failed to process. Please try another photo.`
+        )
       }
     }
-    reader.readAsDataURL(file)
+
+    if (newItems.length > 0) setQueue((prev) => [...prev, ...newItems])
+    if (problems.length > 0) setError(problems.join(' '))
   }, [])
 
+  const removeItem = useCallback((id: string) => {
+    setQueue((prev) => prev.filter((item) => item.id !== id))
+  }, [])
+
+  // Sequential scan of every item not yet successfully scanned. Per-item
+  // failure isolation: one bad photo never kills the rest of the batch.
   const handleScan = useCallback(async () => {
-    if (!image) return
+    if (scanning) return
+    const targets = queue.filter((item) => item.status === 'ready' || item.status === 'error')
+    if (targets.length === 0) return
 
     setScanning(true)
     setError(null)
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 60000) // 60s client timeout
-
-      const res = await fetch('/api/scan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` }),
-        },
-        body: JSON.stringify({ image }),
-        signal: controller.signal,
-      })
-
-      clearTimeout(timeout)
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        throw new Error(data?.error || `Scan failed (${res.status})`)
+    let current = 0
+    for (const target of targets) {
+      current += 1
+      setProgress({ current, total: targets.length })
+      setQueue((prev) =>
+        prev.map((q) => (q.id === target.id ? { ...q, status: 'scanning', error: null } : q))
+      )
+      try {
+        const result = await scanImage(target.dataUrl)
+        setQueue((prev) =>
+          prev.map((q) => (q.id === target.id ? { ...q, status: 'done', result } : q))
+        )
+      } catch (err) {
+        setQueue((prev) =>
+          prev.map((q) =>
+            q.id === target.id ? { ...q, status: 'error', error: scanErrorMessage(err) } : q
+          )
+        )
       }
-
-      const data = await res.json()
-      setResult(data)
-    } catch (err) {
-      if (err instanceof Error) {
-        if (err.name === 'AbortError') {
-          setError('Scan timed out. Please try again with a clearer photo.')
-        } else if (err.message === 'Load failed' || err.message === 'Failed to fetch') {
-          setError('Connection lost during scan. Please check your network and try again.')
-        } else {
-          setError(err.message)
-        }
-      } else {
-        setError('Failed to scan label. Please try again.')
-      }
-    } finally {
-      setScanning(false)
     }
-  }, [image])
+
+    setProgress(null)
+    setScanning(false)
+  }, [queue, scanning])
 
   const resetScan = () => {
-    setImage(null)
-    setResult(null)
+    setQueue([])
+    setProgress(null)
     setError(null)
   }
 
-  // No image yet — show upload UI
-  if (!image) {
+  const errorBanner = error && (
+    <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-red-700 text-sm">
+      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+      {error}
+    </div>
+  )
+
+  // No photos yet — show upload UI (camera, gallery, drag-and-drop)
+  if (queue.length === 0) {
     return (
       <div className="flex flex-col gap-4">
-        {/* Camera capture */}
-        <button
-          onClick={() => cameraInputRef.current?.click()}
-          className="glass-card-strong p-8 flex flex-col items-center gap-4 transition-all duration-300 border-dashed border-2 border-gold/30 group"
-        >
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-gold to-gold-light flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-            <Camera className="w-8 h-8 text-white" strokeWidth={1.5} />
-          </div>
-          <div className="text-center">
-            <p className="font-display font-semibold text-base text-white">
-              Scan with Camera
-            </p>
-            <p className="text-xs text-white/40 mt-1">
-              Point at any Korean beauty product label
-            </p>
-          </div>
-        </button>
+        <UploadDropZone onFiles={handleFiles} />
+        {errorBanner}
+      </div>
+    )
+  }
 
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-        />
+  const attempted = queue.some((item) => item.status === 'done' || item.status === 'error')
 
-        {/* Upload from gallery */}
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="glass-card p-4 flex items-center gap-3 transition-all duration-300"
-        >
-          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
-            <Upload className="w-5 h-5 text-gold" strokeWidth={1.5} />
-          </div>
-          <div className="text-left">
+  // Single photo — same simple flow as before: preview, analyze, one result
+  if (queue.length === 1) {
+    const item = queue[0]
+    return (
+      <div className="flex flex-col gap-4">
+        {/* Image preview */}
+        <div className="relative glass-card overflow-hidden">
+          <img
+            src={item.dataUrl}
+            alt="Product label"
+            className="w-full max-h-64 object-contain bg-white/5"
+          />
+          <button
+            onClick={resetScan}
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors duration-200"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Scan button (if no result yet, or retry after failure) */}
+        {item.status !== 'done' && !scanning && (
+          <button
+            onClick={handleScan}
+            className="glass-button-primary py-3 text-base font-semibold flex items-center justify-center gap-2"
+          >
+            <Camera className="w-5 h-5" />
+            Analyze Label
+          </button>
+        )}
+
+        {/* Scanning state */}
+        {scanning && (
+          <div className="glass-card p-6 flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 animate-spin text-gold" />
             <p className="font-display font-semibold text-sm text-white">
-              Upload Photo
+              Analyzing Korean label...
             </p>
-            <p className="text-xs text-white/40">Choose from your gallery</p>
+            <p className="text-xs text-white/40">
+              Reading text, identifying ingredients, checking safety
+            </p>
           </div>
-        </button>
+        )}
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-        />
-
-        {error && (
+        {item.error && !scanning && (
           <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-red-700 text-sm">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            {error}
+            {item.error}
           </div>
+        )}
+        {errorBanner}
+
+        {/* Results — delegated to ScanResults component */}
+        {item.status === 'done' && item.result && (
+          <ScanResults result={item.result} onReset={resetScan} />
         )}
       </div>
     )
   }
 
-  // Image selected — show preview and scan button or results
+  // Multiple photos, results in (or partially in) — expandable list per photo
+  if (attempted && !scanning) {
+    return (
+      <div className="flex flex-col gap-4">
+        <BatchScanResults
+          items={queue}
+          scanning={scanning}
+          onReset={resetScan}
+          onRetryFailed={handleScan}
+        />
+        {errorBanner}
+      </div>
+    )
+  }
+
+  // Multiple photos queued — thumbnails with remove, analyze, progress
   return (
     <div className="flex flex-col gap-4">
-      {/* Image preview */}
-      <div className="relative glass-card overflow-hidden">
-        <img
-          src={image}
-          alt="Product label"
-          className="w-full max-h-64 object-contain bg-white/5"
-        />
-        <button
-          onClick={resetScan}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors duration-200"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
+      <ScanQueueGrid
+        items={queue}
+        scanning={scanning}
+        onRemove={removeItem}
+        onAddMore={handleFiles}
+      />
 
-      {/* Scan button (if no result yet) */}
-      {!result && !scanning && (
+      {!scanning && (
         <button
           onClick={handleScan}
           className="glass-button-primary py-3 text-base font-semibold flex items-center justify-center gap-2"
         >
           <Camera className="w-5 h-5" />
-          Analyze Label
+          Analyze {queue.length} Labels
         </button>
       )}
 
-      {/* Scanning state */}
-      {scanning && (
+      {scanning && progress && (
         <div className="glass-card p-6 flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-gold" />
           <p className="font-display font-semibold text-sm text-white">
-            Analyzing Korean label...
+            Analyzing {progress.current} of {progress.total}...
           </p>
           <p className="text-xs text-white/40">
             Reading text, identifying ingredients, checking safety
@@ -238,15 +277,7 @@ export default function LabelScanner() {
         </div>
       )}
 
-      {error && (
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-red-700 text-sm">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          {error}
-        </div>
-      )}
-
-      {/* Results — delegated to ScanResults component */}
-      {result && <ScanResults result={result} onReset={resetScan} />}
+      {errorBanner}
     </div>
   )
 }
