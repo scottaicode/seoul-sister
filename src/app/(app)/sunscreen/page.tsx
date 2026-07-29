@@ -382,10 +382,29 @@ export default function SunscreenFinderPage() {
           </div>
           <div>
             <p className="text-white/70 font-medium mb-1">Why Korean Sunscreens?</p>
+            {/*
+              Corrected July 29 2026. This block used to claim Korean sunscreens
+              were "lightweight, cosmetically elegant, no white cast." Consumer
+              Reports (July 10 2026) tested exactly that and found the opposite:
+              the Korean sunscreens "required a fair amount of effort to rub in
+              and initially felt greasy and left a white cast," and "none stood
+              out as being super lightweight." The protection advantage IS real
+              and newly measured, so we lead with the finding we can defend and
+              drop the one that was contradicted.
+            */}
             <p>
-              Korean sunscreen formulations are years ahead of Western counterparts -- lightweight, cosmetically elegant,
-              no white cast, and designed to wear well under makeup. They prioritize daily wearability because Korean
-              skincare culture treats sunscreen as the most important skincare step.
+              Korea approves UV filters the FDA hasn&apos;t, so Korean formulas can protect
+              more with less weight. Consumer Reports tested three K-beauty brands&apos; Korean
+              formulas against those same brands&apos; US versions in 2026 and the Korean ones
+              measured markedly higher -- Beauty of Joseon at SPF 36 vs 19, Innisfree 48 vs 16,
+              Round Lab 46 vs 16. Korean skincare culture treats sunscreen as the most
+              important step of the day, and the formulation rules let it.
+            </p>
+            <p className="mt-2">
+              Two honest caveats: texture varies by product rather than by country, and the
+              Korean-brand sunscreens sold in US stores are <strong>reformulated</strong> with
+              FDA-approved filters -- so the bottle at your local shop is not the same product
+              tested above. Ask Yuri which specific one suits your skin.
             </p>
           </div>
         </div>

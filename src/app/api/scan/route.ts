@@ -327,6 +327,61 @@ export async function POST(request: NextRequest) {
       // Scan history persistence is non-critical
     }
 
+    // Carry a non-catalog scan's INCI onto the user's library entry.
+    //
+    // The scan already extracts real ingredients for products we don't carry —
+    // a Cetaphil cleanser scan captured 11 of them. That data was written to
+    // ss_user_scans and read back by exactly one thing: a count on a dashboard
+    // widget. Yuri never saw it, and /api/library actively filters non-catalog
+    // scans out. So a user could photograph a label, watch Yuri analyze it, and
+    // have her be blind to that same product one message later — while an
+    // interaction check across it returned clean.
+    //
+    // Only fires when the product ISN'T in the catalog (catalog products already
+    // have full INCI) and only updates an entry the user already owns; scanning
+    // is not a statement of ownership, so it never creates a row.
+    try {
+      const ingredients = analysis.ingredients as Array<{ name_inci: string }> | undefined
+      const inciNames = (ingredients ?? [])
+        .map((i) => i.name_inci)
+        .filter((n): n is string => typeof n === 'string' && n.trim().length > 0)
+        .map((n) => n.trim())
+
+      // A front-of-bottle photo yields placeholder text, not an ingredient list.
+      // Storing that as INCI would make a blind product look examined.
+      const looksLikeRealInci =
+        inciNames.length >= 3 && !/^not listed|^unknown|^n\/?a$/i.test(inciNames[0])
+
+      const scannedName = String(analysis.product_name_en || '').trim()
+
+      if (!productMatch?.id && looksLikeRealInci && scannedName) {
+        const serviceClient = getServiceClient()
+        const { data: owned } = await serviceClient
+          .from('ss_user_products')
+          .select('id')
+          .eq('user_id', user.id)
+          .is('product_id', null)
+          .ilike('custom_name', `%${scannedName}%`)
+          .limit(1)
+          .maybeSingle()
+
+        if (owned?.id) {
+          await serviceClient
+            .from('ss_user_products')
+            .update({
+              ingredients_inci: inciNames,
+              ingredients_source: 'label_scan',
+              ingredients_captured_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', owned.id)
+        }
+      }
+    } catch (err) {
+      // Never fail a scan over this — the analysis is what the user asked for.
+      console.error('[scan] failed to attach INCI to library entry', err)
+    }
+
     return NextResponse.json({
       success: true,
       analysis,

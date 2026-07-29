@@ -64,8 +64,15 @@ export default function UploadDropZone({ onFiles }: UploadDropZoneProps) {
           <p className="font-display font-semibold text-base text-white">
             Scan with Camera
           </p>
+          {/*
+            Say WHICH side of the bottle. A subscriber photographed the front of
+            her moisturizer, so the scan stored ingredients_found =
+            ["Not listed on visible label"] and the product stayed invisible to
+            Yuri. The front of a bottle almost never carries an INCI list.
+            Korean or not is irrelevant here — the scanner reads any label.
+          */}
           <p className="text-xs text-white/40 mt-1">
-            Point at any Korean beauty product label
+            Point at the ingredients list — the back of the bottle
           </p>
         </div>
       </button>

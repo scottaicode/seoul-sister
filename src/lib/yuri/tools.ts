@@ -3,6 +3,13 @@ import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 import { excludePollutedIngredientRows } from '@/lib/pipeline/ingredient-parser'
 import { fetchWeather } from '@/lib/intelligence/weather-routine'
 import { geocodeLocation } from '@/lib/geo/geocode'
+
+/**
+ * Allowed provenances for a custom entry's INCI list. Mirrors the DB CHECK on
+ * ss_user_products.ingredients_source. A stored ingredient list whose origin we
+ * cannot name is one Yuri should not reason from as fact.
+ */
+const VALID_INGREDIENT_SOURCES = new Set(['label_scan', 'web_lookup'])
 import {
   getProductPosition,
 } from '@/lib/intelligence/layering-order'
@@ -770,6 +777,18 @@ export const YURI_TOOLS: ToolDef[] = [
           type: 'string',
           enum: ['active', 'finished', 'destashed'],
           description: 'Product status — default active',
+        },
+        ingredients_inci: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            "The product's full INCI ingredient list, in label order. Send this for a product NOT in our catalog so conflict and allergy checks can actually run on it — without it, those checks silently pass. Only send a list you genuinely have: read off a label the user photographed, or retrieved via web_search for THIS EXACT product. Never reconstruct one from memory.",
+        },
+        ingredients_source: {
+          type: 'string',
+          enum: ['label_scan', 'web_lookup'],
+          description:
+            "Where ingredients_inci came from. 'label_scan' = read off the user's own photo of the label. 'web_lookup' = retrieved by searching for the named product. Required whenever you send ingredients_inci.",
         },
       },
       required: ['product_name'],
@@ -2526,6 +2545,27 @@ async function executeUpdateUserProduct(
   const notes = input.notes as string | undefined
   const status = (input.status as string) || 'active'
 
+  // INCI for a product we don't carry, so conflict/allergy checks can run on
+  // the user's real shelf instead of silently passing. Paired and validated:
+  // a list without a stated provenance is a list Yuri shouldn't treat as fact
+  // (same discipline as fitzpatrick_source), and the DB CHECK enforces it too.
+  const rawIngredients = input.ingredients_inci
+  const ingredientsSource = input.ingredients_source as string | undefined
+  const ingredientsInci =
+    Array.isArray(rawIngredients) && rawIngredients.length > 0
+      ? rawIngredients
+          .filter((i): i is string => typeof i === 'string')
+          .map((i) => i.trim())
+          .filter(Boolean)
+      : undefined
+
+  if (ingredientsInci && !VALID_INGREDIENT_SOURCES.has(ingredientsSource ?? '')) {
+    return JSON.stringify({
+      error:
+        "ingredients_source is required when sending ingredients_inci, and must be 'label_scan' (read off the user's own photo) or 'web_lookup' (retrieved for this exact product).",
+    })
+  }
+
   if (!productName) {
     return JSON.stringify({ error: 'product_name is required' })
   }
@@ -2576,6 +2616,11 @@ async function executeUpdateUserProduct(
     if (textureWeight !== undefined) updates.texture_weight = textureWeight
     if (notes !== undefined) updates.notes = notes
     if (status !== undefined) updates.status = status
+    if (ingredientsInci) {
+      updates.ingredients_inci = ingredientsInci
+      updates.ingredients_source = ingredientsSource
+      updates.ingredients_captured_at = new Date().toISOString()
+    }
 
     const { error } = await db
       .from('ss_user_products')
@@ -2617,6 +2662,13 @@ async function executeUpdateUserProduct(
     notes: notes ?? null,
     status,
     learned_from: 'conversation',
+    ...(ingredientsInci
+      ? {
+          ingredients_inci: ingredientsInci,
+          ingredients_source: ingredientsSource,
+          ingredients_captured_at: new Date().toISOString(),
+        }
+      : {}),
   }
 
   const { error } = await db.from('ss_user_products').insert(record)
@@ -3296,6 +3348,20 @@ async function executeFindProductDupes(
   if (!productId && productName) {
     const match = await resolveProductByName(db, productName)
     if (match) {
+      // Refuse a weak match, exactly as compare_prices does. This tool used to
+      // accept ANY match quality, so a product we don't carry (a user's Western
+      // cleanser, say) could partial-match some unrelated Korean product and
+      // return dupes computed against it — presented as dupes for the thing the
+      // user actually named. That is the v10.6.5 wrong-product class with a
+      // recommendation attached to it.
+      if (match.match_quality === 'partial') {
+        return JSON.stringify({
+          error: `No confident product match for "${productName}".`,
+          nearest_match: `${match.brand_en} ${match.name_en}`,
+          guidance:
+            'This is a WEAK name match, so dupes computed from it would be for a DIFFERENT product than the one the user named — none are returned. Do not present these as alternatives. Either ask the user to confirm they meant the nearest match, or search for the correct product and retry with its product_id. If the product simply is not in our catalog, say so plainly.',
+        })
+      }
       productId = match.id
       resolution = describeResolution(productName, match)
     } else {

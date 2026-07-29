@@ -347,7 +347,12 @@ export async function loadUserContext(
         // row reached Yuri byte-identical to a confirmed one, under a header saying
         // "products the user currently owns." That is how a routine step literally
         // named "Shower / cleanse" became "your nightly cleanser" in Bailey's face.
-        .select('product_id, custom_name, custom_brand, category, texture_weight, notes, status, learned_from')
+        // `ingredients_inci`/`ingredients_source` are load-bearing for the same
+        // reason `learned_from` is: without them every custom entry renders as a
+        // product Yuri knows nothing about, indistinguishable from one whose
+        // label the user actually photographed — and a safety check across a
+        // shelf she cannot see returns clean.
+        .select('product_id, custom_name, custom_brand, category, texture_weight, notes, status, learned_from, ingredients_inci, ingredients_source')
         .eq('user_id', userId)
         .eq('status', 'active')
         .order('custom_name')
@@ -828,8 +833,50 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
       if (up.custom_brand) meta.push(`by ${up.custom_brand}`)
       if (meta.length > 0) parts.push(`(${meta.join(', ')})`)
       if (up.notes) parts.push(`— ${up.notes}`)
+
+      // Whether you can actually SEE what is in this product. A catalog match
+      // carries full INCI; a custom entry carries whatever we captured, or
+      // nothing at all. Rendered per-row because the answer differs per row,
+      // and a blank row is precisely the one that silently passes a safety check.
+      const raw = up as unknown as Record<string, unknown>
+      const inci = raw.ingredients_inci as string[] | null
+      if (up.product_id) {
+        // Catalog product — full INCI is available via the ingredient tools.
+      } else if (inci?.length) {
+        const src = raw.ingredients_source === 'label_scan' ? 'from their label photo' : 'from a web lookup'
+        parts.push(`[INGREDIENTS ON FILE (${inci.length}, ${src}): ${inci.join(', ')}]`)
+      } else {
+        parts.push('[NO INGREDIENTS ON FILE — not in our catalog and never captured]')
+      }
       return `- ${parts.join(' ')}`
     })
+
+    // How much of this shelf you can actually see, as a FACT.
+    //
+    // ss_ingredient_conflicts holds a HIGH-severity Retinol + Glycolic Acid rule.
+    // A subscriber running exactly that on a post-Accutane barrier got
+    // { safe: true, conflicts: [] } — because both products were custom entries
+    // and every catalog-keyed check contributes nothing for them. The silence
+    // was indistinguishable from an all-clear.
+    //
+    // This does not block anything, filter anything, or tell her what to say. It
+    // is the cumulative-give instrument applied to safety: surface the state and
+    // hand the judgment back. A guard test fails if it becomes a command.
+    const blindProducts = context.userProducts.filter((up) => {
+      const raw = up as unknown as Record<string, unknown>
+      return !up.product_id && !(raw.ingredients_inci as string[] | null)?.length
+    })
+    if (blindProducts.length > 0) {
+      const total = context.userProducts.length
+      const seen = total - blindProducts.length
+      productLines.push(
+        '',
+        `INGREDIENT VISIBILITY: you have ingredients for ${seen} of ${total} of their products. You CANNOT see what is in: ${blindProducts
+          .map((p) => p.custom_name || 'unnamed product')
+          .join(', ')}.`,
+        `This matters most when you are checking interactions, allergies, or actives. An interaction check across this shelf is only as good as what you can see, and a clean result on a product whose ingredients are blank means you did not check it — it does not mean it is safe. Say so plainly rather than implying a full review. If it affects what you are about to recommend, ask them to photograph the ingredients panel (the back of the bottle, not the front) and you can read it and record it; you can also look a named product up. This is a fact about your own visibility, not a rule about what to say.`
+      )
+    }
 
     // Split confirmed from inferred (July 27 2026). Same discipline the clinical
     // fields got on July 21 and the routine block got on May 3 — a value the
