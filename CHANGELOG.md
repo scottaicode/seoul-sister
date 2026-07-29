@@ -8,6 +8,46 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.14.0 (July 29, 2026): Advising someone whose weather you cannot read
+
+Bailey forwarded her texts with Caroline — Seoul Sister's second real subscriber, a friend testing the product. The visible asks were small (multi-photo upload, "is this only for Korean products?"). Reading Caroline's actual onboarding transcript end to end found three things nobody had asked about.
+
+**First, a false alarm worth recording so nobody re-raises it.** An initial audit reported *"zero of 37 users have a profile row,"* including Bailey with 243 messages. That was a **query error, not a defect**: `ss_user_profiles` has a surrogate `id` primary key AND a separate `user_id` foreign key, and the audit joined on `id`. All 37 profiles exist and are populated. Caroline's is complete and correct — the v11.10.0 clinical-honesty work is functioning, with her Accutane history in `medical_history` (not `allergies`) and her Fitzpatrick stamped `estimated` rather than passed off as stated. **Any future audit of this table must join on `user_id`.**
+
+**The real gap: a location that never became coordinates.** Onboarding captured `location_text` and stopped there. `latitude`/`longitude` were written by exactly ONE path — the browser-geolocation button on `/profile`, which a user has to find and click. So both of the newest paying subscribers had a location on file and no coordinates:
+
+| user | location_text | lat/lon |
+|---|---|---|
+| Caroline | Kansas City | **absent** |
+| Kim Wells | Iowa | **absent** |
+
+Consequence: `get_current_weather` fell through to *"Could not determine location,"* the dashboard weather card had nothing to render, and UV-driven sun-protection advice could not fire. **Yuri had told Caroline that Kansas City's seasonal humidity swing was half of why her skin seesaws — while being unable to read the weather there.** Post-fix verification: her coordinates now return 26.9°C / 88% humidity, the exact signal Yuri was reasoning about blind.
+
+**Why the naive fix would have been worse than nothing.** One whole-string query against Open-Meteo fails on most of the strings *our own extraction prompt* tells Yuri to produce:
+
+```
+"Austin, Texas"  → Austin, Texas       ✓
+"Seoul, Korea"   → NO RESULT           ✗ (prompt example)
+"London, UK"     → NO RESULT           ✗ (prompt example)
+"Iowa"           → Ness City, KANSAS   ✗ (wrong state, ~450 miles)
+```
+
+That last one is the dangerous class. **Wrong coordinates degrade invisibly** — Yuri confidently reads another state's weather — while **missing coordinates degrade visibly**, because she asks. It was caught only by calling the API instead of trusting recall; the first draft of the backfill migration had Kim's coordinates in Kansas. So the resolver queries the first comma-segment, verifies the hit against the user's own qualifiers, and **returns null rather than guess**. A bare region name is only accepted when the candidate actually sits in a region of that name ("Iowa" → Iowa City, Iowa). Verified against every live-user location string plus both prompt examples: 13/13.
+
+`skilback22` said only **"Canada"** and is deliberately left unresolved — a country centroid in the Northwest Territories is meaningless weather. Yuri asks instead.
+
+The geocoder is now **shared** with the `get_current_weather` tool, which had its own copy. Two geocoders eventually disagree about where a user lives, and the profile row is what every weather surface reads. The tool's resolution quality improves as a side effect: "Seoul, Korea" now resolves where it previously returned nothing.
+
+**Second gap: there was no name anywhere.** No `name` column on `ss_user_profiles`, no field in the extraction schema, and the onboarding prompt never asked. **Yuri advised Caroline across a full onboarding and a returning next-day session without ever knowing what to call her.** Now captured when volunteered, never inferred from an email address, and surfaced to Yuri as a fact with judgment guidance — *"use it the way you'd use a friend's name: naturally, occasionally, never in every message and never as a sales tic"* — rather than a template slot. Absent when unknown, with no instruction to go fishing for it. Same doctrine as `cumulative-give.ts`: surface the fact, never cage the judgment.
+
+**Third: multi-photo upload**, the one item already promised to a tester. The scanner took one image at a time, so five products meant five round trips — and Caroline, asked to add five, ended up with **four blind custom entries** with no INCI, no price, no analysis. Gallery upload now accepts many with drag-and-drop, scans **sequentially** (one POST per image; `/api/scan` is unchanged and still one-image-per-call, well inside the 60s budget), and isolates per-photo failure so one bad shot cannot kill the batch. Camera capture stays single-shot — `capture="environment"` with `multiple` is meaningless on iOS. Single-image UX is byte-for-byte what it was. Shelf-scan was deliberately **left alone**: it sends one composite shelf photo and returns one unified collection grade, so multi-image there would mean N unmergeable analyses.
+
+**On the "is this only for Korean products?" question** — the honest answer is that **analysis is universal, the database is Korean**. Bailey demonstrated it live by scanning a Cetaphil cleanser (94 safety score); Caroline scanned a Naturium moisturizer. Neither is in the catalog and both worked. But of the brands Caroline named — Cetaphil, CeraVe, La Roche-Posay, Naturium, Byoma, Prequel, Vanicream, Olay — **zero are in the 6,060-product catalog** (The Ordinary, 35 products, is the lone Western brand). Expanding the catalog was rejected: Caroline uses Western products and subscribed anyway, because the value was Yuri's read on her post-Accutane barrier, not catalog coverage. Western ingredient lookup is free elsewhere; 6,060 translated Korean products with INCI data is not. The Western→K-beauty dupe bridge is tracked separately in `PROFILE-CAPTURE-GAPS.md`.
+
+11 guard tests, each verified to fail when its bug is reintroduced (bare-region mismatch, qualifier verification, first-segment fallback, device-coordinate clobbering, silent geocode failure, duplicate geocoder, name fabrication). `tsc` clean, build green, 203 pre-existing tests still passing.
+
+---
+
 ## v11.13.0 (July 28, 2026): The spam relay, and the door that was already open
 
 Scott asked a routine question — "any Yuri activity in the past 24 hours?" — and the answer was four new registrations. That reads like traction. It wasn't.
