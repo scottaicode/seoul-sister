@@ -178,10 +178,45 @@ plainly it needs the ingredients panel. Trivial copy fix, high real-world value.
 ### Phase 3 — Earn the Korean recommendation (the bridge, scoped down)
 
 Only after Phase 1, and only where it genuinely wins. **Sunscreen is the honest
-wedge**: the catalog has **673 Korean sunscreens, 665 with full INCI, 181
-tinted** — and Caroline is fair, burn-prone, post-Accutane, in a high-UV climate,
-with sun protection already named as her #1 priority. Korean sunscreen
-superiority is the best-documented claim in K-beauty.
+wedge** — the catalog has **673 Korean sunscreens, 665 with full INCI, 181
+tinted**, and Caroline is fair, burn-prone, post-Accutane, in a high-UV climate,
+with sun protection already her #1 priority.
+
+**But the research inverted the naive version of this pitch, and the correction
+is the most valuable thing in the brief.** Verified directly at Consumer
+Reports (Jul 10 2026), which tested each brand's Korean formula against *its own
+US formula*:
+
+| Brand | Korean formula | US formula |
+|---|---|---|
+| Beauty of Joseon | SPF **36** | SPF **19** |
+| Innisfree | SPF **48** | SPF **16** |
+| Round Lab | SPF **46** | SPF **16** |
+
+**Korean-brand sunscreens sold in US retail are reformulated with FDA-approved
+filters, and test dramatically worse.** So "buy the Beauty of Joseon at your
+Target" does NOT deliver the protection advantage — it is the reformulated
+product. This single fact would have made a naive in-store sunscreen
+recommendation actively wrong for the exact user it was aimed at.
+
+Three more corrections that must survive into the prompt:
+
+- **Lead on protection only, NOT cosmetic elegance.** The same CR sensory panel
+  found the Korean sunscreens "required a fair amount of effort to rub in and
+  initially felt greasy and left a white cast," and "none stood out as being
+  super lightweight." The "cosmetically elegant" half of the standard K-beauty
+  claim is contradicted by the best available test. Yuri currently says the
+  opposite on `/sunscreen` ("years ahead... lightweight, cosmetically elegant") —
+  that copy needs revisiting.
+- **Relative, not absolute.** Even the Korean formulas underperformed their
+  SPF 50+ labels. The finding is Korean-beats-US, not label-accurate.
+- **The filter gap narrowed 12 days from now.** FDA final order OTC000039
+  (June 10 2026) added **bemotrizinol** — the first new US sunscreen filter
+  since 1999 — effective **August 9 2026**. Tinosorb M and Uvinul A Plus remain
+  unapproved, so the gap narrowed by exactly one filter. Do not describe it as
+  closed or as static.
+- **Personal importation is a grey area.** State the classification and the
+  inconsistent enforcement; never "it's illegal" and never "it's fine."
 
 **Guardrails, non-negotiable:**
 - The bridge must be free to conclude **"keep what you have."** Her Naturium
@@ -193,10 +228,54 @@ superiority is the best-documented claim in K-beauty.
   refund fight, and driver harassment. Retailer policy is unchanged: recommend
   Olive Young Global / Soko Glam / iHerb; never YesStyle, Stylevana,
   StyleKorean; Amazon only via official brand storefronts.
-- **In-store is a genuine answer here.** COSRX, Beauty of Joseon, Anua, Laneige
-  and others are increasingly on US shelves. "The Korean sunscreen at your
-  Target" answers Caroline's objection without arguing with it, without shipping
-  risk, and without touching the catalog.
+- **In-store is a genuine answer — for everything EXCEPT sunscreen.** Target's
+  K-beauty range runs to ~48 brands (COSRX, Laneige, medicube, Round Lab,
+  SKIN1004, Abib, AESTURA, Beauty of Joseon, Goodal, Heimish, ISNtree, MISSHA,
+  numbuzin, Purito, SOME BY MI, TONYMOLY, VT and more); Sephora carries Laneige,
+  Sulwhasoo, innisfree, AESTURA, Dr. Jart+, Glow Recipe, Beauty of Joseon; Ulta
+  has added Beauty of Joseon, Anua, Some By Mi in store. US K-beauty imports hit
+  **$1.7B in 2024, +54% YoY, with Korea overtaking France as the #1 cosmetics
+  import origin**. Caroline's premise — that Korean means online-only — is
+  simply out of date, and telling her so answers her objection without arguing
+  with it and without touching the catalog.
+- **Do NOT claim a specific product is on HER shelf.** The 48-brand list is the
+  *dot-com* assortment; in-store planograms vary by store format and none is
+  published. The honest line is "Target carries these, check in-store
+  availability in their app." Same for Costco (rotating buys, non-permanent) and
+  Ulta's March 2026 "17 viral Korean brands," which is **Ulta Marketplace —
+  online only**, not shelves.
+
+**Sephora × Olive Young — verified at Sephora's own newsroom.** Debuts **this
+fall (2026)**, not yet live; US, Canada, Hong Kong SAR, Singapore, Malaysia,
+Thailand, expanding to Middle East / UK / Australia in 2027; **"a dedicated zone
+curated by OLIVE YOUNG online and in stores."** No door count and no brand
+lineup are given in the release — so the widely-repeated "~700 doors" is trade
+press only, and anyone naming brands is guessing. **The in-store objection has a
+hard expiry date this autumn**, which is an argument for answering it with facts
+rather than building for it.
+
+### Claims to never repeat (evidence audit)
+
+- 🚩 **DISCARD: the "KTRI 2022 study — 68% of COSRX Aloe sunscreen from
+  unauthorized Amazon sellers failed SPF, 22% contained methylisothiazolinone."**
+  It traces only to Alibaba-hosted SEO content — no primary source, no news, no
+  brand confirmation. The most quotable-sounding and least supported claim in
+  the whole sweep, and exactly the kind that gets repeated into a product and
+  becomes a liability.
+- **Amazon ended commingled inventory March 31 2026.** Any copy saying
+  "commingling means Amazon can ship you a fake" is now **out of date**. The
+  safe, defensible citations are COSRX's own public counterfeit warning about
+  its own product, and Dr. Julian Sass's in-vitro test of a counterfeit claiming
+  SPF 45 that measured **SPF 3.6**, UVB-only. Say "failed protection" — there is
+  **no documented case of verified medical harm**, so never say "caused harm."
+- **Do not recommend switching away from Cetaphil, CeraVe, La Roche-Posay,
+  Vanicream, Byoma, Naturium or Prequel.** They are genuinely fine, and Cetaphil
+  was reformulated, so older criticism of it is stale. This is what makes the
+  bridge credible when it does fire.
+- **Live legal exposure worth knowing:** a July 27 2026 law-firm investigation
+  into COSRX alleges US-sold sunscreens contain filters not in the FDA
+  monograph. Investigation only, no findings — but it cuts against any naive
+  "Korean sunscreen is simply better" message.
 
 ### Explicitly NOT doing
 
