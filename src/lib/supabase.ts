@@ -13,13 +13,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * The auth options below were previously ABSENT — `createClient(url, key)` with
  * no third argument. Bailey (July 29 2026): "I also relog in every single time."
  *
- * The library's defaults are nominally persist-on, but leaving them implicit
- * meant we never pinned a storage key, never guaranteed refresh-token rotation,
- * and had no defence against the session being read before storage was ready.
- * On iOS in particular — and iOS is most of a Gen Z beauty audience, plus every
- * home-screen install — that produced a login screen on almost every launch.
- * A PWA that asks you to sign in each time you open it is worse than a
- * bookmark, so this is a prerequisite for pushing the install at all.
+ * CORRECTION (later the same day): setting these did NOT fix that. `persistSession`
+ * and `autoRefreshToken` are already the library defaults, so pinning them
+ * changed no behaviour, and Bailey still landed on /login after closing the app.
+ * The database showed persistence had never been broken — her session was
+ * created at 13:57 and successfully refreshed at 20:11.
+ *
+ * The actual cause was in AuthContext, which discarded the `error` from
+ * `getSession()` and so treated a cold-launch AuthRetryableFetchError as a
+ * logout. See the comment there. These options are still worth keeping — the
+ * pinned storageKey below is genuine protection — but they are documentation
+ * and upgrade-safety, NOT the session-persistence fix. Do not read this block
+ * as the reason logins stick.
  *
  * Session transport is localStorage rather than cookies BY DESIGN: every API
  * route here authenticates from an `Authorization: Bearer` header taken from

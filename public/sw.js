@@ -15,7 +15,11 @@
 // entire bug. Cache-first on immutable hashed assets is right in general, but
 // it means a shipped fix does NOT reach a returning visitor until this name
 // changes.
-const CACHE_NAME = 'seoul-sister-v2'
+// v3 (Jul 29 2026): the cold-launch logout fix in AuthContext must reach the
+// people already affected by it. Bailey had the installed PWA and a v2 cache,
+// so without this bump she would keep replaying the bundle that bounced her to
+// /login on every launch — the same returning-visitor trap as v2.
+const CACHE_NAME = 'seoul-sister-v3'
 const STATIC_ASSETS = [
   '/',
   '/icons/icon-192.svg',
