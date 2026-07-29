@@ -8,6 +8,58 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.15.0 (July 29, 2026): A clean safety check that checked nothing
+
+Bailey's texts with Caroline (subscriber #2) surfaced a question that looked like positioning — *"is this only for Korean products?"* — and turned out to be a safety defect, a metric artifact, and a claim we were making that the best available test contradicts.
+
+### The defect
+
+`ss_ingredient_conflicts` holds a **HIGH-severity Retinol + Glycolic Acid rule** ("significantly increases risk of irritation, redness, peeling, and a compromised skin barrier"). Caroline is running **exactly that combination on a post-Accutane barrier** and told Yuri so during onboarding.
+
+**The rule could not fire for her.** Both products are custom entries with `product_id = NULL`; `checkRoutineConflicts` joins `ss_product_ingredients` by `product_id`, so they contributed zero ingredients and it returned `{ safe: true, conflicts: [] }`. **The silence was indistinguishable from an all-clear.**
+
+The fix was far smaller than the diagnosis. Every scan **already** captures real INCI for products we don't carry — Bailey's Cetaphil scan stored 11 ingredients — those strings match `ss_ingredients` (6/7 tested), and `check_ingredient_conflicts` **already accepts a raw `ingredient_names` array with no catalog resolution**. Nothing connected them, and `/api/library` actively filtered non-catalog scans out with `.not('product_id', 'is', null)`. Plumbing, not data acquisition.
+
+Phase 1 shipped: INCI persists on custom entries with provenance (`label_scan` / `web_lookup`, DB-enforced paired + enum), the scan writes it automatically, and **Yuri now sees her own coverage as a FACT** — *"you have ingredients for 1 of 5 of their products… a clean result on a product whose ingredients are blank means you did not check it — it does not mean it is safe."* It blocks nothing and ends by handing the decision back. A guard test fails if it hardens into a command, because the widget give/gate failed twice by rewording a rule before v11.10.0 fixed it with a fact.
+
+### The measurement corrected three assumptions
+
+Phase 2 probed every unlinked row against the **live resolver** before writing anything:
+
+- **Only 2 of 25 rows relink**, not the ~7 estimated.
+- **Brand casing was never a resolver bug.** Search uses `ilike` (`brand_en ILIKE 'anua'` → all 242 rows), and a minority-cased `AESTURA` product resolves cleanly to the 103-product `Aestura` group. The merge is display consistency (103 products, 52 brands, 5 genuinely-tied groups skipped rather than guessed), unlocking **zero** matches.
+- **The resolver's strictness is correct, not a defect.** Bailey's stored *"Rice 70 **+ Ceramide** Glow Milky Toner"* fails against the real *"Rice 70 Glow Milky Toner"* on one user-typed extra term. Loosening that is how "Hero Mighty Patches" became Dr.ppae Honey Heel Patch (v10.7.0). **Not changed**, now guarded.
+
+**The honest residual:** the "68% invisible shelf" is **40% not-products** (ice roller, LED mask, "Shower / cleanse"), **8% relinkable**, **16% catalog-freshness**, and **~36% genuinely-Western** — 9 rows across 2 users. The plan's falsifiable prediction (residual dominated by Western) held.
+
+**Pipeline check:** the two absent Korean products were never scraped — zero staging rows, zero failed rows, 19 new products in 7 days. The daily job runs `maxPagesPerCategory: 3`, which is **MORE-button clicks**, so it reads ~96 per category and re-reads the same head daily (96 scraped / 94 duplicates). A deliberate cost choice, not a failure. See `PIPELINE-COVERAGE-FINDING.md`.
+
+### The research that inverted Phase 3
+
+Phase 3 planned to answer the in-store objection with "buy the Korean sunscreen at your Target." **Consumer Reports (Jul 10 2026) tested each brand's Korean formula against its own US formula:**
+
+| Brand | Korean | US |
+|---|---|---|
+| Beauty of Joseon | SPF **36** | **19** |
+| Innisfree | **48** | **16** |
+| Round Lab | **46** | **16** |
+
+**US-shelf Korean sunscreens are reformulated with FDA-approved filters.** The naive recommendation would have been actively wrong for the fair, burn-prone, post-Accutane, high-UV user it was aimed at. Verified at the source, not from a summary.
+
+The same panel found those formulas *"required a fair amount of effort to rub in,"* felt *"greasy,"* left *"a white cast,"* and *"none stood out as being super lightweight"* — so `/sunscreen`'s claim that Korean formulations are *"lightweight, cosmetically elegant"* was a **live factual defect**, now replaced with the measured protection finding plus the reformulation caveat. **Lead on protection, never elegance.**
+
+Yuri gained: US in-store knowledge (never claiming local stock), the reformulation exception, and — new — **permission to tell someone their CeraVe or Byoma is good and to keep it.** She was never previously allowed to endorse a product we don't sell, a strange gap for an advisor whose credibility rests on being right rather than promotional. Korean alternatives only *"where it genuinely wins for THIS person."* Opinions about formulas, not countries.
+
+Two stale claims corrected: **Amazon ended commingled inventory March 2026**, and the honest counterfeit evidence is **failed protection** (a tested SPF 3.6 against a claimed 45), not documented injury. One widely-quotable statistic — "KTRI 2022: 68% of COSRX sunscreen failed SPF" — traces **only to Alibaba-hosted SEO content** and is now on a permanent do-not-repeat list.
+
+### Also
+
+`find_product_dupes` accepted **any** match quality, so a product we don't carry could partial-match an unrelated Korean one and return dupes for a different product. It now refuses `partial` exactly as `compare_prices` does.
+
+**33 new guard tests** (203 → 236), each verified to fail when its bug is reintroduced. Full analysis in `SHELF-VISIBILITY-PLAN.md`, `PHASE-2-RESULTS.md`, `PIPELINE-COVERAGE-FINDING.md`.
+
+---
+
 ## v11.14.0 (July 29, 2026): Advising someone whose weather you cannot read
 
 Bailey forwarded her texts with Caroline — Seoul Sister's second real subscriber, a friend testing the product. The visible asks were small (multi-photo upload, "is this only for Korean products?"). Reading Caroline's actual onboarding transcript end to end found three things nobody had asked about.
