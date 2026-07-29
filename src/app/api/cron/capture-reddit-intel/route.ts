@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
+import { logPipelineRun } from '@/lib/pipeline/run-log'
 
 export const maxDuration = 60
 
@@ -25,7 +26,40 @@ export const maxDuration = 60
  *
  * Cost: $0 (Reddit API is free for authenticated apps; no AI calls here).
  */
+/**
+ * Log this run to ss_pipeline_runs.
+ *
+ * WHY (July 29 2026): this was the ONLY cron that never wrote a run row. It
+ * stopped executing after July 14 and nobody could tell, because "ran and found
+ * nothing" and "never ran" produced the IDENTICAL database state. The route's
+ * own console.error guard was correct and had nothing to fire into that anyone
+ * reads. Diagnosis needed a hand-invocation, which immediately captured 82
+ * comments that had been sitting there for 15 days.
+ *
+ * The DB row is the signal. Nothing here depends on an email arriving.
+ */
+async function logRun(
+  startedAt: string,
+  status: 'completed' | 'failed',
+  scraped: number,
+  processed: number,
+  metadata: Record<string, unknown>,
+  expected = false
+): Promise<void> {
+  await logPipelineRun({
+    source: 'reddit',
+    runType: 'capture_reddit_intel',
+    startedAt,
+    status,
+    scraped,
+    processed,
+    expected,
+    metadata,
+  })
+}
+
 export async function POST(request: Request) {
+  const startedAt = new Date().toISOString()
   try {
     const authError = verifyCronAuth(request)
     if (authError) return authError
@@ -47,6 +81,19 @@ export async function POST(request: Request) {
           'Reddit OAuth creds or API shape may have changed.'
         )
       }
+      // Log the empty run too. A zero-result run that leaves no trace is
+      // indistinguishable from a cron that never fired — which is exactly how
+      // this job went unnoticed for 15 days (see logRun below).
+      await logRun(
+        startedAt,
+        'completed',
+        0,
+        0,
+        { warning: 'no comments returned', corpus_size: count ?? 0 },
+        // A corpus that already has rows means zero is anomalous, so the row
+        // lands as `stale` and a SQL query can find it without reading logs.
+        (count ?? 0) > 0
+      )
       return NextResponse.json({ success: true, fetched: 0, warning: 'no comments returned' })
     }
 
@@ -66,6 +113,13 @@ export async function POST(request: Request) {
       `updated=${result.updated} negative=${result.negative} reddit_sessions=${redditSessions ?? 0}`
     )
 
+    await logRun(startedAt, 'completed', result.fetched, result.inserted + result.updated, {
+      inserted: result.inserted,
+      updated: result.updated,
+      negative: result.negative,
+      reddit_attributed_sessions: redditSessions ?? 0,
+    })
+
     return NextResponse.json({
       success: true,
       ...result,
@@ -73,6 +127,11 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('[capture-reddit-intel] failed:', error)
+    // A failed run must leave a trace too — a silent failure is the bug class
+    // this whole change exists to close.
+    await logRun(startedAt, 'failed', 0, 0, {
+      error: error instanceof Error ? error.message : 'capture failed',
+    })
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'capture failed' },
       { status: 500 }

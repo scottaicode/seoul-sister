@@ -3,6 +3,7 @@ import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
 import { runHealthCheck } from '@/lib/guardian/healthcheck'
 import { maybeSendGuardianAlert } from '@/lib/guardian/alert'
+import { findStaleRuns } from '@/lib/pipeline/run-log'
 
 export const maxDuration = 60
 
@@ -36,6 +37,29 @@ async function handler(request: Request) {
 
   try {
     const report = await runHealthCheck(db)
+
+    // Cron liveness. A job that stops firing is invisible unless something asks
+    // "when did this last report?" — capture-reddit-intel went quiet for 15 days
+    // in July 2026 precisely because nothing did. Findings are attached to the
+    // stored verdict, so the answer lives in queryable DATA and never depends on
+    // an email being read. Read-only and non-fatal by construction.
+    let cronFindings: Awaited<ReturnType<typeof findStaleRuns>> = { quiet: [], unhealthy: [] }
+    try {
+      cronFindings = await findStaleRuns()
+      for (const q of cronFindings.quiet) {
+        console.error(
+          `[guardian-watch] cron '${q.runType}' has gone quiet — ` +
+            (q.lastRunAt ? `last run ${q.hoursSince}h ago` : 'has NEVER logged a run')
+        )
+      }
+      for (const u of cronFindings.unhealthy) {
+        console.error(
+          `[guardian-watch] cron '${u.runType}' last reported ${u.status} at ${u.startedAt}`
+        )
+      }
+    } catch (err) {
+      console.error('[guardian-watch] cron liveness check failed', err)
+    }
 
     // Push/email alerting (DEFERRED FEATURE 1, built Jul 15 2026). De-dupe
     // against the last run that alerted: read its stored alert_signature so we
@@ -99,6 +123,11 @@ async function handler(request: Request) {
         // unresolved condition. Empty string = nothing alert-worthy this run.
         alert_signature: alertSignature,
         alert_sent: alertSent,
+        // Cron liveness, stored so "which jobs have gone quiet?" is answerable
+        // with one SQL query against the newest guardian row — no inbox, no
+        // Vercel log archaeology.
+        cron_quiet: cronFindings.quiet,
+        cron_unhealthy: cronFindings.unhealthy,
       },
       started_at: new Date(startedAt).toISOString(),
       completed_at: new Date().toISOString(),
