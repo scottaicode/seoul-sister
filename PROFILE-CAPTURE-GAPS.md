@@ -94,6 +94,59 @@ not also seed `sun_history`, so a partial answer still leaves the cumulative-UV
 field empty. Verify against live data before changing extraction — this may be
 prompt guidance rather than code.
 
+## The invisible shelf (measured July 29 2026)
+
+Across every real user, **25 of 37 library products (68%) are custom entries with
+no catalog link**. Three distinct causes, and conflating them produces the wrong
+fix:
+
+**1. Correct behavior.** Devices and actions — "Ice roller", "LED mask",
+"Shower / cleanse", "Cool water rinse" — should never have a catalog row.
+
+**2. Stale rows, not a live bug.** Several are Korean products the catalog holds
+richly (Anua 242 SKUs, Round Lab 96, Medicube 83, I'm From 34). Empirically
+tested against the live resolver:
+
+```
+RESOLVED  "Anua Heartleaf 77% Soothing Toner"   -> Anua | Heartleaf 77% Soothing Toner
+RESOLVED  "Round Lab Dokdo Cleanser"            -> Round Lab | 1025 Dokdo Cleanser
+NULL      "Anua Rice 70 + Ceramide Glow Milky Toner"  (name merges TWO products)
+NULL      "Anua Heartleaf 70% Rice Ceramide Serum"    (genuinely absent)
+NULL      "Medicube PDRN Pink Peptide Eye Cream"      (genuinely absent)
+```
+
+**The resolver is not broken today** — every stale row predates 2026-07-21, the
+v11.10.0 resolver fix. This is a one-time re-link sweep (already in the CLAUDE.md
+backlog as "Custom-entry relink sweep"), NOT code work. Do not "fix" the
+resolver based on these rows.
+
+Two data-quality items surfaced alongside: brand-casing duplicates
+(`Round Lab` 96 vs `ROUND LAB` 6; `I'm From` 34 vs `I'm from` 1) and one
+corrupted row (`custom_brand = "I'm From"` on an Anua product).
+
+**3. Genuinely uncovered.** Caroline's Dr. Dennis Gross, Byoma, Kiehl's,
+Naturium, plus Colorescience and Hero Cosmetics. No relink reaches these; they
+are not in the catalog and are not Korean.
+
+## Acquisition intent is Korean-dominated (measured July 29 2026)
+
+Against all anonymous widget traffic — 226 visitor messages from 54 real
+visitors (`total_messages > 0`, the honest denominator):
+
+| signal | messages |
+|---|---|
+| Korean-intent (korea, k-beauty, cosrx, anua, glass skin, centella, olive young…) | **45** |
+| Western-brand or in-store (cerave, cetaphil, target, ulta, drugstore, "in store") | **3** |
+
+Roughly **15:1**. Of the 3, one is Caroline pre-signup, one lists a La
+Roche-Posay inside an otherwise SKIN1004-led Korean routine, and one describes a
+bare Cetaphil baseline before asking for K-beauty help.
+
+**Cold acquisition and paying retention are different populations.** The widget
+measures who arrives; Caroline's library measures what a subscriber owns. A plan
+that treats one as evidence about the other will be wrong in one direction or
+the other.
+
 ## Non-goals
 
 Expanding the catalog to Western brands. Caroline uses Byoma, Naturium, Kiehl's,
