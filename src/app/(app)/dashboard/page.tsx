@@ -15,6 +15,7 @@ import {
   FlaskConical,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { supabase } from '@/lib/supabase'
 import QuickActionCard from '@/components/dashboard/QuickActionCard'
 import TrendingProductCard from '@/components/dashboard/TrendingProductCard'
 import type { TrendingProduct } from '@/components/dashboard/TrendingProductCard'
@@ -112,15 +113,45 @@ export default function DashboardPage() {
     setRelevantTrendingIds(new Set(ids))
   }, [])
 
+  // The on-screen name comes from the profile row, never from the auth email.
+  const [profile, setProfile] = useState<{
+    display_name: string | null
+    first_name: string | null
+  } | null>(null)
+
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    supabase
+      .from('ss_user_profiles')
+      .select('display_name, first_name')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setProfile(data ?? null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
+  // NEVER derive a name from the email address (July 29 2026).
+  //
+  // This used to fall through to `email.split('@')[0]`, so Bailey's dashboard
+  // read "Good evening, baileydonmartin" — a value nobody ever typed. She caught
+  // it while about to screen-record for TikTok: "I don't need everyone knowing
+  // EVERYTHING". Any user whose address is firstnamelastname@provider had their
+  // full legal name rendered on screen, and for a public creator that lands in a
+  // video. The onboarding extraction prompt already forbids exactly this
+  // ("NEVER infer a name from their email address") — the UI just ignored the
+  // rule the codebase had written for itself.
+  //
+  // Order: the name the user CHOSE, then a name they volunteered to Yuri, then
+  // nothing. A null renders a neutral greeting rather than a guess.
   const displayName = useMemo(() => {
     if (!user) return null
-    return (
-      user.user_metadata?.full_name ||
-      user.user_metadata?.name ||
-      user.email?.split('@')[0] ||
-      null
-    )
-  }, [user])
+    return profile?.display_name || profile?.first_name || null
+  }, [user, profile?.display_name, profile?.first_name])
 
   const greeting = getGreeting()
 

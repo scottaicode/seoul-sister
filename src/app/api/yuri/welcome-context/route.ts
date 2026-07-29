@@ -12,7 +12,8 @@ import type { DecisionMemory } from '@/lib/yuri/memory'
  * conversations only). Cheap: one count + one limit-5 SELECT.
  *
  * Returns:
- *   first_name: derived from user_metadata.full_name||name, then email username
+ *   first_name: ss_user_profiles.display_name, then .first_name, then an
+ *               OAuth-provided name. NEVER the email local-part — see below.
  *   active_phase: most recent decision_memory.decisions[] topic matching
  *                 /phase|barrier repair|treatment plan/i, truncated to 80 chars
  *   total_conversations: count from ss_yuri_conversations
@@ -27,7 +28,19 @@ export async function GET(request: NextRequest) {
     if (authError || !authData.user) throw new AppError('Unauthorized', 401)
     const user = authData.user
 
-    // Derive first_name. Priority: user_metadata.full_name -> name -> email username -> null.
+    // NEVER derive a name from the email address (July 29 2026).
+    //
+    // This block used to fall back to the email local-part AND capitalize it, so
+    // Bailey's Yuri greeting rendered "Welcome back, Baileydonmartin" — a name
+    // she never gave, formatted to look like one she had. The capitalization made
+    // it worse than a raw string: it presented a guess as a fact, the same class
+    // as the v10.2.1 fake-confidence and the fabricated-Fitzpatrick defects.
+    //
+    // The onboarding extraction prompt already states the rule for this exact
+    // field: "NEVER infer a name from their email address, and never guess. If
+    // they didn't say it, omit it." This endpoint now honours it — the fallback
+    // order is the name she CHOSE, then the name she volunteered to Yuri, then
+    // null, which renders a nameless welcome.
     const metadata = (user.user_metadata || {}) as Record<string, unknown>
     const rawName =
       (typeof metadata.full_name === 'string' && metadata.full_name) ||
@@ -35,27 +48,29 @@ export async function GET(request: NextRequest) {
       (typeof metadata.first_name === 'string' && metadata.first_name) ||
       null
 
-    let firstName: string | null = null
-    if (rawName) {
+    const db = getServiceClient()
+
+    // The user-chosen display name wins, then a volunteered first_name. Read
+    // before the parallel block below so it can participate in the fallback.
+    const { data: nameRow } = await db
+      .from('ss_user_profiles')
+      .select('display_name, first_name')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    let firstName: string | null =
+      (nameRow?.display_name as string | null) ||
+      (nameRow?.first_name as string | null) ||
+      null
+
+    if (!firstName && rawName) {
+      // OAuth-provided names are volunteered by the user at the provider, so
+      // they are legitimate — unlike an email local-part, which is an address.
       const trimmed = rawName.trim()
       if (trimmed.length > 0) {
         firstName = trimmed.split(/\s+/)[0]
       }
     }
-    if (!firstName && user.email) {
-      const local = user.email.split('@')[0]
-      // Skip generic-looking email locals so we don't say "Welcome back, info"
-      const generic = new Set(['info', 'hello', 'admin', 'team', 'support', 'contact'])
-      if (local && !generic.has(local.toLowerCase()) && local.length <= 24) {
-        // Capitalize first letter, lowercase the rest, strip non-alphanumeric tail
-        const cleaned = local.replace(/[^a-zA-Z]/g, ' ').trim().split(/\s+/)[0]
-        if (cleaned) {
-          firstName = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase()
-        }
-      }
-    }
-
-    const db = getServiceClient()
 
     // Parallel: total count + most-recent conversation id + recent decision_memory rows + profile existence
     const [countRes, lastConvRes, recentRes, profileRes] = await Promise.all([

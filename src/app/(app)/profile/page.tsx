@@ -21,9 +21,12 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
+import DisplayNameEditor from '@/components/profile/DisplayNameEditor'
 import { PRICING } from '@/lib/pricing'
 
 interface UserProfile {
+  display_name: string | null
+  first_name: string | null
   skin_type: string | null
   skin_concerns: string[] | null
   allergies: string[] | null
@@ -324,7 +327,7 @@ export default function ProfilePage() {
     async function load() {
       const { data } = await supabase
         .from('ss_user_profiles')
-        .select('skin_type, skin_concerns, allergies, fitzpatrick_scale, climate, age_range, budget_range, experience_level, onboarding_completed, plan, cycle_tracking_enabled, avg_cycle_length, latitude, longitude, weather_alerts_enabled, location_text')
+        .select('display_name, first_name, skin_type, skin_concerns, allergies, fitzpatrick_scale, climate, age_range, budget_range, experience_level, onboarding_completed, plan, cycle_tracking_enabled, avg_cycle_length, latitude, longitude, weather_alerts_enabled, location_text')
         .eq('user_id', user!.id)
         .maybeSingle()
       setProfile(data as UserProfile | null)
@@ -333,11 +336,11 @@ export default function ProfilePage() {
     load()
   }, [user])
 
-  const displayName =
-    user?.user_metadata?.full_name ||
-    user?.user_metadata?.name ||
-    user?.email?.split('@')[0] ||
-    'User'
+  // NEVER derive a name from the email address — see the dashboard comment.
+  // Bailey's profile read "baileydonmartin" purely because that is her email
+  // local-part. 'You' is a deliberately neutral last resort: a wrong-looking
+  // generic beats broadcasting someone's legal name on a screen recording.
+  const displayName = profile?.display_name || profile?.first_name || 'You'
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
@@ -381,11 +384,24 @@ export default function ProfilePage() {
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center text-seoul-dark font-bold text-sm">
                 {displayName.charAt(0).toUpperCase()}
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-semibold text-white">{displayName}</p>
                 <p className="text-xs text-white/40">{user?.email}</p>
               </div>
             </div>
+            {/* She should not need a developer to change her own name — a creator
+                whose handle IS her brand will change it again. */}
+            {user && (
+              <div className="mb-3">
+                <DisplayNameEditor
+                  userId={user.id}
+                  current={profile?.display_name ?? null}
+                  onSaved={(next) =>
+                    setProfile((p) => (p ? { ...p, display_name: next } : p))
+                  }
+                />
+              </div>
+            )}
             <button
               type="button"
               onClick={async () => {
