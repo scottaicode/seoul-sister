@@ -49,7 +49,30 @@ Each entry includes:
 
 ---
 
-## July 29, 2026 — App icon: "gotta get on that icon asap" [OPEN]
+## July 27, 2026 — "I don't even own the Beplain Makiol" [RESOLVED in v11.17.0]
+
+**Source**: Yuri conversation, during a post-travel calm-down-week plan
+
+**Verbatim quote**:
+> "I don't even own the Beplain Makiol. Idk where that came from I've never even heard of it"
+
+**Bailey's context**: Back from a weekend trip with a few breakouts and some flush. Yuri built her a "calm-down week" routine and repeatedly told her to reach for the *Beplain Makiol Foaming Cleanser* — a real product Bailey has never bought. She caught it, Yuri owned it immediately (*"that one's on me"*), and the thread recovered: Bailey found the beplain **Mung Bean pH-Balanced Cleansing Foam** (a genuinely good no-acid second cleanse), bought it for $12, and Yuri correctly checked it was sold by the official Amazon store.
+
+**Status**: RESOLVED in v11.17.0 (July 30 2026). Code fix predated it; the data was cleaned this session.
+
+**Root cause — NOT a hallucination**: On **June 7** Bailey asked Yuri to save a Phase 3 routine whose **step 1 was the phrase "Shower / cleanse"** — an action, not a product. The product resolver's loose fallback matched that phrase to a real catalog row and wrote its `product_id` into her routine. The same save also produced *"Hero Mighty Patch" → "Dr.ppae Honey Heel Patch"*.
+
+Yuri **did** warn her at the time — *"5 steps matched loosely, the closest product in our database may not be what you asked for… ask me to fix that step"* — and Bailey fixed the obviously-wrong ones (her Anua serum had become a rice toner, her Medicube eye cream a random sunscreen). Step 1 read as a plausible cleanser, so it survived. Seven weeks later Yuri read her own routine back, saw a real cleanser sitting in step 1, and reasonably assumed Bailey owned it.
+
+**The warning was transient prose. The bad row was permanent.** That asymmetry is the whole defect.
+
+**Resolution**: The code was already fixed before she hit this — the identity floor in `src/lib/yuri/tools.ts` (July 27) demotes category/step-only queries to `match_quality='partial'` and every write path refuses it; `shower`, `rinse` and `cleanse` are all in `GENERIC_PRODUCT_WORDS`. Verified against her exact input. But that floor shipped ~7 weeks *after* these rows were written and nothing swept the residue. `scripts/fix-fabricated-routine-matches.ts` cleaned both rows (product link nulled, honest step name restored, deliberate human note preserved), verified through a separate read-only connection. Zero rows anywhere still link to that product.
+
+**The durable lesson**: shipping the guard does not retroactively clean what the bug already wrote. When a resolver-class fix lands, sweep for rows it would have refused.
+
+---
+
+## July 29, 2026 — App icon: "gotta get on that icon asap" [SHIPPED v11.17.0 — Bailey has final say]
 
 **Source**: iMessage to Scott (same thread as the logout fix), plus a Canva screenshot of her own draft
 

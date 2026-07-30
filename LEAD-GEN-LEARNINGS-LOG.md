@@ -6,6 +6,69 @@
 
 ---
 
+## July 30 2026 — Read both surfaces end to end: quality is not the bottleneck, volume is
+
+Pulled the full funnel state plus four complete transcripts (two cold widget leads, both subscribers). Nothing was shipped for lead-gen in this pass — this is a measurement entry, and its conclusion is that the obvious lever is the wrong one.
+
+### The numbers (DB truth, not GA4 — GA4 is bot-inflated per `project_ga4_bot_traffic_vs_db_truth`)
+
+| Metric | Value |
+|---|---|
+| Widget visitors who actually sent a message (ever) | **54** |
+| Engaged last 7 days | 7 |
+| Widget messages last 7 days | 50 (~7 per engaged visitor) |
+| Emails captured, all time | **9** |
+| Emails captured last 7 days | 2 |
+| New signups, 14 days | 17 |
+| …of those, free plan + onboarding never completed | **16 of 17** |
+| New paying subscribers | **0** |
+
+Only Kim Wells is real revenue. Caroline is `pro_monthly` with no Stripe sub (comped, same as Bailey — correct, not a bug). Several of the 17 signups carry the dotted-Gmail pattern (`t.ani.s.ha.z.d.o.ssa@`) consistent with the bot traffic the Turnstile captcha was added for, so **signup count is not a demand signal.**
+
+### What the transcripts actually show
+
+Two cold leads this week, both genuine strangers, both deep:
+
+- **`lotus.rain629`** — 10 messages, ~55 min, arrived **from a GEO citation click on the "Best Korean Cleansers" page**. Seb derm + over 40 + sensitive/combination. Yuri identified the **Malassezia trap** (most "gentle sensitive skin" cleansers contain fatty acids that feed the yeast driving seb derm), then said *"our database is a K-beauty catalog, nothing here is an actual anti-yeast product. I'm not going to dress up an enzyme cleanser as one"* and recommended **Nizoral and azelaic acid — both off-menu, both unmonetizable**. She also warned her AWAY from two products on our own list as flare risks, and referred to a dermatologist three times. Email given after being asked once.
+- **`camilla.hellsten`** — 7 messages, Copenhagen, breakout-prone. Told to skip the 10-step routine, given three steps, and told *"don't buy all three at once if budget's a thought."* Declined to recommend a sunscreen blind because the candidates had zero reviews.
+
+**Conclusion: Yuri's quality is not the bottleneck.** She turns down sales, sends people to doctors, and recommends competitors' products when they're right. The honesty moat is behaving exactly as designed on cold traffic.
+
+### The nurture sequence IS running (correcting a wrong read made mid-session)
+
+First query looked for nurture columns on `ss_widget_visitors`, found none, and wrongly concluded the sequence was dead. The state lives in **`ss_nurture_leads`**. Actual state: both recent leads enrolled with `cohort='widget'`, receiving steps on schedule, and **Kim Wells correctly `suppressed='converted'`** — the loop closes. So "nobody asked them to subscribe" was false; they are being asked.
+
+### The one real defect found in the sequence (NOT fixed — deliberately)
+
+Read all three emails as a cold prospect would. Structure is right: value first, ask last, three emails with a genuine exit, one-click unsubscribe, no fake urgency or discounts. **Email 2 (the counterfeit checklist, zero ask) is the strongest** and correctly ends by pointing at the free chat.
+
+Two problems, both in **email 1**:
+
+1. **It apologizes for a delay it creates.** Copy says *"we talked a while back… later than either of us probably expected."* She talked to Yuri July 25; email 1 sent July 29. The file comments call step 1 "Day 0"; it was day 4. The copy makes a gap salient that the reader might not have noticed.
+2. **It discards her context.** She had a 10-message conversation about seb derm and a specific cleanser pick, then got *"ask me anything you'd ask a friend who knows Korean skincare."* The file header justifies fixed copy because *"registered leads carry no per-lead context"* — **true for the `registered` cohort, false for `widget`**, which has a full transcript and already generates a personalized recap with Opus via `lead-email.ts`. So the most-personalized asset fires once, then three generic emails follow that act like they have never met her. That reads as a mailing list, not as Yuri.
+
+**Fix scoped, deliberately not shipped:** substitute one opener sentence for the `widget` cohort referencing the real conversation. ~20 minutes. **Held because tuning copy on n=9 is exactly the improvement-for-its-own-sake NORTH-STAR freezes.** It will not move a conversion rate at this volume.
+
+### The actual bottleneck, stated plainly
+
+**9 leads all time, 0 cold-stranger conversions.** Two engaged strangers a week cannot produce a conversion rate anyone can learn from. Quality is proven; the sample is not.
+
+The two live channels that produce strangers:
+- **GEO citations** — working, and measurably: `lotus.rain629` came from a `/best/` page. 525 citations/week (per `project_bing_citation_breakout_jul27`). The gap is citation → click → conversation, not citation volume.
+- **Bailey's TikTok** — she crossed 1,000 followers and `seoulsister.com/tt` is live, but **no `tt_ss` sessions appear in the data**. That funnel is built and unused.
+
+### One thing that plausibly mattered more than any of it
+
+Until this session, **any signed-in subscriber who opened the site saw the "Get Started / no signup" marketing page** — `start_url` is `/` and `/` had no auth check (v11.16.0). The post-signup experience was quietly broken for everyone, not just Bailey. Any conversion measurement taken before July 30 was measuring a funnel with a hole in the retention end.
+
+### Do NOT re-run
+
+- **Do not conclude "the nurture sequence isn't running"** without querying `ss_nurture_leads` — the state is not on `ss_widget_visitors`.
+- **Do not read signup counts as demand.** 16 of 17 never completed onboarding and several look automated.
+- **Do not tune widget or email copy on the current sample.** Yuri's cold-traffic transcripts are excellent; the missing input is strangers.
+
+---
+
 ## July 1 2026 — GEO citations discovered LIVE + counterfeit content series + funnel myths killed
 
 ### The headline discovery (changes the strategy picture)

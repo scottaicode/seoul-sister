@@ -8,6 +8,52 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.17.0 (July 30, 2026): The brand mark, and a generic phrase that became a product
+
+Three separate pieces of work, connected only by being what Bailey asked for after the logout fix landed.
+
+### The SS monogram (replaces the interim 유 stopgap)
+
+Bailey, immediately after confirming the logout fix: *"But damn I gotta get on that icon asap😂😂😂"*. The shipping icon was an explicitly-labelled stopgap added the previous day only because `apple-touch-icon` pointed at an SVG, which iOS cannot use, so every iPhone showed a page screenshot.
+
+Shipped an **interlocked SS monogram built from Playfair Display glyph OUTLINES** (SIL OFL, `opentype.js`) — no font dependency, no `<text>`, explicit `width`/`height` AND `viewBox`. Two members of one family: `icon-tile` (dark serif on a gold gradient tile) for icon/favicon, `ss-mark-gold` for large format. The interlock is Bailey's own Canva instinct; a 12% em overlap makes the two S's read as ONE mark rather than typed letters.
+
+**Everything was measured, not asserted.** Overlap: 6% reads as typed text, 18%+ fuses the middle, **12% is the sweet spot**. Vertical offset: without one the first S's lower terminal is sliced off by the second's stem; **8% fixes it, 14% clipped the glyph into a teardrop blob**. Contrast: the first gradient measured **3.67:1** at the tile corner and **3.93:1** at the mark's darkest stop, both under the 4.5:1 floor — lifted to 5.32:1 and 5.64:1.
+
+**Four wrong turns, each caught by looking rather than reasoning:**
+- A hand-drawn heavy serif that didn't match the site at all. Scott: *"I don't think your icon/logo work well."* Correct — the site is geometric Poppins Bold and the mark was a slab, in the wrong gold, with colliding S's and a base rule propping up letters that weren't reading.
+- **The custom fonts were never loading.** librsvg silently ignores a base64 `@font-face`, so every "Playfair" and "Cormorant" presented for two rounds was a **fallback sans with a gradient on it**. Caught by rendering five supposedly-different faces and seeing five IDENTICAL glyphs. Fixed by extracting true outlines — which is also what the shipped asset needs.
+- **Pre-rounded corners on a dark field.** iOS applies its OWN mask, so the corners showed as black wedges inside the OS curve; corner pixels measured `(13,13,15)`. Home-screen icons are now FULL-BLEED gold `(237,203,139)` and let the OS round them. **Favicons deliberately do the opposite** and keep the rounded tile, because nothing masks a browser-tab icon. Both rules are guard-tested against each other so a future "consistency" cleanup cannot unify them.
+- **A leftover gold STAR** in `src/app/icon.svg` and `apple-icon.svg`. These are a Next.js FILE CONVENTION, so their existence emits `<link>` tags — `/icon.svg` goes out last with `sizes="any"` and can win the browser tab, and `apple-icon.svg` makes Next emit an apple-touch-icon link, which is the exact `f70d937` bug.
+
+**The favicon is a separate drawing.** Scott: *"FINAL-SHIPPED-favicon-32 is blurry."* Measured: **38% of pixels were mid-tones** — anti-aliasing smear from downscaling a 512-unit drawing to 16px. The two-S serif was mush at 32px and unreadable noise at 16px. Now a **single S in Poppins Bold** (the wordmark's own typeface, uniform stroke, no hairlines to lose), drawn AT the target size with the glyph box snapped to whole pixels and rendered 1:1 with no downscale. 38% → 25%, remainder is the gradient itself.
+
+Also: header/nav mark 28px → 36px (the monogram mushed at 28 beside the wordmark), the footer wordmark gained the mark it was missing, and `PublicNav.tsx` was found rendering the `icon-512.svg` that had just been deleted — every blog/ingredient/product page (the AI-citation landing surfaces) would have shown a broken image.
+
+**Three standing decisions recorded in `bailey/BAILEY-FEEDBACK-LOG.md`:** Bailey's TikTok avatar stays HER FACE (a logo avatar on a personal creator account reads brand-shill); this is **v1** pending a custom redraw of the same concept (true over-under weave, hairlines +15-20%); and **the S's stay curvaceous serif forms permanently** — never restyle angular/rune-like.
+
+### A generic step phrase became a product Bailey never owned
+
+Bailey, July 27: *"I don't even own the Beplain Makiol. Idk where that came from I've never even heard of it."* She was right, and it was **not a hallucination**.
+
+June 7, she asked Yuri to save a routine whose **step 1 was the phrase "Shower / cleanse"** — an action, not a product. The resolver's loose fallback matched it to a REAL catalog row (Beplain Makiol Foaming Cleanser) and wrote the `product_id` into her routine. The same save produced *"Hero Mighty Patch" → "Dr.ppae Honey Heel Patch"*, the failure this file already cites.
+
+Yuri warned her at the time (*"5 steps matched loosely… ask me to fix that step"*) and she fixed the obviously-wrong ones. **Step 1 read as a plausible cleanser, so it survived.** Seven weeks later Yuri read the routine back, saw a real cleanser in step 1, and built an entire calm-down-week plan around a product Bailey has never owned. **The warning was transient prose; the bad row was permanent.**
+
+The CODE was already fixed — the identity floor in `tools.ts` (July 27) demotes category/step-only queries to `match_quality='partial'`, every write path refuses `'partial'`, and `GENERIC_PRODUCT_WORDS` contains `shower`/`rinse`/`cleanse` explicitly. **But that floor shipped ~7 weeks AFTER these rows were written and nothing swept what the bug had already stored.** That gap is the durable lesson: **shipping the guard does not retroactively clean what the bug wrote.**
+
+Applied `scripts/fix-fabricated-routine-matches.ts` (dry-run default, `--apply` to write). Both rows repaired, verified through a SEPARATE read-only connection rather than the script's own output: zero rows now link to that product in `ss_routine_products`, `ss_user_products`, `ss_user_wishlists` or `ss_user_product_reactions`. The dry run caught a mistake in the first draft — it would have overwritten the PM step's deliberate note ("Cleanse to bare skin") with a generic phrase; the bug was the LINK, not the note.
+
+### Funnel measurement
+
+Full read of both Yuri surfaces plus four transcripts. Headline: **Yuri's quality is not the bottleneck; volume is.** 54 engaged widget visitors ever, 9 emails captured, **0 cold-stranger conversions**. Details, transcripts, and the one nurture-copy defect found (and deliberately NOT fixed on n=9) are in `LEAD-GEN-LEARNINGS-LOG.md`.
+
+### Tests
+
+`tests/brand-mark-integrity.test.mjs` — 12 guard tests covering every icon failure mode this repo has shipped: font dependency, missing intrinsic size, missing PNGs, maskable clipping, the black-halo trap, favicon-is-its-own-drawing, and the Next file-convention icons. **Three separate test-assertion errors were caught by verifying the tests against the real bugs** — one passed against the gold star it was meant to catch, one rejected the correct single-S favicon, and one failed on a valid palette PNG because the reader ignored PLTE. 375/375 green.
+
+---
+
 ## v11.16.0 (July 30, 2026): "I'm being logged out" was a report about what she SAW
 
 Bailey, Seoul Sister's lighthouse user, could not stay signed in to the installed home-screen app. **Four rounds of fixes went at the session layer. The thing she was actually looking at was a routing bug on the marketing page.** Her verdict after the real fix: *"It worked!!!!! Omg this changes everything."*
