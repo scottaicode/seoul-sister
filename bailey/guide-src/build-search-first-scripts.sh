@@ -1,0 +1,60 @@
+#!/bin/bash
+# Regenerate the "Creator's Corner, and what's actually working right now" note
+# (PDF + DOCX) for Bailey.
+#
+# Source: ../BAILEY-SCRIPTS-SEARCH-FIRST-JUL30.md — like the frequency and
+# carousel docs, and unlike the main playbook, this has NO separate Bailey-facing
+# copy. It was written to her from the start, so the tracked .md IS the source.
+# Edit that file, then re-run this.
+#
+# Usage:  ./bailey/guide-src/build-creators-corner.sh
+# Output: bailey/Bailey-Scripts-Search-First-Jul30.{pdf,docx} + ~/Downloads copies
+#
+# Requires: pandoc (brew install pandoc) + Google Chrome (for PDF).
+# Same Chrome-headless route as build.sh — pandoc's native PDF path needs
+# LaTeX, which is not installed here. Do not "simplify" to `pandoc -o out.pdf`.
+
+set -euo pipefail
+cd "$(dirname "$0")"
+
+SRC="../BAILEY-SCRIPTS-SEARCH-FIRST-JUL30.md"
+REPO_OUT="$(cd .. && pwd)/Bailey-Scripts-Search-First-Jul30"
+OUT="$HOME/Downloads/Bailey-Scripts-Search-First-Jul30"
+CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+
+command -v pandoc >/dev/null || { echo "pandoc not found: brew install pandoc"; exit 1; }
+[ -f "$SRC" ] || { echo "source not found: $SRC"; exit 1; }
+
+# No --toc: short read, same reasoning as the carousel note.
+pandoc "$SRC" -o "$OUT.docx"
+echo "wrote $OUT.docx"
+cp "$OUT.docx" "$REPO_OUT.docx" && echo "wrote $REPO_OUT.docx"
+
+# No --metadata title: the markdown opens with its own H1 and pandoc would
+# render a second one above it.
+pandoc "$SRC" -o /tmp/scripts30.html --standalone -c style.css
+
+python3 - <<'PY'
+html = open('/tmp/scripts30.html').read()
+css = open('style.css').read()
+html = html.replace('<link rel="stylesheet" href="style.css" />', '<style>' + css + '</style>')
+# Shared stylesheet forces a page break before every h1 — right for the 29-script
+# playbook, wrong for a short read (it would strand each numbered section on its
+# own page). Keep breaks off; just protect tables/quotes.
+html = html.replace(
+    'h1{font-size:20pt;color:#8B2942;border-bottom:2px solid #D4A574;padding-bottom:6px;margin-top:28px;page-break-before:always}',
+    'h1{font-size:20pt;color:#8B2942;border-bottom:2px solid #D4A574;padding-bottom:6px;margin-top:26px}')
+html = html.replace(
+    '@media print{h1{page-break-before:always}h1:first-of-type{page-break-before:avoid}blockquote,table{page-break-inside:avoid}}',
+    '@media print{blockquote,table{page-break-inside:avoid}h1,h2,h3{page-break-after:avoid}}')
+open('/tmp/scripts30_inline.html', 'w').write(html)
+PY
+
+if [ -x "$CHROME" ]; then
+  "$CHROME" --headless --disable-gpu --no-pdf-header-footer \
+    --print-to-pdf="$OUT.pdf" "file:///tmp/scripts30_inline.html" 2>/dev/null
+  echo "wrote $OUT.pdf"
+  cp "$OUT.pdf" "$REPO_OUT.pdf" && echo "wrote $REPO_OUT.pdf"
+else
+  echo "Chrome not found; DOCX written but PDF skipped."
+fi
