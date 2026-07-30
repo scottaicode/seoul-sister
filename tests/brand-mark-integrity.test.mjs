@@ -193,6 +193,38 @@ test('home-screen icons are FULL-BLEED, with no dark corners for iOS to mask', (
   }
 })
 
+test('the favicon is its own drawing, not the shrunk monogram', () => {
+  // Scott, looking at the shipped 32px favicon: "FINAL-SHIPPED-favicon-32 is
+  // blurry." Correct — and 16px was worse: magnifying it showed the two-S serif
+  // monogram had degraded into unreadable noise. High-contrast serif hairlines
+  // cannot survive a favicon, which is the SAME reason Bailey's original Canva
+  // ribbon could not be the app icon.
+  //
+  // So the favicon is a separate drawing: ONE letter (double the pixel budget per
+  // stroke) in Poppins Bold — the wordmark's own typeface, uniform stroke weight,
+  // no hairlines to lose.
+  //
+  // Proxy for "not the monogram": the monogram is two glyphs of high-contrast
+  // serif (~124 Bezier commands); a single sans S is far simpler (~46).
+  const src = readFileSync(icons('favicon.svg'), 'utf8').replace(/<!--[\s\S]*?-->/g, '')
+  const curves = (src.match(/[QqCc]/g) || []).length
+  assert.ok(
+    curves > 10 && curves < 90,
+    `favicon.svg has ${curves} Bezier commands. Below ~10 is placeholder art; above ` +
+      '~90 means the full two-glyph serif monogram has been dropped in, which ' +
+      'measured as mush at 32px and noise at 16px. The favicon must stay a single, ' +
+      'simple letterform.'
+  )
+  // And it must not be the literal monogram file content.
+  const monogram = readFileSync(icons('icon-mark.svg'), 'utf8')
+  assert.notEqual(
+    src.replace(/\s+/g, ''),
+    monogram.replace(/<!--[\s\S]*?-->/g, '').replace(/\s+/g, ''),
+    'favicon.svg is byte-identical to the monogram. They are deliberately different ' +
+      'drawings for different pixel budgets.'
+  )
+})
+
 test('favicons KEEP the rounded tile (a browser tab does not mask them)', () => {
   const { w, h, px } = readPng('favicon-32.png')
   const corner = px(1, 1)
@@ -245,7 +277,7 @@ test('both headers render the brand mark', () => {
   }
 })
 
-test("Next's file-convention icons are the brand mark, not something else", () => {
+test("Next's file-convention icons carry real letterform art", () => {
   // src/app/icon.svg and src/app/apple-icon.svg are a Next.js FILE CONVENTION —
   // their mere existence makes Next emit <link> tags. Both shipped as a gold STAR
   // unrelated to the brand mark, and they are not harmless:
@@ -253,7 +285,14 @@ test("Next's file-convention icons are the brand mark, not something else", () =
   //     over the favicon PNGs declared in layout.tsx.
   //   - apple-icon.svg makes Next emit an apple-touch-icon link, and iOS cannot
   //     render SVG for a home-screen icon at all — the exact bug f70d937 fixed.
-  // So they must carry the same mark, or not exist.
+  //
+  // They carry DIFFERENT art on purpose, and the sizes decide which:
+  //   icon.svg (32px, browser tab) → the SINGLE-S favicon drawing. The two-S serif
+  //     monogram measured as mush at 32px and unreadable noise at 16px.
+  //   apple-icon.svg (180px) → the full monogram; there is plenty of room.
+  // So this asserts "real outlined letterform, not placeholder polygon art" rather
+  // than "identical to the monogram" — an earlier version demanded the latter and
+  // rejected the correct favicon.
   for (const f of ['icon.svg', 'apple-icon.svg']) {
     const p = join(root, 'src', 'app', f)
     if (!existsSync(p)) continue // deleting them is also a valid answer
@@ -261,32 +300,29 @@ test("Next's file-convention icons are the brand mark, not something else", () =
     assert.match(
       code,
       /<path\b/,
-      `src/app/${f} has no <path> — it must carry the outlined SS monogram.`
+      `src/app/${f} has no <path> — it must carry outlined letterform art.`
     )
     assert.ok(
       !/font-family|<text[\s>]/.test(code),
       `src/app/${f} depends on a font. Same rule as the other brand SVGs.`
     )
-    // The real discriminator is SIZE, and it is a big margin rather than a
-    // fingerprint: the outlined serif monogram is ~4KB of Bezier data, while the
-    // gold star it replaced was a 10-line polygon (~330 bytes). Anything that
-    // small is not this mark. An earlier version of this test tried to detect the
-    // star by its straight-line path commands and PASSED against the real star —
-    // so this assertion was rewritten after being verified to fail on it.
-    const bytes = statSync(p).size
-    assert.ok(
-      bytes > 2000,
-      `src/app/${f} is only ${bytes} bytes. The outlined SS monogram is ~4KB of curve ` +
-        'data; this is almost certainly simple placeholder art (the gold star that ' +
-        'shipped here originally was ~330 bytes). A Next file-convention icon ' +
-        'overrides <link> tags we set deliberately in layout.tsx.'
-    )
-    // And it must be curve-based: Bezier commands are what a real letterform has.
+    // The discriminator is CURVE DENSITY, by a wide margin rather than a
+    // fingerprint. A real outlined letterform is hundreds of bytes of Bezier data
+    // per glyph; the gold star this replaced was a 10-line straight-edge polygon
+    // (~330 bytes, zero curves). The threshold sits well below the single-S
+    // favicon (~40 curves) and far above any polygon placeholder.
+    //
+    // Two earlier versions of this assertion were WRONG and both were caught by
+    // testing them: the first tried to detect the star by its straight-line path
+    // commands and PASSED against the real star; the second demanded monogram-level
+    // curve counts and REJECTED the correct single-S favicon.
     const curves = (code.match(/[QqCc]/g) || []).length
     assert.ok(
-      curves > 50,
-      `src/app/${f} has only ${curves} Bezier commands — polygon/placeholder art, not ` +
-        'the serif monogram.'
+      curves >= 20,
+      `src/app/${f} has only ${curves} Bezier commands — that is polygon/placeholder ` +
+        'art (the gold star that shipped here had zero), not an outlined letterform. ' +
+        'A Next file-convention icon overrides <link> tags set deliberately in ' +
+        'layout.tsx, so placeholder art here silently replaces the brand.'
     )
   }
 })
@@ -295,7 +331,7 @@ test('the cache fence advanced so the new icon reaches returning visitors', () =
   const m = read('public', 'sw.js').match(/const CACHE_NAME = 'seoul-sister-v(\d+)'/)
   assert.ok(m, 'CACHE_NAME must stay in the greppable seoul-sister-vN form.')
   assert.ok(
-    Number(m[1]) >= 10,
+    Number(m[1]) >= 11,
     `CACHE_NAME is v${m[1]}. STATIC_ASSETS precaches the icon PNGs, so a returning ` +
       'visitor keeps the OLD icon until this name changes.'
   )

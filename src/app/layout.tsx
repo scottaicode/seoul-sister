@@ -96,9 +96,12 @@ export default function RootLayout({
             whole point of the install we were pushing Bailey through.
             180x180 is the size modern iPhones request. */}
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
-        {/* Favicons point at the SS monogram too, so the browser tab, the
-            bookmark bar and the home-screen icon are one identity. Verified
-            legible at 32px AND 16px before shipping. */}
+        {/* The favicon is a DIFFERENT DRAWING from the app icon, on purpose.
+            The two-S serif monogram measured as mush at 32px and unreadable
+            noise at 16px — serif hairlines cannot survive a favicon. So the tab
+            icon is a single S in Poppins Bold (the wordmark's own typeface,
+            uniform stroke, nothing to lose). Verified by rendering at both sizes
+            and looking, not assumed. */}
         <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

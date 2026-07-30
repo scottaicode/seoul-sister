@@ -48,7 +48,11 @@
 // STAR. They are a Next FILE CONVENTION, so their existence emits <link> tags —
 // /icon.svg goes out last with sizes="any" and can win the browser tab over the
 // favicons we set deliberately. Replaced with the monogram.
-const CACHE_NAME = 'seoul-sister-v10'
+// v11 (Jul 30 2026): the favicon was the two-S serif monogram shrunk down, which
+// Scott spotted as blurry at 32px and which magnification showed as unreadable
+// NOISE at 16px. Replaced with a purpose-drawn single sans S. Favicons are
+// precached under /icons/, so the fix needs this bump.
+const CACHE_NAME = 'seoul-sister-v11'
 const STATIC_ASSETS = [
   '/',
   '/icons/apple-touch-icon.png',
