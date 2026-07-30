@@ -40,7 +40,11 @@
 // v8 (Jul 30 2026): the new SS monogram. STATIC_ASSETS precaches the icon PNGs
 // below, so a returning visitor keeps the OLD 유 stopgap icon until this name
 // changes — and the icon is the thing Bailey asked for.
-const CACHE_NAME = 'seoul-sister-v8'
+// v9 (Jul 30 2026): v8's home-screen icon had PRE-ROUNDED corners on a black
+// field. iOS applies its OWN mask, so those corners showed as black wedges just
+// inside the OS curve. The PNGs are precached here, so the corrected full-bleed
+// art cannot reach an installed app without this bump.
+const CACHE_NAME = 'seoul-sister-v9'
 const STATIC_ASSETS = [
   '/',
   '/icons/apple-touch-icon.png',

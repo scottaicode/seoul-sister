@@ -27,6 +27,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, existsSync, statSync } from 'node:fs'
+import { inflateSync } from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -123,6 +124,90 @@ test('the manifest points maskable at its own art, not the tile', () => {
 })
 
 // ---------------------------------------------------------------------------
+// The black-halo trap (July 30 2026)
+//
+// iOS and Android apply their OWN rounded mask to a home-screen icon. So art
+// that already has rounded corners sitting on a dark field gets masked a second
+// time, and the dark field shows through as black wedges just inside the OS
+// curve. The first version of this icon shipped exactly that: corner pixels
+// measured (13,13,15) — the brand near-black.
+//
+// Fix: home-screen icons are FULL-BLEED gold and let the OS do the rounding.
+// Favicons deliberately KEEP the rounded tile, because a browser tab does not
+// mask the icon and a full-bleed gold square is a harsh block on a light tab
+// strip.
+// ---------------------------------------------------------------------------
+
+/** Minimal PNG reader: returns {w,h,px(x,y)} for truecolour/greyscale PNGs. */
+function readPng(rel) {
+  const d = readFileSync(icons(rel))
+  const w = d.readUInt32BE(16), h = d.readUInt32BE(20)
+  const colourType = d[25]
+  let idat = Buffer.alloc(0)
+  for (let i = 8; i < d.length; ) {
+    const len = d.readUInt32BE(i)
+    if (d.slice(i + 4, i + 8).toString() === 'IDAT') idat = Buffer.concat([idat, d.slice(i + 8, i + 8 + len)])
+    i += 12 + len
+  }
+  const raw = inflateSync(idat)
+  const ch = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }[colourType]
+  const stride = w * ch + 1
+  const rows = []
+  let prev = Buffer.alloc(w * ch)
+  for (let r = 0; r < h; r++) {
+    const off = r * stride
+    const ft = raw[off]
+    const line = Buffer.from(raw.slice(off + 1, off + stride))
+    for (let k = 0; k < line.length; k++) {
+      const a = k >= ch ? line[k - ch] : 0
+      const b = prev[k]
+      const c = k >= ch ? prev[k - ch] : 0
+      if (ft === 1) line[k] = (line[k] + a) & 255
+      else if (ft === 2) line[k] = (line[k] + b) & 255
+      else if (ft === 3) line[k] = (line[k] + ((a + b) >> 1)) & 255
+      else if (ft === 4) {
+        const p = a + b - c
+        const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c)
+        line[k] = (line[k] + (pa <= pb && pa <= pc ? a : pb <= pc ? b : c)) & 255
+      }
+    }
+    prev = line
+    rows.push(line)
+  }
+  return { w, h, colourType, px: (x, y) => [...rows[y].slice(x * ch, (x + 1) * ch)] }
+}
+
+test('home-screen icons are FULL-BLEED, with no dark corners for iOS to mask', () => {
+  for (const f of ['apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png']) {
+    const { w, h, px } = readPng(f)
+    const corners = [px(1, 1), px(w - 2, 1), px(1, h - 2), px(w - 2, h - 2)]
+    for (const [i, c] of corners.entries()) {
+      const brightness = c[0] + c[1] + c[2]
+      assert.ok(
+        brightness > 150,
+        `${f} corner ${i} is ${JSON.stringify(c)} — dark. iOS/Android apply their OWN ` +
+          'rounded mask, so pre-rounded art on a dark field shows black wedges inside ' +
+          'the OS curve. Ship full-bleed art and let the OS round it.'
+      )
+    }
+  }
+})
+
+test('favicons KEEP the rounded tile (a browser tab does not mask them)', () => {
+  const { w, h, px } = readPng('favicon-32.png')
+  const corner = px(1, 1)
+  assert.ok(
+    corner[0] + corner[1] + corner[2] < 150,
+    `favicon-32 corner is ${JSON.stringify(corner)}. Favicons should keep the dark ` +
+      'field + rounded tile: nothing masks a tab icon, and a full-bleed gold square ' +
+      'reads as a harsh block on a light tab strip. This is deliberately the OPPOSITE ' +
+      'of the home-screen rule above.'
+  )
+  assert.equal(w, 32)
+  assert.equal(h, 32)
+})
+
+// ---------------------------------------------------------------------------
 // Wiring: retired art must not linger, and the mark must be ON the site.
 // ---------------------------------------------------------------------------
 
@@ -164,7 +249,7 @@ test('the cache fence advanced so the new icon reaches returning visitors', () =
   const m = read('public', 'sw.js').match(/const CACHE_NAME = 'seoul-sister-v(\d+)'/)
   assert.ok(m, 'CACHE_NAME must stay in the greppable seoul-sister-vN form.')
   assert.ok(
-    Number(m[1]) >= 8,
+    Number(m[1]) >= 9,
     `CACHE_NAME is v${m[1]}. STATIC_ASSETS precaches the icon PNGs, so a returning ` +
       'visitor keeps the OLD icon until this name changes.'
   )
