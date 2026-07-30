@@ -35,17 +35,60 @@ export const MAX_INCI_NAME_LENGTH = 100
  * bracketed shade blocks ("[#03 Concealer: ...]"), or a name longer than any
  * real INCI name.
  *
- * NOTE: a comma is deliberately NOT a signal. "1,2-Hexanediol" and
+ * NOTE: a comma is deliberately NOT a signal on its own. "1,2-Hexanediol" and
  * concentration-annotated names like "Niacinamide (20,000 ppm)" are legitimate
- * and among the most-linked ingredients in the catalog.
+ * and among the most-linked ingredients in the catalog. See the comma handling
+ * in `looksLikeIngredientList` below for the one narrow case that IS a signal.
  */
 export function isPollutedIngredientName(name: string): boolean {
   return (
     name.includes('@') ||
     name.includes('[') ||
     name.includes(']') ||
-    name.length > MAX_INCI_NAME_LENGTH
+    name.length > MAX_INCI_NAME_LENGTH ||
+    looksLikeIngredientList(name)
   )
+}
+
+/**
+ * Separators that never occur inside a SINGLE INCI name, so their presence means
+ * the string is really a list that failed to split.
+ *
+ * Found July 30 2026: the guard above caught 2,027 rows but 15 unsplit dumps were
+ * still live on the sitemap and would each render a detail page — e.g.
+ * "Glucose■ TeatreeGlycerin", "Cysteine; PDRN Essence 100: Water",
+ * "Atelocollagen | PDRN Pink One Day Serum: Water". They carry no "@", no
+ * bracket, and sit under 100 chars, so nothing rejected them.
+ *
+ * "■" is a mojibake bullet from a mis-decoded Korean source; ";" and "|" are
+ * alternate list delimiters some brands use instead of commas.
+ */
+const LIST_ONLY_SEPARATORS = ['■', ';', ' | ', ' • ']
+
+/**
+ * A comma is only a list signal when it is followed by a LETTER and sits OUTSIDE
+ * any parenthetical. This distinction is load-bearing and was measured against
+ * the live catalog:
+ *
+ *   "Niacinamide (50,000ppm)"                 -> comma+digit    -> KEEP
+ *   "Carrot Seed Oil (200 ppm, Beta-Carotene)" -> inside parens  -> KEEP
+ *   "Caprylic/Capric Triglyceride, PEG-8 ..."  -> comma+letter   -> reject
+ *
+ * A naive "contains a comma" rule would have discarded 979 legitimate ppm-annotated
+ * ingredients — the exact over-correction this file's header warns about.
+ */
+function looksLikeIngredientList(name: string): boolean {
+  if (LIST_ONLY_SEPARATORS.some((sep) => name.includes(sep))) return true
+
+  // Drop the contents of every (...) / [...] so an annotation's comma can't count.
+  let outsideParens = ''
+  let depth = 0
+  for (const ch of name) {
+    if (ch === '(' || ch === '[') { depth++; continue }
+    if (ch === ')' || ch === ']') { depth = Math.max(0, depth - 1); continue }
+    if (depth === 0) outsideParens += ch
+  }
+  return /,\s*[A-Za-z]/.test(outsideParens)
 }
 
 /**
@@ -68,11 +111,25 @@ export function excludePollutedIngredientRows<
   T extends { not(column: string, operator: string, value: string): T },
 >(query: T, column = 'name_inci'): T {
   const tooLong = '_'.repeat(MAX_INCI_NAME_LENGTH + 1) + '%'
-  return query
+  let q = query
     .not(column, 'ilike', '%@%')
     .not(column, 'ilike', '%[%')
     .not(column, 'ilike', '%]%')
     .not(column, 'like', tooLong)
+
+  // Mirror LIST_ONLY_SEPARATORS. Without these, 15 unsplit dumps stayed live on
+  // the sitemap because they carried none of the signals above (July 30 2026).
+  for (const sep of LIST_ONLY_SEPARATORS) {
+    q = q.not(column, 'ilike', `%${sep}%`)
+  }
+
+  // NOTE: the comma-outside-parentheses rule in looksLikeIngredientList cannot be
+  // expressed as a LIKE pattern, so it is enforced in TS only. That is acceptable
+  // because it is the narrowest of the signals and the dominant real-world shapes
+  // (mojibake bullets, semicolons, pipes, brackets, over-length) are all covered
+  // here. Anything relying on complete SQL-side coverage must also apply
+  // isPollutedIngredientName() to the returned rows.
+  return q
 }
 
 /**

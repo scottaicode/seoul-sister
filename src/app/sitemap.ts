@@ -1,6 +1,10 @@
 import type { MetadataRoute } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import { toSlug } from '@/lib/utils/slug'
+import {
+  excludePollutedIngredientRows,
+  isPollutedIngredientName,
+} from '@/lib/pipeline/ingredient-parser'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 3600 // Re-generate at most once per hour
@@ -60,11 +64,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .not('published_at', 'is', null)
         .lte('published_at', now.toISOString())
         .order('published_at', { ascending: false }),
-      supabase
-        .from('ss_ingredients')
-        .select('name_inci, rich_content_generated_at')
-        .eq('is_active', true)
-        .order('name_inci'),
+      // The sitemap is the AI-citation surface — a submitted URL for an unsplit
+      // INCI dump is a page we are actively asking crawlers to index. This query
+      // had NO pollution guard, so 15 dump rows were live in it (July 30 2026).
+      excludePollutedIngredientRows(
+        supabase
+          .from('ss_ingredients')
+          .select('name_inci, rich_content_generated_at')
+          .eq('is_active', true)
+          .order('name_inci')
+      ),
       supabase
         .from('ss_products')
         .select('id, updated_at, rating_avg, description_en')
@@ -86,6 +95,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const seen = new Set<string>()
       ingredientPages = ingredientsRes.data
         .map((i) => {
+          // The comma-outside-parentheses rule can't be a LIKE pattern, so the
+          // SQL guard above cannot catch it — apply the full check in TS too.
+          if (isPollutedIngredientName(i.name_inci)) return null
           const slug = toSlug(i.name_inci)
           if (!slug || seen.has(slug)) return null
           seen.add(slug)

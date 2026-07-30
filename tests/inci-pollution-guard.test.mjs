@@ -1,0 +1,159 @@
+/**
+ * Guard test — unsplit INCI dumps must never reach a public page.
+ *
+ * THE DEFECT (July 30 2026)
+ *
+ * The Feb 2026 parser wrote whole INCI lists into ss_ingredients as single
+ * "ingredients". A guard was added (isPollutedIngredientName) that rejected an
+ * "@", a bracket, or a name over 100 chars, and it caught 2,027 rows.
+ *
+ * 15 dumps still escaped it and were LIVE ON THE SITEMAP — each one a URL we
+ * were actively asking crawlers to index:
+ *
+ *   "Glucose■ TeatreeGlycerin"
+ *   "Cysteine; PDRN Essence 100: Water"
+ *   "Atelocollagen | PDRN Pink One Day Serum: Water"
+ *   "Palmitoyl Tripeptide-5; Softener: Water"
+ *
+ * They carry no "@", no bracket, and sit under 100 chars, so nothing rejected
+ * them. `src/app/sitemap.ts` had no pollution guard at all — it filtered only on
+ * is_active. For a product whose moat is AI citation, submitting garbage URLs is
+ * the expensive version of this bug.
+ *
+ * THE OVER-CORRECTION THIS ALSO PREVENTS
+ * The obvious fix — "reject any name containing a comma" — would have destroyed
+ * 979 legitimate ingredients. Measured against the live catalog:
+ *
+ *   "Niacinamide (50,000ppm)"                    comma+DIGIT      -> KEEP
+ *   "Carrot Seed Oil (200 ppm, Beta-Carotene)"   inside parens    -> KEEP
+ *   "Caprylic/Capric Triglyceride, PEG-8 ..."     comma+LETTER    -> reject
+ *
+ * So the comma rule requires a comma followed by a LETTER, OUTSIDE any
+ * parenthetical. Verified live: after the change 2,083 rows are rejected (up 56),
+ * all 15 public escapees are caught, zero legitimate rows are newly rejected, and
+ * 7,650 public ingredient pages survive.
+ *
+ * This test EXECUTES the real guard rather than asserting on source text — a
+ * classifier is exactly the kind of logic a regex over source cannot verify.
+ */
+
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { dirname, join } from 'node:path'
+import { tmpdir } from 'node:os'
+import ts from 'typescript'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const root = join(__dirname, '..')
+const read = (...p) => readFileSync(join(root, ...p), 'utf8')
+
+/** Transpile the pure guard functions out of the parser and import them. */
+async function loadGuard() {
+  const src = read('src', 'lib', 'pipeline', 'ingredient-parser.ts')
+
+  const start = src.indexOf('export const MAX_INCI_NAME_LENGTH')
+  const endMarker = 'export function excludePollutedIngredientRows'
+  const end = src.indexOf(endMarker)
+  assert.ok(start > -1 && end > start, 'guard block must exist in ingredient-parser.ts')
+
+  const js = ts.transpileModule(src.slice(start, end), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
+  }).outputText
+
+  const dir = mkdtempSync(join(tmpdir(), 'ss-inci-'))
+  const file = join(dir, 'guard.mjs')
+  writeFileSync(file, js)
+  return import(pathToFileURL(file).href)
+}
+
+test('the dumps that were live on the sitemap are rejected', async () => {
+  const { isPollutedIngredientName } = await loadGuard()
+  const escapees = [
+    'Palmitoyl Tripeptide-5; Softener: Water',
+    '■ EggplantGlycerin',
+    'Glucose■ TeatreeGlycerin',
+    'Serine (250 ppb); Histidine (250ppb)',
+    'Cysteine; PDRN Essence 100: Water',
+    'Thiamine HCl; Lotion: Water',
+    'Atelocollagen | PDRN Pink One Day Serum: Water',
+    '■ Petrolatum',
+  ]
+  for (const name of escapees) {
+    assert.equal(
+      isPollutedIngredientName(name),
+      true,
+      `must reject the unsplit dump: ${name}`
+    )
+  }
+})
+
+test('ppm-annotated ingredients survive — the 979-row over-correction', async () => {
+  const { isPollutedIngredientName } = await loadGuard()
+  const legit = [
+    'Niacinamide (50,000ppm)',
+    'Kaolin (150,000 ppm)',
+    'Carrot Seed Oil (1,000ppm)',
+    'Vaccinium Vitis-Idaea Fruit Extract (604,074ppm)',
+    'Citrus Limon (Lemon) Fruit Extract (300 ppm, Actual)',
+    '1,2-Hexanediol',
+    'Sodium Hyaluronate',
+  ]
+  for (const name of legit) {
+    assert.equal(
+      isPollutedIngredientName(name),
+      false,
+      `must KEEP the legitimate ingredient: ${name}`
+    )
+  }
+})
+
+test('a comma only signals a list when followed by a letter outside parentheses', async () => {
+  const { isPollutedIngredientName } = await loadGuard()
+  // The distinction, stated as a test so it cannot be "simplified" away.
+  assert.equal(isPollutedIngredientName('Caprylic/Capric Triglyceride, PEG-8 Glyceryl Isostearate'), true)
+  assert.equal(isPollutedIngredientName('Water, Talc'), true)
+  assert.equal(isPollutedIngredientName('Retinol (500,000 IU)'), false)
+  assert.equal(isPollutedIngredientName('Extract (200 ppm, Actual)'), false)
+})
+
+test('the original signals still work', async () => {
+  const { isPollutedIngredientName, MAX_INCI_NAME_LENGTH } = await loadGuard()
+  assert.equal(isPollutedIngredientName('Water@Glycerin@Talc'), true)
+  assert.equal(isPollutedIngredientName('[#03 Concealer] Water'), true)
+  assert.equal(isPollutedIngredientName('x'.repeat(MAX_INCI_NAME_LENGTH + 1)), true)
+  // A long-but-real INCI name must survive the length rule.
+  assert.equal(
+    isPollutedIngredientName('Methylene Bis-Benzotriazolyl Tetramethylbutylphenol'),
+    false
+  )
+})
+
+// --- The sitemap is the surface that actually mattered --------------------
+
+test('the sitemap filters polluted ingredient rows', () => {
+  const sitemapSrc = read('src', 'app', 'sitemap.ts')
+  assert.ok(
+    /excludePollutedIngredientRows\(/.test(sitemapSrc),
+    'the sitemap ingredient query must apply the SQL-side pollution guard'
+  )
+  assert.ok(
+    /isPollutedIngredientName\(i\.name_inci\)/.test(sitemapSrc),
+    'the sitemap must ALSO apply the TS guard — the comma rule cannot be a LIKE pattern'
+  )
+})
+
+test('the SQL-side filter mirrors the list separators', () => {
+  const parserSrc = read('src', 'lib', 'pipeline', 'ingredient-parser.ts')
+  assert.ok(
+    /for \(const sep of LIST_ONLY_SEPARATORS\)/.test(parserSrc),
+    'excludePollutedIngredientRows must exclude every list-only separator'
+  )
+  // The TS-only gap must stay documented, or a future reader will assume the SQL
+  // filter is complete.
+  assert.ok(
+    /expressed as a LIKE pattern, so it is enforced in TS only/.test(parserSrc),
+    'the SQL/TS coverage gap must be stated explicitly'
+  )
+})
