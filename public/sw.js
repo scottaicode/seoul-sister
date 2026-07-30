@@ -30,7 +30,10 @@
 // cache-first below, so a returning visitor keeps replaying the old chunk until
 // this name changes. Bailey is exactly that returning visitor, on a v4 cache,
 // and she is the person the fix is for. Same returning-visitor trap as v2/v3.
-const CACHE_NAME = 'seoul-sister-v5'
+// v6 (Jul 30 2026): the mobile Sign Out confirm step. Same returning-visitor
+// reasoning as v5 — it ships in the JS bundle, and the person it protects is
+// already holding an older cache.
+const CACHE_NAME = 'seoul-sister-v6'
 const STATIC_ASSETS = [
   '/',
   '/icons/apple-touch-icon.png',

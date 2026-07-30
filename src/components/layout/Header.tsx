@@ -43,6 +43,19 @@ export default function Header() {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [isDemo, setIsDemo] = useState(false)
+  // Two-step confirm for the MOBILE menu's Sign Out (July 30 2026).
+  //
+  // That button is full-width (`w-full px-4 py-3`) and sits LAST in the menu,
+  // and the fixed BottomNav is z-50 while this overlay is z-40 — so the nav bar
+  // renders on top of the menu's bottom edge and `pb-24` parks Sign Out right at
+  // that boundary. A thumb aiming at a BottomNav icon or the last nav link that
+  // lands a few pixels off hits an irreversible action instead. Bailey has
+  // already reported a scrolling bug in exactly this region.
+  //
+  // Confirmed the paywall-escape-hatch theory was NOT the cause: she has no
+  // `paywall_reached_at` stamp, so she was never shown /subscribe. A mistap on
+  // this control is what remains.
+  const [confirmSignOut, setConfirmSignOut] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const moreMenuRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
@@ -90,6 +103,15 @@ export default function Header() {
     if (moreMenuOpen) document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [moreMenuOpen])
+
+  // Closing the menu discards a half-answered confirm, so reopening it never
+  // shows a stale "Sign out of Seoul Sister?" prompt the user didn't just ask
+  // for — which would be its own mistap risk. Keyed on the menu state rather
+  // than patched into all nine setMobileMenuOpen(false) call sites, so a future
+  // nav link cannot forget it.
+  useEffect(() => {
+    if (!mobileMenuOpen) setConfirmSignOut(false)
+  }, [mobileMenuOpen])
 
   async function handleSignOut() {
     setProfileMenuOpen(false)
@@ -378,14 +400,50 @@ export default function Header() {
                 </>
               )}
               <div className="border-t border-white/10 mt-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => { setMobileMenuOpen(false); handleSignOut() }}
-                  className="w-full px-4 py-3 rounded-xl font-medium text-sm text-rose-400/50 hover:bg-rose-500/5 hover:text-rose-400 transition-all duration-200 flex items-center gap-2 text-left"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Sign Out
-                </button>
+                {confirmSignOut ? (
+                  // Deliberately replaces the button in place rather than opening
+                  // a modal: the tap that got us here was probably aimed slightly
+                  // off, so the safe action must not appear under that same thumb.
+                  // "Cancel" is first and full-height; "Sign out" is the smaller,
+                  // deliberate target.
+                  <div className="px-4 py-3 rounded-xl bg-rose-500/5 border border-rose-400/20">
+                    <p className="text-sm text-white/80 font-medium">
+                      Sign out of Seoul Sister?
+                    </p>
+                    <p className="mt-1 text-xs text-white/40">
+                      You&apos;ll need your email and password to get back in.
+                    </p>
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setConfirmSignOut(false)}
+                        className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium bg-white/10 text-white/80 hover:bg-white/15 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConfirmSignOut(false)
+                          setMobileMenuOpen(false)
+                          handleSignOut()
+                        }}
+                        className="px-4 py-2.5 rounded-lg text-sm font-medium text-rose-400 hover:bg-rose-500/10 transition-colors"
+                      >
+                        Sign out
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmSignOut(true)}
+                    className="w-full px-4 py-3 rounded-xl font-medium text-sm text-rose-400/50 hover:bg-rose-500/5 hover:text-rose-400 transition-all duration-200 flex items-center gap-2 text-left"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </button>
+                )}
               </div>
             </nav>
           </div>
