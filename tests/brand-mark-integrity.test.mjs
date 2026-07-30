@@ -245,11 +245,57 @@ test('both headers render the brand mark', () => {
   }
 })
 
+test("Next's file-convention icons are the brand mark, not something else", () => {
+  // src/app/icon.svg and src/app/apple-icon.svg are a Next.js FILE CONVENTION —
+  // their mere existence makes Next emit <link> tags. Both shipped as a gold STAR
+  // unrelated to the brand mark, and they are not harmless:
+  //   - /icon.svg is emitted LAST with sizes="any", so it can win the browser tab
+  //     over the favicon PNGs declared in layout.tsx.
+  //   - apple-icon.svg makes Next emit an apple-touch-icon link, and iOS cannot
+  //     render SVG for a home-screen icon at all — the exact bug f70d937 fixed.
+  // So they must carry the same mark, or not exist.
+  for (const f of ['icon.svg', 'apple-icon.svg']) {
+    const p = join(root, 'src', 'app', f)
+    if (!existsSync(p)) continue // deleting them is also a valid answer
+    const code = readFileSync(p, 'utf8').replace(/<!--[\s\S]*?-->/g, '')
+    assert.match(
+      code,
+      /<path\b/,
+      `src/app/${f} has no <path> — it must carry the outlined SS monogram.`
+    )
+    assert.ok(
+      !/font-family|<text[\s>]/.test(code),
+      `src/app/${f} depends on a font. Same rule as the other brand SVGs.`
+    )
+    // The real discriminator is SIZE, and it is a big margin rather than a
+    // fingerprint: the outlined serif monogram is ~4KB of Bezier data, while the
+    // gold star it replaced was a 10-line polygon (~330 bytes). Anything that
+    // small is not this mark. An earlier version of this test tried to detect the
+    // star by its straight-line path commands and PASSED against the real star —
+    // so this assertion was rewritten after being verified to fail on it.
+    const bytes = statSync(p).size
+    assert.ok(
+      bytes > 2000,
+      `src/app/${f} is only ${bytes} bytes. The outlined SS monogram is ~4KB of curve ` +
+        'data; this is almost certainly simple placeholder art (the gold star that ' +
+        'shipped here originally was ~330 bytes). A Next file-convention icon ' +
+        'overrides <link> tags we set deliberately in layout.tsx.'
+    )
+    // And it must be curve-based: Bezier commands are what a real letterform has.
+    const curves = (code.match(/[QqCc]/g) || []).length
+    assert.ok(
+      curves > 50,
+      `src/app/${f} has only ${curves} Bezier commands — polygon/placeholder art, not ` +
+        'the serif monogram.'
+    )
+  }
+})
+
 test('the cache fence advanced so the new icon reaches returning visitors', () => {
   const m = read('public', 'sw.js').match(/const CACHE_NAME = 'seoul-sister-v(\d+)'/)
   assert.ok(m, 'CACHE_NAME must stay in the greppable seoul-sister-vN form.')
   assert.ok(
-    Number(m[1]) >= 9,
+    Number(m[1]) >= 10,
     `CACHE_NAME is v${m[1]}. STATIC_ASSETS precaches the icon PNGs, so a returning ` +
       'visitor keeps the OLD icon until this name changes.'
   )

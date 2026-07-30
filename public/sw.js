@@ -44,7 +44,11 @@
 // field. iOS applies its OWN mask, so those corners showed as black wedges just
 // inside the OS curve. The PNGs are precached here, so the corrected full-bleed
 // art cannot reach an installed app without this bump.
-const CACHE_NAME = 'seoul-sister-v9'
+// v10 (Jul 30 2026): src/app/icon.svg and apple-icon.svg were a leftover GOLD
+// STAR. They are a Next FILE CONVENTION, so their existence emits <link> tags —
+// /icon.svg goes out last with sizes="any" and can win the browser tab over the
+// favicons we set deliberately. Replaced with the monogram.
+const CACHE_NAME = 'seoul-sister-v10'
 const STATIC_ASSETS = [
   '/',
   '/icons/apple-touch-icon.png',
