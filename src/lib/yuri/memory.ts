@@ -821,7 +821,15 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
 
   // User product inventory (products the user owns, with texture data for layering)
   if (context.userProducts.length > 0) {
-    const productLines = context.userProducts.map((up) => {
+    // Each entry carries its OWN product alongside its rendered line. The split
+    // into confirmed/inferred below used to re-pair a flat string[] against
+    // context.userProducts BY INDEX, which silently assumed the two arrays stayed
+    // the same length. The visibility block below appends narrative lines to that
+    // same array, so every index past it ran off the end of userProducts and
+    // `up.learned_from` threw on undefined — taking down authenticated Yuri for
+    // every user who owned a product with no ingredients on file (Bailey,
+    // July 30 2026). Pairing at construction makes the desync unrepresentable.
+    const productEntries = context.userProducts.map((up) => {
       const parts: string[] = []
       parts.push(up.custom_name || 'Unknown product')
       const meta: string[] = []
@@ -848,7 +856,7 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
       } else {
         parts.push('[NO INGREDIENTS ON FILE — not in our catalog and never captured]')
       }
-      return `- ${parts.join(' ')}`
+      return { product: up, line: `- ${parts.join(' ')}` }
     })
 
     // How much of this shelf you can actually see, as a FACT.
@@ -866,10 +874,13 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
       const raw = up as unknown as Record<string, unknown>
       return !up.product_id && !(raw.ingredients_inci as string[] | null)?.length
     })
+    // Narrative lines that belong to NO single product. Kept in their own array
+    // and appended after the per-product split — never mixed into productEntries.
+    const visibilityLines: string[] = []
     if (blindProducts.length > 0) {
       const total = context.userProducts.length
       const seen = total - blindProducts.length
-      productLines.push(
+      visibilityLines.push(
         '',
         `INGREDIENT VISIBILITY: you have ingredients for ${seen} of ${total} of their products. You CANNOT see what is in: ${blindProducts
           .map((p) => p.custom_name || 'unnamed product')
@@ -892,10 +903,11 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
     // Yuri decides what to do with a low-confidence entry (Sole Authority).
     const isInferred = (up: UserProduct) =>
       up.learned_from === 'conversation' || up.learned_from === 'conversation_inferred'
-    // Pair each product with its rendered line by INDEX — never by object
-    // identity or indexOf(), which collapse on duplicate-shaped entries.
-    const confirmedLines = productLines.filter((_, i) => !isInferred(context.userProducts[i]))
-    const inferredLines = productLines.filter((_, i) => isInferred(context.userProducts[i]))
+    // Each entry already carries its own product, so the line and the row it
+    // describes cannot drift apart — no index arithmetic, no indexOf() (which
+    // would collapse on duplicate-shaped entries).
+    const confirmedLines = productEntries.filter((e) => !isInferred(e.product)).map((e) => e.line)
+    const inferredLines = productEntries.filter((e) => isInferred(e.product)).map((e) => e.line)
 
     const blocks: string[] = []
     if (confirmedLines.length > 0) {
@@ -907,6 +919,11 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
           `These were auto-matched to catalog products from things the user said, sometimes from a routine STEP rather than a product they own. Known failure shapes: an instruction ("Cool water rinse"), a device ("LED mask", "Ice roller"), or a placeholder ("Moisturizer (TBD)") matched to an unrelated leave-on product. **Do not say "your X" or claim they own these.** If one matters for what you're about to recommend, ask ("are you actually using X, or did I pick that up wrong?") — that question costs you nothing and asserting a wrong product costs you their trust.\n` +
           inferredLines.join('\n')
       )
+    }
+    // The visibility fact describes the shelf as a whole, so it trails both
+    // blocks rather than sitting inside whichever one happened to render last.
+    if (visibilityLines.length > 0) {
+      blocks.push(visibilityLines.join('\n').trimStart())
     }
     sections.push(
       `## Your Product Inventory\nUse texture_weight for layering order when building routines.\n${blocks.join('\n\n')}`
