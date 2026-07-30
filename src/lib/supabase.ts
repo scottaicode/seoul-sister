@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { resilientAuthStorage } from '@/lib/auth/resilient-storage'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -48,6 +49,20 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storageKey: `sb-${new URL(supabaseUrl).hostname.split('.')[0]}-auth-token`,
     // Magic-link / OAuth callbacks arrive as URL fragments.
     detectSessionInUrl: true,
+    // Mirror the session into a cookie as well as localStorage (July 29 2026).
+    //
+    // Bailey still re-logged in on every launch after the cold-launch fix, while
+    // Scott's iPhone on the SAME build and origin stayed signed in. The database
+    // settled it: one session row, freshly created, never refreshed — so the
+    // session was stored correctly and her browser could not find it again.
+    // Nothing here clears it, so iOS is evicting the storage (Safari's 7-day cap
+    // on script-writable storage, tracking-protection heuristics, low-disk
+    // reclamation — all per-device, which is why one iPhone differs from another).
+    //
+    // We cannot turn those off from a web page, so the session no longer lives in
+    // only one place. See resilient-storage.ts for the security reasoning.
+    storage:
+      typeof window !== 'undefined' ? resilientAuthStorage : undefined,
   },
 })
 
