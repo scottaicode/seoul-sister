@@ -160,3 +160,86 @@ test('the install page has no dismiss mechanism', () => {
     'The permanent install page must never be dismissible.'
   )
 })
+
+// ---------------------------------------------------------------------------
+// DISCOVERY — a page nobody can find is not a fix
+// ---------------------------------------------------------------------------
+//
+// Scott: "Are people going to know to go there? How would they know?"
+//
+// /install existed and was correct, but the only route was 12px grey footer text
+// at the bottom of a long landing page. He refreshed looking for it and could not
+// find it. Discovery is now layered: footer (deliberate hunt), mobile menu (where
+// a phone user looks for "app"), and a banner (the only one that reaches someone
+// who was NOT looking).
+
+const bannerSrc = read('src', 'components', 'pwa', 'InstallBanner.tsx')
+
+test('the mobile menu offers install, not just the footer', () => {
+  // The hamburger is where a phone user actually looks. The footer is not.
+  assert.match(
+    landingSrc,
+    /Add to Home Screen/,
+    'The mobile nav menu must offer install. A footer-only link is unfindable — ' +
+      'that is exactly what happened.'
+  )
+})
+
+test('the landing page renders the install banner', () => {
+  assert.match(
+    landingSrc,
+    /<InstallBanner \/>/,
+    'Lost the banner — the only surface that reaches a visitor who was not ' +
+      'already looking for install help.'
+  )
+})
+
+test('the banner waits for a return visit', () => {
+  // Asking a first-time stranger to install before they have decided they like
+  // Yuri reads as a pop-up and costs conversion.
+  assert.match(
+    bannerSrc,
+    /visits < 2/,
+    'The banner must not fire on a first visit.'
+  )
+})
+
+test('the banner is mobile-only and hides once installed', () => {
+  assert.match(bannerSrc, /md:hidden/, 'Install is a phone action; a desktop bar is noise.')
+  assert.match(
+    bannerSrc,
+    /display-mode: standalone/,
+    'Must not nag someone who already installed.'
+  )
+})
+
+test('the banner is a bar, never a modal over the widget', () => {
+  // The Yuri widget is the conversion surface and outranks this.
+  assert.ok(
+    !/fixed inset-0/.test(bannerSrc),
+    'The banner must never be a full-screen overlay — it would cover the Yuri widget.'
+  )
+})
+
+test('the banner does not fight the nav for the sticky slot', () => {
+  // The landing nav owns `sticky top-0`. Two sticky elements in the same slot
+  // overlap each other. Comments are stripped first: the code explains this rule
+  // in prose, and a whole-file regex flags that explanation as the violation.
+  const code = bannerSrc
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '')
+  assert.ok(
+    !/sticky top-0/.test(code),
+    'The banner sits above a sticky nav; it must not also be sticky top-0.'
+  )
+})
+
+test('storage failure stays silent rather than popping the bar', () => {
+  // Private browsing gives no visit count, so we cannot tell a first-timer from a
+  // returning visitor. Silence beats pop-up-on-first-view.
+  assert.match(
+    bannerSrc,
+    /catch\s*\{[\s\S]{0,400}?return/,
+    'A storage error must bail out, not fall through to showing the banner.'
+  )
+})

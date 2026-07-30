@@ -8,10 +8,11 @@ import {
   ScanLine, Brain, ListOrdered, Star, ArrowRight,
   Menu, X, FlaskConical, Sun, Timer, CloudSun,
   Activity, BookOpen, Heart, Beaker, DollarSign, TrendingUp,
-  Filter, Package, Layers, PiggyBank, HeartPulse
+  Filter, Package, Layers, PiggyBank, HeartPulse, Smartphone
 } from 'lucide-react'
 import PricingCards from '@/components/pricing/PricingCards'
 import TryYuriSection from '@/components/widget/TryYuriSection'
+import InstallBanner from '@/components/pwa/InstallBanner'
 import { MAX_FREE_MESSAGES } from '@/lib/utils/widget-session'
 
 const fadeUp = {
@@ -103,6 +104,13 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-seoul-dark font-sans">
 
+      {/* Install offer for returning mobile visitors. The footer link and the menu
+          item only reach someone who goes looking; this is the one surface that
+          reaches a visitor who wasn't. Second visit onward, mobile only, hidden
+          once installed, and a BAR rather than a modal so it can never cover the
+          Yuri widget. */}
+      <InstallBanner />
+
       {/* Navigation */}
       <nav className="sticky top-0 z-40 bg-seoul-dark/80 backdrop-blur-md border-b border-white/5">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -156,6 +164,22 @@ export default function LandingPage() {
                     {link.label}
                   </Link>
                 ))}
+
+                {/* Install lives in the MENU, not just the footer (July 29 2026).
+                    Scott refreshed the landing page looking for install help and
+                    could not find it: the only link was 12px grey text at the
+                    bottom of a very long page. The hamburger is where a phone user
+                    actually looks for "app", so it goes here — and styled as its
+                    own item rather than a seventh grey link, because it is a
+                    different KIND of action from a content page. */}
+                <Link
+                  href="/install"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="mt-2 py-2.5 px-3 flex items-center gap-2 text-sm font-medium text-gold-light bg-gold/10 border border-gold/20 rounded-lg hover:bg-gold/15 transition-colors"
+                >
+                  <Smartphone className="w-4 h-4" />
+                  Add to Home Screen
+                </Link>
               </div>
             </motion.div>
           )}
