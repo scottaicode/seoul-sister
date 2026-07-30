@@ -159,7 +159,15 @@ export interface UserRoutine {
 export interface RoutineProduct {
   id: string
   routine_id: string
-  product_id: string
+  /**
+   * NULL for a CUSTOM step — a device ("LED mask"), an action ("Shower /
+   * cleanse"), or a product we don't carry. The step's identity then lives in
+   * `notes`. This was typed non-nullable while the live column had already been
+   * made nullable, so every null-handling bug in the routine paths typechecked
+   * cleanly (the July 30 2026 conflict-check outage among them). Address rows by
+   * `id`, never by `product_id`.
+   */
+  product_id: string | null
   step_order: number
   frequency: 'daily' | 'every_other_day' | 'twice_week' | 'weekly'
   notes: string | null

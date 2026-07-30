@@ -180,12 +180,16 @@ function RoutineCard({
     return { has_conflicts: data.has_conflicts, conflicts: data.conflicts }
   }
 
-  async function handleRemoveProduct(productId: string | null) {
-    if (!productId) return  // Custom steps can't be removed via this API
-    setRemoving(productId)
+  // Both handlers address rows by ss_routine_products.id, so a custom step (a
+  // device, a shower step, a product we don't carry) is as removable and
+  // reorderable as a catalog product. Keying on product_id made those rows
+  // permanently stuck — the buttons had to be hidden because the API could not
+  // express the request at all.
+  async function handleRemoveStep(stepId: string) {
+    setRemoving(stepId)
     try {
       const headers = await getAuthHeaders()
-      await fetch(`/api/routine/${routine.id}/products?product_id=${productId}`, {
+      await fetch(`/api/routine/${routine.id}/products?step_id=${stepId}`, {
         method: 'DELETE',
         headers,
       })
@@ -195,28 +199,24 @@ function RoutineCard({
     }
   }
 
-  async function handleMoveProduct(productId: string | null, direction: 'up' | 'down') {
-    if (!productId) return  // Custom steps (null product_id) can't be reordered via this API
-
-    // Reorder API addresses rows by product_id, so we work entirely in the
-    // filtered (non-null) space and let null-product steps keep their saved
-    // positions on the server.
-    const productIds = routine.products
-      .map((rp) => rp.product_id)
-      .filter((id): id is string => id !== null)
-    const currentIndex = productIds.indexOf(productId)
+  async function handleMoveStep(stepId: string, direction: 'up' | 'down') {
+    // Order over ALL steps, not just the catalog ones. The old version worked in
+    // a null-filtered space, which left custom steps pinned to their saved
+    // step_order and let them collide with a renumbered product.
+    const ordered = [...routine.products].sort((a, b) => a.step_order - b.step_order)
+    const currentIndex = ordered.findIndex((rp) => rp.id === stepId)
     if (currentIndex === -1) return
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
-    if (targetIndex < 0 || targetIndex >= productIds.length) return
+    if (targetIndex < 0 || targetIndex >= ordered.length) return
 
-    const newOrder = [...productIds]
+    const newOrder = ordered.map((rp) => rp.id)
     ;[newOrder[currentIndex], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[currentIndex]]
 
     const headers = await getAuthHeaders()
     await fetch(`/api/routine/${routine.id}/products`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...headers },
-      body: JSON.stringify({ product_ids: newOrder }),
+      body: JSON.stringify({ step_ids: newOrder }),
     })
     onRefresh()
   }
@@ -278,30 +278,25 @@ function RoutineCard({
               .map((rp, index) => (
                 <div key={rp.id}>
                   <div className="flex items-center gap-2.5 py-2 px-1 group">
-                    {/* Reorder buttons — only render for steps with a real product_id (the
-                        routine API addresses rows by product_id, so null-product custom
-                        entries can't be reordered through this UI). */}
+                    {/* Reorder is available on EVERY step — rows are addressed by their
+                        own id, so a custom step moves like any other. */}
                     <div className="flex flex-col gap-0.5">
-                      {rp.product_id ? (
-                        <>
-                          <button
-                            onClick={() => handleMoveProduct(rp.product_id, 'up')}
-                            disabled={index === 0}
-                            className="p-0.5 rounded text-white/20 hover:text-white/50 disabled:opacity-0 transition-all"
-                          >
-                            <ChevronUp className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={() => handleMoveProduct(rp.product_id, 'down')}
-                            disabled={index === routine.products.length - 1}
-                            className="p-0.5 rounded text-white/20 hover:text-white/50 disabled:opacity-0 transition-all"
-                          >
-                            <ChevronDown className="w-3 h-3" />
-                          </button>
-                        </>
-                      ) : (
-                        <div className="w-3 h-6" />
-                      )}
+                      <button
+                        onClick={() => handleMoveStep(rp.id, 'up')}
+                        disabled={index === 0}
+                        className="p-0.5 rounded text-white/20 hover:text-white/50 disabled:opacity-0 transition-all"
+                        aria-label="Move step up"
+                      >
+                        <ChevronUp className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => handleMoveStep(rp.id, 'down')}
+                        disabled={index === routine.products.length - 1}
+                        className="p-0.5 rounded text-white/20 hover:text-white/50 disabled:opacity-0 transition-all"
+                        aria-label="Move step down"
+                      >
+                        <ChevronDown className="w-3 h-3" />
+                      </button>
                     </div>
 
                     <span className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-bold text-white/40 flex-shrink-0">
@@ -364,19 +359,19 @@ function RoutineCard({
                       <Clock className="w-3.5 h-3.5" />
                     </button>
 
-                    {rp.product_id && (
-                      <button
-                        onClick={() => handleRemoveProduct(rp.product_id)}
-                        disabled={removing === rp.product_id}
-                        className="p-1 rounded text-white/15 hover:text-red-400 md:opacity-0 md:group-hover:opacity-100 transition-all"
-                      >
-                        {removing === rp.product_id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <X className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    )}
+                    {/* Removable on every step, custom entries included. */}
+                    <button
+                      onClick={() => handleRemoveStep(rp.id)}
+                      disabled={removing === rp.id}
+                      className="p-1 rounded text-white/15 hover:text-red-400 md:opacity-0 md:group-hover:opacity-100 transition-all"
+                      aria-label="Remove step"
+                    >
+                      {removing === rp.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <X className="w-3.5 h-3.5" />
+                      )}
+                    </button>
                   </div>
 
                   {/* Wait time indicator */}

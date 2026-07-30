@@ -2478,6 +2478,91 @@ async function executeAddToRoutine(
 // Tool: remove_from_routine
 // ---------------------------------------------------------------------------
 
+/**
+ * Find a CUSTOM routine step (product_id IS NULL) by the name the user said.
+ *
+ * save_routine stores a custom step's identity in `notes`, as either
+ * "<name> — <detail>" or bare "<name>". Matching is EXACT on the name portion,
+ * case-insensitive — deliberately not fuzzy. A loose match on a remove deletes
+ * a step the user did not mean, which is strictly worse than declining.
+ * Returns the row id, or null when nothing matches unambiguously.
+ */
+async function findCustomRoutineStepByName(
+  db: ReturnType<typeof getServiceClient>,
+  userId: string,
+  routineType: string,
+  productName: string
+): Promise<string | null> {
+  const { data: routine } = await db
+    .from('ss_user_routines')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('routine_type', routineType)
+    .eq('is_active', true)
+    .single()
+
+  if (!routine) return null
+
+  const { data: steps } = await db
+    .from('ss_routine_products')
+    .select('id, notes')
+    .eq('routine_id', routine.id)
+    .is('product_id', null)
+
+  const wanted = productName.trim().toLowerCase()
+  const matches = (steps || []).filter((s) => {
+    const notes = (s.notes as string | null)?.trim().toLowerCase()
+    if (!notes) return false
+    // Whole note, or the name portion before the detail separator.
+    return notes === wanted || notes.split(' — ')[0].trim() === wanted
+  })
+
+  // Ambiguity is a refusal, not a coin flip.
+  return matches.length === 1 ? (matches[0].id as string) : null
+}
+
+/** Delete one routine step by row id and renumber what remains. */
+async function deleteRoutineStepById(
+  db: ReturnType<typeof getServiceClient>,
+  stepId: string,
+  label: string
+): Promise<string> {
+  const { data: step } = await db
+    .from('ss_routine_products')
+    .select('routine_id')
+    .eq('id', stepId)
+    .single()
+
+  const { error } = await db.from('ss_routine_products').delete().eq('id', stepId)
+  if (error) {
+    return JSON.stringify({ error: `Failed to remove step: ${error.message}` })
+  }
+
+  if (step?.routine_id) {
+    const { data: remaining } = await db
+      .from('ss_routine_products')
+      .select('id, step_order')
+      .eq('routine_id', step.routine_id)
+      .order('step_order', { ascending: true })
+
+    for (let i = 0; i < (remaining || []).length; i++) {
+      if (remaining![i].step_order !== i + 1) {
+        await db
+          .from('ss_routine_products')
+          .update({ step_order: i + 1 })
+          .eq('id', remaining![i].id)
+      }
+    }
+  }
+
+  return JSON.stringify({
+    success: true,
+    removed: label,
+    was_custom_step: true,
+    message: `Removed "${label}" from the routine.`,
+  })
+}
+
 async function executeRemoveFromRoutine(
   input: Record<string, unknown>,
   userId: string
@@ -2499,13 +2584,25 @@ async function executeRemoveFromRoutine(
     if (match) {
       productId = match.id
     } else {
+      // No catalog match does NOT mean the step isn't there — it may be a CUSTOM
+      // step (product_id IS NULL) whose identity lives in `notes`. Those were
+      // unremovable by any path: this tool keyed deletes on product_id, so Yuri
+      // could name the step, agree it should go, and be unable to remove it.
+      // Matched on the notes text EXACTLY (case-insensitive, or as a prefix
+      // before the " — " detail separator save_routine writes) — never fuzzily,
+      // which is the same discipline as the strict catalog resolver above.
+      const customStepId = await findCustomRoutineStepByName(db, userId, routineType, productName)
+      if (customStepId) {
+        return await deleteRoutineStepById(db, customStepId, productName)
+      }
+
       return JSON.stringify({
-        error: `No confident catalog match for "${productName}" — refusing to remove a near-miss product from the routine.`,
+        error: `No confident catalog match for "${productName}", and no custom step in this routine matches that name either — refusing to remove a near-miss product.`,
         reason: 'no_confident_match',
         guidance:
-          `Do NOT retry with a reworded name. Call get_routine_context to see the actual saved steps, ` +
-          `then remove by the exact product_id of the step you mean. If the step is a custom entry ` +
-          `(no catalog product), say so honestly instead of removing something else.`,
+          `Do NOT retry with a reworded name. Call get_routine_context to see the actual saved steps — ` +
+          `each one now carries its exact name (custom steps included). Then call this tool again with ` +
+          `either the catalog product_name spelled as it appears there, or the exact text of the custom step.`,
       })
     }
   }
@@ -3047,16 +3144,26 @@ async function executeGetRoutineContext(
   if (routine) {
     const { data: steps } = await db
       .from('ss_routine_products')
-      .select('step_order, frequency, notes, product:product_id (name_en, brand_en, category)')
+      .select('id, step_order, frequency, notes, product:product_id (name_en, brand_en, category)')
       .eq('routine_id', routine.id)
       .order('step_order', { ascending: true })
 
     if (steps) {
       currentRoutineSteps = steps.map((s) => {
         const prod = s.product as unknown as { name_en: string; brand_en: string; category: string } | null
+        // A custom step's name lives in `notes`, written by save_routine as
+        // "<name> — <detail>" or bare "<name>". Rendering it as "(unknown)" told
+        // Yuri a step existed without telling her WHICH — so she could not name
+        // it, reason about it, or ask the user about it. Show the name portion,
+        // and flag the step as custom so she knows its ingredients are unknown.
+        const customName = !prod && s.notes
+          ? (s.notes as string).split(' — ')[0].trim()
+          : null
         return {
+          step_id: s.id,
+          is_custom_step: !prod,
           step_order: s.step_order,
-          product_name: prod?.name_en || '(unknown)',
+          product_name: prod?.name_en || customName || '(unnamed step)',
           brand: prod?.brand_en || null,
           category: prod?.category || null,
           frequency: s.frequency,

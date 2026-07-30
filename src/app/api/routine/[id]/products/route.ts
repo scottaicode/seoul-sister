@@ -12,9 +12,18 @@ const addProductSchema = z.object({
   frequency: z.enum(['daily', 'every_other_day', 'twice_week', 'weekly']).optional(),
 })
 
-const reorderSchema = z.object({
-  product_ids: z.array(z.string().uuid()).min(1),
-})
+// Reorder accepts step_ids (ss_routine_products.id) — the addressing that works
+// for EVERY row. product_ids is kept for one release because a cached SPA bundle
+// may still send it; it cannot address custom steps (product_id IS NULL), which
+// is why those rows were unreorderable and undeletable (July 30 2026).
+const reorderSchema = z
+  .object({
+    step_ids: z.array(z.string().uuid()).min(1).optional(),
+    product_ids: z.array(z.string().uuid()).min(1).optional(),
+  })
+  .refine((v) => !!v.step_ids || !!v.product_ids, {
+    message: 'step_ids (preferred) or product_ids is required',
+  })
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -131,16 +140,26 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 }
 
-/** DELETE /api/routine/:id/products?product_id=xxx — Remove product from routine */
+/**
+ * DELETE /api/routine/:id/products?step_id=xxx — Remove a step from the routine.
+ *
+ * Addressed by the ROW id so custom steps are reachable. Keying on product_id
+ * made every product_id IS NULL row (a device, a shower step, a product we don't
+ * carry) permanently undeletable — Bailey could not remove her own adapalene
+ * step, and the UI had to hide the button rather than call an API that could not
+ * express the request. `product_id` is still accepted for one release so a
+ * cached client bundle keeps working.
+ */
 export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const user = await requireAuth(request)
     const supabase = getServiceClient()
     const { id: routineId } = await context.params
+    const stepId = request.nextUrl.searchParams.get('step_id')
     const productId = request.nextUrl.searchParams.get('product_id')
 
-    if (!productId) {
-      throw new AppError('product_id query parameter is required', 400)
+    if (!stepId && !productId) {
+      throw new AppError('step_id (preferred) or product_id query parameter is required', 400)
     }
 
     // Verify ownership
@@ -155,11 +174,12 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       throw new AppError('Routine not found', 404)
     }
 
-    const { error } = await supabase
-      .from('ss_routine_products')
-      .delete()
-      .eq('routine_id', routineId)
-      .eq('product_id', productId)
+    // Ownership was verified above via routineId; both branches stay scoped to
+    // that routine so a step id belonging to someone else cannot be deleted.
+    const deleteQuery = supabase.from('ss_routine_products').delete().eq('routine_id', routineId)
+    const { error } = stepId
+      ? await deleteQuery.eq('id', stepId)
+      : await deleteQuery.eq('product_id', productId as string)
 
     if (error) throw error
 
@@ -194,7 +214,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const supabase = getServiceClient()
     const { id: routineId } = await context.params
     const body = await request.json()
-    const { product_ids } = reorderSchema.parse(body)
+    const { step_ids, product_ids } = reorderSchema.parse(body)
 
     // Verify ownership
     const { data: routine } = await supabase
@@ -208,13 +228,28 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       throw new AppError('Routine not found', 404)
     }
 
-    // Update step_order for each product
-    for (let i = 0; i < product_ids.length; i++) {
-      await supabase
-        .from('ss_routine_products')
-        .update({ step_order: i + 1 })
-        .eq('routine_id', routineId)
-        .eq('product_id', product_ids[i])
+    // step_ids is the full ordered list INCLUDING custom steps, so the resulting
+    // step_order is contiguous across the whole routine. The product_ids path
+    // renumbers only the catalog rows it was given, which is how a custom step
+    // could end up sharing a step_order with a real product — it is kept solely
+    // for one release of client-bundle compatibility.
+    if (step_ids) {
+      for (let i = 0; i < step_ids.length; i++) {
+        const { error } = await supabase
+          .from('ss_routine_products')
+          .update({ step_order: i + 1 })
+          .eq('routine_id', routineId)
+          .eq('id', step_ids[i])
+        if (error) throw error
+      }
+    } else {
+      for (let i = 0; i < (product_ids as string[]).length; i++) {
+        await supabase
+          .from('ss_routine_products')
+          .update({ step_order: i + 1 })
+          .eq('routine_id', routineId)
+          .eq('product_id', (product_ids as string[])[i])
+      }
     }
 
     return NextResponse.json({ success: true })
