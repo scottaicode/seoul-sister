@@ -198,3 +198,121 @@ test('the cookie is Secure and SameSite-scoped', async () => {
   assert.match(src, /Secure/, 'Lost the Secure flag on https.')
   assert.match(src, /Max-Age=0/, 'Deletion must set Max-Age=0, or sign-out leaks a session.')
 })
+
+// ---------------------------------------------------------------------------
+// A mirror that goes stale is WORSE than no mirror (July 30 2026)
+//
+// `document.cookie` fails SILENTLY when the cookie exceeds ~4KB or the domain
+// quota is full — no throw, no return value. If that happens the cookie keeps
+// its PREVIOUS value while localStorage rotates on, so the mirror ends up
+// holding an already-used refresh token.
+//
+// Refresh tokens are single-use. Presenting a rotated one trips GoTrue's reuse
+// detection, which revokes the whole session family server-side; auth-js then
+// gets a non-retryable auth error and clears storage (GoTrueClient.js:1990-1992),
+// signing the user out for real. That is this file's own stated symptom, caused
+// by this file. So a cookie that cannot be written truthfully must be removed.
+// ---------------------------------------------------------------------------
+
+/** Adapter over a document.cookie that silently refuses oversized writes. */
+async function loadAdapterWithCookieCap(maxBytes) {
+  const ts = await import('typescript')
+  const src = read('src', 'lib', 'auth', 'resilient-storage.ts')
+  const { outputText } = (ts.default ?? ts).transpileModule(src, {
+    compilerOptions: { module: 99, target: 99 },
+  })
+
+  const store = new Map()
+  let cookieJar = []
+
+  globalThis.window = {
+    location: { protocol: 'https:' },
+    localStorage: {
+      getItem: (k) => (store.has(k) ? store.get(k) : null),
+      setItem: (k, v) => store.set(k, v),
+      removeItem: (k) => store.delete(k),
+    },
+  }
+  globalThis.document = {
+    get cookie() {
+      return cookieJar.map(([n, v]) => `${n}=${v}`).join('; ')
+    },
+    set cookie(str) {
+      const [pair, ...attrs] = str.split('; ')
+      const eq = pair.indexOf('=')
+      const name = pair.slice(0, eq)
+      const value = pair.slice(eq + 1)
+      const maxAge = attrs.find((a) => a.startsWith('Max-Age='))
+      if (maxAge && maxAge.split('=')[1] === '0') {
+        cookieJar = cookieJar.filter(([n]) => n !== name)
+        return
+      }
+      // The real browser behaviour we are guarding against: too big → the write
+      // is dropped on the floor and the OLD value survives.
+      if (Buffer.byteLength(str) > maxBytes) return
+      cookieJar = cookieJar.filter(([n]) => n !== name)
+      cookieJar.push([name, value])
+    },
+  }
+
+  const url = 'data:text/javascript;base64,' + Buffer.from(outputText).toString('base64')
+  const mod = await import(url + '#capped' + maxBytes)
+  return {
+    adapter: mod.resilientAuthStorage,
+    store,
+    evictLocalStorage: () => store.clear(),
+    rawCookie: () => (cookieJar.length ? cookieJar[0][1] : null),
+  }
+}
+
+test('an oversized cookie write does not leave a STALE token behind', async () => {
+  // Room for the first (small) session, not for the second (large) one.
+  const { adapter, rawCookie } = await loadAdapterWithCookieCap(400)
+
+  const OLD = JSON.stringify({ access_token: 'old', refresh_token: 'rotated-away' })
+  adapter.setItem(KEY, OLD)
+  assert.ok(rawCookie(), 'Precondition: the small session should have been mirrored.')
+
+  // Session rotates and is now too big for the cookie — the write silently fails.
+  const NEW = JSON.stringify({ access_token: 'new', refresh_token: 'r'.repeat(500) })
+  adapter.setItem(KEY, NEW)
+
+  assert.equal(
+    rawCookie(),
+    null,
+    'The cookie still holds the OLD session. On the next launch the adapter would ' +
+      'hand auth-js an already-rotated refresh token, GoTrue reuse detection would ' +
+      'revoke the entire session family server-side, and the user would be signed ' +
+      'out for real — the exact symptom this file exists to prevent, manufactured ' +
+      'by this file. A mirror that cannot be written truthfully must be deleted.'
+  )
+})
+
+test('after a failed mirror write, localStorage still holds the CURRENT session', async () => {
+  const { adapter, store } = await loadAdapterWithCookieCap(400)
+  const NEW = JSON.stringify({ access_token: 'new', refresh_token: 'r'.repeat(500) })
+  adapter.setItem(KEY, NEW)
+
+  assert.equal(
+    store.get(KEY),
+    NEW,
+    'Dropping the unreliable cookie must not disturb the real session store. ' +
+      'localStorage remains the source of truth; the mirror is only a hedge.'
+  )
+  assert.equal(adapter.getItem(KEY), NEW, 'Reads must return the current session.')
+})
+
+test('a stale cookie never wins over a fresher localStorage value', async () => {
+  // localStorage is preferred whenever present — the cookie is a fallback only.
+  const { adapter } = await loadAdapterWithCookieCap(100000)
+  adapter.setItem(KEY, JSON.stringify({ refresh_token: 'v1' }))
+  const CURRENT = JSON.stringify({ refresh_token: 'v2' })
+  adapter.setItem(KEY, CURRENT)
+
+  assert.equal(
+    adapter.getItem(KEY),
+    CURRENT,
+    'getItem must prefer localStorage. Serving an older mirrored token when a ' +
+      'newer one exists is how reuse detection gets tripped.'
+  )
+})

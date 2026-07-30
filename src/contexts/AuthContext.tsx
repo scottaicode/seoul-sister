@@ -153,7 +153,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const signOut = useCallback(async () => {
-    const { error } = await supabase.auth.signOut()
+    // SIGN OUT THIS DEVICE ONLY (July 30 2026).
+    //
+    // This is the fix for "Bailey gets logged out every launch, Scott doesn't,"
+    // and the previous three attempts all missed it because they assumed the two
+    // iPhones were independent. They are not.
+    //
+    // `supabase.auth.signOut()` with no argument defaults to `scope: 'global'`
+    // (verified in the installed @supabase/auth-js 2.95.3,
+    // GoTrueClient.js:1572), which calls POST /logout?scope=global and DELETES
+    // EVERY auth.sessions row for the user — every device, all history.
+    //
+    // So a sign-out on ANY surface (this menu, /settings, /profile, the
+    // /subscribe escape hatch) silently signed the other person's phone out too.
+    // The live auth logs showed it plainly: Scott logged in at 00:16:46 and
+    // Bailey's device was logged out at 00:16:50, four seconds later. She then
+    // re-authenticated with grant_type=password — which is why she had exactly
+    // ONE session row, freshly minted, with all older rows gone, and why there
+    // was not a single refresh_token grant in 24 hours. The earlier diagnosis
+    // read that same evidence as "iOS evicted her storage"; storage eviction
+    // does not produce a POST /logout in the server logs.
+    //
+    // 'local' revokes only the calling device's session. Tapping "Sign Out" on
+    // your own phone must never end a session on someone else's. If a genuine
+    // "sign out everywhere" feature is ever wanted, it should be its own
+    // explicitly-labelled control that passes scope: 'global' on purpose.
+    const { error } = await supabase.auth.signOut({ scope: 'local' })
     if (error) throw error
   }, [])
 

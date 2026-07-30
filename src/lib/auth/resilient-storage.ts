@@ -22,10 +22,27 @@
  *
  * We cannot switch those off from a web page. What we CAN do is stop keeping the
  * session in only one place. This adapter writes every value to localStorage AND
- * mirrors it into a cookie, then reads back from whichever still exists. A cookie
- * with an explicit Max-Age is not "script-writable storage" in the sense Safari
- * evicts on that 7-day timer, so the two have genuinely different lifetimes —
- * losing both at once is far less likely than losing either.
+ * mirrors it into a cookie, then reads back from whichever still exists.
+ *
+ * CORRECTION (July 30 2026) — the original version of this comment claimed "a
+ * cookie with an explicit Max-Age is not script-writable storage in the sense
+ * Safari evicts on that 7-day timer, so the two have genuinely different
+ * lifetimes." That is FALSE, and it was the stated justification for the whole
+ * file. Verified against the primary source (WebKit, ITP 2.1): "all persistent
+ * client-side cookies, i.e. persistent cookies created through document.cookie,
+ * are capped to a seven day expiry." Only cookies set by an HTTP Set-Cookie
+ * header are exempt. Since this adapter necessarily writes via document.cookie
+ * (client JS must read it back), the `Max-Age` below is silently clamped to 7
+ * days by the very browser this file was written to defend against. The mirror
+ * is a modest durability hedge with a one-week ceiling on Safari, NOT the
+ * different-lifetime guarantee originally claimed.
+ *
+ * It is kept because a second copy still helps in the narrower cases (a
+ * localStorage-specific eviction or quota failure inside that week) and it does
+ * no harm. But it is NOT why sign-ins stick. The actual cause of the repeated
+ * logouts was `signOut()` defaulting to `scope: 'global'`, which revoked the
+ * session on every device at once — see AuthContext.tsx. Do not add further
+ * complexity here on the theory that storage durability is the problem.
  *
  * This is deliberately NOT a move to @supabase/ssr. Every API route here reads an
  * `Authorization: Bearer` header from `supabase.auth.getSession()`, so cookie
@@ -62,11 +79,44 @@ function readCookie(name: string): string | null {
   return null
 }
 
-function writeCookie(name: string, value: string) {
-  if (typeof document === 'undefined') return
+/**
+ * Write the mirror, then CONFIRM it landed.
+ *
+ * `document.cookie` fails SILENTLY — no throw, no return value — when the
+ * resulting cookie exceeds the ~4KB per-cookie limit or the per-domain quota is
+ * full. That silence is dangerous here in a specific way: if a write fails, the
+ * cookie keeps whatever it held BEFORE, while localStorage goes on rotating. The
+ * mirror then holds an OLDER refresh token than the real session.
+ *
+ * Refresh tokens are single-use and rotate. Presenting an already-rotated one
+ * triggers GoTrue's reuse detection, which revokes the entire session family
+ * server-side; auth-js gets a non-retryable auth error and clears storage
+ * (GoTrueClient.js:1990-1992 — `_removeSession()` on
+ * `!isAuthRetryableFetchError`), so the user is signed out for real. A stale
+ * mirror is therefore WORSE than no mirror: it can manufacture the very logout
+ * this file exists to prevent.
+ *
+ * So a cookie that cannot be written truthfully is DELETED rather than left to
+ * rot. Returns whether the mirror is now trustworthy.
+ */
+function writeCookie(name: string, value: string): boolean {
+  if (typeof document === 'undefined') return false
   const secure = window.location.protocol === 'https:' ? '; Secure' : ''
+  const encoded = encodeURIComponent(value)
   document.cookie =
-    `${name}=${encodeURIComponent(value)}; Max-Age=${MAX_AGE_SECONDS}; Path=/; SameSite=Lax${secure}`
+    `${name}=${encoded}; Max-Age=${MAX_AGE_SECONDS}; Path=/; SameSite=Lax${secure}`
+
+  // Read it straight back. Anything other than an exact match means the write
+  // did not take (size cap, quota) and the cookie is now stale or absent.
+  if (readCookie(name) === value) return true
+
+  deleteCookie(name)
+  console.warn(
+    '[auth] session cookie mirror could not be written (likely over the ~4KB ' +
+      'cookie limit); removed it rather than leave a stale token that would ' +
+      'trip refresh-token reuse detection. localStorage remains the session store.'
+  )
+  return false
 }
 
 function deleteCookie(name: string) {

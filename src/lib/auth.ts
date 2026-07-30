@@ -87,8 +87,21 @@ export async function signIn(email: string, password: string) {
   return data
 }
 
+/**
+ * Sign out THIS DEVICE only.
+ *
+ * `scope: 'local'` is load-bearing, not a preference. The library default is
+ * `'global'`, which deletes every auth.sessions row for the user across all
+ * their devices — that is what logged Bailey's iPhone out whenever Scott signed
+ * out on his (see the long note in AuthContext.tsx).
+ *
+ * Nothing currently imports this helper (the app signs out through
+ * AuthContext), but this module IS live — ~30 API routes import `requireAuth`
+ * from here — so an un-scoped signOut sitting in it is a loaded gun for the
+ * next caller. Keep the two implementations in agreement.
+ */
 export async function signOut() {
-  const { error } = await supabase.auth.signOut()
+  const { error } = await supabase.auth.signOut({ scope: 'local' })
   if (error) throw error
 }
 

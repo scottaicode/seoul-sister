@@ -23,7 +23,14 @@
 // referenced icon-192.svg / icon-512.svg, which iOS cannot use for a home-screen
 // icon at all — bumping makes the activate handler purge v3 so returning
 // visitors stop precaching assets nothing points at.
-const CACHE_NAME = 'seoul-sister-v4'
+// v5 (Jul 30 2026): the signOut scope fix. `signOut()` was defaulting to
+// scope:'global', so a sign-out on ANY device revoked EVERY session for that
+// user — Scott's sign-out ended Bailey's session four seconds later, per the
+// auth logs. That fix lives in the JS bundle, and `/_next/static/` is served
+// cache-first below, so a returning visitor keeps replaying the old chunk until
+// this name changes. Bailey is exactly that returning visitor, on a v4 cache,
+// and she is the person the fix is for. Same returning-visitor trap as v2/v3.
+const CACHE_NAME = 'seoul-sister-v5'
 const STATIC_ASSETS = [
   '/',
   '/icons/apple-touch-icon.png',
