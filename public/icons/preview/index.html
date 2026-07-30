@@ -3,21 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Seoul Sister — Option D preview</title>
+<title>Seoul Sister — logo preview</title>
 <style>
   :root { --bg:#0D0D0F; --gold:#C9A55C; --gold-lt:#E8C97A; --ink:#f5f5f7; --muted:#8b8b93; }
   * { box-sizing:border-box; }
   body { margin:0; padding:26px 18px 70px; background:var(--bg); color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif; }
   h1 { font-size:19px; font-weight:600; margin:0 0 6px; }
-  .sub { font-size:13px; color:var(--muted); margin:0 0 28px; line-height:1.55; }
+  .sub { font-size:13px; color:var(--muted); margin:0 0 26px; line-height:1.55; }
   h2 { font-size:11.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase;
     color:var(--gold); margin:32px 0 10px; }
   .row { display:flex; align-items:flex-end; gap:20px; flex-wrap:wrap;
     padding:18px; background:#151517; border-radius:14px; }
   .cell { text-align:center; }
   .cap { font-size:10px; color:var(--muted); margin-top:7px; }
-  .ios { border-radius:22.5%; display:block; object-fit:contain; aspect-ratio:1/1; background:#0D0D0F; }
+  /* aspect-ratio pins the box square: the SVGs carry no width/height attrs, so
+     without this an intrinsic size could stretch the slot (it did, once). */
+  .ios { border-radius:22.5%; display:block; aspect-ratio:1/1; object-fit:contain; }
   .home { background:linear-gradient(160deg,#2a2340,#3d3152 55%,#1e1a2e);
     padding:22px 18px; border-radius:20px; display:flex; gap:26px; flex-wrap:wrap; }
   .app { width:64px; text-align:center; }
@@ -31,101 +33,57 @@
 </head>
 <body>
 
-<h1>Option D — the interlocked SS</h1>
-<p class="sub">Bailey's calligraphic monogram — modulated stroke, pointed terminals, two overlapping S's. Scroll to the home-screen row; that's the size that decides it.</p>
-
-<h2>Inline (rules out any file-loading problem)</h2>
-<p class="sub" style="margin-bottom:12px">Same paths, drawn directly into this page.</p>
-<div class="row">
-  <div class="cell">
-    <svg viewBox="0 0 512 512" width="200" height="200" style="border-radius:22.5%;display:block">
-      <rect width="512" height="512" fill="#0D0D0F"/>
-      <g fill="#C9A55C"><path d="M246 174C247 171 250 160 252 153C253 145 254 137 254 128C253 120 252 110 249 102C245 94 239 86 233 79C226 73 218 67 209 63C200 60 190 57 181 56C171 55 161 56 152 58C142 60 133 64 124 70C116 75 109 82 102 89C96 97 91 106 88 115C85 124 83 133 83 143C83 152 84 162 87 170C90 179 95 187 100 194C105 201 112 207 119 211C126 215 115 205 143 218C170 231 258 281 284 287C310 292 297 261 298 251C299 241 294 233 290 225C286 217 280 209 273 203C266 197 258 191 249 187C241 183 231 181 221 180C212 179 201 180 192 182C182 184 173 188 165 194C156 199 149 206 143 213C137 221 132 230 128 239C125 247 123 257 123 267C123 276 125 286 129 294C132 302 138 309 144 316C150 322 156 327 163 331C169 336 179 340 183 342C186 343 187 341 185 338C183 335 174 329 170 324C167 318 164 311 163 305C162 299 164 293 164 287C165 281 166 276 168 272C170 267 172 262 174 258C176 254 179 251 183 248C186 245 189 242 193 240C197 238 201 236 205 235C209 233 214 233 218 233C223 232 227 233 232 234C237 235 241 236 246 239C250 241 254 244 258 247C262 251 264 257 269 260C274 263 310 274 290 266C269 259 171 226 145 214C118 203 137 202 134 196C131 190 128 185 127 179C126 174 125 168 125 163C125 158 126 152 128 148C129 143 131 139 134 135C136 131 139 127 142 124C145 121 149 118 153 116C157 114 161 112 165 111C169 110 174 109 178 109C183 109 187 109 192 110C196 111 201 113 205 115C210 117 214 119 219 123C224 126 229 130 233 135C236 140 240 146 241 153C243 159 241 170 241 173C242 177 244 177 246 174Z"/><path d="M376 288C378 285 381 275 383 267C384 259 385 251 384 243C384 234 383 225 379 216C376 208 370 200 364 194C357 187 348 182 340 178C331 174 321 171 312 170C302 169 292 170 282 173C273 175 263 179 255 184C247 189 239 196 233 204C227 211 222 220 219 229C216 238 214 248 214 257C214 266 215 276 218 285C221 293 225 301 231 308C236 315 243 321 250 325C257 329 246 320 274 332C301 345 389 395 415 401C441 406 428 375 429 365C430 355 425 347 421 340C416 332 411 324 404 317C397 311 389 305 380 302C371 298 361 295 352 294C342 293 332 294 323 296C313 299 304 303 295 308C287 313 279 320 273 328C267 335 262 344 259 353C256 362 254 372 254 381C254 390 256 400 259 408C263 416 269 424 275 430C280 436 287 441 294 446C300 450 310 455 313 456C317 457 318 456 316 453C314 450 305 444 301 438C297 433 295 426 294 420C293 413 294 407 295 401C296 396 297 391 299 386C300 381 302 377 305 373C307 369 310 365 313 362C316 359 320 356 324 354C328 352 332 350 336 349C340 348 345 347 349 347C354 347 358 347 363 348C367 349 372 351 376 353C381 355 385 358 389 362C393 365 394 371 399 374C405 378 441 388 420 381C400 373 301 340 275 329C249 317 267 316 264 311C261 305 259 299 258 294C256 288 256 282 256 277C256 272 257 267 258 262C260 257 262 253 264 249C267 245 270 241 273 238C276 235 280 232 284 230C287 228 291 226 296 225C300 224 304 223 309 223C313 223 318 223 322 224C327 225 331 227 336 229C341 231 345 234 350 237C354 241 360 244 363 249C367 254 371 261 372 267C373 273 371 284 372 288C373 291 374 292 376 288Z"/></g>
-    </svg>
-    <div class="cap">200px inline</div>
-  </div>
-  <div class="cell">
-    <svg viewBox="0 0 512 512" width="60" height="60" style="border-radius:22.5%;display:block">
-      <rect width="512" height="512" fill="#0D0D0F"/>
-      <g fill="#C9A55C"><path d="M246 174C247 171 250 160 252 153C253 145 254 137 254 128C253 120 252 110 249 102C245 94 239 86 233 79C226 73 218 67 209 63C200 60 190 57 181 56C171 55 161 56 152 58C142 60 133 64 124 70C116 75 109 82 102 89C96 97 91 106 88 115C85 124 83 133 83 143C83 152 84 162 87 170C90 179 95 187 100 194C105 201 112 207 119 211C126 215 115 205 143 218C170 231 258 281 284 287C310 292 297 261 298 251C299 241 294 233 290 225C286 217 280 209 273 203C266 197 258 191 249 187C241 183 231 181 221 180C212 179 201 180 192 182C182 184 173 188 165 194C156 199 149 206 143 213C137 221 132 230 128 239C125 247 123 257 123 267C123 276 125 286 129 294C132 302 138 309 144 316C150 322 156 327 163 331C169 336 179 340 183 342C186 343 187 341 185 338C183 335 174 329 170 324C167 318 164 311 163 305C162 299 164 293 164 287C165 281 166 276 168 272C170 267 172 262 174 258C176 254 179 251 183 248C186 245 189 242 193 240C197 238 201 236 205 235C209 233 214 233 218 233C223 232 227 233 232 234C237 235 241 236 246 239C250 241 254 244 258 247C262 251 264 257 269 260C274 263 310 274 290 266C269 259 171 226 145 214C118 203 137 202 134 196C131 190 128 185 127 179C126 174 125 168 125 163C125 158 126 152 128 148C129 143 131 139 134 135C136 131 139 127 142 124C145 121 149 118 153 116C157 114 161 112 165 111C169 110 174 109 178 109C183 109 187 109 192 110C196 111 201 113 205 115C210 117 214 119 219 123C224 126 229 130 233 135C236 140 240 146 241 153C243 159 241 170 241 173C242 177 244 177 246 174Z"/><path d="M376 288C378 285 381 275 383 267C384 259 385 251 384 243C384 234 383 225 379 216C376 208 370 200 364 194C357 187 348 182 340 178C331 174 321 171 312 170C302 169 292 170 282 173C273 175 263 179 255 184C247 189 239 196 233 204C227 211 222 220 219 229C216 238 214 248 214 257C214 266 215 276 218 285C221 293 225 301 231 308C236 315 243 321 250 325C257 329 246 320 274 332C301 345 389 395 415 401C441 406 428 375 429 365C430 355 425 347 421 340C416 332 411 324 404 317C397 311 389 305 380 302C371 298 361 295 352 294C342 293 332 294 323 296C313 299 304 303 295 308C287 313 279 320 273 328C267 335 262 344 259 353C256 362 254 372 254 381C254 390 256 400 259 408C263 416 269 424 275 430C280 436 287 441 294 446C300 450 310 455 313 456C317 457 318 456 316 453C314 450 305 444 301 438C297 433 295 426 294 420C293 413 294 407 295 401C296 396 297 391 299 386C300 381 302 377 305 373C307 369 310 365 313 362C316 359 320 356 324 354C328 352 332 350 336 349C340 348 345 347 349 347C354 347 358 347 363 348C367 349 372 351 376 353C381 355 385 358 389 362C393 365 394 371 399 374C405 378 441 388 420 381C400 373 301 340 275 329C249 317 267 316 264 311C261 305 259 299 258 294C256 288 256 282 256 277C256 272 257 267 258 262C260 257 262 253 264 249C267 245 270 241 273 238C276 235 280 232 284 230C287 228 291 226 296 225C300 224 304 223 309 223C313 223 318 223 322 224C327 225 331 227 336 229C341 231 345 234 350 237C354 241 360 244 363 249C367 254 371 261 372 267C373 273 371 284 372 288C373 291 374 292 376 288Z"/></g>
-    </svg>
-    <div class="cap">60px inline</div>
-  </div>
-  <div class="cell">
-    <svg viewBox="0 0 512 512" width="29" height="29" style="border-radius:22.5%;display:block">
-      <rect width="512" height="512" fill="#0D0D0F"/>
-      <g fill="#C9A55C"><path d="M246 174C247 171 250 160 252 153C253 145 254 137 254 128C253 120 252 110 249 102C245 94 239 86 233 79C226 73 218 67 209 63C200 60 190 57 181 56C171 55 161 56 152 58C142 60 133 64 124 70C116 75 109 82 102 89C96 97 91 106 88 115C85 124 83 133 83 143C83 152 84 162 87 170C90 179 95 187 100 194C105 201 112 207 119 211C126 215 115 205 143 218C170 231 258 281 284 287C310 292 297 261 298 251C299 241 294 233 290 225C286 217 280 209 273 203C266 197 258 191 249 187C241 183 231 181 221 180C212 179 201 180 192 182C182 184 173 188 165 194C156 199 149 206 143 213C137 221 132 230 128 239C125 247 123 257 123 267C123 276 125 286 129 294C132 302 138 309 144 316C150 322 156 327 163 331C169 336 179 340 183 342C186 343 187 341 185 338C183 335 174 329 170 324C167 318 164 311 163 305C162 299 164 293 164 287C165 281 166 276 168 272C170 267 172 262 174 258C176 254 179 251 183 248C186 245 189 242 193 240C197 238 201 236 205 235C209 233 214 233 218 233C223 232 227 233 232 234C237 235 241 236 246 239C250 241 254 244 258 247C262 251 264 257 269 260C274 263 310 274 290 266C269 259 171 226 145 214C118 203 137 202 134 196C131 190 128 185 127 179C126 174 125 168 125 163C125 158 126 152 128 148C129 143 131 139 134 135C136 131 139 127 142 124C145 121 149 118 153 116C157 114 161 112 165 111C169 110 174 109 178 109C183 109 187 109 192 110C196 111 201 113 205 115C210 117 214 119 219 123C224 126 229 130 233 135C236 140 240 146 241 153C243 159 241 170 241 173C242 177 244 177 246 174Z"/><path d="M376 288C378 285 381 275 383 267C384 259 385 251 384 243C384 234 383 225 379 216C376 208 370 200 364 194C357 187 348 182 340 178C331 174 321 171 312 170C302 169 292 170 282 173C273 175 263 179 255 184C247 189 239 196 233 204C227 211 222 220 219 229C216 238 214 248 214 257C214 266 215 276 218 285C221 293 225 301 231 308C236 315 243 321 250 325C257 329 246 320 274 332C301 345 389 395 415 401C441 406 428 375 429 365C430 355 425 347 421 340C416 332 411 324 404 317C397 311 389 305 380 302C371 298 361 295 352 294C342 293 332 294 323 296C313 299 304 303 295 308C287 313 279 320 273 328C267 335 262 344 259 353C256 362 254 372 254 381C254 390 256 400 259 408C263 416 269 424 275 430C280 436 287 441 294 446C300 450 310 455 313 456C317 457 318 456 316 453C314 450 305 444 301 438C297 433 295 426 294 420C293 413 294 407 295 401C296 396 297 391 299 386C300 381 302 377 305 373C307 369 310 365 313 362C316 359 320 356 324 354C328 352 332 350 336 349C340 348 345 347 349 347C354 347 358 347 363 348C367 349 372 351 376 353C381 355 385 358 389 362C393 365 394 371 399 374C405 378 441 388 420 381C400 373 301 340 275 329C249 317 267 316 264 311C261 305 259 299 258 294C256 288 256 282 256 277C256 272 257 267 258 262C260 257 262 253 264 249C267 245 270 241 273 238C276 235 280 232 284 230C287 228 291 226 296 225C300 224 304 223 309 223C313 223 318 223 322 224C327 225 331 227 336 229C341 231 345 234 350 237C354 241 360 244 363 249C367 254 371 261 372 267C373 273 371 284 372 288C373 291 374 292 376 288Z"/></g>
-    </svg>
-    <div class="cap">29px inline</div>
-  </div>
-</div>
+<h1>The interlocked SS</h1>
+<p class="sub">Bailey's calligraphic monogram: two overlapping S's, stroke swelling through the bowls and tapering to hairline flicks. Rendered and checked at every size below.</p>
 
 <h2>At every size that matters</h2>
 <div class="row">
-  <div class="cell"><img class="ios" src="./mark-d.svg" width="180" height="180" alt=""><div class="cap">180px</div></div>
-  <div class="cell"><img class="ios" src="./mark-d.svg" width="120" height="120" alt=""><div class="cap">120px</div></div>
-  <div class="cell"><img class="ios" src="./mark-d.svg" width="60" height="60" alt=""><div class="cap">60px &larr; real</div></div>
-  <div class="cell"><img class="ios" src="./mark-d.svg" width="40" height="40" alt=""><div class="cap">40px (tab)</div></div>
-  <div class="cell"><img class="ios" src="./mark-d.svg" width="29" height="29" alt=""><div class="cap">29px (settings)</div></div>
+  <div class="cell"><img class="ios" src="./mark-d.svg" width="180" alt=""><div class="cap">180px</div></div>
+  <div class="cell"><img class="ios" src="./mark-d.svg" width="120" alt=""><div class="cap">120px</div></div>
+  <div class="cell"><img class="ios" src="./mark-d.svg" width="60" alt=""><div class="cap">60px &larr; real</div></div>
+  <div class="cell"><img class="ios" src="./mark-d.svg" width="40" alt=""><div class="cap">40px (tab)</div></div>
+  <div class="cell"><img class="ios" src="./mark-d.svg" width="29" alt=""><div class="cap">29px (settings)</div></div>
 </div>
-<p class="note">Filled outlines, not a stroked path — that is what allows the <b>thick-to-thin modulation and the pointed terminals</b>. Judge the curve quality here, not the maths.</p>
+<p class="note">It still reads as a <b>linked double-S at 29px</b>, which is where the old orb-and-wordmark icon turned to mush.</p>
 
 <h2>On a home screen</h2>
 <div class="home">
   <div class="app">
-    <img class="ios" src="./mark-d.svg" width="64" height="64" alt="">
+    <img class="ios" src="./mark-d.svg" width="64" alt="">
     <div class="label">Seoul Sister</div>
   </div>
   <div class="app">
-    <img class="ios" src="../icon-512.svg" width="64" height="64" alt="">
+    <img class="ios" src="../icon-512.svg" width="64" alt="">
     <div class="label">Current</div>
   </div>
 </div>
-<p class="note">New mark on the left, what's live today on the right. <b>The current icon has a two-line wordmark baked into it</b> — iOS already prints "Seoul Sister" underneath, so those pixels were being spent twice and legible neither time.</p>
+<p class="note">New mark left, live icon right. <b>The current one has a two-line wordmark baked in</b> — iOS already prints the app name underneath, so those pixels are spent twice and legible neither time.</p>
 
 <h2>Light background</h2>
-<p class="sub" style="margin-bottom:12px">For the landing page hero, print and press — closest to Bailey's original cream comp.</p>
+<p class="sub" style="margin-bottom:12px">Closest to Bailey's cream Canva comp. For the hero, print and press.</p>
 <div class="row" style="background:#FAF7F2">
-  <div class="cell"><img class="ios" src="./mark-d-light.svg" width="180" height="180" alt=""><div class="cap" style="color:#6b6b73">180px</div></div>
-  <div class="cell"><img class="ios" src="./mark-d-light.svg" width="120" height="120" alt=""><div class="cap" style="color:#6b6b73">120px</div></div>
-  <div class="cell"><img class="ios" src="./mark-d-light.svg" width="60" height="60" alt=""><div class="cap" style="color:#6b6b73">60px</div></div>
-  <div class="cell"><img class="ios" src="./mark-d-light.svg" width="29" height="29" alt=""><div class="cap" style="color:#6b6b73">29px</div></div>
+  <div class="cell"><img class="ios" src="./mark-d-light.svg" width="180" alt=""><div class="cap" style="color:#6b6b73">180px</div></div>
+  <div class="cell"><img class="ios" src="./mark-d-light.svg" width="120" alt=""><div class="cap" style="color:#6b6b73">120px</div></div>
+  <div class="cell"><img class="ios" src="./mark-d-light.svg" width="60" alt=""><div class="cap" style="color:#6b6b73">60px</div></div>
+  <div class="cell"><img class="ios" src="./mark-d-light.svg" width="29" alt=""><div class="cap" style="color:#6b6b73">29px</div></div>
 </div>
 
-<h2>With the wordmark (landing page / video end-cards)</h2>
-<p class="sub" style="margin-bottom:12px">The icon stays bare; the lockup is for places it renders large. Two assets, one identity.</p>
-<div class="row" style="justify-content:center">
-  <div class="cell">
-    <svg width="240" height="150" viewBox="0 0 320 200">
-      <rect width="320" height="200" fill="#0D0D0F"/>
-      <g transform="translate(160 74) scale(0.30) translate(-256 -256)" fill="#C9A55C">
-        <path d="M246 174C247 171 250 160 252 153C253 145 254 137 254 128C253 120 252 110 249 102C245 94 239 86 233 79C226 73 218 67 209 63C200 60 190 57 181 56C171 55 161 56 152 58C142 60 133 64 124 70C116 75 109 82 102 89C96 97 91 106 88 115C85 124 83 133 83 143C83 152 84 162 87 170C90 179 95 187 100 194C105 201 112 207 119 211C126 215 115 205 143 218C170 231 258 281 284 287C310 292 297 261 298 251C299 241 294 233 290 225C286 217 280 209 273 203C266 197 258 191 249 187C241 183 231 181 221 180C212 179 201 180 192 182C182 184 173 188 165 194C156 199 149 206 143 213C137 221 132 230 128 239C125 247 123 257 123 267C123 276 125 286 129 294C132 302 138 309 144 316C150 322 156 327 163 331C169 336 179 340 183 342C186 343 187 341 185 338C183 335 174 329 170 324C167 318 164 311 163 305C162 299 164 293 164 287C165 281 166 276 168 272C170 267 172 262 174 258C176 254 179 251 183 248C186 245 189 242 193 240C197 238 201 236 205 235C209 233 214 233 218 233C223 232 227 233 232 234C237 235 241 236 246 239C250 241 254 244 258 247C262 251 264 257 269 260C274 263 310 274 290 266C269 259 171 226 145 214C118 203 137 202 134 196C131 190 128 185 127 179C126 174 125 168 125 163C125 158 126 152 128 148C129 143 131 139 134 135C136 131 139 127 142 124C145 121 149 118 153 116C157 114 161 112 165 111C169 110 174 109 178 109C183 109 187 109 192 110C196 111 201 113 205 115C210 117 214 119 219 123C224 126 229 130 233 135C236 140 240 146 241 153C243 159 241 170 241 173C242 177 244 177 246 174Z"/>
-        <path d="M376 288C378 285 381 275 383 267C384 259 385 251 384 243C384 234 383 225 379 216C376 208 370 200 364 194C357 187 348 182 340 178C331 174 321 171 312 170C302 169 292 170 282 173C273 175 263 179 255 184C247 189 239 196 233 204C227 211 222 220 219 229C216 238 214 248 214 257C214 266 215 276 218 285C221 293 225 301 231 308C236 315 243 321 250 325C257 329 246 320 274 332C301 345 389 395 415 401C441 406 428 375 429 365C430 355 425 347 421 340C416 332 411 324 404 317C397 311 389 305 380 302C371 298 361 295 352 294C342 293 332 294 323 296C313 299 304 303 295 308C287 313 279 320 273 328C267 335 262 344 259 353C256 362 254 372 254 381C254 390 256 400 259 408C263 416 269 424 275 430C280 436 287 441 294 446C300 450 310 455 313 456C317 457 318 456 316 453C314 450 305 444 301 438C297 433 295 426 294 420C293 413 294 407 295 401C296 396 297 391 299 386C300 381 302 377 305 373C307 369 310 365 313 362C316 359 320 356 324 354C328 352 332 350 336 349C340 348 345 347 349 347C354 347 358 347 363 348C367 349 372 351 376 353C381 355 385 358 389 362C393 365 394 371 399 374C405 378 441 388 420 381C400 373 301 340 275 329C249 317 267 316 264 311C261 305 259 299 258 294C256 288 256 282 256 277C256 272 257 267 258 262C260 257 262 253 264 249C267 245 270 241 273 238C276 235 280 232 284 230C287 228 291 226 296 225C300 224 304 223 309 223C313 223 318 223 322 224C327 225 331 227 336 229C341 231 345 234 350 237C354 241 360 244 363 249C367 254 371 261 372 267C373 273 371 284 372 288C373 291 374 292 376 288Z"/>
-      </g>
-      <text x="160" y="160" font-family="Georgia,serif" font-size="22" font-weight="600"
-        text-anchor="middle" fill="#C9A55C" letter-spacing="6">SEOUL SISTER</text>
-    </svg>
-    <div class="cap">lockup</div>
-  </div>
-</div>
-
-<h2>Maskable (Android crops to a circle)</h2>
+<h2>Maskable (Android picks its own crop)</h2>
 <div class="row">
   <div class="cell">
-    <img src="./mark-d-maskable.svg" width="120" height="120" alt=""
-      style="border-radius:50%;display:block">
-    <div class="cap">circle crop</div>
+    <img src="./mark-d-maskable.svg" width="120" alt="" style="border-radius:50%;display:block;aspect-ratio:1/1">
+    <div class="cap">circle</div>
   </div>
   <div class="cell">
-    <img class="ios" src="./mark-d-maskable.svg" width="120" height="120" alt="">
-    <div class="cap">squircle crop</div>
+    <img class="ios" src="./mark-d-maskable.svg" width="120" alt="">
+    <div class="cap">squircle</div>
   </div>
   <div class="cell">
-    <img src="./mark-d-maskable.svg" width="120" height="120" alt="" style="display:block">
+    <img src="./mark-d-maskable.svg" width="120" alt="" style="display:block;aspect-ratio:1/1">
     <div class="cap">uncropped</div>
   </div>
 </div>
-<p class="note">Same mark inset to the <b>safe area</b> (the middle 80%), so Android's circle mask cannot clip the stroke ends. This is why a maskable icon is a separate file rather than the same one reused.</p>
+<p class="note">Inset to the <b>safe area</b> (middle 80%) so a circle mask cannot clip the flicks. That is why maskable is a separate file, not the same asset reused.</p>
 
 </body>
 </html>
