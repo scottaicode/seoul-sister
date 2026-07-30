@@ -146,9 +146,9 @@ export default function Header() {
                 src="/icons/icon-mark.svg"
                 alt=""
                 aria-hidden="true"
-                width={28}
-                height={28}
-                className="w-7 h-7 rounded-lg"
+                width={36}
+                height={36}
+                className="w-9 h-9 rounded-lg"
               />
               <span className="font-display font-bold text-xl bg-gradient-to-r from-gold to-gold-light bg-clip-text text-transparent whitespace-nowrap">
                 Seoul Sister

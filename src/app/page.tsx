@@ -132,9 +132,9 @@ export default function LandingPage() {
               src="/icons/icon-mark.svg"
               alt=""
               aria-hidden="true"
-              width={28}
-              height={28}
-              className="w-7 h-7 rounded-lg"
+              width={36}
+              height={36}
+              className="w-9 h-9 rounded-lg"
             />
             <span className="font-display font-bold text-xl text-white tracking-tight">
               Seoul Sister
@@ -552,7 +552,20 @@ export default function LandingPage() {
       <footer className="bg-seoul-darker border-t border-white/5 py-12 px-4">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
-            <span className="font-display font-bold text-lg text-white">Seoul Sister</span>
+            {/* Mark beside the footer wordmark, matching the nav. The footer is the
+                last thing a visitor sees before leaving, and the header had a mark
+                while this said the name in bare text. */}
+            <span className="flex items-center gap-2.5">
+              <img
+                src="/icons/icon-mark.svg"
+                alt=""
+                aria-hidden="true"
+                width={32}
+                height={32}
+                className="w-8 h-8 rounded-lg"
+              />
+              <span className="font-display font-bold text-lg text-white">Seoul Sister</span>
+            </span>
             <p className="text-xs text-white/30 mt-1">The world&apos;s first English K-beauty intelligence platform.</p>
           </div>
           <div className="flex flex-wrap justify-center gap-6 text-sm">

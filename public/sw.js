@@ -56,7 +56,9 @@
 // MID-TONES — anti-aliasing smear from downscaling a 512-unit drawing to 16px.
 // Now drawn AT the target size with the glyph box snapped to whole pixels and
 // rendered 1:1 with no downscale. 38% -> 25%, remainder is the gold gradient.
-const CACHE_NAME = 'seoul-sister-v12'
+// v13 (Jul 30 2026): header/nav mark 28px -> 36px (the two-S monogram mushed at
+// 28 next to the wordmark) and the footer wordmark gained the mark it was missing.
+const CACHE_NAME = 'seoul-sister-v13'
 const STATIC_ASSETS = [
   '/',
   '/icons/apple-touch-icon.png',

@@ -356,7 +356,7 @@ test('the cache fence advanced so the new icon reaches returning visitors', () =
   const m = read('public', 'sw.js').match(/const CACHE_NAME = 'seoul-sister-v(\d+)'/)
   assert.ok(m, 'CACHE_NAME must stay in the greppable seoul-sister-vN form.')
   assert.ok(
-    Number(m[1]) >= 12,
+    Number(m[1]) >= 13,
     `CACHE_NAME is v${m[1]}. STATIC_ASSETS precaches the icon PNGs, so a returning ` +
       'visitor keeps the OLD icon until this name changes.'
   )

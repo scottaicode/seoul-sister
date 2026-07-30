@@ -44,9 +44,9 @@ export default function PublicNav() {
           <img
             src="/icons/icon-mark.svg"
             alt="Seoul Sister"
-            width={32}
-            height={32}
-            className="h-8 w-8 rounded-lg"
+            width={36}
+            height={36}
+            className="h-9 w-9 rounded-lg"
           />
           <span className="font-display font-semibold text-white text-sm hidden sm:inline">
             Seoul Sister
