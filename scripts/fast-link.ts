@@ -166,6 +166,10 @@ async function main() {
           costTracker
         )
 
+        // null = the matcher refused a polluted name (unsplit INCI dump).
+        // Skip the entry, keep the rest of the product's list.
+        if (!result) continue
+
         if (result.match_type === 'created') {
           created++
         } else {

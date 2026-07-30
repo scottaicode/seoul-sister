@@ -157,3 +157,54 @@ test('the SQL-side filter mirrors the list separators', () => {
     'the SQL/TS coverage gap must be stated explicitly'
   )
 })
+
+// --- The WRITE path must refuse a dump, not just the read paths -----------
+
+test('the matcher refuses to create a polluted ingredient', () => {
+  // The read filter (above) stops dumps being SERVED. It does not stop them
+  // being CREATED — which is why 12 new junk rows appeared between February and
+  // July 25 2026, long after the original parser bug was "fixed". Every future
+  // audit then has to re-classify them. The guard belongs at the write, too.
+  const matcherSrc = read('src', 'lib', 'pipeline', 'ingredient-matcher.ts')
+
+  assert.ok(
+    /import \{ isPollutedIngredientName \} from '\.\/ingredient-parser'/.test(matcherSrc),
+    'the matcher must import the shared guard rather than re-implement one'
+  )
+  assert.ok(
+    /if \(isPollutedIngredientName\(nameInci\)\) \{[\s\S]{0,400}return null/.test(matcherSrc),
+    'matchOrCreateIngredient must refuse a polluted name before creating a row'
+  )
+  // The check must come before the cache/DB/Anthropic work, or a dump still
+  // costs an enrichment call.
+  const guardIdx = matcherSrc.indexOf('isPollutedIngredientName(nameInci)')
+  const cacheIdx = matcherSrc.indexOf('const lower = nameInci.toLowerCase()')
+  assert.ok(
+    guardIdx > -1 && cacheIdx > -1 && guardIdx < cacheIdx,
+    'the guard must run before any lookup or enrichment work'
+  )
+})
+
+test('a refused ingredient skips the entry instead of failing the product', () => {
+  // One bad entry in a 40-ingredient INCI list must not cost the other 39.
+  const linkerSrc = read('src', 'lib', 'pipeline', 'ingredient-linker.ts')
+  assert.ok(
+    /if \(!result\) \{\s*\n\s*pollutedSkipped\+\+\s*\n\s*continue/.test(linkerSrc),
+    'the linker must skip a refused entry and continue'
+  )
+  assert.ok(
+    /skipped \$\{pollutedSkipped\} polluted ingredient name/.test(linkerSrc),
+    'a skip must be logged — silent loss is the failure class this repo keeps hitting'
+  )
+})
+
+test('every matcher caller handles the refusal', () => {
+  // The nullable return is what surfaced a SECOND write path (scripts/fast-link.ts)
+  // that had been calling the matcher directly. If a caller ignores null, tsc
+  // fails — but assert it explicitly so the handling is not "simplified" away.
+  const fastLinkSrc = read('scripts', 'fast-link.ts')
+  assert.ok(
+    /if \(!result\) continue/.test(fastLinkSrc),
+    'fast-link.ts must skip refused ingredients'
+  )
+})

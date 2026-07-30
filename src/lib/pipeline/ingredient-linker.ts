@@ -149,6 +149,7 @@ export async function linkSingleProduct(
     ingredient_id: string
     position: number
   }> = []
+  let pollutedSkipped = 0
 
   for (const ingredient of parsed) {
     const result = await matchOrCreateIngredient(
@@ -157,6 +158,14 @@ export async function linkSingleProduct(
       cache,
       costTracker
     )
+
+    // null = the matcher refused a polluted name (an unsplit INCI dump). Skip
+    // this one entry rather than failing the product: the rest of its INCI list
+    // is still worth linking, and a dump entry was never a real ingredient.
+    if (!result) {
+      pollutedSkipped++
+      continue
+    }
 
     if (result.match_type === 'created') {
       created++
@@ -169,6 +178,14 @@ export async function linkSingleProduct(
       ingredient_id: result.ingredient_id,
       position: ingredient.position,
     })
+  }
+
+  // Success-with-silent-loss is the failure class this repo keeps relearning, so
+  // a skipped entry is logged rather than quietly dropped from the count.
+  if (pollutedSkipped > 0) {
+    console.warn(
+      `[ingredient-linker] product ${productId}: skipped ${pollutedSkipped} polluted ingredient name(s) — the parser produced an unsplit dump`
+    )
   }
 
   // Deduplicate links by ingredient_id (same ingredient appearing twice in INCI)

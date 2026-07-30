@@ -11,6 +11,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { CostTracker } from './cost-tracker'
+import { isPollutedIngredientName } from './ingredient-parser'
 
 export interface MatchResult {
   ingredient_id: string
@@ -123,7 +124,28 @@ export async function matchOrCreateIngredient(
   nameInci: string,
   cache: IngredientCache,
   costTracker: CostTracker
-): Promise<MatchResult> {
+): Promise<MatchResult | null> {
+  // WRITE-SIDE POLLUTION GUARD.
+  //
+  // Nothing on this path validated the name before inserting it, so an unsplit
+  // INCI dump that survived the parser became a permanent ss_ingredients row —
+  // 666 in Feb 2026 and, crucially, 12 MORE since, the newest on July 25 2026.
+  // The read-side filter (July 30) stops those rows being SERVED but not
+  // CREATED, so without this the table keeps accreting garbage that every future
+  // audit has to re-classify.
+  //
+  // Refusing here also saves an Anthropic enrichment call per dump: the create
+  // path below asks Opus to describe the "ingredient" before inserting it.
+  //
+  // Returning null rather than throwing keeps a single bad entry in one product's
+  // INCI list from failing the whole product — the caller skips this one link.
+  if (isPollutedIngredientName(nameInci)) {
+    console.warn(
+      `[ingredient-matcher] refused to create a polluted ingredient name: ${JSON.stringify(nameInci.slice(0, 120))}`
+    )
+    return null
+  }
+
   const lower = nameInci.toLowerCase().trim()
 
   // 1. Direct cache hit
