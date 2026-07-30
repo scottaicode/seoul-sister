@@ -33,7 +33,11 @@
 // v6 (Jul 30 2026): the mobile Sign Out confirm step. Same returning-visitor
 // reasoning as v5 — it ships in the JS bundle, and the person it protects is
 // already holding an older cache.
-const CACHE_NAME = 'seoul-sister-v6'
+// v7 (Jul 30 2026): the signed-in landing redirect. This is THE fix for
+// "logged out every launch" — start_url is `/`, and `/` was showing subscribers
+// the signup pitch. It must reach an installed app that is caching the old
+// bundle, and Bailey is that install.
+const CACHE_NAME = 'seoul-sister-v7'
 const STATIC_ASSETS = [
   '/',
   '/icons/apple-touch-icon.png',

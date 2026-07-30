@@ -13,6 +13,7 @@ import {
 import PricingCards from '@/components/pricing/PricingCards'
 import TryYuriSection from '@/components/widget/TryYuriSection'
 import InstallBanner from '@/components/pwa/InstallBanner'
+import SignedInRedirect from '@/components/auth/SignedInRedirect'
 import { MAX_FREE_MESSAGES } from '@/lib/utils/widget-session'
 
 const fadeUp = {
@@ -103,6 +104,15 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-seoul-dark font-sans">
+
+      {/* A signed-in visitor gets sent to the app instead of being shown the
+          signup pitch. This page is the PWA's start_url, so without it every
+          launch of the installed icon showed a paying subscriber "Get Started"
+          and "Talk to Yuri Free — no signup", which is indistinguishable from
+          having been logged out. That is what Bailey was reporting for three
+          rounds of session fixes. Renders nothing and never gates the page —
+          anonymous visitors and the Yuri widget are untouched. */}
+      <SignedInRedirect />
 
       {/* Install offer for returning mobile visitors. The footer link and the menu
           item only reach someone who goes looking; this is the one surface that
