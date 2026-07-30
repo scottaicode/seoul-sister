@@ -61,16 +61,22 @@ export default function manifest(): MetadataRoute.Manifest {
         type: 'image/png',
       },
       {
-        // Maskable: Android applies its own crop (circle, squircle, teardrop) and
-        // only the middle ~80% is guaranteed. The source art is already inset
-        // well inside that safe area, so the same file serves here.
-        src: '/icons/icon-512.png',
+        // Maskable needs its OWN art (July 30 2026). Android crops to a circle,
+        // squircle or teardrop and only the middle ~80% is guaranteed — so
+        // reusing icon-512.png here would clip the gold tile's own rounded
+        // corners and render a visibly broken icon. icon-maskable-512.png is
+        // the same monogram on a FULL-BLEED gold field, so any crop shape still
+        // lands on gold.
+        src: '/icons/icon-maskable-512.png',
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',
       },
       {
-        src: '/icons/icon-512.svg',
+        // High-DPI extra for browsers that prefer vector. Points at the CURRENT
+        // mark; the old icon-512.svg was the pre-July-30 orb-and-wordmark art
+        // and packed a two-line wordmark that was invisible mush at icon size.
+        src: '/icons/icon-mark.svg',
         sizes: '512x512',
         type: 'image/svg+xml',
       },

@@ -353,7 +353,7 @@ export default async function IngredientDetailPage({
           '@type': 'Organization',
           name: 'Seoul Sister',
           url: 'https://www.seoulsister.com',
-          logo: 'https://www.seoulsister.com/icons/icon-512.svg',
+          logo: 'https://www.seoulsister.com/icons/icon-512.png',
         },
         mainEntityOfPage: {
           '@type': 'WebPage',

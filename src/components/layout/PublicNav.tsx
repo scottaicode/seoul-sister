@@ -35,10 +35,18 @@ export default function PublicNav() {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/10">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
+          {/* The SS monogram. This pointed at icon-512.svg, the retired
+              orb-and-wordmark art — which was DELETED July 30 2026, so this nav
+              would have rendered a broken image on every public page (blog,
+              ingredient and product pages: the AI-citation landing surfaces).
+              Explicit width/height because an SVG with no intrinsic size renders
+              nothing in an <img> (f7e4d23). */}
           <img
-            src="/icons/icon-512.svg"
+            src="/icons/icon-mark.svg"
             alt="Seoul Sister"
-            className="h-8 w-8"
+            width={32}
+            height={32}
+            className="h-8 w-8 rounded-lg"
           />
           <span className="font-display font-semibold text-white text-sm hidden sm:inline">
             Seoul Sister

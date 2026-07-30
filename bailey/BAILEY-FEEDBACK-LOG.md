@@ -60,7 +60,9 @@ Each entry includes:
 
 **Her own draft** (Canva, "Black and White Minimalist Professional Initial Logo"): two interlocking S's joined into a continuous ribbon reading as a figure-eight, high-contrast calligraphic serif, wordmark "SEOUL SISTER" beneath. Genuinely good instinct — the loop reads as continuity and the contrast reads as luxury skincare, the right shelf.
 
-**Status**: OPEN. Bailey holds approval. Per `project_yuri_visual_identity_locked` the SS reconstruction is marked **not-approved**; a prior session was told to stop guessing at it.
+**Status**: SHIPPED July 30 2026 on Scott's explicit go-ahead while Bailey was asleep ("Make your favorite pics work on the website… move forward with implementing your choice"). **Bailey still gets the final word** — she asked for this and it is her mark. Reverting is one `git revert` of the icon commit; the rejected directions and every study are preserved in `~/Downloads/seoul-sister-ss-marks/` so she can pick differently without redoing the work.
+
+**What shipped**: the interlocked SS monogram, built from Playfair Display glyph **outlines** — a high-contrast serif, which is the register her Canva draft was reaching for. Two members of one family: `icon-tile` (dark serif knocked out of a gold gradient tile) for the app icon / favicon / TikTok avatar, and `ss-mark-gold` (gold metallic serif on near-black) for large-format use. Her interlocking instinct is the core of it — the two S's overlap 12% of the em so they read as ONE designed mark rather than typed letters.
 
 **Where it stands (July 30 2026)**: Three vector directions were drafted and **rendered and looked at** at 512/180/40/32px rather than judged from source — the discipline earned by two prior commits (`f7e4d23`, `4c57f78`) that "fixed" the mark without checking the output.
 - **A (stacked ribbon)** — her figure-eight rotated vertical. **REJECTED**: the two S's fused into an unreadable blob, the same swallowing failure as `4c57f78`.

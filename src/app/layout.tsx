@@ -96,6 +96,11 @@ export default function RootLayout({
             whole point of the install we were pushing Bailey through.
             180x180 is the size modern iPhones request. */}
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+        {/* Favicons point at the SS monogram too, so the browser tab, the
+            bookmark bar and the home-screen icon are one identity. Verified
+            legible at 32px AND 16px before shipping. */}
+        <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         {/* black-translucent lets the dark app background run under the status
             bar; "default" rendered a white strip above a near-black app. */}
@@ -115,7 +120,10 @@ export default function RootLayout({
               url: 'https://www.seoulsister.com',
               description: 'The world\'s first English-language K-beauty intelligence platform.',
               sameAs: [],
-              logo: 'https://www.seoulsister.com/icons/icon-512.svg',
+              // PNG, not SVG: Google's structured-data guidance wants a raster
+              // logo it can actually render, and the old path pointed at the
+              // retired orb-and-wordmark art.
+              logo: 'https://www.seoulsister.com/icons/icon-512.png',
               potentialAction: {
                 '@type': 'SearchAction',
                 target: 'https://www.seoulsister.com/products?search={search_term_string}',

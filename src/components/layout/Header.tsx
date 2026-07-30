@@ -136,7 +136,20 @@ export default function Header() {
                 space can collapse to ~0, which produced the "Seoul SisterDashboard"
                 jam Bailey reported. The explicit gap can't collapse. */}
             <Link href="/dashboard" className="flex items-center gap-2 flex-shrink-0 mr-2">
-              <Sparkles className="w-5 h-5 text-gold" />
+              {/* The SS monogram, not a generic Sparkles glyph (July 30 2026).
+                  A stock icon here meant the app had no mark of its own in the
+                  one place every authenticated page renders. Plain <img> rather
+                  than next/image: it is a tiny static SVG, so the optimizer adds
+                  a request and a wrapper for no gain. Explicit w/h — an SVG with
+                  no intrinsic size renders NOTHING (f7e4d23). */}
+              <img
+                src="/icons/icon-mark.svg"
+                alt=""
+                aria-hidden="true"
+                width={28}
+                height={28}
+                className="w-7 h-7 rounded-lg"
+              />
               <span className="font-display font-bold text-xl bg-gradient-to-r from-gold to-gold-light bg-clip-text text-transparent whitespace-nowrap">
                 Seoul Sister
               </span>

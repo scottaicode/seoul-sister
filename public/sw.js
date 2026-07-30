@@ -37,7 +37,10 @@
 // "logged out every launch" — start_url is `/`, and `/` was showing subscribers
 // the signup pitch. It must reach an installed app that is caching the old
 // bundle, and Bailey is that install.
-const CACHE_NAME = 'seoul-sister-v7'
+// v8 (Jul 30 2026): the new SS monogram. STATIC_ASSETS precaches the icon PNGs
+// below, so a returning visitor keeps the OLD 유 stopgap icon until this name
+// changes — and the icon is the thing Bailey asked for.
+const CACHE_NAME = 'seoul-sister-v8'
 const STATIC_ASSETS = [
   '/',
   '/icons/apple-touch-icon.png',

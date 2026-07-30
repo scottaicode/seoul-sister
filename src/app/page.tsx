@@ -124,8 +124,21 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="sticky top-0 z-40 bg-seoul-dark/80 backdrop-blur-md border-b border-white/5">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <span className="font-display font-bold text-xl text-white tracking-tight">
-            Seoul Sister
+          {/* Mark + wordmark. This is the FIRST brand impression for every cold
+              visitor and every AI-citation click, so the landing nav carries the
+              monogram too — not just the authenticated Header. */}
+          <span className="flex items-center gap-2.5">
+            <img
+              src="/icons/icon-mark.svg"
+              alt=""
+              aria-hidden="true"
+              width={28}
+              height={28}
+              className="w-7 h-7 rounded-lg"
+            />
+            <span className="font-display font-bold text-xl text-white tracking-tight">
+              Seoul Sister
+            </span>
           </span>
           <div className="hidden md:flex items-center gap-6">
             {navLinks.map((link) => (
