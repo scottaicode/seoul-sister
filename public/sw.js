@@ -19,11 +19,15 @@
 // people already affected by it. Bailey had the installed PWA and a v2 cache,
 // so without this bump she would keep replaying the bundle that bounced her to
 // /login on every launch — the same returning-visitor trap as v2.
-const CACHE_NAME = 'seoul-sister-v3'
+// v4 (Jul 29 2026): STATIC_ASSETS now precaches the PNG icons. The old list
+// referenced icon-192.svg / icon-512.svg, which iOS cannot use for a home-screen
+// icon at all — bumping makes the activate handler purge v3 so returning
+// visitors stop precaching assets nothing points at.
+const CACHE_NAME = 'seoul-sister-v4'
 const STATIC_ASSETS = [
   '/',
-  '/icons/icon-192.svg',
-  '/icons/icon-512.svg',
+  '/icons/apple-touch-icon.png',
+  '/icons/icon-192.png',
 ]
 
 // Install: pre-cache static assets

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Seoul Sister">
+  <title>Seoul Sister</title>
+  <!--
+    INTERIM app icon, July 29 2026.
+
+    The previous apple-touch-icon pointed at an SVG, which iOS does NOT support for
+    home-screen icons — so iPhone users got a page screenshot instead of a logo.
+    Fixing that needs a PNG, and rendering the old icon-512.svg to 180px showed
+    exactly why it could not be the source: it packs an orb, two rings, the glyph
+    AND a two-line wordmark, and at 180px "SISTER" is invisible mush.
+
+    So this is the same 유 already in the brand mark, alone, at icon scale. 유 is the
+    first syllable of 유리 (Yuri) and means "glass" — the glass-skin reference.
+
+    This is a STOPGAP so iOS has a legible icon today. It gets replaced by Bailey's
+    SS mark once she exports it from Canva. Do not build on this.
+  -->
+  <rect width="512" height="512" fill="#0D0D0F"/>
+  <text x="256" y="420" font-family="'Apple SD Gothic Neo', 'Noto Sans KR', Georgia, serif"
+    font-size="470" font-weight="700" text-anchor="middle" fill="#E8C97A">유</text>
+</svg>

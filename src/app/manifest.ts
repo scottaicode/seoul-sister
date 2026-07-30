@@ -37,22 +37,42 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#0D0D0F',
     orientation: 'portrait-primary',
     categories: ['beauty', 'lifestyle', 'shopping'],
+    // PNG entries come FIRST and are the real icons (July 29 2026).
+    //
+    // Every entry here used to be image/svg+xml. Android's installer support for
+    // SVG icons is inconsistent and iOS ignores the manifest for home-screen
+    // icons entirely, so an SVG-only list meant installs fell back to a generic
+    // or screenshot icon. PNG is the format both platforms actually honour; the
+    // SVG stays last as a high-DPI extra for browsers that prefer it.
     icons: [
       {
-        src: '/icons/icon-192.svg',
+        src: '/icons/apple-touch-icon.png',
+        sizes: '180x180',
+        type: 'image/png',
+      },
+      {
+        src: '/icons/icon-192.png',
         sizes: '192x192',
-        type: 'image/svg+xml',
+        type: 'image/png',
       },
       {
-        src: '/icons/icon-512.svg',
+        src: '/icons/icon-512.png',
         sizes: '512x512',
-        type: 'image/svg+xml',
+        type: 'image/png',
       },
       {
-        src: '/icons/icon-512.svg',
+        // Maskable: Android applies its own crop (circle, squircle, teardrop) and
+        // only the middle ~80% is guaranteed. The source art is already inset
+        // well inside that safe area, so the same file serves here.
+        src: '/icons/icon-512.png',
         sizes: '512x512',
-        type: 'image/svg+xml',
+        type: 'image/png',
         purpose: 'maskable',
+      },
+      {
+        src: '/icons/icon-512.svg',
+        sizes: '512x512',
+        type: 'image/svg+xml',
       },
     ],
   }

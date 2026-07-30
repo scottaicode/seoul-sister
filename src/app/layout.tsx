@@ -89,9 +89,17 @@ export default function RootLayout({
           `}
         </Script>
         <link rel="manifest" href="/manifest.webmanifest" />
-        <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+        {/* apple-touch-icon MUST be a PNG (July 29 2026).
+            iOS does not support SVG for home-screen icons. This pointed at
+            /icons/icon-192.svg, so every iPhone that added Seoul Sister to its
+            home screen got a SCREENSHOT of the page instead of the logo — the
+            whole point of the install we were pushing Bailey through.
+            180x180 is the size modern iPhones request. */}
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        {/* black-translucent lets the dark app background run under the status
+            bar; "default" rendered a white strip above a near-black app. */}
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Seoul Sister" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="msapplication-TileColor" content="#0D0D0F" />
