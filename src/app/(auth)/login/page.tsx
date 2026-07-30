@@ -247,6 +247,17 @@ export default function LoginPage() {
         >
           Create an account
         </Link>
+
+        {/* Install help, UNCONDITIONALLY. The WrongOriginNotice above only fires on
+            the apex, but someone who has just deleted their icon is on www with no
+            icon at all — and every other copy of these instructions is behind this
+            screen. That is how Scott and Bailey got stranded. */}
+        <Link
+          href="/install"
+          className="mt-4 block text-center text-xs text-white/40 hover:text-gold transition-colors"
+        >
+          Add Seoul Sister to your home screen &rarr;
+        </Link>
       </div>
 
       {/* Footer note */}

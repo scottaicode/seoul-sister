@@ -46,7 +46,11 @@ export default function WrongOriginNotice() {
           >
             www.seoulsister.com
           </a>
-          . You&apos;ll only need to do this once.
+          . You&apos;ll only need to do this once.{' '}
+          <a href="/install" className="text-gold underline underline-offset-2">
+            Step-by-step instructions
+          </a>
+          .
         </p>
       </div>
     </div>

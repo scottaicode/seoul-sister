@@ -523,6 +523,11 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="flex gap-4 text-xs text-white/30">
+            {/* Install help must be reachable WITHOUT logging in. Scott and Bailey
+                deleted their icons to re-add them and could not find any install
+                instructions, because every copy lived on /dashboard — behind
+                login, behind the paywall, and dismissible. */}
+            <Link href="/install" className="hover:text-gold transition-colors">Get the app</Link>
             <Link href="/privacy" className="hover:text-gold transition-colors">Privacy</Link>
             <Link href="/terms" className="hover:text-gold transition-colors">Terms</Link>
             <Link href="/support" className="hover:text-gold transition-colors">Support</Link>

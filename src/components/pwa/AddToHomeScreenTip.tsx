@@ -167,12 +167,22 @@ export default function AddToHomeScreenTip() {
             </p>
           )}
 
+          {/* Always offer the permanent page. Dismissing this card used to destroy
+              the ONLY install instructions in the product — Scott and Bailey hit
+              exactly that after deleting their icons to re-add them. */}
+          <a
+            href="/install"
+            className="mt-3 inline-block text-xs font-medium text-gold-light hover:text-gold transition-colors"
+          >
+            Full instructions &rarr;
+          </a>
+
           {/* No dismiss on the re-install card: it is the only route out of an
               app that cannot hold a login, and hiding it strands the user. */}
           {!reinstall && (
             <button
               onClick={dismiss}
-              className="mt-3 text-xs text-white/40 hover:text-white/70 transition-colors"
+              className="mt-3 ml-4 text-xs text-white/40 hover:text-white/70 transition-colors"
             >
               Don&apos;t show this again
             </button>
