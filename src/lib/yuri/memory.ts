@@ -140,6 +140,15 @@ export interface RoutineProductEntry {
   productId: string | null
   display: string             // "Goodal Vita C (Goodal) — serum"
   ownership: 'owned' | 'planned_only' | 'unknown'
+  /**
+   * 'catalog' = joined to a real ss_products row, so its INCI is available to
+   * every ingredient-keyed check. 'custom' = product_id IS NULL; the step's
+   * identity lives in free-text notes and NO catalog-keyed check can see it.
+   * Custom steps used to be dropped from context entirely (the `if (product)`
+   * gate), which is how a subscriber's prescription ADAPALENE step became
+   * invisible to Yuri while the COSRX BHA beside it stayed visible.
+   */
+  kind: 'catalog' | 'custom'
 }
 
 export interface UserContext {
@@ -324,6 +333,7 @@ export async function loadUserContext(
           ss_routine_products (
             step_order,
             product_id,
+            notes,
             ss_products (name_en, brand_en, category)
           )
         `)
@@ -522,7 +532,28 @@ export async function loadUserContext(
             productId,
             display: `${product.name_en} (${product.brand_en}) - ${product.category}`,
             ownership,
+            kind: 'catalog',
           })
+        } else {
+          // Custom step (product_id IS NULL). These were SILENTLY DROPPED here,
+          // so a step Yuri herself wrote into the routine vanished from her own
+          // memory of it. Bailey's "ADAPALENE NIGHTS ... NEVER same night as
+          // BHA" step was invisible while the BHA it warns about was visible —
+          // she could not reason about an interaction she could not see.
+          // The identity lives in `notes`, written as "<name> — <detail>" or
+          // just "<name>" by save_routine. Show the whole string rather than
+          // splitting it: the separator is not guaranteed (one real row is a
+          // bare instruction with no name), and a wrong split invents a product
+          // name, which is the failure this repo already paid for once.
+          const rawNotes = (rp.notes as string | null)?.trim()
+          if (rawNotes) {
+            routineProducts.push({
+              productId: null,
+              display: rawNotes,
+              ownership: 'unknown',
+              kind: 'custom',
+            })
+          }
         }
       }
     }
@@ -790,6 +821,28 @@ This is not a list of things to avoid applying; it is who you are advising. Let 
       for (const p of planned) lines.push(`- ${p.display}`)
       lines.push('\nThese are products the user previously planned to use but never confirmed buying. Do not say "you have X" or "since you have X" for these. If relevant, ask whether they ended up buying it before recommending around it.')
     }
+
+    // Custom steps + conflict-check coverage, as FACTS.
+    //
+    // These rows have no catalog product, so every ingredient-keyed check
+    // (conflict detection, overlap, effectiveness) contributes nothing for
+    // them. That silence used to be indistinguishable from an all-clear, and
+    // the steps themselves were dropped from this block entirely. Same
+    // discipline as the shelf-visibility block: state what is and is not
+    // covered, then hand the judgment back. This blocks nothing and prescribes
+    // nothing — Yuri already owns the remedy, because check_ingredient_conflicts
+    // accepts raw ingredient_names and can check a custom step by name.
+    const custom = context.routineProducts.filter((p) => p.kind === 'custom')
+    if (custom.length > 0) {
+      const total = context.routineProducts.length
+      const covered = total - custom.length
+      lines.push('\n### Steps saved without a catalog product (written as free text):')
+      for (const p of custom) lines.push(`- ${p.display}`)
+      lines.push(
+        `\nCONFLICT-CHECK COVERAGE: ${covered} of ${total} routine steps are catalog products whose ingredients the automatic checks can read. The ${custom.length} above are not, so a clean automatic conflict result does NOT cover them — it means they were not checked, not that they are safe. Some are genuinely not products (a shower step, a device); others are real actives, including prescription ones. If one of them matters for what you are about to say, you can read its name here and check it directly with check_ingredient_conflicts using ingredient names, or ask them what is in it. This is a fact about your coverage, not a rule about what to say.`
+      )
+    }
+
     sections.push(`## Current Routine Products\n${lines.join('\n')}`)
   }
 

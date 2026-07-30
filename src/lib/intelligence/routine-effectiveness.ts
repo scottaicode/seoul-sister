@@ -46,13 +46,25 @@ export async function calculateRoutineEffectiveness(
 
   if (!routineProducts?.length) return []
 
-  const productIds = routineProducts.map((rp) => rp.product_id)
+  // Custom steps carry product_id = NULL; passing one through .in() on a uuid
+  // column fails the whole query with 22P02, which silently returned [] here
+  // (same defect as conflict-detector.ts, July 30 2026).
+  const productIds = routineProducts
+    .map((rp) => rp.product_id)
+    .filter((id): id is string => id !== null)
+
+  if (!productIds.length) return []
 
   // 2. Get all ingredient IDs for those products
-  const { data: links } = await supabase
+  const { data: links, error: linksError } = await supabase
     .from('ss_product_ingredients')
     .select('ingredient_id')
     .in('product_id', productIds)
+
+  if (linksError) {
+    console.error('[routine-effectiveness] ingredient lookup failed:', linksError.message)
+    return []
+  }
 
   if (!links?.length) return []
 

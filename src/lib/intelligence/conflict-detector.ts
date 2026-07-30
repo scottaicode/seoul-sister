@@ -42,12 +42,30 @@ export async function checkRoutineConflicts(
     return { safe: true, conflicts: [] }
   }
 
-  const existingProductIds = routineProducts.map((rp) => rp.product_id)
+  // Custom steps carry product_id = NULL. Passing a null through .in() on a uuid
+  // column makes PostgREST reject the WHOLE query with 22P02 ("invalid input
+  // syntax for type uuid"), and because only `data` was destructured, the error
+  // was invisible: allIngredients came back empty and the function returned
+  // safe:true. One custom step therefore disabled conflict checking for EVERY
+  // catalog product in the routine — measured on Bailey's Phase 3 PM routine,
+  // where filtering nulls recovers 189 ingredient rows that were being skipped
+  // while the UI showed no warning (July 30 2026).
+  const existingProductIds = routineProducts
+    .map((rp) => rp.product_id)
+    .filter((id): id is string => id !== null)
 
-  const { data: existingIngredients } = await supabase
+  const { data: existingIngredients, error: existingIngredientsError } = await supabase
     .from('ss_product_ingredients')
     .select('ingredient_id')
     .in('product_id', existingProductIds)
+
+  // A FAILED query is not an all-clear. Surfacing the error keeps a broken read
+  // from being indistinguishable from "nothing conflicts" — the silent-failure
+  // class this repo keeps relearning.
+  if (existingIngredientsError) {
+    console.error('[conflict-detector] existing-ingredient lookup failed:', existingIngredientsError.message)
+    throw new Error(`Conflict check could not run: ${existingIngredientsError.message}`)
+  }
 
   if (!existingIngredients?.length) {
     return { safe: true, conflicts: [] }
@@ -55,27 +73,40 @@ export async function checkRoutineConflicts(
 
   const existingIds = [...new Set(existingIngredients.map((i) => i.ingredient_id))]
 
-  // Build bidirectional conflict query filters
-  const orFilters: string[] = []
-  for (const nid of newIds) {
-    for (const eid of existingIds) {
-      orFilters.push(
-        `and(ingredient_a_id.eq.${nid},ingredient_b_id.eq.${eid})`,
-        `and(ingredient_a_id.eq.${eid},ingredient_b_id.eq.${nid})`
-      )
-    }
-  }
-
-  if (orFilters.length === 0) {
+  // Fetch rules touching either side, then pair them in memory. The previous
+  // version built newIds × existingIds `or` clauses — ~11,600 for a real
+  // routine, in ONE unbatched URL — which is the same O(n²) blowup fixed in
+  // checkAllRoutineConflicts below. ss_ingredient_conflicts is a small curated
+  // rule table, so two .in() filters answer this in a single cheap request.
+  if (!newIds.length) {
     return { safe: true, conflicts: [] }
   }
 
-  const { data: foundConflicts } = await supabase
+  const newIdSet = new Set(newIds)
+  const existingIdSet = new Set(existingIds)
+  const bothSides = [...new Set([...newIds, ...existingIds])]
+
+  const { data: candidateRules, error: candidateRulesError } = await supabase
     .from('ss_ingredient_conflicts')
     .select('ingredient_a_id, ingredient_b_id, severity, description, recommendation')
-    .or(orFilters.join(','))
+    .in('ingredient_a_id', bothSides)
+    .in('ingredient_b_id', bothSides)
 
-  if (!foundConflicts?.length) {
+  if (candidateRulesError) {
+    console.error('[conflict-detector] conflict rule lookup failed:', candidateRulesError.message)
+    throw new Error(`Conflict check could not run: ${candidateRulesError.message}`)
+  }
+
+  // A rule applies only if it spans the NEW product and the EXISTING routine —
+  // in either column order. Two ingredients both already in the routine are not
+  // a conflict introduced by this addition.
+  const foundConflicts = (candidateRules || []).filter(
+    (c) =>
+      (newIdSet.has(c.ingredient_a_id) && existingIdSet.has(c.ingredient_b_id)) ||
+      (newIdSet.has(c.ingredient_b_id) && existingIdSet.has(c.ingredient_a_id))
+  )
+
+  if (!foundConflicts.length) {
     return { safe: true, conflicts: [] }
   }
 
@@ -116,12 +147,21 @@ export async function checkAllRoutineConflicts(
     return { safe: true, conflicts: [] }
   }
 
-  const productIds = routineProducts.map((rp) => rp.product_id)
+  // See the note on the null filter above — a single custom step used to kill
+  // this entire query with 22P02 and return a false all-clear.
+  const productIds = routineProducts
+    .map((rp) => rp.product_id)
+    .filter((id): id is string => id !== null)
 
-  const { data: allIngredients } = await supabase
+  const { data: allIngredients, error: allIngredientsError } = await supabase
     .from('ss_product_ingredients')
     .select('product_id, ingredient_id')
     .in('product_id', productIds)
+
+  if (allIngredientsError) {
+    console.error('[conflict-detector] routine ingredient lookup failed:', allIngredientsError.message)
+    throw new Error(`Conflict check could not run: ${allIngredientsError.message}`)
+  }
 
   if (!allIngredients?.length) {
     return { safe: true, conflicts: [] }
@@ -136,42 +176,44 @@ export async function checkAllRoutineConflicts(
     productIngredientMap.get(pi.product_id)!.add(pi.ingredient_id)
   }
 
-  // Cross-check all pairs of products
+  // Fetch the conflict rules that touch ANY ingredient in this routine, then
+  // pair them up in memory.
+  //
+  // This used to enumerate every unordered ingredient pair into PostgREST `or`
+  // filters, batched 200 at a time. That is O(n²) in ingredient count: a real
+  // 5-product routine has ~145 unique ingredients → 20,880 filter clauses →
+  // 105 sequential HTTP round-trips, which would hang the routine page. It was
+  // never hit in production only because the null-uuid bug above made the query
+  // fail before reaching here. Fixing the silent failure exposed the latent
+  // blowup, so both are fixed together.
+  //
+  // Two `.in()` filters return the same rules in ONE request. ss_ingredient_conflicts
+  // is a small curated rule table, so this stays cheap as the catalog grows.
   const allIngredientIds = [...new Set(allIngredients.map((i) => i.ingredient_id))]
-  const orFilters: string[] = []
 
-  for (let i = 0; i < allIngredientIds.length; i++) {
-    for (let j = i + 1; j < allIngredientIds.length; j++) {
-      orFilters.push(
-        `and(ingredient_a_id.eq.${allIngredientIds[i]},ingredient_b_id.eq.${allIngredientIds[j]})`,
-        `and(ingredient_a_id.eq.${allIngredientIds[j]},ingredient_b_id.eq.${allIngredientIds[i]})`
-      )
-    }
-  }
-
-  if (orFilters.length === 0) {
+  if (allIngredientIds.length < 2) {
     return { safe: true, conflicts: [] }
   }
 
-  // Supabase OR filter has a practical limit; batch if needed
-  const batchSize = 200
-  const allConflicts: Array<{
-    ingredient_a_id: string
-    ingredient_b_id: string
-    severity: string
-    description: string
-    recommendation: string
-  }> = []
+  const ingredientIdSet = new Set(allIngredientIds)
 
-  for (let i = 0; i < orFilters.length; i += batchSize) {
-    const batch = orFilters.slice(i, i + batchSize)
-    const { data } = await supabase
-      .from('ss_ingredient_conflicts')
-      .select('ingredient_a_id, ingredient_b_id, severity, description, recommendation')
-      .or(batch.join(','))
+  const { data: candidateRules, error: rulesError } = await supabase
+    .from('ss_ingredient_conflicts')
+    .select('ingredient_a_id, ingredient_b_id, severity, description, recommendation')
+    .in('ingredient_a_id', allIngredientIds)
+    .in('ingredient_b_id', allIngredientIds)
 
-    if (data) allConflicts.push(...data)
+  if (rulesError) {
+    console.error('[conflict-detector] conflict rule lookup failed:', rulesError.message)
+    throw new Error(`Conflict check could not run: ${rulesError.message}`)
   }
+
+  // Both endpoints must be present in the routine for the rule to apply. The
+  // .in() pair already guarantees this, but re-check so the invariant is local
+  // and survives a future query change.
+  const allConflicts = (candidateRules || []).filter(
+    (c) => ingredientIdSet.has(c.ingredient_a_id) && ingredientIdSet.has(c.ingredient_b_id)
+  )
 
   if (allConflicts.length === 0) {
     return { safe: true, conflicts: [] }
