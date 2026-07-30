@@ -138,15 +138,27 @@ test('the manifest points maskable at its own art, not the tile', () => {
 // strip.
 // ---------------------------------------------------------------------------
 
-/** Minimal PNG reader: returns {w,h,px(x,y)} for truecolour/greyscale PNGs. */
+/**
+ * Minimal PNG reader: returns {w,h,px(x,y)} as RGB triples.
+ *
+ * Handles PALETTE PNGs (colourType 3) as well as truecolour/greyscale. That is not
+ * optional: the favicons are written with `palette: true` because an indexed PNG is
+ * both smaller and free of the resampling smear a full-colour downscale introduces.
+ * An earlier version of this reader ignored PLTE, so every palette pixel came back
+ * as a single index byte — `corner is [0]` — and the test failed on a perfectly good
+ * icon. A test that fails on correct art is as bad as one that passes on broken art.
+ */
 function readPng(rel) {
   const d = readFileSync(icons(rel))
   const w = d.readUInt32BE(16), h = d.readUInt32BE(20)
   const colourType = d[25]
   let idat = Buffer.alloc(0)
+  let plte = null
   for (let i = 8; i < d.length; ) {
     const len = d.readUInt32BE(i)
-    if (d.slice(i + 4, i + 8).toString() === 'IDAT') idat = Buffer.concat([idat, d.slice(i + 8, i + 8 + len)])
+    const type = d.slice(i + 4, i + 8).toString()
+    if (type === 'IDAT') idat = Buffer.concat([idat, d.slice(i + 8, i + 8 + len)])
+    if (type === 'PLTE') plte = d.slice(i + 8, i + 8 + len)
     i += 12 + len
   }
   const raw = inflateSync(idat)
@@ -174,7 +186,20 @@ function readPng(rel) {
     prev = line
     rows.push(line)
   }
-  return { w, h, colourType, px: (x, y) => [...rows[y].slice(x * ch, (x + 1) * ch)] }
+  return {
+    w,
+    h,
+    colourType,
+    // Always returns RGB, resolving through the palette when there is one.
+    px: (x, y) => {
+      if (colourType === 3 && plte) {
+        const idx = rows[y][x]
+        return [plte[idx * 3], plte[idx * 3 + 1], plte[idx * 3 + 2]]
+      }
+      const p = [...rows[y].slice(x * ch, (x + 1) * ch)]
+      return colourType === 0 || colourType === 4 ? [p[0], p[0], p[0]] : p
+    },
+  }
 }
 
 test('home-screen icons are FULL-BLEED, with no dark corners for iOS to mask', () => {
@@ -331,7 +356,7 @@ test('the cache fence advanced so the new icon reaches returning visitors', () =
   const m = read('public', 'sw.js').match(/const CACHE_NAME = 'seoul-sister-v(\d+)'/)
   assert.ok(m, 'CACHE_NAME must stay in the greppable seoul-sister-vN form.')
   assert.ok(
-    Number(m[1]) >= 11,
+    Number(m[1]) >= 12,
     `CACHE_NAME is v${m[1]}. STATIC_ASSETS precaches the icon PNGs, so a returning ` +
       'visitor keeps the OLD icon until this name changes.'
   )

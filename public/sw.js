@@ -52,7 +52,11 @@
 // Scott spotted as blurry at 32px and which magnification showed as unreadable
 // NOISE at 16px. Replaced with a purpose-drawn single sans S. Favicons are
 // precached under /icons/, so the fix needs this bump.
-const CACHE_NAME = 'seoul-sister-v11'
+// v12 (Jul 30 2026): the favicons were still soft. Measured: 38% of pixels were
+// MID-TONES — anti-aliasing smear from downscaling a 512-unit drawing to 16px.
+// Now drawn AT the target size with the glyph box snapped to whole pixels and
+// rendered 1:1 with no downscale. 38% -> 25%, remainder is the gold gradient.
+const CACHE_NAME = 'seoul-sister-v12'
 const STATIC_ASSETS = [
   '/',
   '/icons/apple-touch-icon.png',
