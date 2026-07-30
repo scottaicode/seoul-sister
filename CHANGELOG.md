@@ -8,6 +8,92 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.18.0 (July 30, 2026): Eight failures that all looked like success
+
+Bailey opened Yuri and got *"Something went wrong on Yuri's end."* Chasing that one report surfaced seven more defects, and **every one of them was the same shape: code that could not tell "nothing is wrong" from "nothing was checked."** That is the durable lesson of this release, more than any individual fix.
+
+### 1. Authenticated Yuri was down for every user who owned a product
+
+The crash Bailey reported was not transient and not hers alone — **3 of 3 users with a product inventory**, the only paying customer included. It came from the previous day's confirmed/inferred split, which rendered product lines into a flat `string[]` and then re-paired them against `context.userProducts` **by index**. The ingredient-visibility block appends three narrative lines to that same array, so every index past it ran off the end and `up.learned_from` threw on `undefined`.
+
+The crash landed in context assembly, **before** the Anthropic call — which is why the conversation row was created with zero messages and why resending could never help. Each rendered line now carries its own product, so the desync is unrepresentable.
+
+**This area already had tests, and they all passed against the broken code**, because they assert on source text and an off-by-length read is invisible to a string match. The new guard transpiles `memory.ts` and CALLS the formatter on the shape that crashed.
+
+### 2. "Locked" was a claim about a write that never happened
+
+Scott approved a routine correction; Yuri replied *"Locked. ... This wipes out the drifted junk ... all get removed."* She never called `save_routine` — that turn's tool log is `search_products` + `get_routine_context` only. Every wrong row was still there and `updated_at` was five months old.
+
+The tool-call honesty rule enumerated only READ verbs ("I checked", "I looked it up", "I verified"). **"Locked" and "removed" are WRITE claims, so no rule was broken.** It now governs writes explicitly and draws the line the failure ran along: present-tense intent is honest, past-tense completion requires a write tool that ran this turn and returned success.
+
+The second cause was structural. The only guidance on revising a routine lived in an ERROR string and read as a threat — *"CAREFUL: save_routine creates a whole NEW routine ... or you will wipe or duplicate the user's routine."* Fixing one step meant re-saving all of them behind a destructive-sounding flag, so **stalling felt safer than acting**. Her caution was defensible; narrating it as done was not.
+
+### 3. One custom step was disabling every conflict check (P0)
+
+`ss_routine_products.product_id` is nullable — a device, a shower step, or a product we don't carry has no catalog row. Three functions passed those NULLs straight into `.in('product_id', ids)`. PostgREST rejects a null in an `.in()` on a uuid column with **22P02**, and all three sites destructured only `{ data }`, so the failed query was indistinguishable from an empty result and fell through to `return { safe: true, conflicts: [] }`.
+
+**A single custom step therefore disabled ingredient-conflict checking for the ENTIRE routine**, catalog products included. All three of Bailey's active routines returned a false all-clear; filtering the nulls on Phase 3 PM recovers **189 ingredient rows** that were being skipped while the UI showed no warning.
+
+Yuri was blinded the same way: `memory.ts` gated routine extraction on `if (product)`, so custom steps never entered her context. Her step 4 is **ADAPALENE**, a prescription retinoid; step 5 is COSRX BHA. **She could see the acid and not the retinoid** — asked to reason about an interaction while blind to one side of it. Custom steps now load (13 → 28 context entries) behind a coverage FACT that ends by handing the decision back; a guard test fails if that fact becomes a command.
+
+Fixing the silent failure exposed a latent **O(n²)**: the pair enumeration built 20,880 PostgREST `or` clauses (105 sequential round-trips) for one real routine. It had never run at scale because the null bug short-circuited it first. `ss_ingredient_conflicts` holds 5 rules, so two `.in()` filters now answer it in one request.
+
+Verified by making it FIRE, not merely stop crashing: a routine holding Retinol + Glycolic Acid **and** a null custom step now reports `high: Retinol+Glycolic Acid`.
+
+### 4. Custom routine steps were permanently stuck (P1)
+
+Every mutation path keyed on `product_id`, so a NULL row could not be named by any of them: DELETE required `?product_id=`, PUT reorder looped `.eq('product_id')`, and Yuri's `remove_from_routine` deleted the same way. The routine page had to HIDE the buttons because the API could not express the request. **Bailey could not remove her own adapalene step, and neither could Yuri.**
+
+Rows are now addressed by their own `id` everywhere. Yuri's path gained a custom-step branch that matches the notes text EXACTLY and **refuses on ambiguity** — a fuzzy remove deletes a step the user did not mean.
+
+Two things a parallel caller audit caught: `get_routine_context` rendered every custom step as `"(unknown)"` with no row id, so Yuri was told a step existed without being told WHICH; and **`RoutineProduct.product_id` was typed `string` while the live column had long been nullable** — that mismatch is why every null-handling bug in these paths typechecked cleanly.
+
+### 5. Continuity read as a scold, and a user walked away from a good answer (P6)
+
+Bailey asked whether Rhode Glazing Milk was comedogenic. Yuri opened *"We started this exact breakdown last time, let me finish it properly this time"* and then gave an excellent 1,235-character answer. Bailey's reaction: *"Dammnnn I didn't get a good answer because I've already asked it 😅 I'll find a different trending product."*
+
+**Nothing was broken. The opening line was the whole problem.** The memory section governed whether Yuri may reference the past but nothing about how a callback LANDS. The rule now covers ordering — lead with the ANSWER, let memory arrive as added value — and names the specific phrasings, because a general "be warm" instruction would not have caught this.
+
+Recorded honestly: the "last time" was **a reproduction test run against her account 45 seconds earlier**. Yuri was remembering a conversation Bailey never had. So the prompt also says that when history looks strange, the user in front of her is the source of truth.
+
+Verified by replaying her exact question — before: *"We started this exact breakdown last time."* After: *"Okay, so you've been circling this one for a while, and I get the pull."*
+
+### 6. Bailey's LED device was three masks she doesn't own (P2)
+
+P2 began as "the Beplain cleanser is still in her routine." **It isn't a bug** — she ordered it on July 27, and Yuri had explicitly distinguished it from the fabricated Makiol at the time. The July 27 sweep also worked: zero Makiol rows remain.
+
+Auditing by SHAPE instead of by product name found the real thing. The loose resolver had matched the word **"mask"** to real catalog products: `BanoBagi Skin Booster Mask`, `VT Cryo Ice Mask`, and an `Innisfree Super Volcanic Pore Clay Mask` — while every note describes blue/red light sessions. Five rows across three routines. Nulled the product link and kept the step, because the step is real and the notes carry her schedule.
+
+**The durable lesson: sweeping ONE fabricated product does not find the next one.** The July 27 sweep targeted a specific product id, so this survived it untouched.
+
+### 7. 15 unsplit INCI dumps were live in the sitemap (P3)
+
+Scoped as "146 junk rows, frozen since February." Both halves were wrong: the junk is **not frozen** (12 more rows since, newest July 25), and a length threshold is the wrong instrument — `"Water, Talc"` is 11 characters.
+
+What mattered: `src/app/sitemap.ts` filtered on `is_active` and **nothing else**. The pollution guard existed and was applied on the detail page, but the sitemap — whose entire job is telling crawlers what to index — never called it. 15 dumps were live in it (`"Glucose■ TeatreeGlycerin"`, `"Cysteine; PDRN Essence 100: Water"`). For a product whose moat is AI citation, submitting garbage URLs is the expensive version of this bug.
+
+**The over-correction nearly shipped is worth recording.** The obvious rule — reject any name containing a comma — would have destroyed **979 legitimate ingredients** (`"Niacinamide (50,000ppm)"`). So a comma counts only when followed by a LETTER and OUTSIDE any parenthetical. A subsequent run-together heuristic flagged 4,898 rows including `"Hexapeptide-9"` and was thrown out rather than tuned by feel.
+
+No deletion sweep: a read-side filter stops the rows being served without touching data that 307 product links still reference.
+
+### 8. The write path never checked, so junk kept being created
+
+The guard was applied on read but nothing validated a name before inserting it. `matchOrCreateIngredient` took whatever the parser handed it, asked Opus to describe the "ingredient", and wrote the row — which is why 12 new junk rows appeared long after the original bug was called fixed.
+
+The guard now runs FIRST, before the cache lookup, DB query and enrichment call. It returns `null` rather than throwing so one bad entry in a 40-ingredient list does not cost the other 39. **Making the return nullable immediately surfaced a SECOND write path** (`scripts/fast-link.ts`) that had the identical gap — `tsc` found it, which is the argument for a nullable return over a thrown error.
+
+### Process lessons earned this release
+
+- **A guard test that asserts source text can pass against broken code.** Several did. Where the defect is logic rather than wording, the test must EXECUTE the real function on the shape that failed, and be confirmed to fail when the bug is reverted verbatim. (One new test passed while the file did not compile; `tsc` caught what it could not.)
+- **A query that ERRORS and a query that returns nothing are the same shape if you only destructure `data`.** On any safety path, check `error`.
+- **Verify the deployment, not the push.** One release sat unshipped after a Vercel webhook silently failed to fire; `git ls-remote` showed the commit on GitHub while no build existed.
+- **Do not test against a real user's live account.** The probe polluted Bailey's Yuri memory and directly caused defect #5.
+- **Measure before fixing.** Three of these were scoped wrong until queried — a `NOT NULL` I twice asserted was actually nullable, a "frozen" leak that was still active, and a "still-there" row the user had actually bought.
+
+Tests 375 → 429, every new guard confirmed to fail when its bug is reintroduced. `tsc` + `build` green on all eight commits.
+
+---
+
 ## v11.17.0 (July 30, 2026): The brand mark, and a generic phrase that became a product
 
 Three separate pieces of work, connected only by being what Bailey asked for after the logout fix landed.
