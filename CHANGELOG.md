@@ -8,6 +8,77 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.16.0 (July 30, 2026): "I'm being logged out" was a report about what she SAW
+
+Bailey, Seoul Sister's lighthouse user, could not stay signed in to the installed home-screen app. **Four rounds of fixes went at the session layer. The thing she was actually looking at was a routing bug on the marketing page.** Her verdict after the real fix: *"It worked!!!!! Omg this changes everything."*
+
+This entry is written at length because the diagnostic failure is more valuable than any of the code.
+
+### The one that actually fixed it
+
+The PWA manifest's `start_url` is `https://www.seoulsister.com/` — the **marketing page** — and `src/app/page.tsx` had **no auth awareness whatsoever**. It rendered "Get Started", "Start Your Journey" and *"Talk to Yuri Free. 12 messages, no signup"* unconditionally, to everyone, including paying subscribers holding a valid session.
+
+So every launch of the icon showed her the signup pitch. That is **indistinguishable from having been logged out**. She then tapped Sign Out and tried to re-register — the `POST /logout` taps and the `POST /signup → 422 user_repeated_signup` in the auth log are a user trying every door, not a session being killed.
+
+Fix: `src/components/auth/SignedInRedirect.tsx`, a render-nothing component that reads the local session and `router.replace('/dashboard')`. Constraints, because `/` is the GEO surface (~525 Bing citations/week) and the anonymous Yuri widget's front door:
+- It **never gates, spinners, or delays** the page. No session, or any error, leaves the marketing page exactly as it was.
+- It does **not** redirect when the URL carries intent belonging to this page — `?ask=` / `?from=` feeder prefills, or a `#pricing` anchor — so links we deliberately ship still land where they point.
+- `start_url` was deliberately **not** repointed at `/dashboard`: `/` must stay the public surface, and changing `start_url` re-anchors install identity.
+
+### What the four wrong rounds cost, and why they were wrong
+
+| Round | Diagnosis | Verdict |
+|---|---|---|
+| 1 | `persistSession` / `autoRefreshToken` unset | **Non-fix.** Both were already library defaults. Its guard tests asserted source text, so they passed while the bug stayed live. |
+| 2 | Cold-launch `AuthRetryableFetchError` read as a logout | **Real bug, fixed** (`session-state.ts`). Not hers. |
+| 3 | Apex vs www origin split; localStorage partitioned per origin | **Real infrastructure bug, fixed** (absolute `start_url`/`scope`/`id`). Not hers — see below. |
+| 4 | iOS evicting script-writable storage | **Wrong, and its stated justification was false.** |
+| 5 | `signOut()` defaulting to `scope: 'global'` | **Real bug, fixed.** Not what she was seeing. |
+
+**Round 4 deserves its own note as a cautionary tale.** It concluded iOS was evicting her storage — a cause that is conveniently unfalsifiable from a web page — and shipped a localStorage→cookie mirror. Its central claim, that a cookie with an explicit `Max-Age` escapes Safari's 7-day cap, is **false**. Verified against the primary source (WebKit, ITP 2.1): *"all persistent client-side cookies, i.e. persistent cookies created through document.cookie, are capped to a seven day expiry."* Only HTTP `Set-Cookie` is exempt, and this adapter must use `document.cookie` so client JS can read it back. The mirror is a one-week hedge on the exact browser it was written to defend against, not the different-lifetime guarantee claimed. Kept (a second copy still helps inside that week) but the comment now says so.
+
+The mirror also had to be **hardened against causing the bug it was written to prevent**: `document.cookie` fails silently over ~4KB, which would freeze it on an old refresh token while localStorage rotated on. Refresh tokens are single-use, so presenting a rotated one trips GoTrue reuse detection, revokes the session family server-side, and auth-js clears storage (`GoTrueClient.js:1990-1992`) — a real logout, manufactured by the durability layer. Writes are now read back and an untruthful cookie is deleted. Measured a realistic session at **2.7KB**, so this was latent, not active.
+
+### Round 5 was a real bug worth having on its own
+
+`supabase.auth.signOut()` with no argument defaults to `scope: 'global'` (installed `@supabase/auth-js` 2.95.3, `GoTrueClient.js:1572`), which deletes **every** `auth.sessions` row for the user across all devices. All five sign-out surfaces passed no scope. **Scott and Bailey were logging each other out.** The auth log showed it four seconds apart:
+
+```
+00:16:46  POST /token   login   vibetrendai@gmail.com
+00:16:50  POST /logout  logout  baileydonmartin@gmail.com
+00:18:59  POST /token   login   baileydonmartin@gmail.com   (password again)
+```
+
+Verified fixed with live data: after `scope: 'local'`, a sign-out on Scott's iPhone revoked **only** the signing-out device — his three other sessions and Bailey's row all survived. This affected every user, not just her: anyone signing out on a laptop was killing their own phone session.
+
+Also hardened the mobile menu's Sign Out, which is why a tap happened at all: it is the **last** item in a scrollable overlay, **full width**, and the fixed `BottomNav` is `z-50` while the overlay is `z-40` — so the nav bar renders on top of the menu's bottom edge and the `pb-24` that fixes that overlap parks Sign Out right at the boundary. A thumb aimed at a nav icon that lands a few pixels off hit an irreversible action. Now a two-step confirm that replaces the button **in place** (the errant tap was aimed there, so the safe action must not land under that same thumb). Desktop keeps its direct Sign Out — small, deliberate target, nothing overlapping it.
+
+### The evidence that finally settled it — and what should have been checked first
+
+A screenshot did what five rounds of instrumentation could not: **no browser chrome** (standalone PWA) showing the **logged-out marketing page** to a subscriber.
+
+Four live facts had already refuted the persistence theory, and all four were available before the last two rounds:
+- **Every request from her device carried `referer: https://www.seoulsister.com/`** — she was already on the correct origin. The apex/re-install advice was wrong and was given twice.
+- **`GET /user` returned 200 immediately after each login** — the server accepted her session every single time.
+- **Her sessions ACCUMULATED** (five live rows) instead of vanishing — proof the global-revoke bug was already fixed.
+- **`plan=pro_monthly`, `onboarding_completed`, `paywall_reached_at` NULL** — nothing server-side was rejecting her, and she had never even been shown the paywall (which falsified a competing theory that she was tapping the `/subscribe` escape hatch).
+
+**The lesson, and it is the point of this entry: "I'm being logged out" describes what the user SEES. It is not a diagnosis.** Five rounds treated a symptom report as a root-cause claim and went straight to the subsystem the words named. The session was healthy the entire time. Ask what is on screen — ideally get a screenshot — before instrumenting the layer the words point at.
+
+A second, related discipline: **check the live surface, not last night's evidence.** Rounds 3 and 4's apex-origin finding was real when measured, but by the time it was being applied to her it was stale. One `referer` query would have retired it.
+
+### Tests
+
+29 new guard tests (363 total, all green; `tsc` and build clean). Each verified to **fail** when its bug is reintroduced — done by reverting the real code verbatim, not by regex, because round 1's tests passed against the broken code precisely by asserting source text. The landing-redirect tests **execute the real effect body** against fakes; three separate reverts (unmount the component, drop the session check, drop the intent guard) each fail the specific tests covering them. The signOut sweep walks the whole `src/` tree so a **new** un-scoped call fails, rather than checking five named files — and it strips comments first, because it initially flagged the fix's own documentation quoting the bad call.
+
+`CACHE_NAME` v5 → v7 across the three ships: `/_next/static/` is cache-first, so a fix does not reach the returning visitor it was written for until that name changes.
+
+### Verified in production, not assumed
+
+The served bundles were checked rather than trusting the deploy, because this repo has shipped a "fix" that never reached the live chunks: `signOut({scope:"local"})` present in `chunks/6481-…js`; the confirm copy in `chunks/5545-…js`; `session?.user && replace("/dashboard")` plus all three intent guards in `chunks/app/page-…js`; and the anonymous homepage still returning `200` with its marketing content intact.
+
+---
+
 ## v11.15.0 (July 29, 2026): A clean safety check that checked nothing
 
 Bailey's texts with Caroline (subscriber #2) surfaced a question that looked like positioning — *"is this only for Korean products?"* — and turned out to be a safety defect, a metric artifact, and a claim we were making that the best available test contradicts.

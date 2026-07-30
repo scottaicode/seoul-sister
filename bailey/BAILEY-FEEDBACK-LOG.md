@@ -18,6 +18,61 @@ Each entry includes:
 
 ---
 
+## July 29–30, 2026 — "It logs me out every time" on the home-screen app [RESOLVED in v11.16.0]
+
+**Source**: iMessage to Scott across two days, a live phone call, and two app screenshots
+
+**Verbatim quotes**:
+> "I also relog in every single time."
+>
+> "I will say it didn't keep me logged in tho... As soon as I closed everything out and clicked the app it was back to main login page."
+>
+> (after the real fix) "It worked!!!!!"
+>
+> "Omg this changes everything"
+>
+> "But damn I gotta get on that icon asap😂😂😂"
+
+**Bailey's context**: She had added Seoul Sister to her iPhone home screen and could not stay signed in. Scott's iPhone, on the same build, stayed logged in — which is what made this so hard to place. She was on the phone with Scott while the last fix deployed. Her "gotta get on that icon" is a separate, live complaint about the app icon (an interim 유 stopgap), not about auth.
+
+**Status**: RESOLVED in v11.16.0 (July 30 2026). The icon is OPEN — see below.
+
+**Resolution**:
+
+**The actual cause was not auth at all.** The PWA manifest's `start_url` is `https://www.seoulsister.com/` — the marketing page — and that page had **no auth awareness**, so it rendered "Get Started" and *"Talk to Yuri Free. 12 messages, no signup"* unconditionally, to everyone, including her. Every launch of the icon showed a paying subscriber the signup pitch, which is indistinguishable from being logged out. Fixed with `SignedInRedirect` (renders nothing, sends a signed-in visitor to `/dashboard`, and deliberately leaves the public page untouched for strangers and for `?ask=`/`#pricing` links).
+
+**Four earlier rounds went at the session layer.** Two found real bugs worth having — the cold-launch `AuthRetryableFetchError` being read as a logout, and `signOut()` defaulting to `scope: 'global'`, which meant **Scott and Bailey were logging each other out** (verified in the auth log four seconds apart). One was a non-fix whose guard tests only asserted source text. One concluded "iOS is evicting her storage" on a premise that turned out to be factually false (Safari's ITP caps `document.cookie` to 7 days regardless of `Max-Age`).
+
+**What this cost, and the discipline it earned**: *"I'm being logged out"* is a report about **what she SAW**, not a diagnosis. Five rounds treated a symptom description as a root-cause claim and instrumented the subsystem its words named. Her session was healthy the whole time. Four live facts had already refuted the session theory — her requests all carried `referer: www.seoulsister.com` (so the twice-given "delete and re-add the icon" advice was wrong), `GET /user` returned 200 after every login, her sessions were **accumulating** rather than vanishing, and her profile was clean. **A screenshot broke it open in one message.** Ask what is on screen before instrumenting the layer the words point at — and check the live surface rather than last night's evidence.
+
+**Full detail**: `CHANGELOG.md` v11.16.0.
+
+---
+
+## July 29, 2026 — App icon: "gotta get on that icon asap" [OPEN]
+
+**Source**: iMessage to Scott (same thread as the logout fix), plus a Canva screenshot of her own draft
+
+**Verbatim quote**:
+> "But damn I gotta get on that icon asap😂😂😂"
+
+**Bailey's context**: The shipping icon is an **interim stopgap** — the single Korean syllable 유 (from 유리/Yuri, "glass"), added July 29 only because the previous `apple-touch-icon` pointed at an SVG, which iOS does not support for home-screen icons, so every iPhone showed a page screenshot instead of a logo. `public/icons/icon-mark.svg` says in its own comment that it is a stopgap awaiting Bailey's SS mark. Now that the app actually opens to her dashboard, the icon is the thing she looks at every launch.
+
+**Her own draft** (Canva, "Black and White Minimalist Professional Initial Logo"): two interlocking S's joined into a continuous ribbon reading as a figure-eight, high-contrast calligraphic serif, wordmark "SEOUL SISTER" beneath. Genuinely good instinct — the loop reads as continuity and the contrast reads as luxury skincare, the right shelf.
+
+**Status**: OPEN. Bailey holds approval. Per `project_yuri_visual_identity_locked` the SS reconstruction is marked **not-approved**; a prior session was told to stop guessing at it.
+
+**Where it stands (July 30 2026)**: Three vector directions were drafted and **rendered and looked at** at 512/180/40/32px rather than judged from source — the discipline earned by two prior commits (`f7e4d23`, `4c57f78`) that "fixed" the mark without checking the output.
+- **A (stacked ribbon)** — her figure-eight rotated vertical. **REJECTED**: the two S's fused into an unreadable blob, the same swallowing failure as `4c57f78`.
+- **C (mirrored pair)** — **REJECTED**: reads as a butterfly/moth, not "SS". Mirroring makes a reversed letter.
+- **B2 (twin S, side by side, sharing an overlap, with a base rule)** — **the only one that reads as "SS" at 40px and still at 32px.** Files in `~/Downloads/seoul-sister-ss-marks/` (`SS-mark-B2.svg` + size test + a comparison sheet against the current 유 icon).
+
+**Why her Canva version can't be the icon as-drawn** (and this is a two-deliverable problem, not a rejection): hairline tapers vanish below ~60px; the interior counters that make it readable collapse into mud; and a figure-eight is horizontal while an app icon is square, so it letterboxes and loses ~40% of usable area. The wordmark beneath is unusable at icon size but is right for the site header. Standard practice: her direction becomes the **logo/wordmark**, a thickened squared-up derivative becomes the **icon**.
+
+**Note on tooling**: Gemini was tried for this and is the wrong tool — strong at the photorealistic Yuri portraits, unreliable at precise geometric letterforms, and it outputs raster rather than the SVG the icon pipeline wants. (Scott also hit a Gemini image-quota block whose usage page reported 0% used on both counters, which appears to be a separate unsurfaced image limit.) Hand-authored SVG is vector from the start and provable at 32px before anything ships.
+
+---
+
 ## May 20, 2026 (morning) — Duplicate user-message bubble + Glass Skin recommender lives + bad catalog-match prose [RESOLVED in v10.7.1]
 
 **Source**: 10 iMessage screenshots to Scott across the morning
