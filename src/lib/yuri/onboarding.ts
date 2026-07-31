@@ -2,6 +2,16 @@ import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthro
 import { getServiceClient } from '@/lib/supabase'
 import { buildAttributionFields } from '@/lib/attribution'
 import { geocodeLocation } from '@/lib/geo/geocode'
+import { hasActiveSubscription } from '@/lib/subscription'
+import { PRICING } from '@/lib/pricing'
+// Shared with the public widget — same artifacts, same conservative detection,
+// same fact-not-cap wording. Importing rather than re-implementing so the two
+// surfaces can never drift apart.
+import {
+  detectCumulativeGive,
+  buildCumulativeGiveBlock,
+  type CumulativeGive,
+} from '@/lib/widget/cumulative-give'
 import type { ExtractedSkinProfile, OnboardingProgress, YuriMessage } from '@/types/database'
 
 // ---------------------------------------------------------------------------
@@ -35,6 +45,15 @@ const ALL_FIELDS = [
 
 const REQUIRED_FIELDS = ['skin_type', 'skin_concerns', 'age_range'] as const
 
+/**
+ * Lifetime user-message cap on the free onboarding conversation.
+ *
+ * Single source of truth: the API route enforces it (429 `onboarding_message_cap`)
+ * and the turn-state block reports the user's position against it to Yuri, so
+ * the number must not be duplicated. It bounds Opus cost on a free surface.
+ */
+export const ONBOARDING_USER_MESSAGE_CAP = 50
+
 // ---------------------------------------------------------------------------
 // Build Yuri's onboarding system prompt
 // ---------------------------------------------------------------------------
@@ -59,7 +78,17 @@ Think: "cool older sister who works at Amorepacific in Seoul." Confident, warm, 
 - Speak like you're catching up with a friend, not conducting a survey
 
 ## Your Mission
-This person just subscribed to Seoul Sister -- they chose to invest in their skin. You are having a natural conversation to learn about them so you can deliver personalized intelligence from day one. You are NOT filling out a form. You are getting to know a paying subscriber as a person who cares about their skin -- and proving the subscription is worth it by showing real expertise along the way. Make them feel like they made the right decision.
+You are having a natural conversation to learn about this person so you can deliver personalized intelligence. You are NOT filling out a form -- you are getting to know someone who cares about their skin, and showing real expertise in how you listen and what you notice. The "she actually gets my situation" moment is what earns the next step.
+
+Their subscription status is a FACT in Current State below -- read it there, never assume it. For most people in this conversation, onboarding is free and the subscribe step (${PRICING.monthly_display}) comes after it: you are the last thing they experience before they see a price, and this conversation is the evidence they will weigh.
+
+## The Give and the Gate
+Give freely: your full attention, genuine reactions, and the sharp diagnosis they could not get from Google -- WHY their last treatment plateaued, WHY their skin behaves the way it does in their climate, what their current products are actually doing and missing. If one concern is burning a hole in them, solve it: one specific pick, one concrete first step, real instructions for that step.
+
+The complete build is the subscriber side of Seoul Sister and is not delivered here: the full AM/PM construction, week-by-week ramp schedules, multi-week plans with adjustment rules, and ongoing follow-up. This is not withholding to tease. That work genuinely depends on how their skin responds over weeks -- which is exactly why it is a subscription and not a PDF. When the conversation reaches that door, say so plainly: name what you would build together.
+
+## Promises You Can Keep
+If they have not subscribed, this conversation is the last time you will see them unless they do. "I'll be here whenever you hit a plateau" and "see you in a month" are promises this conversation cannot keep, and a warm goodbye followed by an unexpected price reads as bait rather than care. Never let someone leave holding a false belief about what happens next. Said honestly and at the right moment -- when they start making future plans with you, and again as you wrap up -- the next step is not awkward. It is the natural continuation of a plan you have both just started.
 
 ## Conversation Guidelines
 - Ask ONE question at a time (never dump a list of questions)
@@ -98,7 +127,7 @@ You need to understand these aspects of their skin through natural conversation.
 Get skin_type, skin_concerns, and age_range first -- these are required. Everything else is bonus context that makes your advice better. Don't force every field. A natural 5-message conversation that captures 6 fields beats a 10-message interrogation that captures all 10.
 
 ## Completion
-When you have enough to build a meaningful profile (at minimum: skin_type + 2 concerns + age_range), wrap up naturally. Don't announce "onboarding complete!" -- transition into showing them what you can do. Every wrap-up should feel organic to THAT conversation.
+When you have enough to build a meaningful profile (at minimum: skin_type + 2 concerns + age_range), wrap up naturally. Don't announce "onboarding complete!" -- every wrap-up should feel organic to THAT conversation. A good wrap has three parts, in your own words each time: play back what you now understand about their skin (this is where they feel genuinely heard), give them their first move (the one thing to start tomorrow), and -- if they have not subscribed -- name honestly what you would build together from here, the full plan and the adjustments as their skin responds, as the continuing side of Seoul Sister. Because you were straight with them, the subscribe step should land as the obvious next move in a plan already in motion, not a surprise.
 
 ## Important Rules
 - NEVER make up or assume profile data the user hasn't shared
@@ -124,9 +153,32 @@ When you have enough to build a meaningful profile (at minimum: skin_type + 2 co
  * there but never here. Keep this OUT of the cached block. See
  * `src/app/api/widget/chat/route.ts` for the reference two-block shape.
  */
+export interface OnboardingTurnFacts {
+  /**
+   * Whether this person actually has an active subscription, QUERIED not
+   * assumed. A paid user can legitimately re-enter onboarding (AppShell bounces
+   * a non-free user with onboarding_completed=false back to /onboarding), so
+   * asserting "they have not paid" statically would be a new false fact — the
+   * very bug this replaced. Undefined when the caller could not determine it,
+   * in which case nothing is claimed either way.
+   */
+  isSubscribed?: boolean
+  /** Which user message of the free onboarding cap this turn is. */
+  userMessageNumber?: number
+  /** The cap itself, so the number has a denominator. */
+  userMessageCap?: number
+  /**
+   * What Yuri has ALREADY delivered across her own earlier replies in this
+   * conversation, detected by the shared widget instrument. Undefined when
+   * nothing substantial has been given yet.
+   */
+  cumulativeGive?: CumulativeGive
+}
+
 export function buildOnboardingTurnState(
   extractedSoFar: ExtractedSkinProfile,
-  qualityNotes?: string[]
+  qualityNotes?: string[],
+  facts?: OnboardingTurnFacts
 ): string {
   const extractedFields = Object.fromEntries(
     Object.entries(extractedSoFar).filter(([, v]) => v !== null && v !== undefined)
@@ -147,7 +199,40 @@ export function buildOnboardingTurnState(
     ? `\n\nQuality notes on what they have told you so far:\n${qualityNotes.map((n) => `- ${n}`).join('\n')}`
     : ''
 
-  return `## Current State\n${captured}\n${missing}${quality}`
+  // Facts about where this person stands, for Yuri's judgment. Deliberately
+  // phrased as observations with the decision handed back — never as a rule,
+  // a cap, or an instruction to start selling. A guard test enforces this.
+  const statusLines: string[] = []
+  if (facts?.isSubscribed === true) {
+    statusLines.push(
+      'Subscription status: SUBSCRIBED. They are already a paying subscriber -- the give/gate line does not apply to them, and you will see them again.'
+    )
+  } else if (facts?.isSubscribed === false) {
+    statusLines.push(
+      `Subscription status: NOT SUBSCRIBED. Onboarding is free; the subscribe step (${PRICING.monthly_display}) follows this conversation. Nothing has been paid yet.`
+    )
+  }
+  if (
+    typeof facts?.userMessageNumber === 'number' &&
+    typeof facts?.userMessageCap === 'number'
+  ) {
+    statusLines.push(
+      `This is their message ${facts.userMessageNumber} of the ${facts.userMessageCap} this free onboarding allows.`
+    )
+  }
+  const status = statusLines.length > 0
+    ? `\n\n## Where They Stand (facts, not instructions)\n${statusLines.join('\n')}\nThese are context for your judgment -- how and whether to use them is yours, every time.`
+    : ''
+
+  // The cumulative-give instrument. The gate is a CUMULATIVE boundary but Yuri
+  // only ever sees one turn at a time — the 11-message transcript that motivated
+  // this fix crossed no single line while the sum was the whole deliverable.
+  // Observes only: never blocks, never inspects a draft, ends by handing back.
+  const give = facts?.cumulativeGive
+    ? buildCumulativeGiveBlock(facts.cumulativeGive)
+    : null
+
+  return `## Current State\n${captured}\n${missing}${quality}${status}${give ?? ''}`
 }
 
 // ---------------------------------------------------------------------------
@@ -691,8 +776,41 @@ export async function* streamOnboardingResponse(
   const extractedFields = currentProgress.extracted_fields as Record<string, boolean>
   const quality = calculateOnboardingQuality(extractedSoFar)
   const systemPrompt = buildOnboardingSystemPrompt(extractedFields)
+
+  // QUERY subscription status rather than assuming it — a paid user can
+  // legitimately re-enter onboarding, and this codebase's rule is never to
+  // assert a fact it has not checked. Best-effort: if the lookup fails we say
+  // nothing about status rather than guess (a wrong guess here is exactly the
+  // bug being fixed). Cheap and already cached upstream by Supabase.
+  let isSubscribed: boolean | undefined
+  try {
+    isSubscribed = await hasActiveSubscription(userId)
+  } catch (e) {
+    console.error('[onboarding] subscription status lookup failed:', e)
+  }
+
+  // Their position in the free onboarding, so Yuri can pace the give and time
+  // the wrap-up. She currently cannot see this at all. +1 counts the message
+  // being sent this turn, which is not yet in conversationHistory.
+  const userMessageNumber =
+    conversationHistory.filter((m) => m.role === 'user').length + 1
+
   // Per-turn state lives in its own UNCACHED block (see buildOnboardingTurnState).
-  const turnState = buildOnboardingTurnState(extractedSoFar, quality.suggestions)
+  // Nothing here may be appended to the CACHED system prompt — that was the
+  // v11.1.0 60x cache regression.
+  // Reads only Yuri's OWN already-sent replies (the helper filters to assistant
+  // turns), so the user describing their own routine can never count as Yuri
+  // having delivered one.
+  const cumulativeGive = detectCumulativeGive(
+    conversationHistory.map((m) => ({ role: m.role, content: m.content }))
+  )
+
+  const turnState = buildOnboardingTurnState(extractedSoFar, quality.suggestions, {
+    isSubscribed,
+    userMessageNumber,
+    userMessageCap: ONBOARDING_USER_MESSAGE_CAP,
+    cumulativeGive,
+  })
 
   // Build message history for Claude
   const apiMessages: Array<{ role: 'user' | 'assistant'; content: string }> =

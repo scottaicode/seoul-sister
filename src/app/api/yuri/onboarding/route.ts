@@ -13,6 +13,7 @@ import {
   updateOnboardingProgress,
   finalizeOnboardingProfile,
   skipOnboarding,
+  ONBOARDING_USER_MESSAGE_CAP,
 } from '@/lib/yuri/onboarding'
 import { cleanYuriResponse } from '@/lib/yuri/voice-cleanup'
 import type { ExtractedSkinProfile } from '@/types/database'
@@ -55,7 +56,9 @@ const requestSchema = z.discriminatedUnion('action', [
 // bound its own cost: without a cap it is unlimited free Opus for any
 // registered account. Real completions run ~11-12 user messages; 50 is ~4x
 // headroom, so no genuine onboarding ever reaches it.
-const ONBOARDING_USER_MESSAGE_CAP = 50
+//
+// The constant now lives in lib/yuri/onboarding.ts because Yuri's turn-state
+// block reports the user's position against it — one number, two readers.
 
 // ---------------------------------------------------------------------------
 // Auth helper

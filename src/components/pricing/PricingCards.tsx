@@ -53,7 +53,7 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
       {/* Seoul Sister Pro */}
       <div className="relative dark-card-gold p-8 text-left shadow-glow-gold">
         <span className="absolute -top-3 left-1/2 -translate-x-1/2 badge-gold font-semibold px-4 py-1 text-xs">
-          Your K-Beauty Advisor, On Call 24/7
+          Your K-Beauty Advisor, Available 24/7
         </span>
 
         <div className="flex items-center gap-2 mb-2 mt-2">

@@ -833,6 +833,13 @@ export interface SeasonalInsight {
  */
 export interface WeatherRoutineResponse {
   weather: WeatherData
+  /**
+   * Unit to DISPLAY temperatures in, derived from the user's location.
+   * `weather.temperature` / `feels_like` are ALWAYS Celsius — conversion happens
+   * at render only, because threshold logic compares raw Celsius values.
+   * Optional so a cached/older response still typechecks (falls back to 'C').
+   */
+  temperature_unit?: 'C' | 'F'
 }
 
 // =============================================================================

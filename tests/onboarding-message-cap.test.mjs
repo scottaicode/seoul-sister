@@ -36,10 +36,27 @@ const onboardingLibSrc = readFileSync(
 
 // --- Cap exists and is enforced with a 429 ----------------------------------
 
-test('route declares a lifetime user-message cap', () => {
+test('a lifetime user-message cap is declared and reaches the route', () => {
+  // The constant moved from the route to lib/yuri/onboarding.ts on July 31 2026
+  // when Yuri's turn-state block began reporting the user's position against it
+  // — one number, two readers, so it must not be duplicated. What matters is
+  // that exactly one declaration exists and the route uses THAT one.
+  const declaredInLib = /export const ONBOARDING_USER_MESSAGE_CAP = \d+/.test(
+    onboardingLibSrc
+  )
+  const declaredInRoute = /const ONBOARDING_USER_MESSAGE_CAP = \d+/.test(routeSrc)
+
   assert.ok(
-    /const ONBOARDING_USER_MESSAGE_CAP = \d+/.test(routeSrc),
+    declaredInLib || declaredInRoute,
     'ONBOARDING_USER_MESSAGE_CAP constant must exist'
+  )
+  assert.ok(
+    !(declaredInLib && declaredInRoute),
+    'cap must be declared once, not duplicated across route and lib'
+  )
+  assert.ok(
+    /ONBOARDING_USER_MESSAGE_CAP/.test(routeSrc),
+    'the route must still reference the cap to enforce it'
   )
 })
 

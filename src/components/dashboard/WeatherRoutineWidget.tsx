@@ -14,6 +14,10 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { WeatherRoutineResponse } from '@/types/database'
+import {
+  formatTemperature,
+  type TemperatureUnit,
+} from '@/lib/intelligence/temperature-units'
 
 /**
  * Phase 13.E — Yuri Sole Authority Principle compliance (v10.6.2).
@@ -47,11 +51,16 @@ function getConditionIcon(icon: string) {
   return Droplets
 }
 
-function buildYuriPrompt(weather: WeatherRoutineResponse['weather']): string {
+function buildYuriPrompt(
+  weather: WeatherRoutineResponse['weather'],
+  unit: TemperatureUnit
+): string {
   // Hand Yuri the raw weather data and let her reason about what it means
   // for THIS user's current phase/routine/decisions. No rules engine.
+  // Temperature is phrased in the unit the user reads, so her reply comes back
+  // in the same one they just saw on the card.
   const parts: string[] = []
-  parts.push(`It's ${weather.temperature}°C with ${weather.humidity}% humidity in ${weather.location} today (${weather.condition}, UV ${weather.uv_index}).`)
+  parts.push(`It's ${formatTemperature(weather.temperature, unit)} with ${weather.humidity}% humidity in ${weather.location} today (${weather.condition}, UV ${weather.uv_index}).`)
   parts.push(`How should I adjust my current routine for these conditions?`)
   return parts.join(' ')
 }
@@ -114,8 +123,11 @@ export default function WeatherRoutineWidget() {
   if (!data) return null
 
   const { weather } = data
+  // Server derives this from the user's location; 'C' is the safe world default
+  // if an older cached response predates the field.
+  const unit: TemperatureUnit = data.temperature_unit ?? 'C'
   const ConditionIcon = getConditionIcon(weather.icon)
-  const askYuriHref = `/yuri?ask=${encodeURIComponent(buildYuriPrompt(weather))}`
+  const askYuriHref = `/yuri?ask=${encodeURIComponent(buildYuriPrompt(weather, unit))}`
 
   return (
     <div className="glass-card p-4 space-y-3">
@@ -127,7 +139,7 @@ export default function WeatherRoutineWidget() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <Thermometer className="w-3 h-3 text-white/40" />
-            <span className="text-sm font-semibold text-white">{weather.temperature}&deg;C</span>
+            <span className="text-sm font-semibold text-white">{formatTemperature(weather.temperature, unit)}</span>
             <span className="text-xs text-white/30">&middot;</span>
             <Droplets className="w-3 h-3 text-white/40" />
             <span className="text-xs text-white/50">{weather.humidity}%</span>

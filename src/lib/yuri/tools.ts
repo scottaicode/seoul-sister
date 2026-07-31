@@ -2,6 +2,10 @@ import { getServiceClient } from '@/lib/supabase'
 import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 import { excludePollutedIngredientRows } from '@/lib/pipeline/ingredient-parser'
 import { fetchWeather } from '@/lib/intelligence/weather-routine'
+import {
+  resolveTemperatureUnit,
+  celsiusToFahrenheit,
+} from '@/lib/intelligence/temperature-units'
 import { geocodeLocation } from '@/lib/geo/geocode'
 
 /**
@@ -2245,7 +2249,7 @@ async function executeGetCurrentWeather(
   const { data: skinProfile } = await db
     .from('ss_user_profiles')
     .select(
-      'skin_type, skin_concerns, allergies, climate, location_text, fitzpatrick_scale'
+      'skin_type, skin_concerns, allergies, climate, location_text, fitzpatrick_scale, latitude, longitude'
     )
     .eq('user_id', userId)
     .single()
@@ -2279,14 +2283,33 @@ async function executeGetCurrentWeather(
     }
   }
 
+  // Which unit this user actually thinks in. Celsius stays canonical; both are
+  // supplied so Yuri never has to convert mentally or guess (Bailey, Austin TX,
+  // Jul 31: "Can you change weather to F").
+  const tempUnit = resolveTemperatureUnit({
+    latitude: (skinProfile as Record<string, unknown> | null)?.latitude as number | null,
+    longitude: (skinProfile as Record<string, unknown> | null)?.longitude as number | null,
+    location_text: (skinProfile as Record<string, unknown> | null)?.location_text as
+      | string
+      | null,
+  })
+
   return JSON.stringify({
     weather: {
       location: weather.location,
       temperature_c: weather.temperature,
+      temperature_f: celsiusToFahrenheit(weather.temperature),
       feels_like_c: weather.feels_like,
+      feels_like_f: celsiusToFahrenheit(weather.feels_like),
+      // The unit this user reads in. Stating it as a fact rather than
+      // pre-formatting keeps the choice of phrasing hers.
+      user_reads_temperature_in: tempUnit === 'F' ? 'Fahrenheit' : 'Celsius',
       humidity_percent: weather.humidity,
       uv_index: weather.uv_index,
-      wind_speed_kmh: weather.wind_speed,
+      // Open-Meteo is queried with wind_speed_unit=ms (weather-routine.ts), so
+      // this is METRES PER SECOND. It was labelled `wind_speed_kmh` until
+      // Jul 31 2026, which had Yuri reading every wind speed ~3.6x too low.
+      wind_speed_ms: weather.wind_speed,
       condition: weather.condition,
     },
     user_skin_profile: skinProfile

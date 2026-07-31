@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError } from '@/lib/utils/error-handler'
 import { fetchWeather } from '@/lib/intelligence/weather-routine'
+import { resolveTemperatureUnit } from '@/lib/intelligence/temperature-units'
 
 // ---------------------------------------------------------------------------
 // GET /api/weather/routine — Live weather data for the dashboard widget
@@ -68,7 +69,17 @@ export async function GET(request: NextRequest) {
       weather.location = profile.location_text as string
     }
 
-    return NextResponse.json({ weather })
+    // Which unit to DISPLAY. weather.temperature stays Celsius (canonical —
+    // threshold logic downstream compares Celsius numbers); the client converts
+    // for render only. Prefer the coordinates actually being used, which may be
+    // explicit params rather than the saved profile.
+    const temperature_unit = resolveTemperatureUnit({
+      latitude: lat,
+      longitude: lng,
+      location_text: (profile?.location_text as string | null) ?? null,
+    })
+
+    return NextResponse.json({ weather, temperature_unit })
   } catch (error) {
     return handleApiError(error)
   }
