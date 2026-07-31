@@ -98,7 +98,11 @@ export default function RecentScansWidget() {
         const safetyScore = analysis?.overall_safety_score as number | undefined
         const ingredientCount = scan.ingredients_found?.length ?? 0
 
-        const href = scan.product_id ? `/products/${scan.product_id}` : '/scan'
+        // Always open the scan's OWN stored results. This used to fall back to
+        // the catalog page (which shows the generic product, not this scan) or
+        // to /scan (the empty upload page) for anything not in our Korean
+        // catalog — so a card showing a real safety score led nowhere.
+        const href = `/scan/${scan.id}`
 
         return (
           <Link

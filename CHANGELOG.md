@@ -8,6 +8,51 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.19.0 (July 31, 2026): The scan history led nowhere
+
+Bailey, a paying subscriber and co-creator, tapped a card under "Recent Scans" on her dashboard and landed on the empty label-scanner upload page. Her words: *"clicking on each of the recent scans should take you to their scores/info. I read it takes you to page to upload a new one."*
+
+She was right, and the cause was not a regression. **A scan detail page had never been built.**
+
+### The card promised something the app could not deliver
+
+`RecentScansWidget` rendered each past scan with its real safety score — Cetaphil Gentle Skin Cleanser, 94, 11 ingredients — and then linked it here:
+
+```ts
+const href = scan.product_id ? `/products/${scan.product_id}` : '/scan'
+```
+
+Cetaphil is a Western product, so it correctly has no row in our Korean catalog and `product_id` is NULL. The card fell through to `/scan`, the blank upload page. **The COSRX card "worked" and was also wrong** — it opened the generic catalog page for the matched product, discarding the safety score and 12 extracted ingredients the card had just displayed.
+
+Per the Western Shelf rule we deliberately do not carry a Western catalog, which makes a NULL `product_id` the *normal* case for a large share of scans. This dead end was the common path, not an edge case.
+
+### The codebase had already written the diagnosis
+
+Three days earlier, `src/app/api/scan/route.ts` (commit `63063aa`) described this gap in a comment about **Bailey's exact Cetaphil scan**:
+
+> *"That data was written to `ss_user_scans` and read back by exactly one thing: a count on a dashboard widget."*
+
+That session fixed the Yuri-blindness half (carrying the scan's INCI onto the user's library entry) and did not build the user-facing half. Verified four ways that no viewer existed: full route enumeration, a non-route sweep for modals/query-param viewers (`ScanResults`' props are supplied only by `LabelScanner` and `BatchScanResults`, both live in-session), no `Link`/`router.push` anywhere targeting a scan id, and the comment above.
+
+### The page is a historical record, not a live re-analysis
+
+The stored `analysis_result` blob contains an `enrichment` snapshot frozen at scan time. One live row quotes Soko Glam at **$20.90 from July 26** and lists **YesStyle**, a retailer on the never-recommend list. Replaying that as current pricing is the fake-confidence class this codebase keeps paying for.
+
+So `GET /api/scans/:id` deliberately **does not return the stored enrichment**. What it returns describes the photographed label — ingredients, safety ratings, warnings, highlights — which does not go stale. Anything time-sensitive routes to a live surface instead: the product page for current prices, Yuri for what it means today. Conflicts render with explicit provenance (*"Checked against your routine on [date]. Your routine may have changed since"*) so a stale check cannot read as a current all-clear.
+
+Under the Yuri Sole Authority Principle the page is **data display**: no rule engine, no prescriptive language, nothing labeled "Yuri's". Its primary CTA passes facts to Yuri and asks an open question rather than prefilling a conclusion.
+
+### Shipped
+
+- **`GET /api/scans/[id]`** — auth-gated, scoped `.eq('user_id', user.id)`, 404 (not 403) for a scan belonging to someone else so ids are not enumerable. A row with no stored analysis 404s rather than rendering a confident empty page.
+- **`/scan/[id]`** — distinct loading / not-found / transport-error states. A failed load surfaces as an error, never as an empty scan.
+- **`ScanHistoryDetail`** — safety ring, ingredients with safety + comedogenic ratings, warnings, highlights, conflicts-at-scan-time, snapshot notice, and CTAs to Yuri / the product page / a new scan.
+- **`RecentScansWidget:101`** → `/scan/${scan.id}` unconditionally.
+
+429 → 459 tests. The three routing tests evaluate the **real href expression** transpiled out of the component against both live row shapes, because a source-regex test passes against the broken code (`/scan/${scan.id}` and `'/scan'` both contain "/scan"). All three were confirmed to FAIL when the bug was reintroduced verbatim.
+
+---
+
 ## v11.18.0 (July 30, 2026): Eight failures that all looked like success
 
 Bailey opened Yuri and got *"Something went wrong on Yuri's end."* Chasing that one report surfaced seven more defects, and **every one of them was the same shape: code that could not tell "nothing is wrong" from "nothing was checked."** That is the durable lesson of this release, more than any individual fix.
