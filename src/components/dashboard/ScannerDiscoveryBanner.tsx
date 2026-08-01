@@ -35,19 +35,33 @@ export default function ScannerDiscoveryBanner() {
         // localStorage may be blocked; carry on
       }
 
-      // 2. Has the user scanned anything in the current billing period?
+      // 2. Has the user EVER scanned anything?
+      //
+      // This used to ask "…since the 1st of this month", while the banner says
+      // "YOU HAVEN'T TRIED THIS YET". On Aug 1 2026 Bailey opened the app and
+      // saw that headline sitting directly above her own Recent Scans list
+      // ("this was up which is conflicting cause then on the bottom it still
+      // shows my recent scans 😂"). Her scans were July 26 and 29 — five days
+      // earlier, and one calendar day before the window reset.
+      //
+      // A first-run discovery prompt has to key on first-run. Anyone who has
+      // ever scanned is not someone who hasn't tried it, and telling a user
+      // something they can disprove by scrolling costs more trust than the
+      // banner earns.
       const { data: { user } } = await supabase.auth.getUser()
       if (!user || cancelled) return
 
-      const periodStart = new Date()
-      periodStart.setDate(1)
-      periodStart.setHours(0, 0, 0, 0)
-
-      const { count } = await supabase
+      const { count, error } = await supabase
         .from('ss_user_scans')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .gte('created_at', periodStart.toISOString())
+
+      // A failed count must not read as "never scanned" — that is exactly how
+      // this banner would lie to an established user.
+      if (error) {
+        console.error('[ScannerDiscoveryBanner] scan count failed:', error.message)
+        return
+      }
 
       if (!cancelled && (count ?? 0) === 0) setShow(true)
     }

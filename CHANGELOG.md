@@ -8,6 +8,40 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.21.0 (August 1, 2026): She bought a cleanser she never needed
+
+Bailey was screen-recording Seoul Sister for TikTok and couldn't finish a take. *"She's messing up my screen recordings 🤦‍♀️."* Three separate defects, and the worst one cost her money.
+
+### 1. A corrected fact with a live instruction contradicting it
+
+On June 7 2026 Bailey asked Yuri to save a routine step literally named **"Shower / cleanse"**. The loose resolver matched it to the catalog's real *Beplain Makiol Foaming Cleanser* and wrote that `product_id`. Yuri warned at save time — *"5 steps matched loosely"* — but the warning was transient prose and the row was permanent.
+
+Seven weeks later she finally asked *"What is Beplain Makiol?"*, then: *"I don't even own the Beplain Makiol. Idk where that came from I've never even heard of it."* Yuri apologized properly and said she'd scrap it.
+
+**She couldn't.** The CORRECTION was extracted correctly into `decision_memory.corrections`. But the two DECISIONS built on the false belief — `cleansing_protocol` ("Beplain Makiol once at night") and `second_cleanser_switch` ("use it instead of the Medicube foam") — stayed in `decision_memory.decisions`, which `memory.ts` renders under the heading **"### Active Decisions"**. Every later prompt handed Yuri a corrected fact and a live instruction contradicting it, in the same context block.
+
+So she kept recommending it. Bailey: *"Sad thing was I then bought it and wished I had been using it all along 😂😂."*
+
+**The fix is at extraction time, and a classifier was measured and rejected first.** The obvious move — flag decisions whose text echoes a correction — was built, then run against live data before shipping: **23% precision historically and 0% at actual render time.** It flagged remediation decisions ("removed X *because* she doesn't own it") as contradictions, and because durable corrections never age out, the false flags would have been permanent — teaching Yuri to ignore the marker the one time it mattered. Dates can't help either: all 22 candidate pairs are **same-date**, since decisions and corrections are extracted in a single pass. Per the repo's own rule (*"when a classifier needs repeated hand-tuning, that is the signal to stop"*), it was discarded rather than tuned.
+
+Instead the **extraction prompt now reconciles**: the model already sees the whole conversation and both arrays, so it rewrites the stale decision under the same topic (the merge is topic-keyed, so it replaces automatically) or drops it — explicitly instructed to KEEP remediation decisions, which a regex destroys. Plus one **static** framing line on the Active Decisions header stating that a correction about the same fact wins. No per-row classifier, no false positives, cache-stable.
+
+Bailey's two stale rows were repaired by id (`scripts/fix-bailey-beplain-stale-decisions.ts`, dry-run default): one dropped, one rewritten to name the cleansers she actually owns. The correction itself keeps naming the product, correctly.
+
+### 2. The search returned sun sticks for a Medicube balm
+
+She uploaded a photo of the **Medicube PDRN Pink Collagen Volume Multi Balm Stick**. We genuinely don't carry that SKU — fine — but the search returned four unrelated **Bushman / TONEfitSUN / Mixsoon SUN STICKS**, matching on the single word "stick" (1 of 8 terms), while **20 real Medicube rows** sat in the catalog. Yuri opened with *"that match is wrong, the database pulled up a Mixsoon sun stick"* — on camera.
+
+Two causes, both required for the fix. The last-resort strategy ordered ANY-term matches by **`rating_avg`** — popularity, unrelated to whether the row is what was asked for — and applied **`LIMIT 10` server-side, before anything could be scored**. Measured: that window contained **zero** Medicube rows, so no amount of re-ranking could recover them. It now over-fetches, ranks by term coverage with **brand terms weighted 3×** (a brand is the strongest identity signal a query carries; "stick"/"cream"/"serum" are shared by hundreds of rows), then trims to the caller's limit. Verified live: the failing query now returns real Medicube products, with Celimax / Torriden / Beauty of Joseon / Hero-patch behavior unchanged.
+
+### 3. "You haven't tried this yet" — above her own scan history
+
+The discovery banner counted scans **since the 1st of the current month** while its headline claims first-run. On Aug 1 her July 26 and July 29 scans fell outside the window, so it told a user who had scanned twice that she'd never tried it — directly above the Recent Scans list showing both. *"This was up which is conflicting cause then on the bottom it still shows my recent scans 😂."* It now keys on first-run, and a failed count no longer reads as "never scanned."
+
+464 → 469 tests; all four behavioral guards confirmed to FAIL when their bug is reintroduced verbatim.
+
+---
+
 ## v11.20.0 (August 1, 2026): She denied a product she had just recommended
 
 Bailey asked Yuri for coverage that wouldn't re-break her out. Yuri recommended the **Melixir Vegan Daily Skin Tint SPF50+ (#23 Light Neutral), $25.50** — then one turn later:

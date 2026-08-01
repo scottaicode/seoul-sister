@@ -1216,7 +1216,23 @@ This user has hormonal/cycle-related concerns in their profile but has NOT enabl
       const decisionLines = dm.decisions
         .map((d) => `- **${d.topic}**: ${d.decision} (decided ${d.date})`)
         .join('\n')
-      dmParts.push(`### Active Decisions\n${decisionLines}`)
+      // One static framing line — NOT a per-row classifier.
+      //
+      // A decision and the correction that invalidates it are extracted in the
+      // same pass and stamped with the same date, so nothing here can order
+      // them. On July 27 2026 Yuri was handed the correction "she does not own
+      // the Beplain Makiol" alongside the still-active decision "Beplain Makiol
+      // once at night", kept recommending it, and the user bought it.
+      //
+      // The durable fix is at extraction time (see 4b in the extraction prompt),
+      // where the model sees the whole conversation and can rewrite or drop the
+      // stale decision. This line just makes the precedence explicit for rows
+      // written before that fix. A fuzzy matcher was measured first and
+      // discarded: 23% precision historically, 0% at render time — it fired only
+      // false alarms, which teaches Yuri to ignore the signal.
+      dmParts.push(
+        `### Active Decisions\nIf a correction above concerns the same product or fact as a decision here, the correction wins — decisions are extracted alongside corrections, so a stale one can outlive the belief it was built on. Judge it and say so rather than acting on it.\n${decisionLines}`
+      )
     }
 
     if (dm.preferences.length > 0) {
@@ -1813,6 +1829,14 @@ export async function extractAndSaveDecisionMemory(
    Examples:
    { "topic": "cosrx_snail_concentration", "yuri_said": "96% snail secretion filtrate", "truth": "Reformulated in 2024 — now 92% with added niacinamide", "category": "reformulation" }
    { "topic": "innisfree_green_tea_seed", "yuri_said": "Recommended Green Tea Seed Serum", "truth": "Discontinued — replaced by Hyaluronic Acid Cica Serum", "category": "discontinued" }
+
+4b. **RECONCILE DECISIONS AGAINST THE CORRECTIONS YOU JUST EXTRACTED**: A correction does not only record a wrong fact — it usually invalidates the plan that was built on that fact. Before you return, re-read your own decisions[] against your own corrections[] and do not leave a decision standing that the correction kills.
+
+   For each decision, ask: was this decision only true because of the thing the user just corrected? If yes, either REWRITE it under the same topic so it reflects the corrected truth, or DROP it. Keep the topic string identical when rewriting — memory merges by topic, so a rewritten decision replaces the stale one automatically.
+
+   This is judgment, not string matching. A decision that MENTIONS a corrected product is often perfectly fine — "removed X from her routine because she doesn't own it" is the remediation, not a contradiction, and must be KEPT as-is. What must not survive is an instruction that still tells Yuri to act on the false belief.
+
+   Real failure this prevents (July 27 2026): a user told Yuri she had never heard of the "Beplain Makiol" cleanser Yuri kept prescribing. The correction was extracted correctly — and the decisions "Beplain Makiol once at night" and "use Beplain Makiol instead of the Medicube foam" were left untouched. Yuri kept reading them as active instructions and kept recommending the cleanser. The user eventually bought a product she never needed. The correct output there was to drop both decisions, or rewrite cleansing_protocol to name the cleansers she actually owns.
 
 5. **CLEANUP ACTIONS (correction feedback loop)**: When a correction reveals that the SYSTEM made a mistake about a specific product — most commonly an auto-extracted reaction tag the user never agreed to (e.g. "I never owned that product", "I've never used X", "system glitch tagged X as my holy grail") — include the specific data-cleanup action needed. This closes the loop: corrections aren't just memory, they drive cleanup of the underlying bad data.
 

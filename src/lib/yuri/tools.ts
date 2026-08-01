@@ -431,13 +431,70 @@ async function smartProductSearch(
 
     if (options?.category) q = q.eq('category', options.category)
 
+    // Over-fetch, then rank. `LIMIT n` is applied by Postgres BEFORE we can
+    // score anything, so a small window ordered by rating decides the answer
+    // by popularity and hands us rows we can only reorder, never recover.
+    //
+    // Measured on the failure below: at LIMIT 10 this window contained ZERO
+    // Medicube rows out of 20 in the catalog — every slot was taken by an
+    // unrelated 5.00-rated sun stick. Ranking cannot fix a row that was never
+    // fetched, so the window has to be wide enough to contain the real match
+    // before relevance is applied.
     const { data, error: fallbackError } = await q
       .order('rating_avg', { ascending: false, nullsFirst: false })
-      .limit(limit)
+      .limit(Math.max(limit * 10, 100))
 
     if (fallbackError) console.error('[smartProductSearch] strategy 3 failed:', fallbackError.message, { rawQuery })
 
-    if (data?.length) return data as unknown as Array<Record<string, unknown>>
+    if (data?.length) {
+      // Rank by RELEVANCE, not by rating.
+      //
+      // Why (Bailey, Aug 1 2026 — she was screen-recording for TikTok):
+      // she uploaded a photo of the "Medicube PDRN Pink Collagen Volume Multi
+      // Balm Stick". We genuinely don't carry that exact SKU, which is fine —
+      // but this strategy returned four Bushman/TONEfitSUN SUN STICKS, products
+      // whose only overlap with the query is the word "stick" (1 of 8 terms),
+      // while 20 real Medicube rows sat in the catalog. Yuri had to tell her
+      // "that match is wrong, the database pulled up a Mixsoon sun stick".
+      //
+      // The cause: this last-resort strategy fetched ANY-term matches and then
+      // ordered them by `rating_avg` — a popularity signal with no bearing on
+      // whether the row is what the user asked about. A 1-of-8 match with a
+      // 5.00 rating outranked a 4-of-8 match from the right brand.
+      //
+      // Ordering by how much of the query each row actually matches costs
+      // nothing (the rows are already fetched) and makes the fallback degrade
+      // toward the right BRAND instead of toward an arbitrary popular product.
+      // Rating stays as the tiebreak among equally-relevant rows.
+      const rows = data as unknown as Array<Record<string, unknown>>
+      const scoreOf = (p: Record<string, unknown>) => {
+        const brand = ((p.brand_en as string) || '').toLowerCase().replace(/[-/_.]+/g, ' ')
+        const combined = `${brand} ${((p.name_en as string) || '').toLowerCase()}`.replace(/[-/_.]+/g, ' ')
+        let score = 0
+        for (const t of terms) {
+          if (!termMatches(combined, t)) continue
+          // A term that matches the BRAND is worth more than one matching any
+          // name word: brand is the strongest identity signal a query carries,
+          // and "stick"/"cream"/"serum" are shared by hundreds of rows.
+          score += termMatches(brand, t) ? 3 : 1
+        }
+        return score
+      }
+
+      const ranked = rows
+        .map((p, i) => ({ p, i, score: scoreOf(p) }))
+        .sort((a, b) => {
+          if (a.score !== b.score) return b.score - a.score
+          const aR = (a.p.rating_avg as number | null) ?? 0
+          const bR = (b.p.rating_avg as number | null) ?? 0
+          if (aR !== bR) return bR - aR
+          return a.i - b.i
+        })
+
+      // Trim back to what the caller asked for — the over-fetch above exists
+      // only so ranking has the real candidates to choose from.
+      return ranked.slice(0, limit).map(r => r.p)
+    }
   }
 
   return []
