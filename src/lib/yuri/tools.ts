@@ -226,10 +226,17 @@ async function smartProductSearch(
 
   if (options?.category) baseQuery = baseQuery.eq('category', options.category)
 
-  const { data: fullMatch } = await baseQuery
+  const { data: fullMatch, error: fullMatchError } = await baseQuery
     .or(`name_en.ilike.%${cleaned}%,brand_en.ilike.%${cleaned}%`)
     .order('rating_avg', { ascending: false, nullsFirst: false })
     .limit(limit)
+
+  // A failed query and "no such product" are indistinguishable downstream —
+  // both are an empty strategy, and the caller reports "not in our catalog".
+  // That is the silent-failure class this codebase keeps paying for, so every
+  // strategy below logs its error rather than letting a dead query read as a
+  // confident negative.
+  if (fullMatchError) console.error('[smartProductSearch] strategy 1 failed:', fullMatchError.message, { rawQuery })
 
   if (fullMatch?.length) return fullMatch as unknown as Array<Record<string, unknown>>
 
@@ -284,7 +291,8 @@ async function smartProductSearch(
         q = q.ilike('name_en', `%${singularize(t)}%`)
       }
       if (options?.category) q = q.eq('category', options.category)
-      const { data: compositeMatch } = await q.limit(limit)
+      const { data: compositeMatch, error: compositeError } = await q.limit(limit)
+      if (compositeError) console.error('[smartProductSearch] strategy 1.5 failed:', compositeError.message, { rawQuery, brandCandidate })
       if (compositeMatch?.length) {
         return compositeMatch as unknown as Array<Record<string, unknown>>
       }
@@ -321,9 +329,11 @@ async function smartProductSearch(
 
     if (options?.category) broadQuery = broadQuery.eq('category', options.category)
 
-    const { data: broadResults } = await broadQuery
+    const { data: broadResults, error: broadError } = await broadQuery
       .order('rating_avg', { ascending: false, nullsFirst: false })
       .limit(limit * 5) // over-fetch for post-filter
+
+    if (broadError) console.error('[smartProductSearch] strategy 2 failed:', broadError.message, { rawQuery })
 
     if (broadResults?.length) {
       const rows = broadResults as unknown as Array<Record<string, unknown>>
@@ -339,16 +349,78 @@ async function smartProductSearch(
       })
       if (allTermMatch.length) return allTermMatch.slice(0, limit)
 
-      // ALL-terms didn't match. Rather than returning noise (any COSRX product
-      // when the user asked for a specific one), fall through to Strategy 3
-      // which is designed for broad single-term searches.
+      // ALL-terms didn't match. Before falling through, rescue a STRONG
+      // near-match out of the window we already fetched.
+      //
+      // Why this exists (Bailey, July 31 2026 — a paying subscriber):
+      // Yuri recommended the "Melixir Vegan Daily Skin Tint SPF50+" — a real
+      // catalog product she had just been handed, verified, with full INCI —
+      // then told her "our catalog doesn't actually have that exact product on
+      // file," and two turns later "it IS in our catalog after all (I found it
+      // this time)." She lost trust, reasonably: Yuri was the one who named it.
+      //
+      // The catalog stores it as "Daily Skin Tint Sunscreen SPF50+ 50ml #23
+      // Light Neutral". It does NOT contain the word "Vegan" — that's Melixir's
+      // real-world branding, which Yuri added herself. That single unmatched
+      // token made ALL-terms unsatisfiable, so this filter emptied and threw
+      // away a window that CONTAINED the correct row, and Strategy 3's
+      // ANY-term/order-by-rating window (a large pool of tied 5.00s, so the
+      // ordering among them is arbitrary) did not include it at limit 10.
+      // The resolver then landed on TONEfitSUN Vegan Hydrating Sun Cream at
+      // coverage 2/6 and correctly flagged it 'partial' — Yuri obeyed that
+      // warning exactly. The judgment layer worked; retrieval starved it.
+      //
+      // A missing term is not evidence of a wrong product. Rank what we have by
+      // how much of the query each row actually matches, and keep only rows
+      // that clear a high bar. This does NOT loosen any write path: the caller
+      // recomputes coverage independently, still labels this 'partial' (the
+      // unmatched term is real), describeResolution still warns, and the strict
+      // resolver behind add/remove_from_routine still refuses 'partial'. The
+      // only thing that changes is that Yuri gets to SEE the near-match and
+      // judge it, instead of being told nothing exists.
+      const maxCoverage = Math.max(
+        ...rows.map(p => {
+          const combined = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`
+            .toLowerCase()
+            .replace(/[-/_.]+/g, ' ')
+          return terms.filter(t => termMatches(combined, t)).length
+        })
+      )
+
+      // Require nearly the whole query to match: all but one term, and never
+      // less than a majority. "Hero Mighty Patches" (0-1 of 3 terms against a
+      // Honey Heel Patch) stays rejected; a 5-of-6 match does not.
+      const threshold = Math.max(terms.length - 1, Math.floor(terms.length / 2) + 1)
+
+      if (maxCoverage >= threshold) {
+        const nearMatches = rows
+          .map(p => {
+            const combined = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`
+              .toLowerCase()
+              .replace(/[-/_.]+/g, ' ')
+            return { p, coverage: terms.filter(t => termMatches(combined, t)).length }
+          })
+          .filter(r => r.coverage === maxCoverage)
+          .map(r => r.p)
+
+        if (nearMatches.length) return nearMatches.slice(0, limit)
+      }
+
+      // Otherwise fall through to Strategy 3 rather than returning noise (any
+      // COSRX product when the user asked for a specific one).
     }
   }
 
   // Strategy 3: Single-term searches (when query is just 1-2 words)
   if (terms.length > 0) {
+    // Singularize here too. Strategy 2 stems its terms and this one did not,
+    // so a plural query term could match in the precise strategy and miss in
+    // the last-resort one — the opposite of how a fallback should behave.
     const orClauses = terms
-      .flatMap(t => [`name_en.ilike.%${t}%`, `brand_en.ilike.%${t}%`])
+      .flatMap(t => {
+        const stem = singularize(t)
+        return [`name_en.ilike.%${stem}%`, `brand_en.ilike.%${stem}%`]
+      })
       .join(',')
 
     let q = db
@@ -359,9 +431,11 @@ async function smartProductSearch(
 
     if (options?.category) q = q.eq('category', options.category)
 
-    const { data } = await q
+    const { data, error: fallbackError } = await q
       .order('rating_avg', { ascending: false, nullsFirst: false })
       .limit(limit)
+
+    if (fallbackError) console.error('[smartProductSearch] strategy 3 failed:', fallbackError.message, { rawQuery })
 
     if (data?.length) return data as unknown as Array<Record<string, unknown>>
   }
@@ -541,8 +615,37 @@ function describeResolution(
     match_quality: match.match_quality,
   }
   if (match.match_quality === 'partial') {
+    // Name WHICH words failed to line up, rather than only that they didn't.
+    //
+    // "PARTIAL MATCH" alone is ambiguous between two very different situations:
+    // a genuinely different product, and the right product under a slightly
+    // different name. On July 31 2026 Yuri read the second as the first and
+    // told a subscriber the catalog "doesn't have that exact product on file"
+    // — about a product she had just recommended from that same catalog. The
+    // only mismatched word was "Vegan", which she had added herself from the
+    // brand's marketing name.
+    //
+    // These are FACTS for her judgment, not a verdict. A single unmatched
+    // descriptor on an otherwise-complete name usually means same product,
+    // different name; a mismatched brand or product noun usually means a
+    // genuinely different product. She decides which, and confirms with the
+    // user either way.
+    const normalizePunct = (s: string) => s.toLowerCase().replace(/[-/_.]+/g, ' ')
+    const requestedTerms = normalizePunct(requested)
+      .split(/\s+/)
+      .filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
+    const combined = normalizePunct(`${match.brand_en} ${match.name_en}`)
+    const unmatched = requestedTerms.filter(t => !termMatches(combined, t))
+
     base.warning =
       'PARTIAL MATCH — the names do not fully overlap, so this data may describe a DIFFERENT product than the user named. Tell the user which product this data is actually for, and confirm with them before treating it as being about their product.'
+
+    if (unmatched.length) {
+      base.unmatched_terms = unmatched
+      base.matched_term_count = `${requestedTerms.length - unmatched.length} of ${requestedTerms.length}`
+      base.interpretation_guidance =
+        'These are the only words from the requested name that are absent from the matched product. Judge what they mean: a marketing descriptor the catalog omits (e.g. "vegan", "official", a shade or size) on an otherwise-complete name usually indicates the SAME product stored under a shorter name — say so and confirm, rather than telling the user the product is not in the catalog. A mismatched BRAND or the core product noun indicates a genuinely different product. Never report a near-match as "we do not have this product" without saying what you did find.'
+    }
   }
   return base
 }
@@ -606,14 +709,19 @@ export const YURI_TOOLS: ToolDef[] = [
   {
     name: 'get_product_details',
     description:
-      'Get full details for a specific product including all ingredients, prices across retailers, community ratings, and counterfeit markers. Use when a user asks about a specific product by name.',
+      'Get full details for a specific product including all ingredients, prices across retailers, community ratings, and counterfeit markers. Use when a user asks about a specific product by name. IMPORTANT: if a previous tool result in this conversation already returned this product, pass its product_id rather than product_name — an id is exact, while re-searching by a name you composed can land on a different product or find nothing.',
     input_schema: {
       type: 'object' as const,
       properties: {
-        product_id: { type: 'string', description: 'Product UUID' },
+        product_id: {
+          type: 'string',
+          description:
+            'Product UUID. STRONGLY PREFERRED whenever a prior tool result gave you one (search_products, find_sunscreen_match, get_routine_context and the rest all return ids). Using the id skips name resolution entirely.',
+        },
         product_name: {
           type: 'string',
-          description: 'Product name to search for (if ID not known)',
+          description:
+            'Product name to search for, when you have no id. Use the name as the CATALOG stores it if you have seen it — adding brand-marketing words the catalog omits (e.g. "Vegan", "Official", a shade or size) can prevent the match.',
         },
       },
     },
