@@ -8,6 +8,37 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.20.0 (August 1, 2026): She denied a product she had just recommended
+
+Bailey asked Yuri for coverage that wouldn't re-break her out. Yuri recommended the **Melixir Vegan Daily Skin Tint SPF50+ (#23 Light Neutral), $25.50** — then one turn later:
+
+> *"I tried to pull the Melixir's full INCI and our catalog doesn't actually have that exact product on file, so I can't verify its ingredients from here."*
+
+and two turns after that:
+
+> *"the Melixir Skin Tint, $25.50 **is** in our catalog after all (I found it this time)"*
+
+Bailey: *"It was just weird cause she was the one talking about it."* She had already been given the price and the shade from catalog data before being told the product didn't exist.
+
+### Yuri did nothing wrong
+
+The catalog stores it as **"Daily Skin Tint Sunscreen SPF50+ 50ml #23 Light Neutral"**, brand Melixir — verified, 1,677 chars of INCI, 72 ingredient links. The name does **not** contain the word "Vegan". That is Melixir's real-world branding, and **Yuri added it herself** when composing the lookup: `get_product_details({product_name: "Melixir Vegan Daily Skin Tint SPF50+"})`.
+
+That single invented token made Strategy 2's ALL-terms post-filter unsatisfiable. The window it threw away **contained the correct row** (index 48 of 50). Execution then fell to Strategy 3, whose ANY-term + `ORDER BY rating_avg DESC` window draws from a large pool of tied 5.00 ratings — so ordering among them is arbitrary, and at `limit 10` the Melixir row was absent while **TONEfitSUN Vegan Hydrating Sun Cream SPF50+** (matching "vegan" + "spf50+", 2 of 6 terms) was present at #2. The resolver correctly ranked what it was given, correctly labeled it `partial`, and `describeResolution` correctly warned. **Yuri obeyed that warning to the letter.** The judgment layer worked perfectly on starved retrieval — and then translated "partial match to a different product" into "we don't have this product."
+
+Two assumptions were wrong on the way in and were corrected by measurement: an early probe showed the row at "rank 1" of Strategy 3, which turned out to be a tie-ordering artifact at a different limit; and the leading hypothesis (that a *strict* resolver returned null) was killed by the stored tool log — strict is only used by `add_to_routine`/`remove_from_routine`.
+
+### A missing term is not evidence of a wrong product
+
+- **Near-match rescue** (`smartProductSearch`): when ALL-terms empties, the already-fetched window is coverage-ranked instead of discarded, keeping only rows within one term of the query (never below a majority). **Writes are untouched** — `resolveProductByNameStrict` still refuses `partial`, so nothing can silently bind a near-match into a routine. The only change is that Yuri gets to *see* the near-match and judge it.
+- **The partial payload now names which words didn't line up** (`unmatched_terms`, `matched_term_count`, `interpretation_guidance`). "PARTIAL MATCH" alone cannot distinguish *a different product* from *the right product under a shorter name*, and reading it as the former is exactly what produced the denial. These are facts for her judgment — the guidance ends by handing the decision back ("Judge what they mean"), and a test fails if it becomes a verdict.
+- **`get_product_details` now asks for `product_id` when a prior tool supplied one.** Yuri had the id in context and re-resolved by a name she had composed. An id is exact; this kills the class regardless of retrieval quality.
+- **All four search strategies destructured only `data`** — a failed query was indistinguishable from "no such product", the silent-failure class this codebase keeps paying for. Each now logs its own error. Strategy 3 also now singularizes its terms, which Strategy 2 already did.
+
+459 → 464 tests. The rescue tests transpile the real `smartProductSearch` and run it against a fake catalog seeded with the exact rows and rating ties that produced the failure; both were confirmed to **fail** when the rescue block is removed. Verified against the **live production catalog**: the exact failing query now returns the Melixir tint and nothing else, while Celimax pads, Torriden's hyphen, Beauty of Joseon's multi-word brand, and the "Hero Mighty Patches" non-binding all behave exactly as before.
+
+---
+
 ## v11.19.0 (July 31, 2026): The scan history led nowhere
 
 Bailey, a paying subscriber and co-creator, tapped a card under "Recent Scans" on her dashboard and landed on the empty label-scanner upload page. Her words: *"clicking on each of the recent scans should take you to their scores/info. I read it takes you to page to upload a new one."*
