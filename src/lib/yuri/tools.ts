@@ -1296,6 +1296,66 @@ async function executeSearchProducts(
     products = (data || []) as Array<Record<string, unknown>>
   }
 
+  // Ingredient-driven candidate widening.
+  //
+  // Why (Bailey, Aug 1 2026): she asked about adding tranexamic acid and Yuri
+  // told her "I pulled our catalog and there isn't a clean K-beauty tranexamic
+  // acid *serum* in it right now", then recommended a cream. Bailey's read:
+  // "she said I needed this ingredient but doesn't have any in catalog?"
+  //
+  // Measured: 3 verified products have "tranexamic" in the NAME (two eye creams
+  // and that cream) — but 169 have it in their INCI, including 32 serums and
+  // 37 ampoules. Yuri's tool call was correct and well-formed
+  // (include_ingredients: ["tranexamic acid"], category: serum). The bug was
+  // here: when a `query` is present the candidate set comes only from
+  // smartProductSearch, which reads name/brand/description, and
+  // include_ingredients was then applied as a POST-FILTER over those name
+  // matches. It could only ever narrow, never widen — so an ingredient that is
+  // common in formulas and rare in product names was structurally unfindable.
+  //
+  // Fix: when include_ingredients is supplied, run a second ingredient-driven
+  // query and UNION it in, name results first. Everything downstream (mens
+  // filter, min_rating, price, and the link-table include/exclude post-filter)
+  // then applies to a candidate set that actually contains the products.
+  //
+  // Queries `ingredients_raw` directly rather than the link table: the two-step
+  // (ingredient ids -> .in() on ss_product_ingredients) hits both documented
+  // hazards — PostgREST's 1000-row default cap silently truncates for common
+  // ingredients, and a large id list is the .in()/22P02 class. Verified against
+  // the live catalog: ingredients_raw and the link table agree exactly on
+  // tranexamic acid (186 = 186), and raw additionally covers products the daily
+  // link-ingredients cron hasn't processed yet.
+  if (includeIngredients?.length) {
+    let ingQuery = db
+      .from('ss_products')
+      .select('id, name_en, brand_en, category, subcategory, description_en, rating_avg, review_count, price_usd, image_url')
+      .eq('is_verified', true)
+
+    if (category) ingQuery = ingQuery.eq('category', category)
+
+    // Chained .ilike() is AND — every requested ingredient must be present.
+    for (const inc of includeIngredients) {
+      ingQuery = ingQuery.ilike('ingredients_raw', `%${inc.replace(/[%_\\]/g, '\\$&')}%`)
+    }
+
+    const { data: ingCandidates, error: ingError } = await ingQuery
+      .order('rating_avg', { ascending: false, nullsFirst: false })
+      .limit(limit * 3)
+
+    if (ingError) {
+      // A dead query must not read as "no such products" — that is exactly the
+      // shape of the bug this block exists to fix.
+      console.error('[search_products] ingredient candidate query failed:', ingError.message, { includeIngredients })
+    } else if (ingCandidates?.length) {
+      const seen = new Set(products.map(p => p.id as string))
+      for (const c of ingCandidates as Array<Record<string, unknown>>) {
+        if (seen.has(c.id as string)) continue
+        products.push(c)
+        seen.add(c.id as string)
+      }
+    }
+  }
+
   // Filter out men's-line products by default (audience is women). Yuri can
   // opt in with include_mens=true when the user explicitly wants men's products.
   if (!includeMens) {
@@ -1387,11 +1447,25 @@ async function executeSearchProducts(
 
   // Post-filter by ingredient include/exclude
   if (includeIngredients?.length || excludeIngredients?.length) {
-    const productIds = filtered.map((p: Record<string, unknown>) => p.id as string)
-    const { data: ingredientLinks } = await db
+    // Null product ids inside .in() on a uuid column throw 22P02 and take the
+    // whole query down — the documented silent-failure class.
+    const productIds = filtered
+      .map((p: Record<string, unknown>) => p.id as string | null)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0)
+
+    const { data: ingredientLinks, error: linkError } = await db
       .from('ss_product_ingredients')
       .select('product_id, ingredient:ss_ingredients(name_inci, name_en)')
       .in('product_id', productIds)
+
+    // A failed link query would make EVERY product look like it contains none
+    // of the requested ingredients, so an include filter would empty the list
+    // and read as "we don't carry this" — the exact wrong answer this whole
+    // block was fixed to prevent. Skip filtering rather than assert an absence
+    // we never actually checked.
+    if (linkError) {
+      console.error('[search_products] ingredient link lookup failed:', linkError.message)
+    }
 
     const productIngredientMap = new Map<string, string[]>()
     for (const link of ingredientLinks || []) {
@@ -1403,17 +1477,53 @@ async function executeSearchProducts(
       productIngredientMap.set(pid, names)
     }
 
-    if (includeIngredients?.length) {
+    // Raw INCI as a fallback for products the link cron hasn't processed yet.
+    // Fetched separately because the candidate selects above deliberately omit
+    // ingredients_raw (it is large, and shipping it for every candidate would
+    // bloat every search). Verified today that raw and links agree exactly on
+    // tranexamic acid, but the daily link-ingredients cron lags new products,
+    // and dropping a product whose INCI plainly contains the ingredient would
+    // re-create the "we don't carry this" answer for a product we do carry.
+    const unlinkedIds = productIds.filter(id => !productIngredientMap.has(id))
+    const rawInciById = new Map<string, string>()
+    if (unlinkedIds.length && !linkError) {
+      const { data: rawRows, error: rawError } = await db
+        .from('ss_products')
+        .select('id, ingredients_raw')
+        .in('id', unlinkedIds)
+      if (rawError) {
+        console.error('[search_products] raw INCI fallback failed:', rawError.message)
+      } else {
+        for (const r of rawRows || []) {
+          const raw = (r as Record<string, unknown>).ingredients_raw as string | null
+          if (raw) rawInciById.set((r as Record<string, unknown>).id as string, raw.toLowerCase())
+        }
+      }
+    }
+
+    if (includeIngredients?.length && !linkError) {
       filtered = filtered.filter((p: Record<string, unknown>) => {
-        const ings = productIngredientMap.get(p.id as string) || []
+        const id = p.id as string
+        const ings = productIngredientMap.get(id) || []
+        if (ings.length === 0) {
+          const raw = rawInciById.get(id)
+          if (raw) return includeIngredients.every((inc) => raw.includes(inc.toLowerCase()))
+        }
         return includeIngredients.every((inc) =>
           ings.some((i) => i.includes(inc.toLowerCase()))
         )
       })
     }
-    if (excludeIngredients?.length) {
+    if (excludeIngredients?.length && !linkError) {
       filtered = filtered.filter((p: Record<string, unknown>) => {
-        const ings = productIngredientMap.get(p.id as string) || []
+        const id = p.id as string
+        const ings = productIngredientMap.get(id) || []
+        // Exclusion is a safety filter, so an unlinked product is checked
+        // against its raw INCI too rather than passing unexamined.
+        if (ings.length === 0) {
+          const raw = rawInciById.get(id)
+          if (raw) return !excludeIngredients.some((exc) => raw.includes(exc.toLowerCase()))
+        }
         return !excludeIngredients.some((exc) =>
           ings.some((i) => i.includes(exc.toLowerCase()))
         )

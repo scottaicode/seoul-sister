@@ -8,6 +8,36 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.22.0 (August 2, 2026): The ingredient was in 169 products and she couldn't find one
+
+Two defects from the same Bailey session, and in both cases **Yuri did exactly what she was told to do.**
+
+### 1. "There isn't a clean K-beauty tranexamic acid serum in our catalog"
+
+Yuri recommended tranexamic acid for Bailey's hyperpigmentation — correctly, it's the one addition that targets her #1 concern — then went to find one and reported: *"I pulled our catalog and there isn't a clean K-beauty tranexamic acid serum in it right now."* She steered to a cream instead. Bailey: **"she said I needed this ingredient but doesn't have any in catalog?"**
+
+Measured against the live catalog: **3** verified products have "tranexamic" in `name_en` (two eye creams and that cream — Yuri's statement was true *at the name level*, and she correctly skipped the eye creams). But **169** have it in their INCI, including **32 serums** and **37 ampoules**.
+
+Her tool call was correct and well-formed — `include_ingredients: ["tranexamic acid"]`, `category: serum`, under $30. The bug was in `executeSearchProducts`: when a `query` is present, candidates come **only** from `smartProductSearch`, which reads `name_en`/`brand_en`/`description_en`. `include_ingredients` was then applied as a **post-filter over those name matches** — it could only ever narrow, never widen. An ingredient that is common in formulas and rare in product names was structurally unfindable. The empty-result payload even suggested *"try removing the ingredient filter"* — pointing away from the one signal that would have worked.
+
+`include_ingredients` now runs its own candidate query against `ingredients_raw` and **unions** into the name results (name results keep precedence, so yesterday's brand-weighted ranking and near-match rescue are untouched). It queries the raw INCI column rather than the link table on purpose: the two-step id→`.in()` path hits both documented hazards — PostgREST's 1000-row cap silently truncating for common ingredients, and the `.in()`/22P02 null class. Verified: raw and links agree exactly on tranexamic acid (186 = 186), and raw additionally covers products the daily link cron hasn't processed.
+
+Three hardening fixes landed alongside, all the same silent-failure shape: the link-table join ignored its `error` (a dead query would have made every product look like it contained none of the requested ingredients — emptying the list and reading as *"we don't carry this"*, the exact wrong answer); ids weren't null-filtered before `.in()`; and a product with INCI but no links yet would be dropped, so there's now a raw fallback that **actually fetches `ingredients_raw`** (the candidate selects omit it, so reading `p.ingredients_raw` would have silently always been undefined — caught before shipping).
+
+Verified live with Bailey's exact call: **12 tranexamic-acid serums under $30**, including an Anua Clear Tone Dark Spot Serum squarely on-target for her PIH. Previously: zero.
+
+### 2. Yuri narrated her own plumbing at the user
+
+She wrote, to a paying subscriber: *"The library entry saved, here's exactly what landed, **verbatim from the system**:"* followed by a quoted block about custom entries and closest catalog matches — and separately, *"The swap and the PDRN drop we agreed on earlier never actually got saved, I described them but didn't write them."* Bailey: **"This is kinda a lot of unnecessary information just makes it confusing."**
+
+**She was obeying the prompt.** `advisor.ts` ordered, in caps and marked NON-NEGOTIABLE, that after `update_user_product` *"your reply MUST quote the tool's 'message' field verbatim... Never paraphrase."* Meanwhile a different section — scoped only to `save_routine` — said *"**NEVER narrate the machinery**... This is what Bailey flagged as 'a lot'."* The prompt contradicted itself and the user got the collision.
+
+Fixed by changing **who the text is written for**, never by removing the signal — the transient-warning/permanent-row failure is exactly why a loose match must always be disclosed. The verbatim mandate becomes an enumerated-facts mandate: the reply must still convey the exact name saved, whether it linked to a catalog product, and any near-miss worth confirming — in Yuri's own words rather than as a quoted log line. "Never narrate the machinery" is hoisted out of the `save_routine` subsection to govern **every** tool, with an explicit clause that it "never licenses hiding a fact the user needs — the rule governs the REGISTER, not the content." And the write-honesty rule now carries a register: *"That change isn't saved yet — want me to save it now?"* is the phrasing; *"I described them but didn't write them"* is a confession about internals that reads as instability.
+
+469 → 476 tests; the three behavioral guards confirmed to FAIL when their defect is reintroduced.
+
+---
+
 ## v11.21.0 (August 1, 2026): She bought a cleanser she never needed
 
 Bailey was screen-recording Seoul Sister for TikTok and couldn't finish a take. *"She's messing up my screen recordings 🤦‍♀️."* Three separate defects, and the worst one cost her money.
