@@ -94,6 +94,52 @@ exist anywhere else on the site right now.
 
 ---
 
+## Two more things to fix while you're in there (found Aug 3)
+
+### 1. It recommends ingredient CATEGORIES, never a buyable product
+
+This is the specific failure, and it's worth stating precisely because the post is
+otherwise good. It says things like *"Look for serums or ampoules where centella extract
+is listed in the first few ingredients"* and *"Korean BHA products tend to come in gentler
+concentrations."* That is genuinely useful advice and it is **not what the query asked
+for.** Someone searching "best serum for pie" is past the education stage — they want a
+name they can buy. The post hands them a shopping heuristic instead of a shortlist.
+
+Keep the teaching. Add the picks. Every ingredient section should end with a named
+product, its price, and one honest sentence on why it wins.
+
+### 2. It promotes four demoted features — remove those CTAs
+
+The post currently routes readers to **Glass Skin Score** (×3), **Sunscreen Finder**,
+**Smart Routine Builder**, **Label Scanner**, and the **Ingredient Encyclopedia** (×2).
+
+Per the June 22 2026 pricing/positioning decision, the standalone feature pages were
+**demoted from front-door nav to surfaces Yuri drives** — usage data showed essentially
+everyone lives in Yuri chat. Measured lifetime usage as of Aug 3 2026: Glass Skin Score
+**13**, label scans **4**, wishlists **0**. Sunscreen Finder and Dupe Finder are no longer
+standalone pages at all; they are **Yuri tools** (`find_sunscreen_match`,
+`find_product_dupes`).
+
+**These are not broken links — they're worse.** All five pages return HTTP 200, but they
+live under `src/app/(app)/` and `AppShell` gates that whole tree behind `plan != 'free'`.
+A cold reader arriving from Google, mid-article, who clicks "track your progress with the
+Glass Skin Score" hits a **signup/paywall wall** instead of the tool they were promised.
+The blog's job is to earn a conversation; this hands a stranger a bill.
+
+**Replace every standalone-feature CTA with a single Yuri CTA** (the existing end-of-post
+Yuri block is the right pattern — the PIH post does this correctly, and Yuri is free with
+no signup). Keep Ingredient Encyclopedia links: those are genuinely public content pages
+and useful internal links. Drop the gated-tool promos.
+
+> **This is a fleet-wide problem, not just this post.** Measured Aug 3 2026: **17 of 43
+> published posts (40%)** promote at least one demoted/gated feature — Label Scanner 13,
+> Routine Builder 12, Sunscreen Finder 9, Glass Skin Score 6, Dupe Finder 1. Fixing it
+> across the fleet is a separate work order worth opening; this order only covers the PIE
+> post. Flagging it here so the next LGAAS session doesn't re-introduce the pattern in new
+> content: **never CTA a stranger to a paywalled surface — CTA to Yuri.**
+
+---
+
 ## What to build
 
 Restructure the post around **product-type sub-sections**, each one a jump-anchor target
