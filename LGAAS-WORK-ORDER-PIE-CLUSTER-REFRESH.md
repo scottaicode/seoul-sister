@@ -26,6 +26,33 @@ and cannibalize the exact queries the bet targets. The URL stays; the body chang
 
 ---
 
+## ⚠️ Do not confuse this with the PIH post
+
+There are **two** similarly-named posts. This order targets the **PIE** one only.
+
+| | **PIE** (this order) | **PIH** (leave alone) |
+|---|---|---|
+| Slug | `best-korean-skincare-for-pie-acne-scars-and-texture` | `best-korean-skincare-for-pih-fade-post-acne-dark-spots` |
+| Published | 2026-03-10 | 2026-07-24 |
+| Topic | **Red/pink** marks — vascular | **Brown/tan** marks — pigment |
+| Named products | **0** | yes, with prices |
+| Retailer mentions | **none** | Olive Young |
+
+**The PIH post is the template.** It already does what this order asks for: named picks,
+real prices, retailer named, "Grounded pick:" callouts under each ingredient. Written
+July 24, four months after the PIE post, so it reflects the newer house style.
+
+Read the PIH post before starting and match its depth and format. The job is to bring the
+PIE post up to that standard — with PIE-appropriate actives (centella, madecassoside,
+panthenol, azelaic — **not** the brighteners PIH uses).
+
+Note the PIH post already links to the PIE post ("Read our dedicated guide on Korean
+skincare for PIE acne scars and texture instead"). **Add the reciprocal link back** from
+PIE to PIH. That cross-link is genuinely useful — the two conditions are constantly
+confused, and readers land on the wrong one.
+
+---
+
 ## Why this post specifically (measured, not assumed)
 
 This is **the strongest real estate on the site**, and it is the one page where a content
