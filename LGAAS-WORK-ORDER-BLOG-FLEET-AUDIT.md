@@ -232,13 +232,144 @@ Cross-link the confusable pairs. Readers routinely land on the wrong one:
 
 ## Execution order
 
-1. **Phase 1** (2 posts, policy + the 11 sunscreen caveats) — today. Factual risk.
-2. **Phase 2** (17 posts, paywall CTAs) — this week. Biggest lead-gen leak.
-3. **Phase 3** (34 posts, Yuri CTA) — can be batched with Phase 2 since it edits the same
-   sections.
-4. **Phase 4** (commercial-intent product naming) — start with the PIE post per its own
-   order, then the other "best X" posts.
-5. **Phases 5-6** — cleanup pass.
+**Every one of the 43 posts gets touched. Nothing is deferred out of scope.** The ordering
+below is about sequence, not about which posts get fixed.
+
+1. **Phase 0 — publishing defects + the factual error.** Same day. Small, and two of them
+   are actively harmful.
+2. **Phase 1** (2 posts, policy + the 11 sunscreen caveats). Factual risk.
+3. **Phase 2 + 3 batched** (the mechanical sweep across ALL 43). One pass, same sections.
+4. **Phase 4** (commercial-intent product naming) — PIE post per its own order, then the
+   other "best X" posts.
+5. **Phases 5-6** — cross-linking and housekeeping.
+
+---
+
+# PHASE 0 — Publishing defects and one harmful recommendation
+
+These were found by reading the bodies, not by scanning. They are small and they are the
+worst things on the blog.
+
+### 0.1 HARMFUL: a 23% pure L-ascorbic acid ampoule sold as the gentle option
+
+**Post:** `given-up-on-vitamin-c-heres-why-and-what-to-try`
+
+The post is *about* helping people whose skin can't tolerate strong vitamin C. It says:
+
+> *"One of the well-regarded **SAP options** in K-beauty is the **DW-EGF Vitamin C
+> Boosting Ampoule 25** by Easydew, which pairs the derivative with soothing ingredients
+> aimed specifically at **people who can't tolerate the harsh stuff**."*
+
+**Verified against `ss_products`:** that product's INCI is
+`Water, Ascorbic Acid (230,000 ppm), Propanediol, ...` — **230,000ppm is 23% pure
+L-ascorbic acid.** It is not SAP, it is not a derivative, and it is very likely the
+harshest vitamin C product in the catalog. The post routes sensitive, already-reactive
+readers straight to it while calling it gentle.
+
+**Fix:** either swap in a genuine SAP / ascorbyl-glucoside / ethyl-ascorbic-acid product
+verified from the catalog, or keep the Easydew and describe it honestly as the
+high-strength option that this reader should NOT start with. Note the site's own
+`how-to-get-rid-of-hyperpigmentation` post describes the same product correctly — the two
+posts currently contradict each other.
+
+### 0.2 Two live posts are truncated mid-sentence
+
+Verified by reading the last characters of the stored body:
+
+- `best-japanese-korean-sunscreens-...` ends `"...for your face and neck daily (about 1/4"` — cut off inside an FAQ answer.
+- `best-korean-skincare-for-dry-skin-with-pigmentation-...` ends `"...aggressive active to do everything"` — no period, no conclusion, no CTA.
+
+Both are live and indexed. Complete the endings.
+
+### 0.3 `/cycle` is a hard 404 — worse than the paywall links
+
+Confirmed: `https://www.seoulsister.com/cycle` returns **404**, and no route exists
+anywhere under `src/app/`. It is linked from at least four posts as "Cycle-Aware Skincare."
+A paywall link at least shows a page; this is a dead end.
+
+Remove every `/cycle` link. (`/verify`, `/tracking`, `/dashboard`, `/trending` all return
+200 but are gated — handle those under Phase 2.)
+
+### 0.4 White-label generation artifacts in six posts
+
+Literal third-person placeholder voice survived generation: **"The company helps you…",
+"The company's AI skincare advisor", "the team's Smart Routine Builder", "Their site
+tracks", "The site's AI advisor."**
+
+Affected: `beauty-of-joseon-aqua-fresh-sunscreen-full-review`,
+`best-japanese-korean-sunscreens-...`, `how-to-get-glass-skin-...`,
+`how-to-build-a-korean-skincare-routine-...`, `oily-skin-routine-guide`,
+`trending-k-beauty-products-2026-03`.
+
+Seoul Sister is not a third party writing about someone else's product. Rewrite in first
+person plural ("we", "our catalog") or name Yuri directly.
+
+### 0.5 Two link defects
+
+- `how-to-tell-if-korean-skincare-is-fake-a-5-point-check-for-a` links its COSRX checklist
+  to the **blog index** rather than the post slug.
+- `best-korean-skincare-for-dry-skin-with-pigmentation-...` uses bare-root
+  `https://seoulsister.com` as the anchor for five specific tools.
+
+---
+
+# THE COMPLETE 43-POST CHECKLIST
+
+Every published post, with its specific defects. **Tick each row.** A post with no flags
+still gets read for the Yuri CTA and cross-links. Legend: **G** gated CTA · **Y** no Yuri
+CTA · **B** banned retailer · **S** missing SPF-reformulation caveat · **A** artifact ·
+**T** truncated body · **C** `/cycle` 404 · **P** commercial-intent with no named products.
+
+| # | slug | flags | note |
+|---|---|---|---|
+| 1 | best-japanese-korean-sunscreens-us | **B S T A Y** | **Fix first.** Every defect class on one page |
+| 2 | best-korean-skincare-for-pie | **G S Y P** | Has its own work order — execute that |
+| 3 | korean-sunscreen-vs-american | **G S Y** | Tells US buyers the opposite of what CR measured |
+| 4 | given-up-on-vitamin-c | **Y** | **23% LAA sold as gentle.** Phase 0.1 |
+| 5 | best-korean-cleansing-oils-2026 | **G Y P** | "Best 2026" title, zero products |
+| 6 | how-to-get-glass-skin | **G Y P A** | Namesake query, zero products |
+| 7 | dry-skin-with-pigmentation | **G S Y T P** | Truncated; refuses picks under a "Best" title |
+| 8 | best-korean-skincare-for-dark-spots | **G S Y C** | 12 gated CTAs incl 2× /cycle |
+| 9 | how-to-build-a-korean-routine-that-works | **G S Y A C** | Head query; niacinamide+C claim contradicts siblings |
+| 10 | how-to-figure-out-skin-type | **G Y C** | Content excellent, CTAs only |
+| 11 | why-is-k-beauty-so-expensive | **G Y** | "2025" framing reads dead; de minimis likely stale |
+| 12 | where-to-buy-k-beauty-online | **G Y** | Retailer language is CORRECT, leave it |
+| 13 | oily-skin-routine-guide | **G A P** | HTML not markdown; cites deleted effectiveness stats |
+| 14 | do-korean-eye-patches-work | **G P** | "Worth your money" query, zero products |
+| 15 | why-does-makeup-look-worse | **G S Y C P** | Won't even name a sunscreen |
+| 16 | trending-k-beauty-2026-03 | **G S Y A** | 5 months stale; date-frame it |
+| 17 | how-to-fix-dehydrated-skin | **G S Y** | Names 6 real products; CTA sweep only |
+| 18 | sebaceous-filaments-routine | **G Y P** | Medically excellent; add picks, cross-link sibling |
+| 19 | can-niacinamide-cause-acne | **G** | FAQ overstates vs its own body |
+| 20 | beauty-of-joseon-aqua-fresh-review | **S Y A** | Guardian target; needs reformulation note + price |
+| 21 | things-i-wish-i-knew | **S Y** | Amazon counterfeit accusation, violates the rule |
+| 22 | why-does-sunscreen-pill | **S Y** | Solid otherwise |
+| 23 | how-to-get-rid-of-hyperpigmentation | **Y** | Recommends 23% LAA as default AM step |
+| 24 | sebaceous-filaments-vs-blackheads | **Y** | Correct clinically; cross-link sibling |
+| 25 | best-korean-skincare-for-pih | **Y** | **The template.** Only nit: CTA → /yuri (paywalled) |
+| 26 | k-beauty-toners-worth-your-money | **Y** | FAQ formatting nit |
+| 27 | best-milky-toners | **Y** | Good |
+| 28 | did-cosrx-snail-mucin-break-you-out | **Y** | Model post |
+| 29 | how-to-evaluate-your-routine | **Y** | **Style template** alongside #25 |
+| 30 | late-20s-skin-spiral | **Y** | Good |
+| 31 | 7-minute-routine | **Y** | One blanket sunscreen line to calibrate |
+| 32 | makeup-over-tretinoin-wedding | **Y** | Good |
+| 33 | skin-barrier-damaged-real-signs | **Y** | Good hub post |
+| 34 | purito-oat-in-discontinued | **Y** | Verify alternates still in catalog |
+| 35 | retinol-or-retinal | **Y** | **Has the best reformulation paragraph — reuse it** |
+| 36 | same-brand-different-formula | **Y** | Light persona only |
+| 37 | where-to-buy-authentic-snail-mucin | **Y** | Model marketplace framing |
+| 38 | how-to-tell-if-korean-skincare-is-fake | — | Blog-index mislink (0.5) |
+| 39 | cosrx-snail-mucin-fake | — | Model counterfeit post |
+| 40 | sulwhasoo-fake | — | Bottom Line contradicts body on barcode check |
+| 41 | korean-expiration-dates | — | Good |
+| 42 | build-a-routine-youll-stick-to | — | Good |
+| 43 | why-simplifying-works | — | Good |
+
+**Posts 25, 29, 35, 39 are the quality bar.** Read them before editing anything else;
+they already do what this order asks of the rest.
+
+---
 
 ## Definition of done (per post)
 
