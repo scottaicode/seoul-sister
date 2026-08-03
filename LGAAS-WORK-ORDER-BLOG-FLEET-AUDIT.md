@@ -30,6 +30,15 @@ Measured Aug 3 2026 across all 43 published posts in `ss_content_posts`:
 **Good news, verified:** **zero** posts repeat the unsourced "KTRI 2022 / 68% of COSRX
 sunscreen failed SPF" statistic. Do not introduce it.
 
+**Also verified good — do NOT "fix" these:** both sebaceous-filament posts handle the
+anatomy honestly. `sebaceous-filaments-vs-blackheads-how-to-tell-treat` opens with
+*"You can't permanently remove sebaceous filaments (they refill within 30 days), but
+consistent use of salicylic acid, oil cleansing, and niacinamide can minimize their
+appearance significantly."* That is the correct framing on the site's single
+highest-impression query cluster (176 impressions). A keyword scan flags "permanently
+remove" as a risky claim; reading it shows the opposite. **Read before editing** — a
+naive find-and-replace would break the best clinical copy on the blog.
+
 ---
 
 ## PHASE 1 — Do these first (policy + factual risk)
