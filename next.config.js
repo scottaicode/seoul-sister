@@ -121,14 +121,39 @@ const nextConfig = {
   // Clean bio-link vanity redirects (Priority 2, Jul 2026).
   // Bailey's social bios show a short, non-scary link (seoulsister.com/tt);
   // the redirect applies the source tag server-side so the visitor never sees
-  // '?from=tt_ss'. The tag lands in ss_widget_sessions.source (own-data moat)
-  // AND is readable by GA4, so TikTok vs Instagram is attributable even when
-  // in-app browsers strip the referrer (bio clicks otherwise read as "Direct").
-  // Underscore form is required — the widget's server sanitizer strips hyphens.
+  // the query string. The tag lands in ss_widget_sessions.source (own-data moat)
+  // so we can answer "did the TikTok visitor actually talk to Yuri?", which is
+  // the question that matters. Underscore form is required — the widget's
+  // sanitizer strips hyphens.
+  //
+  // UTMs added Aug 3 2026, after a real gap was found by walking the funnel.
+  // Scott clicked Bailey's bio link, landed, and did not chat. Our own data
+  // correctly showed nothing (a ss_widget_visitors row is only created when a
+  // message is SENT, by design — we count conversations, not pageviews). But
+  // GA4 filed the visit under Direct too, because `?from=` is our internal
+  // convention and GA4 only names a source from utm_* parameters. So a visitor
+  // who arrives from TikTok and browses without chatting was invisible in BOTH
+  // systems, and we would have had no way to prove the channel worked even if
+  // it did.
+  //
+  // Appending utm_source/utm_medium here keeps the bio link short and clean
+  // (the whole reason /tt exists — a bare, non-scary link converts better on a
+  // profile) while making the arrival a NAMED source in GA4 acquisition
+  // reports. Safe by construction: the widget reads utm_source FIRST and falls
+  // back to ?from=, so both land the same value in ss_widget_sessions.source —
+  // 'tiktok'/'instagram' now instead of 'tt_ss'/'ig_ss'.
   async redirects() {
     return [
-      { source: '/tt', destination: '/?from=tt_ss', permanent: false },
-      { source: '/ig', destination: '/?from=ig_ss', permanent: false },
+      {
+        source: '/tt',
+        destination: '/?utm_source=tiktok&utm_medium=bio&from=tt_ss',
+        permanent: false,
+      },
+      {
+        source: '/ig',
+        destination: '/?utm_source=instagram&utm_medium=bio&from=ig_ss',
+        permanent: false,
+      },
     ]
   },
 }
