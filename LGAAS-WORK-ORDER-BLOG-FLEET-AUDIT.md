@@ -73,12 +73,28 @@ The worst offender is `korean-sunscreen-vs-american-sunscreen-why-k-beauty-sunsc
 whose Quick Answer says Korean sunscreens *"use newer UV filters (like Tinosorb S and
 Tinosorb M)"* with no mention that the bottle a US reader buys at Target may not contain them.
 
-**Add this caveat to all 11** (adapt wording per post, keep it short):
+**Do not write new copy for this. Port what already exists.** `retinol-or-retinal-how-to-pick-the-right-one`
+has the best-calibrated version of this on the site — accurate, honest in both directions,
+and already in house voice:
 
-> Worth knowing before you buy locally: Korean sunscreens sold in US stores are often
-> reformulated with FDA-approved filters and can test meaningfully weaker than the
-> Korean-market version. If the filter list is what you're after, buy the Korean-market
-> product from Olive Young Global rather than assuming the US shelf version matches.
+> *"Beauty of Joseon's SPF 50+ (Korea) came out around SPF 19 in the US; Round Lab's SPF 46
+> tested near SPF 16 here. It's not 'American bad, Korean good', even the Korean formulas
+> tested under their SPF 50+ labels, and the gap is narrowing now that the FDA approved a
+> new filter (bemotrizinol) in 2026. Just **know what you're buying.** Same bottle,
+> different label, different real-world protection."*
+
+Adapt length per post, but keep all three calibrations intact — the US-vs-Korea gap, the
+"even Korean formulas underperformed their label" honesty, and the narrowing.
+
+**Also fix the stale FDA line while you're in there.** Two posts still say the FDA hasn't
+approved a new filter "since the late 1990s":
+- `korean-sunscreen-vs-american`: *"The FDA hasn't approved new UV filter molecules since
+  the late 1990s. That's not a typo."*
+- `best-japanese-korean-sunscreens`: *"hasn't meaningfully updated its approved sunscreen
+  filter list since the late 1990s."*
+
+**Bemotrizinol was approved June 2026.** The claim is now false, and it's the kind of
+confident-sounding fact an AI engine will quote.
 
 Three calibrations that keep this honest and must survive:
 - The documented advantage is **protection, not texture** (the CR panel found them greasy
@@ -304,7 +320,61 @@ Affected: `beauty-of-joseon-aqua-fresh-sunscreen-full-review`,
 Seoul Sister is not a third party writing about someone else's product. Rewrite in first
 person plural ("we", "our catalog") or name Yuri directly.
 
-### 0.5 Two link defects
+### 0.5 The site contradicts itself on niacinamide + vitamin C
+
+This one matters disproportionately because **AI engines quote whichever page they land
+on**, and this is a high-volume query cluster ("niacinamide acne" 29 impressions,
+"does niacinamide cause acne" 17, plus the vitamin C posts).
+
+Verified, both live:
+
+- `how-to-get-rid-of-hyperpigmentation-k-beauty-guide` says:
+  > *"Yes, the 'they cancel each other out' thing is **a myth from outdated 1960s research**
+  > using non-cosmetic forms. Modern formulations are fine."*
+- `how-to-build-a-korean-skincare-routine-...` lists it as a real conflict:
+  > *"Niacinamide combined with certain forms of vitamin C at low pH **can cause
+  > uncomfortable flushing**."*
+  (`how-to-get-glass-skin` carries a milder version of the same claim.)
+
+**The hyperpigmentation post is right.** Align the other two to it. Keep any nuance that
+is actually true (very high-percentage niacinamide can flush some people on its own — that
+is a niacinamide fact, not a vitamin-C-interaction fact), but stop listing the pairing as
+a conflict to avoid.
+
+Related, same cluster: `can-niacinamide-cause-acne` has an FAQ that states flatly
+**"Yes, niacinamide can cause cystic acne"** while its own body correctly hedges
+(*"Some researchers believe... can increase histamine release"*). Soften the FAQ to match
+the body. An FAQ answer is the snippet most likely to be extracted and quoted.
+
+### 0.6 Fabricated first-person testimony
+
+On a site whose stated moat is honesty, and whose AI is openly AI:
+
+- `sebaceous-filaments-routine`: *"I've spent a lot of time going through ingredient
+  research while helping build Seoul Sister's database"*, *"the night I sat cross-legged
+  on my bathroom floor..."*
+- `beauty-of-joseon-aqua-fresh-sunscreen-full-review`: *"I bought my first tube... two
+  years ago"*
+
+These posts are bylined **"Seoul Sister Team."** Invented personal history is the exact
+thing the video playbook's REJECT list forbids ("never fabricate, honesty is the moat").
+Rewrite to editorial "we" or to grounded framing ("in our catalog", "users tell us").
+Keep the warmth; drop the invented biography.
+
+### 0.7 Amazon accusation
+
+`things-i-wish-i-knew-before-buying-korean-skincare` says **"a lot of what sells on Amazon
+and TikTok Shop is counterfeit."** That is a blanket accusation, it violates the standing
+no-Amazon-accusations rule, and the counterfeit-evidence standard is *failed protection*
+(a tested SPF 3.6 vs a claimed 45), never a blanket claim.
+
+The correct replacement already exists on the site — `where-to-buy-authentic-snail-mucin`:
+> *"We are not going to tell you that any specific marketplace sells fakes... marketplaces
+> mix authorized and unverified sellers."*
+
+Port that framing.
+
+### 0.8 Two link defects
 
 - `how-to-tell-if-korean-skincare-is-fake-a-5-point-check-for-a` links its COSRX checklist
   to the **blog index** rather than the post slug.
