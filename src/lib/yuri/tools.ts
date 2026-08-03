@@ -1586,7 +1586,100 @@ async function executeSearchProducts(
     }
   })
 
-  return JSON.stringify({ products: results, total_found: filtered.length })
+  // Sibling listings — the same product carried more than once at different prices.
+  //
+  // Why (a real cold visitor, Aug 3 2026): Yuri recommended the SKIN1004 Hyalu-Cica
+  // Water-Fit Sun Serum at "~$22.10 at Olive Young" to someone in tropical humidity.
+  // The advice was right; the price was the WRONG ROW. The catalog carries that serum
+  // four times — $15.50/5,800 reviews, $16.00/3,400, $22.10/0, and a twin pack. She
+  // quoted the zero-review listing, 43% above the well-reviewed one, at the exact
+  // moment the visitor was deciding whether to buy. Price transparency is the pitch;
+  // a wrong quote at purchase intent is the fastest way to lose it.
+  //
+  // WHY THIS IS A FACT AND NOT A RULE. The obvious fix — "prefer the highest-review
+  // row" — was built and MEASURED against the catalog first, and it is wrong. Most
+  // near-name pairs are genuinely different products: "Extreme Cream Ampoule" vs
+  // "Extreme Cream", "All Clean Balm Mandarin" vs "All Clean Balm", refill sets,
+  // double packs, mists. Auto-preferring the popular row would make Yuri quote a
+  // single-unit price for a two-pack, or a cream's price for an ampoule — worse than
+  // the bug it fixes. Identical-INCI was tried as a discriminator too and also fails
+  // (the SKIN1004 rows differ by 35 characters while being the same product).
+  //
+  // No deterministic rule separates "duplicate listing" from "different SKU" here.
+  // That is precisely the call a model should make and a regex should not, so we
+  // surface the sibling rows and let Yuri decide. She can see that a $22.10/0-review
+  // row sitting beside a $15.50/5,800-review row with the same name is one product
+  // listed twice, and that "Ampoule" is a different product. Nothing is filtered.
+  const withSiblings = await attachSiblingListings(db, results)
+
+  return JSON.stringify({ products: withSiblings, total_found: filtered.length })
+}
+
+/**
+ * Attach `other_listings` to any result whose product appears more than once under
+ * the same brand with an overlapping name. Read-only, additive, and never removes or
+ * reorders a result — Yuri owns the judgment about which listing the user means.
+ */
+async function attachSiblingListings(
+  db: SupabaseClient,
+  results: Array<Record<string, unknown>>
+): Promise<Array<Record<string, unknown>>> {
+  const brands = Array.from(
+    new Set(
+      results
+        .map((r) => (r.brand as string | null) || '')
+        .filter((b) => b.length > 0)
+    )
+  )
+  if (brands.length === 0) return results
+
+  const { data: siblings, error } = await db
+    .from('ss_products')
+    .select('id, name_en, brand_en, price_usd, review_count')
+    .eq('is_verified', true)
+    .in('brand_en', brands)
+
+  // A failed sibling lookup must not look like "no duplicates exist" — that is the
+  // silent-failure shape this codebase keeps paying for. Log it and return the
+  // results untouched rather than asserting an all-clear we never checked.
+  if (error) {
+    console.error('[search_products] sibling-listing lookup failed:', error.message)
+    return results
+  }
+
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+
+  return results.map((r) => {
+    const rName = norm((r.name as string) || '')
+    const rBrand = ((r.brand as string) || '').toLowerCase()
+    if (!rName) return r
+
+    const others = (siblings || [])
+      .filter((s) => {
+        if (s.id === r.id) return false
+        if ((s.brand_en || '').toLowerCase() !== rBrand) return false
+        const sName = norm(s.name_en || '')
+        // One name contains the other — the shape a duplicate listing takes when a
+        // spec suffix ("SPF50+ PA++++") or a line word is present on only one row.
+        return sName.includes(rName) || rName.includes(sName)
+      })
+      .map((s) => ({
+        name: s.name_en,
+        price_usd: s.price_usd,
+        review_count: s.review_count,
+      }))
+      .sort((a, b) => (b.review_count ?? 0) - (a.review_count ?? 0))
+      .slice(0, 4)
+
+    if (others.length === 0) return r
+
+    return {
+      ...r,
+      other_listings: others,
+      listings_note:
+        'We carry this product name more than once. These may be the SAME product listed twice (quote the price from the listing with real review volume) or genuinely DIFFERENT products (a refill set, double pack, mist, ampoule, or a different line). Judge which from the names and review counts, and if you quote a price say which listing it is for.',
+    }
+  })
 }
 
 // ---------------------------------------------------------------------------
