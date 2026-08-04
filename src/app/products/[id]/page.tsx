@@ -40,6 +40,34 @@ const categoryLabels: Record<string, string> = {
   spot_treatment: 'Spot Treatment',
 }
 
+/**
+ * DB category -> canonical /best/[category] slug.
+ *
+ * These slugs are NOT derivable from the display label: they are irregular
+ * (`lip_care` -> `lip-care`, singular, while `mask` -> `masks`, plural). The
+ * previous code built the href as `label.toLowerCase() + 's'`, which produced
+ * `/best/lip cares` — an un-slugified space AND a wrong plural — 404ing on
+ * ~860 product pages and starving the real category pages of internal links.
+ *
+ * `oil`, `mist` and `not_skincare` are deliberately ABSENT: no /best/ page
+ * exists for them, so their products must not render a category link at all.
+ * Keep in sync with CATEGORIES in src/app/best/[category]/page.tsx.
+ */
+const bestOfSlugByCategory: Record<string, string> = {
+  cleanser: 'cleansers',
+  toner: 'toners',
+  essence: 'essences',
+  serum: 'serums',
+  ampoule: 'ampoules',
+  moisturizer: 'moisturizers',
+  sunscreen: 'sunscreens',
+  mask: 'masks',
+  eye_care: 'eye-care',
+  lip_care: 'lip-care',
+  exfoliator: 'exfoliators',
+  spot_treatment: 'spot-treatments',
+}
+
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -835,13 +863,17 @@ export default async function PublicProductPage({ params }: Props) {
             >
               All {categoryLabel}s
             </Link>
-            <span className="text-white/20 hidden sm:inline">·</span>
-            <Link
-              href={`/best/${categoryLabel.toLowerCase()}s`}
-              className="text-amber-400/70 hover:text-amber-400 transition-colors"
-            >
-              Best Korean {categoryLabel}s →
-            </Link>
+            {bestOfSlugByCategory[product.category] && (
+              <>
+                <span className="text-white/20 hidden sm:inline">·</span>
+                <Link
+                  href={`/best/${bestOfSlugByCategory[product.category]}`}
+                  className="text-amber-400/70 hover:text-amber-400 transition-colors"
+                >
+                  Best Korean {categoryLabel}s →
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>

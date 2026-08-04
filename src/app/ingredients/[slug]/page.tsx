@@ -88,52 +88,144 @@ function getSupabase() {
 }
 
 /**
- * Treat unsplit-INCI-dump rows as nonexistent so their pages 404. These 6,000-char
- * "ingredients" were in the sitemap before the July 12 2026 cleanup; crawlers
- * (Bing/Copilot — the GEO channel) still hold the URLs, and deactivating the rows
- * did NOT stop this page from rendering them. A 404 is what actually gets the
- * dump pages dropped from the index.
+ * Pick the row a slug should resolve to when SEVERAL rows slugify identically.
+ *
+ * 290 slugs collide, 112 of them between two or more ACTIVE ingredients, because
+ * `toSlug` strips the footnote artifacts scraped off ingredient tables:
+ * "Glycerin" and "Glycerin⁴" both slugify to `glycerin`. The real Glycerin has
+ * 4,378 product links; its twin has 1.
+ *
+ * The old code took `.find()` — the FIRST slug match in an unordered Postgres
+ * result — so which row won was luck. It happened to be winning, but a plan
+ * change or a new row could silently flip /ingredients/glycerin to the 1-link
+ * artifact. Worse, when one twin is polluted (`[Red Spot]Acrylates Copolymer`)
+ * and the other is not (`#Red Spot Acrylates Copolymer`), `.find()` could land
+ * on the polluted twin, `asCleanRow` nulled it, and the page 404'd even though a
+ * usable row existed.
+ *
+ * So: consider EVERY row whose slug matches, drop the polluted ones, and among
+ * the survivors prefer active rows, then the one carrying the most product
+ * links, then `id` as a final deterministic tiebreak. Returning null when every
+ * candidate is polluted preserves the existing 404-the-INCI-dumps behaviour.
  */
-function asCleanRow(row: IngredientRow | null): IngredientRow | null {
-  if (!row) return null
-  return isPollutedIngredientName(row.name_inci) ? null : row
+function pickBestSlugMatch(
+  rows: IngredientRow[],
+  slug: string,
+  linkCounts: Map<string, number>
+): IngredientRow | null {
+  // Unsplit-INCI-dump rows are treated as nonexistent so their pages 404. These
+  // 6,000-char "ingredients" were in the sitemap before the July 12 2026
+  // cleanup; crawlers (Bing/Copilot — the GEO channel) still hold the URLs, and
+  // deactivating the rows did NOT stop this page from rendering them. A 404 is
+  // what actually gets the dump pages dropped from the index.
+  const usable = rows
+    .filter((r) => toSlug(r.name_inci) === slug)
+    .filter((r) => !isPollutedIngredientName(r.name_inci))
+
+  if (usable.length === 0) return null
+
+  return usable.sort((a, b) => {
+    if (a.is_active !== b.is_active) return a.is_active ? -1 : 1
+    const diff = (linkCounts.get(b.id) ?? 0) - (linkCounts.get(a.id) ?? 0)
+    if (diff !== 0) return diff
+    return a.id.localeCompare(b.id)
+  })[0]
 }
+
+/**
+ * How many products each candidate is linked to — the signal that separates a
+ * real ingredient from its footnote twin. Failure is non-fatal: without counts
+ * the sort still falls back to active-then-id, which is deterministic.
+ */
+async function fetchLinkCounts(
+  supabase: ReturnType<typeof getSupabase>,
+  ids: string[]
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>()
+  if (ids.length === 0) return counts
+
+  const { data, error } = await supabase
+    .from('ss_product_ingredients')
+    .select('ingredient_id')
+    .in('ingredient_id', ids)
+
+  if (error) {
+    console.error('[ingredient page] link-count query failed', {
+      error: error.message,
+    })
+    return counts
+  }
+
+  for (const row of data ?? []) {
+    const id = (row as { ingredient_id: string }).ingredient_id
+    counts.set(id, (counts.get(id) ?? 0) + 1)
+  }
+  return counts
+}
+
+const INGREDIENT_COLUMNS =
+  'id, name_inci, name_en, name_ko, function, description, safety_rating, comedogenic_rating, is_fragrance, is_active, common_concerns, rich_content, rich_content_generated_at'
 
 async function findIngredientBySlug(
   slug: string
 ): Promise<IngredientRow | null> {
   const supabase = getSupabase()
 
-  // Try common fast matches first (exact lowercase match on name_inci)
-  const { data: exact } = await supabase
+  const resolve = async (rows: IngredientRow[]) => {
+    const candidates = rows.filter((r) => toSlug(r.name_inci) === slug)
+    if (candidates.length === 0) return null
+    // Only pay for link counts when a collision actually needs breaking.
+    const linkCounts =
+      candidates.length > 1
+        ? await fetchLinkCounts(
+            supabase,
+            candidates.map((c) => c.id)
+          )
+        : new Map<string, number>()
+    return pickBestSlugMatch(candidates, slug, linkCounts)
+  }
+
+  // Try common fast matches first (exact lowercase match on name_inci).
+  // `error` is checked: destructuring only `data` turns a failed query into a
+  // silent "ingredient not found" — a 404 that looks like clean data.
+  const { data: exact, error: exactError } = await supabase
     .from('ss_ingredients')
-    .select(
-      'id, name_inci, name_en, name_ko, function, description, safety_rating, comedogenic_rating, is_fragrance, is_active, common_concerns, rich_content, rich_content_generated_at'
-    )
+    .select(INGREDIENT_COLUMNS)
     .ilike('name_inci', slug.replace(/-/g, '_').replace(/_/g, '%'))
     .limit(50)
 
+  if (exactError) {
+    console.error('[ingredient page] exact lookup failed', {
+      slug,
+      error: exactError.message,
+    })
+  }
+
   if (exact && exact.length > 0) {
-    const match = exact.find((i) => toSlug(i.name_inci) === slug)
-    if (match) return asCleanRow(match as IngredientRow)
+    const match = await resolve(exact as IngredientRow[])
+    if (match) return match
   }
 
   // Broader search: fetch ingredients where any word matches
   const words = slug.split('-').filter((w) => w.length > 2)
   if (words.length === 0) return null
 
-  const { data: broad } = await supabase
+  const { data: broad, error: broadError } = await supabase
     .from('ss_ingredients')
-    .select(
-      'id, name_inci, name_en, name_ko, function, description, safety_rating, comedogenic_rating, is_fragrance, is_active, common_concerns, rich_content, rich_content_generated_at'
-    )
+    .select(INGREDIENT_COLUMNS)
     .ilike('name_inci', `%${words[0]}%`)
     .limit(200)
 
+  if (broadError) {
+    console.error('[ingredient page] broad lookup failed', {
+      slug,
+      error: broadError.message,
+    })
+    return null
+  }
+
   if (!broad) return null
-  return asCleanRow(
-    (broad.find((i) => toSlug(i.name_inci) === slug) as IngredientRow) || null
-  )
+  return resolve(broad as IngredientRow[])
 }
 
 export async function generateMetadata({
