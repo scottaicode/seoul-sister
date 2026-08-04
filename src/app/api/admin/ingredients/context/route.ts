@@ -117,7 +117,28 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        const candidates = data ?? []
+        // An alphabetically-ordered window can still miss the canonical row.
+        // "Sodium Hyaluronate" sits at alphabetical position 55 among its own
+        // matches — behind every "Acetylated…", "Hydrolyzed…", "Potassium…"
+        // prefix — so a 40-row window returned a 1-link derivative for a
+        // 2,824-link ingredient. PostgREST cannot ORDER BY length(name), so
+        // ask for the exact row directly and merge it in. One cheap indexed
+        // lookup, and it makes the canonical row unmissable regardless of how
+        // many prefixed variants exist.
+        const { data: exactRows } = await excludePollutedIngredientRows(
+          supabase
+            .from('ss_ingredients')
+            .select('id, name_inci, name_en, function, description, common_concerns, safety_rating, comedogenic_rating, is_active, rich_content')
+            .or(`name_inci.ilike.${term},name_en.ilike.${term}`)
+            .limit(5)
+        )
+
+        type IngredientRow = { id: number } & Record<string, unknown>
+        const byId = new Map<number, IngredientRow>()
+        for (const r of [...(exactRows ?? []), ...(data ?? [])] as IngredientRow[]) {
+          if (!byId.has(r.id)) byId.set(r.id, r)
+        }
+        const candidates = [...byId.values()]
         if (!candidates.length) continue
 
         // Rank by PRODUCT LINKS, the same "real ingredient vs variant" signal
