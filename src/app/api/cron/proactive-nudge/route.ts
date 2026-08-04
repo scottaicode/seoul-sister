@@ -30,7 +30,10 @@ export const maxDuration = 60
  *
  * Guardrails (the "don't nag / don't pressure" discipline, made mechanical —
  * adapted from LGAAS's nudge crons):
- *   - MAX_NUDGES total per user (3), SPACING_DAYS between them (3)
+ *   - MAX_NUDGES (3) per rolling NUDGE_WINDOW_DAYS (30), SPACING_DAYS (3) apart.
+ *     A ROLLING window, not a lifetime cap: a lifetime cap made Yuri permanently
+ *     unreachable after 3 nudges, which stranded the most engaged subscriber on
+ *     the platform for 53 days. Subscriber care is ongoing; nurture is finite.
  *   - Timezone-gated: only queue if it's daytime in the user's local time
  *   - Eligibility is signal-driven (cycle/phase/open-loops/glass-skin), not raw
  *     inactivity — and conservative (null far more often than not)
@@ -45,7 +48,14 @@ export const maxDuration = 60
  * Secured with CRON_SECRET header.
  */
 
+/** Max nudges per user within NUDGE_WINDOW_DAYS (a rolling window, NOT a lifetime cap). */
 const MAX_NUDGES = 3
+/**
+ * The rolling window the cap applies over (v11.23.1). Chosen to match the
+ * monthly billing rhythm: a subscriber can hear from Yuri proactively at most
+ * three times per billing period, and never more often than SPACING_DAYS apart.
+ */
+const NUDGE_WINDOW_DAYS = 30
 const SPACING_DAYS = 3
 const DAYTIME_START_HOUR = 9 // local
 const DAYTIME_END_HOUR = 20 // local (8pm)
@@ -239,19 +249,57 @@ async function handler(request: Request) {
         }
 
         // --- Cap + spacing gate ---
-        const { data: priorNudges } = await db
+        // A failed query here would read as "this user has never been nudged"
+        // and hand out a fresh quota — the exact silent-failure shape that
+        // disabled conflict checking in v11.18.0. Treat it as an error and skip.
+        const { data: priorNudges, error: priorErr } = await db
           .from('ss_user_nudges')
           .select('id, created_at, reason: trigger_reason, status')
           .eq('user_id', p.user_id)
           .order('created_at', { ascending: false })
 
-        const nudgeCount = priorNudges?.length ?? 0
-        if (nudgeCount >= MAX_NUDGES) {
+        if (priorErr) {
+          stats.errors++
+          console.error(
+            `[proactive-nudge] prior-nudge load failed for ${p.user_id}:`,
+            priorErr.message
+          )
+          continue
+        }
+
+        const allNudges = priorNudges ?? []
+
+        // ROLLING WINDOW (v11.23.1), replacing a LIFETIME cap.
+        //
+        // MAX_NUDGES used to count every nudge a user had ever received, which
+        // made Yuri permanently unreachable after 3. Bailey hit that ceiling on
+        // June 11 and the engine could never contact her again — 53 days and
+        // counting, for the single most engaged subscriber on the platform.
+        //
+        // That shape was inherited from lead nurture, where the relationship is
+        // finite: warm a prospect a few times, then stop. A paying subscriber is
+        // the opposite — the care is ongoing and they are paying for continuity.
+        // "Yuri proactively checks in at most three times, ever, then goes
+        // silent forever" is not a defensible rule for a $24.99/mo advisor.
+        //
+        // Every anti-nag property is preserved: at most MAX_NUDGES in any
+        // NUDGE_WINDOW_DAYS, and never closer together than SPACING_DAYS. The
+        // realistic ceiling stays ~1 per 10 days. What changes is only that the
+        // silence eventually lifts.
+        const windowStart = Date.now() - NUDGE_WINDOW_DAYS * 24 * 60 * 60 * 1000
+        const nudgesInWindow = allNudges.filter(
+          (n) => new Date(n.created_at).getTime() >= windowStart
+        )
+
+        if (nudgesInWindow.length >= MAX_NUDGES) {
           stats.skippedCapOrSpacing++
           continue
         }
-        if (nudgeCount > 0) {
-          const last = new Date(priorNudges![0].created_at).getTime()
+        // Spacing is measured against the most recent nudge of ALL time, not
+        // just the window — otherwise a nudge falling out of the window could
+        // let a new one fire too soon after it.
+        if (allNudges.length > 0) {
+          const last = new Date(allNudges[0].created_at).getTime()
           const daysSince = (Date.now() - last) / (1000 * 60 * 60 * 24)
           if (daysSince < SPACING_DAYS) {
             stats.skippedCapOrSpacing++
@@ -357,7 +405,13 @@ async function handler(request: Request) {
         }
 
         // Don't repeat the same reason we've already nudged about.
-        const alreadyNudgedReason = (priorNudges ?? []).some(
+        // Deliberately LIFETIME-scoped, not window-scoped. The rolling window
+        // above governs how OFTEN Yuri may reach out; this governs whether she
+        // repeats herself, and repeating an identical ask is annoying no matter
+        // how much time has passed. Loosening this is a separate decision that
+        // should wait for real acted/dismissed data (there are 5 nudges total on
+        // the platform today, and MIN_SAMPLE for the outcome teacher is 5).
+        const alreadyNudgedReason = allNudges.some(
           (n) => (n as { reason?: string }).reason === opportunity.reason
         )
         if (alreadyNudgedReason) {
@@ -366,7 +420,13 @@ async function handler(request: Request) {
         }
 
         // --- Generate the Yuri-voiced message (Opus 4.8) ---
-        const nudgeSequence = nudgeCount + 1
+        // The escalation ladder is scoped to the WINDOW, not to all time. It has
+        // to be: a lifetime sequence means everyone is permanently pinned at
+        // rung 3 ("I won't keep bringing it up"), so a check-in six months later
+        // would open by apologizing for pestering someone we haven't contacted
+        // since spring. Resetting with the window keeps warm/value/back-off in
+        // its intended proportion inside each stretch of contact.
+        const nudgeSequence = nudgesInWindow.length + 1
         const gen = await generateNudgeMessage(opportunity, nudgeSequence, p.skin_type)
         if (!gen) {
           stats.errors++
