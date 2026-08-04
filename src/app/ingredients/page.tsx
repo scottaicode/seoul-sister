@@ -6,6 +6,7 @@ import { toSlug } from '@/lib/utils/slug'
 import IngredientSearch from './IngredientSearch'
 import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { serializeJsonLd } from '@/lib/utils/json-ld'
+import { excludePollutedIngredientRows } from '@/lib/pipeline/ingredient-parser'
 
 export const metadata: Metadata = {
   title: 'K-Beauty Ingredient Encyclopedia | 14,000+ Ingredients',
@@ -91,13 +92,28 @@ export default async function IngredientsPage() {
     .in('name_inci', FEATURED_INCI)
     .order('name_en')
 
-  // Fetch all enriched ingredients (have rich_content = detailed guide pages)
-  const { data: enrichedRaw } = await supabase
-    .from('ss_ingredients')
-    .select('id, name_inci, name_en, function, is_active, safety_rating, comedogenic_rating')
-    .eq('is_active', true)
-    .not('rich_content', 'is', null)
-    .order('name_en')
+  // Fetch all enriched ingredients (have rich_content = detailed guide pages).
+  //
+  // `rich_content` is the right filter here — this index lists GUIDE pages.
+  // `is_active` was not: it is a functional classification (excipient vs.
+  // active), not a publish flag, so an enriched guide for Panthenol or
+  // Ceramide NP existed and still never appeared in the encyclopedia. The
+  // pollution guard is the quality gate and was missing entirely; this query
+  // was relying on is_active to do that job, which is the exact conflation
+  // being removed. is_active still ranks — actives first — it just no longer
+  // decides who exists.
+  const { data: enrichedRaw, error: enrichedError } = await excludePollutedIngredientRows(
+    supabase
+      .from('ss_ingredients')
+      .select('id, name_inci, name_en, function, is_active, safety_rating, comedogenic_rating')
+      .not('rich_content', 'is', null)
+      .order('is_active', { ascending: false })
+      .order('name_en')
+  )
+
+  if (enrichedError) {
+    console.error('[ingredients index] enriched query failed', { error: enrichedError.message })
+  }
 
   // Fetch counts
   const { count: totalCount } = await supabase

@@ -54,11 +54,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // The sitemap is the AI-citation surface — a submitted URL for an unsplit
       // INCI dump is a page we are actively asking crawlers to index. This query
       // had NO pollution guard, so 15 dump rows were live in it (July 30 2026).
+      //
+      // `is_active` is NOT a publish flag. Per the schema comment it means
+      // "active as in active INGREDIENT vs. inactive" — a functional
+      // classification, so water and xanthan gum are legitimately false. Using
+      // it as a gate withheld 5,222 real ingredient pages from the sitemap,
+      // 198 of them with 100+ product links: Sodium Hyaluronate (2,824),
+      // Panthenol (2,440), Allantoin (1,949), Ceramide NP (1,468), Squalane.
+      // Every one of those pages already renders 200 with a full product list
+      // (sampled and confirmed before this change) — we simply were not
+      // telling crawlers they exist, on the one surface that is the moat.
+      //
+      // The pollution guard is the quality gate and is applied here. This
+      // matches what ingredients/[slug]/page.tsx and api/ingredients/search
+      // independently converged on: guard for quality, is_active for sort.
       excludePollutedIngredientRows(
         supabase
           .from('ss_ingredients')
           .select('name_inci, rich_content_generated_at')
-          .eq('is_active', true)
           .order('name_inci')
       ),
       supabase

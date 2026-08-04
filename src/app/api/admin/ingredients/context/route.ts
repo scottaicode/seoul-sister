@@ -5,6 +5,7 @@ import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { secureCompare } from '@/lib/utils/secure-compare'
 import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 import { toSlug } from '@/lib/utils/slug'
+import { excludePollutedIngredientRows } from '@/lib/pipeline/ingredient-parser'
 
 const contextSchema = z.object({
   pain_points: z.array(z.string()).optional(),
@@ -86,11 +87,19 @@ export async function POST(request: NextRequest) {
         // "real ingredient vs footnote variant" signal used by the page
         // resolver. `error` is checked so a dead query cannot read as
         // "we have no data for this ingredient".
-        const { data, error } = await supabase
-          .from('ss_ingredients')
-          .select('id, name_inci, name_en, function, description, common_concerns, safety_rating, comedogenic_rating, is_active, rich_content')
-          .eq('is_active', true)
-          .or(`name_inci.ilike.%${term}%,name_en.ilike.%${term}%`)
+        // No `is_active` filter. This is a lookup BY EXPLICIT NAME — the blog
+        // asked for this ingredient. `is_active` is a functional
+        // classification, not a publish flag, so filtering on it returned
+        // nothing for Panthenol, Allantoin, Ceramide NP and Sodium
+        // Hyaluronate, and the post got no context and no link. It also ran
+        // BEFORE the link-count ranking below, so a false row was discarded
+        // before ranking could rescue it. The pollution guard is the quality
+        // gate and was missing here entirely.
+        const { data, error } = await excludePollutedIngredientRows(
+          supabase
+            .from('ss_ingredients')
+            .select('id, name_inci, name_en, function, description, common_concerns, safety_rating, comedogenic_rating, is_active, rich_content')
+            .or(`name_inci.ilike.%${term}%,name_en.ilike.%${term}%`)
           // Order SERVER-SIDE. An unordered .limit(25) is the same defect as
           // the .limit(1) it replaced, just wider: asking for "Niacinamide"
           // fetched 25 arbitrary rows and the real one (2,347 product links)
@@ -99,8 +108,9 @@ export async function POST(request: NextRequest) {
           // ("Niacinamide") ahead of every "(20,000 ppm)" / "(20%)" variant.
           // In-memory ranking below then decides on product links, which is
           // the signal that actually separates real rows from artifacts.
-          .order('name_inci', { ascending: true })
-          .limit(40)
+            .order('name_inci', { ascending: true })
+            .limit(40)
+        )
 
         if (error) {
           console.error('[ingredients/context] lookup failed', { name, error: error.message })

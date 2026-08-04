@@ -9,6 +9,7 @@ import BlogInlineYuriPrompt from '@/components/blog/BlogInlineYuriPrompt'
 import { marked } from 'marked'
 import { linkIngredients, buildIngredientMap, extractIngredientChips, type IngredientLink } from '@/lib/utils/ingredient-linker'
 import { serializeJsonLd } from '@/lib/utils/json-ld'
+import { excludePollutedIngredientRows } from '@/lib/pipeline/ingredient-parser'
 
 // Configure marked: open external links in new tab, sanitize
 const renderer = new marked.Renderer()
@@ -157,13 +158,27 @@ export default async function BlogPostPage({
 
   const blogPost = post as BlogPost
 
-  // Fetch active ingredients for internal linking
-  // All ingredients have valid /ingredients/[slug] pages regardless of rich_content
-  const { data: enrichedIngredients } = await supabase
-    .from('ss_ingredients')
-    .select('name_en, name_inci')
-    .eq('is_active', true)
-    .order('name_en')
+  // Ingredient dictionary for auto-linking the post body.
+  //
+  // This had the filter that HURTS and lacked the one that HELPS: `is_active`
+  // is a functional classification ("active ingredient vs. excipient"), not a
+  // publish flag, so filtering on it meant a blog mention of Sodium
+  // Hyaluronate, Panthenol, Allantoin or Ceramide NP was NEVER auto-linked —
+  // weakening the exact internal-link graph the citation moat runs on. The
+  // comment above already said pages exist "regardless of rich_content"; the
+  // same is true of is_active. Meanwhile there was no pollution guard, so an
+  // unsplit INCI dump could become an anchor. Both corrected.
+  const { data: enrichedIngredients, error: enrichedIngredientsError } =
+    await excludePollutedIngredientRows(
+      supabase.from('ss_ingredients').select('name_en, name_inci').order('name_en')
+    )
+
+  if (enrichedIngredientsError) {
+    console.error('[blog] ingredient link dictionary failed', {
+      slug,
+      error: enrichedIngredientsError.message,
+    })
+  }
 
   const ingredientLinks: IngredientLink[] = enrichedIngredients
     ? buildIngredientMap(enrichedIngredients)

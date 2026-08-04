@@ -120,7 +120,13 @@ async function getTopIngredients(): Promise<IngredientToEnrich[]> {
       .from('ss_ingredients')
       .select('id, name_inci, name_en, name_ko, function, description, safety_rating, comedogenic_rating, is_fragrance, is_active, common_concerns')
       .is('rich_content', null)
-      .eq('is_active', true)
+      // No `is_active` filter: it is a functional classification, not a
+      // publish flag, so gating enrichment on it meant Sodium Hyaluronate
+      // (2,824 product links), Panthenol (2,440) and Ceramide NP (1,468)
+      // could never receive a guide — which then excluded them from the
+      // encyclopedia index, which requires one. This script already ranks by
+      // product count below, so the genuinely-obscure excipients sort to the
+      // bottom on their own rather than being excluded by a wrong signal.
       .limit(1000)
 
     if (ingErr || !ingredients) {
