@@ -130,9 +130,17 @@ function htmlToPlainText(html: string): string {
     .replace(/<li[^>]*>/gi, '- ')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
+    // Decode the entities our own escaping produces. &#39; and &quot; were
+    // missing here, so any apostrophe in an escaped body (very common in Yuri's
+    // voice — "there's", "you're") reached the plain-text part as a literal
+    // "&#39;". Caught in the v11.23.0 nudge-email dry run.
+    .replace(/&#0*39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
+    // &amp; LAST so "&amp;lt;" doesn't get double-decoded into "<".
+    .replace(/&amp;/g, '&')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
