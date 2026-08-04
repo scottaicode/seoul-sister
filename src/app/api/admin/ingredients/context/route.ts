@@ -73,17 +73,90 @@ export async function POST(request: NextRequest) {
     // 1. Direct name lookup
     if (ingredient_names?.length) {
       for (const name of ingredient_names.slice(0, 10)) {
-        const { data } = await supabase
+        const term = sanitizeSearchTerm(name)
+
+        // `.limit(1)` with NO `.order()` returned an arbitrary substring match:
+        // asking for "Niacinamide" produced "Niacinamide (20%)" (13 product
+        // links) instead of the canonical "Niacinamide" (2,347), so blog posts
+        // linked readers to a niche concentration variant. Same unordered
+        // first-match class fixed in ingredients/[slug] on Aug 4 2026.
+        //
+        // Fetch a window, then rank deliberately: an EXACT name match always
+        // wins, otherwise the row carrying the most products — the same
+        // "real ingredient vs footnote variant" signal used by the page
+        // resolver. `error` is checked so a dead query cannot read as
+        // "we have no data for this ingredient".
+        const { data, error } = await supabase
           .from('ss_ingredients')
           .select('id, name_inci, name_en, function, description, common_concerns, safety_rating, comedogenic_rating, is_active, rich_content')
           .eq('is_active', true)
-          .not('rich_content', 'is', null)
-          .or(`name_inci.ilike.%${sanitizeSearchTerm(name)}%,name_en.ilike.%${sanitizeSearchTerm(name)}%`)
-          .limit(1)
+          .or(`name_inci.ilike.%${term}%,name_en.ilike.%${term}%`)
+          .limit(25)
 
-        if (data?.[0] && !seen.has(data[0].id)) {
-          seen.add(data[0].id)
-          results.push(toContext(data[0]))
+        if (error) {
+          console.error('[ingredients/context] lookup failed', { name, error: error.message })
+          continue
+        }
+
+        const candidates = data ?? []
+        if (!candidates.length) continue
+
+        // Rank by PRODUCT LINKS, the same "real ingredient vs variant" signal
+        // the page resolver uses. A shortest-name tiebreak was tried first and
+        // MEASURED WRONG against the live catalog: it picked the Korean-name
+        // rows "살리실릭애씨드" (1 link) over "Salicylic Acid" (352) and
+        // "판테놀" over Panthenol, because those names are shorter. One
+        // batched count keeps this to a single extra query per name.
+        const linkCounts = new Map<number, number>()
+        const { data: linkRows, error: linkError } = await supabase
+          .from('ss_product_ingredients')
+          .select('ingredient_id')
+          .in('ingredient_id', candidates.map((c) => c.id))
+
+        if (linkError) {
+          console.error('[ingredients/context] link count failed', { name, error: linkError.message })
+        }
+        for (const row of linkRows ?? []) {
+          const id = (row as { ingredient_id: number }).ingredient_id
+          linkCounts.set(id, (linkCounts.get(id) ?? 0) + 1)
+        }
+
+        const lower = name.trim().toLowerCase()
+        // An exact name match wins ONLY if the row is substantive. Measured:
+        // a stray lowercase "centella asiatica" row with ONE product link was
+        // beating "Centella Asiatica Extract" (1,378 links) purely on exact
+        // match. A near-zero-link exact match is a data artifact, not the
+        // canonical ingredient, so it does not get to override the links
+        // signal. 5 is deliberately low — it only excludes artifacts.
+        const EXACT_MATCH_MIN_LINKS = 5
+        const ranked = candidates.slice().sort((a, b) => {
+          const exact = (r: Record<string, unknown>) => {
+            const isExact =
+              String(r.name_inci ?? '').toLowerCase() === lower ||
+              String(r.name_en ?? '').toLowerCase() === lower
+            if (!isExact) return 0
+            return (linkCounts.get(r.id as number) ?? 0) >= EXACT_MATCH_MIN_LINKS ? 1 : 0
+          }
+          const byExact = exact(b) - exact(a)
+          if (byExact !== 0) return byExact
+          // PRODUCT LINKS outrank rich_content. rich_content used to be a hard
+          // `.not(...is null)` filter and then a primary sort key; both were
+          // measured wrong against the live catalog. It tracks which pages got
+          // a generated guide, which is EDITORIAL COVERAGE, not relevance:
+          // "Glycerin" carries 4,378 product links and no guide, while the
+          // synonym row "Glycerine" carries 279 and has one. Sorting on the
+          // guide sent readers to the synonym. Links decide; the guide is only
+          // a tiebreak between rows of equal weight.
+          const byLinks = (linkCounts.get(b.id) ?? 0) - (linkCounts.get(a.id) ?? 0)
+          if (byLinks !== 0) return byLinks
+          const rich = (r: Record<string, unknown>) => (r.rich_content ? 1 : 0)
+          return rich(b) - rich(a)
+        })
+
+        const best = ranked[0]
+        if (best && !seen.has(best.id)) {
+          seen.add(best.id)
+          results.push(toContext(best))
         }
       }
     }
