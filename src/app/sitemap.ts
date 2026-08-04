@@ -43,6 +43,37 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
+    /**
+     * Page through a query. PostgREST caps an unpaginated select at 1,000 rows
+     * by DEFAULT and reports no error — so the sitemap was silently truncated
+     * mid-alphabet (it ended at "water"), publishing ~1,000 of 12,863 eligible
+     * ingredient URLs and ~1,000 of 5,946 products. That predates the
+     * is_active fix and is why simply dropping the filter recovered nothing:
+     * the cap, not the filter, was the binding constraint.
+     *
+     * A silent row cap is the same class as a swallowed error — the result
+     * looks complete and is not.
+     */
+    const fetchAll = async <T>(
+      build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+    ): Promise<T[]> => {
+      const PAGE = 1000
+      const out: T[] = []
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await build(from, from + PAGE - 1)
+        if (error) {
+          console.error('[sitemap] page fetch failed', { from, error: error.message })
+          break
+        }
+        if (!data?.length) break
+        out.push(...data)
+        if (data.length < PAGE) break
+        // Backstop against an unbounded loop if a filter ever stops narrowing.
+        if (out.length >= 50_000) break
+      }
+      return out
+    }
+
     // Blog posts, active ingredients, and products in parallel
     const [blogRes, ingredientsRes, productsRes] = await Promise.all([
       supabase
@@ -68,17 +99,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // The pollution guard is the quality gate and is applied here. This
       // matches what ingredients/[slug]/page.tsx and api/ingredients/search
       // independently converged on: guard for quality, is_active for sort.
-      excludePollutedIngredientRows(
-        supabase
-          .from('ss_ingredients')
-          .select('name_inci, rich_content_generated_at')
-          .order('name_inci')
+      fetchAll<{ name_inci: string; rich_content_generated_at: string | null }>((from, to) =>
+        excludePollutedIngredientRows(
+          supabase
+            .from('ss_ingredients')
+            .select('name_inci, rich_content_generated_at')
+            .order('name_inci')
+        ).range(from, to)
       ),
-      supabase
-        .from('ss_products')
-        .select('id, updated_at, rating_avg, description_en')
-        .not('description_en', 'is', null)
-        .order('rating_avg', { ascending: false }),
+      fetchAll<{ id: string; updated_at: string | null; rating_avg: number | null; description_en: string | null }>((from, to) =>
+        supabase
+          .from('ss_products')
+          .select('id, updated_at, rating_avg, description_en')
+          .not('description_en', 'is', null)
+          .order('rating_avg', { ascending: false })
+          .range(from, to)
+      ),
     ])
 
     if (blogRes.data) {
@@ -90,10 +126,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }))
     }
 
-    if (ingredientsRes.data) {
+    {
       // Deduplicate slugs (some INCI names may produce the same slug)
       const seen = new Set<string>()
-      ingredientPages = ingredientsRes.data
+      ingredientPages = ingredientsRes
         .map((i) => {
           // The comma-outside-parentheses rule can't be a LIKE pattern, so the
           // SQL guard above cannot catch it — apply the full check in TS too.
@@ -105,7 +141,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           const changeFreq: 'monthly' | 'yearly' = isEnriched ? 'monthly' : 'yearly'
           return {
             url: `${baseUrl}/ingredients/${slug}`,
-            lastModified: isEnriched
+            lastModified: i.rich_content_generated_at
               ? new Date(i.rich_content_generated_at)
               : now,
             changeFrequency: changeFreq,
@@ -115,8 +151,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .filter((x): x is NonNullable<typeof x> => x !== null)
     }
 
-    if (productsRes.data) {
-      productPages = productsRes.data.map((p) => {
+    {
+      productPages = productsRes.map((p) => {
         const hasRichContent = !!p.description_en && !!p.rating_avg
         return {
           url: `${baseUrl}/products/${p.id}`,

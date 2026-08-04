@@ -238,3 +238,31 @@ test('the search route sorts by is_active rather than filtering', () => {
   assert.match(src, /\.order\('is_active', \{ ascending: false \}\)/)
   assert.ok(!/\.eq\('is_active', true\)/.test(src))
 })
+
+// ---------------------------------------------------------------------------
+// The silent row cap — a bigger bug that removing the filter exposed.
+// ---------------------------------------------------------------------------
+
+test('the sitemap pages through results instead of taking PostgREST\'s first 1000', () => {
+  // PostgREST caps an unpaginated select at 1,000 rows BY DEFAULT and reports
+  // no error. The live sitemap was truncated mid-alphabet — it ended at
+  // "water" — publishing ~1,000 of 12,863 eligible ingredient URLs and ~1,000
+  // of 5,946 products. This predates the is_active fix and is why dropping
+  // that filter alone recovered nothing: the cap was the binding constraint.
+  //
+  // A silent row cap is the same class as a swallowed error: the result looks
+  // complete and is not.
+  const src = read('src', 'app', 'sitemap.ts')
+
+  assert.match(src, /const fetchAll = async/, 'the sitemap needs a paging helper')
+  assert.match(src, /\.range\(from, to\)/, 'queries must be paged with .range()')
+  assert.match(
+    src,
+    /fetchAll<\{ name_inci/,
+    'the ingredient query must page — it is the largest set'
+  )
+  assert.match(src, /fetchAll<\{ id: string/, 'the product query must page too')
+  // The loop must terminate on a short page and surface a failed page.
+  assert.match(src, /if \(data\.length < PAGE\) break/)
+  assert.match(src, /\[sitemap\] page fetch failed/)
+})

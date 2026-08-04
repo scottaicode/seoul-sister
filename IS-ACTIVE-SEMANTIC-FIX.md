@@ -134,3 +134,20 @@ real meaning. Removing it there would surface solvents as treatments.
   `@`/bracket/dump row may enter the sitemap (the July 30 regression).
 - Guard tests execute the real query-builder chain and fail when the filter is
   reintroduced.
+
+## Postscript — the bigger bug this exposed
+
+Removing the filter recovered **nothing** at first. Verifying the live sitemap
+after deploy showed only 971 ingredient URLs, truncated mid-alphabet (it ended
+at "water"), with `allantoin` present but `panthenol` and `sodium-hyaluronate`
+absent.
+
+**PostgREST caps an unpaginated select at 1,000 rows by default and reports no
+error.** The sitemap had been silently truncated the whole time — ~1,000 of
+12,863 eligible ingredient URLs, and ~1,000 of 5,946 products. That predates
+this fix; the cap, not the filter, was the binding constraint. Both queries now
+page via `.range()`.
+
+This is the same class as a swallowed error: **the result looks complete and is
+not.** It was only visible because the fix was verified against the live
+surface rather than against the code.
