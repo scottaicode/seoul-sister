@@ -47,16 +47,29 @@ export async function GET(request: NextRequest, context: RouteContext) {
     // Optionally check conflicts
     const checkConflicts = request.nextUrl.searchParams.get('check_conflicts')
     let conflicts = null
+    // `conflicts: []` means "checked, found none". This records the other case.
+    // A bare `catch {}` here previously discarded the throws that
+    // checkAllRoutineConflicts raises on a failed query — so the July 30
+    // instrumentation was NEUTRALIZED on this path: the library logged to
+    // console and the user still saw a routine with no warnings. Instrumenting
+    // a library without fixing the swallowing call site ships nothing.
+    let conflictCheckFailed = false
     if (checkConflicts === 'true') {
       try {
         const result = await checkAllRoutineConflicts(supabase, id)
         conflicts = result.conflicts
-      } catch {
-        // Non-critical
+      } catch (conflictError) {
+        // Still non-fatal — the routine itself is worth returning — but the
+        // client must be able to say "we couldn't check" instead of nothing.
+        conflictCheckFailed = true
+        console.error('[routine] conflict check failed', {
+          routineId: id,
+          error: conflictError instanceof Error ? conflictError.message : String(conflictError),
+        })
       }
     }
 
-    return NextResponse.json({ routine, conflicts })
+    return NextResponse.json({ routine, conflicts, conflict_check_failed: conflictCheckFailed })
   } catch (error) {
     return handleApiError(error)
   }

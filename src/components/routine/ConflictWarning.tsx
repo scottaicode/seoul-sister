@@ -18,8 +18,35 @@ const SEVERITY_STYLES: Record<string, { bg: string; border: string; text: string
   low: { bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', text: 'text-yellow-400', icon: 'text-yellow-400' },
 }
 
-export function ConflictWarning({ conflicts }: { conflicts: Conflict[] }) {
+export function ConflictWarning({
+  conflicts,
+  checkFailed = false,
+}: {
+  conflicts: Conflict[]
+  /**
+   * The check could not run. This is NOT the same as finding no conflicts, and
+   * rendering nothing for it is how a broken safety check looks identical to a
+   * clean routine. Say so plainly instead — "nothing came back" is never
+   * "nothing's wrong".
+   */
+  checkFailed?: boolean
+}) {
   const [expanded, setExpanded] = useState(false)
+
+  if (checkFailed) {
+    return (
+      <div className="bg-white/5 border border-white/15 rounded-xl p-3">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0 text-white/50" />
+          <span className="text-xs text-white/70">
+            We couldn&apos;t check this routine for ingredient conflicts just now
+            — this doesn&apos;t mean it&apos;s clear. Refresh to try again, or ask
+            Yuri to look at it.
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   if (conflicts.length === 0) return null
 

@@ -1993,11 +1993,31 @@ async function executeCheckIngredientConflicts(
   const allIngredientNames: string[] = [...(ingredientNames || [])]
   const productIngredientSets = new Map<string, string[]>()
 
+  // A FAILED QUERY MUST NEVER READ AS "NOTHING IS WRONG".
+  //
+  // Every query below feeds `safe`. Destructuring only `data` meant a dead
+  // query produced an empty list, which produced zero conflicts, which
+  // produced `safe: true` — the same shape as the July 30 incident where one
+  // NULL product_id disabled conflict checking for an entire routine while a
+  // subscriber's ADAPALENE was invisible. `checkFailures` collects any check
+  // that could not run so the payload can say so out loud.
+  const checkFailures: string[] = []
+
   if (resolvedIds.length > 0) {
-    const { data: links } = await db
+    const { data: links, error: linksError } = await db
       .from('ss_product_ingredients')
       .select('product_id, ingredient:ss_ingredients(id, name_inci, name_en)')
       .in('product_id', resolvedIds)
+
+    if (linksError) {
+      console.error('[check_ingredient_conflicts] ingredient lookup failed', {
+        error: linksError.message,
+        productCount: resolvedIds.length,
+      })
+      checkFailures.push(
+        "the ingredient lists for the products you named could not be read, so NOTHING was compared for them"
+      )
+    }
 
     for (const link of links || []) {
       const l = link as Record<string, unknown>
@@ -2012,13 +2032,24 @@ async function executeCheckIngredientConflicts(
   }
 
   // Check known conflicts from ss_ingredient_conflicts
-  const { data: conflicts } = await db
+  const { data: conflicts, error: conflictsError } = await db
     .from('ss_ingredient_conflicts')
     .select(`
       severity, description, recommendation,
       ingredient_a:ss_ingredients!ingredient_a_id(name_en, name_inci),
       ingredient_b:ss_ingredients!ingredient_b_id(name_en, name_inci)
     `)
+
+  if (conflictsError) {
+    // This is the whole rule table. Without it no conflict can EVER match,
+    // so the loop below finds nothing and `safe` would come back true.
+    console.error('[check_ingredient_conflicts] conflict rules unavailable', {
+      error: conflictsError.message,
+    })
+    checkFailures.push(
+      'the ingredient-interaction rules could not be loaded, so NO conflict check ran at all'
+    )
+  }
 
   const foundConflicts: Array<{
     ingredient_a: string
@@ -2051,11 +2082,22 @@ async function executeCheckIngredientConflicts(
   }
 
   // Check user allergies
-  const { data: profile } = await db
+  const { data: profile, error: profileError } = await db
     .from('ss_user_profiles')
     .select('allergies')
     .eq('user_id', userId)
     .maybeSingle()
+
+  if (profileError) {
+    // maybeSingle() returns null for "no profile" AND for a real failure, so
+    // without this the allergy half of `safe` silently contributes true.
+    console.error('[check_ingredient_conflicts] allergy profile unavailable', {
+      error: profileError.message,
+    })
+    checkFailures.push(
+      'the allergy list on file could not be read, so nothing was screened against it'
+    )
+  }
 
   const allergyWarnings: string[] = []
   if (profile?.allergies?.length) {
@@ -2071,7 +2113,14 @@ async function executeCheckIngredientConflicts(
   return JSON.stringify({
     conflicts: foundConflicts,
     allergy_warnings: allergyWarnings,
-    safe: foundConflicts.length === 0 && allergyWarnings.length === 0,
+    // `safe` is a claim that the check RAN and found nothing. When any part of
+    // it could not run, the honest answer is null — not true. Yuri must not be
+    // handed a boolean that cannot distinguish "clear" from "unchecked".
+    safe:
+      checkFailures.length > 0
+        ? null
+        : foundConflicts.length === 0 && allergyWarnings.length === 0,
+    check_complete: checkFailures.length === 0,
     products_checked: resolvedIds.length,
     resolved_products: resolvedProducts,
     all_products_checked: unresolvedNames.length === 0,
@@ -2079,6 +2128,11 @@ async function executeCheckIngredientConflicts(
     ...(unresolvedNames.length > 0
       ? {
           warning: `These products could NOT be found in the catalog and were NOT checked: ${unresolvedNames.join(', ')}. "safe" only covers the products that WERE checked — tell the user honestly which ones you couldn't verify instead of giving a blanket all-clear.`,
+        }
+      : {}),
+    ...(checkFailures.length > 0
+      ? {
+          check_failed_warning: `THIS SAFETY CHECK DID NOT COMPLETE: ${checkFailures.join('; ')}. "safe" is null, NOT true — you have no result here. Do NOT tell the user this combination is fine or that you checked. Say plainly that you could not verify it right now, and if they are about to layer actives, tell them to hold off until you can.`,
         }
       : {}),
     ingredients_checked: lowerNames.size,
@@ -2287,12 +2341,21 @@ async function executeGetPersonalizedMatch(
   }
   if (!productId) return JSON.stringify({ error: 'No product_id or product_name provided' })
 
-  // Get user profile
-  const { data: profile } = await db
+  // Get user profile. maybeSingle() returns null for "no profile" AND for a
+  // real failure, and the fallback below tells the user to go create a profile
+  // they may already have. Throwing is safe here: executeYuriTool converts it
+  // into a tool error Yuri must surface, rather than a false statement.
+  const { data: profile, error: profileError } = await db
     .from('ss_user_profiles')
     .select('skin_type, skin_concerns, allergies, fitzpatrick_scale')
     .eq('user_id', userId)
     .maybeSingle()
+
+  if (profileError) {
+    throw new Error(
+      `Could not read the skin profile, so no personalized verdict is possible: ${profileError.message}`
+    )
+  }
 
   if (!profile) {
     return JSON.stringify({
@@ -2301,13 +2364,23 @@ async function executeGetPersonalizedMatch(
     })
   }
 
-  // Get product ingredients
-  const { data: ingredientLinks } = await db
+  // Get product ingredients. THIS TOOL EMITS A SAFETY VERDICT: the allergy
+  // alert below is built by looping over these rows, so a dead query means the
+  // loop runs zero times, `warnings` stays empty, and the tool reports a good
+  // match for a product containing the user's allergen. An empty ingredient
+  // list is indistinguishable from a clean product, so refuse instead.
+  const { data: ingredientLinks, error: ingredientLinksError } = await db
     .from('ss_product_ingredients')
     .select('position, ingredient:ss_ingredients(name_inci, name_en, function, is_active, is_fragrance, safety_rating, comedogenic_rating)')
     .eq('product_id', productId)
     .order('position', { ascending: true })
     .limit(30)
+
+  if (ingredientLinksError) {
+    throw new Error(
+      `Could not read this product's ingredients, so it cannot be screened against allergies or concerns: ${ingredientLinksError.message}`
+    )
+  }
 
   const warnings: string[] = []
   const benefits: string[] = []
@@ -3565,7 +3638,14 @@ async function executeGetRoutineContext(
   }
 
   // ---- 3. Ingredient conflicts from the database ----
-  const { data: conflictsData } = await db
+  // This is CONTEXT Yuri narrates from, not a verdict, so a throw would kill
+  // routine building over a degraded read. Instead the payload says which parts
+  // are missing: an empty `known_ingredient_conflicts` otherwise reads as
+  // "there are no known conflicts", and an empty `user_allergies` reads as an
+  // affirmative "this user has no allergies" — both absences asserting facts.
+  const contextGaps: string[] = []
+
+  const { data: conflictsData, error: conflictsDataError } = await db
     .from('ss_ingredient_conflicts')
     .select('ingredient_a:ingredient_a_id (name_inci), ingredient_b:ingredient_b_id (name_inci), severity, description, recommendation')
 
@@ -3582,11 +3662,27 @@ async function executeGetRoutineContext(
   })
 
   // ---- 4. User's skin profile (allergies + skin type for context) ----
-  const { data: profile } = await db
+  if (conflictsDataError) {
+    console.error('[get_routine_context] conflict rules unavailable', {
+      error: conflictsDataError.message,
+    })
+    contextGaps.push('known ingredient conflicts')
+  }
+
+  // .single() errors on zero rows too, so a user with no profile also lands
+  // here. Either way the honest statement is "not loaded", never "none".
+  const { data: profile, error: profileError } = await db
     .from('ss_user_profiles')
     .select('skin_type, skin_concerns, allergies')
     .eq('user_id', userId)
     .single()
+
+  if (profileError) {
+    console.error('[get_routine_context] profile unavailable', {
+      error: profileError.message,
+    })
+    contextGaps.push('allergies and skin type')
+  }
 
   return JSON.stringify({
     routine_type: routineType,
@@ -3604,6 +3700,12 @@ async function executeGetRoutineContext(
     user_skin_type: profile?.skin_type || null,
     user_allergies: profile?.allergies || [],
     user_concerns: profile?.skin_concerns || [],
+    context_complete: contextGaps.length === 0,
+    ...(contextGaps.length > 0
+      ? {
+          context_warning: `COULD NOT LOAD: ${contextGaps.join(' and ')}. The empty values above mean NOT LOADED, not "none" — do not tell the user they have no allergies or that nothing conflicts. Say you couldn't pull their full profile before building anything that depends on it.`,
+        }
+      : {}),
   })
 }
 

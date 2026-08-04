@@ -20,11 +20,21 @@ export async function checkRoutineConflicts(
   routineId: string,
   newProductId: string
 ): Promise<ConflictResult> {
-  // Get ingredients for the new product
-  const { data: newProductIngredients } = await supabase
+  // These two queries gate EARLY `return { safe: true }` statements, so they
+  // are the same silent-failure class as the .in() below — and they run FIRST.
+  // The July 30 fix instrumented the .in() call and left these, which meant a
+  // dead query here still produced an all-clear before the guarded line was
+  // ever reached. An empty result is a legitimate "nothing to compare"; an
+  // ERROR is not, and must never be reported as safe.
+  const { data: newProductIngredients, error: newProductIngredientsError } = await supabase
     .from('ss_product_ingredients')
     .select('ingredient_id')
     .eq('product_id', newProductId)
+
+  if (newProductIngredientsError) {
+    console.error('[conflict-detector] new-product ingredient lookup failed:', newProductIngredientsError.message)
+    throw new Error(`Conflict check could not run: ${newProductIngredientsError.message}`)
+  }
 
   if (!newProductIngredients?.length) {
     return { safe: true, conflicts: [] }
@@ -33,10 +43,15 @@ export async function checkRoutineConflicts(
   const newIds = newProductIngredients.map((i) => i.ingredient_id)
 
   // Get all ingredient IDs from existing routine products
-  const { data: routineProducts } = await supabase
+  const { data: routineProducts, error: routineProductsError } = await supabase
     .from('ss_routine_products')
     .select('product_id')
     .eq('routine_id', routineId)
+
+  if (routineProductsError) {
+    console.error('[conflict-detector] routine-product lookup failed:', routineProductsError.message)
+    throw new Error(`Conflict check could not run: ${routineProductsError.message}`)
+  }
 
   if (!routineProducts?.length) {
     return { safe: true, conflicts: [] }
@@ -112,10 +127,17 @@ export async function checkRoutineConflicts(
 
   // Map IDs to names
   const allIds = [...new Set([...newIds, ...existingIds])]
-  const { data: allNames } = await supabase
+  // NOT a throw: this runs AFTER conflicts are found and only maps ids to
+  // display names, so a failure degrades a real warning to "Unknown conflicts
+  // with Unknown" rather than hiding it. Log it so the degradation is visible.
+  const { data: allNames, error: allNamesError } = await supabase
     .from('ss_ingredients')
     .select('id, name_inci')
     .in('id', allIds)
+
+  if (allNamesError) {
+    console.error('[conflict-detector] ingredient-name lookup failed:', allNamesError.message)
+  }
 
   const nameMap = new Map(allNames?.map((n) => [n.id, n.name_inci]) ?? [])
 
@@ -138,10 +160,19 @@ export async function checkAllRoutineConflicts(
   supabase: SupabaseClient,
   routineId: string
 ): Promise<ConflictResult> {
-  const { data: routineProducts } = await supabase
+  // Same class as checkRoutineConflicts above: this gates an early
+  // `return { safe: true }`, so a dead query would report a whole routine as
+  // conflict-free. This is the read path that renders an EXISTING routine, so
+  // a false all-clear here is what a subscriber sees every time they open it.
+  const { data: routineProducts, error: routineProductsError } = await supabase
     .from('ss_routine_products')
     .select('product_id')
     .eq('routine_id', routineId)
+
+  if (routineProductsError) {
+    console.error('[conflict-detector] routine-product lookup failed:', routineProductsError.message)
+    throw new Error(`Conflict check could not run: ${routineProductsError.message}`)
+  }
 
   if (!routineProducts || routineProducts.length < 2) {
     return { safe: true, conflicts: [] }
@@ -219,10 +250,17 @@ export async function checkAllRoutineConflicts(
     return { safe: true, conflicts: [] }
   }
 
-  const { data: allNames } = await supabase
+  // NOT a throw: this runs AFTER conflicts are found and only maps ids to
+  // display names, so a failure degrades a real warning to "Unknown conflicts
+  // with Unknown" rather than hiding it. Log it so the degradation is visible.
+  const { data: allNames, error: allNamesError } = await supabase
     .from('ss_ingredients')
     .select('id, name_inci')
     .in('id', allIngredientIds)
+
+  if (allNamesError) {
+    console.error('[conflict-detector] ingredient-name lookup failed:', allNamesError.message)
+  }
 
   const nameMap = new Map(allNames?.map((n) => [n.id, n.name_inci]) ?? [])
 

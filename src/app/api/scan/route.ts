@@ -161,22 +161,38 @@ export async function POST(request: NextRequest) {
       description: string
       recommendation: string
     }> = []
+    // An empty `conflicts` list means "checked, found none". This flag records
+    // the OTHER case — the check could not run — so the client and the stored
+    // scan can tell them apart. Silent failure on a safety path is how a user
+    // ends up buying a product that clashes with their routine.
+    let conflictCheckFailed = false
 
     try {
       const ingredients = analysis.ingredients as Array<{ name_inci: string }> | undefined
       if (ingredients?.length) {
         // Look up scanned INCI names in our ingredient database
         const inciNames = ingredients.map((i: { name_inci: string }) => i.name_inci)
-        const { data: matchedIngredients } = await supabase
+        // A failed lookup here silently skips the ENTIRE conflict block below.
+        // The .in() list is built from OCR'd label text, so a mis-read
+        // character is a realistic way to break it. Rethrow so the catch marks
+        // the check as failed rather than letting it look clean.
+        const { data: matchedIngredients, error: matchedIngredientsError } = await supabase
           .from('ss_ingredients')
           .select('id, name_inci')
           .in('name_inci', inciNames)
+
+        if (matchedIngredientsError) {
+          throw new Error(`scanned-ingredient lookup failed: ${matchedIngredientsError.message}`)
+        }
 
         if (matchedIngredients?.length) {
           const scannedIds = matchedIngredients.map((i) => i.id)
 
           // Get ingredients from the user's active routine
-          const { data: routineIngredients } = await supabase
+          // Nested embed — breaks if a FK relationship name changes. Without
+          // this the routine set comes back empty and the conflict check is
+          // skipped entirely, indistinguishable from "user has no routine".
+          const { data: routineIngredients, error: routineIngredientsError } = await supabase
             .from('ss_user_routines')
             .select(`
               id,
@@ -188,6 +204,10 @@ export async function POST(request: NextRequest) {
             `)
             .eq('user_id', user.id)
             .eq('is_active', true)
+
+          if (routineIngredientsError) {
+            throw new Error(`routine-ingredient lookup failed: ${routineIngredientsError.message}`)
+          }
 
           const routineIngredientIds = new Set<string>()
           if (routineIngredients) {
@@ -211,17 +231,42 @@ export async function POST(request: NextRequest) {
           if (routineIngredientIds.size > 0) {
             const routineIds = Array.from(routineIngredientIds)
 
-            // Check conflicts in both directions
-            const { data: foundConflicts } = await supabase
+            // Fetch rules touching either side, then pair them in memory.
+            //
+            // The previous version built scannedIds × routineIds `or` clauses in
+            // ONE URL. Measured against live data: a subscriber with 163 routine
+            // ingredients and a ~30-ingredient label produces 9,780 clauses —
+            // roughly 880 KB of URL, far past any server limit. So this query
+            // could NOT succeed for the users with the most to lose, and the
+            // failure was swallowed by the "non-critical" catch below: they
+            // scanned a product in-store and saw no warning.
+            //
+            // Same shape as the fix already proven in conflict-detector.ts:
+            // ss_ingredient_conflicts is a small curated rule table, so two
+            // .in() filters answer this in a single cheap request.
+            const scannedIdSet = new Set(scannedIds)
+            const routineIdSet = new Set(routineIds)
+            const bothSides = [...new Set([...scannedIds, ...routineIds])]
+
+            const { data: candidateRules, error: candidateRulesError } = await supabase
               .from('ss_ingredient_conflicts')
               .select('ingredient_a_id, ingredient_b_id, severity, description, recommendation')
-              .or(
-                scannedIds.map((sid) =>
-                  routineIds.map((rid) =>
-                    `and(ingredient_a_id.eq.${sid},ingredient_b_id.eq.${rid}),and(ingredient_a_id.eq.${rid},ingredient_b_id.eq.${sid})`
-                  ).join(',')
-                ).join(',')
-              )
+              .in('ingredient_a_id', bothSides)
+              .in('ingredient_b_id', bothSides)
+
+            // A dead query here is NOT "no conflicts". Rethrow so the catch
+            // records it as a failed check instead of an all-clear.
+            if (candidateRulesError) {
+              throw new Error(`conflict rule lookup failed: ${candidateRulesError.message}`)
+            }
+
+            // A rule applies only if it spans the SCANNED product and the
+            // routine — in either column order.
+            const foundConflicts = (candidateRules || []).filter(
+              (c) =>
+                (scannedIdSet.has(c.ingredient_a_id) && routineIdSet.has(c.ingredient_b_id)) ||
+                (scannedIdSet.has(c.ingredient_b_id) && routineIdSet.has(c.ingredient_a_id))
+            )
 
             if (foundConflicts?.length) {
               // Map ingredient IDs back to names
@@ -247,8 +292,14 @@ export async function POST(request: NextRequest) {
           }
         }
       }
-    } catch {
-      // Conflict detection is non-critical — don't fail the scan
+    } catch (conflictError) {
+      // Don't fail the whole scan — the AI analysis is still valuable — but
+      // never let a failed check look like a clean one.
+      conflictCheckFailed = true
+      console.error('[scan] conflict detection failed', {
+        error: conflictError instanceof Error ? conflictError.message : String(conflictError),
+        userId: user.id,
+      })
     }
 
     // Enrich scan results with personalized intelligence
@@ -319,6 +370,7 @@ export async function POST(request: NextRequest) {
         analysis_result: {
           analysis,
           conflicts,
+          conflict_check_failed: conflictCheckFailed,
           enrichment,
           reformulation,
         },
@@ -387,6 +439,7 @@ export async function POST(request: NextRequest) {
       analysis,
       product_match: productMatch,
       conflicts,
+      conflict_check_failed: conflictCheckFailed,
       enrichment,
       reformulation,
     })

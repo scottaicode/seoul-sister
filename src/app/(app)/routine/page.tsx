@@ -107,6 +107,9 @@ function RoutineCard({
   const [showAddModal, setShowAddModal] = useState(false)
   const [removing, setRemoving] = useState<string | null>(null)
   const [conflicts, setConflicts] = useState<Conflict[]>([])
+  // Distinguishes "checked, nothing found" from "the check never ran". Without
+  // it a broken safety check renders identically to a clean routine.
+  const [conflictCheckFailed, setConflictCheckFailed] = useState(false)
   const [loadingConflicts, setLoadingConflicts] = useState(false)
 
   const isAM = routine.routine_type === 'am'
@@ -154,9 +157,13 @@ function RoutineCard({
         if (res.ok) {
           const data = await res.json()
           if (data.conflicts) setConflicts(data.conflicts)
+          setConflictCheckFailed(Boolean(data.conflict_check_failed))
+        } else {
+          setConflictCheckFailed(true)
         }
       } catch {
-        // Non-critical
+        // The routine still renders — but say the check didn't run.
+        setConflictCheckFailed(true)
       } finally {
         setLoadingConflicts(false)
       }
@@ -248,9 +255,9 @@ function RoutineCard({
         </div>
 
         {/* Conflict warnings */}
-        {!loadingConflicts && conflicts.length > 0 && (
+        {!loadingConflicts && (conflicts.length > 0 || conflictCheckFailed) && (
           <div className="mb-3">
-            <ConflictWarning conflicts={conflicts} />
+            <ConflictWarning conflicts={conflicts} checkFailed={conflictCheckFailed} />
           </div>
         )}
 
