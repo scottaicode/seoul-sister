@@ -79,12 +79,15 @@ async function importSnippet(tsSource, filename) {
 
 /** Extract the real category->slug map from the product page. */
 async function loadCategoryMap() {
-  const src = read('src', 'app', 'products', '[id]', 'page.tsx')
-  const m = src.match(
-    /const bestOfSlugByCategory: Record<string, string> = \{[\s\S]*?\n\}/
+  // The map moved to the shared source of truth (src/lib/catalog/categories.ts)
+  // so the five drifting copies could be collapsed. Shape it the way these
+  // tests expect: dbCategory -> slug, absent when no /best/ page exists.
+  const src = read('src', 'lib', 'catalog', 'categories.ts')
+  const mod = await importSnippet(src, 'catmap.mjs')
+  const bestOfSlugByCategory = Object.fromEntries(
+    mod.PRODUCT_CATEGORIES.filter((c) => c.bestOfSlug).map((c) => [c.dbCategory, c.bestOfSlug])
   )
-  assert.ok(m, 'bestOfSlugByCategory map not found in products/[id]/page.tsx')
-  return importSnippet(`export ${m[0]}`, 'catmap.mjs')
+  return { bestOfSlugByCategory }
 }
 
 /** Extract the real collision-resolution logic from the ingredient page. */
@@ -177,7 +180,7 @@ test('categories with no /best/ page are absent so no link renders', async () =>
 test('the link is rendered conditionally on a mapped category', () => {
   const src = read('src', 'app', 'products', '[id]', 'page.tsx')
   assert.ok(
-    /\{bestOfSlugByCategory\[product\.category\] && \(/.test(src),
+    /\{bestOfSlugFor\(product\.category\) && \(/.test(src),
     'the /best/ link must be guarded so unmapped categories render nothing'
   )
   assert.ok(

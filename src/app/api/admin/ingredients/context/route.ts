@@ -4,6 +4,7 @@ import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { secureCompare } from '@/lib/utils/secure-compare'
 import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
+import { toSlug } from '@/lib/utils/slug'
 
 const contextSchema = z.object({
   pain_points: z.array(z.string()).optional(),
@@ -158,6 +159,23 @@ export async function POST(request: NextRequest) {
 interface IngredientContext {
   name: string
   inci_name: string
+  /**
+   * The AUTHORITATIVE /ingredients/ URL segment for this row.
+   *
+   * Consumers (LGAAS blog generation) previously had to derive this from a
+   * display name, and the derivation is not possible: /ingredients/[slug]
+   * resolves on `toSlug(name_inci)` ONLY, and this catalog stores the
+   * parenthetical INCI form. So the real page is
+   *   /ingredients/melaleuca-alternifolia-tea-tree-leaf-oil
+   * while every reasonable guess — `tea-tree-oil`, and even the textbook INCI
+   * `melaleuca-alternifolia-leaf-oil` — 404s. Same for `aloe-vera` (the row is
+   * "Aloe Barbadensis Leaf Extract") and `vitamin-c` ("Ascorbic Acid").
+   *
+   * Measured Aug 4 2026: 10 dead ingredient links across 6 of 43 published
+   * posts, every one a near-miss on a real ingredient. A prompt rule cannot fix
+   * a slug that is not derivable — it has to be SUPPLIED, so we supply it.
+   */
+  slug: string
   function: string | null
   overview: string | null
   how_it_works: string | null
@@ -173,6 +191,9 @@ function toContext(ing: Record<string, unknown>): IngredientContext {
   return {
     name: (ing.name_en as string) || (ing.name_inci as string),
     inci_name: ing.name_inci as string,
+    // Must mirror findIngredientBySlug in src/app/ingredients/[slug]/page.tsx,
+    // which matches on toSlug(name_inci). Deriving from name_en would 404.
+    slug: toSlug(ing.name_inci as string),
     function: ing.function as string | null,
     overview: rc?.overview ? truncate(rc.overview as string, 300) : null,
     how_it_works: rc?.how_it_works ? truncate(rc.how_it_works as string, 250) : null,

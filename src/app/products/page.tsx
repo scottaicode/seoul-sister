@@ -6,6 +6,9 @@ import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { proxyImageUrl } from '@/lib/utils/image-proxy'
 import { PRICING } from '@/lib/pricing'
 import { serializeJsonLd } from '@/lib/utils/json-ld'
+// Shared source of truth: `dbCategory` is the ss_products.category value and is
+// NOT a URL slug — conflating the two produced /best/lip%20cares on ~860 pages.
+import { PRODUCT_CATEGORIES as CATEGORIES } from '@/lib/catalog/categories'
 
 export const metadata: Metadata = {
   title: 'K-Beauty Product Database | 5,900+ Korean Skincare Products',
@@ -30,20 +33,6 @@ export const metadata: Metadata = {
 
 export const revalidate = 3600
 
-const CATEGORIES = [
-  { slug: 'serum', label: 'Serums' },
-  { slug: 'sunscreen', label: 'Sunscreens' },
-  { slug: 'moisturizer', label: 'Moisturizers' },
-  { slug: 'cleanser', label: 'Cleansers' },
-  { slug: 'toner', label: 'Toners' },
-  { slug: 'mask', label: 'Masks' },
-  { slug: 'essence', label: 'Essences' },
-  { slug: 'ampoule', label: 'Ampoules' },
-  { slug: 'exfoliator', label: 'Exfoliators' },
-  { slug: 'eye_care', label: 'Eye Care' },
-  { slug: 'lip_care', label: 'Lip Care' },
-  { slug: 'spot_treatment', label: 'Spot Treatments' },
-]
 
 function getSupabase() {
   return createClient(
@@ -84,7 +73,7 @@ export default async function ProductsPage() {
       supabase
         .from('ss_products')
         .select('id', { count: 'exact', head: true })
-        .eq('category', cat.slug)
+        .eq('category', cat.dbCategory)
     ),
   ])
 
@@ -95,7 +84,7 @@ export default async function ProductsPage() {
   const catCounts: Record<string, number> = {}
   CATEGORIES.forEach((cat, idx) => {
     const count = categoryCountResults[idx]?.count
-    if (count && count > 0) catCounts[cat.slug] = count
+    if (count && count > 0) catCounts[cat.dbCategory] = count
   })
 
   const jsonLd = {
@@ -186,17 +175,21 @@ export default async function ProductsPage() {
             Browse by Category
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {/* Public page -> public destination. /browse is inside the (app)
+                auth group and renders an empty shell to logged-out visitors and
+                crawlers, which is where 60 crawler hits landed in the Aug 4 log
+                sample. /products is the indexable equivalent. */}
             {CATEGORIES.map((cat) => (
               <Link
-                key={cat.slug}
-                href={`/browse?category=${cat.slug}`}
+                key={cat.dbCategory}
+                href={`/products?category=${cat.dbCategory}`}
                 className="group bg-white/5 rounded-xl border border-white/10 p-4 text-center hover:border-sky-500/30 hover:bg-white/[0.07] transition-all"
               >
                 <div className="font-medium text-sm text-white group-hover:text-sky-400 transition-colors">
                   {cat.label}
                 </div>
                 <div className="text-xs text-white/40 mt-1">
-                  {catCounts[cat.slug]?.toLocaleString() || '—'}
+                  {catCounts[cat.dbCategory]?.toLocaleString() || '—'}
                 </div>
               </Link>
             ))}

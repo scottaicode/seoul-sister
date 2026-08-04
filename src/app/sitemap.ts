@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import { toSlug } from '@/lib/utils/slug'
+import { BEST_OF_SLUGS } from '@/lib/catalog/categories'
 import {
   excludePollutedIngredientRows,
   isPollutedIngredientName,
@@ -9,20 +10,6 @@ import {
 export const dynamic = 'force-dynamic'
 export const revalidate = 3600 // Re-generate at most once per hour
 
-const BEST_OF_CATEGORIES = [
-  'serums',
-  'sunscreens',
-  'moisturizers',
-  'cleansers',
-  'toners',
-  'masks',
-  'essences',
-  'ampoules',
-  'exfoliators',
-  'eye-care',
-  'lip-care',
-  'spot-treatments',
-]
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.seoulsister.com'
@@ -38,7 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]
 
   // Best-of category pages
-  const bestOfPages: MetadataRoute.Sitemap = BEST_OF_CATEGORIES.map((cat) => ({
+  const bestOfPages: MetadataRoute.Sitemap = BEST_OF_SLUGS.map((cat) => ({
     url: `${baseUrl}/best/${cat}`,
     lastModified: now,
     changeFrequency: 'weekly' as const,

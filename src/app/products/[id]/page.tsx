@@ -20,53 +20,9 @@ import { ShareButton } from '@/components/ui/ShareButton'
 import ProductIntelligenceSection from '@/components/products/ProductIntelligenceSection'
 import { proxyImageUrl } from '@/lib/utils/image-proxy'
 import { serializeJsonLd } from '@/lib/utils/json-ld'
+import { bestOfSlugFor, categoryLabel as labelFor } from '@/lib/catalog/categories'
 
 export const revalidate = 3600
-
-const categoryLabels: Record<string, string> = {
-  cleanser: 'Cleanser',
-  toner: 'Toner',
-  essence: 'Essence',
-  serum: 'Serum',
-  ampoule: 'Ampoule',
-  moisturizer: 'Moisturizer',
-  sunscreen: 'Sunscreen',
-  mask: 'Mask',
-  eye_care: 'Eye Care',
-  lip_care: 'Lip Care',
-  exfoliator: 'Exfoliator',
-  oil: 'Oil',
-  mist: 'Mist',
-  spot_treatment: 'Spot Treatment',
-}
-
-/**
- * DB category -> canonical /best/[category] slug.
- *
- * These slugs are NOT derivable from the display label: they are irregular
- * (`lip_care` -> `lip-care`, singular, while `mask` -> `masks`, plural). The
- * previous code built the href as `label.toLowerCase() + 's'`, which produced
- * `/best/lip cares` — an un-slugified space AND a wrong plural — 404ing on
- * ~860 product pages and starving the real category pages of internal links.
- *
- * `oil`, `mist` and `not_skincare` are deliberately ABSENT: no /best/ page
- * exists for them, so their products must not render a category link at all.
- * Keep in sync with CATEGORIES in src/app/best/[category]/page.tsx.
- */
-const bestOfSlugByCategory: Record<string, string> = {
-  cleanser: 'cleansers',
-  toner: 'toners',
-  essence: 'essences',
-  serum: 'serums',
-  ampoule: 'ampoules',
-  moisturizer: 'moisturizers',
-  sunscreen: 'sunscreens',
-  mask: 'masks',
-  eye_care: 'eye-care',
-  lip_care: 'lip-care',
-  exfoliator: 'exfoliators',
-  spot_treatment: 'spot-treatments',
-}
 
 function getSupabase() {
   return createClient(
@@ -105,7 +61,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const hasIngredients = (ingredientCountRes.count || 0) > 0
   const isThinContent = !hasRating && !hasIngredients
 
-  const categoryLabel = categoryLabels[product.category] || product.category
+  const categoryLabel = labelFor(product.category)
   const title = `${product.name_en} by ${product.brand_en} — ${categoryLabel} Review & Ingredients`
   const description =
     product.description_en ||
@@ -181,7 +137,7 @@ export default async function PublicProductPage({ params }: Props) {
   const product = productRes.data
   if (!product) notFound()
 
-  const categoryLabel = categoryLabels[product.category] || product.category
+  const categoryLabel = labelFor(product.category)
   const reviewCount = reviewRes.count || product.review_count || 0
 
   // Second wave: queries that depend on product data (category, ingredient IDs)
@@ -858,16 +814,18 @@ export default async function PublicProductPage({ params }: Props) {
             </Link>
             <span className="text-white/20 hidden sm:inline">·</span>
             <Link
-              href={`/browse?category=${product.category}`}
+              // /browse is auth-gated (the (app) group) and renders an empty
+              // shell to logged-out visitors and crawlers. /products is public.
+              href={`/products?category=${product.category}`}
               className="text-white/50 hover:text-white/70 transition-colors"
             >
               All {categoryLabel}s
             </Link>
-            {bestOfSlugByCategory[product.category] && (
+            {bestOfSlugFor(product.category) && (
               <>
                 <span className="text-white/20 hidden sm:inline">·</span>
                 <Link
-                  href={`/best/${bestOfSlugByCategory[product.category]}`}
+                  href={`/best/${bestOfSlugFor(product.category)}`}
                   className="text-amber-400/70 hover:text-amber-400 transition-colors"
                 >
                   Best Korean {categoryLabel}s →
