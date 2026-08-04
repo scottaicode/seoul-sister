@@ -23,6 +23,7 @@
  */
 
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
+import { escapeHtml } from '@/lib/email/html'
 
 export interface NewSubscriberInfo {
   email: string | null
@@ -36,14 +37,6 @@ export interface NewSubscriberInfo {
 export interface NotifyResult {
   sent: boolean
   reason?: string
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
 }
 
 /**

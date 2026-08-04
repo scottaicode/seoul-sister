@@ -98,6 +98,26 @@ export interface DecisionMemory {
     topic: string
     summary: string
     opened_date: string
+    /**
+     * v11.23.0 — the date Yuri said she'd check back, when she named one.
+     *
+     * WHY: the honest clinical answer is often "give this four to six weeks
+     * before you judge it," and that is correct dermatology — barrier repair is
+     * slow. But an open interval decays into never. Both of the July 2026
+     * subscribers were last told to wait 4-6 weeks and neither returned.
+     *
+     * The fix is to separate two different clocks. A PROGRESS check-in (is it
+     * stinging, are you sticking with it) is useful within days. An OUTCOME
+     * verdict (is it working) genuinely needs weeks. Yuri picks the check-in
+     * date herself based on the protocol — a post-Accutane barrier and an acne
+     * routine want different rhythms — and the nudge engine fires on the date
+     * SHE chose rather than a hardcoded interval. That keeps the judgment with
+     * Yuri (Sole Authority) instead of a rule engine picking a cadence.
+     *
+     * Optional and nullable: when Yuri didn't name a date, the engine falls
+     * back to its own staleness threshold. Never inferred or defaulted.
+     */
+    check_back_date?: string | null
   }>
   extracted_at: string
 }
@@ -1281,7 +1301,15 @@ This user has hormonal/cycle-related concerns in their profile but has NOT enabl
       // daily → invalidates the cached prefix). Yuri gauges staleness from this
       // date against ## RIGHT NOW.
       const loopLines = dm.open_loops
-        .map((l) => `- **${l.topic}**: ${l.summary} (opened ${l.opened_date.slice(0, 10)})`)
+        .map((l) => {
+          // Surface the check-in date Yuri named, as a raw date (never an "N days
+          // ago" bucket — that ticks daily and would invalidate the cached prefix).
+          // She gauges it against ## RIGHT NOW, same as opened_date.
+          const checkBack = l.check_back_date
+            ? `, you said you'd check back ${l.check_back_date.slice(0, 10)}`
+            : ''
+          return `- **${l.topic}**: ${l.summary} (opened ${l.opened_date.slice(0, 10)}${checkBack})`
+        })
         .join('\n')
       dmParts.push(
         `### Open Loops (Things You Left Unresolved)\nThese are threads from past conversations that never got closed — a next step you named, a question you asked, a plan waiting on the user. If the moment is right, pick one back up naturally ("hey, did you ever get a chance to..."). Don't force all of them; read the room. If the user already resolved one, just let it go.\n${loopLines}`
@@ -1707,10 +1735,18 @@ export function mergeDecisionMemory(
     const prev = openLoopMap.get(key)
     // Keep the earliest opened_date so the loop's true age is preserved; take the
     // newer summary (Yuri's most recent phrasing of what's still unresolved).
+    //
+    // check_back_date: the NEWER value wins when the extraction provides one
+    // (Yuri may have rescheduled), but an extraction that simply didn't mention
+    // a follow-up must not ERASE a date she named earlier — that would silently
+    // drop the scheduled check-in and send the loop back to generic staleness.
+    // Only an explicit null clears it.
     openLoopMap.set(key, {
       ...l,
       opened_date:
         prev?.opened_date && prev.opened_date < l.opened_date ? prev.opened_date : l.opened_date,
+      check_back_date:
+        l.check_back_date !== undefined ? l.check_back_date : (prev?.check_back_date ?? null),
     })
   }
   const open_loops = Array.from(openLoopMap.values())
@@ -1856,6 +1892,8 @@ export async function extractAndSaveDecisionMemory(
 
    If a previously-open thread got RESOLVED in this conversation (the user answered the question, took the step, made the decision), do NOT include it — leaving it out is how a loop closes.
 
+   **check_back_date** (optional): if Yuri named a specific time she'd follow up or check in ("I'll check in around Friday", "let's look at this again next week", "give it ten days and tell me how it feels"), resolve it to a concrete ISO date (YYYY-MM-DD) relative to today, ${new Date().toISOString().split('T')[0]}. This is what she SAID, not what you think would be good — if she named no follow-up time, omit the field or set it null. Never invent one, and never derive it from how long a treatment takes to work: "give it four to six weeks before you judge results" is an OUTCOME horizon, not a check-in date. Only a check-in she actually offered counts.
+
    Examples:
    { "topic": "phase_3_routine", "summary": "Yuri moved the user to Phase 3 (brightening) but hasn't built the new AM/PM routine yet — user is still running the Phase 2 routine", "opened_date": "${new Date().toISOString().split('T')[0]}" }
    { "topic": "under_eye_plan", "summary": "Yuri ran the press test and identified pigmented + structural under-eye darkness; said to treat the pigmented part with the brightening active but the user hasn't started it", "opened_date": "${new Date().toISOString().split('T')[0]}" }
@@ -1870,7 +1908,7 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
   "preferences": [{ "topic": "...", "preference": "..." }],
   "commitments": [{ "item": "...", "date": "${new Date().toISOString().split('T')[0]}" }],
   "corrections": [{ "topic": "...", "yuri_said": "...", "truth": "...", "category": "reformulation|discontinued|price|ingredient|brand_identity|other", "date": "${new Date().toISOString().split('T')[0]}", "cleanup_actions": [ { "action": "clear_reaction", "product_name": "...", "brand": "..." } ] }],
-  "open_loops": [{ "topic": "...", "summary": "...", "opened_date": "${new Date().toISOString().split('T')[0]}" }]
+  "open_loops": [{ "topic": "...", "summary": "...", "opened_date": "${new Date().toISOString().split('T')[0]}", "check_back_date": null }]
 }`,
           },
         ],

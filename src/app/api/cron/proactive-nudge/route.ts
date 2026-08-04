@@ -15,6 +15,8 @@ import {
 import { getNudgeTypePerformance } from '@/lib/intelligence/nudge-outcome-grader'
 import type { DecisionMemory } from '@/lib/yuri/memory'
 import { logPipelineRun } from '@/lib/pipeline/log-run'
+import { sendNudgeEmail, type NudgeEmailStatus } from '@/lib/email/nudge-email'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const maxDuration = 60
 
@@ -56,6 +58,35 @@ interface ProfileRow {
   cycle_tracking_enabled: boolean | null
   onboarding_completed: boolean | null
   plan: string | null
+  nudge_email_opt_out: boolean | null
+  nudge_unsubscribe_token: string | null
+}
+
+/**
+ * A subscriber's email address lives ONLY in auth.users — ss_user_profiles has
+ * no email column. Resolved per-user after the send decision rather than via a
+ * bulk listUsers() up front: only a handful of subscribers clear every gate on
+ * any given day, so this is both cheaper and keeps addresses out of memory for
+ * users we aren't contacting.
+ *
+ * Never throws — a failed lookup degrades to an in-app-only nudge (recorded as
+ * email_status 'no_address'), which is strictly better than losing the nudge.
+ */
+async function resolveUserEmail(
+  db: SupabaseClient,
+  userId: string
+): Promise<string | null> {
+  try {
+    const { data, error } = await db.auth.admin.getUserById(userId)
+    if (error) {
+      console.error(`[proactive-nudge] email lookup failed for ${userId}:`, error.message)
+      return null
+    }
+    return data?.user?.email ?? null
+  } catch (err) {
+    console.error(`[proactive-nudge] email lookup threw for ${userId}:`, err)
+    return null
+  }
 }
 
 /** Local hour in an IANA timezone, defaulting to a safe daytime hour if unknown. */
@@ -95,7 +126,7 @@ async function generateNudgeMessage(
 
   const system = `You are Yuri (유리), Seoul Sister's K-beauty advisor — a warm, sharp, Korean-lab-trained older-sister figure. You are writing a SHORT proactive check-in message to a subscriber you've been working with, to gently bring them back at the right moment.
 
-This is NOT a marketing email. It's you continuing their care. It will appear as a small card on their dashboard with a button that opens a conversation with you.
+This is NOT a marketing email. It's you continuing their care. She'll see it as a short note from you (in her inbox and on her dashboard) with a button that opens a conversation with you.
 
 Hard rules:
 - Speak in second person ("you"/"your"). You are talking TO her.
@@ -167,6 +198,11 @@ async function handler(request: Request) {
     skippedNoOpportunity: 0,
     skippedDuplicate: 0,
     nudgesCreated: 0,
+    emailsSent: 0,
+    // Full outcome breakdown so a systemic delivery problem (every send
+    // 'no_address', or a run of 'send_failed') is visible in ss_pipeline_runs
+    // rather than needing a Resend dashboard login.
+    emailOutcomes: {} as Partial<Record<NudgeEmailStatus, number>>,
     errors: 0,
   }
 
@@ -174,7 +210,7 @@ async function handler(request: Request) {
     // Active subscribers only: onboarded + a pro plan.
     const { data: profiles, error: profErr } = await db
       .from('ss_user_profiles')
-      .select('user_id, skin_type, timezone, avg_cycle_length, cycle_tracking_enabled, onboarding_completed, plan')
+      .select('user_id, skin_type, timezone, avg_cycle_length, cycle_tracking_enabled, onboarding_completed, plan, nudge_email_opt_out, nudge_unsubscribe_token')
       .eq('onboarding_completed', true)
       .like('plan', 'pro%')
 
@@ -347,21 +383,49 @@ async function handler(request: Request) {
 
         const deepLink = `/yuri?ask=${encodeURIComponent(opportunity.suggestedAsk)}`
 
-        const { error: insErr } = await db.from('ss_user_nudges').insert({
-          user_id: p.user_id,
-          nudge_type: opportunity.type,
-          trigger_reason: opportunity.reason,
-          message: gen.message,
-          deep_link: deepLink,
-          nudge_sequence: nudgeSequence,
-          status: 'pending',
-        })
-        if (insErr) {
+        const { data: inserted, error: insErr } = await db
+          .from('ss_user_nudges')
+          .insert({
+            user_id: p.user_id,
+            nudge_type: opportunity.type,
+            trigger_reason: opportunity.reason,
+            message: gen.message,
+            deep_link: deepLink,
+            nudge_sequence: nudgeSequence,
+            status: 'pending',
+          })
+          .select('id')
+          .single()
+        if (insErr || !inserted) {
           stats.errors++
-          console.error(`[proactive-nudge] insert failed for ${p.user_id}:`, insErr.message)
+          console.error(`[proactive-nudge] insert failed for ${p.user_id}:`, insErr?.message)
           continue
         }
         stats.nudgesCreated++
+
+        // --- Deliver by email (v11.23.0) -------------------------------------
+        // The dashboard card alone waits for the user to return in order to
+        // deliver a message whose purpose is getting them to return. Email
+        // reaches them where they already are. This does NOT touch `status` —
+        // the card still surfaces the same row independently.
+        //
+        // Best-effort: a delivery failure never rolls back the nudge and never
+        // aborts the remaining subscribers, but every outcome is persisted to
+        // email_status and counted here (no silent failure — v10.3.4).
+        const emailStatus = await sendNudgeEmail(
+          await resolveUserEmail(db, p.user_id),
+          p.nudge_email_opt_out === true,
+          {
+            nudgeId: inserted.id,
+            message: gen.message,
+            deepLink,
+            nudgeType: opportunity.type,
+            nudgeSequence,
+            unsubscribeToken: p.nudge_unsubscribe_token ?? null,
+          }
+        )
+        stats.emailOutcomes[emailStatus] = (stats.emailOutcomes[emailStatus] ?? 0) + 1
+        if (emailStatus === 'sent') stats.emailsSent++
       } catch (err) {
         stats.errors++
         console.error(`[proactive-nudge] error for ${p.user_id}:`, err)

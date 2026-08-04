@@ -2,30 +2,60 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 
 /**
- * GET /api/email/unsubscribe?token=<uuid>
+ * GET /api/email/unsubscribe?token=<uuid>        — nurture sequence (leads)
+ * GET /api/email/unsubscribe?nudge_token=<uuid>  — proactive nudge emails (subscribers)
  *
- * One-click unsubscribe for the nurture sequence. The token is the
- * capability: it's a per-lead UUID that only ever appears in that lead's
- * own emails, so no auth is needed and no email address is exposed.
- * Idempotent — clicking twice is fine.
+ * One-click unsubscribe. The token is the capability: a UUID that only ever
+ * appears in that recipient's own emails, so no auth is needed and no email
+ * address is exposed. Idempotent — clicking twice is fine.
+ *
+ * The two tokens are deliberately separate parameters against separate tables.
+ * A nurture lead and a paying subscriber are different relationships: nurture
+ * enrollment EXCLUDES active subscribers, so a subscriber has no ss_nurture_leads
+ * row and could never have unsubscribed from nudges through the original path.
+ *
+ * Opting out of nudge EMAIL does not opt out of care — the dashboard card still
+ * surfaces every nudge. We say so on the confirmation page so it doesn't read as
+ * "you have turned Yuri off."
  */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token') ?? ''
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)
+  const nudgeToken = request.nextUrl.searchParams.get('nudge_token') ?? ''
 
   let ok = false
-  if (isUuid) {
+  let isNudge = false
+
+  if (UUID_RE.test(nudgeToken)) {
+    isNudge = true
     const db = getServiceClient()
-    const { data } = await db
+    const { data, error } = await db
+      .from('ss_user_profiles')
+      .update({ nudge_email_opt_out: true, updated_at: new Date().toISOString() })
+      .eq('nudge_unsubscribe_token', nudgeToken)
+      .select('id')
+    if (error) {
+      console.error('[unsubscribe] nudge opt-out failed:', error.message)
+    }
+    ok = (data?.length ?? 0) > 0
+  } else if (UUID_RE.test(token)) {
+    const db = getServiceClient()
+    const { data, error } = await db
       .from('ss_nurture_leads')
       .update({ suppressed: true, suppressed_reason: 'unsubscribed', updated_at: new Date().toISOString() })
       .eq('unsubscribe_token', token)
       .select('id')
+    if (error) {
+      console.error('[unsubscribe] nurture suppression failed:', error.message)
+    }
     ok = (data?.length ?? 0) > 0
   }
 
   const message = ok
-    ? `You're unsubscribed. No hard feelings, and no more emails from us.`
+    ? isNudge
+      ? `Done, no more check-in emails from me. You'll still see them in the app when you're there, and everything else about your subscription is unchanged.`
+      : `You're unsubscribed. No hard feelings, and no more emails from us.`
     : `That unsubscribe link didn't match anything, so there's nothing to unsubscribe. If you keep getting emails, reply to one and a human will sort it out.`
 
   return new NextResponse(

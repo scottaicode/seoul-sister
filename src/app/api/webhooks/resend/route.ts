@@ -37,11 +37,22 @@ import {
   updateRecapStatusByProviderId,
   type RecapStatus,
 } from '@/lib/widget/visitor'
+import {
+  updateNudgeEmailStatusByProviderId,
+  type NudgeEmailStatus,
+} from '@/lib/email/nudge-email'
 
-// Resend event type → our recap_status. Only delivery-outcome events matter;
+// Resend event type → delivery outcome. Only delivery-outcome events matter;
 // anything else (email.sent, email.opened, email.clicked) is acknowledged and
 // ignored — we already record 'sent' at send time and don't track engagement.
-const EVENT_STATUS: Record<string, RecapStatus> = {
+//
+// Typed as the INTERSECTION of RecapStatus and NudgeEmailStatus: these three
+// values are the only ones a provider event can produce, and both ledgers accept
+// all three. Widget-only states (e.g. 'suppressed_duplicate') are unreachable
+// here by construction, which is what keeps the shared dispatch below type-safe.
+type DeliveryEventStatus = Extract<RecapStatus & NudgeEmailStatus, string>
+
+const EVENT_STATUS: Record<string, DeliveryEventStatus> = {
   'email.delivered': 'delivered',
   'email.bounced': 'bounced',
   'email.complained': 'complained',
@@ -132,15 +143,37 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true, matched: false, reason: 'no_email_id' })
   }
 
-  const { matched } = await updateRecapStatusByProviderId(providerId, status)
+  // Two ledgers carry a Resend provider id: widget lead recaps
+  // (ss_widget_visitors.recap_*) and proactive nudge emails
+  // (ss_user_nudges.email_*, v11.23.0). A message id belongs to exactly one of
+  // them, but we can't tell which from the event, so try both and report what
+  // matched. Without this fan-out a bounce to a PAYING SUBSCRIBER would be
+  // silently dropped — the same invisibility the July 15 audit surfaced for leads.
+  const [recap, nudge] = await Promise.all([
+    updateRecapStatusByProviderId(providerId, status),
+    updateNudgeEmailStatusByProviderId(providerId, status),
+  ])
+  const matched = recap.matched || nudge.matched
+
   if (!matched) {
-    // Delivery event for a non-lead email (or a send that predates provider-id
-    // tracking) — expected, not an error. Acknowledge.
+    // Delivery event for an email we don't track (or a send that predates
+    // provider-id tracking) — expected, not an error. Acknowledge.
     console.warn(
       `[webhooks/resend] ${event.type} for unmatched message ${providerId} — ` +
-        'not a tracked lead recap (or predates provider-id tracking).'
+        'not a tracked lead recap or nudge (or predates provider-id tracking).'
+    )
+  } else if (status === 'bounced' || status === 'complained') {
+    // Surface the bad outcomes in logs too, not just in a column.
+    console.warn(
+      `[webhooks/resend] ${event.type} recorded for ${providerId} ` +
+        `(${nudge.matched ? 'nudge' : 'lead recap'}).`
     )
   }
 
-  return NextResponse.json({ received: true, matched, status })
+  return NextResponse.json({
+    received: true,
+    matched,
+    status,
+    surface: nudge.matched ? 'nudge' : recap.matched ? 'lead_recap' : null,
+  })
 }

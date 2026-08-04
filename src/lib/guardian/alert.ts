@@ -24,6 +24,7 @@
  */
 
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
+import { escapeHtml } from '@/lib/email/html'
 import type { HealthReport, Signal } from './healthcheck'
 
 /** Signal keys that alert even at `warn` severity (the lead-bounce exception). */
@@ -108,14 +109,6 @@ function buildAlertEmail(report: HealthReport, signals: Signal[]): { subject: st
     `<p style="font-size:12px;color:#999;margin:0;">Seoul Sister Guardian · automated health alert · critical + lead-delivery only</p>`
   )
   return { subject, html }
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
 }
 
 export interface SendAlertResult {

@@ -36,6 +36,13 @@ export interface OpenLoop {
   topic: string
   summary: string
   opened_date: string
+  /**
+   * v11.23.0 — the date Yuri herself said she'd check back, when she named one.
+   * When set and reached, it overrides the generic staleness threshold: a loop
+   * she promised to revisit on the 8th is due on the 8th, not on day 5 and not
+   * on day 30. Null/absent means she named no date and generic staleness applies.
+   */
+  check_back_date?: string | null
 }
 
 export interface CycleSnapshot {
@@ -113,9 +120,26 @@ export function pickNudgeOpportunity(input: NudgeEligibilityInput): NudgeOpportu
     typePerformance,
   } = input
 
-  const staleLoops = openLoops.filter(
-    (l) => daysBetween(l.opened_date, todayIso) >= STALE_OPEN_LOOP_DAYS
-  )
+  // A loop is due either because Yuri named a check-back date that has arrived,
+  // or because it has simply gone stale.
+  //
+  // The promised date takes PRIORITY and works in both directions. It can make a
+  // loop due EARLY (she said Friday, that's day 3 — honor it; she made a promise
+  // and silence on the day she named is worse than an early nudge). It can also
+  // hold a loop BACK past the generic threshold (she said "give it two weeks" —
+  // nudging on day 5 would contradict her own instruction and read as nagging).
+  //
+  // This is what keeps the cadence Yuri's judgment rather than a fixed interval:
+  // a post-Accutane barrier and an acne routine want different rhythms, and she
+  // is the one who knows which. The engine fires on the date SHE chose.
+  const isDue = (l: OpenLoop): boolean => {
+    if (l.check_back_date) {
+      return daysBetween(l.check_back_date, todayIso) >= 0
+    }
+    return daysBetween(l.opened_date, todayIso) >= STALE_OPEN_LOOP_DAYS
+  }
+
+  const staleLoops = openLoops.filter(isDue)
 
   // Build candidates in deliberate priority order: timing-sensitive dermatology
   // first, then unfinished work, then cadence. We collect them rather than
@@ -158,14 +182,27 @@ export function pickNudgeOpportunity(input: NudgeEligibilityInput): NudgeOpportu
 
   // ---- 3. Stale open loop (non-actives, or actives out of cycle window) -------
   if (staleLoops.length > 0) {
-    const oldest = [...staleLoops].sort((a, b) => a.opened_date.localeCompare(b.opened_date))[0]
+    // A loop with a promised check-back date that has ARRIVED outranks a merely
+    // stale one: Yuri gave her word on a specific day, and keeping it is the
+    // whole point of letting her set the date. Among equals, oldest first.
+    const oldest = [...staleLoops].sort((a, b) => {
+      const aPromised = a.check_back_date ? 0 : 1
+      const bPromised = b.check_back_date ? 0 : 1
+      if (aPromised !== bPromised) return aPromised - bPromised
+      return a.opened_date.localeCompare(b.opened_date)
+    })[0]
     // Skip an actives loop when NOT in a good cycle window — wait for the right week.
+    // This overrides a promised date: a promise to check in never outranks the
+    // dermatological timing rule. The loop stays due and fires next good window.
     const inGoodWindow = cycle ? cycle.phase === 'follicular' || cycle.phase === 'ovulatory' : true
     if (!(isActivesLoop(oldest) && !inGoodWindow)) {
+      const context = oldest.check_back_date
+        ? `Yuri told the user she'd check back around ${oldest.check_back_date.slice(0, 10)} about this, and that date has arrived: "${oldest.summary}". This is her keeping her word, so lead with that — she's following up because she said she would, not because the user went quiet. Ask how it's actually going.`
+        : `Yuri left this unresolved ${daysBetween(oldest.opened_date, todayIso)} days ago and the user hasn't returned to it: "${oldest.summary}". Pick it back up warmly.`
       candidates.push({
         type: 'open_loop',
         reason: `open_loop_${oldest.topic}`,
-        context: `Yuri left this unresolved ${daysBetween(oldest.opened_date, todayIso)} days ago and the user hasn't returned to it: "${oldest.summary}". Pick it back up warmly.`,
+        context,
         suggestedAsk: `Picking back up on ${oldest.topic.replace(/_/g, ' ')} — ${oldest.summary}`,
       })
     }
