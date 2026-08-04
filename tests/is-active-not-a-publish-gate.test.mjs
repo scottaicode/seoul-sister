@@ -279,7 +279,12 @@ test('the sitemap only advertises URLs the resolver will serve', () => {
 
   assert.match(src, /const pollutedSlugs = new Set<string>\(\)/, 'must track polluted-twin slugs')
   assert.match(src, /const collidesWithPolluted = pollutedSlugs\.has\(slug\)/)
-  assert.match(src, /RESOLVABLE_BY_PREFILTER/, 'must gate on resolver reachability')
+  assert.match(src, /const matchesFastPath =/, 'must gate on resolver reachability')
+  assert.match(
+    src,
+    /slugForName\.replace\(\/-\/g, '%'\)/,
+    'the gate must REPLICATE the resolver pattern, not approximate it — a hand-rolled character class passed "Sodium Hyaluronate (200 ppm)" which then 404d live'
+  )
   assert.match(
     src,
     /if \(collidesWithPolluted \|\| unreachable\) return null/,

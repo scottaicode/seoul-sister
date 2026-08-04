@@ -136,15 +136,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         if (isPollutedIngredientName(i.name_inci)) pollutedSlugs.add(toSlug(i.name_inci))
       }
 
-      // The resolver's fast path is `.ilike(slug with '-' -> '%')` against
-      // name_inci. That pattern matches only when the name's non-alphanumeric
-      // characters line up with the slug's hyphens — which fails for embedded
-      // decimals and stray parens ("(0.000002ppm)", "(10 ppb) ppb)"). Names
-      // made only of letters, digits, spaces, parens and hyphens round-trip
-      // reliably; anything else is not provably reachable, so it is not
-      // advertised. Deliberately conservative: it withholds URLs rather than
-      // risking dead ones on the citation surface.
-      const RESOLVABLE_BY_PREFILTER = /^[A-Za-z0-9 ()\-]+$/
+      // REPLICATE the resolver's fast path rather than approximate it.
+      //
+      // findIngredientBySlug's first query is
+      //   .ilike('name_inci', slug.replace(/-/g,'_').replace(/_/g,'%'))
+      // so a row is reachable only if its own name matches that pattern. A
+      // hand-rolled character-class approximation was tried first and MEASURED
+      // WRONG: "Sodium Hyaluronate (200 ppm)" passed it but the real pattern
+      // `sodium%hyaluronate%200%ppm` does NOT match, because the trailing ")"
+      // has no wildcard after it — that URL 404'd in a live sample. Running the
+      // actual match removes the guesswork.
+      const matchesFastPath = (name: string, slugForName: string) => {
+        // SQL LIKE: '%' matches any run, so translate to an anchored regex.
+        const pattern = slugForName.replace(/-/g, '%')
+        const parts = pattern.split('%').map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        return new RegExp(`^${parts.join('[\\s\\S]*')}$`, 'i').test(name)
+      }
 
       // Deduplicate slugs (some INCI names may produce the same slug)
       const seen = new Set<string>()
@@ -180,7 +187,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           // shapes are excluded by the same rule, so this needs no per-cause
           // heuristic and no tuning.
           const collidesWithPolluted = pollutedSlugs.has(slug)
-          const unreachable = !RESOLVABLE_BY_PREFILTER.test(i.name_inci)
+          const unreachable = !matchesFastPath(i.name_inci, slug)
           if (collidesWithPolluted || unreachable) return null
 
           seen.add(slug)
