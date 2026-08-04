@@ -113,16 +113,38 @@ function pickBestSlugMatch(
   slug: string,
   linkCounts: Map<string, number>
 ): IngredientRow | null {
+  const matching = rows.filter((r) => toSlug(r.name_inci) === slug)
+  if (matching.length === 0) return null
+
   // Unsplit-INCI-dump rows are treated as nonexistent so their pages 404. These
   // 6,000-char "ingredients" were in the sitemap before the July 12 2026
   // cleanup; crawlers (Bing/Copilot — the GEO channel) still hold the URLs, and
   // deactivating the rows did NOT stop this page from rendering them. A 404 is
   // what actually gets the dump pages dropped from the index.
-  const usable = rows
-    .filter((r) => toSlug(r.name_inci) === slug)
-    .filter((r) => !isPollutedIngredientName(r.name_inci))
-
+  const usable = matching.filter((r) => !isPollutedIngredientName(r.name_inci))
   if (usable.length === 0) return null
+
+  // Recovering a non-polluted twin is right when it rescues a REAL ingredient
+  // whose better-known row is junk — that is the glycerin/ceramide-np case. It
+  // is wrong when every candidate is junk and one merely dodges the pollution
+  // regex: "[Red Spot]Acrylates Copolymer" (2 links) and "#Red Spot Acrylates
+  // Copolymer" (1 link) are both packaging-label noise, and recovering the
+  // second resurrected a page that correctly 404'd before.
+  //
+  // The separator is PRODUCT LINKS, and it must be relative, not a threshold:
+  // real ingredients here carry 853-4,378 links while the red-spot rows carry 2
+  // and 1 — but an absolute cutoff is the wrong instrument. Requiring links >= 3
+  // would 404 8,850 live pages and requiring is_active would 404 4,962,
+  // including the real Ceramide NP (1,468 links), Hydroxyacetophenone (1,340)
+  // and Citric Acid (1,161), all of which are is_active = false.
+  //
+  // So: only serve a recovered twin when nothing better was suppressed. If the
+  // MOST-LINKED matching row is polluted, the slug's real identity is a junk
+  // row and the page stays a 404 exactly as it did before.
+  const bestOverall = [...matching].sort(
+    (a, b) => (linkCounts.get(b.id) ?? 0) - (linkCounts.get(a.id) ?? 0)
+  )[0]
+  if (isPollutedIngredientName(bestOverall.name_inci)) return null
 
   return usable.sort((a, b) => {
     if (a.is_active !== b.is_active) return a.is_active ? -1 : 1

@@ -192,19 +192,37 @@ test('the link is rendered conditionally on a mapped category', () => {
 
 const row = (id, name_inci, is_active = true) => ({ id, name_inci, is_active })
 
-test('a polluted twin never shadows a usable row (the red-spot 404)', async () => {
+test('an all-junk collision stays a 404 (the red-spot page)', async () => {
   const { pickBestSlugMatch } = await loadPicker()
-  const slug = 'red-spot-acrylates-copolymer'
 
-  // Bracketed row FIRST, which is the order that produced the live 404.
+  // Both rows are packaging-label noise: "Red Spot" is a patch colour variant,
+  // not an ingredient. Recovering the bracket-dodging twin resurrected a page
+  // that correctly 404'd — caught in production verification, Aug 4 2026.
   const rows = [
     row('b04b998b', '[Red Spot]Acrylates Copolymer', false),
     row('bb0d22a2', '#Red Spot Acrylates Copolymer', false),
   ]
+  const links = new Map([['b04b998b', 2], ['bb0d22a2', 1]])
 
-  const picked = pickBestSlugMatch(rows, slug, new Map())
-  assert.ok(picked, 'a usable row existed but the resolver returned null')
-  assert.equal(picked.name_inci, '#Red Spot Acrylates Copolymer')
+  assert.equal(
+    pickBestSlugMatch(rows, 'red-spot-acrylates-copolymer', links),
+    null,
+    'a junk slug whose most-linked row is polluted must not render'
+  )
+})
+
+test('a REAL ingredient is still rescued when its top row is polluted', async () => {
+  const { pickBestSlugMatch } = await loadPicker()
+
+  // The rescue case must survive the guard above: here the non-polluted row is
+  // the one carrying the product links, so the page must still render.
+  const rows = [
+    row('junk', '[Some Label]Niacinamide', false),
+    row('real', 'Niacinamide', true),
+  ]
+  const picked = pickBestSlugMatch(rows, 'niacinamide', new Map([['junk', 1], ['real', 900]]))
+  assert.ok(picked, 'a real ingredient was suppressed by the junk guard')
+  assert.equal(picked.id, 'real')
 })
 
 test('the real ingredient wins over its footnote twin regardless of order', async () => {
