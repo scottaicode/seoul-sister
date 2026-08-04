@@ -91,7 +91,16 @@ export async function POST(request: NextRequest) {
           .select('id, name_inci, name_en, function, description, common_concerns, safety_rating, comedogenic_rating, is_active, rich_content')
           .eq('is_active', true)
           .or(`name_inci.ilike.%${term}%,name_en.ilike.%${term}%`)
-          .limit(25)
+          // Order SERVER-SIDE. An unordered .limit(25) is the same defect as
+          // the .limit(1) it replaced, just wider: asking for "Niacinamide"
+          // fetched 25 arbitrary rows and the real one (2,347 product links)
+          // was not among them, so no amount of in-memory ranking could
+          // recover it. Shortest name first puts the unqualified canonical row
+          // ("Niacinamide") ahead of every "(20,000 ppm)" / "(20%)" variant.
+          // In-memory ranking below then decides on product links, which is
+          // the signal that actually separates real rows from artifacts.
+          .order('name_inci', { ascending: true })
+          .limit(40)
 
         if (error) {
           console.error('[ingredients/context] lookup failed', { name, error: error.message })
