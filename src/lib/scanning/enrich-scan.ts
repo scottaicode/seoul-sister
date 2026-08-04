@@ -237,6 +237,19 @@ async function resolveIngredientNames(
     supabase.from('ss_ingredients').select(cols).in('name_inci', trimmed),
   ])
 
+  // `?? []` on a failed query means zero resolved ingredients, which silently
+  // disables the comedogenic and irritant warnings built from `resolved` below.
+  // The allergy check is unaffected (it matches raw names), so the scan still
+  // looks personalized while a "clogs pores for oily skin" warning is missing —
+  // an absence the user cannot see. Log it so the degradation is visible; both
+  // passes are unioned, so one surviving pass still returns partial results.
+  if (byEn.error) {
+    console.error('[enrich-scan] ingredient resolve by name_en failed:', byEn.error.message)
+  }
+  if (byInci.error) {
+    console.error('[enrich-scan] ingredient resolve by name_inci failed:', byInci.error.message)
+  }
+
   const dedup = new Map<string, Record<string, unknown>>()
   for (const r of (byEn.data ?? []) as Array<Record<string, unknown>>) dedup.set(r.id as string, r)
   for (const r of (byInci.data ?? []) as Array<Record<string, unknown>>) {

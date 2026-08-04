@@ -28,12 +28,38 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { routine_type, concerns, budget_range } = generateSchema.parse(body)
 
-    // Get user's skin profile
-    const { data: profile } = await supabase
+    // Get user's skin profile.
+    //
+    // medical_history / sun_history / fitzpatrick_scale were NOT selected here,
+    // so a generated routine was blind to them — while the comment below on the
+    // catalog query says UV filter choice "matters enormously for users with
+    // skin cancer history". A real subscriber on this app has ~25 excisions and
+    // a STATED Fitzpatrick I; another is post-Accutane. Both got routines built
+    // without either fact. They REFRAME the advice (see the medical-history
+    // block in src/lib/yuri/memory.ts) — they are not allergens.
+    const { data: profile, error: profileError } = await supabase
       .from('ss_user_profiles')
-      .select('skin_type, skin_concerns, allergies, climate, age_range, budget_range, experience_level')
+      .select(
+        'skin_type, skin_concerns, allergies, climate, age_range, budget_range, experience_level, medical_history, sun_history, fitzpatrick_scale, fitzpatrick_source'
+      )
       .eq('user_id', user.id)
       .maybeSingle()
+
+    // FAIL CLOSED. This is a prompt-construction site: there is no tool result
+    // for a flag to ride on, and the fallback below silently replaced a missing
+    // profile with "assume combination skin" — dropping the user's allergies
+    // and medical history from the prompt entirely while still producing a
+    // confident routine. Refusing is honest and costs one retry.
+    if (profileError) {
+      console.error('[routine/generate] profile unavailable — refusing to generate', {
+        userId: user.id,
+        error: profileError.message,
+      })
+      throw new AppError(
+        "Couldn't load your skin profile just now, so I'm not going to build a routine on incomplete information. Try again in a moment.",
+        503
+      )
+    }
 
     // Get user's owned products (prioritize these for routine building)
     const { data: ownedProducts } = await supabase
@@ -69,8 +95,11 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .eq('is_active', true)
 
-    // Get known ingredient conflicts
-    const { data: conflicts } = await supabase
+    // Get known ingredient conflicts. If this dies the model is handed an empty
+    // conflict list and will happily layer a retinoid with an AHA — the exact
+    // HIGH-severity rule that lives in this table. Same reasoning as the
+    // profile above: refuse rather than generate from a silently emptied prompt.
+    const { data: conflicts, error: conflictsError } = await supabase
       .from('ss_ingredient_conflicts')
       .select(`
         severity, description,
@@ -78,15 +107,49 @@ export async function POST(request: NextRequest) {
         ingredient_b:ingredient_b_id (name_inci)
       `)
 
+    if (conflictsError) {
+      console.error('[routine/generate] conflict rules unavailable — refusing to generate', {
+        userId: user.id,
+        error: conflictsError.message,
+      })
+      throw new AppError(
+        "Couldn't load the ingredient-interaction rules just now, so I'm not going to build a routine that hasn't been checked for conflicts. Try again in a moment.",
+        503
+      )
+    }
+
+    // Clinical fields are never defaulted. "not established" must stay
+    // distinguishable from a stated value: a guessed Fitzpatrick drives
+    // retinoid strength, acid aggressiveness and PIH risk, so a confident
+    // wrong guess is a clinically wrong answer (see the Clinical Data Honesty
+    // section in CLAUDE.md). Preference fields may keep defaults — a wrong
+    // budget guess costs nothing.
+    const medicalHistory = (profile?.medical_history as string[] | null) ?? []
+    const sunHistory = profile?.sun_history as string | null
+
+    const medicalBlock = medicalHistory.length
+      ? `
+
+STANDING MEDICAL FACTS — these REFRAME the routine, they are NOT allergens:
+- ${medicalHistory.join('\n- ')}
+
+This is not a list of things to avoid applying; it is who you are building for. A skin cancer or precancer history makes daily sun protection the treatment rather than a footnote, and makes photosensitizing actives (retinoids, AHAs) something to introduce with explicit sun-exposure framing. Prefer mineral or hybrid filters where the choice is close. If a concern here is genuinely dermatologist territory, say so in the notes rather than routing around it.`
+      : ''
+
     const skinInfo = profile
-      ? `Skin type: ${profile.skin_type}
-Concerns: ${(concerns ?? profile.skin_concerns ?? []).join(', ')}
-Allergies: ${(profile.allergies ?? []).join(', ') || 'None reported'}
-Climate: ${profile.climate ?? 'Unknown'}
-Age: ${profile.age_range ?? 'Unknown'}
+      ? `Skin type: ${profile.skin_type ?? 'not established — do not assume one'}
+Concerns: ${(concerns ?? profile.skin_concerns ?? []).join(', ') || 'not established'}
+Allergies: ${(profile.allergies ?? []).join(', ') || 'none recorded on file (this is not a confirmation that they have none — do not tell them they have no allergies)'}
+Fitzpatrick: ${
+          profile.fitzpatrick_scale
+            ? `${profile.fitzpatrick_scale}${profile.fitzpatrick_source === 'stated' ? ' (stated)' : ' (estimated — treat as provisional)'}`
+            : 'NOT ESTABLISHED — do not guess one'
+        }${sunHistory ? `\nLifetime sun exposure: ${sunHistory}` : ''}
+Climate: ${profile.climate ?? 'not established'}
+Age: ${profile.age_range ?? 'not established'}
 Budget: ${budget_range ?? profile.budget_range ?? 'mid-range'}
-Experience: ${profile.experience_level ?? 'beginner'}`
-      : `No skin profile available. Recommend a balanced routine for combination skin.
+Experience: ${profile.experience_level ?? 'beginner'}${medicalBlock}`
+      : `No skin profile on file. Build a conservative, low-irritation starter routine and say plainly in the notes that it is not personalized yet — do NOT assume a skin type, and do not present it as tailored to them.
 Budget: ${budget_range ?? 'mid-range'}`
 
     const existingRoutineInfo = existingRoutines?.length
