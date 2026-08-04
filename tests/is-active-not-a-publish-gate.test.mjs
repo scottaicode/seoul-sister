@@ -266,3 +266,23 @@ test('the sitemap pages through results instead of taking PostgREST\'s first 100
   assert.match(src, /if \(data\.length < PAGE\) break/)
   assert.match(src, /\[sitemap\] page fetch failed/)
 })
+
+test('the sitemap only advertises URLs the resolver will serve', () => {
+  // Sampling the LIVE sitemap after the is_active fix found ~14% of ingredient
+  // URLs 404ing — ~2,018 dead URLs on the citation surface. Two causes, both
+  // passing the pollution guard legitimately: a slug shared with a polluted
+  // twin ("[01 Black]" vs "(01 Black)"), and names the resolver's ilike
+  // prefilter cannot match ("(0.000002ppm)"). Fixed by deferring to the
+  // resolver rather than loosening it — measured to 0 predicted 404s while all
+  // 16 recovered hero ingredients still publish.
+  const src = read('src', 'app', 'sitemap.ts')
+
+  assert.match(src, /const pollutedSlugs = new Set<string>\(\)/, 'must track polluted-twin slugs')
+  assert.match(src, /const collidesWithPolluted = pollutedSlugs\.has\(slug\)/)
+  assert.match(src, /RESOLVABLE_BY_PREFILTER/, 'must gate on resolver reachability')
+  assert.match(
+    src,
+    /if \(collidesWithPolluted \|\| unreachable\) return null/,
+    'both unreachable shapes must be withheld'
+  )
+})

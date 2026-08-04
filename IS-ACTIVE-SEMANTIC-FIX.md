@@ -151,3 +151,35 @@ page via `.range()`.
 This is the same class as a swallowed error: **the result looks complete and is
 not.** It was only visible because the fix was verified against the live
 surface rather than against the code.
+
+## Second postscript — the fix published dead URLs, and that was caught too
+
+Sampling the live sitemap after the pagination fix found **~14% of ingredient
+URLs 404ing** — roughly 2,018 dead URLs handed to crawlers on the citation
+surface. Removing a filter that was withholding pages had also admitted pages
+that do not render.
+
+Two causes, and **neither is a pollution-guard failure** — both names pass it
+legitimately:
+
+1. **Slug collision with a polluted twin.** `[01 Black]Iron Oxide Black` and
+   `(01 Black)Iron Oxide Black` share a slug. The resolver drops polluted
+   candidates and refuses the slug when the surviving set is empty. Correct
+   behaviour; the sitemap simply should not have listed it.
+2. **The resolver's `ilike` prefilter cannot match some names.**
+   `Sodium Acetylated Hyaluronate (0.000002ppm)` becomes the pattern
+   `%sodium%...%0%000002ppm`, and the broad fallback searches only the first
+   word with a 200-row cap, so the row is unreachable.
+
+The fix defers to the resolver rather than loosening it — loosening was the
+exact defect fixed earlier the same day (serving the wrong row). A URL that
+cannot be proven reachable is not advertised.
+
+Measured: **0 predicted 404s**, 7,734 ingredient URLs published, and all 16
+recovered hero ingredients still present. Deliberately conservative — it
+withholds uncertain URLs rather than risking dead ones on the moat.
+
+**The lesson worth keeping:** every stage of this fix looked correct in code
+and was wrong on the live surface. Removing the filter changed nothing (row
+cap). Fixing the cap published 404s (unreachable rows). Only sampling real URLs
+after each deploy surfaced either one.

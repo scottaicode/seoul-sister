@@ -127,6 +127,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
 
     {
+      // Slugs whose row set contains a POLLUTED member. The resolver drops
+      // polluted candidates, so such a slug can refuse to render even though a
+      // clean row shares it — that is what made "[01 Black]" / "(01 Black)"
+      // 404. Computed from the same fetched rows, so it costs no extra query.
+      const pollutedSlugs = new Set<string>()
+      for (const i of ingredientsRes) {
+        if (isPollutedIngredientName(i.name_inci)) pollutedSlugs.add(toSlug(i.name_inci))
+      }
+
+      // The resolver's fast path is `.ilike(slug with '-' -> '%')` against
+      // name_inci. That pattern matches only when the name's non-alphanumeric
+      // characters line up with the slug's hyphens — which fails for embedded
+      // decimals and stray parens ("(0.000002ppm)", "(10 ppb) ppb)"). Names
+      // made only of letters, digits, spaces, parens and hyphens round-trip
+      // reliably; anything else is not provably reachable, so it is not
+      // advertised. Deliberately conservative: it withholds URLs rather than
+      // risking dead ones on the citation surface.
+      const RESOLVABLE_BY_PREFILTER = /^[A-Za-z0-9 ()\-]+$/
+
       // Deduplicate slugs (some INCI names may produce the same slug)
       const seen = new Set<string>()
       ingredientPages = ingredientsRes
@@ -136,6 +155,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           if (isPollutedIngredientName(i.name_inci)) return null
           const slug = toSlug(i.name_inci)
           if (!slug || seen.has(slug)) return null
+
+          // ONLY PUBLISH A URL THE RESOLVER WILL ACTUALLY SERVE.
+          //
+          // Sampling the live sitemap after the is_active fix found ~14% of
+          // ingredient URLs 404ing — ~2,018 dead URLs handed to crawlers on the
+          // citation surface. Two causes, neither fixable by the pollution
+          // guard (these names pass it legitimately):
+          //
+          //  1. SLUG COLLISION WITH A POLLUTED TWIN. "[01 Black]Iron Oxide
+          //     Black" and "(01 Black)Iron Oxide Black" share a slug; the
+          //     resolver drops polluted candidates and, when the most-linked
+          //     row is polluted, refuses the whole slug. Correct behaviour —
+          //     the sitemap just should not have listed it.
+          //  2. THE RESOLVER'S ilike PREFILTER CANNOT MATCH SOME NAMES.
+          //     "Sodium Acetylated Hyaluronate (0.000002ppm)" becomes the
+          //     pattern %sodium%...%0%000002ppm; the broad fallback searches
+          //     only the first word and caps at 200 rows, so the row is
+          //     unreachable.
+          //
+          // Rather than loosen the resolver (which would risk serving the wrong
+          // row — the exact defect fixed earlier today) the sitemap defers to
+          // it: a page we cannot prove is reachable is not advertised. Both
+          // shapes are excluded by the same rule, so this needs no per-cause
+          // heuristic and no tuning.
+          const collidesWithPolluted = pollutedSlugs.has(slug)
+          const unreachable = !RESOLVABLE_BY_PREFILTER.test(i.name_inci)
+          if (collidesWithPolluted || unreachable) return null
+
           seen.add(slug)
           const isEnriched = !!i.rich_content_generated_at
           const changeFreq: 'monthly' | 'yearly' = isEnriched ? 'monthly' : 'yearly'
