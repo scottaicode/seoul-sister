@@ -131,6 +131,55 @@ const SIGNAL_DEFINITIONS: SignalDefinition[] = [
     },
   },
   {
+    // Outside-US shopper (Aug 5 2026).
+    //
+    // A woman in Kolkata with PCOS got a genuinely good routine off her own
+    // shelf, then asked for something she could actually buy. Our price feeds
+    // are Olive Young Global / Soko Glam / iHerb — US and Korea-direct — so the
+    // honest answer was "I can't quote you rupee prices without guessing." That
+    // left a motivated person with no purchase path.
+    //
+    // The reasoning travels everywhere (INCI is INCI, and Yuri read her Plum,
+    // Re'equil and Pond's products correctly). Only the last mile breaks. The
+    // open question is HOW OFTEN, and grep on chat logs can't answer it: it
+    // only finds visitors who volunteered a location, and 3 hits out of 58
+    // visitors cannot distinguish 5% from 15%.
+    //
+    // So record it as a signal with the region attached. In a month this is a
+    // number that decides whether real regional retailer coverage is worth
+    // building — instead of the same three anecdotes we're reasoning from now.
+    // Detection is deliberately narrow: a named place, not a guess from
+    // language or spelling.
+    type: 'shopper_outside_us',
+    category: 'purchase_intent',
+    detect: (msg) => {
+      const REGIONS: Array<[RegExp, string]> = [
+        [/\b(india|kolkata|mumbai|delhi|bangalore|bengaluru|chennai|hyderabad|pune|vijayawada|nykaa)\b/i, 'india'],
+        [/\b(singapore|malaysia|kuala lumpur|philippines|manila|indonesia|jakarta|vietnam|hanoi|ho chi minh|thailand|bangkok|shopee|lazada)\b/i, 'southeast_asia'],
+        [/\b(uk|united kingdom|london|manchester|ireland|dublin|scotland)\b/i, 'uk'],
+        [/\b(germany|france|spain|italy|netherlands|poland|sweden|norway|denmark|portugal|belgium|austria)\b/i, 'eu'],
+        [/\b(australia|sydney|melbourne|brisbane|perth|new zealand|auckland)\b/i, 'anz'],
+        [/\b(canada|toronto|vancouver|montreal|calgary|ottawa)\b/i, 'canada'],
+        [/\b(uae|dubai|abu dhabi|saudi|riyadh|qatar|doha|kuwait|bahrain)\b/i, 'gulf'],
+        [/\b(brazil|sao paulo|mexico|mexico city|argentina|buenos aires|chile|colombia|bogota)\b/i, 'latam'],
+        [/\b(nigeria|lagos|kenya|nairobi|south africa|johannesburg|cape town|ghana|accra|egypt|cairo)\b/i, 'africa_me'],
+      ]
+      for (const [re, region] of REGIONS) {
+        const m = msg.match(re)
+        if (m) {
+          return {
+            signal_type: 'shopper_outside_us',
+            // The matched term is kept so a later reader can tell a real
+            // location mention from an incidental one ("Korea" in a product
+            // name would not reach here, but ambiguity elsewhere is possible).
+            signal_data: { region, matched: m[0].toLowerCase() },
+          }
+        }
+      }
+      return null
+    },
+  },
+  {
     type: 'asked_about_subscription',
     category: 'purchase_intent',
     detect: (msg) => {
