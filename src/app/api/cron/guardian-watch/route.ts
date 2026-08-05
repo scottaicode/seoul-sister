@@ -3,7 +3,7 @@ import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
 import { runHealthCheck } from '@/lib/guardian/healthcheck'
 import { maybeSendGuardianAlert } from '@/lib/guardian/alert'
-import { findStaleRuns } from '@/lib/pipeline/run-log'
+import { findStaleRuns, staleRunSignals } from '@/lib/pipeline/run-log'
 
 export const maxDuration = 60
 
@@ -55,6 +55,33 @@ async function handler(request: Request) {
       for (const u of cronFindings.unhealthy) {
         console.error(
           `[guardian-watch] cron '${u.runType}' last reported ${u.status} at ${u.startedAt}`
+        )
+      }
+      // Fold the findings into the REPORT, not just the logs. Until Aug 4 2026
+      // they lived only in metadata + console.error, so a quiet cron could never
+      // reach `critical` and therefore never alerted — capture-reddit-intel was
+      // recorded quiet on five consecutive runs (112h -> 142h) while nothing was
+      // sent. Merging here, before the alert step below, is what makes the
+      // Guardian's existing detection actually reach anyone.
+      //
+      // `overall` and `counts` are recomputed because runHealthCheck derived
+      // them from its own signals before these existed. Appending without
+      // recomputing would leave a critical signal inside a report still labelled
+      // 'ok' — the alert reads severity, so it would have stayed silent exactly
+      // as before, and the bug would have looked fixed.
+      const cronSignals = staleRunSignals(cronFindings)
+      if (cronSignals.length > 0) {
+        report.signals = [...report.signals, ...cronSignals]
+        report.counts = {
+          critical: report.signals.filter((s) => s.severity === 'critical').length,
+          warn: report.signals.filter((s) => s.severity === 'warn').length,
+          info: report.signals.filter((s) => s.severity === 'info').length,
+          ok: report.signals.filter((s) => s.severity === 'ok').length,
+        }
+        const order = { critical: 3, warn: 2, info: 1, ok: 0 } as const
+        report.overall = report.signals.reduce<typeof report.overall>(
+          (acc, s) => (order[s.severity] > order[acc] ? s.severity : acc),
+          'ok'
         )
       }
     } catch (err) {

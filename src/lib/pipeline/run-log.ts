@@ -179,3 +179,86 @@ export async function findStaleRuns(): Promise<{
 
   return { quiet, unhealthy }
 }
+
+/**
+ * How far past its own threshold a quiet cron must drift to count as critical.
+ *
+ * 2, not 3. At 3x a 48h threshold the bar is 144h, and the real reading that
+ * prompted this work was 142h — the escalation would have missed the very
+ * incident it was written for, by two hours, after six days of silence. At 2x a
+ * daily job is critical ~4 days after its last successful run, which is still
+ * conservative for something that should report every 24h.
+ */
+export const CRON_CRITICAL_MULTIPLE = 2
+
+/**
+ * Turn cron-liveness findings into Guardian signals.
+ *
+ * WHY THIS EXISTS (Aug 4 2026 — the second silence on the same job)
+ *
+ * `findStaleRuns()` already worked. On Aug 3-4 it recorded `capture_reddit_intel`
+ * quiet on five consecutive runs — 112h, 118h, 130h, 136h, 142h — and Scott was
+ * never told, while the only live acquisition channel sat dead for six days.
+ *
+ * The findings went to `console.error` and to ss_pipeline_runs.metadata, but
+ * never into `report.signals`. Alerting reads `report.signals` and fires on
+ * `critical`, so a quiet cron could not reach the alarm NO MATTER HOW LONG IT
+ * STAYED DEAD. Detection was complete; the wire to the bell was missing.
+ *
+ * Severity is graded rather than flat, to respect the charter's warn=log-only
+ * rule while still letting a genuinely dead job escalate on its own:
+ *   - past its threshold        -> warn     (log-only; could be one slow day)
+ *   - past 3x threshold, or NEVER logged -> critical (alerts)
+ * A watched job that has never logged a single run is critical immediately:
+ * there is no benign reading of it, and it is the exact Reddit case twice over.
+ *
+ * Pure: takes findings, returns signals. Decides nothing about sending.
+ */
+export function staleRunSignals(findings: {
+  quiet: StaleRunFinding[]
+  unhealthy: Array<{ runType: string; status: string; startedAt: string }>
+}): Array<{
+  key: string
+  severity: 'critical' | 'warn'
+  summary: string
+  detail: Record<string, unknown>
+}> {
+  const watched = new Map(WATCHED_RUN_TYPES.map((w) => [w.runType, w.maxAgeHours]))
+  const signals: Array<{
+    key: string
+    severity: 'critical' | 'warn'
+    summary: string
+    detail: Record<string, unknown>
+  }> = []
+
+  for (const q of findings.quiet) {
+    const maxAgeHours = watched.get(q.runType) ?? 48
+    const neverRan = q.lastRunAt === null
+    const critical = neverRan || (q.hoursSince ?? 0) >= maxAgeHours * CRON_CRITICAL_MULTIPLE
+    signals.push({
+      key: `cron_quiet_${q.runType}`,
+      severity: critical ? 'critical' : 'warn',
+      summary: neverRan
+        ? `Cron '${q.runType}' has NEVER logged a run — it may not be reachable at all.`
+        : `Cron '${q.runType}' last ran ${q.hoursSince}h ago (threshold ${maxAgeHours}h).`,
+      detail: {
+        run_type: q.runType,
+        last_run_at: q.lastRunAt,
+        hours_since: q.hoursSince,
+        threshold_hours: maxAgeHours,
+        never_ran: neverRan,
+      },
+    })
+  }
+
+  for (const u of findings.unhealthy) {
+    signals.push({
+      key: `cron_unhealthy_${u.runType}`,
+      severity: 'warn',
+      summary: `Cron '${u.runType}' last reported ${u.status}.`,
+      detail: { run_type: u.runType, status: u.status, started_at: u.startedAt },
+    })
+  }
+
+  return signals
+}
