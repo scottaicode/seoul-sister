@@ -103,7 +103,12 @@ test('the reddit cron marks an unexpected empty result as anomalous', () => {
 
 test('startedAt is captured before any work', () => {
   // Otherwise duration is meaningless and a hung run looks instantaneous.
-  const handlerIdx = redditSrc.indexOf('export async function POST')
+  // Matches the handler however it is declared — it became `async function
+  // handler` on Aug 4 2026 so the route could alias GET (see the Vercel-verb
+  // test below). This asserts placement, not the signature.
+  const handlerIdx = redditSrc.search(
+    /(export\s+)?async\s+function\s+(POST|handler)\s*\(/
+  )
   const startedIdx = redditSrc.indexOf('const startedAt = new Date().toISOString()')
   assert.ok(
     startedIdx > handlerIdx && startedIdx - handlerIdx < 120,
@@ -177,5 +182,51 @@ test('no cron makes email delivery a precondition for anything', () => {
     offenders,
     [],
     `These crons treat a missing alert recipient as fatal: ${offenders.join(', ')}`
+  )
+})
+
+/**
+ * THE SECOND DEFECT, found Aug 4 2026 — logging every path is worthless if the
+ * handler is never reached.
+ *
+ * The tests above assert that `capture-reddit-intel` logs on every exit. It did.
+ * It still went silent a SECOND time, from July 29 to Aug 4, and the reason is
+ * one layer up: Vercel Cron invokes with GET, and the route exported POST only.
+ * Every scheduled run got a 405 before entering the handler, so nothing logged,
+ * nothing errored, and the DB state was identical to a cron that was never
+ * registered — the exact indistinguishability this file exists to prevent.
+ *
+ * It survived the first fix because the July 29 diagnosis was a hand invocation
+ * sent as POST. It worked, the backlog captured, and the real defect was
+ * untouched. Verified live before the fix: GET /api/cron/capture-reddit-intel
+ * returned 405 while proactive-nudge, nurture-sequence and image-health all
+ * returned 200.
+ *
+ * A cron that cannot be invoked is not observable, however well it logs.
+ */
+test('every registered Vercel cron answers GET, the verb Vercel actually sends', () => {
+  const vercelConfig = JSON.parse(read('vercel.json'))
+  const offenders = []
+
+  for (const cron of vercelConfig.crons ?? []) {
+    const name = cron.path.replace('/api/cron/', '')
+    const file = join(root, 'src', 'app', 'api', 'cron', name, 'route.ts')
+    if (!existsSync(file)) {
+      offenders.push(`${name} (no route file)`)
+      continue
+    }
+    const src = readFileSync(file, 'utf8')
+    // Either a direct GET export, or the `export { handler as GET }` alias
+    // pattern every other cron route in this tree uses.
+    const exportsGet =
+      /export\s+(async\s+function\s+GET|const\s+GET)/.test(src) ||
+      /export\s*\{[^}]*\bas\s+GET\b[^}]*\}/.test(src)
+    if (!exportsGet) offenders.push(name)
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    `These crons 405 on Vercel's GET and will never run: ${offenders.join(', ')}`
   )
 })

@@ -58,7 +58,7 @@ async function logRun(
   })
 }
 
-export async function POST(request: Request) {
+async function handler(request: Request) {
   const startedAt = new Date().toISOString()
   try {
     const authError = verifyCronAuth(request)
@@ -138,3 +138,13 @@ export async function POST(request: Request) {
     )
   }
 }
+
+// Vercel Cron invokes with GET. This route exported POST only, so every scheduled
+// run since it shipped got a 405 before reaching the handler — which is why it
+// never wrote a run row, never fired its own zero-result console.error, and looked
+// EXACTLY like a cron that was never registered. The route's header documents the
+// same silence happening once before (Jul 14) and being "fixed" by a hand
+// invocation; the hand invocation used POST, so it worked and the real defect
+// survived. Every other cron route in this tree already uses this alias pair.
+export const POST = handler
+export { handler as GET }
