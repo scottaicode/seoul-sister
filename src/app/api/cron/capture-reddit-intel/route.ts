@@ -3,7 +3,11 @@ import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
 import { logPipelineRun } from '@/lib/pipeline/run-log'
 
-export const maxDuration = 60
+// Vercel Pro budget. The correction pass costs one Reddit call per comment at
+// ~1.1s each (oauth.ts MIN_REQUEST_INTERVAL_MS), so the old 60s ceiling capped
+// it at ~40 comments/run and the 621-comment backlog would have taken two
+// weeks. Same budget the Olive Young price refresher already uses.
+export const maxDuration = 300
 
 /**
  * POST /api/cron/capture-reddit-intel

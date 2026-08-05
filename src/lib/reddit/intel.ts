@@ -455,8 +455,19 @@ export async function attributeSessionsToComments(): Promise<AttributionResult> 
   }
 }
 
-/** Max comments to check per run. Reddit's rate limiter is the real constraint. */
-export const REPLY_CHECK_BATCH = 40
+/**
+ * Max comments to check per cron run.
+ *
+ * The binding constraint is Reddit's rate limiter (~1.1s/request in oauth.ts),
+ * not a choice about pacing. At 300s of Vercel Pro budget, minus the capture
+ * and attribution steps that share it, ~200 leaves real headroom. The old value
+ * of 40 was sized for a 60s ceiling and would have taken two weeks to work
+ * through the 621-comment backlog.
+ *
+ * For the initial backfill use `scripts/backfill-reddit-replies.ts`, which has
+ * no function timeout at all and can sweep the whole corpus in one pass.
+ */
+export const REPLY_CHECK_BATCH = 200
 
 export interface CorrectionPassResult {
   checked: number
