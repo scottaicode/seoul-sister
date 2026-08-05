@@ -64,7 +64,12 @@ async function handler(request: Request) {
     const authError = verifyCronAuth(request)
     if (authError) return authError
 
-    const { fetchAuthorComments, captureComments, INTEL_AUTHOR } = await import('@/lib/reddit/intel')
+    const {
+      fetchAuthorComments,
+      captureComments,
+      attributeSessionsToComments,
+      INTEL_AUTHOR,
+    } = await import('@/lib/reddit/intel')
 
     const rows = await fetchAuthorComments(INTEL_AUTHOR)
 
@@ -108,9 +113,23 @@ async function handler(request: Request) {
       .select('*', { count: 'exact', head: true })
       .eq('source', 'reddit')
 
+    // Push that total DOWN to the individual comments, so the question stops
+    // being "did Reddit send anyone" (one platform-wide number) and becomes
+    // "which comments, and from which subreddits, correlate with visits".
+    // Coarse by necessity — Reddit exposes no per-comment referral — and it
+    // reports honestly when there is nothing to attribute. Non-fatal: a failure
+    // here must not lose the capture that already succeeded.
+    let attribution: Awaited<ReturnType<typeof attributeSessionsToComments>> | null = null
+    try {
+      attribution = await attributeSessionsToComments()
+    } catch (attrErr) {
+      console.error('[capture-reddit-intel] attribution failed:', attrErr)
+    }
+
     console.log(
       `[capture-reddit-intel] fetched=${result.fetched} inserted=${result.inserted} ` +
-      `updated=${result.updated} negative=${result.negative} reddit_sessions=${redditSessions ?? 0}`
+      `updated=${result.updated} negative=${result.negative} reddit_sessions=${redditSessions ?? 0} ` +
+      `attributed_comments=${attribution?.commentsCredited ?? 0}`
     )
 
     await logRun(startedAt, 'completed', result.fetched, result.inserted + result.updated, {
@@ -118,6 +137,13 @@ async function handler(request: Request) {
       updated: result.updated,
       negative: result.negative,
       reddit_attributed_sessions: redditSessions ?? 0,
+      // `attribution_ran` distinguishes "attributed nothing because there is no
+      // reddit traffic yet" from "the attribution step threw and never ran".
+      // Without it both leave an all-zero table.
+      attribution_ran: attribution !== null,
+      attribution_had_signal: attribution?.hadSignal ?? false,
+      comments_credited: attribution?.commentsCredited ?? 0,
+      sessions_unattributed: attribution?.unattributedSessions ?? 0,
     })
 
     return NextResponse.json({

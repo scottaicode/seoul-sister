@@ -170,3 +170,153 @@ export async function captureComments(rows: RedditIntelRow[]): Promise<CaptureRe
     negative: rows.filter((r) => r.score < 0).length,
   }
 }
+
+/**
+ * How long after a comment a resulting visit is still plausibly attributable.
+ *
+ * A Reddit comment's traffic is front-loaded but not instant: the thread keeps
+ * surfacing for a day or two, and a reader may open the profile later. 48h is a
+ * judgment call, not a measurement — there is no ground truth to fit it to.
+ * It is exported so the number is inspectable and arguable rather than buried.
+ */
+export const ATTRIBUTION_WINDOW_HOURS = 48
+
+export interface AttributionResult {
+  /** Reddit-sourced widget sessions seen in total (the numerator, platform-wide). */
+  redditSessions: number
+  /** Comments that received a non-zero share. */
+  commentsCredited: number
+  /** Sessions that fell inside NO comment's window (posted before the corpus, etc). */
+  unattributedSessions: number
+  /** True when there was actually something to attribute. */
+  hadSignal: boolean
+}
+
+/**
+ * Attribute reddit-sourced widget sessions back to the comments that plausibly
+ * caused them, and write the result to `ss_reddit_intel.attributed_sessions`.
+ *
+ * WHY THIS IS COARSE, AND WHY THAT IS THE HONEST DESIGN
+ *
+ * Reddit exposes NO per-comment referral data. A profile-link click carries no
+ * comment identity — the visitor reads a comment, opens the profile, clicks the
+ * bio link, and everything about which comment moved them is gone. So exact
+ * attribution is not merely unbuilt, it is unavailable.
+ *
+ * What IS available: a session tagged `source='reddit'` has a timestamp, and
+ * comments have timestamps. Sessions are credited to every comment posted within
+ * the preceding ATTRIBUTION_WINDOW_HOURS, split evenly across them (fractional
+ * credit rounded at the end). That cannot say WHICH comment did it. It can
+ * answer the question the channel actually hinges on — *do higher-scoring
+ * comments, or particular subreddits, correlate with visits at all?* — which is
+ * currently unanswerable in either direction.
+ *
+ * Deliberately even-split rather than score-weighted: weighting by score would
+ * bake in the very hypothesis we are trying to test ("good comments drive
+ * traffic") and then read it back out as a finding.
+ *
+ * TWO LIMITS THAT MUST STAY VISIBLE
+ *
+ *  1. `views` is NULL on every row — the Reddit API does not return it for
+ *     comments — so there is no impressions denominator. A comment with 600
+ *     views and one with 15 look identical here.
+ *  2. As of Aug 5 2026 there are ZERO reddit-sourced sessions, so every row is
+ *     legitimately 0. `hadSignal: false` says so explicitly, because a table
+ *     full of zeros from a working attributor and a table full of zeros from an
+ *     attributor that never ran are otherwise indistinguishable — the exact
+ *     failure class that hid a dead cron for six days.
+ *
+ * Pure measurement. No AI, no judgment, no writes outside the one column.
+ */
+export async function attributeSessionsToComments(): Promise<AttributionResult> {
+  const db = getServiceClient()
+
+  const { data: sessions, error: sessionErr } = await db
+    .from('ss_widget_sessions')
+    .select('id, started_at')
+    .eq('source', 'reddit')
+
+  // A failed query must NOT read as "no reddit traffic". That conflation is how
+  // a broken instrument looks like a quiet channel.
+  if (sessionErr) {
+    console.error('[reddit-intel] attribution: session query failed:', sessionErr)
+    throw sessionErr
+  }
+
+  const sessionRows = (sessions ?? []) as Array<{ id: string; started_at: string }>
+
+  if (sessionRows.length === 0) {
+    return {
+      redditSessions: 0,
+      commentsCredited: 0,
+      unattributedSessions: 0,
+      hadSignal: false,
+    }
+  }
+
+  const { data: comments, error: commentErr } = await db
+    .from('ss_reddit_intel')
+    .select('id, posted_at')
+    .order('posted_at', { ascending: true })
+
+  if (commentErr) {
+    console.error('[reddit-intel] attribution: comment query failed:', commentErr)
+    throw commentErr
+  }
+
+  const commentRows = (comments ?? []) as Array<{ id: string; posted_at: string }>
+  if (commentRows.length === 0) {
+    return {
+      redditSessions: sessionRows.length,
+      commentsCredited: 0,
+      unattributedSessions: sessionRows.length,
+      hadSignal: false,
+    }
+  }
+
+  const windowMs = ATTRIBUTION_WINDOW_HOURS * 3_600_000
+  const credit = new Map<string, number>()
+  let unattributed = 0
+
+  for (const session of sessionRows) {
+    const at = new Date(session.started_at).getTime()
+    // Comments posted in the window BEFORE this session. Never after: crediting
+    // a comment for a visit that preceded it would invent causation backwards.
+    const eligible = commentRows.filter((c) => {
+      const posted = new Date(c.posted_at).getTime()
+      return posted <= at && at - posted <= windowMs
+    })
+    if (eligible.length === 0) {
+      unattributed++
+      continue
+    }
+    const share = 1 / eligible.length
+    for (const c of eligible) {
+      credit.set(c.id, (credit.get(c.id) ?? 0) + share)
+    }
+  }
+
+  // Write only the rows that earned credit. Rows already at 0 stay 0 — no need
+  // to rewrite 621 unchanged rows every run.
+  let written = 0
+  for (const [id, share] of credit.entries()) {
+    const rounded = Math.round(share)
+    if (rounded === 0) continue
+    const { error } = await db
+      .from('ss_reddit_intel')
+      .update({ attributed_sessions: rounded })
+      .eq('id', id)
+    if (error) {
+      console.error(`[reddit-intel] attribution: write failed for ${id}:`, error)
+      continue
+    }
+    written++
+  }
+
+  return {
+    redditSessions: sessionRows.length,
+    commentsCredited: written,
+    unattributedSessions: unattributed,
+    hadSignal: true,
+  }
+}
