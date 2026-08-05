@@ -8,6 +8,85 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.23.0 (August 3-5, 2026): Four leaks at the moment someone decides
+
+Four fixes on the conversion path, each found by watching a real stranger rather than by reading code. Three of them are the same shape: **the visitor was trying to say yes, and something in our plumbing made that hard.** The fourth is instrumentation for a channel that hasn't fired yet.
+
+> **The most reusable thing in this release is a fix I built, measured, and threw away.** See §2. If you are here because a duplicate-price bug resurfaced, read that section before writing the obvious fix — the obvious fix is wrong, and it is wrong in a way that only shows up against the live catalog.
+
+### 1. A visitor tried to give us her email and couldn't parse the question
+
+Aug 3. A cold visitor arrived from an ingredient page, asked whether the glycerin in a Korean ice gel was plant- or animal-derived, and got a genuinely good answer — Yuri twice refused to guess at an INCI she couldn't verify, which is the moat working. Then she made the email offer in the exact words the prompt modelled:
+
+> *"want me to hang onto your email so we can pick this thread back up next time"*
+
+The visitor replied: **"Can I use gmail instead of email?"**
+
+She read *"email"* as a service she might not have, rather than an address to type. **She was trying to say yes.** `captured_email` stayed NULL. A real lead lost to an ambiguous noun, on the only surface with a measured conversion record (16.4% email capture).
+
+Two things changed. The ask now names a concrete action and says what actually arrives, because "hang onto your email" can float free of any action. And — the defect hiding behind the first one — **confusion in reply to the ask no longer counts as the one permitted ask.** The anti-nagging cap is correct, but without an exception a puzzled *"what do you mean?"* spent the ask and the visitor could never give it. That would have kept costing leads no matter how clear the wording got.
+
+Given as the dated failure plus reasoning, with an explicit instruction to read the person and adapt rather than recite a line. Scripting the sentence is the anti-pattern the widget give/gate already failed twice by reaching for.
+
+### 2. She quoted the wrong row's price at purchase intent — and the obvious fix is wrong
+
+Aug 3. A visitor in tropical Vijayawada, oily skin, deeper tone. Yuri reasoned it correctly: chemical filters over mineral to avoid white cast, light hydration for humidity. Then she quoted the SKIN1004 Hyalu-Cica sun serum at **~$22.10**.
+
+The advice was right and the price was the wrong row. The catalog carries that serum four times:
+
+| Price | Reviews |
+|---|---|
+| **$15.50** | **5,800** |
+| $16.00 | 3,400 |
+| **$22.10** | **0** ← what she quoted |
+| (Twin Pack) | 0 |
+
+A **43% overquote** to someone deciding whether to buy, on a platform whose pitch is price transparency.
+
+**The obvious fix — "prefer the highest-review row" — was built, measured against the live catalog, and discarded.** It is wrong. Most near-name pairs are genuinely different products:
+
+- Real Barrier **Extreme Cream Ampoule** ≠ Extreme Cream
+- Real Barrier **Extreme Cream Light** ≠ Extreme Cream
+- Heimish **All Clean Balm Mandarin** ≠ All Clean Balm
+- Round Lab **Cream Refill Pack** / **Double Set** ≠ the single unit
+
+Auto-preferring the popular row would quote a single-unit price for a two-pack, or a cream's price for an ampoule — **worse than the bug it fixes.** Identical-INCI was also tried as a discriminator and fails: the SKIN1004 rows differ by 35 characters while being the same product.
+
+Nothing deterministic separates "duplicate listing" from "different SKU" in this data. Per the standing rule — *when a classifier needs repeated hand-tuning, that is the signal to stop* — the classifier was abandoned. Search results now carry the **sibling rows with their review counts** and a note naming both readings, ending by handing the call back. Nothing is filtered, reordered, or swapped, and a test fails if that note ever becomes a preference rule.
+
+Verified live: the SKIN1004 query surfaces the $15.50/5,800-review row alongside the one she picked; Real Barrier and Heimish surface as *visible* siblings rather than silent substitutions.
+
+### 3. A TikTok visitor who doesn't chat was invisible in both systems
+
+Found by walking the funnel by hand: click Bailey's bio link, land, don't chat.
+
+Our own database correctly showed nothing — a `ss_widget_visitors` row is created **only** when a message is sent, by design, because we count conversations rather than pageviews and that is the honest denominator when GA4 is bot-inflated. But **GA4 filed it under Direct too**, because `?from=` is our internal convention and GA4 only names a source from `utm_*` parameters. TikTok's in-app browser strips the referrer, which is the whole reason `/tt` exists.
+
+So someone arriving from TikTok who browsed without chatting left **no trace anywhere**. If Bailey's channel started working, there would have been no way to prove it — the worst possible moment to discover an attribution hole.
+
+The redirect now appends `utm_source` and `utm_medium` server-side. The bio link stays bare (`seoulsister.com/tt`), which is the point — a short, non-scary link converts better on a profile that already shows an external-site interstitial. Safe by construction: the widget reads `utm_source` first and falls back to `?from=`, so `ss_widget_sessions.source` still gets a value; it reads `tiktok` now instead of `tt_ss`. Verified before shipping that no code references the old literals and zero historical rows carry them.
+
+### 4. A woman in Kolkata got a routine and nowhere to buy it
+
+Aug 5, and the best cold conversation on record — 45 minutes, 7 messages. A woman with PCOS and combination skin. Yuri named the breakouts as hormonal and pointed her to a dermatologist, told her to **buy less**, and withdrew her own earlier product picks because the Plum toner the visitor already owned covered niacinamide. The visitor closed in Korean: *"고마워요, 유리 언니."*
+
+Then she asked for something she could actually buy in India, and the honest answer was that our price feeds are US/Korea-direct so a rupee price would be a guess. Correct — and it ended a good conversation with no purchase path.
+
+**The reasoning already travels.** Yuri read Plum, Re'equil and Pond's correctly because INCI is INCI, and a product's absence from the catalog says nothing about the product. Only the last mile breaks, so only the last mile is patched: she now knows where people in the major non-US markets actually shop (Nykaa/Amazon India, Shopee/Lazada, Cult Beauty, Adore Beauty, etc.), and is told plainly **never to convert a USD price** — that hides shipping, customs and local markup, and is the wrong-price failure in another currency.
+
+**The more useful half is the measurement.** How often this happens was three grep hits across 58 visitors, which cannot distinguish 5% from 15% and only finds people who volunteered a location. A `shopper_outside_us` signal now records the **region** at the purchase-intent moment, so the question gets a number instead of anecdotes. Detection is deliberately narrow and tested against false positives — the whole catalog is Korean, and "korean sunscreen" tripping the signal would drown the measurement it exists to produce.
+
+**Deliberately NOT built:** a regional catalog, regional pricing, or currency conversion. A Western catalog was already rejected on measured 15:1 Korean intent; building a regional one on three anecdotes would repeat that mistake. Measure first, and if the signal says 2% in a month, leave it exactly as is.
+
+### Also in this window
+
+- **SEO Guardian now knows which queries actually get clicked.** Measured across the top 32 queries by impressions (818 impr, 2 clicks, 0.24% CTR at avg position 12): definitional queries returned **541 impressions and 0 clicks**; solution/review intent returned **277 impressions and both clicks**. The site already has well-titled ranking pages for every definitional theme, so this is not a content gap — AI Overviews answer them inline. Given as a fact for the strategist's judgment, not a rule; a guard test fails if it becomes a constraint, because definitional pages may still be right for the AI-citation channel.
+- **Blog fleet remediation** (43 posts, executed by LGAAS from `LGAAS-WORK-ORDER-BLOG-FLEET-AUDIT.md`): 17 posts routed strangers into paywalled features, 4 linked a `/cycle` route that 404s, 14 linked the paywalled `/yuri`, one recommended a banned retailer, and one sold a **23% pure L-ascorbic acid** ampoule as the gentle option for people who can't tolerate strong vitamin C. Root cause was this repo's own `BLOG-ENHANCEMENT-PROMPT.md` (Mar 10), which told a session to promote feature pages by name — pages that were demoted behind Yuri on Jun 22 without the blog being told. That prompt now carries a superseded banner.
+
+429 → 658 tests across the window. Every behavioural guard in this release was confirmed to FAIL when its defect is reintroduced verbatim.
+
+---
+
 ## v11.22.0 (August 2, 2026): The ingredient was in 169 products and she couldn't find one
 
 Two defects from the same Bailey session, and in both cases **Yuri did exactly what she was told to do.**
