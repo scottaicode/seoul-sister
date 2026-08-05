@@ -172,6 +172,117 @@ export async function captureComments(rows: RedditIntelRow[]): Promise<CaptureRe
 }
 
 /**
+ * Pushback taxonomy. Four ways a reply can push back, and they are NOT the same
+ * signal — which is the entire reason `was_corrected` stayed a useless boolean.
+ *
+ * Ground truth, Aug 5 2026: all three negative-scoring comments in the corpus
+ * were fetched with their reply threads. They were three different things.
+ *
+ *   on7e1qd (-4) AI_CALLOUT. "Why bother replying using AI generated responses?"
+ *                (+5). No factual error whatsoever — the comment was a precise,
+ *                correct distinction between Real Barrier Extreme Cream (lavender
+ *                only) and the Light/Special Set variants (sage, patchouli,
+ *                cardamom, chamomile, juniper). Flagging it as an error on score
+ *                alone would have fed the account's BEST factual work back as a
+ *                graded mistake.
+ *   oc2erhk (-3) FACTUAL_CORRECTION. "300 is higher! 50 is the lowest" (+3).
+ *   p1j0ipt (-1) DISAGREEMENT. "This is very strange advice. I don't think it's
+ *                true at all" (+2).
+ *
+ * So: score is not the teacher. The reply is.
+ */
+export type PushbackKind =
+  | 'factual_correction'
+  | 'disagreement'
+  | 'ai_callout'
+  | 'clarifying_question'
+
+/**
+ * Cues per kind, ordered by severity when a reply matches more than one.
+ *
+ * `ai_callout` outranks everything on purpose. It is not a skincare error at
+ * all — it is the one signal that the account's cover is slipping, which is the
+ * only failure that could end the channel outright rather than cost one comment.
+ *
+ * These are CUES FOR A HUMAN QUEUE, not a verdict. Nothing here grades anything:
+ * `pushback_confirmed` stays NULL until a person looks. Same discipline as
+ * nudge-outcome-grader.ts — abstain rather than fabricate a verdict.
+ */
+const PUSHBACK_CUES: Array<{ kind: PushbackKind; re: RegExp }> = [
+  {
+    kind: 'ai_callout',
+    re: /\b(ai[- ]?generated|chat ?gpt|is this (ai|a bot)|are you a bot|bot account|written by (an )?ai|ai slop|llm)\b/i,
+  },
+  {
+    kind: 'factual_correction',
+    re: /\b(that'?s (not|incorrect|wrong)|isn'?t (true|right|correct)|actually,? (it|the|they)|isn'?t how|not how it works|you'?re (wrong|mistaken)|wrong about|incorrect|is higher|is lower|is the lowest|is the highest|mixed up|got that backwards)\b/i,
+  },
+  {
+    kind: 'disagreement',
+    re: /\b(strange advice|bad advice|terrible advice|i (don'?t|do not) (think|agree)|disagree|hard disagree|that'?s not my experience|wouldn'?t recommend|please don'?t)\b/i,
+  },
+  {
+    kind: 'clarifying_question',
+    re: /\b(what do you mean|can you clarify|source\??$|any source|where did you (read|hear)|citation)\b/i,
+  },
+]
+
+/**
+ * Classify one reply. Returns the most severe kind it matches, or null.
+ * Pure — no IO, no model, fully testable.
+ */
+export function classifyPushback(body: string): PushbackKind | null {
+  if (!body) return null
+  for (const { kind, re } of PUSHBACK_CUES) {
+    if (re.test(body)) return kind
+  }
+  return null
+}
+
+/** A reply as we need it for classification. */
+export interface ReplyRow {
+  author: string
+  body: string
+  score: number
+}
+
+/**
+ * Pick the reply worth surfacing, if any.
+ *
+ * Severity first (an ai_callout outranks a factual correction outranks a
+ * disagreement), then reply score as the tiebreak — a +5 correction against a
+ * -4 comment is a far stronger signal than a -1 reply nobody agreed with.
+ *
+ * Replies BY the author are skipped: glass_skin_atx correcting themselves in a
+ * follow-up is not the community pushing back.
+ */
+export function selectPushback(
+  replies: ReplyRow[],
+  author: string = INTEL_AUTHOR
+): { kind: PushbackKind; reply: ReplyRow } | null {
+  const severity: Record<PushbackKind, number> = {
+    ai_callout: 4,
+    factual_correction: 3,
+    disagreement: 2,
+    clarifying_question: 1,
+  }
+  let best: { kind: PushbackKind; reply: ReplyRow } | null = null
+  for (const reply of replies) {
+    if (reply.author?.toLowerCase() === author.toLowerCase()) continue
+    const kind = classifyPushback(reply.body)
+    if (!kind) continue
+    if (
+      !best ||
+      severity[kind] > severity[best.kind] ||
+      (severity[kind] === severity[best.kind] && reply.score > best.reply.score)
+    ) {
+      best = { kind, reply }
+    }
+  }
+  return best
+}
+
+/**
  * How long after a comment a resulting visit is still plausibly attributable.
  *
  * A Reddit comment's traffic is front-loaded but not instant: the thread keeps
@@ -319,4 +430,162 @@ export async function attributeSessionsToComments(): Promise<AttributionResult> 
     unattributedSessions: unattributed,
     hadSignal: true,
   }
+}
+
+/** Max comments to check per run. Reddit's rate limiter is the real constraint. */
+export const REPLY_CHECK_BATCH = 40
+
+export interface CorrectionPassResult {
+  checked: number
+  withReplies: number
+  pushbackFound: number
+  byKind: Record<string, number>
+  failed: number
+}
+
+/**
+ * Fetch replies for comments we have never checked, classify any pushback, and
+ * queue it for human review.
+ *
+ * WHY A SEPARATE PASS AND NOT PART OF CAPTURE
+ *
+ * `/user/{name}/comments` does NOT return replies — which is why `reply_count`
+ * was hardcoded to 0 since the table shipped. Replies require one call per
+ * comment against the thread endpoint, so this is inherently slower and rate
+ * limited. Oldest-unchecked-first with a per-run batch means the corpus fills in
+ * over days instead of hammering the API in one run.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT DO
+ *
+ * It does not grade anything. `pushback_confirmed` is left NULL — the pass
+ * PROPOSES, a human disposes. The corpus is the moat, and an auto-labelled
+ * corpus built on regex cues would poison it permanently. Compare the
+ * MIN_SAMPLE=5 floor in the nudge grader and the 23%-precision classifier that
+ * was measured and DISCARDED rather than tuned (v11.21.0): when a classifier
+ * needs hand-tuning, that is the signal to stop, not to keep adjusting.
+ *
+ * `replies_checked_at` is written on EVERY checked comment, including those with
+ * no replies at all. "Checked and found nothing" and "never checked" must not
+ * collapse into the same NULL — that conflation is what hid a dead cron for six
+ * days and is the most expensive bug class in this repo.
+ */
+export async function runCorrectionPass(
+  limit = REPLY_CHECK_BATCH
+): Promise<CorrectionPassResult> {
+  const db = getServiceClient()
+  const result: CorrectionPassResult = {
+    checked: 0,
+    withReplies: 0,
+    pushbackFound: 0,
+    byKind: {},
+    failed: 0,
+  }
+
+  // Oldest unchecked first: a comment's replies are effectively final after a
+  // few days, so the backlog is the reliable part of the signal.
+  const { data, error } = await db
+    .from('ss_reddit_intel')
+    .select('id, permalink, subreddit, reddit_id')
+    .is('replies_checked_at', null)
+    .order('posted_at', { ascending: false })
+    .limit(limit)
+
+  if (error) {
+    console.error('[reddit-intel] correction pass: queue query failed:', error)
+    throw error
+  }
+
+  const queue = (data ?? []) as Array<{
+    id: string
+    permalink: string
+    subreddit: string
+    reddit_id: string
+  }>
+
+  for (const row of queue) {
+    // Derive the thread path from the permalink rather than reconstructing it:
+    // .../r/{sub}/comments/{postId}/{slug}/{commentId}/
+    const match = row.permalink.match(/\/r\/([^/]+)\/comments\/([^/]+)\/[^/]*\/([^/]+)\/?$/)
+    if (!match) {
+      // Cannot address it — mark checked so it does not block the queue forever,
+      // but count it as failed so a systematic parse break is visible.
+      result.failed++
+      await db
+        .from('ss_reddit_intel')
+        .update({ replies_checked_at: new Date().toISOString() })
+        .eq('id', row.id)
+      continue
+    }
+    const [, sub, postId, commentId] = match
+
+    let replies: ReplyRow[] = []
+    try {
+      const listing = (await redditFetch(`/r/${sub}/comments/${postId}/_/${commentId}`, {
+        context: '0',
+        limit: '30',
+        depth: '3',
+      })) as unknown[]
+
+      // Reddit returns [postListing, commentListing]; our comment is the first
+      // child of the second listing, with its replies nested underneath.
+      const commentListing = listing?.[1] as { data?: { children?: unknown[] } } | undefined
+      const self = (commentListing?.data?.children?.[0] as { data?: Record<string, unknown> })
+        ?.data
+      const rawReplies = self?.replies as { data?: { children?: unknown[] } } | string | undefined
+
+      // Reddit returns an EMPTY STRING (not null, not an empty object) when a
+      // comment has no replies. Treating that as an object silently yields zero
+      // replies and looks identical to a parse failure.
+      if (rawReplies && typeof rawReplies !== 'string') {
+        replies = (rawReplies.data?.children ?? [])
+          .map((c) => c as { kind?: string; data?: Record<string, unknown> })
+          .filter((c) => c.kind === 't1')
+          .map((c) => ({
+            author: String(c.data?.author ?? ''),
+            body: String(c.data?.body ?? ''),
+            score: typeof c.data?.score === 'number' ? (c.data.score as number) : 0,
+          }))
+      }
+    } catch (err) {
+      // A fetch failure must NOT mark the row checked — otherwise a transient
+      // Reddit error permanently hides that comment's replies.
+      console.error(`[reddit-intel] reply fetch failed for ${row.reddit_id}:`, err)
+      result.failed++
+      continue
+    }
+
+    result.checked++
+    if (replies.length > 0) result.withReplies++
+
+    const pushback = selectPushback(replies)
+    const update: Record<string, unknown> = {
+      replies_checked_at: new Date().toISOString(),
+      reply_count: replies.length,
+    }
+
+    if (pushback) {
+      result.pushbackFound++
+      result.byKind[pushback.kind] = (result.byKind[pushback.kind] ?? 0) + 1
+      update.pushback_kind = pushback.kind
+      update.pushback_quote = pushback.reply.body.slice(0, 500)
+      update.pushback_score = pushback.reply.score
+      update.pushback_author = pushback.reply.author
+      // pushback_confirmed stays NULL on purpose — this is a proposal.
+      // A factual_correction is also the historical meaning of was_corrected,
+      // so keep that column truthful for anything already reading it. An
+      // ai_callout is NOT a factual correction and must not set it.
+      if (pushback.kind === 'factual_correction') update.was_corrected = true
+    }
+
+    const { error: writeErr } = await db
+      .from('ss_reddit_intel')
+      .update(update)
+      .eq('id', row.id)
+    if (writeErr) {
+      console.error(`[reddit-intel] pushback write failed for ${row.id}:`, writeErr)
+      result.failed++
+    }
+  }
+
+  return result
 }

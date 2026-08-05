@@ -68,6 +68,7 @@ async function handler(request: Request) {
       fetchAuthorComments,
       captureComments,
       attributeSessionsToComments,
+      runCorrectionPass,
       INTEL_AUTHOR,
     } = await import('@/lib/reddit/intel')
 
@@ -126,11 +127,35 @@ async function handler(request: Request) {
       console.error('[capture-reddit-intel] attribution failed:', attrErr)
     }
 
+    // --- Correction pass: what did the community say back? -------------------
+    // The least-gameable teacher available here. `/user/{name}/comments` does
+    // NOT return replies, so this costs one call per comment and runs a bounded
+    // batch per day, oldest-unchecked first. It PROPOSES only — pushback_confirmed
+    // stays NULL until a human looks. Non-fatal for the same reason as
+    // attribution: a failure here must not lose the capture that succeeded.
+    let correction: Awaited<ReturnType<typeof runCorrectionPass>> | null = null
+    try {
+      correction = await runCorrectionPass()
+    } catch (corrErr) {
+      console.error('[capture-reddit-intel] correction pass failed:', corrErr)
+    }
+
     console.log(
       `[capture-reddit-intel] fetched=${result.fetched} inserted=${result.inserted} ` +
       `updated=${result.updated} negative=${result.negative} reddit_sessions=${redditSessions ?? 0} ` +
-      `attributed_comments=${attribution?.commentsCredited ?? 0}`
+      `attributed_comments=${attribution?.commentsCredited ?? 0} ` +
+      `replies_checked=${correction?.checked ?? 0} pushback=${correction?.pushbackFound ?? 0}`
     )
+
+    // An AI callout is the one finding that is NOT about skincare accuracy — it
+    // means the account's cover is slipping, which is the only failure that can
+    // end the channel outright. Make it loud rather than a row nobody queries.
+    if (correction?.byKind?.ai_callout) {
+      console.error(
+        `[capture-reddit-intel] AI CALLOUT detected in ${correction.byKind.ai_callout} ` +
+        `comment thread(s) — review ss_reddit_intel WHERE pushback_kind = 'ai_callout'`
+      )
+    }
 
     await logRun(startedAt, 'completed', result.fetched, result.inserted + result.updated, {
       inserted: result.inserted,
@@ -144,6 +169,14 @@ async function handler(request: Request) {
       attribution_had_signal: attribution?.hadSignal ?? false,
       comments_credited: attribution?.commentsCredited ?? 0,
       sessions_unattributed: attribution?.unattributedSessions ?? 0,
+      // Same distinction as attribution_ran: "checked and found no pushback"
+      // and "the pass threw and never ran" must not both read as zero.
+      correction_pass_ran: correction !== null,
+      replies_checked: correction?.checked ?? 0,
+      comments_with_replies: correction?.withReplies ?? 0,
+      pushback_found: correction?.pushbackFound ?? 0,
+      pushback_by_kind: correction?.byKind ?? {},
+      correction_failures: correction?.failed ?? 0,
     })
 
     return NextResponse.json({
