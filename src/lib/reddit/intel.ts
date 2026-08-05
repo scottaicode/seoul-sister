@@ -210,8 +210,31 @@ export type PushbackKind =
  */
 const PUSHBACK_CUES: Array<{ kind: PushbackKind; re: RegExp }> = [
   {
+    // An ACCUSATION, not a mention. The first live run (Aug 5 2026) proved these
+    // are different things and that a keyword list gets both wrong:
+    //
+    //   MISSED  "All your comments are AI - why not write something yourself?"
+    //           (+5) — a real, direct callout that matched nothing, because the
+    //           bare phrase "are AI" was not in the cue list.
+    //   FLAGGED "I've been using ChatGPT since Week 1 for my rebooted routine"
+    //           — a friendly OP describing their OWN tool use, 2,832 chars into
+    //           a supportive reply. Matched on the bare word "ChatGPT".
+    //
+    // So the cue must bind the AI word to a SECOND-PERSON accusation: your/you
+    // /this comment/this reply. A first-person mention ("I use ChatGPT") is
+    // someone talking about themselves and is not pushback at all.
     kind: 'ai_callout',
-    re: /\b(ai[- ]?generated|chat ?gpt|is this (ai|a bot)|are you a bot|bot account|written by (an )?ai|ai slop|llm)\b/i,
+    re: new RegExp(
+      [
+        // "your comments are AI", "this reply is ai generated", "you are a bot"
+        String.raw`\b(your|this|these|you'?re|you are)\b[^.!?]{0,40}\b(ai[- ]?generated|ai\b|a bot|bot|chat ?gpt|llm|ai slop)\b`,
+        // "are you a bot", "is this ai", "did you use chatgpt"
+        String.raw`\b(are you (a )?(bot|ai)|is this (ai|a bot|chat ?gpt)|did you use (chat ?gpt|ai))\b`,
+        // unambiguous accusations that need no second person
+        String.raw`\b(ai[- ]?generated|ai slop|bot account|written by (an )?ai|chatgpt answer|copy ?paste(d)? from (chat ?gpt|ai))\b`,
+      ].join('|'),
+      'i'
+    ),
   },
   {
     kind: 'factual_correction',

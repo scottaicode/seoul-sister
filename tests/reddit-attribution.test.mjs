@@ -273,3 +273,45 @@ test('returns null when no reply pushes back', () => {
     null
   )
 })
+
+/**
+ * Regression — the first LIVE run (Aug 5 2026) got ai_callout wrong in BOTH
+ * directions, and only real data exposed it. A keyword list cannot tell an
+ * accusation from a mention.
+ *
+ *   MISSED  "All your comments are AI - why not write something yourself?" (+5)
+ *           A direct, real callout that matched nothing.
+ *   FLAGGED "I've been using ChatGPT since Week 1 for my rebooted routine"
+ *           A friendly OP describing their OWN tool use, 2,832 chars into a
+ *           supportive reply. Flagged on the bare word "ChatGPT".
+ *
+ * The false positive is the more dangerous half: ai_callout is the highest
+ * severity signal and raises a console.error, so crying wolf on a supportive
+ * commenter trains the owner to ignore the one alert that matters.
+ */
+test('catches a real AI accusation phrased as "your comments are AI"', () => {
+  assert.equal(
+    mod0.classifyPushback('All your comments are AI - why not write something yourself?'),
+    'ai_callout'
+  )
+})
+
+test('does NOT flag someone describing their own ChatGPT use', () => {
+  for (const body of [
+    "I've been using ChatGPT since Week 1 for my rebooted routine.",
+    'I asked ChatGPT and it said the same thing honestly',
+    'ChatGPT is actually decent for this kind of thing',
+  ]) {
+    assert.equal(
+      mod0.classifyPushback(body),
+      null,
+      `first-person AI mention must not read as an accusation: ${body}`
+    )
+  }
+})
+
+test('catches the common short accusation forms', () => {
+  for (const body of ['is this ai?', 'are you a bot', 'this reads like chatgpt']) {
+    assert.equal(mod0.classifyPushback(body), 'ai_callout', `missed: ${body}`)
+  }
+})
