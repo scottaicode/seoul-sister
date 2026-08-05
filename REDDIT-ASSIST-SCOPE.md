@@ -201,6 +201,29 @@ So: post the ingredient breakdowns there as a permanent archive, and reference
 them from comments only where genuinely relevant. Converts the no-links
 constraint into an owned asset. **Low effort, no ban risk, real GEO upside.**
 
+> **CORRECTION (Aug 5 2026) — defer to the LGAAS memo, which is older and
+> better.** `lgaas/docs/SEOULSISTERHOOD-STRATEGY-MEMO.md` (Apr 29 2026) already
+> worked this through. Two things it gets right that the paragraph above missed:
+>
+> 1. **Owned vs earned media is the governing distinction.** The public subs are
+>    EARNED — trust is per-thread, self-promotion is policed, and the whole
+>    LGAAS discovery/grounding architecture is purpose-built for it.
+>    r/seoulsisterhood is OWNED — members already chose Seoul Sister, so
+>    self-promotion is expected and the pipeline does not fit.
+> 2. **Do NOT wire r/seoulsisterhood into the LGAAS Reddit pipeline** (its
+>    Option 1, explicitly rejected). It burns Opus tokens answering people who
+>    are already converted, and members would notice the replies in their own
+>    community reading more formulaic than the host's manual posts.
+>
+> The memo also records a fact worth keeping straight: **Reddit has no
+> algorithmic AI-content detection** the way Meta/TikTok/Instagram do. Users
+> punish content that READS like AI — generic, hedged, ingredient-confabulated,
+> off-tone. That is a quality bar, not a detection risk, and it is exactly what
+> the grounding architecture and this checker defend.
+>
+> Net: the archive idea survives, but treat the memo as the authority on what
+> r/seoulsisterhood is FOR, and read it before acting.
+
 ---
 
 ## What NOT to build
@@ -227,6 +250,54 @@ constraint into an owned asset. **Low effort, no ban risk, real GEO upside.**
 
 Pieces 1-3 are measurement/quality work and sit in the always-allowed lane under
 `NORTH-STAR.md`. None of them is a new user-facing feature.
+
+---
+
+## How this sits with LGAAS (reviewed Aug 5 2026)
+
+**The two apps are already wired together, and LGAAS's Reddit grounding is
+good.** Read before assuming this checker is the only defense:
+
+- LGAAS calls Seoul Sister's **`/api/admin/products/search`** (`fetchProductContext`
+  in `utils/ingredient-context.js:99`, auth via `X-LGAAS-API-Key`). That endpoint
+  joins `ss_product_ingredients` -> `ss_ingredients`, so LGAAS drafts ARE grounded
+  in the real catalog, not in model memory.
+- `utils/reddit-product-grounding.js` (BP 33.2 / 44 / 44.1) already runs an
+  anti-confabulation pipeline: Haiku extracts mentioned product names,
+  `findMissingProducts()` flags any not covered by catalog context, and the
+  caller then FORCES `web_search` via `tool_choice:'any'`. It also has an
+  explicit bare-brand rule — "Round Lab" alone is never extractable, because a
+  brand makes dozens of products and an ingredient claim about a whole catalog
+  is unverifiable. That is the same discipline as our strict resolver.
+- `docs/SEOULSISTERHOOD-STRATEGY-MEMO.md` (Apr 29 2026) already answers the
+  r/seoulsisterhood question, in more depth than Piece 4 above and partly
+  contradicting it — see the correction in that section.
+
+**What LGAAS grounding does NOT cover, which is where this checker earns its
+place:**
+
+| Gap | Status in LGAAS |
+|---|---|
+| Retailer steering rule (YesStyle/Stylevana/StyleKorean) | **Absent from BOTH apps' Reddit paths.** Verified Aug 5: no match in `api/reddit-response.js` or any `utils/reddit-*.js`, and none in Seoul Sister's admin API surface either. The rule lives only in `advisor.ts`/`specialists.ts`, which Reddit generation never reads. |
+| Counterfeit-smear distinction (authentic-but-slow vs fake) | Absent — and getting it backwards is an affiliate/legal exposure |
+| Price staleness on a quoted number | LGAAS has BP58 freshness at GENERATION; nothing re-checks a draft |
+| Unsourced-claim list (KTRI, stale commingling) | Absent |
+| Post-draft verification pass of ANY kind | Absent. LGAAS gates at generation time; nothing inspects finished text. |
+
+**The division of labour to keep:** LGAAS grounds the draft as it is written;
+this checker verifies the finished text before a human posts it. They are
+belt-and-braces on the same risk, and the second one exists because the first
+runs inside the model that could get it wrong.
+
+**Do not duplicate LGAAS's work here.** Do not build product extraction that
+competes with `extractMentionedProducts()`, and do not add a web-search fallback
+— that is BP44's job and it already forces search on missing products.
+
+**The one cross-app action worth taking:** the retailer rule should reach LGAAS,
+because a rule enforced only at review time still costs a redraft every time.
+Per `project_lgaas_profile_drift_class`, only PRICE auto-syncs between the apps —
+a fact changing in Seoul Sister does NOT reach AriaStar's Reddit/blog/social
+output. That is a work order for the LGAAS side, not a change to make here.
 
 ---
 
