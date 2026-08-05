@@ -30,7 +30,28 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/api/', '/onboarding/', '/settings/', '/dashboard/', '/admin/'],
       },
 
-      // BLOCK: bulk scrapers with no citation/referral value (no AI-search upside, just data harvest)
+      // BLOCK: CCBot (Common Crawl). Re-examined Aug 4 2026 — KEEP BLOCKED, but not for the
+      // reason originally written here ("no citation value"), which overstates it and is
+      // falsifiable in one search. Common Crawl derivatives (FineWeb et al.) genuinely do feed
+      // OPEN-weights pretraining. The real reasons:
+      //   1. REDUNDANT. Every lab whose citations we actually want already crawls us directly —
+      //      GPTBot, OAI-SearchBot, ClaudeBot, Claude-SearchBot, Google-Extended, PerplexityBot
+      //      are all allowed below. CCBot is a lower-fidelity second path to the same labs.
+      //   2. NO LIVE-RETRIEVAL CHANNEL. CC does not power any RAG/AI-answer index. Perplexity
+      //      scrapes live via PerplexityBot (allowed). So there is no near-term citation upside.
+      //   3. TIME HORIZON IS ~2028. Snapshot -> derivative corpus -> pretraining run -> shipped
+      //      model. Irrelevant to the North Star question ("will a stranger pay?").
+      //   4. IRREVERSIBLE + REDISTRIBUTABLE. CC archives are append-only and cloud-mirrored;
+      //      re-blocking later does not retract what was taken. CC data is free bulk download,
+      //      which is the one channel that hands our structured/normalized English K-beauty
+      //      corpus (the actual moat — not the raw facts) to content farms pre-packaged.
+      //      The Atlantic (Nov 2025) documented CC misleading publishers on paywalls and not
+      //      honoring removal requests.
+      // Counter-evidence considered: BuzzStream/Citation Labs (4M citations, 3,600 prompts) found
+      // ~95% of training-bot citations came from sites BLOCKING those bots — blocking training
+      // crawlers barely dents citation. Do NOT re-open this on the "post-hoc citation" theory
+      // (Seer, 541,213 responses): that study makes no claim about Common Crawl or training-data
+      // inclusion, and Seer themselves call it behavioral evidence, not proven architecture.
       {
         userAgent: 'CCBot',
         disallow: '/',
