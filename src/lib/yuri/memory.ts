@@ -1651,6 +1651,35 @@ const EMPTY_DECISION_MEMORY: DecisionMemory = {
 }
 
 /**
+ * Normalize an extracted `check_back_date` to a bare ISO date (YYYY-MM-DD), or null.
+ *
+ * This is the date Yuri NAMED in conversation ("I'll check in Sunday"), and the nudge
+ * engine fires on it directly — so a malformed value here would schedule a follow-up
+ * at the wrong time, or throw off the daysBetween math silently. Anything that is not
+ * a real calendar date becomes null, which falls back to generic staleness: late is
+ * recoverable, wrong-day is not.
+ *
+ * Deliberately does NOT reject past dates. An extraction re-run on an older
+ * conversation legitimately yields a date that has already arrived, and the engine
+ * treats "date >= today" as due — clamping it here would suppress the exact
+ * follow-up that is most overdue.
+ */
+export function normalizeCheckBackDate(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  // Accept a bare ISO date or a full ISO timestamp; take the date portion.
+  const match = /^(\d{4}-\d{2}-\d{2})(?:[T\s]|$)/.exec(trimmed)
+  if (!match) return null
+  const isoDate = match[1]
+  // Reject calendar-invalid dates (2026-02-30 parses loosely in some paths).
+  const parsed = new Date(`${isoDate}T00:00:00Z`)
+  if (Number.isNaN(parsed.getTime())) return null
+  if (parsed.toISOString().slice(0, 10) !== isoDate) return null
+  return isoDate
+}
+
+/**
  * Merge two DecisionMemory objects. Latest decision per topic wins.
  * Preferences: latest per topic wins. Commitments: append with dedup by item text.
  * Corrections: latest per topic wins (Phase 15.1 — preserves K-beauty factual
@@ -1997,12 +2026,27 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
           })
       : [],
     open_loops: Array.isArray(extracted.open_loops)
-      ? (extracted.open_loops as Array<{ topic?: string; summary?: string; opened_date?: string }>)
+      ? (
+          extracted.open_loops as Array<{
+            topic?: string
+            summary?: string
+            opened_date?: string
+            check_back_date?: string | null
+          }>
+        )
           .filter((l) => l.topic && l.summary)
           .map((l) => ({
             topic: String(l.topic),
             summary: String(l.summary),
             opened_date: String(l.opened_date || new Date().toISOString().split('T')[0]),
+            // The date Yuri actually named ("I'll check in Sunday"). This is what
+            // lets the nudge engine keep her word on the day SHE chose instead of
+            // falling back to generic staleness. Dropping it here silently reverts
+            // every promised follow-up to the 5-day default — invisible, because
+            // null is a legitimate value for a loop with no promised date.
+            // Normalized to a bare ISO date; anything unparseable becomes null so a
+            // malformed value can never schedule a nudge at the wrong time.
+            check_back_date: normalizeCheckBackDate(l.check_back_date),
           }))
       : [],
     extracted_at: new Date().toISOString(),
