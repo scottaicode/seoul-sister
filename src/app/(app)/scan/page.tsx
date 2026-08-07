@@ -24,9 +24,17 @@ export default function ScanPage() {
       {/* How it works */}
       <div className="glass-card p-4">
         <p className="text-xs text-white/40 leading-relaxed">
-          <strong className="text-white">How it works:</strong> Take a photo of any Korean product label.
-          Our AI reads the Korean text, extracts every ingredient, and gives you personalized intelligence
-          — safety analysis, skin-type match, price comparison, community reviews, and authenticity verification.
+          <strong className="text-white">How it works:</strong> Photograph the product{' '}
+          <strong className="text-white/70">front and back</strong>, then tick &ldquo;same
+          product&rdquo; — the front gives Yuri the name and brand, the back has the ingredient
+          list. She reads the Korean text, extracts every ingredient, and gives you personalized
+          intelligence: safety analysis, skin-type match, price comparison, community reviews, and
+          authenticity verification.
+        </p>
+        <p className="text-xs text-white/30 leading-relaxed mt-2">
+          For the ingredient list, shoot the back panel straight-on in even light. Backlighting a
+          glossy package (against a window or bright sky) is the most common reason a label
+          can&rsquo;t be read.
         </p>
       </div>
 

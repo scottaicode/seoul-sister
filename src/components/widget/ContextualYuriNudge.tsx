@@ -135,7 +135,32 @@ export default function ContextualYuriNudge({ kind, name, brand }: ContextualYur
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 24 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100vw-2rem)] max-w-md
+          // POSITIONING — do NOT reintroduce `left-1/2 -translate-x-1/2` here
+          // (Aug 7 2026 — Bailey: "that lil thing in corner is completely cut
+          // off every time").
+          //
+          // This is a motion.div animating `y`. framer-motion writes animated
+          // transforms as an INLINE style.transform, and its builder emits ONLY
+          // the keys present in the transform object (buildTransform in
+          // framer-motion/dist/cjs/index-legacy-*.js loops transformPropOrder and
+          // appends where `transform[key] !== undefined`). Animating `y` alone
+          // produces `translateY(0px) translateZ(0)` — with NO translateX(-50%).
+          // That inline style does not merge with the Tailwind class, it REPLACES
+          // it, so `-translate-x-1/2` was silently dropped at runtime while
+          // looking perfectly correct in source.
+          //
+          // Result: left resolved to 50% of the viewport (195px on a 390px
+          // iPhone) with a 358px-wide box — a right edge at 553px, i.e. 163px
+          // off-screen, deterministically, on every render. It shipped that way
+          // in this file's first commit (Jun 29) and was live on all three feeder
+          // surfaces: /products/[id], /best/[category] (our most-cited pages)
+          // and /ingredients/[slug].
+          //
+          // Centering now goes through the BOX MODEL (symmetric insets +
+          // mx-auto), which framer cannot clobber no matter what it animates.
+          // Also fixes the missing safe-area inset — a bare bottom-4 put the card
+          // in the iOS home-indicator region.
+          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 right-4 z-40 mx-auto max-w-md
                      rounded-2xl bg-seoul-card/95 backdrop-blur-xl border border-gold/30 shadow-glow-gold
                      p-4 flex items-start gap-3"
           role="dialog"

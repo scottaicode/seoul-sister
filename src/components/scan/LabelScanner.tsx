@@ -16,8 +16,16 @@ import {
   type ScanQueueItem,
 } from './scan-upload'
 
-/** One POST to /api/scan for a single image — the route is one-image-per-call. */
-async function scanImage(image: string): Promise<ScanResultData> {
+/**
+ * One POST to /api/scan. Pass ONE image for a single label, or SEVERAL views of
+ * the SAME product (front + back) to be merged into one analysis.
+ *
+ * Bailey, Aug 7 2026: the scanner needs both sides. The front carries the product
+ * name and brand; the back carries the INCI list. Sending them as separate scans
+ * produced two half-complete rows for one bottle — one that knew the name but no
+ * ingredients, one that had ingredients but matched no product.
+ */
+async function scanImages(imgs: string[]): Promise<ScanResultData> {
   const { data: { session } } = await supabase.auth.getSession()
 
   const controller = new AbortController()
@@ -30,7 +38,8 @@ async function scanImage(image: string): Promise<ScanResultData> {
         'Content-Type': 'application/json',
         ...(session?.access_token && { Authorization: `Bearer ${session.access_token}` }),
       },
-      body: JSON.stringify({ image }),
+      // Single image keeps the original `image` field so nothing else changes.
+      body: JSON.stringify(imgs.length === 1 ? { image: imgs[0] } : { images: imgs }),
       signal: controller.signal,
     })
 
@@ -64,6 +73,16 @@ export default function LabelScanner() {
   const [scanning, setScanning] = useState(false)
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /**
+   * Are the queued photos multiple views of ONE product (front + back), or
+   * several different products?
+   *
+   * Defaults to TRUE for exactly two photos, because that is overwhelmingly the
+   * front-and-back case and it's the reason this exists. Three or more defaults
+   * to separate products (a shelf of items), matching the old batch behaviour.
+   * The user can flip it either way — we never silently merge a real batch.
+   */
+  const [sameProduct, setSameProduct] = useState(true)
 
   const handleFiles = useCallback(async (files: File[]) => {
     setError(null)
@@ -112,6 +131,10 @@ export default function LabelScanner() {
 
   // Sequential scan of every item not yet successfully scanned. Per-item
   // failure isolation: one bad photo never kills the rest of the batch.
+  //
+  // When `sameProduct` is on and there is more than one photo, all views go in a
+  // SINGLE request instead and produce one merged result — front for identity,
+  // back for INCI.
   const handleScan = useCallback(async () => {
     if (scanning) return
     const targets = queue.filter((item) => item.status === 'ready' || item.status === 'error')
@@ -119,6 +142,45 @@ export default function LabelScanner() {
 
     setScanning(true)
     setError(null)
+
+    const merge = sameProduct && targets.length > 1
+
+    if (merge) {
+      // One product, several views → one call, one result. The result lands on
+      // the first item; the rest are marked done so the UI doesn't offer to
+      // re-scan views that were already consumed.
+      setProgress({ current: 1, total: 1 })
+      setQueue((prev) =>
+        prev.map((q) =>
+          targets.some((t) => t.id === q.id) ? { ...q, status: 'scanning', error: null } : q
+        )
+      )
+      try {
+        const result = await scanImages(targets.map((t) => t.dataUrl))
+        const [primary, ...rest] = targets
+        setQueue((prev) =>
+          prev.map((q) => {
+            if (q.id === primary.id) return { ...q, status: 'done', result }
+            if (rest.some((r) => r.id === q.id)) return { ...q, status: 'done', result: null }
+            return q
+          })
+        )
+      } catch (err) {
+        const message = scanErrorMessage(err)
+        // The whole merged scan failed, so every contributing view failed — mark
+        // them all, or the user is left with photos that look fine but produced
+        // nothing.
+        setQueue((prev) =>
+          prev.map((q) =>
+            targets.some((t) => t.id === q.id) ? { ...q, status: 'error', error: message } : q
+          )
+        )
+        setError(message)
+      }
+      setProgress(null)
+      setScanning(false)
+      return
+    }
 
     let current = 0
     for (const target of targets) {
@@ -128,7 +190,7 @@ export default function LabelScanner() {
         prev.map((q) => (q.id === target.id ? { ...q, status: 'scanning', error: null } : q))
       )
       try {
-        const result = await scanImage(target.dataUrl)
+        const result = await scanImages([target.dataUrl])
         setQueue((prev) =>
           prev.map((q) => (q.id === target.id ? { ...q, status: 'done', result } : q))
         )
@@ -143,7 +205,7 @@ export default function LabelScanner() {
 
     setProgress(null)
     setScanning(false)
-  }, [queue, scanning])
+  }, [queue, scanning, sameProduct])
 
   const resetScan = () => {
     setQueue([])
@@ -230,6 +292,31 @@ export default function LabelScanner() {
     )
   }
 
+  // Merged front+back scan that has completed — one product, so render the single
+  // combined result rather than a per-photo batch list.
+  const mergedResult = sameProduct ? queue.find((q) => q.result)?.result ?? null : null
+  if (attempted && !scanning && sameProduct && mergedResult) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex gap-2">
+          {queue.map((item) => (
+            <img
+              key={item.id}
+              src={item.dataUrl}
+              alt=""
+              className="w-16 h-16 rounded-lg object-cover border border-white/10"
+            />
+          ))}
+        </div>
+        <p className="text-xs text-white/40">
+          Combined from {queue.length} photos of the same product.
+        </p>
+        <ScanResults result={mergedResult} onReset={resetScan} />
+        {errorBanner}
+      </div>
+    )
+  }
+
   // Multiple photos, results in (or partially in) — expandable list per photo
   if (attempted && !scanning) {
     return (
@@ -255,13 +342,36 @@ export default function LabelScanner() {
         onAddMore={handleFiles}
       />
 
+      {/* One product or several? This decides whether the photos are MERGED into
+          a single analysis (front + back of one bottle) or scanned separately.
+          Getting it wrong is cheap to undo — the choice is explicit, not inferred. */}
+      {!scanning && (
+        <div className="glass-card p-3 flex flex-col gap-2">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={sameProduct}
+              onChange={(e) => setSameProduct(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-gold shrink-0"
+            />
+            <span className="text-sm text-white/80">
+              These are all the same product
+              <span className="block text-xs text-white/40 mt-0.5">
+                Front and back of one bottle — Yuri reads the name from the front and the
+                ingredients from the back, then combines them into one analysis.
+              </span>
+            </span>
+          </label>
+        </div>
+      )}
+
       {!scanning && (
         <button
           onClick={handleScan}
           className="glass-button-primary py-3 text-base font-semibold flex items-center justify-center gap-2"
         >
           <Camera className="w-5 h-5" />
-          Analyze {queue.length} Labels
+          {sameProduct ? `Analyze Product (${queue.length} photos)` : `Analyze ${queue.length} Labels`}
         </button>
       )}
 

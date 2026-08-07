@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import type Anthropic from '@anthropic-ai/sdk'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { requireAuth } from '@/lib/auth'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
@@ -16,8 +17,14 @@ export const runtime = 'nodejs'
 
 const SCAN_SYSTEM_PROMPT = `You are Yuri's Korean Label Decoder specialist. You analyze Korean beauty product labels photographed by users.
 
+You may receive MORE THAN ONE PHOTO OF THE SAME PRODUCT — typically the FRONT (product name, brand, marketing claims) and the BACK (the INCI ingredient list, volume, manufacturer, expiry). Treat every image in a single request as different views of ONE product and merge what you read into one combined analysis:
+- Take the product name and brand from whichever image shows them clearly — usually the front.
+- Take the ingredient list from whichever image shows it — usually the back.
+- If the two images disagree, prefer the more legible one and say so in "warnings".
+- Never emit two separate products. One request describes one product.
+
 Your task:
-1. Read ALL text in the image (Korean and English)
+1. Read ALL text in the images (Korean and English)
 2. Identify the product name, brand, and category
 3. Extract the full ingredient list (INCI names)
 4. For each ingredient, provide:
@@ -28,6 +35,14 @@ Your task:
    - Safety rating (1-5, where 5 is safest)
    - Comedogenic rating (0-5, where 0 is non-comedogenic)
    - Any common concerns (e.g., "may cause irritation for sensitive skin")
+
+HONESTY — an unreadable label is a real answer, not a gap to fill:
+- If you cannot actually READ the ingredient list in any supplied image, return "ingredients": [] and say why in "warnings" (e.g. "Ingredient list not legible — backlit and low contrast. Photograph the BACK of the package in even light.").
+- NEVER invent a placeholder ingredient row. Do not emit entries like "NOT VISIBLE IN IMAGE", "unknown", or "n/a" as an ingredient name — an empty list means "could not read", and a fabricated row silently poisons the user's conflict checks.
+- Never infer an ingredient list from your own knowledge of the product. Only report INCI you can actually see. If you recognise the product but cannot read its label, name the product and leave ingredients empty.
+- Set "extracted_text" to what you genuinely read, even if partial.
+
+Respond ONLY with the JSON object — no preamble, no explanation, no markdown fence.
 
 Respond in JSON format:
 {
@@ -70,46 +85,101 @@ export async function POST(request: NextRequest) {
 
     const contentType = request.headers.get('content-type') || ''
 
-    let imageBase64: string
-    let mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif'
+    type ScanImage = {
+      mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif'
+      base64: string
+    }
 
-    if (contentType.includes('application/json')) {
-      const body = await request.json()
-      if (!body.image) {
-        throw new AppError('Missing image data', 400)
+    /**
+     * Accepts EITHER `image` (one data URL — the original contract, still used by
+     * every existing caller) OR `images` (an array of data URLs that are all views
+     * of the SAME product, e.g. front + back).
+     *
+     * Bailey, Aug 7 2026: the scanner needs to store both sides — the front for
+     * product identity, the back for the INCI list. Photographing only the back
+     * loses the name; photographing only the front loses the ingredients. Before
+     * this, each photo was an independent POST, so front and back became two
+     * unrelated scan rows for one bottle and neither was complete.
+     */
+    const MAX_IMAGES = 4
+    const images: ScanImage[] = []
+
+    if (!contentType.includes('application/json')) {
+      throw new AppError('Content-Type must be application/json', 400)
+    }
+
+    const body = await request.json()
+    const raw: unknown = Array.isArray(body.images)
+      ? body.images
+      : body.image
+        ? [body.image]
+        : null
+
+    if (!raw || (Array.isArray(raw) && raw.length === 0)) {
+      throw new AppError('Missing image data', 400)
+    }
+    if (!Array.isArray(raw)) {
+      throw new AppError('Invalid image format. Expected base64 data URL.', 400)
+    }
+    if (raw.length > MAX_IMAGES) {
+      throw new AppError(`Too many images. Send at most ${MAX_IMAGES} views of one product.`, 400)
+    }
+
+    for (const entry of raw) {
+      if (typeof entry !== 'string') {
+        throw new AppError('Invalid image format. Expected base64 data URL.', 400)
       }
       // Expect base64 data URL: "data:image/jpeg;base64,..."
-      const match = body.image.match(/^data:(image\/(jpeg|png|webp|gif));base64,(.+)$/)
+      const match = entry.match(/^data:(image\/(jpeg|png|webp|gif));base64,(.+)$/)
       if (!match) {
         throw new AppError('Invalid image format. Expected base64 data URL.', 400)
       }
-      mediaType = match[1] as typeof mediaType
-      imageBase64 = match[3]
-    } else {
-      throw new AppError('Content-Type must be application/json', 400)
+      images.push({
+        mediaType: match[1] as ScanImage['mediaType'],
+        base64: match[3],
+      })
     }
 
     const anthropic = getAnthropicClient()
 
+    // Label each view so the model knows these are the SAME product, and put the
+    // instruction AFTER the images (an instruction trailing the content it refers
+    // to is followed more reliably than one that precedes it).
+    const imageBlocks: Anthropic.ContentBlockParam[] = images.flatMap((img, i) => {
+      const blocks: Anthropic.ContentBlockParam[] = []
+      if (images.length > 1) {
+        blocks.push({
+          type: 'text',
+          text: `View ${i + 1} of ${images.length} of the same product:`,
+        })
+      }
+      blocks.push({
+        type: 'image',
+        source: { type: 'base64', media_type: img.mediaType, data: img.base64 },
+      })
+      return blocks
+    })
+
     const response = await anthropic.messages.create({
       model: MODELS.primary,
-      max_tokens: 4096,
+      // 4096 truncated real labels. A 40-ingredient INCI list emits 7 verbose
+      // fields per ingredient, and a cut-off response is invalid JSON — which
+      // surfaced to the user as a bare "Internal server error" (the 500 branch of
+      // handleApiError masks the message). Raised, and stop_reason is now checked
+      // so truncation reports itself instead of masquerading as a parse failure.
+      max_tokens: 8192,
       system: SCAN_SYSTEM_PROMPT,
       messages: [
         {
           role: 'user',
           content: [
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: mediaType,
-                data: imageBase64,
-              },
-            },
+            ...imageBlocks,
             {
               type: 'text',
-              text: 'Analyze this Korean beauty product label. Extract all ingredients and provide safety analysis.',
+              text:
+                images.length > 1
+                  ? `These ${images.length} photos are different views of ONE product (typically front and back). Merge them into a single analysis: take the name and brand from whichever view shows them, and the ingredient list from whichever view shows it. Extract all ingredients and provide safety analysis.`
+                  : 'Analyze this Korean beauty product label. Extract all ingredients and provide safety analysis.',
             },
           ],
         },
@@ -121,16 +191,86 @@ export async function POST(request: NextRequest) {
       throw new AppError('No analysis result from AI', 500)
     }
 
-    // Parse the JSON from Claude's response
+    // NOTE: do NOT add an assistant-prefill turn (`{ role: 'assistant', content: '{' }`)
+    // to force bare JSON here. Opus 4.8 REJECTS prefill outright —
+    // "This model does not support assistant message prefill. The conversation must
+    // end with a user message." (400, verified against the live API Aug 7 2026).
+    // Adding it would 400 every scan. The system prompt asks for bare JSON instead,
+    // and the fence/prose stripping below is the belt-and-braces.
+    const rawText = textContent.text
+
+    // A truncated response is not a parse bug — say which one it is. Without this
+    // both failures collapsed into the same opaque 500 and were indistinguishable
+    // in the logs.
+    if (response.stop_reason === 'max_tokens') {
+      console.error('[scan] response truncated at max_tokens', {
+        userId: user.id,
+        images: images.length,
+        chars: rawText.length,
+      })
+      throw new AppError(
+        'That label has a very long ingredient list and the analysis was cut off. Try photographing just the ingredient panel.',
+        422
+      )
+    }
+
+    // Parse the JSON from Claude's response. Strip a ```json fence first — with
+    // prefill unavailable on this model, a fenced reply is the likeliest deviation
+    // from the requested bare object, and the greedy brace match below would
+    // otherwise be the only thing standing between a fence and a 500.
     let analysis: Record<string, unknown>
+    const fenced = rawText.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
     try {
-      analysis = JSON.parse(textContent.text.trim())
+      analysis = JSON.parse(fenced)
     } catch {
-      const jsonMatch = textContent.text.match(/\{[\s\S]*\}/)
+      const jsonMatch = fenced.match(/\{[\s\S]*\}/)
       if (!jsonMatch) {
-        throw new AppError('Failed to parse analysis result', 500)
+        console.error('[scan] unparseable analysis', {
+          userId: user.id,
+          stopReason: response.stop_reason,
+          preview: rawText.slice(0, 300),
+        })
+        throw new AppError(
+          'Could not read that label clearly. Try a straight-on photo of the ingredient panel in even light.',
+          422
+        )
       }
-      analysis = JSON.parse(jsonMatch[0])
+      try {
+        analysis = JSON.parse(jsonMatch[0])
+      } catch {
+        console.error('[scan] JSON recovery failed', {
+          userId: user.id,
+          stopReason: response.stop_reason,
+          preview: rawText.slice(0, 300),
+        })
+        throw new AppError(
+          'Could not read that label clearly. Try a straight-on photo of the ingredient panel in even light.',
+          422
+        )
+      }
+    }
+
+    // Drop placeholder ingredient rows the model may still emit for an unreadable
+    // panel. One of Bailey's Aug 7 scans stored a single ingredient literally named
+    // "NOT VISIBLE IN IMAGE" — which then flows into ingredients_found and every
+    // downstream conflict check as if it were a real INCI name. An empty list is
+    // the honest representation of "could not read".
+    // Anchored to the START and requiring a word boundary so real INCI names that
+    // merely BEGIN with these letters survive — "Nonapeptide-1", "Nutmeg Oil" and
+    // "Nannochloropsis Oculata Extract" must never be dropped. Dash-only values
+    // include the unicode dashes (– — ‒) an AI is more likely to emit than "-".
+    const PLACEHOLDER_INGREDIENT = /^(not visible|not legible|not readable|unknown|unclear|n\/?a|none|null|[-–—‒]+)\s*$|^(not visible|not legible|not readable|unclear)\b/i
+    if (Array.isArray(analysis.ingredients)) {
+      const before = analysis.ingredients.length
+      analysis.ingredients = (analysis.ingredients as Array<{ name_inci?: string; name_en?: string }>)
+        .filter((ing) => {
+          const name = String(ing?.name_inci || ing?.name_en || '').trim()
+          return name.length > 0 && !PLACEHOLDER_INGREDIENT.test(name)
+        })
+      const dropped = before - (analysis.ingredients as unknown[]).length
+      if (dropped > 0) {
+        console.warn('[scan] dropped placeholder ingredient rows', { userId: user.id, dropped })
+      }
     }
 
     // Try to match against existing products in our database
@@ -373,6 +513,10 @@ export async function POST(request: NextRequest) {
           conflict_check_failed: conflictCheckFailed,
           enrichment,
           reformulation,
+          // How many views fed this analysis. A front+back scan is a materially
+          // more complete record than a single blurry back-of-bottle shot, and
+          // without this the two are indistinguishable after the fact.
+          image_count: images.length,
         },
       })
     } catch {
