@@ -4,8 +4,132 @@
 **⏰ RECHECK ON OR AFTER: August 18 2026** (2 weeks after the Aug 4 sitemap
 submission, so Google has had time to crawl and grade the new URLs)
 
-**Status: DELIBERATELY NOT ACTED ON.** This is a decision waiting on evidence,
-not a bug. Read "The decision" before changing anything.
+**Status as of Aug 7 2026: PARTIALLY RESOLVED — `run_together` SHIPPED on
+Google's evidence. `shade_code` and `ppm` REMAIN DEFERRED to the Aug 18
+recheck.** See "Aug 7 2026 update" immediately below before reading the rest of
+this document, which was written when nothing had been acted on.
+
+---
+
+## ⚡ Aug 7 2026 update — Google graded early, and one rule shipped
+
+**The verdict arrived 11 days ahead of the recheck date**, unprompted: a Google
+Search Console email ("New reasons prevent pages in a sitemap from being
+indexed") flagging **Soft 404**. The email was a red herring — Soft 404 was
+**1 page**. The real signal was on the Indexing → Pages report it linked to.
+
+### What Google actually said (the Step 1 table, filled in)
+
+| Metric | Aug 4 baseline | **Aug 7 actual** |
+|---|---|---|
+| Indexed | (2,039 discovered) | **2,630** |
+| Not indexed | — | **12,600** (9 reasons) |
+| **Discovered – currently not indexed** | — | **11,997** |
+| Crawled – currently not indexed | — | 112 |
+| Duplicate without user-selected canonical | — | **9** |
+| Soft 404 | — | 1 |
+
+### Interpreting it against Step 2 of this doc
+
+The doc listed three possible verdicts. Reality matched **none of them cleanly**,
+and the distinction matters:
+
+- **"Duplicate without user-selected canonical"** — the outcome this doc called
+  *"the one that matters"*, the trigger to ship the filter — came back at
+  **9 pages**. Essentially zero. **The shade-code duplicate theory was NOT
+  confirmed.** That is why `shade_code` did **not** ship.
+- **"Crawled – currently not indexed"** (Google looked and declined) is only
+  **112**.
+- The mass is **11,997 "Discovered – currently not indexed"** — a category this
+  doc did not anticipate. It means Google knows the URLs exist and **has not
+  spent crawl budget visiting them**. That is a verdict on *corpus quality in
+  aggregate*, not on any single page.
+
+**Crucially: this is not the 404 problem.** 50 live sitemap URLs were sampled as
+Googlebot before anything was changed — **50/50 returned HTTP 200**. The Aug 4
+reachability gate is working. These are healthy pages Google decided were not
+worth fetching.
+
+### What shipped (commit `9d0c86d`)
+
+Only the **`run_together`** rule, promoted from candidate to shipped because
+Google's data supports it and it is the one with a measured safety record.
+
+The pages are real 200s rendering ~700 words of boilerplate under fused names —
+sampled live: `TocopherolChampagne Glazed: Calcium Titanium Borosilicate`,
+`Yellow Iron Oxide, Juicy Coral, Talc`. At that volume they dilute the
+ingredient corpus, which is the AI-citation moat.
+
+Measured against the live catalog **before** shipping (per the "measure first"
+rule this doc exists to enforce):
+
+| Check | Result |
+|---|---|
+| Rows matched | 1,521 |
+| Incremental (not already caught by existing guards) | 1,359 |
+| **Enriched pages lost (`rich_content_generated_at`)** | **0** |
+| Max product-links on any row removed | **5** (vs Sodium Hyaluronate's 2,825) |
+| `1,2-Hexanediol` (511 links) survives | ✅ |
+| `Hexapeptide-9` (210 links) survives | ✅ |
+
+**Live result, verified on production:** sitemap **14,102 → 12,824 URLs**
+(ingredient URLs 7,952 → 6,674). `Sodium Hyaluronate`, `Niacinamide`,
+`Ceramide NP`, `Panthenol`, `Allantoin`, `Squalane`, `Grape Seed Oil` all
+confirmed still present.
+
+### Where the filter actually went — this doc's Step 4 was WRONG
+
+Step 4 below says the filter goes in `src/app/sitemap.ts`. **It did not.** It
+went into the shared pollution guard, `isPollutedIngredientName` /
+`excludePollutedIngredientRows` in `src/lib/pipeline/ingredient-parser.ts`.
+
+That is deliberate and better: the sitemap, ingredient pages, ingredient search,
+blog and Yuri's tools all consume that one guard, so a fused name is now hidden
+from **every** read path rather than just the sitemap. `ingredient-matcher.ts`
+already gates the **write** path, so new artifacts stop being created at ingest.
+
+Two mechanics worth knowing before touching it:
+- The SQL mirror uses PostgREST **`match`** (`~`, case-SENSITIVE). Using
+  `imatch` (`~*`) would match every name containing two adjacent letters and
+  **silently empty the catalog**. A test pins this.
+- Still a publishing decision, not a data mutation — **no row was edited or
+  deleted**, consistent with the "Do NOT do these" list.
+
+### Residual, deliberately not chased
+
+`ultra-marine-ci-77007-etalc` is still published. The underlying name is
+`Ultra Marine (CI 77007)/Talc` — a **slash** fusion with no lowercase→uppercase
+boundary, so the rule legitimately does not match it. Extending to slashes would
+hit `Caprylic/Capric Triglyceride` and `Fragrance/Parfum`. Measured scope of
+this residual class: **1 row, 0 product links, 0 enriched.** Not worth a rule.
+This is the "do not tune a heuristic by feel" rule being obeyed.
+
+### Do NOT resubmit to Bing over this
+
+Asked and answered Aug 7. **No submission was made, on purpose.** Bing is the
+channel that *works* — 525 citations/week, 33–66% share on commercial K-beauty
+queries. It is not reporting a problem; this was a Google crawl-budget issue.
+Also, removing URLs from a sitemap is **passive** — there is no "resubmit" that
+accelerates a removal, and IndexNow (`src/lib/utils/indexnow.ts`) already pings
+Bing/Yandex on ingest automatically. Resubmitting a healthy channel to fix
+another engine's problem is risk without measured upside.
+
+### What is still open for Aug 18
+
+1. **`shade_code`** (183 pages) — NOT shipped. Its justifying evidence
+   ("Duplicate without user-selected canonical") came back at **9**. Re-read
+   that number at recheck before touching it.
+2. **`ppm`** (3,446 pages) — NOT shipped, unchanged from the original deferral.
+   Still the least-proven rule, still 70% of the original proposed cut.
+3. **Did indexed climb?** The real test of this fix. 2,630 is the number to beat.
+   Expect weeks, not days — and note that **removing a URL from a sitemap does
+   not deindex it**, it only stops advertising it.
+4. `/ingredients/000-ppm` → "Invalid Ingredient" (Step 5) — still unfixed.
+
+**A caution for whoever does the Aug 18 read:** do not treat a drop in "Discovered –
+currently not indexed" as proof this fix worked. The denominator changed — 1,278
+URLs left the sitemap. Compare **indexed count** (2,630) and indexed-as-a-share
+of submitted, not the raw not-indexed number.
 
 ---
 
@@ -71,13 +195,13 @@ the page names itself invalid and we are asking Google to index it.
 
 Baseline at Aug 4 2026, over the **12,243** distinct published ingredient pages:
 
-| Rule | Pages cut | Max product-links among cuts |
-|---|---|---|
-| `shade_code` — starts with `#`/`'`/`\` or `NN Word` | 183 | 4 |
-| `run_together` — a lowercase letter followed by uppercase | 1,366 | 5 |
-| `ppm_artifact` — name contains ppm/ppb | 3,446 | **43** |
-| **Combined** | **4,887 (39.9%)** | — |
-| Would remain | 7,356 | — |
+| Rule | Pages cut | Max product-links among cuts | Status |
+|---|---|---|---|
+| `shade_code` — starts with `#`/`'`/`\` or `NN Word` | 183 | 4 | **DEFERRED** — its trigger (duplicate-canonical) measured 9 on Aug 7 |
+| `run_together` — a lowercase letter followed by uppercase | 1,366 | 5 | **✅ SHIPPED Aug 7 2026** (`9d0c86d`) — see update at top |
+| `ppm_artifact` — name contains ppm/ppb | 3,446 | **43** | **DEFERRED** — least proven, unchanged |
+| **Combined** | **4,887 (39.9%)** | — | only ~1,278 of these actually cut |
+| Would remain | 7,356 | — | actual live count: **6,674** ingredient URLs |
 
 ### ⚠️ Two warnings before anyone applies this
 
@@ -157,6 +281,11 @@ Also Bing Webmaster Tools → **Sitemaps** → "URLs discovered" (was 2.0K).
 
 ### 3. If cutting, do it in this order
 
+> **⚠️ Step 1 is DONE for `run_together` (shipped Aug 7 2026, commit `9d0c86d`).**
+> Only `shade_code` remains from the original "1,549 pages" pairing, and its
+> justifying evidence did not materialize — duplicate-canonical measured **9**.
+> Do not ship it just because this list says so; re-read the GSC number first.
+
 1. Apply **shade_code + run_together only** first (1,549 pages, max 5 product
    links, near-zero risk).
 2. Re-run the safety check above; confirm 0 false positives at ≥20 links.
@@ -165,6 +294,14 @@ Also Bing Webmaster Tools → **Sitemaps** → "URLs discovered" (was 2.0K).
 4. Leave `ppm` for a separate, later decision with its own verification.
 
 ### 4. Where the filter goes
+
+> **⚠️ SUPERSEDED Aug 7 2026.** `run_together` did NOT go here. It went into the
+> shared guard `isPollutedIngredientName` /
+> `excludePollutedIngredientRows` (`src/lib/pipeline/ingredient-parser.ts`), so
+> every read path inherits it — sitemap, ingredient pages, search, blog, Yuri's
+> tools — and the write path is already gated in `ingredient-matcher.ts`.
+> Prefer the shared guard for any remaining rule; put it in `sitemap.ts` only if
+> the rule is genuinely publishing-specific.
 
 `src/app/sitemap.ts`, alongside the existing reachability gate in the
 `ingredientPages` map — the same place `pollutedSlugs` and `matchesFastPath`
