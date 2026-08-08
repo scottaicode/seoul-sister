@@ -16,6 +16,48 @@ import { geocodeLocation } from '@/lib/geo/geocode'
 const VALID_INGREDIENT_SOURCES = new Set(['label_scan', 'web_lookup'])
 
 /**
+ * Retailers we send people to. Everything else sells authentic product but has
+ * slow shipping and weak refund recourse, so it is shown, never steered toward.
+ *
+ * WHY THIS LIVES IN THE TOOL RESULT (a real cold visitor, Aug 8 2026). Suzy
+ * arrived from Bailey's TikTok with a stinging, barrier-compromised face. Yuri
+ * diagnosed it correctly and anchored the reset on the COSRX Ceramide
+ * moisturizer — then wrote "$18.40 at YesStyle, $23 at Soko Glam, I'd order
+ * from Soko Glam even at the couple dollars more." The judgment was RIGHT and
+ * the steer was right. But the cheaper number a first-time visitor reads is
+ * YesStyle's, and the prompt policy is explicit that we don't send people there.
+ *
+ * The prompt already said all of this, in four bullets, correctly. It was not
+ * enough, and the reason is structural rather than a wording problem: the tool
+ * handed back `{retailer: "YesStyle", price_usd: 18.40}` — a bare name with no
+ * indication of what we think of it — and asked Yuri to recall a policy from
+ * several thousand tokens earlier and re-derive the classification per row.
+ * The catalog's `trust_score` reads like it would carry this, and does not:
+ * it scores COUNTERFEIT risk, on which YesStyle is fine. Rewording the prompt a
+ * fifth time is the move this codebase has already paid for twice (the widget
+ * give/gate, the cumulative-give instrument). Attach the fact to the row.
+ *
+ * THIS IS A FACT, NOT A FILTER. The row is still returned, still priced, still
+ * ordered by price. Yuri decides what to do with a cheap non-recommended
+ * listing — including showing it and saying she'd buy elsewhere anyway, which
+ * is exactly what she did here and is the honest answer. Filtering the row
+ * would hide a real price from a real shopper and make Yuri's "$23" look
+ * uninformed rather than considered. A test fails if this becomes a filter.
+ */
+const RECOMMENDED_RETAILERS = new Set(['olive young', 'soko glam', 'iherb'])
+
+export function isRecommendedRetailer(name: string | null | undefined): boolean {
+  if (!name) return false
+  // Substring, not equality: the catalog stores "Olive Young" while the prompt
+  // and UI say "Olive Young Global". Both must classify identically.
+  const n = name.toLowerCase().trim()
+  for (const r of RECOMMENDED_RETAILERS) {
+    if (n.includes(r)) return true
+  }
+  return false
+}
+
+/**
  * Record that a subscriber owns a product our catalog doesn't have.
  *
  * The gap was previously invisible: a miss evaporated into the conversation, and
@@ -1554,10 +1596,15 @@ async function executeSearchProducts(
     const pid = p.id as string
     const prices = (allPrices || [])
       .filter((pr: Record<string, unknown>) => pr.product_id === pid)
-      .map((pr: Record<string, unknown>) => ({
-        retailer: (pr.retailer as Record<string, string>)?.name || 'Unknown',
-        price_usd: pr.price_usd,
-      }))
+      .map((pr: Record<string, unknown>) => {
+        const retailer = (pr.retailer as Record<string, string>)?.name || 'Unknown'
+        return {
+          retailer,
+          price_usd: pr.price_usd,
+          // Recommendability travels WITH the price row. See RECOMMENDED_RETAILERS.
+          recommended_to_buy_from: isRecommendedRetailer(retailer),
+        }
+      })
     const ingredients = (topIngredients || [])
       .filter((i: Record<string, unknown>) => i.product_id === pid)
       .map((i: Record<string, unknown>) => {
@@ -1753,12 +1800,14 @@ async function executeGetProductDetails(
 
   const prices = (pricesRes.data || []).map((p: Record<string, unknown>) => {
     const r = p.retailer as Record<string, unknown> | null
+    const retailerName = (r?.name as string) || 'Unknown'
     return {
-      retailer: r?.name || 'Unknown',
+      retailer: retailerName,
       price_usd: p.price_usd,
       in_stock: p.in_stock,
       trust_score: r?.trust_score,
       is_authorized: r?.is_authorized,
+      recommended_to_buy_from: isRecommendedRetailer(retailerName),
       url: p.url,
     }
   })
@@ -2266,13 +2315,19 @@ async function executeComparePrices(
     const ageDays = lastChecked
       ? Math.floor((now - new Date(lastChecked).getTime()) / 86_400_000)
       : null
+    const retailerName = (r?.name as string) || 'Unknown'
     return {
-      retailer: r?.name || 'Unknown',
+      retailer: retailerName,
       price_usd: p.price_usd,
       in_stock: p.in_stock,
       url: p.url || r?.website || null,
       trust_score: r?.trust_score,
       is_authorized: r?.is_authorized,
+      // NOT the same axis as trust_score/is_authorized, which score counterfeit
+      // risk — YesStyle is authorized and sells authentic product, and we still
+      // don't send people there (slow shipping, weak refunds). See
+      // RECOMMENDED_RETAILERS. Fact attached to the row; Yuri owns the call.
+      recommended_to_buy_from: isRecommendedRetailer(retailerName),
       last_checked: lastChecked,
       age_days: ageDays,
       // Phase 15.x staleness honesty: flag prices >14 days old. K-beauty
@@ -2300,7 +2355,22 @@ async function executeComparePrices(
         : 0,
       is_stale: cheapest.is_stale,
       age_days: cheapest.age_days,
+      // "best_deal" means LOWEST PRICE and nothing else. The label reads like an
+      // endorsement, which is the trap: the cheapest row is often one of the
+      // retailers we don't steer toward. Carry the distinction on the field
+      // itself so the name can't quietly do work the data doesn't support.
+      recommended_to_buy_from: cheapest.recommended_to_buy_from,
     },
+    // The cheapest row we'd actually send someone to, when that differs from the
+    // cheapest row overall. Present so Yuri has the real alternative in hand
+    // instead of having to re-scan the list; null when the cheapest is already
+    // a recommended retailer, or when no recommended retailer carries it.
+    cheapest_recommended:
+      cheapest.recommended_to_buy_from
+        ? null
+        : (inStockPrices.find((p) => p.recommended_to_buy_from) ??
+           formatted.find((p) => p.recommended_to_buy_from) ??
+           null),
     total_retailers: formatted.length,
     freshness: {
       stale_count: staleCount,
