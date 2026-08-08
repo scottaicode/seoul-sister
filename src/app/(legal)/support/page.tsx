@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { CONTACT_EMAIL, contactMailto } from '@/lib/contact'
 
 export const metadata = {
   title: 'Support',
@@ -65,10 +66,10 @@ export default function SupportPage() {
                 Payment problems, refund requests, or account access issues.
               </p>
               <a
-                href="mailto:support@seoulsister.com?subject=Billing%20Issue"
+                href={contactMailto('Billing Issue')}
                 className="text-glass-blue hover:text-glass-blue/80 text-xs font-medium transition-colors"
               >
-                support@seoulsister.com &rarr;
+                {CONTACT_EMAIL} &rarr;
               </a>
             </div>
           </div>
@@ -124,10 +125,10 @@ export default function SupportPage() {
             Still need help? Email us directly.
           </p>
           <a
-            href="mailto:support@seoulsister.com"
+            href={contactMailto()}
             className="text-gold hover:text-gold/80 font-medium transition-colors"
           >
-            support@seoulsister.com
+            {CONTACT_EMAIL}
           </a>
           <p className="text-white/30 text-xs mt-2">
             We typically respond within 24 hours.

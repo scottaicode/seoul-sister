@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { CONTACT_EMAIL, contactMailto } from '@/lib/contact'
 
 export const metadata = {
   title: 'Terms of Service',
@@ -210,8 +211,8 @@ export default function TermsPage() {
         <p>For questions about these terms:</p>
         <p className="mt-2">
           <strong className="text-white/90">Email:</strong>{' '}
-          <a href="mailto:legal@seoulsister.com" className="text-gold-light hover:text-gold transition-colors">
-            legal@seoulsister.com
+          <a href={contactMailto('Legal Inquiry')} className="text-gold-light hover:text-gold transition-colors">
+            {CONTACT_EMAIL}
           </a>
         </p>
       </section>

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { CONTACT_EMAIL, contactMailto } from '@/lib/contact'
 
 export const metadata = {
   title: 'Privacy Policy',
@@ -179,8 +180,8 @@ export default function PrivacyPage() {
         <p>For privacy questions, data requests, or concerns:</p>
         <p className="mt-2">
           <strong className="text-white/90">Email:</strong>{' '}
-          <a href="mailto:privacy@seoulsister.com" className="text-gold-light hover:text-gold transition-colors">
-            privacy@seoulsister.com
+          <a href={contactMailto('Privacy Request')} className="text-gold-light hover:text-gold transition-colors">
+            {CONTACT_EMAIL}
           </a>
         </p>
       </section>
