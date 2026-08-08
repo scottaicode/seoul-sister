@@ -148,18 +148,34 @@ export async function GET(request: NextRequest) {
       if (row.name_en) productNames.set(row.id, row.name_en)
     }
     if (candidateIds.length === 0) {
+      // EVERY field the main return sends must appear here too. This branch
+      // used to omit `allergens`, `has_decision_memory_exclusions` and
+      // `total_pages`, and the client reads `data.allergens.length`
+      // unconditionally — so a search matching zero products (typing "Medicc"
+      // on the way to "Medicube") returned 200 OK with a payload that threw
+      // `Cannot read properties of undefined (reading 'length')` during render.
+      // The fetch succeeded, so no error banner fired; it went straight to the
+      // error boundary and looked like a hard crash. Aug 7 2026, found on
+      // Bailey's account.
+      //
+      // Two shapes for one endpoint is the defect. If you add a field below,
+      // add it to the main return too, and vice versa.
       return NextResponse.json({
         fits: [],
         skipped: [],
         total_fits: 0,
         total_skipped: 0,
         page: parsed.page,
+        total_pages: 0,
         active_phase: context.activePhase
           ? {
               phase_number: context.activePhase.phaseNumber,
               name: context.activePhase.name,
+              goal: context.activePhase.goal,
             }
           : null,
+        has_decision_memory_exclusions: context.excludedSubstances.length > 0,
+        allergens: context.allergies,
       })
     }
 

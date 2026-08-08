@@ -189,7 +189,7 @@ function CuratedBrowseInner() {
         {data?.active_phase ? (
           <p className="text-white/55 text-sm leading-relaxed">
             Filtered against your <span className="text-rose-200">Phase {data.active_phase.phase_number} — {data.active_phase.name}</span> protocol
-            {data.allergens.length > 0 ? `, your declared allergens,` : ''}
+            {(data.allergens?.length ?? 0) > 0 ? `, your declared allergens,` : ''}
             {data.has_decision_memory_exclusions ? ` and what Yuri's flagged in past conversations` : ''}.
             {' '}Want a deeper read? Ask her.
           </p>

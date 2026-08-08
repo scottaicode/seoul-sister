@@ -40,6 +40,15 @@ function checkRateLimitInMemory(
 /**
  * Check rate limit using Supabase (persists across Vercel cold starts).
  * Falls back to in-memory if the database function isn't available yet.
+ *
+ * THE FALLBACK IS NOT A SAFETY NET — IT IS A HOLE. In-memory state does not
+ * survive a Vercel invocation, so a persistent RPC failure means the limit is
+ * effectively not enforced at all. From Aug 7 2026 to whenever the BIGINT
+ * migration landed, every 30-day window (the 40/IP preview backstop, the
+ * lifetime message cap) failed this way and nobody could tell, because a dead
+ * check and a clean check both returned `allowed: true`.
+ *
+ * So: the catch LOGS. A silent fallback is how the last one hid.
  */
 export async function checkRateLimit(
   key: string,
@@ -64,8 +73,13 @@ export async function checkRateLimit(
       remaining: row.remaining,
       resetIn: row.reset_in_ms,
     }
-  } catch {
-    // Table/function doesn't exist yet — fall back to in-memory
+  } catch (err) {
+    console.error(
+      `[rate-limiter] DB check FAILED for key="${key}" window=${windowMs}ms — ` +
+        `falling back to in-memory, which does NOT persist across invocations. ` +
+        `This limit is effectively unenforced until the cause is fixed.`,
+      err
+    )
     return checkRateLimitInMemory(key, maxRequests, windowMs)
   }
 }
