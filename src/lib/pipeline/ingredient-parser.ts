@@ -46,8 +46,49 @@ export function isPollutedIngredientName(name: string): boolean {
     name.includes('[') ||
     name.includes(']') ||
     name.length > MAX_INCI_NAME_LENGTH ||
-    looksLikeIngredientList(name)
+    looksLikeIngredientList(name) ||
+    hasRunTogetherBoundary(name)
   )
+}
+
+/**
+ * A lowercase letter immediately followed by an uppercase one means two names
+ * were concatenated when a delimiter went missing: "WaterGlycerin",
+ * "HyaluronicAcid", "PotassiumChloride", "01 BlackWater", "PDRN AmpouleWater".
+ *
+ * Added Aug 7 2026 after Google Search Console flagged the indexing shape: of
+ * 14,102 submitted URLs only 2.63K were indexed, with 11,997 sitting in
+ * "Discovered - currently not indexed" — Google's verdict that a URL is not
+ * worth spending crawl budget on. Sampling found these pages return a healthy
+ * 200 (so no 404 rule catches them) while rendering a title like
+ * "TocopherolChampagne Glazed: Calcium Titanium Borosilicate" over ~700 words
+ * of boilerplate. Thin near-duplicates at that volume dilute the whole
+ * ingredient corpus, which is the AI-citation moat.
+ *
+ * MEASURED against the live catalog before shipping, because this file's header
+ * warns that an earlier run-together heuristic flagged 4,898 rows including
+ * "Hexapeptide-9" and was rightly discarded:
+ *
+ *   - 1,521 rows match; 1,359 are NOT already caught by the guards above.
+ *   - ZERO of them have rich_content_generated_at — no enriched page is lost.
+ *   - The most-linked row it removes has 5 product links ("Asiatic AcidSTEP2)
+ *     Water"). For scale, Sodium Hyaluronate has 2,825.
+ *   - Every one of the top 40 shortest matches is a parse failure. Not one is
+ *     a real ingredient.
+ *   - Re-verified that the catalog's highest-value names do NOT match, including
+ *     the two this file warns about: 1,2-Hexanediol (511 links) and
+ *     Hexapeptide-9 (210). Also Ceramide NP, Centella Asiatica Extract, PEG/PPG
+ *     and CI-coded names — all survive.
+ *
+ * Why the earlier heuristic over-matched and this one does not: it keyed on
+ * "no space between words", which real INCI names violate constantly
+ * (hyphens, digits, slashes). This keys ONLY on a case boundary, which real
+ * INCI never contains mid-token — capitalization always follows a space,
+ * hyphen, or slash. Do NOT extend this to digits ("Hexapeptide-9") or to
+ * uppercase-followed-by-uppercase ("PEG", "EDTA", "CI 77491", "Ceramide NP").
+ */
+function hasRunTogetherBoundary(name: string): boolean {
+  return /[a-z][A-Z]/.test(name)
 }
 
 /**
@@ -111,7 +152,7 @@ export function excludePollutedIngredientRows<
   T extends { not(column: string, operator: string, value: string): T },
 >(query: T, column = 'name_inci'): T {
   const tooLong = '_'.repeat(MAX_INCI_NAME_LENGTH + 1) + '%'
-  let q = query
+  let q: T = query
     .not(column, 'ilike', '%@%')
     .not(column, 'ilike', '%[%')
     .not(column, 'ilike', '%]%')
@@ -122,6 +163,12 @@ export function excludePollutedIngredientRows<
   for (const sep of LIST_ONLY_SEPARATORS) {
     q = q.not(column, 'ilike', `%${sep}%`)
   }
+
+  // Mirror hasRunTogetherBoundary. `match` is PostgREST's case-SENSITIVE POSIX
+  // regex operator (~); `imatch` (~*) would be case-insensitive and therefore
+  // match every name with two adjacent letters — i.e. everything. The case
+  // sensitivity is the whole point of this rule, so it must not be relaxed.
+  q = q.not(column, 'match', '[a-z][A-Z]')
 
   // NOTE: the comma-outside-parentheses rule in looksLikeIngredientList cannot be
   // expressed as a LIKE pattern, so it is enforced in TS only. That is acceptable

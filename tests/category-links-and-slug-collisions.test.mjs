@@ -103,6 +103,7 @@ async function loadPicker() {
   const guardPieces = [
     /const MAX_INCI_NAME_LENGTH[\s\S]*?\n/,
     /(?:export )?function looksLikeIngredientList\([\s\S]*?\n\}/,
+    /(?:export )?function hasRunTogetherBoundary\([\s\S]*?\n\}/,
     /(?:export )?function isPollutedIngredientName\([\s\S]*?\n\}/,
   ]
     .map((re) => {

@@ -208,3 +208,72 @@ test('every matcher caller handles the refusal', () => {
     'fast-link.ts must skip refused ingredients'
   )
 })
+
+/**
+ * RUN-TOGETHER PARSE ARTIFACTS (Aug 7 2026)
+ *
+ * Google Search Console flagged the shape: 14,102 URLs submitted, 2.63K indexed,
+ * 11,997 "Discovered - currently not indexed". Sampling the live site found these
+ * pages return 200 (so no 404 rule catches them) while rendering titles like
+ * "TocopherolChampagne Glazed: Calcium Titanium Borosilicate" over ~700 words of
+ * boilerplate. Thin near-duplicates at that volume dilute the ingredient corpus,
+ * which is the AI-citation moat.
+ *
+ * Measured against the live catalog before shipping: 1,521 rows match, 1,359 not
+ * already caught, ZERO with rich content, max 5 product links on any row removed.
+ */
+test('run-together parse artifacts are refused', async () => {
+  const { isPollutedIngredientName } = await loadGuard()
+  for (const name of [
+    'WaterGlycerin',
+    'HyaluronicAcid',
+    'PotassiumChloride',
+    'BetaineSalicylate',
+    '01 BlackWater',
+    'PDRN AmpouleWater',
+    'Asiatic AcidSTEP2) Water',
+    'ButylphenylMethylpropional',
+    'TocopherolChampagne Glazed: Calcium Titanium Borosilicate',
+  ]) {
+    assert.equal(isPollutedIngredientName(name), true, `must refuse: ${name}`)
+  }
+})
+
+test('the run-together rule does not repeat the 4,898-row over-correction', async () => {
+  const { isPollutedIngredientName } = await loadGuard()
+  // These are the names this repo has already been burned by. A case-boundary
+  // rule must not touch hyphens, digits, slashes, or consecutive capitals.
+  for (const name of [
+    '1,2-Hexanediol',        // 511 links — the July 30 comma over-correction
+    'Hexapeptide-9',         // 210 links — flagged by the DISCARDED heuristic
+    'Ceramide NP',           // consecutive capitals
+    'Sodium Hyaluronate',    // 2,825 links
+    'Niacinamide',
+    'Centella Asiatica Extract',
+    'Butylene Glycol',
+    'Caprylic/Capric Triglyceride',
+    'PEG-100 Stearate',
+    'CI 77491',
+    'Niacinamide (50,000ppm)',
+    'Drometrizole Trisiloxane Methylene Bis-Benzotriazolyl Tetramethylbutylphenol',
+    'Hydroxyethyl Acrylate/Sodium Acryloyldimethyl Taurate Copolymer',
+    '3-O-Ethyl Ascorbic Acid',
+  ]) {
+    assert.equal(isPollutedIngredientName(name), false, `must KEEP: ${name}`)
+  }
+})
+
+test('the SQL-side filter mirrors the TS rule case-SENSITIVELY', () => {
+  // A read path that filters only in TS leaves holes in count/pagination, and
+  // `imatch` (~*) instead of `match` (~) would match every two-letter name and
+  // silently empty the catalog. Both are load-bearing.
+  const src = read('src', 'lib', 'pipeline', 'ingredient-parser.ts')
+  assert.ok(
+    /\.not\(column, 'match', '\[a-z\]\[A-Z\]'\)/.test(src),
+    'excludePollutedIngredientRows must apply the run-together rule server-side'
+  )
+  assert.ok(
+    !/'imatch', '\[a-z\]\[A-Z\]'/.test(src),
+    'must use case-sensitive match (~), never imatch (~*)'
+  )
+})
