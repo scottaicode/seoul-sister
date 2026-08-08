@@ -101,7 +101,25 @@ export default function RootLayout({
             noise at 16px — serif hairlines cannot survive a favicon. So the tab
             icon is a single S in Poppins Bold (the wordmark's own typeface,
             uniform stroke, nothing to lose). Verified by rendering at both sizes
-            and looking, not assumed. */}
+            and looking, not assumed.
+
+            /favicon.ico IS LOAD-BEARING FOR GOOGLE (Aug 7 2026). Bailey googled
+            us and still saw the retired 유 Hangul stopgap — which at 16px reads
+            as a stick figure in a hat. Every asset in the repo was already
+            correct; Google was serving a cached icon because it never found a
+            replacement it trusts. Two reasons, both verified at Google's own
+            docs rather than recalled:
+              1. /favicon.ico was a hard 404. That is the path Google requests by
+                 default. It now exists (16+32+48 in one container).
+              2. "we recommend using a favicon that's larger than 48x48px" — our
+                 largest was 32. Hence favicon-48.png, declared below.
+            Google also requires the favicon URL be STABLE. /favicon.ico is
+            permanent and unversioned: never rename or query-string it. The icon
+            churned six times on Jul 29-30, which is itself a reason Google
+            distrusted the signal.
+            Rebuild with: node scripts/build-favicon-ico.mjs */}
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

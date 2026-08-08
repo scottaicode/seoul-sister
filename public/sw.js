@@ -58,7 +58,17 @@
 // rendered 1:1 with no downscale. 38% -> 25%, remainder is the gold gradient.
 // v13 (Jul 30 2026): header/nav mark 28px -> 36px (the two-S monogram mushed at
 // 28 next to the wordmark) and the footer wordmark gained the mark it was missing.
-const CACHE_NAME = 'seoul-sister-v13'
+// v14 (Aug 7 2026): Bailey googled us and STILL saw the retired 유 stopgap ("the
+// ugly guy"). Our assets were already right — Google was serving a cached icon
+// because /favicon.ico, the path it requests by default, was a hard 404, and our
+// largest declared favicon was 32px against Google's ">48x48px" recommendation.
+// Added /favicon.ico (16+32+48) and /icons/favicon-48.png, and DELETED
+// src/app/icon.svg: it was the same single-S drawing, and as a Next file
+// convention it emitted a query-versioned /icon.svg?<hash> link LAST with
+// sizes="any" — an unstable URL (Google: "The favicon URL must be stable") that
+// could also outrank the icons we set deliberately. /icons/ is cache-first here,
+// so returning visitors need this bump to see the new tab icon.
+const CACHE_NAME = 'seoul-sister-v14'
 const STATIC_ASSETS = [
   '/',
   '/icons/apple-touch-icon.png',
