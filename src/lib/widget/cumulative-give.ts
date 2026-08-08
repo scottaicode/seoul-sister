@@ -63,6 +63,72 @@ const STAGED_ROLLOUT = /\b(?:two\s+weeks?|2\s*weeks?)\s+apart\b|\bone\s+(?:new\s
 // Picks for slots: multiple distinct priced/named recommendations.
 const PRICE_TOKEN = /\$\d/g
 
+// A recommendation is not always priced. Western/drugstore picks never are —
+// our price feeds are Korean, so a Target/Ulta lineup carries zero `$` tokens.
+//
+// WHY THIS EXISTS (measured against two real transcripts, Aug 8 2026). A cold
+// 20-year-old from Bailey's TikTok was handed a Korean reset lineup, then a
+// COMPLETE second lineup rebuilt for Target/Ulta, then a THIRD revision of that
+// lineup re-textured for clog-prone skin — three full builds across four turns.
+// The instrument scored her 1/5 and never injected the block once, because the
+// two rebuilds that constitute the over-give contained no dollar signs. The
+// same day, Suzy — whose conversation was correctly calibrated — scored 3/5 and
+// got the block from her third message onward. The instrument ranked the two
+// conversations exactly backwards.
+//
+// The blind spot sits precisely where the Western Shelf rule sends Yuri: a
+// Korean recommendation was instrumented and the identical Western one was
+// invisible. Two correct policies interacting to produce a measurement hole.
+//
+// So detect the SLOT, not the price tag. A routine slot is named in the
+// recommendation's own structure ("**Cleanser, Vanicream...**", "Moisturizer —
+// CeraVe..."), which is how Yuri actually writes a lineup. Conservative by
+// construction: it requires the slot word to introduce a named product, so
+// discussing sunscreen in prose cannot trip it.
+const SLOT_WORD =
+  '(?:cleanser|moisturi[sz]er|sunscreen|spf|serum|toner|essence|ampoule|treatment|balm|cream|lotion|oil|mask|exfoliant|retinoid|retinol)'
+
+// A slot heading that introduces a product: the slot word, a separator, then an
+// actual BRAND. Requiring a brand is what separates a delivered lineup from
+// prose — "gentle cleanser, one simple moisturizer, daily sunscreen" is generic
+// advice about categories, while "Cleanser, Vanicream Gentle Facial Cleanser"
+// hands over a specific thing to go buy. A first pass matched any capitalised
+// word after the separator and fired on "sunscreen, do you burn" and "cleanser,
+// one simple moisturizer" — noise that would teach Yuri to discount the block.
+//
+// The brand list is the cost of that precision, and it is the honest tradeoff:
+// a lineup of brands we've never seen goes uncounted (a false negative, which
+// costs one missing note) rather than prose counting as a build (a false
+// positive, which costs the instrument's credibility). Brands are drawn from
+// what Yuri actually recommends — the Korean catalog's frequent names plus the
+// Western drugstore set the Western Shelf rule explicitly permits.
+const KNOWN_BRANDS = [
+  // Western / drugstore — the set that was invisible before this fix
+  'cerave', 'vanicream', 'la roche-posay', 'la roche posay', 'cicaplast',
+  'anthelios', 'cetaphil', 'byoma', 'naturium', 'prequel', 'eucerin',
+  'aveeno', 'neutrogena', 'differin', 'paula\'s choice', 'the ordinary',
+  'panoxyl', 'cocokind', 'good molecules', 'first aid beauty',
+  // Korean — frequent catalog names
+  'cosrx', 'skin1004', 'beauty of joseon', 'anua', 'round lab', 'torriden',
+  'laneige', 'innisfree', 'medicube', 'numbuzin', 'some by mi', 'aestura',
+  'real barrier', 'dr. jart', 'dr jart', 'etude', 'missha', 'sulwhasoo',
+  'thank you farmer', 'skin&lab', 'skin & lab', 'celimax', 'goodal',
+  'illiyoon', 'purito', 'isntree', 'mixsoon', 'tirtir', 'abib', 'haruharu',
+  'benton', 'klairs', 'pyunkang yul', 'hanyul', 'aromatica', 'melixir',
+  'beplain', 'i\'m from', 'axis-y', 'mediheal', 'physiogel', 'arencia',
+  'aprilskin', 'april skin', 'heimish', 'banila co', 'sioris', 'peach & lily',
+]
+
+const BRAND_ALTERNATION = KNOWN_BRANDS
+  .map((b) => b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  .join('|')
+
+// "Cleanser, Vanicream ...", "Moisturizer — CeraVe ...", "Sunscreen: SKIN1004 ..."
+const SLOT_WITH_PRODUCT = new RegExp(
+  `\\b${SLOT_WORD}\\b\\s*(?:,|:|—|–|-|=)\\s*\\*{0,2}(?:the\\s+|a\\s+)?(?:${BRAND_ALTERNATION})\\b`,
+  'gi'
+)
+
 // Conflict checking across their lineup.
 const CONFLICT_LANGUAGE =
   /\b(?:same job|do(?:ing)? the same|redundant|duplicat|don'?t (?:need|use) both|collide|stack(?:ing)? (?:two|both)|overlap)\b/i
@@ -75,6 +141,22 @@ const KEEP_CUT_ADD =
 function pricedPickCount(text: string): number {
   const matches = text.match(PRICE_TOKEN)
   return matches ? matches.length : 0
+}
+
+/**
+ * Count DISTINCT routine slots that were filled with a named product in one
+ * reply. Deduped by slot, so "CeraVe Moisturizing Cream or La Roche-Posay
+ * Cicaplast" under one Moisturizer heading counts once — offering two options
+ * for one slot is a choice, not two slots of a build.
+ */
+export function namedSlotPickCount(text: string): number {
+  if (!text) return 0
+  const slots = new Set<string>()
+  for (const m of text.matchAll(SLOT_WITH_PRODUCT)) {
+    const slotWord = m[0].match(new RegExp(SLOT_WORD, 'i'))
+    if (slotWord) slots.add(slotWord[0].toLowerCase())
+  }
+  return slots.size
 }
 
 /**
@@ -97,8 +179,12 @@ export function detectArtifactsInReply(text: string): Set<GiveArtifact> {
     found.add('weekly_schedule')
   }
 
-  // Two or more priced recommendations in one reply = picks for multiple slots.
-  if (pricedPickCount(text) >= 2) {
+  // Picks for multiple slots — priced OR named. Two priced mentions was the
+  // original signal and stays; it misses every unpriced (Western) lineup, so
+  // two distinct slots filled with named products counts equally. Same
+  // threshold, so a single pick for their #1 gap — which the policy explicitly
+  // permits — still does not trip it.
+  if (pricedPickCount(text) >= 2 || namedSlotPickCount(text) >= 2) {
     found.add('slot_picks')
   }
 
@@ -118,6 +204,18 @@ export interface CumulativeGive {
   count: number
   /** Human phrasing of what's been delivered, for prompt injection. */
   labels: string[]
+  /**
+   * How many separate replies delivered a multi-slot lineup.
+   *
+   * The artifact set is a set: building the lineup once and rebuilding it twice
+   * more collapse to the same single `slot_picks` entry, so the artifact count
+   * cannot express repetition. Repetition is exactly how the Aug 8 over-give
+   * happened — the visitor asked one question three ways ("what products" →
+   * "what about Target" → "what about clogging") and each reframe read as a new
+   * question and got a fresh full lineup. No single reply was wrong and no
+   * artifact count moved.
+   */
+  lineupBuilds: number
 }
 
 /**
@@ -129,15 +227,21 @@ export function detectCumulativeGive(
   history: Array<{ role: string; content: string }>
 ): CumulativeGive {
   const all = new Set<GiveArtifact>()
+  let lineupBuilds = 0
   for (const turn of history) {
     if (turn.role !== 'assistant') continue
-    for (const a of detectArtifactsInReply(turn.content || '')) all.add(a)
+    const found = detectArtifactsInReply(turn.content || '')
+    for (const a of found) all.add(a)
+    // Count the reply as a lineup build every time, not just the first — this
+    // is the one measure that survives the artifact set's dedup.
+    if (found.has('slot_picks')) lineupBuilds++
   }
   const artifacts = Array.from(all)
   return {
     artifacts,
     count: artifacts.length,
     labels: artifacts.map((a) => ARTIFACT_LABEL[a]),
+    lineupBuilds,
   }
 }
 
@@ -152,16 +256,23 @@ export function detectCumulativeGive(
  * and the response is hers.
  */
 export function buildCumulativeGiveBlock(give: CumulativeGive): string | null {
-  if (give.count < 2) return null
+  // A second full lineup is worth surfacing on its own, even when the artifact
+  // set hasn't moved — rebuilding the same lineup is invisible to a set.
+  if (give.count < 2 && give.lineupBuilds < 2) return null
 
   const list = give.labels.join(', ')
   const mostOfIt = give.count >= 4
+
+  const rebuilt =
+    give.lineupBuilds >= 2
+      ? `\nYou have built them a complete multi-slot lineup ${give.lineupBuilds} separate times in this conversation. Often that is the visitor asking one question several ways — a different store, a different texture, a different budget — and each reframe reads as a brand-new question. Re-specifying the whole lineup each time is a judgment call worth making deliberately rather than by reflex; answering just the part they actually asked about is usually the better answer anyway, and it is the more useful one.`
+      : ''
 
   return `\n\n## What You've Already Given This Visitor (facts, not instructions)
 Across your earlier replies in this conversation you have already delivered ${give.count} of the ${GIVE_ARTIFACT_COUNT} things the complete build is made of: ${list}.${
     mostOfIt
       ? ' That is most of the subscriber deliverable, already handed over.'
       : ''
-  }
+  }${rebuilt}
 This is a cumulative count you cannot see by reading any single reply — that is why it is here. It is context for your judgment, not a rule and not a cap: sometimes the honest answer to their question genuinely needs another piece of the build, and you are the one who decides that. Nothing here asks you to withhold help, change your voice, or start selling.`
 }

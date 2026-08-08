@@ -26,9 +26,11 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
+import { tmpdir } from 'node:os'
+import ts from 'typescript'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const src = readFileSync(
@@ -41,41 +43,25 @@ const routeSrc = readFileSync(
 )
 
 // ---------------------------------------------------------------------------
-// Mirror of the shipped detectors, kept honest by the source assertions below.
+// Execute the REAL module.
+//
+// These tests previously kept a hand-copied MIRROR of the detector regexes. That
+// mirror could drift from the shipped code and pass while production was broken
+// — the exact failure mode this repo has paid for before. The module is pure
+// (no imports), so transpile and import the real thing instead.
 // ---------------------------------------------------------------------------
-const AM_BLOCK = /\b(?:AM|morning)\b[^\n]{0,80}(?::|—|-|→)/i
-const PM_BLOCK = /\b(?:PM|night|evening|nightly)\b[^\n]{0,80}(?::|—|-|→)/i
-const STEP_ARROWS = /(?:→|->)[^\n]*(?:→|->)/
-const NIGHT_ROTATION = /\bnight\s*(?:a|b|c|1|2|3)\b/i
-const WEEKLY_FREQUENCY = /\b\d\s*(?:x|times)\s*(?:\/|\s*per\s*|a\s*)?(?:wk|week)\b/i
-const STAGED_ROLLOUT = /\b(?:two\s+weeks?|2\s*weeks?)\s+apart\b|\bone\s+(?:new\s+)?active\s+at\s+a\s+time\b/i
-const CONFLICT_LANGUAGE =
-  /\b(?:same job|do(?:ing)? the same|redundant|duplicat|don'?t (?:need|use) both|collide|stack(?:ing)? (?:two|both)|overlap)\b/i
-const KEEP_CUT_ADD =
-  /\b(?:keep(?:ers?)?\s*(?:as-is)?\b[^\n]{0,40}\b(?:cut|drop|add)|cut back|keep\/cut\/add|scorecard)\b/i
-
-function detectArtifactsInReply(text) {
-  const found = new Set()
-  if (!text) return found
-  const hasAm = AM_BLOCK.test(text)
-  const hasPm = PM_BLOCK.test(text)
-  if ((hasAm && hasPm) || ((hasAm || hasPm) && STEP_ARROWS.test(text))) found.add('am_pm_routine')
-  if (NIGHT_ROTATION.test(text) || WEEKLY_FREQUENCY.test(text) || STAGED_ROLLOUT.test(text))
-    found.add('weekly_schedule')
-  if ((text.match(/\$\d/g) || []).length >= 2) found.add('slot_picks')
-  if (CONFLICT_LANGUAGE.test(text)) found.add('lineup_conflict_check')
-  if (KEEP_CUT_ADD.test(text)) found.add('shelf_audit')
-  return found
-}
-
-function detectCumulativeGive(history) {
-  const all = new Set()
-  for (const t of history) {
-    if (t.role !== 'assistant') continue
-    for (const a of detectArtifactsInReply(t.content || '')) all.add(a)
-  }
-  return { artifacts: [...all], count: all.size }
-}
+const js = ts.transpileModule(src, {
+  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+}).outputText
+const dir = mkdtempSync(join(tmpdir(), 'ss-give-'))
+const modFile = join(dir, 'cumulative-give.mjs')
+writeFileSync(modFile, js)
+const {
+  detectArtifactsInReply,
+  detectCumulativeGive,
+  buildCumulativeGiveBlock,
+  namedSlotPickCount,
+} = await import(pathToFileURL(modFile).href)
 
 // Real excerpts from the Jul 21 2026 transcript.
 const REAL_ROTATION_REPLY = `**How they tie into your nights (this is the sequencing that keeps you from overdoing it):**
@@ -147,6 +133,106 @@ test('a single priced pick is the GIVE, not a multi-slot giveaway', () => {
     'Blemish Toner Pad ($18.48 at Olive Young). Start twice a week.'
   const found = detectArtifactsInReply(oneGive)
   assert.ok(!found.has('slot_picks'), 'one pick must not trip the multi-slot artifact')
+})
+
+// ---------------------------------------------------------------------------
+// The Aug 8 2026 blind spot: an UNPRICED (Western) lineup was invisible.
+//
+// A cold 20-year-old from Bailey's TikTok got a Korean reset lineup, then a
+// complete second lineup rebuilt for Target/Ulta, then a third revision of that
+// lineup re-textured for clog-prone skin. The instrument scored her 1/5 and
+// never fired, because `slot_picks` keyed on `$\d` and our price feeds are
+// Korean — a Target/Ulta lineup carries no dollar signs at all.
+//
+// The control makes it conclusive: Suzy, whose conversation was correctly
+// calibrated, scored 3/5 and got the block from her third message. The
+// instrument ranked the two conversations exactly backwards.
+//
+// Fixtures are verbatim from the two production transcripts.
+// ---------------------------------------------------------------------------
+
+const REAL_WESTERN_LINEUP = `Your reset, all findable at Target or Ulta:
+
+- **Cleanser, Vanicream Gentle Facial Cleanser** or **CeraVe Hydrating Cleanser.** Both are non-foaming, no residue film.
+- **Moisturizer, CeraVe Moisturizing Cream** (the tub) or **La Roche-Posay Cicaplast Baume B5.**
+- **Sunscreen, La Roche-Posay Anthelios or the CeraVe Hydrating Mineral SPF.** Non-negotiable for your burn-then-tan skin.`
+
+const REAL_KOREAN_LINEUP = `Here's your reset lineup, three products, one job each: calm and heal, don't provoke.
+
+- **Cleanser, Thank You Farmer Phyto Relieful Cica Gel Cleanser** ($29.68 at Olive Young).
+- **Moisturizer, Real Barrier Extreme Cream** ($22, the main listing with 11,000+ reviews).
+- **Sunscreen, SKIN1004 Madagascar Centella Tea-Trica Soothing Sun Milk** ($17 at Olive Young).`
+
+// Verbatim from the same visitor's FIRST reply — generic category advice, not a
+// lineup. A first cut of this fix fired on it ("cleanser, one simple
+// moisturizer") which would have taught Yuri to discount the block.
+const REAL_GENERIC_ADVICE = `So the single highest-leverage change, starting tonight: **hands off completely, and strip your routine down to bare minimum**, gentle cleanser, one simple moisturizer, daily sunscreen, nothing active, nothing new, while things calm.
+
+Two quick things that change my read: roughly what age range are we in, and out in the sun with no sunscreen, do you burn, tan, or both?`
+
+test('an UNPRICED Western lineup counts as slot picks (the Aug 8 blind spot)', () => {
+  const found = detectArtifactsInReply(REAL_WESTERN_LINEUP)
+  assert.ok(
+    found.has('slot_picks'),
+    'a complete Target/Ulta lineup carries no $ tokens and must still register as a delivered lineup'
+  )
+  assert.equal((REAL_WESTERN_LINEUP.match(/\$\d/g) || []).length, 0,
+    'fixture sanity: this lineup genuinely has no prices, which is why the old detector missed it')
+})
+
+test('generic category advice is NOT a lineup (no false positives)', () => {
+  assert.equal(
+    namedSlotPickCount(REAL_GENERIC_ADVICE), 0,
+    '"gentle cleanser, one simple moisturizer, daily sunscreen" names categories, not products'
+  )
+  assert.ok(!detectArtifactsInReply(REAL_GENERIC_ADVICE).has('slot_picks'))
+})
+
+test('one named slot pick is the GIVE; two is a lineup', () => {
+  // The policy explicitly permits one specific pick for their #1 gap.
+  assert.equal(namedSlotPickCount('Cleanser, CeraVe Hydrating Cleanser. That is the only change I would make today.'), 1)
+  assert.ok(!detectArtifactsInReply('Cleanser, CeraVe Hydrating Cleanser. Only change I would make.').has('slot_picks'))
+  assert.ok(detectArtifactsInReply(REAL_WESTERN_LINEUP).has('slot_picks'))
+})
+
+test('two options for ONE slot is a choice, not two slots', () => {
+  const oneSlot = '**Moisturizer, CeraVe Moisturizing Cream** or **La Roche-Posay Cicaplast Baume B5.**'
+  assert.equal(namedSlotPickCount(oneSlot), 1, 'offering alternatives for a single slot must count once')
+})
+
+test('rebuilding the lineup is counted even though the artifact set cannot show it', () => {
+  const history = [
+    { role: 'assistant', content: REAL_KOREAN_LINEUP },
+    { role: 'user', content: 'can you build me a routine I can get at target or ulta?' },
+    { role: 'assistant', content: REAL_WESTERN_LINEUP },
+  ]
+  const give = detectCumulativeGive(history)
+  assert.equal(give.count, 1, 'both replies collapse to the same single slot_picks artifact')
+  assert.equal(give.lineupBuilds, 2, 'but two separate full lineups were delivered')
+  const block = buildCumulativeGiveBlock(give)
+  assert.ok(block, 'a second full lineup must surface even when the artifact count has not moved')
+  assert.match(block, /2 separate times/)
+})
+
+test('the rebuild note stays a fact and never instructs a refusal', () => {
+  const give = detectCumulativeGive([
+    { role: 'assistant', content: REAL_KOREAN_LINEUP },
+    { role: 'assistant', content: REAL_WESTERN_LINEUP },
+  ])
+  const block = buildCumulativeGiveBlock(give)
+  assert.ok(
+    !/\brefuse\b|\bdecline to\b|\bdo not (?:give|answer|provide)\b|\bwithhold\b(?! help)/i.test(block),
+    'the rebuild note must never become an instruction to withhold — judgment stays with Yuri'
+  )
+  assert.match(block, /not a rule and not a cap/)
+})
+
+test('the visitor naming products never counts as Yuri delivering a lineup', () => {
+  const give = detectCumulativeGive([
+    { role: 'user', content: 'Cleanser, Vanicream Gentle Facial Cleanser. Moisturizer, CeraVe Moisturizing Cream.' },
+  ])
+  assert.equal(give.count, 0)
+  assert.equal(give.lineupBuilds, 0)
 })
 
 // ---------------------------------------------------------------------------
