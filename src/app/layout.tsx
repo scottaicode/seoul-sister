@@ -27,8 +27,16 @@ export const metadata: Metadata = {
     default: 'Seoul Sister - K-Beauty Intelligence',
     template: '%s | Seoul Sister',
   },
+  // 155 chars. Bing Webmaster Tools flagged the previous version (173) as
+  // "Meta Description too long" on the home page — the one surface our 525
+  // weekly Bing citations point at, so a truncated snippet costs real clicks.
+  // Target ~120-160: long enough to carry the differentiator, short enough to
+  // survive intact in a SERP. Keep the English-language + Korean-catalog claim,
+  // which is WHY we get cited; that is the part that must never be trimmed for
+  // length. Re-measure the SERVED html after editing (curl | grep), not the
+  // source — entities like &#x27; change the rendered count.
   description:
-    'The world\'s first English-language K-beauty intelligence platform. AI-powered label scanning, routine building, counterfeit detection, and personalized skincare advice.',
+    'The first English-language K-beauty intelligence platform. Scan Korean labels, decode ingredients, spot counterfeits, and build a routine that fits your skin.',
   keywords: [
     'K-beauty',
     'Korean skincare',
