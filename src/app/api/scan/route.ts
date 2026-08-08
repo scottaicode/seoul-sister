@@ -5,6 +5,7 @@ import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { requireAuth } from '@/lib/auth'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { enrichScanResult } from '@/lib/scanning/enrich-scan'
+import { uploadScanPhotos } from '@/lib/scanning/scan-photos'
 import { detectReformulation, recordReformulation } from '@/lib/intelligence/reformulation-detector'
 import { getServiceClient } from '@/lib/supabase'
 import { hasActiveSubscription } from '@/lib/subscription'
@@ -501,7 +502,17 @@ export async function POST(request: NextRequest) {
       const ingredients = analysis.ingredients as Array<{ name_inci: string }> | undefined
       const ingredientNames = ingredients?.map((i) => i.name_inci) ?? []
       const serviceClient = getServiceClient()
+
+      // Generate the id up front so the photos can be pathed by it, mirroring
+      // skin-score. Retain the actual photos (Bailey, Aug 7 2026: the scanner
+      // should keep both sides, not just read them) — /scan/[id] then has the
+      // evidence behind its own safety claims. Upload is non-critical: a storage
+      // failure yields fewer paths, never a failed scan.
+      const scanId = crypto.randomUUID()
+      const imagePaths = await uploadScanPhotos(serviceClient, user.id, scanId, images)
+
       await serviceClient.from('ss_user_scans').insert({
+        id: scanId,
         user_id: user.id,
         product_id: productMatch?.id ?? null,
         scan_type: 'label',
@@ -517,6 +528,11 @@ export async function POST(request: NextRequest) {
           // more complete record than a single blurry back-of-bottle shot, and
           // without this the two are indistinguishable after the fact.
           image_count: images.length,
+          // Storage PATHS, never URLs — signed on read (1h TTL). A stored signed
+          // URL is a dead link by design. May be shorter than image_count if an
+          // upload failed or the type was a gif the bucket forbids; that
+          // discrepancy is the honest record of what was retained.
+          image_paths: imagePaths,
         },
       })
     } catch {

@@ -44,6 +44,11 @@ export interface StoredScan {
     description: string
     recommendation: string
   }>
+  /**
+   * Signed URLs (1h) for the label photos this scan was read from. Empty for
+   * scans recorded before Aug 7 2026, when photos were analyzed and discarded.
+   */
+  photos?: string[]
 }
 
 // ─── Safety score ring ─────────────────────────────────────────────────
@@ -166,6 +171,49 @@ export default function ScanHistoryDetail({ scan }: { scan: StoredScan }) {
           product page for current pricing, or ask Yuri how this fits your routine today.
         </p>
       </div>
+
+      {/* The photographed label — the EVIDENCE for everything below it.
+          Empty for scans before Aug 7 2026, when photos were read and discarded.
+          Deliberately placed above the analysis: when a scan reads thin (a
+          backlit panel returning one ingredient), the photo explains why in a way
+          a number never can. Data display only — no interpretation here, which is
+          Yuri's job. */}
+      {(scan.photos?.length ?? 0) > 0 && (
+        <div className="glass-card p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Camera className="w-4 h-4 text-gold/60" />
+            <h2 className="font-display font-semibold text-sm text-white">
+              {scan.photos!.length > 1 ? `Your Photos (${scan.photos!.length})` : 'Your Photo'}
+            </h2>
+          </div>
+          <div className={scan.photos!.length > 1 ? 'grid grid-cols-2 gap-2' : ''}>
+            {scan.photos!.map((url, i) => (
+              <a
+                key={i}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block rounded-xl overflow-hidden border border-white/10 bg-white/5"
+              >
+                <img
+                  src={url}
+                  alt={
+                    scan.photos!.length > 1
+                      ? `Scanned label, view ${i + 1} of ${scan.photos!.length}`
+                      : 'Scanned label'
+                  }
+                  className="w-full max-h-72 object-contain"
+                  loading="lazy"
+                />
+              </a>
+            ))}
+          </div>
+          <p className="text-[11px] text-white/40 mt-2.5 leading-relaxed">
+            The label{scan.photos!.length > 1 ? 's' : ''} this analysis was read from.
+            Tap to open full size.
+          </p>
+        </div>
+      )}
 
       {/* Warnings */}
       {warnings.length > 0 && (
