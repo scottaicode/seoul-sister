@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, type ChangeEvent } from 'react'
-import { X, Plus, Loader2, Check, AlertTriangle } from 'lucide-react'
+import { X, Plus, Camera, Loader2, Check, AlertTriangle } from 'lucide-react'
 import type { ScanQueueItem } from './scan-upload'
 
 interface ScanQueueGridProps {
@@ -40,9 +40,29 @@ function StatusOverlay({ status }: { status: ScanQueueItem['status'] }) {
  * Thumbnail grid for the multi-photo scan queue. Before scanning, each
  * photo is individually removable and more can be added. During scanning,
  * per-item status badges replace the remove buttons.
+ *
+ * TWO add-more inputs, camera and gallery, deliberately (Aug 7 2026 — Bailey:
+ * "if I upload from album it lets me do multiple but if I take with camera it
+ * still only allows one").
+ *
+ * OBSERVED (Bailey's iPhone, iOS Safari): a `capture="environment"` input returns
+ * exactly ONE photo and dismisses the camera, even though `multiple` is present
+ * on the gallery input right beside it. The HTML spec does NOT actually promise
+ * this — MDN documents `capture` as choosing WHICH camera and says nothing about
+ * file count, and does not define the capture+multiple combination. So this is
+ * real-world iOS behaviour confirmed by a user report, not a documented rule.
+ *
+ * Either way the remedy is the same and does not depend on knowing why: give the
+ * user a way to shoot AGAIN and append. Without it the front+back merge was
+ * reachable only by first saving both photos to the camera roll, which is what
+ * made her conclude the scanner was one-photo-only.
+ *
+ * If a future iOS makes capture+multiple work, this control still does no harm —
+ * it just becomes a convenience rather than the only path.
  */
 export default function ScanQueueGrid({ items, scanning, onRemove, onAddMore }: ScanQueueGridProps) {
   const addMoreInputRef = useRef<HTMLInputElement>(null)
+  const addMoreCameraRef = useRef<HTMLInputElement>(null)
 
   const handleAddMore = (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
@@ -72,15 +92,40 @@ export default function ScanQueueGrid({ items, scanning, onRemove, onAddMore }: 
         </div>
       ))}
 
+      {/* Camera first — photographing the other side of the bottle you are
+          already holding is the common case, and it was the unreachable one. */}
+      {!scanning && (
+        <button
+          onClick={() => addMoreCameraRef.current?.click()}
+          className="aspect-square glass-card border-dashed border-2 border-gold/40 flex flex-col items-center justify-center gap-1 text-gold hover:text-gold-light transition-colors duration-200"
+        >
+          <Camera className="w-5 h-5" />
+          <span className="text-[10px] font-medium leading-tight text-center px-1">
+            Take another
+          </span>
+        </button>
+      )}
+
       {!scanning && (
         <button
           onClick={() => addMoreInputRef.current?.click()}
-          className="aspect-square glass-card border-dashed border-2 border-gold/30 flex flex-col items-center justify-center gap-1 text-gold/70 hover:text-gold transition-colors duration-200"
+          className="aspect-square glass-card border-dashed border-2 border-white/15 flex flex-col items-center justify-center gap-1 text-white/50 hover:text-white/80 transition-colors duration-200"
         >
           <Plus className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Add more</span>
+          <span className="text-[10px] font-medium">From photos</span>
         </button>
       )}
+
+      {/* One shot per tap on iOS (observed, not spec-guaranteed — see the note
+          above). `multiple` is omitted because it had no effect there anyway. */}
+      <input
+        ref={addMoreCameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleAddMore}
+      />
 
       <input
         ref={addMoreInputRef}

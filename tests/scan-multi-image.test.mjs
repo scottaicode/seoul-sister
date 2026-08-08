@@ -164,3 +164,43 @@ test('fence stripping handles a ```json wrapped response', () => {
 })
 
 void ts
+
+// ── Camera must be able to add a SECOND photo ───────────────────────────────
+// Aug 7 2026 — Bailey: "if I upload from album it lets me do multiple but if I
+// take with camera it still only allows one". A capture="environment" input
+// returns one photo per tap on iOS, so the front+back merge was unreachable from
+// the camera: after the first shot there was no control to shoot again. The
+// remedy is a shoot-again path on BOTH the single-photo view and the queue grid.
+const QUEUE_GRID = readFileSync('src/components/scan/ScanQueueGrid.tsx', 'utf8')
+const SCANNER = readFileSync('src/components/scan/LabelScanner.tsx', 'utf8')
+
+test('the queue grid offers a CAMERA add-more, not only a gallery one', () => {
+  const captureInputs = (QUEUE_GRID.match(/capture="environment"/g) ?? []).length
+  assert.ok(
+    captureInputs >= 1,
+    'ScanQueueGrid has no capture input — "Add more" would open the gallery only, ' +
+      'so a user cannot photograph the other side of the bottle they are holding'
+  )
+  assert.ok(/addMoreCameraRef/.test(QUEUE_GRID), 'camera add-more ref missing')
+})
+
+test('the SINGLE-photo view offers a way to add the other side', () => {
+  // This was the dead end: one camera shot, then only "Analyze Label".
+  assert.ok(
+    /addSideCameraRef/.test(SCANNER),
+    'no camera "add other side" control on the single-photo view — the merge is ' +
+      'unreachable from the camera path'
+  )
+  assert.ok(/capture="environment"/.test(SCANNER), 'single-photo view has no capture input')
+  assert.ok(
+    /addSideGalleryRef/.test(SCANNER),
+    'no gallery fallback for adding the other side'
+  )
+})
+
+test('add-side inputs reset value so the same file can be re-picked', () => {
+  // Without this, choosing the same photo twice fires no change event and the
+  // user sees a dead button.
+  const handler = SCANNER.slice(SCANNER.indexOf('const handleAddSide'), SCANNER.indexOf('// Sequential scan'))
+  assert.ok(/e\.target\.value = ''/.test(handler), 'handleAddSide does not reset the input value')
+})

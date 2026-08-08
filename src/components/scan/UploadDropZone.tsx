@@ -65,14 +65,22 @@ export default function UploadDropZone({ onFiles }: UploadDropZoneProps) {
             Scan with Camera
           </p>
           {/*
-            Say WHICH side of the bottle. A subscriber photographed the front of
-            her moisturizer, so the scan stored ingredients_found =
-            ["Not listed on visible label"] and the product stayed invisible to
-            Yuri. The front of a bottle almost never carries an INCI list.
-            Korean or not is irrelevant here — the scanner reads any label.
+            Say WHICH side, and say that a second shot is possible.
+            A subscriber photographed the front of her moisturizer, so the scan
+            stored ingredients_found = ["Not listed on visible label"] and the
+            product stayed invisible to Yuri — the front of a bottle almost never
+            carries an INCI list. (Korean or not is irrelevant; the scanner reads
+            any label.)
+            The second line was added Aug 7 2026: on iOS this capture input
+            returns only ONE photo per tap, so a user who does not know she can
+            shoot again reasonably concludes the scanner is one-photo-only, which
+            is exactly what Bailey concluded.
           */}
           <p className="text-xs text-white/40 mt-1">
-            Point at the ingredients list — the back of the bottle
+            Start with the ingredients list — the back of the bottle
+          </p>
+          <p className="text-[11px] text-gold/60 mt-1">
+            You can add the front afterwards for the product name
           </p>
         </div>
       </button>

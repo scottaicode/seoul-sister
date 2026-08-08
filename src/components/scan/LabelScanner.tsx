@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, type ChangeEvent } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Camera, X, Loader2, AlertTriangle } from 'lucide-react'
+import { Camera, X, Plus, Loader2, AlertTriangle } from 'lucide-react'
 import ScanResults from './ScanResults'
 import type { ScanResultData } from './ScanResults'
 import UploadDropZone from './UploadDropZone'
@@ -83,6 +83,8 @@ export default function LabelScanner() {
    * The user can flip it either way — we never silently merge a real batch.
    */
   const [sameProduct, setSameProduct] = useState(true)
+  const addSideCameraRef = useRef<HTMLInputElement>(null)
+  const addSideGalleryRef = useRef<HTMLInputElement>(null)
 
   const handleFiles = useCallback(async (files: File[]) => {
     setError(null)
@@ -128,6 +130,17 @@ export default function LabelScanner() {
   const removeItem = useCallback((id: string) => {
     setQueue((prev) => prev.filter((item) => item.id !== id))
   }, [])
+
+  /** Add-the-other-side inputs for the SINGLE-photo view (see the note there). */
+  const handleAddSide = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files ?? [])
+      if (files.length > 0) handleFiles(files)
+      // Reset so re-selecting the same file fires change again.
+      e.target.value = ''
+    },
+    [handleFiles]
+  )
 
   // Sequential scan of every item not yet successfully scanned. Per-item
   // failure isolation: one bad photo never kills the rest of the batch.
@@ -251,6 +264,52 @@ export default function LabelScanner() {
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Add the OTHER side before analyzing.
+            Aug 7 2026 — Bailey: "if I upload from album it lets me do multiple
+            but if I take with camera it still only allows one". On her iPhone a
+            capture="environment" input returns one photo and closes, so after one
+            camera shot this view was a dead end: the front+back merge existed but
+            was reachable only by saving both photos to the camera roll first.
+            (Observed behaviour — MDN does not define capture+multiple.)
+            These two controls are the bridge — tapping either moves the queue to
+            2 photos, which renders the merge UI with the "same product" toggle. */}
+        {item.status !== 'done' && !scanning && (
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => addSideCameraRef.current?.click()}
+              className="glass-card py-3 px-2 flex items-center justify-center gap-2 text-gold border border-gold/30 hover:border-gold/60 transition-colors duration-200"
+            >
+              <Camera className="w-4 h-4 flex-shrink-0" />
+              <span className="text-xs font-semibold leading-tight">Add other side</span>
+            </button>
+            <button
+              onClick={() => addSideGalleryRef.current?.click()}
+              className="glass-card py-3 px-2 flex items-center justify-center gap-2 text-white/60 border border-white/10 hover:text-white/90 transition-colors duration-200"
+            >
+              <Plus className="w-4 h-4 flex-shrink-0" />
+              <span className="text-xs font-semibold leading-tight">From photos</span>
+            </button>
+          </div>
+        )}
+
+        {/* One shot per tap on iOS (observed). */}
+        <input
+          ref={addSideCameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleAddSide}
+        />
+        <input
+          ref={addSideGalleryRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={handleAddSide}
+        />
 
         {/* Scan button (if no result yet, or retry after failure) */}
         {item.status !== 'done' && !scanning && (
