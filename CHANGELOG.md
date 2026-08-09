@@ -8,6 +8,46 @@ All notable changes to Seoul Sister are documented here.
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._
 
+## v11.24.0 (August 9, 2026): Five leaks around one good conversation, and the cow
+
+An India visitor got an excellent diagnosis on Aug 9 — Yuri read a five-product lineup, found two BHA sources stacked on one chin, and told her to **remove** a product rather than buy one. Zero tool calls fired the entire conversation. Chasing that surfaced four more defects.
+
+> **The most reusable thing here is, again, a fix that was measured and rejected.** See §1. If a "Yuri didn't search" bug resurfaces, read that section before widening the brand list — widening it is the wrong instrument, and the catalog proves it in one query.
+
+### 1. Tools never fired, and the obvious fix is wrong
+
+`shouldWidgetForceToolUse` was transpiled and executed against her six real messages: all returned `false` (controls like *"recommend a moisturizer"* fire). `BRAND_SIGNALS` is a ~28-entry, mostly-Korean hardcoded list, and her lineup — Neutrogena, Dr. Sheth, Pond's, Re'equil — contains none of them.
+
+**Measured before widening it.** Of the seven brands Yuri recommended, only **Aestura (108 rows)** and **Round Lab (105)** exist in the catalog. **CeraVe, Dr. Sheth, Re'equil, Minimalist, Deconstruct and Dot & Key are all ZERO.** Forcing a tool would have grounded 2 of 7 and returned empty for five — and an empty search on a Western brand risks making *"not in our catalog"* sound like *"not good"*, the exact harm the retailer rule exists to prevent.
+
+Across all production traffic, the 57 ungrounded brand-naming replies split **44 groundable / 13 structurally immune**. A quarter of the blast radius is unreachable by forcing at any amount of list-tuning. A brand list was blind to Western lineups in `ffcede9`, blind to Indian brands here, and would be blind to Thai next (this same visitor asked about Phuket).
+
+So `BRAND_SIGNALS` is **not** expanded — a guard test fails if it grows a Western arm. `src/lib/widget/tool-grounding.ts` surfaces the FACT instead, and the recommend-regex gains market-neutral `routine|lineup|regimen|shelf` (the old one required a product noun within 20 chars, so *"help me revamp my routine"* matched nothing).
+
+The fact never says **"unverified"** — 13 of those replies name Western brands the Korean catalog should not contain, and hedging on CeraVe is a documented regression. It says an empty result is *"never a verdict on the product."*
+
+### 2. The cow: the give instrument was silent at the decisive turn
+
+Owner-raised: *she should not hand over an entire routine in the free preview.* The Aug 8 TikTok visitor received **three complete lineups** — Korean, rebuilt for Target/Ulta, then re-textured for clog-prone skin. In the Target reply Yuri **stated the gate out loud** (*"the full step-by-step AM/PM build is the subscriber side"*) and delivered a full lineup in the same message.
+
+**This is not Yuri ignoring the rule.** Replaying her transcript through `buildCumulativeGiveBlock()`: at the moment she wrote the SECOND lineup, `lineupBuilds` was 1 and the gate required 2 — so it returned `null` and she rebuilt with **no visibility at all**. The note first appeared before the *third* build.
+
+An off-by-one: the counter reports builds already **sent**, but the note informs the build she is **about to write**. Threshold `2 → 1`, plus a note naming the real mechanism — **a rebuild is a REPEAT, not a new question**. The gate was defined by ARTIFACT ("a complete AM/PM routine is subscriber work") while the leak is REPETITION; every reply looked compliant in isolation because a different store genuinely reads as a different question from inside one turn.
+
+**The give itself was deliberately NOT tightened.** Kim Wells converted because Yuri talked her *out* of purchases, and this visitor's 3–4-year cheek-lesion referral is the free value that earns trust. A test asserts the instrument stays **silent** before any lineup exists. **Caveat: n=1, and 0 of ~58 widget visitors have ever converted** — the giveaway is *not* established as the cause. It may be volume.
+
+### 3. A quota countdown at the exact midpoint
+
+She closed an otherwise warm goodbye with *"you've got 6 free messages left in this preview"* — at message 6 of 12, while the prompt reserves countdowns for *"the last 2-3 messages."* A prompt violation, not a rule gap: the Conversation State block handed her the raw remaining number every turn with no signal about whether volunteering it was appropriate *now*. It now carries an explicit not-yet / near-the-end flag.
+
+### 4. The email ask was stapled to a warning about her
+
+The offer arrived attached to a prediction that she'd *"drift back into old habits."* She replied **"No. I'm good."** The plan was correct and the timing was fine; the framing traded a warning for an address. Anchor the ask in what Yuri just did that's worth keeping, never in a forecast of the visitor's backsliding.
+
+**735 → 770 tests**, `tsc` and build clean. Every test executes the real module, and each bug shape was confirmed to **FAIL** its test when reintroduced verbatim. Full write-up in `WIDGET-GROUNDING-FIX.md`.
+
+---
+
 ## v11.23.0 (August 3-5, 2026): Four leaks at the moment someone decides
 
 Four fixes on the conversion path, each found by watching a real stranger rather than by reading code. Three of them are the same shape: **the visitor was trying to say yes, and something in our plumbing made that hard.** The fourth is instrumentation for a channel that hasn't fired yet.
