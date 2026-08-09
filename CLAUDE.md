@@ -20,7 +20,16 @@
 
 ## Project Overview
 
-Seoul Sister is the world's first English-language K-beauty intelligence platform -- "Hwahae for the World." It bridges the information gap between Korean beauty consumers (who have access to 187,000+ products, 5.77M+ reviews, and ingredient-level intelligence via Hwahae) and international consumers who have no equivalent resource.
+Seoul Sister is an English-language K-beauty intelligence platform whose product is **advice, not a catalog**. It bridges the gap between Korean beauty consumers (who have 187,000+ products, 5.77M+ reviews, and ingredient-level intelligence via Hwahae) and international consumers.
+
+> **Positioning correction (Aug 9 2026) — read before writing any marketing, prompt, or strategy copy.**
+> The founding line "Hwahae is Korean-only, no English equivalent exists" is **no longer true** — see the Competitive Landscape table. Hwahae Global is live in English at 100K+ MAU, ~80% US. Do not repeat the old premise.
+>
+> **What IS defensible, and was verified against the market (Aug 9 2026): the chat-first consumer skincare advisor lane is empty.** Every conversational skincare AI found — Haut.AI Skin.Chat, Perfect Corp's YouCam Beauty Agent, Revieve's advisor — is sold **B2B to brands and retailers**. That is a structural difference, not a feature gap: an advisor funded by a brand cannot say *"keep your CeraVe, you don't need Korean anything"* or talk a user out of two purchases. Yuri can, and did — that is what converted the first paying subscriber. Independence is the moat.
+>
+> **Seoul Sister sells a SERVICE, never products.** No inventory, no fulfillment, no product margin. Affiliate revenue is incidental and must never shape a recommendation.
+>
+> **Do NOT claim "dermatologist-level" advice, publicly or in prompts.** Three reasons, all concrete: (1) Yuri cannot examine, take an in-person history, biopsy, or prescribe — the claim is not true; (2) the FTC has brought enforcement against skin apps for unsubstantiated medical claims (MelApp, Mole Detective) and its 2024 "Operation AI Comply" sweep targets inflated AI capability claims; (3) the claim works against the product — Yuri's value showed up when she told a visitor her 4-year cheek lesion needed a real dermatologist and refused to sell around it. A dermatologist-level claim puts pressure on her to stop referring. Say what is true and stronger: **expert K-beauty judgment that knows your shelf, your history, and when to send you to a doctor.** The price comp is telederm (Curology ~$19.95/mo, Dermatica ~$24.99/mo) because we sit beside it as the advice layer — not because we practise medicine.
 
 **Vision**: The definitive K-beauty intelligence layer that translates Korean product knowledge for the global consumer, uses AI to build personalized routines, and solves the authenticity and price transparency problems that the $2B+ US K-beauty market has no good answer to.
 
@@ -1158,7 +1167,7 @@ The detailed step-by-step build specifications for Phases 8 through 15 (Value En
 
 | Gap | Current State | Seoul Sister Solution |
 |-----|--------------|----------------------|
-| Hwahae is Korean-only | No English equivalent exists | Full K-beauty intelligence in English |
+| Hwahae is display-only in English | **Hwahae Global launched an English site Nov 12 2024** (8.8M LLM-translated reviews, ~360K products, category rankings) and passed **100K+ MAU within two months, ~80% United States**. The "no English equivalent exists" premise this project was founded on is STALE — do not repeat it. What is still true: it is a **ranking-and-review display surface**, free, with no conversational advisor, no memory of you, and no one to tell you your barrier is stripped | Advice, not display: an advisor that knows your shelf, your history and what burned you |
 | $362M counterfeit losses | Fragmented per-brand apps | Unified AI counterfeit detection |
 | Ingredient conflict anxiety | Generic tools (INCI Decoder) | K-beauty-specific AI routine builder |
 | Price markup opacity | No K-beauty price comparison | Cross-platform Korea vs US pricing |

@@ -13,7 +13,7 @@ export default function PrivacyPage() {
         <h1 className="font-display text-2xl md:text-3xl font-bold text-white mb-2">
           Privacy Policy
         </h1>
-        <p className="text-white/40 text-xs">Effective Date: February 18, 2026</p>
+        <p className="text-white/40 text-xs">Effective Date: February 18, 2026 &middot; Last updated: August 9, 2026</p>
       </header>
 
       {/* Privacy Promise */}
@@ -43,7 +43,7 @@ export default function PrivacyPage() {
         <h3 className="text-white/90 font-medium mb-2 mt-4">Information Collected Automatically:</h3>
         <ul className="list-disc pl-5 space-y-1">
           <li>Device type and browser for responsive design</li>
-          <li>IP address for rate limiting and abuse prevention</li>
+          <li>IP address for rate limiting and abuse prevention. For landing-page conversations we store only a short one-way hash of it, never the address itself</li>
           <li>Usage patterns (pages visited, features used) for product improvement</li>
         </ul>
       </section>
@@ -97,8 +97,9 @@ export default function PrivacyPage() {
         <ul className="list-disc pl-5 space-y-1">
           <li><strong className="text-white/90">Account &amp; profile data:</strong> Retained while your account is active</li>
           <li><strong className="text-white/90">Yuri conversations:</strong> Retained for cross-session memory while your account is active. Conversation summaries are generated periodically and older message content may be pruned after 90 days of inactivity</li>
-          <li><strong className="text-white/90">Scan images:</strong> Processed in real-time by Anthropic&apos;s API and not permanently stored on our servers. Scan results (ingredient lists, analysis) are retained while your account is active</li>
-          <li><strong className="text-white/90">Anonymous widget conversations:</strong> Not stored; streamed and discarded immediately</li>
+          <li><strong className="text-white/90">Scan images:</strong> Sent to Anthropic&apos;s API for analysis and also saved to a private storage bucket so you can see the photo behind a past scan. They are stored under a path scoped to your account, are never public, and are only ever served to you through short-lived signed links that expire after one hour. Deleted when you delete your account. Scan results (ingredient lists, analysis) are retained while your account is active</li>
+          <li><strong className="text-white/90">Skin progress photos:</strong> Stored the same way as scan images — private bucket, account-scoped path, expiring signed links, deleted when you delete your account</li>
+          <li><strong className="text-white/90">Anonymous widget conversations:</strong> Stored. Messages you send to Yuri on the landing page before signing up are saved so Yuri can pick up where you left off, so we can improve her answers, and so we can email you a recap if you give us your address. They are tied to a random browser ID, not to your identity, unless you choose to give us your email. See below for how to have them deleted</li>
           <li><strong className="text-white/90">Analytics data:</strong> Aggregated usage analytics are retained for up to 90 days</li>
           <li><strong className="text-white/90">After account deletion:</strong> All personal data (profile, conversations, scans, routines, reviews) is deleted within 30 days. Database backups containing your data are purged within 30 days of deletion. Anonymized learning contributions (which cannot be traced back to you) are retained</li>
         </ul>
@@ -116,6 +117,14 @@ export default function PrivacyPage() {
           <li><strong className="text-white/90">Correct:</strong> Update your skin profile at any time through Yuri onboarding</li>
           <li><strong className="text-white/90">Object:</strong> You may object to automated processing of your data for personalization purposes by contacting us</li>
         </ul>
+        <p className="mt-3">
+          <strong className="text-white/90">If you talked to Yuri without an account:</strong> those landing-page
+          conversations are stored against a random browser ID, so there is no account for you to delete. Email us at{' '}
+          <a href={contactMailto('Delete my Yuri preview conversation')} className="text-gold-light hover:text-gold">{CONTACT_EMAIL}</a>
+          {' '}from the address you gave Yuri, or tell us roughly when you chatted, and we will delete the conversation and
+          any captured email. Clearing your browser storage stops the conversation being linked to you going forward, but it
+          does not erase what is already saved — only asking us does.
+        </p>
       </section>
 
       <section>
