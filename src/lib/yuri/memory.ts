@@ -818,6 +818,25 @@ export function formatContextForPrompt(context: UserContext): string {
 - ${medical.join('\n- ')}
 
 This is not a list of things to avoid applying; it is who you are advising. Let it change your actual reasoning: a skin cancer or precancer history makes daily sun protection the treatment rather than a footnote, makes photosensitizing actives (retinoids, AHAs) something to introduce with explicit sun-exposure framing, and lowers your threshold for saying plainly "that's a dermatologist question, not mine." Rosacea, eczema, or psoriasis change what a "gentle" routine even means. You are not being cautious for its own sake — you are giving the advice a specialist who knew this would give.`)
+    } else {
+      // An EMPTY medical history rendered nothing at all, which is the silent
+      // failure this codebase keeps paying for: "asked, and there is none" and
+      // "never asked" produced the identical context, and the second is far more
+      // common (4 of 6 real subscriber profiles, Aug 9 2026). Onboarding is
+      // instructed to ask (onboarding.ts) but a user can skip it, finish early,
+      // or have registered before that instruction existed — so a blank field is
+      // evidence about OUR record, not about their health.
+      //
+      // Stated as a FACT about her own knowledge, with the decision handed back.
+      // Deliberately NOT a pre-ask gate: "ask when it bears on what you're about
+      // to recommend" and never a condition of helping them. A standing
+      // instruction to interrogate before every actives recommendation is the
+      // regression risk here — Bailey has already objected to unnecessary
+      // preamble ("just makes it confusing", Aug 1 2026).
+      sections.push(`## Medical History (not on file)
+No standing medical history is recorded for this user. That means it was never captured — NOT that there is none. Skin cancer or precancers, rosacea, eczema, psoriasis, current dermatologist care, and prescriptions like tretinoin or isotretinoin all change the approach, and an allergy list does not capture any of them.
+
+Ask when it bears on what you're about to recommend — plainly, the way a specialist would, and never as a condition of helping them. If they'd rather not say, don't stall: start gentler and ramp slower, which is the right call for unknown skin anyway.`)
     }
   } else {
     sections.push(`## User's Skin Profile\nNot yet created. Encourage them to complete their skin profile for personalized advice. You can suggest they go through the onboarding conversation with you.`)
