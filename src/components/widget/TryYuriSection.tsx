@@ -198,14 +198,49 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
       // to 'landing' exactly as before.
       const ai = detectAiReferrer(document.referrer)
       if (ai) sourceRef.current = ai
+      else if (document.referrer) {
+        // ---- Raw referrer host fallback (Aug 9 2026) -------------------------
+        // A social arrival whose params were stripped still usually carries a
+        // referrer. Recording the HOST is strictly better than NULL: it cannot
+        // claim a campaign, but it separates "came from tiktok.com" from "we
+        // have no idea", which is the distinction 58 of 75 sessions could not
+        // make. Sanitised to a short slug so it matches the server's schema.
+        try {
+          const host = new URL(document.referrer).hostname
+            .replace(/^www\./, '')
+            .toLowerCase()
+          // Our own pages are not an external source; they're internal
+          // navigation and would otherwise drown the real referrers.
+          if (host && !host.endsWith('seoulsister.com')) {
+            sourceRef.current = `ref_${host.replace(/[^a-z0-9]/g, '_').slice(0, 32)}`
+          }
+        } catch {
+          // A malformed referrer is not worth a thrown error on the happy path.
+        }
+      }
     }
+
+    // ---- The attribution FLOOR (Aug 9 2026) ---------------------------------
+    // This used to live INSIDE the `?ask=` branch below, so every visitor who
+    // arrived without a feeder CTA recorded `source = NULL`. Measured: 58 of 75
+    // sessions in all of production history — 77% of every conversation Seoul
+    // Sister has ever had — were NULL, including the best cold conversation of
+    // Aug 9.
+    //
+    // NULL is the specific failure this repo keeps paying for: it cannot be
+    // told apart from "the capture code never ran". 'landing' is a claim we can
+    // actually stand behind — the visitor arrived at the landing page with no
+    // campaign, no feeder tag, and no usable referrer — and it makes a genuine
+    // gap visible instead of silent.
+    if (!sourceRef.current) sourceRef.current = 'landing'
 
     // `ask` PRESENT (even empty) means the visitor clicked an "Ask Yuri" feeder
     // CTA and wants the chat. Non-empty prefills their question; empty just
     // focuses the widget (e.g. the nav "Ask Yuri" with no topic).
     if (!params.has('ask')) return
     const ask = (params.get('ask') || '').trim()
-    if (!sourceRef.current) sourceRef.current = 'landing'
+    // (The 'landing' floor moved ABOVE this early-return — see the comment
+    // there. Leaving it here meant a non-CTA arrival was never tagged at all.)
     if (ask) setInput(ask)
     // Get the visitor to the INPUT, not just the page. On desktop the widget
     // sits in the right hero column already above the fold, so top-of-page shows

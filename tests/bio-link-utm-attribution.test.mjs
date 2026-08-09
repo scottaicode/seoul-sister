@@ -115,3 +115,84 @@ test('the redirect stays temporary', async () => {
     assert.equal(r.permanent, false, `${path} must stay a temporary redirect`)
   }
 })
+
+// ---------------------------------------------------------------------------
+// The attribution FLOOR (Aug 9 2026)
+//
+// 58 of 75 sessions in all of production history recorded `source = NULL` —
+// 77% of every conversation Seoul Sister has ever had, including the best cold
+// conversation of Aug 9. The 'landing' floor sat INSIDE the `?ask=` branch, so
+// any visitor who arrived without a feeder CTA was never tagged at all.
+//
+// NULL is the failure this repo keeps paying for: it cannot be told apart from
+// "the capture code never ran."
+// ---------------------------------------------------------------------------
+
+/** Execute the REAL capture block from the component under a fake DOM. */
+function captureSource(search, referrer) {
+  const src = readFileSync(
+    join(ROOT, 'src', 'components', 'widget', 'TryYuriSection.tsx'),
+    'utf8'
+  )
+  const start = src.indexOf('const utm = (params.get')
+  const end = src.indexOf("if (!params.has('ask')) return")
+  assert.ok(start > 0 && end > start, 'capture block not found — did the component move?')
+  const body = src.slice(start, end)
+
+  const params = new URLSearchParams(search)
+  const sourceRef = { current: null }
+  const document = { referrer }
+  const detectAiReferrer = (r) =>
+    /chatgpt|perplexity|copilot|bing\.com/.test(r || '') ? 'ai_assistant' : null
+  eval(body)
+  return sourceRef.current
+}
+
+test('every arrival records a source — NULL is never acceptable', () => {
+  const arrivals = [
+    ['?utm_source=tiktok&utm_medium=bio&from=tt_ss', ''],
+    ['', ''],                                  // typed the URL
+    ['', 'https://www.tiktok.com/'],           // in-app browser, params stripped
+    ['', 'https://copilot.microsoft.com/'],    // AI citation
+    ['?ask=help&from=blog', ''],               // feeder CTA
+    ['', 'not-a-url'],                         // malformed referrer
+  ]
+  for (const [search, referrer] of arrivals) {
+    const got = captureSource(search, referrer)
+    assert.ok(
+      got !== null && got !== undefined && got !== '',
+      `arrival (${search || 'no params'} / ${referrer || 'no referrer'}) recorded ${got} — ` +
+        'an untagged session is indistinguishable from the capture code never running'
+    )
+  }
+})
+
+test('a campaign tag still wins over the floor and the referrer', () => {
+  // The floor must never overwrite a real tag.
+  assert.equal(captureSource('?utm_source=tiktok&from=tt_ss', 'https://www.tiktok.com/'), 'tiktok')
+  assert.equal(captureSource('?from=blog', ''), 'blog')
+})
+
+test('a stripped-param social arrival is attributed by referrer host', () => {
+  // The Aug 9 visitor: no params, no feeder tag. Recording the host cannot
+  // claim a campaign, but it separates "came from tiktok" from "no idea".
+  assert.equal(captureSource('', 'https://www.tiktok.com/'), 'ref_tiktok_com')
+  assert.equal(captureSource('', 'https://l.instagram.com/'), 'ref_l_instagram_com')
+})
+
+test('our own pages are not counted as an external referrer', () => {
+  // Internal navigation would otherwise drown the real referrers.
+  assert.equal(captureSource('', 'https://www.seoulsister.com/best'), 'landing')
+})
+
+test('referrer slugs survive the server sanitizer intact', () => {
+  const routeSrc = readFileSync(
+    join(ROOT, 'src', 'app', 'api', 'widget', 'chat', 'route.ts'),
+    'utf8'
+  )
+  const m = routeSrc.match(/replace\(\/\[\^([^\]]+)\]\/gi, ''\)/)
+  const sanitize = (v) => v.replace(new RegExp(`[^${m[1]}]`, 'gi'), '').slice(0, 40)
+  for (const slug of ['ref_tiktok_com', 'ref_l_instagram_com', 'landing']) {
+    assert.equal(sanitize(slug), slug, `${slug} must survive sanitization unmangled`)
+  }
+})
