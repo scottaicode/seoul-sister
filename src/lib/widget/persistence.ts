@@ -93,12 +93,15 @@ export async function saveAssistantMessage(
 export async function getSessionTranscript(
   sessionId: string,
   limit = 40
-): Promise<Array<{ role: 'user' | 'assistant'; content: string }>> {
+): Promise<Array<{ role: 'user' | 'assistant'; content: string; toolCalls: number }>> {
   const supabase = getServiceClient()
 
+  // tool_calls is selected because the grounding instrument needs it and the
+  // CLIENT-sent history carries no tool data at all — the database is the only
+  // place that knows whether a reply was backed by a search.
   const { data, error } = await supabase
     .from('ss_widget_messages')
-    .select('role, content')
+    .select('role, content, tool_calls')
     .eq('session_id', sessionId)
     .in('role', ['user', 'assistant'])
     .order('created_at', { ascending: true })
@@ -109,7 +112,13 @@ export async function getSessionTranscript(
     return []
   }
 
-  return data as Array<{ role: 'user' | 'assistant'; content: string }>
+  return (data as Array<{ role: 'user' | 'assistant'; content: string; tool_calls: unknown }>).map(
+    (m) => ({
+      role: m.role,
+      content: m.content,
+      toolCalls: Array.isArray(m.tool_calls) ? m.tool_calls.length : 0,
+    })
+  )
 }
 
 /**

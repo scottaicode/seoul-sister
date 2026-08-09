@@ -214,6 +214,57 @@ test('rebuilding the lineup is counted even though the artifact set cannot show 
   assert.match(block, /2 separate times/)
 })
 
+test('the note fires BEFORE the second lineup, not after it', () => {
+  // THE OFF-BY-ONE. Replaying the real Aug 8 2026 transcript (session
+  // d3b442fb, a cold 20-year-old from Bailey's TikTok who received THREE
+  // complete lineups): at the moment Yuri was about to write the Target/Ulta
+  // rebuild, exactly one lineup had been sent. The old gate required TWO
+  // (`count < 2 && lineupBuilds < 2`), so it returned null and she wrote the
+  // second build with no visibility whatsoever. The warning only appeared
+  // before the THIRD — always one build late, which is one build too late.
+  const beforeTheRebuild = [
+    { role: 'user', content: 'What should I do?' },
+    { role: 'assistant', content: 'Referral for the cheek spot, and hands off.' },
+    { role: 'user', content: 'Yes can you give me a product breakdown please' },
+    { role: 'assistant', content: REAL_KOREAN_LINEUP },
+  ]
+  const give = detectCumulativeGive(beforeTheRebuild)
+  assert.equal(give.lineupBuilds, 1, 'exactly one lineup has been delivered so far')
+
+  const block = buildCumulativeGiveBlock(give)
+  assert.ok(
+    block,
+    'the note MUST render while only one lineup exists — that is the turn on ' +
+      'which "can I get this at Target?" arrives'
+  )
+  // It must name the rebuild pattern specifically, not just report a count.
+  assert.match(block, /same build again, not a new question/i)
+})
+
+test('a rebuild request is named as a repeat, not a new question', () => {
+  // The gate was defined by ARTIFACT ("a complete AM/PM routine is subscriber
+  // work") but the real leak is REPETITION: each of the three Aug 8 replies
+  // looked compliant in isolation, because a different store genuinely reads
+  // as a different question from inside a single turn.
+  const give = detectCumulativeGive([{ role: 'assistant', content: REAL_KOREAN_LINEUP }])
+  const block = buildCumulativeGiveBlock(give)
+  assert.match(block, /different retailer|different store|Target/i)
+  // And it must point at the more useful answer rather than only forbidding.
+  assert.match(block, /translation rule|the one pick that actually changes/i)
+})
+
+test('stays silent before any lineup has been built', () => {
+  // The give is supposed to be generous. A visitor who has received a
+  // diagnosis and a single pick must not trip the instrument — that is the
+  // free value that converted the only paying subscriber on record.
+  const give = detectCumulativeGive([
+    { role: 'user', content: 'bumps on my chin' },
+    { role: 'assistant', content: 'That cheek spot needs a dermatologist. Hands off, and strip back to a gentle cleanser.' },
+  ])
+  assert.equal(give.lineupBuilds, 0)
+  assert.equal(buildCumulativeGiveBlock(give), null, 'no lineup yet — nothing to report')
+})
+
 test('the rebuild note stays a fact and never instructs a refusal', () => {
   const give = detectCumulativeGive([
     { role: 'assistant', content: REAL_KOREAN_LINEUP },

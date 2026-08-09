@@ -10,6 +10,7 @@ import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordC
 import { consumeGlobalBudget, logBreakerTrip, BREAKER_MESSAGE } from '@/lib/widget/circuit-breaker'
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
 import { detectCumulativeGive, buildCumulativeGiveBlock } from '@/lib/widget/cumulative-give'
+import { detectToolGrounding, buildToolGroundingBlock } from '@/lib/widget/tool-grounding'
 import { detectValueDensity, buildValueDensityFact } from '@/lib/widget/value-density'
 import { PRICING } from '@/lib/pricing'
 import { generateLeadEmail, type VisitorMemoryFacts, type ConversationTurn } from '@/lib/email/lead-email'
@@ -131,7 +132,15 @@ function shouldWidgetForceToolUse(message: string): boolean {
 
   if (/\b(how much|price|cost|cheap|where.{0,15}buy|retailer|deal)\b/i.test(msg)) return true
   if (/\b(trending|trend|what's new|popular|bestseller|viral|emerging)\b/i.test(msg)) return true
-  if (/\b(do you have|search for|find me|recommend.{0,20}(product|serum|cream|sunscreen|cleanser|toner|moisturizer|mask))\b/i.test(msg)) return true
+  // The product-noun requirement was a BUG, not a tuning knob: a real visitor
+  // wrote "I'm looking to revamp my routine using indian brands. Can you help
+  // me?" — an unambiguous request for recommendations containing no product
+  // noun at all, so nothing fired. `routine|lineup|regimen|shelf` are
+  // market-neutral words that will never need a market-specific update, which
+  // is the whole point — BRAND_SIGNALS above is deliberately NOT expanded (see
+  // WIDGET-GROUNDING-FIX.md for why a brand list is the wrong instrument).
+  if (/\b(do you have|search for|find me|recommend.{0,20}(product|serum|cream|sunscreen|cleanser|toner|moisturizer|mask|routine|lineup|regimen|shelf))\b/i.test(msg)) return true
+  if (/\b(revamp|rebuild|redo|overhaul|put together|build)\b.{0,30}\b(routine|lineup|regimen|shelf|skincare)\b/i.test(msg)) return true
   if (/\b(best|top|good)\s+(serum|sunscreen|cleanser|toner|moisturizer|cream|mask|essence)\b/i.test(msg)) return true
   if (/\b(weather|uv|humidity|sun.{0,5}(today|right now))\b/i.test(msg)) return true
 
@@ -308,6 +317,8 @@ For an anonymous visitor, there's no memory of them after today — but if you h
 You are the only one who can tell whether a given person will parse it, so read them and adapt — a visitor writing fluent ingredient questions needs a lighter touch than someone typing in a second language or clearly newer to this. Two things usually make the difference: name the concrete action rather than an abstraction ("type your email address here" lands where "hang onto your email" can float), and say what actually arrives ("I'll send you a write-up of what we worked out"). Don't recite a script; make it unmistakable in your own words.
 
 **And if their reply to the ask is confusion rather than an address** — a question about what you mean, whether some particular provider works, whether they need an account, what you'll do with it — that is not a refusal and it does not count as your one ask. Answer the confusion plainly and re-offer in the same breath, since they were trying to say yes. Any real address works, from any provider; there is nothing to sign up for.
+
+**Don't frame the ask as a warning about them.** A real visitor on Aug 9 2026 got a genuinely good recovery plan that ended: *"this is exactly the kind of thing that's easy to get right for a week and then drift back into old habits once the flaking clears, and then you're back here. If it'd help, I can hang onto your email..."* She replied **"No. I'm good."** and never gave it. The offer was well-timed and the plan was correct — but it arrived attached to a prediction that she'd fail to follow through, which is a bad trade for an address. Anchor the offer in what YOU did that's worth keeping ("we worked out a specific sequence here — want me to send it so you're not reconstructing it from memory?"), never in a forecast of their backsliding. Same reason you don't sell with fake scarcity: the value is real, so it doesn't need a threat behind it.
 
 **But ask ONCE, then let it rest.** The single biggest way to blow this is repeating the offer. If you've already made it earlier in this conversation and they didn't give it to you, do NOT ask again — they heard you, and re-asking every turn reads as nagging and pushes a satisfied person away. A visitor who keeps engaging after your offer is still getting value; keep helping generously and let the offer stand on its own. Make it at most once, at the strongest natural moment — and don't manufacture that moment on a one-line throwaway question or mid-build while they're still firing new questions; save it for when a valuable piece of work is actually landing. If they ignore it, your job is to be so useful they *want* to come back. So: silence early and mid-conversation, one clear well-earned offer at the value moment, then rest.
 
@@ -535,9 +546,20 @@ export async function POST(request: NextRequest) {
     // transcript; recover it.
     let history: Array<{ role: 'user' | 'assistant'; content: string }> =
       (parsed.history || []).map((m) => ({ role: m.role, content: m.content }))
-    if (session && session.message_count > 0 && history.length === 0) {
+    // Grounded transcript: the same turns, but carrying each reply's tool-call
+    // count. Kept separate from `history` because `history` normally comes from
+    // the CLIENT, which has no idea whether a search ran — only the database
+    // knows that. Loaded whenever a session exists, not just on rehydration.
+    let groundedHistory: Array<{ role: string; content: string; toolCalls: number }> = []
+    if (session && session.message_count > 0) {
       try {
-        history = await getSessionTranscript(session.id)
+        groundedHistory = await getSessionTranscript(session.id)
+        if (history.length === 0) {
+          history = groundedHistory.map((m) => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+          }))
+        }
       } catch (err) {
         console.error('[widget/chat] Transcript rehydration failed:', err)
       }
@@ -583,7 +605,13 @@ export async function POST(request: NextRequest) {
 
     dynamicContext += `\n\n## Conversation State (facts, not instructions)
 - This is the visitor's message #${turnNumber} in this conversation.
-- Free preview usage: ${lifetimeUsed !== null ? `this is free message #${lifetimeUsed + 1} of ${MAX_FREE_MESSAGES} total (lifetime, across visits and devices). After you reply, exactly ${Math.max(0, MAX_FREE_MESSAGES - lifetimeUsed - 1)} free message${MAX_FREE_MESSAGES - lifetimeUsed - 1 === 1 ? '' : 's'} remain. These numbers are authoritative — if you state a count, use THESE; never estimate or count the transcript's bubbles yourself.` : `the preview allows ${MAX_FREE_MESSAGES} total free messages; exact usage unavailable this turn — don't state a specific count.`} If they ask about limits, that's the honest answer — never claim the preview is unlimited. Don't volunteer a countdown unprompted; near the end (last 2-3 messages), it's fair and honest to mention the preview is almost up.
+- Free preview usage: ${lifetimeUsed !== null ? `this is free message #${lifetimeUsed + 1} of ${MAX_FREE_MESSAGES} total (lifetime, across visits and devices). After you reply, exactly ${Math.max(0, MAX_FREE_MESSAGES - lifetimeUsed - 1)} free message${MAX_FREE_MESSAGES - lifetimeUsed - 1 === 1 ? '' : 's'} remain. These numbers are authoritative — if you state a count, use THESE; never estimate or count the transcript's bubbles yourself.` : `the preview allows ${MAX_FREE_MESSAGES} total free messages; exact usage unavailable this turn — don't state a specific count.`} If they ask about limits, that's the honest answer — never claim the preview is unlimited.${
+      lifetimeUsed !== null && MAX_FREE_MESSAGES - lifetimeUsed - 1 > 3
+        ? ` Volunteering the count is NOT appropriate yet — they are nowhere near the end, and a quota reading on a warm answer changes what the conversation feels like. A real visitor on Aug 9 2026 got an otherwise excellent closing message that ended with "you've got 6 free messages left in this preview" at the exact midpoint of her preview; it converted a good goodbye into a meter reading. Only say it if they ask.`
+        : lifetimeUsed !== null
+          ? ` They ARE near the end now, so mentioning the preview is almost up is fair, honest, and useful — a visitor who runs out mid-thought with no warning is the worse outcome.`
+          : ` Don't volunteer a count you don't have.`
+    }
 - Email on file for this visitor: ${hasEmail ? 'YES — you already have it. Do NOT ask again; just keep helping.' : 'NO — Seoul Sister has no way to reach them after they close this tab.'}${!hasEmail && history.length > 0 ? `
 - Your earlier messages are above. If you made a clean, standalone offer to save their email and they clearly passed on it, let it rest. But if an earlier mention got buried — tacked onto another question, or lost in a longer answer so they never actually responded to it — a single clear, standalone offer as this piece of work lands is not nagging; it's the one that should have been made. No email is captured yet, so the question is still genuinely open.` : ''}${valueDensityFact ? `
 ${valueDensityFact}` : ''}
@@ -603,6 +631,27 @@ Use these facts with the judgment described above. They are context, not a trigg
     const cumulativeGive = detectCumulativeGive(history)
     const giveBlock = buildCumulativeGiveBlock(cumulativeGive)
     if (giveBlock) dynamicContext += giveBlock
+
+    // --- Tool grounding (Aug 9 2026) ---
+    // A real visitor in India got seven brand recommendations across six
+    // messages with ZERO tool calls. Yuri even offered "want me to pull a
+    // couple with live pricing? Just say the word and I'll search" — and then
+    // recommended brands in her next reply without searching. Same
+    // state-visibility class as the email ask and the cumulative give: she made
+    // an offer earlier in the conversation and could not observe that she never
+    // honored it.
+    //
+    // Deliberately NOT fixed by widening the route's hardcoded BRAND_SIGNALS
+    // list and forcing tool_choice. Measured against the live catalog first: of
+    // the seven brands she named, only two (Aestura, Round Lab) have any rows —
+    // CeraVe, Dr. Sheth, Re'equil, Minimalist, Deconstruct and Dot & Key have
+    // zero. Forcing would have grounded 2 of 7 and returned empty for five, and
+    // an empty search on a Western brand risks making "not in our catalog"
+    // sound like "not good". See WIDGET-GROUNDING-FIX.md.
+    if (groundedHistory.length > 0) {
+      const groundingBlock = buildToolGroundingBlock(detectToolGrounding(groundedHistory))
+      if (groundingBlock) dynamicContext += groundingBlock
+    }
 
     // --- Feeder source (July 12 funnel audit) ---
     // The visitor's arrival source was being stored on the session but never

@@ -256,17 +256,40 @@ export function detectCumulativeGive(
  * and the response is hers.
  */
 export function buildCumulativeGiveBlock(give: CumulativeGive): string | null {
-  // A second full lineup is worth surfacing on its own, even when the artifact
-  // set hasn't moved — rebuilding the same lineup is invisible to a set.
-  if (give.count < 2 && give.lineupBuilds < 2) return null
+  // Fires once ONE lineup exists, not two.
+  //
+  // THE OFF-BY-ONE THIS FIXES (measured against the real Aug 8 2026 transcript,
+  // session d3b442fb). A cold 20-year-old from Bailey's TikTok received three
+  // complete lineups: a Korean reset, then the whole thing rebuilt for
+  // Target/Ulta, then a third revision re-textured for clog-prone skin.
+  //
+  // Replaying her transcript through this function: at the moment Yuri wrote
+  // the SECOND lineup, `lineupBuilds` was 1 and `count` was 1, so the old
+  // `< 2 && < 2` gate returned null and she wrote it with no visibility at all.
+  // The note only appeared before the THIRD. The counter reports builds already
+  // SENT, but the note exists to inform the build she is ABOUT TO WRITE — so
+  // requiring two sent means the warning always arrives one build late, which
+  // is precisely one build too late.
+  //
+  // The moment a lineup exists is the moment a rebuild request becomes likely
+  // ("what about Target?", "anything lighter?"). That is when she needs to see
+  // it, and it is why the give/gate held on paper while the cow walked out the
+  // door in production.
+  if (give.count < 2 && give.lineupBuilds < 1) return null
 
   const list = give.labels.join(', ')
   const mostOfIt = give.count >= 4
 
+  // A rebuild is a REPEAT, not a new question. This is the distinction the gate
+  // never drew: the gate is defined by ARTIFACT ("a complete AM/PM routine is
+  // subscriber work"), but the real leak is REPETITION. Every single one of her
+  // three replies looked compliant in isolation — a different store genuinely
+  // reads as a different question from inside one turn. Naming the pattern is
+  // what a single turn cannot supply.
   const rebuilt =
     give.lineupBuilds >= 2
       ? `\nYou have built them a complete multi-slot lineup ${give.lineupBuilds} separate times in this conversation. Often that is the visitor asking one question several ways — a different store, a different texture, a different budget — and each reframe reads as a brand-new question. Re-specifying the whole lineup each time is a judgment call worth making deliberately rather than by reflex; answering just the part they actually asked about is usually the better answer anyway, and it is the more useful one.`
-      : ''
+      : `\nYou have already built them one complete multi-slot lineup. If their next message asks for that same lineup somewhere else — a different retailer, a lower budget, a lighter texture, "can I get this at Target?" — that is the same build again, not a new question, however much it reads like one in the moment. The genuinely more useful answer is usually the translation rule plus the one pick that actually changes ("same three jobs: gentle cleanser, repair moisturizer, sunscreen — at Target the repair balm is the one worth hunting for"), which respects what they asked and hands them something they can reuse. Re-specifying every slot a second time is the judgment call worth making deliberately rather than by reflex.`
 
   return `\n\n## What You've Already Given This Visitor (facts, not instructions)
 Across your earlier replies in this conversation you have already delivered ${give.count} of the ${GIVE_ARTIFACT_COUNT} things the complete build is made of: ${list}.${
