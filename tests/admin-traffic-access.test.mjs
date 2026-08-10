@@ -76,3 +76,12 @@ test('the widget viewer honours the ?session= deep link', () => {
   assert.match(widget, /get\('session'\)/)
   assert.match(widget, /fetchDetail\(sessionId\)/)
 })
+
+test('a deep-linked transcript returns to traffic, not the conversation list', () => {
+  // Someone who arrived from /admin/traffic never saw the widget conversation
+  // list; sending them there on "back" strands them in a page they did not
+  // come from. The destination must follow the ENTRY POINT.
+  const widget = readFileSync(join(ROOT, 'src', 'app', '(app)', 'admin', 'widget', 'page.tsx'), 'utf8')
+  assert.match(widget, /if \(deepLinked\)[\s\S]{0,120}\/admin\/traffic/)
+  assert.match(widget, /deepLinked \? 'Back to traffic' : 'Back to conversations'/)
+})

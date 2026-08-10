@@ -225,11 +225,22 @@ export default function AdminWidgetPage() {
   if (detail) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Return the visitor where they actually came from. Someone who
+            deep-linked from /admin/traffic never saw this conversation list,
+            so dropping them into it strands them somewhere they didn't come
+            from — the destination has to follow the entry point, not the page. */}
         <button
-          onClick={() => setDetail(null)}
+          onClick={() => {
+            if (deepLinked) {
+              window.location.href = '/admin/traffic'
+              return
+            }
+            setDetail(null)
+          }}
           className="flex items-center gap-1 text-sm text-white/50 hover:text-white mb-4"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to conversations
+          <ArrowLeft className="w-4 h-4" />{' '}
+          {deepLinked ? 'Back to traffic' : 'Back to conversations'}
         </button>
 
         <div className="dark-card p-5 mb-4">
