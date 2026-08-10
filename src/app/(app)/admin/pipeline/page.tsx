@@ -135,7 +135,7 @@ export default function AdminPipelinePage() {
   // Loading state
   if (authLoading || (loading && !data && !accessDenied)) {
     return (
-      <div className="min-h-screen bg-gray-950 text-gray-100 p-4 md:p-6 space-y-6">
+      <div className="min-h-screen bg-gray-950 text-gray-100 p-4 md:p-6 pb-28 md:pb-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <div className="h-8 w-56 bg-gray-800 rounded-lg animate-pulse" />
@@ -200,7 +200,7 @@ export default function AdminPipelinePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 p-4 md:p-6 space-y-6">
+    <div className="min-h-screen bg-gray-950 text-gray-100 p-4 md:p-6 pb-28 md:pb-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

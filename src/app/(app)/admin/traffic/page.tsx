@@ -130,7 +130,7 @@ export default function AdminTrafficPage() {
     data?.bySource.find((s) => s.source === 'tiktok')?.conversations ?? 0
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-5xl px-4 py-8 pb-28 md:pb-8">
       <div className="mb-6 flex items-baseline justify-between">
         <div>
           {/* The app shell is dark. Card interiors paint their own white

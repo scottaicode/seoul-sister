@@ -109,3 +109,23 @@ test('the window selector drives every panel, not just the cards', () => {
   // The old two-period card copy must be gone.
   assert.doesNotMatch(page3, /last 7 days · \{/)
 })
+
+test('admin pages clear the fixed bottom nav on mobile', () => {
+  // BottomNav is `fixed bottom-0 z-50` and AppShell gives <main> pb-20 — but a
+  // page that sets its own min-h-screen or a small py-8 fills the viewport and
+  // its last rows render UNDER the nav. Bailey hit this on /admin/pipeline:
+  // the nav sat on top of the Pipeline Run History rows.
+  const pages = [
+    ['(app)', 'admin', 'pipeline', 'page.tsx'],
+    ['(app)', 'admin', 'widget', 'page.tsx'],
+    ['(app)', 'admin', 'traffic', 'page.tsx'],
+  ]
+  for (const parts of pages) {
+    const src = readFileSync(join(ROOT, 'src', 'app', ...parts), 'utf8')
+    assert.match(
+      src,
+      /pb-28 md:pb-(?:6|8)/,
+      `${parts.join('/')} must reserve space for the fixed bottom nav on mobile`
+    )
+  }
+})

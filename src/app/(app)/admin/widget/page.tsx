@@ -224,7 +224,7 @@ export default function AdminWidgetPage() {
   // ---------------------------------------------------------------------------
   if (detail) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-8 pb-28 md:pb-8">
         {/* Return the visitor where they actually came from. Someone who
             deep-linked from /admin/traffic never saw this conversation list,
             so dropping them into it strands them somewhere they didn't come
@@ -342,7 +342,7 @@ export default function AdminWidgetPage() {
   // Main View (Tabs)
   // ---------------------------------------------------------------------------
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 py-8 pb-28 md:pb-8">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Widget Intelligence</h1>
@@ -643,7 +643,7 @@ export default function AdminWidgetPage() {
 
 function AdminLoadingSkeleton() {
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+    <div className="max-w-6xl mx-auto px-4 py-8 pb-28 md:pb-8 space-y-6">
       <div>
         <div className="h-8 w-56 bg-white/5 rounded-lg animate-pulse" />
         <div className="h-4 w-80 bg-white/5 rounded mt-2 animate-pulse" />
