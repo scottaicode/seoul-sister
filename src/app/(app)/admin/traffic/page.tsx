@@ -104,13 +104,13 @@ export default function AdminTrafficPage() {
   }, [authLoading, user, accessDenied, fetchData])
 
   if (authLoading) {
-    return <div className="p-8 text-center text-gray-500">Loading…</div>
+    return <div className="p-8 text-center text-white/50">Loading…</div>
   }
   if (!user || accessDenied) {
     return (
       <div className="p-8 text-center">
-        <h1 className="text-xl font-semibold text-gray-900">Not available</h1>
-        <p className="mt-2 text-gray-600">This page is limited to Seoul Sister admins.</p>
+        <h1 className="text-xl font-semibold text-white">Not available</h1>
+        <p className="mt-2 text-white/60">This page is limited to Seoul Sister admins.</p>
         <Link href="/dashboard" className="mt-4 inline-block text-rose-600 hover:underline">
           Back to dashboard
         </Link>
@@ -130,21 +130,25 @@ export default function AdminTrafficPage() {
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-6 flex items-baseline justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Traffic &amp; Yuri conversations</h1>
-          <p className="mt-1 text-sm text-gray-600">
+          {/* The app shell is dark. Card interiors paint their own white
+              background, but anything OUTSIDE a card must use light-on-dark or
+              it renders nearly invisible — which is exactly how this header
+              shipped on Aug 10 2026. */}
+          <h1 className="text-2xl font-semibold text-white">Traffic &amp; Yuri conversations</h1>
+          <p className="mt-1 text-sm text-white/60">
             Real humans who talked to Yuri. A row exists only when someone actually sends a
             message, so these numbers can&apos;t be inflated by bots.
           </p>
         </div>
         <button
           onClick={fetchData}
-          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+          className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-white/70 hover:bg-white/5 hover:text-white"
         >
           Refresh
         </button>
       </div>
 
-      {loading && <div className="py-12 text-center text-gray-500">Loading…</div>}
+      {loading && <div className="py-12 text-center text-white/50">Loading…</div>}
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</div>
       )}
@@ -322,7 +326,7 @@ export default function AdminTrafficPage() {
             </table>
           </div>
 
-          <p className="pb-4 text-xs text-gray-400">
+          <p className="pb-4 text-xs text-white/40">
             Conversation counts come from Seoul Sister&apos;s own database. TikTok view counts live
             in TikTok analytics — they aren&apos;t shown here.
           </p>
