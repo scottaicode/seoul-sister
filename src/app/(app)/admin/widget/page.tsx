@@ -190,6 +190,25 @@ export default function AdminWidgetPage() {
     setDetailLoading(false)
   }, [getAuthHeaders])
 
+  // Deep link from /admin/traffic: ?session=<id> opens that transcript
+  // directly. The traffic dashboard lists conversations but has no viewer of
+  // its own, so without this every row there is a dead end — real data that
+  // leads nowhere, the same defect as the Recent Scans cards (v11.19.0).
+  //
+  // Read from window.location rather than useSearchParams(): the latter forces
+  // this whole client page into a Suspense boundary at build time in Next 15,
+  // which is a lot of restructuring for one optional query param.
+  const [deepLinked, setDeepLinked] = useState(false)
+  useEffect(() => {
+    if (authLoading || accessDenied || deepLinked) return
+    if (typeof window === 'undefined') return
+    const sessionId = new URLSearchParams(window.location.search).get('session')
+    if (!sessionId) return
+    setDeepLinked(true)
+    setTab('conversations')
+    fetchDetail(sessionId)
+  }, [authLoading, accessDenied, deepLinked, fetchDetail])
+
   // Initial load
   useEffect(() => {
     if (authLoading || accessDenied) return

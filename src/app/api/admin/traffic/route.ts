@@ -51,7 +51,11 @@ export async function GET(request: NextRequest) {
         .order('first_seen_at', { ascending: false }),
       db
         .from('ss_widget_sessions')
-        .select('visitor_id, source, message_count, started_at')
+        // `id` is carried so the dashboard can LINK each row to its transcript
+        // in /admin/widget. Without it the recent-conversations table is a dead
+        // end — real data that leads nowhere, the same defect as the Recent
+        // Scans cards (v11.19.0).
+        .select('id, visitor_id, source, message_count, started_at')
         .gte('started_at', since30)
         .order('started_at', { ascending: false }),
     ])
@@ -134,15 +138,22 @@ export async function GET(request: NextRequest) {
       fourPlus: visitors.filter((v) => (v.total_messages || 0) >= 4).length,
     }
 
-    // Most recent conversations, with their source.
+    // Most recent conversations, with their source and their session id.
+    // Sessions are ordered newest-first, so the first entry per visitor is
+    // their most recent session — the one worth opening.
     const sourceByVisitor = new Map<string, string>()
+    const sessionByVisitor = new Map<string, string>()
     for (const s of sessions) {
       if (!sourceByVisitor.has(s.visitor_id)) {
         sourceByVisitor.set(s.visitor_id, s.source || 'landing')
       }
+      if (!sessionByVisitor.has(s.visitor_id) && s.id) {
+        sessionByVisitor.set(s.visitor_id, s.id)
+      }
     }
     const recent = visitors.slice(0, 20).map((v) => ({
       visitor_id: v.visitor_id,
+      session_id: sessionByVisitor.get(v.visitor_id) || null,
       first_seen_at: v.first_seen_at,
       messages: v.total_messages,
       source: sourceByVisitor.get(v.visitor_id) || 'landing',

@@ -58,3 +58,21 @@ test('the conversation count uses the un-inflatable definition', () => {
   // total_messages > 0 — a row exists only when a human sends a message.
   assert.match(route, /\.gt\('total_messages', 0\)/)
 })
+
+test('recent conversations link to their transcript', () => {
+  // A list of real conversations that leads nowhere is the Recent Scans defect
+  // (v11.19.0) repeated: the card shows genuine data and the tap dead-ends.
+  const route2 = readFileSync(join(ROOT, 'src', 'app', 'api', 'admin', 'traffic', 'route.ts'), 'utf8')
+  assert.match(route2, /session_id: sessionByVisitor\.get/)
+  // The session id must actually be selected, or it is silently always null.
+  assert.match(route2, /\.select\('id, visitor_id, source, message_count, started_at'\)/)
+
+  const page2 = readFileSync(join(ROOT, 'src', 'app', '(app)', 'admin', 'traffic', 'page.tsx'), 'utf8')
+  assert.match(page2, /\/admin\/widget\?session=\$\{r\.session_id\}/)
+})
+
+test('the widget viewer honours the ?session= deep link', () => {
+  const widget = readFileSync(join(ROOT, 'src', 'app', '(app)', 'admin', 'widget', 'page.tsx'), 'utf8')
+  assert.match(widget, /get\('session'\)/)
+  assert.match(widget, /fetchDetail\(sessionId\)/)
+})

@@ -27,6 +27,7 @@ interface TrafficData {
   depth: { oneMessage: number; twoToThree: number; fourPlus: number }
   recent: Array<{
     visitor_id: string
+    session_id: string | null
     first_seen_at: string
     messages: number
     source: string
@@ -294,7 +295,8 @@ export default function AdminTrafficPage() {
 
           {/* Recent conversations */}
           <div className="rounded-xl border border-gray-200 bg-white p-4">
-            <h2 className="mb-3 text-sm font-semibold text-gray-900">Recent conversations</h2>
+            <h2 className="text-sm font-semibold text-gray-900">Recent conversations</h2>
+            <p className="mb-3 text-xs text-gray-500">Click any row to read the full transcript.</p>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs uppercase tracking-wide text-gray-500">
@@ -306,7 +308,15 @@ export default function AdminTrafficPage() {
               </thead>
               <tbody>
                 {data.recent.map((r) => (
-                  <tr key={r.visitor_id} className="border-t border-gray-100">
+                  <tr
+                    key={r.visitor_id}
+                    onClick={() => {
+                      if (r.session_id) window.location.href = `/admin/widget?session=${r.session_id}`
+                    }}
+                    className={`border-t border-gray-100 ${
+                      r.session_id ? 'cursor-pointer hover:bg-gray-50' : ''
+                    }`}
+                  >
                     <td className="py-2 text-gray-700">
                       {new Date(r.first_seen_at).toLocaleString(undefined, {
                         month: 'short',
