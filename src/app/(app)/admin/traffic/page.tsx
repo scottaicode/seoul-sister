@@ -18,10 +18,8 @@ import { useAuth } from '@/hooks/useAuth'
  */
 
 interface TrafficData {
-  totals: {
-    last7: { conversations: number; messages: number; emails: number; conversions: number }
-    last30: { conversations: number; messages: number; emails: number; conversions: number }
-  }
+  days: number
+  totals: { conversations: number; messages: number; emails: number; conversions: number }
   daily: Array<{ day: string; conversations: number; messages: number }>
   bySource: Array<{ source: string; conversations: number; messages: number; avgMessages: number }>
   depth: { oneMessage: number; twoToThree: number; fourPlus: number }
@@ -68,6 +66,7 @@ export default function AdminTrafficPage() {
   const [data, setData] = useState<TrafficData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [days, setDays] = useState<1 | 7 | 30>(7)
 
   useEffect(() => {
     if (authLoading || !user) return
@@ -87,7 +86,7 @@ export default function AdminTrafficPage() {
     setError(null)
     try {
       const { data: session } = await supabase.auth.getSession()
-      const res = await fetch('/api/admin/traffic', {
+      const res = await fetch(`/api/admin/traffic?days=${days}`, {
         headers: { Authorization: `Bearer ${session.session?.access_token}` },
       })
       const json = await res.json()
@@ -98,7 +97,7 @@ export default function AdminTrafficPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [days])
 
   useEffect(() => {
     if (!authLoading && user && !accessDenied) fetchData()
@@ -119,6 +118,9 @@ export default function AdminTrafficPage() {
     )
   }
 
+  // Every panel heading names the SAME window the numbers came from, so no
+  // heading can quietly describe a different period than the data under it.
+  const periodLabel = days === 1 ? 'today' : `last ${days} days`
   const maxDaily = Math.max(1, ...(data?.daily || []).map((d) => d.conversations))
   const tiktokSessions =
     data?.ga4.status === 'ok'
@@ -141,12 +143,29 @@ export default function AdminTrafficPage() {
             message, so these numbers can&apos;t be inflated by bots.
           </p>
         </div>
-        <button
-          onClick={fetchData}
-          className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-white/70 hover:bg-white/5 hover:text-white"
-        >
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border border-white/20 p-0.5">
+            {([1, 7, 30] as const).map((d) => (
+              <button
+                key={d}
+                onClick={() => setDays(d)}
+                className={`rounded-md px-3 py-1 text-sm transition-colors ${
+                  days === d
+                    ? 'bg-white/15 font-medium text-white'
+                    : 'text-white/50 hover:text-white/80'
+                }`}
+              >
+                {d === 1 ? 'Today' : `${d} days`}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={fetchData}
+            className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-white/70 hover:bg-white/5 hover:text-white"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
       {loading && <div className="py-12 text-center text-white/50">Loading…</div>}
@@ -159,15 +178,15 @@ export default function AdminTrafficPage() {
           {/* Headline numbers */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[
-              { label: 'Conversations', v7: data.totals.last7.conversations, v30: data.totals.last30.conversations },
-              { label: 'Messages', v7: data.totals.last7.messages, v30: data.totals.last30.messages },
-              { label: 'Emails captured', v7: data.totals.last7.emails, v30: data.totals.last30.emails },
-              { label: 'Subscribed', v7: data.totals.last7.conversions, v30: data.totals.last30.conversions },
+              { label: 'Conversations', v: data.totals.conversations },
+              { label: 'Messages', v: data.totals.messages },
+              { label: 'Emails captured', v: data.totals.emails },
+              { label: 'Subscribed', v: data.totals.conversions },
             ].map((s) => (
               <div key={s.label} className="rounded-xl border border-gray-200 bg-white p-4">
                 <div className="text-xs uppercase tracking-wide text-gray-500">{s.label}</div>
-                <div className="mt-1 text-2xl font-semibold text-gray-900">{s.v7}</div>
-                <div className="text-xs text-gray-500">last 7 days · {s.v30} in 30</div>
+                <div className="mt-1 text-2xl font-semibold text-gray-900">{s.v}</div>
+                <div className="text-xs text-gray-500">{periodLabel}</div>
               </div>
             ))}
           </div>
@@ -178,7 +197,7 @@ export default function AdminTrafficPage() {
               <h2 className="text-sm font-semibold text-gray-900">TikTok: clicks → conversations</h2>
               <p className="mt-2 text-sm text-gray-700">
                 <span className="font-semibold">{tiktokSessions}</span> sessions arrived from the
-                bio link in the last 7 days.{' '}
+                bio link {periodLabel === 'today' ? 'today' : `in the ${periodLabel}`}.{' '}
                 <span className="font-semibold">{tiktokConversations}</span> of them talked to Yuri.
               </p>
               <p className="mt-1 text-xs text-gray-500">
@@ -190,7 +209,7 @@ export default function AdminTrafficPage() {
 
           {/* Conversations per day */}
           <div className="rounded-xl border border-gray-200 bg-white p-4">
-            <h2 className="mb-3 text-sm font-semibold text-gray-900">Conversations per day (30 days)</h2>
+            <h2 className="mb-3 text-sm font-semibold text-gray-900">Conversations per day ({periodLabel})</h2>
             {data.daily.length === 0 ? (
               <p className="text-sm text-gray-500">No conversations yet in this window.</p>
             ) : (
@@ -216,7 +235,7 @@ export default function AdminTrafficPage() {
           {/* Where they came from */}
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <h2 className="mb-3 text-sm font-semibold text-gray-900">
-              Where the conversations came from (30 days)
+              Where the conversations came from ({periodLabel})
             </h2>
             {data.bySource.length === 0 ? (
               <p className="text-sm text-gray-500">No tagged conversations yet.</p>
@@ -264,7 +283,7 @@ export default function AdminTrafficPage() {
           {/* GA4 source panel */}
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <h2 className="mb-1 text-sm font-semibold text-gray-900">
-              Landing sessions by source (GA4, 7 days)
+              Landing sessions by source (GA4, {periodLabel})
             </h2>
             <p className="mb-3 text-xs text-gray-500">
               People who reached the site. Only tagged sources are shown — GA4 user and pageview

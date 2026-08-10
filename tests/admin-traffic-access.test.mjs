@@ -85,3 +85,27 @@ test('a deep-linked transcript returns to traffic, not the conversation list', (
   assert.match(widget, /if \(deepLinked\)[\s\S]{0,120}\/admin\/traffic/)
   assert.match(widget, /deepLinked \? 'Back to traffic' : 'Back to conversations'/)
 })
+
+test('the window selector drives every panel, not just the cards', () => {
+  // The old cards read "8 last 7 days · 29 in 30" — two periods on one card,
+  // which made the reader do arithmetic. One window, chosen by the reader,
+  // applied to everything.
+  const route3 = readFileSync(join(ROOT, 'src', 'app', 'api', 'admin', 'traffic', 'route.ts'), 'utf8')
+  assert.match(route3, /searchParams\.get\('days'\)/)
+  // Only 1/7/30 are accepted — an arbitrary ?days= must not widen the query.
+  assert.match(route3, /\[1, 7, 30\]\.includes\(requested\)/)
+  // The SAME window must drive the DB query and the GA4 call, or the panels
+  // silently describe different periods.
+  assert.match(route3, /\.gte\('first_seen_at', sinceWindow\)/)
+  assert.match(route3, /\.gte\('started_at', sinceWindow\)/)
+  assert.match(route3, /fetchSessionsBySource\(ga4Config, days\)/)
+
+  const page3 = readFileSync(join(ROOT, 'src', 'app', '(app)', 'admin', 'traffic', 'page.tsx'), 'utf8')
+  assert.match(page3, /\/api\/admin\/traffic\?days=\$\{days\}/)
+  // Every heading names the window it is showing.
+  assert.match(page3, /Conversations per day \(\{periodLabel\}\)/)
+  assert.match(page3, /Where the conversations came from \(\{periodLabel\}\)/)
+  assert.match(page3, /Landing sessions by source \(GA4, \{periodLabel\}\)/)
+  // The old two-period card copy must be gone.
+  assert.doesNotMatch(page3, /last 7 days · \{/)
+})

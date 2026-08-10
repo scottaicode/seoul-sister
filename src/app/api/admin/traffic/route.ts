@@ -35,8 +35,13 @@ export async function GET(request: NextRequest) {
     await requireAdmin(request)
     const db = getServiceClient()
 
-    const since30 = new Date(Date.now() - 30 * 86400000).toISOString()
-    const since7 = new Date(Date.now() - 7 * 86400000).toISOString()
+    // One window drives EVERY panel on the page. The previous version showed
+    // "8 last 7 days · 29 in 30" on a single card, which made the reader do
+    // arithmetic to compare two periods — and Bailey, who this page is for,
+    // said it was confusing. One number, one period, chosen by the reader.
+    const requested = Number(new URL(request.url).searchParams.get('days'))
+    const days = [1, 7, 30].includes(requested) ? requested : 7
+    const sinceWindow = new Date(Date.now() - days * 86400000).toISOString()
 
     // --- Our own data: the numerator, and the only un-inflatable number ------
     // A visitor row exists only once someone SENDS a message, so
@@ -47,7 +52,7 @@ export async function GET(request: NextRequest) {
         .from('ss_widget_visitors')
         .select('visitor_id, first_seen_at, total_messages, captured_email, converted_at')
         .gt('total_messages', 0)
-        .gte('first_seen_at', since30)
+        .gte('first_seen_at', sinceWindow)
         .order('first_seen_at', { ascending: false }),
       db
         .from('ss_widget_sessions')
@@ -56,7 +61,7 @@ export async function GET(request: NextRequest) {
         // end — real data that leads nowhere, the same defect as the Recent
         // Scans cards (v11.19.0).
         .select('id, visitor_id, source, message_count, started_at')
-        .gte('started_at', since30)
+        .gte('started_at', sinceWindow)
         .order('started_at', { ascending: false }),
     ])
 
@@ -113,20 +118,11 @@ export async function GET(request: NextRequest) {
       }))
       .sort((a, b) => b.conversations - a.conversations)
 
-    const in7 = visitors.filter((v) => (v.first_seen_at || '') >= since7)
     const totals = {
-      last7: {
-        conversations: in7.length,
-        messages: in7.reduce((n, v) => n + (v.total_messages || 0), 0),
-        emails: in7.filter((v) => v.captured_email).length,
-        conversions: in7.filter((v) => v.converted_at).length,
-      },
-      last30: {
-        conversations: visitors.length,
-        messages: visitors.reduce((n, v) => n + (v.total_messages || 0), 0),
-        emails: visitors.filter((v) => v.captured_email).length,
-        conversions: visitors.filter((v) => v.converted_at).length,
-      },
+      conversations: visitors.length,
+      messages: visitors.reduce((n, v) => n + (v.total_messages || 0), 0),
+      emails: visitors.filter((v) => v.captured_email).length,
+      conversions: visitors.filter((v) => v.converted_at).length,
     }
 
     // Depth distribution — separates a bounce from a real conversation.
@@ -173,7 +169,7 @@ export async function GET(request: NextRequest) {
     const ga4Config = getGa4Config()
     if (ga4Config) {
       try {
-        const sources = await fetchSessionsBySource(ga4Config, 7)
+        const sources = await fetchSessionsBySource(ga4Config, days)
         ga4 = { status: 'ok', sources }
       } catch (err) {
         console.error('[admin/traffic] GA4 fetch failed:', err)
@@ -184,7 +180,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return Response.json({ success: true, totals, daily, bySource, depth, recent, ga4 })
+    return Response.json({ success: true, days, totals, daily, bySource, depth, recent, ga4 })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unexpected error'
     const status = /unauthor|forbidden|admin/i.test(message) ? 403 : 500
