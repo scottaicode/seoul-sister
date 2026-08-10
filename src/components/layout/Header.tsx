@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Menu, X, User, Sparkles, LogOut, Settings, Shield, MessageCircle } from 'lucide-react'
+import { Menu, X, User, Sparkles, LogOut, Settings, Shield, MessageCircle, TrendingUp } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 
@@ -289,6 +289,14 @@ export default function Header() {
                           <MessageCircle className="w-4 h-4" />
                           Widget Intel
                         </Link>
+                        <Link
+                          href="/admin/traffic"
+                          onClick={() => setProfileMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 text-sm text-gold/70 hover:bg-gold/5 hover:text-gold transition-colors"
+                        >
+                          <TrendingUp className="w-4 h-4" />
+                          Traffic
+                        </Link>
                       </>
                     )}
                     <div className="border-t border-white/10 my-1" />
@@ -409,6 +417,18 @@ export default function Header() {
                   >
                     <MessageCircle className="w-4 h-4" />
                     Widget Intel
+                  </Link>
+                  <Link
+                    href="/admin/traffic"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 flex items-center gap-2 ${
+                      isActive('/admin/traffic')
+                        ? 'bg-gold/15 text-gold'
+                        : 'text-gold/50 hover:bg-gold/5 hover:text-gold/80'
+                    }`}
+                  >
+                    <TrendingUp className="w-4 h-4" />
+                    Traffic
                   </Link>
                 </>
               )}

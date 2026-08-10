@@ -68,7 +68,7 @@
 // sizes="any" — an unstable URL (Google: "The favicon URL must be stable") that
 // could also outrank the icons we set deliberately. /icons/ is cache-first here,
 // so returning visitors need this bump to see the new tab icon.
-const CACHE_NAME = 'seoul-sister-v14'
+const CACHE_NAME = 'seoul-sister-v15'
 const STATIC_ASSETS = [
   '/',
   '/icons/apple-touch-icon.png',
