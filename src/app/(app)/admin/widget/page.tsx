@@ -318,12 +318,20 @@ export default function AdminWidgetPage() {
           <h1 className="text-2xl font-bold text-white">Widget Intelligence</h1>
           <p className="text-sm text-white/40">Anonymous Yuri conversations, signals, and visitor insights</p>
         </div>
-        <Link
-          href="/admin/pipeline"
-          className="text-xs text-white/40 hover:text-white/60"
-        >
-          Pipeline Dashboard →
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/admin/traffic"
+            className="text-xs text-white/40 hover:text-white/60"
+          >
+            Traffic &amp; Conversations →
+          </Link>
+          <Link
+            href="/admin/pipeline"
+            className="text-xs text-white/40 hover:text-white/60"
+          >
+            Pipeline Dashboard →
+          </Link>
+        </div>
       </div>
 
       {/* Tab bar */}
