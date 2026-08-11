@@ -207,7 +207,7 @@ export default function Header() {
                 </button>
                 {moreMenuOpen && (
                   <div className="absolute left-1/2 -translate-x-1/2 top-9 w-52 bg-seoul-card border border-white/10 rounded-xl shadow-lg py-1 z-50">
-                    {(isDemo || isAdmin) && (
+                    {isDemo && (
                       <Link
                         href="/demo"
                         onClick={() => setMoreMenuOpen(false)}
@@ -365,7 +365,7 @@ export default function Header() {
                 <Sparkles className="w-4 h-4" />
                 Ask Yuri
               </Link>
-              {(isDemo || isAdmin) && (
+              {isDemo && (
                 <Link
                   href="/demo"
                   onClick={() => setMobileMenuOpen(false)}

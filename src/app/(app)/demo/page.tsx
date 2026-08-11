@@ -9,7 +9,17 @@
  * learning loop. This is DEMONSTRATION content ("here's what Yuri does for skin
  * like yours"), never a fabricated persona/testimonial.
  *
- * Access: is_demo OR is_admin accounts only.
+ * Access: is_demo accounts ONLY (the dedicated demo login).
+ *
+ * Deliberately NOT is_admin. The page promises "nothing here is saved to your
+ * profile or the learning system", and that promise only holds on the is_demo
+ * path: /api/yuri/chat honors the scenario override for is_demo alone, so an
+ * admin opening this page got a persona-shaped UI over an ordinary PERSISTED
+ * turn reasoned from their OWN profile. Worse for content, an admin account
+ * carries real accumulated context (memory, corrections, decision memory) that
+ * the per-turn scenario override does not clear — so the answer is Yuri talking
+ * to that admin in a costume, not the persona. Demo content is filmed from the
+ * clean is_demo account, which is also excluded from aggregate-learning.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -43,18 +53,20 @@ export default function ScenarioDemoPage() {
   const [copied, setCopied] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
-  // Gate: is_demo OR is_admin
+  // Gate: is_demo ONLY — must match the /api/yuri/chat scenario gate exactly.
+  // Widening this to is_admin re-opens the mismatch: the page would render and
+  // the API would silently ignore the persona, persisting an ordinary turn.
   useEffect(() => {
     if (authLoading || !user) return
     let cancelled = false
     ;(async () => {
       const { data } = await supabase
         .from('ss_user_profiles')
-        .select('is_demo, is_admin')
+        .select('is_demo')
         .eq('user_id', user.id)
         .maybeSingle()
       if (cancelled) return
-      setAllowed(data?.is_demo === true || data?.is_admin === true)
+      setAllowed(data?.is_demo === true)
       setAccessChecked(true)
     })()
     return () => {
