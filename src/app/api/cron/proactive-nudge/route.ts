@@ -14,6 +14,12 @@ import {
 } from '@/lib/intelligence/nudge-eligibility'
 import { getNudgeTypePerformance } from '@/lib/intelligence/nudge-outcome-grader'
 import type { DecisionMemory } from '@/lib/yuri/memory'
+import {
+  getLocalClock,
+  clockFactBlock,
+  daysBetweenIso,
+  type LocalClock,
+} from '@/lib/yuri/clock'
 import { logPipelineRun } from '@/lib/pipeline/log-run'
 import { sendNudgeEmail, type NudgeEmailStatus } from '@/lib/email/nudge-email'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -128,7 +134,18 @@ const ESCALATION = [
 async function generateNudgeMessage(
   opportunity: NudgeOpportunity,
   nudgeSequence: number,
-  skinType: string | null
+  skinType: string | null,
+  /**
+   * v11.25.0 — the user's local clock, plus the date Yuri promised (when she
+   * named one) and how late this nudge is running.
+   *
+   * Without these, the message-writer had NO clock at all: given a genuine
+   * memory that she'd promised to check in Sunday, Yuri wrote "Sunday's here"
+   * and it shipped on a Tuesday. She wasn't inventing the promise — she kept it,
+   * five times over — she simply had no way to know what day it was.
+   */
+  clock: LocalClock,
+  promise: { checkBackDate: string | null; daysLate: number | null }
 ): Promise<{ message: string; inputTokens: number; outputTokens: number } | null> {
   const client = getAnthropicClient()
   const ctx = getAIContext('PROACTIVE_NUDGE')
@@ -143,12 +160,35 @@ Hard rules:
 - Do NOT make a new skincare recommendation here. You're inviting her back into a conversation where you'll work it out together with her full context. Reference what's pending; don't prescribe.
 - No subject line, no greeting like "Hi [name]", no sign-off. Just the message body.
 - No em dashes. No "Great question!" / "I'd be happy to" AI-isms.
+- Any day, date, or timing you reference must come from the TODAY'S DATE facts below. Never state or imply a weekday that isn't given there. If you promised to check in on a day that has already passed, being straightforward about running late is fine and reads as honest; pretending the promised day is today does not.
 - Warm and real, like a knowledgeable friend who remembered. Never guilt-trip, never "you haven't been here in a while."
 ${skinType ? `- Her skin type: ${skinType}.` : ''}
 
 ${ladder}`
 
-  const user = `Context (what's pending and why now):
+  // Facts about WHEN this is being sent. Stated, not commanded — Yuri decides
+  // what (if anything) to do with them. She may name the day, acknowledge being
+  // late, or say nothing about timing at all; all three are legitimate. This
+  // block must never become an instruction about what to SAY (guard test:
+  // tests/nudge-date-honesty.test.mjs).
+  const timing = [
+    clockFactBlock(clock),
+    promise.checkBackDate
+      ? `You told her you'd check back around ${promise.checkBackDate}.${
+          promise.daysLate !== null && promise.daysLate > 0
+            ? ` That was ${promise.daysLate} day${promise.daysLate === 1 ? '' : 's'} ago, so this check-in is running late.`
+            : promise.daysLate === 0
+              ? ` That is today.`
+              : ''
+        }`
+      : null,
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  const user = `${timing}
+
+Context (what's pending and why now):
 ${opportunity.context}
 
 Write the check-in message body now.`
@@ -229,7 +269,10 @@ async function handler(request: Request) {
       return NextResponse.json({ error: 'profile load failed' }, { status: 500 })
     }
 
-    const todayIso = new Date().toISOString().slice(0, 10)
+    // NOTE: deliberately NOT a shared UTC "today". A single server-UTC date
+    // applied to every user makes a promised check-back land a day early or late
+    // for anyone west of Greenwich. Each user's date is resolved from their own
+    // timezone below (getLocalClock). See NUDGE-DATE-HONESTY-FIX.md.
 
     // v10.11.0 — measured-outcome calibration. Load once; passed into every
     // eligibility call so the engine deprioritizes nudge types that the outcome
@@ -383,6 +426,9 @@ async function handler(request: Request) {
         }
 
         // --- Decide ---
+        // This user's own calendar date, not the server's.
+        const clock = getLocalClock(p.timezone)
+        const todayIso = clock.isoDate
         const opportunity = pickNudgeOpportunity({
           activePhase: activePhaseRow
             ? {
@@ -427,7 +473,11 @@ async function handler(request: Request) {
         // since spring. Resetting with the window keeps warm/value/back-off in
         // its intended proportion inside each stretch of contact.
         const nudgeSequence = nudgesInWindow.length + 1
-        const gen = await generateNudgeMessage(opportunity, nudgeSequence, p.skin_type)
+        const promisedDate = opportunity.promisedCheckBackDate ?? null
+        const gen = await generateNudgeMessage(opportunity, nudgeSequence, p.skin_type, clock, {
+          checkBackDate: promisedDate,
+          daysLate: promisedDate ? daysBetweenIso(promisedDate, clock.isoDate) : null,
+        })
         if (!gen) {
           stats.errors++
           continue

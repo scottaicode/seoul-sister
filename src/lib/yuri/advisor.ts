@@ -1341,9 +1341,15 @@ export async function* streamAdvisorResponse(
     // 12. Structured decision memory (decisions, preferences, commitments,
     //     corrections, open loops).
     deferBackgroundWork(
-      extractAndSaveDecisionMemory(userId, conversationId, transcriptForDecisions).catch((err) => {
-        console.error('[advisor] extractAndSaveDecisionMemory failed:', err)
-      })
+      // userTz is passed so a weekday Yuri named ("I'll check in Sunday")
+      // resolves against the USER's calendar, not the server's UTC one. Without
+      // it, a late-evening US message lands on the server's tomorrow and the
+      // promised day drifts (Bailey, Aug 8 2026 — NUDGE-DATE-HONESTY-FIX.md).
+      extractAndSaveDecisionMemory(userId, conversationId, transcriptForDecisions, userTz).catch(
+        (err) => {
+          console.error('[advisor] extractAndSaveDecisionMemory failed:', err)
+        }
+      )
     )
     // 13. Treatment phase state changes (Phase 13.D). Conservative — requires a
     //     verbatim supporting quote.

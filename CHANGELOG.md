@@ -4,6 +4,44 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.25.0 — August 11 2026
+
+**Two iMessages from Bailey, two real defects. Neither was cosmetic.**
+
+### "lol it's Tuesday.." — three stacked clock bugs
+
+A dashboard nudge opened with *"Sunday's here, so I'm keeping my word and checking in like I said I would."* It shipped on a **Tuesday**.
+
+**The first diagnosis was wrong, and that matters.** This session initially concluded Yuri had **fabricated the promise** — claimed a commitment she never made. She hadn't. The transcript shows she promised a Sunday check-in **five separate times**, unprompted, across Aug 6-8: *"I'll check in Sunday to see which way it went."* The nudge asked about *"that chin and nose"* — the exact open loop, the exact body parts, `trigger_reason = open_loop_barrier_recovery_check`. **Her memory worked perfectly.** Scott pushed back on the fabrication claim and was right; one query into `ss_yuri_messages` settled it. **Read the source conversation before calling any Yuri claim fabricated.**
+
+What actually broke was the clock, in three places:
+
+1. **`memory.ts` extraction** resolved Yuri's promised weekday against `new Date().toISOString()` — raw server **UTC**, with **no weekday name** and **no user timezone**. Bailey messaged 9:26 PM CT on Aug 8, which is **02:26 UTC Aug 9**: the server's "today" was already Sunday while hers was still Saturday, so "Sunday" resolved forward to **Monday Aug 10**. Verified in the production row: `check_back_date: "2026-08-10"`. She said Sunday. Sunday was Aug 9.
+2. **The nudge cron prompt** passed only `opportunity.context` to Opus — **no date, no weekday, no timezone**. Holding a genuine memory of a Sunday promise and given no clock, Yuri stated the promised day as though it were today.
+3. **The eligibility engine** used one shared server-UTC `todayIso` for every user regardless of timezone.
+
+**Fixed with a clock, not a muzzle.** New `src/lib/yuri/clock.ts` is the single shared local-date/weekday resolver (one implementation, per the geocoder rule — two clocks eventually disagree). The extractor and the nudge cron both consume it; the nudge writer is additionally told the promised date and **how many days late** it is running, so Yuri can be straightforward about it instead of pretending.
+
+**Deliberately NOT done:** the first recommendation was to **ban temporal language in nudges entirely**. Withdrawn. It would have destroyed the best thing the feature does — Yuri remembering she gave her word on a specific day. **A missing FACT looks exactly like bad judgment.** The date block states what is true and hands the decision back; a guard test fails if it acquires imperative mood (the widget give/gate failed twice by rewording a rule before v11.10.0 fixed it with a fact).
+
+**This also closed the v11.23.0 `check_back_date` verification.** That loop was flagged UNVERIFIED with a recheck due Aug 10. It fires, it writes, and a scheduler-produced row reached a consumer — and the first row it ever produced was wrong by a day. **Verifying a loop can falsify it**; "does it write?" is not "does it write correctly?"
+
+### "What's the 2 paid?" — the One Metric was reading 2x high
+
+`Paid (from widget): 2` / `Visitor → paid: 2.99%` was **one human**. The first paying subscriber used the widget from two devices, so she owns two `ss_widget_visitors` rows with the same email, same `converted_user_id`, same `converted_at`. `ss_subscriptions` confirms exactly one active subscription.
+
+`attributeConversion()` stamping every matching row is **correct** — you want the whole cross-device trail attributed. The bug was downstream: `admin/widget/analytics` counted **rows**. **The number this project's entire build freeze is keyed to was inflated 2x.** True figure: **1/67 = 1.49%**.
+
+Now counts distinct humans — `converted_user_id` for the numerator, email-else-visitor_id identity for the denominator, with `visitor_rows` exposed alongside so the row/person gap stays visible. Also fixed the webhook path that filed an attributed conversion as "organic": `attributeConversion` filters on `converted_at IS NULL`, so a retried Stripe event matched nothing and returned null — which is how the subscriber was attributed in one table and NULL in the other, with two admin panels contradicting each other on the same screen. It now re-reads before concluding. Reconciliation migration: `scripts/migrations/reconcile_widget_lead_source.sql`.
+
+### Known, visible, not fixed
+
+**Nudge delivery latency.** There is no `scheduled_for` column — a nudge is created at 15:00 UTC and sits until the user next opens the dashboard. Median ~3 days across all 8 surfaced nudges; worst case **57.5 days** (created Jun 11, surfaced Aug 7). Needs a delivery decision, not just a clock.
+
+770 → **797 tests**, each confirmed to FAIL when its bug is reintroduced verbatim (7 reintroductions tested). `tsc` and `build` green. Details in `NUDGE-DATE-HONESTY-FIX.md`.
+
+---
+
 ## Migrated detailed history (from CLAUDE.md, June 9 2026)
 
 _The entries below were moved out of CLAUDE.md to keep that file focused on current architecture. They are the authoritative detailed/narrative records for v10.12.0–v10.13.0 (which were never added to the structured list below) and richer prose versions of earlier v10.x entries. Newest first._

@@ -1862,10 +1862,28 @@ async function loadDecisionMemory(
 export async function extractAndSaveDecisionMemory(
   userId: string,
   conversationId: string,
-  conversationHistory: Array<{ role: string; content: string }>
+  conversationHistory: Array<{ role: string; content: string }>,
+  /**
+   * v11.25.0 — the user's IANA timezone, so a weekday Yuri named ("I'll check in
+   * Sunday") resolves against THEIR calendar rather than the server's UTC one.
+   * Optional: omitted/unknown falls back to UTC, same posture as advisor.ts.
+   *
+   * Why this parameter exists: Bailey messaged at 9:26 PM CT on Aug 8 (= 02:26
+   * UTC Aug 9). The extractor's "today" was already Sunday on the server while
+   * still Saturday for her, so Yuri's promised "Sunday" resolved forward to
+   * Monday Aug 10. She said Sunday; the DB said Monday; the nudge said "Sunday's
+   * here" on a Tuesday. See NUDGE-DATE-HONESTY-FIX.md.
+   */
+  timezone?: string | null
 ): Promise<void> {
   const { getAnthropicClient, MODELS, callAnthropicWithRetry } = await import('@/lib/anthropic')
+  const { getLocalClock } = await import('./clock')
   const client = getAnthropicClient()
+
+  // The user's local calendar — every date this extractor writes is anchored here,
+  // never to raw server UTC.
+  const clock = getLocalClock(timezone)
+  const today = clock.isoDate
 
   // Build a condensed transcript from the conversation
   // Use 1200 chars per message (not 400) so Sonnet can see decisions that appear
@@ -1894,7 +1912,7 @@ export async function extractAndSaveDecisionMemory(
    Examples: { "topic": "texture", "preference": "gel-cream over heavy creams" }
 
 3. **COMMITMENTS**: Specific actions the user committed to trying or doing. Each needs the item and today's date.
-   Examples: { "item": "Try COSRX Snail Mucin for 2 weeks", "date": "${new Date().toISOString().split('T')[0]}" }
+   Examples: { "item": "Try COSRX Snail Mucin for 2 weeks", "date": "${today}" }
 
 4. **CORRECTIONS**: Moments where Yuri said something FACTUALLY WRONG and the user corrected her. These are the highest-value memory items — they prevent repeating outdated K-beauty claims. K-beauty brands reformulate every 2-3 years, so Yuri's training knowledge goes stale fast. Each correction MUST capture BOTH what Yuri originally said AND the truth (without both, the correction is useless next session).
 
@@ -1940,23 +1958,25 @@ export async function extractAndSaveDecisionMemory(
 
    If a previously-open thread got RESOLVED in this conversation (the user answered the question, took the step, made the decision), do NOT include it — leaving it out is how a loop closes.
 
-   **check_back_date** (optional): if Yuri named a specific time she'd follow up or check in ("I'll check in around Friday", "let's look at this again next week", "give it ten days and tell me how it feels"), resolve it to a concrete ISO date (YYYY-MM-DD) relative to today, ${new Date().toISOString().split('T')[0]}. This is what she SAID, not what you think would be good — if she named no follow-up time, omit the field or set it null. Never invent one, and never derive it from how long a treatment takes to work: "give it four to six weeks before you judge results" is an OUTCOME horizon, not a check-in date. Only a check-in she actually offered counts.
+   **check_back_date** (optional): if Yuri named a specific time she'd follow up or check in ("I'll check in around Friday", "let's look at this again next week", "give it ten days and tell me how it feels"), resolve it to a concrete ISO date (YYYY-MM-DD) relative to today, ${today}, which is a **${clock.weekday}** in the user's local calendar (${clock.timezone}). This is what she SAID, not what you think would be good — if she named no follow-up time, omit the field or set it null. Never invent one, and never derive it from how long a treatment takes to work: "give it four to six weeks before you judge results" is an OUTCOME horizon, not a check-in date. Only a check-in she actually offered counts.
+
+   When she named a WEEKDAY, resolve it to the NEXT occurrence of that weekday on or after today, counting from the fact that today is a ${clock.weekday}. If she said "${clock.weekday}", she means today. Do not skip ahead a week, and do not shift by a day — a follow-up that lands on the wrong weekday reads to the user as Yuri forgetting what she said, which is worse than no follow-up at all.
 
    Examples:
-   { "topic": "phase_3_routine", "summary": "Yuri moved the user to Phase 3 (brightening) but hasn't built the new AM/PM routine yet — user is still running the Phase 2 routine", "opened_date": "${new Date().toISOString().split('T')[0]}" }
-   { "topic": "under_eye_plan", "summary": "Yuri ran the press test and identified pigmented + structural under-eye darkness; said to treat the pigmented part with the brightening active but the user hasn't started it", "opened_date": "${new Date().toISOString().split('T')[0]}" }
-   { "topic": "sleeping_mask_pick", "summary": "Yuri offered to pull a couple of hydrating sleeping masks for menstrual week; user hasn't said yes/no yet", "opened_date": "${new Date().toISOString().split('T')[0]}" }
+   { "topic": "phase_3_routine", "summary": "Yuri moved the user to Phase 3 (brightening) but hasn't built the new AM/PM routine yet — user is still running the Phase 2 routine", "opened_date": "${today}" }
+   { "topic": "under_eye_plan", "summary": "Yuri ran the press test and identified pigmented + structural under-eye darkness; said to treat the pigmented part with the brightening active but the user hasn't started it", "opened_date": "${today}" }
+   { "topic": "sleeping_mask_pick", "summary": "Yuri offered to pull a couple of hydrating sleeping masks for menstrual week; user hasn't said yes/no yet", "opened_date": "${today}" }
 
 CONVERSATION:
 ${transcript}
 
 Return ONLY valid JSON in this exact format (empty arrays are fine if nothing found):
 {
-  "decisions": [{ "topic": "...", "decision": "...", "date": "${new Date().toISOString().split('T')[0]}" }],
+  "decisions": [{ "topic": "...", "decision": "...", "date": "${today}" }],
   "preferences": [{ "topic": "...", "preference": "..." }],
-  "commitments": [{ "item": "...", "date": "${new Date().toISOString().split('T')[0]}" }],
-  "corrections": [{ "topic": "...", "yuri_said": "...", "truth": "...", "category": "reformulation|discontinued|price|ingredient|brand_identity|other", "date": "${new Date().toISOString().split('T')[0]}", "cleanup_actions": [ { "action": "clear_reaction", "product_name": "...", "brand": "..." } ] }],
-  "open_loops": [{ "topic": "...", "summary": "...", "opened_date": "${new Date().toISOString().split('T')[0]}", "check_back_date": null }]
+  "commitments": [{ "item": "...", "date": "${today}" }],
+  "corrections": [{ "topic": "...", "yuri_said": "...", "truth": "...", "category": "reformulation|discontinued|price|ingredient|brand_identity|other", "date": "${today}", "cleanup_actions": [ { "action": "clear_reaction", "product_name": "...", "brand": "..." } ] }],
+  "open_loops": [{ "topic": "...", "summary": "...", "opened_date": "${today}", "check_back_date": null }]
 }`,
           },
         ],
@@ -1998,7 +2018,7 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
           .map((d) => ({
             topic: String(d.topic),
             decision: String(d.decision),
-            date: String(d.date || new Date().toISOString().split('T')[0]),
+            date: String(d.date || today),
           }))
       : [],
     preferences: Array.isArray(extracted.preferences)
@@ -2010,7 +2030,7 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
             // Sonnet prompt doesn't request a date for preferences, so default
             // to today. Merge logic preserves the original date if a preference
             // already exists for this topic (see mergeDecisionMemory).
-            date: String(p.date || new Date().toISOString().split('T')[0]),
+            date: String(p.date || today),
           }))
       : [],
     commitments: Array.isArray(extracted.commitments)
@@ -2018,7 +2038,7 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
           .filter((c) => c.item)
           .map((c) => ({
             item: String(c.item),
-            date: String(c.date || new Date().toISOString().split('T')[0]),
+            date: String(c.date || today),
           }))
       : [],
     corrections: Array.isArray(extracted.corrections)
@@ -2040,7 +2060,7 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
               yuri_said: String(c.yuri_said),
               truth: String(c.truth),
               category,
-              date: String(c.date || new Date().toISOString().split('T')[0]),
+              date: String(c.date || today),
             }
           })
       : [],
@@ -2057,7 +2077,7 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
           .map((l) => ({
             topic: String(l.topic),
             summary: String(l.summary),
-            opened_date: String(l.opened_date || new Date().toISOString().split('T')[0]),
+            opened_date: String(l.opened_date || today),
             // The date Yuri actually named ("I'll check in Sunday"). This is what
             // lets the nudge engine keep her word on the day SHE chose instead of
             // falling back to generic staleness. Dropping it here silently reverts

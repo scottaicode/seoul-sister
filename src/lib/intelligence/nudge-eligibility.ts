@@ -30,6 +30,14 @@ export interface NudgeOpportunity {
   context: string
   /** what the prefilled /yuri?ask= should say, so the conversation lands ready */
   suggestedAsk: string
+  /**
+   * v11.25.0 — the date Yuri actually promised to check back, when this
+   * opportunity came from a loop where she named one. Carried through so the
+   * message-writer can be told how late it is running, instead of asserting the
+   * promised day as though it were today (the Aug 11 2026 "Sunday's here on a
+   * Tuesday" defect). Null when she named no date.
+   */
+  promisedCheckBackDate?: string | null
 }
 
 export interface OpenLoop {
@@ -197,13 +205,14 @@ export function pickNudgeOpportunity(input: NudgeEligibilityInput): NudgeOpportu
     const inGoodWindow = cycle ? cycle.phase === 'follicular' || cycle.phase === 'ovulatory' : true
     if (!(isActivesLoop(oldest) && !inGoodWindow)) {
       const context = oldest.check_back_date
-        ? `Yuri told the user she'd check back around ${oldest.check_back_date.slice(0, 10)} about this, and that date has arrived: "${oldest.summary}". This is her keeping her word, so lead with that — she's following up because she said she would, not because the user went quiet. Ask how it's actually going.`
+        ? `Yuri told the user she'd check back around ${oldest.check_back_date.slice(0, 10)} about this: "${oldest.summary}". This is her keeping her word, so lead with that — she's following up because she said she would, not because the user went quiet. Ask how it's actually going. (How that promised date relates to today is stated in the date facts; do not assume it is today.)`
         : `Yuri left this unresolved ${daysBetween(oldest.opened_date, todayIso)} days ago and the user hasn't returned to it: "${oldest.summary}". Pick it back up warmly.`
       candidates.push({
         type: 'open_loop',
         reason: `open_loop_${oldest.topic}`,
         context,
         suggestedAsk: `Picking back up on ${oldest.topic.replace(/_/g, ' ')} — ${oldest.summary}`,
+        promisedCheckBackDate: oldest.check_back_date ?? null,
       })
     }
   }

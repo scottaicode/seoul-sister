@@ -411,7 +411,29 @@ export async function attributeConversion(
       return null
     }
     // A matched-and-stamped row means this paid sub came from the widget.
-    return Array.isArray(data) && data.length > 0 ? 'widget' : null
+    if (Array.isArray(data) && data.length > 0) return 'widget'
+
+    // Stamped NOTHING — but that is not the same as "not from the widget".
+    // The update filters on `converted_at IS NULL`, so a retried webhook, a
+    // re-sent Stripe event, or an out-of-order subscription.created finds the
+    // rows already stamped, matches zero, and would report the conversion as
+    // organic. That is exactly how the first paying subscriber ended up
+    // attributed in ss_widget_visitors and NULL in ss_subscriptions, with the
+    // two admin panels contradicting each other on the same screen.
+    //
+    // Re-read before concluding: if a visitor row already names this user, the
+    // attribution is real and simply happened on an earlier attempt.
+    const { data: existing, error: existingErr } = await supabase
+      .from('ss_widget_visitors')
+      .select('visitor_id')
+      .eq('converted_user_id', userId)
+      .limit(1)
+
+    if (existingErr) {
+      console.error('[Widget] attributeConversion re-read failed:', existingErr.message)
+      return null
+    }
+    return Array.isArray(existing) && existing.length > 0 ? 'widget' : null
   } catch (err) {
     console.error('[Widget] attributeConversion threw:', err)
     return null

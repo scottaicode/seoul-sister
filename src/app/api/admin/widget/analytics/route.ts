@@ -24,8 +24,10 @@ export async function GET(request: NextRequest) {
       convertedResult,
       subscriptionSourceResult,
     ] = await Promise.all([
-      // Total unique visitors
-      db.from('ss_widget_visitors').select('*', { count: 'exact', head: true }),
+      // Total visitors. Fetches identity columns rather than a bare row count so
+      // the One Metric denominator can collapse the same human across devices
+      // (see the conversion queries below for the defect this prevents).
+      db.from('ss_widget_visitors').select('visitor_id, captured_email'),
 
       // Total sessions
       db.from('ss_widget_sessions').select('*', { count: 'exact', head: true }),
@@ -58,14 +60,25 @@ export async function GET(request: NextRequest) {
         .limit(500),
 
       // --- The One Metric (NORTH-STAR.md): conversion ---
-      // Visitors who handed over an email (lead capture)
+      //
+      // These fetch ROWS and are collapsed to distinct HUMANS below. They are
+      // deliberately not `count: 'exact', head: true` any more.
+      //
+      // Why (Aug 11 2026, caught by Bailey): one person — the first paying
+      // subscriber — used the widget from two devices, so she owns two
+      // ss_widget_visitors rows. attributeConversion() correctly stamps BOTH
+      // (you want the whole cross-device trail attributed), and the row count
+      // then reported "2 paid" for 1 human. The One Metric, the number this
+      // project's entire build freeze is keyed to, was reading 2x high.
+      //
+      // A row is not a person. Anything counted over this table needs a
+      // distinct-identity key. See NUDGE-DATE-HONESTY-FIX.md.
       db.from('ss_widget_visitors')
-        .select('*', { count: 'exact', head: true })
+        .select('visitor_id, captured_email')
         .not('captured_email', 'is', null),
 
-      // Visitors attributed to a paid subscription (widget → Stripe)
       db.from('ss_widget_visitors')
-        .select('*', { count: 'exact', head: true })
+        .select('visitor_id, captured_email, converted_user_id')
         .not('converted_at', 'is', null),
 
       // Active paid subscriptions broken down by lead source
@@ -97,15 +110,39 @@ export async function GET(request: NextRequest) {
       .map(([specialist, count]) => ({ specialist, count }))
 
     // Engagement funnel
-    const totalVisitors = visitorCountResult.count || 0
+    const visitorRows = visitorCountResult.data || []
+    const totalVisitors = visitorRows.length
     const returningVisitors = returningResult.count || 0
     const highEngagement = (recentVisitorsResult.data || []).filter(
       v => v.total_messages >= 5
     ).length
 
     // --- The One Metric: visitor → email → paid conversion (NORTH-STAR.md) ---
-    const capturedEmails = capturedEmailResult.count || 0
-    const convertedVisitors = convertedResult.count || 0
+    // Collapse rows to distinct HUMANS. Identity key: the captured email when we
+    // have one (case-insensitive — the same person typing Kim@x.com and
+    // kim@x.com is one lead), else the visitor_id. An anonymous visitor still
+    // counts once; a person who identified themselves on three devices counts
+    // once. This is deterministic identity linkage, not judgment — the same
+    // class as attributeConversion().
+    const identityOf = (r: { visitor_id: string | null; captured_email?: string | null }): string =>
+      r.captured_email ? `email:${r.captured_email.trim().toLowerCase()}` : `visitor:${r.visitor_id ?? ''}`
+
+    const distinctPeople = new Set(visitorRows.map(identityOf)).size
+
+    const capturedEmails = new Set(
+      (capturedEmailResult.data || [])
+        .map((r) => (r.captured_email || '').trim().toLowerCase())
+        .filter(Boolean)
+    ).size
+
+    // Numerator: distinct paying humans. converted_user_id is the authoritative
+    // key (one auth user = one subscription); fall back to the email/visitor
+    // identity if attribution ever lands without a user id.
+    const convertedVisitors = new Set(
+      (convertedResult.data || []).map((r) =>
+        r.converted_user_id ? `user:${r.converted_user_id}` : identityOf(r)
+      )
+    ).size
     const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 10000) / 100 : 0)
 
     // Lead-source breakdown of active paid subscriptions (null = organic/unknown)
@@ -126,13 +163,18 @@ export async function GET(request: NextRequest) {
         returning_visitors: returningVisitors,
         returning_pct: totalVisitors > 0 ? Math.round((returningVisitors / totalVisitors) * 100) : 0,
       },
-      // The number the whole charter is keyed to. Until this moves, building is frozen.
+      // The number the whole charter is keyed to. Until this moves, building is
+      // frozen — so it has to be counted in PEOPLE, not table rows. Every figure
+      // in this block is distinct-human; `visitor_rows` is exposed alongside so
+      // the gap between rows and people stays visible rather than silently
+      // reconciled.
       conversion: {
-        total_visitors: totalVisitors,
+        total_visitors: distinctPeople,
+        visitor_rows: totalVisitors,
         captured_emails: capturedEmails,
         converted_visitors: convertedVisitors,
-        email_capture_rate_pct: pct(capturedEmails, totalVisitors),
-        visitor_to_paid_pct: pct(convertedVisitors, totalVisitors),
+        email_capture_rate_pct: pct(capturedEmails, distinctPeople),
+        visitor_to_paid_pct: pct(convertedVisitors, distinctPeople),
         email_to_paid_pct: pct(convertedVisitors, capturedEmails),
         lead_source_breakdown: leadSourceBreakdown,
       },

@@ -22,7 +22,10 @@ interface Analytics {
     returning_pct: number
   }
   conversion?: {
+    /** distinct PEOPLE, not table rows (one human across two devices = 1) */
     total_visitors: number
+    /** raw ss_widget_visitors row count, kept visible beside the people count */
+    visitor_rows?: number
     captured_emails: number
     converted_visitors: number
     email_capture_rate_pct: number
