@@ -9,6 +9,7 @@ import BlogInlineYuriPrompt from '@/components/blog/BlogInlineYuriPrompt'
 import { marked } from 'marked'
 import { linkIngredients, buildIngredientMap, extractIngredientChips, type IngredientLink } from '@/lib/utils/ingredient-linker'
 import { serializeJsonLd } from '@/lib/utils/json-ld'
+import { shouldRenderFaqAccordion } from '@/lib/utils/faq-visibility'
 import { excludePollutedIngredientRows } from '@/lib/pipeline/ingredient-parser'
 
 // Configure marked: open external links in new tab, sanitize
@@ -193,6 +194,20 @@ export default async function BlogPostPage({
   // additions — LGAAS pre-links most ingredients, which the linker skips.
   const ingredientChips = extractIngredientChips(linkedHtml)
 
+  // The FAQ accordion is a FALLBACK for posts whose body has no FAQ section —
+  // not a second copy of one that does. LGAAS mandates a visible body FAQ (its
+  // stated AI-extraction surface) and we were rendering faq_schema underneath
+  // it, so 39 of 45 published posts showed the same Q&As twice. See
+  // faq-visibility.ts for why this keys on the HEADING rather than on H3
+  // sub-questions or the literal phrase "Frequently Asked Questions".
+  //
+  // JSON-LD is unaffected: the FAQPage block below is built straight from
+  // faq_schema on its own code path and still emits for every post that has one.
+  const showFaqAccordion = shouldRenderFaqAccordion(
+    linkedHtml,
+    getFaqQuestions(blogPost.faq_schema).length
+  )
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -369,8 +384,8 @@ export default async function BlogPostPage({
             </div>
           )}
 
-          {/* FAQ Section */}
-          {getFaqQuestions(blogPost.faq_schema).length > 0 && (
+          {/* FAQ Section — only when the body doesn't already have one */}
+          {showFaqAccordion && (
             <div className="mt-12 pt-8 border-t border-white/10">
               <h2 className="font-display font-semibold text-xl text-white mb-6">
                 Frequently Asked Questions
