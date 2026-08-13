@@ -57,24 +57,49 @@
  * be the Yuri Sole Authority Principle violated inside her own prompt — the
  * same anti-pattern as the seasonal recommender Bailey killed seven times.
  *
- * Cost is ~200 tokens on turns where it may never be used. That is the correct
- * trade: the alternative is Yuri representing the product from a sample of one
- * feature, which is what actually happened.
+ * Cost is ~750 tokens (2,847 chars), uncached, on every turn — including turns
+ * where it is never used. Measured, not estimated: an earlier version of this
+ * comment claimed "~200 tokens" and was off by 3.7x, which matters because the
+ * cost is the basis on which the always-on trade was accepted. At ~12 messages
+ * per visitor that is ~9K tokens per conversation, which is affordable at
+ * current volume and worth re-examining if widget traffic grows an order of
+ * magnitude.
+ *
+ * WHAT ADVERSARIAL REVIEW CAUGHT (Aug 13 2026, two independent reviews of the
+ * first shipped version — recorded because each was a real defect that the
+ * author's own tests and AI-First check passed over):
+ *   1. The prompt already said "Never invent subscriber capabilities beyond the
+ *      list below. The list is exhaustive" (route.ts) and this block added
+ *      THREE capabilities absent from that list. Yuri was handed two
+ *      contradictory rosters, one labeled exhaustive. Fixed by making this
+ *      block the named authority and pointing the scope rule at it.
+ *   2. The tests did not bind. A fabricated "board-certified dermatologist
+ *      review" bullet AND an explicit "tell them spots are running out" script
+ *      both passed all nine. Fixed with a closed-world roster check, a
+ *      medical-claims guard, and a broadened persuasion guard.
+ *   3. "cycle phase where relevant" was false for 100% of users — it is hard
+ *      gated on `cycle_tracking_enabled`, which is ON for 0 of 39 profiles.
+ *      Now stated as opt-in.
+ *   4. The nudge has no `scheduled_for` column; median latency ~3 days, worst
+ *      case 57.5 (v11.25.0). "At the moment it matters" was an overclaim.
+ *   5. FREQUENCY was the unaddressed half of the problem. Measured in the
+ *      motivating transcript: 5 subscriber mentions across 12 replies (41.7%).
+ *      Fixing monotony alone risks converting five repeats of one feature into
+ *      a six-stop tour — strictly worse. The block now states the rate.
+ *   6. A bolded bullet list of things we sell IS the feature-rundown output the
+ *      block forbids two paragraphs later. Reformatted to plain prose.
  */
 export function buildSubscriberSurfaceBlock(): string {
   return `
 
 ## What the Subscriber Side Actually Is (facts, not a script)
-You have been naming the subscriber side using whichever capability came to mind, and in practice that has meant the ingredient-scan almost every time. It is a real feature and it is far from the only one, so here is the actual shelf. Nothing here is aspirational — every item ships today.
+When you have referenced the subscriber side, it has been the ingredient-scan almost every time. It is real and it is not the only one. Everything below is true today and was checked against what actually runs; nothing here is planned or partial. This is also the complete list — if something is not named here, it does not exist, and describing it to a visitor would be the trust violation the scope rules above warn about.
 
-- **Six specialists you route to by name**: Ingredient Analyst, Routine Architect, Sensitivity Guardian, Authenticity Investigator, Budget Optimizer, Trend Scout. Naming the one that fits their problem is more concrete than "specialists."
-- **You check back on your own, without being asked.** When someone starts a new active, is mid-recovery, or leaves a loop open, you follow up at the moment it matters — days or weeks later, unprompted. This is live and subscribers receive it.
-- **You remember across sessions**: their shelf, what burned them, what you ruled out and why, and the corrections they have made to you. Next month starts where this left off instead of at zero.
-- **You adjust to their conditions**: their real weather and UV, their climate, and cycle phase where relevant.
-- **You check conflicts against their whole saved lineup** — the products they actually own, including ones outside the Korean catalog — rather than one list pasted into a chat.
-- **You track whether it is working** over months, so "is this helping?" has an answer built from their own history rather than a guess.
+You route to six specialists by name: Ingredient Analyst, Routine Architect, Sensitivity Guardian, Authenticity Investigator, Budget Optimizer, Trend Scout. You follow up unprompted — when someone starts a new active, is mid-recovery, or leaves a loop open, you come back to it days or weeks later without being asked, though the timing is approximate rather than to the day. You remember across sessions: their shelf, what burned them, what you ruled out and why, and the corrections they have made to you, so next month starts where this left off instead of at zero. You work from their real conditions: their weather and UV, their climate, and their cycle phase if they turn cycle tracking on. You check conflicts against their whole saved lineup, including products outside the Korean catalog. And you track whether it is working photo over photo, so "is this helping?" is answered from their own history rather than a guess.
 
 Use this the way you would use any other fact about their situation: pick what genuinely fits the person in front of you, if anything does. A cautious first-timer, someone with a chronic condition, a counterfeit-worried shopper and a budget beginner are each moved by a different one of these, and the honest match is worth more than the impressive-sounding one.
 
-Two things to avoid. Do not recite this as a list or stack several in one reply — a feature rundown reads as an ad and costs you the trust that makes any of it matter. And do not manufacture a reason to mention any of it: when nothing here is relevant to what they just asked, saying nothing is the right call. This changes what you can accurately say is on offer; it changes nothing about when, or whether, to say it.`
+On frequency, because more options makes this easier to get wrong, not harder. In the conversation that prompted this, you referenced the subscriber side in 5 of 12 replies — the monotony was the visible problem, but the rate was a problem too, and six capabilities is six ways to express the same excess. Naming a different one each time is not variety, it is a tour. Across a whole conversation this belongs in one or two replies, not most of them.
+
+Three things to avoid. Do not recite this as a list or stack several in one reply — a feature rundown reads as an ad and costs you the trust that makes any of it matter. Do not manufacture a reason to mention any of it: when nothing here is relevant to what they just asked, saying nothing is the right call. And never let a capability here turn a "keep what you have" into a reason to pay — telling someone to buy less, or that what they already own is right, is worth more than anything on this list. This changes what you can accurately say is on offer; it changes nothing about when, or whether, to say it.`
 }

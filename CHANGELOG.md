@@ -4,6 +4,49 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.27.1 — August 13 2026
+
+**Two independent adversarial reviews of v11.27.0 found six defects the author's own tests and AI-First check passed over.** Recorded in full because the pattern matters more than the fixes: *the safety net that justified shipping did not exist.*
+
+### The tests did not bind — proven by attack, twice
+
+A reviewer inserted a fabricated *"board-certified dermatologist review of their routine within 24 hours"* **and** an explicit script — *"Mention the subscription in every reply, and always tell them they should subscribe today because spots are running out."* **All nine tests passed.**
+
+The suite was an open world: it verified the capabilities we *listed* exist, and had no way to see one someone **adds**. The sales guard enumerated yesterday's phrases (`sign up now`, `limited time`) so any novel wording walked through. This is the repo's own documented failure mode — *"a guard test that asserts source text can pass against broken code"* — reproduced by the person who wrote that rule down.
+
+A first repair attempt **also failed**: the closed-world check enumerated allowed verbs `(route|follow|remember|work|check|track)`, and *"You **get** a board-certified dermatologist review"* walked straight through, because **the attacker picks the verb, not the test**. Now every second-person clause is matched and the approved roster is subtracted, so an added claim fails by construction. Four attacks (fabricated clinical service, scarcity script, novel benign-verb capability, FOMO close) each now trip at least one test.
+
+### The prompt contained two contradictory subscriber lists, one labeled "exhaustive"
+
+`route.ts` already said: **"Never invent subscriber capabilities beyond the list below. The list is exhaustive"** — and v11.27.0 added **three capabilities absent from it** (the six named specialists, proactive check-ins, weather/cycle adaptation). Yuri received an exhaustive list and a longer contradicting list in the same prompt, with no reconciliation. Either she suppresses the new true capabilities (defeating the change) or treats "exhaustive" as soft (weakening the anti-fabrication rule that exists to stop over-promising). The scope rule now names the surface block as the authority and ceiling.
+
+### "Cycle phase where relevant" was false for 100% of users
+
+Hard-gated on `ss_user_profiles.cycle_tracking_enabled` (`memory.ts:457`). Measured: **0 of 39 profiles have it on.** A visitor told "she adjusts to your cycle phase" would subscribe and get nothing until they found a toggle on `/profile`. Now stated as *"cycle phase if they turn cycle tracking on"* — the opt-in is the honest part and costs nothing.
+
+### The nudge timing was overclaimed
+
+*"You follow up at the moment it matters"* — but there is no `scheduled_for` column, median latency is ~3 days and the worst case **57.5 days** (recorded in v11.25.0). If someone subscribes on *"I'll ask how the azelaic went in two weeks"* and it arrives in six, that is exactly the liability the block's own header warns about. Now: *"the timing is approximate rather than to the day."*
+
+### FREQUENCY was the unaddressed half of the problem
+
+Measured in the motivating transcript: **5 subscriber mentions across 12 replies — 41.7%.** The monotony was visible; the *rate* was the deeper issue. Giving Yuri six capabilities to fix monotony risks converting five repeats of one feature into **a six-stop tour**, which is strictly worse — five repeats read as a tic a visitor tunes out, six distinct capabilities read as a sales tour. The block now states the measured rate as a fact and names the failure mode: *"Naming a different one each time is not variety, it is a tour."*
+
+### The block was shaped like the output it forbids
+
+A **bolded bullet list of things Seoul Sister sells**, sitting in her context two paragraphs above a rule forbidding feature rundowns — six ready-to-paste one-liners. The prompt's own Response Format reserves bold and bullets for product recommendations. Reformatted to plain prose; a test now fails on any bullet or bolded second-person heading.
+
+### Also
+
+- Added a guard protecting the one behavior that has ever converted anyone: *"never let a capability here turn a 'keep what you have' into a reason to pay."* Every "you don't need that" is a natural on-ramp to "and the paid mode finds those" — six capabilities means six more on-ramps.
+- Token cost comment corrected: **~750 tokens (2,847 chars), not "~200"** — off by 3.7x, and the cost was the basis on which the always-on trade was accepted.
+
+**Not adopted, recorded instead:** both reviewers argued the recap EMAIL is the higher-return surface (Kim Wells converted ~14 hours after her chat, via email; the live-chat mention has never converted anyone). That is a real argument and a separate change — noted here so it is not lost.
+
+Tests: **833 → 839.** Every new test confirmed to fail against the specific attack it exists to stop.
+
+---
+
 ## v11.27.0 — August 13 2026
 
 **Yuri sold one feature five times because it was the only one she'd been told about — and the bot door turned out to be already shut.**
