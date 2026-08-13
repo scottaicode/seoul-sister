@@ -27,6 +27,79 @@ const searchSchema = z.object({
   full_inci: z.boolean().optional().default(false),
 })
 
+// Relevance over-fetch (Aug 2026). A text query fetches this multiple of the
+// caller's limit so ranking happens over a real candidate window instead of a
+// rating-ordered prefix. MIN_OVERFETCH keeps small caps usable: LGAAS's
+// grounding pre-flight calls with limit 3, and 3*8=24 is too narrow a window for
+// a product buried under a dozen rated siblings.
+const RELEVANCE_OVERFETCH = 8
+const MIN_OVERFETCH = 60
+
+/**
+ * Relevance score for a text-query match. HIGHER IS BETTER.
+ *
+ * Exists because ordering by `rating_avg DESC NULLS LAST` made an EXACT-name
+ * match lose to its own siblings whenever the product was unrated — 642 products
+ * (10.5% of catalog), 572 of them carrying INCI, 355 with rated siblings able to
+ * bury them.
+ *
+ * That is a safety problem, not a UX one: LGAAS's grounding pre-flight uses
+ * small limits, and a product it cannot find yields NO contradiction and NO
+ * abstention — silence byte-identical to "checked and clean". It is also how the
+ * original Atobarrier work order came to assert a present product was missing.
+ *
+ * Tiers are separated by wide margins so a lower tier can never sum its way past
+ * a higher one. `rating_avg` survives only as a sub-1 tiebreak within a tier —
+ * popularity breaks ties, it never decides relevance.
+ */
+function scoreRelevance(
+  product: { name_en: string | null; brand_en: string | null; rating_avg: number | null },
+  rawQuery: string,
+  terms: string[]
+): number {
+  const name = (product.name_en || '').toLowerCase().trim()
+  const brand = (product.brand_en || '').toLowerCase().trim()
+  const q = rawQuery.toLowerCase().trim()
+  const haystack = `${brand} ${name}`.trim()
+
+  let score = 0
+
+  // Tier 1 — the whole query IS the product name, or the brand-qualified name
+  // ("Aestura Atobarrier 365 Cream" vs name "Atobarrier 365 Cream"). Nothing
+  // outranks this.
+  if (name === q || haystack === q) score += 10_000
+  // Tier 2 — the query is the complete name modulo a leading brand the caller
+  // supplied, or vice versa.
+  else if (q.endsWith(name) && name.length > 0) score += 5_000
+  // Tier 3 — name starts with the query ("Atobarrier 365 Cream" for a query of
+  // "Atobarrier 365"). Prefix beats mid-string containment.
+  else if (name.startsWith(q)) score += 2_500
+  else if (name.includes(q)) score += 1_000
+
+  // Tier 4 — token coverage. Each query term found in the name is worth more
+  // than in the brand, since brand terms match every SKU a brand sells and so
+  // carry little discriminating power.
+  for (const t of terms) {
+    const term = t.toLowerCase()
+    if (!term) continue
+    if (name.includes(term)) score += 100
+    else if (brand.includes(term)) score += 25
+  }
+
+  // Penalty — extra words beyond the query are how a SIBLING outranks the
+  // product. "Atobarrier 365 Cream Mist" and "...Cream Special Set" both
+  // contain every term of "Atobarrier 365 Cream"; the shorter, exact one is the
+  // intended answer. Capped so a long legitimate name is never pushed below a
+  // genuinely worse match.
+  const extraChars = Math.max(0, name.length - q.length)
+  score -= Math.min(extraChars * 2, 400)
+
+  // Tiebreak ONLY — bounded under 1 so it can never cross a tier boundary.
+  score += Math.min(product.rating_avg ?? 0, 5) / 10
+
+  return score
+}
+
 // Skin concern → product category mapping (lowercase to match ss_products.category)
 const CONCERN_CATEGORY_MAP: Record<string, string[]> = {
   acne: ['cleanser', 'toner', 'serum', 'spot treatment'],
@@ -154,9 +227,19 @@ export async function POST(request: NextRequest) {
         q = q.not('price_usd', 'is', null)
       }
 
-      q = q
-        .order('rating_avg', { ascending: false, nullsFirst: false })
-        .limit(limit)
+      // Aug 2026 — for TEXT queries, over-fetch and rank by RELEVANCE in code
+      // (see scoreRelevance). Ordering by rating_avg and trimming server-side
+      // discarded the right row BEFORE relevance was ever computed: an unrated
+      // product sorts last under NULLS LAST, so `"Atobarrier 365 Cream"` at
+      // limit 5 returned five siblings and not the product itself. Same shape as
+      // the v11.20.0/v11.21.0 resolver bugs — rank, THEN trim.
+      //
+      // Structured (non-text) searches keep pure rating_avg ordering: with no
+      // query string there is no relevance signal, and popularity is the right
+      // proxy for "best matches for this category/skin type".
+      q = query
+        ? q.limit(Math.max(limit * RELEVANCE_OVERFETCH, MIN_OVERFETCH))
+        : q.order('rating_avg', { ascending: false, nullsFirst: false }).limit(limit)
 
       return q
     }
@@ -182,6 +265,21 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Product search error:', error)
       throw new AppError('Database query failed', 500)
+    }
+
+    // Rank by relevance, THEN trim to the caller's limit. The DB over-fetched
+    // (unordered) for text queries precisely so this ranking sees a real window;
+    // trimming server-side by rating_avg is what buried unrated exact matches.
+    // Structured searches are already rating-ordered and correctly limited.
+    if (query && products && products.length > 0) {
+      const terms = query.trim().split(/\s+/).map(sanitizeSearchTerm).filter(t => t.length > 1)
+      products = [...products]
+        .map(p => ({ p, s: scoreRelevance(p, query, terms) }))
+        // Stable, deterministic: ties fall back to name so repeated identical
+        // queries cannot return different orderings run to run.
+        .sort((a, b) => b.s - a.s || (a.p.name_en || '').localeCompare(b.p.name_en || ''))
+        .slice(0, limit)
+        .map(x => x.p)
     }
 
     // Blueprint 44 Gap 3a — batch-fetch ingredient lists for all returned products

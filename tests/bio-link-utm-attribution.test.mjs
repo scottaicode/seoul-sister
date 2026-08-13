@@ -48,6 +48,11 @@ async function redirects() {
   return JSON.parse(
     src
       .slice(open, close + 1)
+      // Strip `//` comments FIRST. Redirect entries carry explanatory comments
+      // (why a redirect exists is load-bearing context), and without this the
+      // parser chokes on the first one — which is exactly what happened when
+      // the Aug 2026 comma-trap redirects were added.
+      .replace(/^\s*\/\/.*$/gm, '')
       .replace(/(\w+):/g, '"$1":')
       .replace(/'/g, '"')
       .replace(/,(\s*[\]}])/g, '$1')
