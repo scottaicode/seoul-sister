@@ -253,7 +253,16 @@ export async function POST(request: NextRequest) {
       // BP130 — explicit completeness marker so consumers never have to infer
       // "was this list truncated?" from its length. Only stamped on full_inci
       // requests, keeping the default response shape byte-identical.
-      if (full_inci) product.inci_complete = true
+      //
+      // Aug 2026 — `true` used to be unconditional here, which made a product
+      // with NO ingredient linkage (bundles/Sets, un-mapped products) report an
+      // EMPTY list as a COMPLETE one. That is the negative-claim failure
+      // direction: "free of X" is only confirmable against a complete label, and
+      // an empty-but-complete list confirms every such claim vacuously. A missing
+      // label must read as missing, never as "contains nothing".
+      if (full_inci) {
+        product.inci_complete = (product.ingredients as unknown[]).length > 0
+      }
       return product
     })
 
