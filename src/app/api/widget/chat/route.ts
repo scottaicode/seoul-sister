@@ -11,6 +11,7 @@ import { consumeGlobalBudget, logBreakerTrip, BREAKER_MESSAGE } from '@/lib/widg
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
 import { detectCumulativeGive, buildCumulativeGiveBlock } from '@/lib/widget/cumulative-give'
 import { detectToolGrounding, buildToolGroundingBlock } from '@/lib/widget/tool-grounding'
+import { buildSubscriberSurfaceBlock } from '@/lib/widget/subscriber-surface'
 import { detectValueDensity, buildValueDensityFact } from '@/lib/widget/value-density'
 import { PRICING } from '@/lib/pricing'
 import { generateLeadEmail, type VisitorMemoryFacts, type ConversationTurn } from '@/lib/email/lead-email'
@@ -639,6 +640,20 @@ Use these facts with the judgment described above. They are context, not a trigg
     const cumulativeGive = detectCumulativeGive(history)
     const giveBlock = buildCumulativeGiveBlock(cumulativeGive)
     if (giveBlock) dynamicContext += giveBlock
+
+    // --- Subscriber surface (Aug 13 2026) ---
+    // Yuri named the subscriber side five times in one 53-minute conversation
+    // and reached for the SAME capability every time — the ingredient scan —
+    // because it was essentially the only concrete one the prompt gave her. The
+    // visitor was a fifties woman with rosacea starting azelaic; the proactive
+    // check-in ("I'll ask how it went in two weeks") was the capability that fit
+    // her, ships today, and appeared ZERO times in the prompt. A missing fact,
+    // not a judgment failure. Static by design — see subscriber-surface.ts for
+    // why a "pick the best-fitting feature" scorer was built and discarded.
+    //
+    // MUST live in dynamicContext (uncached). Appending to YURI_WIDGET_SYSTEM
+    // would silently kill the prompt cache — the measured v11.1.0 regression.
+    dynamicContext += buildSubscriberSurfaceBlock()
 
     // --- Tool grounding (Aug 9 2026) ---
     // A real visitor in India got seven brand recommendations across six

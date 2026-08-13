@@ -4,6 +4,44 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.27.0 — August 13 2026
+
+**Yuri sold one feature five times because it was the only one she'd been told about — and the bot door turned out to be already shut.**
+
+### She had a shelf and could see one item on it
+
+Reviewing the Aug 13 rosacea consult (visitor `1ce3b6ce`): Yuri named the subscriber side **five times across 12 messages, and it was the same capability every time** — "a mode that scans your lineup ingredient-by-ingredient." A real feature, and for this particular visitor close to the least relevant one we sell.
+
+She was a woman in her fifties starting azelaic acid, whom Yuri had just told to watch for 2-3 weeks. **Seoul Sister genuinely checks back, unprompted, at exactly that moment** — `ss_user_nudges` holds real ones (*"Sunday's here, so I'm keeping my word and checking in like I said I would"*), 9 rows, 4 acted on. For someone managing a lifelong condition, *"I'll still be here in two weeks asking how it went"* is a far better answer to *why subscribe* than an ingredient scanner. It was never said.
+
+Counted in the widget prompt: "remember"/memory **14** mentions, conflict-checking **4**, "specialist" **4** — but the six specialists **never named**, and proactive check-ins, weather-adaptive alerts, cycle awareness and progress tracking appearing **ZERO times**. **Not a judgment failure — a missing fact**, the same class as the email ask, the cumulative give, tool grounding and the final-message fact.
+
+`src/lib/widget/subscriber-surface.ts` states what the paid side actually is. **Every claim was verified against the codebase and live rows before being written** — a block that promises a capability we don't ship converts a trust asset into a liability the moment someone pays. A test asserts each named specialist exists in `specialists.ts` and that the nudge cron exists, so this cannot drift into fiction.
+
+**Deliberately static — it takes no arguments.** An earlier draft scored which capability "fit best" and injected that one; it was **discarded before shipping**. Choosing what this person needs is precisely Yuri's job, and a keyword classifier doing it would be the Yuri Sole Authority Principle violated inside her own prompt — the same anti-pattern as the seasonal recommender Bailey killed seven times. A test fails if the builder ever grows a parameter.
+
+The one tripwire forbids reciting the list (*"a feature rundown reads as an ad"*), and the block explicitly permits saying nothing: *"when nothing here is relevant to what they just asked, saying nothing is the right call... it changes nothing about when, or whether, to say it."*
+
+### The bot door was already closed — and two "bots" were people
+
+A prior session in this same conversation reported the Aug 6 and Aug 10 signups as bots. **That was wrong.** Probing all four Supabase auth endpoints live: `/signup`, `/recover`, `/token` and `/otp` **all return `captcha_failed`**. Turnstile is enforcing server-side; no door is open.
+
+The weekly data shows exactly when it shut: **17 signups the week of Jul 20, then 1, then 1** — Turnstile was configured ~Jul 28. And both August accounts carry real attribution the July cohort entirely lacks (`search.yahoo.com` landing on a product page; `taaft_feat`), where the July bots have `attribution: null` because they never touched the site. **Two humans who registered and didn't engage is an onboarding drop-off, not a bot problem** — a different and more interesting issue. Metadata should have been checked before the label was applied.
+
+### Recorded, not fixed: the widget corpus never reaches the learning engine
+
+**571 stranger messages across 81 sessions have never reached `ss_learning_patterns`, `ss_ingredient_effectiveness` or `ss_specialist_insights`.** Traced every consumer of the widget tables: the widget itself, three admin dashboards, and Reddit intel. `aggregate-learning` reads `ss_yuri_*` only. The learning engine is alive (196 patterns, newest written today) and fed exclusively by ~2 subscribers.
+
+Against the four questions: it **fires** and it **writes** — `ss_widget_visitors.ai_memory` for this visitor holds a genuinely good structured summary. It reaches a consumer **only for the returning visitor**; the cross-user loop was never wired. Also found: **`ss_widget_sessions.ai_summary` is NULL for all 81 sessions ever recorded.**
+
+**Deferred on purpose.** 68 visitors is not a cross-user corpus, and mining it now would repeat the Phase 11.4 failure exactly — 87 rows that scored fillers (water, glycols, waxes) as effective actors because the script measured *frequency, not mechanism*, caught by Bailey and deleted in v10.5.2. Recorded in `WIDGET-LEARNING-GAP.md` **and as a queryable production row** (`ss_pipeline_runs`, `metadata.deferral_key = 'widget_corpus_not_in_learning_engine'`, row `2f6235a2`), because a deferral that lives only in markdown is indistinguishable from a gap six weeks later. Recheck trigger: **≥300 widget visitors with messages, or ≥25 paying subscribers.**
+
+Nothing is lost by waiting — the raw corpus is intact and mineable whenever the gate clears. What's deferred is only the compounding.
+
+Tests: **824 → 833**, each confirmed to FAIL when its bug is reintroduced (the injection removal, a ranking instruction, and a parameterized builder each break the suite).
+
+---
+
 ## v11.26.0 — August 13 2026
 
 **The best cold conversation since the one paying subscriber ended at a wall the visitor may never have seen.**
