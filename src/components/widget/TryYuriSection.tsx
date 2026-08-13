@@ -132,7 +132,9 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   // Which demo script to show (owner vs beginner). Init deterministically to
   // avoid an SSR/client hydration mismatch, then randomize client-side on mount.
   const [demoScript, setDemoScript] = useState<DemoMessage[]>(DEMO_OWNER)
-  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  // Must be attached to the element carrying `overflow-y-auto` — see the
+  // scroll effect below for why putting it on an inner wrapper silently breaks.
+  const messagesScrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
@@ -274,15 +276,34 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
     }
   }, [])
 
-  // Scroll within the chat container, not the page
+  const isAtLimit = messageCount >= MAX_FREE_MESSAGES || serverLimitReached
+
+  // Scroll within the chat container, not the page.
+  //
+  // The ref MUST sit on the element that actually scrolls — the one carrying
+  // `overflow-y-auto`. It previously sat on the inner `p-4 space-y-3` wrapper,
+  // whose parent is the scrolling box, so `scrollTop = scrollHeight` was
+  // written to a non-overflowing element: a silent no-op. The widget never
+  // auto-scrolled at all, and nothing surfaced it because a chat that doesn't
+  // follow its own stream looks like a styling preference, not a bug.
+  //
+  // The cost landed at the worst moment. The chat box is capped at 640px and
+  // the paywall card renders as the LAST child, below the final answer — so
+  // after a long closing message the card sits outside the visible region,
+  // with `scrollbar-hide` removing any cue that there's more below. A visitor
+  // who read a 1,400-character final answer (a real Aug 13 2026 conversation)
+  // could reach the end of her preview and never see the subscribe card.
+  //
+  // `isAtLimit` is in the dep array on purpose: the card's arrival is driven by
+  // `messageCount`, a SEPARATE state update from `messages`. Depending on
+  // `messages` alone would scroll to the bottom of the last bubble and stop
+  // there, one render before the card exists.
   useEffect(() => {
-    const container = messagesContainerRef.current
+    const container = messagesScrollRef.current
     if (container) {
       container.scrollTop = container.scrollHeight
     }
-  }, [messages])
-
-  const isAtLimit = messageCount >= MAX_FREE_MESSAGES || serverLimitReached
+  }, [messages, isAtLimit])
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -543,8 +564,8 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
         </span>
       </div>
 
-      {/* Messages area */}
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
+      {/* Messages area — this is the scrolling element, so it owns the ref. */}
+      <div ref={messagesScrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
         {/* Pre-conversation state: greeting + prompts first, labeled example below */}
         {!showLive && (
           <div className="p-4 space-y-3">
@@ -620,7 +641,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
 
         {/* Live messages */}
         {showLive && (
-          <div ref={messagesContainerRef} className="p-4 space-y-3">
+          <div className="p-4 space-y-3">
             {messages.map((msg) => (
               <div
                 key={msg.id}

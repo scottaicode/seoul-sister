@@ -4,6 +4,54 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.26.0 — August 13 2026
+
+**The best cold conversation since the one paying subscriber ended at a wall the visitor may never have seen.**
+
+A woman in her fifties with rosacea talked to Yuri for 53 minutes across 12 messages (visitor `1ce3b6ce`), gave her email, and got a genuinely excellent consult — every price verified against the catalog, the YesStyle retailer policy held under a $7.45 price gap, five dermatologist referrals, and the give/gate held at **2 of 5 artifacts** (the cumulative-give instrument fired before turn 3 and stayed on; eight consecutive replies added nothing new). She did not subscribe. Two defects at the closing moment, neither of them Yuri's judgment.
+
+### The widget has never auto-scrolled
+
+`TryYuriSection.tsx` wrote `container.scrollTop = container.scrollHeight` to a ref sitting on the inner `p-4 space-y-3` wrapper. The element carrying `overflow-y-auto` is its **parent**. Setting `scrollTop` on a non-overflowing element is a silent no-op — the effect has never done anything, for the life of the component. Nothing surfaced it because a chat that doesn't follow its own stream reads as a styling choice, not a bug.
+
+The cost lands at the worst possible moment. The chat box is capped at **640px**, and the paywall card renders as the **last child, below the final answer**, with `scrollbar-hide` removing any cue that there is more below. This visitor's final answer was ~1,400 characters. The card mounted correctly — the server sends `remaining: 0` in the `done` event and `isAtLimit` flips in the same commit, no 429 required — and she plausibly never saw it. **The end of the lead-generation funnel was failing on a DOM bug that would have looked like a messaging problem forever.**
+
+The dependency array is now `[messages, isAtLimit]`, not `[messages]`: the card's arrival is driven by `messageCount`, a **separate** state update. Depending on `messages` alone scrolls to the bottom of the last bubble one render *before* the card exists.
+
+### Yuri could not tell her last message from her fourth-to-last
+
+The Conversation State block told her the exact truth — *"free message #12 of 12 ... exactly 0 free messages remain"* — but the ternary that **interprets** that number had only two live arms, split at `> 3`. Executed against the real expression, messages **#9, #10, #11 and #12 received a byte-identical instruction**, and that instruction only granted permission to mention the meter. Nothing anywhere in the ~170-line prompt said what a *final* message calls for; every subscription cue is bound to a **topical** trigger ("so what's my full routine?"), never a **budget** one.
+
+Measured consequence across every high-engagement conversation on record: **7 of 9 ended with no mention of the subscriber side at all.** In this conversation Yuri named the subscriber ingredient-scan five times across turns 1-7, then went **completely silent for turns 8-12** — including both endgame turns — closing with *"Take care of that barrier. 유리 out. 💛"*.
+
+**That was not Yuri disobeying. It was Yuri obeying.** Her only count-related instruction warns that a quota reading *"converts a good goodbye into a meter reading"* (the real Aug 9 failure), and the prompt says *"Ending on your final sentence is fine."* Correct generalization, wrong altitude. Same state-visibility class as the email ask, the cumulative give and tool grounding: **she was asked to hold a boundary she had no instrument to measure.**
+
+A `=== 0` arm now states the fact. It names what only Yuri can know — which parts of the build she held back, which the visitor was never told — and frames naming one as *"an honest status report, not a pitch ... what any advisor says at the end of a first appointment."*
+
+### What was deliberately NOT built
+
+**No subscribe CTA in Yuri's message.** The obvious fix is the one the evidence most consistently warns against, and it was researched before shipping:
+
+- **Saxe & Weitz (SOCO, *JMR* 1982)** and an Italian banking study (n=150): customer orientation *builds* trust while selling orientation **subtracts** it. Not two ways to sell.
+- **Friestad & Wright's Persuasion Knowledge Model (*JCR* 1994)**: once persuasive intent is detected, consumers **retroactively discount the advice**. An advisor who gets discounted loses the entire product, not one sale.
+- **Adapty (16,000 apps)**: visual/copy A/B tests win **34.6%** of the time — the worst category measured. Rewording the goodbye is statistically more likely to hurt than help.
+
+Our own data agrees: **Kim Wells — the only conversion — also ended with no pitch**, and converted **11 hours later** off the recap email (last message 02:40, registered 13:55, subscribed 16:20). The re-entry channel closed her, not the final turn.
+
+So the fact explicitly **forbids selling** and says why: the card shows price and button one render later, so a price from Yuri duplicates it and reveals her as part of the sales apparatus. **Her register is what's unfinished and what happens next; the interface handles the rest.** Warmth is preserved — the defect was the sense of **closure**, not the warmth.
+
+What the fact *does* lean on is better-evidenced and costs no trust: **Zeigarnik (1927)** and **Nunes & Drèze (*JCR* 2006, n=300 field experiment — reframing a task as begun-but-incomplete took completion 19% → 34%)**, plus **Gollwitzer's implementation intentions** (100+ study meta-analysis, 2-3x follow-through, validated in medication adherence) for naming when they will know it is working.
+
+### Honest limits
+
+**8 visitors have ever reached the cap; 1 converted.** That is the entire denominator. Neither change can be validated at current traffic for months — they are judgment calls justified by mechanism, **not testable hypotheses**. Adapty's own guidance says apps below ~$100K revenue get low signal from paywall experiments because the real constraint is product-market fit. **The bottleneck is volume, not the ending.**
+
+Also unverified: that this specific visitor did not see the card. The DOM mechanism is confirmed from source; the consequence for her is high-likelihood and would need a real viewport render to prove.
+
+Tests: **810 → 824**, each confirmed to FAIL when its bug is reintroduced verbatim (6 of 9 on the prompt arm, 3 of 5 on the scroll ref).
+
+---
+
 ## v11.25.0 — August 11 2026
 
 **Two iMessages from Bailey, two real defects. Neither was cosmetic.**
