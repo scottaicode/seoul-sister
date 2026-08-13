@@ -154,6 +154,29 @@ const nextConfig = {
         destination: '/?utm_source=instagram&utm_medium=bio&from=ig_ss',
         permanent: false,
       },
+      // Comma-trap ingredient merges (Aug 12 2026). A parser split INCI names on
+      // their INTERNAL comma, minting "2-Hexanediol" and "3-Butanediol" — both
+      // chemically DIFFERENT compounds from the real ingredients. Those wrong
+      // names were LIVE ingredient pages (ingredient routes resolve on
+      // toSlug(name_inci)), and /ingredients/2-hexanediol advertised 4,543
+      // products under a name that does not exist in the catalog.
+      //
+      // The identities are now merged into the correct rows, so the old slugs
+      // resolve to nothing. These are `permanent: true` (301) on purpose: the
+      // old URLs were indexed and crawled, and citation is the moat — a 301
+      // passes their accumulated authority to the correct page instead of
+      // handing crawlers a 404. The destinations are the real slugs produced by
+      // toSlug('1,2-Hexanediol') and toSlug('1,3-Butanediol').
+      {
+        source: '/ingredients/2-hexanediol',
+        destination: '/ingredients/1-2-hexanediol',
+        permanent: true,
+      },
+      {
+        source: '/ingredients/3-butanediol',
+        destination: '/ingredients/1-3-butanediol',
+        permanent: true,
+      },
     ]
   },
 }
