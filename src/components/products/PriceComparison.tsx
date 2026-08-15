@@ -164,7 +164,7 @@ export default function PriceComparison({ productId }: PriceComparisonProps) {
       {data.prices.some(p => getPriceFreshness(p.last_checked).stale) && (
         <p className="text-[10px] text-amber-600/80 flex items-center gap-1 mt-1">
           <Clock className="w-3 h-3" />
-          Some prices may be outdated. Prices are refreshed automatically every 6 hours.
+          Some prices may be outdated. Each price shows when we last checked it.
         </p>
       )}
     </div>

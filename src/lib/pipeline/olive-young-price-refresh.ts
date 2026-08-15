@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { OliveYoungScraper } from './sources/olive-young'
+import { fetchOliveYoungPrice } from './sources/olive-young-price-api'
 
 /**
  * Olive Young price refresher.
@@ -32,7 +32,15 @@ export interface OyPriceRefreshResult {
   updated: number // rows whose price_usd + last_checked were written
   priceChanges: number // subset of `updated` where the price actually moved
   unscrapeable: number // rows we couldn't derive a prdtNo for (skipped)
-  fetchFailed: number // prdtNo derived but the live page returned no price
+  fetchFailed: number // prdtNo derived but the live lookup errored
+  /**
+   * Rows whose product is GONE from Olive Young Global (the endpoint answers
+   * with an empty body). Tracked separately from `fetchFailed` because it is a
+   * fact about the catalog, not a failure of ours — and because a rising count
+   * here is real signal: two of the six products Yuri quoted to the Aug 15
+   * Spanish visitor were already delisted while we still advertised a price.
+   */
+  delisted: number
   sweptCount: number // phase-2 (long-tail sweep) rows seen this run; 0 => cursor wrap
   lastCheckedCursor: string | null // ISO of the last row's PRIOR last_checked (keyset)
 }
@@ -84,7 +92,7 @@ export async function runOliveYoungPriceRefresh(
 
   if (!retailer) {
     console.error('[oy-price-refresh] Olive Young retailer row not found — aborting')
-    return { scanned: 0, updated: 0, priceChanges: 0, unscrapeable: 0, fetchFailed: 0, sweptCount: 0, lastCheckedCursor: afterCheckedAt }
+    return { scanned: 0, updated: 0, priceChanges: 0, unscrapeable: 0, fetchFailed: 0, delisted: 0, sweptCount: 0, lastCheckedCursor: afterCheckedAt }
   }
 
   const popularCutoff = new Date(Date.now() - POPULAR_STALE_DAYS * 86_400_000).toISOString()
@@ -139,6 +147,7 @@ export async function runOliveYoungPriceRefresh(
     priceChanges: 0,
     unscrapeable: 0,
     fetchFailed: 0,
+    delisted: 0,
     sweptCount: sweepIds.size,
     lastCheckedCursor: afterCheckedAt,
   }
@@ -147,42 +156,16 @@ export async function runOliveYoungPriceRefresh(
     return result
   }
 
-  // The scraper reuses one Chromium instance across sequential calls. In practice
-  // Olive Young occasionally tears the headless browser down mid-batch (observed
-  // Jul 6: a clean fetch, then "Target page/context/browser has been closed" on the
-  // next call). A dead browser fails EVERY subsequent call, which would kill the
-  // whole run after one product. So the scraper is reassignable and we recreate it
-  // once when a browser-closed error is seen, then retry that same product.
-  let scraper = new OliveYoungScraper({ delayMs: 800 })
-
-  const isBrowserGone = (err: unknown): boolean => {
-    const m = err instanceof Error ? err.message : String(err)
-    return /closed|Target page|context|crashed|disconnected/i.test(m)
-  }
-
-  const fetchPrice = async (prdtNo: string): Promise<number | null | undefined> => {
-    try {
-      const detail = await scraper.scrapeProductDetail(prdtNo)
-      return detail?.price_usd ?? null
-    } catch (err) {
-      if (isBrowserGone(err)) {
-        console.warn('[oy-price-refresh] browser died mid-batch — recreating and retrying once')
-        try { await scraper.closeBrowser() } catch { /* already gone */ }
-        scraper = new OliveYoungScraper({ delayMs: 800 })
-        try {
-          const detail = await scraper.scrapeProductDetail(prdtNo)
-          return detail?.price_usd ?? null
-        } catch (retryErr) {
-          console.error(`[oy-price-refresh] retry failed for prdtNo=${prdtNo}:`, retryErr instanceof Error ? retryErr.message : retryErr)
-          return undefined
-        }
-      }
-      console.error(`[oy-price-refresh] scrape threw for prdtNo=${prdtNo}:`, err instanceof Error ? err.message : err)
-      return undefined
-    }
-  }
-
-  try {
+  // Price lookup is a single JSON fetch — no browser at all.
+  //
+  // This replaced a Playwright path that read the price out of the rendered DOM
+  // via `.price-info`. That selector stopped existing when Olive Young moved the
+  // detail page's price to an async XHR, and because a missing selector returns
+  // null WITHOUT throwing, the refresher silently failed every night for ~130
+  // nights while reporting success. See `olive-young-price-api.ts` for the full
+  // diagnosis. The browser-death retry logic that used to live here is gone with
+  // it: there is no browser left to die.
+  {
     for (const row of rows) {
       if (deadline && Date.now() > deadline) {
         console.warn(`[oy-price-refresh] Budget reached after ${result.scanned} rows — stopping cleanly`)
@@ -201,19 +184,61 @@ export async function runOliveYoungPriceRefresh(
         continue
       }
 
-      const newPrice = await fetchPrice(prdtNo)
-      if (newPrice == null) {
+      const outcome = await fetchOliveYoungPrice(prdtNo)
+
+      if (outcome.kind === 'error') {
         result.fetchFailed++
+        console.error(`[oy-price-refresh] lookup failed for prdtNo=${prdtNo}: ${outcome.reason}`)
         continue
       }
 
+      if (outcome.kind === 'delisted') {
+        // The product is gone from Olive Young Global.
+        //
+        // WHY `in_stock: false` AND NOT A DELETE. `in_stock` already exists, is
+        // already NOT NULL, and is already read by `compare_prices` (which
+        // prefers in-stock rows for `best_deal`/`cheapest_recommended`). So
+        // flipping it routes around dead listings through machinery that is
+        // already wired, with no schema change and no new concept for Yuri to
+        // learn. Deleting the row would destroy the price history and the URL,
+        // and Olive Young does relist — a soft flag is recoverable, a delete is
+        // not. (`kind: 'error'` deliberately does NOT flip this: a rate limit
+        // must never be able to mark a live product dead.)
+        //
+        // THE HARM THIS FIXES, measured Aug 15 2026: of the six products Yuri
+        // recommended to the Spanish visitor, TWO were already delisted —
+        // including her #1 pick, the Dr.G RTX Peptishot, quoted at $35.23. And
+        // 8 of our 30 most-reviewed OY products (27%) are gone. Quoting a
+        // confident price for something nobody can buy is worse than quoting a
+        // stale one: the shopper follows the link and hits nothing.
+        //
+        // `last_checked` is stamped too — we genuinely looked today. Leaving it
+        // at April would make the row look unexamined forever and wedge the
+        // stalest-first cursor on dead products.
+        result.delisted++
+        const { error: touchError } = await db
+          .from('ss_product_prices')
+          .update({ in_stock: false, last_checked: new Date().toISOString() })
+          .eq('id', row.id)
+        if (touchError) {
+          console.error(`[oy-price-refresh] delisted touch failed for ${row.id}: ${touchError.message}`)
+        }
+        continue
+      }
+
+      const newPrice = outcome.priceUsd
       const now = new Date().toISOString()
       const oldPrice = row.price_usd == null ? null : Number(row.price_usd)
       const priceChanged = oldPrice == null || Math.abs(oldPrice - newPrice) > 0.01
 
+      // `in_stock: true` is written on every successful read, not just changed
+      // ones. Olive Young relists products, and without this a row flipped false
+      // by one delisted reading could never recover — a transient absence would
+      // become a permanent one, silently hiding a product we do carry. The
+      // delisting flag must be as reversible as the condition it describes.
       const { error: updateError } = await db
         .from('ss_product_prices')
-        .update({ price_usd: newPrice, last_checked: now })
+        .update({ price_usd: newPrice, last_checked: now, in_stock: true })
         .eq('id', row.id)
 
       if (updateError) {
@@ -235,15 +260,25 @@ export async function runOliveYoungPriceRefresh(
         })
       }
     }
-  } finally {
-    await scraper.closeBrowser()
   }
 
   // Silent-failure tripwire (May 5 scraper-zero-result lesson): we had rows to
-  // refresh but wrote none — surface it instead of "completing" quietly.
-  if (result.scanned > 0 && result.updated === 0) {
-    console.warn(
-      `[oy-price-refresh] examined ${result.scanned} rows but updated 0 — Olive Young may have changed structure or be blocking. unscrapeable=${result.unscrapeable} fetchFailed=${result.fetchFailed}`
+  // refresh but wrote none.
+  //
+  // This tripwire WORKED and still cost us four months, which is the lesson
+  // worth carrying: it fired correctly every night since Jul 6 — to
+  // `console.warn`, which nobody reads. A log line is not observability. The
+  // real fix lives in the cron route, which now writes `status: 'failed'` on a
+  // zero-update run so the Guardian's 48h pipeline check (which keys on exactly
+  // that) escalates it to the alert email. Kept here, at error level, because
+  // the library should still say so loudly when called from anywhere else.
+  //
+  // Note `delisted` is deliberately NOT counted as a failure: a batch that is
+  // genuinely all-delisted updated nothing and nothing is wrong with us.
+  if (result.scanned > 0 && result.updated === 0 && result.delisted < result.scanned) {
+    console.error(
+      `[oy-price-refresh] examined ${result.scanned} rows but updated 0 — Olive Young may have changed structure or be blocking. ` +
+        `unscrapeable=${result.unscrapeable} fetchFailed=${result.fetchFailed} delisted=${result.delisted}`
     )
   }
 

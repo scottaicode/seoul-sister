@@ -21,10 +21,16 @@ import { logPipelineRun } from '@/lib/pipeline/log-run'
  * the run cleanly before the Vercel timeout. Secured with CRON_SECRET.
  */
 
-export const maxDuration = 300 // Vercel Pro budget — Playwright is slow per page
+export const maxDuration = 300 // Vercel Pro budget
 
-const REFRESH_PER_RUN = 40
-const BUDGET_MS = 270_000 // stop scraping with headroom before the 300s wall
+// Batch size 40 -> 400 (Aug 15 2026). The old cap existed because Playwright
+// cost ~5-10s/page; the price now comes from a single JSON fetch at ~0.3s, so
+// the same wall-clock budget covers an order of magnitude more rows. At 400/run
+// the ~4,900-row OY catalog cycles in ~12 days instead of ~4 months — which is
+// what makes "our prices are roughly current" true rather than aspirational.
+// The BUDGET_MS guard still stops the run cleanly if the endpoint slows down.
+const REFRESH_PER_RUN = 400
+const BUDGET_MS = 270_000 // stop with headroom before the 300s wall
 
 async function handler(request: Request) {
   try {
@@ -58,9 +64,45 @@ async function handler(request: Request) {
     const reachedEnd = result.sweptCount === 0 && cursor !== null
     const nextCursor = reachedEnd ? null : result.lastCheckedCursor
 
+    // A run that examined rows and refreshed NONE is a FAILED run, not a
+    // completed one.
+    //
+    // Earned expensively (found Aug 15 2026, ~130 nights late). This route
+    // hardcoded `status: 'completed'` and shipped it every night while the
+    // Olive Young detail scraper returned a price for zero of 40 products —
+    // `scanned: 40, updated: 0, fetchFailed: 40`, every single run since ~Jul 6.
+    // Meanwhile 99.4% of OY prices sat frozen at Apr 7 and Yuri quoted six of
+    // them to a real buyer as current.
+    //
+    // Two separate things failed to catch it, and both are worth naming:
+    //
+    //   1. The library's tripwire (olive-young-price-refresh.ts, "examined N
+    //      rows but updated 0") fired correctly all 130 nights — to console.warn.
+    //      Nobody reads Vercel logs. A log line is not observability.
+    //   2. The Guardian's zero-result check (guardian/healthcheck.ts) only looks
+    //      at `products_scraped === 0`. This run scrapes 40 happily and writes
+    //      nothing, so it slipped every net while reporting success.
+    //
+    // Writing 'failed' is what makes it VISIBLE: the Guardian's 48h pipeline
+    // check keys on `status === 'failed'`, which escalates to the alert email.
+    // This is the CLAUDE.md silent-failure rule applied to our own cron — a
+    // clean result and a dead component must not leave identical DB state.
+    // `delisted` rows are excluded: a batch that legitimately consisted of
+    // products Olive Young no longer carries updated nothing, and nothing is
+    // broken. Counting those as failure would train the alert to be ignored.
+    const refreshedNothing =
+      result.scanned > 0 && result.updated === 0 && result.delisted < result.scanned
+    if (refreshedNothing) {
+      console.error(
+        `[refresh-prices-olive-young] FAILED — examined ${result.scanned} rows, updated 0 ` +
+          `(fetchFailed=${result.fetchFailed}, unscrapeable=${result.unscrapeable}). ` +
+          `Olive Young detail pages are likely no longer yielding a price.`
+      )
+    }
+
     await logPipelineRun(db, {
       run_type: 'price_refresh_olive_young',
-      status: 'completed',
+      status: refreshedNothing ? 'failed' : 'completed',
       source: 'olive_young',
       products_scraped: result.scanned,
       products_processed: result.updated,
@@ -75,17 +117,20 @@ async function handler(request: Request) {
         price_changes: result.priceChanges,
         fetch_failed: result.fetchFailed,
         unscrapeable: result.unscrapeable,
+        delisted: result.delisted,
         duration_ms: Date.now() - startedAt,
+        refreshed_nothing: refreshedNothing,
       },
     })
 
     return NextResponse.json({
-      success: true,
+      success: !refreshedNothing,
       examined: result.scanned,
       updated: result.updated,
       price_changes: result.priceChanges,
       fetch_failed: result.fetchFailed,
       unscrapeable: result.unscrapeable,
+      delisted: result.delisted,
       wrapped: reachedEnd,
       next_cursor: nextCursor,
     })

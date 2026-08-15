@@ -7,6 +7,7 @@ import {
   celsiusToFahrenheit,
 } from '@/lib/intelligence/temperature-units'
 import { geocodeLocation } from '@/lib/geo/geocode'
+import { ageInDays } from '@/lib/yuri/price-freshness'
 
 /**
  * Allowed provenances for a custom entry's INCI list. Mirrors the DB CHECK on
@@ -1577,11 +1578,28 @@ async function executeSearchProducts(
   const finalProducts = filtered.slice(0, limit)
   const finalIds = finalProducts.map((p: Record<string, unknown>) => p.id as string)
 
-  const { data: allPrices } = await db
+  // `last_checked` travels with the price, exactly as `recommended_to_buy_from`
+  // does. Without it a price reaches Yuri as a bare number with no age.
+  //
+  // Earned Aug 15 2026. A visitor on the Spanish coast was quoted six prices in
+  // one consult at purchase intent. `compare_prices` has carried full staleness
+  // honesty since v10.3.8 — age_days, is_stale, a freshness note — but ALL THREE
+  // of her tool calls were `search_products`, which selected only price and
+  // retailer. The honesty instrument was built on the path visitors don't take.
+  // Measured the same day against live Olive Young: of 8 popular products, 7
+  // stored prices were wrong, six by 28-47%, and two of the six she was quoted
+  // were delisted outright.
+  const { data: allPrices, error: pricesError } = await db
     .from('ss_product_prices')
-    .select('product_id, price_usd, retailer:ss_retailers(name)')
+    .select('product_id, price_usd, last_checked, in_stock, retailer:ss_retailers(name)')
     .in('product_id', finalIds)
     .order('price_usd', { ascending: true })
+
+  // A dead price query must not read as "this product has no prices" — the
+  // silent-failure class. Log it; the caller still returns products.
+  if (pricesError) {
+    console.error(`[search_products] price lookup failed: ${pricesError.message}`)
+  }
 
   // Get top active ingredients for each product
   const { data: topIngredients } = await db
@@ -1603,6 +1621,21 @@ async function executeSearchProducts(
           price_usd: pr.price_usd,
           // Recommendability travels WITH the price row. See RECOMMENDED_RETAILERS.
           recommended_to_buy_from: isRecommendedRetailer(retailer),
+          // Age travels with the price for the same reason. A bare number reads
+          // as current; `compare_prices` has surfaced this since v10.3.8 and
+          // this path did not. Null when we have no timestamp — an unknown age
+          // must never be silently rendered as fresh.
+          price_age_days: ageInDays(pr.last_checked as string | null),
+          // Availability travels with the price too. A delisted listing is a
+          // fact about the RETAILER's shelf, not about our data — Yuri can say
+          // "not available at Olive Young right now" without any prompt
+          // addition and without it reading as "our database is broken".
+          //
+          // These rows are never FILTERED OUT. Dropping an out-of-stock row
+          // would convert "delisted at Olive Young" into "we don't carry this",
+          // which is the wrong answer: the product may still be at Soko Glam,
+          // and telling someone we don't have it is worse than a stale quote.
+          in_stock: pr.in_stock,
         }
       })
     const ingredients = (topIngredients || [])
@@ -1809,6 +1842,11 @@ async function executeGetProductDetails(
       is_authorized: r?.is_authorized,
       recommended_to_buy_from: isRecommendedRetailer(retailerName),
       url: p.url,
+      // `last_checked` was SELECTed here and silently dropped in this mapping —
+      // the same defect found in `search_products` on Aug 15, in a second tool.
+      // Selecting a column and then not emitting it is invisible to every test
+      // that checks the query, which is how it survived.
+      price_age_days: ageInDays(p.last_checked as string | null),
     }
   })
 

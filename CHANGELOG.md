@@ -4,6 +4,101 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.28.0 — August 15 2026
+
+**The price refresher had failed 100% for ~130 consecutive nights while logging `status: "completed"`, and Yuri quoted six of its frozen prices to a real buyer at purchase intent.** A 9-message consult with a woman on the Spanish Mediterranean coast — genuinely excellent reasoning, two dermatologist referrals, she was talked out of Korean products twice — resting on data that was four months stale and, in two cases, pointing at products nobody could buy.
+
+### The 130-night silent failure
+
+`/api/cron/refresh-prices-olive-young` ran every night since Jul 6 and produced, verbatim, every single time:
+
+```
+status: "completed"   products_scraped: 40   products_processed: 0   products_failed: 40
+metadata: { updated: 0, fetch_failed: 40, unscrapeable: 0 }
+```
+
+**4,889 of 4,917 Olive Young prices (99.4% of ~96% of all price data) frozen at Apr 7.**
+
+Root cause, confirmed empirically rather than inferred: Olive Young moved the detail page's price to an async XHR. `scrapeProductDetail` read it from the rendered DOM via `document.querySelector('.price-info')`, and **a missing selector returns null without throwing** — a silent null indistinguishable from success. The listing scraper kept working the entire time (96 products/night, 0 failures), which is why this looked healthy from every angle except the price column.
+
+**The tripwire worked and it still cost four months.** `olive-young-price-refresh.ts` already had the "examined N rows but updated 0" check, and it fired correctly all 130 nights — to `console.warn`. Nobody reads Vercel logs. **A log line is not observability.** The real fix was making the run write `status: 'failed'`, because the Guardian's 48h pipeline check keys on exactly that and escalates to the alert email. An all-delisted batch is excluded, since an alert that cries wolf is how the original silence happened.
+
+### How wrong the prices were, and the sampling trap
+
+A first sample said "0.0% change across 20 products" — **a sampling artifact**, drawn from the refresher's own stalest-first batch, which is dominated by obscure products. Re-measured on the popular products Yuri actually recommends:
+
+| Product | Stored | Live | Error |
+|---|---|---|---|
+| Beauty of Joseon Revive Eye Serum | $25.99 | $13.89 | **-46.6%** |
+| Dr.G Green Mild Up Sun+ | $35.23 | $22.40 | -36.4% |
+| Round Lab 1025 Dokdo Set | $48.00 | $31.68 | -34.0% |
+| Numbuzin No.5+ Vitamin Serum | $25.20 | $17.17 | -31.9% |
+| Anua Heartleaf Cleansing Oil | $34.99 | $25.12 | -28.2% |
+
+**7 of 8 wrong, six by 28-47%, nearly all OVERQUOTES** — on a platform whose pitch is price transparency.
+
+### The failure nobody was looking for: delisting
+
+Of the six prices quoted to the Spanish visitor, **two products were gone from Olive Young Global entirely** — including her #1 recommendation, the Dr.G RTX Peptishot at $35.23. A sweep found **27% of the 30 most-reviewed OY products delisted**, among them **Torriden Dive-in Soothing Cream (2,625 reviews)**.
+
+Handled as DATA, not prompt prose: delisted rows are flagged `in_stock: false` (an existing column `compare_prices` already consumes), reversible on the next successful read because Olive Young relists, and **never written on a fetch error** — a rate limit must not be able to mark live products dead.
+
+### The fix
+
+`src/lib/pipeline/sources/olive-young-price-api.ts` — fetch-only, no browser. The page's own JS calls `axios.post('detail-data', {prdtNo})`; that endpoint returns the price as JSON in one round trip. Measured: 25 sequential requests in 12s, zero HTTP errors, no rate limiting, no session requirement. `currency: null` and prices identical under `Accept-Language: es-ES` — a single USD storefront, which mattered because the visitor was in Spain.
+
+`saleAmt` (what the shopper pays) beats `nrmlAmt` (list). Six of eight popular products were discounted; storing list price would have silently re-introduced the overquote.
+
+**Batch 40 → 400/run.** Playwright's ~8s/page was the reason for the old cap; a fetch is ~0.3s. The catalog now cycles in ~12 days instead of ~4 months, and all 115 popular rows refresh on the first run.
+
+### The honesty instrument existed on the path visitors do not take
+
+`compare_prices` has carried full staleness honesty since v10.3.8 — `age_days`, `is_stale`, a `freshness` block with an explicit note. **All three of the Spanish visitor's tool calls were `search_products`**, whose price join selected only `price_usd` and the retailer name. Now carries `last_checked` → `price_age_days`, plus `in_stock`, plus an `error` check so a dead price query cannot read as "this product has no prices."
+
+A second review found **`get_product_details` had the identical defect** — it SELECTs `last_checked` and silently drops it in the mapping. Invisible to any test that checks the query rather than the payload.
+
+### A false promise already live in the UI
+
+Following that review's thread surfaced this, shipped to every visitor on every product page:
+
+> *"Some prices may be outdated. Prices are refreshed automatically every 6 hours."*
+
+The real cadence was **~130 days**. This is precisely the fabricated-refresh-cadence sentence an earlier reviewer invented to defeat a guard test — **already in production**, invisible because every test inspected Yuri's prompt rather than the pages customers read. Fixed, with a closed-world guard walking every file under `src/components` and `src/app`.
+
+### Clinical provenance (widget)
+
+The visitor was asked the sun-response question twice, correctly. She answered *next to* it — "I have fair skin, I don't burn because I don't sunbathe," which describes habits, not skin response. Yuri read it as low pigmentation risk and escalated to a retinal. The inference was sound; **presenting it back as settled fact** was the defect, since she never got to say "actually, I tan easily."
+
+`fitzpatrick_source` reaching the widget, which had no equivalent. **Explicitly not a hedging instruction** — it does not ban the inference, does not instruct re-asking, and closes by disclaiming softening.
+
+### What four adversarial reviews changed (all found real defects)
+
+1. **Cut a claim from the price block.** A draft told Yuri stale prices "drift more often HIGH than low, so an out-of-date number errs in the shopper's favour." True of n=8; **not a catalog fact.** Yuri would relay it as "you'll probably pay less" — a promise we cannot keep. **Cutting an unverified claim is not the hedging regression the project rule forbids; that rule protects confident TRUE advice.**
+
+2. **Broke a guard test in seconds.** Asked for something harmful that passes a "no command words" check, a reviewer produced a fabricated freshness guarantee and a scarcity line, neither containing must/never/always. The repo's own *"the attacker picks the verb, not the test"* reproduced by the author. Tests now assert on **shape and truth**, not vocabulary.
+
+3. **Cut the provenance rule in half.** Its strongest point: **in an anonymous widget nearly every clinical input is inferred**, so a rule taxing inferred inputs taxes almost every sentence — **the same "fires on ~100% of cases" flaw already rejected for the price threshold one section earlier**, missed by the same author. ~1,700 → ~830 chars; a test now fails if it grows past 1,000, because length is the hedging risk. It also rewrote the modelled phrasing: *"tell me if you actually do tan and I will slow this down"* doubts the visitor and pre-announces retreat.
+
+4. **Two review claims were WRONG.** One reported the prompt ships truncated — an artifact of the excerpt sent for review, not the file. **A reviewer reading an excerpt reports defects in the excerpt.** Verify before acting.
+
+### Two scoping bugs in the author's own guard tests
+
+One policed the email-ask rules by accident; one asserted on "asymmetric"/"PIH" text that lives ELSEWHERE in the prompt, so **deleting the paragraph it guarded still passed.** Only reverting the bug found either. **A guard test inspecting the wrong region is worse than no test — it reports green while the thing it guards is deleted.**
+
+### And the sweep lied
+
+Shipping the guard does not clean rows the bug already wrote, so `scripts/sweep-oy-delisted.ts` flags historical delistings. Its first run reported success — and **missed one of the two rows it was written to fix.** Cause: **PostgREST silently caps a query at 1,000 rows and reports no error.** It asked for 5,000, got ~1,000, and printed a confident summary over a fifth of the catalog. That is the same silent cap that published 2,018 dead sitemap URLs on Aug 4, **reproduced by the session that had just read the rule.** Fixed with pagination plus a loud coverage check.
+
+**Only naming the row — checking the specific product the fix was written for, rather than trusting the summary — surfaced it.**
+
+### Not verified
+
+**The scheduler has not yet produced a passing row.** The sweep proves the lookup works in production; a hand-run script is not the cron. The Aug 15 night run is the evidence that counts.
+
+844 → 877 tests, each confirmed to FAIL when its bug is reintroduced. Full detail in `PRICE-STALENESS-AND-INFERENCE-HONESTY.md`.
+
+---
+
 ## v11.27.1 — August 13 2026
 
 **Two independent adversarial reviews of v11.27.0 found six defects the author's own tests and AI-First check passed over.** Recorded in full because the pattern matters more than the fixes: *the safety net that justified shipping did not exist.*
