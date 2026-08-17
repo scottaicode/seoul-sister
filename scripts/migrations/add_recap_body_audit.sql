@@ -49,3 +49,31 @@ COMMENT ON COLUMN ss_widget_visitors.recap_artifacts IS
 --   WHERE recap_status IN ('sent','delivered')
 --     AND (recap_artifacts->>'count')::int >= 2
 --   ORDER BY recap_sent_at DESC;
+
+-- ---------------------------------------------------------------------------
+-- Queryable watch-for row (run AFTER the ALTER above).
+--
+-- Per CLAUDE.md: "Deliberate deferrals must be visible in DATA, not only in a
+-- doc." This audit is schema-applied and code-deployed but has ZERO production
+-- rows — it fires only when a visitor captures an email. A pending
+-- verification recorded only in markdown is indistinguishable from a gap six
+-- weeks later, which is exactly how a deferred loop got described as working.
+--
+-- Close it by re-running the audit query in RECAP-AUDIT-VERIFICATION.md and
+-- confirming at least one row has recap_body_html IS NOT NULL.
+INSERT INTO ss_pipeline_runs (source, run_type, status, started_at, completed_at, metadata)
+VALUES (
+  'widget',
+  'reprocess',
+  'completed',
+  now(),
+  now(),
+  jsonb_build_object(
+    'deferral_key', 'recap_body_audit_unverified',
+    'opened', '2026-08-17',
+    'doc', 'RECAP-AUDIT-VERIFICATION.md',
+    'state', 'schema applied + code deployed, zero production rows',
+    'closes_when', 'any ss_widget_visitors row has recap_body_html IS NOT NULL',
+    'fires_on', 'next widget email capture — no cron, no manual trigger that would count'
+  )
+);

@@ -35,7 +35,8 @@ This is observability only. Nothing about what Yuri sends changes.
 ### Honest limits
 
 - **It cannot answer the question retroactively.** The ten recaps already sent — including the Aug 17 visitor's — are gone. Measurement starts with the next send.
-- **The migration is not yet applied.** The code tolerates its absence and warns; the columns need `scripts/migrations/add_recap_body_audit.sql` run against production.
+- **Migration APPLIED Aug 17 2026**, all four columns verified present in `information_schema`.
+- **NOT VERIFIED: zero production rows.** It fires only on the next widget email capture — no cron, and per the repo's standing rule a hand invocation would not count. Schema-present and code-deployed is not a working loop. Tracked in `RECAP-AUDIT-VERIFICATION.md` and as a queryable deferral row (`ss_pipeline_runs`, `metadata.deferral_key = 'recap_body_audit_unverified'`), because a pending verification living only in markdown is indistinguishable from a gap six weeks later.
 
 899 → 906 tests. Four bugs verified by revert, and **one slipped through first**: swapping the detector's argument from the stripped text back to raw HTML passed, because the test asserted the stripping code EXISTED rather than that the detector CONSUMED it. Tightened to pin the argument.
 
