@@ -227,6 +227,55 @@ function singularize(term: string): string {
 }
 
 /** True when `term` (or its singular stem) appears in `haystack`. */
+/**
+ * Collapse a line-number marker onto its digit BEFORE punctuation is flattened.
+ *
+ * THE DEFECT THIS FIXES (found Aug 17 2026, from a production transcript).
+ *
+ * A visitor in Seoul listed "numbuzin 9+ toner" and "numbuzin nad+bio essence".
+ * `search_products` returned numbuzin's **No.1 Cica Toner** — a different
+ * product with different actives — and Yuri built a whole routine edit on its
+ * ingredients, telling the visitor to stop repurchasing three products she had
+ * mis-identified.
+ *
+ * The mechanism: punctuation normalization turns "No.9" into "no 9", and the
+ * next filter drops every token of length 1 — so the DIGIT, which is the entire
+ * product identity in a numbered range, was discarded while the meaningless
+ * "no" survived. Verified before fixing:
+ *
+ *   "numbuzin No.9 toner" -> terms = [numbuzin, no, toner]
+ *   "numbuzin No.3 serum" -> terms = [numbuzin, no, serum]
+ *
+ * Identical term sets for different products. Live search confirmed the
+ * consequence was systematic, not incidental: **No.9 -> No.1, No.3 -> No.5,
+ * No.5 -> No.3.**
+ *
+ * Scope: 471 verified products across 118 brands carry an identity-bearing
+ * number in the name (numbuzin No.N, Anua 77, SKIN1004, Beauty of Joseon's
+ * numbered lines, AESTURA 365...).
+ *
+ * WHY A JOIN AND NOT "KEEP SHORT TOKENS". Lowering the length filter globally
+ * would admit every stray digit and letter in a query as an ILIKE predicate
+ * ("2 products", "step 3"), which adds noise to every search to fix a specific
+ * collision. Joining the marker to its digit produces ONE distinctive token —
+ * `no9` — that cannot collide with `no1`, and leaves every other query
+ * byte-identical to before.
+ *
+ * Applied to BOTH sides (query and catalog text) by every caller, so
+ * "numbuzin No.9" and a catalog row storing "No. 9" or "no9" all agree.
+ */
+export function joinLineNumbers(s: string): string {
+  // "no.9" / "no 9" / "no9" / "#9" -> "no9". Bounded to 1-2 digits so volumes
+  // and percentages ("77% toner", "365 cream") are left completely alone.
+  //
+  // Applied identically to the QUERY and to the CATALOG text it is compared
+  // against — the catalog stores "No. 9" (dot AND space) while a visitor types
+  // "No.9" or "9+", so normalizing only one side produced `no9` vs `no 9` and
+  // the match still failed. Verified live: with one side normalized, No.9 still
+  // resolved to No.3.
+  return s.replace(/\b(?:no|nº|num|number|#)\s*\.?\s*(\d{1,2})\b/gi, 'no$1')
+}
+
 function termMatches(haystack: string, term: string): boolean {
   return haystack.includes(term) || haystack.includes(singularize(term))
 }
@@ -257,7 +306,25 @@ async function smartProductSearch(
   // "Torriden Dive-In Low Molecular..." but the catalog stores "Dive In"
   // (no hyphen). Without normalization, name_en ILIKE %dive-in% fails.
   const cleaned = rawQuery.trim()
+  // Line numbers are joined BEFORE dots are flattened — see joinLineNumbers.
+  // "No.9" must survive as one token; otherwise the digit is dropped by the
+  // length filter below and No.9 silently resolves to No.1.
   const normalized = cleaned.toLowerCase().replace(/[-/_.]+/g, ' ')
+
+  // The LINE NUMBER is extracted but deliberately NOT folded into the search
+  // terms. It is a RANKING signal, never a SQL predicate.
+  //
+  // Why the obvious version fails (measured, Aug 17 2026): joining "No.9" into
+  // one token `no9` makes in-memory scoring correct, then feeds `no9` straight
+  // into `name_en.ilike.%no9%` — which matches NOTHING, because the catalog
+  // stores "No. 9" with a space. The joined token fixes the comparison and
+  // breaks the fetch, so the right row never enters the candidate window at all
+  // and every numbered query fell through to an arbitrary sibling.
+  //
+  // So: tokenize exactly as before (the SQL side is untouched and every
+  // non-numbered query behaves identically), and carry the digit separately for
+  // the ranking stage, where both sides are normalized in memory.
+  const lineNumber = /\bno\.?\s*(\d{1,2})\b/.exec(cleaned.toLowerCase())?.[1] ?? null
   const originalTokens = normalized.split(/\s+/).filter(t => t.length > 0)
   const terms = originalTokens.filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
 
@@ -334,6 +401,24 @@ async function smartProductSearch(
         q = q.ilike('name_en', `%${singularize(t)}%`)
       }
       if (options?.category) q = q.eq('category', options.category)
+      // LINE NUMBER as a hard predicate, not a ranking hint.
+      //
+      // This is where numbered ranges were actually being decided. For
+      // "numbuzin No.9 toner" the tokens are [numbuzin, no, toner]: "no" is a
+      // substring of EVERY numbuzin name ("No.1", "No.3", "No.5"...), so this
+      // strategy matched a pile of siblings and returned the first one — before
+      // any of the ranking below ever ran. Measured: No.9 -> No.1, No.3 -> No.5,
+      // No.5 -> No.3, each with full confidence. Yuri then described the wrong
+      // product's ingredients to a real visitor (Aug 17 2026) and told her to
+      // stop repurchasing three products on that basis.
+      //
+      // Requiring the digit here is what makes the strategy precise again. The
+      // patterns are QUOTED because PostgREST treats "." as a syntax separator
+      // inside or() — the unquoted form silently returns zero rows, verified
+      // live against No.9 and No.3.
+      if (lineNumber) {
+        q = q.or(`name_en.ilike."%no.${lineNumber} %",name_en.ilike."%no. ${lineNumber} %",name_en.ilike."%no.${lineNumber}"`)
+      }
       const { data: compositeMatch, error: compositeError } = await q.limit(limit)
       if (compositeError) console.error('[smartProductSearch] strategy 1.5 failed:', compositeError.message, { rawQuery, brandCandidate })
       if (compositeMatch?.length) {
@@ -378,13 +463,80 @@ async function smartProductSearch(
 
     if (broadError) console.error('[smartProductSearch] strategy 2 failed:', broadError.message, { rawQuery })
 
-    if (broadResults?.length) {
-      const rows = broadResults as unknown as Array<Record<string, unknown>>
+    // LINE-NUMBER RESCUE — a RETRIEVAL fix, not a ranking one.
+    //
+    // The window above is `ORDER BY rating_avg ... LIMIT`, so Postgres decides
+    // which rows exist before any relevance logic can score them. For a
+    // numbered range that is fatal: measured on the real failure, the 75-row
+    // window for "numbuzin No.9 toner" contained exactly 3 numbuzin rows and
+    // ALL THREE were No.3. The correct row ("No. 9 NAD PDRN Glow Treatment
+    // Toner") is verified and in the catalog, and was never fetched — so no
+    // amount of scoring could recover it. Ranking cannot select a row that is
+    // not there.
+    //
+    // This is the same shape as the sitemap's silent 1,000-row cap and the
+    // delisting sweep's truncation: a bounded fetch that looks like a complete
+    // answer. The fix is to ASK for the numbered rows explicitly, then merge
+    // them into the window the post-filters already operate on.
+    //
+    // Costs one extra query only when the query actually names a line number,
+    // so every other search is byte-identical to before.
+    let windowRows = (broadResults ?? []) as unknown as Array<Record<string, unknown>>
+    if (lineNumber) {
+      // Match the two ways the catalog writes it: "No.9" and "No. 9".
+      const brandTerm = terms.find(t => t !== 'no') ?? terms[0]
+      let numberedQuery = db
+        .from('ss_products')
+        .select(cols)
+        .eq('is_verified', true)
+        // The patterns are QUOTED: PostgREST treats "." as a syntax separator
+        // inside or(), so an unquoted `%no.9 %` is parsed as a malformed filter
+        // and silently returns nothing — verified live, the unquoted form
+        // returned 0 rows for No.9 and No.3 while the quoted form returns both.
+        .or(`name_en.ilike."%no.${lineNumber} %",name_en.ilike."%no. ${lineNumber} %"`)
+      if (options?.category) numberedQuery = numberedQuery.eq('category', options.category)
+      if (brandTerm) numberedQuery = numberedQuery.ilike('brand_en', `%${brandTerm}%`)
+
+      const { data: numbered, error: numberedError } = await numberedQuery.limit(limit * 2)
+      if (numberedError) {
+        // A dead rescue query must not read as "no such numbered product".
+        console.error('[smartProductSearch] line-number rescue failed:', numberedError.message, { rawQuery })
+      } else if (numbered?.length) {
+        const seen = new Set(windowRows.map(r => r.id as string))
+        for (const row of numbered as unknown as Array<Record<string, unknown>>) {
+          if (!seen.has(row.id as string)) windowRows.push(row)
+        }
+      }
+    }
+
+    if (windowRows.length) {
+      // `windowRows` = the rating-ordered window PLUS any line-number rescue
+      // rows merged in above. Using `broadResults` here would silently discard
+      // the rescue and reinstate the bug.
+      const rows = windowRows
       // Post-filter: ALL terms must appear in combined brand + name.
       // Normalize punctuation on the catalog side too (the query was already
       // normalized during tokenization) so "Dive-In" queries match "Dive In"
       // rows here the same way they do in resolveProductByName.
+      // A row's own line number, or null. Compared against the QUERY's line
+      // number so a No.3 row can never satisfy a No.9 query on the words they
+      // share. This is the discriminator the whole fix turns on.
+      const rowLineNumber = (p: Record<string, unknown>) =>
+        /\bno\.?\s*(\d{1,2})\b/.exec(
+          `${(p.name_en as string) || ''}`.toLowerCase()
+        )?.[1] ?? null
+
+      // A candidate is DISQUALIFIED when the query names a line number and the
+      // row carries a different one. Rows with no number are left alone — only
+      // a genuine conflict rejects.
+      const lineNumberConflict = (p: Record<string, unknown>) => {
+        if (!lineNumber) return false
+        const rn = rowLineNumber(p)
+        return rn !== null && rn !== lineNumber
+      }
+
       const allTermMatch = rows.filter(p => {
+        if (lineNumberConflict(p)) return false
         const combined = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`
           .toLowerCase()
           .replace(/[-/_.]+/g, ' ')
@@ -426,7 +578,11 @@ async function smartProductSearch(
           const combined = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`
             .toLowerCase()
             .replace(/[-/_.]+/g, ' ')
-          return terms.filter(t => termMatches(combined, t)).length
+          // A row whose line number contradicts the query scores 0 — it is a
+          // different product, however many words it shares.
+          return lineNumberConflict(p)
+            ? 0
+            : terms.filter(t => termMatches(combined, t)).length
         })
       )
 
@@ -441,7 +597,12 @@ async function smartProductSearch(
             const combined = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`
               .toLowerCase()
               .replace(/[-/_.]+/g, ' ')
-            return { p, coverage: terms.filter(t => termMatches(combined, t)).length }
+            return {
+              p,
+              coverage: lineNumberConflict(p)
+                ? 0
+                : terms.filter(t => termMatches(combined, t)).length,
+            }
           })
           .filter(r => r.coverage === maxCoverage)
           .map(r => r.p)
@@ -521,6 +682,26 @@ async function smartProductSearch(
           // and "stick"/"cream"/"serum" are shared by hundreds of rows.
           score += termMatches(brand, t) ? 3 : 1
         }
+        // The LINE NUMBER outranks everything else a numbered range shares.
+        //
+        // In numbered K-beauty lines the digit IS the product: numbuzin No.3
+        // (glow) and No.9 (NAD lifting) share brand, category and often every
+        // other word in the name, so every term-level signal ties and the
+        // winner was decided by rating — i.e. arbitrarily. Measured before this
+        // fix: No.9 -> No.1, No.3 -> No.5, No.5 -> No.3, each with total
+        // confidence and no signal to the caller that the row was wrong.
+        //
+        // Weighted above brand (3) because a wrong line number inside the RIGHT
+        // brand is exactly the failure being fixed, and penalised when the row
+        // carries a DIFFERENT number — otherwise a No.3 row still ties a No.9
+        // query on all the words they share.
+        if (lineNumber) {
+          const rowNumber = /\bno\.?\s*(\d{1,2})\b/.exec(
+            ((p.name_en as string) || '').toLowerCase()
+          )?.[1] ?? null
+          if (rowNumber === lineNumber) score += 6
+          else if (rowNumber !== null) score -= 6
+        }
         return score
       }
 
@@ -592,7 +773,8 @@ async function resolveProductByName(
   // the query (e.g. "Dive-In") must match unhyphenated catalog storage
   // ("Dive In"). Normalize BOTH the query and the catalog field we compare
   // against. Same normalization function used in smartProductSearch above.
-  const normalizePunct = (s: string) => s.toLowerCase().replace(/[-/_.]+/g, ' ')
+  const normalizePunct = (s: string) =>
+    joinLineNumbers(s.toLowerCase()).replace(/[-/_.]+/g, ' ')
   const queryLower = productName.toLowerCase()
   const queryNormalized = normalizePunct(productName)
   const terms = queryNormalized.split(/\s+/).filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
@@ -730,7 +912,8 @@ function describeResolution(
     // different name; a mismatched brand or product noun usually means a
     // genuinely different product. She decides which, and confirms with the
     // user either way.
-    const normalizePunct = (s: string) => s.toLowerCase().replace(/[-/_.]+/g, ' ')
+    const normalizePunct = (s: string) =>
+    joinLineNumbers(s.toLowerCase()).replace(/[-/_.]+/g, ' ')
     const requestedTerms = normalizePunct(requested)
       .split(/\s+/)
       .filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))

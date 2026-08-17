@@ -4,6 +4,71 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.29.0 — August 17 2026
+
+**Yuri told a visitor to stop repurchasing three products based on ingredients they do not contain — and had she searched, she would have been handed the wrong product's ingredients as a clean result.** Both halves were real defects; only one was about her judgment.
+
+### The transcript
+
+A Nordic woman living in Seoul, 7 messages, email captured, ~11 products disclosed. The advice was structurally sound and the commercial instinct was the best in the corpus — she closed with *"you've got a full shelf already, spend your money on nothing right now"* and, asked point-blank which toner to buy, said *"you already own it, don't buy a new one."* That is the behaviour that converted the only paying subscriber this surface has ever produced.
+
+The premises underneath it were fabricated:
+
+| Claim | Reality (verified against our own catalog) |
+|---|---|
+| numbuzin **No.9** is a "retinol/bakuchiol elasticity family" | It is their **NAD+/PDRN/niacinamide** line. **Zero retinoid.** Only the No.9 *eye creams* contain retinol; she owns neither |
+| **Rejuran Turnover Ampoule** is a "turnover active" | INCI: **blackberry leaf, licorice, calendula.** No retinoid, no acid |
+| **Goodal Vita C** is ~pH 3.5 and clashes with retinol | Goodal's Vita-C line is **tangerine extract + niacinamide**, not L-ascorbic acid |
+
+Three tool calls fired that turn — weather, a Mediheal sunscreen search, a generic `retinol` guide. **None of the four products the entire thesis rested on were searched.**
+
+### Half one: the number IS the product, and search threw it away
+
+Measured live before the fix:
+
+```
+"numbuzin No.9 toner"   ->  No.1 Pure-Fit Cica Calming Toner
+"numbuzin No.3 serum"   ->  No.5 Vitamin Niacinamide Concentrated Serum
+"numbuzin No.5 essence" ->  No.3 Super Glowing Essence Toner
+```
+
+Wrong product, right brand, **full confidence, no signal to the caller.** So the obvious fix — "make her search" — would have grounded her in a sibling product's ingredient list. **471 verified products across 118 brands** carry an identity-bearing number.
+
+**Where it actually broke, after four wrong guesses.** Not the tokenizer, not ranking, not retrieval. **Strategy 1.5** (the brand-prefix composite) queries `brand='numbuzin' AND name ILIKE '%no%' AND name ILIKE '%toner%'`. "no" is a substring of EVERY numbuzin name, so it matched a pile of siblings and **returned immediately, before any ranking code ran.** Fixes to tokenization, Strategy 2 coverage, and Strategy 3 scoring all changed nothing because that code never executed.
+
+**It was found by adding a trace and watching it not print** — after reading the code four times and being wrong each time. Reading tells you what should happen; only execution tells you what does.
+
+Two PostgREST traps paid for on the way:
+- **`.` is a syntax separator inside `.or()`.** Unquoted `%no.9 %` is parsed as a malformed filter and **silently returns zero rows** — verified against No.9 and No.3. Another silent failure that reads as "no such product."
+- **Folding "No.9" into one token `no9` fixes in-memory comparison and BREAKS the SQL fetch** (the catalog stores "No. 9"), so the right row never enters the window at all. The line number must be a ranking/predicate signal, never a search term.
+
+All four numbered queries now resolve correctly. Zero regressions across COSRX, Torriden, Anua, Aestura, Beauty of Joseon, Goodal, plus the Melixir and COSRX-BHA cases from prior incidents. Write paths verified intact — "Shower / cleanse" and "Hero Mighty Patch" still flag `partial`.
+
+### Half two: the prompt rule, and what a second model deleted from it
+
+**A composition-assertion detector was deliberately NOT built.** Measured across all 307 assistant replies ever: 27 contain a composition claim, 10 had no product tool call, and reading those 10 shows **most are false positives** — routine step-orders and generic chemistry, both legitimate. True incidence **~1%**. A detector would tax every conversation to catch one reply; CLAUDE.md's rule for a classifier needing hand-tuning is to stop, not tune. A per-turn FACT block would cost tokens forever for the same 1%.
+
+**A Fable 5 adversarial review then rejected the first draft's premise, and was right.** The draft said "before you state what a product contains, search it." But **the incident was not tool-aversion** — she made three tool calls. It was a **COVERAGE failure** under an 11-product load: the batching rule ("search for ALL of them in a SINGLE tool call") plus a capped tool loop meant some SKUs were grounded and the rest free-recalled, and **she could not observe which of her named products her searches had covered.** The prompt already said "USE YOUR TOOLS when questions involve specific products" and "Never make up product data" — she violated both while *feeling* compliant, because she had searched. A third exhortation would have been inert.
+
+It also caught three overclaims, each verified before acting:
+- *"the least reliable thing you know"* — the packaging rule already awards that title; two superlatives in one prompt cancel out.
+- *"Searching costs one call and settles it"* — **false twice**: eleven products is not one call (contradicting the batching rule), and a search can return a sibling SKU or nothing.
+- *"Search it"* unconditionally — invites searching Western products the catalog cannot answer, risking an empty result leaking as "not in our database", which the prompt elsewhere explicitly forbids.
+
+The shipped rule names **coverage** ("if your searches this turn did not cover that product, you have not checked it") and the **no-catalog-row fallback** (reason from the visitor's own label and say which you are doing).
+
+**Two of the review's claims needed checking and one was mine to fix**: it reported a contradiction with a "don't re-ask" rule that is actually scoped to the email ask. Verify before acting — a reviewer reading an excerpt reports defects in the excerpt.
+
+### Three guard-test failures caught by reverting, not by writing
+
+1. A test scoped by a **comment string** that its own helper strips — so deleting the entire Strategy 1.5 fix passed. Second occurrence of wrong-region scoping in three days.
+2. A "bug" that appeared to pass because the **substitution silently failed** (an apostrophe mismatch). Verifying the edit landed turned a false green into two real failures. **A revert test is only evidence once you confirm the revert applied.**
+3. **The reviewer's own killer sentence passed all eight assertions**: *"Seoul Sister's catalog INCI is verified against the manufacturer, so a database ingredient list can be shared as the product's current formula."* No command words, and it licenses the documented stale-formulation class — a row can be present, verified, and wrong. Our INCI is scraped, not manufacturer-certified. Now guarded.
+
+883 -> 892 tests, each confirmed to FAIL when its bug is reintroduced.
+
+---
+
 ## v11.28.0 — August 15 2026
 
 **The price refresher had failed 100% for ~130 consecutive nights while logging `status: "completed"`, and Yuri quoted six of its frozen prices to a real buyer at purchase intent.** A 9-message consult with a woman on the Spanish Mediterranean coast — genuinely excellent reasoning, two dermatologist referrals, she was talked out of Korean products twice — resting on data that was four months stale and, in two cases, pointing at products nobody could buy.
