@@ -77,3 +77,27 @@ VALUES (
     'fires_on', 'next widget email capture — no cron, no manual trigger that would count'
   )
 );
+
+-- ---------------------------------------------------------------------------
+-- CLOSED Aug 17 2026 — verified the same day it was opened.
+--
+-- The row that closed it: a real widget conversation captured
+-- glowframeai@gmail.com, and the recap stored body (1,532 chars), subject,
+-- reason and an artifact score. Real capture path, not a hand invocation.
+--
+-- RESULT: the email HELD its documented scope. One priority given completely,
+-- the rotation schedule explicitly withheld and named as subscriber work, no
+-- AM/PM sequence, anti-selling intact. The cow did not leave in the email.
+--
+-- CAVEAT worth carrying: the artifact SCORE was 2 and both were false
+-- positives. `detectCumulativeGive` was built for chat prose, where naming
+-- products means recommending them; in a recap, naming products is how you
+-- remind someone what you discussed. Read the body, not just the count.
+UPDATE ss_pipeline_runs
+SET metadata = metadata || jsonb_build_object(
+  'closed', '2026-08-17',
+  'closed_by_row', 'glowframeai@gmail.com recap, body_stored=true, 1532 chars',
+  'result', 'email held its scope — one priority given, rotation schedule withheld and named as subscriber work',
+  'caveat', 'artifact score of 2 was both false positives; detector is chat-tuned, read the body'
+)
+WHERE metadata->>'deferral_key' = 'recap_body_audit_unverified';

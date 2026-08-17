@@ -36,7 +36,15 @@ This is observability only. Nothing about what Yuri sends changes.
 
 - **It cannot answer the question retroactively.** The ten recaps already sent — including the Aug 17 visitor's — are gone. Measurement starts with the next send.
 - **Migration APPLIED Aug 17 2026**, all four columns verified present in `information_schema`.
-- **NOT VERIFIED: zero production rows.** It fires only on the next widget email capture — no cron, and per the repo's standing rule a hand invocation would not count. Schema-present and code-deployed is not a working loop. Tracked in `RECAP-AUDIT-VERIFICATION.md` and as a queryable deferral row (`ss_pipeline_runs`, `metadata.deferral_key = 'recap_body_audit_unverified'`), because a pending verification living only in markdown is indistinguishable from a gap six weeks later.
+- **VERIFIED the same day.** A real widget conversation captured an address and produced the row: `body_stored: true` (1,532 chars), subject, reason and artifact score — through the real capture path, not a hand invocation. Deferral row closed.
+
+### What the first row showed
+
+**The email held its scope.** Read in full, it gave ONE priority completely (retire the redundant niacinamide serum), **named the withheld artifact honestly** — *"much easier to build with you than to spell out in a one-way email that can't adjust when your skin reacts"* — contained **no AM/PM sequence** and **no rotation schedule**, kept the anti-selling (*"your #1 priority isn't buying, it's subtracting"*), and pitched in one soft paragraph with the real price and "No pressure either way."
+
+**The email is currently CLEANER than the chat.** In the same conversation Yuri gave both AM and PM sequences by message 2; the email gave one priority and named the rest as subscriber work.
+
+**But the SCORE was wrong, and that is the finding to carry.** `count: 2`, and reading the body **both artifacts are false positives**: `slot_picks` fired on a comma list of products the visitor ALREADY OWNS, and `lineup_conflict_check` on *"doing the same job twice"* — a phrase explaining a single retirement. `detectCumulativeGive` was built for chat prose, where naming a product means recommending it. In a recap email, naming products is how you remind someone what you discussed. **Same words, opposite meaning — read the body, never the count alone.** Deliberately not tuned yet: one row is not enough to tune a detector on, and the cost is a misleading number rather than a bad customer experience.
 
 899 → 906 tests. Four bugs verified by revert, and **one slipped through first**: swapping the detector's argument from the stripped text back to raw HTML passed, because the test asserted the stripping code EXISTED rather than that the detector CONSUMED it. Tightened to pin the argument.
 

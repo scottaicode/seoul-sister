@@ -1,9 +1,21 @@
-# Recap Audit — PENDING VERIFICATION (opened Aug 17 2026)
+# Recap Audit — VERIFIED (closed Aug 17 2026)
 
-**Status: schema applied, code deployed, ZERO production rows. The loop is NOT verified.**
+**Status: VERIFIED. A real production row exists.**
 
-If you are a fresh session and someone says "the recap audit works," it does not yet. Nobody
-has seen a row it produced. Read this before touching it, and before claiming anything about it.
+Opened and closed the same day. The row that closed it:
+
+| field | value |
+|---|---|
+| `recap_status` | `delivered` |
+| `body_stored` | **true** (1,532 chars) |
+| `recap_subject` | "your Phoenix routine, the short version" |
+| `recap_artifacts` | `{"count": 2, "artifacts": ["slot_picks","lineup_conflict_check"]}` |
+| `recap_reason` | "Visitor shared their own address expecting a recap of the routine we built together." |
+
+Produced by a real widget conversation through the real capture path — not a hand invocation.
+Fires, writes, and reaches a consumer (the audit query below).
+
+**THE HEADLINE RESULT: the email HELD its scope.** The cow did not leave in the email.
 
 ---
 
@@ -23,31 +35,46 @@ ORDER BY recap_sent_at DESC NULLS LAST
 LIMIT 10;
 ```
 
-**Verified = at least one row with `body_stored: true`.** As of Aug 17 2026 every row reads
-`false` — those 10 recaps were sent before the columns existed and are unreconstructable. That
-is the honest record of the blind period, not a bug, and it must not be "fixed" by backfilling
-anything.
-
-**It fires only when a visitor captures an email in the widget.** There is no cron, no
-backfill, no way to trigger it by hand that would prove anything. Per the repo's standing rule,
-a hand invocation does not count — the real path must produce the row.
+The 10 rows from before Aug 17 read `body_stored: false` — sent during the blind period and
+unreconstructable. That is the honest record, not a bug, and it must not be "fixed" by
+backfilling anything.
 
 ---
 
-## What to do when the first real row appears
+## What the first row actually showed
 
-1. **Confirm the body stored.** `body_stored: true` and `recap_subject` non-null.
-2. **Read `recap_artifacts`.** It is `{"count": N, "artifacts": [...]}` scored by
-   `detectCumulativeGive` — the same detector the chat uses.
-3. **Interpret `count`:**
-   - **≥2** — the recap email is handing over the subscriber build. That would mean **the email
-     is the real leak**, and the chat-side give instrument (which was the whole focus of Aug 17)
-     is guarding the smaller half of the problem. This is the outcome worth acting on.
-   - **0–1** — the email is holding its documented scope (`src/lib/email/lead-email.ts`:
-     *"NOT a complete take-home routine"*), and the cow question is answered for this surface.
-4. **Read `recap_body_html` yourself.** The score is a starting point, not a verdict — the
-   detector was built for chat prose and this is its first contact with email HTML. If the
-   score and your reading disagree, the detector is wrong, not the email.
+**The email obeyed its own rule.** Read in full, it:
+
+- gave **one priority completely** (retire the redundant niacinamide serum)
+- **named the withheld artifact honestly** — *"much easier to build with you than to spell out
+  in a one-way email that can't adjust when your skin reacts"*
+- contained **NO AM/PM sequence** (products named as context, never ordered)
+- contained **NO rotation schedule** — the exact artifact Yuri had called subscriber work
+- kept the **anti-selling** — *"your #1 priority isn't buying, it's subtracting"*
+- pitched in **one soft paragraph** with the real price and "No pressure either way"
+
+**The email is currently CLEANER than the chat.** In the same conversation Yuri gave both AM and
+PM sequences by message 2; the email gave one priority and named the rest as subscriber work.
+
+### But the SCORE was wrong, and this is the finding to carry forward
+
+`count: 2` — and reading the body, **both artifacts are false positives**:
+
+- **`slot_picks`** fired on *"COSRX cleanser, Anua toner, BoJ Glow Serum, Illiyoon ceramide cream,
+  and sunscreen"* — a comma list **describing what the visitor already owns**, not a delivered
+  lineup.
+- **`lineup_conflict_check`** fired on *"doing the same job twice"* — `CONFLICT_LANGUAGE`
+  catching a phrase used to explain a SINGLE retirement.
+
+`detectCumulativeGive` was built for chat prose, where naming products means recommending them.
+In a recap email, naming products is how you remind someone what you discussed. **Same words,
+opposite meaning.**
+
+**So do not act on `recap_artifacts` alone. Read the body.** A future session that treats a 2 as
+"the email leaked the build" will be wrong, exactly as the first reading of this row was.
+Tuning the scorer for email prose is a known open item, deliberately not rushed — one row is
+not enough to tune a detector on, and the cost of the current false positive is a misleading
+number, not a bad customer experience.
 
 ---
 
