@@ -4,6 +4,7 @@
  */
 
 import { getServiceClient } from '@/lib/supabase'
+import { detectCumulativeGive } from '@/lib/widget/cumulative-give'
 
 export interface WidgetVisitor {
   id: string
@@ -246,17 +247,65 @@ export type RecapStatus =
 export async function recordRecapStatus(
   visitorId: string,
   status: RecapStatus,
-  options: { providerId?: string; sentAt?: string } = {}
+  options: {
+    providerId?: string
+    sentAt?: string
+    /**
+     * The email as ACTUALLY SENT, plus Yuri's own reason for the decision.
+     *
+     * WHY THIS IS STORED (Aug 17 2026). The recap converted the only paying
+     * subscriber this funnel has produced, it is written fresh by Opus on every
+     * send, and it carries an explicit scope rule of its own ("NOT a complete
+     * take-home routine"). Its subject and body were generated, sent, and
+     * discarded — so an email that violated that scope and one that obeyed it
+     * left IDENTICAL database state. Permanently unanswerable.
+     *
+     * The `reason` was being thrown away too, which made a deliberately
+     * suppressed send indistinguishable from a broken one.
+     */
+    subject?: string
+    bodyHtml?: string
+    reason?: string
+  } = {}
 ): Promise<void> {
   const supabase = getServiceClient()
   const nowIso = new Date().toISOString()
 
-  const patch: Record<string, string> = {
+  const patch: Record<string, unknown> = {
     recap_status: status,
     recap_status_updated_at: nowIso,
   }
   if (status === 'sent') patch.recap_sent_at = options.sentAt || nowIso
   if (options.providerId) patch.recap_provider_id = options.providerId
+  if (options.reason) patch.recap_reason = options.reason
+  if (options.subject) patch.recap_subject = options.subject
+
+  if (options.bodyHtml) {
+    patch.recap_body_html = options.bodyHtml
+    // Score the SENT email on the same ruler as the chat.
+    //
+    // Every give-side instrument built to date reads only the conversation, and
+    // the recap is a SEPARATE Opus call from a SEPARATE prompt — so a leak that
+    // lives in the email is invisible to all of them. Reusing
+    // detectCumulativeGive rather than writing a second detector is deliberate:
+    // two rulers eventually disagree about the same boundary.
+    //
+    // Strip tags first — the detector reads prose, and an <a href> full of
+    // capitalised URL fragments would otherwise read as product names.
+    try {
+      const plain = options.bodyHtml
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/(?:p|div|li|h[1-6])>/gi, '\n')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+      const give = detectCumulativeGive([{ role: 'assistant', content: plain }])
+      patch.recap_artifacts = { count: give.count, artifacts: give.artifacts }
+    } catch (err) {
+      // Analysis is best-effort: never lose the BODY because scoring failed.
+      console.error('[Widget] recap artifact analysis failed:', err)
+    }
+  }
 
   try {
     const { error } = await supabase
@@ -264,7 +313,22 @@ export async function recordRecapStatus(
       .update(patch)
       .eq('visitor_id', visitorId)
 
-    if (error && !/recap_status|recap_sent_at|recap_provider_id/.test(error.message || '')) {
+    if (error && /recap_subject|recap_body_html|recap_reason|recap_artifacts/.test(error.message || '')) {
+      // Pre-migration tolerance, matching the pattern above: retry with only
+      // the columns that have always existed so a missing audit column can
+      // never cost us the STATUS write, which the delivery webhook depends on.
+      const { error: retryError } = await supabase
+        .from('ss_widget_visitors')
+        .update({
+          recap_status: patch.recap_status,
+          recap_status_updated_at: patch.recap_status_updated_at,
+          ...(patch.recap_sent_at ? { recap_sent_at: patch.recap_sent_at } : {}),
+          ...(patch.recap_provider_id ? { recap_provider_id: patch.recap_provider_id } : {}),
+        })
+        .eq('visitor_id', visitorId)
+      if (retryError) console.error('[Widget] recordRecapStatus retry failed:', retryError.message)
+      else console.warn('[Widget] recap audit columns missing — status recorded without them (run add_recap_body_audit.sql)')
+    } else if (error && !/recap_status|recap_sent_at|recap_provider_id/.test(error.message || '')) {
       console.error('[Widget] recordRecapStatus failed:', error.message)
     }
   } catch (err) {

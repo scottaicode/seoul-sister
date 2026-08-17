@@ -1021,13 +1021,24 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
                         await recordRecapStatus(
                           parsed.visitor_id!,
                           send.sent ? 'sent' : 'send_failed',
-                          { providerId: send.providerId }
+                          {
+                            providerId: send.providerId,
+                            // Persist what was ACTUALLY SENT. Without the body,
+                            // an email that broke its own scope rule ("NOT a
+                            // complete take-home routine") and one that obeyed
+                            // it are indistinguishable forever.
+                            subject: result.email.subject,
+                            bodyHtml: result.email.bodyHtml,
+                            reason: result.reason,
+                          }
                         )
                       } else if (result.outcome === 'not_their_address') {
                         // v10.13.4: Yuri judged this isn't the visitor's own
                         // address — reopen the capture slot so their REAL
                         // email can land later, and keep the lead list clean.
-                        await recordRecapStatus(parsed.visitor_id!, 'not_their_address')
+                        await recordRecapStatus(parsed.visitor_id!, 'not_their_address', {
+                          reason: result.reason,
+                        })
                         await clearCapturedEmail(parsed.visitor_id!, email)
                         console.warn(
                           '[widget/chat] capture slot cleared — Yuri judged the address is not the visitor\'s own'
@@ -1036,7 +1047,11 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
                         // Yuri judged no send warranted — record it so a
                         // deliberately-not-sent recap is visible, not silently
                         // indistinguishable from a pending send. Capture kept.
-                        await recordRecapStatus(parsed.visitor_id!, 'suppressed')
+                        // Yuri's reason was being discarded, which made a
+                        // deliberate suppression look identical to a failure.
+                        await recordRecapStatus(parsed.visitor_id!, 'suppressed', {
+                          reason: result.reason,
+                        })
                       } else {
                         // 'failed': generation/parse error — send-failed. Record
                         // so the error is visible; capture kept for later retry.

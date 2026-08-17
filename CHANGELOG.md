@@ -4,6 +4,43 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.31.0 — August 17 2026
+
+**The recap email — the surface that converted the only paying subscriber — left no record of what it said.**
+
+`generateLeadEmail` produced a subject and body, `sendEmail` delivered them, and both were then **discarded**. Only `recap_status` and a Resend message id survived. So an email that violated its own documented scope and one that obeyed it perfectly left **identical database state**, permanently. That is the fourth of the four questions — *can "nothing happened" be told apart from "nothing ran"?* — failing on a customer-facing artifact.
+
+It matters more than it looks:
+
+- The recap **converted the only subscriber** this funnel has produced (14 hours after the chat ended).
+- It is **written fresh by Opus on every send**, so it can drift without any code changing.
+- It carries **its own explicit scope rule** (`lead-email.ts`): *"NOT a complete take-home routine... do NOT compile a full AM/PM routine, a multi-week schedule, or a complete shopping list."*
+- It is a **SEPARATE Opus call from a SEPARATE prompt**, so every give-side instrument built to date — `cumulative-give`, `tool-grounding` — watches only the CHAT. A leak living in the email is invisible to all of them.
+
+### What now gets stored
+
+`recap_subject`, `recap_body_html`, `recap_reason`, and `recap_artifacts` on `ss_widget_visitors` (migration `add_recap_body_audit.sql`, idempotent).
+
+**The sent email is scored on the SAME ruler as the chat** — `detectCumulativeGive`, the chat-side detector, rather than a second instrument. Two rulers eventually disagree about the same boundary. HTML is stripped to text first, preserving line breaks, because the detector is line-based: an arrow chain is detected per line, and collapsing a multi-line routine into one line would change what it scores.
+
+**`reason` was also being thrown away.** The prompt has always asked Yuri for a one-line justification on every decision; it was parsed, written to `console.warn`, and dropped by the return type. A deliberately suppressed send with no recorded reason is indistinguishable from a broken one — the same silent-state class, one layer down. It is now carried on every outcome (`send`, `suppressed`, `not_their_address`) and persisted.
+
+### Two ordering rules, both load-bearing
+
+- **The body is assigned BEFORE analysis is attempted**, and analysis is wrapped. The body is the irreplaceable artifact; the score can be recomputed from it forever. If scoring threw and took the write with it, we would be back to storing nothing — the exact gap being closed.
+- **A missing audit column must never cost the STATUS write.** The delivery/bounce webhook keys on `recap_status`; the update retries with only the long-standing columns and names the migration to run. Adding observability must not break a working loop.
+
+This is observability only. Nothing about what Yuri sends changes.
+
+### Honest limits
+
+- **It cannot answer the question retroactively.** The ten recaps already sent — including the Aug 17 visitor's — are gone. Measurement starts with the next send.
+- **The migration is not yet applied.** The code tolerates its absence and warns; the columns need `scripts/migrations/add_recap_body_audit.sql` run against production.
+
+899 → 906 tests. Four bugs verified by revert, and **one slipped through first**: swapping the detector's argument from the stripped text back to raw HTML passed, because the test asserted the stripping code EXISTED rather than that the detector CONSUMED it. Tightened to pin the argument.
+
+---
+
 ## v11.30.0 — August 17 2026
 
 **The give instrument was blind to the most common way Yuri hands over a routine — and while blind, it was telling her a fact that was false.** Found by replaying a real cold-visitor transcript rather than reading the code.

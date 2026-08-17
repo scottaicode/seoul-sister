@@ -57,11 +57,17 @@ export interface GeneratedLeadEmail {
  *                       caller clears the capture slot so the real email can land later
  *  - failed:            generation/parse error — keep capture, send nothing
  */
+/**
+ * `reason` is Yuri's own one-line justification, which the prompt has always
+ * asked for and which was previously written to console and then dropped. A
+ * suppressed send with no recorded reason is indistinguishable from a broken
+ * one, so it is now carried on every outcome and persisted by the caller.
+ */
 export type LeadEmailResult =
-  | { outcome: 'send'; email: GeneratedLeadEmail }
-  | { outcome: 'suppressed' }
-  | { outcome: 'not_their_address' }
-  | { outcome: 'failed' }
+  | { outcome: 'send'; email: GeneratedLeadEmail; reason?: string }
+  | { outcome: 'suppressed'; reason?: string }
+  | { outcome: 'not_their_address'; reason?: string }
+  | { outcome: 'failed'; reason?: string }
 
 /** Keep the prompt bounded: most-recent turns, generous per-turn cap so Yuri
  *  writes from sentences, not fragments (mechanical context-budgeting only). */
@@ -239,7 +245,9 @@ export async function generateLeadEmail(
         outputTokens: 0,
         cached: true,
       }).catch(() => {})
-      return notTheirAddress ? { outcome: 'not_their_address' } : { outcome: 'suppressed' }
+      return notTheirAddress
+        ? { outcome: 'not_their_address', reason: parsed.reason }
+        : { outcome: 'suppressed', reason: parsed.reason }
     }
 
     if (!parsed.subject || !parsed.body_html) return { outcome: 'failed' }
@@ -247,6 +255,7 @@ export async function generateLeadEmail(
     // Layer-2 mechanical voice scrub (punctuation-level only).
     return {
       outcome: 'send',
+      reason: parsed.reason,
       email: {
         subject: scrubEmailVoice(parsed.subject),
         bodyHtml: scrubEmailVoice(parsed.body_html),
