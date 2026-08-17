@@ -291,6 +291,97 @@ export function detectArtifactsInReply(text: string): Set<GiveArtifact> {
   return found
 }
 
+/**
+ * Is the visitor ASKING for the complete build, right now?
+ *
+ * WHY THIS EXISTS (measured Aug 17 2026, across all 27 first-build replies).
+ *
+ * `detectCumulativeGive` reads Yuri's ALREADY-SENT replies, so by construction
+ * it cannot inform the reply that CREATES the artifact — it always arrives one
+ * build late. Measured: **24 of 27 conversations wrote their first complete
+ * build with no give block visible at all**, and the median first build lands
+ * on assistant reply **#2**, with six landing on reply **#1**. v11.24.0 fixed
+ * this off-by-one for the SECOND build; the FIRST one was still blind.
+ *
+ * WHAT THE DATA CHANGED ABOUT THE FIX. Reading the visitor messages on those
+ * turns, this is NOT Yuri over-volunteering:
+ *
+ *     "Build me a routine on a budget"
+ *     "just make any necessary changes and give me a final routine, both am and pm"
+ *     "Is there anyway you can build me a routine I can get at target or ulta?"
+ *
+ * She is answering the direct question. A rule telling her to withhold would
+ * make her unhelpful on the exact request that brings people to the widget, and
+ * would cost the anti-selling that is the only thing that has ever converted a
+ * customer. So this does NOT gate, refuse, or defer.
+ *
+ * It reports one fact she cannot otherwise see: that the message in front of
+ * her is a request for the whole artifact, BEFORE she writes the reply. What to
+ * do with that is hers — often the honest answer is to build it and say what
+ * ongoing work looks like, which is what the preview is for.
+ *
+ * Deliberately conservative: it requires an explicit build verb aimed at a
+ * routine noun. "What order do these go in" does not match — that is a
+ * sequencing question, and answering it is triage, not a build.
+ */
+const BUILD_REQUEST =
+  /\b(?:build|make|create|design|put together|map out|lay out|give me|send me|write)\b[^.?!]{0,40}\b(?:routine|regimen|lineup|schedule|plan|rotation)\b/i
+
+/** A request for BOTH halves of the day, the strongest form of the ask. */
+const FULL_DAY_REQUEST = /\b(?:am\s*(?:and|\/|&)\s*pm|pm\s*(?:and|\/|&)\s*am|morning and night|full routine|complete routine|entire routine|whole routine)\b/i
+
+export interface BuildRequest {
+  /** The visitor explicitly asked for a routine to be built. */
+  asked: boolean
+  /** They asked for both halves of the day, not just one step. */
+  fullDay: boolean
+}
+
+/** Read the message Yuri is about to answer. */
+export function detectBuildRequest(message: string): BuildRequest {
+  if (!message) return { asked: false, fullDay: false }
+  return {
+    asked: BUILD_REQUEST.test(message),
+    fullDay: FULL_DAY_REQUEST.test(message),
+  }
+}
+
+/**
+ * The forward-looking fact block.
+ *
+ * Returns null unless the visitor actually asked — an empty state is noise and
+ * every per-turn string costs tokens.
+ *
+ * THREE THINGS IT MUST NOT DO, each deliberate:
+ *
+ * 1. It never tells her to withhold, defer, or refuse. The visitors triggering
+ *    it are asking a direct question; not answering it is the worse failure.
+ * 2. It never tells her to sell. The one behaviour that has converted a
+ *    customer is confident anti-selling ("you already own it, don't buy a new
+ *    one"), and a block that nudges toward a pitch would cost exactly that.
+ * 3. It never claims she has already given anything — that is
+ *    `buildCumulativeGiveBlock`'s job, and a false claim there was injected into
+ *    five consecutive turns before being caught on Aug 17.
+ */
+export function buildRequestBlock(req: BuildRequest, give: CumulativeGive): string | null {
+  if (!req.asked) return null
+
+  // Delivered-so-far is stated as a bare number, never as a narrative about
+  // what this reply "would" do. Measured across every real firing: the count is
+  // ZERO 56% of the time (5 of 9), so a phrase like "this would add to that
+  // rather than start it" is wrong more often than right — and a fact block
+  // that is usually wrong teaches the model to discount the parts that aren't.
+  const delivered = ` Delivered so far: ${give.count} of ${GIVE_ARTIFACT_COUNT}.`
+
+  const scope = req.fullDay
+    ? 'a full routine build, both halves of the day'
+    : 'a routine build'
+
+  return `\n\n## Fact: What This Message Asks For
+The visitor has directly asked you for ${scope} — the largest of the build pieces, and the one your running count updates too late to show you.${delivered}
+Answering it fully and well is the job. What you build, and how, is entirely your call.`
+}
+
 export interface CumulativeGive {
   artifacts: GiveArtifact[]
   count: number

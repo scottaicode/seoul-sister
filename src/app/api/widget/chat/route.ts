@@ -9,7 +9,7 @@ import { detectSpecialist, SPECIALISTS } from '@/lib/yuri/specialists'
 import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordCapturedEmail, isEmailCapturedByAnotherVisitor, clearCapturedEmail, recordRecapStatus, MAX_FREE_MESSAGES } from '@/lib/widget/visitor'
 import { consumeGlobalBudget, logBreakerTrip, BREAKER_MESSAGE } from '@/lib/widget/circuit-breaker'
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
-import { detectCumulativeGive, buildCumulativeGiveBlock } from '@/lib/widget/cumulative-give'
+import { detectCumulativeGive, buildCumulativeGiveBlock, detectBuildRequest, buildRequestBlock } from '@/lib/widget/cumulative-give'
 import { detectToolGrounding, buildToolGroundingBlock } from '@/lib/widget/tool-grounding'
 import { buildSubscriberSurfaceBlock } from '@/lib/widget/subscriber-surface'
 import { detectValueDensity, buildValueDensityFact } from '@/lib/widget/value-density'
@@ -644,6 +644,21 @@ Use these facts with the judgment described above. They are context, not a trigg
     const cumulativeGive = detectCumulativeGive(history)
     const giveBlock = buildCumulativeGiveBlock(cumulativeGive)
     if (giveBlock) dynamicContext += giveBlock
+
+    // --- The forward-looking half (Aug 17 2026) ---
+    // The block above reads Yuri's ALREADY-SENT replies, so it cannot inform the
+    // reply that CREATES the artifact — it always arrives one build late.
+    // Measured across every first build in the corpus: 24 of 27 were written
+    // with no give block visible at all, median first build on assistant reply
+    // #2, six on reply #1.
+    //
+    // This reads the message she is ABOUT to answer. It does not gate: the
+    // visitors who trigger it are asking outright ("give me a final routine,
+    // both am and pm"), and refusing that request would fail the very thing
+    // people come here for.
+    const buildReq = detectBuildRequest(parsed.message)
+    const buildReqBlock = buildRequestBlock(buildReq, cumulativeGive)
+    if (buildReqBlock) dynamicContext += buildReqBlock
 
     // --- Subscriber surface (Aug 13 2026) ---
     // Yuri named the subscriber side five times in one 53-minute conversation

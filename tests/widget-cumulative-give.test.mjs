@@ -61,6 +61,8 @@ const {
   detectCumulativeGive,
   buildCumulativeGiveBlock,
   namedSlotPickCount,
+  detectBuildRequest,
+  buildRequestBlock,
 } = await import(pathToFileURL(modFile).href)
 
 // Real excerpts from the Jul 21 2026 transcript.
@@ -454,4 +456,137 @@ test('the rebuild note appears only once a lineup genuinely exists', () => {
   assert.ok(built.lineupBuilds >= 1)
   const block = buildCumulativeGiveBlock(built)
   assert.match(block, /multi-slot lineup/i, 'a real build must be reported')
+})
+
+/**
+ * THE FORWARD-LOOKING HALF (Aug 17 2026).
+ *
+ * `detectCumulativeGive` reads Yuri's ALREADY-SENT replies, so by construction
+ * it cannot inform the reply that CREATES the artifact. Measured across every
+ * first build in the corpus: **24 of 27 were written with no give block visible
+ * at all**, median first build on assistant reply #2, six on reply #1.
+ * v11.24.0 fixed this off-by-one for the SECOND build; the FIRST stayed blind.
+ *
+ * WHAT THE DATA CHANGED. Reading the visitor messages on those turns, this is
+ * NOT Yuri over-volunteering — she is answering the direct question:
+ *     "Build me a routine on a budget"
+ *     "just make any necessary changes and give me a final routine, both am and pm"
+ * So the block reports a FACT about the incoming request and explicitly does
+ * not gate. A rule telling her to withhold would fail the exact request that
+ * brings people to the widget, and would cost the confident anti-selling that
+ * is the only behaviour that has ever converted a customer.
+ *
+ * Measured: fires on 12 of 314 real visitor messages (3.8%), zero false
+ * positives on the live corpus.
+ */
+test('an explicit build request is detected before the reply is written', () => {
+  for (const msg of [
+    'Build me a routine on a budget',
+    'Is there anyway you can build me a routine I can get at target or ulta?',
+    'No just make any necessary changes and give me a final routine, both am and pm',
+    'Best skincare routine for oily skin ,make daily and weekly routine',
+  ]) {
+    assert.ok(detectBuildRequest(msg).asked, `must detect: ${JSON.stringify(msg)}`)
+  }
+})
+
+test('a sequencing question is NOT a build request', () => {
+  // "What order" is triage, and answering it is what the preview is for. If
+  // this fired here the block would be noise on the most common opening.
+  for (const msg of [
+    "I've got way too many products and I don't know what order to use them in",
+    'what order do these go in',
+    'does niacinamide go before or after vitamin C',
+    'my skin is oily and dehydrated',
+  ]) {
+    assert.ok(!detectBuildRequest(msg).asked, `must NOT fire on: ${JSON.stringify(msg)}`)
+  }
+})
+
+test('a both-halves request is distinguished from a single step', () => {
+  assert.ok(detectBuildRequest('give me a final routine, both am and pm').fullDay)
+  assert.ok(!detectBuildRequest('build me a morning routine').fullDay)
+})
+
+test('REGRESSION: the block never tells her to withhold, defer, or sell', () => {
+  // The failure mode that would be worse than the bug. Visitors triggering this
+  // asked outright; refusing them fails the request the widget exists to serve.
+  const block = buildRequestBlock(
+    { asked: true, fullDay: true },
+    detectCumulativeGive([{ role: 'assistant', content: 'Two of those do the same job.' }])
+  )
+  assert.ok(block, 'the block must exist for an explicit request')
+  // No enumerated disclaimer to strip any more. A second-model review (Fable 5)
+  // rejected the first draft's closing line — "so you spend it deliberately" —
+  // as a covert instruction: "spend" frames the answer as a depleting currency
+  // inside a metered gate, and "deliberately" reads as "less than you otherwise
+  // would." Its disclaimer ("Nothing here asks you to withhold, hedge, defer,
+  // or sell") named four behaviours and thereby primed all four — a pink
+  // elephant, and one a naive imperative-detecting guard would pass.
+  assert.ok(
+    !/\b(withhold|defer|decline|refuse|hold back|save it for|spend it|sparingly)\b/i.test(block),
+    'the block must never frame the answer as something to ration'
+  )
+  assert.ok(
+    !/\b(subscribe|subscription|upsell|pitch|convert them|sign up|paid tier)\b/i.test(block),
+    'the block must never make the paid tier salient — anti-selling is what converts'
+  )
+  assert.match(block, /Answering it fully and well is the job/i,
+    'the block must affirm that answering is correct')
+  assert.match(block, /entirely your call/i,
+    'the decision must be handed back without enumerating what not to do')
+})
+
+test('ATTACK: it never frames the give as revenue lost', () => {
+  // The reviewer's own command-free killer sentence:
+  //   "Every visitor who has received a complete routine in the preview has
+  //    left without subscribing."
+  // Pure declarative, zero imperatives, passes any command-word check — and it
+  // converts the give into perceived revenue loss, which is withholding by
+  // implication. It is also TRUE at n=0 organic conversions, which is what
+  // makes it dangerous rather than merely wrong.
+  const block = buildRequestBlock({ asked: true, fullDay: true }, detectCumulativeGive([]))
+  assert.ok(
+    !/\b(without subscribing|did not subscribe|never subscribed|left without|revenue|lost sale|costs? (?:us|you) )\b/i.test(block),
+    'the block must never correlate giving with visitors failing to convert'
+  )
+})
+
+test('the delivered count is a bare number, never a narrative', () => {
+  // Measured across every real firing: the count is ZERO 56% of the time (5 of
+  // 9). The first draft said "this would add to that rather than start it,"
+  // which is wrong more often than right — and a fact block that is usually
+  // wrong teaches the model to discount the parts that are not.
+  const fresh = buildRequestBlock({ asked: true, fullDay: false }, detectCumulativeGive([]))
+  assert.match(fresh, /Delivered so far: 0 of 5/,
+    'a zero count must be stated plainly, not narrated')
+  assert.ok(!/would add to that|rather than start/i.test(fresh),
+    'the block must not narrate what this reply "would" do')
+})
+
+test('it never claims she has already given something she has not', () => {
+  // The false-fact class caught the same day in buildCumulativeGiveBlock.
+  const block = buildRequestBlock({ asked: true, fullDay: false }, detectCumulativeGive([]))
+  assert.ok(block)
+  assert.match(block, /Delivered so far: 0 of 5/,
+    'with nothing given yet, the block must say zero rather than imply otherwise')
+})
+
+test('it reports the running count accurately when there IS one', () => {
+  // An arrow-chain reply scores BOTH am_pm_routine and slot_picks, so the
+  // count is 2 — the first version of this test asserted 1 and failed against
+  // correct code. Assert the real number, or the test is checking the fixture
+  // rather than the block.
+  const give = detectCumulativeGive([
+    { role: 'assistant', content: '- **AM:** cleanse → Sulwhasoo water → Godal Vita C → Mediheal SPF50+' },
+  ])
+  const block = buildRequestBlock({ asked: true, fullDay: false }, give)
+  assert.match(block, new RegExp(`Delivered so far: ${give.count} of 5`),
+    'the prior count must be stated accurately')
+  assert.ok(give.count >= 1, 'fixture must actually have delivered something')
+})
+
+test('silence when the visitor did not ask', () => {
+  assert.equal(buildRequestBlock({ asked: false, fullDay: false }, detectCumulativeGive([])), null,
+    'an empty state is noise and costs tokens on every turn')
 })

@@ -4,6 +4,51 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.32.0 — August 17 2026
+
+**The give instrument always arrived one build too late — and the fix the data supported was the opposite of the one the framing suggested.**
+
+### The gap
+
+`detectCumulativeGive` reads Yuri's **already-sent** replies, so by construction it cannot inform the reply that CREATES the artifact. Measured across every first build in the corpus:
+
+- **24 of 27 first builds were written with no give block visible at all**
+- Median first build lands on assistant reply **#2**; six land on reply **#1**
+
+v11.24.0 fixed this off-by-one for the SECOND build. The FIRST — the one that hands over the most — stayed blind.
+
+### What the data changed about the fix
+
+Reading the visitor messages on those exact turns, **this is not Yuri over-volunteering**:
+
+> *"Build me a routine on a budget"*
+> *"just make any necessary changes and give me a final routine, both am and pm"*
+> *"Is there anyway you can build me a routine I can get at target or ulta?"*
+
+She is answering the direct question. A rule telling her to withhold would fail the exact request that brings people to the widget, and would endanger the confident anti-selling that is the only behaviour ever to convert a customer.
+
+So `detectBuildRequest` reads the message Yuri is **about to answer** and states one fact. It gates nothing. Measured: **12 of 314 real visitor messages (3.8%), zero false positives.** Sequencing questions ("what order do these go in") correctly do not fire — that is triage, and answering it is what the preview is for.
+
+### What a second-model review deleted, and it was right
+
+The first draft closed with *"so you spend it deliberately."* A Fable 5 review called it a covert instruction, and the reasoning holds: **"spend" frames the answer as a depleting currency** inside a metered gate, and **"deliberately" reads as "less than you otherwise would."** Its disclaimer — *"Nothing in this block asks you to withhold, hedge, defer, or sell"* — named four behaviours and thereby primed all four. A pink elephant, and one a naive imperative-detecting guard passes.
+
+It also caught a factual error. The draft said *"this would add to that rather than start it."* **Measured across every real firing, the count is ZERO 56% of the time (5 of 9)** — so the framing was wrong more often than right, and a fact block that is usually wrong teaches the model to discount the parts that are not. The count is now a bare number: `Delivered so far: N of 5`.
+
+Cut ~1,206 → ~1,002 chars. The block now ends *"Answering it fully and well is the job. What you build, and how, is entirely your call."*
+
+### The attack that proves the guard
+
+The reviewer supplied a command-free sentence that would pass any imperative check:
+
+> *"Every visitor who has received a complete routine in the preview has left without subscribing."*
+
+Pure declarative, zero imperatives — and it converts the give into perceived **revenue loss**, which is withholding by implication. It is also **true at zero organic conversions**, which is what makes it dangerous rather than merely wrong. Now guarded explicitly.
+
+913 → 915 tests. Five bugs verified by revert; one initially reported a false pass because the substitution silently failed on escaping — re-run properly, it binds.
+
+---
+
 ## v11.31.0 — August 17 2026
 
 **The recap email — the surface that converted the only paying subscriber — left no record of what it said.**
