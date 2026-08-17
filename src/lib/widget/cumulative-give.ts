@@ -129,6 +129,85 @@ const SLOT_WITH_PRODUCT = new RegExp(
   'gi'
 )
 
+/**
+ * A PRESCRIPTIVE SEQUENCE: a routine handed over as an arrow chain.
+ *
+ * WHY THIS EXISTS (measured Aug 17 2026, session 3132e3ee). A visitor in Seoul
+ * listed ~11 products she ALREADY OWNED and asked whether they work together.
+ * Yuri delivered a full AM sequence, a full PM retinol sequence with buffering,
+ * an off-nights routine, a 2x/week ramp, and a stop-repurchasing list — the
+ * subscriber deliverable — and `lineupBuilds` stayed at **0** the whole time.
+ *
+ * `SLOT_WITH_PRODUCT` above requires a slot word, a SEPARATOR, then a brand
+ * ("Cleanser: CeraVe"). Yuri's actual delivery shape was an arrow chain:
+ *
+ *     cleanse → Sulwhasoo water → IOPE retinol → AESTURA smoothing cream
+ *
+ * Arrows chain products with no separator, so nothing matched. The instrument
+ * assumed over-giving means RECOMMENDING things to buy; this visitor owned
+ * everything, so Yuri never built a lineup, she REORGANIZED one — the same
+ * deliverable in a shape the counter could not see. Measured across the corpus:
+ * this shape appears in 5 of 19 deep conversations (26%), including one with
+ * five separate sequence deliveries. Not a one-off.
+ *
+ * NO BRAND LIST, deliberately. `KNOWN_BRANDS` failed here twice over — the
+ * shape didn't match, and IOPE isn't even in the list. That list is a
+ * documented fragility (it was blind to Western brands until Aug 8, blind to
+ * Indian ones after, and would be blind to Thai next). Here the visitor's own
+ * products capitalise themselves, so the signal is market-neutral by
+ * construction and needs no maintenance as new markets appear.
+ *
+ * The stop-list enumerates the NEUTRAL words (a closed set of skincare
+ * acronyms, step nouns and sentence-openers), never the "bad" thing — per
+ * CLAUDE.md, ban the shape, not yesterday's vocabulary.
+ *
+ * DISCUSSING vs DELIVERING falls out of capitalisation. Order-of-operations
+ * prose uses lowercase categories ("toner → serum → cream": zero brand-like
+ * caps, no fire). A delivered schedule names actual products ("cleanse →
+ * Sulwhasoo water → IOPE retinol": fires). Requiring TWO distinct capitalised
+ * tokens on one line is what separates a handed-over routine from a sentence
+ * that happens to contain an arrow.
+ *
+ * Measured precision: fires on 23 of 307 assistant replies (7.5%), and the
+ * triggering lines are overwhelmingly genuine routine deliveries.
+ */
+const SEQUENCE_STOP_WORDS = new Set([
+  // Skincare acronyms and units that are legitimately capitalised
+  'AM', 'PM', 'SPF', 'UV', 'BHA', 'AHA', 'PHA', 'LED', 'HA', 'PA', 'TXA', 'INCI',
+  // Step/category nouns — a routine step is not a product name
+  'Vitamin', 'Water', 'Retinol', 'Retinal', 'Cleanse', 'Cleanser', 'Toner',
+  'Serum', 'Cream', 'Essence', 'Ampoule', 'Sunscreen', 'Moisturizer',
+  'Moisturiser', 'Oil', 'Mask', 'Balm', 'Lotion', 'Exfoliant', 'Niacinamide',
+  // Time words
+  'Night', 'Nights', 'Morning', 'Day', 'Days', 'Week', 'Weeks', 'Daily',
+  // Sentence-openers and discourse words that carry a capital by position only
+  'Start', 'Then', 'Next', 'Wait', 'Off', 'Apply', 'Use', 'Add', 'No', 'The',
+  'If', 'Your', 'This', 'That', 'And', 'But', 'Skip', 'Keep', 'When', 'Here',
+  'Just', 'Only', 'Both', 'Most', 'Also', 'Even', 'Once', 'During', 'After',
+  'Before', 'Nothing', 'Buffer', 'Ramp', 'Burn', 'Anything', 'Let', 'Want',
+  'Done', 'Never', 'Move', 'Cleaner', 'You', 'Honestly', 'Finish', 'Swap',
+])
+
+/** A capitalised token that looks like a product or brand name. */
+const SEQUENCE_BRANDISH = /\b([A-Z][a-z]{2,}|[A-Z]{3,})\b/g
+
+/**
+ * True when any single line is a chain of 2+ arrows naming 2+ distinct
+ * product-like tokens — i.e. a routine delivered, not an order discussed.
+ */
+function hasPrescriptiveSequence(text: string): boolean {
+  for (const line of text.split('\n')) {
+    const arrows = (line.match(/→|->/g) || []).length
+    if (arrows < 2) continue
+    const named = new Set<string>()
+    for (const m of line.matchAll(SEQUENCE_BRANDISH)) {
+      if (!SEQUENCE_STOP_WORDS.has(m[1])) named.add(m[1].toLowerCase())
+    }
+    if (named.size >= 2) return true
+  }
+  return false
+}
+
 // Conflict checking across their lineup.
 const CONFLICT_LANGUAGE =
   /\b(?:same job|do(?:ing)? the same|redundant|duplicat|don'?t (?:need|use) both|collide|stack(?:ing)? (?:two|both)|overlap)\b/i
@@ -184,7 +263,20 @@ export function detectArtifactsInReply(text: string): Set<GiveArtifact> {
   // two distinct slots filled with named products counts equally. Same
   // threshold, so a single pick for their #1 gap — which the policy explicitly
   // permits — still does not trip it.
-  if (pricedPickCount(text) >= 2 || namedSlotPickCount(text) >= 2) {
+  //
+  // A PRESCRIPTIVE SEQUENCE counts equally. Both signals above look for picks
+  // being RECOMMENDED — priced mentions, or slot headings naming a brand. A
+  // visitor who already owns everything gets the same deliverable with neither:
+  // her own products, sequenced into a routine. That shape ("cleanse →
+  // Sulwhasoo water → IOPE retinol") was invisible until Aug 17 2026, and it
+  // appears in 26% of deep conversations. Ownership is irrelevant to the gate,
+  // which was always defined by the ARTIFACT handed over, not by whether money
+  // moves.
+  if (
+    pricedPickCount(text) >= 2 ||
+    namedSlotPickCount(text) >= 2 ||
+    hasPrescriptiveSequence(text)
+  ) {
     found.add('slot_picks')
   }
 
@@ -286,8 +378,22 @@ export function buildCumulativeGiveBlock(give: CumulativeGive): string | null {
   // three replies looked compliant in isolation — a different store genuinely
   // reads as a different question from inside one turn. Naming the pattern is
   // what a single turn cannot supply.
+  // The rebuild note is gated on a lineup ACTUALLY having been built.
+  //
+  // THE BUG THIS FIXES (found Aug 17 2026 by replaying session 3132e3ee). The
+  // outer gate is `count < 2 && lineupBuilds < 1`, an AND — so the block fires
+  // on artifact count alone. With `lineupBuilds: 0` the ternary still fell to
+  // its else-branch and told Yuri "You have already built them one complete
+  // multi-slot lineup." She had built none. That false sentence was injected
+  // into FIVE consecutive turns of a real conversation.
+  //
+  // A block whose entire authority is being factual cannot afford one invented
+  // fact — it teaches the model to discount everything else in the same block,
+  // including the true counts. Silence is correct when there is nothing to say.
   const rebuilt =
-    give.lineupBuilds >= 2
+    give.lineupBuilds === 0
+      ? ''
+      : give.lineupBuilds >= 2
       ? `\nYou have built them a complete multi-slot lineup ${give.lineupBuilds} separate times in this conversation. Often that is the visitor asking one question several ways — a different store, a different texture, a different budget — and each reframe reads as a brand-new question. Re-specifying the whole lineup each time is a judgment call worth making deliberately rather than by reflex; answering just the part they actually asked about is usually the better answer anyway, and it is the more useful one.`
       : `\nYou have already built them one complete multi-slot lineup. If their next message asks for that same lineup somewhere else — a different retailer, a lower budget, a lighter texture, "can I get this at Target?" — that is the same build again, not a new question, however much it reads like one in the moment. The genuinely more useful answer is usually the translation rule plus the one pick that actually changes ("same three jobs: gentle cleanser, repair moisturizer, sunscreen — at Target the repair balm is the one worth hunting for"), which respects what they asked and hands them something they can reuse. Re-specifying every slot a second time is the judgment call worth making deliberately rather than by reflex.`
 

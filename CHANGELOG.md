@@ -4,6 +4,54 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.30.0 — August 17 2026
+
+**The give instrument was blind to the most common way Yuri hands over a routine — and while blind, it was telling her a fact that was false.** Found by replaying a real cold-visitor transcript rather than reading the code.
+
+### The visitor
+
+A Nordic woman living in Seoul — the first genuinely organic cold visitor to reach this depth on the post-v11.24 funnel. She listed ~11 products she ALREADY OWNED and asked whether they work together. Yuri qualified well (**6 of her 7 replies asked a question**, and she refused to hand over the retinol plan until she had the burn/tan answer, asking three times), captured the email at message 5 of 7, and closed with the strongest anti-selling in the corpus: *"you've got a full shelf already, spend your money on nothing right now."*
+
+She also delivered a full AM sequence, a PM retinol sequence with buffering, an off-nights routine, a 2x/week ramp, and a stop-repurchasing list — the subscriber deliverable — and the instrument scored `lineupBuilds: 0`.
+
+### The blind spot
+
+`slot_picks` required slot-word + SEPARATOR + a `KNOWN_BRANDS` name ("Cleanser: CeraVe"). Her routine was written as arrow chains:
+
+```
+cleanse → Sulwhasoo water → IOPE retinol → AESTURA smoothing cream
+```
+
+Arrows chain products with **no separator**, so nothing matched — and **IOPE is not in `KNOWN_BRANDS` at all**, the second failure of a list already documented as fragile (blind to Western brands until Aug 8, blind to Indian ones after, blind to Thai next).
+
+The deeper miss: the instrument assumed over-giving means RECOMMENDING things to buy. This visitor owned everything, so Yuri never *built* a lineup — she **reorganized** one. Same deliverable, invisible shape. Measured across the corpus: **5 of 19 deep conversations (26%)**, including one with five separate sequence deliveries.
+
+`hasPrescriptiveSequence` now counts it, **with no brand list**: a line with 2+ arrows naming 2+ distinct capitalised tokens outside a closed stop-list of skincare acronyms and step nouns. The visitor's own products capitalise themselves, so the signal is market-neutral by construction. Discussing vs delivering falls out of capitalisation — "toner → serum → cream" is lowercase categories and does not fire; "cleanse → Sulwhasoo water → IOPE retinol" does. **Measured: 23 of 307 replies (7.5%)**, triggering lines overwhelmingly genuine deliveries.
+
+### The false fact, injected five times
+
+The outer gate is `count < 2 && lineupBuilds < 1` — an **AND** — so the block fires on artifact count alone. **My own first diagnosis was wrong**: I reported the block never fired. Replaying it, the block fired on **all five** of Yuri's substantive replies. She had full visibility and gave anyway.
+
+Worse, with `lineupBuilds: 0` the rebuild ternary still fell to its else-branch and told her:
+
+> *"You have already built them one complete multi-slot lineup."*
+
+She had built none. That invented sentence went into five consecutive turns. **A block whose entire authority is being factual cannot afford one false fact** — it teaches the model to discount the true counts beside it. Now silent when there is nothing true to report.
+
+### A baseline correction that voided an earlier conclusion
+
+I had compared this visitor against Kim Wells — the only "converter" — and concluded that delivering a full routine does not hurt conversion, since Kim got three arrow chains and subscribed anyway. **Kim is a warm referral (a family connection), not a cold organic visitor.** Both "converter" rows are also the same person on two devices. So the true organic conversion count is **zero**, and every inference drawn from that comparison is unsupported.
+
+What the data DOES show, normalized per reply across 19 deep conversations: **builds/reply 0.345 → 0.117 (a 66% drop)** after v11.24, on near-identical conversation lengths. The over-giving history is real (March 11: 7 builds; April 21: 10) and the fixes are working.
+
+### Guard tests
+
+843 → 899 total. Four bugs verified by revert, and **one slipped through first**: a single-arrow test whose line named only one product could not detect the arrow threshold changing from 2 to 1. Tightened. The recurring lesson this week — a guard test is evidence only once you have watched it fail against the specific bug it names.
+
+**Recorded, not fixed:** the recap email body is never persisted anywhere, so whether it obeys its own documented scope (`lead-email.ts:89` — "NOT a complete take-home routine") is unknowable from data. A customer-facing artifact with no record.
+
+---
+
 ## v11.29.0 — August 17 2026
 
 **Yuri told a visitor to stop repurchasing three products based on ingredients they do not contain — and had she searched, she would have been handed the wrong product's ingredients as a clean result.** Both halves were real defects; only one was about her judgment.

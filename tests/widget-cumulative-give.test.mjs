@@ -355,3 +355,103 @@ test('age/life-stage qualification is present and never gates advice', () => {
     'gender must stay volunteered-only, not interrogated'
   )
 })
+
+/**
+ * PRESCRIPTIVE SEQUENCES — a routine handed over as an arrow chain.
+ *
+ * THE BLIND SPOT (measured Aug 17 2026, session 3132e3ee). A visitor in Seoul
+ * listed ~11 products she ALREADY OWNED. Yuri delivered a full AM sequence, a
+ * PM retinol sequence with buffering, off-nights hydration, a 2x/week ramp and
+ * a stop-repurchasing list — the subscriber deliverable — and `lineupBuilds`
+ * stayed at 0, because `SLOT_WITH_PRODUCT` needs slot-word + SEPARATOR + a
+ * KNOWN_BRANDS name and her routine was written as arrows. IOPE was not even in
+ * the brand list. The shape appears in 5 of 19 deep conversations (26%).
+ *
+ * Ownership is irrelevant to the gate: it was always defined by the ARTIFACT
+ * handed over, never by whether money moves. Yuri did not BUILD a lineup here,
+ * she REORGANIZED one — same deliverable, invisible shape.
+ */
+test('a routine delivered as an arrow chain counts as a build', () => {
+  const reply = '- **PM retinol nights:** cleanse → Sulwhasoo water → IOPE retinol → AESTURA smoothing cream'
+  const g = detectCumulativeGive([{ role: 'assistant', content: reply }])
+  assert.ok(g.artifacts.includes('slot_picks'),
+    'a sequenced routine naming real products is a delivered build')
+  assert.equal(g.lineupBuilds, 1)
+})
+
+test('it needs no brand list — the visitor\'s own products capitalise themselves', () => {
+  // KNOWN_BRANDS failed twice here: the shape didn't match AND IOPE is absent.
+  // A brand list was blind to Western brands until Aug 8, blind to Indian ones
+  // after, and would be blind to Thai next. Capitalisation is market-neutral.
+  const unknownBrands = 'cleanse → Sidmool Niaten → Hanbang Jinyul essence → moisturizer'
+  const g = detectCumulativeGive([{ role: 'assistant', content: unknownBrands }])
+  assert.ok(g.artifacts.includes('slot_picks'),
+    'brands we have never catalogued must still count as a delivered build')
+})
+
+test('DISCUSSING an order is not DELIVERING a routine', () => {
+  // The false-positive that would cost the instrument its credibility. Generic
+  // step order is lowercase categories; a delivered routine names products.
+  for (const prose of [
+    'The general order is toner → serum → moisturizer → sunscreen.',
+    'patch test → wait 24 hours → reassess before going further',
+    'AM: cleanse → hydrate → vitamin C → SPF',
+  ]) {
+    const g = detectCumulativeGive([{ role: 'assistant', content: prose }])
+    assert.ok(!g.artifacts.includes('slot_picks'),
+      `generic sequencing must not count as a build: ${JSON.stringify(prose)}`)
+  }
+})
+
+test('a single arrow is not a sequence', () => {
+  // The line must carry TWO product-like names, or it cannot detect a change to
+  // the arrow threshold — the first version of this test used a one-brand line,
+  // so lowering `arrows < 2` to `arrows < 1` still passed. A "move X to your PM
+  // routine" sentence legitimately names two things and must stay uncounted:
+  // relocating a product is advice, not a delivered routine.
+  const g = detectCumulativeGive([
+    { role: 'assistant', content: 'Move the Rejuran ampoule → your PM routine, alongside the Sulwhasoo water.' },
+  ])
+  assert.ok(!g.artifacts.includes('slot_picks'), 'one arrow is a sentence, not a routine')
+  assert.equal(g.lineupBuilds, 0)
+})
+
+test('the visitor listing their own shelf never counts as Yuri delivering', () => {
+  const g = detectCumulativeGive([
+    { role: 'user', content: 'I use cleanse → Sulwhasoo water → IOPE retinol → AESTURA cream' },
+  ])
+  assert.equal(g.lineupBuilds, 0, 'only assistant turns can deliver a build')
+})
+
+/**
+ * THE FALSE FACT (found Aug 17 2026 by replaying the same session).
+ *
+ * The outer gate is `count < 2 && lineupBuilds < 1` — an AND — so the block
+ * fires on artifact count alone. With `lineupBuilds: 0` the rebuild ternary
+ * still fell to its else-branch and told Yuri "You have already built them one
+ * complete multi-slot lineup." She had built none. That invented sentence went
+ * into FIVE consecutive turns of a real conversation.
+ *
+ * A block whose whole authority is being factual cannot afford one false fact —
+ * it teaches the model to discount the true counts sitting beside it.
+ */
+test('the block never claims a lineup was built when none was', () => {
+  const g = detectCumulativeGive([
+    { role: 'assistant', content: 'Morning: hydrate first. Night: repair. Two of these do the same job — redundant.' },
+  ])
+  const block = buildCumulativeGiveBlock(g)
+  if (block) {
+    assert.ok(!/already built them one complete multi-slot lineup/i.test(block),
+      `with lineupBuilds=${g.lineupBuilds} the block must not assert a lineup was built`)
+  }
+})
+
+test('the rebuild note appears only once a lineup genuinely exists', () => {
+  const built = detectCumulativeGive([
+    { role: 'assistant', content: '- **AM:** cleanse → Sulwhasoo water → Godal Vita C → Mediheal SPF50+' },
+    { role: 'assistant', content: 'Two of those do the same job, they are redundant.' },
+  ])
+  assert.ok(built.lineupBuilds >= 1)
+  const block = buildCumulativeGiveBlock(built)
+  assert.match(block, /multi-slot lineup/i, 'a real build must be reported')
+})
