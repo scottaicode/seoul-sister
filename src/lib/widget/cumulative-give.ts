@@ -14,6 +14,35 @@
  * reports which artifacts of the complete build have appeared. The result is
  * injected as a FACT into her next turn's context.
  *
+ * KNOWN LIMIT — this detector is validated on CHAT prose only (Aug 17 2026).
+ *
+ * It is also run over recap EMAIL bodies (`recordRecapStatus`), and there it
+ * over-counts. In chat, naming a product means RECOMMENDING it. In a recap,
+ * naming products is how you REMIND someone what you discussed. Same words,
+ * opposite meaning.
+ *
+ * Measured on the first real recap: `count: 2`, and BOTH artifacts were false
+ * positives. `SLOT_WITH_PRODUCT` matched "cleanser, Anua" and "Serum,
+ * Illiyoon" — commas separating items in a LIST of what the visitor already
+ * owns, read as slot-heading separators. The email had zero arrows and had
+ * held its scope perfectly.
+ *
+ * DELIBERATELY NOT TUNED. This detector has been hand-adjusted three times in
+ * nine days (the $-token blind spot, the off-by-one threshold, the
+ * arrow-sequence blind spot), there is exactly ONE email body to tune against,
+ * and a July 30 attempt to tune a similar classifier measured 23% precision and
+ * was discarded rather than adjusted. Per CLAUDE.md, repeated hand-tuning is
+ * the signal to stop. The score is instead stored with its provenance attached.
+ *
+ * CANDIDATE RULE for when a corpus exists (~20-30 recap bodies), recorded so it
+ * is not re-derived: suppress when every match sits inside possessive or
+ * past-reference framing ("your", "you're using", "we talked about") AND the
+ * body has no ordering structure (no arrows, no AM/PM headings, no per-slot
+ * lines). A delivery ORDERS products; a reminder LISTS them behind a possessive.
+ * NOTE: possessives ALONE are not the signal — measured, 31 of 38 genuine chat
+ * deliveries also carry 3+ "your", so a possessive-only suppressor would mute
+ * 82% of real deliveries. The absence of ordering structure is what carries it.
+ *
  * What this is NOT, and must never become:
  *   - a content filter (nothing here blocks, truncates, or rewrites output)
  *   - a hard cap (no "after N artifacts, refuse")

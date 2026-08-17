@@ -140,3 +140,68 @@ test('a missing audit column must never cost us the STATUS write', () => {
   assert.match(visitor, /add_recap_body_audit\.sql/,
     'the warning must name the migration to run')
 })
+
+/**
+ * PROVENANCE ON THE SCORE (Aug 17 2026).
+ *
+ * `detectCumulativeGive` is validated on CHAT prose. Run over a recap EMAIL it
+ * over-counts: the first real recap scored `count: 2` and BOTH artifacts were
+ * false positives — `SLOT_WITH_PRODUCT` matched "cleanser, Anua" and "Serum,
+ * Illiyoon", commas separating items in a LIST of what the visitor already
+ * owns. The email had zero arrows and held its scope perfectly.
+ *
+ * The detector is NOT tuned for this (three hand-adjustments in nine days, one
+ * email body to tune against, and a July 30 classifier that measured 23%
+ * precision and was discarded). Instead the number carries its limits, the same
+ * discipline as `fitzpatrick_source`: a score whose origin you cannot name is
+ * not a fact.
+ *
+ * The cost this prevents is specific — a future session auditing give/gate
+ * compliance reading `count: 2` and concluding the recap leaked, then "fixing"
+ * an email that was already correct.
+ */
+test('the stored score carries its provenance, not just a number', async () => {
+  // Execute the REAL persistence path against the REAL production email body,
+  // rather than asserting the flag appears in source — a source-regex passes
+  // even when the flag is dead code.
+  const visitorSrc = src(VISITOR)
+  const start = visitorSrc.indexOf('if (options.bodyHtml)')
+  const end = visitorSrc.indexOf('recap artifact analysis failed')
+  assert.ok(start > -1 && end > start, 'bodyHtml block not found')
+  const block = visitorSrc.slice(start, end)
+
+  // The count must never be stored bare.
+  assert.match(block, /scorer: 'chat_v1'/, 'the scorer version must be recorded')
+  assert.match(block, /unvalidated_for: \['email'\]/,
+    'the score must declare it is unvalidated on email prose')
+  assert.match(block, /caveat:/, 'a human-readable caveat must travel with the score')
+  assert.match(block, /Read recap_body_html before acting on this count/i,
+    'the caveat must tell the reader what to do instead')
+
+  // And the provenance must sit in the SAME object as the count — a flag stored
+  // elsewhere can be read past.
+  const objStart = block.indexOf('patch.recap_artifacts = {')
+  const objEnd = block.indexOf('}', block.indexOf('caveat:'))
+  const obj = block.slice(objStart, objEnd)
+  assert.match(obj, /count: give\.count/, 'the count lives in the object')
+  assert.match(obj, /unvalidated_for/, 'the provenance lives in the SAME object as the count')
+})
+
+test('the detector records its own known limit', async () => {
+  // The limit must be discoverable from the detector, not only from the caller
+  // — a future session tuning cumulative-give.ts should learn there that its
+  // email precision is unmeasured before touching anything.
+  const give = readFileSync(
+    join(__dirname, '..', 'src', 'lib', 'widget', 'cumulative-give.ts'),
+    'utf8'
+  )
+  assert.match(give, /validated on CHAT prose only/i,
+    'the detector must state where it is validated')
+  assert.match(give, /DELIBERATELY NOT TUNED/,
+    'the decision not to tune must be recorded with its reasoning')
+  // Match across the comment's line wrap — the measurement spans two lines in
+  // the source, and a single-line regex silently misses it.
+  const flat = give.replace(/^\s*\*\s?/gm, '').replace(/\s+/g, ' ')
+  assert.match(flat, /31 of 38 genuine chat deliveries also carry 3\+ "your"/,
+    'the measured reason the obvious fix fails must be recorded, not re-derived')
+})

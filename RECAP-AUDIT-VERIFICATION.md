@@ -72,9 +72,30 @@ opposite meaning.**
 
 **So do not act on `recap_artifacts` alone. Read the body.** A future session that treats a 2 as
 "the email leaked the build" will be wrong, exactly as the first reading of this row was.
-Tuning the scorer for email prose is a known open item, deliberately not rushed — one row is
-not enough to tune a detector on, and the cost of the current false positive is a misleading
-number, not a bad customer experience.
+
+**The score now carries its own limits** (Aug 17 2026), the same discipline as
+`fitzpatrick_source` — a score whose origin you cannot name is not a fact:
+
+```json
+{"count": 2, "artifacts": [...], "scorer": "chat_v1",
+ "validated_for": ["chat"], "unvalidated_for": ["email"],
+ "caveat": "Chat-tuned scorer. On email prose it over-counts..."}
+```
+
+**The detector was deliberately NOT tuned.** It has been hand-adjusted three times in nine days,
+there is exactly ONE email body to tune against, and a July 30 attempt to tune a similar
+classifier measured 23% precision and was discarded rather than adjusted. Per CLAUDE.md,
+repeated hand-tuning is the signal to stop.
+
+**The exact mechanism, so it is not re-derived:** `SLOT_WITH_PRODUCT` matched `"cleanser, Anua"`
+and `"Serum, Illiyoon"` — the commas separating items in a LIST of what the visitor already owns,
+read as slot-heading separators.
+
+**Candidate rule for when a corpus exists (~20-30 bodies):** suppress when every match sits
+inside possessive/past-reference framing AND the body has no ordering structure (no arrows, no
+AM/PM headings, no per-slot lines). A delivery ORDERS products; a reminder LISTS them.
+**Possessives alone are NOT the signal** — measured, 31 of 38 genuine chat deliveries also carry
+3+ "your", so a possessive-only suppressor would mute 82% of real deliveries.
 
 ---
 

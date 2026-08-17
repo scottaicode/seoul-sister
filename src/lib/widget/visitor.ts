@@ -300,7 +300,44 @@ export async function recordRecapStatus(
         .replace(/&nbsp;/g, ' ')
         .replace(/&amp;/g, '&')
       const give = detectCumulativeGive([{ role: 'assistant', content: plain }])
-      patch.recap_artifacts = { count: give.count, artifacts: give.artifacts }
+      // PROVENANCE TRAVELS WITH THE SCORE.
+      //
+      // `detectCumulativeGive` is validated on CHAT prose, where naming a
+      // product means RECOMMENDING it. In a recap email, naming products is how
+      // you REMIND someone what you discussed — same words, opposite meaning.
+      //
+      // Measured on the first real recap (Aug 17 2026): it scored `count: 2`
+      // and BOTH artifacts were false positives. `SLOT_WITH_PRODUCT` matched
+      // "cleanser, Anua" and "Serum, Illiyoon" — the commas separating items in
+      // a LIST of what the visitor already owns, read as slot headings. The
+      // email had zero arrows and had actually held its scope perfectly.
+      //
+      // The detector is NOT being tuned for this. It has been hand-adjusted
+      // three times in nine days, there is exactly ONE email body to tune
+      // against, and a July 30 attempt to tune a similar classifier measured
+      // 23% precision and was discarded. CLAUDE.md's rule is that repeated
+      // hand-tuning is the signal to stop.
+      //
+      // So the number is stored WITH its limits attached, the same discipline
+      // as `fitzpatrick_source`: a score whose origin you cannot name is not a
+      // fact. A future session auditing give/gate compliance must not read
+      // `count: 2` and conclude the recap leaked.
+      //
+      // Candidate rule for WHEN there is a corpus (~20-30 bodies), recorded
+      // here so it is not re-derived: suppress when every match sits inside
+      // possessive/past-reference framing ("your", "you're using", "we talked
+      // about") AND the body contains no ordering structure — no arrows, no
+      // AM/PM headings, no per-slot lines. A delivery ORDERS products; a
+      // reminder LISTS them behind a possessive.
+      patch.recap_artifacts = {
+        count: give.count,
+        artifacts: give.artifacts,
+        scorer: 'chat_v1',
+        validated_for: ['chat'],
+        unvalidated_for: ['email'],
+        caveat:
+          'Chat-tuned scorer. On email prose it over-counts: naming products as a reminder reads as delivering them. Read recap_body_html before acting on this count.',
+      }
     } catch (err) {
       // Analysis is best-effort: never lose the BODY because scoring failed.
       console.error('[Widget] recap artifact analysis failed:', err)

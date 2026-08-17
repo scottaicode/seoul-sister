@@ -4,6 +4,45 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.33.0 — August 17 2026
+
+**A wrong number in a telemetry column, fixed by labelling it rather than tuning the thing that produced it.**
+
+The first real recap email scored `count: 2` and both artifacts were false positives. The mechanism, measured precisely: `SLOT_WITH_PRODUCT` matched **`"cleanser, Anua"`** and **`"Serum, Illiyoon"`** — the commas separating items in a LIST of what the visitor already owns, read as slot-heading separators. The email had zero arrows and had held its scope perfectly.
+
+`detectCumulativeGive` is validated on CHAT prose, where naming a product means RECOMMENDING it. In a recap, naming products is how you REMIND someone what you discussed. **Same words, opposite meaning.**
+
+### Why the detector was NOT tuned
+
+- It has been hand-adjusted **three times in nine days** (the $-token blind spot, the off-by-one threshold, the arrow-sequence blind spot).
+- There is exactly **one** email body in the database.
+- A **July 30** attempt to tune a similar classifier measured **23% precision** and was discarded rather than adjusted.
+
+CLAUDE.md's rule is that repeated hand-tuning is the signal to stop. A second-model review (Fable 5) reached the same conclusion independently and named the alternative: **provenance is the fix that needs n=0.**
+
+### What shipped instead
+
+The score now travels with its limits, the same discipline as `fitzpatrick_source`:
+
+```json
+{"count": 2, "scorer": "chat_v1", "validated_for": ["chat"],
+ "unvalidated_for": ["email"], "caveat": "...Read recap_body_html before acting on this count."}
+```
+
+The provenance sits in the **same object** as the count — a flag stored elsewhere can be read past. The cost this prevents is specific: a future session auditing give/gate compliance reads `count: 2`, concludes the recap leaked, and "fixes" an email that was already correct.
+
+### The obvious fix, measured and rejected
+
+Possessive framing looked like a clean discriminator — the email carries 6 "your" and 0 arrows. **Measured against the corpus: 31 of 38 genuine chat deliveries ALSO carry 3+ "your."** A possessive-only suppressor would mute **82% of real deliveries**. Recorded in the detector's header so it is not re-derived; the absence of ordering structure is what would carry the rule, not the possessives.
+
+### Also checked and NOT changed
+
+The "unanswered clinical question" concern was measured and dismissed: **1 of 11 conversations (9%)**, and that one is this session's own test conversation, where the tester stopped replying. In the real cases Yuri held correctly — *"Before I build anything, I need to reflect back what you're actually working with"*, then *"Kolkata changes everything, that's the answer I needed."* No defect; no change made.
+
+915 → 917 tests. Four bugs verified by revert, including the reviewer's specific concern that a provenance flag could ship as dead code.
+
+---
+
 ## v11.32.0 — August 17 2026
 
 **The give instrument always arrived one build too late — and the fix the data supported was the opposite of the one the framing suggested.**
