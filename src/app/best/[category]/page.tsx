@@ -5,6 +5,7 @@ import { Star, TrendingUp, FlaskConical, Shield, ArrowRight } from 'lucide-react
 import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { notFound } from 'next/navigation'
 import { toSlug } from '@/lib/utils/slug'
+import { productImageOrFallback } from '@/lib/utils/image-proxy'
 import LazyImage from '@/components/ui/LazyImage'
 import ContextualYuriNudge from '@/components/widget/ContextualYuriNudge'
 import { serializeJsonLd } from '@/lib/utils/json-ld'
@@ -335,7 +336,7 @@ export default async function BestOfCategoryPage({ params }: Props) {
             name: p.name_en,
             brand: { '@type': 'Brand', name: p.brand_en },
             url: `https://www.seoulsister.com/products/${p.id}`,
-            ...(p.image_url && { image: p.image_url }),
+            image: productImageOrFallback(p.image_url),
             ...(p.description_en && { description: p.description_en }),
             ...(p.price_usd && {
               offers: {

@@ -36,7 +36,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import ts from 'typescript'
@@ -52,11 +52,29 @@ async function loadImageProxy() {
   return await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'))
 }
 
-/** Every route that emits a Product node with offers. */
-const PRODUCT_ROUTES = [
-  'src/app/products/[id]/page.tsx',
-  'src/app/(app)/browse/[id]/page.tsx',
-]
+/**
+ * DISCOVERED, never hardcoded.
+ *
+ * The first version of this test listed two routes by hand and MISSED
+ * src/app/best/[category]/page.tsx — which was the route Google actually
+ * flagged. A hardcoded list can only guard the files its author already
+ * thought of, which is precisely the failure it is supposed to prevent.
+ * Walk the tree instead, so a fourth Product-emitting route is covered the
+ * day it is written.
+ */
+function findProductRoutes(dir = join(root, 'src'), out = []) {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, e.name)
+    if (e.isDirectory()) findProductRoutes(full, out)
+    else if (e.name.endsWith('.tsx') || e.name.endsWith('.ts')) {
+      const src = readFileSync(full, 'utf8')
+      if (/'@type':\s*'Product'/.test(src)) out.push(full)
+    }
+  }
+  return out
+}
+
+const PRODUCT_ROUTES = findProductRoutes()
 
 test('productImageOrFallback returns an absolute URL for every empty shape', async () => {
   const { productImageOrFallback } = await loadImageProxy()
@@ -78,8 +96,9 @@ test('productImageOrFallback returns an absolute URL for every empty shape', asy
 })
 
 test('no product route emits image conditionally', () => {
+  assert.ok(PRODUCT_ROUTES.length >= 3, 'route discovery found too few files — did the walk break?')
   for (const rel of PRODUCT_ROUTES) {
-    const src = readFileSync(join(root, rel), 'utf8')
+    const src = readFileSync(rel, 'utf8')
 
     // The precise bug: image spread behind a truthiness check.
     assert.doesNotMatch(
@@ -93,7 +112,7 @@ test('no product route emits image conditionally', () => {
 
 test('every Product node bearing offers also bears an unconditional image', () => {
   for (const rel of PRODUCT_ROUTES) {
-    const src = readFileSync(join(root, rel), 'utf8')
+    const src = readFileSync(rel, 'utf8')
 
     // Only assert on routes that actually build a Merchant-listing-shaped node.
     const emitsOffers = /offers\s*:\s*\{/.test(src) || /\boffers:\s*$/m.test(src)
@@ -114,7 +133,7 @@ test('Seoul Sister is never named as the seller — it sells no products', () =>
   // hold inventory, process product payments, or handle fulfillment."
   // A seller claim in Offer schema asserts the opposite to Google.
   for (const rel of PRODUCT_ROUTES) {
-    const src = readFileSync(join(root, rel), 'utf8')
+    const src = readFileSync(rel, 'utf8')
     const sellerBlock = src.match(/seller\s*:\s*\{[^}]*\}/)
     if (sellerBlock) {
       assert.doesNotMatch(
