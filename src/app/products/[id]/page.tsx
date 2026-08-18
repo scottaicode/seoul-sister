@@ -19,6 +19,7 @@ import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { ShareButton } from '@/components/ui/ShareButton'
 import ProductIntelligenceSection from '@/components/products/ProductIntelligenceSection'
 import { proxyImageUrl, productImageOrFallback } from '@/lib/utils/image-proxy'
+import { isRecommendedRetailer } from '@/lib/yuri/tools'
 import { serializeJsonLd } from '@/lib/utils/json-ld'
 import { bestOfSlugFor, categoryLabel as labelFor } from '@/lib/catalog/categories'
 
@@ -121,7 +122,7 @@ export default async function PublicProductPage({ params }: Props) {
       .limit(1),
     supabase
       .from('ss_product_prices')
-      .select('price_usd')
+      .select('price_usd, in_stock, retailer:ss_retailers(name)')
       .eq('product_id', id)
       .order('price_usd', { ascending: true }),
     // Related blog articles mentioning this product's brand or category
@@ -211,9 +212,51 @@ export default async function PublicProductPage({ params }: Props) {
     .slice(0, 3)
 
   // Price range from all retailers
-  const prices = (priceRangeRes.data || [])
-    .map((p) => Number((p as { price_usd: number }).price_usd))
+  const priceRows = (priceRangeRes.data || []) as unknown as Array<{
+    price_usd: number
+    in_stock: boolean | null
+    retailer: { name: string } | null
+  }>
+
+  // Retailers this product ACTUALLY has prices at, filtered through the same
+  // recommend policy Yuri uses (isRecommendedRetailer). The FAQ text used to
+  // hardcode "6+ authorized retailers including Olive Young, Soko Glam, YesStyle
+  // and Amazon" on every page. Measured: only 3 retailers have any price row at
+  // all, Amazon has ZERO, and YesStyle is `recommended_to_buy_from: false` — so
+  // the sentence sent searchers to the one retailer Yuri is told never to steer
+  // toward. Same company, two voices, opposite advice. Derive it instead.
+  const recommendedRetailers = Array.from(
+    new Set(
+      priceRows
+        .map((r) => r.retailer?.name)
+        .filter((n): n is string => !!n && isRecommendedRetailer(n))
+    )
+  )
+  const retailerList =
+    recommendedRetailers.length > 1
+      ? `${recommendedRetailers.slice(0, -1).join(', ')} and ${recommendedRetailers[recommendedRetailers.length - 1]}`
+      : recommendedRetailers[0] || null
+  const prices = priceRows
+    .map((p) => Number(p.price_usd))
     .filter((p) => p > 0)
+
+  // Availability must be DERIVED, never asserted. Google's structured-data policy
+  // requires markup to be a true representation of the page; hardcoding InStock
+  // was a claim we could measure as false on 841 products (every price row
+  // in_stock=false) while telling Google the item was buyable.
+  //
+  // Three states, and the third is the point: in stock / known out of stock /
+  // UNKNOWN. Unknown omits the property entirely rather than guessing, the same
+  // discipline as fitzpatrick_source — a wrong availability degrades invisibly,
+  // a missing one degrades visibly.
+  const stockFlags = priceRows.filter((p) => Number(p.price_usd) > 0).map((p) => p.in_stock)
+  const anyInStock = stockFlags.some((f) => f === true)
+  const allOutOfStock = stockFlags.length > 0 && stockFlags.every((f) => f === false)
+  const availability = anyInStock
+    ? 'https://schema.org/InStock'
+    : allOutOfStock
+      ? 'https://schema.org/OutOfStock'
+      : null
   const priceMin = prices.length > 0 ? Math.min(...prices) : product.price_usd ? Number(product.price_usd) : null
   const priceMax = prices.length > 1 ? Math.max(...prices) : null
 
@@ -273,7 +316,7 @@ export default async function PublicProductPage({ params }: Props) {
             name: `How much does ${product.name_en} cost?`,
             acceptedAnswer: {
               '@type': 'Answer' as const,
-              text: `${product.name_en} by ${product.brand_en} starts from $${priceMin.toFixed(2)} USD${product.volume_display ? ` for ${product.volume_display}` : ''}${priceMax && priceMax > priceMin ? `, with prices ranging up to $${priceMax.toFixed(2)} across retailers` : ''}. Seoul Sister Pro members compare prices across 6+ authorized retailers including Olive Young, Soko Glam, and YesStyle to find the best deal, with automatic price drop alerts.`,
+              text: `${product.name_en} by ${product.brand_en} starts from $${priceMin.toFixed(2)} USD${product.volume_display ? ` for ${product.volume_display}` : ''}${priceMax && priceMax > priceMin ? `, with prices ranging up to $${priceMax.toFixed(2)} across retailers` : ''}.${retailerList ? ` Seoul Sister tracks pricing at ${retailerList}, with price drop alerts for Pro members.` : ''} Seoul Sister does not sell products — we compare retailer pricing so you can buy from the source.`,
             },
           },
         ]
@@ -283,7 +326,7 @@ export default async function PublicProductPage({ params }: Props) {
       name: `Where to buy ${product.name_en}?`,
       acceptedAnswer: {
         '@type': 'Answer' as const,
-        text: `${product.name_en} by ${product.brand_en} is available from authorized K-beauty retailers including Olive Young Global, Soko Glam, YesStyle, and Amazon.${priceMin ? ` Prices start from $${priceMin.toFixed(2)} USD.` : ''} Seoul Sister verifies retailer authenticity and tracks counterfeit indicators to help you buy genuine Korean skincare products.`,
+        text: `${product.name_en} by ${product.brand_en}${retailerList ? ` is tracked at ${retailerList}` : ' is sold through Korean beauty retailers'}.${priceMin ? ` Prices start from $${priceMin.toFixed(2)} USD.` : ''} Seoul Sister verifies retailer authenticity and tracks counterfeit indicators to help you buy genuine Korean skincare products. We are an advice platform and never sell products ourselves.`,
       },
     },
   ]
@@ -326,7 +369,7 @@ export default async function PublicProductPage({ params }: Props) {
             highPrice: (priceMax || priceMin).toFixed(2),
             priceCurrency: 'USD',
             offerCount: prices.length || 1,
-            availability: 'https://schema.org/InStock',
+            ...(availability && { availability }),
           },
         }),
         ...(reviewCount > 0 &&

@@ -44,7 +44,7 @@ const CATEGORIES: CategoryMeta[] = [
     title: 'Best Korean Sunscreens',
     h1: 'Best Korean Sunscreens in 2026',
     description:
-      'The highest-rated Korean sunscreens with PA++++, minimal white cast, and lightweight textures. Compared across Olive Young, YesStyle, and Soko Glam.',
+      'The highest-rated Korean sunscreens with PA++++, minimal white cast, and lightweight textures. Compared across Olive Young and Soko Glam.',
     skinTip:
       'Korean sunscreens lead the world in elegance. Look for PA++++ (highest UVA protection) and reapply every 2 hours during sun exposure.',
     keyIngredients: ['Zinc Oxide', 'Tinosorb S', 'Niacinamide', 'Centella Asiatica', 'Hyaluronic Acid'],
@@ -338,23 +338,32 @@ export default async function BestOfCategoryPage({ params }: Props) {
             url: `https://www.seoulsister.com/products/${p.id}`,
             image: productImageOrFallback(p.image_url),
             ...(p.description_en && { description: p.description_en }),
+            // No `availability` here on purpose. This listing is backed only by
+            // the bare price_usd column, which carries no stock signal, and
+            // hardcoding InStock asserted something we cannot know — false for
+            // 1-4 items in every category's top 20 when measured against
+            // ss_product_prices.in_stock. Omitting an unknown beats guessing it.
             ...(p.price_usd && {
               offers: {
                 '@type': 'Offer',
                 price: Number(p.price_usd).toFixed(2),
                 priceCurrency: 'USD',
-                availability: 'https://schema.org/InStock',
               },
             }),
-            ...(p.rating_avg && {
-              aggregateRating: {
-                '@type': 'AggregateRating',
-                ratingValue: Number(p.rating_avg).toFixed(1),
-                reviewCount: p.review_count || 1,
-                bestRating: 5,
-                worstRating: 1,
-              },
-            }),
+            // reviewCount was `p.review_count || 1`, which invented a review for
+            // the 2,179 rated products that have none. A rating with no reviews
+            // is a rating with no reviews; emit the block only when the count is real.
+            ...(p.rating_avg &&
+              p.review_count &&
+              p.review_count > 0 && {
+                aggregateRating: {
+                  '@type': 'AggregateRating',
+                  ratingValue: Number(p.rating_avg).toFixed(1),
+                  reviewCount: p.review_count,
+                  bestRating: 5,
+                  worstRating: 1,
+                },
+              }),
           },
         })),
       },

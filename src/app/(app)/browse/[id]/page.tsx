@@ -187,12 +187,14 @@ export default function ProductDetailPage() {
     brand: { '@type': 'Brand', name: product.brand_en },
     category: categoryLabels[product.category] ?? product.category,
     image: productImageOrFallback(product.image_url as string | null),
+    // No `availability`: this view has only the bare price_usd column, which
+    // carries no stock signal. Asserting InStock here was a claim we could
+    // measure as false on 841 products.
     ...(product.price_usd && {
       offers: {
         '@type': 'Offer',
         price: Number(product.price_usd).toFixed(2),
         priceCurrency: 'USD',
-        availability: 'https://schema.org/InStock',
       },
     }),
     ...(review_summary && review_summary.count > 0 && {
