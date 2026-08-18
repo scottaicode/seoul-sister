@@ -112,6 +112,9 @@ async function loadSearch() {
 
   const pieces = [
     sliceConst(src, 'const SEARCH_STOP_WORDS = new Set(['),
+    // Required since Aug 18 2026: smartProductSearch's sunscreen-signal
+    // suppression reads this set, so omitting it makes the module throw.
+    sliceConst(src, 'const GENERIC_PRODUCT_WORDS = new Set(['),
     sliceDecl(src, 'function singularize('),
     sliceDecl(src, 'function termMatches('),
     sliceDecl(src, 'async function smartProductSearch('),

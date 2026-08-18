@@ -328,6 +328,46 @@ async function smartProductSearch(
   const originalTokens = normalized.split(/\s+/).filter(t => t.length > 0)
   const terms = originalTokens.filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
 
+  // SUNSCREEN SIGNAL — the one category whose vocabulary the catalog's NAMES do
+  // not carry (Aug 18 2026).
+  //
+  // THE FAILURE. A visitor asked about "mediheal madecassoside 50+++", a real
+  // sunscreen. Yuri searched "Mediheal madecassoside sunscreen SPF50" and told
+  // her "we pulled Mediheal masks, not that specific SPF". We stock three.
+  // Neither "sunscreen" nor "spf50" appears in ANY of Mediheal's 133 product
+  // names, so all-terms fails, coverage (2) misses the near-match threshold
+  // (3), and the query lands in Strategy 3 — where the masks and the sun serums
+  // TIE at 3+1=4 and `rating_avg` breaks it toward a 5.00 sheet mask over the
+  // 4.90 Madecassoside Moisture Sun Serum. Arbitrary, and stated with full
+  // confidence.
+  //
+  // WHY ONLY THIS FAMILY. Measured over 5,311 verified rows: "sun" already
+  // appears in 579/622 (93%) of sunscreen names, so plain term matching ALREADY
+  // handles "sun cream"/"sun serum". Only the literal words are missing —
+  // "sunscreen" in 120/622, "spf" in 104/622. And a general category inference
+  // would be an over-correction: serum appears in 88% of serum names, essence
+  // 87%, toner 82%, so inferring from those adds risk and no recall. The
+  // concrete danger is "mediheal madecassoside sun serum", whose category is
+  // 'sunscreen' — a naive `serum` signal would return the Blemish Repair Serum,
+  // the WRONG product, on a query that today succeeds on name terms alone.
+  //
+  // SUPPRESSED ON INCIDENTAL MENTION. "toner to use under sunscreen" and
+  // "cleansing oil that removes sunscreen" name sunscreen as CONTEXT, not as
+  // the thing wanted. Both reach Strategy 3 (verified: zero rows clear
+  // coverage), where real toner/cleanser rows would otherwise be outranked by
+  // anything merely named "sunscreen". So the signal stands down whenever the
+  // query also names another category noun — reusing the closed, DB-derived
+  // GENERIC_PRODUCT_WORDS set rather than enumerating phrasings, since the next
+  // one will be worded differently. Those queries then behave exactly as today.
+  const SUNSCREEN_SIGNAL = /\b(sunscreen|sunblock|spf(\s*\d+)?\b|pa\s*\+{2,})/
+  const OTHER_CATEGORY_NOUN = (t: string) =>
+    GENERIC_PRODUCT_WORDS.has(t) && !['sunscreen', 'spf', 'sun'].includes(t)
+  const wantsSunscreen =
+    // An explicit category from Yuri always wins over anything inferred here.
+    !options?.category &&
+    SUNSCREEN_SIGNAL.test(cleaned.toLowerCase()) &&
+    !terms.some(OTHER_CATEGORY_NOUN)
+
   // Strategy 1: Full-string ilike on name_en, brand_en, description_en
   let baseQuery = db
     .from('ss_products')
@@ -682,6 +722,26 @@ async function smartProductSearch(
           // and "stick"/"cream"/"serum" are shared by hundreds of rows.
           score += termMatches(brand, t) ? 3 : 1
         }
+        // SUNSCREEN CATEGORY — a TIE-BREAK, deliberately worth less than one
+        // term match (Aug 18 2026).
+        //
+        // 0.5 is the whole point: the motivating defect is an exact TIE (the
+        // 5.00 Derma 365 mask and the 4.90 Madecassoside Moisture Sun Serum
+        // both score 3+1=4, so rating decided it arbitrarily). A half point
+        // breaks that tie toward the category the visitor actually named and
+        // can never outrank a row that matches one more of their words.
+        //
+        // Any value >= 1 is an over-correction with measured victims: for
+        // "cleansing oil that removes sunscreen" the genuine cleansing-oil rows
+        // score 2 while sunscreen-named rows score 1, so a boost of 1 ties them
+        // and 2 flips them outright. The suppression above (stand down when
+        // another category noun is present) is what protects those queries;
+        // this magnitude is the second line of defence, not the first.
+        //
+        // It is a BOOST, never a filter: `category` is 100% populated but
+        // Sonnet-assigned and unaudited, so a mis-categorised row must lose
+        // half a point, not disappear from the results entirely.
+        if (wantsSunscreen && p.category === 'sunscreen') score += 0.5
         // The LINE NUMBER outranks everything else a numbered range shares.
         //
         // In numbered K-beauty lines the digit IS the product: numbuzin No.3
