@@ -247,6 +247,14 @@ export default async function BestOfCategoryPage({ params }: Props) {
   // any given week, so a blanket "refreshed daily" claim would be false. If no
   // date comes back, the stamp simply doesn't render. Same discipline as the
   // clinical-honesty rule: unknown renders as nothing, never as a guess.
+  //
+  // TAKE THE MEDIAN, NOT THE NEWEST. This ordered by last_checked DESC and took
+  // the single freshest row across all 20 products, which reported the best case
+  // as if it were the page's. Measured on /best/serums: it displayed Aug 18
+  // (today) while the median row was June 11 and the oldest Feb 17. One product
+  // refreshed this morning made four-month-old data look same-day. The optimistic
+  // direction is exactly the wrong one for a freshness stamp — it is the "prices
+  // refresh every 6 hours" false-cadence claim in a subtler form.
   let priceCheckedAt: string | null = null
   if (products.length > 0) {
     const { data: freshness } = await supabase
@@ -255,9 +263,12 @@ export default async function BestOfCategoryPage({ params }: Props) {
       .in('product_id', products.map((p) => p.id))
       .not('last_checked', 'is', null)
       .order('last_checked', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    priceCheckedAt = freshness?.last_checked ?? null
+    const dates = (freshness || [])
+      .map((r) => (r as { last_checked: string }).last_checked)
+      .filter(Boolean)
+    // Sorted DESC by the query, so the midpoint is the median. A typical row is
+    // the honest summary of a set whose ages span months.
+    priceCheckedAt = dates.length > 0 ? dates[Math.floor(dates.length / 2)] : null
   }
 
   // Build FAQ from data
