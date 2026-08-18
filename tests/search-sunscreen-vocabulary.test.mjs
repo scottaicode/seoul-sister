@@ -155,6 +155,18 @@ test('the PA+ form is a live branch, not dead regex', () => {
   for (const q of ['round lab birch juice pa++++', 'pa+++ sunscreen', 'PA++++']) {
     assert.ok(re.test(q.toLowerCase()), `the PA branch must match "${q}"`)
   }
+  // The VISITOR's own phrasing. She typed "mediheal madecassoside 50+++" — none
+  // of the word branches match it; only the digit+pluses branch does. Measured
+  // before adding: that shape appears in ZERO verified product names of any
+  // category, so it cannot collide with a real product.
+  for (const q of ['mediheal madecassoside 50+++', 'spf 50+++']) {
+    assert.ok(re.test(q.toLowerCase()), `the visitor's literal phrasing must match "${q}"`)
+  }
+  // But NOT the single-plus shape: it appears in 9 non-sunscreen names
+  // (spot treatments, a mask, a serum), so widening to it would over-correct.
+  for (const q of ['cosrx snail 92 cream', 'hyaluronic acid 100', 'centella 50+ ampoule']) {
+    assert.ok(!re.test(q.toLowerCase()), `must NOT fire on the single-plus shape "${q}"`)
+  }
   for (const q of ['mediheal madecassoside sunscreen spf50', 'japanese sunblock', 'spf 50 cream']) {
     assert.ok(re.test(q.toLowerCase()), `the signal must match "${q}"`)
   }

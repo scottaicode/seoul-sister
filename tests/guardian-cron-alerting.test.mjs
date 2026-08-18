@@ -137,6 +137,53 @@ test('no findings produces no signals', () => {
   assert.deepEqual(staleRunSignals({ quiet: [], unhealthy: [] }), [])
 })
 
+test('a Tue-Thu cron stays SILENT through every real Guardian run in its designed gap', () => {
+  // nurture_sequence runs "0 16 * * 2-4". Thursday 16:00 -> the following
+  // Tuesday 16:00 is 120h of silence BY DESIGN — five days, not the four an
+  // earlier version of this comment claimed.
+  //
+  // WHAT DECIDES A WARN: detectStaleRuns gates entry into `quiet` with
+  // `hoursSince > maxAgeHours` (run-log.ts:186). staleRunSignals then only
+  // chooses warn vs critical for rows ALREADY in quiet — so calling it directly
+  // with a hand-built quiet array always yields a signal and proves nothing
+  // about the threshold. This test asserts the real gate.
+  //
+  // The threshold must clear the last guardian-watch run before Tuesday's job,
+  // not the gap between the jobs. guardian-watch runs 08:23/14:23/20:23 UTC, so
+  // these are the only readings that can occur inside the designed gap.
+  const threshold = WATCHED_RUN_TYPES.find((w) => w.runType === 'nurture_sequence')?.maxAgeHours
+  assert.ok(threshold, 'nurture_sequence must stay on the watch list')
+
+  const THU_16 = Date.parse('2026-08-13T16:00:00Z')
+  const gate = (at) => (Date.parse(at) - THU_16) / 3_600_000 > threshold
+
+  for (const at of ['2026-08-18T08:23:00Z', '2026-08-18T14:23:00Z', '2026-08-18T20:23:00Z']) {
+    const hours = ((Date.parse(at) - THU_16) / 3_600_000).toFixed(1)
+    assert.equal(
+      gate(at),
+      false,
+      `A healthy Tue-Thu cron must NOT be flagged quiet at ${at} (${hours}h, threshold ${threshold}h) — ` +
+      'a warn every Tuesday forever is the weekly noise this threshold exists to remove.'
+    )
+  }
+
+  // ...but a genuinely dead one must still escalate promptly. By Wed 08:23 it
+  // has missed its Tuesday slot entirely, and that IS an incident.
+  assert.equal(
+    gate('2026-08-19T08:23:00Z'),
+    true,
+    'A nurture cron still silent at Wed 08:23 (136.4h) has missed a scheduled day and must be flagged — ' +
+    'one working day is the detection budget.'
+  )
+
+  // And once flagged, a long silence must reach CRITICAL so it actually emails.
+  const dead = staleRunSignals({
+    quiet: [{ runType: 'nurture_sequence', lastRunAt: '2026-08-13T16:00:00Z', hoursSince: threshold * CRON_CRITICAL_MULTIPLE }],
+    unhealthy: [],
+  })
+  assert.equal(dead[0].severity, 'critical', 'A nurture cron past the critical multiple must alert, not just warn.')
+})
+
 test('the job that caused this is still watched', () => {
   const watched = WATCHED_RUN_TYPES.map((w) => w.runType)
   assert.ok(

@@ -121,7 +121,23 @@ export const WATCHED_RUN_TYPES: Array<{ runType: string; maxAgeHours: number }> 
   { runType: 'image_health', maxAgeHours: 48 },
   { runType: 'price_refresh_olive_young', maxAgeHours: 48 },
   { runType: 'proactive_nudge', maxAgeHours: 48 },
-  { runType: 'nurture_sequence', maxAgeHours: 48 },
+  // nurture_sequence runs Tue-Thu ONLY ("0 16 * * 2-4"), so Thursday's 16:00 run
+  // to the following Tuesday's is 120h of DESIGNED silence — five days, not the
+  // four an earlier version of this comment claimed. At 48h that crossed
+  // critical (48 * CRON_CRITICAL_MULTIPLE = 96h) every single Monday, and a real
+  // alert fired Aug 10 2026 at 100h against a perfectly healthy job.
+  //
+  // The threshold must clear the LAST guardian-watch run before Tuesday's job,
+  // not the gap between the jobs themselves. guardian-watch runs 08:23/14:23/
+  // 20:23 UTC, so measured from Thu 16:00 it observes the silence at:
+  //     Tue 08:23 = 112.4h    Tue 14:23 = 118.4h    Tue 20:23 = 124.4h
+  // 108 was picked against the wrong number and would still WARN twice every
+  // Tuesday, forever — the exact weekly noise it was meant to remove. (It did
+  // fix the paging: critical = 108 * 2 = 216h, and only critical emails.)
+  //
+  // 132 clears Tue 14:23 with ~14h of margin, and a genuinely dead cron still
+  // trips by Wed 08:23 (136.4h) — one working day, which is the point.
+  { runType: 'nurture_sequence', maxAgeHours: 132 },
   // NOTE: guardian-watch stores run_type 'reprocess', not 'guardian-watch' — it
   // reuses a CHECK-allowed value to avoid a migration (see its route comment).
   // Matching on the literal name produced a false "has NEVER logged a run"

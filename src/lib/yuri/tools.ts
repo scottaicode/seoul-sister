@@ -359,7 +359,14 @@ async function smartProductSearch(
   // query also names another category noun — reusing the closed, DB-derived
   // GENERIC_PRODUCT_WORDS set rather than enumerating phrasings, since the next
   // one will be worded differently. Those queries then behave exactly as today.
-  const SUNSCREEN_SIGNAL = /\b(sunscreen|sunblock|spf(\s*\d+)?\b|pa\s*\+{2,})/
+  // The `\d{2,3}\s*\+{2,}` branch catches the visitor's OWN literal phrasing —
+  // she typed "mediheal madecassoside 50+++", which none of the other branches
+  // match. Measured before adding it: that shape appears in ZERO verified
+  // product names of ANY category, so it cannot collide with a real name. The
+  // near-miss shape `\d{2,3}\s*\+` (single plus) was deliberately NOT added —
+  // it hits 9 non-sunscreen rows (spot treatments, a mask, a serum), which is
+  // exactly the over-correction this signal is scoped to avoid.
+  const SUNSCREEN_SIGNAL = /\b(sunscreen|sunblock|spf(\s*\d+)?\b|pa\s*\+{2,}|\d{2,3}\s*\+{2,})/
   const OTHER_CATEGORY_NOUN = (t: string) =>
     GENERIC_PRODUCT_WORDS.has(t) && !['sunscreen', 'spf', 'sun'].includes(t)
   const wantsSunscreen =
