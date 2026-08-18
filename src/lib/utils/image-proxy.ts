@@ -48,3 +48,19 @@ export function proxyImageUrl(url: string | null): string | null {
 
   return url
 }
+
+/**
+ * Brand fallback used when a product has no image of its own.
+ *
+ * Google parses a Product node carrying `offers` as a Merchant listing,
+ * and `image` is REQUIRED there — omitting it is a critical error that
+ * suppresses the rich result entirely (GSC "Missing field image",
+ * Aug 17 2026). Absolute URL: structured data must not use a relative path.
+ */
+export const FALLBACK_PRODUCT_IMAGE =
+  'https://www.seoulsister.com/icons/icon-512.png'
+
+/** Product image for structured data / OG tags, falling back to the brand mark. */
+export function productImageOrFallback(url: string | null | undefined): string {
+  return url && url.trim() !== '' ? url : FALLBACK_PRODUCT_IMAGE
+}

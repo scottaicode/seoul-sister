@@ -25,7 +25,7 @@ import ReviewCard from '@/components/community/ReviewCard'
 import ReviewForm, { type ReviewFormData } from '@/components/community/ReviewForm'
 import ReviewFilters from '@/components/community/ReviewFilters'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
-import { proxyImageUrl } from '@/lib/utils/image-proxy'
+import { proxyImageUrl, productImageOrFallback } from '@/lib/utils/image-proxy'
 import type { Product, Review } from '@/types/database'
 import { serializeJsonLd } from '@/lib/utils/json-ld'
 
@@ -186,14 +186,13 @@ export default function ProductDetailPage() {
     description: product.description_en ?? `${product.brand_en} ${product.name_en} - Korean beauty product`,
     brand: { '@type': 'Brand', name: product.brand_en },
     category: categoryLabels[product.category] ?? product.category,
-    ...(product.image_url && { image: product.image_url }),
+    image: productImageOrFallback(product.image_url as string | null),
     ...(product.price_usd && {
       offers: {
         '@type': 'Offer',
         price: Number(product.price_usd).toFixed(2),
         priceCurrency: 'USD',
         availability: 'https://schema.org/InStock',
-        seller: { '@type': 'Organization', name: 'Seoul Sister' },
       },
     }),
     ...(review_summary && review_summary.count > 0 && {

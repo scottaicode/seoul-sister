@@ -18,7 +18,7 @@ import { toSlug } from '@/lib/utils/slug'
 import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { ShareButton } from '@/components/ui/ShareButton'
 import ProductIntelligenceSection from '@/components/products/ProductIntelligenceSection'
-import { proxyImageUrl } from '@/lib/utils/image-proxy'
+import { proxyImageUrl, productImageOrFallback } from '@/lib/utils/image-proxy'
 import { serializeJsonLd } from '@/lib/utils/json-ld'
 import { bestOfSlugFor, categoryLabel as labelFor } from '@/lib/catalog/categories'
 
@@ -78,14 +78,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: `${product.name_en} by ${product.brand_en} | Seoul Sister`,
       description,
       type: 'website',
-      images: product.image_url ? [product.image_url] : [],
+      images: [productImageOrFallback(product.image_url as string | null)],
       url: `https://www.seoulsister.com/products/${id}`,
     },
     twitter: {
       card: 'summary_large_image',
       title: `${product.name_en} by ${product.brand_en} | Seoul Sister`,
       description,
-      images: product.image_url ? [product.image_url] : [],
+      images: [productImageOrFallback(product.image_url as string | null)],
     },
   }
 }
@@ -318,7 +318,7 @@ export default async function PublicProductPage({ params }: Props) {
           ? new Date(product.updated_at as string).toISOString()
           : new Date().toISOString(),
         isAccessibleForFree: 'True',
-        ...(product.image_url && { image: product.image_url }),
+        image: productImageOrFallback(product.image_url as string | null),
         ...(priceMin && {
           offers: {
             '@type': 'AggregateOffer',
