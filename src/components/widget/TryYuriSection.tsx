@@ -267,6 +267,118 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
       source: sourceRef.current || 'unknown',
       has_question: ask.length > 0,
     })
+
+    // ---- CONSUME the prefill so it cannot be re-armed (Aug 18 2026) ---------
+    // `?ask=` used to survive in the URL after being consumed, so it
+    // re-populated the input on EVERY load of that URL. Measured on the first
+    // organic blog visitor: she sent the identical canned line from
+    // blog-prefill.ts as messages #1, #3 and #8 of her 12 LIFETIME free
+    // messages. #2 was 60 seconds after her substantive answer -- a
+    // mid-conversation reload. A quarter of her quota went to a question she
+    // never typed, and the duplicate was then laundered into her stored
+    // ai_memory as "Visitor repeated initial question, suggesting possible
+    // uncertainty about accepting the redirected advice" -- a UI defect turned
+    // into a durable false read of her.
+    //
+    // Stripping beats a storage flag: no cleared-storage or cross-device
+    // failure mode, no key to keep in sync with the visitor id, and
+    // sessionStorage is per-tab so it would not have stopped occurrence #3 in
+    // a new tab. `replaceState` (not pushState) keeps the back button intact
+    // and is router-integrated in Next since 14.1; passing window.history.state
+    // back preserves Next's internal state.
+    //
+    // NOTE this is the SMALLER half of the fix. She reloaded mid-conversation
+    // and saw an EMPTY chat (messages live in React state only), so she would
+    // have retyped with or without the param. See the transcript-restore effect
+    // below, which is what actually stops the retype.
+    //
+    // ORDERING IS LOAD-BEARING, TWICE OVER:
+    //  1. This runs AFTER the sourceRef capture and the prefillArrived event
+    //     above -- both read the params, so stripping first would blind
+    //     attribution. (It also stops prefillArrived re-firing on every reload,
+    //     so expect that event's counts to DROP after this ships. That is the
+    //     fix working, not a regression.)
+    //  2. SignedInRedirect (src/components/auth/SignedInRedirect.tsx:62) reads
+    //     window.location.search and keeps a signed-in user on this page only
+    //     if `ask`/`from`/a hash is present -- otherwise it bounces them to
+    //     /dashboard. It is mounted EARLIER in page.tsx (~line 115) than this
+    //     component (~276), so its effect has already read `ask` by the time we
+    //     strip it. If that JSX order is ever changed, or SignedInRedirect is
+    //     lazy-loaded, a paying subscriber clicking a feeder CTA gets yanked to
+    //     /dashboard. tests/widget-prefill-consumed.test.mjs asserts the order.
+    try {
+      params.delete('ask')
+      const qs = params.toString()
+      window.history.replaceState(
+        window.history.state,
+        '',
+        `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`
+      )
+    } catch (err) {
+      // Never let a URL rewrite break the prefill happy path -- but leave a
+      // breadcrumb, so "the strip failed" is distinguishable from "the strip
+      // worked" rather than both looking like silence.
+      console.warn('[widget] prefill URL strip failed', err)
+    }
+  }, [])
+
+  // ---- RESTORE a conversation a reload wiped (Aug 18 2026) -----------------
+  // `messages` lives in React state ONLY, while the session id lives in
+  // sessionStorage. So a mid-conversation reload showed an EMPTY chat while the
+  // server still held every message, and Yuri (who HAS had server-side
+  // rehydration since v11.2.0) knew a history the visitor could no longer see.
+  //
+  // The first organic blog visitor hit exactly this: 60 seconds after answering
+  // a substantive question she reloaded, saw nothing, and re-sent her opening
+  // question -- spending another of her 12 LIFETIME free messages. Stripping the
+  // `?ask=` re-arm above stops the canned line coming back, but on its own it
+  // would only have made her retype the same thing by hand. THIS is the half
+  // that stops the retype.
+  //
+  // Deliberately conservative: only ever runs when a session id already exists
+  // AND nothing is on screen yet, so it can never clobber a live conversation
+  // or double-paint. Failure is silent by design -- an unrestored transcript
+  // leaves the visitor exactly where they were before this shipped.
+  useEffect(() => {
+    const sessionId = getWidgetSessionId()
+    if (!sessionId) return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(
+          `/api/widget/transcript?session_id=${encodeURIComponent(sessionId)}` +
+            `&visitor_id=${encodeURIComponent(getOrCreateVisitorId())}`
+        )
+        if (!res.ok || cancelled) return
+        const data = (await res.json()) as {
+          messages?: Array<{ role: 'user' | 'assistant'; content: string }>
+        }
+        const restored = data.messages || []
+        if (cancelled || restored.length === 0) return
+
+        setMessages((current) => {
+          // Re-check INSIDE the setter: the fetch is async, so the visitor may
+          // have started typing a new message while it was in flight. Restoring
+          // over that would destroy live content.
+          if (current.length > 0) return current
+          return restored.map((m, i) => ({
+            id: `restored-${i}`,
+            role: m.role,
+            content: m.content,
+          }))
+        })
+        // A restored transcript is a real conversation, so show the live chat
+        // rather than the scripted example exhibit.
+        setShowLive(true)
+      } catch {
+        // Never break the widget over a failed restore.
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // Abort any in-flight stream when component unmounts

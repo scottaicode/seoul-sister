@@ -163,15 +163,66 @@ This visitor has chatted with you before. Here's what you know about them:
   return context
 }
 
+/** Why a memory generation attempt produced no stored row. */
+export type MemoryWriteOutcome =
+  | 'saved'
+  | 'no_json_in_response'
+  | 'parse_failed'
+  | 'write_failed'
+  | 'threw'
+
 /**
- * Generate and save AI memory for a visitor. Fire-and-forget.
+ * Generate and save AI memory for a visitor.
  * Merges existing memory with current session messages.
- * Triggered every 3rd message in a session.
+ * Triggered every 3rd message in a session, by the widget chat route.
+ *
+ * RETURNS THE OUTCOME — do not go back to returning void (Aug 18 2026).
+ *
+ * THE DEFECT THIS CLOSES. Every failure path here used to be shaped exactly
+ * like success: `if (!jsonMatch) return` swallowed a parse miss, and the final
+ * `.update(...)` discarded its result entirely (no `error` destructure), so an
+ * RLS/constraint/network failure on the write was invisible. The caller got
+ * `void` either way. That is the "destructuring only data" class CLAUDE.md
+ * names as this repo's most expensive bug.
+ *
+ * WHAT IT COST. Measured on two real visitors:
+ *   - a7db713a (Aug 17): the every-3rd trigger CAME DUE at her message 3
+ *     (18:49 UTC) and `ai_memory` is still `{}`.
+ *   - f7fdf10b (Aug 18): a due fire in her second session left zero
+ *     session-2 content in her stored memory; on her return Yuri re-asked
+ *     the climate and burn/tan she had already answered.
+ * The trigger fired and nothing was written, and "fired and failed" was
+ * indistinguishable from "never fired" in the database — the fourth of the
+ * four questions failing on a live loop. The first instinct was to change the
+ * `% 3` cadence; that would have been more machinery bolted onto a pipe nobody
+ * had ever watched run.
  */
 export async function generateAndSaveMemory(
   visitorId: string,
   sessionMessages: Array<{ role: string; content: string }>
-): Promise<void> {
+): Promise<MemoryWriteOutcome> {
+  // Record the outcome on the visitor row as well as returning it. A log line
+  // is not observability — the Olive Young refresher warned to console.warn for
+  // ~130 consecutive nights while writing nothing, because nobody reads Vercel
+  // logs. This makes the failure queryable tomorrow.
+  // Deliberately best-effort and never throwing: observability must not be able
+  // to break the thing it observes.
+  const stamp = async (outcome: MemoryWriteOutcome) => {
+    try {
+      const { error } = await getServiceClient()
+        .from('ss_widget_visitors')
+        .update({ memory_write_status: outcome, memory_write_at: new Date().toISOString() })
+        .eq('visitor_id', visitorId)
+      // A missing column (migration not yet applied) must not look like a
+      // memory failure, so this is logged distinctly and swallowed.
+      if (error) console.error('[widget/persistence] memory: status stamp failed', {
+        visitorId, code: error.code, message: error.message,
+      })
+    } catch (stampErr) {
+      console.error('[widget/persistence] memory: status stamp threw', { visitorId, stampErr })
+    }
+  }
+
   try {
     const supabase = getServiceClient()
 
@@ -225,16 +276,49 @@ Return JSON with these fields:
 
     // Parse JSON from response (handle markdown code blocks)
     const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) return
+    if (!jsonMatch) {
+      console.error('[widget/persistence] memory: no JSON object in model response', {
+        visitorId,
+        textPreview: text.slice(0, 200),
+      })
+      await stamp('no_json_in_response')
+      return 'no_json_in_response'
+    }
 
-    const memory = JSON.parse(jsonMatch[0])
+    let memory: unknown
+    try {
+      memory = JSON.parse(jsonMatch[0])
+    } catch (parseErr) {
+      // A truncated or malformed object. Distinct from "the model said nothing
+      // JSON-shaped" — they point at different fixes (max_tokens vs prompt).
+      console.error('[widget/persistence] memory: JSON.parse failed', { visitorId, parseErr })
+      await stamp('parse_failed')
+      return 'parse_failed'
+    }
 
-    await supabase
+    // CHECK THE ERROR. A dead write here used to read as a clean save.
+    const { error: writeError } = await supabase
       .from('ss_widget_visitors')
       .update({ ai_memory: memory })
       .eq('visitor_id', visitorId)
+
+    if (writeError) {
+      console.error('[widget/persistence] memory: WRITE FAILED', {
+        visitorId,
+        code: writeError.code,
+        message: writeError.message,
+      })
+      await stamp('write_failed')
+      return 'write_failed'
+    }
+
+    await stamp('saved')
+    return 'saved'
   } catch (err) {
     console.error('[widget/persistence] Memory generation failed:', err)
-    // Non-critical — never break the conversation
+    // Non-critical — never break the conversation. But the caller now learns
+    // that it failed, instead of receiving the same `void` as a success.
+    await stamp('threw')
+    return 'threw'
   }
 }
