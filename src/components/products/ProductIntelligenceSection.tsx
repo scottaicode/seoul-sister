@@ -109,15 +109,22 @@ export default function ProductIntelligenceSection({ productId, productName, pro
   // Not a subscriber — show gated sections + subscribe CTA
   return (
     <>
-      {/* FREE Yuri offer FIRST (Aug 18 2026). It already sat on this page
-          (added July 27) but rendered FIFTH — beneath four "Subscribe to
-          unlock" teasers and above a $24.99 register wall. An anonymous
-          visitor arriving from an AI citation therefore met three locked
-          panels before the one thing that is free.
-          That inverts the only conversion path this product has ever had:
-          the sole paying subscriber converted BECAUSE Yuri gave real value
-          before any ask. Order is the whole fix — nothing new is promised,
-          and the teasers below are unchanged. */}
+      {/* FREE Yuri offer FIRST (Aug 18 2026). This COMPLETES d0f96f8 (Jul 27,
+          "route AI-citation arrivals to free Yuri instead of a locked
+          paywall"), which unlocked this card but left it FIFTH inside the
+          gated container — so a stranger arriving from a citation about a
+          specific product still met four "Subscribe to unlock" panels before
+          the one thing that is free. Order is the whole fix: nothing new is
+          promised, and the teasers plus the $-wall below are unchanged.
+
+          NOT graded, and deliberately claims no conversion effect:
+          source='product' is 3 visitors / 6 messages / 0 emails lifetime, and
+          the one paying subscriber's visitor rows carry source=NULL — she
+          arrived via the landing widget and converted off the recap email, so
+          her path never touched this component. The justification is that
+          showing locks before value is a rejection sequence, not a scarcity
+          ladder — consistent with the v11.26.0 decision NOT to add a subscribe
+          CTA at the widget close (selling orientation subtracts trust). */}
       <div className="mb-6">
         <AskYuriAboutProduct productName={productName} productBrand={productBrand} />
       </div>

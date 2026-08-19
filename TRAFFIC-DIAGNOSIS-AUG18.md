@@ -10,39 +10,102 @@ what was deliberately NOT shipped.
 
 | Metric | Value | Source |
 |---|---|---|
-| GSC impressions / 28d | 11,209 | `ss_seo_reports` (window ending Aug 13) |
+| GSC impressions (window `2026-07-17`→`2026-08-13`) | 11,209 | `ss_seo_reports` — NOT "last 28d"; 5 days stale |
 | GSC clicks / 28d | 64 (**0.57% CTR**) | same |
-| Engaged widget visitors (lifetime) | 78 | `ss_widget_visitors WHERE total_messages > 0` |
-| Emails captured | 15 (19.2% of engaged) | same |
-| Paying subscribers from widget | **1** (1.28%) | distinct `converted_user_id` |
+| Widget visitors who chatted (lifetime) | 79 | `ss_widget_visitors` — every row has messages, so this is NOT a funnel top |
+| Emails captured | 15 | rate vs a real denominator is UNKNOWN (see caveats) |
+| Paying subscribers from widget | **1** | distinct `converted_user_id`; source=NULL on both rows |
 | Blog pages | 7,059 impr → 42 clicks, avg pos **13.8** | GSC rows |
-| `/best/*` pages | 1,781 impr → 7 clicks, avg pos **34.9** | GSC rows |
+| `/best/*` pages | 1,843 impr → 9 clicks, wtd pos **36.8** | GSC rows (corrected in review) |
 
-**~5 engaged visitors/week is the entire top of funnel.** Traffic volume, not
-conversion, is the binding constraint.
+**~5 chatting visitors/week is the entire measured top of funnel.** Traffic
+volume, not conversion, is the binding constraint — this survived review, though
+the reasoning behind it did not (see below). The honest form is *"nothing is
+measurable at n=79"* rather than any quoted conversion rate.
 
-### The intent finding (the one that survived review)
+### The intent finding — REFUTED BY ADVERSARIAL REVIEW (Aug 19)
 
-Controlling for position — the obvious confounder — at positions ≤20:
+**An earlier version of this file claimed informational intent explained the CTR
+gap. Two adversarial reviews refuted it. The claim is withdrawn.**
 
-| Query intent | Impressions | Clicks | CTR | Avg position |
-|---|---|---|---|---|
-| Informational (`how/why/what/can/does/is`) | 957 | 1 | **0.104%** | **6.7** |
-| Commercial-ish (`vs/fake/dupe/worth/review/best X for`) | 1,672 | 10 | **0.598%** | 8.2 |
+The refutation that settles it is structural and does not depend on how queries
+are classified:
 
-Informational queries rank **BETTER** (6.7 vs 8.2) and convert **5.7x WORSE**.
-Position is ruled out. Intent is doing the work.
+| Exact position | Impressions | Clicks | CTR |
+|---|---|---|---|
+| 1 | 131 | 2 | **1.53%** |
+| 2 | 412 | 10 | 2.43% |
+| 3 | 622 | 4 | 0.64% |
+| 4-10 | 4,707 | 26 | 0.55% |
+| 11-20 | 1,788 | 15 | **0.84%** |
 
-Corroborating: informational queries trigger AI Overviews ~36% of the time vs
-8% commercial / 5% transactional (Seer Interactive). Running our own biggest
-query live, the AI summary answered it completely — naming Numbuzin No.5,
-Goodal Niacinamide 10%, COSRX snail mucin — before any blue link.
+**Position 1 earns 1.53% where a normal site earns 25-35%** — a ~20x shortfall,
+worse than the 4-10 band the brief focused on. And the curve is nearly FLAT:
+position 11-20 outperforms position 4-10.
 
-Our own click data agrees: `sulwhasoo fake vs real` 18.2% CTR, `best toner for
-pie` 20%, `korean skincare for sebaceous filaments` 4.8% — against **0%** on
-broad informational pages ranking higher.
+This excludes BOTH candidate explanations. AI Overviews suppress the TOP results
+hardest, so if AIO were the cause position 1 would be crushed relative to
+position 10 — it is not. Ranking cannot be the cause either, since ranking better
+does not help. Something suppresses clicks at *every* position.
 
----
+**The intent classifiers disagree with each other, which is the tell.** My
+classifier on rows >=10 impressions returns informational 0.000% vs commercial
+0.639%; the reviewer's returns informational 0.71% vs commercial 0.49% — opposite
+conclusions from the same GSC snapshot. **When the answer flips with the bucketing
+rule, the answer is an artifact of the bucketing rule.** Neither result should be
+used.
+
+### What the evidence actually supports: query-page relevance
+
+The strongest signal in the dataset, and it needs no classifier.
+
+**One page**, `sebaceous-filaments`, across its own queries:
+
+| Query | Impr | Clicks | Position |
+|---|---|---|---|
+| `sebaceous filaments` | 233 | 1 | **3.4** |
+| `sebaceous filaments korean skincare` | 128 | 0 | 8.4 |
+| `korean skincare for sebaceous filaments` | 105 | **5** | **10.2** |
+
+CTR RISES from 0.4% to 4.8% as position FALLS from 3.4 to 10.2. Same page, same
+SERP features, same intent — position and AIO are excluded by construction. What
+varies is how well the page fits the query.
+
+**Confirmed at scale on the clearest case:** the page titled *"Why Is K-Beauty So
+**EXPENSIVE**"* ranks for *"why is k-beauty so **CHEAP**"* and variants —
+**145 impressions, 0 clicks**. Google is ranking it for the semantic OPPOSITE of
+its thesis. That is not zero-click behaviour; it is a searcher correctly rejecting
+an irrelevant result.
+
+### Zero-click pages in the top 15 (853 impressions, 0 clicks)
+
+| Page | Impr | Avg pos | Diagnosis |
+|---|---|---|---|
+| `/blog/...snail-mucin-is-fake...` | 296 | 8.5 | **Not** a mismatch — queries fit, title/meta are good. Page 7-8 against stronger brands. |
+| `/blog/why-is-k-beauty-so-expensive...` | 213 | 8.3 | **Inverted intent** — ranks for "cheap". Fixable. |
+| `/blog/...expiration-dates-and-batch` | 116 | 7.7 | Answered fully in the SERP; also may not hold page 1 live. |
+| `/blog/best-japanese-korean-sunscreens...` | 54 | 8.0 | — |
+| `/best/spot-treatments` | 45 | 11.7 | — |
+
+**These have different causes and need different fixes.** Lumping them under one
+story is what produced the withdrawn claim.
+
+### Dataset caveats (from review, verified)
+
+- **The GSC window is `2026-07-17` to `2026-08-13`** — NOT "last 28 days". It is
+  5 days stale and predates everything shipped since Aug 13.
+- **77% of rows are noise**: 2,205 of 2,853 rows have <=2 impressions.
+- **17 rows are LLM prompt text leaking into GSC** ("context: location: united
+  states (not for language)..."), 63 impressions.
+- **The widget denominator does not exist.** All 79 `ss_widget_visitors` rows have
+  `total_messages > 0` — the table only records people who chatted. "78 engaged
+  visitors" is a conversation count, not a funnel top. The real denominator is
+  recorded nowhere.
+- **`/best` numbers were slightly wrong**: 1,843 impr / 9 clicks (not 1,781/7),
+  impression-weighted position 36.8 (not 34.9).
+- **"Blog converts best" is not supportable**: blog 6 visitors / 2 emails, but
+  `products_cta` is 2 visitors / 2 emails (100%), and **48 of 79 visitors have
+  `source = NULL`** (61% missing).
 
 ## TWO CLAIMS THAT WERE WRONG (recorded so they are not repeated)
 
@@ -87,9 +150,12 @@ The grep that missed it searched the page file; the CTA lives in a child compone
 
 **Problem:** posts average 2,021 words (median 1,775) and both Yuri entry points
 rendered *after the entire body* (`page.tsx:364`, `:434`). A visitor had to
-finish a ~2,000-word article before being offered the product. Blog arrivals
-convert to captured leads better than any other source (two on Aug 18 alone,
-3 and 7 messages, **both gave emails**).
+finish a ~2,000-word article before being offered the product.
+
+**NOT justified by "blog converts best"** — that claim was withdrawn in review:
+blog is 6 visitors / 2 emails lifetime, while `products_cta` is 2/2 (100%), and
+61% of sessions have `source = NULL`. The justification is simply that an offer
+placed after 2,000 words is an offer most readers never reach.
 
 **Approach — split, do not inject.** `src/lib/utils/article-split.ts` splits the
 rendered HTML at a tag boundary and the page renders two sibling divs with the
@@ -164,33 +230,127 @@ exactly like a code defect. Now bounded at the next top-level `function`.
 |---|---|---|
 | **`?ask=` auto-send** | **REJECTED** | `/api/widget/chat` has rate limiting (25/IP/day) but **no Turnstile/bot check** (`route.ts:31,361`). Auto-sending on page load would let any crawler hitting a `?ask=` URL trigger a paid Opus call. Also removes the visitor's chance to edit the question. |
 | **`meta_title` backfill** | **DEFERRED** | `src/app/api/admin/content/ingest/route.ts:61,123` does a full `.update(row)` keyed on `lgaas_post_id`. A local backfill is **silently overwritten** on the next LGAAS ingest. Must be fixed upstream in LGAAS. Low value anyway — Google overrides the tag. |
-| **Credentialed byline** | **BLOCKED** | `ss_content_posts.author` is `"Seoul Sister Team"` on **all 46 posts**; there is **no named human editor**. "Reviewed by" would imply a human review process that does not exist — an unsubstantiated claim on a customer-facing surface. The DB figures do check out (5,311 verified products, 5,244 with INCI), so a *methodology* statement is defensible; a *credential* is not. Needs a real named reviewer before shipping. |
-| **Nurture extension past day 8** | **NOT DONE** | Real gap — `STEP_DELAYS_DAYS = [0,3,5]`, and **17 of 47 leads have permanently exhausted** the sequence. But adding steps risks retroactively mailing leads who finished weeks ago; needs idempotency/backfill design first. |
-| **`/best` page work** | **DEFERRED** | Avg position 34.9 against brand-owned competition needs authority measured in quarters. |
+| **Credentialed byline** | **DROPPED** | `ss_content_posts.author` is `"Seoul Sister Team"` on **all 46 posts**; there is **no named human editor**. "Reviewed by" would imply a human review process that does not exist — an unsubstantiated claim on a customer-facing surface. The DB figures do check out (5,311 verified products, 5,244 with INCI), so a *methodology* statement is defensible; a *credential* is not. Review then killed it outright: `is_verified` is a completeness cron with no human check, 62 verified rows contradict their own INCI today, and the "an MD outranks us" premise is false (live SERP: SS at #4 and #6, the MD at #8). A named human on unverified AI content is the deceptive-endorsement pattern. |
+| **Nurture extension past day 8** | **NOT DONE** | Real gap — `STEP_DELAYS_DAYS = [0,3,5]`, and **17 of 47 leads have permanently exhausted** the sequence. But email 3 says **"This is the last email either way"** (`nurture-copy.ts:83,90`) and all 17 completers become due on the NEXT cron run — breaking a written promise to 100% of completers on the honesty-moat brand. Safe form is a separate opt-in sequence for NEW enrollees only. |
+| **Shift content to commercial intent** | **DROPPED** | Rested on the refuted Claim B. The highest-volume commercial query in the dataset earns 0 clicks at position 8. |
+| **`/best` page work** | **DEFERRED** | Weighted position 36.8 against brand-owned competition needs authority measured in quarters. |
 | **More AI citations** | **DEFERRED** | A cited AIO result earns +120% clicks vs uncited competitors but still **−38%** vs no-AIO at all (Seer, 53 brands / 5.47M queries). Citation is a relative advantage, not traffic restoration. Already at 525/wk. |
+
+---
+
+## THE HIGHEST-RETURN WORK — surfaced by review, NOT yet done
+
+Neither the brief nor the shipped changes address this. Both reviewers
+independently landed on it.
+
+**1. Fix query-page relevance on the ~5 pages that already have impressions.**
+The "expensive" page bleeds **145 impressions at 0%** on inverted-intent "cheap"
+queries. One page, one afternoon, and the `sebaceous-filaments` data proves the
+mechanism (4.8% on the fitting query vs 0.4% on the head term). Either retarget
+the page to cover both framings honestly, or accept the mismatch and stop
+counting those impressions as an opportunity.
+
+**2. Fix source attribution — 48 of 79 visitors have `source = NULL` (61%).**
+No channel can be prioritised until this works. This blocks grading every other
+item in this file, including the two changes that shipped.
+
+**3. The 20-minute test that would settle the withdrawn intent claim:** incognito
+SERP check on the 8 queries with >=50 impressions, recording (a) is there an AI
+Overview, (b) does Seoul Sister actually appear on page 1. The brief asserted AIO
+presence but only ever checked one query, and a reviewer spot-check found one
+headline page absent from the live top 10 entirely (`expiration dates` — Soko Glam
+owns it, so "position 4.9" is a long-tail averaging artifact).
 
 ---
 
 ## Second-model review status
 
-**Two adversarial reviewers were spawned** (Opus for evidence, Fable for
-implementation), instructed to REFUTE rather than approve, and given the two
-prior wrong claims as context. **Neither returned findings before these changes
-were made.** The `persona-review-gate` hook fired on the test file and is
-acknowledged here rather than bypassed.
+**Two adversarial reviews were run (Opus + Fable), instructed to REFUTE.** They
+returned AFTER the initial commit and found real defects. Both are recorded here
+rather than quietly absorbed.
 
-What was done instead, and what it does and does not cover:
-- Both shipped changes are **placement/ordering only** — no persona prompt
-  edit, no new customer-facing promise, no new capability claim.
-- The one change that WOULD have been a customer-facing claim (the byline) is
-  **blocked** pending a real named reviewer.
-- The riskiest proposal (`?ask=` auto-send) was **rejected on evidence I
-  verified myself** (`route.ts` has no bot check).
+### What they refuted
 
-**Still owed:** an adversarial review before the byline or the nurture extension
-ships. Neither is in this change set.
+| Claim | Verdict |
+|---|---|
+| A — traffic is the binding constraint | **SURVIVES**, but on "nothing is measurable at n=79", not on the quoted rates |
+| B — informational intent / AI Overviews | **REFUTED** — see the flat position curve above |
+| C — 0.55% at pos 4-10 is a 6-10x shortfall | **REFUTED as stated** — the real shortfall is at position 1 (~20x) and excludes both explanations |
+| D — do not rebuild the funnel | **SURVIVES**, weakened denominator |
+| E — leave `/best` alone | **SURVIVES**, numbers corrected |
+| F — do not chase citations | **SURVIVES** — the only claim verified at primary source (Seer, 5.47M queries / 53 brands) |
 
----
+### What they changed in the shipped code
+
+1. **A guard test broke on a correct change.** `geo-citation-funnel.test.mjs`
+   scoped its assertion to the `product-gated-content` div; moving the CTA
+   *outside* that div made it report red on an improvement. Rescoped to the
+   anonymous return block and **additionally** made it assert the ordering.
+   Note the irony recorded by the reviewer: that test's own comment says an
+   earlier version "passed even with the bug reintroduced" — it was hardened once
+   for a false GREEN and has now produced a false RED. Both are the same defect:
+   the assertion was anchored to markup structure instead of to the rule.
+   (This was already fixed before commit; the reviewer read the mid-flight tree.)
+
+2. **A causal claim in a code comment was deleted.** The comment asserted the
+   sole paying subscriber "converted BECAUSE Yuri gave real value before any
+   ask." Verified against production: **her visitor rows carry `source = NULL`**
+   — she arrived via the landing widget and converted off the recap email ~14h
+   later. Her path never touched `/products/[id]`. The comment now cites
+   **d0f96f8 (Jul 27)** instead, whose stated purpose was exactly this change and
+   which left the card in the fifth slot — so this **completes** that commit
+   rather than reversing it. A comment asserting an unsupported causal finding is
+   precisely what the "name the row" rule exists to prevent.
+
+### What they killed
+
+**The credentialed byline (action #2) is DROPPED, not deferred.** Three findings
+beyond the missing editor:
+
+- **"Verified" is false as a public claim.** `is_verified` is set by a nightly
+  cron (`src/lib/pipeline/auto-promote-verified.ts`) on *data completeness*:
+  name/brand/category present, `ingredients_raw` populated, >=1 price, >=8
+  ingredient links. **No human ever checks a row.** "Verified INCI database"
+  reads to a consumer as "checked against the manufacturer" — unsubstantiated,
+  and the shape FTC "Operation AI Comply" targets.
+- **It is wrong on live rows today.** 67 products are flagged verified with no
+  INCI at all, and on two test terms alone **62 verified products assert a
+  description ingredient their INCI contradicts**. Our own audit for this is
+  OPEN (`scripts/audit-description-inci-mismatch.ts`, dry-run dated 2026-08-18).
+- **The motivating premise was backwards.** Live SERP for `best korean skincare
+  for pih`: **Seoul Sister at #4 AND #6; koreanskincarecoach.com at #8, below
+  both.** The single fact that motivated the recommendation is false.
+- **A named human on AI-generated content no human verified is the
+  deceptive-endorsement pattern** — it converts diffuse brand risk into personal
+  liability for whoever is named. The name is the most dangerous element, not the
+  missing one.
+
+**Action #4 (shift to commercial intent) is also dropped** — it rested on the
+refuted Claim B, and the highest-volume commercial query in the dataset
+("how to identify fake cosrx snail mucin", 59 impr, pos 8.0) earns **0 clicks**.
+
+### One reviewer recommendation NOT adopted
+
+A reviewer called the nurture extension "the strongest item on the list" and said
+to just ship it. **The other reviewer showed it would break a written promise to
+17 real people within minutes of deploy** — email 3's subject is
+*"(last email, promise)"* and its body says *"This is the last email either way"*
+(`nurture-copy.ts:83,90`), and all 17 completers become due on the next cron run.
+On the brand whose stated moat is honesty, that is not a close call. If more
+touches are wanted, the safe form is a **separate opt-in sequence for NEW
+enrollees**, which avoids the promise entirely.
+
+### Known limitation recorded, not fixed
+
+`nthH2Index` is not depth-aware despite its "top-level" comment: an `<h2>` nested
+in a blockquote would split mid-container. **Measured against all 46 published
+bodies: zero current exposure** (no blockquoted h2s; the one post with raw `<h2>`
+HTML has it at top level). Recorded so the first LGAAS post that does this does
+not surprise anyone.
+
+**Neither review was itself second-model reviewed.** The `sebaceous-filaments`
+inversion is n=1 page. AIO presence was confirmed on only 2 queries — the
+20-minute incognito check above is what would settle Claim B for good.
 
 ## How to read whether this worked
 
