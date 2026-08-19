@@ -1,5 +1,22 @@
 # LGAAS Work Order — the "cheap" vs "expensive" intent mismatch
 
+> **STATUS: COMPLETED Aug 19 2026 by LGAAS. One instruction in this file was
+> WRONG and was correctly refused — see the box below before reading further.**
+>
+> **The Korea-vs-US price table asked for below CANNOT be built from our data,
+> and LGAAS was right to decline it.** Verified independently: only **50
+> products** have both an Olive Young and a US price, and **90% of Olive Young
+> price rows share their price with at least one other product** (158 products
+> at exactly $34.04, 127 at $22.56) — brand-level placeholders, not per-SKU
+> prices. Only **490 of 4,917 rows (10%)** carry a unique price.
+>
+> Publishing that table would have produced confident-looking numbers that are
+> wrong. LGAAS shipped the post grounded in figures it could defend instead.
+> Full measurement and the wider implications (this affects **Yuri's price
+> quotes**, not just the blog) are in **`PRICE-BLOCK-PLACEHOLDER-FINDING.md`**.
+>
+> Do not re-issue the price-table instruction.
+
 **Raised:** Aug 19 2026 · **Owner:** LGAAS blog pipeline · **Priority:** medium
 **Type:** ONE new post + one small edit to an existing post. Not a pipeline change.
 
@@ -77,10 +94,13 @@ the current top results are thin retailer content-marketing pages
 - **Target query:** `why is korean skincare so cheap` (+ the "k-beauty",
   "korean beauty products", and question-mark variants above).
 - **Angle that only Seoul Sister can write:** answer the cheap question
-  honestly, then use our own catalog to show where the money actually goes —
-  we hold live Korean *and* US retailer pricing on ~4,769 verified products.
-  A real Korea-price vs US-price table is content the four incumbents
-  structurally cannot produce.
+  honestly. ~~Then use our own catalog to show where the money actually goes —
+  we hold live Korean *and* US retailer pricing on ~4,769 verified products.~~
+  **STRUCK Aug 19 2026 — this premise is false.** Only 50 products have both a
+  Korean and a US price, and 90% of Olive Young rows carry a shared
+  brand-level placeholder rather than a per-SKU price. See
+  `PRICE-BLOCK-PLACEHOLDER-FINDING.md`. Ground the piece in figures that hold
+  (catalog size, brand count, INCI coverage), never in a price ratio.
 - **Must link** to the existing "expensive" post as the companion (the
   Korea-cheap / US-expensive pair is the whole story).
 - Follow `BLOG-PRE-PUBLISH-CHECKLIST.md`. Ground every price claim in
