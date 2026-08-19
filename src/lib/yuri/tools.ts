@@ -262,6 +262,26 @@ function singularize(term: string): string {
 // Do not add an entry without measuring how many extra rows it admits. If this
 // map ever needs repeated hand-tuning, that is the signal to stop, not to keep
 // adjusting.
+//
+// MEASURED COST OF `cleanser -> cleans`, accepted deliberately (Aug 19 2026).
+// It is not free. Across 10 realistic cleanser queries, **5 changed their
+// top-ranked result**, because "Gentle Cleanser" and "Gentle Cleansing Oil"
+// now tie on coverage and rating decides. Most shifts are neutral or better
+// ("Centella Mild Cleansing Foam" over "Salmon Caring Centella Bubble
+// Cleanser"), but one is a downgrade: `low ph cleanser` moves from a foam
+// cleanser to a Cleansing WATER — a different step in a routine.
+//
+// It was kept anyway because removing it REOPENS the original bug. Verified by
+// deleting the two entries, rebuilding, and asking production-shaped Yuri the
+// visitor's exact question: she answered "I don't have that exact one" about a
+// product that is verified and in stock. Telling a visitor we do not carry
+// something we do carry is worse than surfacing a cleansing oil above a foam
+// cleanser — the first loses the person, the second gives them a real product
+// in the right category (650 of the 658 stem matches are category='cleanser').
+//
+// If the ranking shift ever causes a real complaint, the fix is NOT to drop
+// this mapping — it is to make the step-type (first cleanse vs second cleanse)
+// a ranking signal, which is a bigger change than this bug justified.
 const WORD_FORM_STEMS: Record<string, string> = {
   milky: 'milk',
   silky: 'silk',

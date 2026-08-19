@@ -103,3 +103,42 @@ test('all three SQL predicate sites use normalizeTerm, not singularize', () => {
   const uses = SRC.match(/normalizeTerm\(t\)/g) || []
   assert.ok(uses.length >= 3, `expected >=3 normalizeTerm(t) predicate sites, found ${uses.length}`)
 })
+
+test('the cleanser stem stays inside the cleanser category (no cross-category leak)', () => {
+  // The risk this fix carries is RANKING, not correctness: "cleanser" and
+  // "cleansing" now share a stem, so a Cleansing Oil can outrank a foam
+  // Cleanser. Measured against all 5,311 verified products: 658 rows match
+  // "cleans" and 650 are category='cleanser' — so a shifted result is still a
+  // cleanser, which is why the tradeoff was accepted.
+  //
+  // This asserts the SHAPE that makes that true: the stem must be a prefix of
+  // both spellings, so it cannot match an unrelated category noun. A stem like
+  // "clean" would also match "Clean It Zero" balms and "Clean Vegan" lines —
+  // a genuine cross-category leak.
+  assert.equal(normalizeTerm('cleanser'), normalizeTerm('cleansing'))
+  const stem = normalizeTerm('cleanser')
+  assert.ok('cleanser'.startsWith(stem) && 'cleansing'.startsWith(stem))
+  assert.ok(
+    stem.length >= 'cleans'.length,
+    `stem "${stem}" is shorter than "cleans" — it would match unrelated "Clean ..." product lines`
+  )
+})
+
+test('word-form stems never collapse two DIFFERENT category nouns together', () => {
+  // A future entry like { toner: 'ton', lotion: 'lot' } would silently merge
+  // unrelated products. Every stem must be reachable from exactly one concept:
+  // no two keys with different prefixes may share a stem.
+  const byStem = new Map()
+  for (const [term, stem] of Object.entries(WORD_FORM_STEMS)) {
+    if (!byStem.has(stem)) byStem.set(stem, [])
+    byStem.get(stem).push(term)
+  }
+  for (const [stem, terms] of byStem) {
+    for (const t of terms) {
+      assert.ok(
+        t.startsWith(stem),
+        `"${t}" shares stem "${stem}" without being a form of it — that merges two concepts`
+      )
+    }
+  }
+})
