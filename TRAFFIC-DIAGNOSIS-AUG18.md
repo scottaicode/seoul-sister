@@ -441,3 +441,57 @@ Compare in GSC/DB in **2–3 weeks** (from Aug 18):
 **Honest limit:** at ~5 engaged visitors/week, a placement change cannot be
 measured to significance quickly. These are correct on their own terms
 (free-before-locked, value-before-2000-words), not A/B-proven.
+
+---
+
+## Aug 19 — two defects from the Aug 18 transcript
+
+Visitor `3132cf61`, heat-reactive skin + suspected rosacea, 4 messages,
+arrived from **`nurture_1`** (the nurture email drove a real conversation).
+Yuri performed well: every price she quoted verified correct, she held the
+retailer policy under a $4.25 gap, referred to a dermatologist three times,
+refused to guess on an unknown product, and talked the visitor OUT of
+replacing a cleanser. Two defects.
+
+### FIXED — the search miss (commit `61558bb`)
+
+She said *"I couldn't pull that exact product in our catalog"* about a product
+that **is** in the catalog. Detail in the commit message. The short version:
+"milky cleanser" vs the catalog's "Cleansing Milk" — two word-form mismatches
+at once, and fixing only the obvious one still returns zero rows.
+
+### NOT FIXED — the stale-price caveat. This was measured and deliberately left.
+
+In the same message Yuri caveated one price (*"fresh price, 3 days old"* —
+accurate to the day) and quoted another with no caveat that was **134 days
+stale**. My first read was that this is a Yuri judgment defect needing a
+prompt rule. **Measuring it says otherwise.**
+
+| Retailer | Rows | Fresh ≤14d | Stale >90d | Newest |
+|---|---|---|---|---|
+| Olive Young | 4,917 | 2,351 | **2,561** | today |
+| YesStyle | 140 | 10 | 117 | today |
+| Soko Glam | 61 | 34 | 15 | today |
+
+**The refresher is working** — 342-393 rows/day, restarted Aug 15, newest row
+is today. It is mid-sweep through a ~12-day cycle after the v11.28.0 repair,
+so **the Jumiso row self-heals within days without any code change.**
+
+**Why a prompt rule would be the wrong fix:** 52% of Olive Young prices are
+currently >90 days old. A mandatory staleness caveat would make Yuri hedge on
+**roughly half of every price she ever quotes** — permanently, to correct a
+transient backlog. CLAUDE.md forbids exactly this: *"A Yuri who starts saying
+'I'm just an AI' about ordinary skincare questions is a REGRESSION."* The same
+logic applies to prices.
+
+**The honesty instrument already exists and works.** `search_products` returns
+`price_age_days` (`tools.ts:1878`) and `compare_prices` returns `is_stale` /
+`age_days`. She HAD the data on both prices and used it on one. That is a
+judgment call on a fact she could see — not a missing fact, which is the only
+thing this repo's own rules say to fix with a prompt change.
+
+**Re-read this when the sweep completes (~Sept 1).** If `stale >90d` has
+dropped sharply and Yuri is still quoting old prices without caveats on the
+products she actually recommends, then it IS a judgment problem and worth
+revisiting. **Do not add the rule before that measurement** — it would be
+tuning behaviour against a condition that is already correcting itself.
