@@ -250,16 +250,59 @@ mechanism (4.8% on the fitting query vs 0.4% on the head term). Either retarget
 the page to cover both framings honestly, or accept the mismatch and stop
 counting those impressions as an opportunity.
 
-**2. Fix source attribution — 48 of 79 visitors have `source = NULL` (61%).**
-No channel can be prioritised until this works. This blocks grading every other
-item in this file, including the two changes that shipped.
+**2. Source attribution — ALREADY FIXED (measured Aug 19). Not work; a stale
+premise.** The reviewer's "61% NULL" is a LIFETIME average that hides a fix
+which already landed. NULL rate by week:
 
-**3. The 20-minute test that would settle the withdrawn intent claim:** incognito
-SERP check on the 8 queries with >=50 impressions, recording (a) is there an AI
-Overview, (b) does Seoul Sister actually appear on page 1. The brief asserted AIO
-presence but only ever checked one query, and a reviewer spot-check found one
-headline page absent from the live top 10 entirely (`expiration dates` — Soko Glam
-owns it, so "position 4.9" is a long-tail averaging artifact).
+| Week | Sessions | NULL % |
+|---|---|---|
+| ≤ Jun 22 | — | **100%** |
+| Jun 29 | 4 | 75% |
+| Jul 6 / 13 / 20 | 24 | 60-64% |
+| Jul 27 | 4 | 25% |
+| Aug 3 | 10 | 40% |
+| **Aug 10** | **11** | **0%** |
+| **Aug 17** | **6** | **0%** |
+
+Two commits produced the cliff, and the dates match the data exactly:
+- **`f1c1b3e` (Jul 13)** — "source capture was gated behind `?ask=`", so any
+  arrival without that param went untagged. 100% → ~62%.
+- **`d0f96f8` (Jul 27)** — AI-referrer capture (`src/lib/widget/ai-referrer.ts`).
+  ~62% → 0%.
+
+The last 17 sessions across two weeks carry **9 distinct sources**, including a
+`nurture_1` email click. Attribution works end to end today.
+
+**The historical signal is unrecoverable** — `document.referrer` was never
+stored for those rows, so no backfill is possible. Treat pre-August source data
+as absent, not as "direct traffic", and do not compute channel rates over the
+lifetime table.
+
+**3. The SERP check — RUN (Aug 19). Result: inconclusive on AIO, but it
+falsified one reviewer claim and confirmed the pages ARE on page one.**
+
+Two of the highest-impression zero-click queries, checked live:
+
+| Query | GSC position | Live rank | GSC clicks |
+|---|---|---|---|
+| `how to identify fake cosrx snail mucin` | 8.0 | **#4** | 0 |
+| `korean skincare expiration date how to read` | ~7.7 | **#5** | 0 |
+
+Both pages are genuinely **on page one and simply not clicked** — they are not
+absent, so the reviewer's "position 4.9 is a long-tail averaging artifact"
+does not hold for these (they tested a different query variant, which may still
+be true for that one).
+
+What both results DO show: the search result page answers the question
+completely — 제조 vs 까지, PAO symbols, date format, the full counterfeit
+checklist — before any link. Whether that is an "AI Overview" or simply a rich
+SERP, **the effect on the click is the same.**
+
+**Honest limit: this does NOT restore the withdrawn intent claim.** It is n=2,
+run through a search tool rather than a logged-out browser, and it cannot
+explain the finding that actually killed that claim — position 1 earning 1.53%.
+A page-one result that is not clicked is consistent with the rich-SERP story
+AND with the query-page-fit story. Two spot checks cannot separate them.
 
 ---
 
