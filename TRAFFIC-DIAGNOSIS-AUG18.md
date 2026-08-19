@@ -104,8 +104,11 @@ story is what produced the withdrawn claim.
 - **`/best` numbers were slightly wrong**: 1,843 impr / 9 clicks (not 1,781/7),
   impression-weighted position 36.8 (not 34.9).
 - **"Blog converts best" is not supportable**: blog 6 visitors / 2 emails, but
-  `products_cta` is 2 visitors / 2 emails (100%), and **48 of 79 visitors have
-  `source = NULL`** (61% missing).
+  `products_cta` is 2 visitors / 2 emails (100%), and **58 of 94 SESSIONS
+  (61.7%) have `source = NULL`** — all of them before Aug 9. (`ss_widget_visitors`
+  has no `source` column; visitor-level attribution comes from the first
+  session. 45 of 79 visitors have all-NULL sessions, none first seen after
+  Aug 10.) Channel math over all-time data is dominated by the dead bug.
 
 ## TWO CLAIMS THAT WERE WRONG (recorded so they are not repeated)
 
@@ -250,33 +253,64 @@ mechanism (4.8% on the fitting query vs 0.4% on the head term). Either retarget
 the page to cover both framings honestly, or accept the mismatch and stop
 counting those impressions as an opportunity.
 
-**2. Source attribution — ALREADY FIXED (measured Aug 19). Not work; a stale
-premise.** The reviewer's "61% NULL" is a LIFETIME average that hides a fix
-which already landed. NULL rate by week:
+**2. Source attribution — ALREADY FIXED, and by a different commit than I first
+recorded.** The reviewer's "61% NULL" is a lifetime average over a dead bug.
 
-| Week | Sessions | NULL % |
+**The clean boundary, split at commit `928657b` (Aug 9 2026 21:41 UTC):**
+
+| | Sessions | NULL | `landing` |
+|---|---|---|---|
+| Before the fix | 75 | **58** | — |
+| After the fix | 19 | **0** | 7 |
+
+**Three eras, each with a dated commit:**
+
+| Era | Sessions | State |
 |---|---|---|
-| ≤ Jun 22 | — | **100%** |
-| Jun 29 | 4 | 75% |
-| Jul 6 / 13 / 20 | 24 | 60-64% |
-| Jul 27 | 4 | 25% |
-| Aug 3 | 10 | 40% |
-| **Aug 10** | **11** | **0%** |
-| **Aug 17** | **6** | **0%** |
+| Mar 11 – Jun 28 | 35, 100% NULL | Attribution **did not exist**. Column + send path shipped Jun 29 (`44d166f`). Structurally unavoidable. |
+| Jun 29 – Aug 9 | 23 NULL of ~38 | Capture existed but was gated behind `?ask=` until `f1c1b3e` (Jul 13); no AI-referrer fallback until `d0f96f8` (Jul 27). |
+| Aug 10 → today | 19, **0 NULL** | `928657b` (Aug 9) added the raw-referrer-host fallback AND moved the `'landing'` floor **above** the `?ask=` early-return. |
 
-Two commits produced the cliff, and the dates match the data exactly:
-- **`f1c1b3e` (Jul 13)** — "source capture was gated behind `?ask=`", so any
-  arrival without that param went untagged. 100% → ~62%.
-- **`d0f96f8` (Jul 27)** — AI-referrer capture (`src/lib/widget/ai-referrer.ts`).
-  ~62% → 0%.
+**CORRECTION to my earlier entry in this file:** I credited the fix to
+`d0f96f8` (Jul 27). That is wrong — the Jul 27 work alone left 4 NULLs in the
+Aug 3-9 week. **`928657b` (Aug 9)** is what took it to zero, by making NULL
+structurally impossible: every arrival now gets at minimum `'landing'`. Its
+commit message says it plainly — *"77% of every conversation we have ever had
+was untagged"* — meaning **this exact investigation was already run and shipped
+10 days before I "found" it.**
 
-The last 17 sessions across two weeks carry **9 distinct sources**, including a
-`nurture_1` email click. Attribution works end to end today.
+**Also corrected: `ss_widget_visitors` has NO `source` column** (verified via
+`information_schema`). Visitor-level attribution is derivable only through the
+first session. Any dashboard written against a visitor-level `source` field
+would be querying a column that does not exist.
 
-**The historical signal is unrecoverable** — `document.referrer` was never
-stored for those rows, so no backfill is possible. Treat pre-August source data
-as absent, not as "direct traffic", and do not compute channel rates over the
-lifetime table.
+**The semantics now carry the repo's own discipline:** `'landing'` means
+*"capture ran, nothing attributable"*; NULL can only mean *"capture never
+ran."* That is why zero NULLs is proof the floor works, rather than merely an
+absence of data — the two states are distinguishable, which is exactly what the
+silent-failure rule asks for.
+
+**BACKFILL IS NOT POSSIBLE — say it plainly.** Source came from request-time
+state (URL params, `document.referrer`) that was never persisted anywhere else;
+visitors store only `ip_hash`/`user_agent_hash`. Only 2 of the 45 all-NULL
+visitors have an `ai_memory` that even mentions a channel word — anecdote, not
+attribution. **Any backfill would be fabrication.**
+
+**Correct handling:** label pre-Aug-10 sessions *"pre-attribution era"* and
+**exclude them from channel math**. Grade channels on data from 2026-08-10
+forward only. Any all-time channel query is dominated by the dead bug — which
+is precisely what produced the withdrawn "blog converts best" claim.
+
+**Live split since the fix:** ~59% tagged / ~41% `'landing'` (genuinely direct,
+no signal).
+
+**One recorded deferral, zero rows produced.** The client sets
+`sourceSentRef = true` BEFORE the fetch (`TryYuriSection.tsx:464`), and the
+per-IP abuse 429 returns before `createSession` (`route.ts:430ff`) — so a
+visitor whose *first* message trips the IP limit could later get a source-less
+session. It has never happened (0 NULLs since Aug 10). Fix only if it ever
+produces a row: flip the ref after a 2xx. Recorded here so it is a deferral in
+data, not an unknown gap.
 
 **3. The SERP check — RUN (Aug 19). Result: inconclusive on AIO, but it
 falsified one reviewer claim and confirmed the pages ARE on page one.**
