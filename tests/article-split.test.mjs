@@ -113,3 +113,22 @@ test('does not match h20-style tags (word-boundary discipline)', () => {
   const { head } = splitArticleForCta(tricky)
   assert.ok(head.includes('Real One') && !head.includes('Real Two'))
 })
+
+test('a post with only ### sections loses the mid-CTA — safely, and silently', () => {
+  // This documents the LGAAS dependency as an executable fact rather than only
+  // in a work order (LGAAS-WORK-ORDER-BLOG-H2-STRUCTURE.md).
+  //
+  // Seoul Sister places the mid-article Yuri CTA by splitting at the SECOND
+  // top-level <h2>. LGAAS owns the markdown. If a future post uses ### for all
+  // its sections, this returns didSplit:false and the post renders WHOLE with
+  // no mid-article CTA — no crash, no error, no failing test, just a quiet
+  // reversion to "CTA only after ~2,000 words".
+  //
+  // The assertion is that the failure is SAFE (content intact), not that it is
+  // impossible. Preventing it is LGAAS's side; all 46 posts satisfy it today.
+  const onlyH3 = '<p>Intro.</p><h3>One</h3><p>A.</p><h3>Two</h3><p>B.</p>'
+  const r = splitArticleForCta(onlyH3)
+  assert.equal(r.didSplit, false, 'no h2 means no split point')
+  assert.equal(r.head, onlyH3, 'the ENTIRE article must still render')
+  assert.equal(r.head + r.tail, onlyH3, 'no content may be lost')
+})
