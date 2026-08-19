@@ -50,10 +50,21 @@ test('the Ask-Yuri panel is NOT a GatedTeaser', () => {
   // version of this test passed even with the bug reintroduced, because a
   // multi-line <GatedTeaser ... title="Ask Yuri" /> never matched. Verified by
   // reintroducing the bug and watching this fail.
-  const anonBlock =
-    productSrc.match(/product-gated-content[\s\S]*?<\/div>/)?.[0] ?? ''
-  assert.ok(anonBlock.length > 0, 'anonymous gated block must exist')
+  // Aug 18 2026: the free-Yuri card was moved ABOVE the gated container (it
+  // had rendered fifth, beneath four locked teasers). So scope the search to
+  // the whole anonymous RETURN block, not to product-gated-content — the card
+  // being outside that container is the improvement, not a regression. The
+  // guarantee this test exists for is unchanged and asserted below: Ask Yuri
+  // must never be a locked GatedTeaser.
+  const gatedIdx = productSrc.indexOf('product-gated-content')
+  assert.ok(gatedIdx > 0, 'anonymous gated block must exist')
+  const retIdx = productSrc.lastIndexOf('return (', gatedIdx)
+  const anonBlock = productSrc.slice(retIdx)
   assert.match(anonBlock, /<AskYuriAboutProduct/, 'must render the free-Yuri card')
+  assert.ok(
+    anonBlock.indexOf('<AskYuriAboutProduct') < anonBlock.indexOf('<GatedTeaser'),
+    'the free-Yuri card must render BEFORE the locked teasers'
+  )
   const teasers = anonBlock.match(/<GatedTeaser[\s\S]*?\/>/g) ?? []
   for (const t of teasers) {
     assert.ok(

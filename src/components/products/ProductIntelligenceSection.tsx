@@ -109,6 +109,19 @@ export default function ProductIntelligenceSection({ productId, productName, pro
   // Not a subscriber — show gated sections + subscribe CTA
   return (
     <>
+      {/* FREE Yuri offer FIRST (Aug 18 2026). It already sat on this page
+          (added July 27) but rendered FIFTH — beneath four "Subscribe to
+          unlock" teasers and above a $24.99 register wall. An anonymous
+          visitor arriving from an AI citation therefore met three locked
+          panels before the one thing that is free.
+          That inverts the only conversion path this product has ever had:
+          the sole paying subscriber converted BECAUSE Yuri gave real value
+          before any ask. Order is the whole fix — nothing new is promised,
+          and the teasers below are unchanged. */}
+      <div className="mb-6">
+        <AskYuriAboutProduct productName={productName} productBrand={productBrand} />
+      </div>
+
       <div className="product-gated-content space-y-4 mb-8">
         <GatedTeaser
           icon={<Sparkles className="w-5 h-5 text-amber-400" />}
@@ -130,16 +143,6 @@ export default function ProductIntelligenceSection({ productId, productName, pro
           title="Community Reviews by Skin Type"
           description="Read reviews filtered by your skin type, age, and concerns. See Holy Grail and Broke Me Out counts."
         />
-        {/* NOT a GatedTeaser (July 27 2026). This was a LOCKED "Ask Yuri About
-            This Product" panel whose only action was /register at full price —
-            on the one public surface AI assistants cite most for specific
-            product queries ("torriden cleansing milk", "COSRX snail mucin").
-            A stranger arriving from a Copilot citation was shown the exact
-            thing they wanted, locked, before ever meeting Yuri.
-            /products/[id] was also the ONLY public content page in the repo
-            with no `?ask=` link, contradicting the single-front-door funnel
-            every other feeder page follows. Yuri answers freely here. */}
-        <AskYuriAboutProduct productName={productName} productBrand={productBrand} />
       </div>
 
       <div className="bg-gradient-to-br from-amber-500/10 to-rose-500/10 rounded-2xl border border-amber-500/20 p-8 text-center mb-8">

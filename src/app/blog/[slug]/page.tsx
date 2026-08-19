@@ -10,6 +10,7 @@ import { marked } from 'marked'
 import { linkIngredients, buildIngredientMap, extractIngredientChips, type IngredientLink } from '@/lib/utils/ingredient-linker'
 import { serializeJsonLd } from '@/lib/utils/json-ld'
 import { shouldRenderFaqAccordion } from '@/lib/utils/faq-visibility'
+import { splitArticleForCta } from '@/lib/utils/article-split'
 import { excludePollutedIngredientRows } from '@/lib/pipeline/ingredient-parser'
 
 // Configure marked: open external links in new tab, sanitize
@@ -26,6 +27,19 @@ marked.setOptions({
   gfm: true,
   breaks: false,
 })
+
+// Prose classes for the article body. Shared by BOTH halves of a split article —
+// if these diverge, the two halves of one post render with different typography.
+const ARTICLE_PROSE_CLASS = `prose prose-invert prose-amber max-w-none
+  prose-headings:font-display prose-headings:text-white
+  prose-p:text-white/80 prose-p:leading-relaxed
+  prose-a:text-amber-400 prose-a:no-underline hover:prose-a:underline
+  prose-strong:text-white prose-strong:font-semibold
+  prose-ul:text-white/80 prose-ol:text-white/80
+  prose-li:marker:text-amber-500
+  prose-blockquote:border-amber-500 prose-blockquote:text-white/70
+  prose-code:text-amber-300 prose-code:bg-white/10 prose-code:px-1 prose-code:rounded
+  prose-hr:border-white/10`
 
 function renderMarkdown(content: string): string {
   if (!content) return ''
@@ -208,6 +222,16 @@ export default async function BlogPostPage({
     getFaqQuestions(blogPost.faq_schema).length
   )
 
+  // Split the article so a Yuri CTA can render mid-post as a real React node.
+  // Until Aug 18 2026 the only Yuri entry points on a post sat AFTER the whole
+  // body (median ~1,775 words) — a visitor had to finish a ~2,000-word article
+  // before being offered the product. Blog arrivals convert to captured leads
+  // better than any other source, so that placement was the expensive part.
+  // Boundary is the SECOND <h2>: measured across all 46 published posts it lands
+  // at a median 124 words (6% in) and never past 17%, always after one complete
+  // section. `didSplit === false` renders the article whole with no mid CTA.
+  const article = splitArticleForCta(linkedHtml)
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -347,20 +371,29 @@ export default async function BlogPostPage({
 
           {/* Content */}
           <div
-            className="prose prose-invert prose-amber max-w-none
-              prose-headings:font-display prose-headings:text-white
-              prose-p:text-white/80 prose-p:leading-relaxed
-              prose-a:text-amber-400 prose-a:no-underline hover:prose-a:underline
-              prose-strong:text-white prose-strong:font-semibold
-              prose-ul:text-white/80 prose-ol:text-white/80
-              prose-li:marker:text-amber-500
-              prose-blockquote:border-amber-500 prose-blockquote:text-white/70
-              prose-code:text-amber-300 prose-code:bg-white/10 prose-code:px-1 prose-code:rounded
-              prose-hr:border-white/10"
-            dangerouslySetInnerHTML={{ __html: linkedHtml }}
+            className={ARTICLE_PROSE_CLASS}
+            dangerouslySetInnerHTML={{ __html: article.head }}
           />
 
-          {/* Inline Yuri prompt — subtle contextual CTA */}
+          {/* Mid-article Yuri prompt. Renders BETWEEN two halves of the article
+              as a real node — nothing is injected into the HTML string. Only
+              when a safe boundary was found; otherwise the article is whole in
+              `head` and the end-of-post CTA below is the only one. */}
+          {article.didSplit && (
+            <>
+              <BlogInlineYuriPrompt
+                title={blogPost.title}
+                category={blogPost.category}
+                primaryKeyword={blogPost.primary_keyword}
+              />
+              <div
+                className={ARTICLE_PROSE_CLASS}
+                dangerouslySetInnerHTML={{ __html: article.tail }}
+              />
+            </>
+          )}
+
+          {/* End-of-post Yuri prompt (unchanged placement) */}
           <BlogInlineYuriPrompt
             title={blogPost.title}
             category={blogPost.category}
