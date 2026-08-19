@@ -52,6 +52,19 @@ function sliceDecl(src, signature) {
   return src.slice(start, j + 1)
 }
 
+/** Slice a `const X ... = { ... }` object literal (sliceConst scans for `[`). */
+function sliceObjectConst(src, signature) {
+  const start = src.indexOf(signature)
+  assert.ok(start > -1, `expected "${signature}"`)
+  const open = src.indexOf('{', start)
+  let d = 0, i = open
+  for (; i < src.length; i++) {
+    if (src[i] === '{') d++
+    else if (src[i] === '}') { d--; if (!d) break }
+  }
+  return src.slice(start, i + 1)
+}
+
 function sliceConst(src, signature) {
   const start = src.indexOf(signature)
   assert.ok(start > -1, `expected "${signature}"`)
@@ -70,6 +83,14 @@ async function loadSearch() {
     sliceConst(src, 'const SEARCH_STOP_WORDS = new Set(['),
     sliceConst(src, 'const GENERIC_PRODUCT_WORDS = new Set(['),
     sliceDecl(src, 'function singularize('),
+    // Added Aug 19 2026: the SQL predicates call normalizeTerm(), which wraps
+    // singularize() with the catalog word-form map (milky->milk,
+    // cleanser->cleans). Omitting these makes the transpiled module throw
+    // "normalizeTerm is not defined" — a harness gap that looks like a
+    // behavior failure.
+    sliceObjectConst(src, 'const WORD_FORM_STEMS'),
+    sliceDecl(src, 'function wordFormStem('),
+    sliceDecl(src, 'function normalizeTerm('),
     sliceDecl(src, 'function termMatches('),
     sliceDecl(src, 'async function smartProductSearch('),
   ].join('\n\n') + '\nexport { smartProductSearch }\n'

@@ -226,6 +226,66 @@ function singularize(term: string): string {
   return term
 }
 
+// ---------------------------------------------------------------------------
+// Word-form equivalents: the catalog's noun vs the shopper's adjective/verb
+// (Aug 19 2026)
+// ---------------------------------------------------------------------------
+// THE DEFECT, from a production transcript. A visitor with heat-reactive skin
+// and suspected rosacea asked about her "Centella 100 milky cleanser". The
+// catalog stores that product as **"...Gentle Cleansing Milk"**. TWO words
+// disagree at once — milky/milk and cleanser/cleansing — so every precise
+// strategy returned nothing, the query fell through to the last-resort search,
+// and it surfaced a **Spot Cream**. Yuri correctly refused to describe the
+// wrong product and told her "I couldn't pull that exact product in our
+// catalog", which was FALSE: SKIN1004 Madagascar Centella Hyalu-Cica Gentle
+// Cleansing Milk is verified and in stock.
+//
+// Both substitutions are REQUIRED, verified against the live catalog:
+//   centella + milky + cleanser -> 0 rows
+//   centella + milk  + cleanser -> 0 rows      <- fixing only "milky" still fails
+//   centella + milk  + cleans   -> 1 row       <- the correct product, uniquely
+//
+// Scope: 70 verified products contain "milk", 19 are a "Cleansing Milk".
+//
+// WHY A CLOSED MAP AND NOT A SUFFIX RULE. A general "-y" strip was measured
+// against all 5,311 verified products and is far worse than the bug: it admits
+// creamy->cream **+982 rows**, watery->water +198, oily->oil +167 — a visitor
+// asking for a "creamy cleanser" would get essentially the whole cream catalog.
+// It also mangles words where "-y" is not a suffix (daily->dail, jelly->jell,
+// honey->hone, energy->energ). That is the mirror-image over-correction this
+// repo has shipped before. So: a short EXPLICIT list, each entry measured.
+//
+// "cleanser"->"cleans" is a union of two spellings of ONE concept, not a
+// broadening: 658 rows match the stem, **650 of them are category='cleanser'**,
+// and ZERO rows match "cleans" without being cleanser/cleansing.
+//
+// Do not add an entry without measuring how many extra rows it admits. If this
+// map ever needs repeated hand-tuning, that is the signal to stop, not to keep
+// adjusting.
+const WORD_FORM_STEMS: Record<string, string> = {
+  milky: 'milk',
+  silky: 'silk',
+  cleanser: 'cleans',
+  cleansing: 'cleans',
+}
+
+/**
+ * The catalog-side stem for a query term, or the term unchanged.
+ *
+ * Applied wherever `singularize` is — the SQL ILIKE predicates AND the
+ * in-memory scoring — so a term cannot match in one place and miss in the
+ * other. A partial wiring is the documented Strategy-1.5 failure: a fix that
+ * looks correct while the path that actually runs never sees it.
+ */
+function wordFormStem(term: string): string {
+  return WORD_FORM_STEMS[term] ?? term
+}
+
+/** Query term reduced to the form the catalog is most likely to store. */
+function normalizeTerm(term: string): string {
+  return wordFormStem(singularize(term))
+}
+
 /** True when `term` (or its singular stem) appears in `haystack`. */
 /**
  * Collapse a line-number marker onto its digit BEFORE punctuation is flattened.
@@ -277,7 +337,11 @@ export function joinLineNumbers(s: string): string {
 }
 
 function termMatches(haystack: string, term: string): boolean {
-  return haystack.includes(term) || haystack.includes(singularize(term))
+  return (
+    haystack.includes(term) ||
+    haystack.includes(singularize(term)) ||
+    haystack.includes(normalizeTerm(term))
+  )
 }
 
 async function smartProductSearch(
@@ -445,7 +509,7 @@ async function smartProductSearch(
       // the catalog's singular storage ("Pad"). Substring semantics cover the
       // reverse case already.
       for (const t of nameTerms) {
-        q = q.ilike('name_en', `%${singularize(t)}%`)
+        q = q.ilike('name_en', `%${normalizeTerm(t)}%`)
       }
       if (options?.category) q = q.eq('category', options.category)
       // LINE NUMBER as a hard predicate, not a ranking hint.
@@ -491,7 +555,7 @@ async function smartProductSearch(
     const orClauses = terms
       .slice(0, 6) // cap to avoid absurdly long filter strings
       .flatMap(t => {
-        const stem = singularize(t)
+        const stem = normalizeTerm(t)
         return [`name_en.ilike.%${stem}%`, `brand_en.ilike.%${stem}%`]
       })
       .join(',')
@@ -669,7 +733,7 @@ async function smartProductSearch(
     // the last-resort one — the opposite of how a fallback should behave.
     const orClauses = terms
       .flatMap(t => {
-        const stem = singularize(t)
+        const stem = normalizeTerm(t)
         return [`name_en.ilike.%${stem}%`, `brand_en.ilike.%${stem}%`]
       })
       .join(',')

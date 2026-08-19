@@ -199,12 +199,23 @@ test('compare_prices refuses to quote prices on a partial match', () => {
 })
 
 test('search strategies match on the singular stem', () => {
+  // Aug 19 2026: the predicate sites moved from singularize(t) to
+  // normalizeTerm(t), which is wordFormStem(singularize(term)) — stemming
+  // still happens at every site, plus the catalog word-form map
+  // (milky->milk, cleanser->cleans). Assert the RULE (a stemming helper is
+  // applied in the SQL predicate) rather than one helper's name, so a future
+  // rename cannot report red on correct code the way this test just did.
   assert.ok(
-    toolsSrc.includes('q.ilike(\'name_en\', `%${singularize(t)}%`)'),
+    toolsSrc.includes('q.ilike(\'name_en\', `%${normalizeTerm(t)}%`)'),
     'Strategy 1.5 stopped stemming name terms — plural queries will silently miss again'
   )
   assert.ok(
-    /const stem = singularize\(t\)/.test(toolsSrc),
+    /const stem = normalizeTerm\(t\)/.test(toolsSrc),
     'Strategy 2 stopped stemming its OR clauses'
+  )
+  // The stemming must still be REACHED, not just referenced.
+  assert.ok(
+    /function normalizeTerm[\s\S]{0,160}singularize\(/.test(toolsSrc),
+    'normalizeTerm no longer composes singularize — plural queries would miss'
   )
 })
