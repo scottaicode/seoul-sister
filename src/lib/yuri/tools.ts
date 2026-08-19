@@ -282,9 +282,20 @@ function singularize(term: string): string {
 // If the ranking shift ever causes a real complaint, the fix is NOT to drop
 // this mapping — it is to make the step-type (first cleanse vs second cleanse)
 // a ranking signal, which is a bigger change than this bug justified.
+//
+// `silky -> silk` WAS included and has been REMOVED (Aug 19 2026). It was added
+// for symmetry with `milky`, which is not evidence. Measured: the 3 rows it
+// newly reaches are **Silk Peptide EGF ampoules** and **Ginseng Royal Silk
+// Essence** — products where "silk" is an INGREDIENT, not a texture. A visitor
+// asking for a "silky moisturizer" means texture and would have been handed
+// silk-peptide ampoules: a wrong-product match, which is the exact harm this
+// map exists to prevent. `milk` survives the same test because a "Cleansing
+// Milk" IS the product form the shopper means.
+//
+// The lesson generalizes: an entry is justified by a MEASURED shopper phrasing
+// that fails, never by resemblance to an entry that is already here.
 const WORD_FORM_STEMS: Record<string, string> = {
   milky: 'milk',
-  silky: 'silk',
   cleanser: 'cleans',
   cleansing: 'cleans',
 }

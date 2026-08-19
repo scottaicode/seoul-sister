@@ -66,12 +66,35 @@ test('does NOT mangle words where -y is not a suffix', () => {
   }
 })
 
-test('the map stays SHORT — it is a closed list, not a heuristic', () => {
-  // A growing map is the signal that someone is hand-tuning a classifier,
-  // which this repo has paid for before. Every entry must be measured for how
-  // many extra rows it admits; the cap forces that conversation to happen.
-  const n = Object.keys(WORD_FORM_STEMS).length
-  assert.ok(n <= 8, `WORD_FORM_STEMS has ${n} entries — measure before growing it`)
+test('the map is CLOSED — these three entries and nothing else', () => {
+  // CLOSED-WORLD, deliberately (Aug 19 2026). The previous version of this
+  // suite asserted properties of the entries that existed (short map, stem is a
+  // prefix, stems >= 4 chars) and was therefore blind to what someone ADDS —
+  // the open-world failure CLAUDE.md names verbatim.
+  //
+  // An adversarial review broke it in one move: adding
+  //   moisturizer: 'mois', treatment: 'treat', exfoliator: 'exfo'
+  // passed all ten assertions. Measured, `mois` matches **334 rows of which
+  // 205 are NOT moisturizers** — every "Moisture"/"Moisturizing"/"Moist"
+  // product across sunscreens, toners and essences. A 12x broadening, the exact
+  // `creamy -> cream +982` class this map exists to prevent.
+  //
+  // A ratio budget cannot separate them: the legitimate `milky -> milk` is 11.9x
+  // (7 rows -> 83) and the malicious `moisturizer -> mois` is 12.4x. The only
+  // honest guard is a roster, so ADDING an entry must fail here and force the
+  // author to measure it and update this list on purpose.
+  assert.deepEqual(
+    Object.keys(WORD_FORM_STEMS).sort(),
+    ['cleanser', 'cleansing', 'milky'],
+    'WORD_FORM_STEMS changed. Adding an entry requires MEASURING how many extra ' +
+      'rows the stem admits and whether they are the right category, then ' +
+      'updating this roster deliberately. See the notes above the map.'
+  )
+  assert.deepEqual(
+    Object.values(WORD_FORM_STEMS).sort(),
+    ['cleans', 'cleans', 'milk'],
+    'a stem changed — re-measure its match count and category purity'
+  )
 })
 
 test('every mapped stem is a PREFIX of its key (a narrowing, not a rewrite)', () => {
@@ -140,5 +163,43 @@ test('word-form stems never collapse two DIFFERENT category nouns together', () 
         `"${t}" shares stem "${stem}" without being a form of it — that merges two concepts`
       )
     }
+  }
+})
+
+test('GENERIC_PRODUCT_WORDS is checked on RAW terms, never on stems', () => {
+  // LATENT TRAP found in post-hoc review (Aug 19 2026). The sunscreen-signal
+  // suppression at tools.ts asks `GENERIC_PRODUCT_WORDS.has(t)` to decide
+  // whether a query names another category ("cleansing oil that removes
+  // sunscreen" wants a cleanser, not an SPF). That set contains the RAW words
+  // 'cleanser' and 'cleansing' — it does NOT contain the stem 'cleans'.
+  //
+  // Today this is correct because `terms` holds raw tokens and normalizeTerm is
+  // applied later, at the ILIKE predicates. But a future refactor that
+  // normalizes terms EARLIER would silently break it: "cleanser sunscreen"
+  // would stop suppressing and start returning sunscreens. Verified by
+  // simulation — raw suppresses, stemmed does not.
+  //
+  // This test fails if anyone maps a GENERIC_PRODUCT_WORDS member to a stem
+  // that is NOT itself in the set, which is the condition that makes the
+  // ordering load-bearing and invisible.
+  const generic = new Set(
+    (SRC.slice(SRC.indexOf('const GENERIC_PRODUCT_WORDS'), SRC.indexOf('])', SRC.indexOf('const GENERIC_PRODUCT_WORDS')))
+      .match(/'[a-z-]+'/g) || []).map((w) => w.slice(1, -1))
+  )
+  assert.ok(generic.has('cleanser'), 'sanity: the set must still list cleanser')
+
+  const risky = Object.entries(WORD_FORM_STEMS).filter(
+    ([term, stem]) => generic.has(term) && !generic.has(stem)
+  )
+  if (risky.length > 0) {
+    // Not necessarily a bug TODAY — it is only a bug if terms get normalized
+    // before the category check. The assertion documents the coupling so the
+    // refactor that would break it fails here first.
+    assert.ok(
+      !/const terms = originalTokens[\s\S]{0,80}normalizeTerm/.test(SRC),
+      `WORD_FORM_STEMS maps ${risky.map(([t, s]) => `${t}->${s}`).join(', ')} ` +
+        'out of GENERIC_PRODUCT_WORDS, AND terms are now normalized before the ' +
+        'category check — the sunscreen signal will misfire on "cleanser sunscreen".'
+    )
   }
 })
