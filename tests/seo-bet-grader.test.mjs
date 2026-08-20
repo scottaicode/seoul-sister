@@ -41,6 +41,9 @@ const grade = (o) =>
     gapDays: o.gap ?? 28,
     execution: { status: o.exec ?? 'executed', evidence: 'test' },
     sitewideChangePct: o.sitewide ?? 0,
+    sitewideBaselineClicks: o.sitewideBase ?? 60,
+    windowStart: o.windowStart,
+    executionFirstSeen: o.firstSeen,
     today: '2026-08-20',
   })
 
@@ -243,6 +246,62 @@ test('an unconfirmed-execution MISS is also withheld (symmetry)', () => {
   assert.equal(confirmed.verdict, 'miss')
 })
 
+// --- The measured control -------------------------------------------------
+
+test('the confound threshold scales with the noise floor, not a fixed percent', () => {
+  // Clicks are Poisson: the noise floor is 100/sqrt(N) percent. At this site's
+  // ~64 sitewide clicks that is 12.5% per sigma, so a FIXED 15% threshold is
+  // barely 1.2 sigma and fires on noise ~a quarter of the time. Measured on
+  // real adjacent runs with NO intervention: -10.7%, +10.0%, +10.3%.
+  assert.equal(grader.isSitewideShock(10.3, 64), false, 'a real no-intervention swing must not flag')
+  assert.equal(grader.isSitewideShock(10.7, 56), false, 'a real no-intervention swing must not flag')
+  assert.equal(grader.isSitewideShock(35, 64), true, 'a genuine shock must flag')
+
+  // And it must TIGHTEN as the site grows, where a fixed 15% would go blind.
+  assert.equal(grader.isSitewideShock(12, 500), true, 'at 500 clicks, 12% is beyond 2.5 sigma')
+  assert.ok(
+    !grader.isSitewideShock(12, 64),
+    'the same 12% at 64 clicks is ordinary noise — a fixed threshold cannot express both'
+  )
+})
+
+test('a percentage on a tiny baseline never claims a shock', () => {
+  assert.equal(grader.isSitewideShock(300, 2), false, 'a % on ~2 clicks is meaningless')
+})
+
+// --- Execution timing -----------------------------------------------------
+
+test('a window that mostly predates the edit going live cannot be graded', () => {
+  // Gate 2 guards the wrong boundary alone: it removes pre-BET days, but what
+  // biases a verdict is pre-EXECUTION days. The verifier fetches the page
+  // TODAY, so it proves "shipped by now", never "shipped before the window".
+  const late = grade({
+    baseline: 4, after: 4, expected: 'clicks rise to >=12',
+    windowStart: '2026-07-01', firstSeen: '2026-07-20',
+  })
+  assert.equal(late.verdict, 'ungradeable_execution_unknown', 'must not grade a mostly-pre-execution window')
+
+  // The mirror: an edit live BEFORE the window opened grades normally.
+  const early = grade({
+    baseline: 4, after: 14, expected: 'clicks rise to >=12',
+    windowStart: '2026-07-01', firstSeen: '2026-06-25',
+  })
+  assert.equal(early.verdict, 'hit')
+})
+
+test('first-observed execution is sticky across runs', () => {
+  // A later run that cannot re-confirm (fetch flaked, wording changed) must not
+  // erase the fact that we once saw the action live.
+  const carried = grade({
+    baseline: 4, after: 14, expected: 'clicks rise to >=12',
+    windowStart: '2026-07-01', firstSeen: '2026-06-25',
+  })
+  assert.equal(carried.execution_first_seen, '2026-06-25', 'a prior observation must be carried forward')
+
+  const fresh = grade({ baseline: 4, after: 14, expected: 'clicks rise to >=12' })
+  assert.equal(fresh.execution_first_seen, '2026-08-20', 'a new observation is stamped today')
+})
+
 // --- Provenance travels with the verdict ---------------------------------
 
 test('every verdict carries its own provenance in the same object', () => {
@@ -256,8 +315,14 @@ test('every verdict carries its own provenance in the same object', () => {
 })
 
 test('a sitewide shock is flagged on the verdict', () => {
-  const g = grade({ baseline: 4, after: 14, expected: 'clicks rise to >=12', sitewide: 22 })
-  assert.equal(g.confounded_sitewide, true)
+  // 22% on a 60-click baseline is INSIDE the noise floor (2.5 sigma = 32.3%)
+  // and must not flag; 40% is a genuine shock.
+  const noise = grade({ baseline: 4, after: 14, expected: 'clicks rise to >=12', sitewide: 22, sitewideBase: 60 })
+  assert.equal(noise.confounded_sitewide, false, 'ordinary noise must not be labelled a shock')
+
+  const shock = grade({ baseline: 4, after: 14, expected: 'clicks rise to >=12', sitewide: 40, sitewideBase: 60 })
+  assert.equal(shock.confounded_sitewide, true)
+  assert.match(shock.notes, /confounded/)
 })
 
 // --- Position is advisory only -------------------------------------------

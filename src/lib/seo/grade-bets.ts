@@ -54,6 +54,19 @@ function totalClicks(rows: SnapshotRow[]): number {
 }
 
 /**
+ * Sitewide clicks EXCLUDING the bet's own target page.
+ *
+ * A successful bet moves the sitewide total itself: on a 64-click site, a page
+ * going 4 -> 20 is a +25% "sitewide change" caused entirely by the thing being
+ * measured. Including the target page lets a genuine win flag itself as a
+ * confounded run — the control has to be the rest of the site, not the site.
+ */
+function controlClicks(rows: SnapshotRow[], targetPath: string | null): number {
+  if (!targetPath) return totalClicks(rows)
+  return rows.reduce((sum, r) => (normalizePath(r.page) === targetPath ? sum : sum + r.clicks), 0)
+}
+
+/**
  * Fetch a CLEAN after-window straight from the GSC API.
  *
  * This is what makes the grader work at all. Stored snapshots are 28-day
@@ -174,6 +187,8 @@ export async function runBetGrader(db: SupabaseClient, todayIso?: string): Promi
           gapDays: 0,
           execution: { status: 'unverified', evidence: 'not checked — no clean after-window exists yet' },
           sitewideChangePct: 0,
+          sitewideBaselineClicks: 0,
+          executionFirstSeen: prior?.execution_first_seen ?? null,
           today,
         })
         newGrades[bet.id] = grade
@@ -187,10 +202,18 @@ export async function runBetGrader(db: SupabaseClient, todayIso?: string): Promi
       const effectiveGap = liveRows
         ? daysBetween(report.window_start, cleanStart)
         : daysBetween(report.window_start, after!.window_start)
-      const baseClicks = totalClicks(baselineRows)
-      const sitewidePct = baseClicks > 0 ? ((totalClicks(afterRows) - baseClicks) / baseClicks) * 100 : 0
+      // Control = the rest of the site, with the target page removed from both
+      // windows so a successful bet cannot flag itself as a confound.
+      const baseControl = controlClicks(baselineRows, targetPath)
+      const afterControl = controlClicks(afterRows, targetPath)
+      const sitewidePct = baseControl > 0 ? ((afterControl - baseControl) / baseControl) * 100 : 0
 
       const execution = await verifyExecution(targetPath, bet.action, bet.action_type ?? 'other')
+
+      // The after-window's first day. Compared against first-observed-execution
+      // so a window that mostly predates the edit going live cannot produce a
+      // confident verdict.
+      const afterWindowStart = liveRows ? cleanStart : after!.window_start
 
       const grade = gradeBet({
         betId: bet.id,
@@ -202,6 +225,10 @@ export async function runBetGrader(db: SupabaseClient, todayIso?: string): Promi
         gapDays: effectiveGap,
         execution,
         sitewideChangePct: sitewidePct,
+        sitewideBaselineClicks: baseControl,
+        windowStart: afterWindowStart,
+        // Carried forward so first-observation is sticky across runs.
+        executionFirstSeen: prior?.execution_first_seen ?? null,
         today,
       })
 

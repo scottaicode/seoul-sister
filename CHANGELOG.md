@@ -52,13 +52,18 @@ Also fixed: **`extractMarkers` was broken by ordinary apostrophes** — *"Don't 
 
 **And the first attempt to guard two of these did not bind** — the tests asserted on source text and passed against both bugs when reintroduced. Rewritten to execute `runBetGrader` against an in-memory DB stub. The repo's own "source tests miss runtime bugs" rule, violated by the author who had just written it down.
 
+### Two deferred findings, closed the same day
+
+- **The confound threshold sat below the site's own noise floor.** A fixed 15% is ~1.2 sigma at ~64 sitewide clicks (Poisson noise = 100/sqrt(N) = 12.5%/sigma) and would fire on noise ~a quarter of the time — measured on real adjacent runs with NO intervention: **-10.7%, +10.0%, +10.3%**. Now a 2.5-sigma rule that scales with volume and **tightens as the site grows** (~11.2% at 500 clicks, where a fixed 15% goes blind). The control also now **excludes the target page from its own comparison** — a page going 4 -> 20 on a 64-click site is a +25% "sitewide change" caused entirely by the thing being measured, so a genuine win could flag itself confounded.
+- **The window guarded the wrong boundary.** Gate 2 removes pre-BET days, but what biases a verdict is pre-EXECUTION days: the pipeline ships days-to-weeks late and the verifier fetches TODAY, proving "shipped by now", never "shipped before the window". An edit live for the last 8 of 28 days would be graded against a 71%-pre-execution window. Fixed **without touching the content pipeline** — the grader already runs weekly and already fetches the page, so it witnesses execution itself and records a **sticky** `execution_first_seen`; a later run that cannot re-confirm must not erase what we once saw.
+
 ### A finding that did NOT survive measurement
 
 An early read reported *"44 of 47 posts have meta titles under 45 characters."* **That was wrong** — it measured the DATABASE COLUMN, not the RENDERED title. `layout.tsx` sets `template: '%s | Seoul Sister'`, adding 15 characters. Re-measured: **38 of 46 render at 40–60 characters** (mean 50.1), a healthy range. No fix warranted. The instrument was reading the wrong surface — the same error as grading a page by `updated_at` instead of fetching it.
 
 ### Verification
 
-984 → 1,003 tests. Each guard confirmed to **FAIL** when its bug is reverted, and the suite was attacked in both directions: an implementation that **always abstains** fails 8 tests, so the tests reject useless silence as well as false confidence. One revert initially produced a **false green** from a shell-quoting error — the anchor is now asserted before the result is trusted. Poisson math checked against an independent reference on 80 (k, λ) pairs.
+984 → 1,007 tests. Each guard confirmed to **FAIL** when its bug is reverted, and the suite was attacked in both directions: an implementation that **always abstains** fails 8 tests, so the tests reject useless silence as well as false confidence. One revert initially produced a **false green** from a shell-quoting error — the anchor is now asserted before the result is trusted. Poisson math checked against an independent reference on 80 (k, λ) pairs.
 
 **NOT verified: the scheduler has not yet produced a graded row.** A hand invocation proves the code works and says nothing about whether the schedule does. Full record in `SEO-BET-GRADER.md`.
 

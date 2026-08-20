@@ -35,8 +35,19 @@ export const ALPHA = 0.05
 export const ZERO_BASELINE_NULL_LAMBDA = 0.5
 /** Minimum days between baseline and after window START to avoid overlap. */
 export const MIN_GAP_DAYS = 28
-/** Sitewide click swing above this marks every verdict in the run confounded. */
-export const SITEWIDE_CONFOUND_PCT = 15
+/**
+ * How many standard deviations of sitewide movement counts as a shock.
+ *
+ * NOT a fixed percentage. Clicks are Poisson, so the noise floor is
+ * 100/sqrt(N) percent — at this site's ~64 sitewide clicks that is **12.5% per
+ * sigma**, which makes a fixed 15% threshold barely 1.2 sigma and fires on pure
+ * noise roughly a quarter of the time. Measured on real adjacent runs with no
+ * intervention: swings of -10.7%, +10.0%, +10.3% all occur naturally.
+ *
+ * Scaling by sigma also self-corrects as the site grows: at 500 sitewide clicks
+ * the same 2.5-sigma rule tightens to ~11%, where a fixed 15% would go blind.
+ */
+export const SITEWIDE_CONFOUND_SIGMA = 2.5
 /** Query-level position must move at least this to beat cross-snapshot noise. */
 export const POSITION_DEADBAND = 1.5
 
@@ -54,6 +65,11 @@ export type ExecutionStatus = 'executed' | 'partially_executed' | 'not_executed'
 
 export interface BetGrade {
   verdict: Verdict
+  /** First date this grader OBSERVED the action live on the page. Recorded on
+   *  the first run that sees it and never overwritten — the grader runs weekly
+   *  and fetches the live page anyway, so it can witness execution without the
+   *  content pipeline stamping anything. Null until first observed. */
+  execution_first_seen: string | null
   /** Provenance lives in the SAME object as the verdict — a caveat stored in a
    *  sibling table is a caveat that gets read past (the v11.33.0 `scorer`
    *  discipline, and `fitzpatrick_source` before it). */
@@ -134,6 +150,20 @@ export function poissonUpperTail(k: number, lambda: number): number {
     cdf += term
   }
   return Math.max(0, Math.min(1, 1 - cdf))
+}
+
+/**
+ * Is a sitewide move large enough to be a genuine shock rather than Poisson
+ * noise? Compares the observed percentage against the noise floor implied by
+ * the baseline volume itself.
+ */
+export function isSitewideShock(changePct: number, baselineClicks: number): boolean {
+  if (!Number.isFinite(changePct)) return false
+  // Below a handful of clicks the percentage is meaningless in either
+  // direction; refuse to claim a shock rather than flag everything.
+  if (!Number.isFinite(baselineClicks) || baselineClicks < 5) return false
+  const sigmaPct = (100 / Math.sqrt(baselineClicks)) * SITEWIDE_CONFOUND_SIGMA
+  return Math.abs(changePct) > sigmaPct
 }
 
 export function aggregatePage(rows: SnapshotRow[], targetPath: string) {
@@ -220,7 +250,15 @@ export interface GradeInput {
   afterRows: SnapshotRow[]
   gapDays: number
   execution: { status: ExecutionStatus; evidence: string }
+  /** Carried forward from a prior grade so first-observation is sticky. */
+  executionFirstSeen?: string | null
   sitewideChangePct: number
+  /** Sitewide clicks in the BASELINE window — sets the noise floor the change
+   *  percentage is judged against. */
+  sitewideBaselineClicks: number
+  /** First day of the AFTER window (YYYY-MM-DD). Used to detect a window that
+   *  mostly predates the action going live. */
+  windowStart?: string
   today: string
 }
 
@@ -233,7 +271,17 @@ export interface GradeInput {
  * strategist about the content pipeline's throughput while labelling it SEO.
  */
 export function gradeBet(input: GradeInput): BetGrade {
+  // Sticky: once observed executed, the date never moves. A later run that
+  // cannot re-confirm (page fetch flaked, wording changed) must not erase the
+  // fact that we once saw it live.
+  const firstSeen =
+    input.executionFirstSeen ??
+    (input.execution.status === 'executed' || input.execution.status === 'partially_executed'
+      ? input.today
+      : null)
+
   const base: Omit<BetGrade, 'verdict' | 'notes'> = {
+    execution_first_seen: firstSeen,
     scorer: 'bet-grader-v1-deterministic',
     powered: false,
     p_value: null,
@@ -244,7 +292,7 @@ export function gradeBet(input: GradeInput): BetGrade {
     gap_days: input.gapDays,
     execution_status: input.execution.status,
     execution_evidence: input.execution.evidence,
-    confounded_sitewide: Math.abs(input.sitewideChangePct) > SITEWIDE_CONFOUND_PCT,
+    confounded_sitewide: isSitewideShock(input.sitewideChangePct, input.sitewideBaselineClicks),
     position_notes: [],
     graded_on: input.today,
   }
@@ -268,6 +316,24 @@ export function gradeBet(input: GradeInput): BetGrade {
       ...base,
       verdict: 'ungradeable_too_soon',
       notes: `Only ${input.gapDays}d between windows; ${MIN_GAP_DAYS}d required so the after-window contains no pre-bet days.`,
+    }
+  }
+
+  // GATE 2b — execution-window contamination.
+  //
+  // Gate 2 guards the wrong boundary on its own: it ensures the after-window
+  // contains no pre-BET days, but what biases a verdict is pre-EXECUTION days.
+  // The content pipeline ships days-to-weeks after a bet is written (the BoJ
+  // bet was still only half shipped weeks on), and the verifier fetches the
+  // page TODAY — so it proves "shipped by now", never "shipped before the
+  // window". An edit live for only the last 8 of 28 days would otherwise be
+  // graded against a window that is 71% pre-execution, manufacturing a
+  // confident MISS on work that barely existed in the measured period.
+  if (firstSeen && input.windowStart && firstSeen > input.windowStart) {
+    return {
+      ...base,
+      verdict: 'ungradeable_execution_unknown',
+      notes: `The action was first observed live on ${firstSeen}, after the measurement window opened on ${input.windowStart}. The window is mostly pre-execution, so neither direction can be attributed to the action.`,
     }
   }
 
@@ -399,7 +465,7 @@ export function gradeBet(input: GradeInput): BetGrade {
 
   const verdict: Verdict = met ? 'hit' : 'miss'
   const confoundNote = withData.confounded_sitewide
-    ? ` NOTE: sitewide clicks moved ${input.sitewideChangePct.toFixed(1)}% between these windows — treat as confounded.`
+    ? ` NOTE: sitewide clicks moved ${input.sitewideChangePct.toFixed(1)}% between these windows, beyond the ${SITEWIDE_CONFOUND_SIGMA}-sigma noise floor for ${input.sitewideBaselineClicks} baseline clicks — treat as confounded.`
     : ''
 
   // A HIT must not be credited to work we could not confirm shipped. The

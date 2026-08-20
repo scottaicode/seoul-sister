@@ -100,7 +100,7 @@ snapshots when credentials are absent.
 
 ## Verification status
 
-- 31 guard tests across three files, each **confirmed to FAIL** when its bug is
+- 35 guard tests across three files, each **confirmed to FAIL** when its bug is
   reintroduced by reverting the real code. One revert initially produced a false green from a
   quoting error — the anchor is now asserted before the result is trusted.
 - Poisson math checked against an independent reference on 80 (k, λ) pairs plus
@@ -108,7 +108,7 @@ snapshots when credentials are absent.
 - Execution verification confirmed against the live site: the BoJ metadata bet
   **shipped** (title/meta live), its on-page INCI section **did not** —
   `partially_executed`, which must not grade as a miss.
-- Full suite: 1,003 tests green.
+- Full suite: 1,007 tests green.
 
 **NOT yet verified: the scheduler has not produced a graded row.** A hand
 invocation proves the code works and says nothing about whether the schedule
@@ -183,6 +183,38 @@ to execute `runBetGrader` against an in-memory DB stub; all three now fail on
 revert. That is the repo's own "source tests miss runtime bugs" rule, violated by
 the author who had just written it down.
 
+## Two deferred review findings, now closed
+
+**1. The confound threshold sat below the site's own noise floor.** A fixed 15%
+is ~1.2 sigma at ~64 sitewide clicks (Poisson noise is 100/sqrt(N) = 12.5% per
+sigma), so it would fire on pure noise roughly a quarter of the time. Measured on
+real adjacent runs with **no intervention**: swings of **-10.7%, +10.0%, +10.3%**.
+Replaced with a 2.5-sigma rule that scales with volume — and crucially *tightens*
+as the site grows: at 500 sitewide clicks it becomes ~11.2%, where the fixed 15%
+would have gone blind.
+
+The control now also **excludes the bet's own target page** from both windows. A
+successful bet moves the sitewide total itself: on a 64-click site a page going
+4 -> 20 is a +25% "sitewide change" caused entirely by the thing being measured,
+so a genuine win could flag itself as confounded. The control has to be the rest
+of the site, not the site.
+
+**2. The window guarded the wrong boundary.** Gate 2 ensures the after-window
+contains no pre-BET days, but what biases a verdict is pre-EXECUTION days. The
+content pipeline ships days-to-weeks after a bet is written, and the verifier
+fetches the page TODAY — so it proves *"shipped by now"*, never *"shipped before
+the window"*. An edit live for only the last 8 of 28 days would be graded against
+a window that is 71% pre-execution, manufacturing a confident MISS on work that
+barely existed in the measured period.
+
+Fixed without touching the content pipeline: **the grader witnesses execution
+itself.** It already runs weekly and already fetches the live page, so it records
+`execution_first_seen` on the first run that observes the action live. The date
+is **sticky** — a later run that cannot re-confirm (fetch flaked, wording changed)
+must not erase the fact that we once saw it. When first-seen postdates the window
+start, the bet grades `ungradeable_execution_unknown` rather than being scored
+through the contamination.
+
 ## A finding that did NOT survive measurement
 
 An early read of this data reported *"44 of 47 posts have meta titles under 45
@@ -205,4 +237,4 @@ grading a page by `updated_at` instead of fetching it.
 - `src/lib/seo/grade-bets.ts` — orchestrator, window selection, persistence
 - `src/app/api/cron/seo-grade-bets/route.ts` — weekly cron
 - `scripts/grade-seo-bets.ts` — dry run (`npx tsx scripts/grade-seo-bets.ts`)
-- `tests/seo-bet-grader.test.mjs`, `tests/seo-execution-verifier.test.mjs`, `tests/seo-grade-bets-orchestrator.test.mjs` — 31 guard tests
+- `tests/seo-bet-grader.test.mjs`, `tests/seo-execution-verifier.test.mjs`, `tests/seo-grade-bets-orchestrator.test.mjs` — 35 guard tests
