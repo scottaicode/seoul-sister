@@ -4,6 +4,66 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.34.0 — August 20 2026
+
+**The SEO Guardian made 23 dated, falsifiable bets across 7 weekly reports and graded ZERO of them. The loop wrote, and nothing ever read.**
+
+The third of the four questions, failing on the app's own learning-loop feature. `ss_seo_reports.grades` was NULL on every row since launch, and the strategist's prompt lists prior bets only as "do not duplicate" — so it could see *that* it had bet on something, never whether the bet **shipped and failed**.
+
+The cost was visible in the Aug 16 report, which called the Beauty of Joseon Aqua-Fresh page *"the single best CTR-recovery opportunity on the site"* — the **third bet on that page**. The Jul 24 metadata rewrite had already shipped (verified live: the meta description reads *"…the complete INCI list"*) and the page still sat at position 8 with 5 clicks. The strategist was confidently re-proposing a fix that was already deployed and measurably not working.
+
+### The grader is a RULER, not a judge — no AI in the verdict path
+
+Grades feed straight back into the strategist's prompt, so a fabricated grade does not merely mislead a human, it **corrupts next week's judgment**. Same discipline as `grade-nudge-outcomes`.
+
+### The central protection: a shortfall is not a failure
+
+The real case that shaped the design. BoJ went **4 → 5 clicks** against a `>=10` threshold. Filed naively that is a clean `miss`. But **P(X>=5 | λ=4) = 0.371** — the single most likely outcome under *no effect*, and equally consistent with the edit having worked in a window too short to show it. Recording `miss` would teach the strategist *"metadata edits don't work"* from pure Poisson noise.
+
+A `miss` is now recorded **only when the shortfall is informative**: under the bet's own hypothesis a count that low must itself be unlikely. **This is "a mismatch is not a diagnosis" applied to measurement** — comparing 5 against 10 finds a SHORTFALL, not a verdict.
+
+The gradeability test is deliberately **not** a flat volume floor, which was measured and rejected: baseline 3 reaching a stated threshold of 10 scores **p=0.0011**, decisively significant, so a "baseline >= 10" floor would have discarded a perfectly falsifiable bet — and it would have thrown away the sebaceous-filaments bet, the one real 3x gain in the corpus (3 → 9 clicks, execution verified live).
+
+### What the first run actually said
+
+**All 8 due bets: `ungradeable_too_soon` — and that verdict is CORRECT, not a bug.** Snapshots are 28-day windows taken weekly, so the archive's widest window-start separation is **23 days**, always short of the 28 needed for a comparison sharing zero days. Adjacent runs overlap 21/28 days and attenuate a true effect ~4x. The grader therefore fetches a clean window straight from the **GSC API** (16-month retention), falling back to snapshots when credentials are absent.
+
+### Traps found and encoded
+
+- **The silent all-miss bug.** Bets store `/blog/x`; all **21,263** GSC snapshot rows store `https://www.seoulsister.com/blog/x`. A naive equality join returns zero rows **silently** and would grade every bet a confident `miss`. Guarded by 5 tests.
+- **`updated_at` is not execution evidence** — **40 of 47 posts share one `2026-08-03` bulk-migration timestamp**. The live page is the only witness. Verified: the BoJ metadata **shipped**, its on-page INCI section **did not** → `partially_executed`, which must never grade as a miss.
+- **A hit is never credited to unconfirmed execution.** Found by probing rather than review: an `unverified` status flowed straight through to a confident `hit`. A miss is still allowed to stand — suppressing negatives too would make the instrument systematically optimistic.
+- **Position is advisory only.** The BoJ page gained **68 brand-new queries** against a 67-query baseline, so its average position mostly reports which long-tails Google surfaced. Live Simpson's paradox: *"is beauty of joseon aqua fresh sunscreen mineral"* improved **8.33 → 5.35** while the page average went **backwards** 7.87 → 8.04.
+- **An absent query is not a ranking loss** — GSC privacy-filters low-volume queries; only **43.4%** of queries survive between snapshots.
+- **Sitewide control.** Blog impressions rose **5,529 → 7,059 (+27.7%)** over the grading period, so a page that gained 27% gained nothing. A >15% sitewide swing flags every verdict in the run `confounded`.
+
+### The defect this build nearly repeated
+
+After the first 8 grades were written, a check of what the strategist would *actually see* showed all 23 bets still listed as `ungraded`. **The grades existed in the database and reached no consumer.** The strategist reads only the last **3** reports, but a bet needs ~28 days before a clean grading window exists — and reports are **weekly**, so every grade aged out of the prompt before it could ever be written. The loop's third question failing *inside the fix for that same failure*. Window widened to 12, guarded by a test that fails below 8. Verified after: **8 GRADED, 15 ungraded** reaching the prompt.
+
+### A third adversarial review found four defects my own tests passed over
+
+- **The tests could not tell working code from an impostor.** A grader with `poissonUpperTail = () => 0.5` and fabricated p-values passed **16/16** — reproduced and confirmed. The suite attacked the *gates* and never pinned a single NUMBER, leaving the statistical core unguarded. The impostor now loses 6 tests.
+- **The p-values were anti-conservative by ~10x.** Treating the baseline as a KNOWN rate ignores that it is itself one noisy draw. **3 → 8 graded a confident HIT at p=0.0119 where the exact conditional test says p=0.113 — noise.** Replaced with the conditional binomial test (given N, after ~ Bin(N, ½)), still fully deterministic. **Determinism was never the safety property — calibration is.**
+- **Every abstention was terminal.** The orchestrator skipped any bet carrying any stored grade, and it persists `too_soon` — so one early run would have frozen the whole backlog permanently, turning "abstain rather than fabricate" into *"abstain once, never grade"*. The 8 rows written before the fix were cleared and re-graded.
+- **A run whose writes all failed returned `completed`** — letter-for-letter the price-refresher failure, a `console.error` nobody reads. Now `status: 'failed'`.
+
+Also fixed: **`extractMarkers` was broken by ordinary apostrophes** — *"Don't bury the ingredients: add a scannable 'Ingredients list' section"* extracted `t bury the ingredients: add a scannable `, garbage matching no page, producing a **false `not_executed`** that silently drops the bet from grading. And `stripHtml` decoded `&#39;` but not `&#x27;`, which the live site also emits (8 and 3 occurrences in one real page).
+
+**And the first attempt to guard two of these did not bind** — the tests asserted on source text and passed against both bugs when reintroduced. Rewritten to execute `runBetGrader` against an in-memory DB stub. The repo's own "source tests miss runtime bugs" rule, violated by the author who had just written it down.
+
+### A finding that did NOT survive measurement
+
+An early read reported *"44 of 47 posts have meta titles under 45 characters."* **That was wrong** — it measured the DATABASE COLUMN, not the RENDERED title. `layout.tsx` sets `template: '%s | Seoul Sister'`, adding 15 characters. Re-measured: **38 of 46 render at 40–60 characters** (mean 50.1), a healthy range. No fix warranted. The instrument was reading the wrong surface — the same error as grading a page by `updated_at` instead of fetching it.
+
+### Verification
+
+984 → 1,003 tests. Each guard confirmed to **FAIL** when its bug is reverted, and the suite was attacked in both directions: an implementation that **always abstains** fails 8 tests, so the tests reject useless silence as well as false confidence. One revert initially produced a **false green** from a shell-quoting error — the anchor is now asserted before the result is trusted. Poisson math checked against an independent reference on 80 (k, λ) pairs.
+
+**NOT verified: the scheduler has not yet produced a graded row.** A hand invocation proves the code works and says nothing about whether the schedule does. Full record in `SEO-BET-GRADER.md`.
+
+---
+
 ## v11.33.0 — August 17 2026
 
 **A wrong number in a telemetry column, fixed by labelling it rather than tuning the thing that produced it.**

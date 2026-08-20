@@ -97,6 +97,10 @@
       "schedule": "0 16 * * 2-4"
     },
     {
+      "path": "/api/cron/seo-grade-bets",
+      "schedule": "0 9 * * 0"
+    },
+    {
       "path": "/api/cron/seo-guardian",
       "schedule": "0 10 * * 0"
     }

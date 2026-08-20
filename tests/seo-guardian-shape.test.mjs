@@ -28,6 +28,34 @@ const routeSrc = readFileSync(join(root, 'src', 'app', 'api', 'cron', 'seo-guard
 const libSrc = readFileSync(join(root, 'src', 'lib', 'seo', 'seo-guardian.ts'), 'utf8')
 const vercelJson = JSON.parse(readFileSync(join(root, 'vercel.json'), 'utf8'))
 
+test('grades actually REACH the strategist prompt (consumer link)', () => {
+  // A bet needs ~28 days before a clean grading window exists, but reports are
+  // WEEKLY. At the original limit(3) every grade aged out of the prompt before
+  // it was ever written — grades sat in the database and reached no consumer,
+  // the loop's third question failing inside the fix for that same failure.
+  const limitMatch = libSrc.match(/\.limit\((\d+)\)/)
+  assert.ok(limitMatch, 'prior-run query must have an explicit limit')
+  assert.ok(
+    Number(limitMatch[1]) >= 8,
+    `prior-run window is ${limitMatch[1]} weeks — too narrow to ever contain a graded bet (needs >= 8)`
+  )
+  // And the verdict must carry execution + power, or "miss" is ambiguous
+  // between "theory wrong" and "work never shipped".
+  assert.ok(/execution=\$\{grade\.execution_status\}/.test(libSrc), 'execution status must reach the prompt')
+  assert.ok(/NOT statistically powered/.test(libSrc), 'unpowered abstentions must be labelled in the prompt')
+})
+
+test('the grader cron runs BEFORE the strategist each week', () => {
+  const grader = vercelJson.crons.find((c) => c.path === '/api/cron/seo-grade-bets')
+  const strategist = vercelJson.crons.find((c) => c.path === '/api/cron/seo-guardian')
+  assert.ok(grader, 'grader cron must be scheduled')
+  const hour = (c) => Number(c.schedule.split(' ')[1])
+  assert.ok(
+    hour(grader) < hour(strategist),
+    'grader must run before the strategist so the same morning report sees fresh verdicts'
+  )
+})
+
 test('cron is scheduled weekly in vercel.json', () => {
   const entry = vercelJson.crons.find((c) => c.path === '/api/cron/seo-guardian')
   assert.ok(entry, 'seo-guardian cron entry must exist')

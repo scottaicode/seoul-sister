@@ -97,6 +97,15 @@ Business context you must respect:
 - MEASURED Aug 2 2026, worth weighing when you pick targets: across the top 32 queries by impressions (818 impr, 2 clicks, 0.24% CTR at avg position 12), the clicks split entirely by INTENT. Definitional/what-is queries — "sebaceous filaments" (84 impr), "madecassic acid" (47), "melaset" (31), "korean expiration date format" (30) — returned **541 impressions and 0 clicks, 0.00%**. Solution/review-intent queries — "beauty of joseon aqua fresh sunscreen review" (1/39), "korean skincare FOR sebaceous filaments" (1/27), "best korean skincare for PIH" — returned 277 impressions and both clicks, 0.72%. The site already HAS well-titled, ranking pages for every one of those definitional themes, so this is not a content gap: AI Overviews answer definitional questions inline and the user never clicks. Note also that 0.24% CTR at position 12 is at or above published par for page 2 (~0.21% at position 11; page 2 captures <1.4% of all clicks), so metadata rewrites at that position have a low ceiling — position and intent are the real levers, not titles. This is a fact for your judgment, not a rule: definitional pages may still be worth writing for the AI-citation channel, which is a separate and proven win. Decide, and say which channel a bet is aimed at.
 - Retailer policy for any content suggestion: recommend Olive Young, Soko Glam, iHerb only. Never YesStyle, Stylevana, StyleKorean, and no Amazon/eBay links.
 
+HOW TO READ GRADED BETS (the grader is deliberately abstention-heavy):
+- Verdicts are produced by a deterministic instrument, never by an AI. Only 'hit' and 'miss' are evidence about SEO.
+- 'ungradeable_not_executed' means the work never shipped. The theory is UNTESTED, not wrong — never discount a bet type for this, and consider re-proposing it.
+- 'ungradeable_underpowered' is a verdict about how YOU WROTE THE BET, not about what happened: at this site's volume, reaching the threshold you named could not have been told apart from chance, so no outcome could have confirmed it. The gradeability test is whether hitting your stated threshold would itself be statistically significant against the baseline. That is a fact about the instrument, not a restriction on what you may bet on — an ungradeable bet can still be the right call, and you may say so.
+- 'ungradeable_too_soon' / 'ungradeable_no_data' mean the measurement window or the data was not there. No information either way.
+- A bet marked 'execution=partially_executed' had only some of its action shipped; treat its numbers with suspicion.
+- IMPORTANT: a bet that shipped and did NOT move its metric is real evidence — do not silently re-propose the same action on the same page. Say plainly that you are re-betting and why the new angle differs.
+- At ~64 clicks per 28 days sitewide, most bets will be ungradeable. That is an honest reading of the site's size, not a broken instrument. Whether to trade measurability for reach is YOUR call to make and to explain.
+
 YOUR JUDGMENT IS THE PRODUCT. The computed facts (striking-distance list, aggregates) are conveniences, not constraints — you may bet on anything in the data, including low-position queries, if your reasoning is sound. Prior ungraded bets are listed so you don't duplicate them; graded outcomes (when present) tell you which of your bet types actually work — calibrate accordingly and say when you're discounting a bet type because its track record is weak.
 
 Output format:
@@ -239,7 +248,13 @@ export async function runSeoGuardian(db: SupabaseClient): Promise<SeoGuardianRes
     .select('window_start, window_end, computed_facts, bets, grades, created_at')
     .eq('status', 'completed')
     .order('created_at', { ascending: false })
-    .limit(3)
+    // 12, not 3. A bet needs ~28 days before a non-overlapping window exists to
+    // grade it against, but reports are WEEKLY — so at limit 3 every grade
+    // aged out of the prompt before it was ever written, and the strategist saw
+    // `ungraded` forever. The grades existed in the database and reached no
+    // consumer: the loop's third question failing inside the fix for the same
+    // failure. 12 weeks covers the grading latency with room to spare.
+    .limit(12)
 
   let priorComparison = 'No prior run — this is the baseline week.'
   const lastRun = prior?.[0]
@@ -253,12 +268,35 @@ export async function runSeoGuardian(db: SupabaseClient): Promise<SeoGuardianRes
   const priorBetLines: string[] = []
   for (const run of prior ?? []) {
     const bets = (run.bets as SeoBet[]) ?? []
-    const grades = (run.grades as Record<string, { verdict: string; notes?: string }> | null) ?? null
+    const grades =
+      (run.grades as Record<
+        string,
+        {
+          verdict: string
+          notes?: string
+          execution_status?: string
+          powered?: boolean
+          confounded_sitewide?: boolean
+        }
+      > | null) ?? null
     for (const b of bets) {
       const grade = grades?.[b.id]
-      priorBetLines.push(
-        `- [${run.created_at?.slice(0, 10)}] ${b.action} (${b.confidence}) → expected: ${b.expected_outcome}${grade ? ` | GRADED: ${grade.verdict}${grade.notes ? ` — ${grade.notes}` : ''}` : ' | ungraded'}`
-      )
+      // A graded bet must carry its EXECUTION status and power alongside the
+      // verdict. Without them "miss" is ambiguous between "the theory was
+      // wrong" and "the work never shipped" — opposite remediations — and an
+      // abstention would read as a failure. This is the whole feedback channel;
+      // an unqualified verdict here is how the loop teaches from noise.
+      let line = `- [${run.created_at?.slice(0, 10)}] ${b.action} (${b.confidence}) → expected: ${b.expected_outcome}`
+      if (grade) {
+        const bits = [`GRADED: ${grade.verdict}`]
+        if (grade.execution_status) bits.push(`execution=${grade.execution_status}`)
+        if (grade.powered === false) bits.push('NOT statistically powered — carries no evidence either way')
+        if (grade.confounded_sitewide) bits.push('sitewide shock in window — confounded')
+        line += ` | ${bits.join(' | ')}${grade.notes ? ` — ${grade.notes}` : ''}`
+      } else {
+        line += ' | ungraded'
+      }
+      priorBetLines.push(line)
     }
   }
   const priorBets = priorBetLines.length > 0 ? priorBetLines.join('\n') : 'None yet.'
