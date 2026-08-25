@@ -36,7 +36,7 @@ import { dirname, join } from 'node:path'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
 const widget = readFileSync(join(root, 'src/components/widget/TryYuriSection.tsx'), 'utf8')
-const page = readFileSync(join(root, 'src/app/page.tsx'), 'utf8')
+const page = readFileSync(join(root, 'src/components/home/HomeClient.tsx'), 'utf8')
 const redirect = readFileSync(join(root, 'src/components/auth/SignedInRedirect.tsx'), 'utf8')
 
 test('the ask param is deleted and the URL rewritten, so a reload cannot re-arm it', () => {

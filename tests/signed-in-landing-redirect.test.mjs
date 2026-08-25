@@ -9,7 +9,7 @@
  * defaulting to scope:'global'). None of them was what she was looking at.
  *
  * The PWA manifest's `start_url` is `https://www.seoulsister.com/` — the
- * MARKETING page — and src/app/page.tsx had NO auth awareness at all. It
+ * MARKETING page — and src/components/home/HomeClient.tsx had NO auth awareness at all. It
  * rendered "Get Started" / "Start Your Journey" / "Talk to Yuri Free. 12
  * messages, no signup" unconditionally, to everyone, including paying
  * subscribers holding a valid session. Every launch LOOKED like a logout.
@@ -148,7 +148,7 @@ test('a #pricing anchor stays on the landing page', async () => {
 // ---------------------------------------------------------------------------
 
 test('the landing page renders the redirect component', () => {
-  const page = read('src', 'app', 'page.tsx')
+  const page = read('src', 'components', 'home', 'HomeClient.tsx')
   assert.match(
     page,
     /import SignedInRedirect from '@\/components\/auth\/SignedInRedirect'/,
@@ -180,7 +180,7 @@ test('the redirect renders nothing and cannot gate the page', () => {
 })
 
 test('the landing page itself still has no auth gate', () => {
-  const page = read('src', 'app', 'page.tsx')
+  const page = read('src', 'components', 'home', 'HomeClient.tsx')
   // The marketing content must not become conditional on a session; only the
   // redirect is allowed to know about auth.
   assert.ok(

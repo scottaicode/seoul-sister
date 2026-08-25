@@ -91,7 +91,27 @@ export default function ProductIntelligenceSection({ productId, productName, pro
   // Still resolving auth or subscription — show nothing (avoids flash + the
   // "stuck loading" perception). The gated teasers only render once we KNOW
   // the visitor is not a subscriber.
-  if (authLoading || isSubscriber === null) return null
+  //
+  // EXCEPT the free Yuri CTA, which is hoisted ABOVE this gate. Measured Aug 25
+  // 2026: `/products/[id]` shipped ZERO `?ask=` links in its HTML on three
+  // separate product ids. The anchor in `AskYuriAboutProduct` was always a
+  // correct <Link> — it was simply unreachable, because `isSubscriber` starts
+  // null and only resolves inside a useEffect, so this early return removed the
+  // whole section from server-rendered markup. A correct link defeated by a
+  // client-side auth gate.
+  //
+  // The CTA is safe to render before auth resolves because it is IDENTICAL for
+  // every visitor: it points at the free landing widget and promises nothing
+  // subscriber-only. Only the gated teasers below need to know who is asking.
+  // (Consistent with `source='product'` measuring 3 visitors / 0 emails
+  // lifetime — a CTA no crawler has ever seen.)
+  if (authLoading || isSubscriber === null) {
+    return (
+      <div className="mb-8">
+        <AskYuriAboutProduct productName={productName} productBrand={productBrand} />
+      </div>
+    )
+  }
 
   // Subscriber — show full enrichment
   if (isSubscriber) {

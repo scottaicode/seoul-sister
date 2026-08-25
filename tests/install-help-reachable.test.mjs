@@ -32,7 +32,7 @@ const root = join(__dirname, '..')
 const read = (...p) => readFileSync(join(root, ...p), 'utf8')
 
 const installPath = join(root, 'src', 'app', 'install', 'page.tsx')
-const landingSrc = read('src', 'app', 'page.tsx')
+const landingSrc = read('src', 'components', 'home', 'HomeClient.tsx')
 const loginSrc = read('src', 'app', '(auth)', 'login', 'page.tsx')
 const tipSrc = read('src', 'components', 'pwa', 'AddToHomeScreenTip.tsx')
 

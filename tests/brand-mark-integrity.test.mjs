@@ -290,7 +290,7 @@ test('nothing references the retired orb-and-wordmark SVGs', () => {
 test('both headers render the brand mark', () => {
   for (const [label, parts] of [
     ['authenticated Header', ['src', 'components', 'layout', 'Header.tsx']],
-    ['landing nav', ['src', 'app', 'page.tsx']],
+    ['landing nav', ['src', 'components', 'home', 'HomeClient.tsx']],
   ]) {
     assert.match(
       read(...parts),

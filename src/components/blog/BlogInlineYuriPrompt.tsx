@@ -1,7 +1,7 @@
 'use client'
 
 import { Sparkles, ArrowRight } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { buildBlogPrefill } from './blog-prefill'
 import { trackEvent, BlogEvent } from '@/lib/analytics'
@@ -31,33 +31,31 @@ function getPromptText(category?: string | null): string {
 
 export default function BlogInlineYuriPrompt({ title, category, primaryKeyword }: BlogInlineYuriPromptProps) {
   const { user } = useAuth()
-  const router = useRouter()
 
-  const openYuri = () => {
-    trackEvent(BlogEvent.ctaClick, { placement: 'inline_prompt', authed: !!user })
-    if (user) {
-      router.push('/yuri')
-    } else {
-      // Route to the landing hero widget with the question prefilled (single
-      // front door funnel), not the corner bubble. Yuri answers freely there.
-      const prefill = buildBlogPrefill({ title, category, primaryKeyword })
-      router.push(`/?ask=${encodeURIComponent(prefill)}&from=blog`)
-    }
-  }
+  // A real <Link href>, for the same reason as BlogYuriCta: navigation used to
+  // live in a click handler, so no `?ask=` link existed in the delivered HTML.
+  // This component renders 2-3 times per post, so it is most of the blog's CTA
+  // surface and most of the missing internal links to `/`.
+  //
+  // It was also a `div role="button"` with a hand-rolled onKeyDown. A real
+  // anchor gets keyboard activation, focus handling, middle-click and
+  // open-in-new-tab for free, so the a11y shim is deleted rather than kept.
+  //
+  // href swaps on auth (no preventDefault) — see BlogYuriCta for why.
+  const prefill = buildBlogPrefill({ title, category, primaryKeyword })
+  const href = user ? '/yuri' : `/?ask=${encodeURIComponent(prefill)}&from=blog`
 
   return (
-    <div
-      onClick={openYuri}
+    <Link
+      href={href}
+      onClick={() => trackEvent(BlogEvent.ctaClick, { placement: 'inline_prompt', authed: !!user })}
       className="my-10 flex items-center justify-between gap-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 cursor-pointer hover:bg-amber-500/15 hover:border-amber-500/40 transition-colors"
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openYuri() }}
     >
       <div className="flex items-center gap-3">
         <Sparkles className="w-5 h-5 text-amber-400 shrink-0" />
         <span className="text-sm md:text-base text-white/90">{getPromptText(category)}</span>
       </div>
       <ArrowRight className="w-4 h-4 text-amber-400 shrink-0" />
-    </div>
+    </Link>
   )
 }

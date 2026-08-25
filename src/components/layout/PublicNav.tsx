@@ -23,13 +23,12 @@ export default function PublicNav() {
   // Signed-in users get the full Yuri experience. Everyone else goes to the
   // landing hero widget (the single Yuri conversion surface). On the home page
   // we focus the widget via ?ask= (empty intent); elsewhere we navigate home.
-  const handleAskYuri = () => {
-    if (user) {
-      router.push('/yuri')
-    } else {
-      router.push('/?ask=&from=nav')
-    }
-  }
+  // Real href, not a router.push handler. This nav renders on every public
+  // page (~12,867 URLs), so as a <button> the site's one universal Yuri
+  // affordance was invisible to every crawler on every page. Empty `ask` is
+  // intentional: nav carries no topic, so it focuses the widget without
+  // prefilling a question the visitor did not imply.
+  const askYuriHref = user ? '/yuri' : '/?ask=&from=nav'
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-md border-b border-white/10">
@@ -72,13 +71,13 @@ export default function PublicNav() {
               {link.label}
             </Link>
           ))}
-          <button
-            onClick={handleAskYuri}
+          <Link
+            href={askYuriHref}
             className="hidden md:inline-flex items-center gap-1.5 text-sm font-medium text-amber-400 hover:text-amber-300 transition-colors"
           >
             <Sparkles className="w-3.5 h-3.5" />
             Ask Yuri
-          </button>
+          </Link>
         </div>
       </div>
     </nav>
