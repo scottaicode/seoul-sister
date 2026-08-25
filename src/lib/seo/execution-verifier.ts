@@ -46,6 +46,28 @@ export function extractMarkers(action: string): string[] {
   return markers.filter((t) => /^[A-Za-z0-9]/.test(t) && /[A-Za-z0-9?]$/.test(t.trim()))
 }
 
+/**
+ * Anchor/jump-target ids named in an action, e.g. `#best-serum-for-pie`.
+ *
+ * A generator reproduces an id byte-for-byte while the surrounding prose is
+ * rewritten freely, so an id is the one marker species immune to the paraphrase
+ * drift that made verbatim phrase-matching unreliable.
+ */
+export function extractAnchorIds(action: string): string[] {
+  return [...action.matchAll(/#([a-z0-9][a-z0-9-]{2,60})\b/gi)].map((m) => m[1].toLowerCase())
+}
+
+/**
+ * Ids actually present in the live HTML. Read from RAW html on purpose:
+ * `stripHtml` discards attributes, which is why shipped anchors were invisible
+ * to this verifier.
+ */
+export function liveAnchorIds(html: string): Set<string> {
+  const ids = new Set<string>()
+  for (const m of html.matchAll(/\bid=["']([^"']{1,80})["']/gi)) ids.add(m[1].toLowerCase())
+  return ids
+}
+
 export function stripHtml(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
@@ -107,22 +129,73 @@ export async function verifyExecution(
   const title = html.match(/<title>([^<]*)<\/title>/i)?.[1] ?? ''
   const metaDesc = html.match(/name="description"\s+content="([^"]*)"/i)?.[1] ?? ''
 
-  const markers = extractMarkers(action)
-  const found = markers.filter((m) => text.includes(norm(m)))
-
-  if (markers.length > 0) {
-    if (found.length === markers.length) {
-      return { status: 'executed', evidence: `all ${markers.length} named element(s) present on live page` }
+  // An internal-linking bet CHANGES one page and names another as its ranking
+  // target. `targetPage` is the ranking target, so fetching it inspects the
+  // wrong document: measured Aug 25 2026, the Aug 5 `pie-to-pih-internal-links`
+  // bet (add links ON the PIE post) carries markers 'fade post-acne dark spots'
+  // and 'post-inflammatory hyperpigmentation' that appear on the PIH page 18x
+  // and 6x as ordinary topic text — it would have graded `executed` on evidence
+  // from a page the action never touched. Abstain rather than inspect the
+  // wrong document.
+  if (actionType === 'internal_links') {
+    return {
+      status: 'unverified',
+      evidence:
+        'internal-link bet: the page that CHANGES is not the ranking target this verifier fetches — cannot confirm from the target page',
     }
-    if (found.length > 0) {
+  }
+
+  const markers = extractMarkers(action)
+  const anchorIds = extractAnchorIds(action)
+  const liveIds = liveAnchorIds(html)
+
+  // Anchor ids are the strongest execution evidence available and were
+  // previously invisible: `stripHtml` deletes attributes, so the shipped
+  // `#best-serum-for-pie` anchors on the PIE post could never be seen. They
+  // survive paraphrase (a generator reproduces an id exactly, while prose
+  // drifts), so an id hit is real evidence where a prose hit may be topic
+  // vocabulary.
+  const foundIds = anchorIds.filter((id) => liveIds.has(id))
+  const found = markers.filter((m) => text.includes(norm(m)))
+  const totalNamed = markers.length + anchorIds.length
+  const totalFound = found.length + foundIds.length
+
+  if (totalNamed > 0) {
+    const desc = [...found, ...foundIds.map((i) => `#${i}`)].join(', ')
+    if (totalFound === totalNamed) {
+      return { status: 'executed', evidence: `all ${totalNamed} named element(s) present on live page` }
+    }
+    if (totalFound > 0) {
       return {
         status: 'partially_executed',
-        evidence: `${found.length}/${markers.length} named elements present (found: ${found.join(', ')})`,
+        evidence: `${totalFound}/${totalNamed} named elements present (found: ${desc})`,
       }
     }
+    // ZERO matches is NOT evidence of non-execution.
+    //
+    // Earned Aug 25 2026. The Jul 26 `pih-into-pie-post` bet named "PIH vs PIE";
+    // the live page ships that exact section as "PIE vs PIH: Which One Do You
+    // Actually Have?". Verbatim matching missed it and returned `not_executed`,
+    // which gate 1 treats as terminal AND which seo-guardian.ts explicitly tells
+    // the strategist to re-propose — producing a 4th bet on an already-finished
+    // page and nearly costing a duplicate work order.
+    //
+    // The tempting repair — word-order-tolerant token matching — was MEASURED
+    // and REJECTED: 24 separate 8-word windows on the live PIE page contain both
+    // "PIH" and "PIE" as ordinary topic vocabulary, so it would have returned
+    // `executed` against the PRE-EDIT page too. A false `executed` is strictly
+    // worse than a false `not_executed`: it is the only status that reaches a
+    // hit/miss, and it stamps the write-once `execution_first_seen` (`??`, never
+    // overwritten), permanently corrupting gate 2b.
+    //
+    // Markers are extracted from PROSE THE STRATEGIST WROTE to describe intent
+    // — sometimes a literal string, sometimes a concept ('Best for your
+    // concern' was never meant to appear on the page). No matching policy can
+    // recover a distinction the data does not carry, so the honest state is
+    // abstention. `not_executed` is reserved for positive evidence (a 404).
     return {
-      status: 'not_executed',
-      evidence: `none of the named elements present on the live page (looked for: ${markers.join(', ')})`,
+      status: 'unverified',
+      evidence: `named phrases not found verbatim (looked for: ${[...markers, ...anchorIds.map((i) => `#${i}`)].join(', ')}) — cannot distinguish a paraphrase from non-execution`,
     }
   }
 
