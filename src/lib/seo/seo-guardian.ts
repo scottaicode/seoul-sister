@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { getAnthropicClient, callAnthropicWithRetry } from '@/lib/anthropic'
 import { getAIContext, estimateCost } from '@/lib/ai-config'
 import { logAIUsage } from '@/lib/ai-usage-logger'
-import { getGscConfig, fetchSearchAnalytics, type GscRow } from './gsc-client'
+import { getGscConfig, fetchSearchAnalytics, fetchSiteTotals, type GscRow } from './gsc-client'
 
 // ---------------------------------------------------------------------------
 // SEO Guardian — weekly Search Console strategist (Phase 1, report-only).
@@ -104,7 +104,7 @@ HOW TO READ GRADED BETS (the grader is deliberately abstention-heavy):
 - 'ungradeable_too_soon' / 'ungradeable_no_data' mean the measurement window or the data was not there. No information either way.
 - A bet marked 'execution=partially_executed' had only some of its action shipped; treat its numbers with suspicion.
 - IMPORTANT: a bet that shipped and did NOT move its metric is real evidence — do not silently re-propose the same action on the same page. Say plainly that you are re-betting and why the new angle differs.
-- At ~64 clicks per 28 days sitewide, most bets will be ungradeable. That is an honest reading of the site's size, not a broken instrument. Whether to trade measurability for reach is YOUR call to make and to explain.
+- Site volume is modest, so many bets will be ungradeable. That is an honest reading of the site's size, not a broken instrument. Whether to trade measurability for reach is YOUR call to make and to explain. Judge volume from the TRUE TOTALS in the data block, never from the per-query list — the list is a withheld-row subset (see PER-QUERY VISIBILITY). A prior version of this prompt hardcoded a sitewide click figure taken from the undercounted sum, understating real traffic roughly eightfold; never state a fixed volume figure here again.
 
 YOUR JUDGMENT IS THE PRODUCT. The computed facts (striking-distance list, aggregates) are conveniences, not constraints — you may bet on anything in the data, including low-position queries, if your reasoning is sound. Prior ungraded bets are listed so you don't duplicate them; graded outcomes (when present) tell you which of your bet types actually work — calibrate accordingly and say when you're discounting a bet type because its track record is weak.
 
@@ -120,7 +120,14 @@ function buildUserPrompt(input: {
   queryAggs: QueryAgg[]
   pageAggs: Array<{ page: string; clicks: number; impressions: number; position: number }>
   strikingDistance: QueryAgg[]
-  totals: { clicks: number; impressions: number; queries: number }
+  totals: {
+    clicks: number
+    impressions: number
+    queries: number
+    visible_clicks?: number
+    visible_impressions?: number
+    totals_source?: string
+  }
   priorComparison: string
   priorBets: string
   today: string
@@ -134,11 +141,22 @@ function buildUserPrompt(input: {
       ? `\n(+${remainder.length} further queries not listed, totaling ${Math.round(remainder.reduce((s, q) => s + q.impressions, 0))} impressions / ${Math.round(remainder.reduce((s, q) => s + q.clicks, 0))} clicks — ask for nothing; this is full disclosure of what you are not seeing.)`
       : ''
 
+  // Google WITHHOLDS rows for rare/anonymized queries, so the per-query list
+  // below is a SUBSET of real traffic — measured Aug 25 2026 at 12.9% of clicks
+  // over 28 days. The strategist must know the denominator it is reasoning
+  // about, or it will call a rising site flat and bet on the wrong pages.
+  const vc = input.totals.visible_clicks
+  const vi = input.totals.visible_impressions
+  const coverageNote =
+    typeof vc === 'number' && typeof vi === 'number' && input.totals.clicks > 0
+      ? `\nPER-QUERY VISIBILITY: the ${input.totals.queries} queries listed below account for only ${vc} clicks / ${vi} impressions — ${Math.round((vc / input.totals.clicks) * 100)}% of site clicks. Google withholds rare/anonymized queries, so the rest of the traffic is REAL but has no query row you can see. Never describe site-wide health from the query list alone; use the true totals above for that, and the query rows only for per-page/per-query decisions.${input.totals.totals_source === 'summed_rows_FALLBACK' ? ' WARNING: the true-totals call FAILED this run, so the numbers above are the undercounted sum — treat them as a floor.' : ''}`
+      : ''
+
   const fmtQ = (q: QueryAgg) => `${q.query} | ${q.clicks} clicks | ${q.impressions} impr | pos ${q.position} | ${q.topPage.replace('https://www.seoulsister.com', '').replace('https://seoulsister.com', '') || '/'}`
 
   return `Today is ${input.today}. GSC window: ${input.windowStart} to ${input.windowEnd} (28 days, data lags ~3 days).
 
-TOTALS: ${input.totals.clicks} clicks, ${input.totals.impressions} impressions, ${input.totals.queries} distinct queries.
+TOTALS (whole site, true): ${input.totals.clicks} clicks, ${input.totals.impressions} impressions.${coverageNote}
 
 VS PRIOR RUN:
 ${input.priorComparison}
@@ -234,10 +252,23 @@ export async function runSeoGuardian(db: SupabaseClient): Promise<SeoGuardianRes
   const queryAggs = aggregateByQuery(rows)
   const pageAggs = aggregateByPage(rows)
   const strikingDistance = queryAggs.filter((q) => q.position >= 4 && q.position <= 20)
-  const totals = {
+  // Summed dimensioned rows — what the strategist can actually SEE per query.
+  const visible = {
     clicks: Math.round(rows.reduce((s, r) => s + r.clicks, 0)),
     impressions: Math.round(rows.reduce((s, r) => s + r.impressions, 0)),
+  }
+  // TRUE site totals. Google withholds rare/anonymized query rows, so `visible`
+  // is a floor, not the total — measured Aug 25 2026 at 12.9% of real clicks
+  // over 28 days. `null` means the totals call failed; the report then says so
+  // rather than presenting the undercount as fact.
+  const siteTotals = await fetchSiteTotals(config, windowStart, windowEnd)
+  const totals = {
+    clicks: siteTotals?.clicks ?? visible.clicks,
+    impressions: siteTotals?.impressions ?? visible.impressions,
     queries: queryAggs.length,
+    visible_clicks: visible.clicks,
+    visible_impressions: visible.impressions,
+    totals_source: siteTotals ? ('gsc_undimensioned' as const) : ('summed_rows_FALLBACK' as const),
   }
 
   // Prior run: totals delta + outstanding bets (so the strategist sees its own
