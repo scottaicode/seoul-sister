@@ -49,7 +49,7 @@ Measured on visitor `3a756ff2` (Aug 26): the stored memory stops at message 4 of
 
 **Not root-caused.** Unknown whether the model returns prose, hits `max_tokens: 400`, or the prompt has drifted. First step is to log the raw response text on the `no_json` path (`src/lib/widget/persistence.ts`), then re-run against a real transcript.
 
-**This deferral is recorded in markdown only.** Per CLAUDE.md a deferral that is not visible in DATA is indistinguishable from a gap six weeks later, and the intended `ss_pipeline_runs` row with `metadata.deferral_key = 'widget_ai_memory_writer_fails_silently'` **has not been written** — the MCP connection available in that session was read-only. Writing it is an open task, not a completed one.
+**This deferral is visible in DATA, not only here.** Per CLAUDE.md a deferral recorded only in markdown is indistinguishable from a gap six weeks later, so it is queryable as `ss_pipeline_runs` row **`fa638404-c03f-419f-bdaa-58e53f4e3ed2`** (`run_type = 'deferral'`, `metadata.deferral_key = 'widget_ai_memory_writer_fails_silently'`), carrying the evidence, the reason it was deferred, the first debugging step, and a recheck trigger. The write is idempotent on the deferral key, so re-running it cannot create a duplicate.
 
 ---
 
