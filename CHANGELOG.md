@@ -4,6 +4,68 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.35.0 — August 26 2026
+
+**Yuri told a visitor her products weren't in our catalog. Two of them were, verified, under exactly the names she typed. She was obeying the prompt.**
+
+A visitor arrived from the blog on Aug 26, listed six products she owned, and got a genuinely excellent consult — Yuri diagnosed a years-old "oily skin shopping habit" rather than a damaged barrier, told her *"you bought well, now just don't over-treat it"*, and when asked outright what toner/serum/cream she lacked, answered **one buy, two SKIPs**. That is the anti-selling that converted our only paying subscriber.
+
+It rested on a search that never found her products. Yuri issued ONE `search_products` call containing three of them:
+
+```
+Round Lab Birch Juice Moisturizing Cleanser Purito Oat-In Calming Gel Cream SKIN1004 sunscreen
+```
+
+and opened with *"Your exact SKUs didn't come back in the catalog."* **`Birch Juice Moisturizing Cleanser` (Round Lab) and `Oat-In Calming Gel Cream` (Purito Seoul) are both in the catalog, `is_verified = true`, under exactly those names.**
+
+### She was following an instruction from March
+
+`route.ts` had carried this since ebe7342 (Mar 10 2026):
+
+> *"IMPORTANT: When recommending multiple products (e.g., a routine), search for ALL of them in a SINGLE tool call using a broad query rather than making separate searches for each product."*
+
+It was added to stop tool-loop exhaustion — a real problem at the time. It has been producing wrong products ever since, and it **directly contradicted a newer rule six lines above it** (`route.ts:202`, from v11.29.0): *"if your searches this turn did not cover that product, you have not checked it."* Batching makes covering each product impossible.
+
+### Why batching cannot work — measured, not read
+
+`smartProductSearch` resolves ONE product per query. Its precise strategies scale their bar to `terms.length`, so a 13-term three-product query needs **12-of-13 coverage on a single row** — unreachable by construction. Executed against the live catalog with the real function instrumented at every strategy return:
+
+```
+TRACE_S2 terms=13 maxCoverage=3 threshold=12 windowRows=50
+TRACE_STRATEGY=3
+```
+
+It falls through to Strategy 3's loose any-term scorer, where brand tokens are worth 3x — "Round Lab" banks 6 points before any product word is read, and `calming` (a word from *Purito's* product) boosted a *Round Lab* row. **Each product searched alone resolves correctly via Strategy 1.5.** Splitting is the entire fix.
+
+**Ranking changes cannot help.** The correct rows are never fetched: Strategy 2 caps its OR filter at 6 terms (`tools.ts:588`), so `purito`, `oat` and `skin1004` never entered SQL at all. *"Ranking cannot select a row that is not there"* (`tools.ts:643-648`).
+
+**The wrong answer is non-deterministic.** Several rows tie at score 7; the tiebreak is rating then fetch order. The same query returned the Pine Calming Cica Ampoule on one run and a Camellia collagen mask sheet on another — so the same visitor question can produce a different wrong product each time, which makes it nearly impossible to reproduce from a bug report.
+
+**Reproduced twice in production.** The Aug 17 four-brand batch returned a *"Hanbang Serum Discovery Kit"*, and Yuri — not noticing she was ungrounded — asserted *"the Glow Serum's star active is niacinamide"* from memory. There are two BoJ Glow serums: Propolis + Niacinamide, and Glow **Deep** Serum: Rice + **Alpha-Arbutin**. She guessed the right one. Had the visitor meant the other, the sequencing advice would have been wrong.
+
+### What a second-model review caught that my own draft got wrong
+
+A Fable 5 adversarial review found five defects in the first draft. Two were serious, and **both were verified by execution before being accepted**:
+
+- **A false claim of my own.** The draft said each product "searched on its own returns exactly the right row." Executed: `"SKIN1004 sunscreen"` returns the Tone-Up and Tinted sunscreens and **misses the flagship Water-Fit Sun Serum**, because Strategy 1.5 matches names *containing* "sunscreen" and returns before the sunscreen-vocabulary signal in Strategy 3 can run. A category word returns a category. The draft would have manufactured a new false-confidence class.
+- **The omission that would have broken production worse than the bug.** Parallel tool calls DO share one loop iteration (`toolLoopCount++` fires once per API round regardless of how many `tool_use` blocks it carried) — that claim held up. But nothing told Yuri to issue the calls *together*. A model that SERIALIZES on a six-product shelf exhausts `MAX_WIDGET_TOOL_LOOPS = 3`, and **a round that emits tools has its text discarded** (`route.ts:861`), so the visitor's entire reply becomes the canned *"I'm having a moment accessing our database"* — at the deepest point of engagement.
+
+Also fixed: the failure is a **mixed list**, not one wrong row (verified — 5 rows across 4 brands, carrying a right-brand-wrong-product row for two of the three named brands, and not one of the products asked for); cut *"the only way to see what is in each of their bottles"*, which re-introduced an unconditional-search overclaim a **prior** Fable review had already cut for Western brands (5 of 7 measured with ZERO catalog rows); de-specified the example SKU, since a hardcoded winner in a cached block silently goes stale.
+
+### The attribute-search exemption is load-bearing
+
+Descriptive discovery queries ("gentle low pH cleanser sensitive fragrance-free") are the **majority** of real traffic and work correctly. Of every long search query ever issued, only two were multi-brand SKU lookups; the rest were attribute searches. A rule reading as "never put several words in a query" would be the mirror-image over-correction, and a test fails if the exemption disappears.
+
+### Guard tests: 7 new, each proven to FAIL on revert
+
+Reintroduced the original instruction (confirming the edit applied first — this repo has shipped a false green when a substitution silently failed): **all 7 failed.** Then the subtler attack — keep the rule, strip only the parallel clause — **6 passed and test 3 caught it**, which is the variant that would have produced the canned fallback.
+
+984 → 1,029 tests. `tsc` clean.
+
+**NOT VERIFIED: no visitor has hit the new prompt yet.** A hand-run trace proves the search behaves as described; it says nothing about whether Yuri now issues per-product searches in production. That needs a real conversation.
+
+---
+
 ## v11.34.0 — August 20 2026
 
 **The SEO Guardian made 23 dated, falsifiable bets across 7 weekly reports and graded ZERO of them. The loop wrote, and nothing ever read.**
