@@ -41,6 +41,17 @@ Detector re-validated on the live corpus: **65 asks across 343 replies, zero fal
 **NOT VERIFIED: no visitor has hit this block yet.**
 
 ---
+### Deferred, and NOT yet visible in data: the widget memory writer fails silently
+
+`ss_widget_visitors.memory_write_status` reads `no_json_in_response` on **2 of the 2 visitors ever instrumented** — a 100% failure rate. The Sonnet extraction call in `generateAndSaveMemory` returns no JSON object, so the FINAL turn's write fails while an earlier turn's memory persists. The result is the dangerous shape: `ai_memory` looks populated and is **frozen mid-conversation**.
+
+Measured on visitor `3a756ff2` (Aug 26): the stored memory stops at message 4 of 7. It says *"focus on routine optimization rather than product recommendations"* and knows nothing about the Anua discovery, the COSNORI pick, or the four-week plan — so a returning visitor resumes from a stale midpoint, which is the exact failure cross-visit memory exists to prevent.
+
+**Not root-caused.** Unknown whether the model returns prose, hits `max_tokens: 400`, or the prompt has drifted. First step is to log the raw response text on the `no_json` path (`src/lib/widget/persistence.ts`), then re-run against a real transcript.
+
+**This deferral is recorded in markdown only.** Per CLAUDE.md a deferral that is not visible in DATA is indistinguishable from a gap six weeks later, and the intended `ss_pipeline_runs` row with `metadata.deferral_key = 'widget_ai_memory_writer_fails_silently'` **has not been written** — the MCP connection available in that session was read-only. Writing it is an open task, not a completed one.
+
+---
 
 ## v11.36.0 — August 26 2026
 
@@ -136,7 +147,7 @@ Reintroduced the original instruction (confirming the edit applied first — thi
 
 984 → 1,029 tests. `tsc` clean.
 
-**NOT VERIFIED: no visitor has hit the new prompt yet.** A hand-run trace proves the search behaves as described; it says nothing about whether Yuri now issues per-product searches in production. That needs a real conversation.
+**PARTIALLY VERIFIED (updated same day).** A hand-run trace proves the search behaves as described. The prompt then reached production at 07:40 UTC and the Aug 26 visitor returned at **07:55**, landing on this deployment — so the new text was live for a real turn. But she asked a general ingredient-science question and Yuri **correctly made no tool call**, which is what the prompt asks for. So the change was exercised only in the sense that it did not misfire: **still no production row shows Yuri issuing per-product searches.** That needs a turn where she actually looks a named SKU up.
 
 ---
 
