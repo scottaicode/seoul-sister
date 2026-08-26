@@ -20,6 +20,7 @@ import {
   saveUserMessage,
   saveAssistantMessage,
   truncateToolResult,
+  parseResultNames,
   getPreviousConversationContext,
   getSessionTranscript,
   generateAndSaveMemory,
@@ -879,10 +880,19 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
             const result = await executeYuriTool(tb.name, parsedInput, '')
             toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: result })
             toolNamesUsed.push(tb.name)
+            // Capture product names HERE, where `result` is still the full
+            // payload. `result_summary` below is capped at 200 chars, which
+            // always truncates inside the first product — so the names cannot
+            // be recovered downstream. See ToolCallLog.result_names.
+            const parsedNames =
+              tb.name === 'search_products' ? parseResultNames(result) : null
             toolCallLogs.push({
               name: tb.name,
               input: parsedInput,
               result_summary: truncateToolResult(result),
+              ...(parsedNames
+                ? { result_names: parsedNames.names, result_count: parsedNames.count }
+                : {}),
             })
           }
           loopMessages.push({ role: 'user', content: toolResults })

@@ -4,6 +4,42 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.36.0 — August 26 2026
+
+**A search that ran and returned the wrong product was, to Yuri, indistinguishable from one that found it. And the guard suite I wrote to prove the fix did not bind on either component that carries the facts.**
+
+`detectToolGrounding` decided grounding with `if (named > 0 && calls === 0)` — it asks *did a search run*, never *did the search find the product she named*. Those are different questions with the same fingerprint, which is the "nothing wrong vs nothing checked" class one layer up from where it usually bites: here the check itself ran and reported clean.
+
+### Measuring it corrected me twice
+
+All 24 distinct brand-naming queries ever issued were re-run through the **live** resolver. A first pass compared BRANDS only and reported 40%; that was wrong twice over — it read a historical archive as current state (7 of 9 then-failures are already repaired, including an Anua case that returns the exact right product today), and comparing brands **scores the more dangerous half as hits**.
+
+Reading products instead: **7 of 24 still fail, and 5 are right-brand/wrong-product** — `"House of Hur sunscreen"` → Phyto Brew Matcha Cream (the catalog carries **four** House of Hur sunscreens), `"Mixsoon Bifida Cream"` → Master Gentle Foam Cleanser, `"Some By Mi tea tree toner"` → Retinol Bakuchiol Dual Cream. A right-brand row **reads as confirmation**, which is exactly why a brand-level check cannot see it.
+
+### The gap is cross-turn, so no classifier was needed
+
+Within a turn Yuri sees the full tool output — `result` goes untruncated into `loopMessages`. The next request rebuilds the conversation from reply TEXT plus a tool-call COUNT, so by turn N+1 a hit and a miss are identical to her. The information already existed and was being discarded. Whether a returned row answers the visitor's question stays her judgment (Sole Authority); the record states the query, lists what came back, and stops.
+
+### What the second-model review PROVED, not argued
+
+A Fable 5 adversarial review found the guard suite defective by demonstration, and it was right on every count:
+
+- **The suite never executed the extractor.** It replaced the matcher with one that can NEVER match — every real search would render *"returned nothing"*, a **false statement worse than the original bug** — and **all 10 tests passed**. My test 9 executed its own inline copy of the regex; test 10 was a grep. The suite's header lectures about source-text tests passing against broken code while committing exactly that. Now `persistence.ts` is transpiled with stubbed imports and the real `extractSearches`/`parseResultNames` execute.
+- **Pairing was untested.** A cross-wired implementation rendering query *i* with search *j*'s results **passed 10/10** — the old test asserted both queries and both names were merely *present*. A cross-wired record asserts a wrong fact with an instrument's authority, strictly worse than the count it replaces.
+- **`found` is never longer than 1 in production.** Measured across all **188** stored `search_products` calls: `two_plus_names: 0`, one_name 172, zero 16. The 200-char `truncateToolResult` cap always truncates inside the first product, so parsing the stored summary would render a **10-row result identically to a 1-row result** — reintroducing the same indistinguishability one level down, and inviting Yuri to state a catalog gap that does not exist. Names are now captured at call time from the FULL result, and the line reads `→ 5 results: A, B, and 3 more`.
+
+Also fixed from that review: a bare imperative (*"Read them against what the visitor actually named"*) sitting inside a section titled *"facts, not instructions"*; a doubt-tilt (*"has not told you what is in their bottle"*) that pre-judged cases like `Torriden Cellmazing` → `Cellmazing Vita Tone-Up Sun Cream`, plausibly the right line under a fuller catalog name; the three-behaviour enumerated disclaimer that a prior Fable review deleted from v11.32.0 nine days ago, reintroduced here; and filter-only searches (**15 of 188**, `include_ingredients` with no query) being silently dropped while still counting in `toolCalls`.
+
+`parseResultNames` uses `JSON.parse`, not a regex — a regex over the document also matches the `name` key inside each product's `key_ingredients`, extracting *"Water"* and *"Niacinamide"* as returned products. The old comment gave the wrong reason for not widening the cap; that is the real one.
+
+### Guard tests: 10 → 17, and the three attacks that beat the old suite now fail
+
+Each confirmed by reverting the real code: the never-matching parser (fails 2), the cross-wired render (fails 1), and parsing from the truncated summary (fails 1). 1,029 → 1,046 tests. `tsc` clean.
+
+**NOT VERIFIED: no production row shows this block rendered in a live conversation.** Today's rows are this session's own probes. Fixture-verified only, and n=0 on whether Yuri's behaviour actually improves — the record could equally produce re-search loops, and nothing measures which yet.
+
+---
+
 ## v11.35.0 — August 26 2026
 
 **Yuri told a visitor her products weren't in our catalog. Two of them were, verified, under exactly the names she typed. She was obeying the prompt.**

@@ -11,6 +11,23 @@ export interface ToolCallLog {
   name: string
   input: Record<string, unknown>
   result_summary: string
+  /**
+   * Product names this call returned, captured BEFORE `truncateToolResult`.
+   *
+   * Why it cannot be re-derived from `result_summary`: that field is capped at
+   * 200 chars, and a stored row's UUID plus description always exhaust the
+   * budget inside the FIRST product. Measured across all 188 search_products
+   * calls ever stored: 172 retain exactly one name, 16 retain none, and ZERO
+   * retain two. Parsing the stored summary would therefore render a 10-row
+   * result identically to a 1-row result — the same "cannot tell nothing-found
+   * from found-plenty" bug this record exists to close, one level down. Worse
+   * for the live case: "House of Hur sunscreen" would show only the Matcha
+   * moisturizer while the catalog carries four House of Hur sunscreens,
+   * nudging Yuri toward "we don't carry it" — which is false.
+   */
+  result_names?: string[]
+  /** How many products the call actually returned, before any capping. */
+  result_count?: number
 }
 
 /**
@@ -93,7 +110,14 @@ export async function saveAssistantMessage(
 export async function getSessionTranscript(
   sessionId: string,
   limit = 40
-): Promise<Array<{ role: 'user' | 'assistant'; content: string; toolCalls: number }>> {
+): Promise<
+  Array<{
+    role: 'user' | 'assistant'
+    content: string
+    toolCalls: number
+    searches: Array<{ query: string; found: string[] }>
+  }>
+> {
   const supabase = getServiceClient()
 
   // tool_calls is selected because the grounding instrument needs it and the
@@ -117,8 +141,99 @@ export async function getSessionTranscript(
       role: m.role,
       content: m.content,
       toolCalls: Array.isArray(m.tool_calls) ? m.tool_calls.length : 0,
+      searches: extractSearches(m.tool_calls),
     })
   )
+}
+
+/**
+ * What each product search THIS transcript ran actually asked for, and which
+ * products came back.
+ *
+ * Why this is separate from `toolCalls`. The count answers "did a search run",
+ * which the grounding instrument treats as the difference between grounded and
+ * ungrounded. It cannot answer "did the search find the product she named" —
+ * and those are different questions with the same fingerprint. Measured across
+ * every brand-naming search ever issued (24 distinct queries, re-run through
+ * the live resolver Aug 26 2026): 7 returned something other than the product
+ * asked for, and 5 of those 7 returned the RIGHT BRAND with the wrong product
+ * — "House of Hur sunscreen" -> Phyto Brew Matcha Cream, "Mixsoon Bifida
+ * Cream" -> Master Gentle Foam Cleanser, "Some By Mi tea tree toner" ->
+ * Retinol Bakuchiol Dual Cream. A right-brand row reads as confirmation, which
+ * is exactly why a brand-level check misses the more dangerous half.
+ *
+ * WITHIN a turn Yuri sees the full tool output — it is pushed into
+ * loopMessages, untruncated. The gap is ACROSS turns: the next request rebuilds
+ * the conversation from `history` (text only) plus a count, so by turn N+1 a
+ * search that missed and a search that hit are indistinguishable to her. This
+ * carries the names forward so they are not.
+ *
+ * Names only, never a verdict. Deciding whether "Phyto Brew Matcha Cream"
+ * answers "House of Hur sunscreen" is a judgment about the visitor's actual
+ * question, and per the Yuri Sole Authority Principle that judgment is hers.
+ * A classifier here would also have to be market-neutral, and this repo has
+ * twice discarded one that needed hand-tuning.
+ *
+ * Reads `result_names`, captured at call time from the FULL result. It does NOT
+ * parse the stored `result_summary`: that field is capped at 200 chars and a
+ * row's UUID plus description always exhaust the budget inside the first
+ * product. Measured across all 188 stored search_products calls — 172 retain
+ * exactly one name, 16 retain none, ZERO retain two — so parsing it would make
+ * a 10-row result render identically to a 1-row result, reintroducing the very
+ * indistinguishability this record closes. `total` therefore carries the real
+ * count, and the rendered line says so when names are missing.
+ */
+export function parseResultNames(result: string): { names: string[]; count: number } {
+  // Parses the FULL tool result, before truncation. JSON.parse rather than a
+  // regex: the payload is well-formed here (it is only truncated later), and a
+  // regex over the whole document would also match the `name` key inside each
+  // product's `key_ingredients`, extracting "Water" and "Niacinamide" as if
+  // they were returned products.
+  try {
+    const parsed = JSON.parse(result) as { products?: Array<{ name?: unknown }> }
+    if (!Array.isArray(parsed?.products)) return { names: [], count: 0 }
+    const names = parsed.products
+      .map((p) => (typeof p?.name === 'string' ? p.name : ''))
+      .filter((n) => n.length > 0)
+    return { names, count: parsed.products.length }
+  } catch {
+    // A tool that returned an error string or non-JSON. Absent, not wrong.
+    return { names: [], count: 0 }
+  }
+}
+
+export function extractSearches(
+  toolCalls: unknown
+): Array<{ query: string; found: string[]; total: number }> {
+  if (!Array.isArray(toolCalls)) return []
+  const out: Array<{ query: string; found: string[]; total: number }> = []
+  for (const raw of toolCalls) {
+    const call = raw as {
+      name?: unknown
+      input?: unknown
+      result_names?: unknown
+      result_count?: unknown
+    }
+    if (call?.name !== 'search_products') continue
+    const input = (call.input ?? {}) as { query?: unknown; include_ingredients?: unknown }
+    const query =
+      typeof input.query === 'string' && input.query
+        ? input.query
+        : // A filter-only search (include_ingredients with no query) is a real
+          // search that really ran — 15 of 188 stored calls. Dropping it would
+          // make it invisible here while still counting in `toolCalls`, which
+          // is the omission this record exists to prevent.
+          Array.isArray(input.include_ingredients) && input.include_ingredients.length
+          ? `(filter: ${input.include_ingredients.filter((t) => typeof t === 'string').join(', ')})`
+          : ''
+    if (!query) continue
+    const found = Array.isArray(call.result_names)
+      ? call.result_names.filter((n): n is string => typeof n === 'string')
+      : []
+    const total = typeof call.result_count === 'number' ? call.result_count : found.length
+    out.push({ query, found, total })
+  }
+  return out
 }
 
 /**
