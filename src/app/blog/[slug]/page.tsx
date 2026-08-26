@@ -16,7 +16,14 @@ import { excludePollutedIngredientRows } from '@/lib/pipeline/ingredient-parser'
 // Configure marked: open external links in new tab, sanitize
 const renderer = new marked.Renderer()
 renderer.link = ({ href, title, text }) => {
-  const isExternal = href && (href.startsWith('http://') || href.startsWith('https://'))
+  // Absolute self-links (https://www.seoulsister.com/...) are INTERNAL. Treating
+  // them as external opened 567 in-site links across 46 posts in a new tab, which
+  // defeats the internal-linking they exist for. Compare the host, not the scheme.
+  const isExternal = Boolean(
+    href &&
+      (href.startsWith('http://') || href.startsWith('https://')) &&
+      !/^https?:\/\/(www\.)?seoulsister\.com(\/|$)/i.test(href)
+  )
   const titleAttr = title ? ` title="${title}"` : ''
   const target = isExternal ? ' target="_blank" rel="noopener noreferrer"' : ''
   return `<a href="${href}"${titleAttr}${target}>${text}</a>`
