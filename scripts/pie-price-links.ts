@@ -97,9 +97,10 @@ async function main() {
   if (!url || !key) throw new Error('Missing Supabase env');
   const db = createClient(url, key);
 
-  const { data: post, error } = await db
+  const { data, error } = await db
     .from('ss_content_posts').select('id, slug, body, updated_at').eq('slug', SLUG).single();
   if (error) throw new Error(`fetch failed: ${error.message}`);
+  const post = data as { id: string; slug: string; body: string; updated_at: string };
 
   if (!/\$\d/.test(post.body)) { console.log('SKIP: no prose prices remain.'); return; }
 
