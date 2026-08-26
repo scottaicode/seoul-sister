@@ -11,6 +11,7 @@ import { consumeGlobalBudget, logBreakerTrip, BREAKER_MESSAGE } from '@/lib/widg
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
 import { detectCumulativeGive, buildCumulativeGiveBlock, detectBuildRequest, buildRequestBlock } from '@/lib/widget/cumulative-give'
 import { detectToolGrounding, buildToolGroundingBlock } from '@/lib/widget/tool-grounding'
+import { detectEmailAsks, buildEmailAskBlock } from '@/lib/widget/email-ask-count'
 import { buildSubscriberSurfaceBlock } from '@/lib/widget/subscriber-surface'
 import { detectValueDensity, buildValueDensityFact } from '@/lib/widget/value-density'
 import { PRICING } from '@/lib/pricing'
@@ -635,6 +636,25 @@ Do NOT sell. The screen already shows them the price and a button the instant yo
 ${valueDensityFact}` : ''}
 
 Use these facts with the judgment described above. They are context, not a trigger: a long conversation doesn't obligate an ask, and a short one doesn't forbid it. You decide when the value has actually landed. One placement rule when you do offer: let the email ask stand on its own — never staple it to another open question in the same message, or the other question gets answered and the offer gets missed.`
+
+    // --- Email-ask count (Aug 26 2026) ---
+    // The don't-repeat line above stops the asking only when the visitor
+    // "clearly passed on it". A visitor who just asks her next question has not
+    // passed on it, so every turn routes to the "buried, ask again" branch —
+    // and because the asks WERE tacked onto substantive answers, each re-ask
+    // satisfied the condition licensing the next. Verified in production: four
+    // asks in four consecutive replies, no email, visitor left at message 6.
+    //
+    // Not a cap, and deliberately not a threshold: measured across every
+    // session, TWO asks is the best-performing state in the corpus (70%
+    // capture vs 43.8% at one), and none of the differences is significant
+    // (Fisher p=0.25-0.65). It reports the count so she can tell "buried and
+    // unanswered" from "stepped around three times" — a distinction she
+    // currently cannot make. See email-ask-count.ts.
+    if (!hasEmail) {
+      const askBlock = buildEmailAskBlock(detectEmailAsks(history))
+      if (askBlock) dynamicContext += askBlock
+    }
 
     // --- Cumulative give (July 21 2026) ---
     // The gate ("the complete build is subscriber work") is a CUMULATIVE

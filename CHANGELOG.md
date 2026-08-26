@@ -4,6 +4,44 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.37.0 — August 26 2026
+
+**Yuri asked one visitor for her email in four consecutive replies. Measuring first showed the obvious fix — "ask once and stop" — was the wrong one, and an adversarial review then proved my detector was fitted to the single transcript I wrote it from.**
+
+Aug 26, session bf03c14e: a blog visitor got an excellent consult and was asked for her email in messages 3, 4, 5 and 6, each time as the closing paragraph of a substantive answer. She never refused; she asked her next question every time. She left at message 6 of 12, right after asking what to buy.
+
+She was following the prompt. The don't-repeat line stops asking only when the visitor *"clearly passed on it"* — asking a new question is not passing, so every turn routed to the *"buried, so ask again"* branch. And because her asks WERE tacked onto substantive answers, each re-ask satisfied the condition licensing the next. **The rule fed itself.** Measured: across the repeat-ask sessions, **14 of 15 follow-ups were a brand-new question**, so the buried branch reads as true forever.
+
+### The obvious fix was wrong, and the data says so
+
+| Asks | Sessions | Captured |
+|---|---|---|
+| 0 | 66 | 13.6% |
+| 1 | 16 | 43.8% |
+| **2** | **10** | **70.0%** |
+| 3+ | 6 | 33.3% |
+
+**A second ask is the best-performing state in the corpus.** Capping at one would suppress the move most associated with capture and recreate the Jul 23 failure (c6389c7) that the current line was written to fix. And **nothing here is significant** — Fisher exact: 2 vs 3+ p=0.302, 1 vs 2 p=0.248, 1-2 vs 3+ p=0.654. With six sessions in the tail, a tuned cutoff would be fitting noise. The module reports a COUNT and encodes no threshold. (The 70% figure is also **endogenous** — capture stops the asking, so ask-count is partly an outcome, not a treatment. "Nothing significant" is the only defensible claim.)
+
+**Two things already worked and were left alone**, both verified: asks-after-capture is **zero** across all 16 sessions with 2+ asks, and an explicit refusal is honored (Aug 5: *"No, I'm good. Maybe i'll share my email later"* — Yuri let it rest and closed warmly).
+
+### What the adversarial review proved
+
+- **The detector was fitted to one transcript.** It fired in **1 of the 3 repeat-ask sessions it exists to catch**. Session `66251ea8` — the worst asker in the corpus, **six asks** (*"lock in your email"*, *"drop that email"*, *"send me that email"*, *"Want to add your email now?"*) — counted **ONE**. Session `aaa12da0` asked **three times in Spanish** (*"guardo tu email"*) and counted **ZERO**: the bf03c14e defect reproduced verbatim in another language, invisible to the fix for it. My own earlier "zero false negatives" claim was wrong — I had tested the SQL regex, not the module. Now 6, 3 and 4 respectively.
+- **The block hardcoded a fabricated fact.** *"They have not refused"* was asserted while `detectEmailAsks` read **only assistant turns** — it could not know. On production session `e60c9e4d` the visitor had explicitly refused, so one more message would have injected a flat contradiction of the transcript directly above it. **The v11.30.0 false-ternary failure repeating**, in a block whose only authority is being factual — and **my own test 8 mandated the false sentence**. Refusal is now actually detected and a stated no outranks the count.
+- **The "spends goodwill" framing was already ruled a covert instruction.** A Fable review deleted that exact framing from this same widget's prompt in **v11.32.0, two weeks earlier** ("spend" frames the answer as depleting currency), and it came back here. Deleted, with a test that fails if it returns.
+- A real confirmation (*"Got it, saved. I'll send you a recap…"*, no address echoed) was **counted as an ask**; and a bare `saved to` suppressor could kill a genuine ask. Both fixed.
+
+A defect I found and fixed mid-review, before it landed: suppressing on bare openers (`got it`, `locked in`, `you're all set`) **silently dropped genuine asks**, because Yuri opens replies that way constantly — *"sunscreen locked in daily is your job"* killed a real ask. Under-counting is the failure that makes the module useless.
+
+**One review attack FAILED and is recorded as such:** the claim that the block fires exactly at the highest-value move. At composition of reply N the count covers replies 1..N-1, so the 2nd ask is composed at count=1 where the block is null. The gating is consistent with the data.
+
+Detector re-validated on the live corpus: **65 asks across 343 replies, zero false positives** on the 17 address-echoing confirmations. 1,046 → 1,060 tests; every new guard confirmed to FAIL on revert, including all three proven defects.
+
+**NOT VERIFIED: no visitor has hit this block yet.**
+
+---
+
 ## v11.36.0 — August 26 2026
 
 **A search that ran and returned the wrong product was, to Yuri, indistinguishable from one that found it. And the guard suite I wrote to prove the fix did not bind on either component that carries the facts.**
