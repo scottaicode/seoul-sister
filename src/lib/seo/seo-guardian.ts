@@ -176,6 +176,57 @@ ${input.pageAggs.slice(0, PAGE_LIMIT).map((p) => `${p.page} | ${p.clicks} | ${p.
 Write this week's report and bets.`
 }
 
+/**
+ * Week-over-week totals line for the strategist.
+ *
+ * MUST refuse to subtract across a units change. `totals.clicks` was the SUMMED
+ * DIMENSIONED ROWS until 2026-08-24 (commit a378075) and the TRUE undimensioned
+ * site total after it. Both are stored in the same `computed_facts.totals.clicks`
+ * column, and the dimensioned sum is only ~13% of real clicks — so the first run
+ * after the switch subtracted 73 (old units) from 674 (new units) and reported a
+ * "genuine step-change, ~9x" that was entirely an instrument change. The Aug 30
+ * report led with it, then used the phantom shock to argue that every bet graded
+ * in that window was confounded — noise injected into the exact channel built to
+ * keep noise out.
+ *
+ * `totals_source` is absent on every row written before the switch, so a missing
+ * value means OLD units, never "assume it matches".
+ *
+ * The comparable pair across the boundary is visible_clicks (dimensioned both
+ * sides), so when the sources differ we report THAT delta and say what we did,
+ * rather than either inventing a delta or going silent.
+ */
+export function buildPriorComparison(
+  totals: { clicks: number; impressions: number; visible_clicks?: number; visible_impressions?: number; totals_source?: string },
+  lastRun: { window_start?: string; window_end?: string; computed_facts?: unknown } | null
+): string {
+  if (!lastRun) return 'No prior run — this is the baseline week.'
+  const pt = (lastRun.computed_facts as {
+    totals?: { clicks: number; impressions: number; queries: number; visible_clicks?: number; totals_source?: string }
+  } | null)?.totals
+  if (!pt) return 'No prior run — this is the baseline week.'
+
+  const window = `Prior window ${lastRun.window_start}→${lastRun.window_end}`
+  const nowSrc = totals.totals_source ?? 'summed_rows_FALLBACK'
+  const priorSrc = pt.totals_source ?? 'summed_rows_FALLBACK'
+  const sign = (n: number) => (n >= 0 ? '+' : '')
+
+  if (nowSrc === priorSrc) {
+    return `${window}: ${pt.clicks} clicks, ${pt.impressions} impressions, ${pt.queries} queries. Delta this window: ${sign(totals.clicks - pt.clicks)}${totals.clicks - pt.clicks} clicks, ${sign(totals.impressions - pt.impressions)}${totals.impressions - pt.impressions} impressions.`
+  }
+
+  // Units changed. Fall back to the one series measured the same way on both
+  // sides; if that is unavailable, report NO delta rather than a false one.
+  const nowVis = totals.visible_clicks
+  const priorVis = pt.visible_clicks ?? pt.clicks
+  const comparable =
+    typeof nowVis === 'number'
+      ? ` Comparable like-for-like (visible query rows, measured the same way both weeks): ${priorVis} → ${nowVis} clicks (${sign(nowVis - priorVis)}${nowVis - priorVis}).`
+      : ' No like-for-like series is available across the change, so NO delta can be stated.'
+
+  return `${window}: ${pt.clicks} clicks, ${pt.impressions} impressions, ${pt.queries} queries. MEASUREMENT CHANGED between these two runs (prior=${priorSrc}, this week=${nowSrc}), so the headline totals are NOT comparable and their difference is an artifact of the instrument, not traffic. Do NOT report a week-over-week change or a "surge"/"step-change" from those two numbers, and do NOT treat the difference as a sitewide shock when reasoning about bet confounding.${comparable}`
+}
+
 function parseBets(text: string): { reportMd: string; bets: SeoBet[]; parseError?: string } {
   // Take the LAST json fence — report prose may legitimately contain a json
   // example; the bets block is instructed to come last.
@@ -287,14 +338,7 @@ export async function runSeoGuardian(db: SupabaseClient): Promise<SeoGuardianRes
     // failure. 12 weeks covers the grading latency with room to spare.
     .limit(12)
 
-  let priorComparison = 'No prior run — this is the baseline week.'
-  const lastRun = prior?.[0]
-  if (lastRun) {
-    const pt = (lastRun.computed_facts as { totals?: { clicks: number; impressions: number; queries: number } })?.totals
-    if (pt) {
-      priorComparison = `Prior window ${lastRun.window_start}→${lastRun.window_end}: ${pt.clicks} clicks, ${pt.impressions} impressions, ${pt.queries} queries. Delta this window: ${totals.clicks - pt.clicks >= 0 ? '+' : ''}${totals.clicks - pt.clicks} clicks, ${totals.impressions - pt.impressions >= 0 ? '+' : ''}${totals.impressions - pt.impressions} impressions.`
-    }
-  }
+  const priorComparison = buildPriorComparison(totals, prior?.[0] ?? null)
 
   const priorBetLines: string[] = []
   for (const run of prior ?? []) {

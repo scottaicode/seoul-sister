@@ -226,10 +226,25 @@ export function comparePositions(
  */
 export function extractClickThreshold(expected: string): number | null {
   const text = expected.toLowerCase()
+  // NOTE on adjacency (measured Sep 1 2026 by executing this function against
+  // real stored bets): pattern 3 originally required the digit to sit IMMEDIATELY
+  // before `clicks`, so a single qualifier defeated it — ">=3 additional clicks"
+  // and ">=10 additional total clicks" both returned null despite stating a
+  // perfectly explicit threshold, permanently ungradeable. Likewise "rise from 4
+  // to at least 12 clicks" missed pattern 2, whose `to` could not be followed by
+  // "at least". Two real bets (`pih-into-pie-post`, `sunscreen-buy-authentic-answer`)
+  // were filed as "stated no numeric threshold" when they had in fact stated one:
+  // an AUTHORING verdict pinned on a PARSER defect, which would have sent the fix
+  // to the strategist prompt instead of here.
+  //
+  // The qualifier gap is deliberately narrow — \w+ words only, no digits — so it
+  // cannot swallow an intervening number and mistake a position or impression
+  // figure for a click threshold. Widening it to [^.]{0,N} would do exactly that.
+  const QUAL = String.raw`(?:\s+\w+){0,3}\s*`
   const patterns = [
-    /clicks?[^.]{0,40}?(?:>=|≥|at least|to)\s*(\d+)/,
-    /(?:rise|grow|increase|move)[^.]{0,30}?from\s*\d+\s*to\s*(?:>=|≥)?\s*(\d+)[^.]{0,20}clicks?/,
-    /(?:>=|≥)\s*(\d+)\s*clicks?/,
+    new RegExp(String.raw`clicks?[^.]{0,40}?(?:>=|≥|at least|to)\s*(\d+)`),
+    new RegExp(String.raw`(?:rise|grow|increase|move)[^.]{0,30}?from\s*\d+\s*to\s*(?:>=|≥|at least)?\s*(\d+)[^.]{0,20}clicks?`),
+    new RegExp(String.raw`(?:>=|≥|at least)\s*(\d+)${QUAL}clicks?`),
   ]
   for (const re of patterns) {
     const m = text.match(re)
