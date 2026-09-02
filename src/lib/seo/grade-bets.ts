@@ -8,6 +8,10 @@ import {
   type SnapshotRow,
 } from './bet-grader'
 import { verifyExecution } from './execution-verifier'
+
+/** Google Search Console publishes with roughly this much delay. A window whose
+ *  tail falls inside the lag returns partial data with NO error. */
+const GSC_LAG_DAYS = 3
 import { getGscConfig, fetchSearchAnalytics } from './gsc-client'
 
 // ---------------------------------------------------------------------------
@@ -143,6 +147,10 @@ export async function runBetGrader(db: SupabaseClient, todayIso?: string): Promi
     const baselineRows = report.gsc_snapshot?.rows ?? []
     const existing = report.grades ?? {}
     const newGrades: Record<string, BetGrade> = { ...existing }
+    // First-sightings recorded THIS run, for bets that have no stored stamp yet.
+    // Kept separate from `existing` so a sighting taken before a bet is due can
+    // still reach gradeBet on the same run it becomes due.
+    const witnessed: Record<string, string> = {}
     let changed = false
 
     // Preferred: a clean window fetched live from GSC, starting the day after
@@ -150,7 +158,14 @@ export async function runBetGrader(db: SupabaseClient, todayIso?: string): Promi
     // the snapshot archive when credentials are absent.
     const cleanStart = addDays(report.window_end, 1)
     const cleanEnd = addDays(cleanStart, 27)
-    const liveRows = cleanEnd < today ? await fetchCleanWindow(cleanStart, cleanEnd) : null
+    // GSC publishes with a ~3 day lag (gsc-client.ts:89). `cleanEnd < today`
+    // alone lets a run 1-3 days past cleanEnd fetch a window whose final days
+    // have no data published yet — silently UNDERCOUNTING after-window clicks
+    // and biasing every verdict toward `miss`/`underpowered`, the exact
+    // direction this module exists to prevent. A short window is not an error
+    // anything reports; it just looks like the bet failed. Wait for the lag to
+    // clear (one extra day of margin) before treating a window as complete.
+    const liveRows = cleanEnd <= addDays(today, -GSC_LAG_DAYS - 1) ? await fetchCleanWindow(cleanStart, cleanEnd) : null
 
     // Fallback: first snapshot whose window starts >= MIN_GAP_DAYS after this
     // one's, so baseline and after share no days.
@@ -172,9 +187,59 @@ export async function runBetGrader(db: SupabaseClient, todayIso?: string): Promi
         verdictTally.set(prior.verdict, (verdictTally.get(prior.verdict) ?? 0) + 1)
         continue
       }
-      if (!bet.review_after || bet.review_after > today) continue
-
       const targetPath = bet.target_page ? normalizePath(bet.target_page) : null
+
+      // EARLY EXECUTION WITNESSING — must run BEFORE the not-yet-due skip.
+      //
+      // `execution_first_seen` is what gate 2b compares against the window
+      // start, and it can only ever be stamped with the date the grader HAPPENED
+      // TO LOOK. Before this, the only code path that called verifyExecution ran
+      // after a clean 28-day window existed, and grading itself did not start
+      // until `review_after` — so first-sighting was structurally >= windowStart
+      // + 28 for every bet, gate 2b fired on every executed bet, and the sticky
+      // stamp made it permanent. hit/miss was UNREACHABLE for any bet at any
+      // traffic level. Production proved it: the only two bets ever observed
+      // executed both carry first_seen 2026-08-23 — the grader's first cron run
+      // — against window starts of 2026-06-24 and 2026-06-26. That date is when
+      // the INSTRUMENT arrived, not when the work shipped.
+      //
+      // The gate's semantics are unchanged and nothing is fabricated: we simply
+      // make the witness show up on time, so a bet whose work ships in week 1
+      // records a first-sighting in week 1. An unwitnessed bet still abstains.
+      if (!prior?.execution_first_seen && targetPath) {
+        const early = await verifyExecution(targetPath, bet.action, bet.action_type ?? 'other')
+        if (early.status === 'executed' || early.status === 'partially_executed') {
+          witnessed[bet.id] = today
+          // Persist immediately: a sighting observed and not written is a
+          // sighting lost, and the whole point is that it is recorded EARLY.
+          // A not-yet-due bet normally has NO stored grade, so carrying the
+          // date onto an existing row is not enough — build a full abstention
+          // row via gradeBet itself (never a hand-made partial object; the type
+          // caught that) whose only job is to hold the sighting until the bet
+          // becomes due. `ungradeable_too_soon` is NOT in TERMINAL_VERDICTS, so
+          // the bet is re-graded normally on the run it comes due.
+          const carriedGrade = newGrades[bet.id]
+          newGrades[bet.id] = carriedGrade
+            ? { ...carriedGrade, execution_first_seen: today }
+            : gradeBet({
+                betId: bet.id,
+                expectedOutcome: bet.expected_outcome,
+                targetPage: targetPath,
+                targetQueries: bet.target_queries ?? [],
+                baselineRows,
+                afterRows: [],
+                gapDays: 0,
+                execution: early,
+                sitewideChangePct: 0,
+                sitewideBaselineClicks: 0,
+                executionFirstSeen: today,
+                today,
+              })
+          changed = true
+        }
+      }
+
+      if (!bet.review_after || bet.review_after > today) continue
 
       if (!after && !liveRows) {
         const grade = gradeBet({
@@ -188,7 +253,7 @@ export async function runBetGrader(db: SupabaseClient, todayIso?: string): Promi
           execution: { status: 'unverified', evidence: 'not checked — no clean after-window exists yet' },
           sitewideChangePct: 0,
           sitewideBaselineClicks: 0,
-          executionFirstSeen: prior?.execution_first_seen ?? null,
+          executionFirstSeen: prior?.execution_first_seen ?? witnessed[bet.id] ?? null,
           today,
         })
         newGrades[bet.id] = grade
@@ -228,7 +293,7 @@ export async function runBetGrader(db: SupabaseClient, todayIso?: string): Promi
         sitewideBaselineClicks: baseControl,
         windowStart: afterWindowStart,
         // Carried forward so first-observation is sticky across runs.
-        executionFirstSeen: prior?.execution_first_seen ?? null,
+        executionFirstSeen: prior?.execution_first_seen ?? witnessed[bet.id] ?? null,
         today,
       })
 
