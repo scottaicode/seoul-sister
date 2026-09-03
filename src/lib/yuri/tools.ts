@@ -1714,19 +1714,75 @@ async function executeSearchProducts(
   // tranexamic acid (186 = 186), and raw additionally covers products the daily
   // link-ingredients cron hasn't processed yet.
   if (includeIngredients?.length) {
-    let ingQuery = db
-      .from('ss_products')
-      .select('id, name_en, brand_en, category, subcategory, description_en, rating_avg, review_count, price_usd, image_url')
-      .eq('is_verified', true)
+    const ingCols =
+      'id, name_en, brand_en, category, subcategory, description_en, rating_avg, review_count, price_usd, image_url'
+    const esc = (t: string) => t.replace(/[%_\\]/g, '\\$&')
 
-    if (category) ingQuery = ingQuery.eq('category', category)
-
-    // Chained .ilike() is AND — every requested ingredient must be present.
-    for (const inc of includeIngredients) {
-      ingQuery = ingQuery.ilike('ingredients_raw', `%${inc.replace(/[%_\\]/g, '\\$&')}%`)
+    // Build the shared INCI predicate once. Chained .ilike() is AND — every
+    // requested ingredient must be present. Not generic: Supabase's builder type
+    // recurses on each chained call, and a generic wrapper trips TS2589.
+    const baseQuery = () => {
+      let q = db.from('ss_products').select(ingCols).eq('is_verified', true)
+      if (category) q = q.eq('category', category)
+      for (const inc of includeIngredients) q = q.ilike('ingredients_raw', `%${esc(inc)}%`)
+      return q
     }
 
-    const { data: ingCandidates, error: ingError } = await ingQuery
+    // PASS 1 — products whose NAME carries the requested ingredient.
+    //
+    // Why this pass exists (Suzie, Sep 2 2026): a 55-year-old with melasma asked
+    // for tranexamic acid picks. Yuri's tool call was correct, and she quoted the
+    // Anua Clear Tone at $55 — accurate, but the catalog also holds Anua's
+    // "Niacinamide 10% + TXA 4% Dark Spot Correcting Serum" at $37.49 with 963
+    // reviews, and a $9.50 Dermafactory "Tranexamic Acid 6% Cream". Neither was
+    // returned, so she recommended $17.51 over the near-identical same-brand
+    // option at purchase intent, and the visitor acted on it.
+    //
+    // Cause: the single candidate query below ordered by `rating_avg` and trimmed
+    // SERVER-SIDE to limit*3 (15 rows max, `limit` is capped at 10). `rating_avg`
+    // is a popularity signal with no bearing on whether a row matches the
+    // ingredient asked for, and 359 verified products are rated 5.00 with ZERO
+    // reviews — so the window filled with unreviewed 5.00s. Measured on the live
+    // catalog: 7 of the top 15 tranexamic rows had zero reviews, and BOTH
+    // name-carrying products (4.70) fell outside it. Systematic, not a one-off:
+    // name-matching products surfaced in the top 15 were 0 of 3 (tranexamic),
+    // 0 of 58 (niacinamide), 0 of 134 (hyaluronic acid), 2 of 63 (retinol).
+    //
+    // Naming an active in the product NAME is a real signal the formula centers
+    // on it — checked for the gimmick risk and it is not there: the niacinamide
+    // name-matches are Numbuzin (6,800 reviews), Medicube (6,400), Mary&May
+    // (5,200), Anua (2,200), COSRX. Flagship products, not buzzword junk.
+    //
+    // This pass is a SEPARATE bounded query rather than in-memory re-ranking
+    // because the INCI set can be enormous (measured: glycerin 4,794,
+    // niacinamide 2,369, hyaluronic acid 1,674) and PostgREST silently caps at
+    // 1,000 rows — over-fetching to rank in memory walks straight into the
+    // repo's documented cap for exactly the common ingredients. The name-match
+    // set is small by construction (tranexamic 15, hyaluronic 134, glycerin 0),
+    // so it cannot truncate. Glycerin returning 0 is correct: nobody names a
+    // product after a humectant, and the ingredient pass below still runs.
+    const nameTerms = includeIngredients.flatMap((inc) => {
+      const t = [inc]
+      // Products abbreviate this one on the label; searching only the full name
+      // misses the majority of them.
+      if (/tranexamic/i.test(inc)) t.push('TXA')
+      return t
+    })
+    const nameOr = nameTerms.map((t) => `name_en.ilike."%${esc(t)}%"`).join(',')
+    const { data: nameFirst, error: nameErr } = await baseQuery()
+      .or(nameOr)
+      // Cap the review weight so a 3,200-review eye cream cannot outrank every
+      // serum on a serum question; above the cap, rating decides.
+      .order('review_count', { ascending: false, nullsFirst: false })
+      .order('rating_avg', { ascending: false, nullsFirst: false })
+      .limit(limit * 3)
+
+    if (nameErr) {
+      console.error('[search_products] name-match candidate query failed:', nameErr.message, { includeIngredients })
+    }
+
+    // PASS 2 — the original ingredient-driven set, unchanged in spirit.
+    const { data: ingCandidates, error: ingError } = await baseQuery()
       .order('rating_avg', { ascending: false, nullsFirst: false })
       .limit(limit * 3)
 
@@ -1734,13 +1790,13 @@ async function executeSearchProducts(
       // A dead query must not read as "no such products" — that is exactly the
       // shape of the bug this block exists to fix.
       console.error('[search_products] ingredient candidate query failed:', ingError.message, { includeIngredients })
-    } else if (ingCandidates?.length) {
-      const seen = new Set(products.map(p => p.id as string))
-      for (const c of ingCandidates as Array<Record<string, unknown>>) {
-        if (seen.has(c.id as string)) continue
-        products.push(c)
-        seen.add(c.id as string)
-      }
+    }
+
+    const seen = new Set(products.map(p => p.id as string))
+    for (const c of [...(nameFirst ?? []), ...(ingCandidates ?? [])] as Array<Record<string, unknown>>) {
+      if (seen.has(c.id as string)) continue
+      products.push(c)
+      seen.add(c.id as string)
     }
   }
 
