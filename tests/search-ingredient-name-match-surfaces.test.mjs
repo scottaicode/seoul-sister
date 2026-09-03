@@ -211,3 +211,50 @@ test('EXECUTED: synonyms resolve in both directions', () => {
   // Reverse: asked for the label name, find the INCI name.
   assert.ok(ingredientNameTerms('PDRN').map((t) => t.toLowerCase()).includes('sodium dna'))
 })
+
+test('EXECUTED: INCI synonyms expand — asking for PDRN must find Sodium DNA', () => {
+  const { ingredientInciTerms } = helpers
+  // Measured Sep 3 2026 on the live catalog: `%PDRN%` against ingredients_raw
+  // matched 23 verified products; `%sodium dna%` matched 333. Scoped to serums,
+  // 3 vs 43. A visitor asking for PDRN serums — one of the hottest K-beauty
+  // categories, which this site has a published post about — saw 7% of what we
+  // carry, and Yuri would reasonably have called the catalog thin.
+  //
+  // 157 products are NAMED "PDRN" while their INCI says "Sodium DNA", so the
+  // name pass alone does NOT rescue this; the INCI predicate itself must expand.
+  const terms = ingredientInciTerms('PDRN').map((t) => t.toLowerCase())
+  assert.ok(terms.includes('sodium dna'), `asking for PDRN must also search Sodium DNA; got ${JSON.stringify(terms)}`)
+  // And the reverse, so a caller using the INCI name still finds the marketing one.
+  assert.ok(ingredientInciTerms('sodium dna').map((t) => t.toLowerCase()).includes('pdrn'))
+})
+
+test('EXECUTED: a single-synonym ingredient keeps exactly one INCI term', () => {
+  const { ingredientInciTerms } = helpers
+  // The common path must not change shape: one term means a plain .ilike(),
+  // never an .or(). Verified live that tranexamic still returns 169 products.
+  assert.deepEqual(ingredientInciTerms('niacinamide'), ['niacinamide'])
+  assert.deepEqual(ingredientInciTerms('glycerin'), ['glycerin'])
+})
+
+test('the INCI .or() pattern is double-quoted — the comma/dot parsing trap', () => {
+  // PostgREST parses `.` and `,` as SYNTAX inside an .or(). An unquoted pattern
+  // for `1,2-Hexanediol` splits the expression and silently returns zero rows —
+  // the repo's iconic trap ingredient. Verified live after this fix: it returns
+  // rows, not zero.
+  const block = ingredientBlock()
+  assert.match(
+    block,
+    /ingredients_raw\.ilike\."%\$\{esc\(v\)\}%"/,
+    'the INCI or-pattern must be double-quoted so a comma inside an ingredient name cannot split the filter'
+  )
+})
+
+test('separate ingredients still AND, while an ingredients synonyms OR', () => {
+  const block = ingredientBlock()
+  // The loop applies one predicate PER ingredient (AND across the chain), and
+  // only the synonyms of a single ingredient go inside one .or(). Verified live:
+  // PDRN AND niacinamide returned 244 products with ZERO violations in either
+  // direction.
+  assert.match(block, /for \(const inc of includeIngredients\)/, 'must still iterate ingredients, so they AND')
+  assert.match(block, /variants\.length === 1/, 'single-term ingredients must keep the plain .ilike() path')
+})

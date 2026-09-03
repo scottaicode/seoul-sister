@@ -1667,6 +1667,32 @@ const INGREDIENT_NAME_SYNONYMS: Record<string, string[]> = {
   'centella asiatica': ['cica'],
 }
 
+/**
+ * Every string worth looking for in the INCI when asked for `ingredient`.
+ *
+ * The INCI name and the marketing name are frequently different words, and the
+ * search matched only the term the caller typed. Measured Sep 3 2026 on the
+ * live catalog: `include_ingredients: ["PDRN"]` matched **23** verified
+ * products, while **333** carry "Sodium DNA" — the INCI name for the same
+ * thing. Scoped to serums it is starker: 3 vs 43. So a visitor asking for PDRN
+ * serums — one of the hottest K-beauty categories, and one this site has
+ * published a blog post about — saw 7% of what we carry, and Yuri would
+ * reasonably conclude the catalog was thin.
+ *
+ * 157 products are NAMED "PDRN" while their INCI says "Sodium DNA", which is why
+ * the name pass alone does not rescue this.
+ */
+export function ingredientInciTerms(ingredient: string): string[] {
+  const key = ingredient.trim().toLowerCase()
+  const terms = [ingredient]
+  for (const [canonical, aliases] of Object.entries(INGREDIENT_NAME_SYNONYMS)) {
+    const aliasHit = aliases.some((a) => a.toLowerCase() === key)
+    if (aliasHit) terms.push(canonical)
+    if (key === canonical) terms.push(...aliases)
+  }
+  return [...new Set(terms)]
+}
+
 /** Every string worth looking for in a NAME when asked for `ingredient`. */
 export function ingredientNameTerms(ingredient: string): string[] {
   const key = ingredient.trim().toLowerCase()
@@ -1776,10 +1802,24 @@ async function executeSearchProducts(
     // Build the shared INCI predicate once. Chained .ilike() is AND — every
     // requested ingredient must be present. Not generic: Supabase's builder type
     // recurses on each chained call, and a generic wrapper trips TS2589.
+    //
+    // Each ingredient's SYNONYMS are OR'd (PDRN or Sodium DNA — same molecule),
+    // while separate ingredients still AND (asking for two means both). A
+    // single-term ingredient keeps the plain .ilike() so the common path is
+    // unchanged. The .or() pattern is double-quoted because PostgREST parses
+    // `.` and `,` as syntax inside an .or() — the documented trap that makes
+    // `1,2-Hexanediol` silently return zero rows.
     const baseQuery = () => {
       let q = db.from('ss_products').select(ingCols).eq('is_verified', true)
       if (category) q = q.eq('category', category)
-      for (const inc of includeIngredients) q = q.ilike('ingredients_raw', `%${esc(inc)}%`)
+      for (const inc of includeIngredients) {
+        const variants = ingredientInciTerms(inc)
+        if (variants.length === 1) {
+          q = q.ilike('ingredients_raw', `%${esc(inc)}%`)
+        } else {
+          q = q.or(variants.map((v) => `ingredients_raw.ilike."%${esc(v)}%"`).join(','))
+        }
+      }
       return q
     }
 
