@@ -162,3 +162,45 @@ test('the execution-timing mechanic is present and framed as not-your-fault', ()
     'the strategist does not control ship timing; stating it as a rule would be a cage'
   )
 })
+
+test('the threshold advice matches what the extractor actually does', () => {
+  const b = block()
+  // An Opus fact-check executed extractClickThreshold and found my advice
+  // inverted. Multi-clause sentences parse fine ("impressions >=400 and clicks
+  // >=12" -> 12; the real pie-restructure-subtypes bet -> 17), so the
+  // "own sentence" rule taught a defense against a failure that does not exist.
+  // The hazard that DOES exist is two figures with no separator:
+  // "impressions >=400 clicks unchanged" extracts 400 and grades a click bet
+  // against an impression count.
+  assert.ok(
+    !/its own sentence/i.test(b),
+    'the own-sentence rule is unsupported; multi-clause thresholds parse correctly'
+  )
+  assert.match(b, /impressions >=400 clicks unchanged/, 'the real trap must be named concretely')
+  assert.match(b, /comma or an "and" between adjacent figures/i)
+})
+
+test('the corpus numbers are exact, in a block about numeric precision', () => {
+  const b = block()
+  // I shipped "34 bets across 10 weeks" against a live count of 30 bets across
+  // 9 reports, in a prompt whose whole purpose is teaching the model to state
+  // precise, checkable numbers. Verified: 30 bets, 9 reports, 20 graded.
+  assert.match(b, /30 bets across 9 weekly reports/)
+  assert.match(b, /20 of them graded/)
+  assert.ok(!/34 bets/.test(b), 'the inflated count must not return')
+  // And the authorship share is a measured number, not a vague "most".
+  assert.match(b, /9 of those 20/, 'state the measured authorship share, not an impression of it')
+})
+
+test('review_after guidance does not contradict itself across the prompt', () => {
+  // The schema hint said "typically 3 weeks out" while the block says 28 days.
+  // A prompt that contradicts itself teaches the model that neither half is
+  // load-bearing.
+  const schema = src.match(/"review_after": "<[^"]*>"/)
+  assert.ok(schema, 'review_after schema hint not found')
+  assert.ok(
+    !/3 weeks/i.test(schema[0]),
+    `the schema hint must not contradict the 28-day guidance. Saw: ${schema[0]}`
+  )
+  assert.match(schema[0], /28 days/)
+})
