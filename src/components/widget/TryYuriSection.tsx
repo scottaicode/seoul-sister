@@ -158,6 +158,8 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   // for first-touch funnel attribution in our own data.
   const sourceRef = useRef<string | null>(null)
   const sourceSentRef = useRef(false)
+  // The specific same-origin page this visitor arrived FROM (path only).
+  const landingPathRef = useRef<string | null>(null)
 
   // Carry intent from a feeder page (blog/product/ingredient "Ask Yuri" CTA):
   // ?ask=<question> drops the visitor's question into the input and focuses it,
@@ -235,6 +237,35 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
     // campaign, no feeder tag, and no usable referrer — and it makes a genuine
     // gap visible instead of silent.
     if (!sourceRef.current) sourceRef.current = 'landing'
+
+    // ---- WHICH page, not just which KIND of page (Sep 3 2026) ---------------
+    // `source` is page-TYPE granular ('blog', 'product', 'ingredient_cta'), so
+    // it can say a conversation came from "a blog post" but never WHICH one.
+    // That is the gap under the site's biggest measured asymmetry: the blog
+    // earns ~674 Google clicks per 28 days and yields ~4 widget conversations a
+    // month, while blog visitors are the best traffic we have (6.4 avg messages
+    // vs 3.7 from the landing page; 37.5% give an email). Without the specific
+    // path, "which post converts" is unanswerable and every content bet is a
+    // guess.
+    //
+    // Captured from the SAME-ORIGIN referrer, so no CTA on any feeder page has
+    // to change. Deliberately PATH ONLY — never the querystring, which can
+    // carry a prefilled ?ask= containing whatever the visitor typed, and never
+    // an external referrer, whose query can carry a search term. Those are the
+    // visitor's words, not a page identifier.
+    try {
+      if (document.referrer) {
+        const ref = new URL(document.referrer)
+        if (ref.hostname.replace(/^www\./, '').toLowerCase() === 'seoulsister.com') {
+          const path = ref.pathname.slice(0, 200)
+          // "/" is the landing page — already what `source` says. Recording it
+          // would just add noise.
+          if (path && path !== '/') landingPathRef.current = path
+        }
+      }
+    } catch {
+      // A malformed referrer must never break the widget.
+    }
 
     // `ask` PRESENT (even empty) means the visitor clicked an "Ask Yuri" feeder
     // CTA and wants the chat. Non-empty prefills their question; empty just
@@ -473,6 +504,10 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             // First-touch feeder attribution: send the source once, on the
             // request that will create the session. Server persists it.
             ...(includeSource ? { source: sourceRef.current } : {}),
+            // Sent on the same turn as `source` — both are first-touch facts,
+            // and both are written only when the session row is created (i.e.
+            // on a REAL first message), so neither can be minted by a crawler.
+            ...(includeSource && landingPathRef.current ? { landing_path: landingPathRef.current } : {}),
           }),
           signal: controller.signal,
         })

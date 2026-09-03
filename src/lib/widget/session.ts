@@ -25,24 +25,34 @@ export interface WidgetSession {
 export async function createSession(
   visitorId: string,
   currentSessionCount: number,
-  source?: string
+  source?: string | null,
+  /** Site-relative path of the page the visitor arrived FROM (path only). */
+  landingPath?: string | null
 ): Promise<WidgetSession> {
   const supabase = getServiceClient()
 
   const sessionNumber = currentSessionCount + 1
   const selectCols =
-    'id, visitor_id, session_number, message_count, tool_calls_count, specialist_domains_detected, intent_signals_detected, source'
+    'id, visitor_id, session_number, message_count, tool_calls_count, specialist_domains_detected, intent_signals_detected, source, landing_path'
 
   // Insert with `source` (first-touch feeder attribution). The column was added
   // by a manual migration; if it isn't present yet, gracefully retry without it
   // so conversations never break on a missing-column error.
   const { data, error } = await supabase
     .from('ss_widget_sessions')
-    .insert({ visitor_id: visitorId, session_number: sessionNumber, source: source ?? null })
+    .insert({
+      visitor_id: visitorId,
+      session_number: sessionNumber,
+      source: source ?? null,
+      landing_path: landingPath ?? null,
+    })
     .select(selectCols)
     .single()
 
-  if (error && /source/i.test(error.message) && /column/i.test(error.message)) {
+  // Same graceful degradation as `source`: a missing column must never break a
+  // conversation. Matches BOTH column names so the retry fires whichever of the
+  // two migrations has not been applied yet.
+  if (error && /source|landing_path/i.test(error.message) && /column/i.test(error.message)) {
     const fallback = await supabase
       .from('ss_widget_sessions')
       .insert({ visitor_id: visitorId, session_number: sessionNumber })

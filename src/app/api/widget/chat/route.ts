@@ -109,7 +109,17 @@ const widgetSchema = z.object({
   session_id: z.string().uuid().optional().nullable().transform(v => v ?? undefined),
   // First-touch feeder attribution (blog/product/ingredient/nav/...). Sent once,
   // on the request that creates the session. Bounded length, sanitized to a slug.
-  source: z.string().max(40).optional().nullable()
+  source: z.string().max(40).optional().nullable(),
+  // Site-relative path of the page the visitor came FROM. Path only, never a
+  // querystring: a feeder ?ask= carries whatever the visitor typed, and an
+  // external referrer's query can carry a search term. Rejected rather than
+  // truncated if it is not a clean path, so a junk value never enters the data.
+  landing_path: z
+    .string()
+    .max(200)
+    .regex(/^\/[A-Za-z0-9\-._~/%]*$/, 'landing_path must be a site-relative path')
+    .optional()
+    .nullable()
     .transform(v => (v ? v.replace(/[^a-z0-9_]/gi, '').slice(0, 40) : undefined)),
 })
 
@@ -476,7 +486,12 @@ export async function POST(request: NextRequest) {
           session = await getSession(sessionId)
         }
         if (!session) {
-          session = await createSession(parsed.visitor_id, visitor.total_sessions, parsed.source)
+          session = await createSession(
+            parsed.visitor_id,
+            visitor.total_sessions,
+            parsed.source,
+            parsed.landing_path
+          )
           sessionId = session.id
         }
       } catch (err) {
