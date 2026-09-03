@@ -39,17 +39,36 @@
 -- landing, a stripped referrer, or an external arrival. NULL here is an honest
 -- "not applicable", not a silent failure — `source` still records the channel.
 --
--- BACKFILL: NOT ATTEMPTED, and here is the honest reason.
--- Historical sessions are only PARTIALLY recoverable. The `?ask=` prefill text
--- survives in the first user message and names the topic for some of them
--- ("I just read your guide on sebaceous filaments Korean skincare...",
--- "I'm looking at your Best Korean Sunscreens list..."), which maps to a real
--- post. But others carry no page identity at all ("What actually works for
--- glass skin?", "I just want to order it"). Backfilling the recoverable ones
--- would leave a column that is populated for some rows and NULL for others for
--- two different reasons — "no referrer" and "we couldn't reconstruct it" —
--- which is exactly the ambiguity this repo keeps paying for. Forward-only.
+-- BACKFILL: PARTIAL, OPT-IN, and separated from the schema change on purpose.
+-- Historical rows are only partly recoverable. The feeder CTA writes the post's
+-- `primary_keyword` verbatim into the visitor's first message, which survives in
+-- ss_widget_messages, so most old `source='blog'` sessions can be matched back
+-- to a slug. MEASURED on all 8 of them:
+--   6 match exactly one post           -> recoverable
+--   1 matches NOTHING                  ("What actually works for glass skin?")
+--   1 matches TWO posts ambiguously    (a sunscreen keyword shared by two)
+-- An adversarial review claimed 7 of 8; measuring found 6. The ambiguous row is
+-- exactly why this is not run automatically: guessing between two posts would
+-- put a fabricated page identity into the column that content bets get graded
+-- against.
 --
+-- The UPDATE below is COMMENTED OUT. Run it only if you want the 6, and know
+-- that afterwards NULL will mean two different things — "no referrer" and "we
+-- could not reconstruct it" — which is the ambiguity this repo keeps paying
+-- for. Forward-only data is cleaner; the choice is yours, not the migration's.
+--
+-- update ss_widget_sessions s
+-- set landing_path = '/blog/' || (
+--   select p.slug from ss_content_posts p
+--   where p.primary_keyword is not null
+--     and (select m.content from ss_widget_messages m
+--          where m.session_id = s.id and m.role = 'user'
+--          order by m.created_at limit 1) ilike '%' || p.primary_keyword || '%'
+--   -- exactly one match, or leave it alone
+--   having count(*) = 1
+-- )
+-- where s.source = 'blog' and s.landing_path is null;
+
 -- The application degrades gracefully if this migration has not been applied:
 -- createSession() retries without the column rather than failing a conversation.
 

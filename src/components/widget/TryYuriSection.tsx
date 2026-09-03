@@ -253,18 +253,35 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
     // carry a prefilled ?ask= containing whatever the visitor typed, and never
     // an external referrer, whose query can carry a search term. Those are the
     // visitor's words, not a page identifier.
-    try {
-      if (document.referrer) {
-        const ref = new URL(document.referrer)
-        if (ref.hostname.replace(/^www\./, '').toLowerCase() === 'seoulsister.com') {
-          const path = ref.pathname.slice(0, 200)
-          // "/" is the landing page — already what `source` says. Recording it
-          // would just add noise.
-          if (path && path !== '/') landingPathRef.current = path
+    // PRIMARY: an explicit `?fp=` from the feeder CTA. A param is a claim WE
+    // control; a referrer is a claim the BROWSER controls (rel="noreferrer", a
+    // referrer-policy change, an in-app webview all silently blank it). Measured
+    // Sep 3 2026 on the live site: no rel="noreferrer" anywhere and the policy
+    // is strict-origin-when-cross-origin, which DOES send the full path
+    // same-origin — so the fallback genuinely works today. Belt and braces.
+    const fp = (params.get('fp') || '').trim()
+    if (fp.startsWith('/') && !fp.includes('?')) {
+      landingPathRef.current = fp.slice(0, 200)
+    } else {
+      // FALLBACK: the same-origin referrer. Note this is unrelated to the
+      // own-domain exclusion above — that one stops an internal referrer
+      // becoming a `source` TAG. Here a same-origin referrer is exactly what we
+      // want, because it names one of our own pages.
+      try {
+        if (document.referrer) {
+          const ref = new URL(document.referrer)
+          if (ref.hostname.replace(/^www\./, '').toLowerCase() === 'seoulsister.com') {
+            // PATHNAME only — never .href or .search. A feeder link carries
+            // ?ask=<whatever the visitor typed>.
+            const path = ref.pathname.slice(0, 200)
+            // "/" is the landing page — already what `source` says. Recording
+            // it would just add noise.
+            if (path && path !== '/') landingPathRef.current = path
+          }
         }
+      } catch {
+        // A malformed referrer must never break the widget.
       }
-    } catch {
-      // A malformed referrer must never break the widget.
     }
 
     // `ask` PRESENT (even empty) means the visitor clicked an "Ask Yuri" feeder
@@ -339,6 +356,10 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
     //     /dashboard. tests/widget-prefill-consumed.test.mjs asserts the order.
     try {
       params.delete('ask')
+      // `fp` has already been read into landingPathRef above; leaving it in the
+      // address bar just invites a visitor to share a URL carrying it. Not
+      // sensitive (it is one of our own page paths), only untidy.
+      params.delete('fp')
       const qs = params.toString()
       window.history.replaceState(
         window.history.state,

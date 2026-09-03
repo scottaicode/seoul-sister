@@ -10,6 +10,9 @@ interface BlogInlineYuriPromptProps {
   title?: string | null
   category?: string | null
   primaryKeyword?: string | null
+  /** Site-relative path of THIS post, so the widget can record which page
+   *  produced the conversation. See ss_widget_sessions.landing_path. */
+  feederPath?: string | null
 }
 
 function getPromptText(category?: string | null): string {
@@ -29,7 +32,7 @@ function getPromptText(category?: string | null): string {
   return 'Have a question about your own skin? Ask Yuri. She will tell you what is worth your money and what to skip.'
 }
 
-export default function BlogInlineYuriPrompt({ title, category, primaryKeyword }: BlogInlineYuriPromptProps) {
+export default function BlogInlineYuriPrompt({ title, category, primaryKeyword, feederPath }: BlogInlineYuriPromptProps) {
   const { user } = useAuth()
 
   // A real <Link href>, for the same reason as BlogYuriCta: navigation used to
@@ -43,7 +46,13 @@ export default function BlogInlineYuriPrompt({ title, category, primaryKeyword }
   //
   // href swaps on auth (no preventDefault) — see BlogYuriCta for why.
   const prefill = buildBlogPrefill({ title, category, primaryKeyword })
-  const href = user ? '/yuri' : `/?ask=${encodeURIComponent(prefill)}&from=blog`
+  // `fp` (feeder path) names WHICH post, where `from=blog` names only the KIND.
+  // Explicit rather than inferred: the widget also reads the same-origin
+  // referrer as a fallback, but a referrer is a claim the BROWSER controls
+  // (rel="noreferrer", a referrer-policy change, an in-app webview) while a
+  // param is one we control. Belt and braces — either alone would work today.
+  const fp = feederPath ? `&fp=${encodeURIComponent(feederPath)}` : ''
+  const href = user ? '/yuri' : `/?ask=${encodeURIComponent(prefill)}&from=blog${fp}`
 
   return (
     <Link

@@ -389,6 +389,7 @@ export default async function BlogPostPage({
           {article.didSplit && (
             <>
               <BlogInlineYuriPrompt
+              feederPath={`/blog/${blogPost.slug}`}
                 title={blogPost.title}
                 category={blogPost.category}
                 primaryKeyword={blogPost.primary_keyword}
@@ -402,6 +403,7 @@ export default async function BlogPostPage({
 
           {/* End-of-post Yuri prompt (unchanged placement) */}
           <BlogInlineYuriPrompt
+              feederPath={`/blog/${blogPost.slug}`}
             title={blogPost.title}
             category={blogPost.category}
             primaryKeyword={blogPost.primary_keyword}
@@ -472,6 +474,7 @@ export default async function BlogPostPage({
 
         {/* CTA */}
         <BlogYuriCta
+          feederPath={`/blog/${blogPost.slug}`}
           title={blogPost.title}
           category={blogPost.category}
           primaryKeyword={blogPost.primary_keyword}
