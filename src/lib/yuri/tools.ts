@@ -1645,6 +1645,61 @@ export async function executeYuriTool(
 // Tool: search_products
 // ---------------------------------------------------------------------------
 
+/**
+ * Ingredient name synonyms — the label name vs the INCI name.
+ *
+ * Korean products routinely abbreviate on the front of the bottle while the
+ * INCI spells it out (or vice versa). Without this map a name-signal check
+ * misses its own best matches: "Niacinamide 10% + TXA 4% Dark Spot Correcting
+ * Serum" contains NO "tranexamic" — only "TXA".
+ *
+ * Extend the MAP, never the ingredients_raw ilike: the widening query matches
+ * INCI text, and INCI is the spelled-out form. (Known gap, deliberately not
+ * papered over here: `include_ingredients: ["PDRN"]` near-empties against INCI
+ * that says "Sodium DNA" — measured 171 of 188 PDRN products. That is a
+ * separate defect in the widening predicate, not in this ranking.)
+ */
+const INGREDIENT_NAME_SYNONYMS: Record<string, string[]> = {
+  'tranexamic acid': ['TXA'],
+  'hyaluronic acid': ['HA'],
+  'ascorbic acid': ['vitamin c', 'vit c'],
+  'sodium dna': ['PDRN'],
+  'centella asiatica': ['cica'],
+}
+
+/** Every string worth looking for in a NAME when asked for `ingredient`. */
+export function ingredientNameTerms(ingredient: string): string[] {
+  const key = ingredient.trim().toLowerCase()
+  const terms = [ingredient]
+  for (const [canonical, aliases] of Object.entries(INGREDIENT_NAME_SYNONYMS)) {
+    if (key === canonical || key.includes(canonical)) terms.push(...aliases)
+    // Reverse direction: asked for "PDRN", the INCI/canonical is "sodium dna".
+    if (aliases.some((a) => a.toLowerCase() === key)) terms.push(canonical)
+  }
+  return [...new Set(terms)]
+}
+
+/**
+ * Rating damped toward a 4.5 prior by how many reviews back it.
+ *
+ * A bare `rating_avg` sort is the documented defect: 359 verified products are
+ * rated 5.00 with ZERO reviews, so an unreviewed 5.00 outranks a 4.70 carrying
+ * 963 reviews. But BURYING zero-review products is equally wrong — 2,332 of
+ * 5,311 verified products (44%) have review_count 0 because reviews were never
+ * imported, not because anyone disliked them, and tools.ts's own NULL-rating
+ * rule says an unrated product is "not yet rated", never "bad".
+ *
+ * Damping sends an unreviewed 5.00 to the 4.5 prior — mid-pack, neither
+ * promoted nor buried — while a well-reviewed 4.70 keeps 4.70.
+ */
+export function dampedRating(ratingAvg: number | null, reviewCount: number | null): number {
+  const PRIOR = 4.5
+  const FULL_WEIGHT = 50
+  if (ratingAvg === null || ratingAvg === undefined) return PRIOR
+  const n = Math.min(reviewCount ?? 0, FULL_WEIGHT)
+  return PRIOR + (ratingAvg - PRIOR) * (n / FULL_WEIGHT)
+}
+
 async function executeSearchProducts(
   input: Record<string, unknown>,
   _userId: string
@@ -1761,13 +1816,9 @@ async function executeSearchProducts(
     // set is small by construction (tranexamic 15, hyaluronic 134, glycerin 0),
     // so it cannot truncate. Glycerin returning 0 is correct: nobody names a
     // product after a humectant, and the ingredient pass below still runs.
-    const nameTerms = includeIngredients.flatMap((inc) => {
-      const t = [inc]
-      // Products abbreviate this one on the label; searching only the full name
-      // misses the majority of them.
-      if (/tranexamic/i.test(inc)) t.push('TXA')
-      return t
-    })
+    // Any requested ingredient counts — with two ingredients, a product naming
+    // either one is a stronger signal than one naming neither.
+    const nameTerms = includeIngredients.flatMap(ingredientNameTerms)
     const nameOr = nameTerms.map((t) => `name_en.ilike."%${esc(t)}%"`).join(',')
     const { data: nameFirst, error: nameErr } = await baseQuery()
       .or(nameOr)
@@ -1897,10 +1948,34 @@ async function executeSearchProducts(
       .map((p: Record<string, unknown>) => p.id as string | null)
       .filter((id): id is string => typeof id === 'string' && id.length > 0)
 
-    const { data: ingredientLinks, error: linkError } = await db
-      .from('ss_product_ingredients')
-      .select('product_id, ingredient:ss_ingredients(name_inci, name_en)')
-      .in('product_id', productIds)
+    // PAGINATED, and count-checked. PostgREST silently caps a response at 1,000
+    // rows and reports NO error — the repo's third distinct encounter with this
+    // cap (it published 2,018 dead sitemap URLs on Aug 4 and hid a delisting
+    // sweep's miss on Aug 15).
+    //
+    // It is ALREADY binding here, before any candidate-set change: products
+    // average 39.7 ingredient links (max 230), so 30 candidates request ~1,191
+    // rows. A product truncated MID-LIST keeps a partial ingredient array,
+    // fails the `.every()` include check, and is SILENTLY DROPPED — read as "we
+    // don't carry this". On the exclude side a truncated list can fail to show
+    // an allergen the user asked to avoid, which is a safety path.
+    const PAGE = 1000
+    const linkRows: Array<Record<string, unknown>> = []
+    let linkError: { message: string } | null = null
+    for (let from = 0; ; from += PAGE) {
+      const { data: page, error: pageErr } = await db
+        .from('ss_product_ingredients')
+        .select('product_id, ingredient:ss_ingredients(name_inci, name_en)')
+        .in('product_id', productIds)
+        .range(from, from + PAGE - 1)
+      if (pageErr) {
+        linkError = pageErr
+        break
+      }
+      linkRows.push(...((page ?? []) as Array<Record<string, unknown>>))
+      if (!page || page.length < PAGE) break
+    }
+    const ingredientLinks = linkRows
 
     // A failed link query would make EVERY product look like it contains none
     // of the requested ingredients, so an include filter would empty the list
@@ -1976,6 +2051,55 @@ async function executeSearchProducts(
   }
 
   // Get prices for final results
+  // Rank the COMBINED candidate set before trimming.
+  //
+  // THE DEFECT THIS CLOSES (Suzie, Sep 2 2026, and my own first fix missed it).
+  // She asked for tranexamic acid picks. The call carried BOTH a `query`
+  // ("tranexamic acid serum melasma brightening") AND include_ingredients — so
+  // `products` was populated by smartProductSearch FIRST, and the
+  // ingredient-widened rows were APPENDED after. All five name-path rows
+  // contain tranexamic in their INCI, so all five survived the include filter,
+  // and `slice(0, limit)` consumed every slot. The widened candidates could
+  // never surface NO MATTER how their own window was ordered.
+  //
+  // My first fix (dcf29f3) re-ordered the widening query and verified it on a
+  // FILTERS-ONLY call — the path this visitor did not take. Measured against
+  // her exact input, the incident reproduced unchanged. Fixing the append order
+  // alone is not enough either: what has to change is that the trim picks by
+  // RELEVANCE rather than by arrival order.
+  //
+  // Ordering is applied only when include_ingredients was requested, so a plain
+  // text search keeps smartProductSearch's own relevance ranking untouched.
+  // A price ceiling still wins — that sort ran above and signals budget intent.
+  if (includeIngredients?.length && !maxPriceUsd) {
+    const nameSignal = new Set(
+      includeIngredients.flatMap(ingredientNameTerms).map((t) => t.toLowerCase())
+    )
+    const namesIngredient = (p: Record<string, unknown>): boolean => {
+      const n = ((p.name_en as string) || '').toLowerCase()
+      return [...nameSignal].some((t) => n.includes(t))
+    }
+    filtered = [...filtered].sort((a, b) => {
+      // Tier 1: the product NAMES the ingredient asked for. Verified not to be
+      // a buzzword trap for this catalog — the niacinamide name-matches are
+      // Numbuzin (6,800 reviews), Medicube (6,400), Mary&May (5,200), COSRX.
+      // Putting an active in the product name marks a hero formula here.
+      const at = namesIngredient(a) ? 1 : 0
+      const bt = namesIngredient(b) ? 1 : 0
+      if (at !== bt) return bt - at
+      // Within a tier, review-damped rating (see dampedRating).
+      const ar = dampedRating(a.rating_avg as number | null, a.review_count as number | null)
+      const br = dampedRating(b.rating_avg as number | null, b.review_count as number | null)
+      if (ar !== br) return br - ar
+      // Deterministic tiebreak. Without it the 359 catalog-wide 5.00/0-review
+      // rows order arbitrarily — the documented arbitrary-tiebreak class.
+      const arc = (a.review_count as number | null) ?? 0
+      const brc = (b.review_count as number | null) ?? 0
+      if (arc !== brc) return brc - arc
+      return String(a.id).localeCompare(String(b.id))
+    })
+  }
+
   const finalProducts = filtered.slice(0, limit)
   const finalIds = finalProducts.map((p: Record<string, unknown>) => p.id as string)
 

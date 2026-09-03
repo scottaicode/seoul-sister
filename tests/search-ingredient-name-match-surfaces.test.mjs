@@ -71,31 +71,45 @@ function ingredientBlock() {
   return src.slice(start, end)
 }
 
-test('a name-match pass exists and runs BEFORE the rating-ordered pass', () => {
+test('a name-match pass exists', () => {
   const block = ingredientBlock()
-  const nameIdx = block.indexOf('name_en.ilike')
-  const ratingIdx = block.lastIndexOf("order('rating_avg'")
-  assert.ok(nameIdx > 0, 'no name-match query — products naming the ingredient will stay buried')
+  assert.ok(block.indexOf('name_en.ilike') > 0, 'no name-match query — products naming the ingredient will stay buried')
+})
+
+test('THE INCIDENT: the combined set is ranked BEFORE the final trim', () => {
+  // The binding defect, and the one my first fix (dcf29f3) MISSED. Suzie's call
+  // carried a `query` AND include_ingredients, so smartProductSearch populated
+  // `products` first and the widened rows were appended after. All five
+  // name-path rows contained tranexamic in their INCI, survived the include
+  // filter, and `slice(0, limit)` consumed every slot — the widened candidates
+  // could never surface no matter how their own window was ordered. Verified
+  // against her exact stored result: 5 of 5 rows survive, 0 slots free.
+  //
+  // So the ordering must happen on the COMBINED list, before the trim.
+  const sliceIdx = src.indexOf('filtered.slice(0, limit)')
+  assert.ok(sliceIdx > 0, 'final trim not found')
+  const before = src.slice(0, sliceIdx)
+  const rankIdx = before.lastIndexOf('namesIngredient')
   assert.ok(
-    nameIdx < ratingIdx,
-    'the name-match pass must be collected BEFORE the rating-ordered pass, so name matches enter the candidate list first'
+    rankIdx > 0,
+    'the combined candidate set must be relevance-ranked BEFORE filtered.slice(0, limit); ranking only the widening query leaves the incident reproducible'
   )
 })
 
-test('the name pass is ordered by review_count, not by rating alone', () => {
-  const block = ingredientBlock()
+test('ranking damps rating by review count instead of trusting a bare 5.00', () => {
   assert.match(
-    block,
-    /order\('review_count'/,
-    'the name pass must rank by review_count — ordering by rating alone is the exact bug: 359 verified products are rated 5.00 with ZERO reviews and would refill the window'
+    src,
+    /export function dampedRating/,
+    'a bare rating sort is the bug: 359 verified products are rated 5.00 with ZERO reviews'
   )
 })
 
-test('tranexamic acid also searches the TXA abbreviation', () => {
-  const block = ingredientBlock()
-  // Both products Yuri missed abbreviate it. Searching only "tranexamic" finds
-  // 3 products; including TXA finds 15.
-  assert.match(block, /TXA/, 'must search the TXA abbreviation — most Korean products label it that way')
+test('the name signal is synonym-aware — the headline product has no "tranexamic" in its name', () => {
+  // "Niacinamide 10% + TXA 4% Dark Spot Correcting Serum" — verified in the DB:
+  // name ILIKE '%tranexamic%' is FALSE, only '%TXA%' matches. A name check
+  // without the synonym map misses the very product this fix exists to surface.
+  assert.match(src, /INGREDIENT_NAME_SYNONYMS/, 'a synonym map must exist')
+  assert.match(src, /'tranexamic acid':\s*\['TXA'\]/, 'TXA must map to tranexamic acid')
 })
 
 test('name-match candidates are merged into the SAME product list, not returned alone', () => {
@@ -128,4 +142,72 @@ test('the ingredient pass is NOT deleted — it is the fallback for unnamed ingr
     /ingCandidates/,
     'the original ingredient-driven pass must remain: for glycerin, hyaluronic-in-INCI-only, and any ingredient not in a product name, it is the ONLY source of candidates'
   )
+})
+
+// --- executed behaviour, not source assertions -----------------------------
+
+import ts from 'typescript'
+const helperSrc = src.slice(
+  src.indexOf('const INGREDIENT_NAME_SYNONYMS'),
+  src.indexOf('async function executeSearchProducts(')
+)
+const helpers = await import(
+  'data:text/javascript;base64,' +
+    Buffer.from(
+      ts.transpileModule(helperSrc, {
+        compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+      }).outputText
+    ).toString('base64')
+)
+
+test('EXECUTED: the exact incident ranking puts the cheaper same-brand product first', () => {
+  const { ingredientNameTerms, dampedRating } = helpers
+  // The five rows the incident actually returned, plus the widened rows.
+  const rows = [
+    { id: 'a', name_en: 'Double Vita Spot Toning Serum', rating_avg: 5.0, review_count: 2 },
+    { id: 'b', name_en: 'Clear Tone Dark Spot Serum', rating_avg: 5.0, review_count: 237 },
+    { id: 'c', name_en: 'Baekdango Rice Wine Dark Spot Corrector Ampoule', rating_avg: 5.0, review_count: 2 },
+    { id: 'd', name_en: 'Vita C Teca Triple Blemish Patch', rating_avg: 5.0, review_count: 0 },
+    { id: 'e', name_en: 'DW-EGF Vitamin C Boosting Ampoule 25', rating_avg: 5.0, review_count: 5 },
+    { id: 'f', name_en: 'Niacinamide 10% + TXA 4% Dark Spot Correcting Serum', rating_avg: 4.7, review_count: 963 },
+    { id: 'g', name_en: 'Tranexamic Acid 6% Cream', rating_avg: 4.7, review_count: 68 },
+  ]
+  const terms = new Set(['tranexamic acid'].flatMap(ingredientNameTerms).map((t) => t.toLowerCase()))
+  const names = (p) => [...terms].some((t) => p.name_en.toLowerCase().includes(t))
+  const sorted = [...rows].sort((a, b) => {
+    const at = names(a) ? 1 : 0, bt = names(b) ? 1 : 0
+    if (at !== bt) return bt - at
+    const ar = dampedRating(a.rating_avg, a.review_count), br = dampedRating(b.rating_avg, b.review_count)
+    if (ar !== br) return br - ar
+    const arc = a.review_count ?? 0, brc = b.review_count ?? 0
+    if (arc !== brc) return brc - arc
+    return String(a.id).localeCompare(String(b.id))
+  })
+  const top5 = sorted.slice(0, 5).map((p) => p.name_en)
+  assert.ok(
+    top5.some((n) => n.includes('TXA 4%')),
+    `the $37.49 Anua TXA serum must reach the top ${5}; got ${JSON.stringify(top5)}`
+  )
+  assert.ok(top5.some((n) => n.includes('Tranexamic Acid 6%')), 'the $9.50 cream must reach the top 5')
+  assert.equal(sorted[0].name_en, 'Niacinamide 10% + TXA 4% Dark Spot Correcting Serum')
+  // The $55 option must still be REACHABLE — Yuri owns the recommendation.
+  assert.ok(top5.includes('Clear Tone Dark Spot Serum'), 'the pricier option must remain visible, not be suppressed')
+})
+
+test('EXECUTED: an unreviewed 5.00 lands mid-pack, neither promoted nor buried', () => {
+  const { dampedRating } = helpers
+  // 2,332 of 5,311 verified products have review_count 0 because reviews were
+  // never imported. Burying them would violate tools.ts's own NULL-rating rule.
+  assert.equal(dampedRating(5.0, 0), 4.5, 'an unreviewed 5.00 must fall back to the prior')
+  assert.equal(dampedRating(null, 0), 4.5, 'an unrated product must sit at the prior, not at zero')
+  assert.ok(dampedRating(4.7, 963) > dampedRating(5.0, 0), 'a well-reviewed 4.70 must outrank an unreviewed 5.00')
+  assert.ok(dampedRating(5.0, 237) > dampedRating(4.7, 963), 'a well-reviewed 5.00 still outranks a well-reviewed 4.70')
+})
+
+test('EXECUTED: synonyms resolve in both directions', () => {
+  const { ingredientNameTerms } = helpers
+  assert.ok(ingredientNameTerms('tranexamic acid').map((t) => t.toLowerCase()).includes('txa'))
+  assert.ok(ingredientNameTerms('hyaluronic acid').map((t) => t.toLowerCase()).includes('ha'))
+  // Reverse: asked for the label name, find the INCI name.
+  assert.ok(ingredientNameTerms('PDRN').map((t) => t.toLowerCase()).includes('sodium dna'))
 })
