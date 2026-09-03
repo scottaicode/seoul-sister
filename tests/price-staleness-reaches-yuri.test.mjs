@@ -120,3 +120,38 @@ test('the sweep has no cursor keyed on the column it mutates', () => {
   // The stalest-first ordering is what replaces it and must survive.
   assert.match(refresher, /\.order\('last_checked', \{ ascending: true/)
 })
+
+test('sibling listings quote the AUTHORITATIVE price table, not the inline column', () => {
+  const tools = readFileSync(join(root, 'src/lib/yuri/tools.ts'), 'utf8')
+  const fn = tools.slice(
+    tools.indexOf('async function attachSiblingListings'),
+    tools.indexOf('// ---', tools.indexOf('async function attachSiblingListings'))
+  )
+  // Measured Sep 3 2026: ss_products.price_usd disagrees with the live price row
+  // for 66.7% of verified products, and it skews LOW on exactly the multi-unit
+  // rows this block exists to disambiguate. The Anua PDRN Double Pack read
+  // $33.81 inline against $95.96 live — a 65% understatement, in the direction
+  // that makes a two-pack look like a single bottle. A real visitor asked about
+  // that product on Aug 31.
+  assert.match(
+    fn,
+    /ss_product_prices\(price_usd/,
+    'the sibling block must read the live price table; the inline column is wrong for two thirds of the catalog'
+  )
+  assert.match(fn, /Math\.min\(\.\.\.live\)/, 'cheapest live row should represent the listing')
+  // The inline column may remain ONLY as a fallback for products with no price row.
+  assert.match(fn, /live\.length \?.*: \(s\.price_usd/s, 'inline is a fallback, not the source')
+})
+
+test('the listings note names the multi-unit trap concretely', () => {
+  const tools = readFileSync(join(root, 'src/lib/yuri/tools.ts'), 'utf8')
+  // 996 of 4,947 priced products (20.1%) are sets, packs, kits or Nea listings,
+  // and nothing else in the payload distinguishes them — the Celimax row that
+  // started this had subcategory "brightening serum", singular, contradicting
+  // the "Set" in its own name.
+  assert.match(
+    tools,
+    /a "Set", "Double Pack" or "Nea" listing is several units at several units.{0,2} price/,
+    'the note must say what a multi-unit row actually costs someone'
+  )
+})

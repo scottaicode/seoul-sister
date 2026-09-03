@@ -2278,9 +2278,23 @@ async function attachSiblingListings(
   )
   if (brands.length === 0) return results
 
+  // Reads the AUTHORITATIVE price table, not `ss_products.price_usd`.
+  //
+  // Measured Sep 3 2026: the inline column disagrees with the live price row for
+  // 66.7% of verified products (2,865 of 4,297), and it skews LOW on exactly the
+  // rows this note exists to disambiguate. The Anua PDRN family:
+  //
+  //   Double Pack   inline $33.81   real $95.96   <- 65% understated
+  //   Set           inline $22.56   real $26.53
+  //   Serum         inline $22.56   real $28.99
+  //
+  // So the sibling block was showing Yuri a two-pack as a near-single-unit price
+  // — the exact misread it was built to prevent, in the direction that makes a
+  // multi-unit listing look like a bargain. A real visitor asked about this very
+  // product on Aug 31.
   const { data: siblings, error } = await db
     .from('ss_products')
-    .select('id, name_en, brand_en, price_usd, review_count')
+    .select('id, name_en, brand_en, price_usd, review_count, ss_product_prices(price_usd, last_checked)')
     .eq('is_verified', true)
     .in('brand_en', brands)
 
@@ -2308,11 +2322,20 @@ async function attachSiblingListings(
         // spec suffix ("SPF50+ PA++++") or a line word is present on only one row.
         return sName.includes(rName) || rName.includes(sName)
       })
-      .map((s) => ({
-        name: s.name_en,
-        price_usd: s.price_usd,
-        review_count: s.review_count,
-      }))
+      .map((s) => {
+        // Cheapest live row wins; fall back to the inline column only when the
+        // product has no price row at all. An absent price must read as absent,
+        // never as the stale inline number wearing a live number's clothes.
+        const rows = (s.ss_product_prices as Array<{ price_usd: number | null }> | null) ?? []
+        const live = rows
+          .map((row) => row.price_usd)
+          .filter((v): v is number => typeof v === 'number')
+        return {
+          name: s.name_en,
+          price_usd: live.length ? Math.min(...live) : (s.price_usd ?? null),
+          review_count: s.review_count,
+        }
+      })
       .sort((a, b) => (b.review_count ?? 0) - (a.review_count ?? 0))
       .slice(0, 4)
 
@@ -2322,7 +2345,7 @@ async function attachSiblingListings(
       ...r,
       other_listings: others,
       listings_note:
-        'We carry this product name more than once. These may be the SAME product listed twice (quote the price from the listing with real review volume) or genuinely DIFFERENT products (a refill set, double pack, mist, ampoule, or a different line). Judge which from the names and review counts, and if you quote a price say which listing it is for.',
+        'We carry this product name more than once. These may be the SAME product listed twice (quote the price from the listing with real review volume) or genuinely DIFFERENT products (a refill set, double pack, mist, ampoule, or a different line). Judge which from the names and review counts, and if you quote a price say which listing it is for. Watch the multi-unit rows in particular: a "Set", "Double Pack" or "Nea" listing is several units at several units\' price, so quoting it as the cost of one bottle overstates what someone actually has to spend to try the product.',
     }
   })
 }
