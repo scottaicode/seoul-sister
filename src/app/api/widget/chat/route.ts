@@ -10,6 +10,7 @@ import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordC
 import { consumeGlobalBudget, logBreakerTrip, BREAKER_MESSAGE } from '@/lib/widget/circuit-breaker'
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
 import { detectCumulativeGive, buildCumulativeGiveBlock, detectBuildRequest, buildRequestBlock } from '@/lib/widget/cumulative-give'
+import { summarisePriceFreshness, buildPriceFreshnessBlock } from '@/lib/yuri/price-freshness'
 import { detectToolGrounding, buildToolGroundingBlock } from '@/lib/widget/tool-grounding'
 import { detectEmailAsks, buildEmailAskBlock } from '@/lib/widget/email-ask-count'
 import { buildSubscriberSurfaceBlock } from '@/lib/widget/subscriber-surface'
@@ -252,7 +253,7 @@ If a visitor asks for personalized analysis ("is this good for MY skin?"), you c
 ## Price Quoting Rules (NON-NEGOTIABLE)
 This is a first-impression conversation. Quoting a wrong price destroys trust permanently — a visitor goes to Olive Young, sees your $14 quote is actually $19, and never comes back. Follow these rules exactly:
 
-- **You may ONLY quote a dollar amount for a product if that amount came back from \`compare_prices\`, \`get_product_details\`, or \`search_products\` IN THIS CONVERSATION.** No exceptions.
+- **You may ONLY quote a dollar amount, a rating, or a review count for a product if that number is in a tool result you can SEE RIGHT NOW.** Not "a tool returned it earlier in this conversation" — earlier turns leave you the product NAME but not its numbers, and a number you are reconstructing around a remembered name is a guess wearing a fact's clothing. If you want to quote a price for something discussed a few turns ago, search it again; that costs one tool call and is the difference between a real number and an invented one. No exceptions.
 - If \`compare_prices\` returns "No price data available for this product in our database" — say "I don't have live pricing on this one right now. Check Olive Young Global, Soko Glam, or iHerb directly for current pricing." Do NOT fill in a price from memory, training data, or estimation. No "usually runs $X-Y", no "around $X", no "~$X".
 - Do not quote prices for sub-variants (different sizes, limited editions) you didn't query. If you pulled the 200mL price, you don't know the 500mL price — don't guess.
 - Retailer names in your response must match what the tool returned. If \`compare_prices\` only returned Olive Young data, don't invent Stylevana or YesStyle prices.
@@ -927,7 +928,41 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
             let parsedInput: Record<string, unknown> = {}
             try { parsedInput = JSON.parse(tb.input || '{}') } catch { /* keep empty */ }
             const result = await executeYuriTool(tb.name, parsedInput, '')
-            toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: result })
+
+            // PRICE FRESHNESS — attached to the tool result, where the prices are.
+            //
+            // `src/lib/yuri/price-freshness.ts` was written Aug 15 2026 for exactly
+            // this failure and had ZERO CONSUMERS until now: it fired, it built a
+            // careful fact block, and nothing ever called it. The loop's third
+            // question failing on the module built to answer it.
+            //
+            // What that cost, measured Sep 3 2026: a visitor in France at genuine
+            // purchase intent was quoted a Celimax price that was 149 days old,
+            // caveat-free. The payload did carry `price_age_days: 149`, but a bare
+            // integer with no threshold and no instruction attached is not a fact
+            // she can act on — the same model in the same conversation used a
+            // 3-day-old price perfectly.
+            //
+            // Attached HERE rather than to the system prompt because the widget
+            // resolves tools mid-turn: the system prompt is already built and sent
+            // before any price exists. Appending to the tool_result puts the age
+            // beside the number it describes, which is also what makes it survive
+            // into the next turn's context.
+            let resultForModel = result
+            try {
+              const parsed = JSON.parse(result) as {
+                products?: Array<{ prices?: Array<{ last_checked?: string | null }> }>
+              }
+              const rows = (parsed.products ?? []).flatMap((pr) => pr.prices ?? [])
+              if (rows.length) {
+                const note = buildPriceFreshnessBlock(summarisePriceFreshness(rows))
+                if (note) resultForModel = result + note
+              }
+            } catch {
+              // A tool result that is not JSON, or has no prices, simply gets no
+              // note. Never let this break a tool call.
+            }
+            toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: resultForModel })
             toolNamesUsed.push(tb.name)
             // Capture product names HERE, where `result` is still the full
             // payload. `result_summary` below is capped at 200 chars, which

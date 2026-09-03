@@ -113,16 +113,33 @@ export async function runOliveYoungPriceRefresh(
   const sweepBudget = Math.max(0, limit - (popularRows?.length ?? 0))
   let sweepRows: typeof popularRows = []
   if (sweepBudget > 0) {
-    let query = db
+    // NO KEYSET CURSOR. It was self-defeating on this table and stranded the
+    // long tail permanently.
+    //
+    // The bug (measured Sep 3 2026): the cursor keyed on `last_checked` — the
+    // very column this sweep MUTATES — and filtered `.gt(cursor)`. So every row
+    // refreshed today jumped AHEAD of the cursor and repopulated the space in
+    // front of it, while everything older stayed BEHIND the `.gt()` filter
+    // forever. Live runs showed it advancing exactly one day per day
+    // (Aug 20 -> 21 -> 22 -> 23) with `wrapped: false` every single run: it was
+    // re-refreshing ~10-day-old rows nightly and could never reach the tail.
+    //
+    // 770 Olive Young rows sat stranded behind it, every one 90+ days stale,
+    // 684 of them sharing a single 2026-04-07 bulk timestamp from the
+    // broken-fetcher era. The Celimax row a real visitor was quoted at 149 days
+    // old was one of them — not unlucky, UNREACHABLE.
+    //
+    // Stalest-first ordering is already self-advancing: refreshing the oldest
+    // rows moves them to the newest end, so the next run naturally sees the next
+    // oldest. A cursor adds nothing and, on a mutating sort column, subtracts
+    // correctness. `afterCheckedAt` is accepted and ignored for call-site
+    // compatibility; the cron still records it for continuity of the run log.
+    const { data } = await db
       .from('ss_product_prices')
       .select('id, product_id, url, price_usd, last_checked, ss_products!inner(review_count)')
       .eq('retailer_id', retailer.id)
       .order('last_checked', { ascending: true, nullsFirst: true })
       .limit(sweepBudget)
-    if (afterCheckedAt) {
-      query = query.gt('last_checked', afterCheckedAt)
-    }
-    const { data } = await query
     sweepRows = data ?? []
   }
 
