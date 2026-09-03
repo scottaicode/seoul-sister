@@ -73,3 +73,51 @@ toward <8, and the PIH page earns **>=10 clicks** in 28 days (baseline 3).
 Note for the SEO Guardian: a >=6 threshold on a 3-click baseline is NOT
 gradeable — the conditional test needs >=10 to distinguish the result from
 chance. Write the honest threshold.
+
+---
+
+## EXACT EDITS (paste-ready)
+
+These three posts are `source: 'lgaas'` with an `lgaas_post_id`, and the Seoul
+Sister ingest route (`/api/admin/content/ingest`) UPSERTS on that id and
+**overwrites `body`**. So an edit made directly in the Seoul Sister database
+would be silently reverted the next time LGAAS re-ingests the post. **These edits
+must be made on the LGAAS side and re-ingested.** That is the profile-drift class
+this project has already paid for once.
+
+### Edit 1 (priority) — dark-spots post
+`best-korean-skincare-for-dark-spots-what-actually-fades-hyperpigmentation-and-whats-just-marketing`
+253 impressions, **5 clicks**, position 14.4. Best available link source.
+
+FIND this existing sentence in the body:
+
+> **Post-inflammatory hyperpigmentation (PIH)** is what you get after acne, a bug
+> bite, or any skin trauma. Your skin overproduces melanin at the injury site as
+> part of the healing response.
+
+APPEND one sentence to that same paragraph:
+
+> If PIH is specifically what you are dealing with, we go deeper on it in our
+> guide to [Korean skincare for PIH and post-acne dark spots](/blog/best-korean-skincare-for-pih-fade-post-acne-dark-spots).
+
+Rationale: the link sits inside the paragraph that already defines the term, so
+the anchor text and surrounding context agree. No link block, no "related posts".
+
+### Edit 2 — hyperpigmentation guide
+`how-to-get-rid-of-hyperpigmentation-k-beauty-guide`
+
+Add ONE contextual link where post-acne marks are first discussed, anchor text:
+*"Korean skincare for PIH and post-acne dark spots"* pointing to
+`/blog/best-korean-skincare-for-pih-fade-post-acne-dark-spots`.
+
+### Edit 3 — dry skin with pigmentation
+`best-korean-skincare-for-dry-skin-with-pigmentation-a-routine-that-treats-both`
+76 impressions, position 13.5.
+
+Same single contextual link, placed where post-acne pigment is mentioned.
+
+### Do NOT
+
+- Do not edit the PIE post. It earns 19 clicks and already links to PIH twice.
+- Do not regenerate any of these three posts. Add a sentence; change nothing else.
+- Do not add a footer "related posts" block to any of them.
