@@ -256,13 +256,62 @@ export default async function BestOfCategoryPage({ params }: Props) {
   // direction is exactly the wrong one for a freshness stamp — it is the "prices
   // refresh every 6 hours" false-cadence claim in a subtler form.
   let priceCheckedAt: string | null = null
+  // The rendered price comes from the LIVE price table, not the inline
+  // ss_products.price_usd column.
+  //
+  // Measured Sept 5 2026 across all 12 categories' top 20: of 209 rendered
+  // prices, 158 (76%) disagreed with the freshest ss_product_prices row by more
+  // than $0.50 — mean gap $9.24, worst $56.10. The inline column is a snapshot
+  // that nothing refreshes, while the price crons update ss_product_prices
+  // daily. This page already queried that table for the freshness stamp below,
+  // so the correct number was one field away the whole time.
+  //
+  // It matters more here than on an ordinary page: the same number is emitted
+  // into JSON-LD `Offer.price`, and /best/* is a cited surface. A stale price in
+  // structured data is what gets quoted back by an AI, where nobody can see the
+  // "prices last checked" caveat the page renders.
+  //
+  // The gaps run in BOTH directions and the live side is right either way:
+  // spot-checked, the live rows are 1-10 days old from Olive Young (the cron
+  // v11.28.0 repaired) while the inline column is a February snapshot. Anua
+  // Clear Tone genuinely rose $22.56 -> $55.00; SUM37 genuinely fell $113.05 ->
+  // $56.95. This is not "unstale an overquote", it is "show the real number".
+  //
+  // NOT a bare MIN across retailers. A MIN can select a stale row from a
+  // retailer we never recommend: Dear Klairs Gentle Black carries a YesStyle
+  // row 196 days old alongside a 1-day-old Olive Young row, and YesStyle is on
+  // the never-recommend list. Prefer the FRESHEST row, taking the cheaper of
+  // any rows that share that freshness. The query already sorts last_checked
+  // DESC, so the first row seen per product is the freshest.
+  const livePrice = new Map<string, number>()
   if (products.length > 0) {
     const { data: freshness } = await supabase
       .from('ss_product_prices')
-      .select('last_checked')
+      .select('product_id, price_usd, last_checked')
       .in('product_id', products.map((p) => p.id))
       .not('last_checked', 'is', null)
       .order('last_checked', { ascending: false })
+    const freshestDay = new Map<string, string>()
+    for (const r of (freshness || []) as Array<{
+      product_id: string
+      price_usd: number | null
+      last_checked: string
+    }>) {
+      if (r.price_usd == null) continue
+      const day = r.last_checked.slice(0, 10)
+      const seen = freshestDay.get(r.product_id)
+      if (seen === undefined) {
+        freshestDay.set(r.product_id, day)
+        livePrice.set(r.product_id, r.price_usd)
+        continue
+      }
+      // Same-day rows are equally fresh, so take the better price among them.
+      // An older row never overwrites a fresher one.
+      if (day === seen) {
+        const prev = livePrice.get(r.product_id)
+        if (prev === undefined || r.price_usd < prev) livePrice.set(r.product_id, r.price_usd)
+      }
+    }
     const dates = (freshness || [])
       .map((r) => (r as { last_checked: string }).last_checked)
       .filter(Boolean)
@@ -354,10 +403,13 @@ export default async function BestOfCategoryPage({ params }: Props) {
             // hardcoding InStock asserted something we cannot know — false for
             // 1-4 items in every category's top 20 when measured against
             // ss_product_prices.in_stock. Omitting an unknown beats guessing it.
-            ...(p.price_usd && {
+            // Live price, falling back to the inline column only when this
+            // product has no ss_product_prices row at all. 76% of the inline
+            // values were stale when measured; see the livePrice comment above.
+            ...((livePrice.get(p.id) ?? p.price_usd) && {
               offers: {
                 '@type': 'Offer',
-                price: Number(p.price_usd).toFixed(2),
+                price: Number(livePrice.get(p.id) ?? p.price_usd).toFixed(2),
                 priceCurrency: 'USD',
               },
             }),
@@ -590,9 +642,9 @@ export default async function BestOfCategoryPage({ params }: Props) {
                       )}
                     </div>
                   )}
-                  {product.price_usd && (
+                  {(livePrice.get(product.id) ?? product.price_usd) && (
                     <p className="text-sm text-emerald-400 mt-0.5">
-                      ${Number(product.price_usd).toFixed(2)}
+                      ${Number(livePrice.get(product.id) ?? product.price_usd).toFixed(2)}
                     </p>
                   )}
                 </div>
