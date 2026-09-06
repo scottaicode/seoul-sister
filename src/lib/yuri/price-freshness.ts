@@ -80,6 +80,19 @@ export interface PriceFreshness {
   oldestDays: number
   /** True when the oldest is past LONG_STALE_DAYS. */
   longStale: boolean
+  /**
+   * Prices with NO verification date at all — the inline catalog snapshot that
+   * `search_products` falls back to when a product has no ss_product_prices row.
+   *
+   * Previously skipped, which made them INVISIBLE: a price we cannot date is
+   * the one most likely to be wrong, and silence about it reads as freshness.
+   * 542 verified products can only ever be quoted this way (none has a staging
+   * row or an Olive Young URL, so no cron can refresh them), and 477 of those
+   * have 1,000+ reviews — they are the hero products beginners ask for by name.
+   */
+  unknownAge: number
+  /** Prices whose retailer lists the product as out of stock right now. */
+  outOfStock: number
 }
 
 /** Days between `iso` and now, or null when there is no timestamp to read. */
@@ -99,22 +112,55 @@ export function ageInDays(iso: string | null | undefined, now: number = Date.now
  * an unknown age is exactly the thing we must not silently treat as current.
  */
 export function summarisePriceFreshness(
-  rows: Array<{ last_checked?: string | null }>,
+  rows: Array<{
+    last_checked?: string | null
+    price_age_days?: number | null
+    in_stock?: boolean | null
+  }>,
   now: number = Date.now()
 ): PriceFreshness {
   let priced = 0
   let stale = 0
   let oldestDays = 0
+  let unknownAge = 0
+  let outOfStock = 0
 
   for (const row of rows) {
-    const age = ageInDays(row.last_checked, now)
-    if (age == null) continue
+    if (row.in_stock === false) outOfStock++
+
+    // ACCEPT BOTH SHAPES. This is the defect that made the whole module dead
+    // code on the only tool visitors actually reach.
+    //
+    // `search_products` — five of five calls in the Sept 6 transcript — emits
+    // `price_age_days` (an integer, computed in the mapper). The consumer added
+    // Sept 3 read `last_checked` and nothing else, so `priced` came back 0 and
+    // the note returned null on EVERY search. A visitor was quoted a 201-day-old
+    // Torriden price with no caveat while the payload said `price_age_days: 201`.
+    // `compare_prices` emits `last_checked`. Reading only one field meant the
+    // instrument fired exclusively on the path visitors do not take — the same
+    // shape as the v10.3.8 gap it was written to close, one layer up.
+    const age =
+      typeof row.price_age_days === 'number' && Number.isFinite(row.price_age_days)
+        ? Math.max(0, Math.floor(row.price_age_days))
+        : ageInDays(row.last_checked, now)
+
+    if (age == null) {
+      unknownAge++
+      continue
+    }
     priced++
     if (age > NOTEWORTHY_DAYS) stale++
     if (age > oldestDays) oldestDays = age
   }
 
-  return { priced, stale, oldestDays, longStale: oldestDays > LONG_STALE_DAYS }
+  return {
+    priced,
+    stale,
+    oldestDays,
+    longStale: oldestDays > LONG_STALE_DAYS,
+    unknownAge,
+    outOfStock,
+  }
 }
 
 /**
@@ -141,13 +187,45 @@ export function summarisePriceFreshness(
  *    directly rather than banning imperative vocabulary.
  */
 export function buildPriceFreshnessBlock(f: PriceFreshness): string | null {
-  if (f.stale === 0) return null
+  // Fires on any of three conditions, not just age. An undated price and a
+  // delisted listing are both facts Yuri could not otherwise see, and both were
+  // missed on real transcripts: the Sept 6 visitor was quoted three undated
+  // prices and recommended a product delisted at the only retailer carrying it.
+  if (f.stale === 0 && f.unknownAge === 0 && f.outOfStock === 0) return null
 
-  const scale = f.longStale
-    ? `The oldest is about ${f.oldestDays} days old — long enough that it has likely seen at least one promotional cycle since we looked.`
-    : `The oldest is about ${f.oldestDays} days old.`
+  const lines: string[] = []
+
+  if (f.stale > 0) {
+    const scale = f.longStale
+      ? `The oldest is about ${f.oldestDays} days old — long enough that it has likely seen at least one promotional cycle since we looked.`
+      : `The oldest is about ${f.oldestDays} days old.`
+    lines.push(
+      `${f.priced === 1 ? 'The price' : `${f.stale} of the ${f.priced} prices`} in front of you ${f.stale === 1 ? 'was' : 'were'} last verified more than ${NOTEWORTHY_DAYS} days ago. ${scale} These are real prices we genuinely recorded, not guesses — but they are what the retailer charged when we last checked, not a live quote from this moment. Which way a given price has moved since, or whether it has moved at all, is not something we know.`
+    )
+  }
+
+  // An undated price states its own provenance. It is NOT downgraded to a guess
+  // — these are real recorded numbers — but we cannot say when they were true,
+  // and how far they have drifted since is UNMEASURED for this cohort (they
+  // have no live row to compare against, which is why they hit this path).
+  // Saying "we do not know" is the whole content; inventing a confidence would
+  // be the fitzpatrick_source failure applied to money.
+  if (f.unknownAge > 0) {
+    lines.push(
+      `${f.unknownAge === 1 ? 'One price' : `${f.unknownAge} prices`} in front of you carr${f.unknownAge === 1 ? 'ies' : 'y'} no verification date at all — a figure recorded when the product was added to the catalog, with no retailer attached and no record of when it was last true. Treat ${f.unknownAge === 1 ? 'it' : 'them'} as a rough sense of what a product costs rather than a quote.`
+    )
+  }
+
+  // Availability is a fact about the RETAILER's shelf, not about our data.
+  // Stated so Yuri can mention it in her own words; a delisted product may
+  // still be worth naming, and may still be stocked somewhere we do not track.
+  if (f.outOfStock > 0) {
+    lines.push(
+      `${f.outOfStock === 1 ? 'One listing' : `${f.outOfStock} listings`} in front of you ${f.outOfStock === 1 ? 'is' : 'are'} marked not in stock at that retailer as of our last check. That is a fact about their shelf, not about the product — it may still be sold elsewhere, and retailers relist.`
+    )
+  }
 
   return `\n\n## Price Freshness (facts, not instructions)
-${f.priced === 1 ? 'The price' : `${f.stale} of the ${f.priced} prices`} in front of you ${f.stale === 1 ? 'was' : 'were'} last verified more than ${NOTEWORTHY_DAYS} days ago. ${scale} These are real prices we genuinely recorded, not guesses — but they are what the retailer charged when we last checked, not a live quote from this moment. Which way a given price has moved since, or whether it has moved at all, is not something we know.
-This is context for your judgment, not a rule and not a cap. Nothing here asks you to add a caveat to every number, hedge a recommendation you're confident in, or stop quoting prices — a price with its age attached is more useful to someone than no price at all. You already handle this instinct well when you can see the age; it is here because a single tool result does not make it visible.`
+${lines.join('\n')}
+This is context for your judgment, not a rule and not a cap. Nothing here asks you to add a caveat to every number, hedge a recommendation you're confident in, or stop quoting prices — a price with its provenance attached is more useful to someone than no price at all. You already handle this instinct well when you can see the age; it is here because a single tool result does not make it visible.`
 }

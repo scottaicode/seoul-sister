@@ -155,3 +155,94 @@ test('the listings note names the multi-unit trap concretely', () => {
     'the note must say what a multi-unit row actually costs someone'
   )
 })
+
+// ---------------------------------------------------------------------------
+// Sept 6 2026 — the consumer read a field the tool never emitted.
+//
+// A 23-year-old in Bangladesh got an excellent consult and four bad prices. The
+// module above HAD a consumer by then (cc20a2e, Sep 3) and still fired on
+// nothing, because `search_products` emits `price_age_days` while the consumer
+// read `last_checked`. Executed against the real payload shape, the summariser
+// returned priced:0 and the note returned null on all five of her tool calls —
+// including a 201-day-old Torriden price sent out caveat-free.
+//
+// The old guard test passed the whole time: it asserted /last_checked/ against
+// the route source, and the string was present in a TypeScript TYPE ANNOTATION.
+// A source-text assertion greening over dead wiring, which is why every test
+// below EXECUTES the module and asserts on the NOTE TEXT rather than on a
+// field's existence. Asserting a field exists is exactly the wrong-but-passing
+// shape: the summariser silently skips a null age, so `price_age_days: null`
+// would satisfy a field check while the note stayed null.
+// ---------------------------------------------------------------------------
+
+test('EXECUTED: the shape search_products actually emits produces a note', async () => {
+  const m = await load('src/lib/yuri/price-freshness.ts')
+  // Verbatim shape from the tools.ts mapper: price_age_days, NOT last_checked.
+  const rows = [{ retailer: 'Olive Young', price_usd: 14, price_age_days: 201, in_stock: true }]
+  const f = m.summarisePriceFreshness(rows)
+  assert.equal(f.priced, 1, 'a price_age_days row must COUNT, not be skipped')
+  assert.equal(f.stale, 1)
+  const note = m.buildPriceFreshnessBlock(f)
+  assert.ok(note, 'the real search_products shape must produce a note')
+  assert.match(note, /201 days/, 'the note must state the actual age it was given')
+})
+
+test('EXECUTED: an undated fallback price is STATED, never silently skipped', async () => {
+  const m = await load('src/lib/yuri/price-freshness.ts')
+  // The inline-catalog fallback: no retailer, no age. 542 verified products can
+  // only ever be quoted this way, 477 of them with 1,000+ reviews.
+  const f = m.summarisePriceFreshness([{ retailer: null, price_usd: 18, price_age_days: null }])
+  assert.equal(f.unknownAge, 1, 'an undated price must be counted, not dropped')
+  const note = m.buildPriceFreshnessBlock(f)
+  assert.ok(note, 'an undated price must produce a note even when nothing is stale')
+  assert.match(note, /no verification date/, 'the note must name the missing provenance')
+})
+
+test('EXECUTED: a delisted listing reaches Yuri as a fact', async () => {
+  const m = await load('src/lib/yuri/price-freshness.ts')
+  const f = m.summarisePriceFreshness([
+    { retailer: 'Olive Young', price_usd: 18.48, price_age_days: 13, in_stock: false },
+  ])
+  assert.equal(f.outOfStock, 1)
+  const note = m.buildPriceFreshnessBlock(f)
+  assert.ok(note, 'a delisted listing must produce a note even when the price is FRESH')
+  assert.match(note, /not in stock/, 'the note must say the listing is unavailable')
+  // It must stay a fact about the retailer, never an instruction to suppress.
+  assert.doesNotMatch(
+    note,
+    /do not recommend|never recommend|avoid recommending|must not/i,
+    'availability is a fact about the shelf, not a command to withhold a product'
+  )
+})
+
+test('EXECUTED: a healthy catalog still costs nothing', async () => {
+  const m = await load('src/lib/yuri/price-freshness.ts')
+  const f = m.summarisePriceFreshness([
+    { retailer: 'Olive Young', price_usd: 14, price_age_days: 2, in_stock: true },
+  ])
+  assert.equal(m.buildPriceFreshnessBlock(f), null, 'fresh, dated, in-stock prices must stay silent')
+})
+
+test('EXECUTED: compare_prices last_checked shape still works', async () => {
+  // The other tool emits last_checked. Accepting price_age_days must not break it.
+  const m = await load('src/lib/yuri/price-freshness.ts')
+  const old = new Date(Date.now() - 200 * 86_400_000).toISOString()
+  const f = m.summarisePriceFreshness([{ retailer: 'Olive Young', last_checked: old }])
+  assert.equal(f.priced, 1)
+  assert.ok(m.buildPriceFreshnessBlock(f), 'the last_checked path must keep firing')
+})
+
+test('the note never fabricates a refresh cadence or a drift direction', async () => {
+  const m = await load('src/lib/yuri/price-freshness.ts')
+  const f = m.summarisePriceFreshness([
+    { price_usd: 18, price_age_days: null },
+    { price_usd: 20, price_age_days: 201, in_stock: false },
+  ])
+  const note = m.buildPriceFreshnessBlock(f)
+  assert.ok(note)
+  // "prices update daily" contains no command words and would pass any naive
+  // imperative check, which is exactly why it is attacked by shape here.
+  assert.doesNotMatch(note, /updates? (daily|hourly|every)|refreshed? (daily|hourly|every)/i)
+  // Never predict which way a stale price moved — cut from this file in review.
+  assert.doesNotMatch(note, /usually (higher|lower|cheaper)|in your favou?r|probably pay less/i)
+})

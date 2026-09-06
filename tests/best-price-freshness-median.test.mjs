@@ -54,8 +54,12 @@ test('the freshness stamp never reports the newest row', () => {
     /order\('last_checked',\s*\{\s*ascending:\s*false\s*\}\)\s*\n\s*\.limit\(1\)/,
     'takes the single freshest price row and presents it as the page freshness'
   )
+  // Scoped to the whole block, not a fixed character window. The original
+  // slice(0, 1400) broke when a comment documenting a real measurement was
+  // added above the code — a brittle-window failure that reported a regression
+  // where the logic was untouched. Assert on the REGION, never on a byte count.
   assert.match(
-    block.slice(0, 1400),
+    block,
     /Math\.floor\(dates\.length \/ 2\)/,
     'freshness must be the median of the displayed set'
   )

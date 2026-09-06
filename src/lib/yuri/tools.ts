@@ -2226,7 +2226,43 @@ async function executeSearchProducts(
       description: (p.description_en as string || '').slice(0, 200),
       rating: p.rating_avg,
       review_count: p.review_count,
-      prices: prices.length > 0 ? prices : p.price_usd ? [{ retailer: 'Retail', price_usd: p.price_usd }] : [],
+      // FALLBACK PRICE — the inline ss_products.price_usd column, reached only
+      // when a product has no ss_product_prices row at all.
+      //
+      // Earned Sept 6 2026 from a real cold visitor: a 23-year-old in Bangladesh
+      // got an excellent consult and was quoted "$18" for the Real Barrier Aqua
+      // Soothing Gel Cream and "$14" for the Haruharu Wonder sunscreen. Both
+      // have ZERO price rows. Yuri quoted faithfully — the tool handed her a
+      // bare number labelled 'Retail' with no age and no retailer. The branch
+      // above carries `price_age_days` and `in_stock` and explains at length why
+      // both are load-bearing; this branch carried neither.
+      //
+      // DROPPING the price was considered and REJECTED on measurement. All 542
+      // affected products are the February seed cohort — none has a staging row
+      // or an Olive Young URL, so no cron can ever refresh them — and 477 of the
+      // 542 have 1,000+ reviews (Biodance 18,200; Clean It Zero 18,198; Heimish
+      // 15,600; Illiyoon 15,200). They are the hero products a beginner asks for
+      // by name, so silencing Yuri on them reads as "our database is broken" and
+      // costs more than a number with its provenance attached. That is the call
+      // price-freshness.ts already makes in its own header.
+      //
+      // `retailer: null` because we genuinely do not know which retailer it came
+      // from; 'Retail' was a fabricated label that read like a shop name.
+      // `price_age_days: null` is the honest unknown, and the summariser now
+      // COUNTS it (`unknownAge`) rather than skipping it.
+      prices:
+        prices.length > 0
+          ? prices
+          : p.price_usd
+            ? [
+                {
+                  retailer: null,
+                  price_usd: p.price_usd,
+                  price_age_days: null,
+                  in_stock: null,
+                },
+              ]
+            : [],
       key_ingredients: ingredients,
     }
   })
