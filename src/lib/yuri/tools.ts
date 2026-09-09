@@ -2166,12 +2166,35 @@ async function executeSearchProducts(
     console.error(`[search_products] price lookup failed: ${pricesError.message}`)
   }
 
-  // Get top active ingredients for each product
+  // FULL ingredient list, not a top-N slice.
+  //
+  // Earned Sept 8 2026. A visitor disclosed a GRASS ALLERGY and a past reaction.
+  // Yuri correctly pulled a 77%-botanical toner for her, then described the Round
+  // Lab 1025 Dokdo Cleansing Oil as "lightweight synthetic esters, NOT the heavy
+  // botanical oils" and called its INCI "short and clean". The real list is 35
+  // ingredients: SIX botanical oils at positions 6-11 (evening primrose,
+  // meadowfoam, avocado, grape seed, canola, macadamia) and — the part that
+  // actually matters for a contact allergy — Bergamot Oil, Sage Oil, Limonene and
+  // Linalool at 31-35.
+  //
+  // She was not careless. `.lte('position', 10)` + `.slice(0, 5)` handed her
+  // positions 1-5, which ARE synthetic esters, with no signal that 30 more
+  // existed. The cut landed exactly at the boundary where the answer changes.
+  //
+  // Measured, and this is why a COUNT was rejected as the fix: INCI convention
+  // lists sub-1% ingredients last, so the top-5 is structurally blind to the
+  // class an allergy visitor cares about most. Of 2,261 verified products
+  // carrying an EU-declared fragrance allergen, 2,245 (99.3%) hide it past
+  // position 5. Telling Yuri "30 more exist" buys the word "short" and answers
+  // no allergy question; only NAMES do.
+  //
+  // Cost: names-only past the first five is ~1.6x today's tool-result tokens.
+  // Tool results are never in the cached block (`applyCacheControl` marks only
+  // the second-to-last assistant text), so the prompt cache is unaffected.
   const { data: topIngredients } = await db
     .from('ss_product_ingredients')
     .select('product_id, position, ingredient:ss_ingredients(name_en, is_active, function, rich_content_generated_at)')
     .in('product_id', finalIds)
-    .lte('position', 10)
     .order('position', { ascending: true })
 
   // Build response
@@ -2215,7 +2238,12 @@ async function executeSearchProducts(
         }
       })
       .filter((x): x is NonNullable<typeof x> => x !== null)
-      .slice(0, 5)
+
+    // The first five keep `function`/`has_guide` (what a recommendation needs);
+    // everything after is names-only (what a safety question needs). Carrying
+    // `function` on all 38 would be ~5,300 tokens a search for no added answer.
+    const keyIngredients = ingredients.slice(0, 5)
+    const remainingIngredients = ingredients.slice(5).map((i) => i.name)
 
     return {
       id: pid,
@@ -2263,7 +2291,11 @@ async function executeSearchProducts(
                 },
               ]
             : [],
-      key_ingredients: ingredients,
+      key_ingredients: keyIngredients,
+      // Named, not counted. A count cannot answer "does this contain something I
+      // react to"; the remaining names can.
+      other_ingredients: remainingIngredients,
+      ingredients_total: ingredients.length,
     }
   })
 
@@ -2417,11 +2449,17 @@ async function executeGetProductDetails(
       .select('*')
       .eq('id', productId)
       .single(),
+    // No .limit(). This is the tool that EXISTS to answer composition questions,
+    // and it was capped at 30 fetched / 20 returned while 89.5% of verified
+    // products carry more than 20 links (median 38). Measured: of 2,261 products
+    // with an EU-declared fragrance allergen, 1,633 (72%) hid it past position 20
+    // — so a SUBSCRIBER asking "is this fragrance-free" got a confident answer
+    // from a list that structurally could not contain the answer. Worse than the
+    // widget gap, because these are paying users on the safety path.
     db.from('ss_product_ingredients')
       .select('position, ingredient:ss_ingredients(name_inci, name_en, function, is_active, safety_rating, comedogenic_rating, rich_content, rich_content_generated_at)')
       .eq('product_id', productId)
-      .order('position', { ascending: true })
-      .limit(30),
+      .order('position', { ascending: true }),
     db.from('ss_product_prices')
       .select('price_usd, url, in_stock, last_checked, retailer:ss_retailers(name, trust_score, is_authorized)')
       .eq('product_id', productId)
@@ -2498,7 +2536,15 @@ async function executeGetProductDetails(
       pa_rating: product.pa_rating,
       pao_months: product.pao_months,
     },
+    // Full detail on the first 20, names-only after — same split as
+    // search_products: rich data where a recommendation needs it, complete names
+    // where a safety question needs them.
     ingredients: ingredients.slice(0, 20),
+    other_ingredients: ingredients
+      .slice(20)
+      .map((i: Record<string, unknown>) => (i.name_en ?? i.name_inci) as string)
+      .filter(Boolean),
+    ingredients_total: ingredients.length,
     prices,
     community: {
       total_reviews: totalReviews,
@@ -2872,7 +2918,22 @@ async function executeGetTrendingProducts(
       product:ss_products(id, name_en, brand_en, category, rating_avg)
     `)
     .order('trend_score', { ascending: false })
-    .limit(limit)
+    // Over-fetch, because the category filter below runs IN JS after the rows
+    // come back. `.limit(limit)` is applied server-side by Postgres BEFORE that
+    // filter, so a category request fetched the globally top-N and then threw
+    // nearly all of them away.
+    //
+    // Earned Sept 8 2026: a visitor asked what actually works for glass skin and
+    // Yuri requested trending ESSENCES, limit 5. The top 5 by trend_score are
+    // serum/mask/moisturizer/serum/exfoliator, so all five were filtered out and
+    // she got `{"trending": []}` — while TEN real trending essences existed, led
+    // by COSRX Snail 96. Reproduced against live data.
+    //
+    // Measured: 8 of 15 categories were unreachable even at the maximum limit of
+    // 15, including cleanser (69 trending rows) and ampoule (30). Every other
+    // post-filter in this file already over-fetches (limit*5, limit*3); this was
+    // the lone miss. Same class as the v11.22.0 ingredient post-filter bug.
+    .limit(category ? Math.max(limit * 20, 200) : limit)
 
   if (source && source !== 'all') {
     query = query.eq('source', source)
@@ -2902,11 +2963,13 @@ async function executeGetTrendingProducts(
     }
   })
 
-  // Post-filter by category if needed (through the joined product)
+  // Post-filter by category if needed (through the joined product), then trim to
+  // what the caller asked for — the over-fetch above exists only to make this
+  // filter selective rather than destructive.
   if (category) {
-    results = results.filter(
-      (r) => r.category?.toLowerCase() === category.toLowerCase()
-    )
+    results = results
+      .filter((r) => r.category?.toLowerCase() === category.toLowerCase())
+      .slice(0, limit)
   }
 
   return JSON.stringify({ trending: results })
