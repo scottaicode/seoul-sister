@@ -281,6 +281,14 @@ This visitor has chatted with you before. Here's what you know about them:
 /** Why a memory generation attempt produced no stored row. */
 export type MemoryWriteOutcome =
   | 'saved'
+  /**
+   * The model hit max_tokens mid-object. Distinct from `no_json_in_response`
+   * ON PURPOSE: both used to land in the latter, because this schema is flat,
+   * so a cut-off response contains no closing brace at all and the regex simply
+   * found nothing. That made a budget problem wear the costume of a prompt
+   * problem. `stop_reason` says which it is; read it rather than inferring.
+   */
+  | 'truncated'
   | 'no_json_in_response'
   | 'parse_failed'
   | 'write_failed'
@@ -364,7 +372,29 @@ export async function generateAndSaveMemory(
     // visitor memory that never gets regenerated for this window otherwise.
     const response = await callAnthropicWithRetry(() => anthropic.messages.create({
       model: MODELS.background,
-      max_tokens: 400,
+      // 2000, not 400. Earned Sept 14 2026.
+      //
+      // 400 silently broke this loop for every deep visitor. The parse is
+      // `text.match(/\{[\s\S]*\}/)`, which needs a CLOSING brace, so a
+      // truncated object matched NOTHING and stamped `no_json_in_response` —
+      // a budget failure indistinguishable from a prompt failure.
+      //
+      // Measured, not guessed. The output grows on every fire because the
+      // merged memory is fed back in and the prompt asks for "ALL
+      // conversations". Replaying one real visitor's actual cadence:
+      //   fire@3 -> 371 tokens, fire@6 -> 486, fire@9 -> 709, fire@16 -> 947.
+      // Every first write fit inside 400 by luck (one landed at 391/400) and
+      // every merge after it truncated. That is why three visitors show
+      // `no_json_in_response` while still HOLDING a memory: an early fire
+      // saved, and every later one failed, so their memory is frozen at the
+      // fire@3 snapshot. Stale, not absent — the worse of the two, because it
+      // reads as working.
+      //
+      // 2000 is ~2x the largest observed production output. Raising it alone is
+      // NOT the fix: an unbounded schema would eventually outgrow any ceiling,
+      // which is why the prompt below bounds the SHAPE and the branch below
+      // reads stop_reason instead of inferring truncation from a failed regex.
+      max_tokens: 2000,
       system: `You are a memory extraction system for a K-beauty AI advisor. Given conversation messages and any previous memory, generate an updated memory profile for this anonymous visitor. Return ONLY valid JSON.`,
       messages: [
         {
@@ -374,20 +404,45 @@ export async function generateAndSaveMemory(
 Current conversation:
 ${conversationText}
 
-Return JSON with these fields:
+Return JSON with these fields, respecting the stated limits — this profile is
+re-read on every future turn, so a sprawling one costs tokens forever and buries
+the facts that matter:
 {
-  "summary": "2-3 sentence overview of ALL conversations with this visitor",
-  "topics_discussed": ["array of topics across all sessions"],
-  "skin_concerns": ["extracted skin concerns like acne, dryness, sensitivity"],
-  "products_interested_in": ["products they asked about or showed interest in"],
+  "summary": "2-3 sentences max, overview of ALL conversations with this visitor",
+  "topics_discussed": ["at most 8, most significant first"],
+  "skin_concerns": ["at most 8 — concerns like acne, dryness, sensitivity"],
+  "products_interested_in": ["at most 8 products they asked about or showed interest in"],
   "interest_level": "browsing | curious | engaged | ready_to_buy",
-  "recommended_approach": "how Yuri should approach this visitor next time"
+  "recommended_approach": "2 sentences max on how Yuri should approach this visitor next time"
 }`,
         },
       ],
     }))
 
     const text = response.content[0]?.type === 'text' ? response.content[0].text : ''
+
+    // ASK THE MODEL, don't infer from a failed regex.
+    //
+    // `stop_reason === 'max_tokens'` is the API telling us plainly that the
+    // object is cut off. Inferring it from "the regex found nothing" conflates
+    // a budget problem with a prompt problem, which is exactly how this bug hid:
+    // every truncation was filed as `no_json_in_response` and the taxonomy
+    // comment in this file confidently said those pointed at different fixes.
+    //
+    // Checked BEFORE parsing, and returns without writing. A truncated object
+    // always loses its LAST field, which here is `recommended_approach` — the
+    // one the consumer leans on most. Repairing the JSON to salvage the rest
+    // would store a memory that is silently missing its most-used field and
+    // stamp it `saved`: the fake-confidence class this repo keeps paying for.
+    // Better to write nothing and say so.
+    if (response.stop_reason === 'max_tokens') {
+      console.error('[widget/persistence] memory: response truncated at max_tokens', {
+        visitorId,
+        outputTokens: response.usage?.output_tokens,
+      })
+      await stamp('truncated')
+      return 'truncated'
+    }
 
     // Parse JSON from response (handle markdown code blocks)
     const jsonMatch = text.match(/\{[\s\S]*\}/)
