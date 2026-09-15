@@ -93,3 +93,54 @@ test('the metadata-ceiling caveat is included', () => {
     'the strategist must know 0.24% at position 12 is par, not a broken-titles signal'
   )
 })
+
+// ---------------------------------------------------------------------------
+// Sept 15 2026 — the strategist spent 13 bets over 9 consecutive weeks on ONE
+// query that has never clicked, and the Aug 2 block above was feeding the loop
+// by citing it as a solution-intent query that earned clicks.
+//
+// Joined query-to-page from the weekly gsc_snapshot archives: the DEDICATED PIH
+// page, with the correct title, held the query at position 9.7-10.1 for a month
+// and earned 2 clicks on 430 impressions (0.47%). Google then moved it to the
+// PIE page: 1,714 impressions at 10.4, zero clicks. Both pages, both titles,
+// near-zero clicks — so a metadata or internal-link bet cannot recover it. That
+// experiment already ran.
+//
+// The impressions are anomalous: a 245x "best X" / bare "X" ratio against a
+// site norm of 0.5-1.7x, volume up ~20x in ten weeks with position frozen.
+//
+// These assertions are deliberately about the FACT surviving in the prompt, and
+// about it not degrading into a rule. The block's whole design is facts-for-
+// judgment; a version that ordered the strategist around would be the
+// regression, so the last test attacks that shape directly.
+// ---------------------------------------------------------------------------
+
+test('the PIH phantom-query fact is stated with its evidence', () => {
+  const src = readFileSync(SRC, 'utf8')
+  const i = src.indexOf('best korean skincare for pih" is NOT a target')
+  assert.ok(i !== -1, 'the PIH fact must be present in the strategist prompt')
+  const block = src.slice(i, i + 3000)
+  // The numbers are what make it a fact rather than an opinion; without them a
+  // future session re-derives the same wrong conclusion from the Aug 2 note.
+  assert.match(block, /0\.47%/, 'must carry the dedicated page CTR that already failed')
+  assert.match(block, /245x/, 'must carry the phrase-ratio anomaly')
+  assert.match(block, /13 bets/, 'must name the size of the loop it is stopping')
+})
+
+test('it protects the PIE page, which is 19% of site clicks', () => {
+  const src = readFileSync(SRC, 'utf8')
+  const i = src.indexOf('best korean skincare for pih" is NOT a target')
+  const block = src.slice(i, i + 3000)
+  assert.match(block, /do not touch the PIE page/i,
+    'the highest-traffic page must be explicitly out of scope for this query')
+})
+
+test('the PIH fact does not become a blanket ban on pigmentation content', () => {
+  const src = readFileSync(SRC, 'utf8')
+  const i = src.indexOf('best korean skincare for pih" is NOT a target')
+  const block = src.slice(i, i + 3000)
+  // Scoped to ONE phrase. A rule banning the topic would cost real queries:
+  // the PIH/dark-spot family minus this query runs 1.56% CTR, which is healthy.
+  assert.match(block, /fact about one phrase, not a rule against pigmentation/i,
+    'the fact must name its own scope so it cannot widen into a topic ban')
+})
