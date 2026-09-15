@@ -83,6 +83,28 @@ const ASK = [
   // Deliverable framings.
   /\bsend\s+(?:you\s+)?(?:the|a|that|your|full)?\s*(?:written\s+)?(?:write-?up|recap|resumen)\b/i,
   /\bte\s+(?:env[ií]e|mando)\s+un\s+resumen\b/i,
+  // FRENCH. Added Sept 15 2026, and the reason is a real lockout.
+  //
+  // Visitor 016542e9 (France, Sep 3) was asked for her email in FOUR
+  // consecutive French replies — "tapez votre adresse e-mail ici" at 07:59,
+  // 08:03, 08:07 and 08:09. This module exists to make exactly that visible,
+  // and it counted ZERO, because every pattern above is English or Spanish.
+  // The v11.37.0 defect reproduced in a third language, invisible to the fix
+  // written for it — the same shape as the Spanish session that prompted the
+  // Spanish line directly above.
+  //
+  // She then DECLINED in French ("envoi ca ici lles routines" — send the
+  // routines here instead), the hard gate fired anyway, and she made three
+  // further blocked requests against an English-only banner before leaving.
+  //
+  // `e-mail`, `email` and `mail` are all used interchangeably in French copy,
+  // and `courriel` is the formal Québécois term.
+  /\b(?:ton|votre)\s+(?:adresse\s+)?(?:e-?mail|courriel)\b/i,
+  /\b(?:tapez|entrez|laissez|donne(?:z|-moi)?)\s+(?:ton|votre|ici)\b(?=[^.!?]*\b(?:e-?mail|courriel|adresse)\b)/i,
+  // Both the conjugated ("je t'envoie") and infinitive ("je peux t'envoyer")
+  // forms — the second missed a real ask on the first pass.
+  /\bje\s+(?:peux\s+)?(?:t'|te\s+|vous\s+)?envo(?:ie|yer)\b(?=[^.!?]*\b(?:e-?mail|courriel|r[ée]capitulatif|r[ée]sum[ée])\b)/i,
+  /\bgarde[r]?\s+(?:ton|votre)\s+(?:adresse|e-?mail|courriel)\b/i,
 ]
 
 /**
@@ -128,13 +150,26 @@ export function isEmailAsk(reply: string): boolean {
  * only authority is being factual.
  */
 const REFUSAL = [
-  /\bno,? (?:i'?m|im|i am) (?:good|fine|ok(?:ay)?)\b/i,
+  // `no,? ` matched a comma or nothing and MISSED a period. The production
+  // string this list was written for is "No, I'm good." — but "No. I'm good."
+  // is the same refusal with different punctuation and returned false, which
+  // means a visitor who declined still read as "never answered". Verified by
+  // execution both ways.
+  /\bno[,.!]?\s+(?:i'?m|im|i am) (?:good|fine|ok(?:ay)?)\b/i,
   /\bno thank(?:s| you)\b/i,
   /\b(?:rather|prefer) not\b/i,
   /\bmaybe (?:later|next time)\b/i,
   /\bnot (?:right )?now\b/i,
   /\bi'?ll pass\b/i,
   /\bdon'?t want to (?:give|share)\b/i,
+  // FRENCH declines. Visitor 016542e9 wrote "envoi ca ici lles routines" —
+  // send it HERE instead — which is a decline of the email in favour of an
+  // in-chat answer, and read as silence. A decline that reads as silence is
+  // worse than no detector: it licenses the next ask.
+  /\b(?:envoi(?:e|s)?|envoyez?)\s+(?:[cç]a|le|les|tout)\s+ici\b/i,
+  /\bnon\s*,?\s*(?:merci|[cç]a\s+va)\b/i,
+  /\b(?:pas|plut[oô]t\s+pas)\s+(?:maintenant|tout\s+de\s+suite)\b/i,
+  /\bje\s+pr[ée]f[èe]re\s+pas\b/i,
 ]
 
 /** True when a visitor message reads as declining the offer. */

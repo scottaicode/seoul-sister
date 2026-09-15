@@ -280,3 +280,65 @@ test('the route actually appends the block to the model context', () => {
   assert.match(route, /from '@\/lib\/widget\/email-ask-count'/,
     'the route must import the detector')
 })
+
+// ---------------------------------------------------------------------------
+// Sept 15 2026 — the detector was blind to French, and a period defeated the
+// refusal check.
+//
+// Visitor 016542e9 (France, Sep 3) was asked for her email in FOUR consecutive
+// French replies — "tapez votre adresse e-mail ici" at 07:59, 08:03, 08:07 and
+// 08:09. This module exists to make exactly that visible and it counted ZERO,
+// because every pattern was English or Spanish. The v11.37.0 repeat-ask defect
+// reproduced in a third language, invisible to the instrument built for it.
+//
+// She then DECLINED in French — "envoi ca ici lles routines" (send the routines
+// HERE instead) — which also read as silence, so the transcript looked like an
+// unanswered offer rather than a refused one. A decline that reads as silence
+// is worse than no detector: it licenses the next ask. The hard gate then fired
+// and she made three blocked requests against an English-only banner.
+//
+// Replayed against her real stored transcript after the fix: count 0 -> 4,
+// refusalSeen false -> true. English visitors unchanged (3, 1, 2).
+// ---------------------------------------------------------------------------
+
+test('EXECUTED: French email asks are counted', () => {
+  for (const ask of [
+    "Tu veux que je garde ton adresse e-mail pour t'envoyer un recap ?",
+    'tapez votre adresse e-mail ici et je te l\'envoie',
+    "Je peux t'envoyer tout ca par e-mail si tu veux",
+    'Laissez votre adresse e-mail et je vous envoie le recapitulatif',
+    'je vous envoie un resume par courriel',
+  ]) {
+    assert.equal(isEmailAsk(ask), true, `French ask must count: ${ask}`)
+  }
+})
+
+test('EXECUTED: French prose that is NOT an ask stays uncounted', () => {
+  // An over-eager pattern is the worse failure: it inflates the tally on the
+  // visitor Yuri has NOT been pestering, and the block's only authority is
+  // being factual. "t'envoyer vers un dermatologue" is a referral, not an ask.
+  for (const notAsk of [
+    "Je peux t'envoyer vers un dermatologue",
+    "Votre peau a besoin d'une creme hydratante le matin",
+    "Le retinol, c'est pour le soir seulement",
+  ]) {
+    assert.equal(isEmailAsk(notAsk), false, `must NOT count: ${notAsk}`)
+  }
+})
+
+test('EXECUTED: a refusal survives its punctuation', () => {
+  // "No, I'm good." is the production string this list was written for.
+  // "No. I'm good." is the same refusal and returned false.
+  assert.equal(isRefusal("No, I'm good."), true)
+  assert.equal(isRefusal("No. I'm good."), true, 'a period must not defeat the refusal check')
+  assert.equal(isRefusal('No I am fine'), true)
+})
+
+test('EXECUTED: a French decline is a refusal, not silence', () => {
+  assert.equal(isRefusal('envoi ca ici lles routines'), true, 'send-it-here is a decline of the email')
+  assert.equal(isRefusal('Non merci'), true)
+  assert.equal(isRefusal('je prefere pas'), true)
+  // Must not swallow ordinary requests that merely contain "envoie".
+  assert.equal(isRefusal('envoie moi les produits'), false)
+  assert.equal(isRefusal("No, I'm not sure which one to pick"), false)
+})
