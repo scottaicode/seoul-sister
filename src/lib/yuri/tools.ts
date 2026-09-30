@@ -757,6 +757,124 @@ async function smartProductSearch(
     }
   }
 
+  // Strategy 2.5: the Strategy 1.5 brand + name lookup with sunscreen VOCABULARY
+  // removed and the category required instead (Sep 28 2026).
+  //
+  // THE FAILURE. A visitor arrived from our Beauty of Joseon Aqua Fresh review
+  // and Yuri searched "Beauty of Joseon Relief Sun Aqua Fresh sunscreen". The
+  // catalog stores "Relief Sun Aqua Fresh Rice+B5" — no "sunscreen" — so 1.5
+  // required a word the name does not carry and missed. Strategy 2's window
+  // (OR over "sun", "beauty"... ORDER BY rating LIMIT) never fetched the row,
+  // and she was handed Relief Sun: Rice + Probiotics, a different product.
+  // Same shape: "SKIN1004 ... Air-Fit Suncream sunscreen SPF50" -> Water-Fit.
+  // Replaying all 14 named-sunscreen searches ever issued: those two failed
+  // and now resolve; the other 12 return the same product first.
+  //
+  // WHY IT STAYS PRECISE. Every remaining name word is still required, the
+  // brand is still required, and category='sunscreen' replaces the dropped
+  // word — so it only relaxes the words sunscreen NAMES routinely omit
+  // ("sunscreen" is in 120/622 of them, "spf" in 104/622). Products we do not
+  // carry (Supergoop, La Roche-Posay) still fall through, verified live.
+  //
+  // WHY HERE, after Strategy 2 and not right after 1.5. Placed after 1.5 it
+  // pre-empted Strategy 2's all-terms match on queries Strategy 2 resolves.
+  // Here it only sees queries every precise strategy has already failed,
+  // which would otherwise land in Strategy 3's loose ranking.
+  //
+  // STANDS DOWN when the query names another product type ("Torriden Dive In
+  // serum sunscreen", "Anua heartleaf cream and sunscreen") — two products,
+  // not one sunscreen. A second-model review found those regressing to a
+  // "Sun Serum Set" / "Sun Cream Double Pack". A product-type noun directly
+  // after "sun" is part of the sunscreen's own name ("Watery Sun Gel", "Sun
+  // Serum") and does not count. The set is PRODUCT-TYPE nouns only, not all of
+  // GENERIC_PRODUCT_WORDS: that set also holds routine-step words ("water",
+  // "daily", "blue", "red"), which appear in 31/28/9/7 of 622 verified
+  // sunscreen names, and standing down on them left "SKIN1004 Hyalu-Cica
+  // Water-Fit Sun Serum sunscreen" resolving to another brand's sun stick
+  // (measured by the second review). The same over-breadth is why this is not
+  // simply `wantsSunscreen`, which returned Physiogel for "Isntree Hyaluronic
+  // Acid Watery Sun Gel sunscreen". It also runs when Yuri passes
+  // category='sunscreen' herself, which 1.5 honours but which cannot fix a
+  // missing name word.
+  //
+  // RANKED, not heap order. Rows are ordered by how many of the ORIGINAL query
+  // words they carry (so "Moisturizing Sunscreen" beats "Moisturizing Sun
+  // Stick" when the query said sunscreen), then single listings before
+  // multi-unit ones, then shortest name. review_count ordering was
+  // tried and rejected: it put the Relief Sun Double Pack first, the
+  // two-pack-quoted-as-one trap recorded in v11.23. Every row still comes back
+  // with its siblings; this only decides which is first.
+  const PRODUCT_TYPE_NOUNS = new Set([
+    'cleanser', 'cleansers', 'cleanse', 'cleansing', 'wash', 'foam', 'foaming',
+    'toner', 'toners', 'serum', 'serums', 'ampoule', 'ampule', 'essence',
+    'moisturizer', 'moisturiser', 'moisturizing', 'cream', 'creams', 'lotion',
+    'gel', 'oil', 'oils', 'balm', 'mask', 'masks', 'patch', 'patches',
+    'exfoliant', 'exfoliator', 'peel', 'pad', 'pads', 'mist', 'emulsion',
+    'treatment', 'booster',
+  ])
+  const namesOtherProductType = originalTokens.some(
+    (t, i) => PRODUCT_TYPE_NOUNS.has(t) && originalTokens[i - 1] !== 'sun'
+  )
+  const sunVocabRetry =
+    SUNSCREEN_SIGNAL.test(cleaned.toLowerCase()) &&
+    (!options?.category || options.category === 'sunscreen') &&
+    !namesOtherProductType
+  if (sunVocabRetry) {
+    const isSunVocab = (t: string, prev: string | undefined) =>
+      /^(sunscreens?|sunblock|spf\d*\+*|pa\+*)$/.test(t) ||
+      // "spf 50" / "spf 50+" — the number belongs to the SPF, not the name.
+      (/^\d{2,3}\+*$/.test(t) && prev !== undefined && /^spf\+*$/.test(prev))
+    for (const brandTokenCount of [1, 2, 3]) {
+      if (originalTokens.length <= brandTokenCount) continue
+      const brandCandidate = originalTokens.slice(0, brandTokenCount).join(' ')
+      const rest = originalTokens.slice(brandTokenCount)
+      const nameTerms = rest.filter(
+        (t, i) => t.length > 1 && !SEARCH_STOP_WORDS.has(t) && !isSunVocab(t, rest[i - 1])
+      )
+      // Nothing left means the query was only "<brand> sunscreen" — a browse,
+      // not a named product. Leave that to the strategies below.
+      if (nameTerms.length === 0) continue
+      let q = db
+        .from('ss_products')
+        .select(cols)
+        .eq('is_verified', true)
+        .eq('category', 'sunscreen')
+        .ilike('brand_en', `%${brandCandidate}%`)
+      for (const t of nameTerms) {
+        q = q.ilike('name_en', `%${normalizeTerm(t)}%`)
+      }
+      // Same line-number predicate as 1.5, for the same reason: without it
+      // "no" matches every numbuzin name and a No.1 query returns No.3.
+      if (lineNumber) {
+        q = q.or(`name_en.ilike."%no.${lineNumber} %",name_en.ilike."%no. ${lineNumber} %",name_en.ilike."%no.${lineNumber}"`)
+      }
+      // Over-fetch so the ranking below sees every candidate, then trim.
+      const { data: sunMatch, error: sunError } = await q.limit(Math.max(limit * 4, 40))
+      if (sunError) console.error('[smartProductSearch] strategy 2.5 failed:', sunError.message, { rawQuery, brandCandidate })
+      if (sunMatch?.length) {
+        const rowsIn = sunMatch as unknown as Array<Record<string, unknown>>
+        const coverage = (p: Record<string, unknown>) => {
+          const combined = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`
+            .toLowerCase()
+            .replace(/[-/_.]+/g, ' ')
+          return terms.filter(t => termMatches(combined, t)).length
+        }
+        const nameLen = (p: Record<string, unknown>) => ((p.name_en as string) || '').length
+        // A multi-unit listing sorts after a single one. ORDER only, never a
+        // filter: v11.23 measured that nothing deterministic tells a duplicate
+        // listing from a different SKU. Where a product exists ONLY as a set,
+        // the set is returned alone, and its name says so.
+        const multiUnit = (p: Record<string, unknown>) =>
+          /\b(set|sets|pack|duo|trio|twin|kit|double|triple|bundle|refill)\b/i.test((p.name_en as string) || '') ? 1 : 0
+        return rowsIn
+          .map(p => ({ p, c: coverage(p), m: multiUnit(p), n: nameLen(p) }))
+          .sort((a, b) => b.c - a.c || a.m - b.m || a.n - b.n)
+          .slice(0, limit)
+          .map(r => r.p)
+      }
+    }
+  }
+
   // Strategy 3: Single-term searches (when query is just 1-2 words)
   if (terms.length > 0) {
     // Singularize here too. Strategy 2 stems its terms and this one did not,
