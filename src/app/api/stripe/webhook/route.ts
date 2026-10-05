@@ -3,6 +3,7 @@ import { getStripeClient, planFromStripePriceId, type TierKey } from '@/lib/stri
 import { getServiceClient } from '@/lib/supabase'
 import { attributeConversion } from '@/lib/widget/visitor'
 import { notifyNewSubscriber } from '@/lib/email/new-subscriber-alert'
+import { subscriptionPeriod, invoiceSubscriptionId } from '@/lib/stripe-payload'
 import type Stripe from 'stripe'
 
 /** Map plan key to the ss_subscriptions.tier column value */
@@ -87,7 +88,12 @@ export async function POST(request: NextRequest) {
             session.customer_details?.email || session.customer_email || null
           const leadSource = await attributeConversion(buyerEmail, userId)
 
-          await supabase.from('ss_subscriptions').upsert(
+          const period = subscriptionPeriod(subscription)
+          if (!period) {
+            throw new Error(`subscription ${subscriptionId} has no readable billing period`)
+          }
+
+          const { error: checkoutUpsertError } = await supabase.from('ss_subscriptions').upsert(
             {
               user_id: userId,
               stripe_customer_id: customerId,
@@ -95,15 +101,14 @@ export async function POST(request: NextRequest) {
               tier: planToTier(plan),
               status: 'active',
               lead_source: leadSource, // 'widget' if matched, else null (organic/unknown)
-              current_period_start: new Date(
-                subscription.current_period_start * 1000
-              ).toISOString(),
-              current_period_end: new Date(
-                subscription.current_period_end * 1000
-              ).toISOString(),
+              current_period_start: period.start,
+              current_period_end: period.end,
             },
             { onConflict: 'user_id' }
           )
+          if (checkoutUpsertError) {
+            throw new Error(`ss_subscriptions upsert failed: ${checkoutUpsertError.message}`)
+          }
 
           await supabase
             .from('ss_user_profiles')
@@ -144,8 +149,13 @@ export async function POST(request: NextRequest) {
             ? subscription.customer
             : subscription.customer.id
 
+        const period = subscriptionPeriod(subscription)
+        if (!period) {
+          throw new Error(`subscription ${subscription.id} has no readable billing period`)
+        }
+
         // Upsert subscription record
-        const { data: subRecord } = await supabase
+        const { data: subRecord, error: upsertError } = await supabase
           .from('ss_subscriptions')
           .upsert(
             {
@@ -157,12 +167,8 @@ export async function POST(request: NextRequest) {
                 : subscription.status === 'past_due' ? 'past_due'
                 : subscription.status === 'trialing' ? 'trialing'
                 : 'canceled',
-              current_period_start: new Date(
-                subscription.current_period_start * 1000
-              ).toISOString(),
-              current_period_end: new Date(
-                subscription.current_period_end * 1000
-              ).toISOString(),
+              current_period_start: period.start,
+              current_period_end: period.end,
               canceled_at: subscription.canceled_at
                 ? new Date(subscription.canceled_at * 1000).toISOString()
                 : null,
@@ -171,6 +177,10 @@ export async function POST(request: NextRequest) {
           )
           .select('id')
           .single()
+
+        if (upsertError) {
+          throw new Error(`ss_subscriptions upsert failed: ${upsertError.message}`)
+        }
 
         // Update event with subscription_id
         if (subRecord) {
@@ -194,13 +204,16 @@ export async function POST(request: NextRequest) {
         const userId = subscription.metadata.user_id
         if (!userId) break
 
-        await supabase
+        const { error: cancelError } = await supabase
           .from('ss_subscriptions')
           .update({
             status: 'canceled',
             canceled_at: new Date().toISOString(),
           })
           .eq('user_id', userId)
+        if (cancelError) {
+          throw new Error(`ss_subscriptions cancel failed: ${cancelError.message}`)
+        }
 
         await supabase
           .from('ss_user_profiles')
@@ -211,11 +224,7 @@ export async function POST(request: NextRequest) {
       }
 
       case 'invoice.payment_succeeded': {
-        const invoice = event.data.object as Stripe.Invoice
-        const subscriptionId =
-          typeof invoice.subscription === 'string'
-            ? invoice.subscription
-            : invoice.subscription?.id
+        const subscriptionId = invoiceSubscriptionId(event.data.object)
 
         if (subscriptionId) {
           await supabase
@@ -227,11 +236,7 @@ export async function POST(request: NextRequest) {
       }
 
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice
-        const subscriptionId =
-          typeof invoice.subscription === 'string'
-            ? invoice.subscription
-            : invoice.subscription?.id
+        const subscriptionId = invoiceSubscriptionId(event.data.object)
 
         if (subscriptionId) {
           await supabase
@@ -243,8 +248,19 @@ export async function POST(request: NextRequest) {
       }
     }
   } catch (err) {
-    console.error('Webhook handler error:', err)
-    // Still return 200 to acknowledge receipt
+    // A 200 here told Stripe the event was handled when it was not, so it
+    // never retried — that is how every subscription.updated was lost from
+    // launch to Oct 2026. Un-log the event so the idempotency check lets the
+    // retry through, and return 500 so Stripe actually retries.
+    console.error(`[stripe webhook] ${event.type} ${event.id} failed:`, err)
+    const { error: unlogError } = await supabase
+      .from('ss_subscription_events')
+      .delete()
+      .eq('stripe_event_id', event.id)
+    if (unlogError) {
+      console.error(`[stripe webhook] could not un-log ${event.id}; Stripe retry will be skipped:`, unlogError)
+    }
+    return NextResponse.json({ error: 'Handler failed' }, { status: 500 })
   }
 
   return NextResponse.json({ received: true })

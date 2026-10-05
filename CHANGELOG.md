@@ -4,6 +4,19 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.38.1 — October 5 2026
+
+**Every Stripe subscription update since launch was acknowledged and dropped.** The only paying subscriber renewed on Aug 21 and Sep 21 (both `invoice.paid` in Stripe), but `ss_subscriptions` still said her period ended Aug 21, last updated Aug 11. None of the 8 `customer.subscription.*` events ever stored was linked to a row.
+
+- **Cause:** webhook payloads arrive at the endpoint's API version, which has no top-level `current_period_start/end` (moved onto the subscription item) and no `invoice.subscription` (moved to `parent.subscription_details`). `new Date(undefined * 1000).toISOString()` threw, the outer catch returned **200**, so Stripe never retried. The client-side retrieve (pinned to 2023-10-16) still had the old fields, which is why checkout worked and hid this.
+- **Access was never affected**: `hasActiveSubscription` reads `status` only. The live risk was the other direction — a `past_due` transition arriving via `subscription.updated` would never have been recorded.
+- **Fix:** `src/lib/stripe-payload.ts` reads both shapes and returns null rather than inventing a date; upsert and cancel errors now throw; a handler failure un-logs the event and returns **500** so Stripe's retry actually gets processed.
+- **Backfilled** the one stale row from Stripe's values (period Sep 21 → Oct 21).
+- `tests/stripe-webhook-payload-version.test.mjs` executes the helper against the stored payload shape; confirmed to FAIL with the item fallback removed and with the old webhook restored.
+- **Not verified yet:** no scheduled Stripe event has gone through the fixed handler. The next one is her Oct 21 renewal.
+
+---
+
 ## v11.38.0 — September 29 2026
 
 **A visitor who arrived from our Beauty of Joseon Aqua Fresh review was handed a different sunscreen, and a 12-year-old was asked for her email.**
