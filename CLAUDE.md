@@ -801,6 +801,7 @@ Seoul Sister is a paid-only platform. There is no free tier. Visitors get 20 fre
 - No account required
 
 ### Unit Economics (Pro at $24.99)
+> **CORRECTION (Oct 5 2026) — the "$1.50–2.75/mo, heaviest user ~$2/mo" figure below and in the pricing section is wrong by >10x.** It was measured while `ss_ai_usage` logged `tokens_in=0` (fixed June 2026). Re-measured from fixed logs: **~$0.27–0.34 per authenticated user message all-in** (logged $0.23–0.29 + ~15–25% unlogged Sonnet background calls in memory/phase/learning extraction). Bailey's account cost **$22.73 logged for 79 messages in Aug 2026** — a heavy user loses money even at $24.99. Break-even ≈ 30 msgs/mo at $9.99, ≈ 77 at $24.99. **78% of per-turn cost is cache WRITE** (~36K tokens re-written every turn, cause unconfirmed); fixing it would bring a message to ~$0.08. Widget free preview ≈ $0.47 per chatting visitor. Decision memo: https://claude.ai/artifact/XUV29sSxzm2DMRqAD6LeV3 (recommendation: stop acquisition/building, run unattended, decide Jan 5 2027).
 > NOTE (June 22 2026): the table below is the ORIGINAL conservative estimate that assumed daily scanning. Real usage data shows the true blended cost is **lower** for a typical sub (~$1.50–2.75/mo all-in) — light/bursty Yuri use, near-zero scans (so vision cost ≈ $0), prompt caching active. A heavy daily power-user could reach ~$5–8/mo; even then $24.99 holds ~70%+ margin. Stripe's fixed $0.30/txn is the dominant variable cost at this price. Margin at $24.99 typical: ~90%.
 
 | Item | Cost |
