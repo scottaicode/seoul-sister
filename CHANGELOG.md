@@ -4,6 +4,37 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.39.0 — October 7 2026
+
+**Yuri's three chat surfaces moved from Claude Opus 4.8 to Claude Opus 5.5, and a cache bug that re-wrote every widget transcript on every turn was fixed.** Measured on real conversations before shipping: −24% cost per conversation, and a blind Fable 5.1 judge preferred the new configuration on 16 of 20 real widget turns (4.8 won 1, 3 ties).
+
+### What was measured (scripts in `scripts/ab-*`, all read-only)
+- **Price:** Opus 5.5 is $4/$20 per MTok (cache read $0.20, write $5) vs 4.8's $5/$25 ($0.50/$6.25). Same tokenizer.
+- **Effort:** thinking cannot be disabled on 5.5. At the default `medium` it consumed the whole price cut ($0.0727 vs $0.0726 per turn) and added ~6s/turn. `low` cut cost and the judge still preferred it.
+- **Cache layout (the bigger half):** the widget's per-turn facts were a second `system` block, which renders before the history, so the history cache could never be read on the next turn. On two real 8-turn sessions, history writes climbed 2K → 9K tokens/turn; with the facts moved after the visitor's message they stay flat ~1K (`ab-widget-dynamic-placement.ts`, salted cold arms, candidate first: input −40% on 4.8, −45% on 5.5).
+- **Shipped config, multi-turn, real tool loops** (`ab-model-widget-multiturn.ts`, shipped helpers imported): $1.237 → $0.936 across the two sessions (−24%). Without the search retry it was −38%; the retry fired on 4 of 16 turns and led to an actual search once.
+- **Quality:** Fable 5.1 blind pairwise, 20 real widget turns, full tool outputs: 5.5-low 17–3, 5.5-low+layout 16–1–3, 5.5-medium+layout 19–1 vs 4.8. 4.8's most common defect was quoting prices or stock its own search did not show. Authenticated Yuri (8 turns, write tools stubbed): 4–2–2, identical grounding scores; judge could not see stored user context.
+- **A first judge run was biased** (tool results truncated at 1,500 chars, penalizing claims drawn from later rows); all quality numbers above are from the re-judge with full outputs.
+
+### Changes
+- `MODELS.chat = 'claude-opus-5-5'`, `CHAT_EFFORT = 'low'` (`src/lib/anthropic.ts`). One-shot analysis stays on `MODELS.primary` (4.8); background stays on Sonnet 4.5.
+- **`src/lib/llm-request.ts` (new):** shared request layout — trailing per-turn system message, breakpoint placement, unchanged tool-round passback, `nextRoundAction()` (tool round / finalize / one-time search retry / refusal fallback / decline), `mentionsTerm()`.
+- **Widget, advisor, onboarding:** per-turn context moved out of `system`; forced `tool_choice: 'any'` (a 400 on 5.5) replaced by a fact line plus a ONE-time retry only when the reply names products with no tool behind it (kill switch `YURI_SEARCH_RETRY_ENABLED`); refusal re-runs once on 4.8, and a double refusal says so honestly instead of "trouble accessing the database"; `max_tokens` raised because thinking counts toward it; logged model is the one that actually answered.
+- **Advisor:** cached system prompt split into `[static prompt][user context]`. Mid-conversation DB writes (saved products/routines, background extractions) changed the single cached block and re-wrote ~30K tokens; 6 of 7 misses on the Oct 6 conversation lined up with such a write. Now only the context re-writes. Leading explanation for the long-open residual, **not yet verified on production rows**.
+- **The product fact no longer says the tools hold "current" data** (prices cycle ~12 days; 542 products have no price row). The retry gate also fires on the visitor's OWN bolded products ("keep your **CeraVe**"); that is documented, and the note lets Yuri simply answer again.
+- **Keyword heuristics match whole terms:** `'anua'` fired on "january", `'hera'` on "chemotherapy".
+- **`estimateCost` rates are per model:** 5.5 reads cache at 0.05× input, not 0.1×; Haiku 4.5 corrected to $1/$5.
+- **Decision-memory extraction:** `max_tokens` 800 → 2000 (Sonnet 4.5 filled all 800 on one of six real conversations replayed) and parse failures are logged instead of skipped silently.
+- SDK `@anthropic-ai/sdk` 0.78 → 0.132 (typed mid-conversation system messages).
+
+### Reviews
+Three Fable 5.1 adversarial reviews (plan, diff, fixes). They found, among others: a widget guard test sliced by indentation that ran 16K chars past its branch, so three broken loops (a decline with no `break`, a fallback with no `continue` or no model switch) passed; the first "ship" arm had no message caching at all; the advisor breakpoint as first designed could never chain because history is timestamp-tagged; the original fact line ("no search has run yet") turned false after round 1; the retry would have discarded a correct "keep your CeraVe" answer; a double refusal was reported as a database outage; and three wrong implementations passed every test. All fixed; each new test confirmed to FAIL when its bug is reverted.
+
+### Not verified
+No production row yet shows `model = 'claude-opus-5-5'`, the flat widget cache writes, the advisor static-block reads, the retry, or the refusal path. Check `ss_ai_usage` after real traffic.
+
+---
+
 ## v11.38.1 — October 5 2026
 
 **Every Stripe subscription update since launch was acknowledged and dropped.** The only paying subscriber renewed on Aug 21 and Sep 21 (both `invoice.paid` in Stripe), but `ss_subscriptions` still said her period ended Aug 21, last updated Aug 11. None of the 8 `customer.subscription.*` events ever stored was linked to a row.

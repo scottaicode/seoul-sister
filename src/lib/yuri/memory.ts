@@ -1897,7 +1897,12 @@ export async function extractAndSaveDecisionMemory(
     () =>
       client.messages.create({
         model: MODELS.background,
-        max_tokens: 800,
+        // Was 800. Replaying the real prompt on the 6 most recent long
+        // conversations (Oct 7 2026, scripts/ab-background-sonnet55-extraction.ts),
+        // Sonnet 4.5 filled all 800 on one (truncated JSON -> nothing saved) and
+        // two more landed within 70 tokens of it. The output grows with the
+        // conversation, so the cap was failing exactly where memory matters most.
+        max_tokens: 2000,
         messages: [
           {
             role: 'user',
@@ -1985,7 +1990,10 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
   )
 
   const block = response.content[0]
-  if (block.type !== 'text') return
+  if (block.type !== 'text') {
+    console.error('[memory] decision extraction returned no text block', { conversationId, stop_reason: response.stop_reason })
+    return
+  }
 
   let extracted: {
     decisions?: unknown[]
@@ -1998,7 +2006,11 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
     const text = block.text.trim().replace(/^```json?\s*/, '').replace(/\s*```$/, '')
     extracted = JSON.parse(text)
   } catch {
-    return // Parse failed — skip silently
+    // Never silent: a truncated or malformed extraction means this
+    // conversation's decisions were not saved, and the run looks identical to
+    // "nothing to extract" unless it is logged.
+    console.error('[memory] decision extraction JSON parse failed', { conversationId, stop_reason: response.stop_reason, chars: block.text.length })
+    return
   }
 
   const validCategories: ReadonlySet<CorrectionCategory> = new Set([

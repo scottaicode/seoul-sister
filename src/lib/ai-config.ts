@@ -22,21 +22,22 @@ export interface AIContext {
  */
 export const AI_CONTEXTS = {
   // ---------------------------------------------------------------
-  // User-facing (Claude Opus 4.8) — quality is paramount
+  // User-facing — conversational surfaces on Claude Opus 5.5 (MODELS.chat,
+  // effort low); one-shot analysis on Claude Opus 4.8 (MODELS.primary)
   // ---------------------------------------------------------------
   YURI_CHAT: {
-    model: 'claude-opus-4-8',
-    maxTokens: 2048,
+    model: 'claude-opus-5-5',
+    maxTokens: 8000,
     caching: true,
     streaming: true,
-    costNote: 'Primary Yuri conversation. ~$0.02-0.05 per message.',
+    costNote: 'Primary Yuri conversation (MODELS.chat). Measured Oct 2026: ~$0.27-0.34/msg on Opus 4.8 before the v11.39.0 cache + model change; re-measure from ss_ai_usage.',
   },
   WIDGET_CHAT: {
-    model: 'claude-opus-4-8',
-    maxTokens: 600,
+    model: 'claude-opus-5-5',
+    maxTokens: 6000,
     caching: true,
     streaming: false, // streams via manual loop, not SDK streaming
-    costNote: 'Anonymous widget. Shorter responses, 300 max for anon.',
+    costNote: 'Anonymous widget (MODELS.chat). Visible length is set by the prompt; 6000 is a ceiling that includes thinking.',
   },
   SCAN_ANALYSIS: {
     model: 'claude-opus-4-8',
@@ -142,7 +143,7 @@ export const AI_CONTEXTS = {
   },
   DECISION_EXTRACTION: {
     model: 'claude-sonnet-4-5-20250929',
-    maxTokens: 800,
+    maxTokens: 2000,
     caching: false,
     streaming: false,
     costNote: 'Extract decisions/preferences from conversations. ~$0.003 per extraction.',
@@ -224,20 +225,24 @@ export function estimateCost(
   cacheReadTokens = 0,
   cacheCreationTokens = 0
 ): number {
-  // Pricing as of May 2026 (Opus 4.8 same as 4.7: $5/$25 per MTok)
-  // Older opus-4-7 rows fall back to the 4.8 rate (identical pricing).
-  const pricing: Record<string, { input: number; output: number }> = {
-    'claude-opus-4-8': { input: 5 / 1_000_000, output: 25 / 1_000_000 },
-    'claude-opus-4-7': { input: 5 / 1_000_000, output: 25 / 1_000_000 },
-    'claude-sonnet-4-5-20250929': { input: 3 / 1_000_000, output: 15 / 1_000_000 },
-    'claude-haiku-4-5-20251001': { input: 0.8 / 1_000_000, output: 4 / 1_000_000 },
+  // Per-MTok rates (Anthropic pricing, verified Oct 2026). Cache rates are
+  // listed per model, not derived: Opus 5.5 reads cache at 0.05x input ($0.20),
+  // where the 4.x family reads at 0.1x — a flat multiplier would overstate 5.5
+  // cache reads 2x in ss_ai_usage. 5-minute cache writes are 1.25x input.
+  const M = 1_000_000
+  const pricing: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {
+    'claude-opus-5-5': { input: 4 / M, output: 20 / M, cacheRead: 0.2 / M, cacheWrite: 5 / M },
+    'claude-opus-4-8': { input: 5 / M, output: 25 / M, cacheRead: 0.5 / M, cacheWrite: 6.25 / M },
+    'claude-opus-4-7': { input: 5 / M, output: 25 / M, cacheRead: 0.5 / M, cacheWrite: 6.25 / M },
+    'claude-sonnet-4-5-20250929': { input: 3 / M, output: 15 / M, cacheRead: 0.3 / M, cacheWrite: 3.75 / M },
+    'claude-haiku-4-5-20251001': { input: 1 / M, output: 5 / M, cacheRead: 0.1 / M, cacheWrite: 1.25 / M },
   }
 
   const rate = pricing[model] ?? pricing['claude-opus-4-8']
   return (
     inputTokens * rate.input +
     outputTokens * rate.output +
-    cacheReadTokens * rate.input * 0.1 +
-    cacheCreationTokens * rate.input * 1.25
+    cacheReadTokens * rate.cacheRead +
+    cacheCreationTokens * rate.cacheWrite
   )
 }

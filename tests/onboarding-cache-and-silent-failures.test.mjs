@@ -75,40 +75,22 @@ test('the cached system prompt contains NO per-turn interpolation', () => {
   )
 })
 
-test('per-turn state is built separately and sent UNCACHED', () => {
+test('per-turn state is built separately and sent AFTER the user message, uncached', () => {
   assert.ok(
     /export function buildOnboardingTurnState/.test(onboardingLib),
     'the per-turn state builder is missing'
   )
-  // The system array must be two blocks: static+cache_control, then turn state
-  // with NO cache_control.
+  // Oct 7 2026: the system array is ONE block (static prompt + breakpoint). The
+  // per-turn state travels as a trailing role:'system' message — as a second
+  // system block it sat in front of the history and re-wrote it every turn.
   const sysIdx = onboardingLib.indexOf('system: [')
   assert.ok(sysIdx !== -1, 'no system array found')
-  const sysBlock = onboardingLib.slice(sysIdx, sysIdx + 400)
-  // Block 1 = static prompt WITH the cache breakpoint.
+  const sysBlock = onboardingLib.slice(sysIdx, onboardingLib.indexOf('],', sysIdx))
+  assert.ok(/text: systemPrompt,\s*cache_control/.test(sysBlock), 'the static prompt no longer carries the cache_control breakpoint')
+  assert.ok(!/turnState/.test(sysBlock), 'REGRESSION: turn state is back in the system array')
   assert.ok(
-    /text: systemPrompt,\s*cache_control/.test(sysBlock),
-    'the static prompt no longer carries the cache_control breakpoint'
-  )
-  // Block 2 = per-turn state, and it must come AFTER the cached block so the
-  // cached prefix stays byte-identical across turns.
-  const staticAt = sysBlock.indexOf('text: systemPrompt')
-  const turnAt = sysBlock.indexOf('text: turnState')
-  assert.ok(turnAt !== -1, 'turn state is not sent as its own system block')
-  assert.ok(
-    staticAt < turnAt,
-    'turn state precedes the cached static block — that changes the cached prefix every turn'
-  )
-})
-
-test('turn state carries no cache_control of its own', () => {
-  const sysIdx = onboardingLib.indexOf('text: turnState')
-  assert.ok(sysIdx !== -1, 'turnState is not passed to the model')
-  const line = onboardingLib.slice(sysIdx, sysIdx + 120)
-  assert.ok(
-    !/cache_control/.test(line),
-    'turnState has a cache_control breakpoint — it changes per turn, so caching it ' +
-      'recreates the cache every request'
+    /withTrailingContext\(markPenultimateAssistant\(apiMessages\),\s*turnState\)/.test(onboardingLib),
+    'turn state must be appended after the user message via withTrailingContext'
   )
 })
 

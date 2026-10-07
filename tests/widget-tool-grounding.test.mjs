@@ -209,9 +209,17 @@ test('the recommend-intent detector fires on a routine revamp with no product no
   const fnJs = ts.transpileModule(routeSrc.slice(start, end), {
     compilerOptions: { target: ts.ScriptTarget.ES2022 },
   }).outputText
+  // The brand loop calls mentionsTerm (whole-term match, Oct 7 2026); supply
+  // the REAL implementation rather than a stub.
+  const helperJs = ts.transpileModule(readFileSync('src/lib/llm-request.ts', 'utf8'), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+  }).outputText
+  const helper = { exports: {} }
+  new Function('module', 'exports', 'require', helperJs)(helper, helper.exports, () => ({}))
   const shouldWidgetForceToolUse = new Function(
+    'mentionsTerm',
     fnJs + '\nreturn shouldWidgetForceToolUse'
-  )()
+  )(helper.exports.mentionsTerm)
 
   assert.equal(
     shouldWidgetForceToolUse("I'm looking to revamp my routine using indian brands. Can you help me?"),
@@ -226,6 +234,9 @@ test('the recommend-intent detector fires on a routine revamp with no product no
   // Must NOT over-fire on pleasantries.
   assert.equal(shouldWidgetForceToolUse('Got it. Thank you'), false)
   assert.equal(shouldWidgetForceToolUse('hi'), false)
+  // Whole-term brand matching: "january" is not Anua.
+  assert.equal(shouldWidgetForceToolUse('since january my cheeks have been red'), false)
+  assert.equal(shouldWidgetForceToolUse('is the anua heartleaf toner ok'), true)
 })
 
 test('BRAND_SIGNALS was not expanded into an unbounded market list', () => {

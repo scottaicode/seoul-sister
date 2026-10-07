@@ -17,9 +17,10 @@
  *
  * Pure source assertions — no compile, no API, no DB. Run: `npm test`.
  *
- * NOTE: Yuri's fix is the SIMPLER HALF of the LGAAS fix — her clock tail was
- * already in `system` (correct place), so she needs only the clock split, not
- * LGAAS's trailing role:'system' message machinery. Don't "restore" that here.
+ * UPDATE Oct 7 2026: the clock and specialist now travel as a trailing
+ * role:'system' MESSAGE (src/lib/llm-request.ts). As system blocks they sat in
+ * front of the history, which re-wrote the history cache every turn. The
+ * executed contract lives in tests/llm-request-layout.test.mjs.
  */
 
 import { test } from 'node:test'
@@ -106,24 +107,25 @@ test('no minute-granularity clock value is interpolated into the cached body', (
   )
 })
 
-test('the stream call delivers the clock as a SEPARATE system block after the cached, marked block', () => {
-  // The cached body carries cache_control ephemeral; the clock block does NOT
-  // (an unmarked block after the breakpoint is uncached — correct for volatile).
+test('the clock travels AFTER the user message, never in the system blocks (Oct 7 2026 layout)', () => {
+  // Since Oct 7 2026 the volatile blocks ride in a trailing role:'system' MESSAGE
+  // (src/lib/llm-request.ts withTrailingContext). As unmarked SYSTEM blocks they
+  // rendered in front of the history, so the history breakpoint could never be
+  // read on the next turn. The system array is built ONLY from cachedBlocks.
   assert.match(
     advisorSrc,
-    /text:\s*cachedPrompt,\s*cache_control:\s*{\s*type:\s*'ephemeral'\s*}/,
-    'cachedPrompt must be the ephemeral-marked (cached) system block'
+    /const systemBlocks[^=]*=\s*cachedBlocks\.map\(/,
+    'systemBlocks must be built from cachedBlocks only'
   )
-  assert.match(
-    advisorSrc,
-    /systemBlocks\.push\(\s*{\s*type:\s*'text',\s*text:\s*clockBlock\s*}\s*\)/,
-    'clockBlock must be pushed as a SEPARATE, UNMARKED system block (no cache_control)'
-  )
-  // Guard the negative: the clock block must not carry a cache_control marker.
   assert.doesNotMatch(
     advisorSrc,
-    /text:\s*clockBlock,\s*cache_control/,
-    'REGRESSION: clockBlock must NOT be cached — that would re-freeze the minute value into the prefix'
+    /systemBlocks\.push\(/,
+    'REGRESSION: something is being pushed into systemBlocks — per-turn content in system invalidates the history cache every turn'
+  )
+  assert.match(
+    advisorSrc,
+    /withTrailingContext\(\s*markPenultimateAssistant\([\s\S]{0,120}\),\s*\[specialistBlock,[^\]]*clockBlock\]\.join\(''\)/,
+    'the specialist + clock must be delivered via withTrailingContext, with the clock LAST (authoritative tail)'
   )
 })
 
@@ -178,16 +180,11 @@ test('the ACTIVE SPECIALIST block is NOT pushed into the cached parts[]', () => 
   )
 })
 
-test('buildSystemPrompt returns specialistBlock, and the stream delivers it UNMARKED after the cached block', () => {
+test('buildSystemPrompt returns specialistBlock, and it is never cached', () => {
   assert.match(
     advisorSrc,
     /interface BuiltSystemPrompt[\s\S]*specialistBlock:\s*string/,
     'BuiltSystemPrompt must carry specialistBlock (the split contract)'
-  )
-  assert.match(
-    advisorSrc,
-    /systemBlocks\.push\(\s*{\s*type:\s*'text',\s*text:\s*specialistBlock\s*}\s*\)/,
-    'specialistBlock must be pushed as a SEPARATE, UNMARKED system block (no cache_control)'
   )
   assert.doesNotMatch(
     advisorSrc,

@@ -1,4 +1,5 @@
-import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
+import { getAnthropicClient, MODELS, CHAT_EFFORT, callAnthropicWithRetry } from '@/lib/anthropic'
+import { withTrailingContext, markPenultimateAssistant } from '@/lib/llm-request'
 import { getServiceClient } from '@/lib/supabase'
 import { buildAttributionFields } from '@/lib/attribution'
 import { geocodeLocation } from '@/lib/geo/geocode'
@@ -820,41 +821,48 @@ export async function* streamOnboardingResponse(
 
   const client = getAnthropicClient()
 
-  // Apply cache_control to last assistant message for prompt caching
-  const cachedMessages = apiMessages.map((msg, idx) => {
+  // Layout (Oct 7 2026, src/lib/llm-request.ts): history breakpoint on the last
+  // assistant message; the per-turn state follows the user's message as a
+  // mid-conversation system message. As a second SYSTEM block it rendered in
+  // front of the history, so every turn re-wrote the whole transcript to cache.
+  const requestMessages = withTrailingContext(markPenultimateAssistant(apiMessages), turnState)
+
+  const streamFor = (model: string) =>
+    client.messages.stream({
+      model,
+      // 600 cut a real reply off mid-sentence (Caroline, Jul 28): the plan-recap
+      // turn runs long, and Hangul costs 1-2 tokens a character. 1200 was the
+      // visible-text ceiling on Opus 4.8; Opus 5.5's thinking counts toward
+      // max_tokens too, so the ceiling is raised. Cost stays bounded by the
+      // 50-message onboarding cap.
+      max_tokens: 6000,
+      output_config: { effort: CHAT_EFFORT },
+      // Static prompt only. Never append per-turn state here (v11.1.0, the 60x
+      // cache regression) — it travels in requestMessages.
+      system: [
+        { type: 'text' as const, text: systemPrompt, cache_control: { type: 'ephemeral' as const } },
+      ],
+      messages: requestMessages,
+    })
+
+  let stream = streamFor(MODELS.chat)
+  let yielded = false
+  for await (const event of stream) {
     if (
-      msg.role === 'assistant' &&
-      idx === apiMessages.length - 2
+      event.type === 'content_block_delta' &&
+      event.delta.type === 'text_delta'
     ) {
-      return {
-        role: 'assistant' as const,
-        content: [
-          { type: 'text' as const, text: msg.content, cache_control: { type: 'ephemeral' as const } },
-        ],
-      }
+      yielded = true
+      yield event.delta.text
     }
-    return msg
-  })
+  }
 
-  const stream = client.messages.stream({
-    model: MODELS.primary,
-    // 600 cut a real reply off mid-sentence on the plain text "Anything you"
-    // (Caroline, Jul 28) — the plan-recap turn, which is exactly the turn that
-    // runs long: structured routine, Korean glosses (Hangul costs 1-2 tokens a
-    // character), brand names. The prompt itself tells Yuri that medical and
-    // safety topics deserve thorough answers, so the ceiling contradicted the
-    // instruction. Cost stays bounded by the 50-message onboarding cap.
-    max_tokens: 1200,
-    // Two blocks: the STATIC prompt carries the cache breakpoint; per-turn state
-    // follows in an UNCACHED block. Appending turn state to the cached block
-    // silently destroys the cache (v11.1.0, measured 60x on the widget).
-    system: [
-      { type: 'text' as const, text: systemPrompt, cache_control: { type: 'ephemeral' as const } },
-      { type: 'text' as const, text: turnState },
-    ],
-    messages: cachedMessages,
-  })
-
+  // Opus 5.5 can decline (stop_reason 'refusal') before writing anything. Re-run
+  // once on MODELS.primary rather than leave the user with an empty reply.
+  const first = await stream.finalMessage()
+  if (yielded || first.stop_reason !== 'refusal') return
+  console.warn('[onboarding] chat model declined; re-running on', MODELS.primary)
+  stream = streamFor(MODELS.primary)
   for await (const event of stream) {
     if (
       event.type === 'content_block_delta' &&

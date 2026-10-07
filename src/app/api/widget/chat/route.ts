@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { getAnthropicClient, MODELS } from '@/lib/anthropic'
+import { getAnthropicClient, MODELS, CHAT_EFFORT } from '@/lib/anthropic'
+import { PRODUCT_TURN_FACT, DECLINED_REPLY, MAX_EXTRA_ROUNDS, SEARCH_RETRY_ENABLED, mentionsTerm, nextRoundAction, withTrailingContext, markLastUserMessage, assistantTurnForToolRound, withSearchRetry } from '@/lib/llm-request'
+import { namedProductCount } from '@/lib/widget/tool-grounding'
 import { checkRateLimit } from '@/lib/utils/rate-limiter'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
@@ -154,8 +156,9 @@ function shouldWidgetForceToolUse(message: string): boolean {
     'skinfood', 'tonymoly', 'holika', 'glow recipe', 'tatcha', 'the ordinary',
     'mediheal', 'beplain', 'aestura', 'abib', 'mixsoon', 'biodance', 'tirtir',
   ]
+  // Whole-term match: a substring test made 'anua' fire on "january".
   for (const brand of BRAND_SIGNALS) {
-    if (msg.includes(brand)) return true
+    if (mentionsTerm(msg, brand)) return true
   }
 
   if (/\b(how much|price|cost|cheap|where.{0,15}buy|retailer|deal)\b/i.test(msg)) return true
@@ -245,7 +248,7 @@ Default shorter than you think. Lead with the answer, give your single best insi
 Be honest about your scope so a visitor doesn't expect personalized analysis you can't deliver:
 
 - **What you CAN do here**: search products by name/brand/category, compare prices across retailers, surface what's trending in Korea and on Reddit, explain ingredients with database-backed effectiveness data, run authenticity checks grounded in Seoul Sister's verified counterfeit-marker database, give weather-based skincare tips for any city.
-- **Never invent subscriber capabilities.** Embellishing (e.g., claiming subscribers get an INCI-vs-reference-formula comparison, lab verification, a dermatologist review, or anything not listed) is a trust violation — the visitor will subscribe expecting it and feel scammed. The authoritative, exhaustive list of what the subscriber tier includes is the **"What the Subscriber Side Actually Is"** block later in this prompt. Treat that block as the ceiling: if a capability is not named there, it does not exist.
+- **Never invent subscriber capabilities.** Embellishing (e.g., claiming subscribers get an INCI-vs-reference-formula comparison, lab verification, a dermatologist review, or anything not listed) is a trust violation — the visitor will subscribe expecting it and feel scammed. The authoritative, exhaustive list of what the subscriber tier includes is the **"What the Subscriber Side Actually Is"** block in the per-turn context that follows the conversation. Treat that block as the ceiling: if a capability is not named there, it does not exist.
 - **What requires a subscriber profile** (mention naturally when relevant — never as a sales pitch): personalized skin-match analysis against their specific skin type/concerns/allergies, ingredient conflict checks against their full routine, routine building and saving, cross-session memory of their skin journey, Glass Skin Score photo tracking, treatment phase awareness. That block adds the rest.
 
 If a visitor asks for personalized analysis ("is this good for MY skin?"), you can give general advice based on what they tell you in THIS conversation — just don't claim to have analyzed their full skin profile, because you can't see one. Naturally note: "I'd need to know more about your skin — subscribers get a full profile I remember across sessions and personalize every recommendation around."
@@ -782,13 +785,29 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
 
     const anthropic = getAnthropicClient()
 
-    const messages: Anthropic.Messages.MessageParam[] = [
-      ...history.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-      { role: 'user' as const, content: parsed.message },
-    ]
+    // --- Request layout (Oct 7 2026 — see src/lib/llm-request.ts) ---
+    // The per-turn context used to be a second SYSTEM block, which renders
+    // before the history, so every turn re-wrote the whole transcript to cache
+    // (measured: writes climbed 2K -> 9K tokens/turn). It now follows the
+    // visitor's message as a mid-conversation system message, and the cache
+    // breakpoint sits on the visitor's message, which history replays
+    // byte-identically next turn. Nothing per-turn may move back above it.
+    //
+    // Opus 5.5 rejects forced tool_choice. Where shouldWidgetForceToolUse()
+    // used to force a search, it now adds a fact about the message; if the
+    // reply still comes back without a tool call, the round is retried ONCE
+    // with an explicit request to check (see the tool loop below).
+    const productTurn = shouldWidgetForceToolUse(parsed.message)
+    const messages: Anthropic.Messages.MessageParam[] = withTrailingContext(
+      markLastUserMessage([
+        ...history.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+        { role: 'user' as const, content: parsed.message },
+      ]),
+      productTurn ? `${dynamicContext}\n\n${PRODUCT_TURN_FACT}` : dynamicContext
+    )
 
     // --- Save user message (fire-and-forget if no session) ---
     let userMessageId = ''
@@ -818,53 +837,39 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
         let fullResponse = ''
         // Emit the tool "working…" status at most once, before the first text.
         let statusSent = false
-        const forceToolUse = shouldWidgetForceToolUse(parsed.message)
+        let searchRetried = false
+        let roundsRun = 0
+        // Opus 5.5 can decline a request (stop_reason 'refusal'). Rather than
+        // fall through to the canned "having a moment" reply, the round is
+        // re-run once on MODELS.primary. servedModel records who answered.
+        let roundModel: string = MODELS.chat
+        let servedModel: string = MODELS.chat
         const toolCallLogs: ToolCallLog[] = []
         const toolNamesUsed: string[] = []
         // Accumulate real token usage across all tool-loop rounds for cost
         // observability (captured from stream.finalMessage().usage).
         const usageTotals = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 }
 
-        function applyCacheControl(msgs: Anthropic.Messages.MessageParam[]) {
-          return msgs.map((msg, idx) => {
-            if (msg.role === 'assistant' && typeof msg.content === 'string' && idx === msgs.length - 2) {
-              return {
-                role: 'assistant' as const,
-                content: [{ type: 'text' as const, text: msg.content, cache_control: { type: 'ephemeral' as const } }],
-              }
-            }
-            return msg
-          })
-        }
-
         while (toolLoopCount <= MAX_WIDGET_TOOL_LOOPS) {
-          const cachedMessages = applyCacheControl(loopMessages)
-          const toolChoice: Anthropic.Messages.MessageCreateParams['tool_choice'] =
-            forceToolUse && toolLoopCount === 0 ? { type: 'any' } : { type: 'auto' }
-
           const toolUseBlocks: Array<{ id: string; name: string; input: string }> = []
           let currentToolBlock: { id: string; name: string; input: string } | null = null
           const textChunks: string[] = []
 
           const stream = anthropic.messages.stream({
-            model: MODELS.primary,
-            // v10.13.4: was 800, which amputated responses mid-sentence in live
-            // testing — twice, once mid-word during the conversion ask. 1500 is
-            // a safety ceiling, not a target; the Pacing section in the prompt
-            // keeps typical responses well under it.
-            max_tokens: 1500,
-            // Static prompt cached; per-turn context in a separate UNCACHED
-            // block so the cache breakpoint's prefix never changes between
-            // turns. Do not append anything per-turn to the first block.
+            model: roundModel,
+            // A safety ceiling, not a target — the Pacing section in the prompt
+            // governs visible length. Raised from 1500 for Opus 5.5 because
+            // thinking counts toward it (v10.13.4 history: 800 amputated
+            // replies mid-sentence). Measured max at effort low: ~2.8K.
+            max_tokens: 6000,
+            output_config: { effort: CHAT_EFFORT },
+            // Static prompt only. Per-turn context lives in `messages` as a
+            // trailing system message — never append it here.
             system: [
               { type: 'text' as const, text: YURI_WIDGET_SYSTEM, cache_control: { type: 'ephemeral' as const } },
-              ...(dynamicContext
-                ? [{ type: 'text' as const, text: dynamicContext }]
-                : []),
             ],
-            messages: cachedMessages,
+            messages: loopMessages,
             tools: CACHED_WIDGET_TOOLS,
-            tool_choice: toolChoice,
           })
 
           for await (const event of stream) {
@@ -893,20 +898,72 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
               currentToolBlock = null
             }
           }
-          // Capture real token usage for this round (cost observability).
+          // Capture real token usage for this round (cost observability), and
+          // keep the final message: its content is what the tool loop passes back.
+          let finalContent: Anthropic.Messages.ContentBlock[] | null = null
+          let stopReason: string | null = null
           try {
             const finalMessage = await stream.finalMessage()
+            finalContent = finalMessage.content
+            stopReason = finalMessage.stop_reason
             const u = finalMessage.usage
             usageTotals.input += u.input_tokens ?? 0
             usageTotals.output += u.output_tokens ?? 0
             usageTotals.cacheRead += u.cache_read_input_tokens ?? 0
             usageTotals.cacheCreation += u.cache_creation_input_tokens ?? 0
-          } catch {
-            // Best-effort — never break the response over usage capture.
+          } catch (err) {
+            // Usage capture is best-effort. A tool round on the chat model
+            // cannot proceed without it (assistantTurnForToolRound throws).
+            console.error('[widget/chat] finalMessage unavailable:', err)
+          }
+
+          const action = nextRoundAction({
+            stopReason,
+            onFallbackModel: roundModel === MODELS.primary,
+            toolUses: toolUseBlocks.length,
+            productTurn,
+            round: toolLoopCount,
+            alreadyRetried: searchRetried,
+            draftNamesProducts: namedProductCount(textChunks.join('')) > 0,
+            retryEnabled: SEARCH_RETRY_ENABLED,
+          })
+
+          // Backstop: retries and fallbacks never advance toolLoopCount, so
+          // bound the total independently of the flags below.
+          if (++roundsRun > MAX_WIDGET_TOOL_LOOPS + 1 + MAX_EXTRA_ROUNDS) {
+            console.error('[widget/chat] round cap reached; finalizing')
+            break
+          }
+
+          if (action === 'fallback_model') {
+            // Note: usage for a turn that fell back is summed and logged under the
+            // fallback model's rates — a small misattribution on a rare path.
+            console.warn('[widget/chat] chat model declined; re-running round on', MODELS.primary)
+            roundModel = MODELS.primary
+            servedModel = MODELS.primary
+            continue
+          }
+
+          if (action === 'declined') {
+            // Both models declined. Say so honestly — this used to fall through
+            // to "I'm having a moment accessing our database", which is false.
+            console.warn('[widget/chat] request declined by chat and fallback models')
+            fullResponse = DECLINED_REPLY
+            await writer.write(encoder.encode(`data: ${JSON.stringify({ type: 'text', content: DECLINED_REPLY })}\n\n`))
+            break
+          }
+
+          if (action === 'retry_search') {
+            // A flagged message got a reply that named specific products with
+            // no tool behind it. Ask once, leaving the call to Yuri (replaces
+            // the old forced tool_choice). The discarded draft was never shown.
+            searchRetried = true
+            loopMessages.splice(0, loopMessages.length, ...withSearchRetry(loopMessages))
+            continue
           }
 
           // No tools — send all buffered text as the final response
-          if (toolUseBlocks.length === 0) {
+          if (action === 'finalize') {
             for (const chunk of textChunks) {
               fullResponse += chunk
               const data = JSON.stringify({ type: 'text', content: chunk })
@@ -915,15 +972,11 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
             break
           }
 
-          // Tools found — discard narration text, execute tools, and loop
+          // Tools found — the visitor never sees this round's text; execute
+          // tools and loop. The assistant turn goes back UNCHANGED (Opus 5.5's
+          // thinking blocks are only valid unedited).
           toolLoopCount++
-          const assistantContent: Anthropic.Messages.ContentBlockParam[] = []
-          for (const tb of toolUseBlocks) {
-            let parsedInput: unknown = {}
-            try { parsedInput = JSON.parse(tb.input || '{}') } catch { /* keep empty */ }
-            assistantContent.push({ type: 'tool_use' as const, id: tb.id, name: tb.name, input: parsedInput as Record<string, unknown> })
-          }
-          loopMessages.push({ role: 'assistant', content: assistantContent })
+          loopMessages.push({ role: 'assistant', content: assistantTurnForToolRound(finalContent, toolUseBlocks, roundModel === MODELS.chat) })
 
           const toolResults: Anthropic.Messages.ToolResultBlockParam[] = []
           for (const tb of toolUseBlocks) {
@@ -1002,7 +1055,9 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
         // across the tool loop from stream.finalMessage().usage.
         void logAIUsage({
           feature: 'widget_chat',
-          model: MODELS.primary,
+          // The model that actually answered (MODELS.primary only if the chat
+          // model declined and the round was re-run).
+          model: servedModel,
           inputTokens: usageTotals.input,
           outputTokens: usageTotals.output,
           cacheReadTokens: usageTotals.cacheRead,

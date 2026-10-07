@@ -14,9 +14,24 @@ export function getAnthropicClient(): Anthropic {
 }
 
 export const MODELS = {
+  // One-shot analysis surfaces (scan, skin score, dupes, routine generation,
+  // lead email, SEO guardian, nudges...). Low volume; not yet re-tested on 5.5.
   primary: 'claude-opus-4-8' as const,
+  // The three conversational Yuri surfaces: widget, authenticated advisor,
+  // onboarding. Moved Oct 7 2026 after a measured A/B on real sessions
+  // (scripts/ab-model-widget-multiturn.ts): -36%/-41% per conversation, and a
+  // blind Fable 5.1 judge preferred 5.5 on 16 of 20 widget turns (1 for 4.8).
+  chat: 'claude-opus-5-5' as const,
   background: 'claude-sonnet-4-5-20250929' as const,
 } as const
+
+/**
+ * Opus 5.5 cannot disable thinking; effort is the only cost/latency control and
+ * its default is 'medium'. Measured: 'medium' thinking consumed the entire 20%
+ * per-token price cut and added ~6s/turn; 'low' kept quality (judge) and cut
+ * cost. Thinking tokens count toward max_tokens, so chat ceilings were raised.
+ */
+export const CHAT_EFFORT = 'low' as const
 
 // ---------------------------------------------------------------------------
 // Retry wrapper for transient Anthropic API failures

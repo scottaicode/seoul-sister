@@ -1,5 +1,7 @@
 import { after } from 'next/server'
-import { getAnthropicClient, MODELS, callAnthropicWithRetry, isRetryableError } from '@/lib/anthropic'
+import { getAnthropicClient, MODELS, CHAT_EFFORT, callAnthropicWithRetry, isRetryableError } from '@/lib/anthropic'
+import { PRODUCT_TURN_FACT, DECLINED_REPLY, MAX_EXTRA_ROUNDS, SEARCH_RETRY_ENABLED, mentionsTerm, nextRoundAction, withTrailingContext, markPenultimateAssistant, assistantTurnForToolRound, withSearchRetry } from '@/lib/llm-request'
+import { namedProductCount } from '@/lib/widget/tool-grounding'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import { SPECIALISTS, detectSpecialist } from './specialists'
 import {
@@ -388,10 +390,11 @@ This is NOT defending the third party — it's defending the user from looking f
 // so turns 2+ read the cache. Set YURI_CLOCK_SPLIT_ENABLED=false to fold the
 // clock back into the cached body (byte-identical to pre-fix) without a deploy.
 //
-// NOTE for the next person: this is the SIMPLER HALF of the LGAAS advisor fix.
-// Yuri's clock tail was already in `system` (the correct place), so she only
-// needed the clock split — NOT LGAAS's trailing-role:'system'-message machinery.
-// Do not port that complexity here.
+// Oct 7 2026: the split blocks now travel as a trailing role:'system' MESSAGE
+// after the user's message, not as unmarked system blocks. System renders before
+// `messages`, so a clock that changes every minute sat in front of the whole
+// history and the history breakpoint could not be read on the next turn. See
+// src/lib/llm-request.ts and the streaming request in streamAdvisorResponse.
 export const CLOCK_SPLIT_ENABLED = process.env.YURI_CLOCK_SPLIT_ENABLED !== 'false'
 
 // Kill switch for the volatile-composition prompt-cache fix (default ON).
@@ -410,6 +413,13 @@ export const CLOCK_SPLIT_ENABLED = process.env.YURI_CLOCK_SPLIT_ENABLED !== 'fal
 const VOLATILE_SPLIT_ENABLED = process.env.YURI_VOLATILE_SPLIT_ENABLED !== 'false'
 
 export interface BuiltSystemPrompt {
+  // cachedPrompt split at the USER CONTEXT seam into two separately-cached
+  // system blocks. The static Yuri prompt (~20K tokens) never changes between
+  // turns; the user context changes whenever a product/routine is saved or a
+  // background extraction lands. One combined block re-wrote all ~30K tokens on
+  // every such change; split, the static block is still read from cache.
+  // Concatenated, they are byte-identical to cachedPrompt.
+  cachedBlocks: string[]
   // The stable, cacheable body. When the splits are enabled this contains NO
   // per-turn-variable content: no per-minute clock, no message-dependent
   // specialist block, and a section list that does not depend on what the user
@@ -520,8 +530,10 @@ Every message in this conversation is prefixed with a tag like \`[Fri 9:42 PM]\`
   // Order is load-bearing: specialist BEFORE clock, matching the original
   // parts[] order (the clock is the authoritative tail and must stay last).
   if (CLOCK_SPLIT_ENABLED) {
+    const cachedPrompt = parts.join('\n')
     return {
-      cachedPrompt: parts.join('\n'),
+      cachedPrompt,
+      cachedBlocks: splitCachedPrompt(cachedPrompt),
       specialistBlock: VOLATILE_SPLIT_ENABLED ? specialistBlock : '',
       clockBlock,
     }
@@ -531,11 +543,25 @@ Every message in this conversation is prefixed with a tag like \`[Fri 9:42 PM]\`
   // Originally the clock was a `parts` element, so `join('\n')` inserted a '\n'
   // separator BEFORE it. We reproduce that separator explicitly ('\n' + clock)
   // so the folded body is byte-for-byte identical to what production ships today.
+  const foldedPrompt = parts.join('\n') + '\n' + clockBlock
   return {
-    cachedPrompt: parts.join('\n') + '\n' + clockBlock,
+    cachedPrompt: foldedPrompt,
+    cachedBlocks: splitCachedPrompt(foldedPrompt),
     specialistBlock: VOLATILE_SPLIT_ENABLED ? specialistBlock : '',
     clockBlock: '',
   }
+}
+
+/** Split the cached body at the static-prompt / user-context seam (see BuiltSystemPrompt.cachedBlocks). */
+function splitCachedPrompt(cachedPrompt: string): string[] {
+  if (!cachedPrompt.startsWith(YURI_SYSTEM_PROMPT)) {
+    // Still correct (one cached block), but the static-block cache win is gone —
+    // make that visible instead of silently degrading.
+    console.error('[advisor] cached prompt does not start with YURI_SYSTEM_PROMPT; sending one cached block')
+    return [cachedPrompt]
+  }
+  const rest = cachedPrompt.slice(YURI_SYSTEM_PROMPT.length)
+  return rest ? [YURI_SYSTEM_PROMPT, rest] : [YURI_SYSTEM_PROMPT]
 }
 
 // ---------------------------------------------------------------------------
@@ -575,21 +601,20 @@ function imageUrlToBlock(url: string): ImageBlock | null {
 }
 
 // ---------------------------------------------------------------------------
-// Intent detection: should this message force a tool call?
+// Intent detection: is this a product/price/trend/weather message?
 // ---------------------------------------------------------------------------
-// Claude Opus with tool_choice 'auto' often answers product/price questions
-// from training knowledge instead of calling search_products or compare_prices.
-// This function detects messages that MUST hit the database and returns true
-// to trigger tool_choice 'any' on the first streaming iteration.
+// Until Oct 7 2026 this returned true to FORCE tool_choice 'any', which Opus 5.5
+// rejects. It now gates (a) a fact line in the trailing per-turn message and
+// (b) a one-time retry when the reply names products with no tool behind it
+// (src/lib/llm-request.ts nextRoundAction). Yuri makes the call either way.
 //
 // Design principles:
-//   - Cast a wide net: it's better to force a tool call unnecessarily (Claude
-//     picks the right tool from the system prompt) than to miss a query that
-//     should have used the database.
-//   - Only skip tool forcing for clearly non-database messages (greetings,
-//     general education, emotional support, app navigation).
+//   - Cast a wide net: a false positive now costs at most one fact line (the
+//     retry also needs a reply that names products without checking).
+//   - Only skip for clearly non-database messages (greetings, general
+//     education, emotional support, app navigation).
 //   - Check conversation history: if the PREVIOUS assistant message already
-//     contains tool results for the same product, don't force again.
+//     contains tool results for the same product, don't flag again.
 // ---------------------------------------------------------------------------
 
 function shouldForceToolUse(
@@ -626,8 +651,9 @@ function shouldForceToolUse(
     'rom&nd', 'romand', 'espoir', 'jung saem mool', 'hanyul', 'mamonde',
     'nature republic', 'the face shop', 'apieu', "a'pieu", 'clio', 'peripera',
   ]
+  // Whole-term match: a substring test made 'hera' fire on "therapy".
   for (const brand of BRAND_SIGNALS) {
-    if (msg.includes(brand)) return true
+    if (mentionsTerm(msg, brand)) return true
   }
 
   // 2. Price-related questions
@@ -856,7 +882,7 @@ export async function* streamAdvisorResponse(
   // clock is returned SEPARATELY (clockBlock) so it can be delivered as an
   // unmarked system block after the cache breakpoint — keeping the cached body
   // byte-stable across the minute boundary. See CLOCK_SPLIT_ENABLED.
-  const { cachedPrompt, specialistBlock, clockBlock } = buildSystemPrompt(
+  const { cachedBlocks, specialistBlock, clockBlock } = buildSystemPrompt(
     userContext,
     specialistType,
     conversationHistory
@@ -899,8 +925,20 @@ export async function* streamAdvisorResponse(
 
   // Build the messages array for the tool use loop.
   // We use the SDK's MessageParam type for the conversation with tool results.
-  const loopMessages: Anthropic.Messages.MessageParam[] =
-    apiMessages as Anthropic.Messages.MessageParam[]
+  //
+  // Layout (Oct 7 2026, src/lib/llm-request.ts): the history breakpoint stays on
+  // the last assistant message (history is timestamp-tagged; the current message
+  // is not, so a breakpoint on it would never be re-read). The per-turn blocks —
+  // specialist, an optional product-turn fact, and the clock (last, as the
+  // authoritative tail) — follow the user's message as a mid-conversation system
+  // message, so nothing that changes per turn sits in front of the history.
+  // The breakpoint is placed ONCE here, before the trailing message is appended
+  // and before any tool round grows the array.
+  const productTurn = shouldForceToolUse(message, conversationHistory)
+  const loopMessages: Anthropic.Messages.MessageParam[] = withTrailingContext(
+    markPenultimateAssistant(apiMessages as Anthropic.Messages.MessageParam[]),
+    [specialistBlock, productTurn ? `\n${PRODUCT_TURN_FACT}` : '', clockBlock].join('')
+  )
 
   // Prepare tools with cache_control on the last tool definition
   const cachedTools = YURI_TOOLS.map((tool, idx) =>
@@ -912,52 +950,15 @@ export async function* streamAdvisorResponse(
   const MAX_TOOL_LOOPS = 5
   let toolLoopCount = 0
 
-  // ---------------------------------------------------------------------------
-  // Intent-based tool_choice: force tool use for product/price/trending queries
-  // ---------------------------------------------------------------------------
-  // With tool_choice 'auto', Claude Opus often answers product-specific
-  // questions from training knowledge instead of calling search_products or
-  // compare_prices — even when the system prompt says "ALWAYS call tools."
-  // The solution: detect queries that MUST hit the database and use
-  // tool_choice 'any' (forces at least one tool call) on the first loop
-  // iteration. Subsequent iterations (after tool results) revert to 'auto'
-  // so Claude can generate its final text response.
-  // ---------------------------------------------------------------------------
-  const forceToolUse = shouldForceToolUse(message, conversationHistory)
-
-  // Helper: apply cache_control to the last assistant message for cache reuse.
-  //
-  // DO NOT "OPTIMIZE" THIS AWAY. It looks suspicious (a breakpoint at a position that
-  // moves every turn) and it was the prime suspect for a turn-2 cost spike on Jul 13
-  // 2026. It was A/B'd against two alternatives on the live API, warm, real payload
-  // (scripts/ab-yuri-message-breakpoint.ts) and this layout WON:
-  //
-  //   current (this)          $0.0250/warm turn
-  //   marker on last message  $0.0250/warm turn  (no better)
-  //   NO messages marker      $0.0278/warm turn  (11% WORSE — history gets re-read
-  //                                               as raw input every turn)
-  //
-  // The turn-2 spike that triggered the investigation was NOT this: it's a tool-loop
-  // artifact. ss_ai_usage sums every tool round into ONE row, so a tool-using turn
-  // shows cache_read == cache_write (round 1 writes it, round 2 reads it) — the
-  // healthy producer/consumer pair, not an invalidation. See CHANGELOG v11.3.0.
-  function applyCacheControl(msgs: Anthropic.Messages.MessageParam[]) {
-    return msgs.map((msg, idx) => {
-      if (
-        msg.role === 'assistant' &&
-        typeof msg.content === 'string' &&
-        idx === msgs.length - 2
-      ) {
-        return {
-          role: 'assistant' as const,
-          content: [
-            { type: 'text' as const, text: msg.content, cache_control: { type: 'ephemeral' as const } },
-          ],
-        }
-      }
-      return msg
-    })
-  }
+  // Forced tool_choice ('any') is rejected by Opus 5.5. Product turns now get a
+  // fact in the trailing message, and a reply that comes back without any tool
+  // call is retried ONCE with an explicit request to check (see the loop).
+  let searchRetried = false
+  let roundsRun = 0
+  // Opus 5.5 can decline (stop_reason 'refusal'); the round is then re-run once
+  // on MODELS.primary instead of falling through to the canned apology.
+  let roundModel: string = MODELS.chat
+  let servedModel: string = MODELS.chat
 
   // Streaming tool use loop: use messages.stream() for ALL calls.
   //
@@ -1001,21 +1002,16 @@ export async function* streamAdvisorResponse(
   }
 
   while (toolLoopCount <= MAX_TOOL_LOOPS) {
-    const cachedMessages = applyCacheControl(loopMessages)
-
-    // Force tool use on the FIRST iteration when user is asking about
-    // products, prices, or trends. After tools execute and results are in
-    // the conversation, revert to 'auto' so Claude can write its response.
-    const toolChoice: Anthropic.Messages.MessageCreateParams['tool_choice'] =
-      forceToolUse && toolLoopCount === 0
-        ? { type: 'any' }
-        : { type: 'auto' }
-
     // Collect tool_use blocks and text chunks for this round.
     const toolUseBlocks: Array<{ id: string; name: string; input: string }> = []
     let currentToolBlock: { id: string; name: string; input: string } | null = null
     const textChunks: string[] = []
     let streamSucceeded = false
+    // The round's final message: its content is what the tool loop passes back
+    // (Opus 5.5 thinking blocks must return unchanged), its stop_reason detects
+    // a refusal.
+    let finalContent: Anthropic.Messages.ContentBlock[] | null = null
+    let stopReason: string | null = null
 
     // Retry loop for transient stream creation failures
     for (let attempt = 1; attempt <= STREAM_MAX_RETRIES; attempt++) {
@@ -1027,31 +1023,24 @@ export async function* streamAdvisorResponse(
       currentToolBlock = null
       textChunks.length = 0
 
-      // System blocks: the cached body carries the ephemeral breakpoint; the
-      // volatile clock (when split is enabled) is a SECOND, UNMARKED block after
-      // it — everything before the breakpoint stays byte-stable and reads from
-      // cache on warm turns, the uncached clock re-renders each minute for free.
-      // When the kill switch is off, clockBlock is '' and this is a single
-      // marked block identical to the pre-fix shape.
-      const systemBlocks: Anthropic.Messages.TextBlockParam[] = [
-        { type: 'text', text: cachedPrompt, cache_control: { type: 'ephemeral' } },
-      ]
-      // Volatile, UNMARKED blocks after the breakpoint, in the same order they
-      // occupied inside the old cached body: specialist first, clock last.
-      if (specialistBlock) {
-        systemBlocks.push({ type: 'text', text: specialistBlock })
-      }
-      if (clockBlock) {
-        systemBlocks.push({ type: 'text', text: clockBlock })
-      }
+      // System blocks: the static Yuri prompt and the user context, each with
+      // its own breakpoint (BuiltSystemPrompt.cachedBlocks). With tools and the
+      // history breakpoint that is all 4 breakpoints the API allows — add no
+      // more. The volatile specialist/clock blocks are in loopMessages.
+      const systemBlocks: Anthropic.Messages.TextBlockParam[] = cachedBlocks.map((text) => ({
+        type: 'text' as const,
+        text,
+        cache_control: { type: 'ephemeral' as const },
+      }))
 
       const stream = client.messages.stream({
-        model: MODELS.primary,
-        max_tokens: 2048,
+        model: roundModel,
+        // Thinking counts toward max_tokens on Opus 5.5 (was 2048 on 4.8).
+        max_tokens: 8000,
+        output_config: { effort: CHAT_EFFORT },
         system: systemBlocks,
-        messages: cachedMessages,
+        messages: loopMessages,
         tools: cachedTools,
-        tool_choice: toolChoice,
       })
 
       try {
@@ -1080,6 +1069,8 @@ export async function* streamAdvisorResponse(
         // SDK reports cache-read/cache-creation separately from input_tokens.
         try {
           const finalMessage = await stream.finalMessage()
+          finalContent = finalMessage.content
+          stopReason = finalMessage.stop_reason
           const u = finalMessage.usage
           usageTotals.input += u.input_tokens ?? 0
           usageTotals.output += u.output_tokens ?? 0
@@ -1105,8 +1096,8 @@ export async function* streamAdvisorResponse(
           const systemMissed = cr > 0 && cr < 10_000
           console.log(
             `[yuri-cache] conv=${conversationId?.slice(0, 8)} round=${toolLoopCount} ` +
-            `sys_chars=${cachedPrompt.length} spec=${specialistBlock ? 'y' : 'n'} ` +
-            `msgs=${cachedMessages.length} raw_in=${u.input_tokens ?? 0} ` +
+            `sys_chars=${cachedBlocks.join('').length} spec=${specialistBlock ? 'y' : 'n'} ` +
+            `msgs=${loopMessages.length} raw_in=${u.input_tokens ?? 0} ` +
             `cache_read=${cr} cache_write=${cw}` +
             (systemMissed ? '  *** SYSTEM-BLOCK CACHE MISS ***' : '')
           )
@@ -1154,8 +1145,53 @@ export async function* streamAdvisorResponse(
       throw new Error('[yuri/stream] Stream retry loop exhausted')
     }
 
+    const action = nextRoundAction({
+      stopReason,
+      onFallbackModel: roundModel === MODELS.primary,
+      toolUses: toolUseBlocks.length,
+      productTurn,
+      round: toolLoopCount,
+      alreadyRetried: searchRetried,
+      draftNamesProducts: namedProductCount(textChunks.join('')) > 0,
+      retryEnabled: SEARCH_RETRY_ENABLED,
+    })
+
+    // Backstop: retries and fallbacks never advance toolLoopCount, so bound the
+    // total independently of the flags below.
+    if (++roundsRun > MAX_TOOL_LOOPS + 1 + MAX_EXTRA_ROUNDS) {
+      console.error(`[yuri/stream] conv=${conversationId?.slice(0, 8)} round cap reached; finalizing`)
+      break
+    }
+
+    if (action === 'fallback_model') {
+      // Note: usage for a turn that fell back is summed and logged under the
+      // fallback model's rates — a small misattribution on a rare path.
+      console.warn(`[yuri/stream] conv=${conversationId?.slice(0, 8)} chat model declined; re-running round on ${MODELS.primary}`)
+      roundModel = MODELS.primary
+      servedModel = MODELS.primary
+      continue
+    }
+
+    if (action === 'declined') {
+      // Both models declined. Say so honestly; this used to fall through to
+      // "I'm having trouble accessing the database", which is false.
+      console.warn(`[yuri/stream] conv=${conversationId?.slice(0, 8)} request declined by chat and fallback models`)
+      fullResponse = DECLINED_REPLY
+      yield DECLINED_REPLY
+      break
+    }
+
+    if (action === 'retry_search') {
+      // A flagged message got a reply that named specific products with no
+      // tool behind it: ask once, leaving the call to Yuri (replaces the old
+      // forced tool_choice). Nothing was yielded — this loop buffers.
+      searchRetried = true
+      loopMessages.splice(0, loopMessages.length, ...withSearchRetry(loopMessages))
+      continue
+    }
+
     // No tools on this round — yield all buffered text as the final response.
-    if (toolUseBlocks.length === 0) {
+    if (action === 'finalize') {
       for (const chunk of textChunks) {
         fullResponse += chunk
         yield chunk
@@ -1168,27 +1204,12 @@ export async function* streamAdvisorResponse(
     // response will come on the final round after all tools have executed.
     toolLoopCount++
 
-    // Build assistant content with only tool_use blocks for the next API
-    // call. Text is discarded to prevent Claude from seeing its own
-    // narration and continuing the pattern.
-    const assistantContent: Anthropic.Messages.ContentBlockParam[] = []
-    for (const tb of toolUseBlocks) {
-      let parsedToolInput: unknown = {}
-      try { parsedToolInput = JSON.parse(tb.input || '{}') } catch { /* keep empty */ }
-      assistantContent.push({
-        type: 'tool_use' as const,
-        id: tb.id,
-        name: tb.name,
-        input: parsedToolInput as Record<string, unknown>,
-      })
-    }
-
-    // Only tool_use blocks go into history — narration text is always
-    // discarded so Claude doesn't see "Let me search..." on the next round
-    // and continue the pattern.
+    // The assistant turn goes back UNCHANGED: Opus 5.5's thinking blocks are
+    // only valid unedited, and its between-tool narration arrives as thinking,
+    // not text. The user still never sees this round's text (it was buffered).
     loopMessages.push({
       role: 'assistant',
-      content: assistantContent,
+      content: assistantTurnForToolRound(finalContent, toolUseBlocks, roundModel === MODELS.chat),
     })
 
     // Execute each tool and build tool_result blocks
@@ -1240,7 +1261,7 @@ export async function* streamAdvisorResponse(
   // caching is firing in production (the prior log hardcoded these to 0).
   void logAIUsage({
     feature: 'yuri_chat',
-    model: MODELS.primary,
+    model: servedModel,
     inputTokens: usageTotals.input,
     outputTokens: usageTotals.output,
     cacheReadTokens: usageTotals.cacheRead,
