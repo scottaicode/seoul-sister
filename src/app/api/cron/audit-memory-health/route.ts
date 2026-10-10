@@ -68,10 +68,17 @@ async function handler(request: Request) {
       .select('user_id, decision_memory')
       .not('decision_memory', 'eq', '{}')
     let staleOpenLoops = 0
+    let softClosedLoops = 0
     const staleLoopSample: Array<{ user_id: string; topic: string; opened: string }> = []
     for (const row of loopConvs ?? []) {
-      const dm = row.decision_memory as { open_loops?: Array<{ topic: string; opened_date: string }> } | null
-      for (const l of dm?.open_loops ?? []) {
+      const dm = row.decision_memory as {
+        open_loops?: Array<{ topic: string; opened_date: string; resolved_at?: string | null }>
+      } | null
+      // Soft-closed loops are counted separately so the audit can see how many
+      // closes the extractor made (and spot one that looks wrong); they are not
+      // "stale open".
+      softClosedLoops += (dm?.open_loops ?? []).filter((l) => !!l.resolved_at).length
+      for (const l of (dm?.open_loops ?? []).filter((x) => !x.resolved_at)) {
         if (l.opened_date && l.opened_date < thirtyDaysAgo.slice(0, 10)) {
           staleOpenLoops++
           if (staleLoopSample.length < 10) {
@@ -111,6 +118,7 @@ async function handler(request: Request) {
       empty_memory_conversations: emptyMemoryConvos,
       empty_memory_sample: emptyMemorySample,
       stale_open_loops: staleOpenLoops,
+      soft_closed_loops: softClosedLoops,
       stale_loop_sample: staleLoopSample,
       durable_store_users: durableUsers,
       durable_store_stale_users: durableStaleUsers,

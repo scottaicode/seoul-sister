@@ -42,10 +42,17 @@ const routeSrc = readFileSync(
   'utf8'
 )
 
-/** Read a numeric constant out of the real route rather than duplicating it. */
+// The constants moved to nudge-limits.ts (Oct 9 2026) so Yuri's own check-ins
+// share the same window; the gate LOGIC below is still sliced from the route.
+const limitsSrc = readFileSync(
+  join(root, 'src', 'lib', 'intelligence', 'nudge-limits.ts'),
+  'utf8'
+)
+
+/** Read a numeric constant out of the real source rather than duplicating it. */
 function constant(name) {
-  const m = routeSrc.match(new RegExp(`const ${name} = (\\d+)`))
-  assert.ok(m, `${name} must be defined in the cron route`)
+  const m = limitsSrc.match(new RegExp(`const ${name} = (\\d+)`))
+  assert.ok(m, `${name} must be defined in nudge-limits.ts`)
   return Number(m[1])
 }
 

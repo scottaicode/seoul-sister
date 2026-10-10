@@ -8,6 +8,8 @@
  * hardcoding model IDs. Model upgrades affect everywhere instantly.
  */
 
+import { MODELS } from './anthropic'
+
 export interface AIContext {
   model: string
   maxTokens: number
@@ -103,6 +105,20 @@ export const AI_CONTEXTS = {
     caching: false,
     streaming: false,
     costNote: 'Proactive nudge copy in Yuri voice. ~$0.01-0.02 per nudge, capped at 3/user with multi-day spacing.',
+  },
+  YURI_PROACTIVE: {
+    // Oct 9 2026 — Yuri Wakes Up First. Yuri deciding whether to reach out first
+    // (lead re-engagement, subscriber check-in) and writing it if so. This is
+    // Yuri reasoning over her own memory of the person, so it runs on Yuri's own
+    // conversational model (MODELS.chat) at CHAT_EFFORT, not the one-shot
+    // MODELS.primary the older nudge writer uses. Not yet A/B'd against 4.8 —
+    // the dry-run outputs are the first evidence. maxTokens includes 5.5's
+    // thinking (it cannot be disabled), so it is far above the visible length.
+    model: MODELS.chat,
+    maxTokens: 4000,
+    caching: false,
+    streaming: false,
+    costNote: 'One speak/silent judgment per subscriber per local day (cap-gated) and one per lead ever. ~$0.03-0.06 per judgment.',
   },
   SEO_GUARDIAN: {
     // v11.11.0 — weekly SEO strategist over Search Console data. Internal

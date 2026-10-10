@@ -53,6 +53,10 @@ export type AIFeature =
   // (third-party address, no consent intent, thin conversation). Zero-cost
   // breadcrumb keeping the suppressed-send path visible/queryable.
   | 'lead_email_suppressed'
+  // Oct 9 2026 — Yuri Wakes Up First: Yuri's own speak/silent judgments
+  | 'proactive_lead_reengage'
+  | 'proactive_checkin'
+  | 'proactive_content_guard'
 
 interface AIUsageParams {
   feature: AIFeature

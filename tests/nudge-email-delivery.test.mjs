@@ -58,6 +58,9 @@ export async function sendEmail(to, subject, html, options = {}) {
 }
 export function wrapEmailHtml(bodyHtml, footerHtml) {
   return '<html><body>' + bodyHtml + '<hr>' + (footerHtml ?? '') + '</body></html>'
+}
+export function postalAddress() {
+  return null
 }`
   )
 

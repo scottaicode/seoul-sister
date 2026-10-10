@@ -122,6 +122,15 @@ export async function sendEmail(
   }
 }
 
+/**
+ * The sender's physical postal address (CAN-SPAM). Unset → null; callers that
+ * send commercial mail must refuse to send rather than omit it. Never invented.
+ */
+export function postalAddress(): string | null {
+  const a = process.env.EMAIL_POSTAL_ADDRESS?.trim()
+  return a ? a : null
+}
+
 /** Derive a readable plain-text part from the HTML body (deterministic). */
 function htmlToPlainText(html: string): string {
   return html

@@ -13,7 +13,7 @@ import {
   type OpenLoop,
 } from '@/lib/intelligence/nudge-eligibility'
 import { getNudgeTypePerformance } from '@/lib/intelligence/nudge-outcome-grader'
-import type { DecisionMemory } from '@/lib/yuri/memory'
+import { isOpenLoop, type DecisionMemory } from '@/lib/yuri/memory'
 import {
   getLocalClock,
   clockFactBlock,
@@ -23,6 +23,14 @@ import {
 import { logPipelineRun } from '@/lib/pipeline/log-run'
 import { sendNudgeEmail, type NudgeEmailStatus } from '@/lib/email/nudge-email'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  MAX_NUDGES,
+  NUDGE_WINDOW_DAYS,
+  SPACING_DAYS,
+  DAYTIME_START_HOUR,
+  DAYTIME_END_HOUR,
+  localHour,
+} from '@/lib/intelligence/nudge-limits'
 
 export const maxDuration = 60
 
@@ -54,17 +62,8 @@ export const maxDuration = 60
  * Secured with CRON_SECRET header.
  */
 
-/** Max nudges per user within NUDGE_WINDOW_DAYS (a rolling window, NOT a lifetime cap). */
-const MAX_NUDGES = 3
-/**
- * The rolling window the cap applies over (v11.23.1). Chosen to match the
- * monthly billing rhythm: a subscriber can hear from Yuri proactively at most
- * three times per billing period, and never more often than SPACING_DAYS apart.
- */
-const NUDGE_WINDOW_DAYS = 30
-const SPACING_DAYS = 3
-const DAYTIME_START_HOUR = 9 // local
-const DAYTIME_END_HOUR = 20 // local (8pm)
+// Contact-frequency rails live in nudge-limits.ts so Yuri's own check-ins
+// (yuri-wakes-up) count against the SAME window as this cron.
 
 interface ProfileRow {
   user_id: string
@@ -102,23 +101,6 @@ async function resolveUserEmail(
   } catch (err) {
     console.error(`[proactive-nudge] email lookup threw for ${userId}:`, err)
     return null
-  }
-}
-
-/** Local hour in an IANA timezone, defaulting to a safe daytime hour if unknown. */
-function localHour(timezone: string | null): number {
-  if (!timezone) return 12 // unknown tz → treat as midday (safe to send)
-  try {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      hour: 'numeric',
-      hour12: false,
-      timeZone: timezone,
-    }).formatToParts(new Date())
-    const h = parts.find((p) => p.type === 'hour')?.value
-    const n = h ? parseInt(h, 10) : 12
-    return Number.isNaN(n) ? 12 : n % 24
-  } catch {
-    return 12
   }
 }
 
@@ -387,7 +369,8 @@ async function handler(request: Request) {
         const openLoopMap = new Map<string, OpenLoop>()
         for (const c of memConvs ?? []) {
           const dm = c.decision_memory as DecisionMemory | null
-          for (const l of dm?.open_loops ?? []) {
+          // Soft-closed loops (resolved_at) are closed: never nudge about them.
+          for (const l of (dm?.open_loops ?? []).filter(isOpenLoop)) {
             const key = l.topic.toLowerCase()
             const prev = openLoopMap.get(key)
             // keep earliest opened_date for honest staleness

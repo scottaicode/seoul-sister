@@ -1,4 +1,5 @@
 import { getServiceClient } from '@/lib/supabase'
+import { safeSlice } from '@/lib/utils/text-slice'
 import type { SkinProfile, YuriConversation, YuriMessage, SpecialistType, CyclePhaseInfo, UserCycleTracking } from '@/types/database'
 import { getCyclePhase, getPhaseLabel } from '@/lib/intelligence/cycle-routine'
 import { detectRoutineOverlap, type IngredientOverlapResult } from '@/lib/intelligence/ingredient-overlap'
@@ -118,8 +119,37 @@ export interface DecisionMemory {
      * back to its own staleness threshold. Never inferred or defaulted.
      */
     check_back_date?: string | null
+    /**
+     * Oct 10 2026 — SOFT close. A later extraction that judged this loop
+     * resolved (with a verbatim quote from the conversation as evidence) stamps
+     * these instead of deleting the loop, so the call is auditable and
+     * reversible: if a later extraction re-raises the topic, the stamps clear.
+     * Readers treat a loop with resolved_at as closed (isOpenLoop).
+     */
+    resolved_at?: string | null
+    resolved_by_conversation?: string | null
+    resolved_reason?: string | null
   }>
   extracted_at: string
+}
+
+export interface PriorConversationLoops {
+  conversationId: string
+  openLoops: DecisionMemory['open_loops']
+  closedLoops: DecisionMemory['open_loops']
+}
+
+/** A loop still open (not soft-closed). Every reader of open_loops goes through this. */
+export function isOpenLoop(l: { resolved_at?: string | null }): boolean {
+  return !l.resolved_at
+}
+
+/** A resolution the extractor proposed, with the evidence it cited. */
+export interface LoopResolution {
+  topic: string
+  reason: string
+  /** Verbatim quote from the visible transcript showing the loop was closed. */
+  evidence_quote: string
 }
 
 export interface SpecialistInsightMemory {
@@ -744,7 +774,7 @@ function extractProductRecommendations(conversations: ConversationMemory[]): Pro
 
             recommendations.push({
               product: productName,
-              context: `recommended in "${conversationLabel}" — ${snippet.slice(0, 100)}`,
+              context: `recommended in "${conversationLabel}" — ${safeSlice(snippet, 100)}`,
             })
           }
         }
@@ -1315,11 +1345,12 @@ This user has hormonal/cycle-related concerns in their profile but has NOT enabl
     // close them naturally without the user having to re-raise them. The proactive
     // nudge engine also reads these, but rendering them here means an engaged user
     // who returns on their own gets the loop closed in-conversation too.
-    if (dm.open_loops && dm.open_loops.length > 0) {
+    const stillOpen = (dm.open_loops ?? []).filter(isOpenLoop)
+    if (stillOpen.length > 0) {
       // Render the raw open-loop date only, NOT a "N days ago" bucket (ticks
       // daily → invalidates the cached prefix). Yuri gauges staleness from this
-      // date against ## RIGHT NOW.
-      const loopLines = dm.open_loops
+      // date against ## RIGHT NOW. Soft-closed loops are not rendered.
+      const loopLines = stillOpen
         .map((l) => {
           // Surface the check-in date Yuri named, as a raw date (never an "N days
           // ago" bucket — that ticks daily and would invalidate the cached prefix).
@@ -1493,10 +1524,14 @@ export async function saveConversationSummary(
   if (nextSessionOpener) {
     update.next_session_opener = nextSessionOpener
   }
-  await db
+  // Throw on failure (Oct 10 2026): the settle job marks a conversation settled
+  // only when its summary really saved; a swallowed error would look settled.
+  // The advisor's caller already .catch()-logs it.
+  const { error } = await db
     .from('ss_yuri_conversations')
     .update(update)
     .eq('id', conversationId)
+  if (error) throw new Error(`saveConversationSummary failed: ${error.message}`)
 }
 
 // Truncation constants (LGAAS pattern)
@@ -1563,7 +1598,7 @@ async function truncateWithBridge(
       const client = getAnthropicClient()
 
       const droppedTranscript = droppedMessages
-        .map((m) => `${m.role === 'user' ? 'User' : 'Yuri'}: ${m.content.slice(0, 400)}`)
+        .map((m) => `${m.role === 'user' ? 'User' : 'Yuri'}: ${safeSlice(m.content, 400)}`)
         .join('\n')
 
       const response = await client.messages.create({
@@ -1706,7 +1741,23 @@ export function normalizeCheckBackDate(value: unknown): string | null {
  */
 export function mergeDecisionMemory(
   existing: DecisionMemory | null,
-  incoming: DecisionMemory
+  incoming: DecisionMemory,
+  /**
+   * Oct 9-10 2026 — loops the extractor judged RESOLVED (evidence-checked in
+   * extractDecisionMemory). They are SOFT-closed (resolved_at stamped), never
+   * deleted. A topic the incoming extraction re-raises reopens (stamps clear).
+   */
+  resolutions: LoopResolution[] = [],
+  /** The conversation whose extraction did the resolving (recorded on the loop). */
+  resolvedByConversation: string | null = null,
+  now: string = new Date().toISOString(),
+  /**
+   * Fresh-extraction merges pass this (possibly empty): a soft-closed loop is
+   * reopened ONLY by an evidence-checked reopening, never by the model merely
+   * re-emitting the topic. Omitted (the context loader merging stored rows):
+   * a newer conversation's own open loop stands, as before.
+   */
+  reopenings?: LoopResolution[]
 ): DecisionMemory {
   // The DB schema default for decision_memory is JSONB '{}', which means
   // `existing` will be the truthy empty object `{}` for any conversation that
@@ -1771,16 +1822,26 @@ export function mergeDecisionMemory(
   for (const c of incoming.corrections || []) correctionMap.set(c.topic.toLowerCase(), c)
   const corrections = Array.from(correctionMap.values())
 
-  // Open loops: union by topic, latest opened_date wins. Resolution is handled at
-  // EXTRACTION time (Sonnet won't re-surface a loop the conversation closed), and
-  // aging/staleness is handled at READ time by the nudge engine. Preserve the
-  // earliest opened_date so "stale for N days" math is honest — a loop that keeps
-  // reappearing is still the same unresolved loop, not a fresh one.
+  // Open loops: union by topic, latest opened_date wins. Omission never closes a
+  // loop; only an evidence-checked resolution does, and it SOFT-closes (stamps
+  // resolved_at) so the call stays auditable and reversible. A loop the incoming
+  // extraction re-raises is reopened. Aging/staleness is handled at READ time by
+  // the nudge engine. Preserve the earliest opened_date so "stale for N days"
+  // math is honest — a loop that keeps reappearing is still the same loop.
   const openLoopMap = new Map<string, DecisionMemory['open_loops'][number]>()
   for (const l of baseOpenLoops) openLoopMap.set(l.topic.toLowerCase(), l)
+  const reopenTopics = new Set((reopenings ?? []).map((r) => r.topic.toLowerCase()))
+  const keptClosed = new Set<string>()
   for (const l of incoming.open_loops || []) {
     const key = l.topic.toLowerCase()
     const prev = openLoopMap.get(key)
+    // A fresh extraction re-emitting a soft-closed topic does NOT reopen it
+    // without an evidence-checked reopening (the close took evidence; so does
+    // undoing it).
+    if (reopenings !== undefined && prev?.resolved_at && !reopenTopics.has(key)) {
+      keptClosed.add(key)
+      continue
+    }
     // Keep the earliest opened_date so the loop's true age is preserved; take the
     // newer summary (Yuri's most recent phrasing of what's still unresolved).
     //
@@ -1795,7 +1856,32 @@ export function mergeDecisionMemory(
         prev?.opened_date && prev.opened_date < l.opened_date ? prev.opened_date : l.opened_date,
       check_back_date:
         l.check_back_date !== undefined ? l.check_back_date : (prev?.check_back_date ?? null),
+      // A fresh extraction's loop carries no stamps, so re-raising reopens it
+      // (the reversible half of a soft close). A stored dm merged by the loader
+      // keeps its own stamps.
+      resolved_at: l.resolved_at ?? null,
+      resolved_by_conversation: l.resolved_by_conversation ?? null,
+      resolved_reason: l.resolved_reason ?? null,
     })
+  }
+  const reraised = new Set(
+    (incoming.open_loops || [])
+      .filter((l) => !l.resolved_at && !keptClosed.has(l.topic.toLowerCase()))
+      .map((l) => l.topic.toLowerCase())
+  )
+  // Evidence-checked reopenings of loops that were not re-emitted.
+  for (const r of reopenings ?? []) {
+    const key = r.topic.toLowerCase()
+    const loop = openLoopMap.get(key)
+    if (loop?.resolved_at) {
+      openLoopMap.set(key, { ...loop, resolved_at: null, resolved_by_conversation: null, resolved_reason: null })
+    }
+  }
+  for (const r of resolutions) {
+    const key = r.topic.toLowerCase()
+    const loop = openLoopMap.get(key)
+    if (!loop || reraised.has(key) || loop.resolved_at) continue
+    openLoopMap.set(key, { ...loop, resolved_at: now, resolved_by_conversation: resolvedByConversation, resolved_reason: r.reason })
   }
   const open_loops = Array.from(openLoopMap.values())
 
@@ -1874,15 +1960,361 @@ export async function extractAndSaveDecisionMemory(
    * Monday Aug 10. She said Sunday; the DB said Monday; the nudge said "Sunday's
    * here" on a Tuesday. See NUDGE-DATE-HONESTY-FIX.md.
    */
-  timezone?: string | null
-): Promise<void> {
+  timezone?: string | null,
+  /** See extractDecisionMemory: the settle/backfill path passes the conversation's last message time. */
+  asOf?: Date
+): Promise<DecisionMemoryOutcome> {
+  // Load existing decision memory FIRST (Oct 9 2026): the extractor needs the
+  // open loops already on record so it can say which ones this conversation
+  // has since closed. Before this, a loop like "pm_routine_build: user hasn't
+  // responded" survived the very turn that built the routine.
+  const db = getServiceClient()
+  const { data: conv } = await db
+    .from('ss_yuri_conversations')
+    .select('decision_memory')
+    .eq('id', conversationId)
+    .single()
+  const existing = (conv?.decision_memory as DecisionMemory | null) || null
+
+  // Loops still open in the user's prior recent conversations (Oct 10 2026).
+  // A promise made in onboarding ("I'll give you product picks") is usually
+  // kept in a later conversation, which the per-conversation extractor could
+  // never see, so the loop lived forever. The extractor now sees them and may
+  // resolve any of them (with a verbatim quote as evidence); the soft close is
+  // applied wherever the loop lives. Same selection as the settle dry run
+  // (pickPriorConversations).
+  const elsewhere = await loadRecentOpenLoops(db, userId, conversationId)
+
+  const result = await extractDecisionMemory(
+    conversationId,
+    conversationHistory,
+    timezone,
+    loopsOnRecord(existing, elsewhere),
+    asOf
+  )
+  if (!result) return 'unusable'
+  const { incoming, resolutions, reopenings, cleanupActions } = result
+
+  // Skip if nothing was extracted and nothing was resolved
+  if (
+    incoming.decisions.length === 0 &&
+    incoming.preferences.length === 0 &&
+    incoming.commitments.length === 0 &&
+    incoming.corrections.length === 0 &&
+    incoming.open_loops.length === 0 &&
+    resolutions.length === 0 &&
+    reopenings.length === 0
+  ) {
+    return 'nothing'
+  }
+
+  // Re-read right before writing (Oct 10 2026, lost-update fix): `existing` was
+  // read before a multi-second model call, and the treatment-phase extractor may
+  // have written phase decisions into this row meanwhile. Merging onto the stale
+  // copy silently erased them.
+  const { data: freshSelf, error: freshErr } = await db
+    .from('ss_yuri_conversations')
+    .select('decision_memory')
+    .eq('id', conversationId)
+    .single()
+  if (freshErr) {
+    console.error('[memory] decision memory re-read failed; not saving over an unknown row', { conversationId, error: freshErr.message })
+    return 'save_failed'
+  }
+  const merged = mergeDecisionMemory(
+    (freshSelf?.decision_memory as DecisionMemory | null) || null,
+    incoming,
+    resolutions,
+    conversationId,
+    undefined,
+    reopenings
+  )
+
+  // Save merged decision memory back to the conversation
+  const { error: saveErr } = await db
+    .from('ss_yuri_conversations')
+    .update({ decision_memory: merged })
+    .eq('id', conversationId)
+  if (saveErr) {
+    console.error('[memory] decision memory save failed', { conversationId, error: saveErr.message })
+    return 'save_failed'
+  }
+
+  // Soft-close resolved loops that live in the user's other conversations.
+  // Re-read each row right before writing so a concurrent extraction is not
+  // overwritten with a stale copy. Failures are logged, never silent.
+  if (resolutions.length > 0 || reopenings.length > 0) {
+    const keep = incoming.open_loops.map((l) => l.topic)
+    const named = (loops: DecisionMemory['open_loops'], list: LoopResolution[]) =>
+      loops.some((l) => list.some((r) => r.topic.toLowerCase() === l.topic.toLowerCase()))
+    for (const other of elsewhere) {
+      if (!named(other.openLoops, resolutions) && !named(other.closedLoops, reopenings)) continue
+      const { data: fresh, error: readErr } = await db
+        .from('ss_yuri_conversations')
+        .select('decision_memory')
+        .eq('id', other.conversationId)
+        .single()
+      if (readErr) {
+        console.error('[memory] cross-conversation loop re-read failed', { conversationId: other.conversationId, error: readErr.message })
+        continue
+      }
+      const updated = applyLoopChanges(fresh?.decision_memory as DecisionMemory | null, resolutions, reopenings, keep, conversationId)
+      if (!updated) continue
+      const { error: writeErr } = await db
+        .from('ss_yuri_conversations')
+        .update({ decision_memory: updated })
+        .eq('id', other.conversationId)
+      if (writeErr) {
+        console.error('[memory] cross-conversation loop resolution failed', { conversationId: other.conversationId, error: writeErr.message })
+      }
+    }
+  }
+
+  // v10.7.0 Phase E — Correction feedback loop.
+  // Per Principle 3 (Moat Through Learning), corrections aren't just memory; they
+  // drive cleanup of the underlying bad data that caused them. When a correction
+  // names a specific product and the cleanup intent is unambiguous (Sonnet
+  // emitted a cleanup_action), execute the cleanup so the bad row doesn't
+  // survive future Library views.
+  //
+  // Bailey's Feb 14 Skin&Lab Retinol Lifting Roller Cream false-positive is the
+  // canonical case: she corrected Yuri ("I don't own it and never have"), and
+  // Phase 15.1 corrections memory has been recording that correction — but the
+  // underlying ss_user_product_reactions row never got scrubbed, so the holy
+  // grail tag survived. This loop now scrubs it on the very next extraction
+  // cycle after the correction is captured.
+  try {
+    if (cleanupActions.length > 0) {
+      // Lazy import to avoid pulling tools surface into the memory hot path.
+      const { resolveProductByNameStrict } = await import('./tools')
+
+      for (const action of cleanupActions) {
+        if (action.action !== 'clear_reaction' || !action.product_name) continue
+
+        // Strict resolution — never substitute a wrong product when scrubbing.
+        // Better to leave a bad row in place than to delete a good one for a
+        // different product the user actually does have a reaction for.
+        const fullName = action.brand
+          ? `${action.brand} ${action.product_name}`
+          : action.product_name
+        const match = await resolveProductByNameStrict(db, fullName)
+        if (!match) {
+          console.warn(
+            `[memory/cleanup] No confident catalog match for "${fullName}" — skipping clear_reaction cleanup`
+          )
+          continue
+        }
+
+        const { error: deleteError } = await db
+          .from('ss_user_product_reactions')
+          .delete()
+          .eq('user_id', userId)
+          .eq('product_id', match.id)
+
+        if (deleteError) {
+          console.error(
+            `[memory/cleanup] Failed to clear reaction for "${match.brand_en} ${match.name_en}":`,
+            deleteError.message
+          )
+        } else {
+          console.log(
+            `[memory/cleanup] Cleared reaction for "${match.brand_en} ${match.name_en}" (correction feedback loop)`
+          )
+        }
+      }
+    }
+  } catch (err) {
+    // Non-critical: cleanup failure must not break the main memory save above.
+    console.error('[memory/cleanup] Correction cleanup loop error:', err)
+  }
+  return 'saved'
+}
+
+/**
+ * What a decision-memory extraction did. 'nothing' is a legitimate clean result
+ * (no decisions in the conversation); 'unusable' and 'save_failed' are failures
+ * the settle job counts and retries, so "nothing happened" can be told apart
+ * from "it broke".
+ */
+export type DecisionMemoryOutcome = 'saved' | 'nothing' | 'unusable' | 'save_failed'
+
+/**
+ * Open loops in the user's most recent conversations that began before
+ * `excludeId` (up to 3, by created_at, the window the context loader reads), so
+ * a loop Yuri can see is a loop a later conversation can resolve.
+ */
+export async function loadRecentOpenLoops(
+  db: ReturnType<typeof getServiceClient>,
+  userId: string,
+  excludeId: string
+): Promise<PriorConversationLoops[]> {
+  const { data: self, error: selfErr } = await db
+    .from('ss_yuri_conversations')
+    .select('created_at')
+    .eq('id', excludeId)
+    .maybeSingle()
+  if (selfErr || !self?.created_at) {
+    console.error('[memory] recent open-loop load: conversation not found', { excludeId, error: selfErr?.message })
+    return []
+  }
+  // Filter on created_at IN THE QUERY: a limit-then-filter made an older
+  // conversation's settle see no prior loops at all (the newest rows filled the
+  // limit), while the dry run scanned everything.
+  const { data, error } = await db
+    .from('ss_yuri_conversations')
+    .select('id, created_at, decision_memory')
+    .eq('user_id', userId)
+    .lt('created_at', self.created_at as string)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) {
+    console.error('[memory] recent open-loop load failed', { userId, error: error.message })
+    return []
+  }
+  return pickPriorConversations(
+    (data ?? []) as Array<{ id: string; created_at: string; decision_memory: DecisionMemory | null }>,
+    excludeId,
+    self.created_at as string
+  )
+}
+
+/**
+ * THE selection, shared by the live path (loadRecentOpenLoops) and the settle
+ * dry run, so a dry run shows exactly what apply would do: up to 3 conversations
+ * that STARTED BEFORE `selfCreated` (a conversation can close a promise made
+ * earlier, never one made later), newest first, with a non-empty decision
+ * memory; their still-open loops.
+ */
+export function pickPriorConversations(
+  rows: Array<{ id: string; created_at: string; decision_memory: DecisionMemory | null }>,
+  selfId: string,
+  selfCreated: string
+): PriorConversationLoops[] {
+  return rows
+    .filter((c) => c.id !== selfId && c.created_at < selfCreated && c.decision_memory && Object.keys(c.decision_memory).length > 0)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .slice(0, 3)
+    .map((c) => ({
+      conversationId: c.id,
+      openLoops: (c.decision_memory?.open_loops ?? []).filter(isOpenLoop),
+      // Shown to the extractor so it does not reopen them by accident.
+      closedLoops: (c.decision_memory?.open_loops ?? []).filter((l) => !isOpenLoop(l)),
+    }))
+    .filter((c) => c.openLoops.length > 0 || c.closedLoops.length > 0)
+}
+
+/** Every loop the extractor should see: own (open + closed) and prior (open + closed), deduped. */
+export function loopsOnRecord(
+  own: DecisionMemory | null,
+  prior: Array<{ openLoops: DecisionMemory['open_loops']; closedLoops: DecisionMemory['open_loops'] }>
+): DecisionMemory['open_loops'] {
+  return dedupeLoops([...(own?.open_loops ?? []), ...prior.flatMap((o) => [...o.openLoops, ...o.closedLoops])])
+}
+
+/** One loop per topic (case-insensitive), first occurrence wins. */
+export function dedupeLoops(loops: DecisionMemory['open_loops']): DecisionMemory['open_loops'] {
+  const seen = new Set<string>()
+  return loops.filter((l) => {
+    const k = l.topic.toLowerCase()
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
+}
+
+/**
+ * SOFT-close resolved topics in another conversation's decision memory, unless
+ * the same extraction re-raised them (`keep`). Nothing is deleted: the loop
+ * keeps its text and gains resolved_at / resolved_by_conversation / reason.
+ * Returns null when nothing changes, so the caller writes only real changes.
+ */
+export function markResolvedLoops(
+  dm: DecisionMemory | null,
+  resolutions: LoopResolution[],
+  keep: string[] = [],
+  resolvedByConversation: string | null = null,
+  now: string = new Date().toISOString()
+): DecisionMemory | null {
+  if (!dm?.open_loops?.length) return null
+  const keepSet = new Set(keep.map((k) => k.toLowerCase()))
+  let changed = false
+  const open_loops = dm.open_loops.map((l) => {
+    const r = resolutions.find((x) => x.topic.toLowerCase() === l.topic.toLowerCase())
+    if (!r || keepSet.has(l.topic.toLowerCase()) || l.resolved_at) return l
+    changed = true
+    return { ...l, resolved_at: now, resolved_by_conversation: resolvedByConversation, resolved_reason: r.reason }
+  })
+  return changed ? { ...dm, open_loops } : null
+}
+
+/**
+ * Apply one extraction's evidence-checked closes AND reopens to another
+ * conversation's decision memory. Returns null when nothing changes.
+ */
+export function applyLoopChanges(
+  dm: DecisionMemory | null,
+  resolutions: LoopResolution[],
+  reopenings: LoopResolution[],
+  keep: string[] = [],
+  byConversation: string | null = null
+): DecisionMemory | null {
+  let next = markResolvedLoops(dm, resolutions, keep, byConversation) ?? dm
+  let changed = next !== dm
+  for (const r of reopenings) {
+    const reopened = reopenLoop(next, r.topic)
+    if (reopened) {
+      next = reopened
+      changed = true
+    }
+  }
+  return changed ? next : null
+}
+
+/**
+ * Reverse a soft close (owner/audit tool). Returns null if the loop was not closed.
+ */
+export function reopenLoop(dm: DecisionMemory | null, topic: string): DecisionMemory | null {
+  if (!dm?.open_loops?.length) return null
+  let changed = false
+  const open_loops = dm.open_loops.map((l) => {
+    if (l.topic.toLowerCase() !== topic.toLowerCase() || !l.resolved_at) return l
+    changed = true
+    return { ...l, resolved_at: null, resolved_by_conversation: null, resolved_reason: null }
+  })
+  return changed ? { ...dm, open_loops } : null
+}
+
+/**
+ * The extraction half of extractAndSaveDecisionMemory, with NO database writes,
+ * so a backfill can run in dry-run mode and show what would change. Returns null
+ * when the model output is unusable (logged).
+ */
+export async function extractDecisionMemory(
+  conversationId: string,
+  conversationHistory: Array<{ role: string; content: string }>,
+  timezone: string | null | undefined,
+  existingOpenLoops: DecisionMemory['open_loops'],
+  /**
+   * The moment the conversation's "today" refers to. Defaults to now (the live
+   * advisor path). A settle/backfill of a conversation that ended weeks ago
+   * passes its last message time, so a loop or commitment is dated when it was
+   * actually opened, not when the backfill happened to run.
+   */
+  asOf?: Date
+): Promise<{
+  incoming: DecisionMemory
+  resolutions: LoopResolution[]
+  /** Evidence-checked reopenings of soft-closed loops. */
+  reopenings: LoopResolution[]
+  cleanupActions: Array<{ action: string; product_name?: string; brand?: string }>
+} | null> {
   const { getAnthropicClient, MODELS, callAnthropicWithRetry } = await import('@/lib/anthropic')
   const { getLocalClock } = await import('./clock')
   const client = getAnthropicClient()
 
   // The user's local calendar — every date this extractor writes is anchored here,
   // never to raw server UTC.
-  const clock = getLocalClock(timezone)
+  const clock = getLocalClock(timezone, asOf)
   const today = clock.isoDate
 
   // Build a condensed transcript from the conversation
@@ -1890,7 +2322,7 @@ export async function extractAndSaveDecisionMemory(
   // mid-response in Yuri's 1,500-3,000 char replies
   const transcript = conversationHistory
     .slice(-20) // Last 20 messages
-    .map((m) => `${m.role === 'user' ? 'User' : 'Yuri'}: ${m.content.slice(0, 1200)}`)
+    .map((m) => `${m.role === 'user' ? 'User' : 'Yuri'}: ${safeSlice(m.content, 1200)}`)
     .join('\n')
 
   const response = await callAnthropicWithRetry(
@@ -1963,6 +2395,13 @@ export async function extractAndSaveDecisionMemory(
 
    If a previously-open thread got RESOLVED in this conversation (the user answered the question, took the step, made the decision), do NOT include it — leaving it out is how a loop closes.
 
+6b. **RESOLVED OPEN LOOPS**: These open loops are ALREADY ON RECORD, from earlier in this conversation or from the user's other recent conversations with Yuri:
+${existingOpenLoops.filter(isOpenLoop).length ? existingOpenLoops.filter(isOpenLoop).map((l) => `   - ${l.topic}: ${l.summary}`).join('\n') : '   (none)'}
+   These were CLOSED earlier (shown so you do not re-open them by accident):
+${existingOpenLoops.filter((l) => !isOpenLoop(l)).length ? existingOpenLoops.filter((l) => !isOpenLoop(l)).map((l) => `   - ${l.topic}: closed ${String(l.resolved_at).slice(0, 10)} by conversation ${String(l.resolved_by_conversation ?? 'unknown').slice(0, 8)}: ${l.resolved_reason ?? ''}`).join('\n') : '   (none)'}
+   Re-open a closed one ONLY if the conversation below genuinely reopens it: list it in "reopened_open_loops" with the topic exactly as written, a one-line reason, and an evidence_quote copied VERBATIM from the conversation below. Merely mentioning the topic again, or putting it back in open_loops, does not reopen it.
+   For each one, judge from the conversation BELOW whether it has since been RESOLVED (the user answered, took the step, or Yuri already delivered what was pending). Scheduling, promising, or re-stating the pending thing does NOT resolve it: a check-in is resolved when the check-in happened, not when Yuri said when she would do it. For each resolved one, add an entry to "resolved_open_loops" with the topic exactly as written above, a one-line reason, and an evidence_quote copied VERBATIM (at least a few words) from the conversation below that shows it was resolved. Leaving a loop out of open_loops is not enough to close it. If the conversation below does not itself show the resolution, do not list it: an entry whose quote is not in the conversation is discarded.
+
    **check_back_date** (optional): if Yuri named a specific time she'd follow up or check in ("I'll check in around Friday", "let's look at this again next week", "give it ten days and tell me how it feels"), resolve it to a concrete ISO date (YYYY-MM-DD) relative to today, ${today}, which is a **${clock.weekday}** in the user's local calendar (${clock.timezone}). This is what she SAID, not what you think would be good — if she named no follow-up time, omit the field or set it null. Never invent one, and never derive it from how long a treatment takes to work: "give it four to six weeks before you judge results" is an OUTCOME horizon, not a check-in date. Only a check-in she actually offered counts.
 
    When she named a WEEKDAY, resolve it to the NEXT occurrence of that weekday on or after today, counting from the fact that today is a ${clock.weekday}. If she said "${clock.weekday}", she means today. Do not skip ahead a week, and do not shift by a day — a follow-up that lands on the wrong weekday reads to the user as Yuri forgetting what she said, which is worse than no follow-up at all.
@@ -1981,7 +2420,9 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
   "preferences": [{ "topic": "...", "preference": "..." }],
   "commitments": [{ "item": "...", "date": "${today}" }],
   "corrections": [{ "topic": "...", "yuri_said": "...", "truth": "...", "category": "reformulation|discontinued|price|ingredient|brand_identity|other", "date": "${today}", "cleanup_actions": [ { "action": "clear_reaction", "product_name": "...", "brand": "..." } ] }],
-  "open_loops": [{ "topic": "...", "summary": "...", "opened_date": "${today}", "check_back_date": null }]
+  "open_loops": [{ "topic": "...", "summary": "...", "opened_date": "${today}", "check_back_date": null }],
+  "resolved_open_loops": [{ "topic": "...", "reason": "...", "evidence_quote": "..." }],
+  "reopened_open_loops": [{ "topic": "...", "reason": "...", "evidence_quote": "..." }]
 }`,
           },
         ],
@@ -1992,7 +2433,7 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
   const block = response.content[0]
   if (block.type !== 'text') {
     console.error('[memory] decision extraction returned no text block', { conversationId, stop_reason: response.stop_reason })
-    return
+    return null
   }
 
   let extracted: {
@@ -2001,6 +2442,8 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
     commitments?: unknown[]
     corrections?: unknown[]
     open_loops?: unknown[]
+    resolved_open_loops?: unknown[]
+    reopened_open_loops?: unknown[]
   }
   try {
     const text = block.text.trim().replace(/^```json?\s*/, '').replace(/\s*```$/, '')
@@ -2010,7 +2453,7 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
     // conversation's decisions were not saved, and the run looks identical to
     // "nothing to extract" unless it is logged.
     console.error('[memory] decision extraction JSON parse failed', { conversationId, stop_reason: response.stop_reason, chars: block.text.length })
-    return
+    return null
   }
 
   const validCategories: ReadonlySet<CorrectionCategory> = new Set([
@@ -2103,101 +2546,66 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
     extracted_at: new Date().toISOString(),
   }
 
-  // Skip if nothing was extracted
-  if (
-    incoming.decisions.length === 0 &&
-    incoming.preferences.length === 0 &&
-    incoming.commitments.length === 0 &&
-    incoming.corrections.length === 0 &&
-    incoming.open_loops.length === 0
-  ) {
-    return
-  }
-
-  // Load existing decision memory from this conversation and merge
-  const db = getServiceClient()
-  const { data: conv } = await db
-    .from('ss_yuri_conversations')
-    .select('decision_memory')
-    .eq('id', conversationId)
-    .single()
-
-  const existing = (conv?.decision_memory as DecisionMemory | null) || null
-  const merged = mergeDecisionMemory(existing, incoming)
-
-  // Save merged decision memory back to the conversation
-  await db
-    .from('ss_yuri_conversations')
-    .update({ decision_memory: merged })
-    .eq('id', conversationId)
-
-  // v10.7.0 Phase E — Correction feedback loop.
-  // Per Principle 3 (Moat Through Learning), corrections aren't just memory; they
-  // drive cleanup of the underlying bad data that caused them. When a correction
-  // names a specific product and the cleanup intent is unambiguous (Sonnet
-  // emitted a cleanup_action), execute the cleanup so the bad row doesn't
-  // survive future Library views.
-  //
-  // Bailey's Feb 14 Skin&Lab Retinol Lifting Roller Cream false-positive is the
-  // canonical case: she corrected Yuri ("I don't own it and never have"), and
-  // Phase 15.1 corrections memory has been recording that correction — but the
-  // underlying ss_user_product_reactions row never got scrubbed, so the holy
-  // grail tag survived. This loop now scrubs it on the very next extraction
-  // cycle after the correction is captured.
-  try {
-    const cleanupActions: Array<{ action: string; product_name?: string; brand?: string }> =
-      Array.isArray(extracted.corrections)
-        ? (extracted.corrections as Array<{ cleanup_actions?: unknown[] }>)
-            .flatMap((c) => (Array.isArray(c.cleanup_actions) ? c.cleanup_actions : []))
-            .filter(
-              (a): a is { action: string; product_name?: string; brand?: string } =>
-                !!a && typeof a === 'object' && typeof (a as Record<string, unknown>).action === 'string'
-            )
-        : []
-
-    if (cleanupActions.length > 0) {
-      // Lazy import to avoid pulling tools surface into the memory hot path.
-      const { resolveProductByNameStrict } = await import('./tools')
-
-      for (const action of cleanupActions) {
-        if (action.action !== 'clear_reaction' || !action.product_name) continue
-
-        // Strict resolution — never substitute a wrong product when scrubbing.
-        // Better to leave a bad row in place than to delete a good one for a
-        // different product the user actually does have a reaction for.
-        const fullName = action.brand
-          ? `${action.brand} ${action.product_name}`
-          : action.product_name
-        const match = await resolveProductByNameStrict(db, fullName)
-        if (!match) {
-          console.warn(
-            `[memory/cleanup] No confident catalog match for "${fullName}" — skipping clear_reaction cleanup`
+  // Resolutions are accepted only with a verbatim quote that is actually in the
+  // visible transcript (the extractor sees the last 20 messages). This keeps the
+  // model from closing a loop on the strength of a conversation it cannot see.
+  const resolutions = validateResolutions(extracted.resolved_open_loops, transcript, existingOpenLoops.filter(isOpenLoop))
+  // Reopening a soft-closed loop needs the same evidence as closing it.
+  const reopenings = validateResolutions(
+    extracted.reopened_open_loops,
+    transcript,
+    existingOpenLoops.filter((l) => !isOpenLoop(l))
+  )
+  const cleanupActions: Array<{ action: string; product_name?: string; brand?: string }> =
+    Array.isArray(extracted.corrections)
+      ? (extracted.corrections as Array<{ cleanup_actions?: unknown[] }>)
+          .flatMap((c) => (Array.isArray(c.cleanup_actions) ? c.cleanup_actions : []))
+          .filter(
+            (a): a is { action: string; product_name?: string; brand?: string } =>
+              !!a && typeof a === 'object' && typeof (a as Record<string, unknown>).action === 'string'
           )
-          continue
-        }
+      : []
+  return { incoming, resolutions, reopenings, cleanupActions }
+}
 
-        const { error: deleteError } = await db
-          .from('ss_user_product_reactions')
-          .delete()
-          .eq('user_id', userId)
-          .eq('product_id', match.id)
+// Letters, digits and single spaces only: a quote copied from a markdown reply
+// ("**1. Cleanse, Isntree**") must still match the transcript it came from.
+const normQuote = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
 
-        if (deleteError) {
-          console.error(
-            `[memory/cleanup] Failed to clear reaction for "${match.brand_en} ${match.name_en}":`,
-            deleteError.message
-          )
-        } else {
-          console.log(
-            `[memory/cleanup] Cleared reaction for "${match.brand_en} ${match.name_en}" (correction feedback loop)`
-          )
-        }
-      }
+/**
+ * Keep only resolutions that name a loop on record AND cite a verbatim quote
+ * (≥ 12 chars) present in the transcript the extractor actually saw. Exported
+ * for tests.
+ */
+export function validateResolutions(
+  raw: unknown,
+  transcript: string,
+  onRecord: DecisionMemory['open_loops']
+): LoopResolution[] {
+  if (!Array.isArray(raw)) return []
+  const topics = new Set(onRecord.map((l) => l.topic.toLowerCase()))
+  const corpus = normQuote(transcript)
+  const out: LoopResolution[] = []
+  for (const r of raw) {
+    if (!r || typeof r !== 'object') continue
+    const { topic, reason, evidence_quote } = r as Record<string, unknown>
+    if (typeof topic !== 'string' || !topics.has(topic.toLowerCase())) continue
+    // A quote may join excerpts with "..." — every excerpt must be verbatim.
+    const fragments = (typeof evidence_quote === 'string' ? evidence_quote.split(/\.\.\.|…/) : [])
+      .map(normQuote)
+      .filter((f) => f.length > 0)
+    const total = fragments.reduce((n, f) => n + f.length, 0)
+    if (fragments.length === 0 || total < 12 || fragments.some((f) => f.length < 8 || !corpus.includes(f))) {
+      console.warn('[memory] loop resolution discarded: evidence not in visible transcript', { topic })
+      continue
     }
-  } catch (err) {
-    // Non-critical: cleanup failure must not break the main memory save above.
-    console.error('[memory/cleanup] Correction cleanup loop error:', err)
+    out.push({ topic, reason: typeof reason === 'string' ? reason : '', evidence_quote: String(evidence_quote) })
   }
+  return out
 }
 
 // ---------------------------------------------------------------------------
@@ -2249,7 +2657,7 @@ async function loadRecentConversationExcerpts(
           messages: chronological.map((m) => ({
             role: m.role,
             // Generous content per message — product names and recommendations need space
-            content: m.content.slice(0, 500),
+            content: safeSlice(m.content, 500),
           })),
         })
       }

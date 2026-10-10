@@ -41,6 +41,8 @@ import {
   updateNudgeEmailStatusByProviderId,
   type NudgeEmailStatus,
 } from '@/lib/email/nudge-email'
+import { updateJudgmentDeliveryByProviderId } from '@/lib/proactive/ledger'
+import { getServiceClient } from '@/lib/supabase'
 
 // Resend event type → delivery outcome. Only delivery-outcome events matter;
 // anything else (email.sent, email.opened, email.clicked) is acknowledged and
@@ -149,11 +151,15 @@ export async function POST(request: NextRequest) {
   // them, but we can't tell which from the event, so try both and report what
   // matched. Without this fan-out a bounce to a PAYING SUBSCRIBER would be
   // silently dropped — the same invisibility the July 15 audit surfaced for leads.
-  const [recap, nudge] = await Promise.all([
+  // Third ledger (Oct 9 2026): Yuri's one-time lead re-engagement emails
+  // (ss_proactive_judgments). A bounce there must grade as "undelivered", not
+  // as Yuri's words failing.
+  const [recap, nudge, judgment] = await Promise.all([
     updateRecapStatusByProviderId(providerId, status),
     updateNudgeEmailStatusByProviderId(providerId, status),
+    updateJudgmentDeliveryByProviderId(getServiceClient(), providerId, status),
   ])
-  const matched = recap.matched || nudge.matched
+  const matched = recap.matched || nudge.matched || judgment.matched
 
   if (!matched) {
     // Delivery event for an email we don't track (or a send that predates
@@ -166,7 +172,7 @@ export async function POST(request: NextRequest) {
     // Surface the bad outcomes in logs too, not just in a column.
     console.warn(
       `[webhooks/resend] ${event.type} recorded for ${providerId} ` +
-        `(${nudge.matched ? 'nudge' : 'lead recap'}).`
+        `(${nudge.matched ? 'nudge' : judgment.matched ? 'lead re-engagement' : 'lead recap'}).`
     )
   }
 
@@ -174,6 +180,6 @@ export async function POST(request: NextRequest) {
     received: true,
     matched,
     status,
-    surface: nudge.matched ? 'nudge' : recap.matched ? 'lead_recap' : null,
+    surface: nudge.matched ? 'nudge' : judgment.matched ? 'lead_reengage' : recap.matched ? 'lead_recap' : null,
   })
 }

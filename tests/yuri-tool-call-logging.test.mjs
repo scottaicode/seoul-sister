@@ -125,7 +125,8 @@ test('each executed tool is recorded with name, input, and result', () => {
 
 test('result summaries are truncated', () => {
   assert.ok(
-    /result\.slice\(0, 1000\)/.test(advisor),
+    // Oct 10 2026: truncation goes through safeSlice (surrogate-safe), same 1000 budget.
+    /safeSlice\(typeof result === 'string' \? result : String\(result\), 1000\)/.test(advisor),
     'result_summary is no longer truncated — tool results can be large JSON blobs ' +
       'and this is a diagnostic trail, not a cache'
   )

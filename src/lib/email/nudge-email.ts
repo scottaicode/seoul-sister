@@ -30,7 +30,7 @@
  */
 
 import { getServiceClient } from '@/lib/supabase'
-import { sendEmail, wrapEmailHtml } from './send'
+import { sendEmail, wrapEmailHtml, postalAddress } from './send'
 import { escapeHtml } from './html'
 
 const SITE = 'https://www.seoulsister.com'
@@ -63,6 +63,11 @@ export interface NudgeEmailInput {
   /** 1-based position in the escalation ladder. */
   nudgeSequence: number
   unsubscribeToken: string | null
+  /**
+   * Yuri's own subject line (Yuri Wakes Up First check-ins write their own).
+   * Absent for the rule-based nudge types, which keep the quiet fixed subjects.
+   */
+  subject?: string | null
 }
 
 /**
@@ -133,7 +138,11 @@ export function buildNudgeFooter(unsubscribeToken: string | null): string {
   const optOut = unsubscribeUrl
     ? ` <a href="${unsubscribeUrl}" style="color:#999;">Turn off check-in emails</a> and I'll keep them to the app instead.`
     : ''
-  return `<p style="font-size:12px;color:#999;margin:0;">Seoul Sister, your K-beauty intelligence advisor. You're getting this because you're a subscriber and we have an open thread on your skin.${optOut}</p>`
+  // Postal address when configured: check-ins are relationship mail to a
+  // subscriber, but the address is cheap insurance (CAN-SPAM).
+  const address = postalAddress()
+  const addressLine = address ? `<br>${escapeHtml(address)}` : ''
+  return `<p style="font-size:12px;color:#999;margin:0;">Seoul Sister, your K-beauty intelligence advisor. You're getting this because you're a subscriber and we have an open thread on your skin.${optOut}${addressLine}</p>`
 }
 
 export function buildUnsubscribeUrl(token: string | null): string | undefined {
@@ -235,7 +244,7 @@ export async function sendNudgeEmail(
     return 'no_address'
   }
 
-  const subject = buildNudgeSubject(input.nudgeType, input.nudgeSequence)
+  const subject = input.subject?.trim() || buildNudgeSubject(input.nudgeType, input.nudgeSequence)
   const html = buildNudgeEmailHtml(input)
 
   const result = await sendEmail(toEmail, subject, html, {

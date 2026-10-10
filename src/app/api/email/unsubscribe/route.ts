@@ -68,3 +68,12 @@ export async function GET(request: NextRequest) {
     { status: ok ? 200 : 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
   )
 }
+
+/**
+ * RFC 8058 one-click: every email we send advertises
+ * `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (send.ts), which tells
+ * Gmail/Yahoo to POST to this same URL. With GET alone that button got a 405
+ * and unsubscribed nobody. The token is in the query string either way, so the
+ * POST does exactly what the GET does.
+ */
+export const POST = GET

@@ -17,6 +17,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { getOrCreateVisitorId } from '@/lib/utils/widget-session';
 
 const STORAGE_KEY = 'ss_attribution_v1';
 
@@ -108,9 +109,48 @@ export function captureAttribution(): void {
     };
 
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(attribution));
+    sendTouchBeacon(attribution);
   } catch {
     // localStorage can throw (private mode, quota, blocked cookies). Attribution
     // is a measurement nicety — it must NEVER break a signup. Fail silent.
+  }
+}
+
+/** Host only, never the full referrer URL (a search referrer can carry a query). */
+export function referrerHost(referrer: string | undefined): string | undefined {
+  if (!referrer) return undefined;
+  try {
+    return new URL(referrer).hostname.toLowerCase().replace(/^www\./, '').slice(0, 120);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Record this first touch server-side (ss_campaign_touches), keyed by the same
+ * browser id the widget uses, so a landing can be followed to a chat, an email,
+ * and a subscription. Fire-and-forget: measurement must never break a page.
+ */
+function sendTouchBeacon(a: Attribution): void {
+  try {
+    const visitorId = getOrCreateVisitorId();
+    if (!visitorId) return;
+    void fetch('/api/attribution/touch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        visitor_id: visitorId,
+        utm_source: a.utm_source ?? null,
+        utm_medium: a.utm_medium ?? null,
+        utm_campaign: a.utm_campaign ?? null,
+        utm_content: a.utm_content ?? null,
+        referrer_host: referrerHost(a.referrer) ?? null,
+        landing_path: a.landing_path ?? null,
+      }),
+    }).catch(() => {});
+  } catch {
+    // never break a page for measurement
   }
 }
 

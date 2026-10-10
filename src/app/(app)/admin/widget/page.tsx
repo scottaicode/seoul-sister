@@ -8,6 +8,7 @@ import {
   ArrowLeft, Eye, Signal, Clock, Bot, Sparkles,
 } from 'lucide-react'
 import Link from 'next/link'
+import { ProactiveScoreboard } from '@/components/admin/ProactiveScoreboard'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -395,6 +396,7 @@ export default function AdminWidgetPage() {
             <AnalyticsLoadingSkeleton />
           ) : analytics ? (
             <div className="space-y-6">
+              <ProactiveScoreboard />
               {/* The One Metric (NORTH-STAR.md) — visitor → paid conversion.
                   This is the number building is frozen until it moves. */}
               {analytics.conversion && (

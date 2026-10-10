@@ -3,6 +3,7 @@ import { getAnthropicClient, MODELS, CHAT_EFFORT, callAnthropicWithRetry, isRetr
 import { PRODUCT_TURN_FACT, DECLINED_REPLY, MAX_EXTRA_ROUNDS, SEARCH_RETRY_ENABLED, mentionsTerm, nextRoundAction, withTrailingContext, markPenultimateAssistant, assistantTurnForToolRound, withSearchRetry } from '@/lib/llm-request'
 import { namedProductCount } from '@/lib/widget/tool-grounding'
 import { logAIUsage } from '@/lib/ai-usage-logger'
+import { safeSlice, budgetedTranscript } from '@/lib/utils/text-slice'
 import { SPECIALISTS, detectSpecialist } from './specialists'
 import {
   loadUserContext,
@@ -766,7 +767,7 @@ export async function generateTitle(
         messages: [
           {
             role: 'user',
-            content: `Generate a very short title (4-6 words max) for a K-beauty conversation that starts with this question: "${userMessage.slice(0, 200)}"
+            content: `Generate a very short title (4-6 words max) for a K-beauty conversation that starts with this question: "${safeSlice(userMessage, 200)}"
 
 Return ONLY the title text, nothing else. No quotes.`,
           },
@@ -1240,7 +1241,7 @@ export async function* streamAdvisorResponse(
       toolCallLogs.push({
         name: toolBlock.name,
         input: parsedInput,
-        result_summary: typeof result === 'string' ? result.slice(0, 1000) : String(result).slice(0, 1000),
+        result_summary: safeSlice(typeof result === 'string' ? result : String(result), 1000),
       })
     }
 
@@ -1359,25 +1360,28 @@ export async function* streamAdvisorResponse(
       { role: 'user', content: message },
       { role: 'assistant', content: fullResponse },
     ]
-    // 12. Structured decision memory (decisions, preferences, commitments,
-    //     corrections, open loops).
+    // 12 + 13. Structured decision memory, THEN treatment phases, in sequence
+    //     (Oct 10 2026). Both write ss_yuri_conversations.decision_memory; run
+    //     concurrently, the decision extractor's merge could land on a copy read
+    //     before the phase extractor's write and erase its phase decisions. Each
+    //     step keeps its own .catch so one failure never sinks the other.
     deferBackgroundWork(
-      // userTz is passed so a weekday Yuri named ("I'll check in Sunday")
-      // resolves against the USER's calendar, not the server's UTC one. Without
-      // it, a late-evening US message lands on the server's tomorrow and the
-      // promised day drifts (Bailey, Aug 8 2026 — NUDGE-DATE-HONESTY-FIX.md).
-      extractAndSaveDecisionMemory(userId, conversationId, transcriptForDecisions, userTz).catch(
-        (err) => {
-          console.error('[advisor] extractAndSaveDecisionMemory failed:', err)
-        }
-      )
-    )
-    // 13. Treatment phase state changes (Phase 13.D). Conservative — requires a
-    //     verbatim supporting quote.
-    deferBackgroundWork(
-      extractAndSaveTreatmentPhases(userId, conversationId, transcriptForDecisions).catch((err) => {
-        console.error('[advisor] extractAndSaveTreatmentPhases failed:', err)
-      })
+      (async () => {
+        // userTz is passed so a weekday Yuri named ("I'll check in Sunday")
+        // resolves against the USER's calendar, not the server's UTC one. Without
+        // it, a late-evening US message lands on the server's tomorrow and the
+        // promised day drifts (Bailey, Aug 8 2026 — NUDGE-DATE-HONESTY-FIX.md).
+        await extractAndSaveDecisionMemory(userId, conversationId, transcriptForDecisions, userTz).catch(
+          (err) => {
+            console.error('[advisor] extractAndSaveDecisionMemory failed:', err)
+          }
+        )
+        // Phase state changes (Phase 13.D). Conservative — requires a verbatim
+        // supporting quote.
+        await extractAndSaveTreatmentPhases(userId, conversationId, transcriptForDecisions).catch((err) => {
+          console.error('[advisor] extractAndSaveTreatmentPhases failed:', err)
+        })
+      })()
     )
   }
 }
@@ -1386,19 +1390,39 @@ export async function* streamAdvisorResponse(
 // Background: generate conversation summary for cross-session memory
 // ---------------------------------------------------------------------------
 
-async function generateAndSaveSummary(
+/** Total transcript characters a summary is built from (~6-7K tokens on Sonnet). */
+const SUMMARY_TRANSCRIPT_BUDGET = 24000
+
+/**
+ * Generate + save. Exported (Oct 9 2026) so the settle cron and the memory
+ * backfill re-run THIS extractor rather than a parallel copy. Behaviour is
+ * unchanged: generateConversationSummary is the original body, moved verbatim.
+ */
+export async function generateAndSaveSummary(
   conversationId: string,
   conversationHistory: YuriMessage[],
   latestResponse: string
 ): Promise<void> {
+  const result = await generateConversationSummary(conversationHistory, latestResponse)
+  if (!result) return
+  await saveConversationSummary(conversationId, result.summaryBody, result.openerText)
+}
+
+/** The generation half, with no database write (dry-run backfill). */
+export async function generateConversationSummary(
+  conversationHistory: YuriMessage[],
+  latestResponse: string
+): Promise<{ summaryBody: string; openerText: string | null } | null> {
   const client = getAnthropicClient()
 
-  // Build a condensed transcript — generous content per message to capture product names
-  const transcript = conversationHistory
-    .slice(-30) // Last 30 messages for longer conversations
-    .map((m) => `${m.role === 'user' ? 'User' : 'Yuri'}: ${m.content.slice(0, 600)}`)
-    .join('\n')
-  const fullTranscript = `${transcript}\nYuri: ${latestResponse.slice(0, 800)}`
+  // Whole messages within a total budget (Oct 10 2026). This used to cut every
+  // message at 600 chars and Yuri's latest reply at 800, so a 4-product routine
+  // (1,561 chars) was summarized as "only 2 of 4 products listed, cut off
+  // mid-sentence", and every later note offered to finish a routine she had
+  // already given. Older turns that do not fit are dropped with a marker.
+  const lines = conversationHistory.map((m) => `${m.role === 'user' ? 'User' : 'Yuri'}: ${m.content}`)
+  if (latestResponse) lines.push(`Yuri: ${latestResponse}`)
+  const fullTranscript = budgetedTranscript(lines, SUMMARY_TRANSCRIPT_BUDGET)
 
   const response = await callAnthropicWithRetry(
     () =>
@@ -1453,7 +1477,7 @@ Return ONLY the summary text, no JSON or code formatting. End with the NEXT_SESS
   )
 
   const block = response.content[0]
-  if (block.type !== 'text') return
+  if (block.type !== 'text') return null
 
   const fullText = block.text.trim()
 
@@ -1470,7 +1494,7 @@ Return ONLY the summary text, no JSON or code formatting. End with the NEXT_SESS
     summaryBody = fullText.replace(/\n?^NEXT_SESSION_OPENER:.*$/m, '').trim()
   }
 
-  await saveConversationSummary(conversationId, summaryBody, openerText)
+  return { summaryBody, openerText }
 }
 
 // ---------------------------------------------------------------------------
@@ -1498,8 +1522,8 @@ async function extractAndSaveInsight(
             role: 'user',
             content: `${specialist.extractionPrompt}
 
-User message: "${userMessage.slice(0, 500)}"
-Assistant response: "${assistantResponse.slice(0, 500)}"
+User message: "${safeSlice(userMessage, 500)}"
+Assistant response: "${safeSlice(assistantResponse, 500)}"
 
 Return ONLY valid JSON.`,
           },
@@ -1595,8 +1619,8 @@ Soft reactions ("good", "okay", "bad") are NOT extracted; they're too low-signal
 
 ---
 
-USER MESSAGE: "${userMessage.slice(0, 1000)}"
-ASSISTANT RESPONSE: "${assistantResponse.slice(0, 1000)}"
+USER MESSAGE: "${safeSlice(userMessage, 1000)}"
+ASSISTANT RESPONSE: "${safeSlice(assistantResponse, 1000)}"
 
 Return ONLY valid JSON in this exact format:
 {
@@ -1761,7 +1785,7 @@ The supporting_quote field is mandatory on every reaction. If you can't quote a 
             user_id: userId,
             product_id: match.id,
             reaction: reaction.reaction,
-            notes: `Auto-detected from Yuri conversation: "${reaction.supporting_quote.slice(0, 200)}"`,
+            notes: `Auto-detected from Yuri conversation: "${safeSlice(reaction.supporting_quote, 200)}"`,
           },
           { onConflict: 'user_id,product_id' }
         )
