@@ -4,6 +4,16 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+
+## Settle-memory cron: write the run row first, and stop on a time budget (Oct 10 2026)
+
+The first scheduled run (17:10 UTC) settled 9 conversations and was killed by
+Vercel at 300s before it wrote its run row, so "ran" and "never ran" looked
+identical. The route now writes a `running` row first and updates it at the
+end (a killed run leaves `running` with no `completed_at`), and it stops
+starting new conversations after 200s (`deferred_for_time` in the metadata).
+No second-model review: scheduling/logging only, nothing a user reads.
+
 ## UNRELEASED — Yuri Wakes Up First + per-video attribution (built Oct 9 2026, not deployed, migrations not applied)
 
 **Yuri can now reach out first, and she decides whether to.** Daily speak-or-stay-silent check-ins for subscribers, written from the same memory she uses in chat, and at most one email per captured widget lead, grounded in what they actually asked her. Every decision, silence included, is a dated row in `ss_proactive_judgments`. It is graded against what the person did afterwards (chat restart or reply, conversion, unsubscribe, bounce), and the graded record goes back into her next decision.

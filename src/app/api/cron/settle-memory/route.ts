@@ -6,8 +6,34 @@ import { findUnsettled, settleConversation, settleStateMigrated, MAX_SETTLE_ATTE
 
 export const maxDuration = 300
 
-/** Conversations settled per run; the backlog drains over a few hours. */
+/** Upper bound on conversations per run; the backlog drains over a few hours. */
 const BATCH_LIMIT = 10
+
+/**
+ * Stop STARTING new conversations after this long. Each settle is ~3 model
+ * calls (~20-35s), so this leaves room for the one in flight plus the final
+ * writes inside maxDuration. On Oct 10 2026 the first scheduled run settled 9
+ * conversations and was killed at 300s before it wrote its run row — "ran" and
+ * "never ran" looked identical. A count limit cannot bound wall-clock time.
+ */
+const TIME_BUDGET_MS = 200_000
+
+/**
+ * Written FIRST and updated at the end, so a run killed at maxDuration leaves a
+ * 'running' row with no completed_at instead of no row at all.
+ */
+async function startRunRow(db: ReturnType<typeof getServiceClient>, startedAtIso: string): Promise<string | null> {
+  const { data, error } = await db
+    .from('ss_pipeline_runs')
+    .insert({ source: 'system', run_type: 'settle_memory', status: 'running', started_at: startedAtIso, metadata: { phase: 'started' } })
+    .select('id')
+    .single()
+  if (error) {
+    console.error(`[settle-memory] could not write the started row: ${error.message}`)
+    return null
+  }
+  return data.id as string
+}
 
 /**
  * GET /api/cron/settle-memory — hourly. Re-runs summary, then decision memory,
@@ -22,6 +48,17 @@ async function handler(request: Request) {
   if (authError) return authError
   const db = getServiceClient()
   const startedAt = Date.now()
+  const runId = await startRunRow(db, new Date(startedAt).toISOString())
+
+  // Finish the started row; fall back to a fresh row if it could not be written.
+  async function finishRun(entry: Parameters<typeof logPipelineRun>[1]) {
+    if (runId) {
+      const { error } = await db.from('ss_pipeline_runs').update(entry).eq('id', runId)
+      if (!error) return
+      console.error(`[settle-memory] could not finish run row ${runId}: ${error.message}`)
+    }
+    await logPipelineRun(db, entry)
+  }
 
   try {
     // Without the settle-state columns (and the activity-only updated_at
@@ -29,7 +66,7 @@ async function handler(request: Request) {
     // AI work every hour AND bump old conversations to "most recent". Refuse
     // with one visible run row instead.
     if (!(await settleStateMigrated(db))) {
-      await logPipelineRun(db, {
+      await finishRun({
         run_type: 'settle_memory',
         status: 'failed',
         completed_at: new Date().toISOString(),
@@ -48,8 +85,15 @@ async function handler(request: Request) {
     const tz = new Map((profiles ?? []).map((p) => [p.user_id as string, (p.timezone as string | null) ?? null]))
 
     let settled = 0
+    let attempted = 0
+    let deferredForTime = 0
     const errors: string[] = []
     for (const c of batch) {
+      if (Date.now() - startedAt > TIME_BUDGET_MS) {
+        deferredForTime = batch.length - attempted
+        break
+      }
+      attempted++
       const r = await settleConversation(db, c, { timezone: tz.get(c.userId) ?? null })
       if (r.applied) settled++
       else errors.push(`${c.id.slice(0, 8)}: ${r.errors.join('; ')}`)
@@ -63,19 +107,19 @@ async function handler(request: Request) {
       .gte('memory_settle_attempts', MAX_SETTLE_ATTEMPTS)
     if (gErr) errors.push(`gave-up count: ${gErr.message}`)
 
-    await logPipelineRun(db, {
+    await finishRun({
       run_type: 'settle_memory',
       status: errors.length ? 'completed_with_errors' : 'completed',
       products_scraped: pending.length,
       products_processed: settled,
       products_failed: errors.length,
       completed_at: new Date().toISOString(),
-      metadata: { unsettled: pending.length, attempted: batch.length, settled, gave_up: gaveUp ?? null, errors, duration_ms: Date.now() - startedAt },
+      metadata: { phase: 'finished', unsettled: pending.length, attempted, settled, deferred_for_time: deferredForTime, gave_up: gaveUp ?? null, errors, duration_ms: Date.now() - startedAt },
     })
-    return NextResponse.json({ success: true, unsettled: pending.length, attempted: batch.length, settled, errors })
+    return NextResponse.json({ success: true, unsettled: pending.length, attempted, settled, deferred_for_time: deferredForTime, errors })
   } catch (err) {
     console.error('[settle-memory] run failed:', err)
-    await logPipelineRun(db, {
+    await finishRun({
       run_type: 'settle_memory',
       status: 'failed',
       completed_at: new Date().toISOString(),
