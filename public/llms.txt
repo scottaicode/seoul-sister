@@ -1,7 +1,7 @@
 # Seoul Sister - K-Beauty Intelligence Platform
 # https://seoulsister.com
 
-> Seoul Sister is the world's first English-language K-beauty intelligence platform — "Hwahae for the World." It provides AI-powered Korean skincare product analysis, personalized routine building, counterfeit detection, ingredient-level price comparison, and community reviews filtered by skin type. Database: 5,900+ products, 14,400+ ingredients, 207,000+ ingredient links, 550+ brands across 14 categories.
+> Seoul Sister is an English-language AI advisor for Korean skincare. It provides AI-powered Korean skincare product analysis, personalized routine building, authenticity checks for covered brands, price comparison where retailer data exists, and early community reviews. Database: 5,900+ products, 14,400+ ingredients, 207,000+ ingredient links, 550+ brands across 14 categories.
 
 ## What Seoul Sister Does
 - **Korean Label Scanner**: Point your camera at a Korean product label for instant ingredient translation, safety scoring, personalized skin match, price comparison across 6 retailers, community intelligence, authenticity check, and trend context

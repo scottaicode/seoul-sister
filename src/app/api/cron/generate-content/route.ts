@@ -230,7 +230,7 @@ async function generateBlogPost(topic: TopicResult): Promise<{
 }> {
   const anthropic = getAnthropicClient()
 
-  const systemPrompt = `You are a K-beauty content writer for Seoul Sister, the world's first English-language K-beauty intelligence platform. Write authoritative, data-backed blog posts.
+  const systemPrompt = `You are a K-beauty content writer for Seoul Sister, an English-language AI advisor for Korean skincare. Write authoritative, data-backed blog posts.
 
 PERSPECTIVE SHIFT (Do This First):
 Before writing, articulate the reader's current perception:

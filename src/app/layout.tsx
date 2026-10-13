@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   // length. Re-measure the SERVED html after editing (curl | grep), not the
   // source — entities like &#x27; change the rendered count.
   description:
-    'The first English-language K-beauty intelligence platform. Scan Korean labels, decode ingredients, spot counterfeits, and build a routine that fits your skin.',
+    'An English-language AI advisor for Korean skincare. Scan Korean labels, decode ingredients, check authenticity, and build a routine that fits your skin.',
   keywords: [
     'K-beauty',
     'Korean skincare',
@@ -147,7 +147,7 @@ export default function RootLayout({
               '@type': 'Organization',
               name: 'Seoul Sister',
               url: 'https://www.seoulsister.com',
-              description: 'The world\'s first English-language K-beauty intelligence platform.',
+              description: 'An English-language AI advisor for Korean skincare, grounded in real product ingredient lists.',
               sameAs: [],
               // PNG, not SVG: Google's structured-data guidance wants a raster
               // logo it can actually render, and the old path pointed at the

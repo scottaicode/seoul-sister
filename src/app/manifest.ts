@@ -25,7 +25,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: `${ORIGIN}/`,
     name: 'Seoul Sister - K-Beauty Intelligence',
     short_name: 'Seoul Sister',
-    description: 'The world\'s first English-language K-beauty intelligence platform. Scan labels, build routines, detect counterfeits.',
+    description: 'An English-language AI advisor for Korean skincare. Scan labels, build routines, check authenticity.',
     // ABSOLUTE, not '/' — see the ORIGIN note above. This is the whole fix for
     // the launch-lands-on-login bug.
     start_url: `${ORIGIN}/`,

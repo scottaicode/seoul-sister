@@ -423,7 +423,7 @@ export default function HomeClient() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="section-heading mb-3">Why Seoul Sister Exists</h2>
-            <p className="section-subheading mx-auto">Korean consumers have deep skincare intelligence: ingredient analysis, safety ratings, millions of reviews filtered by skin type. English speakers have nothing equivalent. Until now.</p>
+            <p className="section-subheading mx-auto">Korean consumers have deep skincare intelligence: ingredient analysis, safety ratings, millions of reviews filtered by skin type. Seoul Sister brings that depth to English speakers, with an AI advisor you can talk to.</p>
           </div>
           <motion.div
             variants={stagger}
@@ -566,7 +566,7 @@ export default function HomeClient() {
               />
               <span className="font-display font-bold text-lg text-white">Seoul Sister</span>
             </span>
-            <p className="text-xs text-white/30 mt-1">The world&apos;s first English K-beauty intelligence platform.</p>
+            <p className="text-xs text-white/30 mt-1">An English-language AI advisor for Korean skincare.</p>
           </div>
           <div className="flex flex-wrap justify-center gap-6 text-sm">
             {[
