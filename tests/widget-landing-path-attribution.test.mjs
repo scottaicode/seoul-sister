@@ -195,8 +195,11 @@ test('the blog CTA emits the specific post path', () => {
   const inline = readFileSync(join(root, 'src/components/blog/BlogInlineYuriPrompt.tsx'), 'utf8')
   for (const [name, srcText] of [['BlogYuriCta', cta], ['BlogInlineYuriPrompt', inline]]) {
     assert.match(srcText, /feederPath/, `${name} must accept the post path`)
-    assert.match(srcText, /&fp=\$\{encodeURIComponent\(feederPath\)\}/, `${name} must append it encoded`)
+    assert.match(srcText, /blogCtaHref\([^)]*feederPath\)/, `${name} must hand the path to blogCtaHref`)
   }
+  // blogCtaHref (Oct 12 2026) now builds every blog CTA href.
+  const helper = readFileSync(join(root, 'src/components/blog/blog-prefill.ts'), 'utf8')
+  assert.match(helper, /&fp=\$\{encodeURIComponent\(feederPath\)\}/, 'blogCtaHref must append it encoded')
   const page = readFileSync(join(root, 'src/app/blog/[slug]/page.tsx'), 'utf8')
   const passes = page.match(/feederPath=\{`\/blog\/\$\{blogPost\.slug\}`\}/g) || []
   assert.ok(passes.length >= 3, `all CTA render sites must pass the path (found ${passes.length})`)

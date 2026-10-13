@@ -18,6 +18,7 @@ import { toSlug } from '@/lib/utils/slug'
 import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { ShareButton } from '@/components/ui/ShareButton'
 import ProductIntelligenceSection from '@/components/products/ProductIntelligenceSection'
+import ProductTopAskYuri from '@/components/products/ProductTopAskYuri'
 import { proxyImageUrl, productImageOrFallback } from '@/lib/utils/image-proxy'
 import { isRecommendedRetailer } from '@/lib/yuri/tools'
 import { serializeJsonLd } from '@/lib/utils/json-ld'
@@ -510,6 +511,9 @@ export default async function PublicProductPage({ params }: Props) {
                     <span className="text-sm text-white/40">{product.volume_display}</span>
                   )}
                 </div>
+
+                {/* Free Yuri entry at the top — see ProductTopAskYuri. */}
+                <ProductTopAskYuri productId={product.id} brand={product.brand_en} name={product.name_en} />
               </div>
             </div>
           </div>

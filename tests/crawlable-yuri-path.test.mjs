@@ -37,12 +37,15 @@ for (const [name, file] of [
     const src = decomment(read(file))
     assert.match(src, /<Link\s[\s\S]*?href=\{href\}/, 'must render <Link href>')
     assert.doesNotMatch(src, /router\.push/, 'router.push means no crawlable href in HTML')
-    // The anonymous branch must carry the prefill AND the source attribution.
-    assert.match(src, /\/\?ask=\$\{encodeURIComponent\(prefill\)\}&from=blog/)
-    // href swaps on auth rather than preventDefault (no hydration mismatch,
-    // middle-click keeps working).
-    assert.match(src, /user \? '\/yuri' :/)
+    // The href is built by blogCtaHref (blog-prefill.ts, Oct 12 2026) from the
+    // auth state, so it swaps on auth rather than preventDefault (no hydration
+    // mismatch, middle-click keeps working).
+    assert.match(src, /blogCtaHref\(prefill, !!user, feederPath\)/)
     assert.doesNotMatch(src, /preventDefault/)
+    // The anonymous branch must carry the prefill AND the source attribution.
+    const helper = decomment(read('src/components/blog/blog-prefill.ts'))
+    assert.match(helper, /\/\?ask=\$\{encodeURIComponent\(prefill\)\}&from=blog/)
+    assert.match(helper, /if \(signedIn\) return '\/yuri'/)
   })
 }
 

@@ -3,7 +3,7 @@
 import { Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
-import { buildBlogPrefill } from './blog-prefill'
+import { buildBlogPrefill, blogCtaHref, shownOpener } from './blog-prefill'
 import { trackEvent, BlogEvent } from '@/lib/analytics'
 
 interface BlogYuriCtaProps {
@@ -13,9 +13,11 @@ interface BlogYuriCtaProps {
   /** Site-relative path of THIS post, so the widget can record which page
    *  produced the conversation. See ss_widget_sessions.landing_path. */
   feederPath?: string | null
+  /** ss_content_posts.yuri_opener — see blog-prefill.ts. */
+  yuriOpener?: string | null
 }
 
-export default function BlogYuriCta({ title, category, primaryKeyword, feederPath }: BlogYuriCtaProps) {
+export default function BlogYuriCta({ title, category, primaryKeyword, feederPath, yuriOpener }: BlogYuriCtaProps) {
   const { user } = useAuth()
 
   // A real <Link href>, not a router.push in an onClick.
@@ -39,14 +41,14 @@ export default function BlogYuriCta({ title, category, primaryKeyword, feederPat
   // cmd-click keep working. A signed-in visitor landing on `/?ask=` is already
   // blessed behaviour — `SignedInRedirect` deliberately does NOT bounce them
   // off `/` when `ask`/`from` is present.
-  const prefill = buildBlogPrefill({ title, category, primaryKeyword })
+  const prefill = buildBlogPrefill({ title, category, primaryKeyword, opener: yuriOpener })
   // `fp` (feeder path) names WHICH post, where `from=blog` names only the KIND.
   // Explicit rather than inferred: the widget also reads the same-origin
   // referrer as a fallback, but a referrer is a claim the BROWSER controls
   // (rel="noreferrer", a referrer-policy change, an in-app webview) while a
   // param is one we control. Belt and braces — either alone would work today.
-  const fp = feederPath ? `&fp=${encodeURIComponent(feederPath)}` : ''
-  const href = user ? '/yuri' : `/?ask=${encodeURIComponent(prefill)}&from=blog${fp}`
+  const href = blogCtaHref(prefill, !!user, feederPath)
+  const own = shownOpener(yuriOpener, !!user)
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
@@ -59,6 +61,7 @@ export default function BlogYuriCta({ title, category, primaryKeyword, feederPat
             ? 'Yuri has access to our full product database: ingredients, prices, and personalized recommendations for your skin.'
             : 'Yuri builds your routine, tells you what is worth your money, and tracks your skin as it changes. Start a free chat right now, no account needed. She just gets sharper once she really knows you.'}
         </p>
+        {own && <p className="text-white/90 italic mb-5">&ldquo;{own}&rdquo;</p>}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
             href={href}

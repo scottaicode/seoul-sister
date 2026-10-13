@@ -5,6 +5,36 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.40.0 — Every blog post asks the reader's next question; product pages offer Yuri where people look (Oct 12-13 2026)
+
+**Measured first.** GA4 landing sessions vs `ss_widget_sessions.landing_path`, Sep 14 to Oct 11: the
+acne-scar post 156 sessions → 0 Yuri chats, "how to tell if K-beauty is fake" 106 → 0, the
+Japanese/Korean sunscreen post 20 → 3. Every post pre-filled the same opener ("I just read your guide
+on X, can you help me figure out what's right for my skin?"), which fits "which one is right for me"
+posts and misses the rest. ChatGPT sent ~65 of its 136 sessions to product pages at ~5 seconds each
+and none chatted: the only free Yuri offer sat below the description, ingredients and stats.
+
+- **`ss_content_posts.yuri_opener`** (migration `20261012000001`, applied; 48 openers backfilled,
+  verified 48/48). Shown to anonymous readers as the CTA text and pre-filled as their first message.
+  NULL falls back to the old template. Openers written by Opus 5.5 from each post's body; Fable 5.1
+  review replaced 15 (yes/no permission questions that spent one of 12 free messages, a Purito
+  opener Yuri would contradict because a sibling SKU is still sold, Japanese picks she cannot
+  ground, authenticity openers asking for a verdict on a bottle she cannot see).
+- **Product pages:** "Is this right for your skin? Ask Yuri, free, no signup" directly under the
+  price (`ProductTopAskYuri`), tagged `product_top` with `fp=/products/<id>` so it is graded on its
+  own and per product. The card further down stays.
+- **Ingest** accepts `yuri_opener` from LGAAS; null is ignored so a re-delivery never erases one.
+  `LGAAS-WORK-ORDER-BLOG-YURI-OPENER.md` asks LGAAS to generate it.
+- Link building moved into pure helpers (`blogCtaHref`, `shownOpener`, `productTopHref`) so the
+  tests execute them; each new test confirmed to fail when its fix is reverted. Fable's review showed
+  the first test version passed a mutant that ignored the opener.
+- `LGAAS-BLOG-RECIPE-MOISTURIZER-BY-SKIN-TYPE.md`: the next post (≈615 impressions/mo, no ranking
+  post), 8 catalog-grounded picks, reviewed by Fable 5.1 (11 defects fixed).
+
+**Second-model review: yes, Fable 5.1, twice.** **Not verified: no visitor has used either new path
+yet.** Grade with `select source, landing_path, count(*) from ss_widget_sessions where created_at >
+'2026-10-13' group by 1,2` (baseline: `source='product'` = 5 sessions ever).
+
 ## Settle-memory cron: write the run row first, and stop on a time budget (Oct 10 2026)
 
 The first scheduled run (17:10 UTC) settled 9 conversations and was killed by

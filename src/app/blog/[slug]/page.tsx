@@ -71,6 +71,8 @@ interface BlogPost {
   author: string | null
   faq_schema: { questions?: Array<{ question: string; answer: string }> } | Array<{ question: string; answer: string }> | null
   primary_keyword: string | null
+  /** NULL until the 20261012000001 migration + backfill; select('*') tolerates its absence. */
+  yuri_opener?: string | null
 }
 
 /** Normalize FAQ data — LGAAS sends a flat array, but the page expects { questions: [...] } */
@@ -393,6 +395,7 @@ export default async function BlogPostPage({
                 title={blogPost.title}
                 category={blogPost.category}
                 primaryKeyword={blogPost.primary_keyword}
+                yuriOpener={blogPost.yuri_opener}
               />
               <div
                 className={ARTICLE_PROSE_CLASS}
@@ -407,6 +410,7 @@ export default async function BlogPostPage({
             title={blogPost.title}
             category={blogPost.category}
             primaryKeyword={blogPost.primary_keyword}
+            yuriOpener={blogPost.yuri_opener}
           />
 
           {/* Tags */}
@@ -478,6 +482,7 @@ export default async function BlogPostPage({
           title={blogPost.title}
           category={blogPost.category}
           primaryKeyword={blogPost.primary_keyword}
+          yuriOpener={blogPost.yuri_opener}
         />
       </div>
     </>

@@ -26,6 +26,9 @@ const ingestSchema = z.object({
   // published on its side. `.optional()` alone would reject an explicit null
   // and 400 the delivery.
   published_at: z.string().nullable().optional(),
+  // The reader's likely next question, used as the post's "Ask Yuri" opener
+  // (ss_content_posts.yuri_opener, Oct 12 2026). Bounds match the DB CHECK.
+  yuri_opener: z.string().trim().min(10).max(240).nullable().optional(),
 })
 
 /**
@@ -84,6 +87,13 @@ export async function POST(request: NextRequest) {
       published_at: data.published_at ?? null,
       author: 'Seoul Sister Team',
     }
+
+    // Written only when LGAAS sends a real string. An absent key OR an explicit
+    // null leaves the stored opener alone: a serializer that spreads a row
+    // sends null for fields it does not know, and that must not erase an
+    // opener set here. Also keeps the route working before the
+    // 20261012000001 migration (an unknown column would fail the whole write).
+    if (typeof data.yuri_opener === 'string') row.yuri_opener = data.yuri_opener
 
     // Manual upsert: check if lgaas_post_id already exists, then insert or update.
     // We avoid .upsert({ onConflict }) because the partial unique index on
