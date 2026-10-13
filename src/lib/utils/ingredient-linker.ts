@@ -192,11 +192,16 @@ export function buildIngredientMap(
   const links: IngredientLink[] = []
 
   for (const ing of ingredients) {
-    // Prefer English name, fall back to INCI
+    // Prefer English name for matching text, fall back to INCI
     const name = ing.name_en || ing.name_inci
     if (!name) continue
 
-    const slug = toSlug(name)
+    // The slug MUST come from name_inci: /ingredients/[slug] resolves rows by
+    // toSlug(name_inci). Slugging the English name linked "Beta Hydroxy Acid
+    // (Salicylic Acid)" to /ingredients/beta-hydroxy-acid-salicylic-acid, a 404,
+    // on every post that mentioned it (Oct 13 2026 crawl: 11 of 72 distinct
+    // ingredient links broken across 30 of 52 posts).
+    const slug = toSlug(ing.name_inci || name)
     if (!slug || seen.has(slug)) continue
     seen.add(slug)
 
@@ -205,12 +210,9 @@ export function buildIngredientMap(
     links.push(aliases ? { name, slug, aliases } : { name, slug })
 
     // Also add INCI name if different from English name
+    // (the slug is already the INCI slug, so only the matching text differs)
     if (ing.name_en && ing.name_inci && ing.name_en !== ing.name_inci) {
-      const inciSlug = toSlug(ing.name_inci)
-      if (inciSlug && !seen.has(inciSlug)) {
-        // Link INCI name to the same slug as English name
-        links.push({ name: ing.name_inci, slug })
-      }
+      links.push({ name: ing.name_inci, slug })
     }
   }
 

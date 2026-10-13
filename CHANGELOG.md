@@ -5,6 +5,16 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.40.1 — Blog ingredient auto-links pointed at pages that don't exist (Oct 13 2026)
+
+`buildIngredientMap` slugged each ingredient's ENGLISH name, but `/ingredients/[slug]` resolves by
+`toSlug(name_inci)`. Any ingredient whose two names differ linked to a 404 on every post that
+mentioned it ("Beta Hydroxy Acid (Salicylic Acid)" → `/ingredients/beta-hydroxy-acid-salicylic-acid`).
+Crawl of all 52 posts: 11 of 72 distinct ingredient links broken, on 30 posts. The slug now comes
+from `name_inci`; the English and INCI names both still match. Some broken links are written by
+LGAAS into the post body and are not fixed by this; re-crawl after deploy measures what remains.
+Test executes the real linker and fails on revert.
+
 ## v11.40.0 — Every blog post asks the reader's next question; product pages offer Yuri where people look (Oct 12-13 2026)
 
 **Measured first.** GA4 landing sessions vs `ss_widget_sessions.landing_path`, Sep 14 to Oct 11: the
