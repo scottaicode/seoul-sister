@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { postSignInDestination } from '@/lib/auth/post-sign-in'
 
 /**
  * OAuth Callback Page (Client-Side)
@@ -32,9 +33,14 @@ export default function AuthCallbackPage() {
 
         if (!session) {
           // No session yet — listen for auth state change
+          // The timeout must be cleared on success: left running, it fired 10s
+          // after a good sign-in and sent the user (by then mid-onboarding)
+          // to /login.
+          let timeoutId: ReturnType<typeof setTimeout> | undefined
           const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, newSession) => {
               if (event === 'SIGNED_IN' && newSession) {
+                clearTimeout(timeoutId)
                 subscription.unsubscribe()
                 await redirectBasedOnProfile(newSession.user.id)
               }
@@ -42,7 +48,7 @@ export default function AuthCallbackPage() {
           )
 
           // Timeout after 10 seconds
-          setTimeout(() => {
+          timeoutId = setTimeout(() => {
             subscription.unsubscribe()
             setError('Authentication timed out. Please try again.')
             setTimeout(() => router.replace('/login'), 2000)
@@ -66,13 +72,7 @@ export default function AuthCallbackPage() {
         .eq('user_id', userId)
         .maybeSingle()
 
-      if (profile?.plan && profile.plan !== 'free') {
-        // Existing subscriber
-        router.replace(profile.onboarding_completed ? '/dashboard' : '/onboarding')
-      } else {
-        // New user or free plan — needs to subscribe
-        router.replace('/subscribe')
-      }
+      router.replace(postSignInDestination(profile))
     }
 
     handleCallback()
