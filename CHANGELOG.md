@@ -5,6 +5,19 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.41.0 — The SEO Guardian now sees which pages produce Yuri chats (Oct 14 2026)
+
+The weekly Guardian ranked pages by Google clicks alone and never saw the next step: which pages
+turn readers into Yuri conversations (the leads). Its weekly prompt now carries "Yuri chats by
+landing page" for the same window (chats, messages, emails captured), from
+`ss_widget_sessions.landing_path`, plus the count of chats with no page recorded. Facts only; the
+strategist decides what to do with them. A failed fetch renders as UNAVAILABLE, never as zero chats,
+and a partial PostgREST scan is refused rather than reported. Stored in `computed_facts.pageChats`.
+Preview on live data (Sep 15 onward): sunscreen buying guide 3 chats, Beauty of Joseon review 2,
+20 chats with no page recorded. `src/lib/seo/page-chats.ts`, test executes the real functions and
+fails on revert. No second-model review: an internal strategist input, no customer-facing text.
+**Not verified until the scheduler's next Sunday run writes a report with `computed_facts.pageChats`.**
+
 ## v11.40.1 — Blog ingredient auto-links pointed at pages that don't exist (Oct 13 2026)
 
 `buildIngredientMap` slugged each ingredient's ENGLISH name, but `/ingredients/[slug]` resolves by

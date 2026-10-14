@@ -3,6 +3,7 @@ import { getAnthropicClient, callAnthropicWithRetry } from '@/lib/anthropic'
 import { getAIContext, estimateCost } from '@/lib/ai-config'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import { getGscConfig, fetchSearchAnalytics, fetchSiteTotals, type GscRow } from './gsc-client'
+import { fetchPageChats, formatPageChats } from './page-chats'
 
 // ---------------------------------------------------------------------------
 // SEO Guardian — weekly Search Console strategist (Phase 1, report-only).
@@ -155,6 +156,7 @@ function buildUserPrompt(input: {
   }
   priorComparison: string
   priorBets: string
+  pageChats: string
   today: string
 }): string {
   const QUERY_LIMIT = 300
@@ -197,6 +199,8 @@ ${shownQueries.map(fmtQ).join('\n')}${remainderNote}
 
 TOP PAGES (path | clicks | impressions | avg position):
 ${input.pageAggs.slice(0, PAGE_LIMIT).map((p) => `${p.page} | ${p.clicks} | ${p.impressions} | ${p.position}`).join('\n')}
+
+${input.pageChats}
 
 Write this week's report and bets.`
 }
@@ -365,6 +369,11 @@ export async function runSeoGuardian(db: SupabaseClient): Promise<SeoGuardianRes
 
   const priorComparison = buildPriorComparison(totals, prior?.[0] ?? null)
 
+  // Which pages turn readers into Yuri chats (the lead step after the click).
+  // Same window as the GSC data so the two read side by side.
+  const pageChatFacts = await fetchPageChats(db, windowStart, windowEnd)
+  if (!pageChatFacts.ok) console.error('[seo-guardian] page chat facts unavailable:', pageChatFacts.error)
+
   const priorBetLines: string[] = []
   for (const run of prior ?? []) {
     const bets = (run.bets as SeoBet[]) ?? []
@@ -410,6 +419,7 @@ export async function runSeoGuardian(db: SupabaseClient): Promise<SeoGuardianRes
     totals,
     priorComparison,
     priorBets,
+    pageChats: formatPageChats(pageChatFacts, windowStart, windowEnd),
     today: new Date().toISOString().slice(0, 10),
   })
 
@@ -447,7 +457,7 @@ export async function runSeoGuardian(db: SupabaseClient): Promise<SeoGuardianRes
       // Full raw snapshot — required so Phase 3 can grade bets and any bet can
       // be audited against exactly what the strategist saw
       gsc_snapshot: { rows },
-      computed_facts: { totals, strikingDistanceCount: strikingDistance.length, queryCount: queryAggs.length, pageCount: pageAggs.length },
+      computed_facts: { totals, strikingDistanceCount: strikingDistance.length, queryCount: queryAggs.length, pageCount: pageAggs.length, pageChats: pageChatFacts },
       report_md: reportMd,
       bets,
       model_used: ctx.model,
