@@ -75,7 +75,7 @@ line is NOT the SEO keyword**; the real one is set in Field 3.)
 Paste everything inside the block.
 
 ```
-TITLE: start the H1 with "Best Korean Face Masks".
+TITLE: start the H1 with "Best Korean Face Mask for Your Skin Type".
 
 POST JOB: a PICK LIST by skin concern, with named products, a link to each one's live price, and the ingredients that justify each pick. It is NOT a "what is a sheet mask" explainer and NOT a 10-step routine post. Inside the required "What Actually Works" section, the four skin concerns ARE the four strategies: one bold title per concern (Dry or dehydrated; Sensitive or redness-prone; Oily or congested pores; Dull-looking: hydration plus a gentle polish), two picks each. Keep the 8-row comparison table inside that section.
 
