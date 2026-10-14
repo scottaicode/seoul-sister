@@ -1,8 +1,8 @@
 # LGAAS Blog Recipe: Korean Moisturizer by Skin Type
 
-**Status:** READY. Adversarially reviewed by Fable 5.1 on Oct 12 2026 (11 defects found and fixed: picks cut 16 to 8 to fit the route's mandated structure, pick heading renamed so the route's grounding rule honors it, a false "no ceramide" on Lagom, a truncated INCI on Aestura, "Korean" overclaim in the stats, primary-keyword collision). **Prices as of Oct 12 2026.** If you run this after
-**Oct 26 2026**, ask Claude to re-check prices and stock first; prices in prose drift (see
-`project_blog_price_drift_class`).
+**Status:** READY. Adversarially reviewed by Fable 5.1 on Oct 12 2026 (11 defects found and fixed: picks cut 16 to 8 to fit the route's mandated structure, pick heading renamed so the route's grounding rule honors it, a false "no ceramide" on Lagom, a truncated INCI on Aestura, "Korean" overclaim in the stats, primary-keyword collision). **No prices in the post** (standing rule `lgaas/LGAAS-WORK-ORDER-NEVER-QUOTE-PRICES.md`, Aug 25 2026;
+caught Oct 13 after the first draft of this recipe quoted 8). Stock was checked Oct 12; if you run
+this after Nov 12, ask Claude to re-check that all 8 picks are still in stock.
 
 **Why this post:** Google Search Console, Sep 11 to Oct 8 2026: about 615 impressions a month across
 "best korean moisturizer" (277, position 27), "korean moisturizer" (145, pos 28), "best moisturizer
@@ -45,7 +45,7 @@ Paste everything inside the block.
 ```
 TITLE: start the H1 with "Best Korean Moisturizer for Your Skin Type".
 
-POST JOB: a PICK LIST by skin type, with named, priced, dated products and the ingredients that
+POST JOB: a PICK LIST by skin type, with named products, a link to each one's live price, and the ingredients that
 justify each pick. It is NOT a moisturizer theory explainer. Inside the required "What Actually
 Works" section, the four skin types ARE the four strategies: one bold title per skin type, two picks
 each. Keep the 8-row comparison table inside that section.
@@ -70,39 +70,39 @@ October 12, 2026; never hedge them as "floating around" or "you may have seen"):
 - 27% list "fragrance" or "parfum". Counting fragrant essential oils and fragrance allergens
   (limonene, linalool, citral, citrus peel, lavender or sage oil) it is 44%. So "calming" on the
   front does not mean unscented: read the list.
-- The median Olive Young price of an in-stock, single-unit moisturizer in the catalog is $28.
 Land the fragrance figure in the sensitive-skin strategy; it is the strongest fact in the post.
 
 PRODUCTS FROM DATABASE (Seoul Sister catalog, verified ingredient lists, checked October 12, 2026).
 These 8 are the ONLY products in this post. Any product appearing in an "Available products" or
 internal-linking list below was auto-fetched by category and is NOT a pick; do not name it. Use the
-exact names. Quote each price WITH "as of October 2026". Link each to its Seoul Sister page.
+exact names. NEVER write a price or dollar figure (standing Seoul Sister rule: prices in prose go
+stale). Link each product as "[see the current price](/products/<id>)" using its page below.
 
 OILY (light gel bases):
-1. Beauty of Joseon Red Bean Water Gel, 100ml. $18 at Olive Young. /products/29c6a30c-695e-4a87-bd42-b4249d83bbd9
+1. Beauty of Joseon Red Bean Water Gel, 100ml. /products/29c6a30c-695e-4a87-bd42-b4249d83bbd9
    Ingredients that justify it: red bean (Vigna Angularis) seed extract is the first ingredient; glycerin, betaine, panthenol, allantoin. No fragrance on the list.
-2. Isntree Hyaluronic Acid Aqua Gel Cream, 100ml. $22.20 at Olive Young. /products/d198a1fb-4ca6-45db-b5da-ed637fca4af6
+2. Isntree Hyaluronic Acid Aqua Gel Cream, 100ml. /products/d198a1fb-4ca6-45db-b5da-ed637fca4af6
    Ingredients: sodium hyaluronate plus hydrolyzed hyaluronic acid, centella asiatica extract, sodium PCA. No fragrance on the list.
 
 COMBINATION:
-3. SKIN1004 Madagascar Centella Soothing Cream, 75ml. $17 at Olive Young. /products/1bf18471-7fdf-4748-bf54-6161577680f1
+3. SKIN1004 Madagascar Centella Soothing Cream, 75ml. /products/1bf18471-7fdf-4748-bf54-6161577680f1
    Ingredients: centella asiatica extract is 72% of the formula, with four ceramides (EOP, NS, NP, AP), phytosphingosine and cholesterol. SAY: it contains peppermint leaf extract, so skip it if your skin is reactive.
-4. Purito Seoul Oat-In Calming Gel Cream, 100mL. $15.60 at Olive Young. /products/bd1ce1b5-6e26-4bf0-985d-d5565681a6eb
+4. Purito Seoul Oat-In Calming Gel Cream, 100mL. /products/bd1ce1b5-6e26-4bf0-985d-d5565681a6eb
    Ingredients: oat seed water is 77%, with squalane, panthenol, beta-glucan. No fragrance on the list. (This is the Gel Cream, still sold. It is NOT the discontinued Oat-in Intense Cream.)
 
 DRY:
-5. S.Nature Aqua Squalane Moisturizing Cream Special Set (60ml + 30ml). $18.90 for the set at Olive Young. /products/da6aa851-617e-4849-b9f4-a8863d1fe2ed
+5. S.Nature Aqua Squalane Moisturizing Cream Special Set (60ml + 30ml). /products/da6aa851-617e-4849-b9f4-a8863d1fe2ed
    Ingredients: squalane at 150,000ppm (15%), glycerin, betaine, panthenol, sodium hyaluronate. No fragrance on the list. Say it is a set.
-6. Anua Rice 70 Intensive Moisturizing Milk, 150ml. $19.99 at Olive Young. /products/1689aad0-c15a-4f07-841a-9a92e303a524
+6. Anua Rice 70 Intensive Moisturizing Milk, 150ml. /products/1689aad0-c15a-4f07-841a-9a92e303a524
    Ingredients: rice bran water 71%, meadowfoam seed oil, ceramide NP, cholesterol, niacinamide. A milk texture for people who hate heavy creams. No fragrance on the list.
 
 SENSITIVE / BARRIER-DAMAGED (open this strategy with the fragrance figure):
-7. Dr. Jart+ Power Derma Barrier Cream Set (80mL + 7mL). $23.30 for the set at Olive Young. /products/31594279-c1d7-4c11-b4bd-85503763ca3e
-   Ingredients: panthenol, dipotassium glycyrrhizate, sodium hyaluronate, ceramide NP. No fragrance on the list. Say it is a set; do NOT call $23.30 the price of a single tube.
-8. Purito Seoul Wonder Releaf Centella Cream Unscented, 50mL. $16.80 at Olive Young. /products/9beab671-f72b-49eb-8b71-284444f1c7a7
+7. Dr. Jart+ Power Derma Barrier Cream Set (80mL + 7mL). /products/31594279-c1d7-4c11-b4bd-85503763ca3e
+   Ingredients: panthenol, dipotassium glycyrrhizate, sodium hyaluronate, ceramide NP. No fragrance on the list. Say it is a set.
+8. Purito Seoul Wonder Releaf Centella Cream Unscented, 50mL. /products/9beab671-f72b-49eb-8b71-284444f1c7a7
    Ingredients: centella asiatica extract (about 3%), niacinamide, ceramide NP, madecassic acid, asiaticoside, squalane. No fragrance on the list.
 
-COMPARISON TABLE: columns Product | Skin type | Texture | Price (Oct 2026) | Fragrance or essential oils on the list | Ceramide on the list.
+COMPARISON TABLE: columns Product | Skin type | Texture | Fragrance or essential oils on the list | Ceramide on the list. No price column.
 TABLE VALUES (use exactly):
 - Fragrance/EO: "No, but peppermint leaf extract" for SKIN1004; "No" for the other seven.
 - Ceramide: "Yes" for SKIN1004, Anua, Dr. Jart+, Purito Wonder Releaf; "No" for Beauty of Joseon, Isntree, Purito Oat-In, S.Nature.
@@ -129,6 +129,7 @@ HARD RULES (this route has no automatic fact-checker, so these are mandatory):
   notes above.
 - Do NOT name Illiyoon, Aestura, Real Barrier, COSRX Balancium or Purito Dermide with a price or
   review count. If you mention that famous barrier creams exist, do it without numbers.
+- Do NOT write any price or dollar figure anywhere, including the table and FAQ.
 - Do NOT quote review counts or star ratings for any product.
 - Retailers: Olive Young and Soko Glam only. NEVER name YesStyle, Stylevana, StyleKorean, Amazon or eBay.
 - No em-dashes anywhere.
@@ -145,7 +146,7 @@ HARD RULES (this route has no automatic fact-checker, so these are mandatory):
 
 0. **Before publishing:** generate the hero image in Blog Manager before Sync to Site, or the post
    ships with no featured image.
-1. Every product named is one of the 8, with the right price and "as of October 2026".
+1. Every product named is one of the 8, and NO dollar figure appears anywhere (body, table, FAQ, meta).
 2. Grep the draft for: YesStyle, Amazon, eBay, Stylevana, StyleKorean, em-dash (—), "dermatologist",
    "clinically", "heals", "treats", any review count.
 3. The four first-party figures appear AS Seoul Sister's, with the date.
