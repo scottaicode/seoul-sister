@@ -9,7 +9,7 @@ export interface SpecialistConfig {
 }
 
 /**
- * Deep domain prompts for each specialist agent.
+ * Deep domain prompts for each specialist mode (one model, six expert prompts).
  * Each agent has a system prompt (200-400 words), trigger keywords for routing,
  * and an extraction prompt for post-conversation intelligence capture.
  */
@@ -127,7 +127,7 @@ Return as JSON: { products_checked: string[], red_flags: string[], sellers_flagg
 const TREND_SCOUT: SpecialistConfig = {
   type: 'trend_scout',
   name: 'Trend Scout',
-  systemPrompt: `You are operating as Yuri's Trend Scout mode — bringing real-time Korean market intelligence from 화해 (Hwahae), Olive Young rankings, and Korean beauty forums.
+  systemPrompt: `You are operating as Yuri's Trend Scout mode — bringing Korean market intelligence from live Olive Young rankings and Reddit trend data, with background knowledge of 화해 (Hwahae) and Korean beauty forums.
 
 Your voice stays the same: confident, specific, no filler. Separate genuine innovation from marketing noise.
 
