@@ -91,10 +91,10 @@ export default function TermsPage() {
           5. AI Features &amp; Limitations
         </h2>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Yuri and all specialist agents are AI-powered and may occasionally provide inaccurate information</li>
+          <li>Yuri and her specialist modes are AI-powered and may occasionally provide inaccurate information</li>
           <li>AI recommendations are based on available data and should be used as one input among many</li>
           <li>Ingredient conflict warnings are informational, not diagnostic</li>
-          <li>Counterfeit detection is probabilistic, not guaranteed &mdash; always verify through authorized retailers</li>
+          <li>Authenticity checks are probabilistic, not guaranteed &mdash; always verify through authorized retailers</li>
           <li>Label scanning accuracy depends on image quality and may not capture all ingredients</li>
         </ul>
       </section>

@@ -11,13 +11,13 @@ import { excludePollutedIngredientRows } from '@/lib/pipeline/ingredient-parser'
 export const metadata: Metadata = {
   title: 'K-Beauty Ingredient Encyclopedia | 14,000+ Ingredients',
   description:
-    'The most comprehensive K-beauty ingredient database. Safety ratings, comedogenic scores, skin-type effectiveness, and which Korean products contain each ingredient.',
+    'A searchable K-beauty ingredient database. Safety ratings, comedogenic scores, skin-type effectiveness, and which Korean products contain each ingredient.',
   robots: { index: true, follow: true },
   alternates: { canonical: 'https://www.seoulsister.com/ingredients' },
   openGraph: {
     title: 'K-Beauty Ingredient Encyclopedia | Seoul Sister',
     description:
-      'The most comprehensive K-beauty ingredient database. 14,000+ ingredients with safety ratings and effectiveness data.',
+      'A searchable database of 14,000+ K-beauty ingredients with safety ratings and effectiveness data.',
     type: 'website',
     url: 'https://www.seoulsister.com/ingredients',
   },
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'K-Beauty Ingredient Encyclopedia | Seoul Sister',
     description:
-      'The most comprehensive K-beauty ingredient database. 14,000+ ingredients with safety ratings and effectiveness data.',
+      'A searchable database of 14,000+ K-beauty ingredients with safety ratings and effectiveness data.',
   },
 }
 

@@ -28,10 +28,10 @@ const stagger = {
 
 const coreFeatures = [
   { icon: Camera, title: 'Korean Label Decoder', desc: 'Point your camera at any Korean label for instant ingredient translation, safety scoring, and personalized skin match.' },
-  { icon: Sparkles, title: 'AI Beauty Advisor', desc: 'Yuri is your personal AI advisor backed by 6 specialist agents, cross-session memory, and your full skin profile.' },
+  { icon: Sparkles, title: 'AI Beauty Advisor', desc: 'Yuri is your personal AI advisor backed by 6 built-in AI specialists, cross-session memory, and your full skin profile.' },
   { icon: ListOrdered, title: 'Smart Routine Builder', desc: 'AI-generated routines with ingredient conflict detection, layering order, wait times, and skin cycling schedules.' },
-  { icon: ShieldCheck, title: 'Counterfeit Detection', desc: 'Spot fakes before you buy with AI-powered packaging analysis, batch code verification, and crowdsourced signals.' },
-  { icon: Search, title: 'Price Comparison', desc: 'Compare prices across Korea and US retailers: Olive Young, Soko Glam, iHerb, and more.' },
+  { icon: ShieldCheck, title: 'Authenticity Checks', desc: 'Check packaging and batch codes for warning signs before you buy, for the brands we cover.' },
+  { icon: Search, title: 'Price Comparison', desc: 'Compare prices from Olive Young, YesStyle and Soko Glam, with more retailers as prices become available.' },
   { icon: Users, title: 'Community Reviews', desc: 'Reviews filtered by skin type, Fitzpatrick scale, age, and concern. Not just star ratings.' },
 ]
 
@@ -61,7 +61,7 @@ const specialists = [
 // inside the journey, not the front door.
 const steps = [
   { icon: Sparkles, step: '01', title: 'Talk to Yuri', desc: 'Tell her about your skin, your products, and your goals. Free to start, no signup.' },
-  { icon: Brain, step: '02', title: 'Get AI Intelligence', desc: 'Yuri and 6 specialist agents decode ingredients, flag conflicts, check authenticity, and compare prices — scan a Korean label or search 5,900+ products.' },
+  { icon: Brain, step: '02', title: 'Get AI Intelligence', desc: 'Yuri and her 6 built-in AI specialists decode ingredients, flag conflicts, check authenticity, and compare prices — scan a Korean label or search 5,900+ products.' },
   { icon: ListOrdered, step: '03', title: 'Build Your Routine', desc: 'Add to your personalized routine with conflict detection, layering order, wait times, and skin cycling.' },
   { icon: Heart, step: '04', title: 'Track and Improve', desc: 'Monitor your Glass Skin Score, track product expiry, get weather alerts, and discover dupes.' },
 ]
@@ -358,8 +358,8 @@ export default function HomeClient() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <span className="badge-gold mb-3 inline-block">Meet the Team</span>
-            <h2 className="section-heading mb-3">6 Specialist AI Agents. One Advisor.</h2>
-            <p className="section-subheading mx-auto">Yuri routes every question to the right specialist, each with deep domain expertise in Korean beauty.</p>
+            <h2 className="section-heading mb-3">6 Built-in AI Specialists. One Advisor.</h2>
+            <p className="section-subheading mx-auto">Yuri draws on six specialist modes depending on what you ask, each with deep domain expertise in Korean beauty.</p>
           </div>
           <motion.div
             variants={stagger}

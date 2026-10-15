@@ -26,7 +26,7 @@ export const SUBSCRIPTION_TIERS = {
     features: [
       'Yuri, your K-beauty advisor, available 24/7',
       'Unlimited conversations & label scans',
-      'All 6 specialist agents (ingredients, routines, authenticity & more)',
+      'All 6 built-in AI specialists (ingredients, routines, authenticity & more)',
       'Reads your Korean labels & builds conflict-aware routines',
       'Remembers your skin across every session',
       'Glass Skin Score photo tracking',

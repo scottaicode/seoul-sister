@@ -141,7 +141,7 @@ export default async function BestOfIndexPage() {
             </h1>
             <p className="text-white/60 max-w-2xl mx-auto">
               Every category ranked by real Olive Young reviews. Full ingredient analysis,
-              safety ratings, and price comparison across 6 retailers.
+              safety ratings, and price comparison where retailer prices are available.
             </p>
           </div>
         </div>
