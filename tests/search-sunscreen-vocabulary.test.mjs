@@ -91,6 +91,9 @@ async function loadSearch() {
     sliceObjectConst(src, 'const WORD_FORM_STEMS'),
     sliceDecl(src, 'function wordFormStem('),
     sliceDecl(src, 'function normalizeTerm('),
+    // Oct 2026: word-number seam helpers (separate module) + ilikeTerm.
+    readFileSync(new URL('../src/lib/yuri/joined-alnum.ts', import.meta.url), 'utf8').replace(/^export /gm, ''),
+    sliceDecl(src, 'function ilikeTerm('),
     sliceDecl(src, 'function termMatches('),
     sliceDecl(src, 'async function smartProductSearch('),
   ].join('\n\n') + '\nexport { smartProductSearch }\n'

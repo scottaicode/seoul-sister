@@ -205,13 +205,19 @@ test('search strategies match on the singular stem', () => {
   // (milky->milk, cleanser->cleans). Assert the RULE (a stemming helper is
   // applied in the SQL predicate) rather than one helper's name, so a future
   // rename cannot report red on correct code the way this test just did.
+  // Oct 2026: the sites call ilikeTerm(t), which is normalizeTerm plus `%` at
+  // word-number seams ("atobarrier365" -> "atobarrier%365"). Still stems.
   assert.ok(
-    toolsSrc.includes('q.ilike(\'name_en\', `%${normalizeTerm(t)}%`)'),
+    toolsSrc.includes('q.ilike(\'name_en\', `%${ilikeTerm(t)}%`)'),
     'Strategy 1.5 stopped stemming name terms — plural queries will silently miss again'
   )
   assert.ok(
-    /const stem = normalizeTerm\(t\)/.test(toolsSrc),
+    /const stem = ilikeTerm\(t\)/.test(toolsSrc),
     'Strategy 2 stopped stemming its OR clauses'
+  )
+  assert.ok(
+    /function ilikeTerm\(term: string\): string \{\s*return joinedAlnumIlike\(normalizeTerm\(term\)\)/.test(toolsSrc),
+    'ilikeTerm no longer applies normalizeTerm'
   )
   // The stemming must still be REACHED, not just referenced.
   assert.ok(

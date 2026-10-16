@@ -73,7 +73,9 @@ test('the line number is a HARD PREDICATE in the strategy that decides', () => {
   // test policed the wrong region; only reverting the bug caught it.
   const code = searchSource()
   const start = code.indexOf('brandCandidate')
-  const end = code.indexOf('compositeMatch?.length')
+  // Oct 2026: the return now checks `compositeRows.length` (joined word-number
+  // terms are re-checked in memory before 1.5 returns).
+  const end = code.indexOf('compositeRows.length')
   assert.ok(start > -1 && end > start, 'strategy 1.5 block not found')
   const s15 = code.slice(start, end)
   assert.match(s15, /if \(lineNumber\)/,

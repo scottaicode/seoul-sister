@@ -123,8 +123,13 @@ test('all three SQL predicate sites use normalizeTerm, not singularize', () => {
     !/singularize\(t\)/.test(SRC),
     'a predicate site still calls singularize(t) — SQL and scoring will disagree'
   )
-  const uses = SRC.match(/normalizeTerm\(t\)/g) || []
-  assert.ok(uses.length >= 3, `expected >=3 normalizeTerm(t) predicate sites, found ${uses.length}`)
+  // Oct 2026: predicate sites call ilikeTerm(t), which wraps normalizeTerm.
+  const uses = SRC.match(/(?:normalizeTerm|ilikeTerm)\(t\)/g) || []
+  assert.ok(uses.length >= 3, `expected >=3 stemmed predicate sites, found ${uses.length}`)
+  assert.ok(
+    /function ilikeTerm\(term: string\): string \{\s*return joinedAlnumIlike\(normalizeTerm\(term\)\)/.test(SRC),
+    'ilikeTerm no longer applies normalizeTerm'
+  )
 })
 
 test('the cleanser stem stays inside the cleanser category (no cross-category leak)', () => {

@@ -5,6 +5,34 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.41.1 — "AtoBarrier365" is not a catalog gap, and Google sign-ups skipped Yuri (Oct 14–16 2026)
+
+**Search: a word joined to a number missed the catalog's spaced name.** On Oct 6 Caroline (comped
+tester) pasted the Olive Young link for AESTURA AtoBarrier 365 Cream. Yuri searched "AtoBarrier365
+Cream" three times, told her it "isn't surfacing in our catalog", and saved it as a custom entry, so
+conflict checks could not see its ingredients. The verified row "Atobarrier 365 Cream" exists;
+`%atobarrier365%` cannot match "atobarrier 365". Now a term with 3+ letters against 2+ digits gets
+`%` at the seam in SQL and an adjacent, in-order match in memory, with the number bounded so "10" is
+not "100". A targeted lookup recovers the unrated row that a rating-ordered window never fetched
+(SPF50 excluded: a rating, not an identity), and the brand-prefix strategy re-checks joined terms
+before returning. Live replay of every real production query of this shape (20) plus 10 more: both of
+Caroline's searches and the resolver now land on the right product (`all_terms`); joined Heartleaf77,
+Derma365, PHA30 and Molecule300 fixed; SKIN1004/SPF queries unchanged except two neutral tail swaps.
+`src/lib/yuri/joined-alnum.ts`, `scripts/replay-joined-alnum-search.ts`. Caroline's library row and
+routine step relinked (`scripts/relink-joined-alnum-entries.ts`; blast radius: only her two rows).
+**Second-model review (Fable) run**: it confirmed the fix and found two real defects, both fixed: a
+short number matched a longer one ("PDRN10" → PDRN 100 as `all_terms`, which writes accept), and the
+guard tests did not bind (a parts-anywhere version and a dead rescue both passed). The tests now run
+the real search against a fake with true ILIKE semantics; four wrong versions each fail.
+
+**Funnel: Google sign-ups met the paywall 3 seconds after creating an account.** The Jul 15 move of
+the paywall to the end of onboarding only changed the email path; `/auth/callback` (every OAuth
+sign-in) still sent free users to `/subscribe`. 13 of 14 Google sign-ups since then never spoke to
+Yuri. Now routes through `postSignInDestination` (same rule as email login), and the callback's 10s
+timeout is cleared on success. Commit 2e41a33, deployed Oct 14.
+
+**Not verified in production yet:** no live Yuri search or Google sign-up has exercised either fix.
+
 ## v11.41.0 — The SEO Guardian now sees which pages produce Yuri chats (Oct 14 2026)
 
 The weekly Guardian ranked pages by Google clicks alone and never saw the next step: which pages

@@ -8,6 +8,7 @@ import {
 } from '@/lib/intelligence/temperature-units'
 import { geocodeLocation } from '@/lib/geo/geocode'
 import { ageInDays } from '@/lib/yuri/price-freshness'
+import { joinedAlnumParts, joinedAlnumMatches, joinedAlnumIlike } from '@/lib/yuri/joined-alnum'
 
 /**
  * Allowed provenances for a custom entry's INCI list. Mirrors the DB CHECK on
@@ -367,11 +368,20 @@ export function joinLineNumbers(s: string): string {
   return s.replace(/\b(?:no|nº|num|number|#)\s*\.?\s*(\d{1,2})\b/gi, 'no$1')
 }
 
+/**
+ * ILIKE body for a query term: the catalog stem, with `%` at word/number seams
+ * so "atobarrier365" also matches "Atobarrier 365" (see joined-alnum.ts).
+ */
+function ilikeTerm(term: string): string {
+  return joinedAlnumIlike(normalizeTerm(term))
+}
+
 function termMatches(haystack: string, term: string): boolean {
   return (
     haystack.includes(term) ||
     haystack.includes(singularize(term)) ||
-    haystack.includes(normalizeTerm(term))
+    haystack.includes(normalizeTerm(term)) ||
+    joinedAlnumMatches(haystack, normalizeTerm(term))
   )
 }
 
@@ -540,7 +550,7 @@ async function smartProductSearch(
       // the catalog's singular storage ("Pad"). Substring semantics cover the
       // reverse case already.
       for (const t of nameTerms) {
-        q = q.ilike('name_en', `%${normalizeTerm(t)}%`)
+        q = q.ilike('name_en', `%${ilikeTerm(t)}%`)
       }
       if (options?.category) q = q.eq('category', options.category)
       // LINE NUMBER as a hard predicate, not a ranking hint.
@@ -563,8 +573,17 @@ async function smartProductSearch(
       }
       const { data: compositeMatch, error: compositeError } = await q.limit(limit)
       if (compositeError) console.error('[smartProductSearch] strategy 1.5 failed:', compositeError.message, { rawQuery, brandCandidate })
-      if (compositeMatch?.length) {
-        return compositeMatch as unknown as Array<Record<string, unknown>>
+      // `%shot%100%` also admits "Shot 1000" in SQL, and this strategy returns
+      // SQL rows directly, so joined word-number terms are re-checked with the
+      // bounded in-memory matcher before anything is returned.
+      const joinedNameTerms = nameTerms.filter(t => joinedAlnumParts(normalizeTerm(t)).length > 1)
+      const compositeRows = ((compositeMatch ?? []) as unknown as Array<Record<string, unknown>>).filter(p =>
+        joinedNameTerms.every(t =>
+          termMatches(`${(p.name_en as string) || ''}`.toLowerCase().replace(/[-/_.]+/g, ' '), t)
+        )
+      )
+      if (compositeRows.length) {
+        return compositeRows
       }
     }
   }
@@ -586,7 +605,7 @@ async function smartProductSearch(
     const orClauses = terms
       .slice(0, 6) // cap to avoid absurdly long filter strings
       .flatMap(t => {
-        const stem = normalizeTerm(t)
+        const stem = ilikeTerm(t)
         return [`name_en.ilike.%${stem}%`, `brand_en.ilike.%${stem}%`]
       })
       .join(',')
@@ -646,6 +665,36 @@ async function smartProductSearch(
       } else if (numbered?.length) {
         const seen = new Set(windowRows.map(r => r.id as string))
         for (const row of numbered as unknown as Array<Record<string, unknown>>) {
+          if (!seen.has(row.id as string)) windowRows.push(row)
+        }
+      }
+    }
+
+    // JOINED-TOKEN RESCUE — same retrieval gap as the line number above.
+    // "AtoBarrier365 Cream" without a brand: the rating-ordered window is full
+    // of rated creams, and the unrated "Atobarrier 365 Cream" is never fetched
+    // (verified live Oct 2026). A word-number token is the product's identity,
+    // so ask for its rows directly and merge them in. Runs only when the query
+    // has such a token. "SPF50" is excluded: it is a rating, not an identity,
+    // and rescuing on it narrowed a "tone up sunscreen SPF50" discovery search
+    // from three results to one (measured on the replayed production queries).
+    const identityTokens = terms.filter(
+      t => !/^spf\d/.test(t) && joinedAlnumParts(normalizeTerm(t)).length > 1
+    )
+    for (const t of identityTokens) {
+      const pattern = ilikeTerm(t)
+      let rescueQuery = db
+        .from('ss_products')
+        .select(cols)
+        .eq('is_verified', true)
+        .or(`name_en.ilike.%${pattern}%,brand_en.ilike.%${pattern}%`)
+      if (options?.category) rescueQuery = rescueQuery.eq('category', options.category)
+      const { data: rescued, error: rescueError } = await rescueQuery.limit(limit * 2)
+      if (rescueError) {
+        console.error('[smartProductSearch] joined-token rescue failed:', rescueError.message, { rawQuery, term: t })
+      } else if (rescued?.length) {
+        const seen = new Set(windowRows.map(r => r.id as string))
+        for (const row of rescued as unknown as Array<Record<string, unknown>>) {
           if (!seen.has(row.id as string)) windowRows.push(row)
         }
       }
@@ -841,7 +890,7 @@ async function smartProductSearch(
         .eq('category', 'sunscreen')
         .ilike('brand_en', `%${brandCandidate}%`)
       for (const t of nameTerms) {
-        q = q.ilike('name_en', `%${normalizeTerm(t)}%`)
+        q = q.ilike('name_en', `%${ilikeTerm(t)}%`)
       }
       // Same line-number predicate as 1.5, for the same reason: without it
       // "no" matches every numbuzin name and a No.1 query returns No.3.
@@ -882,7 +931,7 @@ async function smartProductSearch(
     // the last-resort one — the opposite of how a fallback should behave.
     const orClauses = terms
       .flatMap(t => {
-        const stem = normalizeTerm(t)
+        const stem = ilikeTerm(t)
         return [`name_en.ilike.%${stem}%`, `brand_en.ilike.%${stem}%`]
       })
       .join(',')
