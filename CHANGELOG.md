@@ -5,6 +5,27 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.41.2 — A saved ingredient list is stored exactly or refused, never silently lost (Oct 16 2026)
+
+On Oct 6 Yuri sent Caroline's Cetaphil and Naturium label lists to `update_user_product` as
+comma-separated strings. The tool read only arrays, stored nothing, returned success, and Yuri
+told her "I've got real INCI on both saved now". Only those 2 calls ever sent a string; the one
+earlier list (Aug 1) was an array. `src/lib/yuri/ingredient-input.ts` now reads the input strictly:
+an array, or a string split only on ", " (so "1,2-Hexanediol" stays whole), and every element must
+look like one ingredient or the whole list is refused with an error Yuri can act on. Both save
+results now report `ingredients_saved`. `check_ingredient_conflicts` had the same shape on its
+safety path: a string `ingredient_names` was spread into letters and returned `safe: true`
+(never seen in production); it now uses the same reader and refuses non-array product fields.
+**Second-model review (Fable) run**: the first version used the catalog parser and stored a newline
+label as ONE ingredient and silently dropped names after a stray ";", both as `label_scan`, and a
+helper that only worked on lists starting with "Water" passed its tests. Rewritten strict; every
+shape the review found is refused and the reviewer's wrong helper now fails 4 of 8 tests.
+**Known gap, not fixed:** no conflict check reads `ss_user_products.ingredients_inci`; the stored
+list reaches only Yuri's context (`memory.ts`). Caroline's data was cleaned the same day
+(`scripts/cleanup-caroline-oct2026.ts`: both label lists restored, duplicate Naturium merged, Byoma
+variant corrected to Milky, Fitzpatrick II stated, sun_history filled, a mis-framed memory
+"correction" removed, 4 echoed timestamp tags stripped).
+
 ## v11.41.1 — "AtoBarrier365" is not a catalog gap, and Google sign-ups skipped Yuri (Oct 14–16 2026)
 
 **Search: a word joined to a number missed the catalog's spaced name.** On Oct 6 Caroline (comped

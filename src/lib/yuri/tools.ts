@@ -1,6 +1,7 @@
 import { getServiceClient } from '@/lib/supabase'
 import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 import { excludePollutedIngredientRows } from '@/lib/pipeline/ingredient-parser'
+import { readIngredientInput } from '@/lib/yuri/ingredient-input'
 import { fetchWeather } from '@/lib/intelligence/weather-routine'
 import {
   resolveTemperatureUnit,
@@ -2888,9 +2889,25 @@ async function executeCheckIngredientConflicts(
   userId: string
 ): Promise<string> {
   const db = getServiceClient()
+  // A STRING where an array is expected used to be spread into single letters
+  // ("Retinol, Glycolic Acid" -> ["R","e",...]), so no rule could match and the
+  // check returned safe: true, check_complete: true. Never seen in production,
+  // but Yuri sent strings for array fields twice on Oct 6 2026, and this is the
+  // tool whose answer is a safety verdict. Unreadable input is an error.
+  for (const key of ['product_ids', 'product_names'] as const) {
+    if (input[key] != null && !Array.isArray(input[key])) {
+      return JSON.stringify({ error: `${key} must be an array of strings.` })
+    }
+  }
   const productIds = input.product_ids as string[] | undefined
   const productNames = input.product_names as string[] | undefined
-  const ingredientNames = input.ingredient_names as string[] | undefined
+  const ingredientInput = readIngredientInput(input.ingredient_names)
+  if (ingredientInput.unreadable) {
+    return JSON.stringify({
+      error: 'ingredient_names could not be read as an ingredient list. Send it as an array of ingredient names.',
+    })
+  }
+  const ingredientNames = ingredientInput.list
 
   // Resolve product names to IDs. Two honesty requirements (July 12 audit):
   //  - Surface WHAT each name resolved to (a loose match may be a different
@@ -4134,15 +4151,16 @@ async function executeUpdateUserProduct(
   // the user's real shelf instead of silently passing. Paired and validated:
   // a list without a stated provenance is a list Yuri shouldn't treat as fact
   // (same discipline as fitzpatrick_source), and the DB CHECK enforces it too.
-  const rawIngredients = input.ingredients_inci
+  // A comma-separated string is accepted too, and a list that cannot be read is
+  // an error, never a silent success (see ingredient-input.ts, Oct 6 2026).
   const ingredientsSource = input.ingredients_source as string | undefined
-  const ingredientsInci =
-    Array.isArray(rawIngredients) && rawIngredients.length > 0
-      ? rawIngredients
-          .filter((i): i is string => typeof i === 'string')
-          .map((i) => i.trim())
-          .filter(Boolean)
-      : undefined
+  const ingredientInput = readIngredientInput(input.ingredients_inci)
+  const ingredientsInci = ingredientInput.list
+  if (ingredientInput.unreadable) {
+    return JSON.stringify({
+      error: 'ingredients_inci could not be read as an ingredient list. Send it as an array of ingredient names in label order.',
+    })
+  }
 
   if (ingredientsInci && !VALID_INGREDIENT_SOURCES.has(ingredientsSource ?? '')) {
     return JSON.stringify({
@@ -4232,6 +4250,7 @@ async function executeUpdateUserProduct(
       product_name: displayLabel,
       matched_in_db: !!productId,
       texture_weight: textureWeight,
+      ingredients_saved: ingredientsInci?.length ?? 0,
     })
   }
 
@@ -4303,6 +4322,9 @@ async function executeUpdateUserProduct(
     product_name: displayLabel,
     matched_in_db: !!productId,
     texture_weight: textureWeight,
+    // How many ingredient names were actually stored, so "saved the INCI" can
+    // be checked against a number rather than assumed (Oct 6 2026).
+    ingredients_saved: ingredientsInci?.length ?? 0,
   })
 }
 
