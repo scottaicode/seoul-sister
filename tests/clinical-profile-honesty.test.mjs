@@ -188,9 +188,18 @@ test('the paywall converts on continuity, not a feature list', () => {
   const card = widget.slice(start, start + 1400)
 
   assert.ok(
-    /disappears when you close this tab|keep all of it/i.test(card),
-    'the paywall must name what the visitor LOSES — it fires at the one moment we know their actual skin'
+    /pick\s+up\s+where\s+we\s+left\s+off/i.test(card) && /starting\s+from\s+scratch/i.test(card),
+    'the paywall must name the continuity the visitor keeps by signing up — it fires at the one moment we know their actual skin'
   )
+  // Oct 17 2026: the card said the conversation "disappears when you close this
+  // tab" (it is stored) and promised continuity nothing delivered. Continuity is
+  // now real (widget-carryover.ts); the false sentence must not come back.
+  assert.ok(!/disappears when you close this tab/i.test(card), 'false claim: the preview conversation is stored')
+  // Continuity reaches onboarding, not the whole transcript into paid chat.
+  assert.ok(!/whole\s+conversation|keep\s+all\s+of\s+it/i.test(card), 'overclaims what carries past onboarding')
+  // Sign-up leads to FREE onboarding; the build is subscriber work.
+  assert.ok(/Once\s+you\s+subscribe,\s+I\s+build\s+your/i.test(card), 'the routine build must be tied to subscribing, not to signing up')
+  assert.ok(!/That&apos;s\s+when\s+I\s+can\s+actually\s+build/i.test(card), 'promised the build at the free sign-up step')
   assert.ok(
     !/6 specialist agents/.test(card),
     'reverted to the generic feature list; a visitor who just discussed their own skin does not need a feature tour'

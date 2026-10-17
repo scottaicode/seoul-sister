@@ -80,6 +80,7 @@ export function incrementWidgetMessageCount(): number {
     firstUsed: session.count === 0 ? Date.now() : session.firstUsed,
   }
   writeSession(updated)
+  try { localStorage.setItem(PREVIEWED_AT_KEY, new Date().toISOString()) } catch { /* storage unavailable */ }
   return updated.count
 }
 
@@ -156,6 +157,65 @@ export function getOrCreateVisitorId(): string {
   try { localStorage.setItem(VISITOR_ID_KEY, newId) } catch { /* */ }
   setCookie(VISITOR_COOKIE_NAME, newId, 365)
   return newId
+}
+
+/**
+ * The visitor UUID if this browser already has one, else null. Never creates
+ * one: onboarding uses it only to carry an existing preview conversation over
+ * (src/lib/yuri/widget-carryover.ts), so a fresh id would point at nothing.
+ */
+export function getExistingVisitorId(): string | null {
+  if (!isClient()) return null
+  try {
+    const stored = localStorage.getItem(VISITOR_ID_KEY)
+    if (stored) return stored
+  } catch { /* localStorage unavailable */ }
+  return getCookie(VISITOR_COOKIE_NAME) || null
+}
+
+const CARRYOVER_CHOICE_KEY = 'yuri_carryover_choices'
+const PREVIEWED_AT_KEY = 'yuri_previewed_at'
+
+/** Last time this browser sent a preview message. Never reset (the message counter is, after 30 days). */
+export function previewedAt(): string | null {
+  if (!isClient()) return null
+  try { return localStorage.getItem(PREVIEWED_AT_KEY) } catch { return null }
+}
+
+/** True when this browser has a free-preview conversation. */
+export function hasPreviewConversation(): boolean {
+  return Boolean(getExistingVisitorId()) && (getMessageCount() > 0 || Boolean(previewedAt()))
+}
+
+function readChoices(): Record<string, 'yes' | 'no'> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CARRYOVER_CHOICE_KEY) || '{}')
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch { return {} }
+}
+
+/**
+ * This ACCOUNT's answer to "continue from your earlier chat on this device?".
+ * Keyed by user id: a browser can be shared, and a single per-browser answer
+ * let a second account inherit the first person's "yes" and receive their skin
+ * conversation without being asked (review, Oct 17 2026).
+ */
+export function getCarryoverChoice(userId: string): 'yes' | 'no' | null {
+  if (!isClient() || !userId) return null
+  const v = readChoices()[userId]
+  return v === 'yes' || v === 'no' ? v : null
+}
+
+export function setCarryoverChoice(userId: string, choice: 'yes' | 'no'): void {
+  if (!isClient() || !userId) return
+  try {
+    localStorage.setItem(CARRYOVER_CHOICE_KEY, JSON.stringify({ ...readChoices(), [userId]: choice }))
+  } catch { /* storage unavailable: they are asked again next time */ }
+}
+
+/** The visitor id to send to onboarding: only after THIS account said yes. */
+export function consentedVisitorId(userId: string): string | undefined {
+  return getCarryoverChoice(userId) === 'yes' ? getExistingVisitorId() ?? undefined : undefined
 }
 
 /**

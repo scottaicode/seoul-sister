@@ -862,18 +862,26 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                 it is about to be lost, and that keeping it is what they'd be
                 paying for. Continuity is the product; the feature list was
                 answering a question nobody asked. (July 21 2026) */}
+            {/* Oct 17 2026: this card promised "we pick up here instead of
+                starting over" while nothing carried the preview into the
+                account, and claimed the conversation "disappears when you
+                close this tab" (it is stored). Now onboarding loads this
+                browser's preview (widget-carryover.ts), so the promise is
+                scoped to exactly that: Yuri has it while setting up the
+                account. It does NOT say the whole transcript follows them into
+                paid chat; only what they confirm during onboarding does. "On this
+                device" because the preview is found through this browser, and
+                onboarding asks before loading it (CarryoverPrompt). */}
             {isAtLimit && (
               <div className="bg-gold/5 rounded-2xl p-4 border border-gold/20 text-center">
                 <p className="text-sm text-white font-medium mb-1">
-                  That&apos;s everything I can remember for free.
-                </p>
-                <p className="text-xs text-white/60 mb-1">
-                  Everything you just told me about your skin disappears when you close this tab.
+                  That&apos;s the end of the free preview.
                 </p>
                 <p className="text-xs text-white/50 mb-3">
-                  Subscribe and I keep all of it — your skin, what you already own, what
-                  we ruled out — and we pick up here instead of starting over. That&apos;s
-                  when I can actually build your routine and adjust it as your skin responds.
+                  Sign up on this device and we pick up where we left off: I&apos;ll have
+                  this conversation in front of me when we set up your account, so you
+                  won&apos;t be starting from scratch. Once you subscribe, I build your
+                  routine and adjust it as your skin responds.
                 </p>
                 <Link
                   href="/register?plan=pro_monthly"

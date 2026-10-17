@@ -84,6 +84,72 @@ const PM_BLOCK = /\b(?:PM|night|evening|nightly)\b[^\n]{0,80}(?::|—|-|→)/i
 // Step sequencing: "cleanse → toner → sunscreen"
 const STEP_ARROWS = /(?:→|->)[^\n]*(?:→|->)/
 
+// A half of the day written as a HEADING on its own line ("**Morning**",
+// "## PM", "Night:") followed by 2+ list items. The inline patterns above need
+// a separator on the same line as "morning", so this common shape was
+// invisible: on Oct 17 2026 Yuri handed a test visitor a full 4-week AM/PM
+// routine in exactly this format, the instrument still read 1 of 5, no block
+// was shown, and the next two replies gave away the phase-two plan as well.
+// Measured on all 526 widget replies (with the brand-signal gate below): adds
+// 3, all genuine AM/PM routines. One more genuine headed routine (00a8ab98,
+// Ground Lab / Dewytree) stays uncounted, as it was before this change.
+const headedBlock = (words: string) =>
+  new RegExp(
+    `^[ \\t]*(?:#{1,6}[ \\t]*)?(?:\\*\\*|__)?[ \\t]*(?:${words})(?:[ \\t]+routine)?[ \\t]*:?[ \\t]*(?:\\*\\*|__)?[ \\t]*:?[ \\t]*\\n` +
+      `(?:[ \\t]*(?:[-*•]|\\d+[.)])[ \\t]+[^\\n]+\\n?){2,}`,
+    'im'
+  )
+const AM_HEADED = headedBlock('am|morning|a\\.m\\.')
+const PM_HEADED = headedBlock('pm|night|evening|nighttime|bedtime|p\\.m\\.')
+
+/**
+ * A heading block alone is not a delivered routine: tips, qualifying questions
+ * and category skeletons ("Cleanse / Moisturize / SPF") share the shape. A
+ * second-model review (Oct 17 2026) showed all of those firing, and a false
+ * count here becomes a false fact in the block Yuri reads. What separates a
+ * routine is NAMED PRODUCTS, which arrive as runs of 2+ capitalised words
+ * ("CeraVe Hydrating Facial Cleanser", "Isntree Yam Root"). Require 2 distinct
+ * runs across the headed lists. No brand list: same market-neutral reasoning as
+ * hasPrescriptiveSequence below.
+ */
+const CAP_RUN = /\b[A-Z][A-Za-z0-9'&+.-]*(?:[ \t]+(?:[A-Z0-9][A-Za-z0-9'&+.-]*|pH|de|of|&))+/g
+
+// A capitalised run is a PRODUCT only if it carries a BRAND signal: a digit
+// (AtoBarrier365), an internal capital (CeraVe), an all-caps token (AESTURA), or
+// a known brand. Category words are deliberately NOT a signal: "Gentle
+// Cleanser" and "Vitamin C Serum" are categories, and a second review showed a
+// category-noun rule firing on capitalised skeletons and question lists. A
+// brand with none of these signals goes uncounted: a missing note, which costs
+// less than a false "you already delivered a full routine".
+function isProductSignal(w: string): boolean {
+  return /\d/.test(w) || /^[A-Z][a-z]+[A-Z]/.test(w) || /^[A-Z]{3,}$/.test(w)
+}
+function runNamesBrand(words: string[], raw: string): boolean {
+  if (words.some(isProductSignal)) return true
+  const lower = raw.toLowerCase()
+  // KNOWN_BRANDS is declared further down the module; read at call time.
+  for (const b of KNOWN_BRANDS) if (lower.startsWith(b + ' ') || lower === b) return true
+  return false
+}
+
+function headedRoutineNamesProducts(text: string): boolean {
+  const bodies: string[] = []
+  for (const re of [AM_HEADED, PM_HEADED]) {
+    const m = new RegExp(re.source, 'gim')
+    for (const hit of text.matchAll(m)) bodies.push(hit[0].split('\n').slice(1).join('\n'))
+  }
+  const runs = new Set<string>()
+  for (const body of bodies) {
+    for (const r of body.replace(/\*\*|__/g, '').matchAll(CAP_RUN)) {
+      const words = r[0].split(/\s+/).map((w) => w.replace(/[.,:;]+$/, ''))
+      if (words.length >= 2 && words.some((w) => /^[A-Z]/.test(w) && !SEQUENCE_STOP_WORDS.has(w)) && runNamesBrand(words, words.join(' '))) {
+        runs.add(words.join(' ').toLowerCase())
+      }
+    }
+  }
+  return runs.size >= 2
+}
+
 // A schedule: named nights, or explicit weekly frequency, or a staged rollout.
 const NIGHT_ROTATION = /\bnight\s*(?:a|b|c|1|2|3)\b/i
 const WEEKLY_FREQUENCY = /\b\d\s*(?:x|times)\s*(?:\/|\s*per\s*|a\s*)?(?:wk|week)\b/i
@@ -277,8 +343,9 @@ export function detectArtifactsInReply(text: string): Set<GiveArtifact> {
 
   // Full routine: both halves of the day laid out, or explicit step sequencing
   // present alongside at least one labelled half.
-  const hasAm = AM_BLOCK.test(text)
-  const hasPm = PM_BLOCK.test(text)
+  const headedNamed = headedRoutineNamesProducts(text)
+  const hasAm = AM_BLOCK.test(text) || (headedNamed && AM_HEADED.test(text))
+  const hasPm = PM_BLOCK.test(text) || (headedNamed && PM_HEADED.test(text))
   if ((hasAm && hasPm) || ((hasAm || hasPm) && STEP_ARROWS.test(text))) {
     found.add('am_pm_routine')
   }

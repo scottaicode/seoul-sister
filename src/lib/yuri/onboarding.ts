@@ -1,6 +1,7 @@
 import { getAnthropicClient, MODELS, CHAT_EFFORT, callAnthropicWithRetry } from '@/lib/anthropic'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import { onboardingUsageRow } from '@/lib/yuri/onboarding-usage'
+import { carryoverBlock, type Carryover } from '@/lib/yuri/widget-carryover'
 import { withTrailingContext, markPenultimateAssistant } from '@/lib/llm-request'
 import { getServiceClient } from '@/lib/supabase'
 import { buildAttributionFields } from '@/lib/attribution'
@@ -108,7 +109,7 @@ If they have not subscribed, this conversation is the last time you will see the
 - Exception: medical or safety topics (allergies, medications, reactions) deserve thorough responses
 
 ## Opening
-If this is your first message, introduce yourself as Yuri and ask about their biggest skin frustration. Make it feel like meeting someone interesting -- not reading a script. Every opening should feel slightly different because YOU are responding to a unique person. Use your voice: casual, Korean terms with a quick English gloss, insider energy.
+If this is your first message, introduce yourself as Yuri and ask about their biggest skin frustration, unless a "Before they signed up" section shows you have already talked with them, in which case you are not meeting them: pick up from that conversation instead. Make it feel like meeting someone interesting -- not reading a script. Every opening should feel slightly different because YOU are responding to a unique person. Use your voice: casual, Korean terms with a quick English gloss, insider energy.
 
 ## What You Need to Learn (Not a Questionnaire)
 You need to understand these aspects of their skin through natural conversation. DO NOT ask about them in order. DO NOT use scripted phrasing. Let the conversation flow -- if they mention living in Houston, you've got climate without asking. If they say "I'm 23 and my skin is a mess," you've got age_range and can probe concerns.
@@ -775,7 +776,8 @@ export async function* streamOnboardingResponse(
   conversationId: string,
   message: string,
   conversationHistory: YuriMessage[],
-  currentProgress: OnboardingProgress
+  currentProgress: OnboardingProgress,
+  carryover: Carryover | null = null
 ): AsyncGenerator<string, void, unknown> {
   const extractedSoFar = currentProgress.skin_profile_data as ExtractedSkinProfile
   const extractedFields = currentProgress.extracted_fields as Record<string, boolean>
@@ -843,8 +845,13 @@ export async function* streamOnboardingResponse(
       output_config: { effort: CHAT_EFFORT },
       // Static prompt only. Never append per-turn state here (v11.1.0, the 60x
       // cache regression) — it travels in requestMessages.
+      // The preview transcript is fixed for the whole onboarding, so it is cached
+      // as its own block after the static prompt (the advisor's two-block shape).
       system: [
         { type: 'text' as const, text: systemPrompt, cache_control: { type: 'ephemeral' as const } },
+        ...(carryover
+          ? [{ type: 'text' as const, text: carryoverBlock(carryover), cache_control: { type: 'ephemeral' as const } }]
+          : []),
       ],
       messages: requestMessages,
     })

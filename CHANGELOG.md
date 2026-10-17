@@ -5,6 +5,38 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.41.4 — The preview card's promise is now real, and Yuri sees whether the recap went out (Oct 17 2026)
+
+From an owner test of the full 12-message preview. **The limit card promised "we pick up here
+instead of starting over" while nothing carried the preview anywhere**, and said the conversation
+"disappears when you close this tab" (it is stored). Now onboarding asks, per account, "Continue
+from your earlier chat?" (`CarryoverPrompt`); on yes, the browser's preview is handed to onboarding
+Yuri as a cached context block (`src/lib/yuri/widget-carryover.ts`), never one linked to another
+account. It is context only, never extracted into the profile: extraction finalizes onboarding once
+skin_type exists, which would have sent a refresh straight to the paywall. A replay confirmed the
+extractor credits facts the person confirms in onboarding. Card now: "Sign up on this device and we
+pick up where we left off... Once you subscribe, I build your routine." **Deferred, recorded as data**
+(`ss_pipeline_runs` deferral `preview_carryover_stops_at_onboarding`): the full transcript does not
+reach paid chat; only what onboarding captures does. Cost: the block (up to ~12K tokens) is cached
+per onboarding but re-written after a 5-minute idle gap.
+
+**Give instrument:** a full routine written under "**Morning**"/"**Night**" headings was invisible
+(the test's message-5 routine read as 1 of 5, no block was shown, and the next two replies gave the
+phase-two plan away). Headed blocks now count when they name 2+ products with a brand signal; on all
+526 replies that adds 3 genuine routines and no false ones. A pre-existing false positive remains:
+question lists under a "Morning:" heading.
+
+**Recap honesty:** Yuri told the tester "your write-up is on its way" three times over a recap that was
+deliberately not sent. The email-on-file fact now carries the real `recap_status`
+(`src/lib/widget/recap-fact.ts`), and the capture-turn instruction states the recap's real scope.
+
+**Second-model review (Fable) run three times**; each round found real defects, all fixed: the first
+email-only match would have loaded nothing for the one real converter (preview email differed from
+her account email); seeding the profile marked onboarding complete before Yuri spoke; an unconfirmed
+preview could reach a different person on a shared browser; a per-browser "yes" was inherited by the
+next account; the card promised the build at the free step; non-binding tests (14 wrong versions now
+fail). **Not verified in production:** no visitor has signed up through the carryover yet.
+
 ## v11.41.3 — Old nudges no longer resurface; onboarding cost is finally logged (Oct 17 2026)
 
 **Nudges.** `GET /api/me/nudge` showed the newest OPEN nudge, so dismissing it brought back the next

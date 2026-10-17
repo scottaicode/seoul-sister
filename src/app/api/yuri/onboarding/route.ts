@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { supabase, getServiceClient } from '@/lib/supabase'
+import { loadWidgetCarryover } from '@/lib/yuri/widget-carryover'
 import { saveMessage, loadConversationMessages } from '@/lib/yuri/memory'
 import {
   getOrCreateOnboardingProgress,
@@ -22,13 +23,22 @@ import type { ExtractedSkinProfile } from '@/types/database'
 // Request schemas
 // ---------------------------------------------------------------------------
 
+// The free-preview visitor id from this browser, so the preview conversation
+// carries into onboarding (src/lib/yuri/widget-carryover.ts). Optional: absent
+// for anyone who never used the preview. Deliberately NOT .uuid(): a malformed
+// stored id must not fail the whole onboarding request; the loader validates
+// the format and ignores anything else.
+const widgetVisitorId = z.string().max(100).optional()
+
 const sendMessageSchema = z.object({
   action: z.literal('send_message'),
   message: z.string().min(1).max(10000),
+  widget_visitor_id: widgetVisitorId,
 })
 
 const startSchema = z.object({
   action: z.literal('start_onboarding'),
+  widget_visitor_id: widgetVisitorId,
 })
 
 const getProgressSchema = z.object({
@@ -156,6 +166,12 @@ export async function POST(request: NextRequest) {
       }
 
       if (greetingClaimed && progress.conversation_id) {
+        // Context for Yuri only. The preview is never extracted into the profile
+        // here: extraction finalizes onboarding once skin_type exists, which at
+        // t=0 marked onboarding complete before Yuri spoke, so a refresh sent
+        // the person to the paywall with no onboarding at all (review, Oct 17
+        // 2026). The profile fills from what they confirm in onboarding.
+        const carryover = await loadWidgetCarryover(getServiceClient(), parsed.widget_visitor_id, user)
         const encoder = new TextEncoder()
         const stream = new ReadableStream({
           async start(controller) {
@@ -166,7 +182,8 @@ export async function POST(request: NextRequest) {
                 progress.conversation_id!,
                 '__ONBOARDING_START__',
                 [],
-                progress
+                progress,
+                carryover
               )
 
               // First emit progress metadata
@@ -263,6 +280,7 @@ export async function POST(request: NextRequest) {
 
       // Load conversation history
       const history = await loadConversationMessages(progress.conversation_id)
+      const carryover = await loadWidgetCarryover(getServiceClient(), parsed.widget_visitor_id, user)
 
       // Save user message
       await saveMessage(progress.conversation_id, 'user', parsed.message, null)
@@ -279,7 +297,8 @@ export async function POST(request: NextRequest) {
               progress.conversation_id!,
               parsed.message,
               history,
-              progress
+              progress,
+              carryover
             )
 
             for await (const chunk of generator) {
@@ -295,6 +314,9 @@ export async function POST(request: NextRequest) {
             await saveMessage(progress.conversation_id!, 'assistant', fullResponse, null)
 
             // Extract skin profile data (awaited so progress event reaches client)
+            // Onboarding messages only: the preview is never extracted (see the
+            // start path), so it can neither finalize onboarding early nor write
+            // facts the person has not confirmed here.
             const allMessages = [
               ...history.map((m) => ({ role: m.role, content: m.content })),
               { role: 'user' as const, content: parsed.message },

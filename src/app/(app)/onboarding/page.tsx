@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, SkipForward } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { consentedVisitorId, hasPreviewConversation, getCarryoverChoice, setCarryoverChoice, previewedAt } from '@/lib/utils/widget-session'
+import CarryoverPrompt from '@/components/onboarding/CarryoverPrompt'
 import ChatMessage from '@/components/yuri/ChatMessage'
 import ChatInput from '@/components/yuri/ChatInput'
 import type { ChatMessage as ChatMessageType } from '@/types/yuri'
@@ -26,6 +28,23 @@ export default function OnboardingPage() {
   // start_onboarding twice, which (pre server-side lock) produced two different
   // greetings 0.9s apart. Survives re-renders; resets only on a true remount.
   const startedRef = useRef(false)
+  // Whether to carry this browser's free-preview chat into onboarding. 'pending'
+  // until read on the client; 'ask' shows CarryoverPrompt and holds the start
+  // until they answer; 'na' when there is no preview chat on this device.
+  const [carryChoice, setCarryChoice] = useState<'pending' | 'ask' | 'yes' | 'no' | 'na'>('pending')
+  // The answer is per ACCOUNT, so read it once we know who is signed in.
+  const [userId, setUserId] = useState<string>('')
+  useEffect(() => {
+    let live = true
+    ;(async () => {
+      const { data } = await supabase.auth.getSession()
+      const id = data.session?.user?.id ?? ''
+      if (!live) return
+      setUserId(id)
+      setCarryChoice(id && hasPreviewConversation() ? getCarryoverChoice(id) ?? 'ask' : 'na')
+    })()
+    return () => { live = false }
+  }, [])
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -135,6 +154,7 @@ export default function OnboardingPage() {
     // the first run may fire start_onboarding. The server also claims the
     // greeting atomically (defense in depth), but stopping the duplicate POST
     // here avoids a wasted request + a discarded Claude generation.
+    if (carryChoice === 'pending' || carryChoice === 'ask') return
     if (startedRef.current) return
     startedRef.current = true
 
@@ -149,7 +169,7 @@ export default function OnboardingPage() {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ action: 'start_onboarding' }),
+          body: JSON.stringify({ action: 'start_onboarding', widget_visitor_id: consentedVisitorId(userId) }),
         })
 
         if (!response.ok) {
@@ -258,7 +278,7 @@ export default function OnboardingPage() {
 
     init()
     return () => { cancelled = true }
-  }, [getToken, router, parseSSEStream])
+  }, [getToken, router, parseSSEStream, carryChoice, userId])
 
   // Send a message
   const sendMessage = useCallback(
@@ -302,6 +322,9 @@ export default function OnboardingPage() {
           body: JSON.stringify({
             action: 'send_message',
             message,
+            // Carries the free-preview conversation into onboarding, only after
+            // the person said it was theirs (CarryoverPrompt).
+            widget_visitor_id: consentedVisitorId(userId),
           }),
           signal: abortControllerRef.current.signal,
         })
@@ -358,7 +381,7 @@ export default function OnboardingPage() {
         abortControllerRef.current = null
       }
     },
-    [isStreaming, getToken, parseSSEStream]
+    [isStreaming, getToken, parseSSEStream, userId]
   )
 
   // Complete onboarding
@@ -414,6 +437,18 @@ export default function OnboardingPage() {
       router.push('/subscribe')
     }
   }, [getToken, router])
+
+  if (carryChoice === 'ask') {
+    return (
+      <CarryoverPrompt
+        previewedAt={previewedAt()}
+        onChoose={(choice) => {
+          setCarryoverChoice(userId, choice)
+          setCarryChoice(choice)
+        }}
+      />
+    )
+  }
 
   // Loading state
   if (isLoading) {
