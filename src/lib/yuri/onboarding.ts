@@ -1,4 +1,6 @@
 import { getAnthropicClient, MODELS, CHAT_EFFORT, callAnthropicWithRetry } from '@/lib/anthropic'
+import { logAIUsage } from '@/lib/ai-usage-logger'
+import { onboardingUsageRow } from '@/lib/yuri/onboarding-usage'
 import { withTrailingContext, markPenultimateAssistant } from '@/lib/llm-request'
 import { getServiceClient } from '@/lib/supabase'
 import { buildAttributionFields } from '@/lib/attribution'
@@ -241,7 +243,8 @@ export function buildOnboardingTurnState(
 // ---------------------------------------------------------------------------
 
 export async function extractSkinProfileData(
-  messages: Array<{ role: 'user' | 'assistant'; content: string }>
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+  userId?: string
 ): Promise<ExtractedSkinProfile> {
   const client = getAnthropicClient()
 
@@ -286,6 +289,7 @@ Return ONLY valid JSON, no explanation or markdown. If nothing can be extracted,
     })
   )
 
+  await logAIUsage(onboardingUsageRow('onboarding_extraction', MODELS.background, response.usage, userId))
   const block = response.content[0]
   if (block.type !== 'text') return {}
 
@@ -860,6 +864,7 @@ export async function* streamOnboardingResponse(
   // Opus 5.5 can decline (stop_reason 'refusal') before writing anything. Re-run
   // once on MODELS.primary rather than leave the user with an empty reply.
   const first = await stream.finalMessage()
+  await logAIUsage(onboardingUsageRow('yuri_onboarding', MODELS.chat, first.usage, userId, conversationId))
   if (yielded || first.stop_reason !== 'refusal') return
   console.warn('[onboarding] chat model declined; re-running on', MODELS.primary)
   stream = streamFor(MODELS.primary)
@@ -871,4 +876,6 @@ export async function* streamOnboardingResponse(
       yield event.delta.text
     }
   }
+  const rerun = await stream.finalMessage()
+  await logAIUsage(onboardingUsageRow('yuri_onboarding', MODELS.primary, rerun.usage, userId, conversationId))
 }

@@ -135,6 +135,30 @@ async function main() {
     return
   }
 
+  // Only a user's NEWEST nudge (any status) may be sent; an older pending one
+  // has been replaced and is out of date (src/lib/intelligence/nudge-surface.ts).
+  const userIds = [...new Set(nudges.map((n) => n.user_id))]
+  const { data: allForUsers, error: newestError } = await db
+    .from('ss_user_nudges')
+    .select('id, user_id, created_at')
+    .in('user_id', userIds)
+  if (newestError) {
+    console.error('Newest-nudge query failed:', newestError.message)
+    process.exit(1)
+  }
+  const newestByUser = new Map<string, { id: string; created_at: string }>()
+  for (const r of allForUsers ?? []) {
+    const cur = newestByUser.get(r.user_id)
+    if (!cur || r.created_at > cur.created_at) newestByUser.set(r.user_id, r)
+  }
+  const replaced = nudges.filter((n) => newestByUser.get(n.user_id)?.id !== n.id)
+  for (const n of replaced) console.log(`SKIP      ${n.id} (${n.created_at.slice(0, 10)}): replaced by a newer nudge`)
+  nudges.splice(0, nudges.length, ...nudges.filter((n) => newestByUser.get(n.user_id)?.id === n.id))
+  if (!nudges.length) {
+    console.log('No current pending nudges to send.')
+    return
+  }
+
   console.log(`Found ${nudges.length} pending nudge(s) with no prior send attempt.\n`)
 
   for (const n of nudges) {

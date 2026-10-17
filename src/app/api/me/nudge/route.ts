@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/auth'
 import { getServiceClient } from '@/lib/supabase'
+import { isSurfaceable } from '@/lib/intelligence/nudge-surface'
 
 /**
  * GET  /api/me/nudge        → latest unresolved proactive nudge for the user (or null)
@@ -39,21 +40,22 @@ export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth(request)
     const db = getServiceClient()
+    // The user's newest nudge of ANY status; it surfaces only if still open, so
+    // dismissing it never brings back an older, out-of-date one (nudge-surface.ts).
     const { data, error } = await db
       .from('ss_user_nudges')
-      .select('id, nudge_type, message, deep_link, nudge_sequence, created_at')
+      .select('id, nudge_type, message, deep_link, nudge_sequence, created_at, status, dismissed_at, acted_at')
       .eq('user_id', user.id)
-      .in('status', ['pending', 'surfaced'])
-      .is('dismissed_at', null)
-      .is('acted_at', null)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
     if (error) {
-      // Table may not be applied yet — treat as "no nudge" rather than erroring.
+      console.error('[api/me/nudge] read failed:', error.message)
       return NextResponse.json({ nudge: null })
     }
-    return NextResponse.json({ nudge: data ?? null })
+    if (!isSurfaceable(data)) return NextResponse.json({ nudge: null })
+    const { id, nudge_type, message, deep_link, nudge_sequence, created_at } = data!
+    return NextResponse.json({ nudge: { id, nudge_type, message, deep_link, nudge_sequence, created_at } })
   } catch {
     return NextResponse.json({ nudge: null })
   }

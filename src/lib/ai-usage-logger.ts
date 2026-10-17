@@ -30,6 +30,8 @@ export type AIFeature =
   | 'routine_generation'
   | 'dupe_finder_ai'
   | 'onboarding_extraction'
+  // Oct 2026 — onboarding chat (Opus 5.5), unlogged since launch
+  | 'yuri_onboarding'
   | 'title_generation'
   | 'summary_generation'
   | 'decision_extraction'

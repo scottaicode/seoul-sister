@@ -422,7 +422,7 @@ async function extractAndUpdate(
   existingProfile: ExtractedSkinProfile
 ): Promise<{ percentage: number; isComplete: boolean; qualityScore: number; capturedFields: Record<string, boolean> } | null> {
   try {
-    const newExtracted = await extractSkinProfileData(messages)
+    const newExtracted = await extractSkinProfileData(messages, userId)
     const merged = mergeSkinProfileData(existingProfile, newExtracted)
     const { percentage, capturedFields, missingRequired } = calculateOnboardingProgress(merged)
     const isComplete = missingRequired.length === 0

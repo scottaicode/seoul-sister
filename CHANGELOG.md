@@ -5,6 +5,27 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.41.3 — Old nudges no longer resurface; onboarding cost is finally logged (Oct 17 2026)
+
+**Nudges.** `GET /api/me/nudge` showed the newest OPEN nudge, so dismissing it brought back the next
+oldest: Caroline had three open (Aug 3, Oct 6, Oct 11), Kim two (Jul 28, Oct 11). Caroline's Oct 6
+note said "I never got that baseline photo from you" hours after she uploaded three. Now only a
+user's newest nudge of any status can surface (`src/lib/intelligence/nudge-surface.ts`); the manual
+`scripts/send-pending-nudge-emails.ts` sends only newest too. Not undone: that Oct 6 note was already
+emailed and delivered. **Deferred:** `subscriber-checkin.ts` renders a replaced pending nudge as "no
+response" though it can no longer be seen; matters only once yuri-wakes-up is live.
+
+**Onboarding cost.** `ss_ai_usage` had zero onboarding rows ever: neither the onboarding chat (Opus
+5.5) nor the profile extraction (Sonnet 4.5) logged, so onboarding was missing from per-user cost.
+Both now log (`yuri_onboarding`, `onboarding_extraction`), awaited, priced by the model constant
+SENT (an echoed name not in the price table silently falls back to Opus 4.8 rates).
+
+**Second-model review (Fable) run**: neither test suite bound. The logging tests passed with token
+counts zeroed (the June 2026 `tokens_in=0` bug) and with the log in a dead branch; the nudge test
+passed a query that returns another user's nudge. Rewritten: the row builder is executed, call sites
+are pinned by adjacency, and the nudge query is checked closed-world. **Not verified in production**
+until a dashboard load and an onboarding turn produce rows.
+
 ## v11.41.2 — A saved ingredient list is stored exactly or refused, never silently lost (Oct 16 2026)
 
 On Oct 6 Yuri sent Caroline's Cetaphil and Naturium label lists to `update_user_product` as
