@@ -36,7 +36,14 @@ passed the first migration tests; they now fail. Reads switched from `content[0]
 5.5 omits a skin type 4.5 inferred, consistent with the clinical-honesty rule; "previous retinal use" in
 medical_history is a minor stretch). **Deferred, recorded as data:** background truncations/refusals are
 console-only (`ss_pipeline_runs` deferral `background_truncation_not_in_data`). Seven one-off scripts still
-hardcode 4.5 and will stop working Nov 30. **NOT VERIFIED in production yet.**
+hardcode 4.5 and will stop working Nov 30.
+
+**VERIFIED in production, Oct 19 23:10 UTC (scheduler-produced):** `ss_pipeline_runs` settle_memory run
+attempted 1, settled 1, errors [], on conversation `b42a008f` (owner's own account, one real question). Summary
+written on Sonnet 5.5 (2,351 chars, accurate). Decision memory came back empty, and a side-by-side replay showed
+why that is CORRECT: Sonnet 4.5 recorded Yuri's three suggestions as "decisions" the user had made although he had
+only asked a question (the Beplain stale-decision class); 5.5 followed the "only what was explicitly agreed" rule.
+Live chat streaming also verified after deploy.
 
 ## v11.41.6 — Twelve search titles cut mid-phrase are whole again; LGAAS and Seoul Sister meta now match (Oct 19 2026)
 
