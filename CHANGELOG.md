@@ -5,6 +5,26 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.41.6 — Twelve search titles cut mid-phrase are whole again; LGAAS and Seoul Sister meta now match (Oct 19 2026)
+
+Data fix, no code. Twelve live blog `<title>`s ended mid-phrase ("Why Your Sebaceous Filaments Keep
+Coming", "How to Fix Dehydrated Skin With a Korean", and on the most-clicked page "Best Korean Cleansing
+Oils for Every Skin"). Cause: LGAAS's `deriveMetaTitle` trims the H1 to the 45-char budget at a word
+boundary and only strips function words, so it cannot see that "Korean" or "Coming" is unfinished. Only
+`api/content-blog.js` asks the model for a META_TITLE; the reddit and cron surfaces (including the weekly
+Seoul Sister auto drafts) still rely on the mechanical trim, **so new auto drafts can still ship cut titles
+until that is fixed in LGAAS**. Rewrote the 12 in BOTH `ss_content_posts` and `lgaas_blog_posts` (guarded on
+the old value), aligned to each page's top GSC queries, all <=45 chars.
+
+**Drift closed:** the BoJ review's title/meta and four other descriptions had been hand-fixed on the Seoul
+Sister side only, so any LGAAS redelivery would have reverted them. LGAAS now holds the same values. The BoJ
+description no longer promises a "full INCI list" the page does not contain.
+
+**Answered:** no SEO bet is executed automatically. The last LGAAS edit to any bet-target page was **Aug 26**
+(PIH product-type block); the ~30 bets since Aug 30 never ran. Most were repeats, requests for content the
+page already had, or `/best/*` and product pages that site code draws and LGAAS cannot edit. The one still
+worth doing is a real ingredients section on the BoJ review.
+
 ## v11.41.5 — The SEO strategist can now see the pages it bets on (Oct 19 2026)
 
 The Oct 18 SEO report's headline was that the content pipeline "paraphrased" the exact strings the
