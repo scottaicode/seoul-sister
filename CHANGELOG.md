@@ -5,6 +5,37 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.41.5 — The SEO strategist can now see the pages it bets on (Oct 19 2026)
+
+The Oct 18 SEO report's headline was that the content pipeline "paraphrased" the exact strings the
+grader looks for, so finished work could not be proven. **Measured, that was wrong: the work never
+shipped.** Ten bets across 13 weekly reports (Jul 24 – Oct 18) targeted the Beauty of Joseon sunscreen
+review. Its title/meta rewrite is live; the on-page ingredient section, the "mineral or chemical" block
+and the `#full-ingredients-list` anchor named by four bets do not exist. The grader's note ("cannot
+distinguish a paraphrase from non-execution") was honest, but the strategist had no way to look, and
+its own prompt told it four bets "DID hit significant thresholds", so it chose paraphrase. The same
+report asked for a "best by skin type" block on the cleansing-oils post, which already has one.
+
+`src/lib/seo/page-state.ts` now fetches the top 15 pages by clicks plus every recent bet's target page
+(cap 25, 4 at a time, 8 s timeout) and hands the strategist each page's title, meta description, h1-h3
+headings and anchor ids, plus how many prior bets targeted it. Facts only, scoped to what they can show:
+absence counts only for work that would produce a heading or anchor; paragraphs, FAQ answers and
+internal links are not visible; a failed fetch reads UNKNOWN; unlisted pages are "not checked". On blog
+posts the post template's classed headings are left out ("Key Ingredients Mentioned" would read as a
+shipped ingredients section); a blog post with no written headings reads UNKNOWN, since that means the
+renderer changed. The prompt now states the measured BoJ fact (including that the Aug 16 "hit" window was
+sitewide-confounded and contained the shipped metadata), labels "anchor ids survive rewording" as an
+expectation with zero confirmed instances, and says a page that carries several bets with no trace of
+the work is a pipeline finding for Scott, not grounds for another bet.
+
+**Review:** a Fable 5.1 adversarial review found six defects in the first draft, all fixed: wrong bet counts
+and an overclaimed cause in the prompt, "the only direct evidence" overclaim with the meta description
+missing, tests that passed six of seven wrong implementations and never checked the prompt wiring, no
+tripwire on the heading heuristic, and the block tightening the re-bet loop. 17 tests in
+`tests/seo-page-state.test.mjs`; all 14 mutants (including the reviewer's) fail. **NOT VERIFIED: no
+scheduled run has consumed the block yet** (first is Sunday Oct 25). **Not settled:** whether bets are being
+run through LGAAS at all; nothing hands them over automatically.
+
 ## v11.41.4 — The preview card's promise is now real, and Yuri sees whether the recap went out (Oct 17 2026)
 
 From an owner test of the full 12-message preview. **The limit card promised "we pick up here

@@ -4,6 +4,7 @@ import { getAIContext, estimateCost } from '@/lib/ai-config'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import { getGscConfig, fetchSearchAnalytics, fetchSiteTotals, type GscRow } from './gsc-client'
 import { fetchPageChats, formatPageChats } from './page-chats'
+import { countBetsByPage, fetchPageStates, formatPageStates, selectPages, type PageState } from './page-state'
 
 // ---------------------------------------------------------------------------
 // SEO Guardian — weekly Search Console strategist (Phase 1, report-only).
@@ -105,7 +106,7 @@ Business context you must respect:
 
 HOW TO READ GRADED BETS (the grader is deliberately abstention-heavy):
 - Verdicts are produced by a deterministic instrument, never by an AI. Only 'hit' and 'miss' are evidence about SEO.
-- 'ungradeable_not_executed' means the work never shipped. The theory is UNTESTED, not wrong — never discount a bet type for this, and consider re-proposing it.
+- 'ungradeable_not_executed' means the work never shipped. The theory is UNTESTED, not wrong — never discount a bet type for this, and consider re-proposing it. But when CURRENT PAGE STATE shows a page has carried several bets and still shows no trace of the requested work, the finding is that the content pipeline is not executing, and that belongs in the report to Scott: another bet on the same page tests nothing until the work ships.
 - 'ungradeable_underpowered' is a verdict about how YOU WROTE THE BET, not about what happened: at this site's volume, reaching the threshold you named could not have been told apart from chance, so no outcome could have confirmed it. The gradeability test is whether hitting your stated threshold would itself be statistically significant against the baseline. That is a fact about the instrument, not a restriction on what you may bet on — an ungradeable bet can still be the right call, and you may say so.
 - 'ungradeable_too_soon' / 'ungradeable_no_data' mean the measurement window or the data was not there. No information either way.
 - A bet marked 'execution=partially_executed' had only some of its action shipped; treat its numbers with suspicion.
@@ -127,7 +128,7 @@ The grader is a deterministic ruler with narrow inputs. Anything outside them AB
   Choose the page from the DATA, never from where this table is cheapest: a low-baseline page needs a smaller number to clear the bar, and that is an artifact of the arithmetic, not a reason to bet there.
   For a baseline between rows, use the NEXT ROW UP. (An earlier version of this block carried a closed-form approximation here; it was measured against the real test and ran 2 to 5 clicks LOW at every baseline, which would have sent you to an unreachable threshold while looking authoritative. Deleted rather than patched.) This is a fact about small-sample noise on a site this size, not a target to design toward. If the honest expectation for a bet you believe in falls BELOW that line, WRITE THE HONEST NUMBER and say in \`reasoning\` that you expect it to grade ungradeable and why the bet is still right. An accurate ungradeable bet is worth more than an inflated gradeable one: inflating a threshold does not make the bet measurable, it just moves the abstention to a different gate, and where the shortfall IS large enough to discriminate it records a miss against a bet type that may have worked.
 - A PREDICTION OF NO CHANGE CANNOT BE GRADED. The instrument records a threshold met or missed; it has no verdict for "nothing moved, as expected". Such a bet can still be the right call — say so in \`reasoning\` and read the position notes yourself next week.
-- EXECUTION IS VERIFIED BY FETCHING THE LIVE PAGE AND STRING-MATCHING YOUR \`action\`. If the action names nothing findable on the page, the bet cannot produce a verdict however well the metric moves — this discarded four bets that DID hit significant thresholds. Name ONE marker in the action: either an anchor id you require (\`#best-serum-for-pie\`), which a generator reproduces byte-for-byte while prose gets rewritten, or one "double-quoted exact string" that must appear in the rendered page. Do not quote a description of intent; a phrase that was never meant to appear on the page cannot be found there. Naming several markers is worse than naming one: every named marker must be found, so naming five and shipping four grades \`partially_executed\`, which also produces no verdict.
+- EXECUTION IS VERIFIED BY FETCHING THE LIVE PAGE AND STRING-MATCHING YOUR \`action\`. If the action names nothing findable on the page, the bet cannot produce a verdict however well the metric moves. Six past bets met their click thresholds with execution unconfirmed, and that is NOT evidence the work worked. MEASURED Oct 19 2026: ten bets across 13 reports (Jul 24 – Oct 18) targeted the Beauty of Joseon sunscreen review. The Aug 16 bet met its threshold (5 -> 13 clicks, a window the grader flagged as confounded by sitewide movement), while the live page had neither the on-page ingredient section nor the mineral/chemical block it asked for, and the \`#full-ingredients-list\` anchor named by four later bets does not exist. Only the title/meta half of that work shipped (first seen Aug 23, inside that window). When a marker is "not found verbatim", check CURRENT PAGE STATE before deciding whether it was reworded or never done; the remedies are opposite (fix the marker vs get the work shipped). Name ONE marker in the action: either an anchor id you require (\`#best-serum-for-pie\`), which should survive a generator rewriting the prose (an expectation: as of Oct 19 2026 no anchor named in a bet has yet been found live), or one "double-quoted exact string" that must appear in the rendered page. Do not quote a description of intent; a phrase that was never meant to appear on the page cannot be found there. Naming several markers is worse than naming one: every named marker must be found, so naming five and shipping four grades \`partially_executed\`, which also produces no verdict.
 - TWO SHAPES CANNOT BE CLICK-GRADED AT ALL, BY CONSTRUCTION. Propose them freely when they are the right work — just say in \`reasoning\` what would count as success, since the instrument will not tell you:
     * \`target_page: null\` (new content): no page exists yet to measure, so the verdict is always \`ungradeable_no_data\`. Naming the page you expect to CREATE does not help.
     * \`action_type: "internal_links"\`: the page that CHANGES is not the ranking target the verifier fetches, so execution cannot be confirmed and the verdict caps at \`ungradeable_execution_unknown\`. This is a gap in the instrument, NOT a finding that link work is ineffective — never discount internal linking on the strength of these abstentions.
@@ -157,6 +158,7 @@ function buildUserPrompt(input: {
   priorComparison: string
   priorBets: string
   pageChats: string
+  pageState: string
   today: string
 }): string {
   const QUERY_LIMIT = 300
@@ -201,6 +203,8 @@ TOP PAGES (path | clicks | impressions | avg position):
 ${input.pageAggs.slice(0, PAGE_LIMIT).map((p) => `${p.page} | ${p.clicks} | ${p.impressions} | ${p.position}`).join('\n')}
 
 ${input.pageChats}
+
+${input.pageState}
 
 Write this week's report and bets.`
 }
@@ -410,6 +414,21 @@ export async function runSeoGuardian(db: SupabaseClient): Promise<SeoGuardianRes
   }
   const priorBets = priorBetLines.length > 0 ? priorBetLines.join('\n') : 'None yet.'
 
+  // What is on each page right now, so the strategist can tell "reworded"
+  // from "never shipped" (see page-state.ts). A failure is stated, never silent.
+  const today = new Date().toISOString().slice(0, 10)
+  let pageStates: PageState[] | null = null
+  let betsByPage: Map<string, { count: number; since: string }> | undefined
+  try {
+    const betTargets = (prior ?? []).flatMap((r) => ((r.bets as SeoBet[]) ?? []).map((b) => b.target_page))
+    pageStates = await fetchPageStates(selectPages(pageAggs, betTargets))
+    betsByPage = countBetsByPage(
+      (prior ?? []).flatMap((r) => ((r.bets as SeoBet[]) ?? []).map((b) => ({ target_page: b.target_page, date: r.created_at?.slice(0, 10) })))
+    )
+  } catch (err) {
+    console.error('[seo-guardian] page state step failed:', err instanceof Error ? err.message : err)
+  }
+
   const userPrompt = buildUserPrompt({
     windowStart,
     windowEnd,
@@ -420,7 +439,8 @@ export async function runSeoGuardian(db: SupabaseClient): Promise<SeoGuardianRes
     priorComparison,
     priorBets,
     pageChats: formatPageChats(pageChatFacts, windowStart, windowEnd),
-    today: new Date().toISOString().slice(0, 10),
+    pageState: formatPageStates(pageStates, today, betsByPage),
+    today,
   })
 
   const client = getAnthropicClient()
@@ -457,7 +477,7 @@ export async function runSeoGuardian(db: SupabaseClient): Promise<SeoGuardianRes
       // Full raw snapshot — required so Phase 3 can grade bets and any bet can
       // be audited against exactly what the strategist saw
       gsc_snapshot: { rows },
-      computed_facts: { totals, strikingDistanceCount: strikingDistance.length, queryCount: queryAggs.length, pageCount: pageAggs.length, pageChats: pageChatFacts },
+      computed_facts: { totals, strikingDistanceCount: strikingDistance.length, queryCount: queryAggs.length, pageCount: pageAggs.length, pageChats: pageChatFacts, pageStates },
       report_md: reportMd,
       bets,
       model_used: ctx.model,

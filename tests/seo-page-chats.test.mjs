@@ -51,5 +51,5 @@ test('the Guardian prompt and stored facts carry the page-chat section', () => {
   const g = fs.readFileSync(path.join(process.cwd(), 'src/lib/seo/seo-guardian.ts'), 'utf8')
   assert.match(g, /\$\{input\.pageChats\}/)
   assert.match(g, /pageChats: formatPageChats\(pageChatFacts, windowStart, windowEnd\)/)
-  assert.match(g, /pageChats: pageChatFacts \}/)
+  assert.match(g, /pageChats: pageChatFacts[,\s}]/)
 })
