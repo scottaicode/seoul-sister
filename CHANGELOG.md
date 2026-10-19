@@ -20,6 +20,15 @@ the old value), aligned to each page's top GSC queries, all <=45 chars.
 Sister side only, so any LGAAS redelivery would have reverted them. LGAAS now holds the same values. The BoJ
 description no longer promises a "full INCI list" the page does not contain.
 
+**BoJ Aqua-Fresh review (same day, owner approved):** added the real `#full-ingredients-list` section the ten bets
+asked for (45-item INCI matched to the Korean 전성분 listing, a "mineral or chemical?" answer naming all five
+filters, US availability stated precisely), corrected the sentence and FAQ (body AND faq_schema JSON-LD) that named
+only two filters, and removed two fabricated wearing-experience claims ("I found that it worked well under a
+lightweight primer..." and "the experience of wearing it"). Two Fable 5.1 checks: the first verified the INCI
+against four sources; the second caught four overclaims in the draft (ecamsule is NDA-approved, not "not
+permitted"; the formula IS sold by US third parties; the SPF-booster claim is vendor marketing; the FAQ would have
+contradicted the new section), all fixed before publishing. Written to both DBs identically (same md5), verified live.
+
 **Answered:** no SEO bet is executed automatically. The last LGAAS edit to any bet-target page was **Aug 26**
 (PIH product-type block); the ~30 bets since Aug 30 never ran. Most were repeats, requests for content the
 page already had, or `/best/*` and product pages that site code draws and LGAAS cannot edit. The one still
