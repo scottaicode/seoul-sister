@@ -57,7 +57,7 @@ test('the refusal re-run is logged as the function\'s final statements, priced a
 
 test('the extraction logs directly after its call, priced as MODELS.background, with the user id', () => {
   assert.match(SRC,
-    /\n  \)\n\n?  await logAIUsage\(onboardingUsageRow\('onboarding_extraction', MODELS\.background, response\.usage, userId\)\)\n  const block = response\.content\[0\]\n/)
+    /\n  \)\n\n?  await logAIUsage\(onboardingUsageRow\('onboarding_extraction', MODELS\.background, response\.usage, userId\)\)\n  const block = response\.content\.find\(\(b\) => b\.type === 'text'\) \?\? \{ type: 'none' as const \}\n/)
   assert.match(read('src/app/api/yuri/onboarding/route.ts'), /await extractSkinProfileData\(messages, userId\)/)
 })
 

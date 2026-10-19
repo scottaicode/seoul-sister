@@ -134,39 +134,41 @@ export const AI_CONTEXTS = {
   },
 
   // ---------------------------------------------------------------
-  // Background processing (Claude Sonnet 4.5) — cost efficiency
+  // Background processing (Claude Sonnet 5.5 since Oct 19 2026; Sonnet 4.5 retires
+  // Nov 30 2026). Descriptive only: request code reads MODELS.background, which
+  // honors the AI_BACKGROUND_MODEL kill switch. Keep maxTokens in step with code.
   // ---------------------------------------------------------------
   ONBOARDING_EXTRACTION: {
-    model: 'claude-sonnet-4-5-20250929',
+    model: 'claude-sonnet-5-5',
     maxTokens: 800,
     caching: true,
     streaming: false,
     costNote: 'Extract skin profile from onboarding chat. ~$0.005 per extraction.',
   },
   TITLE_GENERATION: {
-    model: 'claude-sonnet-4-5-20250929',
-    maxTokens: 50,
+    model: 'claude-sonnet-5-5',
+    maxTokens: 200,
     caching: false,
     streaming: false,
     costNote: 'Auto-generate conversation titles. ~$0.001 per title.',
   },
   SUMMARY_GENERATION: {
-    model: 'claude-sonnet-4-5-20250929',
-    maxTokens: 800,
+    model: 'claude-sonnet-5-5',
+    maxTokens: 6000,
     caching: false,
     streaming: false,
     costNote: 'Conversation summaries for cross-session memory. ~$0.003 per summary.',
   },
   DECISION_EXTRACTION: {
-    model: 'claude-sonnet-4-5-20250929',
-    maxTokens: 2000,
+    model: 'claude-sonnet-5-5',
+    maxTokens: 4000,
     caching: false,
     streaming: false,
     costNote: 'Extract decisions/preferences from conversations. ~$0.003 per extraction.',
   },
   WIDGET_MEMORY: {
-    model: 'claude-sonnet-4-5-20250929',
-    maxTokens: 400,
+    model: 'claude-sonnet-5-5',
+    maxTokens: 4000,
     caching: false,
     streaming: false,
     costNote: 'Generate cross-session memory for anonymous visitors. ~$0.002 per generation.',
@@ -179,28 +181,28 @@ export const AI_CONTEXTS = {
     costNote: 'Blog post generation. ~$0.10-0.20 per post. Disabled in cron.',
   },
   INGREDIENT_ENRICHMENT: {
-    model: 'claude-sonnet-4-5-20250929',
-    maxTokens: 300,
+    model: 'claude-sonnet-5-5',
+    maxTokens: 1500,
     caching: false,
     streaming: false,
     costNote: 'Enrich new ingredients during pipeline. ~$0.001 per ingredient.',
   },
   PRODUCT_EXTRACTION: {
-    model: 'claude-sonnet-4-5-20250929',
+    model: 'claude-sonnet-5-5',
     maxTokens: 500,
     caching: false,
     streaming: false,
     costNote: 'Extract product data from scraped listings. ~$0.002 per product.',
   },
   REDDIT_SENTIMENT: {
-    model: 'claude-sonnet-4-5-20250929',
+    model: 'claude-sonnet-5-5',
     maxTokens: 200,
     caching: false,
     streaming: false,
     costNote: 'Sentiment analysis for Reddit mentions. ~$0.001 per post.',
   },
   VOICE_CLEANUP: {
-    model: 'claude-sonnet-4-5-20250929',
+    model: 'claude-sonnet-5-5',
     maxTokens: 400,
     caching: false,
     streaming: false,
@@ -250,6 +252,7 @@ export function estimateCost(
     'claude-opus-5-5': { input: 4 / M, output: 20 / M, cacheRead: 0.2 / M, cacheWrite: 5 / M },
     'claude-opus-4-8': { input: 5 / M, output: 25 / M, cacheRead: 0.5 / M, cacheWrite: 6.25 / M },
     'claude-opus-4-7': { input: 5 / M, output: 25 / M, cacheRead: 0.5 / M, cacheWrite: 6.25 / M },
+    'claude-sonnet-5-5': { input: 2 / M, output: 10 / M, cacheRead: 0.2 / M, cacheWrite: 2.5 / M },
     'claude-sonnet-4-5-20250929': { input: 3 / M, output: 15 / M, cacheRead: 0.3 / M, cacheWrite: 3.75 / M },
     'claude-haiku-4-5-20251001': { input: 1 / M, output: 5 / M, cacheRead: 0.1 / M, cacheWrite: 1.25 / M },
   }

@@ -279,7 +279,7 @@ Remember: Reference the actual products and data above. This is what makes Seoul
   const response = await callAnthropicWithRetry(() =>
     anthropic.messages.create({
       model: MODELS.background, // Sonnet for cost-efficiency
-      max_tokens: 4096,
+      max_tokens: 8000,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
     })

@@ -56,7 +56,7 @@ async function loadWithStubs({ response, onUpdate }) {
   const stubbed = src
     .replace(/^import \{ getServiceClient \} from '@\/lib\/supabase'$/m, '')
     .replace(
-      /^import \{ getAnthropicClient, MODELS, callAnthropicWithRetry \} from '@\/lib\/anthropic'$/m,
+      /^import \{ getAnthropicClient, MODELS, callAnthropicWithRetry, responseText \} from '@\/lib\/anthropic'$/m,
       ''
     )
 
@@ -65,6 +65,7 @@ const __calls = { create: [], updates: [] }
 globalThis.__memTestCalls = __calls
 const MODELS = { background: 'stub-model' }
 const callAnthropicWithRetry = (fn) => fn()
+const responseText = (res) => (res.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('')
 const getAnthropicClient = () => ({
   messages: {
     create: async (args) => { __calls.create.push(args); return globalThis.__memTestResponse },

@@ -87,7 +87,8 @@ writeFileSync(
   join(dir, 'anthropic.mjs'),
   `export function getAnthropicClient() { return {} }
 export const MODELS = { background: 'stub', primary: 'stub' }
-export async function callAnthropicWithRetry(fn) { return fn() }`
+export async function callAnthropicWithRetry(fn) { return fn() }
+export function responseText(res) { return (res.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('') }`
 )
 const persistenceJs = ts.transpileModule(
   readFileSync(PERSISTENCE, 'utf8')

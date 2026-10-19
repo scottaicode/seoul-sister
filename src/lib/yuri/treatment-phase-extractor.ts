@@ -204,7 +204,7 @@ export async function extractAndSaveTreatmentPhases(
       () =>
         client.messages.create({
           model: MODELS.background,
-          max_tokens: 1200,
+          max_tokens: 4000,
           system: SYSTEM_RULE,
           messages: [
             {
@@ -228,7 +228,7 @@ Return JSON only.`,
     return
   }
 
-  const block = response.content[0]
+  const block = response.content.find((b) => b.type === 'text') ?? { type: 'none' as const }
   if (!block || block.type !== 'text') return
 
   let parsed: { actions?: unknown }

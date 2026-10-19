@@ -1603,7 +1603,7 @@ async function truncateWithBridge(
 
       const response = await client.messages.create({
         model: MODELS.background,
-        max_tokens: 600,
+        max_tokens: 2000,
         messages: [{
           role: 'user',
           content: `Summarize these messages from the MIDDLE of a K-beauty advisor conversation. These messages are being dropped due to conversation length, so the summary must preserve all critical information.
@@ -1621,7 +1621,7 @@ Write a dense, factual summary. Max 400 words. Return ONLY the summary text.`,
         }],
       })
 
-      const block = response.content[0]
+      const block = response.content.find((b) => b.type === 'text') ?? { type: 'none' as const }
       if (block.type === 'text') {
         bridgeSummary = block.text.trim()
 
@@ -2334,7 +2334,7 @@ export async function extractDecisionMemory(
         // Sonnet 4.5 filled all 800 on one (truncated JSON -> nothing saved) and
         // two more landed within 70 tokens of it. The output grows with the
         // conversation, so the cap was failing exactly where memory matters most.
-        max_tokens: 2000,
+        max_tokens: 4000,
         messages: [
           {
             role: 'user',
@@ -2430,7 +2430,7 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
     1 // Non-critical: only 1 retry
   )
 
-  const block = response.content[0]
+  const block = response.content.find((b) => b.type === 'text') ?? { type: 'none' as const }
   if (block.type !== 'text') {
     console.error('[memory] decision extraction returned no text block', { conversationId, stop_reason: response.stop_reason })
     return null

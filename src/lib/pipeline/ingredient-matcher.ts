@@ -213,7 +213,7 @@ async function createIngredient(
 
   const response = await client.messages.create({
     model: MODELS.background,
-    max_tokens: 256,
+    max_tokens: 1500,
     system: INGREDIENT_ENRICHMENT_PROMPT,
     messages: [
       { role: 'user', content: `Ingredient INCI name: ${nameInci}` },

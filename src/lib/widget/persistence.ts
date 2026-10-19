@@ -5,7 +5,7 @@
  */
 
 import { getServiceClient } from '@/lib/supabase'
-import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
+import { getAnthropicClient, MODELS, callAnthropicWithRetry, responseText } from '@/lib/anthropic'
 
 export interface ToolCallLog {
   name: string
@@ -394,7 +394,7 @@ export async function generateAndSaveMemory(
       // NOT the fix: an unbounded schema would eventually outgrow any ceiling,
       // which is why the prompt below bounds the SHAPE and the branch below
       // reads stop_reason instead of inferring truncation from a failed regex.
-      max_tokens: 2000,
+      max_tokens: 4000,
       system: `You are a memory extraction system for a K-beauty AI advisor. Given conversation messages and any previous memory, generate an updated memory profile for this anonymous visitor. Return ONLY valid JSON.`,
       messages: [
         {
@@ -419,7 +419,7 @@ the facts that matter:
       ],
     }))
 
-    const text = response.content[0]?.type === 'text' ? response.content[0].text : ''
+    const text = responseText(response)
 
     // ASK THE MODEL, don't infer from a failed regex.
     //

@@ -5,6 +5,39 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.42.0 — Background AI moves to Sonnet 5.5 before Sonnet 4.5 retires (Oct 19 2026)
+
+Sonnet 4.5 was deprecated Sep 30 2026 and retires **Nov 30 2026** (Anthropic model-deprecations page).
+Every background extractor (memory summaries, decision memory, onboarding profile extraction, titles,
+treatment phases, widget visitor memory, learning patterns, product/ingredient pipeline, seasonal cron)
+now runs on `claude-sonnet-5-5`. An earlier session (Oct 10-15) had started this and left it uncommitted;
+it was finished, measured and reviewed here.
+
+**Measured, not assumed.** `scripts/ab-background-sonnet55-sites.ts` runs the real functions on real inputs
+against both models (twice: thinking off, then adaptive-low). 5.5 writes 10-40% more and was faster at every
+site; all 34 + 33 real-function runs parsed. Caps raised accordingly (summary 6000, decision memory 4000,
+patterns 3000, treatment phase 4000, widget memory 4000, title 200, ...). **The old 500-token cap on
+learning-pattern extraction was already truncating Sonnet 4.5** (5/5 conversation runs, 3/5 review runs), so
+the cross-user learning loop had been losing those patterns.
+
+**Thinking setting decided by a measured miss.** With thinking off (`between_tools`), 5.5 missed a
+Fitzpatrick I->II correction in decision memory on a real conversation (1/3; 4.5 caught it 3/3). Adaptive
+thinking at effort `low` caught it 3/3 at the same output size, so that is now the default the adapter
+applies. Kill switch: `AI_BACKGROUND_MODEL=claude-sonnet-4-5-20250929` (until Nov 30).
+
+**A Fable 5.1 review caught a P0 the author and 1,328 tests missed:** the shared client wrapper (from the
+earlier session) returned `p.then(...)`, which strips `APIPromise.withResponse()`, so `messages.stream()`
+threw on all three Yuri chat surfaces. Proven against the real SDK; fixed by observing on a side branch and
+returning the original promise. New `tests/anthropic-client-real-sdk.test.mjs` executes the real SDK
+(stubbed `fetch`) for create, stream, adaptation and the kill switch. The review also showed 5 of 6 attacks
+passed the first migration tests; they now fail. Reads switched from `content[0]` to the first text block.
+
+**Checked and not changed:** onboarding extraction differences (Spanish concern words occur on 4.5 too;
+5.5 omits a skin type 4.5 inferred, consistent with the clinical-honesty rule; "previous retinal use" in
+medical_history is a minor stretch). **Deferred, recorded as data:** background truncations/refusals are
+console-only (`ss_pipeline_runs` deferral `background_truncation_not_in_data`). Seven one-off scripts still
+hardcode 4.5 and will stop working Nov 30. **NOT VERIFIED in production yet.**
+
 ## v11.41.6 — Twelve search titles cut mid-phrase are whole again; LGAAS and Seoul Sister meta now match (Oct 19 2026)
 
 Data fix, no code. Twelve live blog `<title>`s ended mid-phrase ("Why Your Sebaceous Filaments Keep

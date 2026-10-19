@@ -33,7 +33,7 @@ export async function extractPatternsFromReview(review: {
 
   const response = await client.messages.create({
     model: MODELS.background,
-    max_tokens: 500,
+    max_tokens: 3000,
     messages: [
       {
         role: 'user',
@@ -62,7 +62,7 @@ Return ONLY valid JSON array. If no patterns can be extracted, return [].`,
     ],
   })
 
-  const block = response.content[0]
+  const block = response.content.find((b) => b.type === 'text') ?? { type: 'none' as const }
   if (block.type !== 'text') return []
 
   try {
@@ -98,7 +98,7 @@ export async function extractPatternsFromConversation(conversation: {
 
   const response = await client.messages.create({
     model: MODELS.background,
-    max_tokens: 500,
+    max_tokens: 3000,
     messages: [
       {
         role: 'user',
@@ -126,7 +126,7 @@ Return ONLY valid JSON array. If no patterns can be extracted, return [].`,
     ],
   })
 
-  const block = response.content[0]
+  const block = response.content.find((b) => b.type === 'text') ?? { type: 'none' as const }
   if (block.type !== 'text') return []
 
   try {

@@ -291,7 +291,7 @@ Return ONLY valid JSON, no explanation or markdown. If nothing can be extracted,
   )
 
   await logAIUsage(onboardingUsageRow('onboarding_extraction', MODELS.background, response.usage, userId))
-  const block = response.content[0]
+  const block = response.content.find((b) => b.type === 'text') ?? { type: 'none' as const }
   if (block.type !== 'text') return {}
 
   try {

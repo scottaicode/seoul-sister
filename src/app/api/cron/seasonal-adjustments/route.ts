@@ -39,7 +39,7 @@ export async function POST(request: Request) {
         const response = await callAnthropicWithRetry(() =>
           client.messages.create({
             model: MODELS.background,
-            max_tokens: 600,
+            max_tokens: 3000,
             messages: [
               {
                 role: 'user',
@@ -58,7 +58,7 @@ Keep values concise (1 sentence each, 2-3 items per array). Return ONLY the raw 
           2 // maxRetries — one retry with 2s backoff to stay within 60s
         )
 
-        const block = response.content[0]
+        const block = response.content.find((b) => b.type === 'text') ?? { type: 'none' as const }
         if (block.type !== 'text') {
           throw new Error(`Sonnet returned non-text block type: ${block.type}`)
         }

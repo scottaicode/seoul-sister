@@ -763,7 +763,7 @@ export async function generateTitle(
     () =>
       client.messages.create({
         model: MODELS.background,
-        max_tokens: 50,
+        max_tokens: 200,
         messages: [
           {
             role: 'user',
@@ -776,7 +776,7 @@ Return ONLY the title text, nothing else. No quotes.`,
     1 // Non-critical: only 1 retry
   )
 
-  const block = response.content[0]
+  const block = response.content.find((b) => b.type === 'text') ?? { type: 'none' as const }
   if (block.type === 'text') {
     return block.text.trim().replace(/^["']|["']$/g, '')
   }
@@ -1428,7 +1428,11 @@ export async function generateConversationSummary(
     () =>
       client.messages.create({
         model: MODELS.background,
-        max_tokens: 800,
+        // 3000, not 800 (Oct 10 2026): Sonnet 5.5 writes fuller summaries than
+        // 4.5 and hit 800 mid-SECTION 2 on every test run, so the summary was
+        // cut off and the NEXT_SESSION_OPENER line was never reached. Measured
+        // on 5.5: 1047 tokens (4-message chat), 1537 (28-message chat).
+        max_tokens: 6000,
         messages: [
           {
             role: 'user',
@@ -1476,7 +1480,7 @@ Return ONLY the summary text, no JSON or code formatting. End with the NEXT_SESS
     1 // Non-critical: only 1 retry
   )
 
-  const block = response.content[0]
+  const block = response.content.find((b) => b.type === 'text') ?? { type: 'none' as const }
   if (block.type !== 'text') return null
 
   const fullText = block.text.trim()
@@ -1516,7 +1520,7 @@ async function extractAndSaveInsight(
     () =>
       client.messages.create({
         model: MODELS.background,
-        max_tokens: 300,
+        max_tokens: 1500,
         messages: [
           {
             role: 'user',
@@ -1532,7 +1536,7 @@ Return ONLY valid JSON.`,
     1 // Non-critical: only 1 retry
   )
 
-  const block = response.content[0]
+  const block = response.content.find((b) => b.type === 'text') ?? { type: 'none' as const }
   if (block.type !== 'text') return
 
   try {
@@ -1567,7 +1571,7 @@ async function extractContinuousLearning(
     () =>
       client.messages.create({
         model: MODELS.background,
-        max_tokens: 500,
+        max_tokens: 2000,
         messages: [
           {
             role: 'user',
@@ -1635,7 +1639,7 @@ The supporting_quote field is mandatory on every reaction. If you can't quote a 
     1 // Non-critical: only 1 retry
   )
 
-  const block = response.content[0]
+  const block = response.content.find((b) => b.type === 'text') ?? { type: 'none' as const }
   if (block.type !== 'text') return
 
   let parsed: {
