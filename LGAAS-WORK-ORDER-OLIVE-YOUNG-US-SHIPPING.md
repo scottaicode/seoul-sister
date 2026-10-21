@@ -24,6 +24,7 @@
 - **`/api/admin/products/prices`** (what `fetchPriceContext` calls): same response shape. Each price now also carries **`retailer_ships_to_us`** (true / false / null). The retailer name for Global rows is now "Olive Young Global".
 - **`/api/admin/products/search`** (what `fetchProductContext` calls): **`us_price` changed meaning.** It used to be `ss_products.price_usd`, an undated price from an unnamed store (usually Olive Young Global). It is now the freshest price at a store that ships to the US, **or `null`** when there is none (most products, until Olive Young US prices are matched). A new **`international_price`** field carries the Global price separately.
 - **`/api/retailers`**: now includes "Olive Young US" and lists the Global row as "Olive Young Global".
+- **Update (Oct 21 2026, later the same day, v11.44.0):** 55 products now have a verified Olive Young US price (retailer "Olive Young US", `retailer_ships_to_us: true`), so `us_price` is non-null for those and they are safe to quote with their date. Everything else is still `null`.
 - Seoul Sister's price jobs now run less often (Olive Young Global weekly, Soko Glam monthly, YesStyle retired), so expect older `age_days` values. Policy for Seoul Sister going forward is **rough US prices, not exact ones**.
 
 ## What LGAAS needs to change
