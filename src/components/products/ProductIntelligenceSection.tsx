@@ -162,8 +162,8 @@ export default function ProductIntelligenceSection({ productId, productName, pro
         />
         <GatedTeaser
           icon={<Package className="w-5 h-5 text-sky-400" />}
-          title="Price Comparison Across 6+ Retailers"
-          description="Compare exact prices at Olive Young, Soko Glam, YesStyle, Amazon, and more. Find the best deal with savings calculations."
+          title="Where to Buy It"
+          description="Authorized stores that ship to you, with the US price where we have one and the international price for comparison."
         />
         <GatedTeaser
           icon={<Star className="w-5 h-5 text-rose-400" />}

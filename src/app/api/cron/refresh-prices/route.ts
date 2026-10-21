@@ -13,7 +13,8 @@ import { PricePipeline } from '@/lib/pipeline/price-pipeline'
  * - 150 products × ~1.5s ≈ 225s scraping
  * - Remaining time: snapshot prices to history + detect price drops
  *
- * YesStyle has its own cron at 6 PM UTC (refresh-prices-yesstyle).
+ * YesStyle's refresher (refresh-prices-yesstyle) was unscheduled Oct 21 2026: we
+ * don't send people there, so its prices are kept only as an old reference.
  * Amazon, StyleKorean are CLI-only (CAPTCHA/AJAX issues).
  *
  * Secured with CRON_SECRET header.

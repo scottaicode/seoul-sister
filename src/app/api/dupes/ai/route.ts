@@ -20,7 +20,7 @@ Rules:
 - Only recommend REAL products from actual Korean beauty brands
 - Focus on ingredient-level equivalence, not just marketing claims
 - Be transparent about trade-offs
-- Prioritize products available internationally (Olive Young Global, YesStyle, Amazon)
+- Prioritize products that are easy to buy from authorized retailers in the US and internationally
 
 Respond in JSON format:
 {

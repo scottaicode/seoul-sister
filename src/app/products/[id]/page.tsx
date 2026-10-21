@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { scopePrices, usPriceRange } from '@/lib/pricing/price-scope'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
@@ -123,7 +124,7 @@ export default async function PublicProductPage({ params }: Props) {
       .limit(1),
     supabase
       .from('ss_product_prices')
-      .select('price_usd, in_stock, retailer:ss_retailers(name)')
+      .select('price_usd, in_stock, last_checked, retailer:ss_retailers(name, ships_to_us)')
       .eq('product_id', id)
       .order('price_usd', { ascending: true }),
     // Related blog articles mentioning this product's brand or category
@@ -216,7 +217,8 @@ export default async function PublicProductPage({ params }: Props) {
   const priceRows = (priceRangeRes.data || []) as unknown as Array<{
     price_usd: number
     in_stock: boolean | null
-    retailer: { name: string } | null
+    last_checked: string | null
+    retailer: { name: string; ships_to_us: boolean | null } | null
   }>
 
   // Retailers this product ACTUALLY has prices at, filtered through the same
@@ -229,6 +231,9 @@ export default async function PublicProductPage({ params }: Props) {
   const recommendedRetailers = Array.from(
     new Set(
       priceRows
+        // A store that can't deliver to the US is not "where to buy" on a page
+        // most of whose readers are American (Olive Young Global, since May 29 2026).
+        .filter((r) => r.retailer?.ships_to_us === true)
         .map((r) => r.retailer?.name)
         .filter((n): n is string => !!n && isRecommendedRetailer(n))
     )
@@ -237,9 +242,22 @@ export default async function PublicProductPage({ params }: Props) {
     recommendedRetailers.length > 1
       ? `${recommendedRetailers.slice(0, -1).join(', ')} and ${recommendedRetailers[recommendedRetailers.length - 1]}`
       : recommendedRetailers[0] || null
-  const prices = priceRows
-    .map((p) => Number(p.price_usd))
-    .filter((p) => p > 0)
+  // US-payable prices only. Olive Young Global's price is kept separately as an
+  // international comparison and is never published to Google as a USD offer.
+  // See src/lib/pricing/price-scope.ts.
+  if (priceRangeRes.error) {
+    // Loud: a dead price join must not look like "this product has no prices".
+    console.error(`[products/${id}] price lookup failed: ${priceRangeRes.error.message}`)
+  }
+  const scoped = scopePrices(
+    priceRows.map((r) => ({
+      price_usd: r.price_usd,
+      last_checked: r.last_checked,
+      ships_to_us: r.retailer?.ships_to_us ?? null,
+      recommended: isRecommendedRetailer(r.retailer?.name),
+    }))
+  )
+  const internationalPrice = scoped.international
 
   // Availability must be DERIVED, never asserted. Google's structured-data policy
   // requires markup to be a true representation of the page; hardcoding InStock
@@ -250,7 +268,9 @@ export default async function PublicProductPage({ params }: Props) {
   // UNKNOWN. Unknown omits the property entirely rather than guessing, the same
   // discipline as fitzpatrick_source — a wrong availability degrades invisibly,
   // a missing one degrades visibly.
-  const stockFlags = priceRows.filter((p) => Number(p.price_usd) > 0).map((p) => p.in_stock)
+  const stockFlags = priceRows
+    .filter((p) => Number(p.price_usd) > 0 && p.retailer?.ships_to_us === true)
+    .map((p) => p.in_stock)
   const anyInStock = stockFlags.some((f) => f === true)
   const allOutOfStock = stockFlags.length > 0 && stockFlags.every((f) => f === false)
   const availability = anyInStock
@@ -258,8 +278,10 @@ export default async function PublicProductPage({ params }: Props) {
     : allOutOfStock
       ? 'https://schema.org/OutOfStock'
       : null
-  const priceMin = prices.length > 0 ? Math.min(...prices) : product.price_usd ? Number(product.price_usd) : null
-  const priceMax = prices.length > 1 ? Math.max(...prices) : null
+  // US-payable range only, from the shared helper. No inline-column fallback:
+  // ss_products.price_usd carries no store and no date, so it cannot be
+  // presented (or published) as a price a US shopper pays.
+  const { min: priceMin, max: priceMax } = usPriceRange(scoped)
 
   // Map ingredient effectiveness by ingredient_id for easy lookup
   const effectivenessMap = new Map<string, Array<{ skin_type: string; concern: string; score: number; sample_size: number }>>()
@@ -317,7 +339,7 @@ export default async function PublicProductPage({ params }: Props) {
             name: `How much does ${product.name_en} cost?`,
             acceptedAnswer: {
               '@type': 'Answer' as const,
-              text: `${product.name_en} by ${product.brand_en} starts from $${priceMin.toFixed(2)} USD${product.volume_display ? ` for ${product.volume_display}` : ''}${priceMax && priceMax > priceMin ? `, with prices ranging up to $${priceMax.toFixed(2)} across retailers` : ''}.${retailerList ? ` Seoul Sister tracks pricing at ${retailerList}, with price drop alerts for Pro members.` : ''} Seoul Sister does not sell products — we compare retailer pricing so you can buy from the source.`,
+              text: `${product.name_en} by ${product.brand_en} was last seen at $${priceMin.toFixed(2)} USD${product.volume_display ? ` for ${product.volume_display}` : ''}${priceMax && priceMax > priceMin ? `, up to $${priceMax.toFixed(2)}` : ''} at a store that ships to the US${retailerList ? ` (${retailerList})` : ''}. Prices change often, so check the store for today's price. Seoul Sister does not sell products.`,
             },
           },
         ]
@@ -327,7 +349,7 @@ export default async function PublicProductPage({ params }: Props) {
       name: `Where to buy ${product.name_en}?`,
       acceptedAnswer: {
         '@type': 'Answer' as const,
-        text: `${product.name_en} by ${product.brand_en}${retailerList ? ` is tracked at ${retailerList}` : ' is sold through Korean beauty retailers'}.${priceMin ? ` Prices start from $${priceMin.toFixed(2)} USD.` : ''} Seoul Sister verifies retailer authenticity and tracks counterfeit indicators to help you buy genuine Korean skincare products. We are an advice platform and never sell products ourselves.`,
+        text: `${product.name_en} by ${product.brand_en}${retailerList ? ` is sold in the US at ${retailerList}` : ' is sold through authorized retailers and the brand itself'}. Buy from an authorized retailer or the brand's own site rather than an open marketplace. Olive Young Global ships to most countries but no longer ships to the US. Seoul Sister tracks counterfeit indicators to help you buy genuine Korean skincare. We are an advice platform and never sell products ourselves.`,
       },
     },
   ]
@@ -369,7 +391,7 @@ export default async function PublicProductPage({ params }: Props) {
             lowPrice: priceMin.toFixed(2),
             highPrice: (priceMax || priceMin).toFixed(2),
             priceCurrency: 'USD',
-            offerCount: prices.length || 1,
+            offerCount: scoped.usAll.length || 1,
             ...(availability && { availability }),
           },
         }),
@@ -499,14 +521,21 @@ export default async function PublicProductPage({ params }: Props) {
 
                 {/* Price range */}
                 <div className="flex items-center gap-2 mt-3 justify-center sm:justify-start">
-                  {priceMin && (
+                  {priceMin ? (
                     <span className="font-display font-bold text-2xl text-white">
                       {priceMax && priceMax > priceMin
                         ? `$${priceMin.toFixed(0)} – $${priceMax.toFixed(0)}`
                         : `$${priceMin.toFixed(2)}`
                       }
                     </span>
-                  )}
+                  ) : internationalPrice ? (
+                    <span className="font-display font-bold text-2xl text-white/80">
+                      ${internationalPrice.toFixed(2)}{' '}
+                      <span className="text-xs font-normal text-white/40 align-middle">
+                        international price · Olive Young Global (doesn&apos;t ship to the US)
+                      </span>
+                    </span>
+                  ) : null}
                   {product.volume_display && (
                     <span className="text-sm text-white/40">{product.volume_display}</span>
                   )}

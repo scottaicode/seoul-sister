@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { scopePrices, type ScopedPriceRow } from '@/lib/pricing/price-scope'
+import { isRecommendedRetailer } from '@/lib/yuri/tools'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import { Star, TrendingUp, FlaskConical, Shield, ArrowRight } from 'lucide-react'
@@ -283,34 +285,43 @@ export default async function BestOfCategoryPage({ params }: Props) {
   // the never-recommend list. Prefer the FRESHEST row, taking the cheaper of
   // any rows that share that freshness. The query already sorts last_checked
   // DESC, so the first row seen per product is the freshest.
-  const livePrice = new Map<string, number>()
+  // Oct 21 2026: split by whether the store ships to the US. Olive Young
+  // Global (most of our rows) stopped shipping to US addresses on May 29 2026,
+  // so its price is shown as an international price and is NEVER emitted as a
+  // USD Offer to Google. See src/lib/pricing/price-scope.ts.
+  const usPrice = new Map<string, number>()
+  const intlPrice = new Map<string, number>()
   if (products.length > 0) {
-    const { data: freshness } = await supabase
+    const { data: freshness, error: freshnessError } = await supabase
       .from('ss_product_prices')
-      .select('product_id, price_usd, last_checked')
+      .select('product_id, price_usd, last_checked, retailer:ss_retailers(name, ships_to_us)')
       .in('product_id', products.map((p) => p.id))
       .not('last_checked', 'is', null)
       .order('last_checked', { ascending: false })
-    const freshestDay = new Map<string, string>()
-    for (const r of (freshness || []) as Array<{
+    if (freshnessError) {
+      // Loud: a dead price join must not look like "no prices in this category".
+      console.error(`[best/${category}] price lookup failed: ${freshnessError.message}`)
+    }
+    const byProduct = new Map<string, ScopedPriceRow[]>()
+    for (const r of (freshness || []) as unknown as Array<{
       product_id: string
       price_usd: number | null
       last_checked: string
+      retailer: { name: string | null; ships_to_us: boolean | null } | null
     }>) {
-      if (r.price_usd == null) continue
-      const day = r.last_checked.slice(0, 10)
-      const seen = freshestDay.get(r.product_id)
-      if (seen === undefined) {
-        freshestDay.set(r.product_id, day)
-        livePrice.set(r.product_id, r.price_usd)
-        continue
-      }
-      // Same-day rows are equally fresh, so take the better price among them.
-      // An older row never overwrites a fresher one.
-      if (day === seen) {
-        const prev = livePrice.get(r.product_id)
-        if (prev === undefined || r.price_usd < prev) livePrice.set(r.product_id, r.price_usd)
-      }
+      const list = byProduct.get(r.product_id) ?? []
+      list.push({
+        price_usd: r.price_usd,
+        last_checked: r.last_checked,
+        ships_to_us: r.retailer?.ships_to_us ?? null,
+        recommended: isRecommendedRetailer(r.retailer?.name),
+      })
+      byProduct.set(r.product_id, list)
+    }
+    for (const [pid, rows] of byProduct) {
+      const scoped = scopePrices(rows)
+      if (scoped.us !== null) usPrice.set(pid, scoped.us)
+      if (scoped.international !== null) intlPrice.set(pid, scoped.international)
     }
     const dates = (freshness || [])
       .map((r) => (r as { last_checked: string }).last_checked)
@@ -403,13 +414,13 @@ export default async function BestOfCategoryPage({ params }: Props) {
             // hardcoding InStock asserted something we cannot know — false for
             // 1-4 items in every category's top 20 when measured against
             // ss_product_prices.in_stock. Omitting an unknown beats guessing it.
-            // Live price, falling back to the inline column only when this
-            // product has no ss_product_prices row at all. 76% of the inline
-            // values were stale when measured; see the livePrice comment above.
-            ...((livePrice.get(p.id) ?? p.price_usd) && {
+            // Only a price at a store that ships to the US becomes an Offer.
+            // The inline column (unknown store, unknown date) and international
+            // prices are never published as a USD offer.
+            ...(usPrice.has(p.id) && {
               offers: {
                 '@type': 'Offer',
-                price: Number(livePrice.get(p.id) ?? p.price_usd).toFixed(2),
+                price: Number(usPrice.get(p.id)).toFixed(2),
                 priceCurrency: 'USD',
               },
             }),
@@ -498,9 +509,10 @@ export default async function BestOfCategoryPage({ params }: Props) {
             </h2>
             <ul className="space-y-2 text-sm text-white/60 leading-relaxed">
               <li>
-                <strong className="text-white/80">Prices across retailers.</strong>{' '}
-                Every product below links to its own page with prices collected from
-                Olive Young, Soko Glam and YesStyle
+                <strong className="text-white/80">Prices.</strong>{' '}
+                Prices shown are from stores that ship to the US where we have one; an
+                &ldquo;international price&rdquo; is from Olive Young Global, which doesn&apos;t
+                ship to the US and is shown for comparison
                 {priceCheckedAt && (
                   <> — last checked{' '}
                     <time dateTime={new Date(priceCheckedAt).toISOString()}>
@@ -642,11 +654,16 @@ export default async function BestOfCategoryPage({ params }: Props) {
                       )}
                     </div>
                   )}
-                  {(livePrice.get(product.id) ?? product.price_usd) && (
+                  {usPrice.has(product.id) ? (
                     <p className="text-sm text-emerald-400 mt-0.5">
-                      ${Number(livePrice.get(product.id) ?? product.price_usd).toFixed(2)}
+                      ${Number(usPrice.get(product.id)).toFixed(2)}
                     </p>
-                  )}
+                  ) : intlPrice.has(product.id) ? (
+                    <p className="text-sm text-white/50 mt-0.5">
+                      ${Number(intlPrice.get(product.id)).toFixed(2)}{' '}
+                      <span className="text-xs text-white/40">international price</span>
+                    </p>
+                  ) : null}
                 </div>
 
                 <ArrowRight className="w-4 h-4 text-white/20 group-hover:text-amber-400/50 shrink-0 transition-colors" />

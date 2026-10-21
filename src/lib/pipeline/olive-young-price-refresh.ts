@@ -25,7 +25,14 @@ import { fetchOliveYoungPrice } from './sources/olive-young-price-api'
  * fuzzy re-matching — the price we write is for the exact product the row is for.
  */
 
-const OY_RETAILER_NAME = 'Olive Young'
+const OY_RETAILER_NAME = 'Olive Young Global'
+/**
+ * The row is resolved by website, not name: the display name changed from
+ * "Olive Young" to "Olive Young Global" on Oct 21 2026 once a separate
+ * Olive Young US store existed, and a name lookup would have silently aborted
+ * this job across the rename.
+ */
+const OY_GLOBAL_WEBSITE = 'https://global.oliveyoung.com'
 
 export interface OyPriceRefreshResult {
   scanned: number // rows we attempted this run
@@ -41,6 +48,9 @@ export interface OyPriceRefreshResult {
    * Spanish visitor were already delisted while we still advertised a price.
    */
   delisted: number
+  /** True when the Olive Young Global retailer row could not be found. A run that
+   *  never started must be recorded as FAILED, not as a clean 0/0. */
+  retailerMissing?: boolean
   sweptCount: number // phase-2 (long-tail sweep) rows seen this run; 0 => cursor wrap
   lastCheckedCursor: string | null // ISO of the last row's PRIOR last_checked (keyset)
 }
@@ -87,12 +97,12 @@ export async function runOliveYoungPriceRefresh(
   const { data: retailer } = await db
     .from('ss_retailers')
     .select('id')
-    .eq('name', OY_RETAILER_NAME)
+    .eq('website', OY_GLOBAL_WEBSITE)
     .single()
 
   if (!retailer) {
     console.error('[oy-price-refresh] Olive Young retailer row not found — aborting')
-    return { scanned: 0, updated: 0, priceChanges: 0, unscrapeable: 0, fetchFailed: 0, delisted: 0, sweptCount: 0, lastCheckedCursor: afterCheckedAt }
+    return { scanned: 0, updated: 0, priceChanges: 0, unscrapeable: 0, fetchFailed: 0, delisted: 0, retailerMissing: true, sweptCount: 0, lastCheckedCursor: afterCheckedAt }
   }
 
   const popularCutoff = new Date(Date.now() - POPULAR_STALE_DAYS * 86_400_000).toISOString()

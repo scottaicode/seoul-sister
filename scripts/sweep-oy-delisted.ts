@@ -43,7 +43,7 @@ async function main() {
   const db = createClient(url, key)
 
   const { data: retailer, error: rErr } = await db
-    .from('ss_retailers').select('id').eq('name', 'Olive Young').single()
+    .from('ss_retailers').select('id').eq('website', 'https://global.oliveyoung.com').single()
   if (rErr || !retailer) {
     console.error('Olive Young retailer row not found:', rErr?.message)
     process.exit(1)

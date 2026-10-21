@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
+import { isOrderableHere } from '@/lib/pricing/price-scope'
+import { isRecommendedRetailer } from '@/lib/yuri/tools'
 
 const priceQuerySchema = z.object({
   product_id: z.string().uuid(),
@@ -47,7 +49,8 @@ export async function GET(request: NextRequest) {
           trust_score,
           ships_international,
           affiliate_program,
-          affiliate_url_template
+          affiliate_url_template,
+          ships_to_us
         )
       `)
       .eq('product_id', params.product_id)
@@ -57,8 +60,17 @@ export async function GET(request: NextRequest) {
       throw pricesError
     }
 
-    let retailerPrices = (prices ?? []).map(p => {
+    // Where the shopper is, from Vercel's edge geolocation. A network guess,
+    // used only to decide which listings this shopper can actually order.
+    const shopperCountry = request.headers.get('x-vercel-ip-country')?.toUpperCase() ?? null
+    // Unknown location (no header, e.g. local dev) is treated as US for this
+    // UI decision only: it is the conservative choice, since it can only hide a
+    // Global link as a "deal", never present an unorderable one as one.
+    const shopperInUs = shopperCountry === null || shopperCountry === 'US'
+
+    const retailerPrices = (prices ?? []).map(p => {
       const retailer = p.retailer as unknown as Record<string, unknown> | null
+      const shipsToUs = typeof retailer?.ships_to_us === 'boolean' ? (retailer.ships_to_us as boolean) : null
       return {
         retailer_name: (retailer?.name as string) ?? 'Unknown',
         retailer_url: p.url,
@@ -68,45 +80,34 @@ export async function GET(request: NextRequest) {
         trust_score: (retailer?.trust_score as number) ?? null,
         country: (retailer?.country as string) ?? null,
         ships_international: (retailer?.ships_international as boolean) ?? false,
+        ships_to_us: shipsToUs,
+        // Oct 21 2026: Olive Young Global stopped shipping to the US on May 29.
+        // A US shopper can't order a ships_to_us:false listing, so it is shown
+        // as an international comparison, never as a deal to click through to.
+        orderable_here: isOrderableHere(
+          shipsToUs,
+          shopperInUs,
+          typeof retailer?.ships_international === 'boolean' ? (retailer.ships_international as boolean) : null
+        ),
         is_affiliate: (retailer?.affiliate_program as boolean) ?? false,
         last_checked: p.last_checked,
       }
     })
 
-    // Fallback: if no retailer prices but product has a price, show it as Olive Young
-    if (retailerPrices.length === 0 && product.price_usd) {
-      retailerPrices = [{
-        retailer_name: 'Olive Young',
-        retailer_url: `https://global.oliveyoung.com/search?query=${encodeURIComponent(product.name_en)}`,
-        price_usd: Number(product.price_usd),
-        price_krw: product.price_krw,
-        in_stock: true,
-        trust_score: 95,
-        country: 'KR',
-        ships_international: true,
-        is_affiliate: false,
-        last_checked: new Date().toISOString(),
-      }]
-    }
+    // No fabricated fallback row. This used to invent an "Olive Young" listing
+    // from ss_products.price_usd stamped last_checked = now, so an undated
+    // February price rendered as "Just checked". An unknown price stays unknown.
 
-    const bestDeal = retailerPrices.find(p => p.in_stock) ?? null
-    const koreaPrice = retailerPrices.find(p => p.country === 'KR')
-    const usPrices = retailerPrices.filter(p => p.country === 'US')
-    const usAvg = usPrices.length > 0
-      ? usPrices.reduce((sum, p) => sum + p.price_usd, 0) / usPrices.length
-      : null
-
-    const savingsPct = bestDeal && usAvg
-      ? Math.round(((usAvg - bestDeal.price_usd) / usAvg) * 100)
-      : null
+    // The highlighted listing must be a store we'd actually send someone to,
+    // that can deliver to them. Same rule Yuri gets via cheapest_ships_to_us.
+    const bestDeal =
+      retailerPrices.find(p => p.in_stock && p.orderable_here && isRecommendedRetailer(p.retailer_name)) ?? null
 
     return NextResponse.json({
       product,
       prices: retailerPrices,
       best_deal: bestDeal,
-      korea_price_usd: koreaPrice?.price_usd ?? null,
-      us_avg_price: usAvg ? Math.round(usAvg * 100) / 100 : null,
-      savings_pct: savingsPct,
+      shopper_in_us: shopperInUs,
     })
   } catch (error) {
     return handleApiError(error)

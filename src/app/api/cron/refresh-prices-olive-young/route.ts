@@ -102,7 +102,10 @@ async function handler(request: Request) {
 
     await logPipelineRun(db, {
       run_type: 'price_refresh_olive_young',
-      status: refreshedNothing ? 'failed' : 'completed',
+      // retailerMissing: the job never started (e.g. the retailer row was renamed
+      // or removed). Logging that as 'completed' 0/0 is the nothing-ran-looks-
+      // like-nothing-wrong shape the Guardian's failed-status check exists for.
+      status: refreshedNothing || result.retailerMissing ? 'failed' : 'completed',
       source: 'olive_young',
       products_scraped: result.scanned,
       products_processed: result.updated,
@@ -110,7 +113,8 @@ async function handler(request: Request) {
       completed_at: new Date().toISOString(),
       metadata: {
         trigger: 'cron',
-        schedule: 'daily_9pm_utc',
+        schedule: 'weekly_sun_9pm_utc',
+        retailer_missing: result.retailerMissing ?? false,
         last_checked_cursor: nextCursor,
         wrapped: reachedEnd,
         updated: result.updated,

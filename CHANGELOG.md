@@ -5,6 +5,60 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.43.0 — US shoppers stop being sent to a store that won't ship to them (Oct 21 2026)
+
+**Olive Young Global stopped shipping to all US addresses on May 29 2026**, when Olive Young US
+(`us.oliveyoung.com`) launched. Verified on the site and in a real browser: a US visitor opening one of our
+links gets a "Shopping from the U.S.?" pop-up and "This site does not ship to the U.S." **4,908 of our 5,157
+price rows pointed at it.** For five months Yuri, the product and best-of pages, and the JSON-LD we send Google
+quoted US visitors prices they could not pay, from a store that would refuse the order. The prices were not
+even US prices: one SKIN1004 twin pack was $21.50 on Global and $38.00 (sold out) at Olive Young US.
+
+Found while researching affiliate links, not by any monitor: nothing in the system knew where a store ships.
+
+**Direction chosen by Scott: "option 3", rough US prices instead of exact tracking.** Measured first: Yuri
+called `compare_prices` 7 times in 90 days versus 161 product searches, and ~1% of 1,018 user messages ask
+where to buy. People pay for advice; precise multi-store price tracking had been a recurring silent failure
+(the ~130-night Olive Young refresher outage) defending a feature almost nobody uses.
+
+**What changed**
+- `ss_retailers.ships_to_us` (migration `20261021000001`, applied before deploy). The old row is renamed
+  "Olive Young Global" (`false`); a new "Olive Young US" row exists. A fact on every price row Yuri receives
+  (`search_products`, `get_product_details`, `compare_prices`), never a filter: the Global price stays visible
+  as an international comparison and is still the right store for visitors outside the US.
+- `compare_prices` adds `cheapest_ships_to_us`: the cheapest store that both ships to the US and is one we
+  recommend. A failed price lookup now returns an explicit error instead of "no price data".
+- Yuri's store guidance (widget + advisor + specialists) is location-aware: US = Olive Young US, Soko Glam,
+  iHerb, brand US sites; outside the US = Olive Young Global. The widget now gets a visitor-country fact from
+  Vercel's edge header (a network guess she lets the visitor override). The Korean-formula sunscreen section
+  now says how US subscribers can actually get it (Korea-based shops or a forwarder such as Delivered Korea)
+  and what it costs (duty on every package, FDA review of small shipments, a held package may not be refunded),
+  then leaves the decision to them. No duty percentage is quoted; tariffs keep shifting.
+- Public pages (`src/lib/pricing/price-scope.ts`, shared): only a price at a recommended store that ships to
+  the US is shown as the price or published as a USD offer. Global prices are labelled "international price".
+  The undated `ss_products.price_usd` column no longer reaches Google.
+- Subscriber price list: highlights only a recommended store that ships to the shopper; a product with only
+  international listings links to Yuri ("Ask Yuri where to buy it") instead of a guessed store link. Removed a
+  fallback that invented an "Olive Young" row stamped "Just checked" from an undated price.
+- LGAAS endpoints keep their shape: `/api/admin/products/prices` adds `retailer_ships_to_us`;
+  `/api/admin/products/search` `us_price` is now a real US price or `null`, plus `international_price`.
+  LGAAS-side changes (AriaStar guidance, 10 live posts) are in `LGAAS-WORK-ORDER-OLIVE-YOUNG-US-SHIPPING.md`.
+- Price jobs: Olive Young Global weekly (Sundays), Soko Glam stays daily, YesStyle refresher unscheduled.
+  Homepage, product-teaser and llms.txt copy no longer promise "exact prices" or Amazon prices (Amazon has 0
+  rows).
+
+**Second-model review (Fable 5.1) found 11 defects in the first version, two severe:** deploying the code
+before the migration would have made every product report "no pricing" and stripped every page's prices
+silently (PostgREST returns 400 on an unknown embedded column and three call sites ignored `error`); and
+YesStyle, which ships to the US but is never recommended and whose refresher was being retired, would have
+become the published US price for 115 products. Three of the author's wiring tests passed against wrong code
+(`priceMin` falling back to the international price, `cheapest_ships_to_us: null`, `orderable_here: true`);
+all five bypasses now fail. A dated price example and a wrong Sephora claim ("no major sunscreen brand" —
+Cell Fusion C is in it) were cut from the prompts.
+
+**Not done yet, recorded:** matching the catalog to Olive Young US for real US prices (its product feed is
+readable server-side; search needs a browser). Until then most products show only an international price.
+
 ## v11.42.0 — Background AI moves to Sonnet 5.5 before Sonnet 4.5 retires (Oct 19 2026)
 
 Sonnet 4.5 was deprecated Sep 30 2026 and retires **Nov 30 2026** (Anthropic model-deprecations page).

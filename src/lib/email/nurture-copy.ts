@@ -69,7 +69,7 @@ function email2(_cohort: NurtureCohort, _unsubscribeUrl: string): NurtureEmailCo
 <li><strong>Barcode starts with 880.</strong> That's South Korea's country code. A "made in Korea" product with a different prefix deserves a hard look.</li>
 <li><strong>Tight, factory-grade shrink wrap.</strong> Loose or bubbled wrap means tampered, refilled, or fake.</li>
 <li><strong>The price gap IS the warning.</strong> Far below every authorized retailer is not a deal, it's the tell.</li>
-<li><strong>Or skip all of this:</strong> buy from authorized retailers like Olive Young Global or Soko Glam and the question never comes up.</li>
+<li><strong>Or skip all of this:</strong> buy from authorized retailers like Olive Young (its US store if you're in the US), Soko Glam, or the brand's own site, and the question never comes up.</li>
 </ol>
 <p>The full checklist, including the brand-specific tells for the most-faked products, is here: <a href="${SITE}/blog/how-to-tell-if-korean-skincare-is-fake-a-5-point-check-for-a?from=nurture_2" style="color:#C9A55C;">How to spot fake Korean skincare</a>.</p>
 <p>And if you're ever unsure about a specific bottle in your hands, describe it to me on the <a href="${SITE}/?from=nurture_2" style="color:#C9A55C;">homepage</a>. Free, no login, and I'll tell you straight.</p>

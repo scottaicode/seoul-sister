@@ -22,8 +22,8 @@ interface PriceRow {
   in_stock: boolean | null
   last_checked: string
   retailer:
-    | { name: string | null; country: string | null; trust_score: number | null; is_authorized: boolean | null }
-    | Array<{ name: string | null; country: string | null; trust_score: number | null; is_authorized: boolean | null }>
+    | { name: string | null; country: string | null; trust_score: number | null; is_authorized: boolean | null; ships_to_us: boolean | null }
+    | Array<{ name: string | null; country: string | null; trust_score: number | null; is_authorized: boolean | null; ships_to_us: boolean | null }>
     | null
 }
 
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
         url,
         in_stock,
         last_checked,
-        retailer:ss_retailers(name, country, trust_score, is_authorized)
+        retailer:ss_retailers(name, country, trust_score, is_authorized, ships_to_us)
       `)
       .in('product_id', idList)
       .order('last_checked', { ascending: false })
@@ -204,6 +204,10 @@ export async function POST(request: NextRequest) {
         retailer_country: r?.country || null,
         retailer_trust_score: r?.trust_score ?? null,
         retailer_is_authorized: r?.is_authorized ?? null,
+        // Added Oct 21 2026 (additive; existing fields unchanged). Olive Young
+        // Global stopped shipping to US addresses on May 29 2026, so its price
+        // is an international price a US reader cannot pay. null = unknown.
+        retailer_ships_to_us: r?.ships_to_us ?? null,
         price_usd: row.price_usd,
         price_krw: row.price_krw,
         url: row.url,

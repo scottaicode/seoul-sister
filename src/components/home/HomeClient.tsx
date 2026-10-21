@@ -31,7 +31,7 @@ const coreFeatures = [
   { icon: Sparkles, title: 'AI Beauty Advisor', desc: 'Yuri is your personal AI advisor backed by 6 built-in AI specialists, cross-session memory, and your full skin profile.' },
   { icon: ListOrdered, title: 'Smart Routine Builder', desc: 'AI-generated routines with ingredient conflict detection, layering order, wait times, and skin cycling schedules.' },
   { icon: ShieldCheck, title: 'Authenticity Checks', desc: 'Check packaging and batch codes for warning signs before you buy, for the brands we cover.' },
-  { icon: Search, title: 'Price Comparison', desc: 'Compare prices from Olive Young, YesStyle and Soko Glam, with more retailers as prices become available.' },
+  { icon: Search, title: 'Where to Buy', desc: 'Authorized stores that ship to you, with the US price where we have one and the international price for comparison.' },
   { icon: Users, title: 'Community Reviews', desc: 'Reviews filtered by skin type, Fitzpatrick scale, age, and concern. Not just star ratings.' },
 ]
 

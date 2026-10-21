@@ -119,7 +119,11 @@ export const WATCHED_RUN_TYPES: Array<{ runType: string; maxAgeHours: number }> 
   { runType: 'capture_reddit_intel', maxAgeHours: 48 },
   { runType: 'incremental', maxAgeHours: 48 },
   { runType: 'image_health', maxAgeHours: 48 },
-  { runType: 'price_refresh_olive_young', maxAgeHours: 48 },
+  // Weekly since Oct 21 2026 (Sundays 21:00 UTC). Olive Young Global no longer
+  // ships to the US, so its price is an international comparison, not a price
+  // anyone here pays — nightly freshness stopped being worth the upkeep. 200h
+  // clears a full week plus every guardian-watch window; critical is 400h.
+  { runType: 'price_refresh_olive_young', maxAgeHours: 200 },
   { runType: 'proactive_nudge', maxAgeHours: 48 },
   // nurture_sequence runs Tue-Thu ONLY ("0 16 * * 2-4"), so Thursday's 16:00 run
   // to the following Tuesday's is 120h of DESIGNED silence — five days, not the

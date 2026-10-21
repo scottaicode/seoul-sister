@@ -16,7 +16,7 @@ const retailerIdCache = new Map<string, string>()
 
 /** Retailer name -> ss_retailers.name mapping */
 const RETAILER_DB_NAMES: Record<PriceRetailer, string> = {
-  olive_young: 'Olive Young',
+  olive_young: 'Olive Young Global',
   yesstyle: 'YesStyle',
   soko_glam: 'Soko Glam',
   amazon: 'Amazon',

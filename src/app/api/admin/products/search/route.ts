@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { scopePrices, type ScopedPriceRow } from '@/lib/pricing/price-scope'
+import { isRecommendedRetailer } from '@/lib/yuri/tools'
 import { z } from 'zod'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
@@ -329,12 +331,50 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // us_price used to be ss_products.price_usd: an undated price from an
+    // unnamed store, usually Olive Young Global, which stopped shipping to US
+    // addresses on May 29 2026. LGAAS renders it as "$X" in posts and Reddit
+    // drafts. It is now the freshest price at a store that ships to the US, or
+    // null — and the international price is reported separately, labelled.
+    const scopedById = new Map<string, ReturnType<typeof scopePrices>>()
+    if (productIds.length > 0) {
+      const { data: priceRows, error: priceErr } = await supabase
+        .from('ss_product_prices')
+        .select('product_id, price_usd, last_checked, retailer:ss_retailers(name, ships_to_us)')
+        .in('product_id', productIds)
+      if (priceErr) {
+        // Loud, and us_price falls to null rather than back to the unscoped column.
+        console.error('Product search: price fetch failed:', priceErr.message)
+      } else {
+        const grouped = new Map<string, ScopedPriceRow[]>()
+        for (const r of (priceRows || []) as unknown as Array<{
+          product_id: string
+          price_usd: number | null
+          last_checked: string | null
+          retailer: { name: string | null; ships_to_us: boolean | null } | Array<{ name: string | null; ships_to_us: boolean | null }> | null
+        }>) {
+          const ret = Array.isArray(r.retailer) ? r.retailer[0] : r.retailer
+          const list = grouped.get(r.product_id) ?? []
+          list.push({
+            price_usd: r.price_usd,
+            last_checked: r.last_checked,
+            ships_to_us: ret?.ships_to_us ?? null,
+            recommended: isRecommendedRetailer(ret?.name),
+          })
+          grouped.set(r.product_id, list)
+        }
+        for (const [pid, rows] of grouped) scopedById.set(pid, scopePrices(rows))
+      }
+    }
+
     const formatted = (products || []).map(p => {
+      const scoped = scopedById.get(p.id)
       const product: Record<string, unknown> = {
         name: p.name_en,
         brand: p.brand_en,
         category: p.category,
-        us_price: p.price_usd,
+        us_price: scoped?.us ?? null,
+        international_price: scoped?.international ?? null,
         rating: p.rating_avg,
         description: p.description_en,
         image_url: p.image_url,

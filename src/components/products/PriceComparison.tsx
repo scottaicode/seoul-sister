@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { DollarSign, ExternalLink, TrendingDown, ShoppingBag, Loader2, Clock } from 'lucide-react'
+import { DollarSign, ExternalLink, ShoppingBag, Loader2, Clock } from 'lucide-react'
+import Link from 'next/link'
 
 interface RetailerPrice {
   retailer_name: string
@@ -12,17 +13,17 @@ interface RetailerPrice {
   trust_score: number | null
   country: string | null
   ships_international: boolean
+  ships_to_us: boolean | null
+  orderable_here: boolean
   is_affiliate: boolean
   last_checked: string
 }
 
 interface PriceData {
-  product: { name_en: string }
+  product: { name_en: string; brand_en: string | null }
   prices: RetailerPrice[]
   best_deal: RetailerPrice | null
-  korea_price_usd: number | null
-  us_avg_price: number | null
-  savings_pct: number | null
+  shopper_in_us: boolean
 }
 
 interface PriceComparisonProps {
@@ -78,14 +79,8 @@ export default function PriceComparison({ productId }: PriceComparisonProps) {
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <h3 className="font-display font-semibold text-sm text-white">
-          Price Comparison
+          Where to buy
         </h3>
-        {data.savings_pct !== null && data.savings_pct > 0 && (
-          <span className="flex items-center gap-1 badge-pink text-[10px]">
-            <TrendingDown className="w-3 h-3" />
-            Save up to {data.savings_pct}%
-          </span>
-        )}
       </div>
 
       {/* Best deal highlight */}
@@ -93,7 +88,7 @@ export default function PriceComparison({ productId }: PriceComparisonProps) {
         <div className="glass-card border-rose-gold/30 bg-gradient-to-r from-gold/10 to-gold/5 p-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] text-gold font-medium uppercase tracking-wider">Best Price</p>
+              <p className="text-[10px] text-gold font-medium uppercase tracking-wider">Recommended store that ships to you</p>
               <p className="font-display font-bold text-lg text-white">
                 ${data.best_deal.price_usd.toFixed(2)}
               </p>
@@ -139,6 +134,11 @@ export default function PriceComparison({ productId }: PriceComparisonProps) {
                     {!price.in_stock && (
                       <span className="text-[10px] text-red-500 font-medium">Out of Stock</span>
                     )}
+                    {!price.orderable_here && (
+                      <span className="text-[10px] text-amber-500 font-medium">
+                        International price · doesn&apos;t ship to the US
+                      </span>
+                    )}
                     <span className={`text-[10px] flex items-center gap-0.5 ${freshness.color}`}>
                       <Clock className="w-2.5 h-2.5" />
                       {freshness.label}
@@ -149,7 +149,9 @@ export default function PriceComparison({ productId }: PriceComparisonProps) {
 
               <div className="flex items-center gap-2">
                 <span className={`font-display font-bold text-sm ${
-                  idx === 0 ? 'text-emerald-400' : 'text-white'
+                  price.orderable_here && data.best_deal && price.retailer_url === data.best_deal.retailer_url
+                    ? 'text-emerald-400'
+                    : price.orderable_here ? 'text-white' : 'text-white/40'
                 }`}>
                   ${price.price_usd.toFixed(2)}
                 </span>
@@ -159,6 +161,19 @@ export default function PriceComparison({ productId }: PriceComparisonProps) {
           )
         })}
       </div>
+
+      {/* A US shopper with only international listings still needs a way to buy.
+          Where to get it in the US is a judgment (the brand may not be at Olive
+          Young US at all), so it goes to Yuri rather than to a guessed link. */}
+      {data.shopper_in_us && !data.prices.some(p => p.orderable_here) && (
+        <Link
+          href={`/yuri?ask=${encodeURIComponent(`Where can I buy ${data.product.brand_en ?? ''} ${data.product.name_en} in the US?`.replace(/\s+/g, ' '))}`}
+          className="text-xs text-gold hover:underline flex items-center gap-1"
+        >
+          <ExternalLink className="w-3 h-3" />
+          None of these ship to the US. Ask Yuri where to buy it
+        </Link>
+      )}
 
       {/* Staleness warning if any price is >7 days old */}
       {data.prices.some(p => getPriceFreshness(p.last_checked).stale) && (

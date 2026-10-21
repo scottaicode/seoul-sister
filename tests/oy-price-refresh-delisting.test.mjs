@@ -166,7 +166,7 @@ test('the cron reports a zero-update run as FAILED, not completed', async () => 
   )
   assert.ok(!/status:\s*'completed'\s*,/.test(route),
     'status must be conditional on the outcome, never hardcoded to completed')
-  assert.match(route, /refreshedNothing\s*\?\s*'failed'\s*:\s*'completed'/,
+  assert.match(route, /refreshedNothing(\s*\|\|\s*result\.retailerMissing)?\s*\?\s*'failed'\s*:\s*'completed'/,
     'a run that examined rows and updated none must be logged as failed')
   assert.match(route, /result\.delisted\s*<\s*result\.scanned/,
     'an all-delisted batch must be excluded from the failure condition')

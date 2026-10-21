@@ -9,6 +9,7 @@ import {
 } from '@/lib/intelligence/temperature-units'
 import { geocodeLocation } from '@/lib/geo/geocode'
 import { ageInDays } from '@/lib/yuri/price-freshness'
+import { cheapestUsOrderable } from '@/lib/pricing/price-scope'
 import { joinedAlnumParts, joinedAlnumMatches, joinedAlnumIlike } from '@/lib/yuri/joined-alnum'
 
 /**
@@ -58,6 +59,27 @@ export function isRecommendedRetailer(name: string | null | undefined): boolean 
     if (n.includes(r)) return true
   }
   return false
+}
+
+/**
+ * Whether a retailer delivers to US addresses, read from `ss_retailers.ships_to_us`.
+ *
+ * Earned Oct 21 2026. Olive Young Global stopped shipping to US addresses on
+ * May 29 2026, when Olive Young US launched. 4,908 of our 5,157 price links
+ * pointed at it, so for five months Yuri quoted US visitors prices from a store
+ * that shows them "This site does not ship to the U.S." at checkout — and those
+ * prices were not even US prices (a SKIN1004 twin pack: $21.50 Global, $38.00
+ * at Olive Young US).
+ *
+ * A FACT, NOT A FILTER — the same discipline as `recommended_to_buy_from`. The
+ * Global row stays in every result: it is still the right store for a visitor
+ * in Singapore or Spain, and for a US visitor it is a real comparison
+ * ("this is what it costs internationally"). Yuri decides what it means for the
+ * person in front of her. `null` is the honest unknown, never coerced to true.
+ */
+export function shipsToUsFact(retailer: Record<string, unknown> | null | undefined): boolean | null {
+  const v = retailer?.ships_to_us
+  return typeof v === 'boolean' ? v : null
 }
 
 /**
@@ -2324,7 +2346,7 @@ async function executeSearchProducts(
   // were delisted outright.
   const { data: allPrices, error: pricesError } = await db
     .from('ss_product_prices')
-    .select('product_id, price_usd, last_checked, in_stock, retailer:ss_retailers(name)')
+    .select('product_id, price_usd, last_checked, in_stock, retailer:ss_retailers(name, ships_to_us)')
     .in('product_id', finalIds)
     .order('price_usd', { ascending: true })
 
@@ -2371,12 +2393,15 @@ async function executeSearchProducts(
     const prices = (allPrices || [])
       .filter((pr: Record<string, unknown>) => pr.product_id === pid)
       .map((pr: Record<string, unknown>) => {
-        const retailer = (pr.retailer as Record<string, string>)?.name || 'Unknown'
+        const retailerRow = pr.retailer as Record<string, unknown> | null
+        const retailer = (retailerRow?.name as string) || 'Unknown'
         return {
           retailer,
           price_usd: pr.price_usd,
           // Recommendability travels WITH the price row. See RECOMMENDED_RETAILERS.
           recommended_to_buy_from: isRecommendedRetailer(retailer),
+          // Shipping reach travels with the row too. See shipsToUsFact().
+          ships_to_us: shipsToUsFact(retailerRow),
           // Age travels with the price for the same reason. A bare number reads
           // as current; `compare_prices` has surfaced this since v10.3.8 and
           // this path did not. Null when we have no timestamp — an unknown age
@@ -2456,9 +2481,14 @@ async function executeSearchProducts(
                   price_usd: p.price_usd,
                   price_age_days: null,
                   in_stock: null,
+                  // Unknown store means unknown shipping reach, not "ships".
+                  ships_to_us: null,
                 },
               ]
             : [],
+      // Only when the price query FAILED — so "no prices" can't be mistaken
+      // for "we don't carry it" or "no store sells it".
+      ...(pricesError ? { prices_error: 'Price lookup failed on our side; this is not a catalog gap.' } : {}),
       key_ingredients: keyIngredients,
       // Named, not counted. A count cannot answer "does this contain something I
       // react to"; the remaining names can.
@@ -2629,7 +2659,7 @@ async function executeGetProductDetails(
       .eq('product_id', productId)
       .order('position', { ascending: true }),
     db.from('ss_product_prices')
-      .select('price_usd, url, in_stock, last_checked, retailer:ss_retailers(name, trust_score, is_authorized)')
+      .select('price_usd, url, in_stock, last_checked, retailer:ss_retailers(name, trust_score, is_authorized, ships_to_us)')
       .eq('product_id', productId)
       .order('price_usd', { ascending: true }),
     db.from('ss_reviews')
@@ -2661,6 +2691,9 @@ async function executeGetProductDetails(
     return entry
   })
 
+  if (pricesRes.error) {
+    console.error(`[get_product_details] price lookup failed: ${pricesRes.error.message}`)
+  }
   const prices = (pricesRes.data || []).map((p: Record<string, unknown>) => {
     const r = p.retailer as Record<string, unknown> | null
     const retailerName = (r?.name as string) || 'Unknown'
@@ -2671,6 +2704,7 @@ async function executeGetProductDetails(
       trust_score: r?.trust_score,
       is_authorized: r?.is_authorized,
       recommended_to_buy_from: isRecommendedRetailer(retailerName),
+      ships_to_us: shipsToUsFact(r),
       url: p.url,
       // `last_checked` was SELECTed here and silently dropped in this mapping —
       // the same defect found in `search_products` on Aug 15, in a second tool.
@@ -2714,6 +2748,9 @@ async function executeGetProductDetails(
       .filter(Boolean),
     ingredients_total: ingredients.length,
     prices,
+    // Present only when the lookup FAILED, so an empty list can't be read as
+    // "this product has no prices".
+    ...(pricesRes.error ? { prices_error: 'Price lookup failed on our side; this is not a catalog gap.' } : {}),
     community: {
       total_reviews: totalReviews,
       avg_rating: avgRating,
@@ -3200,14 +3237,26 @@ async function executeComparePrices(
   }
   if (!productId) return JSON.stringify({ error: 'No product_id or product_name provided' })
 
-  const { data: prices } = await db
+  const { data: prices, error: pricesError } = await db
     .from('ss_product_prices')
     .select(`
       price_usd, url, in_stock, last_checked,
-      retailer:ss_retailers(name, trust_score, is_authorized, website)
+      retailer:ss_retailers(name, trust_score, is_authorized, website, ships_to_us)
     `)
     .eq('product_id', productId)
     .order('price_usd', { ascending: true })
+
+  // A failed lookup must never read as "no price data for this product". That
+  // shape — an error swallowed into an empty result — is the silent-failure
+  // class this repo keeps paying for (a review of the Oct 21 change showed a
+  // missing column would have made EVERY product report "no pricing").
+  if (pricesError) {
+    console.error(`[compare_prices] price lookup failed: ${pricesError.message}`)
+    return JSON.stringify({
+      ...(resolution ? { resolved_product: resolution } : {}),
+      error: 'Price lookup failed on our side just now. This is our error, not a gap in the catalog — do not tell the user we have no pricing for this product.',
+    })
+  }
 
   if (!prices?.length) {
     return JSON.stringify({
@@ -3237,6 +3286,8 @@ async function executeComparePrices(
       // don't send people there (slow shipping, weak refunds). See
       // RECOMMENDED_RETAILERS. Fact attached to the row; Yuri owns the call.
       recommended_to_buy_from: isRecommendedRetailer(retailerName),
+      // Whether this store delivers to US addresses. See shipsToUsFact().
+      ships_to_us: shipsToUsFact(r),
       last_checked: lastChecked,
       age_days: ageDays,
       // Phase 15.x staleness honesty: flag prices >14 days old. K-beauty
@@ -3269,7 +3320,15 @@ async function executeComparePrices(
       // retailers we don't steer toward. Carry the distinction on the field
       // itself so the name can't quietly do work the data doesn't support.
       recommended_to_buy_from: cheapest.recommended_to_buy_from,
+      ships_to_us: cheapest.ships_to_us,
     },
+    // The cheapest row a US shopper could actually be sent to (ships to the US
+    // AND a store we recommend), when the overall cheapest isn't one — today
+    // usually Olive Young Global. A fact in hand, not a choice made for her: a
+    // visitor outside the US is still best served by the Global row, and Yuri
+    // knows where the person is. null when no such row exists.
+    cheapest_ships_to_us:
+      cheapest.ships_to_us === false ? cheapestUsOrderable(formatted) : null,
     // The cheapest row we'd actually send someone to, when that differs from the
     // cheapest row overall. Present so Yuri has the real alternative in hand
     // instead of having to re-scan the list; null when the cheapest is already
