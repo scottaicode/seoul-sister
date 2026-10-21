@@ -124,6 +124,9 @@ export const WATCHED_RUN_TYPES: Array<{ runType: string; maxAgeHours: number }> 
   // anyone here pays — nightly freshness stopped being worth the upkeep. 200h
   // clears a full week plus every guardian-watch window; critical is 400h.
   { runType: 'price_refresh_olive_young', maxAgeHours: 200 },
+  // Monthly on the 3rd (Oct 21 2026). 800h clears a 31-day month plus every
+  // guardian-watch window; critical is 1,600h.
+  { runType: 'price_refresh_olive_young_us', maxAgeHours: 800 },
   { runType: 'proactive_nudge', maxAgeHours: 48 },
   // nurture_sequence runs Tue-Thu ONLY ("0 16 * * 2-4"), so Thursday's 16:00 run
   // to the following Tuesday's is 120h of DESIGNED silence — five days, not the

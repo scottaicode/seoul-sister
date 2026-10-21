@@ -5,6 +5,41 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.44.0 — First real US prices from Olive Young US (Oct 21 2026)
+
+**55 products now carry an Olive Young US price**, read from the store's own product feed: 49 in stock,
+6 sold out (recorded as such). Several are hero products that had **no price at all** before (Biodance
+Bio-Collagen Real Deep Mask $5, Banila Co Clean It Zero $21, Illiyoon Ceramide Ato Soothing Gel $24.99,
+Heimish All Clean Balm $18). These are the first prices a US shopper can actually pay since Olive Young
+Global stopped shipping to the US.
+
+- `src/lib/pipeline/olive-young-us.ts`: feed reader plus a strict matcher with three verdicts. `match` =
+  brand equal as a whole, every word of our name present, identity numbers equal (a trailing `+` counts:
+  No.5+ is not No.5), pack and pad/sheet counts equal, one size on the listing that agrees with ours, and no
+  added words. `review` = nothing contradicts but the listing adds words we can't judge, or our size is
+  unknown; never written without a person. `reject` = everything else, including any added product-type or
+  variant word (eye, lip, refill, mini, plus, advanced, fluid, ...).
+- `scripts/match-olive-young-us.ts`: Playwright discovery from a home IP (the store's search is
+  server-rendered), dry-run by default, `--approve` for hand-checked pairs, `--from-report` to re-verify a
+  saved run in seconds, and a live re-read of every listing right before writing. 533 candidates (subscriber-
+  owned products, popular products with no price, top Global-only products): 50 clean matches, 5 approved by
+  hand (`scripts/match-olive-young-us-approved-2026-10-21.json`, each with its reason), 5 left unmatched as
+  genuinely ambiguous (Real Barrier Original vs Light, two products with a second catalog row that may own the
+  listing), 473 not on Olive Young US (it doesn't carry Beauty of Joseon, for one).
+- `/api/cron/refresh-prices-olive-young-us`, monthly on the 3rd: re-reads each row by its listing id. A fetch
+  error changes nothing; a listing that disappears is marked out of stock (reversible); a listing with no
+  price or that became a multi-size page is left untouched so an old price can't look freshly verified. Zero
+  rows, nothing updated, or a missing retailer row are all logged `failed`.
+
+**Hand-reading the first dry run found 4 wrong matches out of 64** (toner pads matched to a liquid toner and
+to sheet masks, a 60-pad tub to a 70-pad tub, "Mugwort Cream" to "Mugwort Fluid Cream"). One cause was a
+regex that stripped any word starting with "pa" as if it were a "PA++++" rating, so "Pad" vanished. **A Fable
+5.1 review then executed attacks the tightened matcher still accepted**: listings adding "Eye", "Refill",
+"Plus", "Advanced", a flavour; "No.5+" vs "No.5"; brand substrings ("Dr.G" accepted "Dr.Gem"); a listing with
+no parseable size; and five test mutations that passed. All are now refused and each has a test; every
+bypass the reviewer wrote now fails the suite. One reviewer mutation (treating "pad" as noise) still passes
+because the separate pad-count rule rejects the same listings.
+
 ## v11.43.0 — US shoppers stop being sent to a store that won't ship to them (Oct 21 2026)
 
 **Olive Young Global stopped shipping to all US addresses on May 29 2026**, when Olive Young US
