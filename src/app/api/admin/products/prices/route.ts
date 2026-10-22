@@ -165,7 +165,11 @@ export async function POST(request: NextRequest) {
       `)
       .in('product_id', idList)
       .order('last_checked', { ascending: false })
-      .limit(idList.length * 8) // cap at 8 retailers per product (we'll dedupe + cap to 5 below)
+      // No global row cap. A shared `idList.length * 8` limit let one product's
+      // duplicate rows crowd other products' stores out of the response, so the
+      // same product returned 2, 3 or 4 stores depending on what else matched
+      // (Oct 21 2026). The product set is small (a few names x 5 matches) and
+      // the per-product dedupe + 5-store cap below still bound the output.
 
     if (priceErr) {
       console.error('Price endpoint: price fetch failed:', priceErr)

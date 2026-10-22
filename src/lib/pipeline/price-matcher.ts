@@ -236,13 +236,25 @@ export class PriceMatcher {
     supabase: SupabaseClient,
     match: PriceMatch
   ): Promise<{ action: 'insert' | 'update' | 'skip'; priceChanged: boolean }> {
-    // Check if a price record already exists for this product + retailer
-    const { data: existing } = await supabase
+    // Check if a price record already exists for this product + retailer.
+    //
+    // NOT .single(): it ERRORS when two rows exist, and with only `data`
+    // destructured that error read as "no row", so an insert followed — and
+    // every later run inserted again. One COSRX product reached 14 identical
+    // Soko Glam rows (Sep 27 - Oct 21 2026, a new row every run), which crowded
+    // the other stores out of the LGAAS price endpoint. Take the newest row and
+    // make a failed lookup loud instead of turning it into an insert.
+    const { data: rows, error: lookupError } = await supabase
       .from('ss_product_prices')
       .select('id, price_usd')
       .eq('product_id', match.product_id)
       .eq('retailer_id', match.retailer_id)
-      .single()
+      .order('last_checked', { ascending: false, nullsFirst: false })
+      .limit(1)
+    if (lookupError) {
+      throw new Error(`price lookup failed for ${match.product_id}: ${lookupError.message}`)
+    }
+    const existing = rows?.[0] ?? null
 
     const now = new Date().toISOString()
 
@@ -250,8 +262,8 @@ export class PriceMatcher {
       const oldPrice = Number(existing.price_usd)
       const priceChanged = Math.abs(oldPrice - match.price_usd) > 0.01
 
-      // Update existing record
-      await supabase
+      // Update existing record (a failed write must not be counted as an update)
+      const { error: updateError } = await supabase
         .from('ss_product_prices')
         .update({
           price_usd: match.price_usd,
@@ -261,6 +273,7 @@ export class PriceMatcher {
           last_checked: now,
         })
         .eq('id', existing.id)
+      if (updateError) throw new Error(`price update failed for ${match.product_id}: ${updateError.message}`)
 
       // Record in price history if price changed
       if (priceChanged) {

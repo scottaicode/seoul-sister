@@ -5,6 +5,17 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.44.1 — A price row that multiplied itself (Oct 21 2026)
+
+LGAAS reported the same product returning 2, 3 or 4 stores from `/api/admin/products/prices` depending on
+the query. Cause: `PriceMatcher.upsertPrice` found the existing row with `.single()`, which errors when two
+rows exist; only `data` was destructured, so the error read as "no row" and it inserted another, and every
+later run did the same. One COSRX product reached 14 identical Soko Glam rows (Sep 27 to Oct 21), which used
+up the endpoint's shared row cap and pushed other stores out. Measured first: it was the only duplicated
+product/store pair in the table. Fixed the lookup (newest row, loud on error), made the update step loud too,
+removed the shared cap in the endpoint, and deleted the 13 duplicates (same price, same page). A test runs
+the real `upsertPrice` against two existing rows and fails on the old code.
+
 ## v11.44.0 — First real US prices from Olive Young US (Oct 21 2026)
 
 **55 products now carry an Olive Young US price**, read from the store's own product feed: 49 in stock,
