@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isRecommendedRetailer } from '@/lib/yuri/tools'
 import { z } from 'zod'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
@@ -208,6 +209,10 @@ export async function POST(request: NextRequest) {
         // Global stopped shipping to US addresses on May 29 2026, so its price
         // is an international price a US reader cannot pay. null = unknown.
         retailer_ships_to_us: r?.ships_to_us ?? null,
+        // Added Oct 21 2026 (additive). Whether Seoul Sister sends people to this
+        // store at all — the same fact Yuri gets as recommended_to_buy_from.
+        // YesStyle ships to the US and is authentic, and is still false here.
+        retailer_recommended: isRecommendedRetailer(r?.name),
         price_usd: row.price_usd,
         price_krw: row.price_krw,
         url: row.url,
