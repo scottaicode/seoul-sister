@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
+import { findResumableSession } from '@/lib/widget/session'
 
 /**
- * GET /api/widget/transcript?session_id=...&visitor_id=...
+ * GET /api/widget/transcript?visitor_id=...[&session_id=...]
  *
  * Returns the stored transcript for ONE widget session so the client can
  * repaint a conversation that a reload wiped.
@@ -32,37 +33,45 @@ export async function GET(req: NextRequest) {
   const sessionId = req.nextUrl.searchParams.get('session_id')
   const visitorId = req.nextUrl.searchParams.get('visitor_id')
 
-  if (!sessionId || !visitorId) {
-    return NextResponse.json({ error: 'session_id and visitor_id are required' }, { status: 400 })
+  if (!visitorId) {
+    return NextResponse.json({ error: 'visitor_id is required' }, { status: 400 })
   }
 
   try {
     const supabase = getServiceClient()
 
-    // Ownership check. `.eq(visitor_id)` here is what stops a guessed session id
-    // from reading someone else's conversation.
-    const { data: session, error: sessionError } = await supabase
-      .from('ss_widget_sessions')
-      .select('id, visitor_id')
-      .eq('id', sessionId)
-      .eq('visitor_id', visitorId)
-      .maybeSingle()
-
-    // Check the error explicitly — a failed query must not read as "no such
-    // session", which is the silent-failure class this repo keeps paying for.
-    if (sessionError) {
-      console.error('[widget/transcript] session lookup failed:', sessionError.message)
-      return NextResponse.json({ error: 'lookup failed' }, { status: 500 })
+    // With a session id: ownership check — `.eq(visitor_id)` stops a guessed
+    // session id from reading someone else's conversation.
+    // Without one (Oct 26 2026: the tab that held it was closed or discarded):
+    // the visitor's own conversation if it was active within the resume window,
+    // the same rule the chat route uses to continue it.
+    let session: { id: string } | null = null
+    if (sessionId) {
+      const { data, error: sessionError } = await supabase
+        .from('ss_widget_sessions')
+        .select('id, visitor_id')
+        .eq('id', sessionId)
+        .eq('visitor_id', visitorId)
+        .maybeSingle()
+      // Check the error explicitly — a failed query must not read as "no such
+      // session", which is the silent-failure class this repo keeps paying for.
+      if (sessionError) {
+        console.error('[widget/transcript] session lookup failed:', sessionError.message)
+        return NextResponse.json({ error: 'lookup failed' }, { status: 500 })
+      }
+      session = data
+    } else {
+      session = await findResumableSession(visitorId)
     }
     if (!session) {
-      // Not an error: an expired or foreign session simply restores nothing.
-      return NextResponse.json({ messages: [] })
+      // Not an error: an expired, foreign or absent session simply restores nothing.
+      return NextResponse.json({ messages: [], session_id: null })
     }
 
     const { data, error } = await supabase
       .from('ss_widget_messages')
       .select('role, content, created_at')
-      .eq('session_id', sessionId)
+      .eq('session_id', session.id)
       .in('role', ['user', 'assistant'])
       .order('created_at', { ascending: true })
       .limit(40)
@@ -74,6 +83,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       messages: (data || []).map((m) => ({ role: m.role, content: m.content })),
+      session_id: session.id,
     })
   } catch (err) {
     console.error('[widget/transcript] unexpected error:', err)

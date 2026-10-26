@@ -83,19 +83,72 @@ export async function createSession(
   return data as WidgetSession
 }
 
+const SESSION_COLS =
+  'id, visitor_id, session_number, message_count, tool_calls_count, specialist_domains_detected, intent_signals_detected, source'
+
 /**
- * Load an existing session by ID.
+ * Load an existing session by ID — only if it belongs to this visitor.
+ *
+ * The visitor check was added Oct 26 2026: a session id alone is not proof of
+ * ownership, and the route rehydrates Yuri's history from the session, so a
+ * foreign id would have let one browser continue someone else's conversation.
+ * A failed query throws rather than reading as "no session".
  */
-export async function getSession(sessionId: string): Promise<WidgetSession | null> {
+export async function getSession(sessionId: string, visitorId: string): Promise<WidgetSession | null> {
   const supabase = getServiceClient()
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('ss_widget_sessions')
-    .select('id, visitor_id, session_number, message_count, tool_calls_count, specialist_domains_detected, intent_signals_detected, source')
+    .select(SESSION_COLS)
     .eq('id', sessionId)
-    .single()
+    .eq('visitor_id', visitorId)
+    .maybeSingle()
 
+  if (error) throw new Error(`widget session lookup failed: ${error.message}`)
   return (data as WidgetSession) || null
+}
+
+/**
+ * How long a visitor can be away and still resume the same conversation.
+ *
+ * Why (Oct 26 2026): the session id lives in sessionStorage, which dies with
+ * the tab, so a visitor who came back in a new tab (or whose phone discarded the
+ * tab) started a fresh, empty conversation and Yuri forgot everything — two of
+ * two real visitors that weekend, one re-asked where she lives, one had a
+ * product-label question misread as a blog glitch. Measured across all history:
+ * of 24 returns, 7 came back within an hour and 9 within 6 hours; the other 13
+ * were a day or more later, when a fresh conversation is the right default.
+ *
+ * ONE hour, not six: a review pointed out that resuming also repaints the old
+ * transcript on screen, so on a shared device the next person sees it. One hour
+ * keeps 7 of the 9 helpful resumes with a sixth of the exposure. (Yuri's
+ * cross-visit ai_memory already spans people on a shared browser; this window is
+ * about the verbatim transcript.)
+ */
+export const RESUME_WINDOW_MS = 60 * 60 * 1000
+
+/**
+ * The visitor's most recent conversation, if they were active in it within
+ * RESUME_WINDOW_MS. Null otherwise. Throws on a failed query.
+ */
+export async function findResumableSession(
+  visitorId: string,
+  now: number = Date.now()
+): Promise<WidgetSession | null> {
+  const supabase = getServiceClient()
+  const since = new Date(now - RESUME_WINDOW_MS).toISOString()
+
+  const { data, error } = await supabase
+    .from('ss_widget_sessions')
+    .select(SESSION_COLS)
+    .eq('visitor_id', visitorId)
+    .gt('message_count', 0)
+    .gte('last_message_at', since)
+    .order('last_message_at', { ascending: false })
+    .limit(1)
+
+  if (error) throw new Error(`resumable session lookup failed: ${error.message}`)
+  return (data?.[0] as WidgetSession) || null
 }
 
 /**
@@ -168,4 +221,29 @@ export async function markSessionEnded(sessionId: string): Promise<void> {
     .from('ss_widget_sessions')
     .update({ ended_naturally: true })
     .eq('id', sessionId)
+}
+
+/**
+ * When a resumed conversation arrives from a feeder page, record that touch on
+ * the row if it has none. createSession is the only other writer of these
+ * columns, and it no longer runs for an in-window return — without this, the
+ * blog page a returning visitor came back from would never be recorded (the
+ * only landing_path row in production history was exactly such a return).
+ * First touch wins; a later touch only fills an empty column. Throws on error.
+ */
+export async function fillSessionAttribution(
+  sessionId: string,
+  source: string | null | undefined,
+  landingPath: string | null | undefined
+): Promise<void> {
+  const supabase = getServiceClient()
+  if (source) {
+    const { error } = await supabase.from('ss_widget_sessions').update({ source }).eq('id', sessionId).is('source', null)
+    if (error) throw new Error(`session source fill failed: ${error.message}`)
+  }
+  if (landingPath) {
+    const { error } = await supabase
+      .from('ss_widget_sessions').update({ landing_path: landingPath }).eq('id', sessionId).is('landing_path', null)
+    if (error) throw new Error(`session landing_path fill failed: ${error.message}`)
+  }
 }

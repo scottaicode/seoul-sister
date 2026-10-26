@@ -5,6 +5,31 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.44.2 — A visitor who comes back in a new tab continues the same conversation (Oct 26 2026)
+
+Two of two real visitors on Oct 25-26 returned within minutes in a new tab and Yuri had forgotten them:
+a New Yorker had to repeat where she lives, and a question about "KT1" printed after "까지" on a product
+label was answered as a blog formatting glitch. Cause: the widget's session id lives in sessionStorage,
+which dies with the tab, so the return started a fresh, empty session.
+
+- The chat route resumes the visitor's most recent conversation when the browser sends no session id and
+  that conversation was active within **1 hour** (`RESUME_WINDOW_MS`). Measured across all history: of 24
+  returns, 7 were within an hour. A review chose 1 hour over 6 because resuming also repaints the transcript
+  on screen, and a shorter window limits what the next person on a shared device can see.
+- The widget repaints the resumed conversation and stores its id; `/api/widget/transcript` accepts the
+  visitor id alone for this.
+- Yuri's history is rehydrated from the database whenever it holds more turns than the browser sent, so a
+  visitor who types before the restore finishes doesn't lose the earlier turns on their second message.
+- A resumed conversation records a new feeder page only where the row has none (first touch wins), so a
+  returning blog reader's landing page is still attributed.
+- `getSession` now requires the session to belong to the visitor (a foreign id could otherwise continue
+  someone else's conversation) and throws on a failed query; each lookup falls through to creating a new
+  session rather than skipping the save.
+
+A Fable 5.1 review found five defects in the first version (lost attribution, a failure path that would skip
+saving the message, the typing race, three tests that passed wrong code, and the privacy window); all fixed
+and each guarded by a test that fails when the bug is reintroduced. Not added yet: a "start over" control.
+
 ## v11.44.1 — A price row that multiplied itself (Oct 21 2026)
 
 LGAAS reported the same product returning 2, 3 or 4 stores from `/api/admin/products/prices` depending on

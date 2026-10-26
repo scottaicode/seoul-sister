@@ -20,7 +20,7 @@ import { detectValueDensity, buildValueDensityFact } from '@/lib/widget/value-de
 import { visitorCountryCode, visitorCountryFact } from '@/lib/widget/visitor-country'
 import { PRICING } from '@/lib/pricing'
 import { generateLeadEmail, type VisitorMemoryFacts, type ConversationTurn } from '@/lib/email/lead-email'
-import { createSession, getSession, incrementSessionCounters, updateSessionMetadata } from '@/lib/widget/session'
+import { createSession, getSession, findResumableSession, fillSessionAttribution, incrementSessionCounters, updateSessionMetadata } from '@/lib/widget/session'
 import {
   saveUserMessage,
   saveAssistantMessage,
@@ -510,9 +510,33 @@ export async function POST(request: NextRequest) {
           )
         }
 
-        // Load or create session
+        // Load or create session. Each lookup has its own try/catch: a failed
+        // lookup must fall through to createSession, never leave this turn with
+        // no session (which would skip saving the message and counting it).
         if (sessionId) {
-          session = await getSession(sessionId)
+          try {
+            session = await getSession(sessionId, parsed.visitor_id)
+          } catch (err) {
+            console.error('[widget/chat] session lookup failed; starting a new one:', err)
+          }
+        }
+        // No session id from the browser (new tab, discarded tab): resume this
+        // visitor's conversation if they were in it recently, instead of starting
+        // Yuri from zero. See RESUME_WINDOW_MS.
+        if (!session && !sessionId) {
+          try {
+            session = await findResumableSession(parsed.visitor_id)
+          } catch (err) {
+            console.error('[widget/chat] resumable session lookup failed; starting a new one:', err)
+          }
+          if (session) {
+            sessionId = session.id
+            try {
+              await fillSessionAttribution(session.id, parsed.source, parsed.landing_path)
+            } catch (err) {
+              console.error('[widget/chat] resumed-session attribution write failed:', err)
+            }
+          }
         }
         if (!session) {
           session = await createSession(
@@ -609,7 +633,12 @@ export async function POST(request: NextRequest) {
     if (session && session.message_count > 0) {
       try {
         groundedHistory = await getSessionTranscript(session.id)
-        if (history.length === 0) {
+        // The database is the truth. Rehydrate whenever it holds MORE than the
+        // browser sent — not only when the browser sent nothing. A visitor who
+        // types before a restored transcript finishes loading keeps a shorter
+        // client history, and would otherwise lose the earlier turns again on
+        // their second message.
+        if (groundedHistory.length > history.length) {
           history = groundedHistory.map((m) => ({
             role: m.role as 'user' | 'assistant',
             content: m.content,

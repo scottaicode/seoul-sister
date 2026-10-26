@@ -10,6 +10,7 @@ import {
   MAX_FREE_MESSAGES,
   onMessageCountChange,
   getOrCreateVisitorId,
+  getExistingVisitorId,
   getWidgetSessionId,
   setWidgetSessionId,
 } from '@/lib/utils/widget-session'
@@ -391,23 +392,34 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   // AND nothing is on screen yet, so it can never clobber a live conversation
   // or double-paint. Failure is silent by design -- an unrestored transcript
   // leaves the visitor exactly where they were before this shipped.
+  //
+  // Oct 26 2026: also runs with NO session id. sessionStorage dies with the tab,
+  // so a visitor returning in a new tab (or after the phone discarded the tab)
+  // had no id and saw an empty chat; two of two real visitors that weekend
+  // repeated themselves to a Yuri who had forgotten them. The server now finds
+  // the visitor's conversation if it was active within the resume window and
+  // hands back its id, which is stored so the next message continues it.
   useEffect(() => {
     const sessionId = getWidgetSessionId()
-    if (!sessionId) return
+    const visitorId = getExistingVisitorId()
+    // A first-time visitor has nothing to restore; don't mint an id or call out.
+    if (!sessionId && !visitorId) return
 
     let cancelled = false
     ;(async () => {
       try {
         const res = await fetch(
-          `/api/widget/transcript?session_id=${encodeURIComponent(sessionId)}` +
-            `&visitor_id=${encodeURIComponent(getOrCreateVisitorId())}`
+          `/api/widget/transcript?visitor_id=${encodeURIComponent(visitorId ?? getOrCreateVisitorId())}` +
+            (sessionId ? `&session_id=${encodeURIComponent(sessionId)}` : '')
         )
         if (!res.ok || cancelled) return
         const data = (await res.json()) as {
           messages?: Array<{ role: 'user' | 'assistant'; content: string }>
+          session_id?: string | null
         }
         const restored = data.messages || []
         if (cancelled || restored.length === 0) return
+        if (!sessionId && data.session_id) setWidgetSessionId(data.session_id)
 
         setMessages((current) => {
           // Re-check INSIDE the setter: the fetch is async, so the visitor may

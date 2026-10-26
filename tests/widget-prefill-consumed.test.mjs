@@ -96,7 +96,7 @@ test('SignedInRedirect still gates on ask, and mounts BEFORE the widget that str
 test('a wiped conversation is restored from the server, and cannot clobber a live one', () => {
   assert.match(
     widget,
-    /\/api\/widget\/transcript\?session_id=/,
+    /\/api\/widget\/transcript\?visitor_id=/,
     'the widget must fetch the stored transcript to repaint after a reload'
   )
   // The re-check inside the setter is what makes the async restore safe: the
