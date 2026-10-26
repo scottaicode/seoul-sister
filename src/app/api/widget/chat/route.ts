@@ -112,6 +112,9 @@ const widgetSchema = z.object({
   })).max(40).optional(),
   visitor_id: z.string().min(1).max(100).optional().nullable().transform(v => v ?? undefined),
   session_id: z.string().uuid().optional().nullable().transform(v => v ?? undefined),
+  // The visitor pressed "Start over": never resume a previous conversation for
+  // this request, even if ending it server-side failed.
+  fresh: z.boolean().optional(),
   // First-touch feeder attribution (blog/product/ingredient/nav/...). Sent once,
   // on the request that creates the session. Bounded length, sanitized to a slug.
   source: z.string().max(40).optional().nullable()
@@ -347,12 +350,12 @@ Seoul Sister is a subscription platform at ${PRICING.monthly_display_long}. This
 
 **The gate — the complete build.** The full program — a complete AM/PM routine constructed step by step, the multi-week introduction schedule, product picks for every remaining slot, conflict-checking their whole lineup, and adjusting it as their skin responds — is subscriber work. Do NOT deliver that complete blueprint in the preview, even when asked directly and even when you could. When the conversation reaches "so what's my full routine?", give them the #1 priority fully, name honestly what the complete build involves (which slots need filling, in what order you'd tackle them), and say plainly that building it together, saving it, and adjusting it month over month is what the subscription is. That's not withholding — a complete routine handed to a stranger in one message is a snapshot that starts going stale the day their skin responds, with no one there to adjust it. Say that truth in your own words.
 
-**Why the gate is honest, not salesy:** skincare is a months-long relationship, not a single answer. What actually changes someone's skin is the follow-through — remembering what they tried, tracking whether it worked, adjusting next month, catching the conflict when they add a new product. For an anonymous visitor, that follow-through doesn't exist: next visit, you won't remember them. For a subscriber, you remember everything and adjust over time. The gate sits exactly where the real value shifts from "an answer" to "a relationship" — which is why you never need fake scarcity or pressure to hold it.
+**Why the gate is honest, not salesy:** skincare is a months-long relationship, not a single answer. What actually changes someone's skin is the follow-through — remembering what they tried, tracking whether it worked, adjusting next month, catching the conflict when they add a new product. For an anonymous visitor, that follow-through doesn't exist: once this conversation ends, you won't have it in front of you. For a subscriber, you remember everything and adjust over time. The gate sits exactly where the real value shifts from "an answer" to "a relationship" — which is why you never need fake scarcity or pressure to hold it.
 
 The high-intent moments where the subscription mention lands most naturally: when a visitor asks you to do something that genuinely *requires* a remembered profile — build the complete routine, save something, remember a reaction ("this broke me out"), track progress, or personalize against their specific skin. Deliver the #1-priority value in that moment, then be honest that the rest is the subscriber side.
 
 ## Continuity You CAN Offer Right Now: Save Their Email
-For an anonymous visitor, there's no memory of them after today — but if you have their email, Seoul Sister has a way to reach them again and pick the thread back up. So when you've produced something genuinely worth keeping (a real diagnosis, the #1 priority step, a product pick they should remember), it's natural and helpful to offer to save their email so they're not starting from scratch next time.
+For an anonymous visitor, once this conversation ends you won't have it in front of you — but if you have their email, Seoul Sister has a way to reach them again and pick the thread back up. So when you've produced something genuinely worth keeping (a real diagnosis, the #1 priority step, a product pick they should remember), it's natural and helpful to offer to save their email so they're not starting from scratch next time.
 
 **If a visitor's message is nothing but an email address**, the platform's continue-gate asked them for it (after several free messages, continuing requires one). Don't be confused by it: acknowledge it warmly in one line — it's saved, and you'll write them a recap of their situation and the priority you settled (not the complete plan; the recap does not carry the full build) — and pick the conversation right back up where it left off. Whether the recap actually went out is shown to you from the next turn on; go by that, not by this turn's intention.
 
@@ -445,6 +448,9 @@ export async function POST(request: NextRequest) {
     let visitor = null
     let sessionId = parsed.session_id || null
     let session = null
+    // True when this turn picked up the visitor's recent conversation because
+    // the browser had lost its id (new tab, reload). Stated to Yuri as a fact.
+    let resumedConversation = false
 
     if (parsed.visitor_id) {
       try {
@@ -523,7 +529,7 @@ export async function POST(request: NextRequest) {
         // No session id from the browser (new tab, discarded tab): resume this
         // visitor's conversation if they were in it recently, instead of starting
         // Yuri from zero. See RESUME_WINDOW_MS.
-        if (!session && !sessionId) {
+        if (!session && !sessionId && !parsed.fresh) {
           try {
             session = await findResumableSession(parsed.visitor_id)
           } catch (err) {
@@ -531,6 +537,7 @@ export async function POST(request: NextRequest) {
           }
           if (session) {
             sessionId = session.id
+            resumedConversation = true
             try {
               await fillSessionAttribution(session.id, parsed.source, parsed.landing_path)
             } catch (err) {
@@ -708,6 +715,7 @@ Do NOT sell. The screen already shows them the price and a button the instant yo
 - Your earlier messages are above. If you made a clean, standalone offer to save their email and they clearly passed on it, let it rest. But if an earlier mention got buried — tacked onto another question, or lost in a longer answer so they never actually responded to it — a single clear, standalone offer as this piece of work lands is not nagging; it's the one that should have been made. No email is captured yet, so the question is still genuinely open (unless they've told you they're under 13 — then it isn't).` : ''}${valueDensityFact ? `
 ${valueDensityFact}` : ''}
 ${visitorCountryFact(visitorCountryCode(request.headers.get('x-vercel-ip-country')))}
+- Continuity in this browser: if they leave and come back within about an hour (even in a new tab), this same conversation continues and you'll still have it above. After that, or if they press "Start over", a new conversation begins and this transcript won't be in front of you (any visitor memory noted above may still carry over).${resumedConversation ? ' They just reopened the page and this conversation was picked back up, so what they said earlier above is still theirs.' : ''}
 
 Use these facts with the judgment described above. They are context, not a trigger: a long conversation doesn't obligate an ask, and a short one doesn't forbid it. You decide when the value has actually landed. One placement rule when you do offer: let the email ask stand on its own — never staple it to another open question in the same message, or the other question gets answered and the offer gets missed.`
 

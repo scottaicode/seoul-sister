@@ -13,6 +13,9 @@ import {
   getExistingVisitorId,
   getWidgetSessionId,
   setWidgetSessionId,
+  clearWidgetSessionId,
+  markWidgetFresh,
+  isWidgetFresh,
 } from '@/lib/utils/widget-session'
 import { renderMarkdown, parseWidgetStream } from '@/lib/utils/widget-shared'
 import type { WidgetMessage } from '@/lib/utils/widget-shared'
@@ -110,6 +113,9 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   const [isStreaming, setIsStreaming] = useState(false)
   const [messageCount, setMessageCountState] = useState(0)
   const [showLive, setShowLive] = useState(false)
+  // "Start over" needs a second tap within a few seconds: on a phone, one
+  // mis-tap would otherwise wipe a long conversation with no way back.
+  const [confirmStartOver, setConfirmStartOver] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Server-enforced cap. The client `messageCount` (localStorage) and the
   // server's lifetime `total_messages` per visitor_id can legitimately diverge
@@ -404,6 +410,8 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
     const visitorId = getExistingVisitorId()
     // A first-time visitor has nothing to restore; don't mint an id or call out.
     if (!sessionId && !visitorId) return
+    // The visitor pressed "Start over" in this tab: never bring the old one back.
+    if (!sessionId && isWidgetFresh()) return
 
     let cancelled = false
     ;(async () => {
@@ -534,6 +542,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             history,
             visitor_id: getOrCreateVisitorId(),
             session_id: getWidgetSessionId(),
+            ...(isWidgetFresh() ? { fresh: true } : {}),
             // First-touch feeder attribution: send the source once, on the
             // request that will create the session. Server persists it.
             ...(includeSource ? { source: sourceRef.current } : {}),
@@ -632,6 +641,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
           },
           onDone(cleanedMessage, sessionId, remaining) {
             setStatusLabel(null)
+            // Storing the new id also clears the "Start over" marker.
             if (sessionId) setWidgetSessionId(sessionId)
             if (typeof remaining === 'number') serverRemaining = remaining
             setMessages((prev) => {
@@ -723,6 +733,40 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
     [isStreaming, isAtLimit, messageCount, messages, demoScript, emailGateActive, pendingQuestion]
   )
 
+  // "Start over" (Oct 26 2026). Conversations now resume for an hour across tabs,
+  // so a visitor needs a way to begin fresh — and on a shared device, the next
+  // person needs a way to not see the last one's conversation. Ends it
+  // server-side (it is never resumed), clears it here, and shows the greeting.
+  // Lifetime free-message counts are untouched.
+  const startOver = useCallback(async () => {
+    if (!confirmStartOver) {
+      setConfirmStartOver(true)
+      setTimeout(() => setConfirmStartOver(false), 4000)
+      return
+    }
+    setConfirmStartOver(false)
+    const sid = getWidgetSessionId()
+    const vid = getExistingVisitorId()
+    markWidgetFresh()
+    clearWidgetSessionId()
+    setMessages([])
+    setInput('')
+    setError(null)
+    setShowLive(false)
+    if (!sid || !vid) return
+    try {
+      const res = await fetch('/api/widget/transcript', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visitor_id: vid, session_id: sid }),
+      })
+      if (!res.ok) console.warn('[widget] start over: could not end the old conversation', res.status)
+    } catch (err) {
+      // The persisted fresh marker still guarantees no restore and a new conversation.
+      console.warn('[widget] start over: could not end the old conversation', err)
+    }
+  }, [confirmStartOver])
+
   // ---------- Chat content (shared between both variants) ----------
   const chatContent = (
     <>
@@ -739,6 +783,18 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
         </div>
         {/* "Live" only once a real conversation is streaming — a scripted
             example under a "Live" badge read as a fake live chat (v11.9.1). */}
+        {/* Hidden at the cap and while the email gate is up: clearing the chat
+            there would hide the subscribe card or the email prompt (review). */}
+        {showLive && messages.length > 0 && !isStreaming && !isAtLimit && !emailGateActive && (
+          <button
+            type="button"
+            onClick={startOver}
+            aria-label={confirmStartOver ? 'Tap again to clear this conversation' : 'Start a new conversation'}
+            className="shrink-0 whitespace-nowrap text-[11px] text-white/45 hover:text-gold underline-offset-2 hover:underline transition-colors"
+          >
+            {confirmStartOver ? 'Tap again to clear' : 'Start over'}
+          </button>
+        )}
         <span className="badge-gold text-[10px] animate-pulse-soft">
           {showLive ? 'Live' : 'Free preview'}
         </span>

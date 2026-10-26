@@ -143,6 +143,7 @@ export async function findResumableSession(
     .select(SESSION_COLS)
     .eq('visitor_id', visitorId)
     .gt('message_count', 0)
+    .not('ended_naturally', 'is', true) // the visitor chose "Start over"
     .gte('last_message_at', since)
     .order('last_message_at', { ascending: false })
     .limit(1)
@@ -215,12 +216,22 @@ export async function updateSessionMetadata(
 /**
  * Mark session as ended naturally (hit message limit).
  */
-export async function markSessionEnded(sessionId: string): Promise<void> {
+export async function markSessionEnded(sessionId: string, visitorId: string): Promise<boolean> {
+  // Oct 26 2026: used by the widget's "Start over". An ended conversation is
+  // never resumed (findResumableSession skips it). Ownership-checked, and a
+  // failed write throws so the client can still start fresh via `fresh: true`.
   const supabase = getServiceClient()
-  await supabase
+  const { data, error } = await supabase
     .from('ss_widget_sessions')
     .update({ ended_naturally: true })
     .eq('id', sessionId)
+    .eq('visitor_id', visitorId)
+    .select('id')
+  if (error) throw new Error(`end session failed: ${error.message}`)
+  // false = no such session for this visitor (nothing ended), distinct from success.
+  // Note: ended_naturally was documented as "hit the message limit" but had no
+  // writer or reader before this; it now means "the visitor chose Start over".
+  return (data?.length ?? 0) > 0
 }
 
 /**

@@ -229,11 +229,39 @@ export function getWidgetSessionId(): string | null {
 }
 
 /**
- * Set the session ID after first message response.
+ * Forget the current session ID ("Start over").
+ */
+export function clearWidgetSessionId(): void {
+  if (!isClient()) return
+  try {
+    sessionStorage.removeItem(SESSION_ID_KEY)
+  } catch { /* sessionStorage unavailable */ }
+}
+
+/**
+ * Set the session ID after first message response. A new id means the fresh
+ * start (if any) has happened, so the marker is cleared.
  */
 export function setWidgetSessionId(id: string): void {
   if (!isClient()) return
   try {
     sessionStorage.setItem(SESSION_ID_KEY, id)
+    sessionStorage.removeItem(FRESH_KEY)
   } catch { /* sessionStorage unavailable */ }
+}
+
+/**
+ * "Start over" marker. Survives a reload (an in-memory flag did not, so a reload
+ * before the next message re-restored the conversation the visitor had just
+ * discarded). While set: no restore, and the next message asks for a fresh
+ * conversation. Cleared when a new session id is stored.
+ */
+const FRESH_KEY = 'yuri_widget_fresh'
+export function markWidgetFresh(): void {
+  if (!isClient()) return
+  try { sessionStorage.setItem(FRESH_KEY, '1') } catch { /* unavailable */ }
+}
+export function isWidgetFresh(): boolean {
+  if (!isClient()) return false
+  try { return sessionStorage.getItem(FRESH_KEY) === '1' } catch { return false }
 }

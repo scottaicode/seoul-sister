@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
-import { findResumableSession } from '@/lib/widget/session'
+import { findResumableSession, markSessionEnded } from '@/lib/widget/session'
 
 /**
  * GET /api/widget/transcript?visitor_id=...[&session_id=...]
@@ -88,5 +88,34 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     console.error('[widget/transcript] unexpected error:', err)
     return NextResponse.json({ error: 'lookup failed' }, { status: 500 })
+  }
+}
+
+/**
+ * POST /api/widget/transcript  { visitor_id, session_id }
+ *
+ * The widget's "Start over" (Oct 26 2026): ends the visitor's own conversation
+ * so it is never resumed. Without it, anyone within the resume window on a
+ * shared device would get the previous person's conversation back.
+ */
+export async function POST(req: NextRequest) {
+  let body: { visitor_id?: unknown; session_id?: unknown }
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'invalid body' }, { status: 400 })
+  }
+  const visitorId = typeof body.visitor_id === 'string' ? body.visitor_id.slice(0, 100) : ''
+  const sessionId = typeof body.session_id === 'string' ? body.session_id : ''
+  if (!visitorId || !/^[0-9a-f-]{36}$/i.test(sessionId)) {
+    return NextResponse.json({ error: 'visitor_id and session_id are required' }, { status: 400 })
+  }
+  try {
+    const ended = await markSessionEnded(sessionId, visitorId)
+    if (!ended) return NextResponse.json({ ok: false, error: 'no such conversation' }, { status: 404 })
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    console.error('[widget/transcript] end session failed:', err)
+    return NextResponse.json({ error: 'end failed' }, { status: 500 })
   }
 }

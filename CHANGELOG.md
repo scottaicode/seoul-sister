@@ -5,6 +5,28 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.44.3 — "Start over", and Yuri told the truth about how long a conversation lasts (Oct 26 2026)
+
+Follow-ups to v11.44.2 (conversations now resume for an hour across tabs):
+
+- **"Start over"** in the chat header ends the current conversation (`ended_naturally = true`, ownership-
+  checked; `findResumableSession` skips ended conversations) and clears the screen. It needs a second tap
+  within 4 seconds, is hidden at the free-message cap and while the email prompt is up (clearing there would
+  have hidden the subscribe card or the email prompt), and leaves lifetime message counts alone. A
+  `yuri_widget_fresh` marker in sessionStorage survives a reload, so a reload before the next message can't
+  bring the discarded conversation back; the next message carries `fresh: true` so the server never resumes.
+- **Yuri's per-turn fact:** "if they leave and come back within about an hour (even in a new tab), this same
+  conversation continues..." She had been telling visitors "I can't keep it after you close the tab".
+  Worded as "this browser", not "this device" (the visitor id is per browser), and without claiming she
+  forgets everything (visitor memory and onboarding carryover still exist). Two older lines that said "next
+  visit, you won't remember them" / "no memory of them after today" now say she won't have this conversation
+  in front of her once it ends. The subscription-gate reasoning they support is unchanged, and so is the
+  undecided "Rule #3" memory-confession policy.
+
+A Fable 5.1 review found seven issues (paywall stranded by Start over at the cap, lingering email-gate state,
+the reload undo, no confirmation on a phone, "device" vs "browser", contradictions with older lines, and four
+tests that passed wrong code). All fixed; every guard fails when its bug is put back.
+
 ## v11.44.2 — A visitor who comes back in a new tab continues the same conversation (Oct 26 2026)
 
 Two of two real visitors on Oct 25-26 returned within minutes in a new tab and Yuri had forgotten them:
