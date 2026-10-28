@@ -195,7 +195,7 @@ export interface RoutineProductEntry {
    * every ingredient-keyed check. 'custom' = product_id IS NULL; the step's
    * identity lives in free-text notes and NO catalog-keyed check can see it.
    * Custom steps used to be dropped from context entirely (the `if (product)`
-   * gate), which is how a subscriber's prescription ADAPALENE step became
+   * gate), which is how a subscriber's ADAPALENE step (OTC Differin, not prescribed) became
    * invisible to Yuri while the COSRX BHA beside it stayed visible.
    */
   kind: 'catalog' | 'custom'
