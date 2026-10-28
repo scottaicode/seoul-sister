@@ -92,7 +92,7 @@ function buildHtml(message: string, deepLink: string | null, token: string | nul
 ${paragraphs}
 <p style="margin:22px 0 0;"><a href="${href}" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">Pick this up with Yuri</a></p>
 <hr style="border:none;border-top:1px solid #eee;margin:28px 0 14px;">
-<p style="font-size:12px;color:#999;margin:0;">Seoul Sister, your K-beauty intelligence advisor. You're getting this because you're a subscriber and we have an open thread on your skin.${optOut}</p>
+<p style="font-size:12px;color:#999;margin:0;">Yuri is Seoul Sister's AI K-beauty advisor. You're getting this because you're a subscriber and we have an open thread on your skin.${optOut}</p>
 </body></html>`,
   }
 }

@@ -477,7 +477,7 @@ export default function OnboardingPage() {
               <h1 className="font-display text-base font-semibold text-white">
                 Meet Yuri
               </h1>
-              <p className="text-xs text-white/40">Your K-beauty advisor</p>
+              <p className="text-xs text-white/40">Your AI K-beauty advisor</p>
             </div>
           </div>
 

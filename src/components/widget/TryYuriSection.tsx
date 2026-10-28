@@ -779,7 +779,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
           <p className="text-sm font-semibold text-white">
             Yuri <span className="text-gold">(유리)</span>
           </p>
-          <p className="text-xs text-white/40">Your honest K-beauty friend in Seoul. Ask me anything.</p>
+          <p className="text-xs text-white/40">Your honest AI K-beauty advisor. Ask me anything.</p>
         </div>
         {/* "Live" only once a real conversation is streaming — a scripted
             example under a "Live" badge read as a fake live chat (v11.9.1). */}
@@ -815,7 +815,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                   <Sparkles className="w-3 h-3 text-gold" />
                   <p className="font-semibold text-gold">Yuri</p>
                 </div>
-                Hey, I&apos;m Yuri, a K-beauty advisor who&apos;s honest to a fault.
+                Hey, I&apos;m Yuri, an AI K-beauty advisor who&apos;s honest to a fault.
                 Tell me what you&apos;re using or what&apos;s bugging your skin and
                 I&apos;ll give you my real read. Free, no signup. Start with one of
                 these, or just type below:

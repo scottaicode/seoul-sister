@@ -33,7 +33,7 @@ function unsubFooter(unsubscribeUrl: string, cohort: NurtureCohort): string {
     cohort === 'registered'
       ? 'You are receiving this because you created a Seoul Sister account.'
       : 'You are receiving this because you chatted with Yuri at seoulsister.com and shared your email.'
-  return `<p style="font-size:12px;color:#999;margin:0;">Seoul Sister, your K-beauty intelligence advisor. ${reason} <a href="${unsubscribeUrl}" style="color:#999;">Unsubscribe with one click</a> and you will never hear from us again.</p>`
+  return `<p style="font-size:12px;color:#999;margin:0;">Yuri is Seoul Sister's AI K-beauty advisor. ${reason} <a href="${unsubscribeUrl}" style="color:#999;">Unsubscribe with one click</a> and you will never hear from us again.</p>`
 }
 
 /** Email 1 — Day 0. The honest reset. CTA: free widget chat. */

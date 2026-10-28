@@ -319,7 +319,7 @@ export function buildLeadEmail(
     lead.cohort === 'registered'
       ? 'You are receiving this because you created a Seoul Sister account.'
       : 'You are receiving this because you chatted with Yuri at seoulsister.com and shared your email.'
-  const footer = `<p style="font-size:12px;color:#999;margin:0;">Seoul Sister, your K-beauty intelligence advisor. ${why} <a href="${unsubscribeUrl}" style="color:#999;">Unsubscribe with one click</a> and you will never hear from us again.${
+  const footer = `<p style="font-size:12px;color:#999;margin:0;">Yuri is Seoul Sister's AI K-beauty advisor. ${why} <a href="${unsubscribeUrl}" style="color:#999;">Unsubscribe with one click</a> and you will never hear from us again.${
     address ? `<br>${escapeHtml(address)}` : '<br>[POSTAL ADDRESS NOT CONFIGURED: this email cannot be sent]'
   }</p>`
 

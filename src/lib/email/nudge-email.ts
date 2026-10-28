@@ -142,7 +142,7 @@ export function buildNudgeFooter(unsubscribeToken: string | null): string {
   // subscriber, but the address is cheap insurance (CAN-SPAM).
   const address = postalAddress()
   const addressLine = address ? `<br>${escapeHtml(address)}` : ''
-  return `<p style="font-size:12px;color:#999;margin:0;">Seoul Sister, your K-beauty intelligence advisor. You're getting this because you're a subscriber and we have an open thread on your skin.${optOut}${addressLine}</p>`
+  return `<p style="font-size:12px;color:#999;margin:0;">Yuri is Seoul Sister's AI K-beauty advisor. You're getting this because you're a subscriber and we have an open thread on your skin.${optOut}${addressLine}</p>`
 }
 
 export function buildUnsubscribeUrl(token: string | null): string | undefined {

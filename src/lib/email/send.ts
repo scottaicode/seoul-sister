@@ -163,7 +163,7 @@ function htmlToPlainText(html: string): string {
 export function wrapEmailHtml(bodyHtml: string, footerHtml?: string): string {
   const footer =
     footerHtml ??
-    `<p style="font-size:12px;color:#999;margin:0;">Seoul Sister — your K-beauty intelligence advisor. You're receiving this because you chatted with Yuri at seoulsister.com. Not interested? Just ignore this and we won't follow up.</p>`
+    `<p style="font-size:12px;color:#999;margin:0;">Yuri is Seoul Sister's AI K-beauty advisor. You're receiving this because you chatted with Yuri at seoulsister.com. Not interested? Just ignore this and we won't follow up.</p>`
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>

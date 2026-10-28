@@ -5,6 +5,40 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.45.0 — Anthropic Usage Policy (effective Nov 12 2026): Yuri says she's AI, and leaves prescriptions to the prescriber (Oct 28 2026)
+
+The new Usage Policy requires every consumer chatbot to disclose it is AI, and treats "starting, stopping, or
+adjusting a treatment or medication, including dose" as a High-risk Medical recommendation that needs a
+qualified human to review it before delivery. A live chat can't do that.
+
+- **AI disclosure.** Widget header "Your honest K-beauty friend in Seoul" (read like a person) is now "Your
+  honest AI K-beauty advisor"; the widget greeting and onboarding header say "AI"; /yuri already said "AI
+  Beauty Advisor". Every Yuri-voiced email footer (nudge, nurture, recap, lead re-engage) now reads "Yuri is
+  Seoul Sister's AI K-beauty advisor."
+- **Prescription rule** beside the lesion rule in all three Yuri prompts (advisor, widget, onboarding): Yuri
+  does not start, stop, or change the dose or frequency of a prescription; everything around it (how it works,
+  building the routine, timing other actives, conflict checks) stays hers with full confidence. Possible side
+  effects go to the prescriber with a specific question. Earlier memory decisions about a prescription's
+  schedule are treated as a question for the prescriber, not a plan to resume. OTC actives (retinol, OTC
+  adapalene 0.1%, BHA, BPO, azelaic, sunscreen) are unchanged. The rule ends by forbidding its use as a
+  reason to hedge anything else.
+- Measured first: ~15% of assistant replies mention a drug (77/499 authenticated, 76/563 widget); most are
+  conflict checks or referrals. The ones crossing the line set adapalene schedules.
+- **Open, recorded in data:** the policy has no "prescription" qualifier, and OTC adapalene/BPO/sunscreen are
+  FDA drugs. Keeping OTC scheduling with Yuri is a judgment, not a settled reading. Deferral row
+  `ss_pipeline_runs.metadata.deferral_key = 'usage_policy_otc_drug_actives'`.
+- `tests/usage-policy-nov12.test.mjs` pins the rule's whole line in each prompt, checks the next line for a
+  hedge, and checks AI labels in rendered JSX and email footers (comments stripped).
+
+A Fable review found that the first tests did not bind (a hedge appended after the rule and a label hidden
+in a JSX comment both passed), that a subscriber's stored decision memory contradicted the rule, that the
+emails lacked disclosure, and that the side-effects clause was itself High-risk wording. A second pass found
+a hedge inserted as the next line and the rule moved into a code comment both still passed, and that
+"might be a side effect" would send normal tretinoin flaking to the doctor (now "goes beyond what is normal").
+All fixed; the rule's neighbouring lines are pinned and every guard fails when its bug is put back. Not
+verified on a live Yuri turn yet. Left as-is: `nudge-eligibility.ts` still calls a Differin loop "a good
+window to step up actives" (the nudge writer cannot prescribe, so low risk).
+
 ## v11.44.3 — "Start over", and Yuri told the truth about how long a conversation lasts (Oct 26 2026)
 
 Follow-ups to v11.44.2 (conversations now resume for an hour across tabs):
