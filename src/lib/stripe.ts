@@ -64,6 +64,9 @@ export async function createCheckoutSession(params: {
     payment_method_types: ['card'],
     customer_email: params.email,
     line_items: [{ price: priceId, quantity: 1 }],
+    // Lets the owner hand a specific person a one-off code (e.g. a first
+    // month free). Codes are created by hand in Stripe, single-use.
+    allow_promotion_codes: true,
     success_url: params.successUrl,
     cancel_url: params.cancelUrl,
     metadata: {
