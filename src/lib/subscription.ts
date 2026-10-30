@@ -45,7 +45,7 @@ export async function hasActiveSubscription(userId: string): Promise<boolean> {
     .eq('user_id', userId)
     .maybeSingle()
 
-  if (sub?.status === 'active') return true
+  if (sub?.status === 'active' || sub?.status === 'trialing') return true
 
   // Fallback: check profile plan field (manually set, pre-Stripe)
   const { data: profile } = await supabase

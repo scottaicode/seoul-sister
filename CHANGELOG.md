@@ -5,6 +5,28 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.47.0 — Pricing relaunch Phase A: earlier email ask, trials ready, measurement in place (Oct 30 2026)
+
+No price or plan changes. Plan: `PRICING-RELAUNCH-PLAN-2026-10-30.md` (v2, after a Fable review refuted v1).
+
+- **Landing email gate 8 -> 6.** At 8 it reached 24 of 164 visitors; at 6 about 39, still after Yuri has
+  understood and helped. Yuri's under-13 rule states the real number. New per-turn fact: when the next
+  message will require an email, Yuri is told so (a fact, not an instruction) so her own "take your time"
+  can't land right before the gate. First showing recorded in `ss_widget_visitors.email_gate_shown_at`
+  (measures the hard gate only: visitors who gave an email earlier, or type one, never see it).
+- **Trials ready (none offered yet).** A trialing subscription now has access everywhere: the webhook kept
+  writing `plan = null` for `trialing`, which the app shell treats as no subscription (whole-app lock-out);
+  checkout/confirm wrote `active` regardless; `hasActiveSubscription`, usage period lookups and
+  `/api/subscription` accepted only `active`. `invoice.payment_succeeded` now only recovers
+  past_due/incomplete, so a trial's $0 invoice can't overwrite `trialing`.
+- **Measurement:** `ss_subscriptions.stripe_price_id` and `trial_end` stored (migration
+  `20261030000001`, applied before deploy).
+- Tests: new assertion pins the gate at 6 with `>=` (a `>` would silently move it one message later).
+  1426/1426, tsc clean, build green.
+- Reviews: Opus adversarial review of the diff (ship after fixing a swallowed supabase error on the gate
+  write; fixed), plus the plan-level Fable review. NOT verified in production: a real gate showing row, and
+  any trial (Phase B).
+
 ## v11.46.0 — Yuri stops re-writing her memory cache on every message (Oct 29 2026)
 
 In-app Yuri cost ~$0.24 a message, and about three-quarters of that was cache WRITES: nearly the whole

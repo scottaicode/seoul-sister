@@ -49,11 +49,11 @@ test('the rule never has Yuri ask visitors their age', () => {
 
 test('the rule tells the truth about the email gate and promises no non-retention', () => {
   // extractEmail() captures any typed address, and the platform gate asks
-  // every visitor after 8 messages. The rule must say so, and must never lead
+  // every visitor after N messages (EMAIL_GATE_AFTER_MESSAGES). The rule must say so, and must never lead
   // Yuri to tell a child their data is not kept. Shapes, not verbs: the review
   // defeated a verb list with "retained" and "won't be keeping".
   const r = rule()
-  assert.match(r, /8 messages/, 'the rule must tell Yuri the gate exists')
+  assert.match(r, /after \d+ messages/, 'the rule must tell Yuri the gate exists')
   assert.match(r, /\bis saved\b/, 'the rule must tell Yuri a gated email IS saved')
   assert.doesNotMatch(r, /\breassur\w*/i)
   assert.doesNotMatch(r, /\bnothing\b[^.]*\b(retain|kept|keep|sav|stor|record)\w*/i)
@@ -78,6 +78,12 @@ test('the gate arithmetic matches the code', () => {
   const n = /EMAIL_GATE_AFTER_MESSAGES\s*=\s*(\d+)/.exec(src)?.[1]
   assert.ok(n, 'EMAIL_GATE_AFTER_MESSAGES must exist')
   assert.match(rule(), new RegExp(`after ${n} messages`), 'the rule must state the real gate threshold')
+})
+
+test('the gate fires at the configured count (Oct 30 2026: 6) and uses >=', () => {
+  const src = readFileSync(ROUTE, 'utf8')
+  assert.match(src, /const EMAIL_GATE_AFTER_MESSAGES = 6\b/, 'gate threshold changed: update this test on purpose')
+  assert.match(src, /visitor\.total_messages >= EMAIL_GATE_AFTER_MESSAGES/, 'a > here silently moves the gate one message later')
 })
 
 

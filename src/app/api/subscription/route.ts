@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id)
       .maybeSingle()
 
-    if (subscription?.status === 'active') {
+    if (subscription?.status === 'active' || subscription?.status === 'trialing') {
       return NextResponse.json({
         plan: 'pro_monthly',
         status: subscription.status,

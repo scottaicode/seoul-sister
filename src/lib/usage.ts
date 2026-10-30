@@ -29,7 +29,7 @@ async function getOrCreateUsageRecord(userId: string) {
     .from('ss_subscriptions')
     .select('current_period_start, current_period_end')
     .eq('user_id', userId)
-    .eq('status', 'active')
+    .in('status', ['active', 'trialing'])
     .maybeSingle()
 
   let periodStart: string
@@ -120,7 +120,7 @@ export async function incrementYuriMessageCount(userId: string): Promise<boolean
     .from('ss_subscriptions')
     .select('current_period_start')
     .eq('user_id', userId)
-    .eq('status', 'active')
+    .in('status', ['active', 'trialing'])
     .maybeSingle()
 
   const periodStart = sub?.current_period_start
@@ -148,7 +148,7 @@ export async function incrementScanCount(userId: string): Promise<boolean> {
     .from('ss_subscriptions')
     .select('current_period_start')
     .eq('user_id', userId)
-    .eq('status', 'active')
+    .in('status', ['active', 'trialing'])
     .maybeSingle()
 
   const periodStart = sub?.current_period_start

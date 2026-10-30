@@ -9,6 +9,7 @@ import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
 import { cleanYuriResponse, stripPhantomToolCallNarration } from '@/lib/yuri/voice-cleanup'
 import { detectSpecialist, SPECIALISTS } from '@/lib/yuri/specialists'
 import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordCapturedEmail, isEmailCapturedByAnotherVisitor, clearCapturedEmail, recordRecapStatus, MAX_FREE_MESSAGES } from '@/lib/widget/visitor'
+import { getServiceClient } from '@/lib/supabase'
 import { consumeGlobalBudget, logBreakerTrip, BREAKER_MESSAGE } from '@/lib/widget/circuit-breaker'
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
 import { detectCumulativeGive, buildCumulativeGiveBlock, detectBuildRequest, buildRequestBlock } from '@/lib/widget/cumulative-give'
@@ -44,7 +45,9 @@ const MAX_WIDGET_TOOL_LOOPS = 3
 // visitor's email. Converts an engaged anonymous visitor into a reachable lead
 // BEFORE the value peak, and (because email is deduped across visitor rows)
 // gives honest cross-device identity that a fresh localStorage UUID can't fake.
-const EMAIL_GATE_AFTER_MESSAGES = 8
+// Oct 30 2026: 8 -> 6. At 8 the gate reached 24 of 164 visitors; at 6 it reaches
+// ~39 while still after Yuri has understood and helped (plan v2, Fable review).
+const EMAIL_GATE_AFTER_MESSAGES = 6
 // IP BACKSTOP: verified July 18 — a tester switched desktop→phone and got a
 // brand-new visitor UUID with a fresh quota (same ip_hash, new ua_hash in
 // ss_widget_visitors). This 30-day per-IP ceiling caps total preview messages
@@ -375,7 +378,7 @@ You are the only one who can tell whether a given person will parse it, so read 
 
 **But ask ONCE, then let it rest.** The single biggest way to blow this is repeating the offer. If you've already made it earlier in this conversation and they didn't give it to you, do NOT ask again — they heard you, and re-asking every turn reads as nagging and pushes a satisfied person away. A visitor who keeps engaging after your offer is still getting value; keep helping generously and let the offer stand on its own. Make it at most once, at the strongest natural moment — and don't manufacture that moment on a one-line throwaway question or mid-build while they're still firing new questions; save it for when a valuable piece of work is actually landing. If they ignore it, your job is to be so useful they *want* to come back. So: silence early and mid-conversation, one clear well-earned offer at the value moment, then rest.
 
-**If a visitor tells you they're under 13, don't ask for their email.** Everything else stays the same: help them fully, the way you already do for young visitors (a 12-year-old asking whether a serum is safe deserves the real answer). The only change is the email offer. Seoul Sister's privacy policy says we don't knowingly collect personal information from children under 13, and in this chat you are the only one who can know their age. Don't encourage them to share personal details beyond what their skin question needs (the skin, climate and sun questions you normally ask are fine). One thing you can't change: after 8 messages the platform itself asks every visitor for an email before they can continue, at any age. If a young visitor hits that and sends one anyway, it is saved and a recap email may be sent to it, so don't tell them it wasn't; just keep helping.
+**If a visitor tells you they're under 13, don't ask for their email.** Everything else stays the same: help them fully, the way you already do for young visitors (a 12-year-old asking whether a serum is safe deserves the real answer). The only change is the email offer. Seoul Sister's privacy policy says we don't knowingly collect personal information from children under 13, and in this chat you are the only one who can know their age. Don't encourage them to share personal details beyond what their skin question needs (the skin, climate and sun questions you normally ask are fine). One thing you can't change: after 6 messages the platform itself asks every visitor for an email before they can continue, at any age. If a young visitor hits that and sends one anyway, it is saved and a recap email may be sent to it, so don't tell them it wasn't; just keep helping.
 
 ## Guardrails (unchanged — these protect the trust)
 - Be undeniably good at what you do. Real value sells itself.
@@ -507,6 +510,20 @@ export async function POST(request: NextRequest) {
           visitor.total_messages >= EMAIL_GATE_AFTER_MESSAGES &&
           !extractEmail(parsed.message)
         ) {
+          // Record the first time the gate is shown, so its pass rate (shown vs
+          // gave an email) is measurable in SQL, not only in GA4. Best-effort.
+          // supabase-js returns { error } rather than throwing, so check it:
+          // a silent failure would read as "gate never shown".
+          try {
+            const { error: gateLogError } = await getServiceClient()
+              .from('ss_widget_visitors')
+              .update({ email_gate_shown_at: new Date().toISOString() })
+              .eq('id', visitor.id)
+              .is('email_gate_shown_at', null)
+            if (gateLogError) console.error('[widget/chat] email_gate_shown_at write failed:', gateLogError.message)
+          } catch (gateLogErr) {
+            console.error('[widget/chat] email_gate_shown_at write failed:', gateLogErr)
+          }
           return new Response(
             JSON.stringify({
               error:
@@ -713,7 +730,7 @@ Two things that are genuinely useful here and cost nothing: a signed-off summary
 Do NOT sell. The screen already shows them the price and a button the instant you finish, so naming a price or saying "subscribe" would duplicate it and make you part of the sales apparatus rather than their advisor. Your register is what's unfinished and what happens next; the interface handles the rest. Warmth is right — a clean human goodbye is correct — just don't let it imply the work is complete when it isn't.`
             : ` Don't volunteer a count you don't have.`
     }
-- Email on file for this visitor: ${hasEmail ? `YES — you already have it. Do NOT ask again; just keep helping. ${recapStatusFact(visitor?.recap_status)}` :'NO — Seoul Sister has no way to reach them after they close this tab.'}${!hasEmail && history.length > 0 ? `
+- Email on file for this visitor: ${!hasEmail && lifetimeUsed !== null && lifetimeUsed + 1 >= EMAIL_GATE_AFTER_MESSAGES ? `NO, and after this reply the platform requires an email before they can send another message (the continue-gate, at ${EMAIL_GATE_AFTER_MESSAGES} messages). ` : ''}${hasEmail ? `YES — you already have it. Do NOT ask again; just keep helping. ${recapStatusFact(visitor?.recap_status)}` :'NO — Seoul Sister has no way to reach them after they close this tab.'}${!hasEmail && history.length > 0 ? `
 - Your earlier messages are above. If you made a clean, standalone offer to save their email and they clearly passed on it, let it rest. But if an earlier mention got buried — tacked onto another question, or lost in a longer answer so they never actually responded to it — a single clear, standalone offer as this piece of work lands is not nagging; it's the one that should have been made. No email is captured yet, so the question is still genuinely open (unless they've told you they're under 13 — then it isn't).` : ''}${valueDensityFact ? `
 ${valueDensityFact}` : ''}
 ${visitorCountryFact(visitorCountryCode(request.headers.get('x-vercel-ip-country')))}

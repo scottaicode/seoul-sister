@@ -99,7 +99,10 @@ export async function POST(request: NextRequest) {
               stripe_customer_id: customerId,
               stripe_subscription_id: subscriptionId,
               tier: planToTier(plan),
-              status: 'active',
+              // Was hardcoded 'active'; a free trial reports 'trialing'.
+              status: subscription.status === 'trialing' ? 'trialing' : 'active',
+              stripe_price_id: priceId ?? null,
+              trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
               lead_source: leadSource, // 'widget' if matched, else null (organic/unknown)
               current_period_start: period.start,
               current_period_end: period.end,
@@ -169,6 +172,8 @@ export async function POST(request: NextRequest) {
                 : 'canceled',
               current_period_start: period.start,
               current_period_end: period.end,
+              stripe_price_id: priceId ?? null,
+              trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
               canceled_at: subscription.canceled_at
                 ? new Date(subscription.canceled_at * 1000).toISOString()
                 : null,
@@ -193,7 +198,9 @@ export async function POST(request: NextRequest) {
         // Sync plan to user profile
         await supabase
           .from('ss_user_profiles')
-          .update({ plan: subscription.status === 'active' ? plan : null })
+          // A trialing subscriber has access exactly like an active one. Writing null
+          // here locked trial users out of the whole app (AppShell gates on plan).
+          .update({ plan: subscription.status === 'active' || subscription.status === 'trialing' ? plan : null })
           .eq('user_id', userId)
 
         break
@@ -231,6 +238,10 @@ export async function POST(request: NextRequest) {
             .from('ss_subscriptions')
             .update({ status: 'active' })
             .eq('stripe_subscription_id', subscriptionId)
+            // Recovery from a failed payment only. A free trial's $0 invoice
+            // also fires this event and must not overwrite 'trialing';
+            // customer.subscription.updated writes 'active' when a trial converts.
+            .in('status', ['past_due', 'incomplete'])
         }
         break
       }
