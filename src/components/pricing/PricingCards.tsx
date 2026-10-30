@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Star, Loader2, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { SUBSCRIPTION_TIERS } from '@/lib/stripe'
+import { PRICING } from '@/lib/pricing'
 import { MAX_FREE_MESSAGES } from '@/lib/utils/widget-session'
 
 interface PricingCardsProps {
@@ -12,11 +13,12 @@ interface PricingCardsProps {
 }
 
 export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function handleCheckout() {
     if (!isAuthenticated) {
-      window.location.href = '/register?plan=pro_monthly'
+      window.location.href = '/register?plan=monthly'
       return
     }
 
@@ -32,7 +34,7 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ plan: 'pro_monthly' }),
+        body: JSON.stringify({ plan: 'monthly' }),
       })
 
       const result = await response.json()
@@ -41,12 +43,13 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
       window.location.href = result.url
     } catch (err) {
       console.error('Checkout error:', err)
+      setCheckoutError(err instanceof Error && err.message ? err.message : 'Could not start checkout. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const tier = SUBSCRIPTION_TIERS.pro_monthly
+  const tier = SUBSCRIPTION_TIERS.monthly
 
   return (
     <div className="max-w-md mx-auto">
@@ -65,8 +68,8 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
           <p className="text-4xl font-bold text-white">${tier.price}</p>
           <span className="text-base font-normal text-white/40">/month</span>
         </div>
-        <p className="text-xs text-white/40 mb-1">Less than a single skin consult. Unlimited conversations, and she never closes.</p>
-        <p className="text-xs text-white/40 mb-6">Cancel anytime. No commitment.</p>
+        <p className="text-xs text-white/40 mb-1">Less than a single skin consult, and she never closes.</p>
+        <p className="text-xs text-white/40 mb-6">New members: first {PRICING.trial_days} days free, then {PRICING.monthly_display_long}. Cancel anytime.</p>
 
         <ul className="space-y-3 mb-8">
           {tier.features.map((f) => (
@@ -85,12 +88,13 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
           {loading ? (
             <Loader2 className="w-4 h-4 animate-spin mx-auto" />
           ) : isAuthenticated ? (
-            'Subscribe Now'
+            'Subscribe'
           ) : (
             'Get Started'
           )}
         </button>
 
+        {checkoutError && <p className="text-center text-xs text-rose-300 mt-3" role="alert">{checkoutError}</p>}
         <p className="text-center text-[10px] text-white/30 mt-3">
           Try {MAX_FREE_MESSAGES} free preview messages before subscribing.
         </p>

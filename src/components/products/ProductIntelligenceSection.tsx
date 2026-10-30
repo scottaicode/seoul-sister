@@ -189,7 +189,7 @@ export default function ProductIntelligenceSection({ productId, productName, pro
           <ArrowRight className="w-4 h-4" />
         </Link>
         <p className="text-xs text-white/30 mt-3">
-          Full access to Yuri AI advisor, unlimited scans, and all intelligence features
+          {PRICING.yuri_allowance_display}, label scans, and all intelligence features. New members: first {PRICING.trial_days} days free.
         </p>
       </div>
     </>

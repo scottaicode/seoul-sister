@@ -285,9 +285,11 @@ function WeatherLocationToggle({
 
 function ManageSubscriptionButton() {
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleManage() {
     setLoading(true)
+    setError(null)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) return
@@ -295,24 +297,32 @@ function ManageSubscriptionButton() {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
+      if (res.status === 404) {
+        // Comped accounts have no billing record to manage.
+        setError('Your plan has no billing to manage. Questions? Email yuri@seoulsister.com.')
+        return
+      }
       if (!res.ok) throw new Error('Failed to open billing portal')
       const { url } = await res.json()
       window.location.href = url
     } catch {
-      // Portal open failed — user can try again
+      setError('Could not open billing. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
+    <div className="flex flex-col items-end">
     <button
       onClick={handleManage}
       disabled={loading}
       className="text-xs font-medium text-gold-light hover:text-gold transition-colors disabled:opacity-50"
     >
-      {loading ? 'Opening...' : 'Manage'}
+      {loading ? 'Opening...' : 'Manage subscription'}
     </button>
+    {error && <p className="text-[10px] text-white/50 mt-1 max-w-[180px] text-right">{error}</p>}
+    </div>
   )
 }
 
@@ -482,8 +492,10 @@ export default function ProfilePage() {
                     : 'No active subscription'}
                 </p>
                 <p className="text-xs text-white/40 mt-0.5">
-                  {profile.plan && profile.plan !== 'free'
+                  {profile.plan === 'monthly'
                     ? `${PRICING.monthly_display_long} — Yuri + full intelligence suite`
+                    : profile.plan && profile.plan !== 'free'
+                    ? 'Yuri + full intelligence suite'
                     : 'Subscribe to unlock Yuri, scanning, and all features'}
                 </p>
               </div>

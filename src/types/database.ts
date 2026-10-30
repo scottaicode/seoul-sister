@@ -260,7 +260,7 @@ export interface TrendingProduct {
   updated_at: string | null
 }
 
-export type SubscriptionPlan = 'pro_monthly'
+export type SubscriptionPlan = 'monthly' | 'pro_monthly'
 export type SubscriptionStatus = 'active' | 'canceled' | 'past_due' | 'trialing'
 
 export interface Subscription {

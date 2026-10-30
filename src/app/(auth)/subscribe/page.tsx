@@ -6,11 +6,13 @@ import { Star, Loader2, Check, ArrowRight } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { SUBSCRIPTION_TIERS } from '@/lib/stripe'
+import { PRICING } from '@/lib/pricing'
 import { trackEvent, PaywallEvent } from '@/lib/analytics'
 
 export default function SubscribePage() {
   const router = useRouter()
   const { user, loading: authLoading, signOut } = useAuth()
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(true)
   // Priority 2 — arriving straight from onboarding is the earned VALUE MOMENT:
@@ -89,7 +91,7 @@ export default function SubscribePage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ plan: 'pro_monthly' }),
+        body: JSON.stringify({ plan: 'monthly' }),
       })
 
       const result = await response.json()
@@ -99,6 +101,7 @@ export default function SubscribePage() {
       window.location.href = result.url
     } catch (err) {
       console.error('Checkout error:', err)
+      setCheckoutError(err instanceof Error && err.message ? err.message : 'Could not start checkout. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -112,7 +115,7 @@ export default function SubscribePage() {
     )
   }
 
-  const tier = SUBSCRIPTION_TIERS.pro_monthly
+  const tier = SUBSCRIPTION_TIERS.monthly
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -141,7 +144,7 @@ export default function SubscribePage() {
           <p className="text-4xl font-bold text-white">${tier.price}</p>
           <span className="text-base font-normal text-white/40">/month</span>
         </div>
-        <p className="text-xs text-white/40 mb-6">Cancel anytime. No commitment.</p>
+        <p className="text-xs text-white/40 mb-6">New members: first {PRICING.trial_days} days free, then {PRICING.monthly_display_long}. Cancel anytime.</p>
 
         <ul className="space-y-3 mb-8">
           {tier.features.map((f) => (
@@ -165,6 +168,7 @@ export default function SubscribePage() {
             </>
           )}
         </button>
+        {checkoutError && <p className="text-center text-xs text-rose-300 mt-3" role="alert">{checkoutError}</p>}
 
         <p className="text-center text-[10px] text-white/30 mt-3">
           Secure payment via Stripe.

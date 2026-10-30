@@ -5,6 +5,30 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.48.0 — Pricing relaunch Phase B: $9.99/month, 7-day trial, real allowances (Oct 30 2026)
+
+Owner decision (Scott, Oct 30): ship Phase B now. Plan: `PRICING-RELAUNCH-PLAN-2026-10-30.md`.
+
+- **One plan: $9.99/month** (`STRIPE_PRICE_MONTHLY` = `price_1UWKqZE3bY1JvxExnUh7e84U`), plan key `monthly`.
+  80 Yuri messages + 30 label scans per **calendar month (UTC)**. Legacy $24.99 and comped accounts stay
+  `pro_monthly` with the old 1,500/300 allowance. Unknown Stripe price ids throw (webhook 500, Stripe retries).
+- **7-day free trial, card required**, only for users with no `ss_subscriptions` row ever. Checkout adds
+  terms consent + renewal text (CA AB 2863); new `subscription-confirmation.ts` email (price, charge date and
+  time, how to cancel) sent from `checkout.session.completed`. Checkout refuses a second subscription when one
+  is active/trialing/past_due (double-billing guard) and returns 503 instead of silently dropping the trial
+  when the eligibility lookup fails.
+- **Every "unlimited" claim replaced** (pricing cards, subscribe page, widget upgrade messages, lead email,
+  product section, `llms.txt`, Yuri's plan fact). Yuri gets the user's real usage as a per-turn fact
+  (before the clock in the trailing context). `/api/lgaas/pricing` adds `yuri_messages_per_month` + `trial_days`.
+- Fixes from review: chat counts a message only after the request is valid; scan-limit message uses the
+  plan's real limit and reset date; profile shows the price only for `monthly` plans, and "Manage
+  subscription" explains itself for comped accounts; checkout errors are shown to the buyer.
+- Migration `20261030000002_plan_monthly.sql` allows `plan='monthly'` (**must be applied before deploy**).
+- Tests 1426/1426, tsc clean, build green. Fable adversarial review: 17 findings; fixed #3,4,5,7,8,9,13,14.
+  Open: #6 (comped user with a canceled Stripe row gets no proactive check-ins), #11 (worst-case cost
+  exceeds $9.99; measure real per-member cost), #15 (non-atomic counter). NOT verified in production: any
+  trial, confirmation email, or conversion row.
+
 ## v11.47.0 — Pricing relaunch Phase A: earlier email ask, trials ready, measurement in place (Oct 30 2026)
 
 No price or plan changes. Plan: `PRICING-RELAUNCH-PLAN-2026-10-30.md` (v2, after a Fable review refuted v1).

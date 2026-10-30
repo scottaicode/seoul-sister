@@ -18,7 +18,7 @@ import {
 } from './memory'
 import { extractAndSaveTreatmentPhases } from './treatment-phase-extractor'
 import { YURI_TOOLS, executeYuriTool, resetWebSearchCounter } from './tools'
-import { PRICING } from '@/lib/pricing'
+import { PRICING, USAGE_CAPS } from '@/lib/pricing'
 import { cleanYuriResponse, stripPhantomToolCallNarration } from './voice-cleanup'
 import type { SpecialistType, YuriMessage } from '@/types/database'
 import type Anthropic from '@anthropic-ai/sdk'
@@ -315,7 +315,7 @@ Do not send someone to email us for something you cannot verify email will fix. 
 ### Profile & Settings
 | Feature | Path | What it does |
 |---------|------|-------------|
-| Profile | /profile | Skin profile display, subscription management ("Manage" opens Stripe portal), weather toggle, cycle toggle, support link |
+| Profile | /profile | Skin profile display, subscription management ("Manage subscription" opens Stripe portal), weather toggle, cycle toggle, support link |
 | Weather alerts | /profile toggle | Real-time UV, humidity, temperature → personalized daily skincare tips on dashboard |
 | Cycle tracking | /profile toggle | Hormonal phase routine adjustments (menstrual/follicular/ovulatory/luteal) — opt-in, private |
 | Settings | /settings | Account settings |
@@ -338,8 +338,8 @@ Scan a product → see if it matches your skin → check prices across retailers
 Two consolidating loops sit above the individual features. Your conversations with the user populate their **Skin Profile** — a read-only consolidated view in your voice that they can revisit anytime to see where they are in their journey. As they scan, save, add to routine, and tag products, those flow into their **Library** — the one place to see what they own, what's in their routine they don't own yet, what's expiring, and what's tagged. Both pages route users back to you via "Ask Yuri" CTAs with context prefilled.
 
 ### Subscription & Account
-- **${PRICING.monthly_display}** ${PRICING.plan_name}. Unlimited Yuri conversations + unlimited label scans
-- **Manage subscription**: Profile page → "Manage" button → Stripe billing portal (update card, view invoices, cancel)
+- **${PRICING.monthly_display}** ${PRICING.plan_name}: ${PRICING.yuri_allowance_display} plus ${USAGE_CAPS.scans_per_month} label scans, counted per calendar month. New members get a ${PRICING.trial_days}-day free trial. Some accounts (team, comped, and early subscribers) have a larger allowance. This user's own allowance and how much is used appear in the per-turn facts when known; use those numbers, never assume unlimited.
+- **Manage subscription**: Profile page → "Manage subscription" button → Stripe billing portal (update card, view invoices, cancel)
 - **Cancel**: Access continues through end of billing period. Profile, conversations, and routines are preserved if they resubscribe
 - **Not a store** — Seoul Sister doesn't sell products. Direct to the retailers you recommend for where they live (see "Where to Send People to Buy")
 
@@ -830,6 +830,8 @@ export interface AdvisorStreamOptions {
   requestedSpecialist?: SpecialistType | null
   /** Present only for flagged demo accounts. Makes the whole turn ephemeral. */
   scenario?: YuriScenario | null
+  /** Per-turn fact about this user's Yuri allowance (delivered after the cache breakpoint). */
+  usageFact?: string
 }
 
 export async function* streamAdvisorResponse(
@@ -843,6 +845,7 @@ export async function* streamAdvisorResponse(
     conversationHistory,
     requestedSpecialist,
     scenario = null,
+    usageFact,
   } = options
 
   // Scenario Mode makes the entire turn ephemeral: real Yuri reasoning, a
@@ -945,7 +948,7 @@ export async function* streamAdvisorResponse(
   const productTurn = shouldForceToolUse(message, conversationHistory)
   const loopMessages: Anthropic.Messages.MessageParam[] = withTrailingContext(
     markPenultimateAssistant(apiMessages as Anthropic.Messages.MessageParam[]),
-    [specialistBlock, productTurn ? `\n${PRODUCT_TURN_FACT}` : '', clockBlock].join('')
+    [specialistBlock, productTurn ? `\n${PRODUCT_TURN_FACT}` : '', usageFact ? `\n\n${usageFact}` : '', clockBlock].join('')
   )
 
   // Prepare tools with cache_control on the last tool definition

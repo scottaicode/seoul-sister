@@ -464,7 +464,7 @@ export async function POST(request: NextRequest) {
         if (isVisitorAtLimit(visitor)) {
           return new Response(
             JSON.stringify({
-              error: `Preview limit reached. Subscribe to ${PRICING.plan_name} (${PRICING.monthly_display}) for unlimited Yuri conversations, personalized routines, and all 6 built-in AI specialists.`,
+              error: `Preview limit reached. Subscribe to ${PRICING.plan_name} (${PRICING.monthly_display}) for ${PRICING.yuri_allowance_display}, personalized routines, and all 6 built-in AI specialists. New members get ${PRICING.trial_days} days free.`,
               limitReached: true,
             }),
             { status: 429, headers: { 'Content-Type': 'application/json' } }
@@ -480,7 +480,7 @@ export async function POST(request: NextRequest) {
         if (!previewIpCheck.allowed && visitor.total_messages >= PREVIEW_IP_EXHAUSTED_ALLOWANCE) {
           return new Response(
             JSON.stringify({
-              error: `Preview limit reached. Subscribe to ${PRICING.plan_name} (${PRICING.monthly_display}) for unlimited Yuri conversations, personalized routines, and all 6 built-in AI specialists.`,
+              error: `Preview limit reached. Subscribe to ${PRICING.plan_name} (${PRICING.monthly_display}) for ${PRICING.yuri_allowance_display}, personalized routines, and all 6 built-in AI specialists. New members get ${PRICING.trial_days} days free.`,
               limitReached: true,
             }),
             { status: 429, headers: { 'Content-Type': 'application/json' } }
@@ -585,7 +585,7 @@ export async function POST(request: NextRequest) {
       const msgCheck = await checkRateLimit(sessionKey, MAX_FREE_MESSAGES, 30 * 24 * 60 * 60 * 1000)
       if (!msgCheck.allowed) {
         return new Response(
-          JSON.stringify({ error: `Preview limit reached. Subscribe to ${PRICING.plan_name} (${PRICING.monthly_display}) for unlimited Yuri conversations.`, limitReached: true }),
+          JSON.stringify({ error: `Preview limit reached. Subscribe to ${PRICING.plan_name} (${PRICING.monthly_display}) for ${PRICING.yuri_allowance_display}. New members get ${PRICING.trial_days} days free.`, limitReached: true }),
           { status: 429, headers: { 'Content-Type': 'application/json' } }
         )
       }

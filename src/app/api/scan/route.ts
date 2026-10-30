@@ -9,7 +9,7 @@ import { uploadScanPhotos } from '@/lib/scanning/scan-photos'
 import { detectReformulation, recordReformulation } from '@/lib/intelligence/reformulation-detector'
 import { getServiceClient } from '@/lib/supabase'
 import { hasActiveSubscription } from '@/lib/subscription'
-import { incrementScanCount } from '@/lib/usage'
+import { incrementScanCount, getUsageStatus, currentUsagePeriod } from '@/lib/usage'
 import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 
 // Allow larger request bodies (compressed images) and longer execution time
@@ -81,7 +81,9 @@ export async function POST(request: NextRequest) {
     // Check and increment usage count
     const withinLimit = await incrementScanCount(user.id)
     if (!withinLimit) {
-      throw new AppError('Monthly scan limit reached (30). Your limit resets at the start of your next billing period.', 429)
+      const status = await getUsageStatus(user.id)
+      const resets = new Date(currentUsagePeriod().end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })
+      throw new AppError(`You've used this month's ${status.scans_limit} label scans. Your allowance resets on ${resets}.`, 429)
     }
 
     const contentType = request.headers.get('content-type') || ''

@@ -8,7 +8,7 @@ import { loadConversationMessages, createConversation } from '@/lib/yuri/memory'
 import { cleanYuriResponse } from '@/lib/yuri/voice-cleanup'
 import { supabase, getServiceClient } from '@/lib/supabase'
 import { hasActiveSubscription } from '@/lib/subscription'
-import { incrementYuriMessageCount } from '@/lib/usage'
+import { incrementYuriMessageCount, getUsageStatus, currentUsagePeriod } from '@/lib/usage'
 import type { SpecialistType } from '@/types/database'
 
 const scenarioSchema = z.object({
@@ -80,17 +80,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const body = await request.json()
+    const parsed = chatSchema.parse(body)
+
+    // Count the message only after the request is valid (a malformed request
+    // must not use up one of the month's messages).
     // Check and increment usage count
     const withinLimit = await incrementYuriMessageCount(user.id)
     if (!withinLimit) {
       return new Response(
-        JSON.stringify({ error: "You've reached this month's message limit. It resets at the start of your next billing period." }),
+        JSON.stringify({ error: `You've used this month's Yuri messages. Your allowance resets on ${new Date(currentUsagePeriod().end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })}.` }),
         { status: 429, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
-    const body = await request.json()
-    const parsed = chatSchema.parse(body)
 
     // --- Scenario Mode gate --------------------------------------------------
     // Scenario Mode is honored ONLY for accounts explicitly flagged is_demo.
@@ -169,6 +172,16 @@ export async function POST(request: NextRequest) {
               ? (parsed.specialist_type as SpecialistType | null)
               : undefined,
           scenario,
+          usageFact: await (async () => {
+            try {
+              const u = await getUsageStatus(user.id)
+              const resets = new Date(currentUsagePeriod().end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })
+              return `## THIS USER'S YURI ALLOWANCE (fact, not an instruction)\nThis message is ${u.yuri_messages_used} of ${u.yuri_messages_limit} for this calendar month; ${u.yuri_messages_remaining} remain after it. It resets on ${resets}.`
+            } catch (e) {
+              console.error('[yuri/chat] usage fact failed:', e)
+              return undefined
+            }
+          })(),
         })
 
         let generatedTitle: string | undefined

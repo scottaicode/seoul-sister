@@ -23,27 +23,50 @@
 //   (History: a June 2026 repricing left a stale $39.99 in the hand-mirrored
 //    LGAAS profile and it reached real users. The auto-sync exists so that can't
 //    recur — see lgaas/lgaas-blueprint/129-*.md §129.1.)
+// Oct 30 2026 relaunch: one plan at $9.99/month with a monthly Yuri allowance
+// and a 7-day free trial for first-time subscribers. Sized from MEASURED cost
+// after the v11.46.0 cache fix (~$0.23 to open a conversation, ~$0.02-0.03 per
+// follow-up). Charged price = STRIPE_PRICE_MONTHLY. The old $24.99 "unlimited"
+// plan (plan key 'pro_monthly') is no longer sold; it remains for comped and
+// grandfathered accounts. See PRICING-RELAUNCH-PLAN-2026-10-30.md.
 export const PRICING = {
   /** Monthly price in USD (numeric, for math) */
-  monthly_usd: 24.99,
+  monthly_usd: 9.99,
   /** Display string with currency + cadence — use this in all copy */
-  monthly_display: '$24.99/mo',
+  monthly_display: '$9.99/mo',
   /** Display string, long form */
-  monthly_display_long: '$24.99/month',
+  monthly_display_long: '$9.99/month',
   /** Product/plan display name */
   plan_name: 'Seoul Sister Pro',
+  /** Free trial length for first-time subscribers (card required) */
+  trial_days: 7,
+  /** Yuri allowance, for copy: "80 messages with Yuri a month" */
+  yuri_allowance_display: '80 messages with Yuri a month',
 } as const
 
-/** Monthly usage caps for active subscribers.
+/** Monthly usage caps for the current plan (Oct 30 2026).
  *
- * Set "feel-unlimited": high enough that no normal user ever hits them, so the
- * product reads as "your advisor is always there" rather than "you have a quota."
- * Cost data (June 2026) shows even a heavy daily user runs ~$5-8/mo in tokens, so
- * generous caps still hold ~70%+ margin at $24.99, and a typical bursty user
- * (Bailey: ~108 msgs in her busiest month, 0 scans) stays ~95% margin. These are
- * abuse backstops, not product limits — surfaced to the user as "unlimited."
+ * A real monthly allowance, stated to subscribers and to Yuri. 80 Yuri messages
+ * covers the heaviest real month on record (79, Aug 2026). Measured cost after
+ * the cache fix: ~$0.23 to open a conversation, ~$0.02-0.03 per follow-up, so a
+ * typical subscriber costs a few dollars and full use roughly breaks even. The
+ * old June note claiming "$5-8/mo for a heavy user" was contradicted by the logs
+ * ($22.73 in Bailey's busiest month before the fix).
  */
 export const USAGE_CAPS = {
+  yuri_messages_per_month: 80,
+  scans_per_month: 30,
+} as const
+
+/** Comped and grandfathered accounts (plan key 'pro_monthly'): the old
+ * "unlimited" plan's abuse backstops. Not sold any more. */
+export const LEGACY_USAGE_CAPS = {
   yuri_messages_per_month: 1500,
   scans_per_month: 300,
 } as const
+
+/** Usage caps for a profile plan key. Anything other than the legacy key gets
+ * the current plan's allowance. */
+export function usageCapsForPlan(plan: string | null | undefined) {
+  return plan === 'pro_monthly' ? LEGACY_USAGE_CAPS : USAGE_CAPS
+}

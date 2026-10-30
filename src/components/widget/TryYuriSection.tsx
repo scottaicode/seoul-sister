@@ -952,7 +952,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                   routine and adjust it as your skin responds.
                 </p>
                 <Link
-                  href="/register?plan=pro_monthly"
+                  href="/register?plan=monthly"
                   className="inline-flex items-center gap-1.5 glass-button-primary text-xs py-2 px-5"
                 >
                   Keep going at {PRICING.monthly_display} <ArrowRight className="w-3 h-3" />

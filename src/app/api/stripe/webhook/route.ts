@@ -3,6 +3,7 @@ import { getStripeClient, planFromStripePriceId, type TierKey } from '@/lib/stri
 import { getServiceClient } from '@/lib/supabase'
 import { attributeConversion } from '@/lib/widget/visitor'
 import { notifyNewSubscriber } from '@/lib/email/new-subscriber-alert'
+import { sendSubscriptionConfirmation } from '@/lib/email/subscription-confirmation'
 import { subscriptionPeriod, invoiceSubscriptionId } from '@/lib/stripe-payload'
 import type Stripe from 'stripe'
 
@@ -113,10 +114,30 @@ export async function POST(request: NextRequest) {
             throw new Error(`ss_subscriptions upsert failed: ${checkoutUpsertError.message}`)
           }
 
-          await supabase
+          const { error: planWriteError } = await supabase
             .from('ss_user_profiles')
             .update({ plan })
             .eq('user_id', userId)
+          if (planWriteError) {
+            throw new Error(`ss_user_profiles plan write failed: ${planWriteError.message}`)
+          }
+
+          // Auto-renewal confirmation the customer keeps (price, first charge
+          // date, how to cancel). Required by California's auto-renewal law;
+          // Stripe sends no receipt for a $0 trial invoice. Best-effort.
+          if (buyerEmail) {
+            try {
+              const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null
+              const confirm = await sendSubscriptionConfirmation(buyerEmail, trialEnd)
+              if (!confirm.sent) {
+                console.error(`[stripe webhook] subscription confirmation NOT sent to user ${userId}: ${confirm.reason}`)
+              }
+            } catch (confirmErr) {
+              console.error('[stripe webhook] subscription confirmation threw:', confirmErr)
+            }
+          } else {
+            console.error(`[stripe webhook] no buyer email on session; confirmation not sent for user ${userId}`)
+          }
 
           // Notify the owner — a paying customer is the most important event on
           // the platform. Best-effort; never blocks or fails the webhook.

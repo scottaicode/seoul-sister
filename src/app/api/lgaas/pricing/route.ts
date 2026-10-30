@@ -60,11 +60,14 @@ export async function GET(request: NextRequest) {
       // Numbers for math
       monthly_usd: monthly,
       annual_usd: annual,
-      usage_soft_cap_per_month: USAGE_CAPS.yuri_messages_per_month,
+      usage_soft_cap_per_month: USAGE_CAPS.yuri_messages_per_month, // kept for older readers
+      // Oct 30 2026: a monthly allowance, not "unlimited", plus the new-member trial.
+      yuri_messages_per_month: USAGE_CAPS.yuri_messages_per_month,
+      trial_days: PRICING.trial_days,
       // Display strings for rendering
-      monthly_display: PRICING.monthly_display, // "$24.99/mo"
-      monthly_display_long: PRICING.monthly_display_long, // "$24.99/month"
-      annual_display: `$${annual.toFixed(2)}/yr`, // "$299.88/yr"
+      monthly_display: PRICING.monthly_display, // "$9.99/mo"
+      monthly_display_long: PRICING.monthly_display_long, // "$9.99/month"
+      annual_display: `$${annual.toFixed(2)}/yr`, // monthly x 12 (cost of a year; no annual plan)
     })
   } catch (error) {
     return handleApiError(error)

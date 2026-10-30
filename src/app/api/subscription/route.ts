@@ -31,10 +31,17 @@ export async function GET(request: NextRequest) {
       .maybeSingle()
 
     if (subscription?.status === 'active' || subscription?.status === 'trialing') {
+      const { data: subProfile } = await serviceClient
+        .from('ss_user_profiles')
+        .select('plan')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      const subPlan = subProfile?.plan === 'monthly' ? 'monthly' : 'pro_monthly'
       return NextResponse.json({
-        plan: 'pro_monthly',
+        plan: subPlan,
         status: subscription.status,
-        tier: SUBSCRIPTION_TIERS.pro_monthly,
+        tier: SUBSCRIPTION_TIERS[subPlan],
+        trial_end: subscription.trial_end ?? null,
         subscription: {
           id: subscription.id,
           current_period_end: subscription.current_period_end,
@@ -54,7 +61,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         plan: profile.plan,
         status: 'active',
-        tier: SUBSCRIPTION_TIERS.pro_monthly,
+        tier: profile.plan === 'monthly' ? SUBSCRIPTION_TIERS.monthly : SUBSCRIPTION_TIERS.pro_monthly,
         subscription: null, // No Stripe subscription — manual plan
       })
     }

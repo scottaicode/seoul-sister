@@ -2,7 +2,7 @@
  * Widget Session Tracking (localStorage-based)
  *
  * Tracks anonymous widget message usage with a 30-day rolling window.
- * After MAX_FREE_MESSAGES, visitors must subscribe for unlimited access.
+ * After MAX_FREE_MESSAGES, visitors must subscribe to keep going.
  * Counter resets after 30 days, giving returning visitors a second chance.
  *
  * Why localStorage over cookies:

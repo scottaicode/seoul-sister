@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@supabase/supabase-js'
 import { createCheckoutSession, type TierKey } from '@/lib/stripe'
+import { getServiceClient } from '@/lib/supabase'
 
+// Only the current plan is sold. The legacy 'pro_monthly' plan exists for
+// comped/grandfathered accounts and cannot be bought.
 const CheckoutSchema = z.object({
-  plan: z.enum(['pro_monthly']),
+  plan: z.enum(['monthly']).default('monthly'),
 })
 
 export async function POST(request: NextRequest) {
@@ -36,10 +39,34 @@ export async function POST(request: NextRequest) {
 
     const origin = request.headers.get('origin') || 'https://www.seoulsister.com'
 
+    // One free trial per person: only someone with no subscription history
+    // (any status, any time) gets it. Checked by user id. If the lookup fails
+    // we stop rather than quietly charging today someone promised a trial.
+    const { data: priorSub, error: priorErr } = await getServiceClient()
+      .from('ss_subscriptions')
+      .select('id, status')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (priorErr) {
+      console.error('[stripe/checkout] subscription lookup failed:', priorErr.message)
+      return NextResponse.json({ error: 'Could not start checkout. Please try again in a minute.' }, { status: 503 })
+    }
+    // A live or past-due subscription must not get a second one (a failed card
+    // at trial end would otherwise lead to double billing). Send them to update
+    // the card instead.
+    if (priorSub && ['active', 'trialing', 'past_due', 'incomplete'].includes(priorSub.status)) {
+      return NextResponse.json(
+        { error: 'You already have a subscription. To update your card or plan, go to your Profile page and choose "Manage subscription".' },
+        { status: 409 }
+      )
+    }
+    const withTrial = !priorSub
+
     const url = await createCheckoutSession({
       userId: user.id,
       email: user.email!,
       plan: parsed.data.plan as TierKey,
+      withTrial,
       // {CHECKOUT_SESSION_ID} is substituted by Stripe on redirect. It lets the
       // app confirm payment DIRECTLY with Stripe when the buyer returns, instead
       // of waiting on the out-of-band webhook (Stripe's documented dual-trigger
