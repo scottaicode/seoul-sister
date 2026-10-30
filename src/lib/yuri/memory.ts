@@ -203,6 +203,9 @@ export interface RoutineProductEntry {
 
 export interface UserContext {
   skinProfile: SkinProfile | null
+  /** True when the current conversation's own decisions/insights/summary were
+   * left out of this context (EXCLUDE_CURRENT_CONVERSATION_ENABLED). */
+  currentConversationExcluded?: boolean
   recentConversations: ConversationMemory[]
   recentExcerpts: RecentConversationExcerpt[]
   productReactions: ProductReaction[]
@@ -320,6 +323,17 @@ export interface LoadUserContextOptions {
 // (byte-identical to the pre-fix behavior) without a deploy.
 export const VOLATILE_SPLIT_ENABLED = process.env.YURI_VOLATILE_SPLIT_ENABLED !== 'false'
 
+// Oct 29 2026 — keep the CURRENT conversation's own derived artifacts (its title,
+// summary/opener, specialist insights, decision memory) out of the cached user-
+// context block. Background jobs rewrite those 2-3s after a reply, which changed
+// the cached prefix and re-wrote ~30K tokens on the next message (two independent
+// diagnoses, Opus + Fable, matched the cache misses to these writes row by row).
+// Nothing is lost: the current conversation is already in the request verbatim
+// (long threads keep their own bridge summary). Same exclusion the excerpts
+// loader already applies. Set YURI_EXCLUDE_CURRENT_CONVERSATION=false to restore.
+export const EXCLUDE_CURRENT_CONVERSATION_ENABLED =
+  process.env.YURI_EXCLUDE_CURRENT_CONVERSATION !== 'false'
+
 export async function loadUserContext(
   userId: string,
   currentConversationId?: string,
@@ -348,12 +362,14 @@ export async function loadUserContext(
       .maybeSingle(),
 
     // Recent conversations (last 10) for memory context
-    db
-      .from('ss_yuri_conversations')
-      .select('id, title, specialist_type, conversation_type, updated_at, summary, next_session_opener')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
-      .limit(10),
+    (() => {
+      let q = db
+        .from('ss_yuri_conversations')
+        .select('id, title, specialist_type, conversation_type, updated_at, summary, next_session_opener')
+        .eq('user_id', userId)
+      if (EXCLUDE_CURRENT_CONVERSATION_ENABLED && currentConversationId) q = q.neq('id', currentConversationId)
+      return q.order('updated_at', { ascending: false }).limit(10)
+    })(),
   ])
 
   // CONDITIONAL: product reactions (needed for products, ingredients, skin_profile, or general)
@@ -421,12 +437,14 @@ export async function loadUserContext(
   // CONDITIONAL: specialist insights (only for general — these are rarely referenced in focused queries)
   const loadSpecialist = loadAll
   const specialistInsightsPromise = loadSpecialist
-    ? db
-        .from('ss_specialist_insights')
-        .select('specialist_type, data, created_at, conversation_id, ss_yuri_conversations!inner(user_id)')
-        .eq('ss_yuri_conversations.user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(20)
+    ? (() => {
+        let q = db
+          .from('ss_specialist_insights')
+          .select('specialist_type, data, created_at, conversation_id, ss_yuri_conversations!inner(user_id)')
+          .eq('ss_yuri_conversations.user_id', userId)
+        if (EXCLUDE_CURRENT_CONVERSATION_ENABLED && currentConversationId) q = q.neq('conversation_id', currentConversationId)
+        return q.order('created_at', { ascending: false }).limit(20)
+      })()
     : Promise.resolve({ data: null })
 
   // CONDITIONAL: ingredient overlap (Feature 16.1). Load whenever routine,
@@ -640,7 +658,7 @@ export async function loadUserContext(
   const locationName = await reverseGeocodeUserLocation(skinProfile)
 
   // Load structured decision memory across recent conversations (always load — cheap and critical)
-  let decisionMemory = await loadDecisionMemory(db, userId)
+  let decisionMemory = await loadDecisionMemory(db, userId, EXCLUDE_CURRENT_CONVERSATION_ENABLED ? currentConversationId : undefined)
 
   // v10.10.0 — union durable corrections (per-user store that never ages) into the
   // windowed corrections. A correction the user made many conversations ago has
@@ -702,6 +720,7 @@ export async function loadUserContext(
 
   return {
     skinProfile,
+    currentConversationExcluded: EXCLUDE_CURRENT_CONVERSATION_ENABLED && !!currentConversationId,
     recentConversations,
     recentExcerpts,
     productReactions,
@@ -1367,7 +1386,10 @@ This user has hormonal/cycle-related concerns in their profile but has NOT enabl
     }
 
     if (dmParts.length > 0) {
-      sections.push(`## Your Decisions & Preferences (Structured Memory)\nThese are structured decisions, preferences, and commitments extracted from your conversations with this user. Reference them when relevant — they represent agreed-upon plans and stated preferences.\n\n${dmParts.join('\n\n')}`)
+      const currentThreadNote = context.currentConversationExcluded
+        ? ' Decisions, corrections and open loops from THIS conversation are not listed here; this conversation is newer than everything below and overrides it where they differ.'
+        : ''
+      sections.push(`## Your Decisions & Preferences (Structured Memory)\nThese are structured decisions, preferences, and commitments extracted from your conversations with this user. Reference them when relevant — they represent agreed-upon plans and stated preferences.${currentThreadNote}\n\n${dmParts.join('\n\n')}`)
     }
   }
 
@@ -1548,11 +1570,13 @@ export async function loadConversationMessages(
     .from('ss_yuri_messages')
     .select('*')
     .eq('conversation_id', conversationId)
-    .order('created_at', { ascending: true })
+    // Newest N, then put back in order. Ascending + limit kept the OLDEST N, so a
+    // thread past the limit lost its most recent turns (Oct 29 2026 review).
+    .order('created_at', { ascending: false })
     .limit(limit)
 
   if (error) throw new Error(`Failed to load messages: ${error.message}`)
-  const messages = data as YuriMessage[]
+  const messages = (data as YuriMessage[]).reverse()
 
   // If under threshold, return all messages as-is
   if (messages.length <= TRUNCATION_THRESHOLD) {
@@ -1901,14 +1925,17 @@ export function mergeDecisionMemory(
  */
 async function loadDecisionMemory(
   db: ReturnType<typeof getServiceClient>,
-  userId: string
+  userId: string,
+  excludeConversationId?: string
 ): Promise<DecisionMemory | null> {
   try {
-    const { data: conversations } = await db
+    let query = db
       .from('ss_yuri_conversations')
       .select('decision_memory')
       .eq('user_id', userId)
       .not('decision_memory', 'eq', '{}')
+    if (excludeConversationId) query = query.neq('id', excludeConversationId)
+    const { data: conversations } = await query
       // created_at, not updated_at: backfill scripts touch updated_at on
       // historical rows en masse, which can evict recent conversations from
       // this 3-row window. created_at is immutable.

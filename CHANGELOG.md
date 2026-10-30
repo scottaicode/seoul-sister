@@ -5,6 +5,35 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.46.0 — Yuri stops re-writing her memory cache on every message (Oct 29 2026)
+
+In-app Yuri cost ~$0.24 a message, and about three-quarters of that was cache WRITES: nearly the whole
+user-context block was re-written on most turns. Two independent read-only diagnoses (Opus and Fable)
+found the same cause and matched it row by row: background jobs write the CURRENT conversation's title,
+summary/opener, specialist insight and decision memory 2-3 seconds after each reply, and all of those
+rendered inside the cached user-context block, so the next turn's prefix differed. Cache TTL was not it:
+92% of follow-ups arrived within 5 minutes.
+
+- `loadUserContext` leaves the current conversation out of the recent-conversations list, specialist
+  insights and the decision-memory window (`.neq` on each). Yuri loses nothing: the current conversation
+  is in the request verbatim. The excerpts loader already did this. Kill switch
+  `YURI_EXCLUDE_CURRENT_CONVERSATION=false` (read at module load; needs a redeploy on Vercel).
+- Fable adversarial review (pre-commit) found that shifting the 3-conversation decision window can show
+  an older decision as an agreed plan beside this thread's newer one. The decisions section now carries
+  one fact: this conversation's decisions are not listed there and are newer.
+- Pre-existing bug fixed from the same review: `loadConversationMessages` ordered ascending then limited,
+  so a thread past 200 messages kept the OLDEST 200 and dropped the newest. It now keeps the newest N.
+- Deliberately not done: suppressing the "Suggested Opener" on resumed threads (review finding). It would
+  change the cached block between message 1 and 2, adding a rewrite to every conversation; the section
+  is already labelled for fresh conversations.
+- Verified on real data (read-only builds): current conversation's title/summary absent, earlier
+  conversations and decision memory still present, block byte-identical across different messages,
+  Bailey's block 62.8K -> 58.3K chars with the note present only when the switch is on. 1425/1425 tests,
+  tsc clean, build green. NOT yet verified in production: warm-turn cache reads. Modeled cost after the
+  fix ~$0.08-0.12 a message (from ~$0.24 before Oct 7); confirm with two consecutive yuri_chat rows.
+- Known, not fixed: a correction made inside a >50-message thread relies on the bridge summary (which
+  does not list corrections) until the weekly durable-memory rollup; no thread has exceeded 48 messages.
+
 ## v11.45.0 — Anthropic Usage Policy (effective Nov 12 2026): Yuri says she's AI, and leaves prescriptions to the prescriber (Oct 28 2026)
 
 The new Usage Policy requires every consumer chatbot to disclose it is AI, and treats "starting, stopping, or
