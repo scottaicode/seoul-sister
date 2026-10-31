@@ -971,3 +971,12 @@ test('every paid plan reaches check-ins: no plan-name prefix filters (Oct 31 202
   const pricing = readFileSync('src/lib/pricing.ts', 'utf8')
   assert.match(pricing, /PAID_PLAN_KEYS = \['monthly', 'pro_monthly'\]/)
 })
+
+test('nurture (marketing) emails refuse to send without a postal address (CAN-SPAM, Oct 31 2026)', () => {
+  const src = read('src', 'lib', 'email', 'nurture.ts')
+  const gate = src.indexOf('if (!postalAddress())')
+  const firstSend = src.indexOf('await sendEmail(')
+  assert.ok(gate > 0, 'processDueSends must check postalAddress()')
+  assert.ok(gate < firstSend, 'the address check must come before any send')
+  assert.match(src, /skipped_reason: 'no_postal_address'/, 'a skipped run must say why')
+})

@@ -5,6 +5,18 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.48.3 — Marketing email needs a postal address (Oct 31 2026)
+
+- The nurture sequence (3 emails to leads and free accounts; #3 pitches the plan) was sending marketing
+  email with an unsubscribe link but no postal address (CAN-SPAM). `processDueSends` now sends nothing
+  without `EMAIL_POSTAL_ADDRESS`, returning `skipped_reason: 'no_postal_address'` (recorded in
+  `ss_pipeline_runs`), and resumes on its own once the variable is set. Lead re-engagement already worked
+  this way.
+- `wrapEmailHtml` adds "Seoul Sister · <address>" to every email's footer when the address is set
+  (skipped if the footer already has it).
+- Address is a virtual mailbox (VibeTrendAI, Sacramento), pending USPS Form 1583 approval; env var not set
+  yet. 1428/1428.
+
 ## v11.48.2 — Yuri's at-limit screen states the real allowance (Oct 31 2026)
 
 - `yuri/page.tsx` still said "an unusually high number of messages… resets on your next billing cycle"

@@ -15,7 +15,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { sendEmail, wrapEmailHtml } from './send'
+import { sendEmail, wrapEmailHtml, postalAddress } from './send'
 import { buildNurtureEmail, STEP_DELAYS_DAYS, type NurtureCohort } from './nurture-copy'
 
 const BATCH_LIMIT = 20
@@ -112,8 +112,15 @@ function isDue(lead: NurtureLead, now: Date): boolean {
 
 export async function processDueSends(
   db: SupabaseClient
-): Promise<{ enrolled: number; sent: number; converted: number; errors: number }> {
+): Promise<{ enrolled: number; sent: number; converted: number; errors: number; skipped_reason?: 'no_postal_address' }> {
   const { enrolled } = await enrollLeads(db)
+  // These emails sell the plan, so they are marketing mail and must carry the
+  // sender's postal address (CAN-SPAM). No address configured -> send nothing
+  // and say why; sends resume on their own once EMAIL_POSTAL_ADDRESS is set.
+  if (!postalAddress()) {
+    console.warn('[nurture] skipped: EMAIL_POSTAL_ADDRESS not set (marketing email needs a postal address)')
+    return { enrolled, sent: 0, converted: 0, errors: 0, skipped_reason: 'no_postal_address' }
+  }
   const now = new Date()
 
   const { data: leads, error } = await db

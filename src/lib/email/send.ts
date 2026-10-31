@@ -164,13 +164,22 @@ export function wrapEmailHtml(bodyHtml: string, footerHtml?: string): string {
   const footer =
     footerHtml ??
     `<p style="font-size:12px;color:#999;margin:0;">Yuri is Seoul Sister's AI K-beauty advisor. You're receiving this because you chatted with Yuri at seoulsister.com. Not interested? Just ignore this and we won't follow up.</p>`
+  // Sender's postal address on every email when configured (CAN-SPAM for
+  // marketing mail; harmless on the rest). Skipped if the footer has it already.
+  // Read directly (not via postalAddress()) so this function stays self-contained.
+  const address = process.env.EMAIL_POSTAL_ADDRESS?.trim() || null
+  const safeAddress = address ? address.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : ''
+  const addressHtml =
+    safeAddress && !footer.includes(safeAddress)
+      ? `\n<p style="font-size:12px;color:#999;margin:6px 0 0;">Seoul Sister · ${safeAddress}</p>`
+      : ''
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#2b2b2b;max-width:560px;margin:0 auto;padding:24px;">
 ${bodyHtml}
 <hr style="border:none;border-top:1px solid #eee;margin:28px 0 14px;">
-${footer}
+${footer}${addressHtml}
 </body>
 </html>`
 }
