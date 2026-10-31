@@ -204,7 +204,7 @@ test('shared cap: 3 per 30 days and 3 days apart, counted across both crons', as
   assert.match(read('src', 'app', 'api', 'cron', 'proactive-nudge', 'route.ts'), /from '@\/lib\/intelligence\/nudge-limits'/)
 })
 
-test('check-in gate: demo, canceled, night, cap, judged-today skip; daytime passes', async () => {
+test('check-in gate: demo, night, cap, judged-today skip; daytime passes', async () => {
   const limits = await limitsImpl()
   const { checkinGate } = await loadPure(['src', 'lib', 'proactive', 'subscriber-checkin.ts'], {
     // The real function, closed over the real constants from nudge-limits.ts.
@@ -214,11 +214,10 @@ test('check-in gate: demo, canceled, night, cap, judged-today skip; daytime pass
     DAYTIME_END_HOUR: '20',
   })
   const s = { user_id: 'u', timezone: 'America/Chicago', latitude: null, longitude: null, is_demo: false, nudge_email_opt_out: false, nudge_unsubscribe_token: null }
-  const o = (over = {}) => ({ hasCanceledOnly: false, internal: false, nudgeCreatedAts: [], lastJudgedAt: null, now: NOW, ...over })
+  const o = (over = {}) => ({ internal: false, nudgeCreatedAts: [], lastJudgedAt: null, now: NOW, ...over })
   assert.equal(checkinGate(s, o()), null)
   assert.equal(checkinGate({ ...s, is_demo: true }, o()), 'demo')
   assert.equal(checkinGate(s, o({ internal: true })), 'internal', 'admin/founder accounts only via the dogfood list')
-  assert.equal(checkinGate(s, o({ hasCanceledOnly: true })), 'canceled', 'plan=pro_monthly on a canceled Stripe sub is not a subscriber')
   assert.equal(checkinGate({ ...s, timezone: 'Night/Zone' }, o()), 'night')
   assert.equal(checkinGate(s, o({ nudgeCreatedAts: [new Date(NOW - DAY).toISOString()] })), 'cap_or_spacing')
   assert.equal(checkinGate(s, o({ lastJudgedAt: new Date(NOW - 3600 * 1000).toISOString() })), 'judged_recently')
@@ -960,4 +959,15 @@ test('teacher: generic skincare words shared with the check-in are not a topic r
 test('off mode logs one run row a day, not hourly', () => {
   const route = read('src', 'app', 'api', 'cron', 'yuri-wakes-up', 'route.ts')
   assert.match(route, /if \(mode === 'off'\) \{[\s\S]{0,300}if \(new Date\(\)\.getUTCHours\(\) !== DAILY_PHASE_UTC_HOUR\) \{\s*return NextResponse\.json/)
+})
+
+test('every paid plan reaches check-ins: no plan-name prefix filters (Oct 31 2026)', async () => {
+  const { readFileSync, readdirSync, statSync } = await import('node:fs')
+  const { join } = await import('node:path')
+  const walk = (d) => readdirSync(d).flatMap((f) => { const p = join(d, f); return statSync(p).isDirectory() ? walk(p) : [p] })
+  // The $9.99 plan is 'monthly'; a "pro%" filter silently drops every new member.
+  const offenders = walk('src').filter((f) => /\.(ts|tsx)$/.test(f) && /like\(\s*'plan'\s*,\s*'pro%'\s*\)/.test(readFileSync(f, 'utf8')))
+  assert.deepEqual(offenders, [], `plan filtered by name prefix in: ${offenders.join(', ')}`)
+  const pricing = readFileSync('src/lib/pricing.ts', 'utf8')
+  assert.match(pricing, /PAID_PLAN_KEYS = \['monthly', 'pro_monthly'\]/)
 })

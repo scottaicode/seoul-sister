@@ -46,7 +46,7 @@ export interface SubscriberRow {
   nudge_unsubscribe_token: string | null
 }
 
-export type CheckinSkipReason = 'demo' | 'internal' | 'canceled' | 'night' | 'cap_or_spacing' | 'judged_recently'
+export type CheckinSkipReason = 'demo' | 'internal' | 'night' | 'cap_or_spacing' | 'judged_recently'
 
 /**
  * Admin/founder accounts are excluded unless listed for dogfooding in
@@ -67,7 +67,6 @@ export function dogfoodUserIds(): Set<string> {
 export function checkinGate(
   s: SubscriberRow,
   opts: {
-    hasCanceledOnly: boolean
     /** is_admin / excluded_from_metrics, and not on the dogfood list. */
     internal: boolean
     nudgeCreatedAts: string[]
@@ -78,7 +77,6 @@ export function checkinGate(
 ): CheckinSkipReason | null {
   if (s.is_demo) return 'demo'
   if (opts.internal) return 'internal'
-  if (opts.hasCanceledOnly) return 'canceled'
   if (!opts.bypassDaytime) {
     const h = localHour(s.timezone)
     if (h < DAYTIME_START_HOUR || h >= DAYTIME_END_HOUR) return 'night'

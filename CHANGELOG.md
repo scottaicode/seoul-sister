@@ -5,6 +5,20 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.48.1 — $9.99 members and comped accounts get Yuri's check-ins (Oct 31 2026)
+
+- Both check-in jobs (`proactive/run.ts`, `cron/proactive-nudge`) selected members with `plan LIKE 'pro%'`,
+  so every new $9.99 member (`plan='monthly'`) would have been skipped. Now `PAID_PLAN_KEYS`
+  (`monthly`, `pro_monthly`) in `pricing.ts`; a test fails if a plan-name prefix filter comes back
+  (checked by putting the old filter back: 1 fail).
+- A canceled Stripe row no longer blocks check-ins. Canceling clears the plan, so a paid plan on a canceled
+  account was set on purpose (a comp, e.g. Kim). The judgment ledger's `comped` flag is now "no live Stripe
+  subscription" (was "no Stripe row ever").
+- Data: `glassskinatx@gmail.com` (Seoul Sister's Reddit account, a leftover paid plan from before the
+  webhook cleared plans) marked `excluded_from_metrics`.
+- 1427/1427, tsc clean, build green. Not verified in production until a check-in row exists for a
+  `monthly` or comped member.
+
 ## v11.48.0 — Pricing relaunch Phase B: $9.99/month, 7-day trial, real allowances (Oct 30 2026)
 
 Owner decision (Scott, Oct 30): ship Phase B now. Plan: `PRICING-RELAUNCH-PLAN-2026-10-30.md`.

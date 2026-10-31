@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
+import { PAID_PLAN_KEYS } from '@/lib/pricing'
 import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
 import { getAIContext } from '@/lib/ai-config'
 import { logAIUsage } from '@/lib/ai-usage-logger'
@@ -244,7 +245,7 @@ async function handler(request: Request) {
       .from('ss_user_profiles')
       .select('user_id, skin_type, timezone, avg_cycle_length, cycle_tracking_enabled, onboarding_completed, plan, nudge_email_opt_out, nudge_unsubscribe_token')
       .eq('onboarding_completed', true)
-      .like('plan', 'pro%')
+      .in('plan', [...PAID_PLAN_KEYS])
 
     if (profErr) {
       console.error('[proactive-nudge] profile load failed:', profErr.message)

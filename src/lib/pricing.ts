@@ -53,6 +53,11 @@ export const PRICING = {
  * old June note claiming "$5-8/mo for a heavy user" was contradicted by the logs
  * ($22.73 in Bailey's busiest month before the fix).
  */
+/** Every plan key that means a paying or comped member. 'monthly' = $9.99;
+ * 'pro_monthly' = legacy $24.99 and comped accounts. Use this instead of
+ * matching on a name prefix. */
+export const PAID_PLAN_KEYS = ['monthly', 'pro_monthly'] as const
+
 export const USAGE_CAPS = {
   yuri_messages_per_month: 80,
   scans_per_month: 30,

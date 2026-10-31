@@ -40,6 +40,7 @@ import { checkinGate, judgeSubscriber, dogfoodUserIds, type SubscriberRow } from
 import type { ProactiveDecision } from './judge'
 import { checkProactiveDraft, type GuardEvidence } from './content-guard'
 import { safeSlice } from '@/lib/utils/text-slice'
+import { PAID_PLAN_KEYS } from '@/lib/pricing'
 
 /**
  * Every 'speak' passes the closed-world content guard before it can be
@@ -191,7 +192,7 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
     .from('ss_user_profiles')
     .select('user_id, timezone, latitude, longitude, is_demo, is_admin, excluded_from_metrics, nudge_email_opt_out, nudge_unsubscribe_token')
     .eq('onboarding_completed', true)
-    .like('plan', 'pro%')
+    .in('plan', [...PAID_PLAN_KEYS])
   if (opts.onlyUserIds?.length) profQuery = profQuery.in('user_id', opts.onlyUserIds)
   const { data: profiles, error: profErr } = phases.subscribers
     ? await profQuery
@@ -201,6 +202,9 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
     errors.push(`profile load: ${profErr.message}`)
   } else {
     const ids = (profiles ?? []).map((p) => p.user_id as string)
+    // A canceled Stripe row no longer excludes anyone: canceling clears the
+    // plan (webhook), so a paid plan on a canceled account was set on purpose
+    // (a comp) and that member gets check-ins like any other (Oct 31 2026).
     const [subsRes, nudgesRes, judgedRes] = await Promise.all([
       db.from('ss_subscriptions').select('user_id, status').in('user_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']),
       db.from('ss_user_nudges').select('user_id, created_at').in('user_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']),
@@ -221,7 +225,10 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
         sub.scanned++
         const isDogfood = dogfood.has(p.user_id)
         const rows = (subsRes.data ?? []).filter((r) => r.user_id === p.user_id)
-        const hasCanceledOnly = rows.length > 0 && !rows.some((r) => r.status === 'active' || r.status === 'trialing')
+        // Comped = no live Stripe subscription (never had one, or canceled and
+        // then given the plan). Recorded on every judgment so results for
+        // comped and paying members are never averaged together.
+        const comped = !rows.some((r) => r.status === 'active' || r.status === 'trialing')
         const nudgeCreatedAts = (nudgesRes.data ?? []).filter((r) => r.user_id === p.user_id).map((r) => r.created_at as string)
         const lastJudgedAt =
           (judgedRes.data ?? [])
@@ -230,7 +237,6 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
             .sort()
             .pop() ?? null
         const skip = checkinGate(p, {
-          hasCanceledOnly,
           internal: (p.is_admin === true || p.excluded_from_metrics === true) && !isDogfood,
           nudgeCreatedAts,
           lastJudgedAt: opts.dryRun ? null : lastJudgedAt,
@@ -293,7 +299,7 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
             context_facts: {
               nudge_email_opt_out_at_send: p.nudge_email_opt_out === true,
               ...(isDogfood ? { dogfood: true } : {}),
-              comped: rows.length === 0,
+              comped,
               ...(guardReasons ? { guard: guardReasons } : {}),
               local_date: getLocalClock(p.timezone, new Date(now)).isoDate,
             },
