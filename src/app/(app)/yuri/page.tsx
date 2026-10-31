@@ -363,10 +363,10 @@ export default function YuriPage() {
         {usage?.yuri_at_limit ? (
           <div className="px-4 py-4 bg-white/5 border-t border-white/10 text-center">
             <p className="text-sm text-white/60 mb-1">
-              You&apos;ve hit an unusually high number of messages this month.
+              You&apos;ve used this month&apos;s {usage.yuri_messages_limit} messages with Yuri.
             </p>
             <p className="text-xs text-white/30">
-              Your messages reset on your next billing cycle. Product browsing, community, and trending remain available.
+              They reset on {(() => { const n = new Date(); return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth() + 1, 1)).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' }) })()}. Product browsing, community, and trending remain available.
             </p>
           </div>
         ) : (

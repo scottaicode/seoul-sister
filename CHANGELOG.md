@@ -5,6 +5,13 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.48.2 — Yuri's at-limit screen states the real allowance (Oct 31 2026)
+
+- `yuri/page.tsx` still said "an unusually high number of messages… resets on your next billing cycle"
+  (the old "unlimited" plan's wording). Now: "You've used this month's 80 messages with Yuri. They reset on
+  <1st of next month>." (calendar month UTC, matching the server). Found by the Fable review of the
+  founding-member email.
+
 ## v11.48.1 — $9.99 members and comped accounts get Yuri's check-ins (Oct 31 2026)
 
 - Both check-in jobs (`proactive/run.ts`, `cron/proactive-nudge`) selected members with `plan LIKE 'pro%'`,
