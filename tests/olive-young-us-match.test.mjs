@@ -38,8 +38,8 @@ test('exact matches pass', () => {
     us('Anua Heartleaf 77 Soothing Toner 8.45 fl. oz.(250ml)', 'Anua')
   ))
   assert.ok(ok(
-    { brand: 'SKIN1004', name: 'Madagascar Centella Hyalu-Cica Water-Fit Sun Serum (Twin Pack)', volume: '50ml*2ea' },
-    us('SKIN1004 Madagascar Centella Hyalu-Cica Water-Fit Sun Serum UV Twin Pack 1.69 fl. oz.(50ml) X 2ea', 'SKIN1004')
+    { brand: 'SKIN1004', name: 'Madagascar Centella Ampoule (Twin Pack)', volume: '50ml*2ea' },
+    us('SKIN1004 Madagascar Centella Ampoule Twin Pack 1.69 fl. oz.(50ml) X 2ea', 'SKIN1004')
   ), 'a twin pack matches a twin pack')
 })
 
@@ -56,12 +56,12 @@ test('a bundle never matches a single (the first dry run got this wrong)', () =>
 
 test('a twin pack never matches a single, and vice versa', () => {
   assert.equal(ok(
-    { brand: 'SKIN1004', name: 'Madagascar Centella Hyalu-Cica Water-Fit Sun Serum (Twin Pack)', volume: '50ml*2ea' },
-    us('SKIN1004 Madagascar Centella Hyalu-cica Water-fit Sun Serum UV 1.69 fl. oz.(50ml)', 'SKIN1004')
+    { brand: 'SKIN1004', name: 'Madagascar Centella Ampoule (Twin Pack)', volume: '50ml*2ea' },
+    us('SKIN1004 Madagascar Centella Ampoule 1.69 fl. oz.(50ml)', 'SKIN1004')
   ), false)
   assert.equal(ok(
-    { brand: 'SKIN1004', name: 'Madagascar Centella Hyalu-Cica Water-Fit Sun Serum', volume: '50ml' },
-    us('SKIN1004 Madagascar Centella Hyalu-Cica Water-Fit Sun Serum UV Twin Pack 1.69 fl. oz.(50ml) X 2ea', 'SKIN1004')
+    { brand: 'SKIN1004', name: 'Madagascar Centella Ampoule', volume: '50ml' },
+    us('SKIN1004 Madagascar Centella Ampoule Twin Pack 1.69 fl. oz.(50ml) X 2ea', 'SKIN1004')
   ), false)
 })
 
@@ -219,4 +219,20 @@ test('an unknown size on our side is a review, never a clean match', () => {
     { brand: 'Anua', name: 'Heartleaf 77% Soothing Toner', volume: null },
     us('Anua Heartleaf 77 Soothing Toner 8.45 fl. oz.(250ml)', 'Anua')
   ), 'review')
+})
+
+test('a sunscreen never matches: the US version is a reformulated, different product', () => {
+  // Consumer Reports 2026: Beauty of Joseon Korean formula SPF 36, its US version SPF 19.
+  const cases = [
+    [{ brand: 'Beauty of Joseon', name: 'Relief Sun: Rice + Probiotics SPF50+ PA++++', volume: '50ml' }, us('Beauty of Joseon Relief Sun: Rice + Probiotics 1.69 fl. oz.(50ml)', 'Beauty of Joseon')],
+    [{ brand: 'SKIN1004', name: 'Madagascar Centella Hyalu-Cica Water-Fit Sun Serum', volume: '50ml' }, us('SKIN1004 Madagascar Centella Hyalu-Cica Water-Fit Sun Serum 1.69 fl. oz.(50ml)', 'SKIN1004')],
+    [{ brand: 'Round Lab', name: 'Birch Juice Moisturizing Sunscreen', volume: '50ml' }, us('Round Lab Birch Juice Moisturizing Sunscreen 1.69 fl. oz.(50ml)', 'Round Lab')],
+    [{ brand: 'Isntree', name: 'Hyaluronic Acid Watery Sun Gel', volume: '50ml' }, us('Isntree Hyaluronic Acid Watery Sun Gel SPF 50+ 1.69 fl. oz.(50ml)', 'Isntree')],
+  ]
+  for (const [ours, theirs] of cases) assert.equal(verdict(ours, theirs), 'reject', ours.name)
+})
+
+test('the sunscreen rule does not catch non-sunscreens that mention sun or PA', () => {
+  assert.ok(ok({ brand: 'Anua', name: 'Heartleaf 77% Soothing Toner', volume: '250ml' }, us('Anua Heartleaf 77 Soothing Toner 8.45 fl. oz.(250ml)', 'Anua')))
+  assert.ok(ok({ brand: 'COSRX', name: 'Sunflower Seed Oil Cleanser', volume: '200ml' }, us('COSRX Sunflower Seed Oil Cleanser 6.76 fl. oz.(200ml)', 'COSRX')))
 })

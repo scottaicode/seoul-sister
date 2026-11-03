@@ -5,6 +5,31 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.48.5 — US prices for the products Yuri actually names; sunscreens never matched; scraper weekly (Nov 3 2026)
+
+- **Measured first.** In the last 120 days Yuri named 81 catalog products to landing-page visitors
+  (returned by her search AND written in her reply). Only 17 had a price from a store that ships to the
+  US; on Oct 29 she quoted a visitor "$23.21 international price" from Olive Young Global. The Oct 21
+  matching run had picked candidates by review count and never searched 52 of these.
+- `scripts/match-olive-young-us.ts` now loads a **"named by Yuri"** candidate group first
+  (`--only yuri-named` runs just that group). Run Nov 3: 81 searched, 16 clean matches, 1 hand-approved
+  (Aestura "Atobarrier 365" vs the store's "Atobarrier365", same 80ml), 1 left unmatched on purpose
+  (Real Barrier Extreme Cream has Original and Light US versions), 63 not found. **10 new Olive Young
+  US prices written (55 → 65 total)**; every pair checked by hand. Named products with a US price:
+  17 → 27 of 81. The monthly refresh keeps them current (next run Dec 3).
+- **The matcher now refuses every sunscreen** (`verifyOyUsMatch`). Korean-brand sunscreens sold in US
+  stores are reformulated and test weaker (Consumer Reports 2026: Beauty of Joseon SPF 36 vs 19), so a
+  same-name US listing is a different product and its price must not sit on our Korean-formula row. The
+  matcher stripped "SPF/PA" from names, so this was possible; none of the 55 existing matches were
+  sunscreens. Three sunscreens were refused in this run. Existing match tests used a SKIN1004 sun serum
+  as the positive example; switched to a non-sunscreen. Removing the rule fails 1 test.
+- **`scan-korean-products` is now weekly (Mondays 06:00 UTC).** It added ~2 products/day from a store
+  that no longer ships to the US. The daily rotation from v11.48.4 still covers all 11 categories
+  (7 and 11 share no factor). v11.48.4's production check therefore moves to the **Nov 9** run.
+- **Not built, on purpose:** matching 300-500 products. Ship-guard held it: coverage no visitor has hit
+  yet. Re-run the named-products query when traffic grows.
+- 1436/1436, build green.
+
 ## v11.48.4 — The new-product scraper reaches all 11 categories, and says when it is blocked (Nov 3 2026)
 
 - **Only 1 of 11 categories had been scraped since at least June.** The scraper opened each page with

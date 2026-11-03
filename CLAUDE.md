@@ -717,7 +717,7 @@ seoul-sister/
 | `data-quality` | Weekly Sunday 4 AM UTC | Comprehensive DB health audit: coverage, staleness, gaps, health score 0-100 |
 | `aggregate-learning` | Daily 5 AM UTC | Extract patterns from reviews + Yuri conversations via Sonnet |
 | `update-effectiveness` | Daily 5:30 AM UTC | Recalculate ingredient/product effectiveness from review data |
-| `scan-korean-products` | Daily 6 AM UTC | Incremental Olive Young scrape (11 categories, Playwright) |
+| `scan-korean-products` | Weekly Monday 6 AM UTC | Incremental Olive Young Global scrape (11 categories, Playwright; one shared browser context, see v11.48.4). Weekly since Nov 3 2026. A run that scrapes nothing writes `failed` (`blocked_by_olive_young` when the site serves its bot-protection page, which happens on most days since Oct 19). |
 | `scan-korean-bestsellers` | Daily 6:30 AM UTC | Olive Young Global bestseller rankings (real Korean sales data) |
 | `backfill-trending` | Daily 6:45 AM UTC | Backfill trending product data from external sources |
 | `translate-and-index` | Daily 7 AM UTC | Sonnet extraction: categorize, describe, normalize pending products |
@@ -731,7 +731,7 @@ seoul-sister/
 | `refresh-prices-olive-young` | Weekly Sunday 9 PM UTC | Olive Young **Global** prices (fetch-only, popular-first). Weekly since Oct 21 2026: Global stopped shipping to the US May 29 2026, so its price is an international comparison, not a US price. Guardian threshold 200h. |
 | `generate-content` | Daily 10 AM UTC | Auto-generate SEO trend articles targeting AI discoverability (Opus) — **disabled in vercel.json** (route exists but not scheduled) |
 
-**Pipeline daily chain**: `scan-korean-products` (6 AM) scrapes new Olive Young listings → `scan-korean-bestsellers` (6:30 AM) captures Korean sales rankings → `translate-and-index` (7 AM) runs Sonnet extraction on pending products → `link-ingredients` (7:30 AM) links ingredients → `scan-trends` (8 AM) detects trending products from activity spikes → `scan-reddit-mentions` (8:30 AM) scans English K-beauty communities → `calculate-gap-scores` (9 AM) cross-references Korean rankings vs US mentions.
+**Pipeline daily chain**: `scan-korean-products` (6 AM, Mondays only) scrapes new Olive Young listings → `scan-korean-bestsellers` (6:30 AM) captures Korean sales rankings → `translate-and-index` (7 AM) runs Sonnet extraction on pending products → `link-ingredients` (7:30 AM) links ingredients → `scan-trends` (8 AM) detects trending products from activity spikes → `scan-reddit-mentions` (8:30 AM) scans English K-beauty communities → `calculate-gap-scores` (9 AM) cross-references Korean rankings vs US mentions.
 
 **Where-to-buy (Oct 21 2026, v11.43.0)**: `ss_retailers.ships_to_us` is a fact on every price row (Olive Young Global = false; it stopped shipping to the US May 29 2026; "Olive Young US" row added). Only a price at a recommended store that ships to the US is shown as "the price" or published to Google (`src/lib/pricing/price-scope.ts`, shared by product/best-of pages, `/api/prices` and the LGAAS search endpoint). Policy is ROUGH US prices, not exact tracking. Yuri gets a visitor-country fact in the widget. Next step not built: match the catalog to Olive Young US (its `/api/proxy/storefront/api/v1/q/products/{UA id}` feed is server-readable; search needs Playwright).
 

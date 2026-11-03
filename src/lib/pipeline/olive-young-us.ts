@@ -150,12 +150,19 @@ export type MatchVerdict =
   | { verdict: 'review'; note: string }
   | { verdict: 'reject'; reason: string }
 
+const SUNSCREEN = /\bspf\s*\d|\bsunscreen|\bsun\s*(cream|serum|stick|gel|milk|essence|fluid|lotion|block|cushion|screen)\b|\brelief sun\b|\bpa\+{2,}/i
+
 export function verifyOyUsMatch(ours: CatalogProduct, theirs: OyUsProduct): MatchVerdict {
   const reject = (reason: string): MatchVerdict => ({ verdict: 'reject', reason })
 
   // Whole-brand equality, not substring: "Dr.G" must not accept "Dr.Gem".
   if (!brandKey(ours.brand) || brandKey(ours.brand) !== brandKey(theirs.brand)) return reject(`brand ${theirs.brand}`)
   if (theirs.hasVariants) return reject('listing has variants (size/shade ambiguous)')
+  // Korean-brand sunscreens sold in US stores are REFORMULATED with FDA filters and
+  // test weaker (Consumer Reports 2026: Beauty of Joseon SPF 36 vs 19). A US listing
+  // with the same name is a different product, so its price must never be attached
+  // to our Korean-formula row.
+  if (SUNSCREEN.test(ours.name) || SUNSCREEN.test(theirs.name)) return reject('sunscreen: US version is a different formula')
   if (theirs.price === null) return reject('no price')
 
   const ourText = `${ours.name} ${ours.volume ?? ''}`

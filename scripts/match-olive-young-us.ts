@@ -22,6 +22,7 @@
  *   npx tsx --env-file=.env.local scripts/match-olive-young-us.ts            # dry run
  *   npx tsx --env-file=.env.local scripts/match-olive-young-us.ts --apply    # write rows
  *   ... --limit 50                                                          # bound the run
+ *   ... --only yuri-named                                                   # just one candidate group
  */
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
@@ -39,6 +40,10 @@ const APPLY = process.argv.includes('--apply')
 const limitArg = process.argv.indexOf('--limit')
 const LIMIT = limitArg > -1 ? Number(process.argv[limitArg + 1]) : Infinity
 const SEARCH_DELAY_MS = 2500
+const onlyArg = process.argv.indexOf('--only')
+const ONLY = onlyArg > -1 ? process.argv[onlyArg + 1] : null
+/** How far back to look for products Yuri named to landing-page visitors. */
+const NAMED_WINDOW_DAYS = 120
 // --approve <file.json>: [{ "product_id": "...", "oy_us_id": "UA..." }] — pairs a
 // person checked by hand from a previous report's needs_review entries.
 // --from-report <file.json>: skip searching; re-verify the listings that report
@@ -74,6 +79,34 @@ async function loadCandidates(db: SupabaseClient): Promise<Candidate[]> {
     if (res.error) throw new Error(`${what}: ${res.error.message}`)
     return res.data as T
   }
+
+  // Products Yuri actually named to a visitor: returned by one of her searches AND
+  // written into her reply. These are the purchase moments that happen, so they
+  // come first. (Nov 3 2026: 81 such products in 120 days, only 17 with a US price.)
+  const since = new Date(Date.now() - NAMED_WINDOW_DAYS * 86_400_000).toISOString()
+  const namedNames = new Set<string>()
+  for (let from = 0; ; from += 1000) {
+    const page = must(
+      await db.from('ss_widget_messages').select('content, tool_calls').eq('role', 'assistant')
+        .not('tool_calls', 'is', null).gte('created_at', since).order('id').range(from, from + 999),
+      'widget replies'
+    ) as Array<{ content: string | null; tool_calls: unknown }>
+    for (const m of page) {
+      const reply = (m.content || '').toLowerCase()
+      for (const tc of Array.isArray(m.tool_calls) ? m.tool_calls : []) {
+        const names = (tc as { result_names?: unknown }).result_names
+        for (const n of Array.isArray(names) ? names : []) {
+          if (typeof n === 'string' && n && reply.includes(n.toLowerCase())) namedNames.add(n)
+        }
+      }
+    }
+    if (page.length < 1000) break
+  }
+  const nameList = [...namedNames]
+  for (let i = 0; i < nameList.length; i += 100) {
+    add(must(await db.from('ss_products').select(cols).in('name_en', nameList.slice(i, i + 100)), 'named products'), 'named by Yuri')
+  }
+  if (ONLY === 'yuri-named') return [...out.values()]
 
   const owned = must(await db.from('ss_user_products').select('product_id').not('product_id', 'is', null), 'owned')
   const routine = must(await db.from('ss_routine_products').select('product_id').not('product_id', 'is', null), 'routine')

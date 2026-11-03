@@ -10,7 +10,8 @@ const TIME_BUDGET_MS = 230_000
 /**
  * POST /api/cron/scan-korean-products
  *
- * Runs daily at 6 AM UTC (via vercel.json).
+ * Runs weekly, Mondays 6 AM UTC (via vercel.json). Weekly since Nov 3 2026: it adds
+ * ~2 products/day from Olive Young Global, which stopped shipping to the US in May.
  * Incremental scrape: first 2-3 pages per Olive Young category to catch new arrivals.
  * Writes to ss_product_staging with status='pending'.
  * Skips products already in staging (UNIQUE constraint on source+source_id).
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
         status: 'running',
         metadata: {
           trigger: 'cron',
-          schedule: 'daily_6am_utc',
+          schedule: 'weekly_mon_6am_utc',
           mode: 'incremental',
           max_pages: 3,
           skip_details: true,
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
           completed_at: new Date().toISOString(),
           metadata: {
             trigger: 'cron',
-            schedule: 'daily_6am_utc',
+            schedule: 'weekly_mon_6am_utc',
             mode: 'incremental',
             max_pages: 3,
             skip_details: true,
