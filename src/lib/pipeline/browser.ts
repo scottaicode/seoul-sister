@@ -98,4 +98,4 @@ export async function newPage(browser: Browser): Promise<Page> {
 }
 
 // Re-export types for convenience
-export type { Browser, Page } from 'playwright-core'
+export type { Browser, BrowserContext, Page } from 'playwright-core'

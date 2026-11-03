@@ -6,7 +6,7 @@ import type {
   PipelineStats,
 } from '../types'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { launchBrowser, type Browser, type Page } from '../browser'
+import { launchBrowser, type Browser, type BrowserContext, type Page } from '../browser'
 
 const BASE_URL = 'https://global.oliveyoung.com'
 
@@ -59,6 +59,11 @@ export class OliveYoungScraper {
   private readonly delayMs: number
   private readonly maxConcurrency: number
   private browser: Browser | null = null
+  private context: BrowserContext | null = null
+  /** Category ids whose page came back as Olive Young's bot-protection page. */
+  readonly blockedCategories: string[] = []
+  /** Categories not started because the run's time budget ran out. */
+  categoriesSkippedForTime = 0
 
   constructor(options?: { delayMs?: number; maxConcurrency?: number }) {
     this.delayMs = options?.delayMs ?? 2000
@@ -75,16 +80,26 @@ export class OliveYoungScraper {
 
   /** Close browser when done */
   async closeBrowser(): Promise<void> {
+    this.context = null
     if (this.browser) {
       await this.browser.close()
       this.browser = null
     }
   }
 
-  /** Create a new page with standard settings */
+  /**
+   * Create a new page with standard settings.
+   *
+   * Every page comes from ONE shared context. `browser.newPage()` makes a new
+   * context per call, and under `--single-process` (our launch args) the second
+   * one fails with "Target page, context or browser has been closed" once the
+   * first page has closed. That is why every run from at least June to Nov 2026
+   * scraped only the first category and logged the other ten as failures.
+   */
   private async newPage(): Promise<Page> {
     const browser = await this.ensureBrowser()
-    const page = await browser.newPage()
+    if (!this.context) this.context = await browser.newContext()
+    const page = await this.context.newPage()
     await page.setExtraHTTPHeaders({
       'Accept-Language': 'en-US,en;q=0.9',
     })
@@ -126,6 +141,15 @@ export class OliveYoungScraper {
         .catch(() => { selectorTimedOut = true })
       await browserPage.waitForTimeout(2000)
       if (selectorTimedOut) {
+        // Olive Young's bot protection serves a page titled "Access restricted"
+        // (or Cloudflare's "Just a moment..."). Record it so a blocked run is
+        // told apart from a category that is simply empty.
+        const title = await browserPage.title().catch(() => '')
+        if (/access restricted|just a moment|attention required/i.test(title)) {
+          this.blockedCategories.push(categoryId)
+          console.error(`[olive-young] BLOCKED: category ${categoryId} returned the bot-protection page ("${title}").`)
+          return []
+        }
         console.warn(`[olive-young] WARNING: prdt-unit selector timed out for category ${categoryId} — Olive Young may have changed their HTML structure or rate-limited us. Continuing anyway.`)
       }
 
@@ -391,11 +415,18 @@ export class OliveYoungScraper {
       categories?: string[]
       maxPagesPerCategory?: number
       skipDetails?: boolean
+      /** Stop starting new categories after this time (epoch ms). */
+      deadlineAt?: number
+      /** Rotate the category order by this many places, so a time budget
+       * does not starve the same categories every day. */
+      startOffset?: number
     }
   ): Promise<PipelineStats> {
-    const categories = options.categories
+    const selected = options.categories
       ? CATEGORY_MAP.filter(c => options.categories!.includes(c.olive_young_id))
       : CATEGORY_MAP
+    const offset = selected.length ? (options.startOffset ?? 0) % selected.length : 0
+    const categories = [...selected.slice(offset), ...selected.slice(0, offset)]
 
     const maxPages = options.mode === 'incremental'
       ? (options.maxPagesPerCategory ?? 2)
@@ -405,6 +436,11 @@ export class OliveYoungScraper {
       await this.ensureBrowser()
 
       for (const category of categories) {
+        if (options.deadlineAt && Date.now() > options.deadlineAt) {
+          this.categoriesSkippedForTime = categories.length - categories.indexOf(category)
+          console.warn(`[olive-young] Time budget reached; ${this.categoriesSkippedForTime} categories left for another day`)
+          break
+        }
         console.log(`[olive-young] Scraping category: ${category.olive_young_name} (${category.olive_young_id})`)
 
         try {

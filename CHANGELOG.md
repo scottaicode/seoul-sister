@@ -5,6 +5,32 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.48.4 — The new-product scraper reaches all 11 categories, and says when it is blocked (Nov 3 2026)
+
+- **Only 1 of 11 categories had been scraped since at least June.** The scraper opened each page with
+  `browser.newPage()`, which makes a new browser context per call. Under `--single-process` (our launch
+  args) the second context fails with "Target page, context or browser has been closed" once the first
+  page closes, so every run scraped "All Skincare" and logged the other ten (masks, patches, pads, lip,
+  eye...) as failures, under `status: 'completed'`. Reproduced locally with the exact production error.
+  Pages now come from one shared context (`olive-young.ts`).
+- **Since Oct 19, ~60% of runs scraped nothing at all** (8 of the last 14). The category page now often
+  returns Olive Young's bot-protection page ("Access restricted / Unusual activity detected"); the
+  category URL also redirects to a new path. The scraper now recognises that page
+  (`blockedCategories`) instead of counting it as an empty category. Getting around the block was
+  deliberately NOT attempted. The JSON price endpoint and the bestseller page still get through.
+- **A run that scrapes nothing now writes `status: 'failed'`** with `failure_reason`
+  (`blocked_by_olive_young` | `zero_results`), which the Guardian's 48h pipeline check reads. Before,
+  those runs were `completed`, and the Guardian's zero-result check matched only `source` names
+  containing scan/scrape/bestseller, never `olive_young`, so neither check could see this.
+- With 11 categories a run may not fit in one invocation: `maxDuration = 300`, no new category starts
+  after 230s (`categories_skipped_for_time` in the run row), and the starting category rotates daily so
+  the budget never starves the same ones.
+- `tests/olive-young-scraper-browser.test.mjs` executes the real scraper against a fake single-process
+  browser; reverting the context fix fails 3 tests and removing block detection fails 1. 1434/1434, build
+  green. Live check: 3 categories scraped locally (144 listings) with no errors.
+- **Not verified in production** until the Nov 4 06:00 UTC run writes a row: expect either more than 96
+  listings with no browser-closed errors, or `failed` with `blocked_by_olive_young`.
+
 ## v11.48.3 — Marketing email needs a postal address (Oct 31 2026)
 
 - The nurture sequence (3 emails to leads and free accounts; #3 pitches the plan) was sending marketing

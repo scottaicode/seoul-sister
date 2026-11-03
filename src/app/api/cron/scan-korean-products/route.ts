@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
 
+export const maxDuration = 300
+
+/** Stop starting new categories after this long, leaving room to write the run row. */
+const TIME_BUDGET_MS = 230_000
+
 /**
  * POST /api/cron/scan-korean-products
  *
@@ -24,6 +29,7 @@ export async function POST(request: Request) {
 
     const db = getServiceClient()
     const startedAt = new Date().toISOString()
+    const startMs = Date.now()
 
     // Create pipeline run record
     const { data: run, error: runError } = await db
@@ -57,17 +63,31 @@ export async function POST(request: Request) {
     const scraper = new OliveYoungScraper({ delayMs: 2000 })
 
     try {
+      // Rotate the starting category daily so a time budget never starves the same ones.
+      const dayNumber = Math.floor(startMs / 86_400_000)
       const stats = await scraper.runScrape(db, run.id, {
         mode: 'incremental',
         maxPagesPerCategory: 3,
         skipDetails: true,
+        deadlineAt: startMs + TIME_BUDGET_MS,
+        startOffset: dayNumber,
       })
 
-      // Mark run as completed
+      // A run that scraped nothing is a failure, not a quiet day: the listing
+      // pages always hold products. Writing 'completed' here hid months of
+      // breakage; 'failed' is what the Guardian's pipeline check reads.
+      const blocked = scraper.blockedCategories
+      const failureReason = stats.scraped > 0
+        ? null
+        : blocked.length > 0 ? 'blocked_by_olive_young' : 'zero_results'
+      if (failureReason) {
+        console.error(`[cron:scan-korean-products] Run failed: ${failureReason} (blocked categories: ${blocked.length})`)
+      }
+
       await db
         .from('ss_pipeline_runs')
         .update({
-          status: 'completed',
+          status: failureReason ? 'failed' : 'completed',
           products_scraped: stats.scraped,
           products_duplicates: stats.duplicates,
           products_failed: stats.failed,
@@ -79,13 +99,17 @@ export async function POST(request: Request) {
             max_pages: 3,
             skip_details: true,
             new_products: stats.new,
+            failure_reason: failureReason,
+            blocked_categories: blocked,
+            categories_skipped_for_time: scraper.categoriesSkippedForTime,
             errors: stats.errors.slice(-10),
           },
         })
         .eq('id', run.id)
 
       return NextResponse.json({
-        success: true,
+        success: !failureReason,
+        failure_reason: failureReason,
         run_id: run.id,
         products_scraped: stats.scraped,
         new_products: stats.new,
