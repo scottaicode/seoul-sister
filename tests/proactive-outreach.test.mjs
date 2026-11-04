@@ -980,3 +980,21 @@ test('nurture (marketing) emails refuse to send without a postal address (CAN-SP
   assert.ok(gate < firstSend, 'the address check must come before any send')
   assert.match(src, /skipped_reason: 'no_postal_address'/, 'a skipped run must say why')
 })
+
+test('price-change email: reviewed facts only, unsubscribe in footer, no pressure shapes (Oct 31 2026)', () => {
+  const src = read('src', 'lib', 'email', 'price-change-email.ts')
+  // Allowance and price come from pricing.ts, never typed in.
+  assert.match(src, /USAGE_CAPS\.yuri_messages_per_month/)
+  assert.match(src, /USAGE_CAPS\.scans_per_month/)
+  assert.match(src, /PRICING\.trial_days/)
+  assert.match(src, /Unsubscribe with one click/)
+  // The trial promise is conditional for account holders (no trial after any past subscription).
+  assert.match(src, /Because you've never had a subscription/)
+  // Shapes the house rule forbids: scarcity, urgency, invented exclusivity, unverifiable checks.
+  for (const bad of [/limited time/i, /spots?\b/i, /hurry/i, /expires?\b/i, /only today/i, /hear this first/i, /authentic/i, /unlimited/i]) {
+    assert.doesNotMatch(src, bad, `forbidden shape in price-change email: ${bad}`)
+  }
+  const script = read('scripts', 'send-price-change-email.ts')
+  assert.match(script, /REFUSING: EMAIL_POSTAL_ADDRESS is not set/)
+  assert.match(script, /had_subscription/)
+})

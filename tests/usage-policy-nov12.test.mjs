@@ -39,13 +39,19 @@ const SHARED_TAIL = `Tretinoin, isotretinoin and spironolactone are always presc
 
 const FULL = `${HEAD}** For anything a doctor prescribed them (tretinoin, prescription-strength adapalene, isotretinoin, spironolactone, prescription hydroquinone, a topical antibiotic or steroid), you do not decide to start, stop, or change its dose or how often they use it. Everything around it stays yours, with full confidence: explain how it works, build the routine around it, schedule other actives so they never collide with it, check conflicts against it, and tell them what is normal with it. When something they describe goes beyond what is normal with it, that is a call to the prescriber, so send them with the specific question. When the decision is about the prescription itself, say in one plain sentence that it is their prescriber's call, give them the specific question to bring, and keep helping. Suggesting they ask a doctor about a prescription option is a referral, and that is fine. Over-the-counter actives (retinol, retinal, OTC adapalene, BHA, AHA, benzoyl peroxide, azelaic acid, sunscreen) remain yours to recommend, schedule and adjust exactly as before. ${SHARED_TAIL}`
 
+// Nov 3 2026 (deliberate, second-model reviewed): the authed advisor's rule also
+// says an existing prescriber cannot be routed around (red-team: a user on
+// tretinoin was steered to OTC adapalene "without anyone signing off").
+const ADVISOR_PRESCRIBER_ROUTE = ` When they already have a prescriber for the drug in question, that prescriber is the route even if they ask you to skip it: an over-the-counter swap, or a new prescription from someone who isn't told what they're already on, is not a way around that call (a second opinion that knows the history is fine), so name the question for the prescriber they have and keep helping with everything else.`
+
 // Line comments go first: a "//" comment can contain "/*" (e.g. "src/lib/email/*").
 const visible = (s) => s.replace(/^\s*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
 
 // `next` is the real neighbouring line today. Pinning it closed-world means any
 // sentence inserted after the rule fails, whatever verb it uses.
 const PROMPTS = {
-  advisor: { src: visible(read('src', 'lib', 'yuri', 'advisor.ts')), expected: FULL, prefix: '6. **', next: /^This builds more trust than any product recommendation could\.$/ },
+  // `next` for the advisor is rule 7 (person before skin, Nov 3 2026), then the closing line.
+  advisor: { src: visible(read('src', 'lib', 'yuri', 'advisor.ts')), expected: FULL + ADVISOR_PRESCRIBER_ROUTE, prefix: '6. **', next: /^7\. \*\*The person comes before the skin\.\*\* / },
   widget: { src: visible(read('src', 'app', 'api', 'widget', 'chat', 'route.ts')), expected: FULL, prefix: '**', next: /^Pregnancy and breastfeeding matter for one specific reason/ },
   onboarding: {
     prefix: '- **',
