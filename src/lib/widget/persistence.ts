@@ -492,3 +492,29 @@ the facts that matter:
     return 'threw'
   }
 }
+
+/**
+ * Did Yuri's most recent reply to this visitor give a crisis or emergency line?
+ * (Nov 5 2026.) The email gate and paywall ignore what a conversation is about;
+ * a person Yuri just pointed to 988 or 911 must not be met with "she just needs
+ * your email first." This reads Yuri's OWN judgment from the stored transcript
+ * (never client-sent history, which a visitor could forge). On a lookup error it
+ * returns false, i.e. today's behaviour, and logs.
+ */
+export const CRISIS_LINE_RE = /\b988\b|1-888-375-7767|\b911\b|emergency services|local emergency number|crisis line/i
+
+export async function lastReplyGaveCrisisLine(visitorId: string): Promise<boolean> {
+  const { data, error } = await getServiceClient()
+    .from('ss_widget_messages')
+    .select('content, ss_widget_sessions!inner(visitor_id)')
+    .eq('ss_widget_sessions.visitor_id', visitorId)
+    .eq('role', 'assistant')
+    .order('created_at', { ascending: false })
+    .limit(1)
+  if (error) {
+    console.error('[widget/persistence] crisis-line lookup failed:', error.message)
+    return false
+  }
+  const content = (data?.[0] as { content?: string } | undefined)?.content ?? ''
+  return CRISIS_LINE_RE.test(content)
+}

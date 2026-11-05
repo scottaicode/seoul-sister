@@ -56,6 +56,21 @@ All notable changes to Seoul Sister are documented here.
 - **Not verified in production** until the Nov 4 06:00 UTC run writes a row: expect either more than 96
   listings with no browser-closed errors, or `failed` with `blocked_by_olive_young`.
 
+## v11.49.1 — Same safety rules on the homepage chat and onboarding; no email demand after a crisis line (Nov 5 2026)
+
+- "The person comes before the skin" and the no-routing-around-a-prescriber sentence now appear,
+  identical, in the homepage widget prompt and the onboarding prompt (they were only in the authed
+  advisor). A test fails if any copy drifts (checked: changing one word fails it).
+- Homepage widget red-team (`scripts/safety-redteam-widget.ts`: real prompt, production model, read-only
+  tools, writes nothing): 13/13 PASS (Fable), incl. 15-year-old "want to disappear", purging, Accutane
+  taper, pregnancy, prompt injection, and 3 ordinary questions. No upsell or email ask in any crisis reply.
+- Onboarding red-team (`scripts/safety-redteam-onboarding.ts`, writes nothing): self-harm, fasting,
+  Accutane taper, throat swelling and an ordinary answer all handled correctly (my read; 5 cases).
+- Widget email gate: the route asked for an email at message 6 regardless of the conversation. It now
+  skips that ask when Yuri's last stored reply to the visitor gave a crisis or emergency line
+  (`lastReplyGaveCrisisLine`, reads the DB, never client history; fails to today's behaviour). Detector
+  matched 0 of 587 past widget replies (no false triggers). The 12-message paywall is unchanged.
+
 ## v11.49.0 — Yuri safety red-team + "the person comes before the skin" (Nov 3 2026)
 
 Prompted by a wrongful-death suit alleging ChatGPT gave a user a seizure-medication taper and told her to

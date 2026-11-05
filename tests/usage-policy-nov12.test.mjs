@@ -52,12 +52,12 @@ const visible = (s) => s.replace(/^\s*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\
 const PROMPTS = {
   // `next` for the advisor is rule 7 (person before skin, Nov 3 2026), then the closing line.
   advisor: { src: visible(read('src', 'lib', 'yuri', 'advisor.ts')), expected: FULL + ADVISOR_PRESCRIBER_ROUTE, prefix: '6. **', next: /^7\. \*\*The person comes before the skin\.\*\* / },
-  widget: { src: visible(read('src', 'app', 'api', 'widget', 'chat', 'route.ts')), expected: FULL, prefix: '**', next: /^Pregnancy and breastfeeding matter for one specific reason/ },
+  widget: { src: visible(read('src', 'app', 'api', 'widget', 'chat', 'route.ts')), expected: FULL + ADVISOR_PRESCRIBER_ROUTE, prefix: '**', next: /^Pregnancy and breastfeeding matter for one specific reason/ },
   onboarding: {
     prefix: '- **',
     next: /^- \*\*Referrals land in English \(LOAD-BEARING\)\.\*\*/,
     src: visible(read('src', 'lib', 'yuri', 'onboarding.ts')),
-    expected: `${HEAD}** For anything a doctor prescribed them (tretinoin, prescription-strength adapalene, isotretinoin, spironolactone, prescription hydroquinone, a topical antibiotic or steroid), you do not decide to start, stop, or change its dose or how often they use it. Everything around it stays yours, with full confidence: explain how it works, build around it, keep other actives from colliding with it, and tell them what is normal with it. When something they describe goes beyond what is normal with it, that is a call to the prescriber, so send them with the specific question. When the decision is about the prescription itself, say in one plain sentence that it is their prescriber's call, give them the specific question to bring, and keep helping. Over-the-counter actives (retinol, retinal, OTC adapalene, BHA, AHA, benzoyl peroxide, azelaic acid, sunscreen) remain yours exactly as before. ${SHARED_TAIL}`,
+    expected: `${HEAD}** For anything a doctor prescribed them (tretinoin, prescription-strength adapalene, isotretinoin, spironolactone, prescription hydroquinone, a topical antibiotic or steroid), you do not decide to start, stop, or change its dose or how often they use it. Everything around it stays yours, with full confidence: explain how it works, build around it, keep other actives from colliding with it, and tell them what is normal with it. When something they describe goes beyond what is normal with it, that is a call to the prescriber, so send them with the specific question. When the decision is about the prescription itself, say in one plain sentence that it is their prescriber's call, give them the specific question to bring, and keep helping. Over-the-counter actives (retinol, retinal, OTC adapalene, BHA, AHA, benzoyl peroxide, azelaic acid, sunscreen) remain yours exactly as before. ${SHARED_TAIL}${ADVISOR_PRESCRIBER_ROUTE}`,
   },
 }
 
@@ -126,4 +126,34 @@ test('every Yuri email footer says Yuri is AI, and the old unlabeled footer is g
     assert.match(s, /Yuri is Seoul Sister's AI K-beauty advisor\./, `${f.join('/')} footer must disclose AI`)
     assert.ok(!/your K-beauty intelligence advisor/.test(s), `${f.join('/')} still has the unlabeled footer`)
   }
+})
+
+// ---- Person comes before the skin (Nov 3-5 2026) ---------------------------
+// One rule, identical on all three surfaces that talk to people. Red-teamed on
+// the authed advisor (harmful AND ordinary cases); a drifted copy on one surface
+// is how a defense goes missing there (BP44.1-style sibling rule).
+test('person-first rule: identical text on advisor, widget and onboarding', () => {
+  const RULE_HEAD = '**The person comes before the skin.**'
+  const line = (src) => { const i = src.indexOf(RULE_HEAD); if (i === -1) return null; const e = src.indexOf('\n', i); return src.slice(i, e === -1 ? undefined : e).replace(/`$/, '') }
+  const a = line(PROMPTS.advisor.src), w = line(PROMPTS.widget.src), o = line(PROMPTS.onboarding.src)
+  assert.ok(a, 'advisor is missing the rule')
+  assert.equal(w, a, 'widget copy differs from advisor')
+  assert.equal(o, a, 'onboarding copy differs from advisor')
+  for (const src of [PROMPTS.advisor.src, PROMPTS.widget.src, PROMPTS.onboarding.src]) assert.equal(src.split(RULE_HEAD).length - 1, 1)
+  assert.match(a, /ANAD's peer support line, 1-888-375-7767/)
+  assert.doesNotMatch(a, /NEDA/, 'NEDA closed its helpline in 2023')
+  assert.match(a, /in the same reply/, 'skin help must not be withheld')
+  assert.match(a, /This is about harm, not discipline/, 'scope limiter keeps ordinary fasts and peels ordinary')
+})
+
+test('widget email gate is skipped right after Yuri gave a crisis line (Nov 5 2026)', () => {
+  const route = read('src', 'app', 'api', 'widget', 'chat', 'route.ts')
+  const p = read('src', 'lib', 'widget', 'persistence.ts')
+  // Reads Yuri's stored reply (never client-sent history, which could be forged).
+  assert.match(p, /from\('ss_widget_messages'\)[\s\S]{0,200}ss_widget_sessions!inner\(visitor_id\)/)
+  assert.match(route, /const crisisExempt = gateWouldFire && \(await lastReplyGaveCrisisLine\(visitor\.id\)\)/)
+  assert.match(route, /if \(gateWouldFire && !crisisExempt\) \{/)
+  const re = new RegExp(p.match(/CRISIS_LINE_RE = \/(.+)\/i/)[1], 'i')
+  for (const t of ['call or text **988** any time', 'Call 911 now.', "ANAD's peer support line, 1-888-375-7767"]) assert.ok(re.test(t), t)
+  for (const t of ['Use SPF 50 and a 2% BHA.', "I'm 19, oily skin", '9880 reviews']) assert.ok(!re.test(t), t)
 })
