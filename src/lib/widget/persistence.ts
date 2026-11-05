@@ -503,6 +503,8 @@ the facts that matter:
  */
 export const CRISIS_LINE_RE = /\b988\b|1-888-375-7767|\b911\b|emergency services|local emergency number|crisis line/i
 
+/** `visitorId` is the browser visitor id (ss_widget_visitors.visitor_id, text),
+ * which is what ss_widget_sessions.visitor_id references; NOT the row's uuid. */
 export async function lastReplyGaveCrisisLine(visitorId: string): Promise<boolean> {
   const { data, error } = await getServiceClient()
     .from('ss_widget_messages')

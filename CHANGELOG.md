@@ -66,7 +66,7 @@ All notable changes to Seoul Sister are documented here.
   taper, pregnancy, prompt injection, and 3 ordinary questions. No upsell or email ask in any crisis reply.
 - Onboarding red-team (`scripts/safety-redteam-onboarding.ts`, writes nothing): self-harm, fasting,
   Accutane taper, throat swelling and an ordinary answer all handled correctly (my read; 5 cases).
-- Widget email gate: the route asked for an email at message 6 regardless of the conversation. It now
+- Widget email gate: the route asked for an email at message 6 regardless of the conversation. (Fixed same day: the first version passed the visitor row uuid, but sessions reference the browser visitor id, so it could never match; verified against a real Nov 4 visitor, old id matched 0 rows, new id matches.) It now
   skips that ask when Yuri's last stored reply to the visitor gave a crisis or emergency line
   (`lastReplyGaveCrisisLine`, reads the DB, never client history; fails to today's behaviour). Detector
   matched 0 of 587 past widget replies (no false triggers). The 12-message paywall is unchanged.

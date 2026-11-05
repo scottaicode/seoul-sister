@@ -515,7 +515,7 @@ export async function POST(request: NextRequest) {
           !emailGateSatisfied &&
           visitor.total_messages >= EMAIL_GATE_AFTER_MESSAGES &&
           !extractEmail(parsed.message)
-        const crisisExempt = gateWouldFire && (await lastReplyGaveCrisisLine(visitor.id))
+        const crisisExempt = gateWouldFire && (await lastReplyGaveCrisisLine(parsed.visitor_id!))
         if (crisisExempt) console.warn('[widget/chat] email gate skipped: last reply gave a crisis line')
         if (gateWouldFire && !crisisExempt) {
           // Record the first time the gate is shown, so its pass rate (shown vs

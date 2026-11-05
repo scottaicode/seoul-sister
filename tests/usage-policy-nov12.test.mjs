@@ -151,7 +151,7 @@ test('widget email gate is skipped right after Yuri gave a crisis line (Nov 5 20
   const p = read('src', 'lib', 'widget', 'persistence.ts')
   // Reads Yuri's stored reply (never client-sent history, which could be forged).
   assert.match(p, /from\('ss_widget_messages'\)[\s\S]{0,200}ss_widget_sessions!inner\(visitor_id\)/)
-  assert.match(route, /const crisisExempt = gateWouldFire && \(await lastReplyGaveCrisisLine\(visitor\.id\)\)/)
+  // sessions.visitor_id references the BROWSER visitor id, not the row uuid (a first version passed visitor.id and could never match).\n  assert.match(route, /const crisisExempt = gateWouldFire && \(await lastReplyGaveCrisisLine\(parsed\.visitor_id!\)\)/)
   assert.match(route, /if \(gateWouldFire && !crisisExempt\) \{/)
   const re = new RegExp(p.match(/CRISIS_LINE_RE = \/(.+)\/i/)[1], 'i')
   for (const t of ['call or text **988** any time', 'Call 911 now.', "ANAD's peer support line, 1-888-375-7767"]) assert.ok(re.test(t), t)
