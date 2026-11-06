@@ -24,9 +24,7 @@ const SITE = 'https://www.seoulsister.com'
 
 export function buildPriceChangeEmail(
   cohort: PriceChangeCohort,
-  unsubscribeUrl: string,
-  /** They already got nurture email 3, which promised it was the last email. */
-  promisedLastEmail = false
+  unsubscribeUrl: string
 ): { subject: string; bodyHtml: string; footerHtml: string } {
   const price = PRICING.monthly_display_long.replace('/month', ' a month') // "$9.99 a month"
   const days = PRICING.trial_days
@@ -48,9 +46,7 @@ ${cohort === 'registered'
     ? `<p>If you want to try it, just log in: <a href="${SITE}/login?from=price_change">seoulsister.com/login</a></p>`
     : `<p>If you want to try it, create an account here: <a href="${SITE}/register?from=price_change">seoulsister.com/register</a>.</p>`}
 <p>One question, if you have a second: what would make Seoul Sister worth it for you? Just hit reply, it comes straight to us.</p>
-<p>Bailey</p>${promisedLastEmail
-    ? `\n<p>P.S. I know our last email said it would be the last one. I'm sorry for writing again; this is a one-time note because the plan changed. If you'd rather not hear from us, the unsubscribe link below works right away.</p>`
-    : ''}`
+<p>Bailey</p>`
 
   const reason =
     cohort === 'registered'

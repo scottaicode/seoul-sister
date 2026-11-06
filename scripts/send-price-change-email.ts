@@ -104,12 +104,12 @@ async function main() {
   }
 
   const byCohort = recipients.reduce<Record<string, number>>((a, r) => ((a[r.cohort] = (a[r.cohort] ?? 0) + 1), a), {})
-  console.log(`Recipients: ${recipients.length}`, byCohort, 'promised-last-email P.S.:', recipients.filter((r) => r.promised).length)
+  console.log(`Recipients: ${recipients.length}`, byCohort)
   console.log('Skipped:', skipped)
 
   mkdirSync('reports', { recursive: true })
   for (const c of ['registered', 'widget'] as const) {
-    const e = buildPriceChangeEmail(c, `${SITE}/api/email/unsubscribe?token=EXAMPLE`, true)
+    const e = buildPriceChangeEmail(c, `${SITE}/api/email/unsubscribe?token=EXAMPLE`)
     writeFileSync(`reports/price-change-preview-${c}.html`, wrapEmailHtml(e.bodyHtml, e.footerHtml))
   }
   console.log('Previews: reports/price-change-preview-registered.html, reports/price-change-preview-widget.html')
@@ -117,7 +117,7 @@ async function main() {
   if (TEST_TO) {
     for (const c of ['registered', 'widget'] as const) {
       const url = `${SITE}/api/email/unsubscribe?token=00000000-0000-0000-0000-000000000000`
-      const e = buildPriceChangeEmail(c, url, true)
+      const e = buildPriceChangeEmail(c, url)
       const r = await sendEmail(TEST_TO, `[TEST ${c}] ${e.subject}`, wrapEmailHtml(e.bodyHtml, e.footerHtml), { unsubscribeUrl: url, from: PRICE_CHANGE_FROM })
       console.log(`test ${c} ->`, TEST_TO, r.sent ? 'sent' : `FAILED ${JSON.stringify(r)}`)
     }
@@ -133,7 +133,7 @@ async function main() {
   let sent = 0, failed = 0
   for (const r of recipients) {
     const url = `${SITE}/api/email/unsubscribe?token=${r.token}`
-    const e = buildPriceChangeEmail(r.cohort, url, r.promised)
+    const e = buildPriceChangeEmail(r.cohort, url)
     const res = await sendEmail(r.email, e.subject, wrapEmailHtml(e.bodyHtml, e.footerHtml), { unsubscribeUrl: url, from: PRICE_CHANGE_FROM })
     if (res.sent) {
       sent++
