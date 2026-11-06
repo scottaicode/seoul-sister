@@ -26,7 +26,7 @@ import './load-env'
 import { existsSync, readFileSync, writeFileSync, appendFileSync, mkdirSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
 import { sendEmail, wrapEmailHtml, postalAddress } from '../src/lib/email/send'
-import { buildPriceChangeEmail, type PriceChangeCohort } from '../src/lib/email/price-change-email'
+import { buildPriceChangeEmail, PRICE_CHANGE_FROM, type PriceChangeCohort } from '../src/lib/email/price-change-email'
 
 const SITE = 'https://www.seoulsister.com'
 const SENT_LOG = 'reports/price-change-sent-log.jsonl'
@@ -36,6 +36,7 @@ const SKIP_EMAILS = new Set(
   (process.env.PRICE_CHANGE_SKIP_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
 )
 const PAUSE_MS = 1500
+const RELAUNCH = '2026-10-30'
 
 const args = process.argv.slice(2)
 const SEND = args.includes('--send')
@@ -61,7 +62,7 @@ async function main() {
   }
 
   const [leadsRes, subsRes, profRes, usersRes] = await Promise.all([
-    db.from('ss_nurture_leads').select('id, email, user_id, cohort, unsubscribe_token').eq('suppressed', false),
+    db.from('ss_nurture_leads').select('id, email, user_id, cohort, unsubscribe_token, sequence_step, enrolled_at').eq('suppressed', false),
     db.from('ss_subscriptions').select('user_id'),
     db.from('ss_user_profiles').select('user_id, is_admin, is_demo, excluded_from_metrics'),
     db.auth.admin.listUsers({ page: 1, perPage: 1000 }),
@@ -81,7 +82,7 @@ async function main() {
 
   const skipped: Record<string, number> = {}
   const skip = (why: string) => { skipped[why] = (skipped[why] ?? 0) + 1 }
-  const recipients: Array<{ id: string; email: string; cohort: PriceChangeCohort; token: string }> = []
+  const recipients: Array<{ id: string; email: string; cohort: PriceChangeCohort; token: string; promised: boolean }> = []
   const seen = new Set<string>()
 
   for (const l of leadsRes.data ?? []) {
@@ -95,18 +96,20 @@ async function main() {
     if (uid && internal.has(uid)) { skip('internal'); continue }
     if (uid && everSubscribed.has(uid)) { skip('had_subscription'); continue }
     if (done.has(email)) { skip('already_sent'); continue }
+    // Leads from the relaunch onward saw $9.99 already; "a while back / new plan" would be false.
+    if ((l.enrolled_at as string) >= RELAUNCH) { skip('joined_after_relaunch'); continue }
     // Has an account (registered cohort or matched) -> "log in" version.
     const cohort: PriceChangeCohort = uid ? 'registered' : 'widget'
-    recipients.push({ id: l.id as string, email, cohort, token: l.unsubscribe_token as string })
+    recipients.push({ id: l.id as string, email, cohort, token: l.unsubscribe_token as string, promised: (l.sequence_step as number) >= 3 })
   }
 
   const byCohort = recipients.reduce<Record<string, number>>((a, r) => ((a[r.cohort] = (a[r.cohort] ?? 0) + 1), a), {})
-  console.log(`Recipients: ${recipients.length}`, byCohort)
+  console.log(`Recipients: ${recipients.length}`, byCohort, 'promised-last-email P.S.:', recipients.filter((r) => r.promised).length)
   console.log('Skipped:', skipped)
 
   mkdirSync('reports', { recursive: true })
   for (const c of ['registered', 'widget'] as const) {
-    const e = buildPriceChangeEmail(c, `${SITE}/api/email/unsubscribe?token=EXAMPLE`)
+    const e = buildPriceChangeEmail(c, `${SITE}/api/email/unsubscribe?token=EXAMPLE`, true)
     writeFileSync(`reports/price-change-preview-${c}.html`, wrapEmailHtml(e.bodyHtml, e.footerHtml))
   }
   console.log('Previews: reports/price-change-preview-registered.html, reports/price-change-preview-widget.html')
@@ -114,8 +117,8 @@ async function main() {
   if (TEST_TO) {
     for (const c of ['registered', 'widget'] as const) {
       const url = `${SITE}/api/email/unsubscribe?token=00000000-0000-0000-0000-000000000000`
-      const e = buildPriceChangeEmail(c, url)
-      const r = await sendEmail(TEST_TO, `[TEST ${c}] ${e.subject}`, wrapEmailHtml(e.bodyHtml, e.footerHtml), { unsubscribeUrl: url })
+      const e = buildPriceChangeEmail(c, url, true)
+      const r = await sendEmail(TEST_TO, `[TEST ${c}] ${e.subject}`, wrapEmailHtml(e.bodyHtml, e.footerHtml), { unsubscribeUrl: url, from: PRICE_CHANGE_FROM })
       console.log(`test ${c} ->`, TEST_TO, r.sent ? 'sent' : `FAILED ${JSON.stringify(r)}`)
     }
     return
@@ -130,8 +133,8 @@ async function main() {
   let sent = 0, failed = 0
   for (const r of recipients) {
     const url = `${SITE}/api/email/unsubscribe?token=${r.token}`
-    const e = buildPriceChangeEmail(r.cohort, url)
-    const res = await sendEmail(r.email, e.subject, wrapEmailHtml(e.bodyHtml, e.footerHtml), { unsubscribeUrl: url })
+    const e = buildPriceChangeEmail(r.cohort, url, r.promised)
+    const res = await sendEmail(r.email, e.subject, wrapEmailHtml(e.bodyHtml, e.footerHtml), { unsubscribeUrl: url, from: PRICE_CHANGE_FROM })
     if (res.sent) {
       sent++
       appendFileSync(SENT_LOG, JSON.stringify({ email: r.email, cohort: r.cohort, at: new Date().toISOString() }) + '\n')

@@ -989,7 +989,11 @@ test('price-change email: reviewed facts only, unsubscribe in footer, no pressur
   assert.match(src, /PRICING\.trial_days/)
   assert.match(src, /Unsubscribe with one click/)
   // The trial promise is conditional for account holders (no trial after any past subscription).
-  assert.match(src, /Because you've never had a subscription/)
+  assert.match(src, /since you've never had a subscription/)
+  // No old-price anchor (owner's call: reads as a markdown).
+  assert.doesNotMatch(src, /24\.99/)
+  // Yuri is named as an AI in the email (Anthropic usage policy, Nov 12 2026).
+  assert.match(src, /Yuri, our AI skincare advisor/)
   // Shapes the house rule forbids: scarcity, urgency, invented exclusivity, unverifiable checks.
   for (const bad of [/limited time/i, /spots?\b/i, /hurry/i, /expires?\b/i, /only today/i, /hear this first/i, /authentic/i, /unlimited/i]) {
     assert.doesNotMatch(src, bad, `forbidden shape in price-change email: ${bad}`)
