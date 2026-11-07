@@ -250,7 +250,7 @@ test('the chat route passes remaining messages and stores the recap with the tok
 
 test("Yuri's live prompt names the email path only when links work, and states a long gap as a fact", () => {
   const route = read('src', 'app', 'api', 'widget', 'chat', 'route.ts')
-  assert.match(route, /\$\{resumeLinksEnabled\(\) \? ' Separately, if a recap email went out to them, it carries a link that reopens this conversation, on any device, for 30 days\.' : ''\}/)
+  assert.match(route, /\$\{resumeLinksEnabled\(\) \? ' Separately, a recap email sent from now on carries a link that reopens the conversation it was sent from \(not a later one\), on any device, for 30 days\.' : ''\}/)
   assert.match(route, /This conversation was reopened from an email link; the previous message was at \$\{prevIso\}\./)
   assert.match(route, /Date\.now\(\) - Date\.parse\(prevIso\) > RESUME_WINDOW_MS/)
   assert.match(route, /\$\{reopenedFact\}`?/)

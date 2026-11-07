@@ -87,7 +87,7 @@ function remainingFact(remaining: number | null | undefined): string {
 export function recapLinkFact(link: RecapLink): string {
   const base = link.resumes
     ? `A button labelled "${RECAP_BUTTON_TEXT_RESUME}" is placed below your email. It reopens this exact conversation on the Seoul Sister homepage, with everything the two of you said still on screen, for the next 30 days and on any device. That button is their way back, so don't add a seoulsister.com link of your own.`
-    : `A button labelled "${RECAP_BUTTON_TEXT_HOMEPAGE}" is placed below your email. It opens the free chat on the Seoul Sister homepage as a new conversation: this transcript will not be there when they click it. So it would not be true to tell them the link picks this conversation back up or brings them back to where you left off. Don't add a seoulsister.com link of your own.`
+    : `A button labelled "${RECAP_BUTTON_TEXT_HOMEPAGE}" is placed below your email. It opens the free chat on the Seoul Sister homepage. Only the browser they chatted in, within about an hour, still shows this conversation; on another device or later, a new conversation starts and this transcript will not be there. So it would not be true to promise that the link picks this conversation back up or brings them back to where you left off. Don't add a seoulsister.com link of your own.`
   return `${base}${remainingFact(link.remainingMessages)}`
 }
 

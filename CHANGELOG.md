@@ -56,7 +56,7 @@ All notable changes to Seoul Sister are documented here.
 - **Not verified in production** until the Nov 4 06:00 UTC run writes a row: expect either more than 96
   listings with no browser-closed errors, or `failed` with `blocked_by_olive_young`.
 
-## v11.49.3 — Email links reopen the conversation they promise (Nov 7 2026) — INERT until `WIDGET_RESUME_SECRET` is set
+## v11.49.3 — Email links reopen the conversation they promise (Nov 7 2026) (resume links need `WIDGET_RESUME_SECRET`; without it the honest-copy changes still apply)
 
 - **The gap.** The recap email ("pick the conversation right back up") and nurture email 1 ("Picking up
   where we left off") linked to the bare homepage, which restores a conversation only in the same browser

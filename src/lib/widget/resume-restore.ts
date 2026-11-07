@@ -75,6 +75,7 @@ export async function restoreFromResumeToken(token: string): Promise<ResumeResto
     // already set), so this is a zero-cost breadcrumb rather than a migration.
     void logAIUsage({
       feature: 'widget_resume_link_opened',
+      conversationId: session.id,
       model: 'n/a',
       inputTokens: 0,
       outputTokens: 0,

@@ -60,8 +60,11 @@ type DemoMessage = { role: 'user' | 'assistant'; text: string }
 // ---- Email resume link (Nov 7 2026) -----------------------------------------
 // The `?resume=<token>` from a recap/nurture email is read and REMOVED from the
 // address bar synchronously at the start of the restore effect, before the
-// layout's afterInteractive gtag page_view can record the URL (child effects
-// run before the Script component's). The token is kept here at module level
+// layout's afterInteractive gtag page_view can record the URL. NOTE: this holds
+// only because the gtag <Script> effect and this effect run in the same
+// synchronous effects flush and gtag.js is external (runs in a later task). A
+// Suspense boundary, loading.tsx, useSearchParams() above the widget, or
+// lazy-loading the widget would break that and leak ?resume= to GA4. The token is kept here at module level
 // so React's development double-mount still finds it after the first run
 // stripped the URL. `undefined` = not read yet.
 let pendingResumeToken: string | null | undefined
@@ -504,15 +507,16 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
           adoptVisitorId(vid)
           setWidgetSessionId(sid)
           reopenedFromEmailPending = true
+          // Server truth for the free preview, applied only when this visitor is
+          // adopted, so the paywall card shows under the restored transcript
+          // when it is used up (not "12 remaining").
+          if (typeof data.remaining_messages === 'number') {
+            const used = Math.min(MAX_FREE_MESSAGES, Math.max(0, MAX_FREE_MESSAGES - data.remaining_messages))
+            setMessageCount(used)
+            setMessageCountState(used)
+            if (data.remaining_messages <= 0) setServerLimitReached(true)
+          }
         })
-        // Server truth for the free preview, so the paywall card shows under the
-        // restored transcript when it is used up (not "12 remaining").
-        if (typeof data.remaining_messages === 'number') {
-          const used = Math.min(MAX_FREE_MESSAGES, Math.max(0, MAX_FREE_MESSAGES - data.remaining_messages))
-          setMessageCount(used)
-          setMessageCountState(used)
-          if (data.remaining_messages <= 0) setServerLimitReached(true)
-        }
         return true
       } catch {
         if (!cancelled) {
