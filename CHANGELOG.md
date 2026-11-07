@@ -16,6 +16,15 @@ All notable changes to Seoul Sister are documented here.
   trial day 3 (local calendar; start = Stripe `current_period_start`, falling back to `created_at`), so
   a 7-day trial can hear from Yuri. Cap (3 per 30 days) and spacing (3 days) unchanged; dogfood and
   internal handling unchanged. New skip reason `not_checkin_day`. `localHour()` takes an optional `now`.
+  Only DECIDED judgments (speak/silent/blocked) count toward the 6 days, so a `failed` row is retried the
+  next hour (the daily unique index already excludes `failed`).
+  Deliberate: a 7-day trialist whose day 3 is not a Sunday hears from Yuri at most once during the
+  trial (day 3, plus any Sunday that lands 6+ local days later, which is after the trial ends); the
+  3-day spacing rule applies across both.
+- **No timezone.** A member with coordinates but no profile timezone uses the timezone Open-Meteo
+  resolves for those coordinates (gate, clock and forecast; recorded as `timezone_from_coordinates`).
+  With neither, the member is skipped with `no_timezone` (visible in run metadata) instead of the old
+  "unknown = noon" fallback. A failed lookup is recorded in the run's errors.
 - **Forecast** (`src/lib/intelligence/weather-forecast.ts`): 7 daily rows from Open-Meteo in the
   member's profile timezone (high/low, humidity min-max and mean, peak UV, precipitation and chance,
   condition), weekday names computed in code, missing values stay null. Replaces the single
@@ -28,13 +37,16 @@ All notable changes to Seoul Sister are documented here.
 - **Smaller judge context** (`src/lib/proactive/checkin-context.ts`): the judge no longer gets the whole
   chat memory. Kept (closed-world allowlist of the chat formatter's sections, so ownership/provenance
   hedges are identical): skin profile + medical history, routine, Glass Skin photo dates, reactions,
-  allergies, cycle phase; plus the most recent conversation summary and dated open loops, decisions,
-  preferences, and corrections from the last 120 days. Dropped: older summaries, message excerpts,
+  allergies, cycle phase; plus every conversation summary since the member's last proactive message
+  (always the newest; newest only if never contacted), labelled "your summary of what you said; their
+  agreement only counts from their own messages", and dated open loops, decisions (labelled as
+  extracted from conversation, not their words), preferences and all corrections. Dropped: older summaries, message excerpts,
   inventory (the dated shelf is already in the check-in facts), ingredient stacking, community and
   specialist insights, chat-only instructions. The content guard's evidence is unchanged (full decision
   memory + their own messages). Measured with the token-count API on the same three members:
   **17,019 → 8,980, 8,384 → 4,929, 31,532 → 12,172** input tokens (avg 18,978 → 8,694, -54%).
-  Dry run per-judgment cost $0.025-0.065. Estimated judge cost ~$0.20/member/month (4.33 judgments)
+  After the review fixes (summaries since last contact, all corrections) the dry run measured 9,049 /
+  4,998 / 13,285. Dry run per-judgment cost $0.026-0.068. Estimated judge cost ~$0.20/member/month (4.33 judgments)
   vs ~$2.25-2.40 daily; each "speak" also runs the two guard reads (~$0.08-0.13).
 - **Login continuity.** A signed-out member clicking "Pick this up with Yuri" was sent to a bare
   `/login` and, after signing in, to `/dashboard`: the prefilled question was lost. AppShell now sends
@@ -42,14 +54,22 @@ All notable changes to Seoul Sister are documented here.
   the OAuth round trip) finish there when the default destination is `/dashboard`. Onboarding and the
   paywall still win. Same-site paths only (`src/lib/auth/return-to.ts`), so `next` cannot redirect off-site.
 - **Dry runs no longer write.** `scripts/dry-run-yuri-wakes-up.ts` was documented as writing nothing,
-  but every judge and guard call inserted a `ss_ai_usage` row. It now sets `AI_USAGE_DRY_RUN=1`
-  (`logAIUsage` prints instead of inserting) and takes `--any-day` to render off-Sunday
-  (`bypass_checkin_day` on the route's dry-run POST).
+  but every judge and guard call inserted a `ss_ai_usage` row. It now calls `setAiUsageDryRun(true)`, a
+  module flag in `ai-usage-logger.ts` (no env var, so no deployment setting can switch cost logging off),
+  and takes `--any-day` to render off-Sunday. The route's HTTP dry-run POST (`bypass_checkin_day`)
+  still makes real model calls and still writes `ss_ai_usage` rows; its doc now says so.
+- **Guard false flags fixed** (`content-guard.ts` `knownProductsInMessage`). The preview's guard
+  flagged "Hero Mighty Patches" from the word "might" and the Medicube "SA Clear Capsule" cleanser from
+  "clear". Now a prefix only matches when the shorter word is 6+ characters, and a multi-word product
+  needs two of its distinctive words or one of 8+ characters (Illiyoon, Medicube, Differin,
+  AtoBarrier365 still match alone).
 - **Tests.** New `tests/weekly-checkin.test.mjs` (runtime: Sunday gate across Chicago/Tokyo/LA, 6-day
-  rejudge, trial day 3 in local calendar, forecast shaping, trimmed-context includes/excludes, login
-  return path incl. open-redirect cases). Updated on purpose: the check-in gate test in
+  rejudge, trial day 3 in local calendar, no-timezone resolution, decided-only lookback, forecast
+  shaping, Open-Meteo param list pinned, allowlist headings bound to `memory.ts`, trimmed-context
+  includes/excludes, guard product matching on the real preview shapes, login return path incl.
+  open-redirect cases). Updated on purpose: the check-in gate test in
   `proactive-outreach.test.mjs` (it pinned a Friday as a judging day) and the callback regex in
-  `oauth-callback-onboarding-first.test.mjs`. 1471/1471 pass; tsc and build clean.
+  `oauth-callback-onboarding-first.test.mjs`. 1476/1476 pass; tsc and build clean.
 - **Not verified:** no production Sunday run yet (the scheduler must produce the first weekly row); no
   trialing member exists today, so trial day 3 is unit-tested only; login continuity is traced in code
   and tested as pure functions, not clicked through in a browser.

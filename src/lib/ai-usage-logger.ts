@@ -81,6 +81,16 @@ interface AIUsageParams {
  * silent breakage doesn't go unnoticed. cf. v10.3.4: an empty catch in
  * mergeDecisionMemory hid three months of decision memory failures.
  */
+/**
+ * Review-script mode (scripts/dry-run-yuri-wakes-up.ts): print usage instead
+ * of inserting it. A module flag set in code, NOT an env var, so no deployment
+ * setting can switch production cost logging off.
+ */
+let aiUsageDryRun = false
+export function setAiUsageDryRun(on: boolean): void {
+  aiUsageDryRun = on
+}
+
 export async function logAIUsage(params: AIUsageParams): Promise<void> {
   try {
     const cost = estimateCost(
@@ -93,7 +103,7 @@ export async function logAIUsage(params: AIUsageParams): Promise<void> {
 
     // Review scripts (scripts/dry-run-yuri-wakes-up.ts) promise to write
     // nothing: print the usage instead of inserting it.
-    if (process.env.AI_USAGE_DRY_RUN === '1') {
+    if (aiUsageDryRun) {
       console.log(
         `[ai-usage dry-run] ${JSON.stringify({ feature: params.feature, model: params.model, input_tokens: params.inputTokens, output_tokens: params.outputTokens, cache_read_tokens: params.cacheReadTokens ?? 0, cache_creation_tokens: params.cacheCreationTokens ?? 0, cost_usd: Math.round(cost * 1_000_000) / 1_000_000, user_id: params.userId ?? null })}`
       )

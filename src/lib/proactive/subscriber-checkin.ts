@@ -60,7 +60,28 @@ export interface SubscriberRow {
   nudge_unsubscribe_token: string | null
 }
 
-export type CheckinSkipReason = 'demo' | 'internal' | 'night' | 'cap_or_spacing' | 'not_checkin_day' | 'judged_recently'
+export type CheckinSkipReason =
+  | 'demo'
+  | 'internal'
+  | 'no_timezone'
+  | 'night'
+  | 'cap_or_spacing'
+  | 'not_checkin_day'
+  | 'judged_recently'
+
+/**
+ * The timezone the weekly gate and clock use: the profile's, else the one
+ * Open-Meteo resolves from their coordinates, else null (gate skips with
+ * 'no_timezone' rather than guessing a day). `lookup` is injected for tests.
+ */
+export async function resolveCheckinTimezone(
+  s: Pick<SubscriberRow, 'timezone' | 'latitude' | 'longitude'>,
+  lookup: (lat: number, lng: number) => Promise<string | null>
+): Promise<string | null> {
+  if (s.timezone && s.timezone.trim()) return s.timezone.trim()
+  if (s.latitude == null || s.longitude == null) return null
+  return lookup(Number(s.latitude), Number(s.longitude))
+}
 
 /** Day N of a trial in the member's local calendar (start date = day 1). Pure. */
 export function trialDayNumber(trial: TrialInfo | null, timezone: string | null, now: number): number | null {
@@ -104,6 +125,10 @@ export function checkinGate(
 ): CheckinSkipReason | null {
   if (s.is_demo) return 'demo'
   if (opts.internal) return 'internal'
+  // No timezone means no honest "their Sunday" or "their daytime" (the old
+  // localHour fallback treated unknown as noon). Run resolves one from their
+  // coordinates first; reaching here without one skips, visibly.
+  if (!s.timezone || !s.timezone.trim()) return 'no_timezone'
   if (!opts.bypassDaytime) {
     const h = localHour(s.timezone, opts.now)
     if (h < DAYTIME_START_HOUR || h >= DAYTIME_END_HOUR) return 'night'
@@ -333,7 +358,9 @@ export async function judgeSubscriber(
    * applied memory backfill) to render what Yuri would say once it lands.
    */
   patchContext?: (ctx: UserContext) => Promise<void> | void,
-  trial: TrialInfo | null = null
+  trial: TrialInfo | null = null,
+  /** Newest ss_user_nudges created_at (any proactive contact), or null. */
+  lastContactAt: string | null = null
 ): Promise<{ decision: ProactiveDecision; factsText: string; evidence: GuardEvidence }> {
   const userContext = await loadUserContext(s.user_id)
   if (patchContext) await patchContext(userContext)
@@ -343,7 +370,7 @@ export async function judgeSubscriber(
   ])
   // The FULL context is still loaded: the guard's evidence below reads the
   // complete decision memory. Only what the judge is shown is trimmed.
-  const memory = buildCheckinMemory(userContext, getLocalClock(s.timezone, new Date(now)).isoDate, formatContextForPrompt)
+  const memory = buildCheckinMemory(userContext, formatContextForPrompt, lastContactAt)
   const factsText = `# WHAT YOU KNOW ABOUT THEM (from your memory)\n${memory}\n\n# THIS WEEK\n${checkinFacts}\n\n${calibration}\n\nDecide, then return the JSON.`
   const decision = await runProactiveJudgment({
     system: CHECKIN_SYSTEM,

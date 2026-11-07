@@ -10,9 +10,10 @@
  *     reactions/allergies, cycle phase when tracked (rendered by the SAME
  *     formatter as chat, closed-world allowlist of sections, so the ownership
  *     and provenance hedges are identical to chat)
- *   - their most recent conversation summary (what the plan is right now)
- *   - decision memory: open loops, decisions, preferences, recent corrections,
- *     all with dates (commitments are rendered beside the shelf instead)
+ *   - every conversation summary since the last proactive contact (always the
+ *     newest), labelled as Yuri's own summary, not their agreement
+ *   - decision memory: open loops, decisions, preferences, all corrections,
+ *     with dates (commitments are rendered beside the shelf instead)
  * The shelf with dates, last-contact, prior check-ins and outcomes, the
  * forecast and trial status are added by loadCheckinFacts.
  *
@@ -41,9 +42,6 @@ export const CHECKIN_MEMORY_SECTIONS = [
   '## Menstrual Cycle Phase',
 ] as const
 
-/** Corrections older than this are left out (they are product facts, mostly for chat). */
-export const CHECKIN_CORRECTION_DAYS = 120
-
 /** Keep only allowlisted top-level sections of a rendered chat context. Pure. */
 export function keepCheckinSections(rendered: string): string {
   return rendered
@@ -55,7 +53,7 @@ export function keepCheckinSections(rendered: string): string {
 const day = (iso: string | null | undefined) => (iso ? String(iso).slice(0, 10) : null)
 
 /** Decision memory as dated facts, no chat tool instructions. Pure. */
-export function renderCheckinDecisionMemory(dm: DecisionMemory | null, todayIso: string): string {
+export function renderCheckinDecisionMemory(dm: DecisionMemory | null): string {
   if (!dm) return ''
   const parts: string[] = []
 
@@ -73,35 +71,44 @@ export function renderCheckinDecisionMemory(dm: DecisionMemory | null, todayIso:
   // already list as owned), and rendering them twice only costs tokens.
   if (dm.decisions?.length) {
     parts.push(
-      `### Decisions you made together (a correction below about the same product or fact outranks a decision)\n` +
+      `### Decisions recorded from your conversations (extracted from what you discussed, not their own words; a correction below about the same product or fact outranks a decision)\n` +
         dm.decisions.map((d) => `- ${d.topic}: ${d.decision} (decided ${day(d.date) ?? 'date unknown'})`).join('\n')
     )
   }
   if (dm.preferences?.length) {
     parts.push(`### Their stated preferences\n` + dm.preferences.map((p) => `- ${p.topic}: ${p.preference}${p.date ? ` (stated ${day(p.date)})` : ''}`).join('\n'))
   }
-  const cutoff = new Date(new Date(`${todayIso}T00:00:00Z`).getTime() - CHECKIN_CORRECTION_DAYS * 86400000).toISOString().slice(0, 10)
+  // All corrections, no age cutoff: an old "she doesn't own X" is exactly
+  // what keeps a check-in from presuming the wrong product.
   const corrections = dm.corrections ?? []
-  const recent = corrections.filter((c) => (day(c.date) ?? '') >= cutoff)
-  if (recent.length) {
-    const older = corrections.length - recent.length
+  if (corrections.length) {
     parts.push(
-      `### Things they corrected you on (last ${CHECKIN_CORRECTION_DAYS} days; their word is ground truth)${older > 0 ? `\n${older} older correction(s) exist and are not listed here.` : ''}\n` +
-        recent.map((c) => `- ${c.topic} (${day(c.date) ?? 'date unknown'}): ${c.truth}`).join('\n')
+      `### Things they corrected you on (their word is ground truth)\n` +
+        corrections.map((c) => `- ${c.topic} (${day(c.date) ?? 'date unknown'}): ${c.truth}`).join('\n')
     )
   }
   return parts.length ? `## Your structured memory of them\n${parts.join('\n\n')}` : ''
 }
 
-/** The newest conversation summary (any type), with its date. Pure. */
-export function renderLatestConversation(convs: UserContext['recentConversations']): string {
-  const withSummary = convs.filter((c) => c.aiSummary)
+/**
+ * Conversation summaries since the last proactive contact (so nothing that
+ * happened after the last check-in is hidden), and always the newest one.
+ * With no prior contact, only the newest. The label says whose words these
+ * are: Yuri's summary of what SHE said, so her own advice is never read back
+ * as something they agreed to. Pure.
+ */
+export function renderRecentConversations(convs: UserContext['recentConversations'], lastContactAt: string | null = null): string {
+  const withSummary = [...convs.filter((c) => c.aiSummary)].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)))
   if (!withSummary.length) return ''
-  const latest = [...withSummary].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)))[0]
-  const older = withSummary.length - 1
+  const since = lastContactAt ? withSummary.filter((c) => String(c.timestamp) > lastContactAt) : []
+  const shown = since.length ? since : withSummary.slice(0, 1)
+  const omitted = withSummary.length - shown.length
+  const blocks = shown.map(
+    (c) => `### ${day(c.timestamp) ?? 'date unknown'}${c.title ? `, "${c.title}"` : ''}\n${c.aiSummary}`
+  )
   return (
-    `## Your most recent conversation with them (${day(latest.timestamp) ?? 'date unknown'}${latest.title ? `, "${latest.title}"` : ''}): your summary\n${latest.aiSummary}` +
-    (older > 0 ? `\n\n(${older} earlier conversation summary(ies) exist and are not included here.)` : '')
+    `## Your recent conversations with them (your summary of what you said; their agreement only counts from their own messages)${lastContactAt ? `\nShown: every conversation since your last proactive message (${day(lastContactAt)}), and always the newest.` : ''}\n\n${blocks.join('\n\n')}` +
+    (omitted > 0 ? `\n\n(${omitted} earlier conversation summary(ies) exist and are not included here.)` : '')
   )
 }
 
@@ -109,7 +116,11 @@ export function renderLatestConversation(convs: UserContext['recentConversations
  * The check-in's memory block. `format` is formatContextForPrompt (injected so
  * the selection logic is testable without the database layer).
  */
-export function buildCheckinMemory(ctx: UserContext, todayIso: string, format: (c: UserContext) => string): string {
+export function buildCheckinMemory(
+  ctx: UserContext,
+  format: (c: UserContext) => string,
+  lastContactAt: string | null = null
+): string {
   // Feed the formatter only the fields the allowlisted sections read; the rest
   // are emptied so nothing large is rendered and thrown away.
   const reduced: UserContext = {
@@ -122,7 +133,7 @@ export function buildCheckinMemory(ctx: UserContext, todayIso: string, format: (
     ingredientOverlap: null,
     decisionMemory: null,
   }
-  return [keepCheckinSections(format(reduced)), renderLatestConversation(ctx.recentConversations), renderCheckinDecisionMemory(ctx.decisionMemory, todayIso)]
+  return [keepCheckinSections(format(reduced)), renderRecentConversations(ctx.recentConversations, lastContactAt), renderCheckinDecisionMemory(ctx.decisionMemory)]
     .filter(Boolean)
     .join('\n\n')
 }

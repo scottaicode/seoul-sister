@@ -106,9 +106,32 @@ const distinctive = (s: string) => norm(s).split(/[^a-z0-9]+/).filter((w) => w.l
 /** "AtoBarrier" in prose matches "AtoBarrier365" on the shelf, and vice versa. */
 const overlaps = (a: string[], b: string[]) => a.some((x) => b.some((y) => x.startsWith(y) || y.startsWith(x)))
 
+/**
+ * Two tokens are the same word, or one is a prefix of the other only when the
+ * shorter is at least 6 characters: "AtoBarrier" ~ "AtoBarrier365", but
+ * "might" is not "Mighty" (Nov 7 2026 false flag on a subject line).
+ */
+const tokenMatch = (x: string, y: string) => {
+  if (x === y) return true
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x]
+  return short.length >= 6 && long.startsWith(short)
+}
+
+/**
+ * Whether a product's distinctive words are named in the text. A one-word
+ * product needs that word; a multi-word product needs two of its words, or one
+ * long (>= 8 chars) word: Illiyoon, Medicube, Differin, AtoBarrier365 still
+ * match alone, but "Friday looks clear" does not name "... SA Clear Capsule ...".
+ */
+export function productNamedIn(productTokens: string[], textTokens: string[]): boolean {
+  const hits = productTokens.filter((t) => textTokens.some((w) => tokenMatch(t, w)))
+  if (productTokens.length <= 1) return hits.length === productTokens.length && hits.length > 0
+  return new Set(hits).size >= 2 || hits.some((t) => t.length >= 8)
+}
+
 export function knownProductsInMessage(message: string, known: string[] = []): string[] {
   const words = distinctive(message)
-  return known.filter((name) => overlaps(distinctive(name), words))
+  return known.filter((name) => productNamedIn(distinctive(name), words))
 }
 
 /**

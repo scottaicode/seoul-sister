@@ -117,6 +117,22 @@ export function formatForecastFacts(f: WeeklyForecast, todayIso: string, place: 
 }
 
 /**
+ * The IANA timezone Open-Meteo resolves for a coordinate ('timezone=auto').
+ * Used when a member has coordinates but no profile timezone, so the weekly
+ * gate and clock read their real local day. Throws on failure; null when the
+ * response carries no usable timezone.
+ */
+export async function fetchTimezoneForCoords(lat: number, lng: number): Promise<string | null> {
+  const res = await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=uv_index_max&timezone=auto&forecast_days=1`,
+    { next: { revalidate: 86400 } }
+  )
+  if (!res.ok) throw new Error(`Open-Meteo timezone lookup error: ${res.status}`)
+  const tz = ((await res.json()) as { timezone?: string }).timezone
+  return tz && tz !== 'GMT' && tz !== 'UTC' ? tz : null
+}
+
+/**
  * Fetch a daily forecast from Open-Meteo (free, no key). `timezone` should be
  * the member's profile timezone so the returned dates are their local dates;
  * without one Open-Meteo resolves it from the coordinates ('auto').

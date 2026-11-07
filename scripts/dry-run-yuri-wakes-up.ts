@@ -5,8 +5,8 @@
  * Read-only by construction: runYuriWakesUp({ dryRun: true }) skips grading,
  * every insert/update and every send. As belt-and-braces this script also
  * deletes RESEND_API_KEY from its own process, so even a code path that reached
- * sendEmail() would no-op, and sets AI_USAGE_DRY_RUN=1 so the judge's and the
- * guard's token usage is printed to the console instead of inserted into
+ * sendEmail() would no-op, and calls setAiUsageDryRun(true) so the judge's and
+ * the guard's token usage is printed to the console instead of inserted into
  * ss_ai_usage (before Nov 7 2026 a dry run DID write those rows).
  *
  * Usage:
@@ -24,9 +24,10 @@ import { mkdirSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { getServiceClient } from '../src/lib/supabase'
 import { runYuriWakesUp } from '../src/lib/proactive/run'
+import { setAiUsageDryRun } from '../src/lib/ai-usage-logger'
 
 delete process.env.RESEND_API_KEY
-process.env.AI_USAGE_DRY_RUN = '1'
+setAiUsageDryRun(true)
 
 function arg(name: string): string[] {
   const i = process.argv.indexOf(name)

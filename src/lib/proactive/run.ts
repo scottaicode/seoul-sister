@@ -38,6 +38,8 @@ import {
 } from './lead-reengage'
 import { checkinGate, judgeSubscriber, dogfoodUserIds, trialDayNumber, type SubscriberRow } from './subscriber-checkin'
 import { trialInfoFromSubscription } from './checkin-context'
+import { resolveCheckinTimezone } from './subscriber-checkin'
+import { fetchTimezoneForCoords } from '@/lib/intelligence/weather-forecast'
 import type { ProactiveDecision } from './judge'
 import { checkProactiveDraft, type GuardEvidence } from './content-guard'
 import { safeSlice } from '@/lib/utils/text-slice'
@@ -218,6 +220,10 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
         .from('ss_proactive_judgments')
         .select('user_id, created_at')
         .eq('campaign', CHECKIN_CAMPAIGN)
+        // Only DECIDED judgments consume the week: a 'failed' row (crash,
+        // unparseable reply) is retried next hour, same as the daily unique
+        // index, which also excludes 'failed'.
+        .in('decision', ['speak', 'silent', 'blocked'])
         // Weekly cadence looks back 6 local days; 8 days of rows covers any timezone.
         .gte('created_at', new Date(now - 8 * 24 * 3600 * 1000).toISOString()),
     ])
@@ -228,8 +234,18 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
       errors.push(`subscriber gate load: ${loadErr.message}`)
     } else {
       const dogfood = dogfoodUserIds()
-      for (const p of (profiles ?? []) as Array<SubscriberRow & { is_admin: boolean | null; excluded_from_metrics: boolean | null }>) {
+      for (const row of (profiles ?? []) as Array<SubscriberRow & { is_admin: boolean | null; excluded_from_metrics: boolean | null }>) {
         sub.scanned++
+        // Profile timezone, else the one their coordinates resolve to; the gate
+        // skips 'no_timezone' when neither exists. A failed lookup is an error,
+        // not silently "no timezone".
+        let tz: string | null = null
+        try {
+          tz = await resolveCheckinTimezone(row, fetchTimezoneForCoords)
+        } catch (err) {
+          errors.push(`timezone lookup ${row.user_id.slice(0, 8)}: ${err instanceof Error ? err.message : String(err)}`)
+        }
+        const p = { ...row, timezone: tz }
         const isDogfood = dogfood.has(p.user_id)
         const rows = (subsRes.data ?? []).filter((r) => r.user_id === p.user_id)
         // Comped = no live Stripe subscription (never had one, or canceled and
@@ -266,7 +282,8 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
             opts.dryRun && opts.memoryOverrides
               ? (ctx) => applyMemoryOverrides(db, p.user_id, ctx, opts.memoryOverrides!)
               : undefined,
-            trial
+            trial,
+            nudgeCreatedAts.length ? [...nudgeCreatedAts].sort().pop()! : null
           )
           const { decision, guardReasons } = await guardDecision(judged.decision, judged.evidence, p.user_id)
           sub[decision.decision]++
@@ -312,6 +329,7 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
               ...(isDogfood ? { dogfood: true } : {}),
               comped,
               ...(trial ? { trial_day: trialDayNumber(trial, p.timezone, now) } : {}),
+              ...(!row.timezone ? { timezone_from_coordinates: p.timezone } : {}),
               local_weekday: getLocalClock(p.timezone, new Date(now)).weekday,
               ...(guardReasons ? { guard: guardReasons } : {}),
               local_date: getLocalClock(p.timezone, new Date(now)).isoDate,

@@ -191,14 +191,14 @@ test('forecast: local dates and weekdays, missing values stay null, today/tomorr
 })
 
 test('trimmed judge memory: keeps profile, routine, photos, latest summary, dated plan; drops chat-only bulk', async () => {
-  const { buildCheckinMemory, keepCheckinSections, CHECKIN_CORRECTION_DAYS } = await load(['src', 'lib', 'proactive', 'checkin-context.ts'], {
+  const { buildCheckinMemory, keepCheckinSections, renderRecentConversations } = await load(['src', 'lib', 'proactive', 'checkin-context.ts'], {
     isOpenLoop: '((l) => !l.resolved_at)',
   })
-  assert.equal(CHECKIN_CORRECTION_DAYS, 120)
   const ctx = {
     skinProfile: { skin_type: 'combination' },
     recentConversations: [
       { conversationId: 'a', title: 'Older', timestamp: '2026-10-01T00:00:00Z', aiSummary: 'OLD SUMMARY', conversationType: 'general' },
+      { conversationId: 'c', title: 'Middle', timestamp: '2026-10-25T00:00:00Z', aiSummary: 'MIDDLE SUMMARY', conversationType: 'general' },
       { conversationId: 'b', title: 'Newest', timestamp: '2026-11-02T00:00:00Z', aiSummary: 'NEW SUMMARY', conversationType: 'general' },
     ],
     recentExcerpts: [{ conversationId: 'b', title: 'x', messages: [] }],
@@ -237,24 +237,33 @@ test('trimmed judge memory: keeps profile, routine, photos, latest summary, date
       '## Some Section Added Later\nnew',
     ].join('\n\n')
   }
-  const out = buildCheckinMemory(ctx, '2026-11-08', format)
+  const out = buildCheckinMemory(ctx, format) // never contacted: newest summary only
   // The formatter is handed nothing large to render and throw away.
   assert.deepEqual([seen.recentConversations, seen.recentExcerpts, seen.userProducts, seen.learningInsights, seen.specialistInsights], [[], [], [], [], []])
   assert.equal(seen.ingredientOverlap, null)
   assert.equal(seen.decisionMemory, null)
   assert.equal(seen.skinProfile, ctx.skinProfile)
-  for (const kept of ["## User's Skin Profile", '## Medical History', '## Current Routine Products', '## Glass Skin Score History', 'NEW SUMMARY', '2026-11-02', 'retinal: twice a week (decided 2026-10-20)', 'you said you\'d check back 2026-11-09', 'she stopped the BHA', 'texture: light']) {
+  for (const kept of ["## User's Skin Profile", '## Medical History', '## Current Routine Products', '## Glass Skin Score History', 'NEW SUMMARY', '2026-11-02', 'retinal: twice a week (decided 2026-10-20)', 'you said you\'d check back 2026-11-09', 'she stopped the BHA', 'ancient fact', 'texture: light']) {
     assert.ok(out.includes(kept), `keeps: ${kept}`)
   }
-  for (const dropped of ['Ingredient Stacking', 'Product Inventory', 'Suggested Opener', 'Cycle Tracking Available', 'Learning Engine', 'Some Section Added Later', 'OLD SUMMARY', 'closed one', 'ancient fact', 'buy SPF']) {
+  for (const dropped of ['Ingredient Stacking', 'Product Inventory', 'Suggested Opener', 'Cycle Tracking Available', 'Learning Engine', 'Some Section Added Later', 'OLD SUMMARY', 'MIDDLE SUMMARY', 'closed one', 'buy SPF']) {
     assert.ok(!out.includes(dropped), `drops: ${dropped}`)
   }
-  assert.match(out, /1 older correction\(s\) exist and are not listed here/)
-  assert.match(out, /1 earlier conversation summary\(ies\) exist and are not included here/)
+  assert.match(out, /2 earlier conversation summary\(ies\) exist and are not included here/)
+  // Labelled as Yuri's own account, so her advice is not read back as their agreement.
+  assert.match(out, /your summary of what you said; their agreement only counts from their own messages/)
+  assert.doesNotMatch(out, /made together/)
+  // Since the last proactive contact (Oct 20): every summary after it, newest first.
+  const since = renderRecentConversations(ctx.recentConversations, '2026-10-20T00:00:00Z')
+  assert.ok(since.includes('NEW SUMMARY') && since.includes('MIDDLE SUMMARY') && !since.includes('OLD SUMMARY'))
+  assert.ok(since.indexOf('NEW SUMMARY') < since.indexOf('MIDDLE SUMMARY'))
+  // Contact after the newest conversation: the newest is still shown.
+  const after = renderRecentConversations(ctx.recentConversations, '2026-11-05T00:00:00Z')
+  assert.ok(after.includes('NEW SUMMARY') && !after.includes('MIDDLE SUMMARY'))
   // Closed world: the allowlist filter on its own drops anything unlisted.
   assert.equal(keepCheckinSections('## Brand New\nx\n\n## Current Routine Products\ny'), '## Current Routine Products\ny')
   // No memory at all renders nothing rather than empty headings.
-  assert.equal(buildCheckinMemory({ ...ctx, recentConversations: [], decisionMemory: null }, '2026-11-08', () => ''), '')
+  assert.equal(buildCheckinMemory({ ...ctx, recentConversations: [], decisionMemory: null }, () => ''), '')
 })
 
 test('login continuity: a signed-out click on the check-in button returns to /yuri with the ask after sign-in', async () => {
@@ -280,4 +289,68 @@ test('login continuity: a signed-out click on the check-in button returns to /yu
   assert.match(read('src', 'components', 'layout', 'AppShell.tsx'), /router\.replace\(loginUrlFor\(pathname,/)
   assert.match(read('src', 'app', '(auth)', 'login', 'page.tsx'), /router\.push\(afterSignIn\('\/dashboard', readNext\(\)\)\)/)
   assert.match(read('src', 'app', 'auth', 'callback', 'page.tsx'), /router\.replace\(afterSignIn\(postSignInDestination\(profile\), next\)\)/)
+})
+
+test('no timezone: profile tz wins, else the coordinates\' tz, else the gate skips with no_timezone', async () => {
+  const { checkinGate, resolveCheckinTimezone } = await loadCheckin()
+  const calls = []
+  const lookup = async (lat, lng) => (calls.push([lat, lng]), 'Asia/Tokyo')
+  assert.equal(await resolveCheckinTimezone({ timezone: 'America/Chicago', latitude: 1, longitude: 2 }, lookup), 'America/Chicago')
+  assert.equal(calls.length, 0, 'no lookup when the profile has one')
+  assert.equal(await resolveCheckinTimezone({ timezone: null, latitude: 35.7, longitude: 139.7 }, lookup), 'Asia/Tokyo')
+  assert.deepEqual(calls, [[35.7, 139.7]])
+  assert.equal(await resolveCheckinTimezone({ timezone: '  ', latitude: null, longitude: null }, lookup), null)
+  // 01:00Z Sunday: Sunday 10am in the resolved Tokyo zone; with no zone at all, skip visibly (not "noon").
+  const sun = at('2026-11-08T01:00:00Z')
+  assert.equal(checkinGate(sub('Asia/Tokyo'), opts(sun)), null)
+  assert.equal(checkinGate(sub(null), opts(sun)), 'no_timezone')
+  assert.equal(checkinGate(sub(null), opts(sun, { bypassDaytime: true, bypassCheckinDay: true })), 'no_timezone')
+  // run.ts resolves before the gate and counts a failed lookup as an error.
+  const run = read('src', 'lib', 'proactive', 'run.ts')
+  assert.match(run, /tz = await resolveCheckinTimezone\(row, fetchTimezoneForCoords\)/)
+  assert.match(run, /errors\.push\(`timezone lookup/)
+})
+
+test('only decided judgments consume the week (a failed row is retried)', () => {
+  const run = read('src', 'lib', 'proactive', 'run.ts')
+  const q = run.slice(run.indexOf(".from('ss_proactive_judgments')\n        .select('user_id, created_at')"), run.indexOf('8 * 24 * 3600 * 1000'))
+  assert.match(q, /\.in\('decision', \['speak', 'silent', 'blocked'\]\)/)
+})
+
+test('cost logging cannot be switched off by an env var; only the review script\'s module flag', async () => {
+  const src = read('src', 'lib', 'ai-usage-logger.ts')
+  assert.doesNotMatch(src, /AI_USAGE_DRY_RUN/)
+  assert.match(src, /if \(aiUsageDryRun\) \{/)
+  assert.match(read('scripts', 'dry-run-yuri-wakes-up.ts'), /setAiUsageDryRun\(true\)/)
+})
+
+test('guard product matching: common words do not name a product; distinctive names still do', async () => {
+  const { knownProductsInMessage } = await load(['src', 'lib', 'proactive', 'content-guard.ts'])
+  const shelf = [
+    'Hero Cosmetics Hero Mighty Patches',
+    'Medicube Zero Pore SA Clear Capsule Cleansing Foam',
+    'Illiyoon Ceramide Ato Concentrate Cream',
+    'Aestura AtoBarrier365 Cream',
+  ]
+  assert.deepEqual(knownProductsInMessage('That cold front might be showing up Friday', shelf), [])
+  assert.deepEqual(knownProductsInMessage('Friday looks clear and dry with a low near 8°C.', shelf), [])
+  assert.deepEqual(knownProductsInMessage('keep the Illiyoon for the cold', shelf), ['Illiyoon Ceramide Ato Concentrate Cream'])
+  assert.deepEqual(knownProductsInMessage('the AtoBarrier365 is fine', shelf), ['Aestura AtoBarrier365 Cream'])
+  assert.deepEqual(knownProductsInMessage('the AtoBarrier is fine', shelf), ['Aestura AtoBarrier365 Cream'], 'prefix of >= 6 chars')
+  assert.deepEqual(knownProductsInMessage('your Medicube cleanser', shelf), ['Medicube Zero Pore SA Clear Capsule Cleansing Foam'])
+  assert.deepEqual(knownProductsInMessage('the mighty patches on your chin', shelf), ['Hero Cosmetics Hero Mighty Patches'], 'two distinctive words')
+  assert.deepEqual(knownProductsInMessage('Differin at night', ['Differin']), ['Differin'], 'single-word product')
+  assert.deepEqual(knownProductsInMessage('it might help', ['Mighty']), [], 'a 5-char prefix is not a match')
+})
+
+test('allowlist is bound to the real chat formatter; forecast params are pinned', async () => {
+  const { CHECKIN_MEMORY_SECTIONS } = await load(['src', 'lib', 'proactive', 'checkin-context.ts'], { isOpenLoop: '((l) => !l.resolved_at)' })
+  const memory = read('src', 'lib', 'yuri', 'memory.ts')
+  assert.equal(CHECKIN_MEMORY_SECTIONS.length, 8)
+  for (const h of CHECKIN_MEMORY_SECTIONS) assert.ok(memory.includes(h), `formatContextForPrompt still renders "${h}"`)
+  const wf = read('src', 'lib', 'intelligence', 'weather-forecast.ts')
+  assert.match(
+    wf,
+    /'daily=weather_code,temperature_2m_max,temperature_2m_min,relative_humidity_2m_max,relative_humidity_2m_min,relative_humidity_2m_mean,uv_index_max,precipitation_sum,precipitation_probability_max'/
+  )
 })

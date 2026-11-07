@@ -21,11 +21,14 @@ const DAILY_PHASE_UTC_HOUR = 16
  * run row with mode 'off' and does nothing else, so "disabled" is visible in
  * ss_pipeline_runs and never looks like "ran, nothing to send".
  *
- * DRY RUN (any mode, writes nothing, sends nothing):
+ * DRY RUN (any mode; sends nothing and writes no judgment/nudge/run rows):
  *   POST { "dry_run": true, "user_ids": [...], "lead_ids": [...],
  *          "assume_owner_approval": true, "bypass_daytime": true,
  *          "bypass_checkin_day": true }
- * returns the exact subject + HTML each recipient would receive.
+ * returns the exact subject + HTML each recipient would receive. NOTE: this HTTP
+ * dry run makes REAL model calls (judge + guard, real spend) and each one still
+ * writes an ss_ai_usage row. Only scripts/dry-run-yuri-wakes-up.ts suppresses
+ * those (setAiUsageDryRun).
  *
  * Secured with CRON_SECRET (verifyCronAuth).
  */
