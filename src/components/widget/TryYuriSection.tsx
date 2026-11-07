@@ -16,6 +16,7 @@ import {
   clearWidgetSessionId,
   markWidgetFresh,
   isWidgetFresh,
+  adoptVisitorId,
 } from '@/lib/utils/widget-session'
 import { renderMarkdown, parseWidgetStream } from '@/lib/utils/widget-shared'
 import type { WidgetMessage } from '@/lib/utils/widget-shared'
@@ -405,16 +406,102 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   // repeated themselves to a Yuri who had forgotten them. The server now finds
   // the visitor's conversation if it was active within the resume window and
   // hands back its id, which is stored so the next message continues it.
+  //
+  // Nov 7 2026: `?resume=<token>` from a recap or nurture email. The token is
+  // signed server-side over (visitor id, session id), so the browser that clicks
+  // it, on any device and days later, gets the conversation the email promised.
+  // On success this browser adopts that visitor id and session id, so the next
+  // message continues the same conversation (the chat route has no age limit
+  // for an explicit session id). On any failure it falls through to the normal
+  // restore below. The param is stripped either way so a reload or a shared URL
+  // does not carry the token.
   useEffect(() => {
-    const sessionId = getWidgetSessionId()
-    const visitorId = getExistingVisitorId()
-    // A first-time visitor has nothing to restore; don't mint an id or call out.
-    if (!sessionId && !visitorId) return
-    // The visitor pressed "Start over" in this tab: never bring the old one back.
-    if (!sessionId && isWidgetFresh()) return
-
     let cancelled = false
-    ;(async () => {
+
+    // `adopt` runs only if the transcript is actually painted, so a visitor who
+    // started typing while the fetch was in flight keeps the conversation (and
+    // ids) she is in. Storage writes are idempotent, so a double-invoked setter
+    // is harmless.
+    const paintRestored = (
+      restored: Array<{ role: 'user' | 'assistant'; content: string }>,
+      adopt?: () => void
+    ) => {
+      setMessages((current) => {
+        // Re-check INSIDE the setter: the fetch is async, so the visitor may
+        // have started typing a new message while it was in flight. Restoring
+        // over that would destroy live content.
+        if (current.length > 0) return current
+        adopt?.()
+        return restored.map((m, i) => ({
+          id: `restored-${i}`,
+          role: m.role,
+          content: m.content,
+        }))
+      })
+      // A restored transcript is a real conversation, so show the live chat
+      // rather than the scripted example exhibit.
+      setShowLive(true)
+    }
+
+    const stripResumeParam = () => {
+      try {
+        const params = new URLSearchParams(window.location.search)
+        if (!params.has('resume')) return
+        params.delete('resume')
+        const qs = params.toString()
+        window.history.replaceState(
+          window.history.state,
+          '',
+          `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`
+        )
+      } catch (err) {
+        console.warn('[widget] resume URL strip failed', err)
+      }
+    }
+
+    const resumeFromEmail = async (): Promise<boolean> => {
+      let token: string | null = null
+      try {
+        token = new URLSearchParams(window.location.search).get('resume')
+      } catch {
+        return false
+      }
+      if (!token) return false
+      try {
+        const res = await fetch(`/api/widget/transcript?resume=${encodeURIComponent(token)}`)
+        if (!res.ok || cancelled) return false
+        const data = (await res.json()) as {
+          messages?: Array<{ role: 'user' | 'assistant'; content: string }>
+          session_id?: string | null
+          visitor_id?: string | null
+        }
+        const restored = data.messages || []
+        const sid = data.session_id
+        const vid = data.visitor_id
+        if (cancelled || !sid || !vid || restored.length === 0) return false
+        paintRestored(restored, () => {
+          adoptVisitorId(vid)
+          setWidgetSessionId(sid)
+        })
+        return true
+      } catch {
+        return false
+      } finally {
+        // Stripped after the fetch (not before) so a double-run effect in
+        // development still sees the token; stripped on every outcome so a
+        // reload or a copied URL never carries it.
+        if (!cancelled) stripResumeParam()
+      }
+    }
+
+    const restoreFromThisBrowser = async () => {
+      const sessionId = getWidgetSessionId()
+      const visitorId = getExistingVisitorId()
+      // A first-time visitor has nothing to restore; don't mint an id or call out.
+      if (!sessionId && !visitorId) return
+      // The visitor pressed "Start over" in this tab: never bring the old one back.
+      if (!sessionId && isWidgetFresh()) return
+
       try {
         const res = await fetch(
           `/api/widget/transcript?visitor_id=${encodeURIComponent(visitorId ?? getOrCreateVisitorId())}` +
@@ -429,23 +516,16 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
         if (cancelled || restored.length === 0) return
         if (!sessionId && data.session_id) setWidgetSessionId(data.session_id)
 
-        setMessages((current) => {
-          // Re-check INSIDE the setter: the fetch is async, so the visitor may
-          // have started typing a new message while it was in flight. Restoring
-          // over that would destroy live content.
-          if (current.length > 0) return current
-          return restored.map((m, i) => ({
-            id: `restored-${i}`,
-            role: m.role,
-            content: m.content,
-          }))
-        })
-        // A restored transcript is a real conversation, so show the live chat
-        // rather than the scripted example exhibit.
-        setShowLive(true)
+        paintRestored(restored)
       } catch {
         // Never break the widget over a failed restore.
       }
+    }
+
+    ;(async () => {
+      if (await resumeFromEmail()) return
+      if (cancelled) return
+      await restoreFromThisBrowser()
     })()
 
     return () => {

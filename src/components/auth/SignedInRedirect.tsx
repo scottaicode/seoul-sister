@@ -60,7 +60,9 @@ export default function SignedInRedirect() {
     // targets the hero widget, and #pricing targets a section here — redirecting
     // those to /dashboard would break links we deliberately ship.
     const params = new URLSearchParams(window.location.search)
-    if (params.has('ask') || params.has('from') || window.location.hash) return
+    // `resume` (Nov 7 2026) is an email link reopening a widget conversation;
+    // those links also carry `from`, but the check stands on its own.
+    if (params.has('ask') || params.has('from') || params.has('resume') || window.location.hash) return
 
     supabase.auth
       .getSession()

@@ -35,6 +35,7 @@ import {
 } from '@/lib/widget/persistence'
 import { detectAndRecordSignals, type SignalContext } from '@/lib/widget/signals'
 import { recapStatusFact } from '@/lib/widget/recap-fact'
+import { createResumeToken, widgetEmailLink } from '@/lib/widget/resume-token'
 import type Anthropic from '@anthropic-ai/sdk'
 
 const WIDGET_RATE_LIMIT = 25
@@ -1247,11 +1248,21 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
                         { role: 'user', content: parsed.message },
                         { role: 'assistant', content: cleanedResponse },
                       ]
+                      // Nov 7 2026: the button under the recap reopens THIS
+                      // conversation on any device for 30 days. With no
+                      // WIDGET_RESUME_SECRET the token is null, the link is the
+                      // plain homepage chat, and Yuri is told so (no promise of
+                      // continuity the link can't keep).
+                      const resumeToken = createResumeToken(parsed.visitor_id!, sessionId!)
+                      if (!resumeToken) {
+                        console.warn('[widget/chat] recap resume link unavailable (WIDGET_RESUME_SECRET unset)')
+                      }
                       const result = await generateLeadEmail(
                         facts,
                         conversation,
                         email,
-                        parsed.visitor_id!
+                        parsed.visitor_id!,
+                        { url: widgetEmailLink('recap', resumeToken), resumes: resumeToken !== null }
                       )
                       if (result.outcome === 'send') {
                         // v11.5.0: capture the send result so "did this lead

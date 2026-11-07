@@ -160,6 +160,19 @@ export function getOrCreateVisitorId(): string {
 }
 
 /**
+ * Make this browser the visitor named in an email resume link (Nov 7 2026).
+ * The visitor who clicks "Continue our conversation" may be on another device,
+ * or have cleared storage, so their browser id differs from the one the
+ * conversation belongs to; the chat route only continues a session for its own
+ * visitor id. Stored the same two ways getOrCreateVisitorId stores it.
+ */
+export function adoptVisitorId(id: string): void {
+  if (!isClient() || !id) return
+  try { localStorage.setItem(VISITOR_ID_KEY, id) } catch { /* localStorage unavailable */ }
+  setCookie(VISITOR_COOKIE_NAME, id, 365)
+}
+
+/**
  * The visitor UUID if this browser already has one, else null. Never creates
  * one: onboarding uses it only to carry an existing preview conversation over
  * (src/lib/yuri/widget-carryover.ts), so a fresh id would point at nothing.

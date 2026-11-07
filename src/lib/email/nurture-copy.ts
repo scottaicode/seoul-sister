@@ -26,6 +26,17 @@ export interface NurtureEmailContent {
   bodyHtml: string
 }
 
+export interface NurtureEmailOptions {
+  /**
+   * Signed link that reopens the lead's own widget conversation
+   * (src/lib/widget/resume-token.ts). Only email 1, widget cohort, uses it.
+   */
+  resumeUrl?: string | null
+}
+
+const BUTTON_STYLE =
+  'display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;'
+
 const SITE = 'https://www.seoulsister.com'
 
 function unsubFooter(unsubscribeUrl: string, cohort: NurtureCohort): string {
@@ -36,8 +47,21 @@ function unsubFooter(unsubscribeUrl: string, cohort: NurtureCohort): string {
   return `<p style="font-size:12px;color:#999;margin:0;">Yuri is Seoul Sister's AI K-beauty advisor. ${reason} <a href="${unsubscribeUrl}" style="color:#999;">Unsubscribe with one click</a> and you will never hear from us again.</p>`
 }
 
-/** Email 1 — Day 0. The honest reset. CTA: free widget chat. */
-function email1(cohort: NurtureCohort, unsubscribeUrl: string): NurtureEmailContent {
+/**
+ * Email 1 — Day 0. The honest reset. CTA: free widget chat.
+ *
+ * Nov 7 2026: the widget subject "Picking up where we left off" used to link to
+ * the bare homepage, which only restores a conversation in the same browser
+ * within an hour, so most readers met an empty chat. The subject now appears
+ * only when a resume link exists and the button actually reopens their
+ * conversation; otherwise the subject promises nothing about continuity.
+ */
+function email1(
+  cohort: NurtureCohort,
+  _unsubscribeUrl: string,
+  options: NurtureEmailOptions = {}
+): NurtureEmailContent {
+  const resumeUrl = cohort === 'widget' ? options.resumeUrl ?? null : null
   const opener =
     cohort === 'registered'
       ? `<p>You created an account with us a little while back, and then we did the thing where the very next screen asked you to subscribe before you could try anything. If you closed the tab right there, honestly, fair.</p>`
@@ -46,19 +70,25 @@ function email1(cohort: NurtureCohort, unsubscribeUrl: string): NurtureEmailCont
     subject:
       cohort === 'registered'
         ? `The part we should have led with`
-        : `Picking up where we left off`,
+        : resumeUrl
+          ? `Picking up where we left off`
+          : `You can talk to me anytime, no account needed`,
     bodyHtml: `
 <p>Hi, it's Yuri from Seoul Sister.</p>
 ${opener}
 <p>So here's the part we should have led with: you can talk to me right now, no account needed. Ask me anything you'd ask a friend who knows Korean skincare inside out. What's actually worth it for your skin, whether that viral serum is right for you, how to tell if the snail mucin you bought is real. I'll give you a straight answer backed by a database of 5,900+ products, and I'll tell you when something is not worth your money too.</p>
-<p><a href="${SITE}/?from=nurture_1" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">Talk to Yuri, free</a></p>
+${
+  resumeUrl
+    ? `<p><a href="${escapeAttr(resumeUrl)}" style="${BUTTON_STYLE}">Pick up our conversation</a></p>`
+    : `<p><a href="${SITE}/?from=nurture_1" style="${BUTTON_STYLE}">Talk to Yuri, free</a></p>`
+}
 <p>If it turns out I'm useful, the paid side is where I remember your skin, build your routine, and adjust it as your skin changes month to month. But try the conversation first. That's the honest order to do it in.</p>
 <p>Yuri</p>`,
   }
 }
 
 /** Email 2 — Day 3. Pure value, zero ask: the counterfeit check. */
-function email2(_cohort: NurtureCohort, _unsubscribeUrl: string): NurtureEmailContent {
+function email2(_cohort: NurtureCohort, _unsubscribeUrl: string, _options?: NurtureEmailOptions): NurtureEmailContent {
   return {
     subject: `The 2-minute check before you buy any Korean skincare`,
     bodyHtml: `
@@ -78,7 +108,7 @@ function email2(_cohort: NurtureCohort, _unsubscribeUrl: string): NurtureEmailCo
 }
 
 /** Email 3 — Day 8. The continuity fact + the ask + the last-email promise. */
-function email3(_cohort: NurtureCohort, _unsubscribeUrl: string): NurtureEmailContent {
+function email3(_cohort: NurtureCohort, _unsubscribeUrl: string, _options?: NurtureEmailOptions): NurtureEmailContent {
   return {
     subject: `What I can't do for you in one chat (last email, promise)`,
     bodyHtml: `
@@ -92,6 +122,10 @@ function email3(_cohort: NurtureCohort, _unsubscribeUrl: string): NurtureEmailCo
   }
 }
 
+function escapeAttr(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 const STEPS = [email1, email2, email3] as const
 
 /** Days that must have elapsed since the PREVIOUS send before each step. */
@@ -100,9 +134,10 @@ export const STEP_DELAYS_DAYS = [0, 3, 5] as const // step1 immediate, step2 at 
 export function buildNurtureEmail(
   step: 1 | 2 | 3,
   cohort: NurtureCohort,
-  unsubscribeToken: string
+  unsubscribeToken: string,
+  options: NurtureEmailOptions = {}
 ): NurtureEmailContent & { footerHtml: string; unsubscribeUrl: string } {
   const unsubscribeUrl = `${SITE}/api/email/unsubscribe?token=${unsubscribeToken}`
-  const content = STEPS[step - 1](cohort, unsubscribeUrl)
+  const content = STEPS[step - 1](cohort, unsubscribeUrl, options)
   return { ...content, footerHtml: unsubFooter(unsubscribeUrl, cohort), unsubscribeUrl }
 }

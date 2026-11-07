@@ -50,6 +50,42 @@ export interface GeneratedLeadEmail {
 }
 
 /**
+ * The link placed below the recap (Nov 7 2026). `resumes` is true only when the
+ * URL carries a signed resume token (src/lib/widget/resume-token.ts), i.e. the
+ * click really reopens this conversation. Recaps used to promise "pick the
+ * conversation right back up" while linking to the bare homepage, which opened
+ * an empty chat for anyone clicking more than an hour later or on another
+ * device. Yuri is told which of the two links she has, as a fact, so the email
+ * never promises continuity the link cannot deliver.
+ */
+export interface RecapLink {
+  url: string
+  resumes: boolean
+}
+
+const HOMEPAGE_RECAP_LINK: RecapLink = { url: 'https://www.seoulsister.com/?from=recap', resumes: false }
+
+export const RECAP_BUTTON_TEXT_RESUME = 'Continue our conversation'
+export const RECAP_BUTTON_TEXT_HOMEPAGE = 'Chat with Yuri'
+
+/** What the button below the email does, stated as a fact for Yuri. */
+export function recapLinkFact(link: RecapLink): string {
+  return link.resumes
+    ? `A button labelled "${RECAP_BUTTON_TEXT_RESUME}" is placed below your email. It reopens this exact conversation on the Seoul Sister homepage, with everything the two of you said still on screen, for the next 30 days and on any device. That button is their way back, so don't add a seoulsister.com link of your own.`
+    : `A button labelled "${RECAP_BUTTON_TEXT_HOMEPAGE}" is placed below your email. It opens the free chat on the Seoul Sister homepage as a new conversation: this transcript will not be there when they click it. So it would not be true to tell them the link picks this conversation back up or brings them back to where you left off. Don't add a seoulsister.com link of your own.`
+}
+
+function escapeAttr(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+/** The fixed button appended below Yuri's body (same style as lead-reengage.ts). */
+export function recapLinkButtonHtml(link: RecapLink): string {
+  const text = link.resumes ? RECAP_BUTTON_TEXT_RESUME : RECAP_BUTTON_TEXT_HOMEPAGE
+  return `<p style="margin:22px 0 0;"><a href="${escapeAttr(link.url)}" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">${text}</a></p>`
+}
+
+/**
  * Discriminated result so the caller can act on Yuri's judgments:
  *  - send:              deliver the email
  *  - suppressed:        their address (or unknown), but no email warranted — keep capture
@@ -89,7 +125,7 @@ JOB 2 — If (and only if) sending, write ONE short, warm follow-up email — th
 What this email IS:
 - A genuine continuation of YOUR conversation with THIS person, grounded in what they actually told you (their concern, the products they were curious about, where you left off).
 - A recap of their SITUATION and the #1 priority you gave them — the diagnosis, the single highest-leverage step, the one product pick that mattered. That's the whole recap.
-- An open door back to the conversation — they get ongoing conversations with you (${PRICING.yuri_allowance_display}), the complete routine built with them, a profile that remembers them, and progress tracking if they subscribe (${PRICING.monthly_display}), but lead with the relationship, not the pitch.
+- An open door back to the conversation (the facts below say exactly what the button under your email does; describe it only as that) — they get ongoing conversations with you (${PRICING.yuri_allowance_display}), the complete routine built with them, a profile that remembers them, and progress tracking if they subscribe (${PRICING.monthly_display}), but lead with the relationship, not the pitch.
 
 What this email is NOT:
 - NOT a complete take-home routine. Even if the conversation covered many products and steps, do NOT compile a full AM/PM routine, a multi-week schedule, or a complete shopping list into the email. The recap gives them their #1 priority and names what a complete build would cover; building, saving, and adjusting that full routine together is what a subscription is — say that plainly and warmly in one sentence, in your own words. A "complete plan" email is a stale snapshot with no one there to adjust it; the honest gift is the priority plus the open door.
@@ -106,7 +142,7 @@ The reader may know Yuri is an AI; that's fine. But an email full of AI tells re
 - A slightly imperfect, conversational sentence beats a polished one.
 
 Return STRICT JSON only, no markdown fence:
-{"should_send": true|false, "address_is_visitors_own": true|false, "reason": "<one short sentence explaining the decision>", "subject": "<a short, human subject line — lowercase-casual is fine, no emoji spam>", "body_html": "<the email body as simple HTML: a few <p> paragraphs, maybe one link to https://seoulsister.com — no <html>/<head>/<body> tags, no inline styles, just <p> and <a>>"}
+{"should_send": true|false, "address_is_visitors_own": true|false, "reason": "<one short sentence explaining the decision>", "subject": "<a short, human subject line — lowercase-casual is fine, no emoji spam>", "body_html": "<the email body as simple HTML: a few <p> paragraphs, no links (a fixed button is added below your email), no <html>/<head>/<body> tags, no inline styles>"}
 When should_send is false, set subject and body_html to empty strings.`
 
 function buildTranscript(conversation: ConversationTurn[]): string {
@@ -157,7 +193,9 @@ export async function generateLeadEmail(
   facts: VisitorMemoryFacts,
   conversation: ConversationTurn[],
   capturedEmail: string,
-  visitorId: string
+  visitorId: string,
+  /** Defaults to the plain homepage chat, so an omitted link never promises continuity. */
+  link: RecapLink = HOMEPAGE_RECAP_LINK
 ): Promise<LeadEmailResult> {
   // Existence check ONLY (binding note from /ai-first-guard): is there anything
   // at all to reason about? Whether it's good enough to ground an email is
@@ -190,6 +228,8 @@ export async function generateLeadEmail(
   }
 
   sections.push(`## The address they typed\n${capturedEmail}`)
+
+  sections.push(`## The link below your email\n${recapLinkFact(link)}`)
 
   const userPrompt = `${sections.join('\n\n')}\n\nFirst judge the address and decide should_send, then (only if sending) write the follow-up, grounded ONLY in the facts above. Return strict JSON.`
 
@@ -258,7 +298,7 @@ export async function generateLeadEmail(
       reason: parsed.reason,
       email: {
         subject: scrubEmailVoice(parsed.subject),
-        bodyHtml: scrubEmailVoice(parsed.body_html),
+        bodyHtml: `${scrubEmailVoice(parsed.body_html)}\n${recapLinkButtonHtml(link)}`,
       },
     }
   } catch (err) {
