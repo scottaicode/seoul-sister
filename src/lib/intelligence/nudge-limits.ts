@@ -20,15 +20,18 @@ export const SPACING_DAYS = 3
 export const DAYTIME_START_HOUR = 9 // local
 export const DAYTIME_END_HOUR = 20 // local (8pm)
 
-/** Local hour in an IANA timezone, defaulting to a safe daytime hour if unknown. */
-export function localHour(timezone: string | null): number {
+/**
+ * Local hour in an IANA timezone, defaulting to a safe daytime hour if unknown.
+ * `now` defaults to the current time; passing it makes the hour testable.
+ */
+export function localHour(timezone: string | null, now: number = Date.now()): number {
   if (!timezone) return 12 // unknown tz → treat as midday (safe to send)
   try {
     const parts = new Intl.DateTimeFormat('en-US', {
       hour: 'numeric',
       hour12: false,
       timeZone: timezone,
-    }).formatToParts(new Date())
+    }).formatToParts(new Date(now))
     const h = parts.find((p) => p.type === 'hour')?.value
     const n = h ? parseInt(h, 10) : 12
     return Number.isNaN(n) ? 12 : n % 24

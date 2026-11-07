@@ -23,7 +23,8 @@ const DAILY_PHASE_UTC_HOUR = 16
  *
  * DRY RUN (any mode, writes nothing, sends nothing):
  *   POST { "dry_run": true, "user_ids": [...], "lead_ids": [...],
- *          "assume_owner_approval": true, "bypass_daytime": true }
+ *          "assume_owner_approval": true, "bypass_daytime": true,
+ *          "bypass_checkin_day": true }
  * returns the exact subject + HTML each recipient would receive.
  *
  * Secured with CRON_SECRET (verifyCronAuth).
@@ -42,6 +43,7 @@ async function handler(request: Request) {
       lead_ids?: string[]
       assume_owner_approval?: boolean
       bypass_daytime?: boolean
+      bypass_checkin_day?: boolean
     }
     if (body.dry_run === true) {
       const result = await runYuriWakesUp(db, {
@@ -51,6 +53,7 @@ async function handler(request: Request) {
         onlyLeadIds: Array.isArray(body.lead_ids) ? body.lead_ids : undefined,
         assumeOwnerApproval: body.assume_owner_approval === true,
         bypassDaytime: body.bypass_daytime === true,
+        bypassCheckinDay: body.bypass_checkin_day === true,
       })
       return NextResponse.json({ ...result, duration_ms: Date.now() - startedAt })
     }
@@ -74,7 +77,8 @@ async function handler(request: Request) {
 
   try {
     // Hourly, so every timezone's 9am-8pm local window is reachable for a
-    // subscriber (once per local day: the daily unique index + judged_recently).
+    // subscriber. Subscribers are judged weekly, on their LOCAL Sunday (plus
+    // trial day 3): checkinGate, the daily unique index and judged_recently.
     // Grading and leads (no timezone) run once a day, at DAILY_PHASE_UTC_HOUR.
     const daily = new Date().getUTCHours() === DAILY_PHASE_UTC_HOUR
     const result = await runYuriWakesUp(db, {

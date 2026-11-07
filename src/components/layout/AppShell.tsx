@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { loginUrlFor } from '@/lib/auth/return-to'
 import Header from './Header'
 import BottomNav from './BottomNav'
 
@@ -43,7 +44,9 @@ export default function AppShell({ children }: AppShellProps) {
         router.replace(`${fallback}${params}`)
         return
       }
-      router.replace('/login')
+      // Carry where they were going (e.g. a check-in email's /yuri?ask=...)
+      // through sign-in, instead of dropping them on /dashboard after login.
+      router.replace(loginUrlFor(pathname, typeof window !== 'undefined' ? window.location.search : ''))
     }
   }, [user, loading, router, pathname])
 

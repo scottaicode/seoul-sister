@@ -5,6 +5,55 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.50.0 — Yuri's check-ins go weekly ("the week ahead"), with a 7-day forecast and a smaller judge context (Nov 7 2026) (branch `feat/weekly-checkins`, not merged or deployed)
+
+- **Why.** The check-in judge (claude-opus-5-5) averaged ~16.4K input tokens, ~$0.075 a judgment, run
+  once per local day: ~$2.40/member/month on a $9.99 plan. Owner decision: one weekly check-in.
+- **Cadence** (`checkinGate`): a member is judged on their LOCAL Sunday, inside the existing 9am-8pm
+  local window (the cron stays hourly, so every timezone is reachable), and never within 6 local
+  calendar days of their last judgment (calendar days, not hours, so next Sunday at the same hour is
+  never "too soon"). Trial members (`ss_subscriptions.status='trialing'`) get ONE extra judgment on
+  trial day 3 (local calendar; start = Stripe `current_period_start`, falling back to `created_at`), so
+  a 7-day trial can hear from Yuri. Cap (3 per 30 days) and spacing (3 days) unchanged; dogfood and
+  internal handling unchanged. New skip reason `not_checkin_day`. `localHour()` takes an optional `now`.
+- **Forecast** (`src/lib/intelligence/weather-forecast.ts`): 7 daily rows from Open-Meteo in the
+  member's profile timezone (high/low, humidity min-max and mean, peak UV, precipitation and chance,
+  condition), weekday names computed in code, missing values stay null. Replaces the single
+  "right now" weather line in the check-in only; `fetchWeather()` and its callers are unchanged.
+- **Prompt framing** (`subscriber-checkin.ts`): from "today" to "the coming week"; Yuri may name a day
+  and later days are forecasts. New fact: the email ends with a button that opens a chat with her with
+  `suggested_ask` typed in, so the message can invite them there (an invitation, never pressure).
+  Silence-is-normal, timely-and-specific, facts-not-pressure, no em dashes: unchanged. A "why you are
+  being asked today" fact line (weekly Sunday vs trial day 3) and the trial dates are in the facts.
+- **Smaller judge context** (`src/lib/proactive/checkin-context.ts`): the judge no longer gets the whole
+  chat memory. Kept (closed-world allowlist of the chat formatter's sections, so ownership/provenance
+  hedges are identical): skin profile + medical history, routine, Glass Skin photo dates, reactions,
+  allergies, cycle phase; plus the most recent conversation summary and dated open loops, decisions,
+  preferences, and corrections from the last 120 days. Dropped: older summaries, message excerpts,
+  inventory (the dated shelf is already in the check-in facts), ingredient stacking, community and
+  specialist insights, chat-only instructions. The content guard's evidence is unchanged (full decision
+  memory + their own messages). Measured with the token-count API on the same three members:
+  **17,019 → 8,980, 8,384 → 4,929, 31,532 → 12,172** input tokens (avg 18,978 → 8,694, -54%).
+  Dry run per-judgment cost $0.025-0.065. Estimated judge cost ~$0.20/member/month (4.33 judgments)
+  vs ~$2.25-2.40 daily; each "speak" also runs the two guard reads (~$0.08-0.13).
+- **Login continuity.** A signed-out member clicking "Pick this up with Yuri" was sent to a bare
+  `/login` and, after signing in, to `/dashboard`: the prefilled question was lost. AppShell now sends
+  them to `/login?next=<path+query>`; password sign-in and Google sign-in (via sessionStorage across
+  the OAuth round trip) finish there when the default destination is `/dashboard`. Onboarding and the
+  paywall still win. Same-site paths only (`src/lib/auth/return-to.ts`), so `next` cannot redirect off-site.
+- **Dry runs no longer write.** `scripts/dry-run-yuri-wakes-up.ts` was documented as writing nothing,
+  but every judge and guard call inserted a `ss_ai_usage` row. It now sets `AI_USAGE_DRY_RUN=1`
+  (`logAIUsage` prints instead of inserting) and takes `--any-day` to render off-Sunday
+  (`bypass_checkin_day` on the route's dry-run POST).
+- **Tests.** New `tests/weekly-checkin.test.mjs` (runtime: Sunday gate across Chicago/Tokyo/LA, 6-day
+  rejudge, trial day 3 in local calendar, forecast shaping, trimmed-context includes/excludes, login
+  return path incl. open-redirect cases). Updated on purpose: the check-in gate test in
+  `proactive-outreach.test.mjs` (it pinned a Friday as a judging day) and the callback regex in
+  `oauth-callback-onboarding-first.test.mjs`. 1471/1471 pass; tsc and build clean.
+- **Not verified:** no production Sunday run yet (the scheduler must produce the first weekly row); no
+  trialing member exists today, so trial day 3 is unit-tested only; login continuity is traced in code
+  and tested as pure functions, not clicked through in a browser.
+
 ## v11.48.5 — US prices for the products Yuri actually names; sunscreens never matched; scraper weekly (Nov 3 2026)
 
 - **Measured first.** In the last 120 days Yuri named 81 catalog products to landing-page visitors

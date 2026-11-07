@@ -205,22 +205,33 @@ test('shared cap: 3 per 30 days and 3 days apart, counted across both crons', as
 })
 
 test('check-in gate: demo, night, cap, judged-today skip; daytime passes', async () => {
+  // Updated Nov 7 2026 on purpose: check-ins went WEEKLY (local Sunday, 6 local
+  // days between judgments). NOW (Oct 9 2026) is a Friday, so this test now runs
+  // on the following Sunday and uses the real clock; the weekly cadence itself
+  // is covered in tests/weekly-checkin.test.mjs.
   const limits = await limitsImpl()
+  const clockFile = join(mkdtempSync(join(tmpdir(), 'ss-clock-')), 'clock.mjs')
+  writeFileSync(clockFile, ts.transpileModule(read('src', 'lib', 'yuri', 'clock.ts'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText)
+  const clock = `(await import(${JSON.stringify(pathToFileURL(clockFile).href)}))`
   const { checkinGate } = await loadPure(['src', 'lib', 'proactive', 'subscriber-checkin.ts'], {
     // The real function, closed over the real constants from nudge-limits.ts.
     capOrSpacingBlocks: `((MAX_NUDGES, NUDGE_WINDOW_DAYS, SPACING_DAYS) => (${limits.capOrSpacingBlocks.toString()}))(${limits.MAX_NUDGES}, ${limits.NUDGE_WINDOW_DAYS}, ${limits.SPACING_DAYS})`,
     localHour: '((tz) => (tz === "Night/Zone" ? 3 : 12))',
     DAYTIME_START_HOUR: '9',
     DAYTIME_END_HOUR: '20',
+    getLocalClock: `${clock}.getLocalClock`,
+    daysBetweenIso: `${clock}.daysBetweenIso`,
   })
+  const SUNDAY = Date.parse('2026-10-11T17:00:00Z') // noon Sunday in Chicago
   const s = { user_id: 'u', timezone: 'America/Chicago', latitude: null, longitude: null, is_demo: false, nudge_email_opt_out: false, nudge_unsubscribe_token: null }
-  const o = (over = {}) => ({ internal: false, nudgeCreatedAts: [], lastJudgedAt: null, now: NOW, ...over })
+  const o = (over = {}) => ({ internal: false, nudgeCreatedAts: [], lastJudgedAt: null, now: SUNDAY, ...over })
   assert.equal(checkinGate(s, o()), null)
   assert.equal(checkinGate({ ...s, is_demo: true }, o()), 'demo')
   assert.equal(checkinGate(s, o({ internal: true })), 'internal', 'admin/founder accounts only via the dogfood list')
   assert.equal(checkinGate({ ...s, timezone: 'Night/Zone' }, o()), 'night')
-  assert.equal(checkinGate(s, o({ nudgeCreatedAts: [new Date(NOW - DAY).toISOString()] })), 'cap_or_spacing')
-  assert.equal(checkinGate(s, o({ lastJudgedAt: new Date(NOW - 3600 * 1000).toISOString() })), 'judged_recently')
+  assert.equal(checkinGate(s, o({ nudgeCreatedAts: [new Date(SUNDAY - DAY).toISOString()] })), 'cap_or_spacing')
+  assert.equal(checkinGate(s, o({ lastJudgedAt: new Date(SUNDAY - 3600 * 1000).toISOString() })), 'judged_recently')
+  assert.equal(checkinGate(s, o({ now: NOW })), 'not_checkin_day', 'a Friday is not a check-in day')
 })
 
 // ---------------------------------------------------------------------------

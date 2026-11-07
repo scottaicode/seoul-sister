@@ -36,7 +36,8 @@ import {
   leadGuardEvidence,
   type LeadRow,
 } from './lead-reengage'
-import { checkinGate, judgeSubscriber, dogfoodUserIds, type SubscriberRow } from './subscriber-checkin'
+import { checkinGate, judgeSubscriber, dogfoodUserIds, trialDayNumber, type SubscriberRow } from './subscriber-checkin'
+import { trialInfoFromSubscription } from './checkin-context'
 import type { ProactiveDecision } from './judge'
 import { checkProactiveDraft, type GuardEvidence } from './content-guard'
 import { safeSlice } from '@/lib/utils/text-slice'
@@ -74,6 +75,8 @@ export interface RunOptions {
   assumeOwnerApproval?: boolean
   /** DRY RUN ONLY: ignore the local-daytime gate so a review can run any hour. */
   bypassDaytime?: boolean
+  /** DRY RUN ONLY: ignore the weekly Sunday gate so a review can run any day. */
+  bypassCheckinDay?: boolean
   /**
    * DRY RUN ONLY: settled memory not yet written (memory-settle dry run), keyed
    * by conversation id. Substituted in-process so the render shows what Yuri
@@ -206,13 +209,17 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
     // plan (webhook), so a paid plan on a canceled account was set on purpose
     // (a comp) and that member gets check-ins like any other (Oct 31 2026).
     const [subsRes, nudgesRes, judgedRes] = await Promise.all([
-      db.from('ss_subscriptions').select('user_id, status').in('user_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']),
+      db
+        .from('ss_subscriptions')
+        .select('user_id, status, current_period_start, created_at, trial_end')
+        .in('user_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']),
       db.from('ss_user_nudges').select('user_id, created_at').in('user_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']),
       db
         .from('ss_proactive_judgments')
         .select('user_id, created_at')
         .eq('campaign', CHECKIN_CAMPAIGN)
-        .gte('created_at', new Date(now - 48 * 3600 * 1000).toISOString()),
+        // Weekly cadence looks back 6 local days; 8 days of rows covers any timezone.
+        .gte('created_at', new Date(now - 8 * 24 * 3600 * 1000).toISOString()),
     ])
     // A failed load here would read as "no prior nudges / never canceled" and
     // hand out fresh contact — make it an error and skip the phase instead.
@@ -229,6 +236,7 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
         // then given the plan). Recorded on every judgment so results for
         // comped and paying members are never averaged together.
         const comped = !rows.some((r) => r.status === 'active' || r.status === 'trialing')
+        const trial = trialInfoFromSubscription(rows.find((r) => r.status === 'trialing'))
         const nudgeCreatedAts = (nudgesRes.data ?? []).filter((r) => r.user_id === p.user_id).map((r) => r.created_at as string)
         const lastJudgedAt =
           (judgedRes.data ?? [])
@@ -241,7 +249,9 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
           nudgeCreatedAts,
           lastJudgedAt: opts.dryRun ? null : lastJudgedAt,
           now,
+          trial,
           bypassDaytime: opts.dryRun && opts.bypassDaytime,
+          bypassCheckinDay: opts.dryRun && opts.bypassCheckinDay,
         })
         if (skip) {
           count(sub.skipped, skip)
@@ -255,7 +265,8 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
             now,
             opts.dryRun && opts.memoryOverrides
               ? (ctx) => applyMemoryOverrides(db, p.user_id, ctx, opts.memoryOverrides!)
-              : undefined
+              : undefined,
+            trial
           )
           const { decision, guardReasons } = await guardDecision(judged.decision, judged.evidence, p.user_id)
           sub[decision.decision]++
@@ -300,6 +311,8 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
               nudge_email_opt_out_at_send: p.nudge_email_opt_out === true,
               ...(isDogfood ? { dogfood: true } : {}),
               comped,
+              ...(trial ? { trial_day: trialDayNumber(trial, p.timezone, now) } : {}),
+              local_weekday: getLocalClock(p.timezone, new Date(now)).weekday,
               ...(guardReasons ? { guard: guardReasons } : {}),
               local_date: getLocalClock(p.timezone, new Date(now)).isoDate,
             },

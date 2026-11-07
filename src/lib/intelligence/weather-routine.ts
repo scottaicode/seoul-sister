@@ -28,7 +28,7 @@ interface OpenMeteoResponse {
 }
 
 /** WMO Weather interpretation codes → human-readable descriptions */
-const WMO_CODES: Record<number, { description: string; icon: string }> = {
+export const WMO_CODES: Record<number, { description: string; icon: string }> = {
   0: { description: 'Clear sky', icon: 'clear' },
   1: { description: 'Mainly clear', icon: 'clear' },
   2: { description: 'Partly cloudy', icon: 'cloudy' },

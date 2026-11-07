@@ -1,27 +1,29 @@
 /**
  * Subscriber check-ins — Yuri decides, from her own memory of the person,
- * whether TODAY there is something worth saying first (Yuri Wakes Up First,
- * Oct 9 2026).
+ * whether there is something worth saying first about THE COMING WEEK (Yuri
+ * Wakes Up First, Oct 9 2026; weekly "week ahead" cadence Nov 7 2026).
  *
  * How this differs from the rule-based proactive-nudge cron, which it sits
  * beside rather than replaces: that cron's eligibility engine picks a reason
  * (open loop, phase mismatch, cycle window, glass-skin cadence) and Yuri only
- * WRITES it, from a one-line context. Here Yuri gets the same context she has
- * in chat (loadUserContext → formatContextForPrompt: her summaries, decisions,
- * routine, shelf, corrections) plus the facts a check-in needs (dates on the
- * shelf, today's weather where they live, what she already sent and what came
- * of it) and makes the call herself, including the call to stay quiet.
+ * WRITES it, from a one-line context. Here Yuri gets the parts of her
+ * chat memory a check-in needs (checkin-context.ts: profile, routine, photo
+ * dates, latest summary, dated decisions and open loops) plus the check-in
+ * facts (dates on the shelf, the 7-day forecast where they live, trial status,
+ * what she already sent and what came of it) and makes the call herself,
+ * including the call to stay quiet.
  *
- * Deterministic rails only: active (non-demo, non-canceled) subscriber, local
- * daytime, the shared nudge cap/spacing (nudge-limits.ts), one judgment per user
- * per ~day. A "speak" becomes an ss_user_nudges row, so the dashboard card, the
+ * Deterministic rails only: non-demo subscriber, local daytime, the shared
+ * nudge cap/spacing (nudge-limits.ts), and the weekly cadence: judged on their
+ * LOCAL Sunday, at most once per 6 local days, plus one extra judgment on day 3
+ * of a free trial (checkinGate). A "speak" becomes an ss_user_nudges row, so the dashboard card, the
  * existing email adapter, the opt-out and the acted tracking all apply unchanged.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadUserContext, formatContextForPrompt, type UserContext } from '@/lib/yuri/memory'
-import { getLocalClock, clockFactBlock } from '@/lib/yuri/clock'
-import { fetchWeather } from '@/lib/intelligence/weather-routine'
+import { getLocalClock, clockFactBlock, daysBetweenIso } from '@/lib/yuri/clock'
+import { fetchWeeklyForecast, formatForecastFacts } from '@/lib/intelligence/weather-forecast'
 import { buildNudgeSubject } from '@/lib/email/nudge-email'
 import type { DecisionMemory } from '@/lib/yuri/memory'
 import type { GuardEvidence } from './content-guard'
@@ -33,8 +35,20 @@ import {
 } from '@/lib/intelligence/nudge-limits'
 import { runProactiveJudgment, type ProactiveDecision } from './judge'
 import { calibrationFacts, CHECKIN_CAMPAIGN } from './ledger'
+import { buildCheckinMemory, type TrialInfo } from './checkin-context'
 
-const REJUDGE_AFTER_HOURS = 20
+/**
+ * Weekly cadence (Nov 7 2026). The judge costs ~$0.05-0.08 a call; judged daily
+ * that was ~$2.40/member/month on a $9.99 plan. Now: once a week, on the
+ * member's LOCAL Sunday ("the week ahead"), and never again within
+ * REJUDGE_AFTER_LOCAL_DAYS local calendar days of the last judgment.
+ * Calendar days, not hours, so a Sunday judged at 9am and the next Sunday
+ * reached at 9am are 7 apart however the hours fall.
+ */
+export const CHECKIN_WEEKDAY = 'Sunday'
+export const REJUDGE_AFTER_LOCAL_DAYS = 6
+/** Trial members get one extra judgment on this day of the trial (day 1 = start date). */
+export const TRIAL_CHECKIN_DAY = 3
 
 export interface SubscriberRow {
   user_id: string
@@ -46,7 +60,16 @@ export interface SubscriberRow {
   nudge_unsubscribe_token: string | null
 }
 
-export type CheckinSkipReason = 'demo' | 'internal' | 'night' | 'cap_or_spacing' | 'judged_recently'
+export type CheckinSkipReason = 'demo' | 'internal' | 'night' | 'cap_or_spacing' | 'not_checkin_day' | 'judged_recently'
+
+/** Day N of a trial in the member's local calendar (start date = day 1). Pure. */
+export function trialDayNumber(trial: TrialInfo | null, timezone: string | null, now: number): number | null {
+  if (!trial) return null
+  const start = getLocalClock(timezone, new Date(trial.startedAt)).isoDate
+  const today = getLocalClock(timezone, new Date(now)).isoDate
+  const diff = daysBetweenIso(start, today)
+  return diff == null ? null : diff + 1
+}
 
 /**
  * Admin/founder accounts are excluded unless listed for dogfooding in
@@ -72,27 +95,43 @@ export function checkinGate(
     nudgeCreatedAts: string[]
     lastJudgedAt: string | null
     now: number
+    /** Set only for a 'trialing' subscription (trialInfoFromSubscription). */
+    trial?: TrialInfo | null
     bypassDaytime?: boolean
+    /** DRY RUN ONLY: judge on any weekday (review runs). */
+    bypassCheckinDay?: boolean
   }
 ): CheckinSkipReason | null {
   if (s.is_demo) return 'demo'
   if (opts.internal) return 'internal'
   if (!opts.bypassDaytime) {
-    const h = localHour(s.timezone)
+    const h = localHour(s.timezone, opts.now)
     if (h < DAYTIME_START_HOUR || h >= DAYTIME_END_HOUR) return 'night'
   }
   if (capOrSpacingBlocks(opts.nudgeCreatedAts, opts.now)) return 'cap_or_spacing'
-  if (opts.lastJudgedAt && opts.now - new Date(opts.lastJudgedAt).getTime() < REJUDGE_AFTER_HOURS * 3600 * 1000) {
-    return 'judged_recently'
+
+  const today = getLocalClock(s.timezone, new Date(opts.now))
+  const lastJudgedLocal = opts.lastJudgedAt ? getLocalClock(s.timezone, new Date(opts.lastJudgedAt)).isoDate : null
+  const daysSinceJudged = lastJudgedLocal ? daysBetweenIso(lastJudgedLocal, today.isoDate) : null
+
+  // Trial day 3: one judgment that day, whatever the weekday, so a member on a
+  // 7-day trial can hear from Yuri before it ends. Never twice on the same day.
+  if (trialDayNumber(opts.trial ?? null, s.timezone, opts.now) === TRIAL_CHECKIN_DAY) {
+    return daysSinceJudged === 0 ? 'judged_recently' : null
   }
+
+  if (!opts.bypassCheckinDay && today.weekday !== CHECKIN_WEEKDAY) return 'not_checkin_day'
+  if (daysSinceJudged != null && daysSinceJudged < REJUDGE_AFTER_LOCAL_DAYS) return 'judged_recently'
   return null
 }
 
 const CHECKIN_SYSTEM = `You are Yuri (유리), Seoul Sister's K-beauty advisor: twenty-plus years in Korean formulation labs and cosmetic chemistry, warm, direct, the older sister who tells the truth about skin and money. Affiliate relationships never influence what you recommend, so "don't buy that yet" and "keep what you have" are things you can say when they're true.
 
-Below is everything you know about one of your subscribers (the same memory you use when you talk to them), plus today's facts. You are deciding whether to reach out to them FIRST today, before they come to you.
+Below is what you know about one of your subscribers that bears on a check-in: a selection from the memory you use when you talk to them (older conversation summaries and past message excerpts are left out, so something missing here may still have happened), plus this week's facts. This check-in looks at the coming seven days; the facts below say why you are being asked today. You are deciding whether to reach out to them FIRST about the coming week, before they come to you.
 
-Silence is the normal answer. Most days there is nothing worth interrupting someone for, and a check-in with nothing in it teaches them to ignore you. Speak only if, from what you actually know, there is something timely and specific to THEIR skin that they would be glad you said today. The kinds of moments that can earn it: where they are in a plan you made together (an active they started, a phase, a promise you made to check back), something about today's weather where they live that matters for what they're using, or something they told you they were about to buy or replace, where "hold off until we've talked" is the honest advice. These are examples, not a checklist; anything else that genuinely matters to them counts, and none of these is a reason to speak on its own.
+Silence is the normal answer. Most weeks there is nothing worth interrupting someone for, and a check-in with nothing in it teaches them to ignore you. Speak only if, from what you actually know, there is something timely and specific to THEIR skin in the coming week that they would be glad you said. The kinds of moments that can earn it: where they are in a plan you made together (an active they started, a phase, a promise you made to check back), something in this week's forecast where they live that matters for what they're using, or something they told you they were about to buy or replace, where "hold off until we've talked" is the honest advice. These are examples, not a checklist; anything else that genuinely matters to them counts, and none of these is a reason to speak on its own.
+
+The forecast is day by day, so you can point to a specific day ("Tuesday looks humid"). Anything after today is a forecast, not a fact, and reads that way when you say it.
 
 Data you do NOT have, so never present as measured: when a bottle was opened, how much they use per application, or whether they actually bought something you recommended. Shelf dates are when an item was added to their shelf in Seoul Sister. Items marked "on a plan you saved, not confirmed owned" were written to the shelf when you saved a routine; treat them as planned, not as something they use, unless their own words say otherwise. If timing matters, reason from what you know and ask.
 
@@ -103,10 +142,11 @@ If you speak:
 - You have no tools in this message: no ingredient-conflict check, no catalog lookup. So don't prescribe a new product or a change to their actives here. Say what you noticed and why it matters, and invite them to work out the change with you in chat, where you can check it properly. Telling them to hold off on buying or replacing something is fine.
 - Lesions, moles, anything that might need a doctor: refer, plainly.
 - No greeting and no sign-off (the email adds "Hi, it's Yuri."). No em dashes. Never guilt about how long it's been. No urgency or sales pressure.
-- Any day or date you mention must come from TODAY'S DATE below.
+- Any day or date you mention must come from TODAY'S DATE or the forecast dates below.
+- The email you write ends with a button that opens a chat with you, with your suggested_ask already typed in for them. So your message can end by inviting them to pick it up with you there. It is an invitation they are free to ignore: no pressure, no "log in now".
 
 Return STRICT JSON only:
-{"decision": "speak" | "silent", "signal": "<2-5 word label for what made you decide, in your words>", "reasoning": "<one or two sentences for the operations log: what you saw and why it does or doesn't warrant reaching out today>", "confidence": <0..1, how sure you are this helps rather than intrudes>, "subject": "<short, human subject line, or empty if silent>", "message": "<plain text, 1-3 short paragraphs separated by a blank line, or empty if silent>", "suggested_ask": "<the one-line message they could send you to pick it up, in THEIR voice, or empty if silent>"}`
+{"decision": "speak" | "silent", "signal": "<2-5 word label for what made you decide, in your words>", "reasoning": "<one or two sentences for the operations log: what you saw and why it does or doesn't warrant reaching out this week>", "confidence": <0..1, how sure you are this helps rather than intrudes>, "subject": "<short, human subject line, or empty if silent>", "message": "<plain text, 1-3 short paragraphs separated by a blank line, or empty if silent>", "suggested_ask": "<the one-line message they could send you to pick it up, in THEIR voice, or empty if silent>"}`
 
 function daysSince(iso: string | null | undefined, now: number): number | null {
   if (!iso) return null
@@ -115,7 +155,8 @@ function daysSince(iso: string | null | undefined, now: number): number | null {
 
 /**
  * The check-in-specific facts that formatContextForPrompt does not carry:
- * dated shelf + sizes, routine recency, today's weather, recency of contact,
+ * dated shelf + sizes, routine recency, the 7-day forecast, trial status and
+ * why today, recency of contact,
  * and what Yuri already sent proactively and what came of it.
  * Throws on a failed query: a silently empty shelf would read as "nothing to say".
  */
@@ -134,7 +175,8 @@ export async function loadCheckinFacts(
   db: SupabaseClient,
   s: SubscriberRow,
   now: number,
-  dm: DecisionMemory | null = null
+  dm: DecisionMemory | null = null,
+  trial: TrialInfo | null = null
 ): Promise<string> {
   const [shelf, routines, phase, lastMsg, nudges, routineProducts] = await Promise.all([
     db
@@ -180,7 +222,19 @@ export async function loadCheckinFacts(
     if (q.error) throw new Error(`check-in facts query failed: ${q.error.message}`)
   }
 
-  const lines: string[] = [clockFactBlock(getLocalClock(s.timezone, new Date(now)))]
+  const clock = getLocalClock(s.timezone, new Date(now))
+  const lines: string[] = [clockFactBlock(clock)]
+  const trialDay = trialDayNumber(trial, s.timezone, now)
+  if (trial) {
+    lines.push(
+      `They are on a free trial: started ${trial.startedAt.slice(0, 10)}${trial.endsAt ? `, ends ${trial.endsAt.slice(0, 10)}` : ''}; today is day ${trialDay ?? 'unknown'} of it.`
+    )
+  }
+  lines.push(
+    trialDay === TRIAL_CHECKIN_DAY && clock.weekday !== CHECKIN_WEEKDAY
+      ? `Why you are being asked today: it is day ${TRIAL_CHECKIN_DAY} of their trial (the one mid-trial check-in). Otherwise you are asked once a week, on Sunday.`
+      : `Why you are being asked today: it is their weekly check-in (once a week, on Sunday, about the week ahead).`
+  )
 
   const last = (lastMsg.data ?? [])[0] as { created_at: string } | undefined
   lines.push(
@@ -241,14 +295,14 @@ export async function loadCheckinFacts(
 
   if (s.latitude != null && s.longitude != null) {
     try {
-      const w = await fetchWeather(Number(s.latitude), Number(s.longitude))
-      lines.push(`Weather where they live right now (${w.location}): ${w.temperature}°C (feels ${w.feels_like}°C), humidity ${w.humidity}%, ${w.condition}. Today's PEAK UV index (the daily maximum, not the current reading): ${w.uv_index}.`)
+      const f = await fetchWeeklyForecast(Number(s.latitude), Number(s.longitude), s.timezone)
+      lines.push(formatForecastFacts(f, clock.isoDate))
     } catch (err) {
-      lines.push(`Weather: unavailable this run (fetch failed). Do not guess it.`)
-      console.warn(`[proactive] weather fetch failed for ${s.user_id}:`, err)
+      lines.push(`Forecast: unavailable this run (fetch failed). Do not guess it.`)
+      console.warn(`[proactive] forecast fetch failed for ${s.user_id}:`, err)
     }
   } else {
-    lines.push(`Weather: no coordinates on file for them.`)
+    lines.push(`Forecast: no coordinates on file for them.`)
   }
 
   const n = (nudges.data ?? []) as Array<{ id: string; nudge_type: string; nudge_sequence: number; message: string; status: string; created_at: string; acted_at: string | null; email_status: string | null }>
@@ -278,15 +332,19 @@ export async function judgeSubscriber(
    * DRY RUN ONLY: patch the loaded memory in-process (e.g. with a not-yet-
    * applied memory backfill) to render what Yuri would say once it lands.
    */
-  patchContext?: (ctx: UserContext) => Promise<void> | void
+  patchContext?: (ctx: UserContext) => Promise<void> | void,
+  trial: TrialInfo | null = null
 ): Promise<{ decision: ProactiveDecision; factsText: string; evidence: GuardEvidence }> {
   const userContext = await loadUserContext(s.user_id)
   if (patchContext) await patchContext(userContext)
   const [checkinFacts, calibration] = await Promise.all([
-    loadCheckinFacts(db, s, now, userContext.decisionMemory),
+    loadCheckinFacts(db, s, now, userContext.decisionMemory, trial),
     calibrationFacts(db, 'subscriber'),
   ])
-  const factsText = `# WHAT YOU KNOW ABOUT THEM (your memory)\n${formatContextForPrompt(userContext)}\n\n# TODAY\n${checkinFacts}\n\n${calibration}\n\nDecide, then return the JSON.`
+  // The FULL context is still loaded: the guard's evidence below reads the
+  // complete decision memory. Only what the judge is shown is trimmed.
+  const memory = buildCheckinMemory(userContext, getLocalClock(s.timezone, new Date(now)).isoDate, formatContextForPrompt)
+  const factsText = `# WHAT YOU KNOW ABOUT THEM (from your memory)\n${memory}\n\n# THIS WEEK\n${checkinFacts}\n\n${calibration}\n\nDecide, then return the JSON.`
   const decision = await runProactiveJudgment({
     system: CHECKIN_SYSTEM,
     facts: factsText,

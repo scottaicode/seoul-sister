@@ -45,6 +45,9 @@ test('paid users are unchanged', () => {
 
 test('the callback page routes through postSignInDestination and nothing else', () => {
   const page = readFileSync(join(root, 'src', 'app', 'auth', 'callback', 'page.tsx'), 'utf8')
-  assert.match(page, /router\.replace\(postSignInDestination\(profile\)\)/)
+  // Nov 7 2026: wrapped in afterSignIn so a member returning from a check-in
+  // email lands on /yuri?ask=... — afterSignIn replaces ONLY the '/dashboard'
+  // result (tests/weekly-checkin.test.mjs), so onboarding/subscribe still win.
+  assert.match(page, /router\.replace\(afterSignIn\(postSignInDestination\(profile\), next\)\)/)
   assert.doesNotMatch(page, /router\.replace\('\/subscribe'\)/)
 })

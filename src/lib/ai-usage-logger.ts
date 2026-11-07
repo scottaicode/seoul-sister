@@ -91,6 +91,15 @@ export async function logAIUsage(params: AIUsageParams): Promise<void> {
       params.cacheCreationTokens ?? 0
     )
 
+    // Review scripts (scripts/dry-run-yuri-wakes-up.ts) promise to write
+    // nothing: print the usage instead of inserting it.
+    if (process.env.AI_USAGE_DRY_RUN === '1') {
+      console.log(
+        `[ai-usage dry-run] ${JSON.stringify({ feature: params.feature, model: params.model, input_tokens: params.inputTokens, output_tokens: params.outputTokens, cache_read_tokens: params.cacheReadTokens ?? 0, cache_creation_tokens: params.cacheCreationTokens ?? 0, cost_usd: Math.round(cost * 1_000_000) / 1_000_000, user_id: params.userId ?? null })}`
+      )
+      return
+    }
+
     const db = getServiceClient()
     const { error } = await db.from('ss_ai_usage').insert({
       feature: params.feature,

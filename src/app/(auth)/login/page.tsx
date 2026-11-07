@@ -11,6 +11,13 @@ import {
   type AuthCaptchaHandle,
 } from '@/components/auth/AuthCaptcha'
 import WrongOriginNotice from '@/components/pwa/WrongOriginNotice'
+import { afterSignIn, safeReturnTo, RETURN_TO_STORAGE_KEY } from '@/lib/auth/return-to'
+
+/** ?next= from AppShell (read from window to avoid a useSearchParams Suspense boundary). */
+function readNext(): string | null {
+  if (typeof window === 'undefined') return null
+  return safeReturnTo(new URLSearchParams(window.location.search).get('next'))
+}
 
 export default function LoginPage() {
   const router = useRouter()
@@ -61,7 +68,7 @@ export default function LoginPage() {
         }
       }
 
-      router.push('/dashboard')
+      router.push(afterSignIn('/dashboard', readNext()))
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'Failed to sign in. Please try again.'
@@ -110,6 +117,14 @@ export default function LoginPage() {
           onClick={async () => {
             setError(null)
             try {
+              // OAuth leaves the site; the callback page picks this back up.
+              const next = readNext()
+              try {
+                if (next) sessionStorage.setItem(RETURN_TO_STORAGE_KEY, next)
+                else sessionStorage.removeItem(RETURN_TO_STORAGE_KEY)
+              } catch {
+                // Storage unavailable (private mode): they land on the dashboard as before.
+              }
               await signInWithGoogle()
             } catch {
               setError('Google sign-in failed. Please try again.')

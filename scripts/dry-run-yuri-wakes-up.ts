@@ -5,11 +5,16 @@
  * Read-only by construction: runYuriWakesUp({ dryRun: true }) skips grading,
  * every insert/update and every send. As belt-and-braces this script also
  * deletes RESEND_API_KEY from its own process, so even a code path that reached
- * sendEmail() would no-op.
+ * sendEmail() would no-op, and sets AI_USAGE_DRY_RUN=1 so the judge's and the
+ * guard's token usage is printed to the console instead of inserted into
+ * ss_ai_usage (before Nov 7 2026 a dry run DID write those rows).
  *
  * Usage:
  *   npx tsx --tsconfig tsconfig.json scripts/dry-run-yuri-wakes-up.ts <outDir> \
- *     --users <uuid,uuid> --leads <uuid,uuid> [--assume-owner-approval]
+ *     --users <uuid,uuid> --leads <uuid,uuid> [--assume-owner-approval] [--any-day]
+ *
+ * Subscribers are judged only on their local Sunday (weekly check-in) or trial
+ * day 3. --any-day renders a subscriber on any weekday, for review.
  *
  * Output: <outDir>/dry-run.json (full renders) and one .html per recipient.
  * Recipient emails are never written; refs are id prefixes only.
@@ -21,6 +26,7 @@ import { getServiceClient } from '../src/lib/supabase'
 import { runYuriWakesUp } from '../src/lib/proactive/run'
 
 delete process.env.RESEND_API_KEY
+process.env.AI_USAGE_DRY_RUN = '1'
 
 function arg(name: string): string[] {
   const i = process.argv.indexOf(name)
@@ -42,6 +48,7 @@ async function main() {
     onlyLeadIds: leads.length ? leads : ['00000000-0000-0000-0000-000000000000'],
     assumeOwnerApproval: process.argv.includes('--assume-owner-approval'),
     bypassDaytime: true,
+    bypassCheckinDay: process.argv.includes('--any-day'),
   })
 
   writeFileSync(join(outDir, 'dry-run.json'), JSON.stringify(result, null, 2))

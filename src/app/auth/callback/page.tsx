@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { postSignInDestination } from '@/lib/auth/post-sign-in'
+import { afterSignIn, RETURN_TO_STORAGE_KEY } from '@/lib/auth/return-to'
 
 /**
  * OAuth Callback Page (Client-Side)
@@ -72,7 +73,15 @@ export default function AuthCallbackPage() {
         .eq('user_id', userId)
         .maybeSingle()
 
-      router.replace(postSignInDestination(profile))
+      // Where they were going before Google sign-in (stashed by /login), if any.
+      let next: string | null = null
+      try {
+        next = sessionStorage.getItem(RETURN_TO_STORAGE_KEY)
+        sessionStorage.removeItem(RETURN_TO_STORAGE_KEY)
+      } catch {
+        next = null
+      }
+      router.replace(afterSignIn(postSignInDestination(profile), next))
     }
 
     handleCallback()
