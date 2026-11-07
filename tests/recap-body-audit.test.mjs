@@ -49,8 +49,10 @@ test('the SENT body and subject are persisted, not just the status', () => {
     route.indexOf("} else if (result.outcome === 'not_their_address')")
   )
   assert.ok(sendBlock.length > 0, 'send branch not found')
-  assert.match(sendBlock, /bodyHtml:\s*result\.email\.bodyHtml/,
-    'the body as actually sent must be stored')
+  // Nov 7 2026: stored with the resume-link token redacted (a row must not be a
+  // credential); everything else is the body exactly as sent.
+  assert.match(sendBlock, /bodyHtml:\s*redactResumeTokens\(result\.email\.bodyHtml\)/,
+    'the body as actually sent must be stored (resume token redacted)')
   assert.match(sendBlock, /subject:\s*result\.email\.subject/,
     'the subject must be stored')
 })

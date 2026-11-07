@@ -61,6 +61,12 @@ export interface GeneratedLeadEmail {
 export interface RecapLink {
   url: string
   resumes: boolean
+  /**
+   * Free preview messages the visitor has left (server ledger), or null when
+   * unknown. A reopened conversation with none left shows the subscribe card
+   * instead of a reply box, so Yuri must not imply they can just keep chatting.
+   */
+  remainingMessages?: number | null
 }
 
 const HOMEPAGE_RECAP_LINK: RecapLink = { url: 'https://www.seoulsister.com/?from=recap', resumes: false }
@@ -68,11 +74,21 @@ const HOMEPAGE_RECAP_LINK: RecapLink = { url: 'https://www.seoulsister.com/?from
 export const RECAP_BUTTON_TEXT_RESUME = 'Continue our conversation'
 export const RECAP_BUTTON_TEXT_HOMEPAGE = 'Chat with Yuri'
 
+/** The visitor's remaining free messages, stated as a fact (empty when unknown). */
+function remainingFact(remaining: number | null | undefined): string {
+  if (typeof remaining !== 'number') return ''
+  if (remaining <= 0) {
+    return ' They have used all of their free preview messages, so the conversation they come back to can be read but not continued without a subscription.'
+  }
+  return ` They have ${remaining} free preview message${remaining === 1 ? '' : 's'} left; after that, continuing needs a subscription.`
+}
+
 /** What the button below the email does, stated as a fact for Yuri. */
 export function recapLinkFact(link: RecapLink): string {
-  return link.resumes
+  const base = link.resumes
     ? `A button labelled "${RECAP_BUTTON_TEXT_RESUME}" is placed below your email. It reopens this exact conversation on the Seoul Sister homepage, with everything the two of you said still on screen, for the next 30 days and on any device. That button is their way back, so don't add a seoulsister.com link of your own.`
     : `A button labelled "${RECAP_BUTTON_TEXT_HOMEPAGE}" is placed below your email. It opens the free chat on the Seoul Sister homepage as a new conversation: this transcript will not be there when they click it. So it would not be true to tell them the link picks this conversation back up or brings them back to where you left off. Don't add a seoulsister.com link of your own.`
+  return `${base}${remainingFact(link.remainingMessages)}`
 }
 
 function escapeAttr(s: string): string {

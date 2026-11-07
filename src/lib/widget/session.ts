@@ -16,6 +16,8 @@ export interface WidgetSession {
   intent_signals_detected: string[]
   /** First-touch feeder attribution (blog/product/ingredient/nav/...). Null for direct hero visits. */
   source: string | null
+  /** When the conversation last had a message (before this turn). Only loaded by getSession/findResumableSession. */
+  last_message_at?: string | null
 }
 
 /**
@@ -84,7 +86,7 @@ export async function createSession(
 }
 
 const SESSION_COLS =
-  'id, visitor_id, session_number, message_count, tool_calls_count, specialist_domains_detected, intent_signals_detected, source'
+  'id, visitor_id, session_number, message_count, tool_calls_count, specialist_domains_detected, intent_signals_detected, source, last_message_at'
 
 /**
  * Load an existing session by ID — only if it belongs to this visitor.

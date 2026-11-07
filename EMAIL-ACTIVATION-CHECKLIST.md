@@ -93,6 +93,15 @@ Steps 1–4 above are **DONE**. What remains:
 2. **Redeploy** (Vercel → Deployments → latest → ⋯ → Redeploy) so `RESEND_API_KEY`, `EMAIL_FROM`, and `EMAIL_REPLY_TO` all take effect.
 3. **Live end-to-end test:** chat with Yuri at seoulsister.com for 3–4 substantive messages about a specific product/concern, then type one of your own email addresses into the chat. Within ~2 min: (a) a Yuri-voiced follow-up referencing the actual conversation should land in that inbox, (b) the send appears in Resend → Emails as Delivered, (c) hitting "reply" on it should arrive at your `EMAIL_REPLY_TO` inbox. If any leg fails, check Vercel logs for `[email]` lines (suppression reasons are logged too — Yuri may legitimately decline to send if the chat was too thin; have a real conversation first).
 
+## Resume links in widget emails (Nov 7 2026, v11.49.3)
+
+Recap and nurture email 1 can carry a link that reopens the visitor's own conversation, on any device, for 30 days. **Off until this env var exists:**
+
+- `WIDGET_RESUME_SECRET` (Production; Preview too if you test there): a random string of **at least 32 characters**, e.g. `openssl rand -base64 48`. Shorter values are ignored (logged once as `[resume-token] WIDGET_RESUME_SECRET is shorter than 32 characters`).
+- Rotating it invalidates every link already sent; those visitors see "That link has expired, so this is a fresh chat."
+- Without it nothing breaks: the emails link to the plain homepage chat and say nothing about picking the conversation back up.
+- Confirm after setting + redeploying: give Yuri an email in the widget, open the recap on a different device, tap "Continue our conversation", and check the transcript appears and `?resume=` is gone from the address bar. `ss_ai_usage` gets a `widget_resume_link_opened` row.
+
 ## ⏰ Reminder / nudge
 
 The cloud nudge (June 23, 9am Pacific) has been updated to a **pre-launch verification** reminder reflecting the above.

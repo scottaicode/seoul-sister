@@ -21,7 +21,7 @@ import { detectValueDensity, buildValueDensityFact } from '@/lib/widget/value-de
 import { visitorCountryCode, visitorCountryFact } from '@/lib/widget/visitor-country'
 import { PRICING } from '@/lib/pricing'
 import { generateLeadEmail, type VisitorMemoryFacts, type ConversationTurn } from '@/lib/email/lead-email'
-import { createSession, getSession, findResumableSession, fillSessionAttribution, incrementSessionCounters, updateSessionMetadata } from '@/lib/widget/session'
+import { createSession, getSession, findResumableSession, fillSessionAttribution, incrementSessionCounters, updateSessionMetadata, RESUME_WINDOW_MS } from '@/lib/widget/session'
 import {
   saveUserMessage,
   saveAssistantMessage,
@@ -35,7 +35,7 @@ import {
 } from '@/lib/widget/persistence'
 import { detectAndRecordSignals, type SignalContext } from '@/lib/widget/signals'
 import { recapStatusFact } from '@/lib/widget/recap-fact'
-import { createResumeToken, widgetEmailLink } from '@/lib/widget/resume-token'
+import { createResumeToken, widgetEmailLink, resumeLinksEnabled, redactResumeTokens } from '@/lib/widget/resume-token'
 import type Anthropic from '@anthropic-ai/sdk'
 
 const WIDGET_RATE_LIMIT = 25
@@ -148,6 +148,9 @@ const widgetSchema = z.object({
     .optional()
     .nullable()
     .transform(v => v ?? undefined),
+  // Nov 7 2026: sent once, on the first message after the widget reopened this
+  // conversation from an email resume link, so Yuri can be told how they got back.
+  reopened_from_email: z.boolean().optional(),
 })
 
 // ---------------------------------------------------------------------------
@@ -721,6 +724,22 @@ export async function POST(request: NextRequest) {
     // failure: asked "how many questions do I have remaining?", she answered
     // "there's no question limit here" — she'd never been told there was one).
     const lifetimeUsed = visitor?.total_messages ?? null
+    // Nov 7 2026: a conversation continued by explicit session id after a long
+    // gap (an email resume link, or a tab left open) is stated as a FACT with
+    // the previous message's time, so Yuri knows time has passed. The email
+    // cause is named only when the widget says the conversation was reopened
+    // from an email link.
+    const prevAt =
+      session && parsed.session_id && session.id === parsed.session_id && session.last_message_at
+        ? new Date(session.last_message_at)
+        : null
+    const prevIso = prevAt && !Number.isNaN(prevAt.getTime()) ? prevAt.toISOString() : null
+    const reopenedFact =
+      prevIso && parsed.reopened_from_email
+        ? ` This conversation was reopened from an email link; the previous message was at ${prevIso}.`
+        : prevIso && Date.now() - Date.parse(prevIso) > RESUME_WINDOW_MS
+          ? ` The previous message in this conversation was at ${prevIso}.`
+          : ''
 
     dynamicContext += `\n\n## Conversation State (facts, not instructions)
 - This is the visitor's message #${turnNumber} in this conversation.
@@ -743,7 +762,7 @@ Do NOT sell. The screen already shows them the price and a button the instant yo
 - Your earlier messages are above. If you made a clean, standalone offer to save their email and they clearly passed on it, let it rest. But if an earlier mention got buried — tacked onto another question, or lost in a longer answer so they never actually responded to it — a single clear, standalone offer as this piece of work lands is not nagging; it's the one that should have been made. No email is captured yet, so the question is still genuinely open (unless they've told you they're under 13 — then it isn't).` : ''}${valueDensityFact ? `
 ${valueDensityFact}` : ''}
 ${visitorCountryFact(visitorCountryCode(request.headers.get('x-vercel-ip-country')))}
-- Continuity in this browser: if they leave and come back within about an hour (even in a new tab), this same conversation continues and you'll still have it above. After that, or if they press "Start over", a new conversation begins and this transcript won't be in front of you (any visitor memory noted above may still carry over).${resumedConversation ? ' They just reopened the page and this conversation was picked back up, so what they said earlier above is still theirs.' : ''}
+- Continuity in this browser: if they leave and come back within about an hour (even in a new tab), this same conversation continues and you'll still have it above. After that, or if they press "Start over", a new conversation begins and this transcript won't be in front of you (any visitor memory noted above may still carry over).${resumeLinksEnabled() ? ' Separately, if a recap email went out to them, it carries a link that reopens this conversation, on any device, for 30 days.' : ''}${resumedConversation ? ' They just reopened the page and this conversation was picked back up, so what they said earlier above is still theirs.' : ''}${reopenedFact}
 
 Use these facts with the judgment described above. They are context, not a trigger: a long conversation doesn't obligate an ask, and a short one doesn't forbid it. You decide when the value has actually landed. One placement rule when you do offer: let the email ask stand on its own — never staple it to another open question in the same message, or the other question gets answered and the offer gets missed.`
 
@@ -1262,7 +1281,14 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
                         conversation,
                         email,
                         parsed.visitor_id!,
-                        { url: widgetEmailLink('recap', resumeToken), resumes: resumeToken !== null }
+                        {
+                          url: widgetEmailLink('recap', resumeToken),
+                          resumes: resumeToken !== null,
+                          // Free messages left after THIS turn (same ledger as the done event).
+                          remainingMessages: visitor
+                            ? Math.max(0, MAX_FREE_MESSAGES - (visitor.total_messages + 1))
+                            : null,
+                        }
                       )
                       if (result.outcome === 'send') {
                         // v11.5.0: capture the send result so "did this lead
@@ -1283,7 +1309,8 @@ When answering, naturally weave in ONE brief mention of what the specialist mode
                             // complete take-home routine") and one that obeyed
                             // it are indistinguishable forever.
                             subject: result.email.subject,
-                            bodyHtml: result.email.bodyHtml,
+                            // Token redacted: a stored row must not be a credential.
+                            bodyHtml: redactResumeTokens(result.email.bodyHtml),
                             reason: result.reason,
                           }
                         )

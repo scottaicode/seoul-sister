@@ -57,6 +57,38 @@ const QUICK_PROMPTS = [
 // Yuri's real transcript).
 type DemoMessage = { role: 'user' | 'assistant'; text: string }
 
+// ---- Email resume link (Nov 7 2026) -----------------------------------------
+// The `?resume=<token>` from a recap/nurture email is read and REMOVED from the
+// address bar synchronously at the start of the restore effect, before the
+// layout's afterInteractive gtag page_view can record the URL (child effects
+// run before the Script component's). The token is kept here at module level
+// so React's development double-mount still finds it after the first run
+// stripped the URL. `undefined` = not read yet.
+let pendingResumeToken: string | null | undefined
+function takeResumeTokenFromUrl(): string | null {
+  if (pendingResumeToken !== undefined) return pendingResumeToken
+  pendingResumeToken = null
+  try {
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('resume')
+    if (!token) return null
+    pendingResumeToken = token
+    params.delete('resume')
+    const qs = params.toString()
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`
+    )
+  } catch (err) {
+    console.warn('[widget] resume URL strip failed', err)
+  }
+  return pendingResumeToken
+}
+// Set when a conversation was reopened from an email link; sent once with the
+// next message so Yuri is told, as a fact, how the visitor got back.
+let reopenedFromEmailPending = false
+
 const DEMO_OWNER: DemoMessage[] = [
   {
     role: 'user',
@@ -443,54 +475,55 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
       setShowLive(true)
     }
 
-    const stripResumeParam = () => {
-      try {
-        const params = new URLSearchParams(window.location.search)
-        if (!params.has('resume')) return
-        params.delete('resume')
-        const qs = params.toString()
-        window.history.replaceState(
-          window.history.state,
-          '',
-          `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`
-        )
-      } catch (err) {
-        console.warn('[widget] resume URL strip failed', err)
-      }
-    }
-
-    const resumeFromEmail = async (): Promise<boolean> => {
-      let token: string | null = null
-      try {
-        token = new URLSearchParams(window.location.search).get('resume')
-      } catch {
-        return false
-      }
+    const resumeFromEmail = async (token: string | null): Promise<boolean> => {
       if (!token) return false
+      let done = false
       try {
         const res = await fetch(`/api/widget/transcript?resume=${encodeURIComponent(token)}`)
-        if (!res.ok || cancelled) return false
-        const data = (await res.json()) as {
-          messages?: Array<{ role: 'user' | 'assistant'; content: string }>
-          session_id?: string | null
-          visitor_id?: string | null
-        }
+        if (cancelled) return false
+        const data = res.ok
+          ? ((await res.json()) as {
+              messages?: Array<{ role: 'user' | 'assistant'; content: string }>
+              session_id?: string | null
+              visitor_id?: string | null
+              remaining_messages?: number
+            })
+          : {}
+        if (cancelled) return false
+        done = true
         const restored = data.messages || []
         const sid = data.session_id
         const vid = data.visitor_id
-        if (cancelled || !sid || !vid || restored.length === 0) return false
+        if (!sid || !vid || restored.length === 0) {
+          // Expired, rotated secret, "Start over", or junk. Say so in one line
+          // rather than leave her wondering where the conversation went.
+          setError('That link has expired, so this is a fresh chat.')
+          return false
+        }
         paintRestored(restored, () => {
           adoptVisitorId(vid)
           setWidgetSessionId(sid)
+          reopenedFromEmailPending = true
         })
+        // Server truth for the free preview, so the paywall card shows under the
+        // restored transcript when it is used up (not "12 remaining").
+        if (typeof data.remaining_messages === 'number') {
+          const used = Math.min(MAX_FREE_MESSAGES, Math.max(0, MAX_FREE_MESSAGES - data.remaining_messages))
+          setMessageCount(used)
+          setMessageCountState(used)
+          if (data.remaining_messages <= 0) setServerLimitReached(true)
+        }
         return true
       } catch {
+        if (!cancelled) {
+          done = true
+          setError('That link has expired, so this is a fresh chat.')
+        }
         return false
       } finally {
-        // Stripped after the fetch (not before) so a double-run effect in
-        // development still sees the token; stripped on every outcome so a
-        // reload or a copied URL never carries it.
-        if (!cancelled) stripResumeParam()
+        // Used up once the attempt completed; a cancelled (double-mounted)
+        // run leaves it for the next run.
+        if (done) pendingResumeToken = null
       }
     }
 
@@ -522,8 +555,11 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
       }
     }
 
+    // Synchronous, first thing: see takeResumeTokenFromUrl.
+    const resumeToken = takeResumeTokenFromUrl()
+
     ;(async () => {
-      if (await resumeFromEmail()) return
+      if (await resumeFromEmail(resumeToken)) return
       if (cancelled) return
       await restoreFromThisBrowser()
     })()
@@ -623,6 +659,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             visitor_id: getOrCreateVisitorId(),
             session_id: getWidgetSessionId(),
             ...(isWidgetFresh() ? { fresh: true } : {}),
+            ...(reopenedFromEmailPending ? { reopened_from_email: true } : {}),
             // First-touch feeder attribution: send the source once, on the
             // request that will create the session. Server persists it.
             ...(includeSource ? { source: sourceRef.current } : {}),
@@ -723,6 +760,8 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             setStatusLabel(null)
             // Storing the new id also clears the "Start over" marker.
             if (sessionId) setWidgetSessionId(sessionId)
+            // Yuri has now been told this conversation came back from email.
+            reopenedFromEmailPending = false
             if (typeof remaining === 'number') serverRemaining = remaining
             setMessages((prev) => {
               const updated = [...prev]

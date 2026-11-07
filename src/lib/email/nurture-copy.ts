@@ -32,6 +32,12 @@ export interface NurtureEmailOptions {
    * (src/lib/widget/resume-token.ts). Only email 1, widget cohort, uses it.
    */
   resumeUrl?: string | null
+  /**
+   * The lead's remaining free preview messages (server ledger). At 0 the
+   * reopened conversation can be read but not continued, so email 1 must not
+   * say "you can talk to me right now".
+   */
+  resumeRemaining?: number | null
 }
 
 const BUTTON_STYLE =
@@ -62,6 +68,7 @@ function email1(
   options: NurtureEmailOptions = {}
 ): NurtureEmailContent {
   const resumeUrl = cohort === 'widget' ? options.resumeUrl ?? null : null
+  const previewUsedUp = Boolean(resumeUrl) && typeof options.resumeRemaining === 'number' && options.resumeRemaining <= 0
   const opener =
     cohort === 'registered'
       ? `<p>You created an account with us a little while back, and then we did the thing where the very next screen asked you to subscribe before you could try anything. If you closed the tab right there, honestly, fair.</p>`
@@ -70,19 +77,27 @@ function email1(
     subject:
       cohort === 'registered'
         ? `The part we should have led with`
-        : resumeUrl
-          ? `Picking up where we left off`
-          : `You can talk to me anytime, no account needed`,
+        : previewUsedUp
+          ? `Your conversation with Yuri is saved`
+          : resumeUrl
+            ? `Picking up where we left off`
+            : `You can talk to me anytime, no account needed`,
     bodyHtml: `
 <p>Hi, it's Yuri from Seoul Sister.</p>
 ${opener}
-<p>So here's the part we should have led with: you can talk to me right now, no account needed. Ask me anything you'd ask a friend who knows Korean skincare inside out. What's actually worth it for your skin, whether that viral serum is right for you, how to tell if the snail mucin you bought is real. I'll give you a straight answer backed by a database of 5,900+ products, and I'll tell you when something is not worth your money too.</p>
+${
+  previewUsedUp && resumeUrl
+    ? `<p>Our conversation is saved, and the button below opens it again, on any device, for the next 30 days. You've used the free messages that come with the preview, so you can read it back, but carrying it on is the subscriber side.</p>
+<p><a href="${escapeAttr(resumeUrl)}" style="${BUTTON_STYLE}">See our conversation</a></p>
+<p>The paid side is where I remember your skin, build your routine, and adjust it as your skin changes month to month.</p>`
+    : `<p>So here's the part we should have led with: you can talk to me right now, no account needed. Ask me anything you'd ask a friend who knows Korean skincare inside out. What's actually worth it for your skin, whether that viral serum is right for you, how to tell if the snail mucin you bought is real. I'll give you a straight answer backed by a database of 5,900+ products, and I'll tell you when something is not worth your money too.</p>
 ${
   resumeUrl
     ? `<p><a href="${escapeAttr(resumeUrl)}" style="${BUTTON_STYLE}">Pick up our conversation</a></p>`
     : `<p><a href="${SITE}/?from=nurture_1" style="${BUTTON_STYLE}">Talk to Yuri, free</a></p>`
 }
-<p>If it turns out I'm useful, the paid side is where I remember your skin, build your routine, and adjust it as your skin changes month to month. But try the conversation first. That's the honest order to do it in.</p>
+<p>If it turns out I'm useful, the paid side is where I remember your skin, build your routine, and adjust it as your skin changes month to month. But try the conversation first. That's the honest order to do it in.</p>`
+}
 <p>Yuri</p>`,
   }
 }

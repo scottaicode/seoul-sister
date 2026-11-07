@@ -18,6 +18,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail, wrapEmailHtml, postalAddress } from './send'
 import { buildNurtureEmail, STEP_DELAYS_DAYS, type NurtureCohort } from './nurture-copy'
 import { createResumeToken, widgetEmailLink } from '@/lib/widget/resume-token'
+import { MAX_FREE_MESSAGES } from '@/lib/widget/visitor'
 
 const BATCH_LIMIT = 20
 
@@ -105,17 +106,21 @@ export async function enrollLeads(db: SupabaseClient): Promise<{ enrolled: numbe
 }
 
 /**
- * Signed link reopening a widget lead's most recent open conversation, or null
- * (no visitor, no conversation, the visitor chose "Start over", a failed query,
- * or WIDGET_RESUME_SECRET unset). Null means email 1 uses its neutral subject
- * and the plain homepage button, so it never promises a conversation the link
- * can't reopen.
+ * Encrypted link reopening a widget lead's most recent open conversation, plus
+ * the lead's remaining free preview messages, or null (no visitor, no
+ * conversation, the visitor chose "Start over", a failed query, or no usable
+ * WIDGET_RESUME_SECRET). Null means email 1 uses its neutral subject and the
+ * plain homepage button, so it never promises a conversation the link can't
+ * reopen.
  */
-async function widgetResumeUrl(db: SupabaseClient, visitorRowId: string | null): Promise<string | null> {
+export async function widgetResumeUrl(
+  db: SupabaseClient,
+  visitorRowId: string | null
+): Promise<{ url: string; remaining: number } | null> {
   if (!visitorRowId) return null
   const { data: visitor, error: vErr } = await db
     .from('ss_widget_visitors')
-    .select('visitor_id')
+    .select('visitor_id, total_messages')
     .eq('id', visitorRowId)
     .maybeSingle()
   if (vErr) {
@@ -138,7 +143,9 @@ async function widgetResumeUrl(db: SupabaseClient, visitorRowId: string | null):
   const sessionId = sessions?.[0]?.id as string | undefined
   if (!sessionId) return null
   const token = createResumeToken(visitor.visitor_id as string, sessionId)
-  return token ? widgetEmailLink('nurture_1', token) : null
+  if (!token) return null
+  const used = typeof visitor.total_messages === 'number' ? visitor.total_messages : 0
+  return { url: widgetEmailLink('nurture_1', token), remaining: Math.max(0, MAX_FREE_MESSAGES - used) }
 }
 
 function isDue(lead: NurtureLead, now: Date): boolean {
@@ -194,13 +201,13 @@ export async function processDueSends(
     }
 
     const step = (lead.sequence_step + 1) as 1 | 2 | 3
-    const resumeUrl =
+    const resume =
       step === 1 && lead.cohort === 'widget' ? await widgetResumeUrl(db, lead.visitor_id) : null
     const { subject, bodyHtml, footerHtml, unsubscribeUrl } = buildNurtureEmail(
       step,
       lead.cohort,
       lead.unsubscribe_token,
-      { resumeUrl }
+      { resumeUrl: resume?.url ?? null, resumeRemaining: resume?.remaining ?? null }
     )
     const result = await sendEmail(lead.email, subject, wrapEmailHtml(bodyHtml, footerHtml), {
       unsubscribeUrl,

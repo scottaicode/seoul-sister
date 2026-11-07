@@ -56,6 +56,33 @@ All notable changes to Seoul Sister are documented here.
 - **Not verified in production** until the Nov 4 06:00 UTC run writes a row: expect either more than 96
   listings with no browser-closed errors, or `failed` with `blocked_by_olive_young`.
 
+## v11.49.3 — Email links reopen the conversation they promise (Nov 7 2026) — INERT until `WIDGET_RESUME_SECRET` is set
+
+- **The gap.** The recap email ("pick the conversation right back up") and nurture email 1 ("Picking up
+  where we left off") linked to the bare homepage, which restores a conversation only in the same browser
+  within an hour (`RESUME_WINDOW_MS`). A visitor came back 31 hours later to an empty chat and retyped her
+  question.
+- **The fix.** Both emails now carry `?resume=<token>`: an AES-256-GCM encrypted token (key derived by HKDF
+  from `WIDGET_RESUME_SECRET`) holding the visitor id, session id and a 30-day expiry
+  (`src/lib/widget/resume-token.ts`). The ids are never readable from the link, because together they are
+  a lifetime credential. `GET /api/widget/transcript?resume=` (`src/lib/widget/resume-restore.ts`) checks
+  the token, ownership and "Start over", and returns the transcript, both ids and the remaining free
+  messages. The widget strips the param from the URL before analytics loads, adopts the ids, paints the
+  conversation, and shows the paywall card if the preview is used up. A failed link shows "That link has
+  expired, so this is a fresh chat."
+- **Yuri is told the truth.** The recap prompt states as a fact what the button under it does (reopens
+  this conversation for 30 days, or, with no secret, opens a new chat without this transcript) and how
+  many free messages are left. Her live widget prompt now mentions the email path, and a conversation
+  continued after a gap carries the previous message's time as a fact (plus "reopened from an email link"
+  when the widget says so). Nurture email 1 says "Picking up where we left off" only with a working link,
+  and "Your conversation with Yuri is saved" / "See our conversation" when the preview is used up.
+- Stored `recap_body_html` has the token replaced with `REDACTED`. Email returns are counted by a
+  zero-cost `widget_resume_link_opened` breadcrumb in `ss_ai_usage` (no session column fits, so no
+  migration).
+- **Inert until** `WIDGET_RESUME_SECRET` (32+ characters) is set in Vercel; until then both emails use
+  the plain homepage link with honest copy. See EMAIL-ACTIVATION-CHECKLIST.md.
+- Not verified in production: no real click-through yet (including Gmail's in-app browser).
+
 ## v11.49.2 — Yuri sees a member's Glass Skin photos correctly (Nov 7 2026)
 
 A comped member uploaded 3 photos on Jul 28 and 3 on Oct 5 (her local dates) and Yuri kept asking for a

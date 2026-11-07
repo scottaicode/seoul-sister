@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 import { findResumableSession, markSessionEnded } from '@/lib/widget/session'
-import { verifyResumeToken } from '@/lib/widget/resume-token'
+import { restoreFromResumeToken } from '@/lib/widget/resume-restore'
 
 /**
  * GET /api/widget/transcript?visitor_id=...[&session_id=...]
@@ -34,9 +34,12 @@ import { verifyResumeToken } from '@/lib/widget/resume-token'
 export async function GET(req: NextRequest) {
   const resume = req.nextUrl.searchParams.get('resume')
   if (resume) {
+    // Invalid, expired, ended or foreign: no error page. The response says
+    // resume_failed, so the widget tells the visitor this is a fresh chat and
+    // then runs its normal same-browser restore.
     const restored = await restoreFromResumeToken(resume)
-    if (restored) return restored
-    // Invalid, expired, ended or foreign: fall through to today's behaviour.
+    if (restored) return NextResponse.json(restored)
+    return NextResponse.json({ messages: [], session_id: null, resume_failed: true })
   }
 
   const sessionId = req.nextUrl.searchParams.get('session_id')
@@ -97,59 +100,6 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     console.error('[widget/transcript] unexpected error:', err)
     return NextResponse.json({ error: 'lookup failed' }, { status: 500 })
-  }
-}
-
-/**
- * `?resume=<token>` from a recap or nurture email (Nov 7 2026). The signed token
- * names one (visitor_id, session_id) pair, so the browser that clicks the link
- * (any device, any time within the token's 30 days) gets that conversation and
- * the two ids it needs to continue it. Returns null when the token or session
- * is not usable, so the caller falls back to the normal lookup and the visitor
- * simply sees the homepage chat, never an error page. A conversation the
- * visitor ended with "Start over" is not reopened.
- */
-async function restoreFromResumeToken(token: string): Promise<NextResponse | null> {
-  const payload = verifyResumeToken(token)
-  if (!payload) {
-    console.warn('[widget/transcript] resume token rejected (invalid or expired)')
-    return null
-  }
-  try {
-    const supabase = getServiceClient()
-    const { data: session, error } = await supabase
-      .from('ss_widget_sessions')
-      .select('id, visitor_id, ended_naturally')
-      .eq('id', payload.s)
-      .eq('visitor_id', payload.v)
-      .maybeSingle()
-    if (error) {
-      console.error('[widget/transcript] resume session lookup failed:', error.message)
-      return null
-    }
-    if (!session || session.ended_naturally === true) {
-      console.warn('[widget/transcript] resume token points at no open session')
-      return null
-    }
-    const { data, error: msgError } = await supabase
-      .from('ss_widget_messages')
-      .select('role, content, created_at')
-      .eq('session_id', session.id)
-      .in('role', ['user', 'assistant'])
-      .order('created_at', { ascending: true })
-      .limit(40)
-    if (msgError) {
-      console.error('[widget/transcript] resume message load failed:', msgError.message)
-      return null
-    }
-    return NextResponse.json({
-      messages: (data || []).map((m) => ({ role: m.role, content: m.content })),
-      session_id: session.id,
-      visitor_id: payload.v,
-    })
-  } catch (err) {
-    console.error('[widget/transcript] resume restore failed:', err)
-    return null
   }
 }
 
