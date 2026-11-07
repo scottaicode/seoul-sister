@@ -56,6 +56,21 @@ All notable changes to Seoul Sister are documented here.
 - **Not verified in production** until the Nov 4 06:00 UTC run writes a row: expect either more than 96
   listings with no browser-closed errors, or `failed` with `blocked_by_olive_young`.
 
+## v11.49.2 — Yuri sees a member's Glass Skin photos correctly (Nov 7 2026)
+
+A comped member uploaded 3 photos on Jul 28 and 3 on Oct 5 (her local dates) and Yuri kept asking for a
+baseline photo. Four causes, all in `memory.ts`:
+- Only the newest 3 scores were loaded, so one sitting of 3 angles pushed the baseline out. Now the 9 newest
+  plus the first, grouped by local day, with the first day marked and an exact total (says when days are omitted).
+- Dates were UTC; an evening upload in Chicago showed as the next day. Now the profile timezone.
+- When photo history was not loaded or the lookup failed, Yuri was still told "No Glass Skin Score photos taken
+  yet". Now the section is silent unless the lookup ran (`glassSkinKnown`).
+- "Waiting for a baseline photo" memory notes never closed, because uploads happen on /glass-skin, outside chat.
+  The section now states that fact and that it is read live each turn. The member's 4 stale notes were
+  soft-closed (resolved_at + reason; snapshot kept).
+- Fable review caught the UTC dates, same-day order shown newest-first, and an absolute "this list is the
+  record" claim that would be false past 9 rows; all fixed. Verified by rendering the member's real context.
+
 ## v11.49.1 — Same safety rules on the homepage chat and onboarding; no email demand after a crisis line (Nov 5 2026)
 
 - "The person comes before the skin" and the no-routing-around-a-prescriber sentence now appear,

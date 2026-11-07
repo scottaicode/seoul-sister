@@ -157,3 +157,17 @@ test('widget email gate is skipped right after Yuri gave a crisis line (Nov 5 20
   for (const t of ['call or text **988** any time', 'Call 911 now.', "ANAD's peer support line, 1-888-375-7767"]) assert.ok(re.test(t), t)
   for (const t of ['Use SPF 50 and a 2% BHA.', "I'm 19, oily skin", '9880 reviews']) assert.ok(!re.test(t), t)
 })
+
+test('Glass Skin history: first score always loaded, local dates, never "none taken" unless looked up (Nov 7 2026)', () => {
+  const m = read('src', 'lib', 'yuri', 'memory.ts')
+  // A user who uploads 3 angles must not push her baseline out of view.
+  assert.match(m, /order\('created_at', \{ ascending: true \}\)\.limit\(1\)/)
+  // Local date (profile timezone), not the UTC slice.
+  assert.match(m, /const takenDate = gsDate\(takenAt\)/)
+  assert.doesNotMatch(m, /const takenDate = takenAt\.slice\(0, 10\)/)
+  // "No photos taken yet" only after a successful lookup.
+  assert.match(m, /\} else if \(context\.glassSkinKnown\) \{/)
+  assert.match(m, /if \(context\.glassSkinKnown && context\.glassSkinHistory\.length > 0\) \{/)
+  // Uploads happen outside chat; the record outranks a stale "photo pending" note.
+  assert.match(m, /more current than any note in your memory about a photo still being pending/)
+})

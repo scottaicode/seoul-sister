@@ -234,6 +234,11 @@ export interface UserContext {
    * zero awareness her last score was 80+ days old mid-Phase 2.
    */
   glassSkinHistory: GlassSkinScoreSummary[]
+  /** False when photo history was not loaded this turn (topic-gated) or the
+   * lookup failed. Then Yuri is told nothing about photos, never "none taken". */
+  glassSkinKnown: boolean
+  /** Total score rows the user has (null if unknown); more than listed means some days are omitted. */
+  glassSkinTotal: number | null
 }
 
 export interface GlassSkinScoreSummary {
@@ -462,13 +467,21 @@ export async function loadUserContext(
   // referencing past scores or suggesting a fresh baseline is appropriate.
   // Skipped on focused pricing/trending queries.
   const loadGlassSkin = loadAll || topics.has('routine') || topics.has('skin_profile')
+  // Recent scores plus the very FIRST one: with only the newest 3, a user who
+  // uploads three angles in one sitting pushes her baseline out of view and Yuri
+  // tells her she has no baseline (real case, Oct 6 2026).
+  const GS_COLS = 'created_at, overall_score, luminosity_score, smoothness_score, clarity_score, hydration_score, evenness_score'
   const glassSkinPromise = loadGlassSkin
-    ? db
-        .from('ss_glass_skin_scores')
-        .select('created_at, overall_score, luminosity_score, smoothness_score, clarity_score, hydration_score, evenness_score')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(3)
+    ? Promise.all([
+        db.from('ss_glass_skin_scores').select(GS_COLS, { count: 'exact' }).eq('user_id', userId).order('created_at', { ascending: false }).limit(9),
+        db.from('ss_glass_skin_scores').select(GS_COLS).eq('user_id', userId).order('created_at', { ascending: true }).limit(1),
+      ]).then(([recent, first]) => {
+        if (recent.error || first.error) return { data: null, error: recent.error ?? first.error }
+        const rows = [...(recent.data ?? [])]
+        const f = first.data?.[0]
+        if (f && !rows.some((r) => r.created_at === f.created_at)) rows.push(f)
+        return { data: rows, error: null, total: recent.count ?? null }
+      })
     : Promise.resolve({ data: null })
 
   // Execute all queries in parallel
@@ -700,10 +713,25 @@ export async function loadUserContext(
 
   // Glass Skin Score history — normalize timestamps + compute days-ago at load
   // time so the formatter doesn't have to. Empty array if user never scored.
+  const gsErr = (glassSkinResult as { error?: { message?: string } | null }).error
+  if (gsErr) console.error('[memory] glass skin score lookup failed:', gsErr.message)
+  const glassSkinKnown = loadGlassSkin && !gsErr && glassSkinResult.data != null
+  const gsTz = ((profileResult.data as Record<string, unknown> | null)?.timezone as string) || 'UTC'
+  const gsDate = (iso: string): string => {
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: gsTz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso))
+    } catch {
+      return iso.slice(0, 10)
+    }
+  }
+  const glassSkinTotal = (glassSkinResult as { total?: number | null }).total ?? null
   const glassSkinHistory: GlassSkinScoreSummary[] = (glassSkinResult.data || []).map((r) => {
     const row = r as Record<string, unknown>
     const takenAt = row.created_at as string
-    const takenDate = takenAt.slice(0, 10)
+    // The user's LOCAL date (what the Glass Skin page shows and what memory
+    // notes use), not the UTC date: an evening upload in Chicago is the next
+    // day in UTC, and one sitting can straddle UTC midnight.
+    const takenDate = gsDate(takenAt)
     const daysAgo = Math.floor((Date.now() - new Date(takenAt).getTime()) / (1000 * 60 * 60 * 24))
     return {
       takenAt,
@@ -735,6 +763,8 @@ export async function loadUserContext(
     locationName,
     ingredientOverlap,
     glassSkinHistory,
+    glassSkinKnown,
+    glassSkinTotal,
   }
 }
 
@@ -1085,16 +1115,27 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
   // NOW block, so combined with staleness she can naturally suggest a photo
   // at the right moment. No cron, no notifications — Opus decides when it
   // lands. The threshold drops from 30 days to 7 to match Bailey's cadence ask.
-  if (context.glassSkinHistory.length > 0) {
-    const latest = context.glassSkinHistory[0]
-    // Render the raw score date only, NOT a computed "N days ago" bucket — the
-    // bucket ticks daily and invalidates the cached prefix. takenDate is already
-    // YYYY-MM-DD; Yuri computes recency from it against ## RIGHT NOW.
-    const lines = context.glassSkinHistory.map((s, i) => {
-      const tag = i === 0 ? ' (most recent)' : ''
-      return `- **${s.takenDate}**${tag}: overall ${s.overall}/100 — luminosity ${s.luminosity}, smoothness ${s.smoothness}, clarity ${s.clarity}, hydration ${s.hydration}, evenness ${s.evenness}`
+  if (context.glassSkinKnown && context.glassSkinHistory.length > 0) {
+    // Newest first. Several photos on one day are one check-in (angles/light),
+    // not separate readings, so group them by date and show the first day.
+    const sorted = [...context.glassSkinHistory].sort((a, b) => b.takenAt.localeCompare(a.takenAt))
+    const latest = sorted[0]
+    const byDay = new Map<string, GlassSkinScoreSummary[]>()
+    for (const s of sorted) byDay.set(s.takenDate, [...(byDay.get(s.takenDate) ?? []), s])
+    const days = [...byDay.keys()]
+    const firstDay = days[days.length - 1]
+    // Render raw dates only, NOT a computed "N days ago" bucket (cache stability).
+    const lines = days.map((d, i) => {
+      const shots = byDay.get(d)!
+      const tag = i === 0 && d !== firstDay ? ' (most recent)' : d === firstDay ? (days.length > 1 ? ' (first)' : ' (first and only day so far)') : ''
+      const s0 = shots[0]
+      const overalls = [...shots].reverse().map((x) => x.overall).join(', ')
+      return `- **${d}**${tag}: ${shots.length} photo${shots.length > 1 ? 's' : ''}, overall ${overalls}/100 in the order taken (latest of the day: luminosity ${s0.luminosity}, smoothness ${s0.smoothness}, clarity ${s0.clarity}, hydration ${s0.hydration}, evenness ${s0.evenness})`
     })
-
+    const total = context.glassSkinTotal
+    const listed = context.glassSkinHistory.length
+    const omitted = total !== null && total > listed ? ` ${total} photos in total; ${total - listed} taken between the first day and the most recent ones are not listed.` : ''
+    const recordNote = `\nDates are the user's local dates. These photos are uploaded on the Glass Skin page (/glass-skin), outside this chat, so the conversation itself may never mention them. This list is read live from that page each turn, so it is more current than any note in your memory about a photo still being pending.${omitted} Several photos on one day are usually one sitting (retakes, angles, light). You see the scores, not the images.`
     // The >= 7 gate is real behavior (fires at most once per photo, not a
     // per-render tick), but do NOT embed "${daysAgo} days old" — that number
     // ticks daily and invalidates the cached prefix. The latest score's raw
@@ -1105,12 +1146,12 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
         `\nThe latest score (dated ${latest.takenDate}) is over a week old. Photos are the platform's strongest signal of real progress — when 5-12 weeks of phased treatment pass without a fresh score, the user loses the felt-sense of how their skin has changed. ` +
         `If a momentum-positive moment surfaces in the conversation (a phase milestone, a routine adjustment they're committing to, an off-handed "I think my skin is calming down"), suggest a new Glass Skin Score photo at /glass-skin and frame it as their journey, not a chore. ` +
         `Weekly is a natural cadence — if today is a Sunday or Monday and they haven't checked in this week, that's an organic opening. Don't ask if they just took one or if they're in distress about a flare-up; lean in if they're celebrating. One observation, not a lecture.`
-    } else if (context.glassSkinHistory.length === 1) {
+    } else if (days.length === 1) {
       cadenceNote =
         `\nThey have a baseline score but no comparison points yet. As they progress through treatment phases, a fresh score every 7-14 days becomes the comparison data — when a natural opening surfaces, suggest one.`
     }
-    sections.push(`## Glass Skin Score History\n${lines.join('\n')}${cadenceNote}`)
-  } else {
+    sections.push(`## Glass Skin Score History\n${lines.join('\n')}${recordNote}${cadenceNote}`)
+  } else if (context.glassSkinKnown) {
     // No history at all — strongest cadence signal. Bailey said visible progress
     // is "what continues to sell the app"; without a baseline there's nothing
     // to progress AGAINST. Make sure Yuri knows.
