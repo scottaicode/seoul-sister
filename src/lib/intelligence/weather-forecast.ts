@@ -94,8 +94,15 @@ export function shapeDailyForecast(json: OpenMeteoDaily, fallbackTz: string): We
  * Render the forecast as fact lines. `todayIso` is the member's local date, so
  * "today" and "tomorrow" are labelled from their calendar, not the server's.
  */
-export function formatForecastFacts(f: WeeklyForecast, todayIso: string, place: string | null = null): string {
+/**
+ * `unit` 'F' adds Fahrenheit next to Celsius (Celsius stays canonical), so Yuri
+ * and the check-in guard read the same numbers a US member will see and nobody
+ * converts in their head.
+ */
+export function formatForecastFacts(f: WeeklyForecast, todayIso: string, place: string | null = null, unit: 'C' | 'F' = 'C'): string {
   if (!f.days.length) return 'Forecast: no daily rows came back this run. Do not guess it.'
+  const deg = (c: number | null, u: 'C' | 'F') =>
+    c == null ? '?°C' : u === 'F' ? `${c}°C (${Math.round((c * 9) / 5 + 32)}°F)` : `${c}°C`
   const lines = [
     `7-day forecast where they live${place ? ` (${place})` : ''}, by their local date (a forecast, not a measurement; later days are less certain):`,
   ]
@@ -104,7 +111,7 @@ export function formatForecastFacts(f: WeeklyForecast, todayIso: string, place: 
     const label = x.date === todayIso ? ' (today)' : x.date === tomorrow ? ' (tomorrow)' : ''
     const parts = [
       x.condition,
-      x.maxC != null || x.minC != null ? `high ${x.maxC ?? '?'}°C / low ${x.minC ?? '?'}°C` : null,
+      x.maxC != null || x.minC != null ? `high ${deg(x.maxC, unit)} / low ${deg(x.minC, unit)}` : null,
       x.humidityMin != null || x.humidityMax != null
         ? `humidity ${x.humidityMin ?? '?'}-${x.humidityMax ?? '?'}%${x.humidityMean != null ? ` (mean ${x.humidityMean}%)` : ''}`
         : null,

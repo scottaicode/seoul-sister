@@ -5,6 +5,31 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.50.2 — The check-in guard sees the facts Yuri was given: forecast, today's date, location, °F (Nov 8 2026)
+
+- **Why.** The check-in guard only accepted facts quoted from the member's own words or the record. Yuri is
+  also shown the 7-day forecast, today's date and where they live, so true statements built on those could
+  only be blocked. Measured before the fix (4 dry runs, production code): weather/location were not blocked
+  in practice, but true record facts were blocked inconsistently ("we talked in July about KC winter" is a
+  word-for-word July 28 decision; "about a month in" needs a start date the guard never saw).
+- **Fix.**
+  - New evidence `sourceFacts`, rendered as FACTS ON FILE: today's local date, where they live (the stated
+    location the judge is shown, plus the GPS-derived name when different), and the exact forecast text the
+    judge saw. A third `asserted_facts` source, `"facts"`.
+  - The active plan line now carries its start date.
+  - Reader rules: a "we discussed X" fact is quoted from the dated RECORDED DECISIONS line; a duration is
+    established by a dated start + today's date, but that they FOLLOWED the plan still needs their own words.
+  - The routine "keep doing what you already do" carve-out applies only when their words or the record show
+    that is what they do, including how often.
+  - US members' forecasts show °F beside °C (`resolveTemperatureUnit`), so Yuri and the guard read the same
+    numbers.
+- **Measured after (2 dry runs, real members):** one draft passed (forecast in °F, July record quoted), one
+  was blocked for a real reason (it assumed five weeks of following the plan). Replaying the original
+  blocked draft: weather and the July fact now establish; the remaining block is the legitimate one.
+- Fable adversarial review with 10 live guard calls; its findings (location field mismatch, three
+  mutations the tests missed, the loose carve-out, °F) are fixed. `scripts/check-proactive-guard.ts` now
+  builds the same evidence as production.
+
 ## v11.50.1 — Safety rules reach the weekly check-ins; crisis lines outside the US skip the email ask (Nov 8 2026)
 
 - **Why.** A retroactive `/ship-guard` + `/ai-first-check` run over Oct 29–Nov 7 (the work had been done from

@@ -24,9 +24,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadUserContext, formatContextForPrompt, type UserContext } from '@/lib/yuri/memory'
 import { getLocalClock, clockFactBlock, daysBetweenIso } from '@/lib/yuri/clock'
 import { fetchWeeklyForecast, formatForecastFacts } from '@/lib/intelligence/weather-forecast'
+import { resolveTemperatureUnit } from '@/lib/intelligence/temperature-units'
 import { buildNudgeSubject } from '@/lib/email/nudge-email'
 import type { DecisionMemory } from '@/lib/yuri/memory'
-import type { GuardEvidence } from './content-guard'
+import { guardSourceFacts, type GuardEvidence } from './content-guard'
 import {
   capOrSpacingBlocks,
   localHour,
@@ -203,7 +204,9 @@ export async function loadCheckinFacts(
   s: SubscriberRow,
   now: number,
   dm: DecisionMemory | null = null,
-  trial: TrialInfo | null = null
+  trial: TrialInfo | null = null,
+  /** Filled with the exact forecast text shown to the judge, so the guard can check it. */
+  sink: { forecast?: string; today?: string } = {}
 ): Promise<string> {
   const [shelf, routines, phase, lastMsg, nudges, routineProducts] = await Promise.all([
     db
@@ -250,6 +253,7 @@ export async function loadCheckinFacts(
   }
 
   const clock = getLocalClock(s.timezone, new Date(now))
+  sink.today = clock.isoDate
   const lines: string[] = [clockFactBlock(clock)]
   const trialDay = trialDayNumber(trial, s.timezone, now)
   if (trial) {
@@ -323,7 +327,9 @@ export async function loadCheckinFacts(
   if (s.latitude != null && s.longitude != null) {
     try {
       const f = await fetchWeeklyForecast(Number(s.latitude), Number(s.longitude), s.timezone)
-      lines.push(formatForecastFacts(f, clock.isoDate))
+      const forecast = formatForecastFacts(f, clock.isoDate, null, resolveTemperatureUnit({ latitude: Number(s.latitude), longitude: Number(s.longitude) }))
+      sink.forecast = forecast
+      lines.push(forecast)
     } catch (err) {
       lines.push(`Forecast: unavailable this run (fetch failed). Do not guess it.`)
       console.warn(`[proactive] forecast fetch failed for ${s.user_id}:`, err)
@@ -366,8 +372,9 @@ export async function judgeSubscriber(
 ): Promise<{ decision: ProactiveDecision; factsText: string; evidence: GuardEvidence }> {
   const userContext = await loadUserContext(s.user_id)
   if (patchContext) await patchContext(userContext)
+  const sink: { forecast?: string; today?: string } = {}
   const [checkinFacts, calibration] = await Promise.all([
-    loadCheckinFacts(db, s, now, userContext.decisionMemory, trial),
+    loadCheckinFacts(db, s, now, userContext.decisionMemory, trial, sink),
     calibrationFacts(db, 'subscriber'),
   ])
   // The FULL context is still loaded: the guard's evidence below reads the
@@ -380,7 +387,16 @@ export async function judgeSubscriber(
     feature: 'proactive_checkin',
     userId: s.user_id,
   })
-  return { decision, factsText, evidence: await loadGuardEvidence(db, s.user_id, userContext.decisionMemory) }
+  // Facts the judge was given that are not the member's own words but are true
+  // at the source: the forecast and where they live. Without these the guard
+  // reads "Tuesday looks sunny in Austin" as a claim they never made.
+  const sourceFacts = guardSourceFacts({
+    today: sink.today,
+    statedLocation: ((userContext.skinProfile as Record<string, unknown> | null)?.location_text as string | null) ?? null,
+    gpsLocation: userContext.locationName,
+    forecast: sink.forecast,
+  })
+  return { decision, factsText, evidence: await loadGuardEvidence(db, s.user_id, userContext.decisionMemory, sourceFacts) }
 }
 
 /**
@@ -388,10 +404,13 @@ export async function judgeSubscriber(
  * decisions/commitments, and the active plan. Throws on a failed read so a
  * guard never runs against an empty record by accident.
  */
+export { guardSourceFacts } from './content-guard'
+
 export async function loadGuardEvidence(
   db: SupabaseClient,
   userId: string,
-  dm: DecisionMemory | null
+  dm: DecisionMemory | null,
+  sourceFacts: string[] = []
 ): Promise<GuardEvidence> {
   const [msgs, phase, shelf] = await Promise.all([
     db
@@ -401,7 +420,7 @@ export async function loadGuardEvidence(
       .eq('role', 'user')
       .order('created_at', { ascending: false })
       .limit(200),
-    db.from('ss_treatment_phases').select('name, protocol').eq('user_id', userId).eq('status', 'active').maybeSingle(),
+    db.from('ss_treatment_phases').select('name, protocol, started_at').eq('user_id', userId).eq('status', 'active').maybeSingle(),
     db.from('ss_user_products').select('custom_name, custom_brand, ss_products(name_en, brand_en)').eq('user_id', userId),
   ])
   if (shelf.error) throw new Error(`guard evidence (shelf) failed: ${shelf.error.message}`)
@@ -413,12 +432,12 @@ export async function loadGuardEvidence(
     ...(dm?.commitments ?? []).map((c) => `they said they would (${c.date}): ${c.item}`),
     ...(dm?.preferences ?? []).map((p) => `preference: ${p.topic}: ${p.preference}`),
   ]
-  const ph = phase.data as { name: string; protocol: unknown } | null
+  const ph = phase.data as { name: string; protocol: unknown; started_at: string | null } | null
   type Row = { custom_name: string | null; custom_brand: string | null; ss_products: { name_en: string | null; brand_en: string | null } | null }
   const knownProducts = ((shelf.data ?? []) as unknown as Row[])
     .map((r) => [r.ss_products?.brand_en ?? r.custom_brand, r.ss_products?.name_en ?? r.custom_name].filter(Boolean).join(' '))
     .filter(Boolean)
-  return { userMessages, recordedDecisions, plan: ph ? `${ph.name}: ${JSON.stringify(ph.protocol)}` : null, knownProducts }
+  return { userMessages, recordedDecisions, plan: ph ? `${ph.name}${ph.started_at ? ` (started ${ph.started_at.slice(0, 10)})` : ''}: ${JSON.stringify(ph.protocol)}` : null, knownProducts, sourceFacts }
 }
 
 export { CHECKIN_CAMPAIGN }

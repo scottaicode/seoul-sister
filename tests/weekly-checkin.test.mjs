@@ -188,6 +188,10 @@ test('forecast: local dates and weekdays, missing values stay null, today/tomorr
   assert.doesNotMatch(text, /Tuesday[^\n]*peak UV/, 'no UV line when UV is missing')
   assert.doesNotMatch(text, /—/, 'no em dashes')
   assert.match(formatForecastFacts({ timezone: 'UTC', days: [] }, '2026-11-08'), /Do not guess it/)
+  // US members: Fahrenheit beside Celsius, so Yuri and the guard read the same numbers.
+  const fText = formatForecastFacts(f, '2026-11-08', null, 'F')
+  assert.match(fText, /high 21°C \(70°F\) \/ low 14°C \(57°F\)/)
+  assert.doesNotMatch(text, /°F/, 'Celsius-only by default')
 })
 
 test('trimmed judge memory: keeps profile, routine, photos, latest summary, dated plan; drops chat-only bulk', async () => {

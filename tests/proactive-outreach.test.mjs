@@ -1017,3 +1017,66 @@ test('price-change email: reviewed facts only, unsubscribe in footer, no pressur
   assert.match(script, /REFUSING: EMAIL_POSTAL_ADDRESS is not set/)
   assert.match(script, /had_subscription/)
 })
+
+// ---------------------------------------------------------------------------
+// Nov 8 2026: the forecast and where they live reach the guard as FACTS ON FILE
+// ---------------------------------------------------------------------------
+
+const WEEK = {
+  ...CAROLINE,
+  sourceFacts: [
+    'Where they live (on file): Kansas City',
+    '7-day forecast where they live, by their local date (a forecast, not a measurement; later days are less certain):\n- Tuesday 2026-11-10: clear sky, high 24°C / low 9°C, humidity 18-40% (mean 29%), peak UV 4.1',
+  ],
+}
+
+test('a weather or location fact quoted from FACTS ON FILE is established; an invented one still blocks', async () => {
+  const { enforceGuard } = await loadGuard()
+  const ok = v({ asserted_facts: [
+    { fact: 'Tuesday looks clear and dry where they live', user_quote: 'Tuesday 2026-11-10: clear sky', source: 'facts' },
+    { fact: 'they live in Kansas City', user_quote: 'Kansas City', source: 'facts' },
+  ] })
+  assert.equal(enforceGuard(ok, WEEK, 'Tuesday looks clear and dry in Kansas City.').pass, true)
+  const invented = v({ asserted_facts: [{ fact: 'rain all week', user_quote: 'heavy rain', source: 'facts' }] })
+  assert.equal(enforceGuard(invented, WEEK, 'Rain all week, so...').pass, false, 'a quote not in the facts blocks')
+  const noFacts = v({ asserted_facts: [{ fact: 'clear Tuesday', user_quote: 'Tuesday 2026-11-10: clear sky', source: 'facts' }] })
+  assert.equal(enforceGuard(noFacts, CAROLINE, 'Tuesday looks clear.').pass, false, 'no facts on file means nothing is established')
+  // Facts on file never establish product use: usage claims are checked against their own words only.
+  const use = v({ products_mentioned: ['Cetaphil'], using_claims: [{ product: 'Cetaphil', user_quote: 'Kansas City', quote_stance: 'establishes_current_use' }] })
+  assert.equal(enforceGuard(use, WEEK, 'Keep the Cetaphil going.').pass, false)
+  // A life fact cannot hide behind source "facts" either.
+  const life = v({ asserted_facts: [{ fact: 'she has a wedding', user_quote: 'Kansas City', source: 'facts' }] })
+  assert.equal(enforceGuard(life, WEEK, 'With the wedding in Kansas City...').pass, true, 'documented limit: the deterministic half matches quotes, not meaning; the readers judge relevance')
+})
+
+test('a fact about the PERSON cannot be sourced from FACTS ON FILE by labelling it "user"', async () => {
+  const { enforceGuard } = await loadGuard()
+  const r = enforceGuard(v({ asserted_facts: [{ fact: 'she has a wedding', user_quote: 'Kansas City', source: 'user' }] }), WEEK, 'Before the wedding...')
+  assert.equal(r.pass, false, 'user-sourced quotes must come from their own words only')
+})
+
+test('guardSourceFacts: today, stated location, GPS location when different, forecast; nulls omitted', async () => {
+  const { guardSourceFacts } = await loadGuard()
+  const all = guardSourceFacts({ today: '2026-11-08', statedLocation: 'Sacramento area', gpsLocation: 'Elk Grove', forecast: 'FORECAST BLOCK' })
+  assert.deepEqual(all, [
+    "Today's date (their local date): 2026-11-08",
+    'Where they live (they told you): Sacramento area',
+    'Where they live (from their location): Elk Grove',
+    'FORECAST BLOCK',
+  ])
+  assert.deepEqual(guardSourceFacts({ statedLocation: 'Kansas City', gpsLocation: 'Kansas City' }), ['Where they live (they told you): Kansas City'])
+  assert.deepEqual(guardSourceFacts({ today: null, statedLocation: '  ', gpsLocation: null, forecast: null }), [])
+})
+
+test('check-in guard evidence carries the forecast the judge saw and the location on file', () => {
+  const src = readFileSync(new URL('../src/lib/proactive/subscriber-checkin.ts', import.meta.url), 'utf8')
+  assert.match(src, /sink\.forecast = forecast/)
+  assert.match(src, /sink\.today = clock\.isoDate/)
+  assert.match(src, /statedLocation: \(\(userContext\.skinProfile/)
+  assert.match(src, /gpsLocation: userContext\.locationName/)
+  assert.match(src, /loadGuardEvidence\(db, s\.user_id, userContext\.decisionMemory, sourceFacts\)/)
+  assert.match(src, /\(started \$\{ph\.started_at\.slice\(0, 10\)\}\)/)
+  const guard = readFileSync(new URL('../src/lib/proactive/content-guard.ts', import.meta.url), 'utf8')
+  assert.match(guard, /FACTS ON FILE \(true at the source/)
+  assert.match(guard, /"source": "user" \| "record" \| "facts"/)
+})
