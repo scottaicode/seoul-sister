@@ -498,10 +498,16 @@ the facts that matter:
  * (Nov 5 2026.) The email gate and paywall ignore what a conversation is about;
  * a person Yuri just pointed to 988 or 911 must not be met with "she just needs
  * your email first." This reads Yuri's OWN judgment from the stored transcript
- * (never client-sent history, which a visitor could forge). On a lookup error it
- * returns false, i.e. today's behaviour, and logs.
+ * (never client-sent history, which a visitor could forge). Matches the US
+ * lines by number, and elsewhere by shape (a number right after call/dial/text/
+ * ring/phone, or wording like "local line", "helpline", "Samaritans"), because Yuri
+ * is told to find a local line outside the US or ask where they are. False
+ * positives only skip one email ask. On a lookup error it returns TRUE and writes
+ * a `widget_crisis_lookup_failed` row: while the error lasts the email ask is
+ * skipped on every turn, so that row is how a broken lookup is told apart from
+ * a quiet gate.
  */
-export const CRISIS_LINE_RE = /\b988\b|1-888-375-7767|\b911\b|emergency services|local emergency number|crisis line/i
+export const CRISIS_LINE_RE = /\b988\b|888\W{0,3}375\W{0,3}7767|\b911\b|\b116 ?123\b|\b741741\b|\b(?:call|dial|ring|phone|text)\W{1,3}\+?\d[\d ()\-]{1,15}\d\b|triple zero|samaritans|lifeline|kids help phone|emergency (?:services|number|department|room)|crisis (?:line|centre|center|text line|service|number)|suicide (?:hotline|helpline)|helpline|local (?:crisis |support |emergency )?(?:line|number)|find (?:you )?a (?:line|number)/i
 
 /** `visitorId` is the browser visitor id (ss_widget_visitors.visitor_id, text),
  * which is what ss_widget_sessions.visitor_id references; NOT the row's uuid. */
@@ -514,8 +520,12 @@ export async function lastReplyGaveCrisisLine(visitorId: string): Promise<boolea
     .order('created_at', { ascending: false })
     .limit(1)
   if (error) {
-    console.error('[widget/persistence] crisis-line lookup failed:', error.message)
-    return false
+    console.error('[widget/persistence] crisis-line lookup failed, skipping the email ask:', error.message)
+    // Loaded only on this rare path (several tests compile this file with its two static imports stubbed).
+    void import('@/lib/ai-usage-logger')
+      .then(({ logAIUsage }) => logAIUsage({ feature: 'widget_crisis_lookup_failed', model: 'n/a', inputTokens: 0, outputTokens: 0, cached: true }))
+      .catch(() => {})
+    return true
   }
   const content = (data?.[0] as { content?: string } | undefined)?.content ?? ''
   return CRISIS_LINE_RE.test(content)

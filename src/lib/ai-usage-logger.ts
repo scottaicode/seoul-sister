@@ -53,6 +53,7 @@ export type AIFeature =
   | 'widget_email_captured'
   // Nov 7 2026 — a visitor reopened a conversation from an email resume link (zero-cost breadcrumb)
   | 'widget_resume_link_opened'
+  | 'widget_crisis_lookup_failed'
   // v10.13.3 — Yuri judged a captured email should NOT receive a follow-up
   // (third-party address, no consent intent, thin conversation). Zero-cost
   // breadcrumb keeping the suppressed-send path visible/queryable.

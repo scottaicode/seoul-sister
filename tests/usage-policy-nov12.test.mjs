@@ -151,11 +151,19 @@ test('widget email gate is skipped right after Yuri gave a crisis line (Nov 5 20
   const p = read('src', 'lib', 'widget', 'persistence.ts')
   // Reads Yuri's stored reply (never client-sent history, which could be forged).
   assert.match(p, /from\('ss_widget_messages'\)[\s\S]{0,200}ss_widget_sessions!inner\(visitor_id\)/)
-  // sessions.visitor_id references the BROWSER visitor id, not the row uuid (a first version passed visitor.id and could never match).\n  assert.match(route, /const crisisExempt = gateWouldFire && \(await lastReplyGaveCrisisLine\(parsed\.visitor_id!\)\)/)
+  // sessions.visitor_id references the BROWSER visitor id, not the row uuid (a first version passed visitor.id and could never match).
+  assert.match(route, /const crisisExempt = gateWouldFire && \(await lastReplyGaveCrisisLine\(parsed\.visitor_id!\)\)/)
   assert.match(route, /if \(gateWouldFire && !crisisExempt\) \{/)
   const re = new RegExp(p.match(/CRISIS_LINE_RE = \/(.+)\/i/)[1], 'i')
-  for (const t of ['call or text **988** any time', 'Call 911 now.', "ANAD's peer support line, 1-888-375-7767"]) assert.ok(re.test(t), t)
-  for (const t of ['Use SPF 50 and a 2% BHA.', "I'm 19, oily skin", '9880 reviews']) assert.ok(!re.test(t), t)
+  for (const t of ['call or text **988** any time', 'Call 911 now.', "ANAD's peer support line, 1-888-375-7767",
+    'Samaritans on 116 123, free, any time', 'call Lifeline on 13 11 14', 'please call 999 now', 'ring 112 straight away', 'call 000 (triple zero)',
+    'text HOME to 741741', 'your local crisis centre can help', 'ANAD at 1 (888) 375-7767', 'go to the emergency department', 'Kids Help Phone, 1-800-668-6868',
+    'In Korea you can call 1393 any time', 'call 0800 111 0 111 (TelefonSeelsorge)', 'en France, appelez le 3114 or call 3114', 'call 1737 free, any time',
+    'Where are you based? I will help you find a local line.', 'I can point you to a local number'])
+    assert.ok(re.test(t), t)
+  // On a lookup error the gate is skipped once, never shown to someone who may just have been given a crisis line.
+  assert.match(p, /crisis-line lookup failed[\s\S]{0,400}widget_crisis_lookup_failed[\s\S]{0,120}\n\s*return true\n/)
+  for (const t of ['Use SPF 50 and a 2% BHA.', "I'm 19, oily skin", '9880 reviews', 'about 10,000 reviews', 'this serum costs $9.99', 'a 112-piece set', 'Leave it on 30-60 seconds before rinsing', 'Leave it on 30-60 sec.']) assert.ok(!re.test(t), t)
 })
 
 test('Glass Skin history: first score always loaded, local dates, never "none taken" unless looked up (Nov 7 2026)', () => {
@@ -170,4 +178,19 @@ test('Glass Skin history: first score always loaded, local dates, never "none ta
   assert.match(m, /if \(context\.glassSkinKnown && context\.glassSkinHistory\.length > 0\) \{/)
   // Uploads happen outside chat; the record outranks a stale "photo pending" note.
   assert.match(m, /more current than any note in your memory about a photo still being pending/)
+})
+
+test('weekly check-ins carry the prescriber and person-first rules, and the guard can block on them (Nov 8 2026)', () => {
+  const checkin = read('src', 'lib', 'proactive', 'subscriber-checkin.ts')
+  assert.match(checkin, /is their prescriber's call to start, stop, or change/)
+  assert.match(checkin, /never a plan to follow up on here/)
+  assert.match(checkin, /The person comes before the skin\. If your memory holds a plan that would harm their body/)
+  assert.match(checkin, /never mention that plan in a check-in/)
+  assert.doesNotMatch(checkin, /If you speak, ask how they're doing/)
+  const guard = read('src', 'lib', 'proactive', 'content-guard.ts')
+  assert.match(guard, /8\. harmful_followups:/)
+  assert.match(guard, /lists 3-8 are all empty/)
+  // The key the reader model copies from the JSON template must be the key the enforce loop reads.
+  assert.match(guard, /"routine_changes": \[\], "harmful_followups": \[\], "verdict"/)
+  assert.match(guard, /for \(const h of v\.harmful_followups \?\? \[\]\) if \(h\?\.trim\(\)\) reasons\.push/)
 })

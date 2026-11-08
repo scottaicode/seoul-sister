@@ -5,7 +5,30 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
-## v11.50.0 — Yuri's check-ins go weekly ("the week ahead"), with a 7-day forecast and a smaller judge context (Nov 7 2026) (branch `feat/weekly-checkins`, not merged or deployed)
+## v11.50.1 — Safety rules reach the weekly check-ins; crisis lines outside the US skip the email ask (Nov 8 2026)
+
+- **Why.** A retroactive `/ship-guard` + `/ai-first-check` run over Oct 29–Nov 7 (the work had been done from
+  an LGAAS-folder session, so this repo's gates never loaded) found three problems.
+- **Check-ins carried neither safety rule.** `CHECKIN_SYSTEM` reads decision memory and open loops but had
+  neither rule 6 (prescriptions belong to the prescriber) nor rule 7 (the person comes before the skin).
+  Two tripwires added: a prescription's dose/schedule in memory is a question for the prescriber, never a
+  plan to follow up on; a plan that harms the body for the skin is never mentioned, followed up, or
+  progress-checked in a check-in (that conversation belongs in chat). The guard gains list 8
+  `harmful_followups` (both readers, enforced in `enforceGuard`). Reviewer finding fixed before ship: a
+  first draft let Yuri "ask how they're doing" about the plan, which the guard then blocked 2/2.
+- **Crisis lines outside the US.** `CRISIS_LINE_RE` matched US numbers only, so a visitor given a UK/AU/
+  Korean line was still asked for an email. Now matches by shape too (a number after call/dial/text/ring/
+  phone; "local line", "helpline", Samaritans, Lifeline...). Measured: 0 of 589 stored widget replies match
+  (a first version matched "leave it on 30-60 seconds" 3 times; fixed). A lookup error now skips the ask
+  instead of showing it, and writes a `widget_crisis_lookup_failed` row so a broken lookup is visible.
+- **Dead guard test.** The `crisisExempt` assertion in `tests/usage-policy-nov12.test.mjs` sat inside a
+  comment (literal `\n`), so it passed whatever the code did. Revived; mutation-checked (reverting the
+  visitor-id fix now fails it). The guard's JSON-template key is pinned (a typo there passed 79/79 before).
+- Second-model review: Fable, adversarial, with 6 live guard calls. Known and left: the guard blocked a
+  forecast-based sunscreen-with-tretinoin draft because check-ins pass no `verifiedStatements` for the
+  forecast (pre-existing, not this change).
+
+## v11.50.0 — Yuri's check-ins go weekly ("the week ahead"), with a 7-day forecast and a smaller judge context (Nov 7 2026) (merged and deployed Nov 7, `9569e40`)
 
 - **Why.** The check-in judge (claude-opus-5-5) averaged ~16.4K input tokens, ~$0.075 a judgment, run
   once per local day: ~$2.40/member/month on a $9.99 plan. Owner decision: one weekly check-in.

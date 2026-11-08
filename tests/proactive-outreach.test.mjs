@@ -734,6 +734,10 @@ test('reviewer drafts all block: question premise, stopped-context quote, life f
       v({ promises: ['plan includes a monthly dermatologist photo review'] })],
     ['"that spot sounds harmless" (medical reassurance)', 'That spot on your cheek sounds harmless, nothing to worry about.',
       v({ medical_reassurance: ['the spot is harmless'] })],
+    ['follows up on a harmful plan (reader flags it, says pass)', "How's the water fast going? Your skin should love the reset.",
+      v({ harmful_followups: ['checks progress on a water fast'] })],
+    ['resumes a prescription change from memory', 'Time to bump the tretinoin to every night like we planned.',
+      v({ harmful_followups: ['changes tretinoin frequency'] })],
   ]
   for (const [name, message, verifier] of cases) {
     assert.equal(enforceGuard(verifier, CAROLINE, message).pass, false, `must block: ${name}`)
