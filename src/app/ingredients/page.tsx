@@ -270,7 +270,7 @@ export default async function IngredientsPage() {
                   )}
                   {ing.comedogenic_rating != null &&
                     ing.comedogenic_rating > 0 && (
-                      <span>Comedogenic: {ing.comedogenic_rating}/5</span>
+                      <span>Comedogenic (est.): {ing.comedogenic_rating}/5</span>
                     )}
                 </div>
               </Link>

@@ -519,9 +519,11 @@ export default async function IngredientDetailPage({
                                     ? 'It is generally safe but some individuals may experience sensitivity.'
                                     : 'Use with caution and patch test first.'
                               }${
+                                // comedogenic_rating is an AI estimate (0 also means "unknown"),
+                                // so never state it to search engines as a measured fact.
                                 ingredient.comedogenic_rating != null && ingredient.comedogenic_rating > 0
-                                  ? ` It has a comedogenic rating of ${ingredient.comedogenic_rating}/5.`
-                                  : ' It is non-comedogenic.'
+                                  ? ` Our estimated comedogenic rating is ${ingredient.comedogenic_rating}/5, an estimate rather than a lab measurement.`
+                                  : ''
                               }`
                             : `Safety data for ${displayName} is still being compiled.`,
                       },
@@ -664,19 +666,28 @@ export default async function IngredientDetailPage({
               {ingredient.comedogenic_rating != null && (
                 <div className="flex items-center gap-2">
                   <Droplets className="w-4 h-4 text-white/40" />
-                  <span className="text-white/50">Comedogenic:</span>
+                  <span className="text-white/50">Comedogenic (estimate):</span>
                   <span
                     className={
                       ingredient.comedogenic_rating === 0
-                        ? 'text-emerald-400'
+                        ? 'text-white/70'
                         : ingredient.comedogenic_rating <= 2
                           ? 'text-sky-400'
                           : 'text-amber-400'
                     }
                   >
-                    {ingredient.comedogenic_rating}/5
-                    {ingredient.comedogenic_rating === 0 && ' — Non-comedogenic'}
+                    {/* AI-estimated at ingest, where 0 also means "unknown".
+                        Shown as an estimate, never as a measured fact. */}
+                    {ingredient.comedogenic_rating === 0
+                      ? 'low or not rated'
+                      : `${ingredient.comedogenic_rating}/5`}
                   </span>
+                  <Link
+                    href="/blog/is-it-comedogenic-what-pore-clogging-ratings-can-and-cant"
+                    className="text-white/40 underline hover:text-white/70"
+                  >
+                    what this means
+                  </Link>
                 </div>
               )}
               <div className="flex items-center gap-2">

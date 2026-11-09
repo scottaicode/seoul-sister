@@ -5,6 +5,24 @@ All notable changes to Seoul Sister are documented here.
 ---
 
 
+## v11.50.3 — Ingredient pages call the comedogenic score an estimate (Nov 9 2026)
+
+- **Why.** `ss_ingredients.comedogenic_rating` is written by the ingest model ("Use 0 if unknown",
+  `ingredient-matcher.ts`) and was shown as fact: "Comedogenic: 4/5", and "0/5 — Non-comedogenic" for every
+  zero, including unknowns. Checked against Fulton 1989 (page scans), 6 of 9 values disagree, e.g. cetyl
+  palmitate ours 4 vs Fulton 0, laureth-4 ours 2 vs Fulton 5. That is a mismatch, not proof ours is wrong,
+  but an unsourced number was presented as measured. These pages get ~940 "X comedogenic rating"
+  impressions a month.
+- **Changed.** Ingredient page shows "Comedogenic (estimate): N/5", "low or not rated" for 0, and links
+  to the new explainer post. The FAQ JSON-LD no longer tells search engines "It is non-comedogenic" for a
+  0, and calls a non-zero value an estimate. The index list says "Comedogenic (est.)".
+- **Not changed (open).** 519 of 590 AI-written `rich_content` bodies repeat the score in prose
+  (`scripts/enrich-ingredients.ts` feeds it in as context). Scan results, product ingredient lists and
+  Yuri's tools also read the column. The ingest prompt still writes 0 for unknown.
+- **Also shipped today (content, not code):** blog post
+  `/blog/is-it-comedogenic-what-pore-clogging-ratings-can-and-cant` (recipe
+  `LGAAS-BLOG-RECIPE-COMEDOGENIC-RATINGS.md`).
+
 ## v11.50.2 — The check-in guard sees the facts Yuri was given: forecast, today's date, location, °F (Nov 8 2026)
 
 - **Why.** The check-in guard only accepted facts quoted from the member's own words or the record. Yuri is
