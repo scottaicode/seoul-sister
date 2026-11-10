@@ -430,12 +430,34 @@ export function detectArtifactsInReply(text: string): Set<GiveArtifact> {
  * paid tier. A first draft ended "What you write is your call"; review called
  * that hollow next to the gate's "Do NOT", and it was dropped.
  *
+ * CHANGED AGAIN the same day (owner decision after testing the live funnel):
+ * the routine, including the laid-out order of products the visitor already
+ * owns, is built in the free week. That was possible to decide honestly only
+ * because the week no longer needs a card. The second fact changed to match.
+ *
  * Deliberately conservative: it requires an explicit build verb aimed at a
- * routine noun. "What order do these go in" does not match — that is a
- * sequencing question, and answering it is triage, not a build.
+ * routine noun, or (since Nov 10 2026, ORDER_OWNED_REQUEST below) a request to
+ * put the visitor's own products in order.
  */
 const BUILD_REQUEST =
   /\b(?:build|make|create|design|put together|map out|lay out|give me|send me|write)\b[^.?!]{0,40}\b(?:routine|regimen|lineup|schedule|plan|rotation)\b/i
+
+/**
+ * A request to put the visitor's OWN products in order, or for "my routine".
+ *
+ * Until Nov 10 2026 this was deliberately not detected ("what order do these go
+ * in" was triage, and answering it was what the preview was for). The owner
+ * then decided the laid-out order of a visitor's own products is the routine
+ * and is built in the free week, so these messages are now requests for the
+ * gated thing and Yuri needs the same fact on that turn.
+ *
+ * A single-pair question ("does niacinamide go before vitamin C?") is a fact
+ * with the same answer for everyone and must NOT fire: this requires an
+ * order/layer verb aimed at a plural owned set, or "my routine" asked for
+ * outright.
+ */
+const ORDER_OWNED_REQUEST =
+  /\b(?:order|layer|sequence|arrange|organi[sz]e)\b[^.?!]{0,60}\b(?:these|those|them|my (?:products|stuff|shelf|skincare|things)|everything|all of (?:them|it|these)|what i (?:have|own|already have)|morning and night)\b|\b(?:these|those|them|my (?:products|stuff|shelf|things)|everything|all of (?:them|these)|what i (?:already )?(?:have|own))\b[^.?!]{0,60}\b(?:in (?:what |which )?order|go in|layer)\b|\bwhat(?:'s| is| should)? (?:be )?my (?:full |complete |whole |new )?routine\b/i
 
 /** A request for BOTH halves of the day, the strongest form of the ask. */
 const FULL_DAY_REQUEST = /\b(?:am\s*(?:and|\/|&)\s*pm|pm\s*(?:and|\/|&)\s*am|morning and night|full routine|complete routine|entire routine|whole routine)\b/i
@@ -451,7 +473,7 @@ export interface BuildRequest {
 export function detectBuildRequest(message: string): BuildRequest {
   if (!message) return { asked: false, fullDay: false }
   return {
-    asked: BUILD_REQUEST.test(message),
+    asked: BUILD_REQUEST.test(message) || ORDER_OWNED_REQUEST.test(message),
     fullDay: FULL_DAY_REQUEST.test(message),
   }
 }
@@ -467,8 +489,9 @@ export function detectBuildRequest(message: string): BuildRequest {
  * 1. It never tells her to withhold, defer, or refuse in its own words. Since
  *    Nov 10 2026 it points at the gate in the static prompt, which does hold
  *    the complete build for members, and states the two facts from it that
- *    apply: the #1 priority is given in full, and ordering products they
- *    already own is sequencing. The block adds no restriction of its own.
+ *    apply: the diagnosis and the one change that matters most are given
+ *    in full, and the routine (including the order of products they already
+ *    own) is built in the free week. The block adds no restriction of its own.
  * 2. It never tells her to sell. The one behaviour that has converted a
  *    customer is confident anti-selling ("you already own it, don't buy a new
  *    one"), and a block that nudges toward a pitch would cost exactly that.
@@ -483,7 +506,7 @@ export function detectBuildRequest(message: string): BuildRequest {
  * the block ends with this string and nothing after it.
  */
 export const BUILD_REQUEST_CLOSING =
-  "Two facts from \"The Give and the Gate\" apply to a request like this: this preview's part is their #1 priority solved in full, and putting products they already own in order is sequencing, not the build."
+  "Two facts from \"The Give and the Gate\" apply to a request like this: this preview's part is the diagnosis and the one change that matters most, and the routine itself, including the order of products they already own, is built in a first-time member's free week."
 
 export function buildRequestBlock(req: BuildRequest, give: CumulativeGive): string | null {
   if (!req.asked) return null
@@ -608,13 +631,13 @@ export function buildCumulativeGiveBlock(give: CumulativeGive): string | null {
       ? ''
       : give.lineupBuilds >= 2
       ? `\nYou have built them a complete multi-slot lineup ${give.lineupBuilds} separate times in this conversation. Often that is the visitor asking one question several ways — a different store, a different texture, a different budget — and each reframe reads as a brand-new question. Re-specifying the whole lineup each time is a judgment call worth making deliberately rather than by reflex; answering just the part they actually asked about is usually the better answer anyway, and it is the more useful one.`
-      : `\nYou have already built them one complete multi-slot lineup. If their next message asks for that same lineup somewhere else — a different retailer, a lower budget, a lighter texture, "can I get this at Target?" — that is the same build again, not a new question, however much it reads like one in the moment. The genuinely more useful answer is usually the translation rule plus the one pick that actually changes ("same three jobs: gentle cleanser, repair moisturizer, sunscreen — at Target the repair balm is the one worth hunting for"), which respects what they asked and hands them something they can reuse. Re-specifying every slot a second time is the judgment call worth making deliberately rather than by reflex.`
+      : `\nYou have already laid out one complete multi-slot lineup in this conversation, which is the routine "The Give and the Gate" places in their free week. If their next message asks for that same lineup somewhere else — a different retailer, a lower budget, a lighter texture, "can I get this at Target?" — that is the same build again, not a new question, however much it reads like one in the moment. The genuinely more useful answer is usually the translation rule plus the one pick that actually changes ("same three jobs: gentle cleanser, repair moisturizer, sunscreen — at Target the repair balm is the one worth hunting for"), which respects what they asked and hands them something they can reuse. Re-specifying every slot a second time is the judgment call worth making deliberately rather than by reflex.`
 
   return `\n\n## What You've Already Given This Visitor (facts, not instructions)
-Across your earlier replies in this conversation you have already delivered ${give.count} of the ${GIVE_ARTIFACT_COUNT} things the complete build is made of: ${list}.${
+Across your earlier replies in this conversation you have already delivered ${give.count} of the ${GIVE_ARTIFACT_COUNT} kinds of work this count tracks: ${list}.${
     mostOfIt
-      ? ' That is most of the subscriber deliverable, already handed over.'
+      ? ' That is most of what the count tracks, already handed over.'
       : ''
   }${rebuilt}
-This is a cumulative count you cannot see by reading any single reply — that is why it is here. It is context for your judgment, not a rule and not a cap: sometimes the honest answer to their question genuinely needs another piece of the build, and you are the one who decides that. Nothing here asks you to withhold help, change your voice, or start selling.`
+This is a cumulative count you cannot see by reading any single reply — that is why it is here. It is a count, not a rule and not a cap. Reading their shelf (what clashes, what to keep or drop) is the give itself; where the routine is built is settled in "The Give and the Gate". Nothing here asks you to change your voice or start selling.`
 }

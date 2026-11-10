@@ -180,7 +180,8 @@ async function runRecap(link) {
     callAnthropicWithRetry: '((fn) => fn())',
     MODELS: "({ primary: 'test-model' })",
     logAIUsage: '(() => Promise.resolve())',
-    PRICING: "({ yuri_allowance_display: 'A', monthly_display: 'M' })",
+    PRICING: "({ yuri_allowance_display: 'A', monthly_display: 'M', trial_days: 7 })",
+    noCardTrialEnabled: '(() => globalThis.__noCardTrial !== false)',
   })
   const conversation = [
     { role: 'user', content: 'my chin keeps breaking out' },
@@ -234,12 +235,60 @@ test('the recap fact states the remaining free messages, and never invites chatt
   const { mod } = await runRecap({ url: 'x', resumes: true })
   const none = mod.recapLinkFact({ url: 'x', resumes: true, remainingMessages: 0 })
   assert.match(none, /used all of their free preview messages/)
-  assert.match(none, /read but not continued without a subscription/)
+  assert.match(none, /read but not continued there; continuing means the free account and free week linked under your email/)
   assert.match(mod.recapLinkFact({ url: 'x', resumes: true, remainingMessages: 3 }), /They have 3 free preview messages left/)
   assert.match(mod.recapLinkFact({ url: 'x', resumes: true, remainingMessages: 1 }), /1 free preview message left/)
-  assert.doesNotMatch(mod.recapLinkFact({ url: 'x', resumes: true, remainingMessages: null }), /free preview/)
+  assert.doesNotMatch(mod.recapLinkFact({ url: 'x', resumes: true, remainingMessages: null }), /free preview message/)
   const { prompt } = await runRecap({ url: 'x', resumes: true, remainingMessages: 0 })
   assert.match(prompt, /used all of their free preview messages/)
+})
+
+test('the fixed account line: appended to the real email body, true for the recipient, absent for a child (executed)', async () => {
+  const { mod, result, prompt } = await runRecap({ url: 'https://www.seoulsister.com/?from=recap', resumes: false })
+  const line = mod.accountLineHtml('free_week', true)
+  assert.equal(
+    line,
+    '<p style="margin:16px 0 0;font-size:14px;color:#444;">Your routine is built in your first week as a member. For a new member that week is free, with no card needed to start. <a href="https://www.seoulsister.com/register?plan=monthly&amp;from=recap&amp;utm_source=recap&amp;utm_medium=email" style="color:#8a6a1f;font-weight:600;">Create your free account</a></p>'
+  )
+  // The email that would actually be sent ends with it. (A source-text check
+  // still passed with the line removed from the body and left in a comment.)
+  assert.ok(result.email.bodyHtml.endsWith(line), 'the recap that is sent must end with the account line')
+  // Yuri is told exactly what the line says, so she does not write her own.
+  assert.equal(
+    mod.accountLineFact('free_week', true),
+    'Under that button Seoul Sister adds one fixed line: "Your routine is built in your first week as a member. For a new member that week is free, with no card needed to start." with a link labelled "Create your free account". So you do not need to explain how to sign up or what it costs, and you should not paste a link. The line is left off when the visitor said they are under 13.'
+  )
+  assert.ok(prompt.includes(mod.accountLineFact('free_week', true)))
+
+  // Someone whose inbox already used its trial is not told the week is free.
+  assert.equal(mod.accountLineText('member', true), 'Your routine is built with Yuri once you are a member.')
+  const member = mod.composeRecapBody('<p>b</p>', { url: 'x', resumes: false, accountLine: 'member' }, false)
+  assert.ok(member.endsWith(mod.accountLineHtml('member', true)))
+  assert.doesNotMatch(member, /that week is free|no card/, 'no free-week promise to an inbox that already used its trial')
+
+  // A visitor who said they are under 13 gets no account line at all.
+  const child = mod.composeRecapBody('<p>b</p>', { url: 'x', resumes: false }, true)
+  assert.doesNotMatch(child, /Create your free account|register/)
+  assert.ok(child.endsWith(mod.recapLinkButtonHtml({ url: 'x', resumes: false })))
+
+  // With the card-required setting the line says so.
+  globalThis.__noCardTrial = false
+  try {
+    assert.equal(mod.accountLineText('free_week', false), 'Your routine is built in your first week as a member. For a new member that week is free; a card is needed to start it, and nothing is charged if you cancel before it ends.')
+    assert.doesNotMatch(mod.composeRecapBody('<p>b</p>', { url: 'x', resumes: false }, false), /no card/)
+  } finally { delete globalThis.__noCardTrial }
+  assert.doesNotMatch(mod.accountLineText('free_week', true) + mod.accountLineText('member', true), /[—–]/)
+})
+
+test('the recap asks the model whether the visitor said they are under 13, and the chat route picks the line from the trial ledger', async () => {
+  const { system } = await runRecap({ url: 'x', resumes: false })
+  assert.match(system, /"visitor_said_under_13": true\|false/)
+  assert.match(system, /Set visitor_said_under_13 to true only when the visitor themselves said they are under 13/)
+  const route = read('src', 'app', 'api', 'widget', 'chat', 'route.ts')
+  assert.match(route, /accountLine: await recapAccountLine\(email\),/)
+  const fn = route.slice(route.indexOf('async function recapAccountLine'), route.indexOf('function simpleHash'))
+  assert.match(fn, /\.eq\('email_canonical', canonicalizeEmail\(email\)\)/)
+  assert.equal((fn.match(/return 'member'/g) || []).length, 2, 'a failed lookup must fall back to the line that promises nothing')
 })
 
 test('the chat route passes remaining messages and stores the recap with the token redacted', () => {
