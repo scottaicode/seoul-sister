@@ -168,7 +168,11 @@ test('path fact "the link under this chat": it exists, is a real tap target, and
   assert.match(cond, /messages\.some\(\(m\) => m\.role === 'assistant' && !m\.isStreaming\)/, 'shown once Yuri has answered')
   const link = widget.slice(at, at + 400)
   assert.match(link, /text-xs py-2/, 'its own padded line: 10px inline text failed the tap-target minimum')
-  assert.match(link, /Create a free account and pick this up with Yuri\. No card needed\./)
+  // The link must say what the account actually opens: a setup chat, then
+  // membership. "Pick this up with Yuri. No card needed" was true for one
+  // session and then met the card wall.
+  assert.match(link, /Create a free account for a setup chat with Yuri\. Membership comes after \(first 7 days free\)\./)
+  assert.doesNotMatch(link, /pick this up with Yuri/)
 })
 
 // ---------------------------------------------------------------------------

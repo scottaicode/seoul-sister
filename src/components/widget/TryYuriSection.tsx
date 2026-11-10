@@ -1195,7 +1195,11 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
       {/* Nov 10 2026: until now the ONLY way from this chat to an account was
           the card shown at 12 of 12 messages, which 13 people ever saw. This is
           the same door, open as soon as Yuri has answered once. It is a plain
-          link that says what is true and stays out of the conversation. Own
+          link that says what is true and stays out of the conversation. (It
+          first read "pick this up with Yuri. No card needed", which was true
+          for one setup chat and then met the card wall; both reviewers called
+          it misleading and it was reworded the same day. Restore the simpler
+          promise only when the trial itself needs no card.) Own
           line and padding so it is a real tap target on a phone. Hidden while
           the email gate is up: the recap email is the only thing that has ever
           converted anyone, and a second ask beside it would compete with it. */}
@@ -1206,7 +1210,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             onClick={recordRegisterClick}
             className="inline-block text-xs py-2 px-3 text-gold/80 hover:text-gold underline underline-offset-2"
           >
-            Create a free account and pick this up with Yuri. No card needed.
+            Create a free account for a setup chat with Yuri. Membership comes after (first 7 days free).
           </Link>
         </p>
       )}
