@@ -214,7 +214,7 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
     const [subsRes, nudgesRes, judgedRes] = await Promise.all([
       db
         .from('ss_subscriptions')
-        .select('user_id, status, current_period_start, created_at, trial_end')
+        .select('user_id, status, current_period_start, created_at, trial_end, stripe_created_at')
         .in('user_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']),
       db.from('ss_user_nudges').select('user_id, created_at').in('user_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000']),
       db
@@ -255,6 +255,11 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
         const comped = !rows.some((r) => r.status === 'active' || r.status === 'trialing')
         const trial = trialInfoFromSubscription(rows.find((r) => r.status === 'trialing'))
         const nudgeCreatedAts = (nudgesRes.data ?? []).filter((r) => r.user_id === p.user_id).map((r) => r.created_at as string)
+        // When they became a member, for the "were they told to expect a
+        // weekly check-in" fact. Comped accounts with no row are unknown.
+        // Stripe's creation time of the subscription they are on NOW (a member
+        // who lapsed in April and rejoined in December was told in December).
+        const memberSinceAt = rows.map((r) => (r.stripe_created_at as string | null) ?? (r.created_at as string)).sort().pop() ?? null
         const lastJudgedAt =
           (judgedRes.data ?? [])
             .filter((r) => r.user_id === p.user_id)
@@ -284,7 +289,8 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
               ? (ctx) => applyMemoryOverrides(db, p.user_id, ctx, opts.memoryOverrides!)
               : undefined,
             trial,
-            nudgeCreatedAts.length ? [...nudgeCreatedAts].sort().pop()! : null
+            nudgeCreatedAts.length ? [...nudgeCreatedAts].sort().pop()! : null,
+            memberSinceAt
           )
           const { decision, guardReasons } = await guardDecision(judged.decision, judged.evidence, p.user_id)
           sub[decision.decision]++

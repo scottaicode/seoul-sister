@@ -32,6 +32,7 @@ export function buildSubscriptionConfirmationEmail(params: {
   const html = wrapEmailHtml(
     `<p>Welcome to ${escapeHtml(PRICING.plan_name)}.</p>
 ${firstCharge}
+<p><strong>What to expect:</strong> Yuri builds your routine with you in your first conversation. After that, most weeks she checks in with a question or two about how your skin did, and adjusts the routine from what you tell her. Your answers are what make it better.</p>
 <p><strong>What's included:</strong> ${escapeHtml(PRICING.yuri_allowance_display)}, label scans, and the full Seoul Sister intelligence suite. Your allowance resets on the first of each month.</p>
 ${noCardTrial
       ? `<p><strong>How to stop:</strong> you don't need to do anything. With no card on file the trial ends by itself. If you add a card and change your mind, go to your Profile page and choose "Manage subscription", or reply to this email and we'll cancel it for you.</p>`

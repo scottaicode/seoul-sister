@@ -27,3 +27,56 @@ export async function sendTrialEndedEmail(to: string): Promise<{ sent: boolean; 
     ? { sent: true }
     : { sent: false, reason: 'reason' in result ? String(result.reason) : 'error' in result ? String(result.error) : 'unknown' }
 }
+
+/** What Stripe says about a running trial, or null when it could not be asked. */
+export type TrialEndingState = { hasPaymentMethod: boolean; cancelAtPeriodEnd: boolean } | null
+
+/**
+ * The one sentence that says when a trial ends and what happens then, in the
+ * member's own calendar. Stated per what Stripe says right now; when Stripe
+ * could not be asked it gives the date and nothing else. Pure, exported.
+ *
+ * The date is formatted in the MEMBER's timezone. A first version used UTC, so
+ * a US evening sign-up was told the trial ended, and the card would be
+ * charged, the day after it actually would.
+ */
+export function trialEndingLine(endsAt: string, state: TrialEndingState, timezone: string | null): string {
+  const when = new Date(endsAt).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    timeZone: timezone || 'UTC',
+  })
+  const base = `Your free trial ends on ${when}${timezone ? '' : ' (UTC)'}.`
+  if (!state) return base
+  if (state.cancelAtPeriodEnd) return `${base} You cancelled, so nothing will be charged.`
+  if (state.hasPaymentMethod) {
+    return `${base} Your card will be charged ${PRICING.monthly_display_long} on that day, and every month after that until you cancel.`
+  }
+  return `${base} No card is on file, so nothing will be charged and your membership will stop on that day. To keep going, sign in and use the "Add a card" button at the top of any page: ${PRICING.monthly_display_long}, starting when the trial ends.`
+}
+
+/**
+ * A plain notice from Seoul Sister, sent about two days before a trial ends
+ * (Nov 10 2026). It is deliberately NOT part of Yuri's check-in: a first version
+ * put this line under her day-6 note, so a week where she stayed silent, or the
+ * content guard blocked her draft, would have ended a member's access with no
+ * notice at all, and it read as Yuri asking for money.
+ */
+export function buildTrialEndingEmail(line: string): { subject: string; html: string } {
+  const html = wrapEmailHtml(
+    `<p>A note from Seoul Sister about your free trial.</p>
+<p><strong>${escapeHtml(line)}</strong></p>
+<p>Your account, your skin profile and everything you worked out with Yuri are kept either way.</p>`,
+    `<p style="font-size:12px;color:#999;margin:0;">You're receiving this because you started a free trial at seoulsister.com. This is an account notice, not a message from Yuri.</p>`
+  )
+  return { subject: 'Your Seoul Sister free trial ends soon', html }
+}
+
+export async function sendTrialEndingEmail(to: string, line: string): Promise<{ sent: boolean; reason?: string }> {
+  const { subject, html } = buildTrialEndingEmail(line)
+  const result = await sendEmail(to, subject, html)
+  return result.sent
+    ? { sent: true }
+    : { sent: false, reason: 'reason' in result ? String(result.reason) : 'error' in result ? String(result.error) : 'unknown' }
+}

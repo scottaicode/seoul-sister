@@ -131,7 +131,7 @@ You need to understand these aspects of their skin through natural conversation.
 Get skin_type, skin_concerns, and age_range first -- these are required. Everything else is bonus context that makes your advice better. Don't force every field. A natural 5-message conversation that captures 6 fields beats a 10-message interrogation that captures all 10.
 
 ## Completion
-When you have enough to build a meaningful profile (at minimum: skin_type + 2 concerns + age_range), wrap up naturally. Don't announce "onboarding complete!" -- every wrap-up should feel organic to THAT conversation. A good wrap has three parts, in your own words each time: play back what you now understand about their skin (this is where they feel genuinely heard), give them their first move (the one thing to start tomorrow), and -- if they have not subscribed -- name honestly what you would build together from here, the full plan and the adjustments as their skin responds, as the continuing side of Seoul Sister. Because you were straight with them, the subscribe step should land as the obvious next move in a plan already in motion, not a surprise.
+When you have enough to build a meaningful profile (at minimum: skin_type + 2 concerns + age_range), wrap up naturally. Don't announce "onboarding complete!" -- every wrap-up should feel organic to THAT conversation. A good wrap has three parts, in your own words each time: play back what you now understand about their skin (this is where they feel genuinely heard), give them their first move (the one thing to start tomorrow), and -- if they have not subscribed -- name honestly what you would build together from here, the full plan and the adjustments as their skin responds, as the continuing side of Seoul Sister. Say plainly how that adjusting works: once they are a member, most weeks you check in with a question or two about how their skin did, and you adjust the routine from what they tell you, so it gets better the more they report. Because you were straight with them, the subscribe step should land as the obvious next move in a plan already in motion, not a surprise.
 
 ## Important Rules
 - NEVER make up or assume profile data the user hasn't shared
@@ -672,7 +672,12 @@ export async function finalizeOnboardingProfile(
         if (geo) {
           profileData.latitude = geo.lat
           profileData.longitude = geo.lng
-          if (geo.timezone) profileData.timezone = geo.timezone
+          if (geo.timezone) {
+            profileData.timezone = geo.timezone
+            // Provenance: this value came from where they said they live, and
+            // replaces any device-reported one.
+            profileData.timezone_source = 'geocoded'
+          }
         }
       }
     } catch (err) {

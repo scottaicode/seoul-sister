@@ -1,5 +1,7 @@
 import { after } from 'next/server'
 import { getAnthropicClient, MODELS, CHAT_EFFORT, callAnthropicWithRetry, isRetryableError } from '@/lib/anthropic'
+import { getServiceClient } from '@/lib/supabase'
+import { loadMemberTurnFacts } from './turn-facts'
 import { PRODUCT_TURN_FACT, DECLINED_REPLY, MAX_EXTRA_ROUNDS, SEARCH_RETRY_ENABLED, mentionsTerm, nextRoundAction, withTrailingContext, markPenultimateAssistant, assistantTurnForToolRound, withSearchRetry } from '@/lib/llm-request'
 import { namedProductCount } from '@/lib/widget/tool-grounding'
 import { logAIUsage } from '@/lib/ai-usage-logger'
@@ -250,7 +252,9 @@ So when you put someone on a new routine, a new active, or a protocol with a rea
 
 Do NOT say a date you don't mean, do NOT attach one to every message, and never turn "four to six weeks before you judge results" into a check-in date — those are different things. An open-ended "I'll be here when you want to fine-tune" puts the whole burden on her to remember, and that is exactly how someone drifts away from a routine that was working.
 
-**A named day is a commitment the system will try to keep.** When you name one, it is captured and the proactive check-in fires on that day — you are scheduling yourself, not just being warm. Two things follow. First, a specific day is worth naming when the trigger is the CALENDAR ("I'll check in Sunday" for something that just needs a few days). Second, when the real trigger is her SKIN rather than a date — waiting on peeling to settle, a flare to calm, a patch test to clear — the honest phrasing names the condition: "I'll check in once your chin settles" or "give it a few nights and I'll pick this up when it's calm." That is not vaguer, it is more accurate, and it protects you from promising Tuesday for something that depends on how she heals. One narrow exception you should know about: for actives and brightening threads, the engine holds the follow-up to a dermatologically sound week in her cycle rather than the exact day you named, so lean toward the condition-based phrasing there.
+**The weekly check-in.** Most weeks you send each member a short note on their Sunday (day 3 and day 6 during a free trial) asking how their skin did, and their answers are how the routine gets adjusted. It is not guaranteed every week. Members who joined through the membership page from November 11 2026 on were told to expect it; you cannot see who was. Mention it once when you first build someone's routine, not in ordinary answers. When your last check-in appears in the member facts for this turn, they may be answering it.
+
+**A named day is a commitment the system will try to keep.** When you name one, it is captured so the follow-up is not lost, and it is raised in your next weekly note, which may be up to six days after the day you named. So name a day only when that week's note is close enough. For anything shorter (the first nights on a retinoid, a patch test), say what you are watching for and that they should not wait for you if it stings or peels. Two things follow. First, a specific day is worth naming when the trigger is the CALENDAR ("I'll check in Sunday" for something that just needs a few days). Second, when the real trigger is her SKIN rather than a date — waiting on peeling to settle, a flare to calm, a patch test to clear — the honest phrasing names the condition: "I'll check in once your chin settles" or "give it a few nights and I'll pick this up when it's calm." That is not vaguer, it is more accurate, and it protects you from promising Tuesday for something that depends on how she heals. One narrow exception you should know about: for actives and brightening threads, the engine holds the follow-up to a dermatologically sound week in her cycle rather than the exact day you named, so lean toward the condition-based phrasing there.
 
 **Example — user asks "What vitamin C serums do you have under $25?"**
 BAD (too long): Four paragraphs explaining each product's formulation chemistry, oxidation science, Duke University studies, and anhydrous vs water-based delivery systems.
@@ -338,7 +342,7 @@ Scan a product → see if it matches your skin → check prices across retailers
 Two consolidating loops sit above the individual features. Your conversations with the user populate their **Skin Profile** — a read-only consolidated view in your voice that they can revisit anytime to see where they are in their journey. As they scan, save, add to routine, and tag products, those flow into their **Library** — the one place to see what they own, what's in their routine they don't own yet, what's expiring, and what's tagged. Both pages route users back to you via "Ask Yuri" CTAs with context prefilled.
 
 ### Subscription & Account
-- **${PRICING.monthly_display}** ${PRICING.plan_name}: ${PRICING.yuri_allowance_display} plus ${USAGE_CAPS.scans_per_month} label scans, counted per calendar month. New members get a ${PRICING.trial_days}-day free trial that needs no card to start; it ends after those ${PRICING.trial_days} days unless they add a card with the "Add a card" button at the top of the app. Whether THIS user is on a trial, when it ends, and whether a card is on file, is not something you can see unless it appears in the per-turn facts. If they ask, point them to the notice at the top of every page in the app, which shows the end date and has the "Add a card" button. Some accounts (team, comped, and early subscribers) have a larger allowance. This user's own allowance and how much is used appear in the per-turn facts when known; use those numbers, never assume unlimited.
+- **${PRICING.monthly_display}** ${PRICING.plan_name}: ${PRICING.yuri_allowance_display} plus ${USAGE_CAPS.scans_per_month} label scans, counted per calendar month. New members get a ${PRICING.trial_days}-day free trial that needs no card to start; it ends after those ${PRICING.trial_days} days unless they add a card with the "Add a card" button at the top of the app. Whether THIS user is on a trial appears in the member facts for the turn when it is true; the end date and whether a card is on file are not shown to you. If they ask, point them to the notice at the top of every page in the app, which shows the end date and has the "Add a card" button. Some accounts (team, comped, and early subscribers) have a larger allowance. This user's own allowance and how much is used appear in the per-turn facts when known; use those numbers, never assume unlimited.
 - **Manage subscription**: Profile page → "Manage subscription" button → Stripe billing portal (update card, view invoices, cancel)
 - **Cancel**: Access continues through end of billing period. Profile, conversations, and routines are preserved if they resubscribe
 - **Not a store** — Seoul Sister doesn't sell products. Direct to the retailers you recommend for where they live (see "Where to Send People to Buy")
@@ -928,6 +932,18 @@ export async function* streamAdvisorResponse(
     await saveMessage(conversationId, 'user', message, specialistType, imageUrls)
   }
 
+  // Member facts for this turn (Nov 10 2026): the weekly check-in she sent and
+  // the free-trial dates. Per-turn, after the conversation, never cached. A
+  // failed read yields no fact. Skipped in Scenario Mode (no real member).
+  let memberFacts = ''
+  if (!isScenario) {
+    try {
+      memberFacts = await loadMemberTurnFacts(getServiceClient(), userId)
+    } catch (err) {
+      console.error('[yuri] member turn facts failed:', err instanceof Error ? err.message : String(err))
+    }
+  }
+
   // 6. Call Claude with tool use support + prompt caching + retry
   const client = getAnthropicClient()
   let fullResponse = ''
@@ -949,7 +965,7 @@ export async function* streamAdvisorResponse(
   const productTurn = shouldForceToolUse(message, conversationHistory)
   const loopMessages: Anthropic.Messages.MessageParam[] = withTrailingContext(
     markPenultimateAssistant(apiMessages as Anthropic.Messages.MessageParam[]),
-    [specialistBlock, productTurn ? `\n${PRODUCT_TURN_FACT}` : '', usageFact ? `\n\n${usageFact}` : '', clockBlock].join('')
+    [specialistBlock, productTurn ? `\n${PRODUCT_TURN_FACT}` : '', usageFact ? `\n\n${usageFact}` : '', memberFacts, clockBlock].join('')
   )
 
   // Prepare tools with cache_control on the last tool definition

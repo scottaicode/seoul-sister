@@ -31,6 +31,7 @@ import {
   DAYTIME_START_HOUR,
   DAYTIME_END_HOUR,
   localHour,
+  weeklyCheckinCovers,
 } from '@/lib/intelligence/nudge-limits'
 
 export const maxDuration = 60
@@ -227,6 +228,7 @@ async function handler(request: Request) {
   const stats = {
     subscribersScanned: 0,
     skippedTimezone: 0,
+    skippedWeeklyCheckinMember: 0,
     skippedCapOrSpacing: 0,
     skippedNoOpportunity: 0,
     skippedDuplicate: 0,
@@ -266,6 +268,18 @@ async function handler(request: Request) {
     for (const p of (profiles ?? []) as ProfileRow[]) {
       stats.subscribersScanned++
       try {
+        // Nov 10 2026: anyone the weekly check-in can reach is left to it. The
+        // check-in asks Yuri whether to write at all, and she is told to ease
+        // off someone who has not answered. This cron then emailing that same
+        // member, with its "last note from me" ladder, would undo her choice
+        // and be followed by another check-in the next Sunday. It still serves
+        // members the check-in cannot reach (no timezone) and runs for everyone
+        // when check-ins are switched off.
+        if (weeklyCheckinCovers(p.timezone)) {
+          stats.skippedWeeklyCheckinMember++
+          continue
+        }
+
         // --- Timezone gate: only queue during local daytime ---
         // (?test=1 bypasses this gate only — see handler top.)
         const hour = localHour(p.timezone)

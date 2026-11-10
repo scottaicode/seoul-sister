@@ -3,6 +3,9 @@ import { getServiceClient } from '@/lib/supabase'
 import { verifyCronAuth } from '@/lib/utils/cron-auth'
 import { logPipelineRun } from '@/lib/pipeline/log-run'
 import { runYuriWakesUp } from '@/lib/proactive/run'
+import { sendTrialEndingNotices } from '@/lib/trial-notices'
+import { sendTrialEndingEmail } from '@/lib/email/trial-emails'
+import { liveTrialState } from '@/lib/stripe'
 
 export const maxDuration = 300
 
@@ -60,6 +63,34 @@ async function handler(request: Request) {
       })
       return NextResponse.json({ ...result, duration_ms: Date.now() - startedAt })
     }
+  }
+
+  // Account notices first, and whatever the mode below says: telling a member
+  // when their free trial ends must not depend on a feature flag. Failures are
+  // collected and logged with the run; they never stop the check-ins.
+  let trialNotices: Awaited<ReturnType<typeof sendTrialEndingNotices>> | { due: 0; sent: 0; skipped: Record<string, number>; errors: string[] }
+  try {
+    trialNotices = await sendTrialEndingNotices(db, {
+      liveState: liveTrialState,
+      emailForUser: async (userId) => (await db.auth.admin.getUserById(userId)).data?.user?.email ?? null,
+      timezoneForUser: async (userId) => {
+        const { data } = await db.from('ss_user_profiles').select('timezone').eq('user_id', userId).maybeSingle()
+        return (data?.timezone as string | null) ?? null
+      },
+      send: sendTrialEndingEmail,
+    })
+  } catch (err) {
+    trialNotices = { due: 0, sent: 0, skipped: {}, errors: [`trial notices crashed: ${err instanceof Error ? err.message : String(err)}`] }
+  }
+  if (trialNotices.due > 0 || trialNotices.errors.length > 0) {
+    // A row of its own, so "a notice was due and failed" is visible even when
+    // the check-in mode is off (that path logs once a day).
+    await logPipelineRun(db, {
+      run_type: 'trial_ending_notices',
+      status: trialNotices.errors.length > 0 ? 'failed' : 'completed',
+      completed_at: new Date().toISOString(),
+      metadata: { ...trialNotices },
+    })
   }
 
   const mode = process.env.YURI_WAKES_UP_MODE === 'live' ? 'live' : 'off'

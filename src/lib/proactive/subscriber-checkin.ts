@@ -28,8 +28,8 @@ import { resolveTemperatureUnit } from '@/lib/intelligence/temperature-units'
 import { buildNudgeSubject } from '@/lib/email/nudge-email'
 import type { DecisionMemory } from '@/lib/yuri/memory'
 import { guardSourceFacts, type GuardEvidence } from './content-guard'
+import { PRICING } from '@/lib/pricing'
 import {
-  capOrSpacingBlocks,
   localHour,
   DAYTIME_START_HOUR,
   DAYTIME_END_HOUR,
@@ -48,8 +48,34 @@ import { buildCheckinMemory, type TrialInfo } from './checkin-context'
  */
 export const CHECKIN_WEEKDAY = 'Sunday'
 export const REJUDGE_AFTER_LOCAL_DAYS = 6
-/** Trial members get one extra judgment on this day of the trial (day 1 = start date). */
-export const TRIAL_CHECKIN_DAY = 3
+/**
+ * A trial member is judged on these days of the trial (day 1 = start date) and
+ * on no other: day 3, and day 6 as the first-week review, which arrives before
+ * a 7-day trial ends (Nov 10 2026). The ordinary Sunday is skipped during a
+ * trial so they get these two notes, not three.
+ */
+export const TRIAL_CHECKIN_DAYS: readonly number[] = [3, 6]
+export const TRIAL_REVIEW_DAY = 6
+/**
+ * Weekly rhythm (Nov 10 2026, owner decision): members are told when they join
+ * that Yuri checks in every week and adjusts from what they tell her. The old
+ * shared cap (3 proactive contacts per 30 days, 3 days apart) made a weekly
+ * cadence impossible, so check-ins are no longer subject to it. What remains is
+ * this: never a check-in within two days of ANY proactive contact. The older
+ * rule-based nudge cron now SKIPS anyone the weekly check-in can reach (see
+ * proactive-nudge/route.ts), so the two never alternate: when Yuri chooses to
+ * stay quiet with someone, that cron does not email them in her place.
+ */
+export const CHECKIN_MIN_GAP_DAYS = 2
+/** Members who joined on or after this date were told to expect the weekly check-in (membership page + welcome email). */
+export const RHYTHM_EXPLAINED_FROM = '2026-11-11'
+
+/** True when any proactive contact was sent within CHECKIN_MIN_GAP_DAYS. Pure. */
+export function contactedTooRecently(createdAts: string[], now: number): boolean {
+  if (!createdAts.length) return false
+  const last = Math.max(...createdAts.map((c) => new Date(c).getTime()))
+  return (now - last) / (24 * 60 * 60 * 1000) < CHECKIN_MIN_GAP_DAYS
+}
 
 export interface SubscriberRow {
   user_id: string
@@ -134,28 +160,52 @@ export function checkinGate(
     const h = localHour(s.timezone, opts.now)
     if (h < DAYTIME_START_HOUR || h >= DAYTIME_END_HOUR) return 'night'
   }
-  if (capOrSpacingBlocks(opts.nudgeCreatedAts, opts.now)) return 'cap_or_spacing'
+  if (contactedTooRecently(opts.nudgeCreatedAts, opts.now)) return 'cap_or_spacing'
 
   const today = getLocalClock(s.timezone, new Date(opts.now))
   const lastJudgedLocal = opts.lastJudgedAt ? getLocalClock(s.timezone, new Date(opts.lastJudgedAt)).isoDate : null
   const daysSinceJudged = lastJudgedLocal ? daysBetweenIso(lastJudgedLocal, today.isoDate) : null
 
-  // Trial day 3: one judgment that day, whatever the weekday, so a member on a
-  // 7-day trial can hear from Yuri before it ends. Never twice on the same day.
-  if (trialDayNumber(opts.trial ?? null, s.timezone, opts.now) === TRIAL_CHECKIN_DAY) {
-    return daysSinceJudged === 0 ? 'judged_recently' : null
+  // During a trial only the trial's own days count, whatever the weekday: day 3
+  // and the day-6 first-week review. Never twice on the same day, and the
+  // ordinary Sunday is not added on top. A trial is only a trial WHILE IT RUNS:
+  // a row that still says 'trialing' after its last day (a late or dropped
+  // webhook) falls through to the Sunday rule, or the member would never be
+  // checked in on again.
+  const trialDay = trialDayNumber(opts.trial ?? null, s.timezone, opts.now)
+  const trialEnded = opts.trial?.endsAt ? new Date(opts.trial.endsAt).getTime() <= opts.now : false
+  if (trialDay != null && trialDay >= 1 && trialDay <= PRICING.trial_days && !trialEnded) {
+    if (TRIAL_CHECKIN_DAYS.includes(trialDay)) return daysSinceJudged === 0 ? 'judged_recently' : null
+    if (!opts.bypassCheckinDay) return 'not_checkin_day'
   }
 
   if (!opts.bypassCheckinDay && today.weekday !== CHECKIN_WEEKDAY) return 'not_checkin_day'
-  if (daysSinceJudged != null && daysSinceJudged < REJUDGE_AFTER_LOCAL_DAYS) return 'judged_recently'
+  // On a Sunday, "already judged this weekend" is all that needs ruling out: a
+  // Sunday comes once a week by itself. Counting the full six days here made
+  // the first Sunday after a trial 8 to 12 days after the day-6 note. The
+  // six-day rule still applies to a dry run on other weekdays.
+  const minDays = today.weekday === CHECKIN_WEEKDAY ? CHECKIN_MIN_GAP_DAYS : REJUDGE_AFTER_LOCAL_DAYS
+  if (daysSinceJudged != null && daysSinceJudged < minDays) return 'judged_recently'
   return null
+}
+
+/**
+ * What the guard is told is true of the service (see judgeSubscriber), so "I'll
+ * ask again on Sunday" is not blocked as an invented promise. Stated per
+ * member: during a trial the next note is day 6, not Sunday. Pure, exported.
+ */
+export function weeklyCheckinStatement(trialDay: number | null): string {
+  if (trialDay != null && trialDay >= 1 && trialDay < TRIAL_REVIEW_DAY) {
+    return `Yuri writes to this member again on day ${TRIAL_REVIEW_DAY} of their free trial, and after the trial most weeks on Sunday, adjusting their routine from what they tell her.`
+  }
+  return 'Yuri checks in with this member most weeks, on Sunday, and adjusts their routine from what they tell her.'
 }
 
 const CHECKIN_SYSTEM = `You are Yuri (유리), Seoul Sister's K-beauty advisor: twenty-plus years in Korean formulation labs and cosmetic chemistry, warm, direct, the older sister who tells the truth about skin and money. Affiliate relationships never influence what you recommend, so "don't buy that yet" and "keep what you have" are things you can say when they're true.
 
 Below is what you know about one of your subscribers that bears on a check-in: a selection from the memory you use when you talk to them (older conversation summaries and past message excerpts are left out, so something missing here may still have happened), plus this week's facts. This check-in looks at the coming seven days; the facts below say why you are being asked today. You are deciding whether to reach out to them FIRST about the coming week, before they come to you.
 
-Silence is the normal answer. Most weeks there is nothing worth interrupting someone for, and a check-in with nothing in it teaches them to ignore you. Speak only if, from what you actually know, there is something timely and specific to THEIR skin in the coming week that they would be glad you said. The kinds of moments that can earn it: where they are in a plan you made together (an active they started, a phase, a promise you made to check back), something in this week's forecast where they live that matters for what they're using, or something they told you they were about to buy or replace, where "hold off until we've talked" is the honest advice. These are examples, not a checklist; anything else that genuinely matters to them counts, and none of these is a reason to speak on its own.
+A routine only gets better from what the person tells you about how their skin did, and this weekly note is where that happens; the facts below say whether they were told to expect it. Seoul Sister's policy is that most weeks a note goes out. One question is enough, two at most, about the thing that matters most in what they are doing. Ask WHETHER before HOW ("Did you start the oil cleanse? If so, how does your skin feel after rinsing?") unless their own words already say they started. Add a day from the forecast only if it bears on that. The question is enough to write; you do not need news. Silence is yours to choose, and it fits when they have left your recent check-ins unanswered (their silence is an answer; if you write at all, keep it short and say they need not reply), when they asked for fewer messages or said they would be away, when you would only repeat last week's note, or when the subject belongs to their prescriber, a doctor, or the person-first rule below. During a free trial, an unanswered day-3 note is not a reason to skip the first-week review.
 
 The forecast is day by day, so you can point to a specific day ("Tuesday looks humid"). Anything after today is a forecast, not a fact, and reads that way when you say it.
 
@@ -164,7 +214,7 @@ Data you do NOT have, so never present as measured: when a bottle was opened, ho
 Before it is sent, your message is checked by a second reader against their own words: anything you say or assume about them (what they have or use, including inside a question, what happened in their life, how their skin has changed) must be something they told you, and it must not change their routine, promise anything about the plan or service, or reassure them that a symptom is harmless.
 
 If you speak:
-- It reads as you continuing their care: one specific thing, said the way you'd say it in chat, plus the question you'd pick up with.
+- It reads as you continuing their care: the one or two questions above, said the way you'd say it in chat. Not a list, not a form.
 - You have no tools in this message: no ingredient-conflict check, no catalog lookup. So don't prescribe a new product or a change to their actives here. Say what you noticed and why it matters, and invite them to work out the change with you in chat, where you can check it properly. Telling them to hold off on buying or replacing something is fine.
 - Lesions, moles, anything that might need a doctor: refer, plainly.
 - Anything a doctor prescribed them (tretinoin, isotretinoin, spironolactone, a prescription-strength adapalene or hydroquinone, a topical antibiotic or steroid) is their prescriber's call to start, stop, or change. A recorded decision or open loop about a prescription's dose or schedule is a question for their prescriber, never a plan to follow up on here.
@@ -199,6 +249,48 @@ async function checkinSubjects(db: SupabaseClient, nudgeIds: string[]): Promise<
   return out
 }
 
+/** A date in the member's own calendar, e.g. "Thursday, November 26". Pure. */
+export function localDateText(iso: string, timezone: string | null): string {
+  return new Date(iso).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: timezone || 'UTC' })
+}
+
+/** Why the judge is being asked today. Pure, exported for tests. */
+export function checkinReasonFact(trialDay: number | null, trial: TrialInfo | null, timezone: string | null = null): string {
+  if (trial && trialDay === TRIAL_REVIEW_DAY) {
+    return `Why you are being asked today: it is day ${TRIAL_REVIEW_DAY} of their ${PRICING.trial_days}-day free trial${trial.endsAt ? `, which ends ${localDateText(trial.endsAt, timezone)} in their time` : ''}. This is their first-week review: ask how the first days went. Any adjustment is worked out in chat once they answer, not in this note. Seoul Sister sends them a separate plain notice about when the trial ends and how to keep going, so do not write about the trial ending, the price, or a card yourself.`
+  }
+  if (trial && trialDay != null && TRIAL_CHECKIN_DAYS.includes(trialDay)) {
+    return `Why you are being asked today: it is day ${trialDay} of their free trial (the mid-trial check-in). You write again on day ${TRIAL_REVIEW_DAY}; after the trial you are asked once a week, on Sunday.`
+  }
+  return `Why you are being asked today: it is their weekly check-in (once a week, on Sunday, about the week just gone and the week ahead).`
+}
+
+/** Whether this member was told to expect a weekly check-in. Pure, exported for tests. */
+export function rhythmFact(joinedAt: string | null): string {
+  if (joinedAt && joinedAt.slice(0, 10) >= RHYTHM_EXPLAINED_FROM) {
+    return `They were told when they joined (on the membership page and in their welcome email) that you check in every week and adjust their routine from what they tell you. A weekly note is expected.`
+  }
+  return `They joined before members were told to expect a weekly check-in, and nothing has told them one is coming. If you write, one short line saying you will check in each week from now on is fair.`
+}
+
+/**
+ * What became of the check-ins sent since the member last wrote. Counts and a
+ * date, never a threshold: when silence means "ease off" is hers to judge.
+ * Only the most recent proactive notes are looked at (the query's limit), and
+ * the fact says so. Pure, exported for tests.
+ */
+export function unansweredFact(
+  nudges: Array<{ nudge_type: string; created_at: string; acted_at?: string | null }>,
+  lastWroteAt: string | null
+): string {
+  const checkins = nudges.filter((n) => n.nudge_type === 'yuri_checkin')
+  const since = checkins.filter((n) => !lastWroteAt || n.created_at > lastWroteAt)
+  if (since.length === 0) return `Check-ins sent since they last wrote to you: none (looking at your ${nudges.length} most recent proactive notes).`
+  const opened = since.filter((n) => n.acted_at).length
+  const newestAt = since.map((n) => n.created_at).sort().pop() as string
+  return `Check-ins sent since they last wrote to you: ${since.length}, the latest on ${newestAt.slice(0, 10)} (looking at your ${nudges.length} most recent proactive notes). They opened ${opened} of those into a chat and have not written since.`
+}
+
 export async function loadCheckinFacts(
   db: SupabaseClient,
   s: SubscriberRow,
@@ -206,7 +298,8 @@ export async function loadCheckinFacts(
   dm: DecisionMemory | null = null,
   trial: TrialInfo | null = null,
   /** Filled with the exact forecast text shown to the judge, so the guard can check it. */
-  sink: { forecast?: string; today?: string } = {}
+  sink: { forecast?: string; today?: string } = {},
+  opts: { /** When they became a member (ISO), if known. */ memberSince?: string | null } = {}
 ): Promise<string> {
   const [shelf, routines, phase, lastMsg, nudges, routineProducts] = await Promise.all([
     db
@@ -261,11 +354,8 @@ export async function loadCheckinFacts(
       `They are on a free trial: started ${trial.startedAt.slice(0, 10)}${trial.endsAt ? `, ends ${trial.endsAt.slice(0, 10)}` : ''}; today is day ${trialDay ?? 'unknown'} of it.`
     )
   }
-  lines.push(
-    trialDay === TRIAL_CHECKIN_DAY && clock.weekday !== CHECKIN_WEEKDAY
-      ? `Why you are being asked today: it is day ${TRIAL_CHECKIN_DAY} of their trial (the one mid-trial check-in). Otherwise you are asked once a week, on Sunday.`
-      : `Why you are being asked today: it is their weekly check-in (once a week, on Sunday, about the week ahead).`
-  )
+  lines.push(checkinReasonFact(trialDay, trial, s.timezone))
+  lines.push(rhythmFact(opts.memberSince ?? trial?.startedAt ?? null))
 
   const last = (lastMsg.data ?? [])[0] as { created_at: string } | undefined
   lines.push(
@@ -273,6 +363,8 @@ export async function loadCheckinFacts(
       ? `They last wrote to you ${daysSince(last.created_at, now)} days ago (${last.created_at.slice(0, 10)}).`
       : `No messages from them are on record.`
   )
+
+  lines.push(unansweredFact(((nudges.data ?? []) as Array<{ nudge_type: string; created_at: string; acted_at: string | null }>), last?.created_at ?? null))
 
   const p = phase.data as { phase_number: number; name: string; goal: string | null; started_at: string | null } | null
   if (p) lines.push(`Active treatment phase: Phase ${p.phase_number} "${p.name}"${p.goal ? ` (goal: ${p.goal})` : ''}, started ${p.started_at?.slice(0, 10) ?? 'date unknown'}${p.started_at ? `, day ${daysSince(p.started_at, now)}` : ''}.`)
@@ -368,13 +460,15 @@ export async function judgeSubscriber(
   patchContext?: (ctx: UserContext) => Promise<void> | void,
   trial: TrialInfo | null = null,
   /** Newest ss_user_nudges created_at (any proactive contact), or null. */
-  lastContactAt: string | null = null
+  lastContactAt: string | null = null,
+  /** When they became a member (ISO), if known. */
+  memberSince: string | null = null
 ): Promise<{ decision: ProactiveDecision; factsText: string; evidence: GuardEvidence }> {
   const userContext = await loadUserContext(s.user_id)
   if (patchContext) await patchContext(userContext)
   const sink: { forecast?: string; today?: string } = {}
   const [checkinFacts, calibration] = await Promise.all([
-    loadCheckinFacts(db, s, now, userContext.decisionMemory, trial, sink),
+    loadCheckinFacts(db, s, now, userContext.decisionMemory, trial, sink, { memberSince }),
     calibrationFacts(db, 'subscriber'),
   ])
   // The FULL context is still loaded: the guard's evidence below reads the
@@ -396,7 +490,11 @@ export async function judgeSubscriber(
     gpsLocation: userContext.locationName,
     forecast: sink.forecast,
   })
-  return { decision, factsText, evidence: await loadGuardEvidence(db, s.user_id, userContext.decisionMemory, sourceFacts) }
+  const evidence = await loadGuardEvidence(db, s.user_id, userContext.decisionMemory, sourceFacts)
+  // True of the service itself, so the guard must not read it as a promise
+  // Yuri invented ("I'll ask again next Sunday" used to be blocked as one).
+  evidence.verifiedStatements = [...(evidence.verifiedStatements ?? []), weeklyCheckinStatement(trialDayNumber(trial, s.timezone, now))]
+  return { decision, factsText, evidence }
 }
 
 /**

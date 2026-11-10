@@ -54,3 +54,12 @@ export function capOrSpacingBlocks(createdAts: string[], now: number = Date.now(
   }
   return false
 }
+
+/**
+ * True when the weekly Yuri check-in (yuri-wakes-up) is live AND can find this
+ * member's Sunday. Pure apart from reading the env flag.
+ */
+export function weeklyCheckinCovers(timezone: string | null | undefined): boolean {
+  return process.env.YURI_WAKES_UP_MODE === 'live' && Boolean(timezone && timezone.trim())
+}
+

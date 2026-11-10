@@ -122,7 +122,6 @@ export function buildNudgeEmailHtml(input: NudgeEmailInput): string {
   const cta = `<p style="margin:22px 0 0;"><a href="${href}" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">Pick this up with Yuri</a></p>`
 
   const footer = buildNudgeFooter(input.unsubscribeToken)
-
   return wrapEmailHtml(`<p style="margin:0 0 14px;">Hi, it's Yuri.</p>\n${paragraphs}\n${cta}`, footer)
 }
 

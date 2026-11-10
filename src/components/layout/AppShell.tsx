@@ -26,6 +26,31 @@ const SHARED_FALLBACKS: Record<string, string> = {
   '/browse': '/products',
 }
 
+/**
+ * Tell the server this device's timezone, once per browser session. The server
+ * only stores it when the profile has none (see /api/me/timezone): weekly
+ * check-ins need it to know the member's Sunday. Never blocks or throws.
+ */
+async function reportTimezoneOnce(): Promise<void> {
+  try {
+    if (sessionStorage.getItem('ss_tz_reported')) return
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    if (!timezone) return
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    if (!token) return
+    const res = await fetch('/api/me/timezone', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ timezone }),
+    })
+    if (res.ok) sessionStorage.setItem('ss_tz_reported', '1')
+    else console.error('[app shell] timezone not recorded:', res.status)
+  } catch (err) {
+    console.error('[app shell] timezone not recorded:', err)
+  }
+}
+
 export default function AppShell({ children }: AppShellProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
@@ -111,6 +136,7 @@ export default function AppShell({ children }: AppShellProps) {
         }
 
         setReady(true)
+        void reportTimezoneOnce()
       } catch {
         // Profile fetch failed — don't block the app
         setReady(true)

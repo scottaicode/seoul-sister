@@ -4,6 +4,38 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.53.0 — A weekly rhythm: Yuri checks in most weeks, twice in the free trial, and adjusts from the answer (Nov 10 2026)
+
+- **Why.** Owner: "There has to be a reason for subs to engage with Yuri on a more regular schedule...
+  Subs need to be taught that to get the best results, they need to provide regular feedback to Yuri."
+  The check-in existed but could not do this: the judge was told "Silence is the normal answer"; a shared
+  cap of 3 proactive contacts per 30 days blocked a weekly note by week four; a 7-day trial got one note;
+  37 of the 39 most recent profiles had no timezone, so their Sunday could not be found; and chat-Yuri had
+  no record of the note she sent when a member came to answer it.
+- **Changed.**
+  - Judge prompt: a note goes out most weeks (stated as Seoul Sister's policy), one question, two at most,
+    asked WHETHER before HOW so the content guard does not block it. Silence stays hers to choose; the facts
+    now tell her how many check-ins went unanswered and when the last one was sent. No number forces her.
+  - Gate: weekly on the member's local Sunday; never within 2 days of any proactive contact; trial members
+    on day 3 and day 6 (first-week review) and not on the Sunday in between. A row still marked `trialing`
+    after its last day falls through to the Sunday rule.
+  - The older rule-based nudge cron now skips anyone the weekly check-in can reach, so it no longer emails
+    a member Yuri chose to leave alone.
+  - Trial-ending notice: one plain email from Seoul Sister about 48 hours before a trial ends, with the date
+    in the member's own timezone and the card status Stripe reports. It runs whatever the check-in mode is
+    and does not depend on Yuri writing (`src/lib/trial-notices.ts`, `ss_trial_starts.ending_notice_sent_at`).
+  - Chat-Yuri is shown her last check-in (7 days) and that the member is on a trial, per turn.
+  - Members are told to expect it: paywall, welcome email, onboarding wrap-up ("most weeks", not "every week").
+  - Device timezone is stored when the profile has none (`/api/me/timezone`, `timezone_source`).
+- **Review.** Opus 5.5: "refuted", 3 high defects. The day-6 email named the wrong day for US evening
+  sign-ups (UTC); a stale `trialing` row silenced a member for good; the older cron undid Yuri's choice to
+  ease off. Fable 5.2: the day-6 fact asked for something the guard blocks, and the only trial-end notice
+  rode on Yuri's note going out. Seven wrong versions passed my first tests; the whole judge prompt is now
+  pinned by fingerprint and the gate is tested one day at a time. 1,535 -> 1,554 tests.
+- **NOT verified.** No scheduler-made weekly second contact exists. No trial-ending notice has been sent.
+  How often the content guard blocks a weekly question is unmeasured (3 judgments ever). All current
+  members are comped, so the first check-ins under these rules go to non-paying accounts.
+
 ## v11.52.0 — The 7-day free trial no longer needs a card (Nov 10 2026)
 
 - **Why.** 29 accounts had reached the payment page and about 1 paid. The one person who finished setup

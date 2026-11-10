@@ -67,6 +67,7 @@ const loadCheckin = () =>
     capOrSpacingBlocks: real(LIMITS, 'capOrSpacingBlocks'),
     DAYTIME_START_HOUR: real(LIMITS, 'DAYTIME_START_HOUR'),
     DAYTIME_END_HOUR: real(LIMITS, 'DAYTIME_END_HOUR'),
+    PRICING: `({ trial_days: 7, monthly_display_long: '$9.99/month' })`,
   })
 
 const sub = (timezone) => ({
@@ -113,9 +114,16 @@ test('weekly rejudge: 6 local calendar days, so the same hour next Sunday is nev
   assert.equal(checkinGate(s, opts(sun9, { lastJudgedAt: '2026-11-02T01:00:00Z' })), null)
   // Judged earlier today: blocked for the rest of the day (hourly cron).
   assert.equal(checkinGate(s, opts(at('2026-11-08T20:00:00Z'), { lastJudgedAt: '2026-11-08T15:30:00Z' })), 'judged_recently')
-  // Judged on Monday (a trial day-3 judgment): 6 days, passes. Tuesday: 5, blocked.
+  // A judgment earlier in the week (a trial day-3 or day-6 note) does NOT take
+  // the Sunday away (Nov 10 2026). The six-day rule used to apply here, which
+  // put the first Sunday after a trial 8 to 12 days after the day-6 note. On a
+  // Sunday only "already judged this weekend" is ruled out.
   assert.equal(checkinGate(s, opts(sun9, { lastJudgedAt: '2026-11-02T18:00:00Z' })), null)
-  assert.equal(checkinGate(s, opts(sun9, { lastJudgedAt: '2026-11-03T18:00:00Z' })), 'judged_recently')
+  assert.equal(checkinGate(s, opts(sun9, { lastJudgedAt: '2026-11-03T18:00:00Z' })), null, 'Tuesday note, then Sunday: allowed')
+  assert.equal(checkinGate(s, opts(sun9, { lastJudgedAt: '2026-11-07T18:00:00Z' })), 'judged_recently', 'Saturday, then Sunday: too close')
+  // Off Sunday (a dry run with the bypass) the six-day rule still applies.
+  const wed = at('2026-11-11T17:00:00Z')
+  assert.equal(checkinGate(s, opts(wed, { bypassCheckinDay: true, lastJudgedAt: '2026-11-08T17:00:00Z' })), 'judged_recently')
 })
 
 test('trial day 3: one extra judgment on any weekday, counted in the member\'s local calendar', async () => {
