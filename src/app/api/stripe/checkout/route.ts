@@ -62,6 +62,16 @@ export async function POST(request: NextRequest) {
     }
     const withTrial = !priorSub
 
+    // Nov 10 2026: stamp the first checkout start (set-once). Until now "pressed
+    // the paywall button" existed only in GA4, which is bot-inflated. A failed
+    // stamp is logged and never blocks checkout.
+    const { error: stampErr } = await getServiceClient()
+      .from('ss_user_profiles')
+      .update({ checkout_clicked_at: new Date().toISOString() })
+      .eq('user_id', user.id)
+      .is('checkout_clicked_at', null)
+    if (stampErr) console.error('[stripe/checkout] checkout_clicked_at stamp failed:', stampErr.message)
+
     const url = await createCheckoutSession({
       userId: user.id,
       email: user.email!,

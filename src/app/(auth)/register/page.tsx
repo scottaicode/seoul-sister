@@ -107,8 +107,9 @@ export default function RegisterPage() {
       // Previously this pushed straight to '/subscribe', so a stranger hit the
       // $24.99/mo wall BEFORE ever experiencing Yuri. FUNNEL-LEAK-AUDIT-JUL13
       // proved no human ever paid from that position. New flow: register →
-      // onboarding (Yuri builds their skin profile + first routine as a free
-      // user) → the subscribe ask fires at completion, framed as continuation.
+      // onboarding (Yuri learns their skin and builds the profile as a free
+      // user; no routine is built there) → the subscribe ask fires at
+      // completion, with the routine as the first thing built for a member.
       // The paid app (dashboard, memory, saved profile) stays gated in AppShell.
       router.push('/onboarding')
     } catch (err: unknown) {
@@ -317,7 +318,7 @@ export default function RegisterPage() {
             onboarding, not at account creation, so the old "subscription required
             after account creation" copy was false). */}
         <p className="text-xs text-center text-white/30 mt-4">
-          Next, Yuri builds your skin profile and first routine. Keep it going with a subscription ({PRICING.monthly_display_long}).
+          Next is a free setup chat where Yuri gets to know your skin. No card needed. Your routine is built once you&apos;re a member ({PRICING.monthly_display_long}, first {PRICING.trial_days} days free for new members).
         </p>
 
         {/* Divider */}

@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { captureAttribution, getAttribution } from '@/lib/attribution'
+import { getExistingVisitorId } from '@/lib/utils/widget-session'
 import { reduceGetSession, reduceAuthEvent } from '@/lib/auth/session-state'
 
 interface AuthContextType {
@@ -132,7 +133,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { attribution: getAttribution() ?? undefined }, captchaToken },
+      // widget_visitor_id (Nov 10 2026): the landing-chat identity from this
+      // browser, if there is one. Attribution only: it lets "chatted, then made
+      // an account" be read from data even when the person declines to carry
+      // the preview into setup. It never loads or shows that conversation.
+      options: {
+        data: { attribution: getAttribution() ?? undefined, widget_visitor_id: getExistingVisitorId() ?? undefined },
+        captchaToken,
+      },
     })
     if (error) throw error
     return { user: data.user, session: data.session }

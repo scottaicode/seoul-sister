@@ -231,7 +231,7 @@ export default function HomeClient() {
                 Whether you&apos;re drowning in products or don&apos;t own a single one yet, Yuri makes skincare simple.
               </p>
               <p>
-                She gets to know your skin, your life, and what you&apos;re actually after, then builds a routine that fits. She&apos;ll tell you what&apos;s working, what&apos;s holding your skin back, and which products are worth your money. Snap a photo as you go and watch your skin change month to month.
+                She gets to know your skin, your life, and what you&apos;re actually after. She&apos;ll tell you what&apos;s working, what&apos;s holding your skin back, and which products are worth your money. Members get a routine built around all of it, adjusted as their skin changes month to month.
               </p>
               <p className="text-white/40 text-sm">
                 Talk to her free, no signup. She just gets sharper once she really knows you.

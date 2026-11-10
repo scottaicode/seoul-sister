@@ -83,7 +83,7 @@ export async function loadWidgetCarryover(
   try {
     const { data: visitor, error: vErr } = await db
       .from('ss_widget_visitors')
-      .select('captured_email, converted_user_id')
+      .select('captured_email, converted_user_id, registered_user_id')
       .eq('visitor_id', visitorId)
       .maybeSingle()
     if (vErr) {
@@ -108,6 +108,23 @@ export async function loadWidgetCarryover(
       .filter((r) => typeof r.content === 'string' && r.content.trim() !== '')
       .map((r) => ({ role: r.role as 'user' | 'assistant', content: r.content as string }))
     if (!messages.length) return null
+
+    // Nov 10 2026: record which account claimed this preview. Set-once (the
+    // IS NULL filter), so the first account that confirmed it stays on record
+    // and repeat loads on later turns write nothing. This is "registered", not
+    // "paid": converted_user_id keeps meaning a payment. A failed stamp is
+    // logged and never costs the carryover itself.
+    if (!(visitor as { registered_user_id?: string | null } | null)?.registered_user_id) try {
+      const { error: linkErr } = await db
+        .from('ss_widget_visitors')
+        .update({ registered_user_id: user.id, registered_at: new Date().toISOString() })
+        .eq('visitor_id', visitorId)
+        .is('registered_user_id', null)
+      if (linkErr) console.error('[widget-carryover] registered stamp failed:', linkErr.message)
+    } catch (e) {
+      console.error('[widget-carryover] registered stamp threw:', e instanceof Error ? e.message : String(e))
+    }
+
     return { match, lastAt: (rows ?? [])[(rows ?? []).length - 1].created_at as string, messages }
   } catch (e) {
     console.error('[widget-carryover] load failed:', e instanceof Error ? e.message : String(e))

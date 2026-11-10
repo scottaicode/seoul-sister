@@ -84,12 +84,24 @@ test('beyond the budget the NEWEST messages survive (rejects: keeping the oldest
 })
 
 /** PostgREST-shaped fake recording filters, so the loader is EXECUTED. */
-function fakeDb({ visitor, rows }) {
+function fakeDb({ visitor, rows, updates = [], updateThrows = false }) {
   return {
     from(table) {
       const f = { eq: [], in: [], limit: Infinity }
       const q = {
         select: () => q,
+        // Records the registered-account stamp (Nov 10 2026) so the test can
+        // assert on what was written and under which filters.
+        update(values) {
+          if (updateThrows) throw new Error('update exploded')
+          const u = { table, values, eq: [], is: [] }
+          updates.push(u)
+          const uq = {
+            eq(c, v) { u.eq.push([c, v]); return uq },
+            is(c, v) { u.is.push([c, v]); return Promise.resolve({ error: null }) },
+          }
+          return uq
+        },
         eq(c, v) { f.eq.push([c, v]); return q },
         in(c, v) { f.in.push([c, v]); return q },
         order: () => q,
@@ -122,6 +134,33 @@ test('the loader enforces ownership, keeps every preview message, drops non-chat
   assert.equal(theirs, null)
   assert.equal(await carry.loadWidgetCarryover(fakeDb({ visitor: null, rows }), V, me), null)
   assert.equal(await carry.loadWidgetCarryover(fakeDb({ visitor: { visitor_id: V }, rows }), 'not-a-uuid', me), null)
+})
+
+test('a confirmed preview stamps the account that claimed it, once, and never as a payment', async () => {
+  const updates = []
+  const visitor = { visitor_id: V, captured_email: 'kim@example.com', converted_user_id: null }
+  const mine = await carry.loadWidgetCarryover(fakeDb({ visitor, rows, updates }), V, me)
+  assert.ok(mine, 'fixture must load')
+  assert.equal(updates.length, 1, 'exactly one stamp per load')
+  const u = updates[0]
+  assert.equal(u.table, 'ss_widget_visitors')
+  assert.equal(u.values.registered_user_id, me.id)
+  assert.ok(u.values.registered_at, 'the time must be recorded')
+  assert.ok(!('converted_user_id' in u.values), 'converted_user_id means PAID and feeds the One Metric; registration must not touch it')
+  assert.deepEqual(u.eq, [['visitor_id', V]])
+  assert.deepEqual(u.is, [['registered_user_id', null]], 'set-once: an already-claimed preview keeps its first account')
+
+  // A preview that belongs to someone else is never stamped.
+  const none = []
+  await carry.loadWidgetCarryover(fakeDb({ visitor: { visitor_id: V, captured_email: null, converted_user_id: 'u2' }, rows, updates: none }), V, me)
+  assert.equal(none.length, 0)
+})
+
+test('a failing stamp never costs the carryover itself', async () => {
+  const visitor = { visitor_id: V, captured_email: 'kim@example.com', converted_user_id: null }
+  const mine = await carry.loadWidgetCarryover(fakeDb({ visitor, rows, updateThrows: true }), V, me)
+  assert.ok(mine, 'measurement must not break the promise the limit card makes')
+  assert.equal(mine.messages.length, 24)
 })
 
 test('onboarding: the preview is context only, never extracted (rejects: seeding the profile, which finalized onboarding before Yuri spoke)', () => {

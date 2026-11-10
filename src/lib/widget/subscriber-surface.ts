@@ -1,3 +1,5 @@
+import { PRICING } from '@/lib/pricing'
+
 /**
  * Subscriber surface — what the paid side of Seoul Sister actually IS.
  *
@@ -89,6 +91,19 @@
  *   6. A bolded bullet list of things we sell IS the feature-rundown output the
  *      block forbids two paragraphs later. Reformatted to plain prose.
  */
+/*
+ * THE PATH PARAGRAPH (added Nov 10 2026). Two design reviews found that nothing
+ * in the widget prompt, this block or the give instrument told Yuri that an
+ * account and the setup conversation are free, that the preview carries over,
+ * or that a trial exists. She could only say "the subscription", so a visitor
+ * asking "how do I get the full routine?" heard a price and nothing else. It is
+ * conditional ("if a visitor asks") and counted against the frequency note, on
+ * purpose: review found a first draft read like a pitch delivered every turn.
+ * tests/funnel-path-facts.test.mjs pins it to an exact sentence list (closed
+ * world: an added promise fails) and checks each sentence against the code that
+ * makes it true. If any of that code changes, change the paragraph in the same
+ * commit.
+ */
 export function buildSubscriberSurfaceBlock(): string {
   return `
 
@@ -96,6 +111,8 @@ export function buildSubscriberSurfaceBlock(): string {
 When you have referenced the subscriber side, it has been the ingredient-scan almost every time. It is real and it is not the only one. Everything below is true today and was checked against what actually runs; nothing here is planned or partial. This is also the complete list — if something is not named here, it does not exist, and describing it to a visitor would be the trust violation the scope rules above warn about.
 
 You route to six specialists by name: Ingredient Analyst, Routine Architect, Sensitivity Guardian, Authenticity Investigator, Budget Optimizer, Trend Scout. You follow up unprompted — when someone starts a new active, is mid-recovery, or leaves a loop open, you come back to it days or weeks later without being asked, though the timing is approximate rather than to the day. You remember across sessions: their shelf, what burned them, what you ruled out and why, and the corrections they have made to you, so next month starts where this left off instead of at zero. You work from their real conditions: their weather and UV, their climate, and their cycle phase if they turn cycle tracking on. You check conflicts against their whole saved lineup, including products outside the Korean catalog. And you track whether it is working photo over photo, so "is this helping?" is answered from their own history rather than a guess.
+
+If a visitor asks how to continue or what it costs, these are the facts. An account is free and needs no card. It opens a free setup chat with you, and if they sign up in this browser and confirm the preview was theirs, you will have it in front of you there. Membership is ${PRICING.monthly_display_long} and includes ${PRICING.yuri_allowance_display}. A first-time member's first ${PRICING.trial_days} days are free, and a card is needed to start them. The complete routine is built after they become a member, and it is the first thing offered to them then. It is not built during setup. The link under this chat is where an account starts. Mentioning the account, the link or the price counts toward the frequency note below.
 
 Use this the way you would use any other fact about their situation: pick what genuinely fits the person in front of you, if anything does. A cautious first-timer, someone with a chronic condition, a counterfeit-worried shopper and a budget beginner are each moved by a different one of these, and the honest match is worth more than the impressive-sounding one.
 

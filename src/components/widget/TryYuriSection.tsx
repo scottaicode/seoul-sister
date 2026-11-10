@@ -24,14 +24,41 @@ import { PRICING } from '@/lib/pricing'
 import { trackEvent, DemoEvent, WidgetEvent } from '@/lib/analytics'
 import { detectAiReferrer } from '@/lib/widget/ai-referrer'
 
+/**
+ * Stamp the first click on a sign-up link inside the chat (set-once server
+ * side). keepalive so the request survives the navigation it accompanies. Only
+ * a visitor who has already chatted has a row to stamp, so this never creates
+ * one. Failure is logged, never shown: measurement must not block the link.
+ */
+function recordRegisterClick(): void {
+  try {
+    const visitorId = getExistingVisitorId()
+    if (!visitorId) return
+    void fetch('/api/widget/register-click', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visitor_id: visitorId }),
+      keepalive: true,
+    }).catch((err) => console.error('[widget] register click not recorded:', err))
+  } catch (err) {
+    console.error('[widget] register click not recorded:', err)
+  }
+}
+
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
   show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
 }
 
+// Nov 10 2026: "Build me a routine on a budget" used to sit here. It invited the
+// one thing the preview does not hand over (the complete build is member work),
+// so the page promised on message 1 what Yuri was told not to deliver. The
+// replacement is a #1-concern question, which is what the preview solves in
+// full. (A first replacement, "What's wrong with my routine?", invited a whole
+// shelf audit on message 1; review rejected it.)
 const QUICK_PROMPTS = [
   "I'm new to K-beauty, where do I start?",
-  'Build me a routine on a budget',
+  'Why does my skin keep breaking out?',
   'What actually works for glass skin?',
   'Did I get a fake? / Am I overpaying?',
 ]
@@ -966,8 +993,8 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             <div className="pt-3 mt-1 border-t border-white/10">
               <p className="text-[10px] uppercase tracking-wider text-white/35 mb-2">
                 {demoScript === DEMO_BEGINNER
-                  ? 'Example — Yuri building a starter routine with a new member'
-                  : 'Example — Yuri with a subscriber she’s known for months'}
+                  ? 'Example: a new member’s first session with Yuri'
+                  : 'Example: Yuri with a subscriber she’s known for months'}
               </p>
               <div className="space-y-3 opacity-80">
                 {demoScript.slice(0, 2).map((m, i) => (
@@ -1071,15 +1098,20 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                 <p className="text-xs text-white/50 mb-3">
                   Sign up on this device and we pick up where we left off: I&apos;ll have
                   this conversation in front of me when we set up your account, so you
-                  won&apos;t be starting from scratch. Once you subscribe, I build your
-                  routine and adjust it as your skin responds.
+                  won&apos;t be starting from scratch. The account and the setup chat are
+                  free, no card. Once you&apos;re a member I build your routine and adjust
+                  it as your skin responds.
                 </p>
                 <Link
-                  href="/register?plan=monthly"
+                  href="/register?plan=monthly&from=widget_limit"
+                  onClick={recordRegisterClick}
                   className="inline-flex items-center gap-1.5 glass-button-primary text-xs py-2 px-5"
                 >
-                  Keep going at {PRICING.monthly_display} <ArrowRight className="w-3 h-3" />
+                  Create my free account <ArrowRight className="w-3 h-3" />
                 </Link>
+                <p className="text-xs text-white/50 mt-2">
+                  Membership is {PRICING.monthly_display}. New members get the first {PRICING.trial_days} days free.
+                </p>
               </div>
             )}
           </div>
@@ -1157,6 +1189,25 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
       {!isAtLimit && showLive && (
         <p className="text-center text-[10px] text-white/30 py-1.5">
           {MAX_FREE_MESSAGES - messageCount} free message{MAX_FREE_MESSAGES - messageCount !== 1 ? 's' : ''} remaining
+        </p>
+      )}
+
+      {/* Nov 10 2026: until now the ONLY way from this chat to an account was
+          the card shown at 12 of 12 messages, which 13 people ever saw. This is
+          the same door, open as soon as Yuri has answered once. It is a plain
+          link that says what is true and stays out of the conversation. Own
+          line and padding so it is a real tap target on a phone. Hidden while
+          the email gate is up: the recap email is the only thing that has ever
+          converted anyone, and a second ask beside it would compete with it. */}
+      {!isAtLimit && showLive && !emailGateActive && messages.some((m) => m.role === 'assistant' && !m.isStreaming) && (
+        <p className="text-center pb-2">
+          <Link
+            href="/register?plan=monthly&from=widget_chat"
+            onClick={recordRegisterClick}
+            className="inline-block text-xs py-2 px-3 text-gold/80 hover:text-gold underline underline-offset-2"
+          >
+            Create a free account and pick this up with Yuri. No card needed.
+          </Link>
         </p>
       )}
     </>

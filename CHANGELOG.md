@@ -4,6 +4,52 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.51.0 — The path from the free chat to an account stops contradicting itself (Nov 10 2026)
+
+- **Why.** 148 people have chatted with Yuri on the landing page; 1 has paid (a warm referral). Bailey's
+  view was that the free chat gives the routine away. Measured: 107 of 148 left within 5 messages, 13 used
+  all 12, 10 of those left an email, and none of those emails matches an account. Two design reviews
+  (Opus 5.5 and Fable 5.2) then read the code and found the path contradicting itself:
+  - the landing page offered "Build me a routine on a budget" while the widget prompt said not to deliver one;
+  - the same request carried the gate ("Do NOT deliver that complete blueprint") and two instructions
+    against it ("give the best general version you can", "Answering it fully and well is the job");
+  - the paywall said "I've built your skin profile and your first routine" and the onboarding button said
+    "See My Personalized Recommendations"; onboarding builds no routine and the button opened the payment page;
+  - Yuri had no fact saying an account and the setup chat are free, that the preview carries over, or
+    that a trial exists, and the only sign-up link in the chat appeared at 12 of 12 messages.
+- **Owner decision.** The complete routine is built after the trial starts, as the first thing in the first
+  member chat. Not in the free chat and not in onboarding. Reading and ordering a shelf the visitor already
+  owns stays free (it is the diagnosis, and "keep what you have" is what won the one customer).
+- **Changed.**
+  - Widget prompt: removed the two contradicting instructions; the gate now states which side an owned
+    shelf is on; the final-message block and the under-13 rule match the free-account path; the specialist
+    "weave in ONE mention" instruction became an optional fact.
+  - `subscriber-surface.ts`: a conditional path paragraph ("If a visitor asks how to continue or what it
+    costs"), priced from `pricing.ts`, counted against the existing frequency note.
+  - Widget UI: the routine quick prompt replaced with a #1-concern question; a "Create a free account"
+    link under the chat once Yuri has answered (hidden while the email gate is up); limit card says the
+    account and setup are free and shows the price and trial.
+  - Paywall: true copy, a "What you told me in setup" card of stated values (only for a finished setup,
+    no defaults, no clinical fields), and "Start 7 days free" only when the user has no subscription history.
+  - After checkout, a member whose setup is complete lands on `/yuri` with the routine request prefilled.
+    The Stripe session id is now removed from the URL before any redirect (it used to be removed after the
+    confirm call, which could wipe the prefill).
+  - Register page and hero copy no longer say the routine is built before membership.
+- **New rows** (migration `20261110000001_funnel_step_stamps.sql`, applied):
+  `ss_widget_visitors.register_clicked_at` / `register_click_messages` (first sign-up click from the chat),
+  `registered_user_id` / `registered_at` (the account that confirmed the preview in onboarding; separate
+  from `converted_user_id`, which still means paid), `ss_user_profiles.checkout_clicked_at`, and
+  `widget_visitor_id` in signup metadata.
+- **Review.** A second adversarial pass by both models on the diff found 18 defects, including the URL
+  race above, the paywall claiming a finished setup for people mid-setup, and six clearly wrong edits the
+  first tests let through. All fixed except those listed below; the tests are now exact-text or executed.
+  1,481 -> 1,507 tests, each new guard confirmed to fail when its bug is put back.
+- **NOT verified.** No visitor has hit any of this. No production row exists yet for any new stamp. How
+  Yuri actually words a routine request under the new facts is untested on a live conversation.
+- **Open.** The email is not prefilled on the register page. A member who skipped setup and then pays
+  lands in the setup chat, not on the routine. The person-first safety rule ("the gentle routine still
+  gets built") can meet the gate on the same turn; left alone because that rule is pinned identical across
+  three surfaces. Read in 60 days: widget visitors who create an account (1 in nine months before this).
 
 ## v11.50.3 — Ingredient pages call the comedogenic score an estimate (Nov 9 2026)
 

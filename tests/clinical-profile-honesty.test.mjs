@@ -185,7 +185,7 @@ test('the paywall converts on continuity, not a feature list', () => {
   )
   const start = widget.indexOf('{isAtLimit && (')
   assert.ok(start > 0, 'paywall card not found')
-  const card = widget.slice(start, start + 1400)
+  const card = widget.slice(start, start + 2000)
 
   assert.ok(
     /pick\s+up\s+where\s+we\s+left\s+off/i.test(card) && /starting\s+from\s+scratch/i.test(card),
@@ -198,7 +198,12 @@ test('the paywall converts on continuity, not a feature list', () => {
   // Continuity reaches onboarding, not the whole transcript into paid chat.
   assert.ok(!/whole\s+conversation|keep\s+all\s+of\s+it/i.test(card), 'overclaims what carries past onboarding')
   // Sign-up leads to FREE onboarding; the build is subscriber work.
-  assert.ok(/Once\s+you\s+subscribe,\s+I\s+build\s+your/i.test(card), 'the routine build must be tied to subscribing, not to signing up')
+  // Nov 10 2026: wording moved from "subscribe" to "member" (the card now also
+  // says the account and setup chat are free). The binding part is unchanged:
+  // the build belongs to membership, never to the free sign-up step.
+  assert.ok(/Once\s+you&apos;re\s+a\s+member\s+I\s+build\s+your/i.test(card), 'the routine build must be tied to membership, not to signing up')
+  assert.ok(/free,\s+no\s+card/i.test(card), 'the card must say the account and setup are free: it used to show only a price')
+  assert.ok(!/Keep going at/.test(card), 'the price-only button label hid that sign-up is free')
   assert.ok(!/That&apos;s\s+when\s+I\s+can\s+actually\s+build/i.test(card), 'promised the build at the free sign-up step')
   assert.ok(
     !/6 specialist agents/.test(card),

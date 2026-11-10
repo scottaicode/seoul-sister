@@ -63,6 +63,7 @@ const {
   namedSlotPickCount,
   detectBuildRequest,
   buildRequestBlock,
+  BUILD_REQUEST_CLOSING,
 } = await import(pathToFileURL(modFile).href)
 
 // Real excerpts from the Jul 21 2026 transcript.
@@ -511,10 +512,8 @@ test('a both-halves request is distinguished from a single step', () => {
 test('REGRESSION: the block never tells her to withhold, defer, or sell', () => {
   // The failure mode that would be worse than the bug. Visitors triggering this
   // asked outright; refusing them fails the request the widget exists to serve.
-  const block = buildRequestBlock(
-    { asked: true, fullDay: true },
-    detectCumulativeGive([{ role: 'assistant', content: 'Two of those do the same job.' }])
-  )
+  const give = detectCumulativeGive([{ role: 'assistant', content: 'Two of those do the same job.' }])
+  const block = buildRequestBlock({ asked: true, fullDay: true }, give)
   assert.ok(block, 'the block must exist for an explicit request')
   // No enumerated disclaimer to strip any more. A second-model review (Fable 5)
   // rejected the first draft's closing line — "so you spend it deliberately" —
@@ -531,10 +530,29 @@ test('REGRESSION: the block never tells her to withhold, defer, or sell', () => 
     !/\b(subscribe|subscription|upsell|pitch|convert them|sign up|paid tier)\b/i.test(block),
     'the block must never make the paid tier salient — anti-selling is what converts'
   )
-  assert.match(block, /Answering it fully and well is the job/i,
-    'the block must affirm that answering is correct')
-  assert.match(block, /entirely your call/i,
-    'the decision must be handed back without enumerating what not to do')
+  // Nov 10 2026: the block used to close "Answering it fully and well is the
+  // job. What you build, and how, is entirely your call." That contradicted the
+  // gate in the same request ("Do NOT deliver that complete blueprint in the
+  // preview, even when asked directly") on exactly the turn the gate matters.
+  // It now points at the gate and states the preview's part. It still names no
+  // behaviour to avoid and still hands the decision back.
+  assert.doesNotMatch(block, /Answering it fully and well is the job/i,
+    'the sentence that contradicted the gate must not come back')
+  // CLOSED WORLD. A ban list cannot see an added sentence: in review, "Hold the
+  // rest of the build back and keep this reply short." was appended and all 35
+  // tests passed, because the list only had the exact phrase "hold back". The
+  // block is now pinned to its exact text: header, request line, closing line.
+  assert.equal(
+    block,
+    '\n\n## Fact: What This Message Asks For\n' +
+      'The visitor has directly asked you for a full routine build, both halves of the day — the largest of the build pieces, and the one your running count updates too late to show you. Delivered so far: ' + give.count + ' of 5.\n' +
+      BUILD_REQUEST_CLOSING,
+    'the block must be exactly these three lines'
+  )
+  assert.equal(
+    BUILD_REQUEST_CLOSING,
+    'Two facts from "The Give and the Gate" apply to a request like this: this preview\'s part is their #1 priority solved in full, and putting products they already own in order is sequencing, not the build.'
+  )
 })
 
 test('ATTACK: it never frames the give as revenue lost', () => {

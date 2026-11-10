@@ -8,6 +8,8 @@ import { supabase } from '@/lib/supabase'
 import { SUBSCRIPTION_TIERS } from '@/lib/stripe'
 import { PRICING } from '@/lib/pricing'
 import { trackEvent, PaywallEvent } from '@/lib/analytics'
+import type { ExtractedSkinProfile } from '@/types/database'
+import { onFileRows } from '@/lib/paywall/on-file'
 
 export default function SubscribePage() {
   const router = useRouter()
@@ -16,9 +18,18 @@ export default function SubscribePage() {
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(true)
   // Priority 2 — arriving straight from onboarding is the earned VALUE MOMENT:
-  // Yuri just built the visitor's profile + first routine. Read via window
-  // (client component) to avoid the useSearchParams Suspense requirement.
+  // Yuri has just learned the visitor's skin. (She has NOT built a routine: the
+  // onboarding prompt keeps the complete build for members. This page said "I've
+  // built ... your first routine" until Nov 10 2026, which was false.) Read via
+  // window (client component) to avoid the useSearchParams Suspense requirement.
   const [fromOnboarding, setFromOnboarding] = useState(false)
+  // What the setup chat captured, shown back as facts. null = nothing on file
+  // (skipped setup, or the read failed and was logged).
+  const [onFile, setOnFile] = useState<ExtractedSkinProfile | null>(null)
+  // true = no subscription history, so checkout will start the free trial (the
+  // same rule the checkout route applies). null = unknown: the button then
+  // makes no trial claim.
+  const [trialEligible, setTrialEligible] = useState<boolean | null>(null)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setFromOnboarding(new URLSearchParams(window.location.search).get('from') === 'onboarding')
@@ -48,6 +59,38 @@ export default function SubscribePage() {
         }
       } catch {
         // Profile check failed — show subscribe page anyway
+      }
+
+      // What to show on the wall. Both reads are the user's own rows (RLS). A
+      // failure leaves the generic, still-true copy and is logged.
+      try {
+        const [progressRes, subRes] = await Promise.all([
+          supabase
+            .from('ss_onboarding_progress')
+            .select('skin_profile_data, onboarding_status')
+            .eq('user_id', user!.id)
+            .maybeSingle(),
+          supabase.from('ss_subscriptions').select('id').eq('user_id', user!.id).limit(1),
+        ])
+        if (progressRes.error) {
+          console.error('[subscribe] setup profile read failed:', progressRes.error.message)
+        } else {
+          // Only a FINISHED setup backs "I have what I need". AppShell also
+          // sends people here mid-setup (20 such accounts on Nov 10 2026, one
+          // with partial data); they get the generic copy and no card.
+          setOnFile(
+            progressRes.data?.onboarding_status === 'completed'
+              ? ((progressRes.data.skin_profile_data as ExtractedSkinProfile | null) ?? null)
+              : null
+          )
+        }
+        if (subRes.error) {
+          console.error('[subscribe] subscription history read failed:', subRes.error.message)
+        } else {
+          setTrialEligible((subRes.data ?? []).length === 0)
+        }
+      } catch (err) {
+        console.error('[subscribe] paywall context read failed:', err)
       }
 
       // Free-plan user is actually seeing the wall. Record it both ways:
@@ -116,19 +159,35 @@ export default function SubscribePage() {
   }
 
   const tier = SUBSCRIPTION_TIERS.monthly
+  const rows = onFileRows(onFile)
+  const hasProfile = rows.length > 0
 
   return (
     <div className="w-full max-w-md mx-auto">
       <div className="text-center mb-6">
         <h1 className="font-display text-2xl font-bold text-gradient mb-2">
-          {fromOnboarding ? 'Want me to keep going?' : 'One last step'}
+          {hasProfile ? 'Ready to build your routine?' : fromOnboarding ? 'Want me to keep going?' : 'One last step'}
         </h1>
         <p className="text-white/50 text-sm">
-          {fromOnboarding
-            ? "I've built your skin profile and your first routine. Subscribe and I'll remember all of it — tracking what works and adjusting as your skin changes."
-            : 'Subscribe to unlock your full K-beauty intelligence suite.'}
+          {hasProfile
+            ? "I have what I need from our setup chat. Become a member and your routine is the first thing we build, then I adjust it as your skin responds."
+            : 'Become a member and we build your routine, and I keep everything I learn about your skin.'}
         </p>
       </div>
+
+      {hasProfile && (
+        <div className="dark-card p-5 text-left mb-6 border border-white/10 rounded-2xl">
+          <p className="text-[11px] uppercase tracking-wider text-white/40 mb-3">What you told me in setup</p>
+          <dl className="space-y-2">
+            {rows.map((r) => (
+              <div key={r.label} className="flex gap-3 text-sm">
+                <dt className="text-white/40 shrink-0 w-36">{r.label}</dt>
+                <dd className="text-white/80">{r.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
 
       <div className="relative dark-card-gold p-8 text-left shadow-glow-gold">
         <span className="absolute -top-3 left-1/2 -translate-x-1/2 badge-gold font-semibold px-4 py-1 text-xs">
@@ -164,7 +223,7 @@ export default function SubscribePage() {
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
             <>
-              Subscribe Now <ArrowRight className="w-4 h-4" />
+              {trialEligible === true ? `Start ${PRICING.trial_days} days free` : 'Start membership'} <ArrowRight className="w-4 h-4" />
             </>
           )}
         </button>

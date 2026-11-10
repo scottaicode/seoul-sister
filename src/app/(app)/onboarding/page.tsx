@@ -10,6 +10,10 @@ import ChatMessage from '@/components/yuri/ChatMessage'
 import ChatInput from '@/components/yuri/ChatInput'
 import type { ChatMessage as ChatMessageType } from '@/types/yuri'
 
+// What a new member's first Yuri message is prefilled with after checkout. It is
+// only prefilled (the Yuri page's ?ask= never auto-sends), so they can edit it.
+const FIRST_MEMBER_ASK = "Let's build my routine from what you learned in my setup chat."
+
 export default function OnboardingPage() {
   const router = useRouter()
   const [messages, setMessages] = useState<ChatMessageType[]>([])
@@ -28,6 +32,11 @@ export default function OnboardingPage() {
   // start_onboarding twice, which (pre server-side lock) produced two different
   // greetings 0.9s apart. Survives re-renders; resets only on a true remount.
   const startedRef = useRef(false)
+  // True when Stripe just returned this person from checkout (Nov 10 2026). The
+  // paywall and the preview both say the routine is the first thing built once
+  // they are a member, so a new member whose setup is already done lands in
+  // Yuri with that request ready to send, not on the dashboard.
+  const justPaidRef = useRef(false)
   // Whether to carry this browser's free-preview chat into onboarding. 'pending'
   // until read on the client; 'ask' shows CarryoverPrompt and holds the start
   // until they answer; 'na' when there is no preview chat on this device.
@@ -62,6 +71,16 @@ export default function OnboardingPage() {
   useEffect(() => {
     const sessionId = new URLSearchParams(window.location.search).get('session_id')
     if (!sessionId) return
+    // Read synchronously, before the start effect below can redirect: Stripe
+    // only sends a buyer here with a session id right after checkout.
+    justPaidRef.current = true
+    // Drop the id from the URL NOW, synchronously, so a refresh or a shared link
+    // doesn't replay it. This used to run after the confirm fetch resolved; by
+    // then the start effect may already have sent a just-paid member to
+    // /yuri?ask=..., and rewriting the URL at that point wiped the prefilled
+    // routine request and left /onboarding in the address bar (review, Nov 10
+    // 2026). The id is already captured in `sessionId`.
+    window.history.replaceState({}, '', '/onboarding')
     ;(async () => {
       try {
         const { data } = await supabase.auth.getSession()
@@ -77,9 +96,6 @@ export default function OnboardingPage() {
         })
       } catch (err) {
         console.error('[onboarding] payment confirm failed:', err)
-      } finally {
-        // Drop the id from the URL so a refresh or a shared link doesn't replay it.
-        window.history.replaceState({}, '', '/onboarding')
       }
     })()
   }, [])
@@ -240,7 +256,11 @@ export default function OnboardingPage() {
           if (cancelled) return
 
           if (data.status === 'completed') {
-            router.replace('/dashboard')
+            router.replace(
+              justPaidRef.current
+                ? `/yuri?ask=${encodeURIComponent(FIRST_MEMBER_ASK)}`
+                : '/dashboard'
+            )
             return
           }
 
@@ -402,10 +422,13 @@ export default function OnboardingPage() {
         throw new Error(err.error || 'Failed to complete onboarding')
       }
 
-      // Priority 2 — the VALUE MOMENT. Onboarding is done: Yuri has built the
-      // visitor's skin profile and first routine. Route to '/subscribe', which
-      // frames the ask as continuation ("I'll remember all this — want me to
-      // keep going?"). Self-correcting: '/subscribe' checks the plan on mount
+      // Priority 2 — the VALUE MOMENT. Onboarding is done: Yuri has the
+      // visitor's skin profile and has given them their first move. She has NOT
+      // built a routine (the onboarding prompt keeps the complete build for
+      // members; an earlier version of this comment and of the paywall copy
+      // said she had). Route to '/subscribe', which shows what she has on file
+      // and says the routine is built first once they are a member.
+      // Self-correcting: '/subscribe' checks the plan on mount
       // and bounces an already-paid user (insiders) straight to '/dashboard' or
       // '/yuri', so this single route is correct for both free and paid.
       // '?from=onboarding' lets the subscribe page open on continuation framing
@@ -504,7 +527,7 @@ export default function OnboardingPage() {
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-br from-gold to-gold-light text-seoul-dark text-sm font-semibold shadow-glow-gold hover:shadow-glow-gold-lg hover:scale-[1.02] transition-all duration-200"
               >
                 <Sparkles className="w-4 h-4" />
-                See My Personalized Recommendations
+                Finish setup and see membership
               </button>
             </div>
           )}

@@ -412,9 +412,23 @@ export function detectArtifactsInReply(text: string): Set<GiveArtifact> {
  * customer. So this does NOT gate, refuse, or defer.
  *
  * It reports one fact she cannot otherwise see: that the message in front of
- * her is a request for the whole artifact, BEFORE she writes the reply. What to
- * do with that is hers — often the honest answer is to build it and say what
- * ongoing work looks like, which is what the preview is for.
+ * her is a request for the whole artifact, BEFORE she writes the reply. (Until
+ * Nov 10 2026 this comment went on to say "often the honest answer is to build
+ * it". The owners have since decided the complete build is member work; see
+ * the CHANGED note below. Do not restore the old closing line.)
+ *
+ * CHANGED Nov 10 2026 (owner decision, after two design reviews). The block
+ * used to close with "Answering it fully and well is the job. What you build,
+ * and how, is entirely your call." That sentence arrived in the same request as
+ * the gate ("Do NOT deliver that complete blueprint in the preview, even when
+ * asked directly") and contradicted it, on exactly the turn where the gate
+ * matters; it was the newer and more specific text, so it tended to win. The
+ * owners decided the complete build is member work and is not handed out in
+ * the preview. The block still gates nothing and still names no behaviour to
+ * avoid: its closing line (BUILD_REQUEST_CLOSING) points at the existing gate
+ * and states the two facts from it that apply. It still must not mention the
+ * paid tier. A first draft ended "What you write is your call"; review called
+ * that hollow next to the gate's "Do NOT", and it was dropped.
  *
  * Deliberately conservative: it requires an explicit build verb aimed at a
  * routine noun. "What order do these go in" does not match — that is a
@@ -450,8 +464,11 @@ export function detectBuildRequest(message: string): BuildRequest {
  *
  * THREE THINGS IT MUST NOT DO, each deliberate:
  *
- * 1. It never tells her to withhold, defer, or refuse. The visitors triggering
- *    it are asking a direct question; not answering it is the worse failure.
+ * 1. It never tells her to withhold, defer, or refuse in its own words. Since
+ *    Nov 10 2026 it points at the gate in the static prompt, which does hold
+ *    the complete build for members, and states the two facts from it that
+ *    apply: the #1 priority is given in full, and ordering products they
+ *    already own is sequencing. The block adds no restriction of its own.
  * 2. It never tells her to sell. The one behaviour that has converted a
  *    customer is confident anti-selling ("you already own it, don't buy a new
  *    one"), and a block that nudges toward a pitch would cost exactly that.
@@ -459,6 +476,15 @@ export function detectBuildRequest(message: string): BuildRequest {
  *    `buildCumulativeGiveBlock`'s job, and a false claim there was injected into
  *    five consecutive turns before being caught on Aug 17.
  */
+/**
+ * The closing line, exported so the guard test can pin it EXACTLY. A ban list
+ * cannot see an added sentence ("Hold the rest of the build back and keep this
+ * reply short" passed every test in review, Nov 10 2026), so the test asserts
+ * the block ends with this string and nothing after it.
+ */
+export const BUILD_REQUEST_CLOSING =
+  "Two facts from \"The Give and the Gate\" apply to a request like this: this preview's part is their #1 priority solved in full, and putting products they already own in order is sequencing, not the build."
+
 export function buildRequestBlock(req: BuildRequest, give: CumulativeGive): string | null {
   if (!req.asked) return null
 
@@ -475,7 +501,7 @@ export function buildRequestBlock(req: BuildRequest, give: CumulativeGive): stri
 
   return `\n\n## Fact: What This Message Asks For
 The visitor has directly asked you for ${scope} — the largest of the build pieces, and the one your running count updates too late to show you.${delivered}
-Answering it fully and well is the job. What you build, and how, is entirely your call.`
+${BUILD_REQUEST_CLOSING}`
 }
 
 export interface CumulativeGive {
