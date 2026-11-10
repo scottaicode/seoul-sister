@@ -40,7 +40,7 @@ export function buildPriceChangeEmail(
       : `new members get the first ${days} days free.`
 
   const body = `${hello}
-<p>It's ${price}, and ${trial} You add a card to start, you can cancel anytime from your Profile page (Manage subscription), and if you cancel during those ${days} days you aren't charged.</p>
+<p>It's ${price}, and ${trial} You don't need a card to start. The trial ends after ${days} days and nothing is charged unless you add a card, which you can do inside the app.</p>
 <p>That gets you ${USAGE_CAPS.yuri_messages_per_month} messages a month with Yuri, our AI skincare advisor, who remembers your skin, what you're using, and what you loved or what broke you out. You also get ${USAGE_CAPS.scans_per_month} label scans a month: point your phone at a Korean label and Yuri checks it against your allergies, your skin type and the products you already use. And she'll build a routine from your own products and check it for ingredient conflicts.</p>
 ${cohort === 'registered'
     ? `<p>If you want to try it, just log in: <a href="${SITE}/login?from=price_change">seoulsister.com/login</a></p>`

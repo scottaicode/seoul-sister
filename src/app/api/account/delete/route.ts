@@ -1,3 +1,4 @@
+import { cancelSubscriptionNow } from '@/lib/stripe'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
 import { getServiceClient } from '@/lib/supabase'
@@ -99,7 +100,24 @@ export async function DELETE(request: NextRequest) {
     const user = await requireAuth(request)
     const db = getServiceClient()
 
-    // Photos FIRST — the rows are the only map to these objects.
+    // Cancel any Stripe subscription BEFORE its row is deleted (Nov 10 2026).
+    // Deleting only our row left the subscription alive in Stripe: a trial
+    // member who had added a card and then deleted the account would have been
+    // billed every month with no account. If Stripe cannot be reached the
+    // deletion stops, so the person can try again rather than be billed.
+    const { data: liveSubs, error: liveSubsErr } = await db
+      .from('ss_subscriptions')
+      .select('stripe_subscription_id, status')
+      .eq('user_id', user.id)
+    if (liveSubsErr) throw new Error(`could not read subscriptions before deletion: ${liveSubsErr.message}`)
+    for (const s of liveSubs ?? []) {
+      if (s.stripe_subscription_id && s.status !== 'canceled') {
+        await cancelSubscriptionNow(s.stripe_subscription_id)
+      }
+    }
+
+    // Photos next (the rows are the only map to these objects). This comes
+    // AFTER the Stripe cancel: if Stripe fails, nothing has been removed yet.
     const photosRemoved = await purgeUserPhotos(db, user.id)
 
     // Delete in dependency order (children first)

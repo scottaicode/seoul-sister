@@ -103,7 +103,8 @@ test('the price is interpolated from PRICING, never hardcoded', () => {
     !/\$24\.99/.test(source),
     'hardcoded price found — must use PRICING.monthly_display'
   )
-  assert.match(source, /\$\{PRICING\.monthly_display\}/)
+  assert.match(source, /\$\{PRICING\.monthly_display_long\}/)
+  assert.match(source, /\$\{PRICING\.trial_days\}/, 'the free week must come from pricing.ts too')
 })
 
 // ---------------------------------------------------------------------------
@@ -140,7 +141,7 @@ globalThis.__detectCumulativeGive = give.detectCumulativeGive
 globalThis.__buildCumulativeGiveBlock = give.buildCumulativeGiveBlock
 
 const shimmed =
-  `const PRICING = { monthly_display: '$24.99/mo' };\n` +
+  `const PRICING = { monthly_display: '$24.99/mo', monthly_display_long: '$24.99/month', trial_days: 7 };\n` +
   `const detectCumulativeGive = globalThis.__detectCumulativeGive;\n` +
   `const buildCumulativeGiveBlock = globalThis.__buildCumulativeGiveBlock;\n` +
   js
@@ -150,14 +151,21 @@ const mod = await import(
 )
 const { buildOnboardingTurnState, ONBOARDING_USER_MESSAGE_CAP } = mod
 
-test('an unsubscribed user is reported as NOT SUBSCRIBED with the price', () => {
+test('someone who is not a member yet is told so, with the free week and the price', () => {
   const out = buildOnboardingTurnState({}, undefined, {
     isSubscribed: false,
     userMessageNumber: 3,
     userMessageCap: 50,
   })
-  assert.match(out, /NOT SUBSCRIBED/)
-  assert.match(out, /\$24\.99/)
+  // Nov 10 2026: the line used to read "NOT SUBSCRIBED ... the subscribe step
+  // ($9.99) follows this conversation", so setup Yuri closed on a price right
+  // before a screen that says free with no card. It now states the real next
+  // step: a free week, no card, and the price only if they add one.
+  assert.match(out, /NOT A MEMBER YET/)
+  assert.match(out, /first 7 days are free and need no card/)
+  assert.match(out, /\$24\.99\/month after that only if they add a card/)
+  assert.match(out, /Nothing has been paid/)
+  assert.doesNotMatch(out, /subscribe step/)
   assert.match(out, /message 3 of the 50/)
 })
 
@@ -166,7 +174,7 @@ test('a subscribed user is reported as SUBSCRIBED — no false scarcity', () => 
   // would be a NEW false fact — the exact bug class being fixed.
   const out = buildOnboardingTurnState({}, undefined, { isSubscribed: true })
   assert.match(out, /SUBSCRIBED/)
-  assert.ok(!/NOT SUBSCRIBED/.test(out), 'must not contradict a real subscriber')
+  assert.ok(!/NOT A MEMBER YET/.test(out), 'must not contradict a real subscriber')
   assert.ok(
     !/Nothing has been paid yet/i.test(out),
     'must not tell a paying subscriber they have not paid'

@@ -540,3 +540,32 @@ export async function attributeConversion(
     return null
   }
 }
+
+/**
+ * Whether this email belongs to a widget lead, WITHOUT stamping anything.
+ *
+ * Used when a free trial starts (Nov 10 2026). A trial is not a paid
+ * conversion, so `attributeConversion` (which stamps converted_at and feeds
+ * the One Metric) must not run then; but the subscription row still wants to
+ * know where the person came from. Best-effort, never throws.
+ */
+export async function leadSourceForEmail(email: string | null | undefined): Promise<'widget' | null> {
+  if (!email) return null
+  try {
+    const { data, error } = await getServiceClient()
+      .from('ss_widget_visitors')
+      .select('visitor_id')
+      // ilike for case-insensitivity; _ and % in an address are escaped so they
+      // match literally, not as wildcards.
+      .ilike('captured_email', email.replace(/[\\%_]/g, (c) => `\\${c}`))
+      .limit(1)
+    if (error) {
+      console.error('[Widget] leadSourceForEmail failed:', error.message)
+      return null
+    }
+    return Array.isArray(data) && data.length > 0 ? 'widget' : null
+  } catch (err) {
+    console.error('[Widget] leadSourceForEmail threw:', err)
+    return null
+  }
+}

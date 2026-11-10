@@ -36,6 +36,7 @@ import {
   leadGuardEvidence,
   type LeadRow,
 } from './lead-reengage'
+import { isUnpaidTrialSubscription } from './campaign-funnel'
 import { checkinGate, judgeSubscriber, dogfoodUserIds, trialDayNumber, type SubscriberRow } from './subscriber-checkin'
 import { trialInfoFromSubscription } from './checkin-context'
 import { resolveCheckinTimezone } from './subscriber-checkin'
@@ -439,10 +440,10 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
       .select('id, email, user_id, visitor_id, cohort, sequence_step, last_sent_at, enrolled_at, suppressed, unsubscribe_token')
       .order('enrolled_at', { ascending: true })
     if (opts.onlyLeadIds?.length) leadQuery = leadQuery.in('id', opts.onlyLeadIds)
-    const [leadsRes, subsRes, judgedRes, internalRes, convertedRes, usersRes] = await Promise.all([
+    const [leadsRes, subsRes, judgedRes, internalRes, convertedRes, usersRes, trialsRes] = await Promise.all([
       leadQuery,
       // ANY status: a former payer is excluded exactly like a current one.
-      db.from('ss_subscriptions').select('user_id'),
+      db.from('ss_subscriptions').select('user_id, stripe_subscription_id'),
       db.from('ss_proactive_judgments').select('nurture_lead_id').eq('campaign', LEAD_CAMPAIGN).in('decision', ['speak', 'silent', 'blocked']),
       // Founder/test/demo accounts are not leads, even when the Honest Three
       // enrolled them (the founder's canceled test account was).
@@ -452,6 +453,9 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
       // A widget lead's address may belong to an account made later; resolve it
       // so the payer/internal checks see the person, not just the lead row.
       db.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+      // A free trial creates a subscription row without any payment (Nov 10
+      // 2026). Someone whose only subscription is an unpaid trial never paid.
+      db.from('ss_trial_starts').select('stripe_subscription_id, paid_at'),
     ])
     const loadErr =
       leadsRes.error ||
@@ -459,12 +463,18 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
       (ledgerMissing(judgedRes.error, opts.dryRun) ? null : judgedRes.error) ||
       internalRes.error ||
       convertedRes.error ||
-      usersRes.error
+      usersRes.error ||
+      trialsRes.error
     if (loadErr) {
       lead.phase = 'load_failed'
       errors.push(`lead load: ${loadErr.message}`)
     } else {
-      const everPaid = new Set((subsRes.data ?? []).map((r) => r.user_id as string))
+      const trialRows = (trialsRes.data ?? []) as Array<{ stripe_subscription_id: string | null; paid_at: string | null }>
+      const everPaid = new Set(
+        (subsRes.data ?? [])
+          .filter((r) => !isUnpaidTrialSubscription(r.stripe_subscription_id as string | null, trialRows))
+          .map((r) => r.user_id as string)
+      )
       const convertedEmails = new Set(
         (convertedRes.data ?? []).map((r) => String(r.captured_email ?? '').toLowerCase()).filter(Boolean)
       )

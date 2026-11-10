@@ -38,8 +38,19 @@ export const PRICING = {
   monthly_display_long: '$9.99/month',
   /** Product/plan display name */
   plan_name: 'Seoul Sister Pro',
-  /** Free trial length for first-time subscribers (card required) */
+  /** Free trial length for first-time members */
   trial_days: 7,
+  /**
+   * false since Nov 10 2026: the trial starts with NO card and ends on its last
+   * day unless the member adds one. The checkout reads this (src/lib/trial.ts).
+   * The customer copy does NOT read it: about a dozen sentences state "no card"
+   * in words (paywall, pricing card, widget, register page, terms, emails,
+   * Yuri's path facts). Tests pin this value next to those sentences, so
+   * flipping it fails the suite until the copy is changed in the same commit.
+   * The env var NO_CARD_TRIAL_ENABLED=false is an EMERGENCY stop only: it
+   * changes the checkout at once while the copy keeps saying "no card".
+   */
+  trial_requires_card: false,
   /** Yuri allowance, for copy: "80 messages with Yuri a month" */
   yuri_allowance_display: '80 messages with Yuri a month',
 } as const

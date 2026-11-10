@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { loginUrlFor } from '@/lib/auth/return-to'
+import TrialNotice from './TrialNotice'
 import Header from './Header'
 import BottomNav from './BottomNav'
 
@@ -135,6 +136,7 @@ export default function AppShell({ children }: AppShellProps) {
   return (
     <div className="min-h-screen bg-seoul-darker">
       <Header />
+      <TrialNotice />
       <main className="pt-0 pb-20 md:pb-0">
         {children}
       </main>

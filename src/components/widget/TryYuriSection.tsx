@@ -1110,7 +1110,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                   Create my free account <ArrowRight className="w-3 h-3" />
                 </Link>
                 <p className="text-xs text-white/50 mt-2">
-                  Membership is {PRICING.monthly_display}. New members get the first {PRICING.trial_days} days free.
+                  Membership is {PRICING.monthly_display}. New members get the first {PRICING.trial_days} days free, no card needed to start.
                 </p>
               </div>
             )}
@@ -1198,8 +1198,9 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
           link that says what is true and stays out of the conversation. (It
           first read "pick this up with Yuri. No card needed", which was true
           for one setup chat and then met the card wall; both reviewers called
-          it misleading and it was reworded the same day. Restore the simpler
-          promise only when the trial itself needs no card.) Own
+          it misleading and it was reworded the same day. The trial itself
+          now needs no card, so the simple promise is true again: account,
+          setup chat and seven days of member Yuri, with nothing to pay.) Own
           line and padding so it is a real tap target on a phone. Hidden while
           the email gate is up: the recap email is the only thing that has ever
           converted anyone, and a second ask beside it would compete with it. */}
@@ -1210,7 +1211,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             onClick={recordRegisterClick}
             className="inline-block text-xs py-2 px-3 text-gold/80 hover:text-gold underline underline-offset-2"
           >
-            Create a free account for a setup chat with Yuri. Membership comes after (first 7 days free).
+            Create a free account and continue with Yuri. New members get {PRICING.trial_days} days free with no card. {PRICING.monthly_display} after that, only if you add a card.
           </Link>
         </p>
       )}

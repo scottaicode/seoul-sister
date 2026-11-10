@@ -318,7 +318,7 @@ export default function RegisterPage() {
             onboarding, not at account creation, so the old "subscription required
             after account creation" copy was false). */}
         <p className="text-xs text-center text-white/30 mt-4">
-          Next is a free setup chat where Yuri gets to know your skin. No card needed. Your routine is built once you&apos;re a member ({PRICING.monthly_display_long}, first {PRICING.trial_days} days free for new members).
+          Next is a free setup chat where Yuri gets to know your skin. No card needed. New members then get their first {PRICING.trial_days} days free, with no card needed, and that is where your routine is built. After that it is {PRICING.monthly_display_long}, only if you add a card.
         </p>
 
         {/* Divider */}

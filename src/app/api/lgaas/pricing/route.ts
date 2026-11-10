@@ -64,6 +64,9 @@ export async function GET(request: NextRequest) {
       // Oct 30 2026: a monthly allowance, not "unlimited", plus the new-member trial.
       yuri_messages_per_month: USAGE_CAPS.yuri_messages_per_month,
       trial_days: PRICING.trial_days,
+      // Nov 10 2026: the trial starts with no card and ends on its last day
+      // unless one is added. Exposed so LGAAS copy cannot drift from it.
+      trial_requires_card: PRICING.trial_requires_card,
       // Display strings for rendering
       monthly_display: PRICING.monthly_display, // "$9.99/mo"
       monthly_display_long: PRICING.monthly_display_long, // "$9.99/month"

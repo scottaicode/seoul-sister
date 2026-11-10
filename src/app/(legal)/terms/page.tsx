@@ -78,8 +78,9 @@ export default function TermsPage() {
           4. Subscriptions &amp; Billing
         </h2>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Seoul Sister requires a paid subscription to access the platform</li>
+          <li>Seoul Sister is a membership service. The public product database, ingredient pages and blog are free to read</li>
           <li>Subscriptions are billed monthly through Stripe</li>
+          <li>New members get a 7-day free trial that needs no card to start. If you add no card, the trial ends after 7 days, nothing is charged, and your membership stops. If you add a card during the trial, it is charged the monthly price when the trial ends and every month after that until you cancel</li>
           <li>You can cancel anytime; access continues through the end of the billing period</li>
           <li>Refunds are handled on a case-by-case basis within 7 days of charge</li>
           <li>We reserve the right to change pricing with 30 days notice to existing subscribers</li>

@@ -64,7 +64,8 @@ const PATH_SENTENCES = [
   'An account is free and needs no card.',
   'It opens a free setup chat with you, and if they sign up in this browser and confirm the preview was theirs, you will have it in front of you there.',
   'Membership is ${PRICING.monthly_display_long} and includes ${PRICING.yuri_allowance_display}.',
-  "A first-time member's first ${PRICING.trial_days} days are free, and a card is needed to start them.",
+  "A first-time member's first ${PRICING.trial_days} days are free, and no card is needed to start them.",
+  'The trial ends after those ${PRICING.trial_days} days unless they add a card, which they can do from inside the app.',
   'The complete routine is built after they become a member, and it is the first thing offered to them then.',
   'It is not built during setup.',
   'The link under this chat is where an account starts.',
@@ -125,8 +126,13 @@ test('path fact "free, no card": registration and the setup chat never start a c
 })
 
 test('path fact "first-time member": matches the checkout rule and the Stripe session', () => {
-  assert.match(checkout, /const withTrial = !priorSub/, 'the checkout rule the claim rests on')
-  assert.match(read('src/lib/stripe.ts'), /trial_period_days/, 'the trial must actually be set on the Stripe session')
+  assert.match(checkout, /const withTrial = eligibility\.eligible/, 'the checkout rule the claim rests on')
+  assert.match(read('src/lib/stripe-params.ts'), /trial_period_days/, 'the trial must actually be set on the Stripe session')
+  // "No card is needed" and "add a card from inside the app" are true only
+  // while these hold (details in tests/no-card-trial.test.mjs).
+  assert.match(read('src/lib/pricing.ts'), /trial_requires_card: false,/)
+  assert.match(read('src/lib/stripe-params.ts'), /payment_method_collection: 'if_required'/)
+  assert.match(read('src/components/layout/AppShell.tsx'), /<TrialNotice \/>/, 'the in-app place a card is added')
 })
 
 test('path fact "sign up in this browser and confirm": that is how the carryover works', () => {
@@ -171,8 +177,12 @@ test('path fact "the link under this chat": it exists, is a real tap target, and
   // The link must say what the account actually opens: a setup chat, then
   // membership. "Pick this up with Yuri. No card needed" was true for one
   // session and then met the card wall.
-  assert.match(link, /Create a free account for a setup chat with Yuri\. Membership comes after \(first 7 days free\)\./)
-  assert.doesNotMatch(link, /pick this up with Yuri/)
+  // "Pick this up with Yuri ... no card needed" was misleading while a card
+  // wall sat behind setup. It is true now that the trial needs no card, and
+  // only for as long as it does.
+  // It names who gets the free week (new members) and shows the price.
+  assert.match(link, /Create a free account and continue with Yuri\. New members get \{PRICING\.trial_days\} days free with no card\. \{PRICING\.monthly_display\} after that, only if you add a card\./)
+  assert.match(read('src/lib/pricing.ts'), /trial_requires_card: false,/, 'the link says "no card needed": true only with a no-card trial')
 })
 
 // ---------------------------------------------------------------------------
@@ -190,15 +200,17 @@ test('no screen claims a routine was built before membership', () => {
 
 test('the paywall button claims a trial only when the user is known to be eligible', () => {
   assert.match(subscribe, /trialEligible === true \? `Start \$\{PRICING\.trial_days\} days free` : 'Start membership'/)
-  assert.match(subscribe, /setTrialEligible\(\(subRes\.data \?\? \[\]\)\.length === 0\)/, 'eligible = no subscription history, the checkout rule')
+  assert.match(subscribe, /setTrialEligible\(t\.eligible === true\)/, 'eligibility comes from the server, which applies the checkout rule')
   // A failed read must leave it unknown, never eligible.
   assert.match(subscribe, /useState<boolean \| null>\(null\)/)
-  assert.match(subscribe, /if \(subRes\.error\) \{\s*console\.error/)
+  assert.match(subscribe, /console\.error\('\[subscribe\] trial facts unavailable; making no trial claim'\)/)
 })
 
 test('the paywall claims Yuri has their profile only when rows exist to show', () => {
   assert.match(subscribe, /const hasProfile = rows\.length > 0/)
-  assert.match(subscribe, /\{hasProfile\s*\?\s*"I have what I need from our setup chat\./)
+  assert.match(subscribe, /: hasProfile\s*\?\s*"I have what I need from our setup chat\./)
+  // Someone whose free week already ended is not told a routine is about to be built.
+  assert.match(subscribe, /\{hadTrial\s*\? `Nothing was charged\. Your skin profile and everything we worked out are saved\./)
 })
 
 // ---------------------------------------------------------------------------
@@ -317,7 +329,7 @@ test('the limit card body is exactly the approved text (no routine promised at t
   )
   const card = widget.slice(start, start + 2000)
   assert.match(card, /Create my free account/)
-  assert.match(card, /Membership is \{PRICING\.monthly_display\}\. New members get the first \{PRICING\.trial_days\} days free\./)
+  assert.match(card, /Membership is \{PRICING\.monthly_display\}\. New members get the first \{PRICING\.trial_days\} days free, no card needed to start\./)
 })
 
 test('the paywall claims "I have what I need" only for a FINISHED setup', () => {

@@ -4,6 +4,47 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.52.0 — The 7-day free trial no longer needs a card (Nov 10 2026)
+
+- **Why.** 29 accounts had reached the payment page and about 1 paid. The one person who finished setup
+  after the Oct 30 relaunch declined the card and made a second account to ask for a routine. Nobody cold
+  has ever used member Yuri. Two models, asked to debate the owner's test of the live funnel, both named
+  the card wall as the step to remove. Owner approved.
+- **What happens now.** A first-time member starts 7 days with no card (Stripe
+  `payment_method_collection: 'if_required'`, `missing_payment_method: 'cancel'`; both checked against
+  Stripe's docs and accepted by the live account). An "Add a card" notice sits at the top of every app
+  page with the end date. A saved card is attached to the subscription (setup-mode Checkout, Stripe's
+  documented pattern). With no card, Stripe cancels on day 7, the member drops to the free plan, and gets
+  a plain "nothing was charged" email. `PRICING.trial_requires_card` is the setting;
+  `NO_CARD_TRIAL_ENABLED=false` is an emergency stop for the checkout only.
+- **A trial is not a customer.** `attributeConversion` (the One Metric) used to run when checkout
+  completed, so every trial would have counted as paid. It now runs on the first invoice actually paid
+  (`onInvoicePaid`, once per trial). The owner alert says "Free trial started (not yet paying)" until
+  then. The admin funnel and lead re-engagement no longer treat an unpaid trial as a payer.
+  New table `ss_trial_starts`: one row per trial, with `card_added_at`, `paid_at`, `lapsed_at`.
+- **One trial per person.** Keyed on the canonical inbox with no account foreign key, so deleting the
+  account and registering again does not earn another week. At most 3 trials per network per 30 days,
+  counted from trials that started. The paywall reads the same rule as the checkout (`/api/me/trial`).
+- **Found on the way, all pre-existing.**
+  - The live Stripe endpoint sends `invoice.paid`; the webhook only handled `invoice.payment_succeeded`,
+    which has never arrived. Recovery from a failed payment had never run. Both are handled now.
+  - Account deletion left the Stripe subscription alive. It is cancelled first now.
+  - A late event for an old subscription could overwrite the row of a newer one and clear the plan.
+    `ss_subscriptions.stripe_created_at` makes that check exact.
+  - Setup-chat Yuri was told "the subscribe step ($9.99) follows this conversation". She is now told the
+    real next step: a free week, no card.
+- **Review.** Opus 5.5 and Fable 5.2 mapped the change first, then attacked the diff. Opus's verdict was
+  "do not ship": a trial could be counted as paid before the card was charged, the paywall could promise
+  a trial the checkout refused, and five of six deliberately wrong versions passed the tests. A second
+  pass found the `invoice.paid` gap. The Stripe parameters, trial rules, payment handler and notice
+  states are now executed by tests and compared exactly; eleven wrong versions each fail.
+  1,507 -> 1,535 tests.
+- **NOT verified.** No real person has started a no-card trial. Nothing has been seen to lapse on day 7
+  or convert. Whether Stripe's hosted page reads clearly with no card form is unseen. The endpoint is not
+  subscribed to `customer.subscription.trial_will_end`, and Stripe's own trial-reminder email is a
+  Dashboard setting we cannot read, so the only warnings before day 7 are the in-app notice and the
+  day-0 email. A trial has the full 80-message allowance.
+
 ## v11.51.0 — The path from the free chat to an account stops contradicting itself (Nov 10 2026)
 
 - **Why.** 148 people have chatted with Yuri on the landing page; 1 has paid (a warm referral). Bailey's

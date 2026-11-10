@@ -32,6 +32,14 @@ export interface NewSubscriberInfo {
   /** 'widget' if attributed to a Yuri widget lead, else null (organic/direct/unknown). */
   leadSource: string | null
   amountDisplay?: string | null
+  /**
+   * 'trial_started' = a free trial began and NO money has moved. 'paid' = a
+   * real payment (a no-trial checkout, or a trial that just converted). Until
+   * Nov 10 2026 every trial start was announced as "Someone just subscribed".
+   */
+  kind?: 'trial_started' | 'paid'
+  trialEnd?: Date | null
+  cardOnFile?: boolean
 }
 
 export interface NotifyResult {
@@ -64,17 +72,29 @@ export async function notifyNewSubscriber(info: NewSubscriberInfo): Promise<Noti
     return { sent: false, reason: 'no_recipient' }
   }
 
-  const subject = `🎉 New Seoul Sister subscriber: ${info.email ?? 'new customer'}`
+  const isTrial = info.kind === 'trial_started'
+  const trialEndText = info.trialEnd
+    ? info.trialEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+    : 'date unknown'
+  const subject = isTrial
+    ? `Free trial started (not yet paying): ${info.email ?? 'new member'}`
+    : `🎉 New PAYING Seoul Sister subscriber: ${info.email ?? 'new customer'}`
+  const headline = isTrial
+    ? `Someone started the free trial. No money has moved. ${info.cardOnFile ? 'A card is on file' : 'No card is on file'}; the trial ends ${escapeHtml(trialEndText)}${info.cardOnFile ? ' and will be charged then unless they cancel' : ' and stops then unless they add a card'}.`
+    : 'Someone just paid for Seoul Sister Pro. 💳'
+  const closing = isTrial
+    ? 'This is a trial, not a customer yet. The row is in ss_trial_starts; paid_at is set if they convert.'
+    : 'Subscription is now active and paid. Full record is in ss_subscriptions.'
   const amountLine = info.amountDisplay
     ? `<p style="margin:0 0 8px;">Plan: <strong>${escapeHtml(info.plan)}</strong> · ${escapeHtml(info.amountDisplay)}</p>`
     : `<p style="margin:0 0 8px;">Plan: <strong>${escapeHtml(info.plan)}</strong></p>`
 
   const html = wrapEmailHtml(
-    `<p style="margin:0 0 12px;font-size:16px;">Someone just subscribed to Seoul Sister Pro. 💳</p>
+    `<p style="margin:0 0 12px;font-size:16px;">${headline}</p>
 <p style="margin:0 0 8px;">Customer: <strong>${who}</strong></p>
 ${amountLine}
 <p style="margin:0 0 8px;color:#666;font-size:13px;">${source}</p>
-<p style="margin:16px 0 0;color:#666;font-size:13px;">Subscription is now active. Full record is in ss_subscriptions.</p>`,
+<p style="margin:16px 0 0;color:#666;font-size:13px;">${closing}</p>`,
     `<p style="font-size:12px;color:#999;margin:0;">Seoul Sister · new-subscriber notification</p>`
   )
 

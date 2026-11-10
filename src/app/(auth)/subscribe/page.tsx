@@ -26,10 +26,13 @@ export default function SubscribePage() {
   // What the setup chat captured, shown back as facts. null = nothing on file
   // (skipped setup, or the read failed and was logged).
   const [onFile, setOnFile] = useState<ExtractedSkinProfile | null>(null)
-  // true = no subscription history, so checkout will start the free trial (the
-  // same rule the checkout route applies). null = unknown: the button then
-  // makes no trial claim.
+  // From /api/me/trial, which applies the SAME rule as the checkout route
+  // (src/lib/trial.ts). null = unknown: the page then makes no trial claim.
   const [trialEligible, setTrialEligible] = useState<boolean | null>(null)
+  // true = that trial starts with no card. Only meaningful when eligible.
+  const [noCardTrial, setNoCardTrial] = useState(false)
+  // true = this person already used their free trial (it ended without a card).
+  const [hadTrial, setHadTrial] = useState(false)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setFromOnboarding(new URLSearchParams(window.location.search).get('from') === 'onboarding')
@@ -64,13 +67,17 @@ export default function SubscribePage() {
       // What to show on the wall. Both reads are the user's own rows (RLS). A
       // failure leaves the generic, still-true copy and is logged.
       try {
-        const [progressRes, subRes] = await Promise.all([
+        const { data: sessionData } = await supabase.auth.getSession()
+        const accessToken = sessionData.session?.access_token
+        const [progressRes, trialRes] = await Promise.all([
           supabase
             .from('ss_onboarding_progress')
             .select('skin_profile_data, onboarding_status')
             .eq('user_id', user!.id)
             .maybeSingle(),
-          supabase.from('ss_subscriptions').select('id').eq('user_id', user!.id).limit(1),
+          accessToken
+            ? fetch('/api/me/trial', { headers: { Authorization: `Bearer ${accessToken}` } })
+            : Promise.resolve(null),
         ])
         if (progressRes.error) {
           console.error('[subscribe] setup profile read failed:', progressRes.error.message)
@@ -84,10 +91,13 @@ export default function SubscribePage() {
               : null
           )
         }
-        if (subRes.error) {
-          console.error('[subscribe] subscription history read failed:', subRes.error.message)
+        if (trialRes && trialRes.ok) {
+          const t = (await trialRes.json()) as { eligible?: boolean; no_card?: boolean; had_trial?: boolean }
+          setTrialEligible(t.eligible === true)
+          setNoCardTrial(t.eligible === true && t.no_card === true)
+          setHadTrial(t.had_trial === true)
         } else {
-          setTrialEligible((subRes.data ?? []).length === 0)
+          console.error('[subscribe] trial facts unavailable; making no trial claim')
         }
       } catch (err) {
         console.error('[subscribe] paywall context read failed:', err)
@@ -166,11 +176,13 @@ export default function SubscribePage() {
     <div className="w-full max-w-md mx-auto">
       <div className="text-center mb-6">
         <h1 className="font-display text-2xl font-bold text-gradient mb-2">
-          {hasProfile ? 'Ready to build your routine?' : fromOnboarding ? 'Want me to keep going?' : 'One last step'}
+          {hadTrial ? 'Your free week has ended' : hasProfile ? 'Ready to build your routine?' : fromOnboarding ? 'Want me to keep going?' : 'One last step'}
         </h1>
         <p className="text-white/50 text-sm">
-          {hasProfile
-            ? "I have what I need from our setup chat. Become a member and your routine is the first thing we build, then I adjust it as your skin responds."
+          {hadTrial
+            ? `Nothing was charged. Your skin profile and everything we worked out are saved. Continue for ${PRICING.monthly_display_long} and we pick up where we left off.`
+            : hasProfile
+            ? "I have what I need from our setup chat. Become a member and your routine is the first thing we build. Then I check in every week and adjust it from how your skin is doing."
             : 'Become a member and we build your routine, and I keep everything I learn about your skin.'}
         </p>
       </div>
@@ -203,7 +215,15 @@ export default function SubscribePage() {
           <p className="text-4xl font-bold text-white">${tier.price}</p>
           <span className="text-base font-normal text-white/40">/month</span>
         </div>
-        <p className="text-xs text-white/40 mb-6">New members: first {PRICING.trial_days} days free, then {PRICING.monthly_display_long}. Cancel anytime.</p>
+        <p className="text-xs text-white/40 mb-6">
+          {trialEligible === true && noCardTrial
+            ? `First ${PRICING.trial_days} days free. No card needed to start. Add a card any time in those ${PRICING.trial_days} days to keep going at ${PRICING.monthly_display_long}. If you don't, the trial ends and nothing is charged.`
+            : trialEligible === true
+              ? `First ${PRICING.trial_days} days free, then ${PRICING.monthly_display_long}. Cancel anytime.`
+              : hadTrial
+                ? `Your free trial has ended. Continue for ${PRICING.monthly_display_long}. Cancel anytime.`
+                : `${PRICING.monthly_display_long}. Cancel anytime.`}
+        </p>
 
         <ul className="space-y-3 mb-8">
           {tier.features.map((f) => (
@@ -230,7 +250,7 @@ export default function SubscribePage() {
         {checkoutError && <p className="text-center text-xs text-rose-300 mt-3" role="alert">{checkoutError}</p>}
 
         <p className="text-center text-[10px] text-white/30 mt-3">
-          Secure payment via Stripe.
+          {trialEligible === true && noCardTrial ? 'No card needed to start. Handled by Stripe.' : 'Secure payment via Stripe.'}
         </p>
       </div>
 

@@ -40,18 +40,36 @@ async function fetchAll<T>(db: SupabaseClient, table: string, cols: string): Pro
   return out
 }
 
+/**
+ * True when this subscription is a free trial that nobody has paid for (still
+ * running, or lapsed). Exported so every "who paid?" count uses one rule.
+ */
+export function isUnpaidTrialSubscription(
+  subscriptionId: string | null | undefined,
+  trials: Array<{ stripe_subscription_id: string | null; paid_at: string | null }>
+): boolean {
+  if (!subscriptionId) return false
+  return trials.some((t) => t.stripe_subscription_id === subscriptionId && !t.paid_at)
+}
+
 export async function campaignFunnel(db: SupabaseClient, now: number = Date.now()): Promise<FunnelRow[]> {
   type Touch = { visitor_id: string; utm_source: string | null; utm_content: string | null; referrer_host: string | null }
   type Visitor = { visitor_id: string; total_messages: number; captured_email: string | null; converted_user_id: string | null }
   type Profile = { user_id: string; utm_source: string | null; utm_content: string | null }
-  type Sub = { user_id: string; status: string; created_at: string; canceled_at: string | null }
+  type Sub = { user_id: string; status: string; created_at: string; canceled_at: string | null; stripe_subscription_id: string | null }
+  type Trial = { stripe_subscription_id: string | null; paid_at: string | null }
 
-  const [touches, visitors, profiles, subs] = await Promise.all([
+  const [touches, visitors, profiles, allSubs, trials] = await Promise.all([
     fetchAll<Touch>(db, 'ss_campaign_touches', 'visitor_id, utm_source, utm_content, referrer_host'),
     fetchAll<Visitor>(db, 'ss_widget_visitors', 'visitor_id, total_messages, captured_email, converted_user_id'),
     fetchAll<Profile>(db, 'ss_user_profiles', 'user_id, utm_source, utm_content'),
-    fetchAll<Sub>(db, 'ss_subscriptions', 'user_id, status, created_at, canceled_at'),
+    fetchAll<Sub>(db, 'ss_subscriptions', 'user_id, status, created_at, canceled_at, stripe_subscription_id'),
+    fetchAll<Trial>(db, 'ss_trial_starts', 'stripe_subscription_id, paid_at'),
   ])
+  // A subscription row is no longer proof of payment (Nov 10 2026): a free
+  // trial, with or without a card, creates one. A subscription that is a trial
+  // which has not been paid is NOT a payer, here or anywhere "paid" is counted.
+  const subs = allSubs.filter((s) => !isUnpaidTrialSubscription(s.stripe_subscription_id, trials))
 
   const visitorById = new Map(visitors.map((v) => [v.visitor_id, v]))
   const subsByUser = new Map<string, Sub[]>()

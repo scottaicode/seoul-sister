@@ -162,7 +162,12 @@ test('lead gate: suppressed, any payer, internal, registered, already-judged, mi
 test('the payer check counts ANY subscription status and converted widget visitors', () => {
   const run = read('src', 'lib', 'proactive', 'run.ts')
   // A status filter here is exactly how a canceled payer slipped through review.
-  assert.match(run, /db\.from\('ss_subscriptions'\)\.select\('user_id'\),/)
+  assert.match(run, /db\.from\('ss_subscriptions'\)\.select\('user_id, stripe_subscription_id'\),/)
+  // Nov 10 2026: a free trial creates a subscription row with no payment, so
+  // "any row" no longer means "paid". An unpaid trial is excluded by one shared
+  // rule; a status filter is still not allowed.
+  assert.match(run, /\.filter\(\(r\) => !isUnpaidTrialSubscription\(/)
+  assert.doesNotMatch(run, /from\('ss_subscriptions'\)\.select\('user_id, stripe_subscription_id'\)\.(eq|in)\('status'/)
   assert.match(run, /hasEverPaid:[\s\S]{0,160}convertedEmails\.has/)
 })
 

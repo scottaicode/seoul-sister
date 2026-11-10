@@ -69,7 +69,7 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
           <span className="text-base font-normal text-white/40">/month</span>
         </div>
         <p className="text-xs text-white/40 mb-1">Less than a single skin consult, and she never closes.</p>
-        <p className="text-xs text-white/40 mb-6">New members: first {PRICING.trial_days} days free, then {PRICING.monthly_display_long}. Cancel anytime.</p>
+        <p className="text-xs text-white/40 mb-6">New members: first {PRICING.trial_days} days free, no card needed to start. Then {PRICING.monthly_display_long} if you add a card. Cancel anytime.</p>
 
         <ul className="space-y-3 mb-8">
           {tier.features.map((f) => (

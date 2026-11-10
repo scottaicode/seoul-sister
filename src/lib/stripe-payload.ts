@@ -70,3 +70,10 @@ export function invoiceSubscriptionId(invoice: unknown): string | null {
 
   return null
 }
+
+/** Amount actually paid on an invoice, in the smallest currency unit. 0 when absent. */
+export function invoiceAmountPaid(invoice: unknown): number {
+  if (!invoice || typeof invoice !== 'object') return 0
+  const paid = (invoice as Record<string, unknown>).amount_paid
+  return typeof paid === 'number' && Number.isFinite(paid) && paid > 0 ? paid : 0
+}

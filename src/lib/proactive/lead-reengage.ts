@@ -272,7 +272,7 @@ export function buildLeadFacts(ctx: LeadContext, calibration: string, now: Date 
     lines.push(
       left > 0
         ? `WHAT THE LINK OPENS: the free chat on the seoulsister.com homepage, with your one-line opener prefilled for them to send. On the same browser they used before, ${left} of ${MAX_FREE_MESSAGES} free preview messages are left and you will have your saved note about them (not the full transcript). On any other device it is a fresh preview and you will not recognize them.`
-        : `WHAT THE LINK OPENS: the free chat on the seoulsister.com homepage. On the browser they used before, all ${MAX_FREE_MESSAGES} free preview messages are used, so continuing there requires subscribing. On another device it is a fresh preview where you will not recognize them. Don't promise them a free conversation that picks up where you left off.`
+        : `WHAT THE LINK OPENS: the free chat on the seoulsister.com homepage. On the browser they used before, all ${MAX_FREE_MESSAGES} free preview messages are used, so continuing means creating a free account, which opens a free setup chat and then a ${PRICING.trial_days}-day free trial that needs no card. On another device it is a fresh preview where you will not recognize them. Don't promise them a free conversation that picks up where you left off.`
     )
   }
   if (ctx.memorySummary) lines.push(`Your saved note about them: ${ctx.memorySummary}`)

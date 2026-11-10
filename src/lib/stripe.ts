@@ -1,4 +1,5 @@
 import Stripe from 'stripe'
+import { buildCheckoutParams, buildAddCardParams } from '@/lib/stripe-params'
 import { PRICING, USAGE_CAPS, LEGACY_USAGE_CAPS } from './pricing'
 
 let stripeInstance: Stripe | null = null
@@ -77,47 +78,116 @@ export async function createCheckoutSession(params: {
   plan: TierKey
   successUrl: string
   cancelUrl: string
-  /** First-time subscribers get the free trial; the caller decides eligibility. */
+  /** First-time members get the free trial; the caller decides eligibility. */
   withTrial?: boolean
+  /**
+   * Start the trial with NO card (Nov 10 2026). Stripe then collects no payment
+   * method and cancels the subscription when the trial ends unless one was
+   * added (createAddCardSession). Ignored without a trial. The caller passes
+   * noCardTrialEnabled() so the setting lives in one place.
+   */
+  noCard?: boolean
+  ipHash?: string | null
 }): Promise<string> {
   const stripe = getStripeClient()
-  const priceId = getPriceId(params.plan)
-  const trialDays = params.withTrial ? PRICING.trial_days : 0
-  // Auto-renewal disclosure shown on the Checkout page next to the pay button
-  // (California's automatic renewal law and similar state laws): what is
-  // charged, when, how often, and how to stop it. Stripe also requires the
-  // customer to tick agreement to the terms (consent_collection).
-  const renewalTerms = trialDays > 0
-    ? `Your ${trialDays}-day free trial starts today. Unless you cancel before it ends, your card will be charged ${PRICING.monthly_display_long} on day ${trialDays + 1} and every month after that until you cancel. Cancel anytime from your Profile page (Manage subscription) or by replying to any Seoul Sister email.`
-    : `Your card will be charged ${PRICING.monthly_display_long} today and every month after that until you cancel. Cancel anytime from your Profile page (Manage subscription) or by replying to any Seoul Sister email.`
-
-  const session = await stripe.checkout.sessions.create({
-    mode: 'subscription',
-    payment_method_types: ['card'],
-    customer_email: params.email,
-    line_items: [{ price: priceId, quantity: 1 }],
-    // Lets the owner hand a specific person a one-off code (e.g. a first
-    // month free). Codes are created by hand in Stripe, single-use.
-    allow_promotion_codes: true,
-    consent_collection: { terms_of_service: 'required' },
-    custom_text: { submit: { message: renewalTerms } },
-    success_url: params.successUrl,
-    cancel_url: params.cancelUrl,
-    metadata: {
-      user_id: params.userId,
+  // The parameters are built by a pure function (stripe-params.ts) so tests
+  // can execute it and see exactly what Stripe receives.
+  const session = await stripe.checkout.sessions.create(
+    buildCheckoutParams({
+      userId: params.userId,
+      email: params.email,
       plan: params.plan,
-    },
-    subscription_data: {
-      ...(trialDays > 0 ? { trial_period_days: trialDays } : {}),
-      metadata: {
-        user_id: params.userId,
-        plan: params.plan,
-      },
-    },
-  })
+      priceId: getPriceId(params.plan),
+      successUrl: params.successUrl,
+      cancelUrl: params.cancelUrl,
+      withTrial: params.withTrial === true,
+      noCard: params.noCard === true,
+      ipHash: params.ipHash ?? null,
+    })
+  )
 
   if (!session.url) throw new Error('Failed to create checkout session')
   return session.url
+}
+
+/**
+ * A Stripe-hosted page where a member on a no-card trial saves a card. The
+ * webhook then makes the saved card the subscription's default, which is what
+ * Stripe checks at the end of the trial. The billing portal is not used for
+ * this: its docs do not say an added card becomes the default.
+ */
+export async function createAddCardSession(params: {
+  userId: string
+  stripeCustomerId: string
+  stripeSubscriptionId: string
+  trialEnd: Date | null
+  successUrl: string
+  cancelUrl: string
+}): Promise<string> {
+  const stripe = getStripeClient()
+  const session = await stripe.checkout.sessions.create(buildAddCardParams(params))
+  if (!session.url) throw new Error('Failed to create add-card session')
+  return session.url
+}
+
+export type SavedCardResult =
+  | { applied: true; subscriptionId: string }
+  | { applied: false; subscriptionId: string | null; reason: 'no_payment_method' | 'subscription_not_open' }
+
+/**
+ * Make the card saved by a setup-mode session the subscription's default.
+ *
+ * A subscription that is no longer trialing or active cannot take a card (the
+ * trial ended between the member opening the page and saving). That is
+ * reported, NOT thrown: throwing made Stripe retry the webhook for days with
+ * no chance of success. A Stripe error on an open subscription still throws,
+ * so the webhook retries while the member believes the card is saved.
+ */
+export async function applySavedCardToSubscription(setupIntentId: string): Promise<SavedCardResult> {
+  const stripe = getStripeClient()
+  const intent = await stripe.setupIntents.retrieve(setupIntentId)
+  const paymentMethod = typeof intent.payment_method === 'string' ? intent.payment_method : intent.payment_method?.id
+  const subscriptionId = intent.metadata?.subscription_id ?? null
+  if (!paymentMethod || !subscriptionId) return { applied: false, subscriptionId, reason: 'no_payment_method' }
+  const sub = await stripe.subscriptions.retrieve(subscriptionId)
+  if (sub.status !== 'trialing' && sub.status !== 'active') {
+    return { applied: false, subscriptionId, reason: 'subscription_not_open' }
+  }
+  await stripe.subscriptions.update(subscriptionId, { default_payment_method: paymentMethod })
+  return { applied: true, subscriptionId }
+}
+
+export interface LiveTrialState {
+  /** Stripe's own status right now. */
+  status: string
+  /** A way to be charged exists, by Stripe's end-of-trial rule. */
+  hasPaymentMethod: boolean
+  /** The member cancelled; nothing will be charged when the trial ends. */
+  cancelAtPeriodEnd: boolean
+}
+
+/** Ask Stripe, not our copy of it, what a trial's state is. */
+export async function liveTrialState(subscriptionId: string): Promise<LiveTrialState> {
+  const stripe = getStripeClient()
+  const sub = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['customer'] })
+  let hasPaymentMethod = Boolean(sub.default_payment_method || sub.default_source)
+  const customer = sub.customer
+  if (!hasPaymentMethod && customer && typeof customer !== 'string' && !('deleted' in customer && customer.deleted)) {
+    hasPaymentMethod = Boolean(customer.invoice_settings?.default_payment_method || customer.default_source)
+  }
+  return { status: sub.status, hasPaymentMethod, cancelAtPeriodEnd: sub.cancel_at_period_end === true || sub.cancel_at != null }
+}
+
+/** Cancel a subscription in Stripe now (account deletion). Missing or already-canceled is fine. */
+export async function cancelSubscriptionNow(subscriptionId: string): Promise<void> {
+  const stripe = getStripeClient()
+  try {
+    await stripe.subscriptions.cancel(subscriptionId)
+  } catch (err) {
+    const code = (err as { code?: string })?.code
+    if (code === 'resource_missing') return
+    throw err
+  }
 }
 
 export async function createBillingPortalSession(params: {
