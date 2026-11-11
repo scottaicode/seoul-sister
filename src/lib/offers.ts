@@ -201,6 +201,22 @@ export function priceWithOffer(percentOff: number | null | undefined): string {
   return firstMonthPrice(percentOff) ? `${firstChargeText(percentOff)}, then ${PRICING.monthly_display_long}` : PRICING.monthly_display_long
 }
 
+/**
+ * The pricing card's lines (Nov 11 2026). The free week leads, because a
+ * visitor had to read the small print to learn it existed. Each line is true
+ * on its own: the week is free for new members, it needs no card, and the
+ * price applies only to someone who adds one.
+ */
+export function pricingCardLines(): { headline: string; noCard: string; after: string; who: string; cta: string } {
+  return {
+    headline: `Free for ${PRICING.trial_days} days`,
+    noCard: 'No card needed to start.',
+    after: `Then ${PRICING.monthly_display_long}, only if you add a card. Cancel anytime.`,
+    who: 'The free week is for new members.',
+    cta: `Start my ${PRICING.trial_days} free days`,
+  }
+}
+
 /** The price line on the free chat's "you have used your free messages" card. */
 export function widgetMembershipLine(percentOff: number | null | undefined): string {
   const price = firstMonthPrice(percentOff) ? priceWithOffer(percentOff) : PRICING.monthly_display

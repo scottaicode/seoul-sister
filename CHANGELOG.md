@@ -4,6 +4,60 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.57.0 — The free week leads the pricing card; Yuri's offers stay; the Sunday note names what is coming; one follow-up for new leads (Nov 11 2026)
+
+- **Why.** Bailey's two notes on the pricing card ("Is the limit necessary?", "you have to happen to
+  read it to see it's free for a week"), her earlier idea for the Sunday email, the owner's go-ahead on
+  the one-week lead follow-up, and the prompt-versus-cleanup conflict found in v11.56.0.
+- **Pricing card.** Leads with "Free for 7 days", then "No card needed to start.", then "Then
+  $9.99/month, only if you add a card. Cancel anytime." Button: "Start my 7 free days". Wording comes
+  from `pricingCardLines()` in `src/lib/offers.ts`.
+- **The monthly allowance** (80 Yuri messages, 30 label scans) is no longer a feature bullet. It is a
+  real limit (the heaviest real month was 79 messages), so it is not hidden: it sits in readable small
+  print with a Terms link directly above the button on the pricing card and the paywall, and the Terms
+  now state it, what "month" means (UTC calendar month, shared with a trial) and what happens at the
+  limit. A first version at 10px and 30% white under the button measured 2.7:1 contrast and was refused
+  in review. On the landing page Yuri is told the allowance, need not repeat it with every price, gives
+  it when asked what membership includes or about limits, and never calls membership unlimited. The
+  number now has one source (`USAGE_CAPS`).
+- **Offers.** "Want me to ...?" is an offer of a real next step, which the prompts tell Yuri to make.
+  The cleanup rule removed a short one from the end of a reply: it showed on screen, vanished when the
+  cleaned text replaced it, and was missing from the history when the person said yes. That branch is
+  gone; both chat prompts now separate an offer (name it once, when it is genuinely next) from an empty
+  closer. The setup chat has no tools, so there alone a short trailing offer is still dropped.
+- **Sunday note (Bailey's idea).** The weekly check-in opens with the one thing in the member's
+  coming week that matters (a forecast day, or something Yuri told them to expect around now), says
+  why in a clause and leaves the working-out for the chat, then asks one question. When they click
+  through, chat-Yuri is given her own recorded reason for writing and the forecast she was looking at
+  (`context_facts.forecast_shown`, read back in `src/lib/yuri/turn-facts.ts`).
+- **One follow-up for new leads.** Nurture email 3 no longer says "last email, promise", and states
+  that the trial needs no card. Whether a lead was told that is now a recorded fact,
+  `ss_nurture_leads.told_last_email` (migration `20261111000002`, applied): true by default and for
+  all 71 existing leads, set false only when the new email 3 is sent to a lead. So older code or a
+  rollback cannot make a promised lead eligible. A lead who was not told becomes eligible for the one
+  Yuri-written note a week after the sequence ends. The 11 unsuppressed widget leads who finished the
+  old sequence stay blocked unless `LEAD_REENGAGE_AFTER_LAST_EMAIL_APPROVED` is set. An earlier draft
+  inferred this from a date; review showed the held price-change script rewrites that date.
+- **CLAUDE.md.** The pricing and unit-economics sections described the retired $24.99 plan; rewritten
+  to the current plan. `.claude/rules/widget.md` likewise.
+- **Measured.** Production dry run of the check-in under the new prompt (no sends, no writes): for the
+  one member Yuri chose to write to, the draft opened with the cold front arriving Thursday and one
+  question; the content guard blocked it for stating "drier cheeks", which the member never said. One
+  member got silence (written to three days earlier, unanswered); one was skipped as internal.
+- **Not verified.** No real person has seen the new card, no member has opened a chat from the new
+  note, and no lead can become eligible before about Nov 26. First scheduler evidence for the note:
+  Sunday Nov 15 (`ss_proactive_judgments`, `context_facts ? 'forecast_shown'`).
+- **Known, not changed.** "Free for 7 days / No card needed" is fixed text; a new person on a network
+  that has started three trials in 30 days is asked for a card, which the paywall states before any
+  charge. The pricing card's 'Subscribe' label for signed-in visitors never renders. The app's account
+  deletion route does not check that the login row was actually deleted (found while removing the two
+  owner test accounts by hand; untested).
+- **Review.** Opus 5.5, adversarial, one full pass and one confirmation on each half. The first passes
+  found five ship-blockers and 22 wrong versions my tests passed; all were fixed and the wrong versions
+  re-run (29, 18 and 8, none passing). 1,651 tests.
+
+---
+
 ## v11.56.0 — Search no longer hands a brand's products to a word that only resembles it; four fixes from the trials (Nov 11 2026)
 
 - **Why.** A visitor asked for a "lightweight gel moisturizer" and got Physiogel lotions: any query word

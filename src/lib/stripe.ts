@@ -27,7 +27,6 @@ export const SUBSCRIPTION_TIERS = {
     yuri_messages_per_month: USAGE_CAPS.yuri_messages_per_month,
     features: [
       'Yuri, your K-beauty advisor, available 24/7',
-      `${USAGE_CAPS.yuri_messages_per_month} messages with Yuri and ${USAGE_CAPS.scans_per_month} label scans a month`,
       'All 6 built-in AI specialists (ingredients, routines, authenticity & more)',
       'Reads your Korean labels & builds conflict-aware routines',
       'Remembers your skin across every session',

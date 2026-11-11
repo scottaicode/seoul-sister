@@ -6,7 +6,7 @@ import { Star, Loader2, Check, ArrowRight } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { SUBSCRIPTION_TIERS } from '@/lib/stripe'
-import { PRICING } from '@/lib/pricing'
+import { PRICING, allowanceNote } from '@/lib/pricing'
 import { trackEvent, PaywallEvent } from '@/lib/analytics'
 import type { ExtractedSkinProfile } from '@/types/database'
 import { onFileRows } from '@/lib/paywall/on-file'
@@ -288,7 +288,7 @@ export default function SubscribePage() {
           </p>
         )}
 
-        <ul className="space-y-3 mb-8">
+        <ul className="space-y-3 mb-6">
           {tier.features.map((f) => (
             <li key={f} className="flex gap-2.5 text-sm text-white/70">
               <Check className="w-4 h-4 text-gold shrink-0 mt-0.5" />
@@ -296,6 +296,10 @@ export default function SubscribePage() {
             </li>
           ))}
         </ul>
+
+        <p className="text-xs text-white/50 mb-3">
+          {allowanceNote()} <a href="/terms" className="underline underline-offset-2 hover:text-white/70">Terms</a>
+        </p>
 
         <button
           onClick={handleCheckout}
@@ -315,6 +319,7 @@ export default function SubscribePage() {
         <p className="text-center text-[10px] text-white/30 mt-3">
           {trialEligible === true && noCardTrial ? 'No card needed to start. Handled by Stripe.' : 'Secure payment via Stripe.'}
         </p>
+
       </div>
 
       {/* Escape hatch — a free user parked on the paywall must never be trapped.

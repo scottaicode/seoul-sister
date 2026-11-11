@@ -211,28 +211,38 @@ test('a sentence that merely contains a closer phrase keeps its ending', () => {
   }
 })
 
-test('a whole closing question is still removed, and only that sentence', () => {
+test('an empty closing question is still removed, and only that sentence', () => {
   assert.equal(clean('Use it every other night. Sound good?'), 'Use it every other night.')
   assert.equal(clean('Use it every other night.\n\nDoes that make sense?'), 'Use it every other night.')
-  assert.equal(clean('That is the pick. Want me to pull live prices?'), 'That is the pick.')
   assert.equal(clean('Why this one? It is gentle. Sound like a plan?'), 'Why this one? It is gentle.')
+  assert.equal(clean('That covers it. Ready to dive in?'), 'That covers it.')
   // A statement is not a closing question.
   assert.equal(clean('Use it nightly. Sounds good.'), 'Use it nightly. Sounds good.')
-  const statement = 'Pick one tonight. Want me to choose is a fair thing to ask'
-  assert.equal(clean(statement), statement)
   // The question must be the LAST thing in the reply.
   assert.equal(clean('Sound good? Then start tonight.'), 'Sound good? Then start tonight.')
-  // After "!" or "?" as well as ".", across a blank line, in any case, with a
-  // dot inside it, and up to 80 characters.
+  // After "!" or "?" as well as ".", and in any case.
   assert.equal(clean('Great! Sound good?'), 'Great!')
-  // "or" inside a word ("for", "more", "before") is not a choice.
-  assert.equal(clean('Those are the three. Want me to look for more options before you decide?'), 'Those are the three.')
   assert.equal(clean('Is it gentle? Yes. sound good?'), 'Is it gentle? Yes.')
-  assert.equal(clean('Use the pad.\n\nWant me to compare it vs. the toner?'), 'Use the pad.')
-  assert.equal(clean('Use the pad. Want me to pull live prices on the three I named and the one you own?'), 'Use the pad.')
-  // An offer longer than a short closer is a real question and stays.
-  const long = 'That is the pick. Want me to pull live prices from every retailer we track and then compare each one against what you already own?'
-  assert.equal(clean(long), long)
+})
+
+test('an offer of a real next step is never removed (Nov 11 2026)', () => {
+  // The prompts tell Yuri to make these. Stripped, the offer showed on screen,
+  // vanished when the cleaned text replaced it, and was missing from the
+  // history when the person answered "yes".
+  const offers = [
+    'Got it. Want me to save this to your Routine page?',
+    'Those are the three I would look at. Want me to pull live prices on any of these?',
+    'That is the pick. Want me to pull live prices?',
+    'Use the pad.\n\nWant me to compare it vs. the toner?',
+    'Those are the three. Want me to look for more options before you decide?',
+    'It is not in our catalog. Want me to add it to your library first as a custom entry, then tag it from there?',
+    'That is the routine. want me to save it?',
+  ]
+  for (const input of offers) assert.equal(clean(input), input, input)
+  // Closed world: the rule names exactly these closers and nothing else.
+  const rule = src.match(/\(\?:(Sound good[^)]*\(\?:dive in\|get started\))\)/)
+  assert.ok(rule, 'closer rule not found')
+  assert.equal(rule[1], 'Sound good|Sounds good|Does that sound good|Does that feel doable|Make sense|Does that make sense|Sound like a plan|Ready to (?:dive in|get started)')
 })
 
 test('the closer rule leaves these alone (each was damaged or deleted before)', () => {
@@ -259,4 +269,42 @@ test('the closer rule leaves these alone (each was damaged or deleted before)', 
     'Use SPF 50. Want me to find one?',
   ]
   for (const input of cases) assert.equal(clean(input), input, input)
+})
+
+test('the setup chat alone still drops a short trailing offer, which it has no tools to carry out', () => {
+  const start = src.indexOf('const OFFER_CLOSER = ')
+  const re = eval(src.slice(start + 'const OFFER_CLOSER = '.length, src.indexOf('\n', start)))
+  const setup = (s) => clean(s).replace(re, '').trim()
+  assert.equal(setup('Your barrier needs a rest first. Want me to build your full routine?'), 'Your barrier needs a rest first.')
+  assert.equal(setup('That is the one change. Want me to pull prices?'), 'That is the one change.')
+  // The same bounds as the closer rule: never mid-sentence, never the whole reply, never a choice.
+  for (const keep of [
+    'It is just a way to keep me involved if you want me to keep checking in.',
+    'Want me to start with your cleanser?',
+    'Two paths. Want me to start with the cleanser, or the sunscreen?',
+    '1. Cleanser first.\n2. Want me to go on?',
+  ]) assert.equal(setup(keep), keep, keep)
+  // Wiring: the setup route asks for it in both places, and nothing else does.
+  const read2 = (p) => readFileSync(join(__dirname, '..', p), 'utf8')
+  assert.equal((read2('src/app/api/yuri/onboarding/route.ts').match(/cleanYuriResponse\(fullResponse, \{ stripUnfulfillableOffers: true \}\)/g) ?? []).length, 2)
+  for (const p of ['src/app/api/yuri/chat/route.ts', 'src/app/api/widget/chat/route.ts', 'src/lib/yuri/advisor.ts', 'src/lib/email/lead-email.ts']) {
+    assert.doesNotMatch(read2(p), /stripUnfulfillableOffers/, p)
+  }
+  assert.match(src, /if \(opts\.stripUnfulfillableOffers\) cleaned = cleaned\.replace\(OFFER_CLOSER, ''\)/)
+})
+
+test('the REAL cleanYuriResponse: offers are kept by default and dropped only when the setup chat asks', async () => {
+  const ts = (await import('typescript')).default
+  const js = ts.transpileModule(src, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText
+  const { cleanYuriResponse } = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'))
+  const offer = 'That is the pick. Want me to pull live prices?'
+  assert.equal(cleanYuriResponse(offer), offer)
+  assert.equal(cleanYuriResponse(offer, {}), offer)
+  assert.equal(cleanYuriResponse(offer, { stripUnfulfillableOffers: false }), offer)
+  assert.equal(cleanYuriResponse(offer, { stripUnfulfillableOffers: true }), 'That is the pick.')
+  // The empty closers go either way, and the Nov 11 truncation stays fixed in the real function.
+  assert.equal(cleanYuriResponse('Use it nightly. Sound good?'), 'Use it nightly.')
+  const whole = 'Everything else is just a way to keep me involved if you want me to keep checking in.'
+  assert.equal(cleanYuriResponse(whole), whole)
+  assert.equal(cleanYuriResponse(whole, { stripUnfulfillableOffers: true }), whole)
 })

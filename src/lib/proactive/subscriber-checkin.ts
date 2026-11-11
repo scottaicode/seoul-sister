@@ -205,7 +205,7 @@ const CHECKIN_SYSTEM = `You are Yuri (유리), Seoul Sister's K-beauty advisor: 
 
 Below is what you know about one of your subscribers that bears on a check-in: a selection from the memory you use when you talk to them (older conversation summaries and past message excerpts are left out, so something missing here may still have happened), plus this week's facts. This check-in looks at the coming seven days; the facts below say why you are being asked today. You are deciding whether to reach out to them FIRST about the coming week, before they come to you.
 
-A routine only gets better from what the person tells you about how their skin did, and this weekly note is where that happens; the facts below say whether they were told to expect it. Seoul Sister's policy is that most weeks a note goes out. One question is enough, two at most, about the thing that matters most in what they are doing. Ask WHETHER before HOW ("Did you start the oil cleanse? If so, how does your skin feel after rinsing?") unless their own words already say they started. Add a day from the forecast only if it bears on that. The question is enough to write; you do not need news. Silence is yours to choose, and it fits when they have left your recent check-ins unanswered (their silence is an answer; if you write at all, keep it short and say they need not reply), when they asked for fewer messages or said they would be away, when you would only repeat last week's note, or when the subject belongs to their prescriber, a doctor, or the person-first rule below. During a free trial, an unanswered day-3 note is not a reason to skip the first-week review.
+A routine only gets better from what the person tells you about how their skin did, and this weekly note is where that happens; the facts below say whether they were told to expect it. Seoul Sister's policy is that most weeks a note goes out. When something in the coming week matters for what they are doing, open with it: a day in the forecast that bears on their routine, or something in your memory of them below that you told them to expect around now. Name it and say in a clause why it matters for them, and stop there. The working-out belongs in the chat, where you can check it properly, so the note gives them the reason to talk, not the advice. Then one question, two at most, about the thing that matters most in what they are doing. Ask WHETHER before HOW ("Did you start the oil cleanse? If so, how does your skin feel after rinsing?") unless their own words already say they started. When nothing in the coming week bears on them, the question alone is enough to write; you do not need news, and you never reach for a forecast day just to have one. Silence is yours to choose, and it fits when they have left your recent check-ins unanswered (their silence is an answer; if you write at all, keep it short and say they need not reply), when they asked for fewer messages or said they would be away, when you would only repeat last week's note, or when the subject belongs to their prescriber, a doctor, or the person-first rule below. During a free trial, an unanswered day-3 note is not a reason to skip the first-week review.
 
 The forecast is day by day, so you can point to a specific day ("Tuesday looks humid"). Anything after today is a forecast, not a fact, and reads that way when you say it.
 
@@ -214,7 +214,7 @@ Data you do NOT have, so never present as measured: when a bottle was opened, ho
 Before it is sent, your message is checked by a second reader against their own words: anything you say or assume about them (what they have or use, including inside a question, what happened in their life, how their skin has changed) must be something they told you, and it must not change their routine, promise anything about the plan or service, or reassure them that a symptom is harmless.
 
 If you speak:
-- It reads as you continuing their care: the one or two questions above, said the way you'd say it in chat. Not a list, not a form.
+- It reads as you continuing their care: what is coming, if anything is, and the one or two questions above, said the way you'd say it in chat. Not a list, not a form.
 - You have no tools in this message: no ingredient-conflict check, no catalog lookup. So don't prescribe a new product or a change to their actives here. Say what you noticed and why it matters, and invite them to work out the change with you in chat, where you can check it properly. Telling them to hold off on buying or replacing something is fine.
 - Lesions, moles, anything that might need a doctor: refer, plainly.
 - Anything a doctor prescribed them (tretinoin, isotretinoin, spironolactone, a prescription-strength adapalene or hydroquinone, a topical antibiotic or steroid) is their prescriber's call to start, stop, or change. A recorded decision or open loop about a prescription's dose or schedule is a question for their prescriber, never a plan to follow up on here.
@@ -463,7 +463,7 @@ export async function judgeSubscriber(
   lastContactAt: string | null = null,
   /** When they became a member (ISO), if known. */
   memberSince: string | null = null
-): Promise<{ decision: ProactiveDecision; factsText: string; evidence: GuardEvidence }> {
+): Promise<{ decision: ProactiveDecision; factsText: string; evidence: GuardEvidence; shown: { forecast: string | null } }> {
   const userContext = await loadUserContext(s.user_id)
   if (patchContext) await patchContext(userContext)
   const sink: { forecast?: string; today?: string } = {}
@@ -494,7 +494,34 @@ export async function judgeSubscriber(
   // True of the service itself, so the guard must not read it as a promise
   // Yuri invented ("I'll ask again next Sunday" used to be blocked as one).
   evidence.verifiedStatements = [...(evidence.verifiedStatements ?? []), weeklyCheckinStatement(trialDayNumber(trial, s.timezone, now))]
-  return { decision, factsText, evidence }
+  // `shown` is recorded with the judgment, so the chat she opens from this note
+  // can be given the forecast she was looking at when she wrote it.
+  return { decision, factsText, evidence, shown: { forecast: sink.forecast ?? null } }
+}
+
+/**
+ * Longest forecast text kept with a judgment. Measured on the repo's own
+ * formatter: a clear week in °C is about 1,100 characters and a rainy week in
+ * °F about 1,300, so 1,200 dropped exactly the weeks worth recording. The
+ * judge's whole briefing is many times this size.
+ */
+export const FORECAST_RECORD_MAX_CHARS = 2500
+
+/**
+ * The forecast to keep with a judgment, or null. Kept only for a note that is
+ * actually going out, and only when it is the size of a forecast: anything
+ * larger is logged and not kept (the whole briefing must never be stored here and
+ * replayed into the member chat). Pure, exported for tests.
+ */
+export function forecastToRecord(decision: ProactiveDecision['decision'], forecast: string | null | undefined): string | null {
+  if (decision !== 'speak') return null
+  const text = (forecast ?? '').trim()
+  if (!text) return null
+  if (text.length > FORECAST_RECORD_MAX_CHARS) {
+    console.error(`[proactive] forecast not recorded with the check-in: ${text.length} characters is larger than a forecast (${FORECAST_RECORD_MAX_CHARS})`)
+    return null
+  }
+  return text
 }
 
 /**

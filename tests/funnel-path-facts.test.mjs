@@ -64,7 +64,8 @@ const PATH_SENTENCES = [
   'When the conversation reaches the gate, or a visitor asks how to continue or what it costs, these are the facts.',
   'An account is free and needs no card.',
   'It opens a free setup chat with you, and if they sign up in this browser and confirm the preview was theirs, you will have it in front of you there.',
-  'Membership is ${PRICING.monthly_display_long} and includes ${PRICING.yuri_allowance_display}.',
+  'Membership is ${PRICING.monthly_display_long} and includes a monthly allowance of ${PRICING.yuri_allowance_display}.',
+  'You do not need to repeat the allowance every time the price comes up, but give it whenever someone asks what membership includes, about limits, or how much they can use you, and never describe membership as unlimited or as having no cap.',
   "A first-time member's first ${PRICING.trial_days} days are free, and ${trialCardFact()}",
   'The complete routine is built after they become a member, and it is the first thing offered to them then.',
   'It is not built during setup.',
@@ -393,8 +394,8 @@ test('final message, under-13 and specialist facts match the new path', () => {
 })
 
 const GATE_FINGERPRINT = '2fd840415bd523d0521dd9d444c099d1fa779180acfcb597c265c93ce7859b1a'
-const WIDGET_PROMPT_FINGERPRINT = '0516c168597c7f65bb2cc909758faeddd511a6d66571c59d90aaef6ef341c599'
-const SUBSCRIBER_BLOCK_FINGERPRINT = '4f6d5a533385b129bdaba88d928e8cd0b919309f7c6220459709204a2403c974'
+const WIDGET_PROMPT_FINGERPRINT = '8370a8031280e5f59d9cb6eb65e83fed7405858975f2451e6ac27935bdb5f39a'
+const SUBSCRIBER_BLOCK_FINGERPRINT = '15aff9f62cbe15e6789461fbef11338e571811aabafc47180f2e8e0ac30cb537'
 
 /** The five gate paragraphs of the widget prompt, as one string. */
 function gateText() {
@@ -461,4 +462,16 @@ test('checkout start is stamped server-side, set-once, and never blocks checkout
   for (const col of ['register_clicked_at', 'register_click_messages', 'registered_user_id', 'registered_at', 'checkout_clicked_at']) {
     assert.match(migration, new RegExp(`ADD COLUMN IF NOT EXISTS ${col}\\b`), `migration must add ${col}`)
   }
+})
+
+test('CLOSED WORLD: the whole static member prompt is pinned by fingerprint (Nov 11 2026)', () => {
+  // The member prompt was not pinned at all: a review rewrote the offer
+  // sentence to "always end with an offer" and every test passed. Any change
+  // now fails here; read the whole prompt, run the second-model review, then
+  // update the fingerprint.
+  const advisor = read('src/lib/yuri/advisor.ts')
+  const a = advisor.indexOf('const YURI_SYSTEM_PROMPT = `') + 'const YURI_SYSTEM_PROMPT = `'.length
+  const b = advisor.indexOf('`\n\n// ---', a)
+  assert.ok(a > 100 && b > a + 20000, 'static member prompt not found')
+  assert.equal(createHash('sha256').update(advisor.slice(a, b)).digest('hex'), '731bfd12911579412490e7601ca224375fb1abd852452beedbe889135444c64d')
 })

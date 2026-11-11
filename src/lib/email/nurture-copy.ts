@@ -3,7 +3,17 @@
  *
  * Design (July 1 2026, research-grounded — see LEAD-GEN-LEARNINGS-LOG.md):
  * 3 emails with behavioral exits, not a 7-12 email drip. The brand's moat is
- * honesty; the sequence says so out loud and keeps its "last email" promise.
+ * honesty; the sequence says so out loud.
+ *
+ * Nov 11 2026: email 3 no longer says it is the last email. Until then it
+ * said "last email, promise", and every lead who received that version is
+ * still treated as promised (ss_nurture_leads.told_last_email, read by
+ * lead-reengage.ts).
+ * The owner decided that a lead may get ONE more note, written by Yuri about
+ * what they actually asked, a week after this sequence ends; an email that
+ * promises silence would make that note a broken promise. It makes no promise
+ * about future email either way: the footer's one-click unsubscribe is the
+ * only commitment.
  *
  * Why fixed copy and not per-lead Opus generation: registered leads carry no
  * per-lead context (no conversation, no profile) — generation would produce
@@ -122,17 +132,17 @@ function email2(_cohort: NurtureCohort, _unsubscribeUrl: string, _options?: Nurt
   }
 }
 
-/** Email 3 — Day 8. The continuity fact + the ask + the last-email promise. */
+/** Email 3 — Day 8. The continuity fact + the ask. Makes no promise about future email. */
 function email3(_cohort: NurtureCohort, _unsubscribeUrl: string, _options?: NurtureEmailOptions): NurtureEmailContent {
   return {
-    subject: `What I can't do for you in one chat (last email, promise)`,
+    subject: `What I can't do for you in one chat`,
     bodyHtml: `
-<p>Hi, it's Yuri. Last email from me, as promised, so let me be straight about what's free and what isn't.</p>
+<p>Hi, it's Yuri. Let me be straight about what's free and what isn't.</p>
 <p>The free conversation on the homepage is real. I'll diagnose, recommend, and warn you off wasted money, and none of that changes.</p>
 <p>But skin doesn't change in one conversation. It changes over months. The part of my job that actually moves skin is the follow-through: remembering what you're using and how you reacted, catching the conflict when you add a new product, adjusting your routine when the seasons change or your skin does, and tracking your progress photos so we know what's working instead of guessing.</p>
-<p>That follow-through is the member side. New members get the first ${PRICING.trial_days} days free, and it's ${PRICING.monthly_display_long} after that. It exists because an advisor who forgets you every conversation isn't really an advisor.</p>
+<p>That follow-through is the member side. New members get the first ${PRICING.trial_days} days free with no card needed, and it's ${PRICING.monthly_display_long} after that only if you add one. It exists because an advisor who forgets you every conversation isn't really an advisor.</p>
 <p><a href="${SITE}/register?plan=monthly&from=nurture_3" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">Start with Yuri</a></p>
-<p>And if Seoul Sister isn't for you, no hard feelings. This is the last email either way. It was good to meet you.</p>
+<p>And if Seoul Sister isn't for you, no hard feelings. It was good to meet you.</p>
 <p>Yuri</p>`,
   }
 }

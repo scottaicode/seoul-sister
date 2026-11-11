@@ -10,7 +10,8 @@
  * Deterministic here (rails, not judgment):
  *   - suppression / unsubscribe / converted / active subscriber → never
  *   - nothing they ever said to Yuri → nothing to ground in → not judged
- *   - the "last email, promise" gate (see LAST_EMAIL_PROMISE below)
+ *   - the "last email, promise" gate, for leads who were told that (see
+ *     LAST_EMAIL_PROMISE_STEP / wasToldLastEmail below)
  *   - one decided judgment per lead (unique index, insert-before-send)
  *   - CAN-SPAM: no postal address configured → the whole lead phase is blocked
  * Yuri's (judge.ts): whether to write at all, what to say, the next step she
@@ -33,15 +34,34 @@ const MAX_TRANSCRIPT_TURNS = 30
 const MAX_TURN_CHARS = 700
 
 /**
- * The Honest Three's email 3 says, verbatim: "What I can't do for you in one
- * chat (last email, promise)" and "This is the last email either way."
- * Every lead that finishes the sequence has been told that. Writing to them
- * again breaks a promise made in Yuri's name, so it is an OWNER decision, not a
- * model one: off unless LEAD_REENGAGE_AFTER_LAST_EMAIL_APPROVED=true. When the
- * owner approves, Yuri is told the promise exists so she can decide whether one
- * more note is honest, and how to own it if she writes.
+ * Until Nov 11 2026 the Honest Three's email 3 said, verbatim: "What I can't
+ * do for you in one chat (last email, promise)" and "This is the last email
+ * either way." Every lead who received THAT version has been told that.
+ * Writing to them again breaks a promise made in Yuri's name, so it is an
+ * OWNER decision, not a model one: off unless
+ * LEAD_REENGAGE_AFTER_LAST_EMAIL_APPROVED=true. When the owner approves, Yuri
+ * is told the promise exists so she can decide whether one more note is
+ * honest, and how to own it if she writes.
+ *
+ * Email 3 no longer makes the promise (nurture-copy.ts). Which leads were told
+ * is a recorded fact, `ss_nurture_leads.told_last_email`: true by default and
+ * for every lead that existed when the copy changed, set false only by the
+ * nurture send of the current email 3 (nurture.ts). It is NOT inferred from
+ * `last_sent_at`: other sends rewrite that timestamp, and a date cutoff would
+ * also depend on when the release went live. A lead who was not told needs no
+ * further approval for the one Yuri-written follow-up (owner decision, Nov 11
+ * 2026).
  */
 export const LAST_EMAIL_PROMISE_STEP = 3
+
+/**
+ * True when this lead was told email 3 was the last one. Anything other than
+ * an explicit `false` counts as told: a missing column or a failed read must
+ * never turn a promised lead into an unpromised one.
+ */
+export function wasToldLastEmail(lead: { told_last_email?: boolean | null }): boolean {
+  return lead.told_last_email !== false
+}
 
 export function ownerApprovedAfterLastEmail(): boolean {
   return process.env.LEAD_REENGAGE_AFTER_LAST_EMAIL_APPROVED === 'true'
@@ -70,6 +90,8 @@ export interface LeadRow {
   enrolled_at: string
   suppressed: boolean
   unsubscribe_token: string
+  /** Recorded fact: were they sent the email 3 that said "last email, promise"? */
+  told_last_email?: boolean | null
 }
 
 export type LeadSkipReason =
@@ -108,7 +130,7 @@ export function leadGate(
   if (lead.sequence_step < LAST_EMAIL_PROMISE_STEP) return 'mid_sequence'
   const last = lead.last_sent_at ? new Date(lead.last_sent_at).getTime() : 0
   if (opts.now - last < MIN_DAYS_SINCE_LAST_NURTURE * 24 * 60 * 60 * 1000) return 'nurture_too_recent'
-  if (!opts.ownerApproved) return 'last_email_promise'
+  if (wasToldLastEmail(lead) && !opts.ownerApproved) return 'last_email_promise'
   return null
 }
 
@@ -265,7 +287,9 @@ export function buildLeadFacts(ctx: LeadContext, calibration: string, now: Date 
   if (ctx.lastTalkedAt) lines.push(`They last wrote to you on ${ctx.lastTalkedAt.slice(0, 10)}.`)
   if (ctx.recapSentAt) lines.push(`You already emailed them a recap of that conversation on ${ctx.recapSentAt.slice(0, 10)}.`)
   lines.push(
-    `Seoul Sister then sent them a three-email sequence in your name; the last one went out ${lead.last_sent_at?.slice(0, 10) ?? 'on an unknown date'}. It said, in your voice, that it was the last email ("last email, promise"). The owner has decided one more note from you is allowed. Whether writing again is honest, and how to own that you said it was the last one if you do, is your call.`
+    wasToldLastEmail(lead)
+      ? `Seoul Sister then sent them a three-email sequence in your name; the last one went out ${lead.last_sent_at?.slice(0, 10) ?? 'on an unknown date'}. It said, in your voice, that it was the last email ("last email, promise"). The owner has decided one more note from you is allowed. Whether writing again is honest, and how to own that you said it was the last one if you do, is your call.`
+      : `Seoul Sister then sent them a three-email sequence in your name; the last one went out ${lead.last_sent_at?.slice(0, 10) ?? 'on an unknown date'}. None of the three said it would be the last. This would be the one note you write them yourself.`
   )
   if (ctx.freeMessagesUsed !== null) {
     const left = Math.max(0, MAX_FREE_MESSAGES - ctx.freeMessagesUsed)

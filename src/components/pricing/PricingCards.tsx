@@ -4,7 +4,9 @@ import { useState } from 'react'
 import { Star, Loader2, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { SUBSCRIPTION_TIERS } from '@/lib/stripe'
-import { PRICING } from '@/lib/pricing'
+import Link from 'next/link'
+import { allowanceNote } from '@/lib/pricing'
+import { pricingCardLines } from '@/lib/offers'
 import { MAX_FREE_MESSAGES } from '@/lib/utils/widget-session'
 
 interface PricingCardsProps {
@@ -50,6 +52,7 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
   }
 
   const tier = SUBSCRIPTION_TIERS.monthly
+  const lines = pricingCardLines()
 
   return (
     <div className="max-w-md mx-auto">
@@ -64,14 +67,15 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
           <p className="font-display font-bold text-xl text-white">Seoul Sister Pro</p>
         </div>
 
-        <div className="flex items-baseline gap-1 mb-1">
-          <p className="text-4xl font-bold text-white">${tier.price}</p>
-          <span className="text-base font-normal text-white/40">/month</span>
-        </div>
-        <p className="text-xs text-white/40 mb-1">Less than a single skin consult, and she never closes.</p>
-        <p className="text-xs text-white/40 mb-6">New members: first {PRICING.trial_days} days free, no card needed to start. Then {PRICING.monthly_display_long} if you add a card. Cancel anytime.</p>
+        {/* The free week leads (Bailey, Nov 11 2026: "you have to happen to
+            read it to see it's free for a week"). The price stays in plain
+            view directly under it. Wording comes from offers.ts. */}
+        <p className="text-4xl font-bold text-white leading-tight">{lines.headline}</p>
+        <p className="text-base font-semibold text-gold-light mb-3">{lines.noCard}</p>
+        <p className="text-sm text-white/80 mb-1">{lines.after}</p>
+        <p className="text-xs text-white/40 mb-6">{lines.who} Less than a single skin consult, and she never closes.</p>
 
-        <ul className="space-y-3 mb-8">
+        <ul className="space-y-3 mb-6">
           {tier.features.map((f) => (
             <li key={f} className="flex gap-2.5 text-sm text-white/70">
               <Check className="w-4 h-4 text-gold shrink-0 mt-0.5" />
@@ -79,6 +83,10 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
             </li>
           ))}
         </ul>
+
+        <p className="text-xs text-white/50 mb-3">
+          {allowanceNote()} <Link href="/terms" className="underline underline-offset-2 hover:text-white/70">Terms</Link>
+        </p>
 
         <button
           onClick={handleCheckout}
@@ -90,7 +98,7 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
           ) : isAuthenticated ? (
             'Subscribe'
           ) : (
-            'Get Started'
+            lines.cta
           )}
         </button>
 
@@ -98,6 +106,7 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
         <p className="text-center text-[10px] text-white/30 mt-3">
           Try {MAX_FREE_MESSAGES} free preview messages before subscribing.
         </p>
+
       </div>
     </div>
   )

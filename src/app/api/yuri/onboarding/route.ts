@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
               }
 
               // Clean AI artifacts before saving
-              fullResponse = cleanYuriResponse(fullResponse)
+              fullResponse = cleanYuriResponse(fullResponse, { stripUnfulfillableOffers: true })
 
               // Save Yuri's opening message
               await saveMessage(progress.conversation_id!, 'assistant', fullResponse, null)
@@ -312,7 +312,7 @@ export async function POST(request: NextRequest) {
             }
 
             // Clean AI artifacts before saving
-            fullResponse = cleanYuriResponse(fullResponse)
+            fullResponse = cleanYuriResponse(fullResponse, { stripUnfulfillableOffers: true })
 
             // Save assistant response
             await saveMessage(progress.conversation_id!, 'assistant', fullResponse, null)

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { CONTACT_EMAIL, contactMailto } from '@/lib/contact'
+import { USAGE_CAPS } from '@/lib/pricing'
 
 export const metadata = {
   title: 'Terms of Service',
@@ -81,6 +82,7 @@ export default function TermsPage() {
           <li>Seoul Sister is a membership service. The public product database, ingredient pages and blog are free to read</li>
           <li>Subscriptions are billed monthly through Stripe</li>
           <li>New members get a 7-day free trial that needs no card to start. If you add no card, the trial ends after 7 days, nothing is charged, and your membership stops. If you add a card during the trial, it is charged the monthly price when the trial ends and every month after that until you cancel</li>
+          <li>Membership includes a monthly allowance of {USAGE_CAPS.yuri_messages_per_month} messages with Yuri and {USAGE_CAPS.scans_per_month} label scans, counted per calendar month (UTC). A free trial counts toward the same month. When an allowance is used up, that feature pauses until the next month begins. Your routine, shelf and history stay available, weekly check-in notes may still arrive, and nothing extra is charged</li>
           <li>You can cancel anytime; access continues through the end of the billing period</li>
           <li>Refunds are handled on a case-by-case basis within 7 days of charge</li>
           <li>We reserve the right to change pricing with 30 days notice to existing subscribers</li>

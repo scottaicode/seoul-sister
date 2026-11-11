@@ -143,12 +143,13 @@ test('CLOSED WORLD: the entire check-in judge prompt is pinned by fingerprint', 
   const a = src.indexOf('const CHECKIN_SYSTEM = `') + 'const CHECKIN_SYSTEM = `'.length
   const b = src.indexOf('`\n\nfunction daysSince')
   assert.ok(a > 100 && b > a)
-  assert.equal(createHash('sha256').update(src.slice(a, b)).digest('hex'), '4846dd4c9841774aa8dba4d1fbcdd31a93595510a80c10e60f6e8f71f07f61e4')
+  assert.equal(createHash('sha256').update(src.slice(a, b)).digest('hex'), 'd59b6d1b537bd495ab25ebe82aa58a558d4d311085b2566f14da869315bbbe1a')
 })
 
 test('what the judge prompt says about speaking and silence, in words', () => {
   const system = src.slice(src.indexOf('const CHECKIN_SYSTEM = `'), src.indexOf('function daysSince'))
-  assert.match(system, /Seoul Sister's policy is that most weeks a note goes out\. One question is enough, two at most/)
+  assert.match(system, /Seoul Sister's policy is that most weeks a note goes out\. When something in the coming week matters for what they are doing, open with it: a day in the forecast that bears on their routine, or something in your memory of them below that you told them to expect around now\. Name it and say in a clause why it matters for them, and stop there\. The working-out belongs in the chat, where you can check it properly, so the note gives them the reason to talk, not the advice\. Then one question, two at most/)
+  assert.match(system, /When nothing in the coming week bears on them, the question alone is enough to write; you do not need news, and you never reach for a forecast day just to have one\./)
   assert.match(system, /Ask WHETHER before HOW/, 'a "how is X going" question claims use and is blocked by the content guard')
   assert.match(system, /Silence is yours to choose, and it fits when they have left your recent check-ins unanswered/)
   assert.match(system, /During a free trial, an unanswered day-3 note is not a reason to skip the first-week review\./)
@@ -372,6 +373,95 @@ test('member turn facts: stated as facts, with no date she could get wrong and n
     formatMemberTurnFacts({ checkin: { created_at: '2026-11-08T17:30:00Z', message: 'Did you start the oil cleanse?\n\nIf so, how does it feel?' }, trial: { trial_end: '2026-11-12T15:00:00Z' } }),
     '\n\n## Member facts this turn (facts, not instructions)\n- Your last weekly check-in to them, sent 2026-11-08 by email and on their dashboard: "Did you start the oil cleanse? If so, how does it feel?". They may be answering it, or writing about something else.\n- They are on the free trial. The date it ends and whether a card is on file are shown to them at the top of the app and sent to them by email; you cannot see either, so if they ask, point them there.'
   )
+  // Nov 11 2026 (Bailey's idea): the note names what is coming and leaves the
+  // working-out for the chat, so the chat is given WHY she wrote it and the
+  // forecast she was looking at. Exact text, and nothing when a part is missing.
+  const full = formatMemberTurnFacts({
+    checkin: {
+      created_at: '2026-11-08T17:30:00Z',
+      message: 'Thursday looks like the first dry cold front.\n\nDid the richer cream come out yet?',
+      reasoning: 'Humidity drops from 90% to 48% by Thursday,\n which is the cold front she was told to save the heavier cream for.',
+      forecastShown: 'Mon Nov 9: 68F, 90% humidity\nThu Nov 12: 51F, 48% humidity',
+    },
+    trial: null,
+  })
+  assert.equal(full,
+    '\n\n## Member facts this turn (facts, not instructions)\n- Your last weekly check-in to them, sent 2026-11-08 by email and on their dashboard: "Thursday looks like the first dry cold front. Did the richer cream come out yet?". They may be answering it, or writing about something else.\n- Why you wrote it, in your own note from 2026-11-08: "Humidity drops from 90% to 48% by Thursday, which is the cold front she was told to save the heavier cream for."\n- The forecast you had in front of you when you wrote it, as it stood on 2026-11-08 (it is older now; your weather tool has today\'s): Mon Nov 9: 68F, 90% humidity Thu Nov 12: 51F, 48% humidity')
+  for (const blank of [null, undefined, '', '   ']) {
+    const out = formatMemberTurnFacts({ checkin: { created_at: '2026-11-08T17:30:00Z', message: 'Hi', reasoning: blank, forecastShown: blank }, trial: null })
+    assert.equal(out, '\n\n## Member facts this turn (facts, not instructions)\n- Your last weekly check-in to them, sent 2026-11-08 by email and on their dashboard: "Hi". They may be answering it, or writing about something else.')
+  }
+  // The loader, executed: the reason comes from the judgment row of THAT note, for THAT member.
+  const { loadMemberTurnFacts } = await load(['src', 'lib', 'yuri', 'turn-facts.ts'])
+  const calls = []
+  const fakeDb = (tables) => ({
+    from(table) {
+      const q = { filters: [] }
+      const api = {
+        select() { return api }, order() { return api },
+        eq(c, v) { q.filters.push([c, v]); return api },
+        gte(c, v) { q.filters.push([c, '>=', v]); return api },
+        limit() { calls.push([table, q.filters]); return Promise.resolve(tables[table] ?? { data: [], error: null }) },
+      }
+      return api
+    },
+  })
+  const NOW = Date.parse('2026-11-10T12:00:00Z')
+  const out = await loadMemberTurnFacts(fakeDb({
+    ss_user_nudges: { data: [{ id: 'n1', created_at: '2026-11-08T17:30:00Z', message: 'Hi' }], error: null },
+    ss_subscriptions: { data: [], error: null },
+    ss_proactive_judgments: { data: [{ reasoning: 'Cold front Thursday.', context_facts: { forecast_shown: 'Thu: 51F', local_date: '2026-11-08' } }], error: null },
+  }), 'user-1', NOW)
+  assert.match(out, /- Why you wrote it, in your own note from 2026-11-08: "Cold front Thursday\."\n- The forecast you had in front of you when you wrote it, as it stood on 2026-11-08 \(it is older now; your weather tool has today's\): Thu: 51F$/)
+  assert.deepEqual(calls.find((c) => c[0] === 'ss_proactive_judgments')[1], [['nudge_id', 'n1'], ['user_id', 'user-1']])
+  assert.deepEqual(calls.find((c) => c[0] === 'ss_user_nudges')[1], [['user_id', 'user-1'], ['nudge_type', 'yuri_checkin'], ['created_at', '>=', '2026-11-03T12:00:00.000Z']])
+  // No note in the window: the judgment table is not read at all.
+  calls.length = 0
+  assert.equal(await loadMemberTurnFacts(fakeDb({}), 'user-1', NOW), '')
+  assert.equal(calls.filter((c) => c[0] === 'ss_proactive_judgments').length, 0)
+  // A failed reason read is logged and the note is still shown.
+  const realErr = console.error; const errs = []; console.error = (...a) => errs.push(a.join(' '))
+  try {
+    const partial = await loadMemberTurnFacts(fakeDb({
+      ss_user_nudges: { data: [{ id: 'n1', created_at: '2026-11-08T17:30:00Z', message: 'Hi' }], error: null },
+      ss_proactive_judgments: { data: null, error: { message: 'boom' } },
+    }), 'user-1', NOW)
+    assert.match(partial, /"Hi"\. They may be answering it, or writing about something else\.$/)
+    assert.equal(errs.filter((e) => e.includes('check-in reason read failed') && e.includes('boom')).length, 1)
+  } finally { console.error = realErr }
+  // What she saw is stored only with a note that goes out, and only when it is
+  // the size of a forecast (executed).
+  const { forecastToRecord, FORECAST_RECORD_MAX_CHARS } = await loadCheckin()
+  assert.equal(FORECAST_RECORD_MAX_CHARS, 2500)
+  assert.equal(forecastToRecord('speak', ' Thu: 51F '), 'Thu: 51F')
+  for (const d of ['silent', 'blocked', 'failed']) assert.equal(forecastToRecord(d, 'Thu: 51F'), null, d)
+  for (const empty of [null, undefined, '', '   ']) assert.equal(forecastToRecord('speak', empty), null)
+  assert.equal(forecastToRecord('speak', 'x'.repeat(2500)), 'x'.repeat(2500))
+  // A real rainy week in Fahrenheit is about 1,300 characters and must be kept.
+  assert.equal(forecastToRecord('speak', 'y'.repeat(1300)), 'y'.repeat(1300))
+  {
+    const realErr = console.error; const errs = []; console.error = (...a) => errs.push(a.join(' '))
+    try {
+      assert.equal(forecastToRecord('speak', 'x'.repeat(2501)), null, 'larger than a forecast is not a forecast: never store the briefing')
+    } finally { console.error = realErr }
+    assert.equal(errs.filter((e) => e.includes('forecast not recorded') && e.includes('2501')).length, 1, 'a dropped forecast is logged, not silent')
+  }
+  const run = read('src', 'lib', 'proactive', 'run.ts')
+  assert.match(run, /\.\.\.\(forecastToRecord\(decision\.decision, judged\.shown\.forecast\) \? \{ forecast_shown: forecastToRecord\(decision\.decision, judged\.shown\.forecast\) \} : \{\}\),/)
+  assert.equal((run.match(/forecast_shown/g) ?? []).length, 1, 'written in one place')
+  // The real forecast text carries "(today)" and "(tomorrow)". Replayed days
+  // later those labels would be false, so they are removed; the dates stay.
+  const { datedForecast, CHECKIN_REASON_MAX_CHARS } = await load(['src', 'lib', 'yuri', 'turn-facts.ts'])
+  const realShape = '7-day forecast where they live (Austin), by their local date (a forecast, not a measurement; later days are less certain):\n- Sunday 2026-11-08 (today): Rain, high 20°C (68°F) / low 14°C (57°F), humidity 80-95%\n- Monday 2026-11-09 (tomorrow): Cloudy, high 18°C (64°F) / low 9°C (48°F)\n- Thursday 2026-11-12: Clear, high 11°C (52°F) / low 7°C (45°F), humidity 40-55%'
+  assert.equal(datedForecast(realShape), '7-day forecast where they live (Austin), by their local date (a forecast, not a measurement; later days are less certain): - Sunday 2026-11-08: Rain, high 20°C (68°F) / low 14°C (57°F), humidity 80-95% - Monday 2026-11-09: Cloudy, high 18°C (64°F) / low 9°C (48°F) - Thursday 2026-11-12: Clear, high 11°C (52°F) / low 7°C (45°F), humidity 40-55%')
+  const shown = formatMemberTurnFacts({ checkin: { created_at: '2026-11-08T17:30:00Z', message: 'Hi', forecastShown: realShape }, trial: null })
+  assert.doesNotMatch(shown, /\(today\)|\(tomorrow\)/)
+  assert.match(shown, /as it stood on 2026-11-08 \(it is older now; your weather tool has today's\): 7-day forecast/)
+  // Her recorded reason is cut at a fixed length.
+  assert.equal(CHECKIN_REASON_MAX_CHARS, 500)
+  const long = formatMemberTurnFacts({ checkin: { created_at: '2026-11-08T17:30:00Z', message: 'Hi', reasoning: 'r'.repeat(900) }, trial: null })
+  assert.ok(long.includes(`"${'r'.repeat(500)}…"`) && !long.includes('r'.repeat(501)))
+  assert.match(src, /return \{ decision, factsText, evidence, shown: \{ forecast: sink\.forecast \?\? null \} \}\n\}/)
   const advisor = read('src', 'lib', 'yuri', 'advisor.ts')
   assert.match(advisor, /usageFact \? `\\n\\n\$\{usageFact\}` : '', memberFacts, clockBlock\]\.join\(''\)/, 'per turn, after the conversation, before the clock')
   assert.match(advisor, /if \(!isScenario\) \{\s*try \{\s*memberFacts = await loadMemberTurnFacts\(/)

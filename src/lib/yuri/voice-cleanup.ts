@@ -131,9 +131,17 @@ const BANNED_PATTERNS: CleanupRule[] = [
   //   the price?" is a list item, and stripping it left a bare "2.".
   // - A line break or a colon before it is not a sentence end ("That is the
   //   routine:\nWant me to save it?" was left ending on the colon).
-  // - A question offering a choice ("Want me to go with A, or B?") is a real
-  //   question and stays.
-  { pattern: /(?<=[^\d\s][.!?])\s*(?:Sound good|Sounds good|Does that sound good|Does that feel doable|Want me to (?![^?\n]*\bor\b)[^?\n]{1,80}|Make sense|Does that make sense|Sound like a plan|Ready to (?:dive in|get started))\?\s*$/i, replacement: '' },
+  //
+  // "Want me to ...?" is NOT in this list any more (Nov 11 2026). It is an
+  // offer of a real next step, which the prompts tell Yuri to make ("Want me
+  // to save this to your Routine page?", "Want me to pull live prices on any
+  // of these?"). The rule used to remove a short one (80 characters or fewer,
+  // no "or") from the end of a reply: it appeared on screen, vanished when the
+  // cleaned text replaced it, and was missing from the history when the
+  // person answered "yes". Longer offers were always kept. The prompts now
+  // say what separates an offer from a closer; this rule removes only empty
+  // closers. The setup chat is the exception (see OFFER_CLOSER below).
+  { pattern: /(?<=[^\d\s][.!?])\s*(?:Sound good|Sounds good|Does that sound good|Does that feel doable|Make sense|Does that make sense|Sound like a plan|Ready to (?:dive in|get started))\?\s*$/i, replacement: '' },
 
   // Double spaces from removal
   { pattern: /  +/g, replacement: ' ' },
@@ -194,15 +202,26 @@ export function stripPhantomToolCallNarration(text: string): string {
 }
 
 /**
+ * A short trailing "Want me to ...?" after a finished sentence. Removed ONLY
+ * in the setup chat, which has no tools: an offer there ("Want me to pull
+ * prices?", "Want me to build your full routine?") is one she cannot carry
+ * out, and the complete routine is not built during setup. Same bounds as the
+ * closer rule above, and a question offering a choice ("... A, or B?") stays.
+ */
+const OFFER_CLOSER = /(?<=[^\d\s][.!?])\s*Want me to (?![^?\n]*\bor\b)[^?\n]{1,80}\?\s*$/i
+
+/**
  * Clean AI artifacts from Yuri's response text.
  * Safe to call on any text — returns cleaned version.
+ * `stripUnfulfillableOffers`: pass true only where Yuri has no tools (setup chat).
  */
-export function cleanYuriResponse(text: string): string {
+export function cleanYuriResponse(text: string, opts: { stripUnfulfillableOffers?: boolean } = {}): string {
   let cleaned = text
 
   for (const { pattern, replacement } of BANNED_PATTERNS) {
     cleaned = cleaned.replace(pattern, replacement)
   }
+  if (opts.stripUnfulfillableOffers) cleaned = cleaned.replace(OFFER_CLOSER, '')
 
   // Trim leading/trailing whitespace per line (but preserve intentional line breaks)
   cleaned = cleaned

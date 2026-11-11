@@ -18,7 +18,7 @@
 import { createHash as sha } from 'node:crypto'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdtempSync, readdirSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -1128,4 +1128,124 @@ test('saved code: the plan is read by user_id, and /api/offer is asked once per 
     await new Promise((r) => setTimeout(r, 0))
     assert.deepEqual(await o.askOfferOnce('THROWS', ok({ state: 'ended' })), { state: 'ended' })
   } finally { console.error = realError; m.restore() }
+})
+
+test('pricing card: the free week leads, the price and the allowance are stated at the point of sale (Nov 11 2026)', async () => {
+  const m = await loadModules()
+  try {
+    // Exact wording, executed.
+    assert.deepEqual(m.offers.pricingCardLines(), {
+      headline: 'Free for 7 days',
+      noCard: 'No card needed to start.',
+      after: 'Then $9.99/month, only if you add a card. Cancel anytime.',
+      who: 'The free week is for new members.',
+      cta: 'Start my 7 free days',
+    })
+  } finally { m.restore() }
+  // The allowance has ONE source. Executed: the number Yuri, the emails and the
+  // small print state is the number the server enforces.
+  const P = await import('data:text/javascript;base64,' + Buffer.from(transpile(read('src/lib/pricing.ts'))).toString('base64'))
+  assert.deepEqual({ ...P.USAGE_CAPS }, { yuri_messages_per_month: 80, scans_per_month: 30 })
+  assert.equal(P.PRICING.yuri_allowance_display, '80 messages with Yuri a month')
+  assert.equal(P.allowanceNote(), 'Includes 80 Yuri messages and 30 label scans each calendar month.')
+  assert.match(read('src/lib/pricing.ts'), /yuri_allowance_display: `\$\{USAGE_CAPS\.yuri_messages_per_month\} messages with Yuri a month`,/)
+
+  const card = read('src/components/pricing/PricingCards.tsx')
+  // The four lines, their order and their sizes, exactly. The headline is the
+  // only text-4xl on the card and nothing is larger.
+  assert.ok(card.includes(`        <p className="text-4xl font-bold text-white leading-tight">{lines.headline}</p>
+        <p className="text-base font-semibold text-gold-light mb-3">{lines.noCard}</p>
+        <p className="text-sm text-white/80 mb-1">{lines.after}</p>
+        <p className="text-xs text-white/40 mb-6">{lines.who} Less than a single skin consult, and she never closes.</p>`))
+  assert.equal((card.match(/text-4xl/g) ?? []).length, 1)
+  assert.doesNotMatch(card, /text-(5|6|7|8|9)xl/)
+  assert.doesNotMatch(card, /PRICING\.|tier\.price|\$\{?9|9\.99/, 'every price on the card comes from pricingCardLines')
+  assert.match(card, /\) : \(\s*lines\.cta\s*\)\}/)
+  // And the whole card file by fingerprint: an added line ("No card is ever
+  // needed.") or a changed button label passed every assertion above in review.
+  assert.equal(sha('sha256').update(card).digest('hex'), 'ede26ab6e286ed15c14acb40f1dc05b9bb282029ff539f167d8ce04fc224dd81')
+
+  // The allowance note: readable (12px at 50% white, about 5.3:1 on the card;
+  // 10px at 30% measured 2.7:1 and was refused), ABOVE the button, shown to
+  // everyone, with a link to the Terms. Same on the paywall.
+  const NOTE = (linkOpen, linkClose) => `        <p className="text-xs text-white/50 mb-3">
+          {allowanceNote()} ${linkOpen}Terms${linkClose}
+        </p>
+
+        <button
+          onClick={handleCheckout}`
+  assert.ok(card.includes(NOTE('<Link href="/terms" className="underline underline-offset-2 hover:text-white/70">', '</Link>')), 'allowance note missing, restyled or moved on the pricing card')
+  const paywall = read('src/app/(auth)/subscribe/page.tsx')
+  assert.ok(paywall.includes(NOTE('<a href="/terms" className="underline underline-offset-2 hover:text-white/70">', '</a>')), 'allowance note missing, restyled or moved on the paywall')
+  for (const [name, src] of [['card', card], ['paywall', paywall]]) {
+    assert.equal((src.match(/allowanceNote\(\)/g) ?? []).length, 1, name)
+    assert.doesNotMatch(src, /(sr-only|hidden|invisible|opacity-0)[^\n]*allowanceNote|allowanceNote[^\n]*(sr-only|hidden|invisible|opacity-0)/, name)
+    assert.doesNotMatch(src, /&&\s*\(?\s*<p className="text-xs text-white\/50 mb-3">\s*\{allowanceNote/, `${name}: the note must not be conditional`)
+  }
+
+  // The feature bullets, closed world: exactly these nine, no number, no "unlimited".
+  const stripe = read('src/lib/stripe.ts')
+  const monthly = stripe.slice(stripe.indexOf('  monthly: {'), stripe.indexOf('  // Legacy/comped plan'))
+  const bullets = [...monthly.slice(monthly.indexOf('features: [')).matchAll(/^\s+['`](.*)['`],$/gm)].map((x) => x[1])
+  assert.deepEqual(bullets, [
+    'Yuri, your K-beauty advisor, available 24/7',
+    'All 6 built-in AI specialists (ingredients, routines, authenticity & more)',
+    'Reads your Korean labels & builds conflict-aware routines',
+    'Remembers your skin across every session',
+    'Glass Skin Score photo tracking',
+    'Counterfeit detection & live price comparison',
+    'Finds dupes & the right sunscreen for your skin',
+    'Weather- & cycle-aware guidance',
+    'Trending in Korea before it hits the US',
+  ])
+
+  // "Unlimited" and its near phrases are said about the current plan nowhere a
+  // customer or Yuri can read them. Closed world over src/, counted PER
+  // OCCURRENCE: a file that is allowed one use (a code comment, an internal
+  // key, the retired plan's bullet, a "never claim unlimited" rule) fails the
+  // moment it gains another. A file list alone let "unlimited" be added to the
+  // widget's limit card and the LGAAS pricing feed in review.
+  const NO_LIMIT_WORDS = /unlimited|open-ended|no (?:message |usage )?(?:limit|cap)s?\b|without (?:a )?limits?|as much as you (?:like|want)/gi
+  const found = {}
+  const walk = (dir) => {
+    for (const e of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const p = `${dir}/${e.name}`
+      if (e.isDirectory()) walk(p)
+      else if (/\.(ts|tsx)$/.test(e.name)) {
+        const n = (read(p).match(NO_LIMIT_WORDS) ?? []).length
+        if (n) found[p] = n
+      }
+    }
+  }
+  walk('src')
+  assert.deepEqual(found, {
+    'src/app/(auth)/register/page.tsx': 1,
+    'src/app/(legal)/terms/page.tsx': 1,
+    'src/app/api/lgaas/pricing/route.ts': 1,
+    'src/app/api/widget/chat/route.ts': 1,
+    'src/app/api/yuri/onboarding/route.ts': 1,
+    'src/components/auth/AuthCaptcha.tsx': 1,
+    'src/lib/pricing.ts': 2,
+    'src/lib/stripe.ts': 2,
+    'src/lib/subscription.ts': 4,
+    'src/lib/utils/email-normalize.ts': 1,
+    'src/lib/widget/subscriber-surface.ts': 2,
+    'src/lib/yuri/advisor.ts': 2,
+  })
+  assert.match(read('src/lib/widget/subscriber-surface.ts'), /never describe membership as unlimited or as having no cap\./)
+  assert.deepEqual(read('src/lib/yuri/advisor.ts').match(/[^.;]*unlimited[^.;]*/gi), [' use those numbers, never assume unlimited'])
+  // The month the Terms describe is the month the code counts (executed).
+  const usageSrc = read('src/lib/usage.ts')
+  const fnSrc = usageSrc.slice(usageSrc.indexOf('export function currentUsagePeriod'), usageSrc.indexOf('\n}\n', usageSrc.indexOf('export function currentUsagePeriod')) + 3)
+  const U = await import('data:text/javascript;base64,' + Buffer.from(transpile(fnSrc)).toString('base64'))
+  assert.deepEqual(U.currentUsagePeriod(new Date('2026-11-30T23:59:59Z')), { start: '2026-11-01T00:00:00.000Z', end: '2026-12-01T00:00:00.000Z' })
+  assert.deepEqual(U.currentUsagePeriod(new Date('2026-12-01T00:00:00Z')), { start: '2026-12-01T00:00:00.000Z', end: '2027-01-01T00:00:00.000Z' })
+  assert.deepEqual(U.currentUsagePeriod(new Date('2026-12-31T23:30:00-08:00')), { start: '2027-01-01T00:00:00.000Z', end: '2027-02-01T00:00:00.000Z' }, 'UTC, not local time')
+
+  // The Terms state the allowance from the same numbers, what the month is, and what happens at the limit.
+  assert.ok(read('src/app/(legal)/terms/page.tsx').includes('<li>Membership includes a monthly allowance of {USAGE_CAPS.yuri_messages_per_month} messages with Yuri and {USAGE_CAPS.scans_per_month} label scans, counted per calendar month (UTC). A free trial counts toward the same month. When an allowance is used up, that feature pauses until the next month begins. Your routine, shelf and history stay available, weekly check-in notes may still arrive, and nothing extra is charged</li>'))
+  assert.match(read('src/lib/usage.ts'), /The current usage period: this calendar month in UTC/)
+  // Members are still told their allowance, and so is Yuri on the member side.
+  assert.match(read('src/lib/email/subscription-confirmation.ts'), /PRICING\.yuri_allowance_display/)
+  assert.match(read('src/lib/yuri/advisor.ts'), /\$\{PRICING\.yuri_allowance_display\} plus \$\{USAGE_CAPS\.scans_per_month\} label scans/)
 })

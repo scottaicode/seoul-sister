@@ -17,6 +17,7 @@
  *   7. Migration: the never-double-send index exists and covers silence.
  */
 
+import { createHash } from 'node:crypto'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs'
@@ -133,13 +134,117 @@ const lead = (over = {}) => ({
 })
 const gateOpts = (over = {}) => ({ now: NOW, ownerApproved: true, hasEverPaid: false, internal: false, alreadyJudged: false, ...over })
 
-test('lead gate: the last-email promise blocks every finished lead unless the owner approved', async () => {
-  const { leadGate, LAST_EMAIL_PROMISE_STEP } = await loadPure(['src', 'lib', 'proactive', 'lead-reengage.ts'])
-  assert.equal(LAST_EMAIL_PROMISE_STEP, 3, 'email 3 of the Honest Three is the one that says "last email, promise"')
-  assert.match(read('src', 'lib', 'email', 'nurture-copy.ts'), /last email, promise/, 'if the promise copy changes, revisit this gate')
+test('lead gate: a lead who was told "last email, promise" stays blocked unless the owner approved; a lead who was not is eligible', async () => {
+  const { leadGate, wasToldLastEmail, LAST_EMAIL_PROMISE_STEP } = await loadPure(['src', 'lib', 'proactive', 'lead-reengage.ts'])
+  assert.equal(LAST_EMAIL_PROMISE_STEP, 3, 'email 3 of the Honest Three is the one that used to say "last email, promise"')
 
-  assert.equal(leadGate(lead(), gateOpts({ ownerApproved: false })), 'last_email_promise')
-  assert.equal(leadGate(lead(), gateOpts()), null)
+  // Who was told is a RECORDED fact (ss_nurture_leads.told_last_email), never
+  // inferred from a date: other sends rewrite last_sent_at. Only an explicit
+  // false means "not told"; a missing column or a null counts as told.
+  assert.equal(wasToldLastEmail({ told_last_email: true }), true)
+  assert.equal(wasToldLastEmail({ told_last_email: false }), false)
+  for (const unknown of [{}, { told_last_email: null }, { told_last_email: undefined }, { told_last_email: 'false' }, { told_last_email: 0 }]) {
+    assert.equal(wasToldLastEmail(unknown), true, JSON.stringify(unknown))
+  }
+  // The send date plays no part, whichever way it points.
+  const src = read('src', 'lib', 'proactive', 'lead-reengage.ts')
+  const fn = src.slice(src.indexOf('export function wasToldLastEmail'), src.indexOf('export function ownerApprovedAfterLastEmail'))
+  assert.doesNotMatch(fn, /last_sent_at|sequence_step|Date|REMOVED_AT/)
+  assert.doesNotMatch(src, /LAST_EMAIL_PROMISE_REMOVED_AT/)
+
+  const told = lead({ told_last_email: true })
+  const legacyRow = lead() // no column value at all
+  const notTold = lead({ told_last_email: false })
+  for (const l of [told, legacyRow]) {
+    assert.equal(leadGate(l, gateOpts({ ownerApproved: false })), 'last_email_promise')
+    assert.equal(leadGate(l, gateOpts()), null)
+    // A later send to them (the price-change email stamps last_sent_at) does not un-promise them.
+    assert.equal(leadGate({ ...l, last_sent_at: new Date(NOW - 8 * DAY).toISOString() }, gateOpts({ ownerApproved: false })), 'last_email_promise')
+  }
+  // Not told: eligible a week after the sequence ends, with or without the owner flag.
+  assert.equal(leadGate(notTold, gateOpts({ ownerApproved: false })), null)
+  assert.equal(leadGate(notTold, gateOpts({ ownerApproved: true })), null)
+  const recent = (ms) => ({ ...notTold, last_sent_at: new Date(NOW - ms).toISOString() })
+  assert.equal(leadGate(recent(7 * DAY - 1), gateOpts({ ownerApproved: false })), 'nurture_too_recent')
+  assert.equal(leadGate(recent(7 * DAY), gateOpts({ ownerApproved: false })), null)
+  // Every other gate still comes first for them.
+  assert.equal(leadGate({ ...notTold, suppressed: true }, gateOpts({ ownerApproved: false })), 'suppressed')
+  assert.equal(leadGate(notTold, gateOpts({ ownerApproved: false, alreadyJudged: true })), 'already_judged', 'one note, ever')
+  assert.equal(leadGate(notTold, gateOpts({ ownerApproved: false, hasEverPaid: true })), 'former_or_current_payer')
+  assert.equal(leadGate({ ...notTold, sequence_step: 2 }, gateOpts({ ownerApproved: false })), 'mid_sequence')
+  assert.equal(leadGate({ ...notTold, cohort: 'registered', user_id: 'u1' }, gateOpts({ ownerApproved: false })), 'registered_cohort')
+
+  // The column is read by the runner and recorded with each decision; the
+  // migration backfills every lead already at step 3 as told.
+  const run = read('src', 'lib', 'proactive', 'run.ts')
+  assert.match(run, /\.select\('id, email, user_id, visitor_id, cohort, sequence_step, last_sent_at, enrolled_at, suppressed, unsubscribe_token, told_last_email'\)/)
+  assert.match(run, /told_last_email: wasToldLastEmail\(l\),/)
+  // TRUE by default and for every lead that existed; only the nurture send of
+  // the current email 3 writes false. So a server still running the old copy,
+  // or a rollback, can never leave a lead marked "not told".
+  const mig = read('supabase', 'migrations', '20261111000002_nurture_told_last_email.sql')
+  assert.match(mig, /ADD COLUMN IF NOT EXISTS told_last_email boolean NOT NULL DEFAULT true;\s*ALTER TABLE ss_nurture_leads ALTER COLUMN told_last_email SET DEFAULT true;\s*UPDATE ss_nurture_leads SET told_last_email = true WHERE told_last_email = false;/)
+  assert.doesNotMatch(mig, /DEFAULT false/)
+  const nurture = read('src', 'lib', 'email', 'nurture.ts')
+  assert.match(nurture, /\.\.\.\(step === 3 \? \{ told_last_email: false \} : \{\}\),/)
+  // Closed world: the column is written in exactly one place in src/, and the
+  // runner only reads it (the select, and the fact recorded with a decision),
+  // passing the row to the gate untouched.
+  assert.equal((nurture.match(/told_last_email/g) ?? []).length, 1)
+  assert.equal((run.match(/told_last_email/g) ?? []).length, 2)
+  assert.match(run, /for \(const l of \(leadsRes\.data \?\? \[\]\) as LeadRow\[\]\) \{\s*lead\.considered\+\+\s*const skip = leadGate\(l, \{/)
+  assert.doesNotMatch(run, /(const|let|var|function)\s+(wasToldLastEmail|leadGate|forecastToRecord)\b/, 'the runner must not shadow the gate or its helpers')
+  for (const p of ['src/lib/proactive/lead-reengage.ts']) assert.doesNotMatch(read(...p.split('/')), /told_last_email\s*[:=]\s*(true|false)/, 'the gate module never assigns it')
+})
+
+test('nurture email 3 makes no promise about future email, and the whole email is pinned', async () => {
+  const { buildNurtureEmail, STEP_DELAYS_DAYS } = await loadPure(['src', 'lib', 'email', 'nurture-copy.ts'], {
+    PRICING: `({ trial_days: 7, monthly_display_long: '$9.99/month', monthly_display: '$9.99/mo' })`,
+  })
+  assert.deepEqual([...STEP_DELAYS_DAYS], [0, 3, 5])
+  for (const cohort of ['widget', 'registered']) {
+    const e = buildNurtureEmail(3, cohort, 'tok')
+    assert.equal(e.subject, "What I can't do for you in one chat")
+    assert.doesNotMatch(e.subject + e.bodyHtml, /last email|promise|final|won't hear|never hear|no more emails/i)
+    // The exact email. A change here is a change to what real leads are told:
+    // read it, run the second-model review, then update the fingerprint.
+    assert.equal(createHash('sha256').update(e.bodyHtml).digest('hex'), '3067f719d990a3b067a3281de47193e4e67861702bfec14e86683e0e9d8e2656')
+  }
+  // The other two emails never said it either.
+  for (const step of [1, 2]) assert.doesNotMatch(buildNurtureEmail(step, 'widget', 'tok').bodyHtml, /last email|promise/i)
+  // The WHOLE sequence as sent: all three emails, both cohorts, each resume
+  // state, subject, body, footer and unsubscribe link. A line added to email 2
+  // ("this is nearly the last you'll hear from me") or to the footer passed a
+  // test that pinned email 3's body alone.
+  const all = []
+  for (const step of [1, 2, 3]) for (const cohort of ['widget', 'registered']) for (const o of [{}, { resumeUrl: 'https://x/?resume=t', resumeRemaining: 3 }, { resumeUrl: 'https://x/?resume=t', resumeRemaining: 0 }]) {
+    const e = buildNurtureEmail(step, cohort, 'tok', o)
+    all.push([step, cohort, e.subject, e.bodyHtml, e.footerHtml, e.unsubscribeUrl])
+    assert.doesNotMatch(e.subject + e.bodyHtml + e.footerHtml, /last email|last you'll hear|final email|series (is|has) (over|ended)/i)
+  }
+  assert.equal(createHash('sha256').update(JSON.stringify(all)).digest('hex'), '7590655e9f4ea368270e0d6e454f73cfbaa8e567fe55ebd68d13d35b03692150')
+})
+
+test('what the lead judge is told about the sequence matches what the lead was actually told (executed)', async () => {
+  const { buildLeadFacts } = await loadPure(['src', 'lib', 'proactive', 'lead-reengage.ts'], {
+    PRICING: `({ trial_days: 7, monthly_display: '$9.99/mo' })`,
+    MAX_FREE_MESSAGES: '12',
+    getLocalClock: `(() => ({}))`,
+    clockFactBlock: `(() => 'CLOCK')`,
+  })
+  const ctx = (leadRow) => ({ lead: leadRow, turns: [{ role: 'user', content: 'my skin is dry', created_at: '2026-11-01T10:00:00Z' }], widgetVisitorKey: 'v', freeMessagesUsed: null, memorySummary: null, recapSentAt: null, lastTalkedAt: '2026-11-01T10:00:00Z', productsMentioned: [], concerns: [] })
+  const PROMISED = `Seoul Sister then sent them a three-email sequence in your name; the last one went out 2026-11-09. It said, in your voice, that it was the last email ("last email, promise"). The owner has decided one more note from you is allowed. Whether writing again is honest, and how to own that you said it was the last one if you do, is your call.`
+  const NOT_PROMISED = `Seoul Sister then sent them a three-email sequence in your name; the last one went out 2026-11-09. None of the three said it would be the last. This would be the one note you write them yourself.`
+  const sent = '2026-11-09T16:00:00Z'
+  const told = buildLeadFacts(ctx(lead({ told_last_email: true, last_sent_at: sent })), 'CAL')
+  const legacy = buildLeadFacts(ctx(lead({ last_sent_at: sent })), 'CAL')
+  const fresh = buildLeadFacts(ctx(lead({ told_last_email: false, last_sent_at: sent })), 'CAL')
+  for (const facts of [told, legacy]) {
+    assert.ok(facts.split('\n').includes(PROMISED))
+    assert.ok(!facts.includes('None of the three'))
+  }
+  assert.ok(fresh.split('\n').includes(NOT_PROMISED))
+  assert.ok(!fresh.includes('last email, promise') && !fresh.includes('The owner has decided'))
 })
 
 test('lead gate: suppressed, any payer, internal, registered, already-judged, mid-sequence, too-recent all skip', async () => {

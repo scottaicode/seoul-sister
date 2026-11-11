@@ -29,6 +29,20 @@
 // follow-up). Charged price = STRIPE_PRICE_MONTHLY. The old $24.99 "unlimited"
 // plan (plan key 'pro_monthly') is no longer sold; it remains for comped and
 // grandfathered accounts. See PRICING-RELAUNCH-PLAN-2026-10-30.md.
+/** Monthly usage caps for the current plan (Oct 30 2026).
+ *
+ * A real monthly allowance, stated to subscribers and to Yuri. 80 Yuri messages
+ * covers the heaviest real month on record (79, Aug 2026). Measured cost after
+ * the cache fix: ~$0.23 to open a conversation, ~$0.02-0.03 per follow-up, so a
+ * typical subscriber costs a few dollars and full use roughly breaks even. The
+ * old June note claiming "$5-8/mo for a heavy user" was contradicted by the logs
+ * ($22.73 in Bailey's busiest month before the fix).
+ */
+export const USAGE_CAPS = {
+  yuri_messages_per_month: 80,
+  scans_per_month: 30,
+} as const
+
 export const PRICING = {
   /** Monthly price in USD (numeric, for math) */
   monthly_usd: 9.99,
@@ -51,28 +65,15 @@ export const PRICING = {
    * changes the checkout at once while the copy keeps saying "no card".
    */
   trial_requires_card: false,
-  /** Yuri allowance, for copy: "80 messages with Yuri a month" */
-  yuri_allowance_display: '80 messages with Yuri a month',
+  /** Yuri allowance, for copy: "80 messages with Yuri a month". Built from USAGE_CAPS so the number has one source. */
+  yuri_allowance_display: `${USAGE_CAPS.yuri_messages_per_month} messages with Yuri a month`,
 } as const
 
-/** Monthly usage caps for the current plan (Oct 30 2026).
- *
- * A real monthly allowance, stated to subscribers and to Yuri. 80 Yuri messages
- * covers the heaviest real month on record (79, Aug 2026). Measured cost after
- * the cache fix: ~$0.23 to open a conversation, ~$0.02-0.03 per follow-up, so a
- * typical subscriber costs a few dollars and full use roughly breaks even. The
- * old June note claiming "$5-8/mo for a heavy user" was contradicted by the logs
- * ($22.73 in Bailey's busiest month before the fix).
- */
 /** Every plan key that means a paying or comped member. 'monthly' = $9.99;
  * 'pro_monthly' = legacy $24.99 and comped accounts. Use this instead of
  * matching on a name prefix. */
 export const PAID_PLAN_KEYS = ['monthly', 'pro_monthly'] as const
 
-export const USAGE_CAPS = {
-  yuri_messages_per_month: 80,
-  scans_per_month: 30,
-} as const
 
 /** Comped and grandfathered accounts (plan key 'pro_monthly'): the old
  * "unlimited" plan's abuse backstops. Not sold any more. */
@@ -80,6 +81,18 @@ export const LEGACY_USAGE_CAPS = {
   yuri_messages_per_month: 1500,
   scans_per_month: 300,
 } as const
+
+/**
+ * The current plan's monthly allowance in one plain sentence, for the small
+ * print beside a price and for the Terms. The allowance is a real limit (the
+ * heaviest real month on record was 79 messages), so it is stated wherever
+ * someone decides to pay, in text a person can actually read (a first version
+ * at 10px and 30% white under the button measured 2.7:1 contrast and was
+ * refused in review); it is just not a headline feature.
+ */
+export function allowanceNote(): string {
+  return `Includes ${USAGE_CAPS.yuri_messages_per_month} Yuri messages and ${USAGE_CAPS.scans_per_month} label scans each calendar month.`
+}
 
 /** Usage caps for a profile plan key. Anything other than the legacy key gets
  * the current plan's allowance. */

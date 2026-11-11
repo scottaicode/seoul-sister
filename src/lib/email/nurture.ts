@@ -216,7 +216,15 @@ export async function processDueSends(
     if (result.sent) {
       await db
         .from('ss_nurture_leads')
-        .update({ sequence_step: step, last_sent_at: now.toISOString(), updated_at: now.toISOString() })
+        .update({
+          sequence_step: step,
+          last_sent_at: now.toISOString(),
+          updated_at: now.toISOString(),
+          // The current email 3 makes no "last email" promise. This is the ONLY
+          // place the column becomes false; it is true by default, so a lead
+          // sent email 3 by older code stays marked as told.
+          ...(step === 3 ? { told_last_email: false } : {}),
+        })
         .eq('id', lead.id)
       sent++
     } else {

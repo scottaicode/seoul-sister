@@ -35,9 +35,12 @@ import {
   excludedEmails,
   leadGuardEvidence,
   type LeadRow,
+  wasToldLastEmail,
 } from './lead-reengage'
 import { isUnpaidTrialSubscription } from './campaign-funnel'
-import { checkinGate, judgeSubscriber, dogfoodUserIds, trialDayNumber, type SubscriberRow } from './subscriber-checkin'
+import { checkinGate, judgeSubscriber, dogfoodUserIds, trialDayNumber, type SubscriberRow,
+  forecastToRecord,
+} from './subscriber-checkin'
 import { trialInfoFromSubscription } from './checkin-context'
 import { resolveCheckinTimezone } from './subscriber-checkin'
 import { fetchTimezoneForCoords } from '@/lib/intelligence/weather-forecast'
@@ -340,6 +343,9 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
               local_weekday: getLocalClock(p.timezone, new Date(now)).weekday,
               ...(guardReasons ? { guard: guardReasons } : {}),
               local_date: getLocalClock(p.timezone, new Date(now)).isoDate,
+              // What she was looking at when she wrote it. The member chat
+              // reads this back (turn-facts.ts) so she is ready when they click.
+              ...(forecastToRecord(decision.decision, judged.shown.forecast) ? { forecast_shown: forecastToRecord(decision.decision, judged.shown.forecast) } : {}),
             },
             delivery_status: decision.decision === 'speak' ? 'pending' : null,
           })
@@ -443,7 +449,7 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
   } else {
     let leadQuery = db
       .from('ss_nurture_leads')
-      .select('id, email, user_id, visitor_id, cohort, sequence_step, last_sent_at, enrolled_at, suppressed, unsubscribe_token')
+      .select('id, email, user_id, visitor_id, cohort, sequence_step, last_sent_at, enrolled_at, suppressed, unsubscribe_token, told_last_email')
       .order('enrolled_at', { ascending: true })
     if (opts.onlyLeadIds?.length) leadQuery = leadQuery.in('id', opts.onlyLeadIds)
     const [leadsRes, subsRes, judgedRes, internalRes, convertedRes, usersRes, trialsRes] = await Promise.all([
@@ -549,7 +555,8 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
             context_facts: {
               cohort: l.cohort,
               free_messages_used: ctx.freeMessagesUsed,
-              last_email_promise_sent_at: l.last_sent_at,
+              told_last_email: wasToldLastEmail(l),
+              last_nurture_sent_at: l.last_sent_at,
               owner_approved_after_last_email: ownerApproved,
               ...(guardReasons ? { guard: guardReasons } : {}),
             },
