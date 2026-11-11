@@ -107,7 +107,17 @@ export async function checkTrialEligibility(
  */
 export async function recordTrialStart(
   db: SupabaseClient,
-  t: { userId: string; email: string; subscriptionId: string; cardRequired: boolean; trialEnd: string | null; ipHash?: string | null }
+  t: {
+    userId: string
+    email: string
+    subscriptionId: string
+    cardRequired: boolean
+    trialEnd: string | null
+    ipHash?: string | null
+    /** The creator code the trial started with, and its discount on the first paid month. */
+    offerCode?: string | null
+    offerPercentOff?: number | null
+  }
 ): Promise<boolean> {
   const { error } = await db.from('ss_trial_starts').upsert(
     {
@@ -117,6 +127,8 @@ export async function recordTrialStart(
       card_required: t.cardRequired,
       trial_end: t.trialEnd,
       ip_hash: t.ipHash ?? null,
+      offer_code: t.offerCode ?? null,
+      offer_percent_off: t.offerPercentOff ?? null,
     },
     { onConflict: 'email_canonical', ignoreDuplicates: true }
   )
@@ -216,6 +228,8 @@ export interface TrialFacts {
   no_card: boolean
   /** This person already used their free trial. */
   had_trial: boolean
+  /** No trial because several were already started from this network recently. */
+  network_cap: boolean
   /** Set when the account is on a trial right now. */
   trial: {
     ends_at: string | null
@@ -223,6 +237,8 @@ export interface TrialFacts {
     card_on_file: boolean | null
     /** The member cancelled: nothing will be charged. null = unknown. */
     cancelled: boolean | null
+    /** Percent off the first paid month, when the trial started with a creator code. */
+    percent_off: number | null
   } | null
 }
 
@@ -244,11 +260,13 @@ export async function trialFacts(
 
   const { data: sub, error: subErr } = await db
     .from('ss_subscriptions')
-    .select('status, trial_end, stripe_subscription_id')
+    .select('status, trial_end, stripe_subscription_id, offer_percent_off')
     .eq('user_id', user.id)
     .limit(1)
   if (subErr) console.error('[trial] subscription read failed:', subErr.message)
-  const row = (sub ?? [])[0] as { status?: string; trial_end?: string | null; stripe_subscription_id?: string | null } | undefined
+  const row = (sub ?? [])[0] as
+    | { status?: string; trial_end?: string | null; stripe_subscription_id?: string | null; offer_percent_off?: number | string | null }
+    | undefined
 
   // On a trial only while our row says so AND the end date has not passed. A
   // trial whose end has passed is over even if the cancel webhook is late.
@@ -265,7 +283,8 @@ export async function trialFacts(
         console.error('[trial] Stripe state check failed:', err instanceof Error ? err.message : String(err))
       }
     }
-    trial = { ends_at: row.trial_end ?? null, card_on_file: cardOnFile, cancelled }
+    const pct = row.offer_percent_off == null ? null : Number(row.offer_percent_off)
+    trial = { ends_at: row.trial_end ?? null, card_on_file: cardOnFile, cancelled, percent_off: pct && pct > 0 ? pct : null }
   }
 
   const { data: ownTrial, error: ownErr } = await db
@@ -285,6 +304,7 @@ export async function trialFacts(
     // has subscription history but never had a trial.
     had_trial:
       (!eligibility.eligible && eligibility.reason === 'trial_used') || (ownTrial ?? []).length > 0,
+    network_cap: !eligibility.eligible && eligibility.reason === 'network_cap',
     trial,
   }
 }

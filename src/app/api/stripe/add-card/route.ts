@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const user = await requireAuth(request)
     const { data: sub, error } = await getServiceClient()
       .from('ss_subscriptions')
-      .select('stripe_customer_id, stripe_subscription_id, status, trial_end')
+      .select('stripe_customer_id, stripe_subscription_id, status, trial_end, offer_percent_off')
       .eq('user_id', user.id)
       .maybeSingle()
     if (error) {
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
       stripeCustomerId: sub.stripe_customer_id,
       stripeSubscriptionId: sub.stripe_subscription_id,
       trialEnd: sub.trial_end ? new Date(sub.trial_end) : null,
+      percentOff: sub.offer_percent_off == null ? null : Number(sub.offer_percent_off),
       successUrl: `${origin}/dashboard?card=saved`,
       cancelUrl: `${origin}/dashboard`,
     })

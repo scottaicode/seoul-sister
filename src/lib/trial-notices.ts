@@ -38,7 +38,7 @@ export async function sendTrialEndingNotices(db: SupabaseClient, deps: TrialNoti
 
   const { data, error } = await db
     .from('ss_trial_starts')
-    .select('id, user_id, stripe_subscription_id, trial_end')
+    .select('id, user_id, stripe_subscription_id, trial_end, offer_percent_off')
     .is('ending_notice_sent_at', null)
     .is('paid_at', null)
     .is('lapsed_at', null)
@@ -50,7 +50,7 @@ export async function sendTrialEndingNotices(db: SupabaseClient, deps: TrialNoti
     return out
   }
 
-  for (const t of (data ?? []) as Array<{ id: string; user_id: string | null; stripe_subscription_id: string | null; trial_end: string }>) {
+  for (const t of (data ?? []) as Array<{ id: string; user_id: string | null; stripe_subscription_id: string | null; trial_end: string; offer_percent_off?: number | string | null }>) {
     out.due++
     try {
       if (!t.user_id) { skip('no_account'); continue }
@@ -65,7 +65,8 @@ export async function sendTrialEndingNotices(db: SupabaseClient, deps: TrialNoti
           out.errors.push(`trial state ${t.id.slice(0, 8)}: ${err instanceof Error ? err.message : String(err)}`)
         }
       }
-      const line = trialEndingLine(t.trial_end, state, await deps.timezoneForUser(t.user_id))
+      const pct = t.offer_percent_off == null ? null : Number(t.offer_percent_off)
+      const line = trialEndingLine(t.trial_end, state, await deps.timezoneForUser(t.user_id), pct && pct > 0 ? pct : null)
       const result = await deps.send(to, line)
       if (!result.sent) {
         out.errors.push(`trial notice send ${t.id.slice(0, 8)}: ${result.reason ?? 'unknown'}`)

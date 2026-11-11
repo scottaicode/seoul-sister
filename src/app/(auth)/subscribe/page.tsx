@@ -10,6 +10,7 @@ import { PRICING } from '@/lib/pricing'
 import { trackEvent, PaywallEvent } from '@/lib/analytics'
 import type { ExtractedSkinProfile } from '@/types/database'
 import { onFileRows } from '@/lib/paywall/on-file'
+import { getOfferCode, clearOfferCode, priceWithOffer } from '@/lib/offers'
 
 export default function SubscribePage() {
   const router = useRouter()
@@ -33,6 +34,15 @@ export default function SubscribePage() {
   const [noCardTrial, setNoCardTrial] = useState(false)
   // true = this person already used their free trial (it ended without a card).
   const [hadTrial, setHadTrial] = useState(false)
+  // true = no free trial here because several were started from this network recently.
+  const [networkCap, setNetworkCap] = useState(false)
+  // A creator code remembered by this browser (e.g. BAILEY from her link), and
+  // what Stripe says about it. The line is shown only when Stripe answered; if
+  // it could not be asked, the page says nothing about the code.
+  const [offerCode, setOfferCode] = useState<string | null>(null)
+  const [offerLine, setOfferLine] = useState<string | null>(null)
+  const [offerActive, setOfferActive] = useState(false)
+  const [offerPercent, setOfferPercent] = useState<number | null>(null)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setFromOnboarding(new URLSearchParams(window.location.search).get('from') === 'onboarding')
@@ -92,12 +102,33 @@ export default function SubscribePage() {
           )
         }
         if (trialRes && trialRes.ok) {
-          const t = (await trialRes.json()) as { eligible?: boolean; no_card?: boolean; had_trial?: boolean }
+          const t = (await trialRes.json()) as { eligible?: boolean; no_card?: boolean; had_trial?: boolean; network_cap?: boolean }
           setTrialEligible(t.eligible === true)
           setNoCardTrial(t.eligible === true && t.no_card === true)
           setHadTrial(t.had_trial === true)
+          setNetworkCap(t.network_cap === true)
         } else {
           console.error('[subscribe] trial facts unavailable; making no trial claim')
+        }
+
+        const code = getOfferCode()
+        if (code) {
+          setOfferCode(code)
+          const offerRes = await fetch(`/api/offer?code=${encodeURIComponent(code)}`)
+          if (offerRes.ok) {
+            const o = (await offerRes.json()) as { state?: string; line?: string; percent_off?: number }
+            if (o.state === 'active' || o.state === 'ended') setOfferLine(o.line ?? null)
+            setOfferActive(o.state === 'active')
+            setOfferPercent(o.state === 'active' && typeof o.percent_off === 'number' ? o.percent_off : null)
+            // A code Stripe does not accept is forgotten, so it is not sent
+            // (and refused) at the button.
+            if (o.state !== 'active') {
+              clearOfferCode()
+              setOfferCode(null)
+            }
+          } else {
+            console.error('[subscribe] offer lookup unavailable; saying nothing about the code')
+          }
         }
       } catch (err) {
         console.error('[subscribe] paywall context read failed:', err)
@@ -144,10 +175,31 @@ export default function SubscribePage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ plan: 'monthly' }),
+        // The remembered code is always sent, even if this page could not ask
+        // about it: the server asks Stripe itself and stops if the code closed.
+        body: JSON.stringify({ plan: 'monthly', ...(offerCode ? { offer_code: offerCode } : {}) }),
       })
 
       const result = await response.json()
+      if (response.status === 409 && result.offer_ended) {
+        // The code closed. Show that where the code line is and forget the
+        // code; pressing the button again continues at the normal price.
+        clearOfferCode()
+        setOfferCode(null)
+        setOfferActive(false)
+        setOfferPercent(null)
+        setOfferLine(result.error)
+        return
+      }
+      if (result.offer_failed) {
+        // The code could not be applied right now. It stays remembered for a
+        // later visit, but the next press of the button goes without it.
+        setOfferCode(null)
+        setOfferActive(false)
+        setOfferPercent(null)
+        setOfferLine(result.error)
+        return
+      }
       if (!response.ok) throw new Error(result.error)
 
       trackEvent(PaywallEvent.checkoutRedirect)
@@ -171,6 +223,9 @@ export default function SubscribePage() {
   const tier = SUBSCRIPTION_TIERS.monthly
   const rows = onFileRows(onFile)
   const hasProfile = rows.length > 0
+  // Every price sentence on this page: with a confirmed code, the discounted
+  // first month and the price after it, so no line contradicts the code line.
+  const priceLong = priceWithOffer(offerActive ? offerPercent : null)
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -180,7 +235,7 @@ export default function SubscribePage() {
         </h1>
         <p className="text-white/50 text-sm">
           {hadTrial
-            ? `Nothing was charged. Your skin profile and everything we worked out are saved. Continue for ${PRICING.monthly_display_long} and we pick up where we left off.`
+            ? `Nothing was charged. Your skin profile and everything we worked out are saved. Continue for ${priceLong} and we pick up where we left off.`
             : hasProfile
             ? "I have what I need from our setup chat. Become a member and your routine is the first thing we build. Then, most weeks, I check in and adjust it from how your skin is doing."
             : 'Become a member and we build your routine, and I keep everything I learn about your skin.'}
@@ -217,13 +272,21 @@ export default function SubscribePage() {
         </div>
         <p className="text-xs text-white/40 mb-6">
           {trialEligible === true && noCardTrial
-            ? `First ${PRICING.trial_days} days free. No card needed to start. Add a card any time in those ${PRICING.trial_days} days to keep going at ${PRICING.monthly_display_long}. If you don't, the trial ends and nothing is charged.`
+            ? `First ${PRICING.trial_days} days free. No card needed to start. Add a card any time in those ${PRICING.trial_days} days to keep going at ${priceLong}. If you don't, the trial ends and nothing is charged.`
             : trialEligible === true
-              ? `First ${PRICING.trial_days} days free, then ${PRICING.monthly_display_long}. Cancel anytime.`
+              ? `First ${PRICING.trial_days} days free, then ${priceLong}. Cancel anytime.`
               : hadTrial
-                ? `Your free trial has ended. Continue for ${PRICING.monthly_display_long}. Cancel anytime.`
-                : `${PRICING.monthly_display_long}. Cancel anytime.`}
+                ? `Your free trial has ended. Continue for ${priceLong}. Cancel anytime.`
+                : networkCap
+                  ? `${priceLong}, charged today. The free trial is not available here because several have already been started from this network recently. Cancel anytime.`
+                  : `${priceLong}. Cancel anytime.`}
         </p>
+
+        {offerLine && (
+          <p className={`text-xs mb-6 -mt-3 ${offerActive ? 'text-gold-light' : 'text-white/50'}`} role="status">
+            {offerLine}
+          </p>
+        )}
 
         <ul className="space-y-3 mb-8">
           {tier.features.map((f) => (

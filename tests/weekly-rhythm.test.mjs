@@ -218,6 +218,8 @@ test('"were they told" is read from the subscription they are on now, never defa
 async function loadNotices() {
   const emails = await load(['src', 'lib', 'email', 'trial-emails.ts'], {
     PRICING: `({ trial_days: 7, monthly_display_long: '$9.99/month' })`,
+    chargePhrase: `((pct, when) => (pct ? '$4.99 for your first paid month (' + pct + '% off) ' + when.replace(',', '') + ', then $9.99/month until you cancel' : '$9.99/month ' + when + ' and every month after that until you cancel'))`,
+    addCardPhrase: `((pct) => (pct ? '$4.99 for your first paid month (' + pct + '% off) when the trial ends, then $9.99/month' : '$9.99/month, starting when the trial ends'))`,
     escapeHtml: `((x) => x)`,
     wrapEmailHtml: `((body, footer) => body + footer)`,
     sendEmail: `(async () => ({ sent: true }))`,

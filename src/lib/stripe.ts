@@ -88,6 +88,8 @@ export async function createCheckoutSession(params: {
    */
   noCard?: boolean
   ipHash?: string | null
+  /** A creator code confirmed active by resolveOffer. */
+  offer?: { code: string; promotionCodeId: string; percentOff: number } | null
 }): Promise<string> {
   const stripe = getStripeClient()
   // The parameters are built by a pure function (stripe-params.ts) so tests
@@ -103,6 +105,7 @@ export async function createCheckoutSession(params: {
       withTrial: params.withTrial === true,
       noCard: params.noCard === true,
       ipHash: params.ipHash ?? null,
+      offer: params.offer ?? null,
     })
   )
 
@@ -123,6 +126,7 @@ export async function createAddCardSession(params: {
   trialEnd: Date | null
   successUrl: string
   cancelUrl: string
+  percentOff?: number | null
 }): Promise<string> {
   const stripe = getStripeClient()
   const session = await stripe.checkout.sessions.create(buildAddCardParams(params))

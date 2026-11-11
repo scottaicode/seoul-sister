@@ -1,6 +1,7 @@
 import { sendEmail, wrapEmailHtml } from './send'
 import { escapeHtml } from './html'
 import { PRICING } from '@/lib/pricing'
+import { chargePhrase, addCardPhrase } from '@/lib/offers'
 
 /**
  * Sent when a free trial ends with nothing paid (Nov 10 2026). Until now the
@@ -40,7 +41,7 @@ export type TrialEndingState = { hasPaymentMethod: boolean; cancelAtPeriodEnd: b
  * a US evening sign-up was told the trial ended, and the card would be
  * charged, the day after it actually would.
  */
-export function trialEndingLine(endsAt: string, state: TrialEndingState, timezone: string | null): string {
+export function trialEndingLine(endsAt: string, state: TrialEndingState, timezone: string | null, percentOff: number | null = null): string {
   const when = new Date(endsAt).toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
@@ -51,9 +52,9 @@ export function trialEndingLine(endsAt: string, state: TrialEndingState, timezon
   if (!state) return base
   if (state.cancelAtPeriodEnd) return `${base} You cancelled, so nothing will be charged.`
   if (state.hasPaymentMethod) {
-    return `${base} Your card will be charged ${PRICING.monthly_display_long} on that day, and every month after that until you cancel.`
+    return `${base} Your card will be charged ${chargePhrase(percentOff, 'on that day,')}.`
   }
-  return `${base} No card is on file, so nothing will be charged and your membership will stop on that day. To keep going, sign in and use the "Add a card" button at the top of any page: ${PRICING.monthly_display_long}, starting when the trial ends.`
+  return `${base} No card is on file, so nothing will be charged and your membership will stop on that day. To keep going, sign in and use the "Add a card" button at the top of any page: ${addCardPhrase(percentOff)}.`
 }
 
 /**

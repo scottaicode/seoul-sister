@@ -4,6 +4,7 @@ import { getServiceClient } from '@/lib/supabase'
 import { attributeConversion, leadSourceForEmail } from '@/lib/widget/visitor'
 import { recordTrialStart, markTrialLapsed, isStaleSubscriptionEvent } from '@/lib/trial'
 import { onInvoicePaid } from '@/lib/trial-events'
+import { offerFromSubscription } from '@/lib/offers'
 import { sendTrialEndedEmail } from '@/lib/email/trial-emails'
 import { notifyNewSubscriber } from '@/lib/email/new-subscriber-alert'
 import { sendSubscriptionConfirmation } from '@/lib/email/subscription-confirmation'
@@ -118,14 +119,14 @@ export async function POST(request: NextRequest) {
             const cardEmail = session.customer_details?.email || (await emailForUser(supabase, userId))
             const { data: trialRow } = await supabase
               .from('ss_subscriptions')
-              .select('trial_end')
+              .select('trial_end, offer_percent_off')
               .eq('stripe_subscription_id', saved.subscriptionId)
               .maybeSingle()
             if (cardEmail) {
               const confirm = await sendSubscriptionConfirmation(
                 cardEmail,
                 trialRow?.trial_end ? new Date(trialRow.trial_end) : null,
-                { cardOnFile: true }
+                { cardOnFile: true, percentOff: trialRow?.offer_percent_off == null ? null : Number(trialRow.offer_percent_off) }
               )
               if (!confirm.sent) console.error(`[stripe webhook] card-saved confirmation NOT sent to user ${userId}: ${confirm.reason}`)
             } else {
@@ -151,7 +152,7 @@ export async function POST(request: NextRequest) {
             : (session.subscription as Stripe.Subscription)?.id
 
         if (subscriptionId && customerId) {
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['discount.promotion_code'] })
           const priceId = subscription.items.data[0]?.price?.id
           const plan = planFromStripePriceId(priceId ?? '')
 
@@ -177,6 +178,12 @@ export async function POST(request: NextRequest) {
             throw new Error(`subscription ${subscriptionId} has no readable billing period`)
           }
 
+          // The discount this subscription actually carries, from Stripe's own
+          // record (a code typed into Stripe's box never reaches our metadata).
+          // Stored so "who used Bailey's code, who paid" is readable from our
+          // rows, and so later notices state the price the card will be charged.
+          const { code: offerCode, percentOff: offerPercentOff } = offerFromSubscription(subscription, session.metadata)
+
           const { error: checkoutUpsertError } = await supabase.from('ss_subscriptions').upsert(
             {
               user_id: userId,
@@ -188,6 +195,8 @@ export async function POST(request: NextRequest) {
               stripe_price_id: priceId ?? null,
               trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
               stripe_created_at: stripeCreatedAt(subscription),
+              offer_code: offerCode,
+              offer_percent_off: offerPercentOff,
               lead_source: leadSource, // 'widget' if matched, else null (organic/unknown)
               current_period_start: period.start,
               current_period_end: period.end,
@@ -220,6 +229,8 @@ export async function POST(request: NextRequest) {
               cardRequired: !noCardTrial,
               trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
               ipHash: session.metadata?.ip_hash ?? null,
+              offerCode,
+              offerPercentOff,
             })
             if (!recorded) throw new Error(`could not record trial start for ${subscriptionId}`)
           }
@@ -230,7 +241,7 @@ export async function POST(request: NextRequest) {
           if (buyerEmail) {
             try {
               const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null
-              const confirm = await sendSubscriptionConfirmation(buyerEmail, trialEnd, { cardOnFile: !noCardTrial })
+              const confirm = await sendSubscriptionConfirmation(buyerEmail, trialEnd, { cardOnFile: !noCardTrial, percentOff: offerPercentOff })
               if (!confirm.sent) {
                 console.error(`[stripe webhook] subscription confirmation NOT sent to user ${userId}: ${confirm.reason}`)
               }
@@ -315,6 +326,13 @@ export async function POST(request: NextRequest) {
               stripe_price_id: priceId ?? null,
               trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
               stripe_created_at: stripeCreatedAt(subscription),
+              // Kept in step with Stripe: a discount removed there must stop
+              // being stated in notices. Only when the event carries the
+              // `discount` field: events arrive in the endpoint's API version,
+              // and a version without that field says nothing either way.
+              ...((subscription as { discount?: unknown }).discount !== undefined
+                ? { offer_percent_off: offerFromSubscription(subscription, subscription.metadata).percentOff }
+                : {}),
               canceled_at: subscription.canceled_at
                 ? new Date(subscription.canceled_at * 1000).toISOString()
                 : null,

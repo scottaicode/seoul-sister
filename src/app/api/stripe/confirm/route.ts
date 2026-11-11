@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getServiceClient } from '@/lib/supabase'
 import { getStripeClient, planFromStripePriceId } from '@/lib/stripe'
+import { offerFromSubscription } from '@/lib/offers'
 
 /** Mirrors the webhook's mapping — single tier, all subscribers are 'pro'. */
 const SUBSCRIPTION_TIER = 'pro'
@@ -85,7 +86,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ paid: false, reason: 'incomplete_session' })
     }
 
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['discount.promotion_code'] })
+    // Same source as the webhook, so the first notice after checkout already
+    // states the price this member's card would be charged.
+    const offer = offerFromSubscription(subscription, session.metadata)
     const plan = planFromStripePriceId(subscription.items.data[0]?.price?.id ?? '')
 
     // Service client: this write must not depend on the caller's RLS.
@@ -116,6 +120,8 @@ export async function POST(request: NextRequest) {
         stripe_price_id: subscription.items.data[0]?.price?.id ?? null,
         trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
         stripe_created_at: subscription.created ? new Date(subscription.created * 1000).toISOString() : null,
+        offer_code: offer.code,
+        offer_percent_off: offer.percentOff,
         current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
         current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
       },

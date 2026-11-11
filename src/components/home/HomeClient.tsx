@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import PricingCards from '@/components/pricing/PricingCards'
 import TryYuriSection from '@/components/widget/TryYuriSection'
+import OfferSavedLine from '@/components/widget/OfferSavedLine'
 import InstallBanner from '@/components/pwa/InstallBanner'
 import SignedInRedirect from '@/components/auth/SignedInRedirect'
 import { MAX_FREE_MESSAGES } from '@/lib/utils/widget-session'
@@ -274,6 +275,7 @@ export default function HomeClient() {
             transition={{ delay: 0.3, duration: 0.6 }}
           >
             <TryYuriSection variant="hero" />
+            <OfferSavedLine />
           </motion.div>
         </div>
 

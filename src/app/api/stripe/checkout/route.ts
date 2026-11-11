@@ -4,11 +4,16 @@ import { createClient } from '@supabase/supabase-js'
 import { createCheckoutSession, type TierKey } from '@/lib/stripe'
 import { getServiceClient } from '@/lib/supabase'
 import { checkTrialEligibility, noCardTrialEnabled, networkKey } from '@/lib/trial'
+import { resolveOffer } from '@/lib/offers-server'
+import { offerEndedLine, offerFailedLine, normalizeOfferCode } from '@/lib/offers'
 
 // Only the current plan is sold. The legacy 'pro_monthly' plan exists for
 // comped/grandfathered accounts and cannot be bought.
 const CheckoutSchema = z.object({
   plan: z.enum(['monthly']).default('monthly'),
+  // A creator code remembered by the browser (src/lib/offers.ts). Never
+  // trusted: Stripe is asked whether it is real and still open.
+  offer_code: z.string().max(40).optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -76,6 +81,31 @@ export async function POST(request: NextRequest) {
     const withTrial = eligibility.eligible
     const noCard = noCardTrialEnabled()
 
+    // A creator code, if the browser sent one. Stripe decides whether it is
+    // real and still open. If Stripe cannot be asked we STOP: going on without
+    // the discount would charge full price to someone the page just told the
+    // code was applied.
+    let offer: { code: string; promotionCodeId: string; percentOff: number } | null = null
+    if (parsed.data.offer_code) {
+      try {
+        const resolved = await resolveOffer(parsed.data.offer_code)
+        if (resolved.state === 'active') {
+          offer = { code: resolved.code, promotionCodeId: resolved.promotionCodeId, percentOff: resolved.percentOff }
+        } else if (resolved.state === 'ended') {
+          // The code closed between the page loading and the button. Say so and
+          // stop; pressing the button again continues at the normal price.
+          return NextResponse.json({ error: offerEndedLine(resolved.code), offer_ended: true }, { status: 409 })
+        }
+        // 'unknown': not a creator code. The page never claimed it, and the
+        // Stripe page still has its own code box.
+      } catch (err) {
+        console.error('[stripe/checkout] offer lookup failed:', err instanceof Error ? err.message : String(err))
+        // offer_failed lets the page drop the code for the next press, so a
+        // Stripe outage on code lookups never blocks someone from joining.
+        return NextResponse.json({ error: offerFailedLine(normalizeOfferCode(parsed.data.offer_code) ?? 'you entered'), offer_failed: true }, { status: 503 })
+      }
+    }
+
     // Stamp the first checkout start (set-once). Until Nov 10 2026 "pressed the
     // paywall button" existed only in GA4, which is bot-inflated. A failed
     // stamp is logged and never blocks checkout.
@@ -86,13 +116,16 @@ export async function POST(request: NextRequest) {
       .is('checkout_clicked_at', null)
     if (stampErr) console.error('[stripe/checkout] checkout_clicked_at stamp failed:', stampErr.message)
 
-    const url = await createCheckoutSession({
+    let url: string
+    try {
+      url = await createCheckoutSession({
       userId: user.id,
       email: user.email!,
       plan: parsed.data.plan as TierKey,
       withTrial,
       noCard,
       ipHash,
+      offer,
       // {CHECKOUT_SESSION_ID} is substituted by Stripe on redirect. It lets the
       // app confirm payment DIRECTLY with Stripe when the buyer returns, instead
       // of waiting on the out-of-band webhook (Stripe's documented dual-trigger
@@ -101,11 +134,20 @@ export async function POST(request: NextRequest) {
       // looking at a paywall. See /api/stripe/confirm.
       successUrl: `${origin}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${origin}/subscribe?canceled=true`,
-    })
+      })
+    } catch (err) {
+      if (!offer) throw err
+      // Stripe refused the session with this code attached (for example the
+      // last spot went a moment ago). Without this the page would resend the
+      // same code forever and the person could not join at any price.
+      console.error(`[stripe/checkout] session with code ${offer.code} failed:`, err instanceof Error ? err.message : String(err))
+      return NextResponse.json({ error: offerFailedLine(offer.code), offer_failed: true }, { status: 409 })
+    }
 
     return NextResponse.json({ url })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Internal server error'
-    return NextResponse.json({ error: message }, { status: 500 })
+    // The raw message (often Stripe's) is for the log, not the customer.
+    console.error('[stripe/checkout] failed:', err instanceof Error ? err.message : String(err))
+    return NextResponse.json({ error: 'Could not start checkout. Please try again in a minute.' }, { status: 500 })
   }
 }

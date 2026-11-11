@@ -4,6 +4,44 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.54.0 — Creator codes: a code gives a percentage off the first paid month, and every price sentence says so (Nov 10 2026)
+
+- **Why.** Bailey's decision for her TikTok: code BAILEY, 50% off the first paid month, first 50 people, no
+  end date. She rejected fake "limited time" wording and longer trials. The free trial stays 7 days.
+- **How it is true.** Stripe holds everything: a coupon (percent off, `repeating`, 1 month, so the free
+  trial's $0 invoice does not use it up) and a promotion code with `max_redemptions` and metadata
+  `creator_offer=1`. Nothing in the app counts spots or says how many are left.
+- **Changed.**
+  - `/tt` carries `code=BAILEY`; the browser remembers a code (`src/lib/offers.ts`). `GET /api/offer` asks
+    Stripe (`src/lib/offers-server.ts`) and confirms only codes marked as creator offers, so a private code
+    cannot be probed. A full or expired code is reported as ended.
+  - A line under the landing chat says the code was saved (`OfferSavedLine`); the paywall states the
+    discounted first month in every price sentence on the page.
+  - Checkout applies the exact promotion code (`discounts`). Without one, Stripe's own code box stays and
+    the consent text says a typed code changes the price. A code that closed stops the checkout with a
+    plain line; a code Stripe refuses never traps the person (next press goes without it).
+  - What a subscription is recorded as carrying comes from Stripe's own discount
+    (`offerFromSubscription`, in the webhook and `/api/stripe/confirm`), so a hand-typed code is seen.
+    Stored on `ss_subscriptions` and `ss_trial_starts` (`offer_code`, `offer_percent_off`, migration
+    `20261110000007`).
+  - Every sentence that states a charge (consent text, add-a-card page, confirmation email, in-app trial
+    notice, trial-ending email) uses `chargePhrase`: "$4.99 for your first paid month (50% off) ..., then
+    $9.99/month until you cancel".
+  - Also: the paywall says why there is no trial when the network cap applies; the checkout no longer
+    shows raw Stripe errors; the confirmation email no longer mentions cancelling "during the free trial"
+    to someone charged today.
+- **Review.** Opus 5.5 and Fable 5.2 on the design; Opus 5.5 on the diff found 11 defects, 10 fixed here
+  (a `discount: null` falling back to our own metadata and stating $4.99 while charging $9.99; the paywall
+  contradicting itself; a checkout that could not be completed at any price once Stripe refused a code).
+  It wrote 28 wrong versions; 7 passed. Those 7 plus 5 more now fail (1,564 tests).
+- **Not done.** Yuri is not told about a code, so she would quote $9.99 to someone holding one. The
+  BAILEY promotion code is NOT created in Stripe until she is; until then the feature shows nothing.
+- **Not verified.** No real trial has started with a code. Nobody has been charged a discounted invoice
+  (the day-7 amount rests on Stripe's documentation plus a $4.99 no-trial Checkout total). "First 50"
+  counts trial starts, including people who never pay.
+
+---
+
 ## v11.53.0 — A weekly rhythm: Yuri checks in most weeks, twice in the free trial, and adjusts from the answer (Nov 10 2026)
 
 - **Why.** Owner: "There has to be a reason for subs to engage with Yuri on a more regular schedule...

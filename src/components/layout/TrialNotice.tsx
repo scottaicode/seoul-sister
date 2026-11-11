@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { PRICING } from '@/lib/pricing'
+import { chargePhrase, addCardPhrase } from '@/lib/offers'
 
 /**
  * Tells a member on the free trial when it ends and what happens then, and
@@ -16,7 +16,7 @@ import { PRICING } from '@/lib/pricing'
  * who is not on a trial.
  */
 interface TrialFacts {
-  trial: { ends_at: string | null; card_on_file: boolean | null; cancelled: boolean | null } | null
+  trial: { ends_at: string | null; card_on_file: boolean | null; cancelled: boolean | null; percent_off?: number | null } | null
 }
 
 /**
@@ -82,6 +82,8 @@ export default function TrialNotice() {
     ? ends.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
     : null
   const until = endText ? `on ${endText}` : 'when it ends'
+  // The price as this member will pay it: with a creator code the first month is discounted.
+  const pct = facts.percent_off ?? null
 
   async function addCard() {
     setBusy(true)
@@ -113,8 +115,7 @@ export default function TrialNotice() {
     return (
       <div className={shell} role="status">
         {justSaved ? 'Your card is saved. ' : ''}
-        Your free trial ends {until}. Your card will be charged {PRICING.monthly_display_long} on that day, and every month
-        after that until you cancel.
+        Your free trial ends {until}. Your card will be charged {chargePhrase(pct, 'on that day,')}.
       </div>
     )
   }
@@ -131,8 +132,8 @@ export default function TrialNotice() {
       <span>
         Your free trial ends {until}.{' '}
         {state === 'no_card'
-          ? `You have not added a card, so your membership will stop on that day and nothing will be charged. To continue, add a card: ${PRICING.monthly_display_long}, starting when the trial ends.`
-          : `To continue after that, add a card: ${PRICING.monthly_display_long}, starting when the trial ends.`}
+          ? `You have not added a card, so your membership will stop on that day and nothing will be charged. To continue, add a card: ${addCardPhrase(pct)}.`
+          : `To continue after that, add a card: ${addCardPhrase(pct)}.`}
       </span>{' '}
       <button
         type="button"

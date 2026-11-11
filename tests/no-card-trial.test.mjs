@@ -42,7 +42,11 @@ async function loadModules(env = {}) {
       .replace("from '@/lib/pricing'", "from './pricing.mjs'")
   )
   put('trial-events', read('src/lib/trial-events.ts').replace("from '@/lib/trial'", "from './trial.mjs'"))
-  put('stripe-params', read('src/lib/stripe-params.ts').replace("from '@/lib/pricing'", "from './pricing.mjs'"))
+  put('offers', read('src/lib/offers.ts').replace("from '@/lib/pricing'", "from './pricing.mjs'"))
+  put(
+    'stripe-params',
+    read('src/lib/stripe-params.ts').replace("from '@/lib/pricing'", "from './pricing.mjs'").replace("from '@/lib/offers'", "from './offers.mjs'")
+  )
   put('funnel', read('src/lib/proactive/campaign-funnel.ts'))
   const saved = { ...process.env }
   Object.assign(process.env, env)
@@ -52,6 +56,7 @@ async function loadModules(env = {}) {
     events: await load('trial-events'),
     params: await load('stripe-params'),
     funnel: await load('funnel'),
+    offers: await load('offers'),
     restore: () => { process.env = saved },
   }
 }
@@ -194,7 +199,11 @@ test('the trial ledger is written once per inbox, with the network, and a failed
     assert.equal(await m.trial.recordTrialStart(db, t), true)
     assert.equal(await m.trial.recordTrialStart(db, { ...t, subscriptionId: 'sub_RETRY' }), true)
     assert.equal(db.tables.ss_trial_starts.length, 1, 'a retried webhook must not add or overwrite')
-    assert.deepEqual(db.tables.ss_trial_starts[0], { email_canonical: 'jdoe@gmail.com', user_id: 'u1', stripe_subscription_id: 'sub_1', card_required: false, trial_end: '2026-11-17T00:00:00Z', ip_hash: 'net1' })
+    assert.deepEqual(db.tables.ss_trial_starts[0], { email_canonical: 'jdoe@gmail.com', user_id: 'u1', stripe_subscription_id: 'sub_1', card_required: false, trial_end: '2026-11-17T00:00:00Z', ip_hash: 'net1', offer_code: null, offer_percent_off: null })
+    // A creator code is recorded with the trial, so "who used the code, who paid" is one table.
+    const coded = fakeDb()
+    await m.trial.recordTrialStart(coded, { ...t, email: 'other@x.com', offerCode: 'BAILEY', offerPercentOff: 50 })
+    assert.deepEqual([coded.tables.ss_trial_starts[0].offer_code, coded.tables.ss_trial_starts[0].offer_percent_off], ['BAILEY', 50])
     assert.equal(await m.trial.recordTrialStart(fakeDb({}, { ss_trial_starts: true }), t), false)
   } finally { m.restore() }
   assert.match(webhook, /if \(!recorded\) throw new Error\(`could not record trial start/)
@@ -228,7 +237,7 @@ test('no-card trial session: no payment method collected, CANCEL at the end, exa
     assert.deepEqual(p.custom_text, {
       submit: {
         message:
-          'Your 7-day free trial starts today. No card is needed and nothing is charged. The trial ends after 7 days and your membership stops then, unless you have added a card with the "Add a card" button inside Seoul Sister. If you add one, it is charged $9.99/month when the trial ends and every month after that until you cancel.',
+          'Your 7-day free trial starts today. No card is needed and nothing is charged. The trial ends after 7 days and your membership stops then, unless you have added a card with the "Add a card" button inside Seoul Sister. If you add one, it is charged $9.99/month when the trial ends and every month after that until you cancel. If you enter a promotion code on this page, the discounted price shown on this page is what is charged instead.',
       },
     })
     assert.equal(p.mode, 'subscription')
@@ -243,7 +252,7 @@ test('a checkout with NO trial always takes a card and says it is charged today,
     assert.deepEqual(p.subscription_data, { metadata: { user_id: 'u1', plan: 'monthly', ip_hash: 'net1' } })
     assert.equal(
       p.custom_text.submit.message,
-      'Your card will be charged $9.99/month today and every month after that until you cancel. Cancel anytime from your Profile page (Manage subscription) or by replying to any Seoul Sister email.'
+      'Your card will be charged $9.99/month today and every month after that until you cancel. Cancel anytime from your Profile page (Manage subscription) or by replying to any Seoul Sister email. If you enter a promotion code on this page, the discounted price shown on this page is what is charged instead.'
     )
     // Emergency stop: a trial that needs a card says so.
     const card = m.params.buildCheckoutParams({ ...base, withTrial: true, noCard: false })
@@ -449,9 +458,14 @@ test('trial facts: when Stripe cannot be asked, the card status is UNKNOWN, neve
   const m = await loadModules()
   try {
     const f = await m.trial.trialFacts(fakeDb(trialing('2026-11-17T00:00:00Z')), me, { liveState: async () => { throw new Error('stripe down') }, now: NOW })
-    assert.deepEqual(f.trial, { ends_at: '2026-11-17T00:00:00Z', card_on_file: null, cancelled: null })
+    assert.deepEqual(f.trial, { ends_at: '2026-11-17T00:00:00Z', card_on_file: null, cancelled: null, percent_off: null })
     const ok = await m.trial.trialFacts(fakeDb(trialing('2026-11-17T00:00:00Z')), me, { liveState: async () => ({ status: 'trialing', hasPaymentMethod: true, cancelAtPeriodEnd: true }), now: NOW })
-    assert.deepEqual(ok.trial, { ends_at: '2026-11-17T00:00:00Z', card_on_file: true, cancelled: true })
+    assert.deepEqual(ok.trial, { ends_at: '2026-11-17T00:00:00Z', card_on_file: true, cancelled: true, percent_off: null })
+    // A trial that started with a creator code reports its discount, so the notice states the right price.
+    const coded = trialing('2026-11-17T00:00:00Z')
+    coded.ss_subscriptions[0].offer_percent_off = '50'
+    const c = await m.trial.trialFacts(fakeDb(coded), me, { liveState: async () => ({ status: 'trialing', hasPaymentMethod: false, cancelAtPeriodEnd: false }), now: NOW })
+    assert.equal(c.trial.percent_off, 50)
   } finally { m.restore() }
 })
 
@@ -537,7 +551,7 @@ test('a saved card is attached only to an OPEN subscription; a closed one is rep
   assert.match(fn, /await stripe\.subscriptions\.update\(subscriptionId, \{ default_payment_method: paymentMethod \}\)/)
   const setup = webhook.slice(webhook.indexOf("session.mode === 'setup'"), webhook.indexOf("if (!userId || session.mode !== 'subscription') break"))
   assert.match(setup, /if \(!saved\.applied\) \{[\s\S]{0,400}console\.error\([\s\S]{0,300}break/)
-  assert.match(setup, /sendSubscriptionConfirmation\(\s*cardEmail,[\s\S]{0,120}\{ cardOnFile: true \}/, 'saving the card starts auto-renewal: the terms go to the member in writing')
+  assert.match(setup, /sendSubscriptionConfirmation\(\s*cardEmail,[\s\S]{0,160}\{ cardOnFile: true, percentOff: /, 'saving the card starts auto-renewal: the terms, with any discount, go to the member in writing')
   const route = read('src/app/api/stripe/add-card/route.ts')
   assert.match(route, /const ended = sub\.trial_end \? new Date\(sub\.trial_end\)\.getTime\(\) <= Date\.now\(\) : false/)
   assert.match(route, /if \(ended \|\| !live \|\| live\.status !== 'trialing'\)/)
@@ -549,7 +563,7 @@ test('emails never promise a charge to a card that does not exist, and a lapsed 
   assert.match(branch, /No card is on file and you will not be charged\./)
   assert.match(branch, /with the "Add a card" button at the top of any page/)
   assert.doesNotMatch(branch, /your card will be charged|Profile page/i)
-  assert.match(webhook, /sendSubscriptionConfirmation\(buyerEmail, trialEnd, \{ cardOnFile: !noCardTrial \}\)/)
+  assert.match(webhook, /sendSubscriptionConfirmation\(buyerEmail, trialEnd, \{ cardOnFile: !noCardTrial, percentOff: offerPercentOff \}\)/)
   assert.match(webhook, /const noCardTrial = isTrial && subscription\.metadata\?\.no_card === '1'/, 'stated by the checkout, not guessed from Stripe state')
   // "No card was on file" is only sent to a trial that began with no card and
   // never had one added. A cancelled card trial, or a card added then
@@ -580,4 +594,276 @@ test('migrations: the ledger has RLS on, no account foreign key, and the network
   assert.doesNotMatch(m1, /REFERENCES/i)
   assert.doesNotMatch(m1, /CREATE POLICY/i)
   assert.match(read('supabase/migrations/20261110000003_trial_starts_network.sql'), /ADD COLUMN IF NOT EXISTS ip_hash text/)
+})
+
+// ---------------------------------------------------------------------------
+// Creator offer codes (Bailey's decision, Nov 10 2026): 50% off the first PAID
+// month, first 50 people, no end date. The free trial stays 7 days for everyone.
+// ---------------------------------------------------------------------------
+test('offer codes: only a plain 3-20 character code is accepted from a URL', async () => {
+  const m = await loadModules()
+  try {
+    const n = m.offers.normalizeOfferCode
+    assert.equal(n('bailey'), 'BAILEY')
+    assert.equal(n(' Bailey50 '), 'BAILEY50')
+    for (const bad of [null, '', 'ab', 'a'.repeat(21), 'BAILEY!', 'bai ley', '<script>', 'BAILEY&x=1']) assert.equal(n(bad), null, `must reject ${JSON.stringify(bad)}`)
+  } finally { m.restore() }
+})
+
+test('offer codes: every charge sentence names the discounted first month AND the price after it, and is unchanged without a code', async () => {
+  const m = await loadModules()
+  try {
+    const o = m.offers
+    assert.equal(o.firstMonthPrice(50), '$4.99', 'Stripe charged 499 on 999 in a live check')
+    assert.equal(o.chargePhrase(null, 'today'), '$9.99/month today and every month after that until you cancel')
+    assert.equal(o.chargePhrase(null, 'on that day,'), '$9.99/month on that day, and every month after that until you cancel')
+    assert.equal(o.chargePhrase(50, 'today'), '$4.99 for your first paid month (50% off) today, then $9.99/month until you cancel')
+    assert.equal(o.chargePhrase(50, 'on that day,'), '$4.99 for your first paid month (50% off) on that day, then $9.99/month until you cancel')
+    assert.equal(o.addCardPhrase(null), '$9.99/month, starting when the trial ends')
+    assert.equal(o.addCardPhrase(50), '$4.99 for your first paid month (50% off) when the trial ends, then $9.99/month')
+    assert.equal(o.priceWithOffer(50), '$4.99 for your first paid month (50% off), then $9.99/month')
+    assert.equal(o.priceWithOffer(null), '$9.99/month')
+    assert.equal(o.offerFailedLine('BAILEY'), 'Code BAILEY could not be applied just now. Press the button again to continue without it at $9.99/month, or try again in a few minutes to use the code.')
+    for (const bad of [0, 100, 150, -5, 0.4, 99.5, 12.5, '50', undefined, NaN]) {
+      assert.equal(o.firstMonthPrice(bad), null, `must ignore ${bad}`)
+      assert.equal(o.chargePhrase(bad, 'today'), '$9.99/month today and every month after that until you cancel')
+    }
+    assert.equal(o.offerAppliedLine('BAILEY', 50), 'Code BAILEY applied: your first paid month is $4.99 instead of $9.99 (50% off), then $9.99/month.')
+    assert.equal(o.offerSavedLine('BAILEY', 50), 'Code BAILEY saved: 50% off your first paid month.')
+    assert.equal(o.offerEndedLine('BAILEY'), 'Code BAILEY is no longer available, so membership is $9.99/month.')
+    // What the public endpoint returns is a closed set of keys.
+    assert.deepEqual(o.offerResponse({ state: 'active', code: 'BAILEY', promotionCodeId: 'promo_1', percentOff: 50, times_redeemed: 49, max_redemptions: 50 }), {
+      state: 'active', code: 'BAILEY', percent_off: 50,
+      line: 'Code BAILEY applied: your first paid month is $4.99 instead of $9.99 (50% off), then $9.99/month.',
+      saved_line: 'Code BAILEY saved: 50% off your first paid month.',
+    })
+    assert.deepEqual(o.offerResponse({ state: 'ended', code: 'BAILEY', times_redeemed: 50 }), { state: 'ended', code: 'BAILEY', line: 'Code BAILEY is no longer available, so membership is $9.99/month.' })
+    assert.deepEqual(o.offerResponse({ state: 'unknown', code: 'ANNKOREA' }), { state: 'unknown' }, 'a private code is not even echoed back')
+    // Nothing the app writes may say how many spots are left or that it is about to run out.
+    const src = read('src/lib/offers.ts')
+    const code = src.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '')
+    assert.doesNotMatch(code, /spots? left|almost gone|running out|hurry|only \$\{|last chance/i)
+  } finally { m.restore() }
+})
+
+test('offer codes: Stripe applies the exact promotion code, the consent text states the discount, and the trial is still 7 days with no card', async () => {
+  const m = await loadModules()
+  try {
+    const offer = { code: 'BAILEY', promotionCodeId: 'promo_123', percentOff: 50 }
+    const p = m.params.buildCheckoutParams({ ...base, withTrial: true, noCard: true, offer })
+    assert.deepEqual(p.discounts, [{ promotion_code: 'promo_123' }])
+    assert.equal('allow_promotion_codes' in p, false, 'Stripe accepts only one of the two')
+    assert.equal(p.subscription_data.trial_period_days, 7, 'a code never lengthens the free trial')
+    assert.equal(p.payment_method_collection, 'if_required')
+    assert.deepEqual(p.metadata, { user_id: 'u1', plan: 'monthly', offer_code: 'BAILEY', offer_percent_off: '50', ip_hash: 'net1', no_card: '1' })
+    assert.equal(
+      p.custom_text.submit.message,
+      'Your 7-day free trial starts today. No card is needed and nothing is charged. The trial ends after 7 days and your membership stops then, unless you have added a card with the "Add a card" button inside Seoul Sister. If you add one, it is charged $4.99 for your first paid month (50% off) when the trial ends, then $9.99/month until you cancel.'
+    )
+    assert.doesNotMatch(p.custom_text.submit.message, /promotion code/, 'with a confirmed code there is no code box to talk about')
+    // Without a code the page keeps its code box and the plain price, and says a typed code changes it.
+    const plain = m.params.buildCheckoutParams({ ...base, withTrial: true, noCard: true })
+    assert.equal(plain.allow_promotion_codes, true)
+    for (const v of [{ withTrial: true, noCard: true }, { withTrial: true, noCard: false }, { withTrial: false, noCard: false }]) {
+      assert.ok(m.params.buildCheckoutParams({ ...base, ...v }).custom_text.submit.message.endsWith(' If you enter a promotion code on this page, the discounted price shown on this page is what is charged instead.'), JSON.stringify(v))
+    }
+    assert.equal('discounts' in plain, false)
+    // Someone with no trial left still gets the discount, charged today.
+    const paid = m.params.buildCheckoutParams({ ...base, withTrial: false, noCard: true, offer })
+    assert.equal(paid.custom_text.submit.message, 'Your card will be charged $4.99 for your first paid month (50% off) today, then $9.99/month until you cancel. Cancel anytime from your Profile page (Manage subscription) or by replying to any Seoul Sister email.')
+    // The add-a-card page states it too.
+    const add = m.params.buildAddCardParams({ userId: 'u1', stripeCustomerId: 'cus_1', stripeSubscriptionId: 'sub_1', trialEnd: null, successUrl: 's', cancelUrl: 'c', percentOff: 50 })
+    assert.match(add.custom_text.submit.message, /It will be charged \$4\.99 for your first paid month \(50% off\) when your free trial ends, then \$9\.99\/month until you cancel\. Cancel anytime/)
+    const card = m.params.buildCheckoutParams({ ...base, withTrial: true, noCard: false, offer })
+    assert.match(card.custom_text.submit.message, /your card will be charged \$4\.99 for your first paid month \(50% off\) on day 8, then \$9\.99\/month until you cancel\. Cancel anytime/)
+  } finally { m.restore() }
+})
+
+async function loadResolveOffer(promo) {
+  const dir = mkdtempSync(join(tmpdir(), 'ss-offer-'))
+  const put = (name, src) => writeFileSync(join(dir, `${name}.mjs`), transpile(src))
+  put('pricing', read('src/lib/pricing.ts'))
+  put('offers', read('src/lib/offers.ts').replace("from '@/lib/pricing'", "from './pricing.mjs'"))
+  globalThis.__promo = promo
+  writeFileSync(join(dir, 'stripe.mjs'), `export const getStripeClient = () => ({ promotionCodes: { list: async (q) => { globalThis.__promoQuery = q; if (globalThis.__promo === 'THROW') throw new Error('stripe down'); return { data: globalThis.__promo ? [globalThis.__promo] : [] } } } })`)
+  put('offers-server', read('src/lib/offers-server.ts').replace("from '@/lib/stripe'", "from './stripe.mjs'").replace("from '@/lib/offers'", "from './offers.mjs'"))
+  return (await import(pathToFileURL(join(dir, 'offers-server.mjs')).href)).resolveOffer
+}
+const coupon = (over = {}) => ({ valid: true, percent_off: 50, duration: 'repeating', duration_in_months: 1, ...over })
+const creator = { creator_offer: '1' }
+
+test('offer codes (executed): Stripe is the only source of truth for whether a code is real and still open', async () => {
+  let r = await loadResolveOffer({ id: 'promo_1', active: true, metadata: creator, coupon: coupon() })
+  assert.deepEqual(await r('bailey'), { state: 'active', code: 'BAILEY', promotionCodeId: 'promo_1', percentOff: 50 })
+  assert.deepEqual(globalThis.__promoQuery, { code: 'BAILEY', limit: 1 })
+  // The cap was reached (Stripe marks the code inactive): the offer has ended.
+  r = await loadResolveOffer({ id: 'promo_1', active: false, metadata: creator, coupon: coupon() })
+  assert.deepEqual(await r('BAILEY'), { state: 'ended', code: 'BAILEY' })
+  // Full or expired, even if Stripe still reports it active.
+  r = await loadResolveOffer({ id: 'promo_1', active: true, metadata: creator, max_redemptions: 50, times_redeemed: 50, coupon: coupon() })
+  assert.deepEqual(await r('BAILEY'), { state: 'ended', code: 'BAILEY' })
+  r = await loadResolveOffer({ id: 'promo_1', active: true, metadata: creator, max_redemptions: 50, times_redeemed: 49, expires_at: null, coupon: coupon() })
+  assert.equal((await r('BAILEY')).state, 'active')
+  r = await loadResolveOffer({ id: 'promo_1', active: true, metadata: creator, expires_at: 1, coupon: coupon() })
+  assert.deepEqual(await r('BAILEY'), { state: 'ended', code: 'BAILEY' })
+  // A real, active code that is NOT marked as a creator offer (a private one-off)
+  // is never confirmed by the public endpoint, whether open or closed.
+  for (const meta of [undefined, {}, { creator_offer: '0' }, { creator_offer: 'true' }]) {
+    for (const active of [true, false]) {
+      r = await loadResolveOffer({ id: 'promo_2', active, metadata: meta, coupon: coupon() })
+      assert.deepEqual(await r('ANNKOREA'), { state: 'unknown', code: 'ANNKOREA' }, JSON.stringify({ meta, active }))
+    }
+  }
+  // No such code, or not a code at all.
+  r = await loadResolveOffer(null)
+  assert.deepEqual(await r('NOPE'), { state: 'unknown', code: 'NOPE' })
+  assert.deepEqual(await r('!!'), { state: 'unknown', code: null })
+})
+
+test('offer codes (executed): a coupon that is not "a percentage off for exactly one month" is refused, never misdescribed', async () => {
+  // Every sentence the app writes says "the first month". A forever discount, a
+  // `once` coupon (used up by the free trial's $0 invoice), a fixed amount, or
+  // 100% off would each make those sentences false.
+  for (const bad of [
+    coupon({ duration: 'forever', duration_in_months: null }),
+    coupon({ duration: 'once', duration_in_months: null }),
+    coupon({ duration_in_months: 3 }),
+    coupon({ percent_off: null, amount_off: 500 }),
+    coupon({ percent_off: 100 }),
+    coupon({ percent_off: 0.4 }),
+    coupon({ percent_off: 99.5 }),
+    coupon({ valid: false }),
+  ]) {
+    const r = await loadResolveOffer({ id: 'promo_1', active: true, metadata: creator, coupon: bad })
+    assert.deepEqual(await r('BAILEY'), { state: 'ended', code: 'BAILEY' }, JSON.stringify(bad))
+  }
+  // Stripe unreachable must be an error the caller sees, not "no discount".
+  const r = await loadResolveOffer('THROW')
+  await assert.rejects(() => r('BAILEY'), /stripe down/)
+})
+
+test('offer codes: the checkout stops if Stripe cannot confirm the code, and the page claims it only when Stripe did', () => {
+  assert.match(checkout, /offer_code: z\.string\(\)\.max\(40\)\.optional\(\)/)
+  const subscribe = read('src/app/(auth)/subscribe/page.tsx')
+  const block = checkout.slice(checkout.indexOf('let offer:'), checkout.indexOf('// Stamp the first checkout start'))
+  assert.match(block, /const resolved = await resolveOffer\(parsed\.data\.offer_code\)/, 'the server asks Stripe itself; the browser is never trusted')
+  assert.match(block, /catch \(err\) \{[\s\S]{0,500}offer_failed: true \}, \{ status: 503 \}\)/, 'going on silently without the discount would charge full price to someone told the code was applied')
+  assert.match(checkout, /\} catch \(err\) \{\s*if \(!offer\) throw err[\s\S]{0,500}return NextResponse\.json\(\{ error: offerFailedLine\(offer\.code\), offer_failed: true \}, \{ status: 409 \}\)/, 'a session Stripe refuses because of the code must not trap the person')
+  assert.match(subscribe, /if \(result\.offer_failed\) \{[\s\S]{0,260}setOfferCode\(null\)\s*setOfferActive\(false\)\s*setOfferPercent\(null\)\s*setOfferLine\(result\.error\)\s*return/)
+  assert.match(subscribe, /setOfferActive\(o\.state === 'active'\)/)
+  assert.match(subscribe, /const priceLong = priceWithOffer\(offerActive \? offerPercent : null\)/)
+  assert.doesNotMatch(subscribe, /PRICING\.monthly_display_long/, 'every price sentence on the paywall goes through priceLong, so none contradicts the code line')
+  const saved = read('src/components/widget/OfferSavedLine.tsx')
+  assert.match(saved, /if \(o\.state === 'active'\) \{\s*if \(live\) setLine\(o\.saved_line \?\? null\)\s*return\s*\}\s*clearOfferCode\(\)\s*if \(live && o\.state === 'ended'\) setLine\(o\.line \?\? null\)/, 'only a code Stripe confirmed is called saved')
+  assert.match(read('src/components/home/HomeClient.tsx'), /<TryYuriSection variant="hero" \/>\s*<OfferSavedLine \/>/)
+  assert.match(block, /else if \(resolved\.state === 'ended'\) \{[\s\S]{0,260}return NextResponse\.json\(\{ error: offerEndedLine\(resolved\.code\), offer_ended: true \}, \{ status: 409 \}\)/, 'a code that closed stops the checkout and says so')
+  assert.doesNotMatch(checkout, /error: message \}/, 'raw Stripe errors are not shown to customers')
+  assert.match(subscribe, /\.\.\.\(offerCode \? \{ offer_code: offerCode \} : \{\}\)/, 'the remembered code is sent even if the page could not ask about it')
+  assert.match(subscribe, /if \(response\.status === 409 && result\.offer_ended\) \{\s*[\s\S]{0,200}clearOfferCode\(\)\s*setOfferCode\(null\)/)
+  assert.match(subscribe, /if \(o\.state !== 'active'\) \{\s*clearOfferCode\(\)\s*setOfferCode\(null\)/)
+  assert.match(subscribe, /if \(o\.state === 'active' \|\| o\.state === 'ended'\) setOfferLine\(o\.line \?\? null\)/)
+  assert.match(subscribe, /console\.error\('\[subscribe\] offer lookup unavailable; saying nothing about the code'\)/)
+  // Bailey's own link applies her code; a code is remembered on every page load.
+  assert.match(read('next.config.js'), /destination: '\/\?utm_source=tiktok&utm_medium=bio&from=tt_ss&code=BAILEY'/)
+  assert.match(read('src/contexts/AuthContext.tsx'), /captureAttribution\(\)\s*captureOfferCode\(\)/)
+  // The endpoint never reports how many are left.
+  assert.doesNotMatch(read('src/app/api/offer/route.ts') + read('src/components/widget/OfferSavedLine.tsx'), /times_redeemed|max_redemptions|remaining/)
+  assert.match(read('src/app/api/offer/route.ts'), /return NextResponse\.json\(offerResponse\(offer\)\)/)
+  assert.match(read('src/lib/offers-server.ts'), /if \(promo\.metadata\?\.creator_offer !== '1'\) return \{ state: 'unknown', code \}\n  if \(!promo\.active\)/, 'the creator check comes before anything is said about the code')
+})
+
+test('offer codes: the discount follows the member into every later notice about what their card will be charged', () => {
+  assert.match(webhook, /stripe\.subscriptions\.retrieve\(subscriptionId, \{ expand: \['discount\.promotion_code'\] \}\)/)
+  assert.match(webhook, /const \{ code: offerCode, percentOff: offerPercentOff \} = offerFromSubscription\(subscription, session\.metadata\)/)
+  assert.match(webhook, /offer_code: offerCode,\s*offer_percent_off: offerPercentOff,/)
+  assert.match(webhook, /offerCode,\s*offerPercentOff,\s*\}\)/, 'recorded on the trial row')
+  assert.match(read('src/lib/email/trial-emails.ts'), /Your card will be charged \$\{chargePhrase\(percentOff, 'on that day,'\)\}\./)
+  assert.match(read('src/lib/trial-notices.ts'), /trialEndingLine\(t\.trial_end, state, await deps\.timezoneForUser\(t\.user_id\), pct && pct > 0 \? pct : null\)/)
+  assert.match(read('src/components/layout/TrialNotice.tsx'), /Your card will be charged \{chargePhrase\(pct, 'on that day,'\)\}\./)
+  assert.match(read('src/components/layout/TrialNotice.tsx'), /const pct = facts\.percent_off \?\? null\n/)
+  assert.match(read('src/lib/trial-notices.ts'), /const pct = t\.offer_percent_off == null \? null : Number\(t\.offer_percent_off\)\n/)
+  assert.match(webhook, /\{ cardOnFile: true, percentOff: trialRow\?\.offer_percent_off == null \? null : Number\(trialRow\.offer_percent_off\) \}/)
+  const confirmRoute = read('src/app/api/stripe/confirm/route.ts')
+  assert.match(confirmRoute, /const offer = offerFromSubscription\(subscription, session\.metadata\)/)
+  assert.match(confirmRoute, /offer_code: offer\.code,\s*offer_percent_off: offer\.percentOff,/)
+  assert.equal((read('src/components/layout/TrialNotice.tsx').match(/addCardPhrase\(pct\)/g) ?? []).length, 2)
+  assert.doesNotMatch(read('src/components/layout/TrialNotice.tsx'), /PRICING\.monthly_display_long/, 'a member with a code must not be shown the full price for the first month')
+  assert.match(read('src/app/api/stripe/add-card/route.ts'), /percentOff: sub\.offer_percent_off == null \? null : Number\(sub\.offer_percent_off\)/)
+  const m = read('supabase/migrations/20261110000007_offer_codes.sql')
+  for (const col of ['ss_trial_starts ADD COLUMN IF NOT EXISTS offer_code', 'ss_trial_starts ADD COLUMN IF NOT EXISTS offer_percent_off', 'ss_subscriptions ADD COLUMN IF NOT EXISTS offer_code']) assert.ok(m.includes(col), col)
+})
+
+test('offer codes (executed): what a subscription is recorded as carrying comes from Stripe\'s own discount, so a hand-typed code is seen', async () => {
+  const m = await loadModules()
+  try {
+    const f = m.offers.offerFromSubscription
+    const d = (over = {}, promo = { code: 'bailey' }) => ({ discount: { coupon: { percent_off: 50, duration: 'repeating', duration_in_months: 1, ...over }, promotion_code: promo } })
+    // Typed into Stripe's own box: no metadata at all.
+    assert.deepEqual(f(d(), {}), { code: 'BAILEY', percentOff: 50 })
+    // Stripe's record wins over what the checkout wrote down.
+    assert.deepEqual(f(d({ percent_off: 25 }, { code: 'OTHER' }), { offer_code: 'BAILEY', offer_percent_off: '50' }), { code: 'OTHER', percentOff: 25 })
+    // Promotion code not expanded: the code name falls back to the metadata.
+    assert.deepEqual(f(d({}, 'promo_123'), { offer_code: 'BAILEY', offer_percent_off: '50' }), { code: 'BAILEY', percentOff: 50 })
+    assert.deepEqual(f(d({}, 'promo_123'), {}), { code: null, percentOff: 50 })
+    // A discount the app's sentences cannot describe is not recorded as one.
+    for (const bad of [{ duration: 'forever', duration_in_months: null }, { duration: 'once', duration_in_months: null }, { duration_in_months: 3 }, { percent_off: null }, { percent_off: 100 }]) {
+      assert.deepEqual(f(d(bad), { offer_code: 'BAILEY', offer_percent_off: '50' }), { code: null, percentOff: null }, JSON.stringify(bad))
+    }
+    // No discount field on the object: the checkout's own record is used.
+    assert.deepEqual(f({}, { offer_code: 'BAILEY', offer_percent_off: '50' }), { code: 'BAILEY', percentOff: 50 })
+    assert.deepEqual(f({ discount: null }, {}), { code: null, percentOff: null })
+    // `discount: null` is Stripe saying no discount applies. The checkout's note that one was meant to is not believed.
+    assert.deepEqual(f({ discount: null }, { offer_code: 'BAILEY', offer_percent_off: '50' }), { code: null, percentOff: null })
+    assert.deepEqual(f({}, { offer_code: 'BAILEY' }), { code: null, percentOff: null })
+    assert.deepEqual(f({}, null), { code: null, percentOff: null })
+  } finally { m.restore() }
+})
+
+test('offer codes (executed): the confirmation email states the discounted first charge and the price after it', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ss-confirm-'))
+  const put = (name, src) => writeFileSync(join(dir, `${name}.mjs`), transpile(src))
+  put('pricing', read('src/lib/pricing.ts'))
+  put('offers', read('src/lib/offers.ts').replace("from '@/lib/pricing'", "from './pricing.mjs'"))
+  writeFileSync(join(dir, 'send.mjs'), 'export const sendEmail = async () => ({ sent: true }); export const wrapEmailHtml = (b, f) => b + f')
+  writeFileSync(join(dir, 'html.mjs'), 'export const escapeHtml = (x) => String(x)')
+  put('confirm', read('src/lib/email/subscription-confirmation.ts').replace("from './send'", "from './send.mjs'").replace("from './html'", "from './html.mjs'").replace("from '@/lib/pricing'", "from './pricing.mjs'").replace("from '@/lib/offers'", "from './offers.mjs'"))
+  const { buildSubscriptionConfirmationEmail: build } = await import(pathToFileURL(join(dir, 'confirm.mjs')).href)
+  const end = new Date('2026-11-17T00:00:00Z')
+  const noCard = build({ trialEnd: end, cardOnFile: false, percentOff: 50 }).html
+  assert.ok(noCard.includes('A card you add is charged $4.99 for your first paid month (50% off) when the trial ends, then $9.99/month until you cancel.'), noCard)
+  const card = build({ trialEnd: end, cardOnFile: true, percentOff: 50 }).html
+  assert.ok(card.includes('your card will be charged $4.99 for your first paid month (50% off) when the trial ends, 7 days after you signed up (November 17, 2026 at 12:00 AM UTC)</strong>, then $9.99/month until you cancel.'), card)
+  const today = build({ trialEnd: null, percentOff: 50 }).html
+  assert.ok(today.includes('Your card is charged $4.99 for your first paid month (50% off) today, then $9.99/month until you cancel.'), today)
+  // Without a code, the wording is what it was.
+  const plain = build({ trialEnd: end, cardOnFile: true }).html
+  assert.ok(plain.includes('your card will be charged $9.99/month when the trial ends, 7 days after you signed up (November 17, 2026 at 12:00 AM UTC)</strong>, and again every month after that until you cancel.'), plain)
+  assert.ok(build({ trialEnd: null }).html.includes('Your card is charged $9.99/month today and every month after that until you cancel.'))
+  for (const h of [noCard, card, today]) assert.doesNotMatch(h, /every month after that/, 'a discounted member is never told the first price repeats')
+  assert.doesNotMatch(today, /free trial/, 'someone charged today has no free trial to cancel during')
+  assert.match(card, /If you cancel during the free trial, you won\'t be charged\./)
+})
+
+test('offer codes (executed): the trial-ending notice states the discounted price to a member who has the code', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ss-ending-'))
+  const put = (name, src) => writeFileSync(join(dir, `${name}.mjs`), transpile(src))
+  put('pricing', read('src/lib/pricing.ts'))
+  put('offers', read('src/lib/offers.ts').replace("from '@/lib/pricing'", "from './pricing.mjs'"))
+  writeFileSync(join(dir, 'send.mjs'), 'export const sendEmail = async () => ({ sent: true }); export const wrapEmailHtml = (b, f) => b + f')
+  writeFileSync(join(dir, 'html.mjs'), 'export const escapeHtml = (x) => String(x)')
+  put('trial-emails', read('src/lib/email/trial-emails.ts').replace("from './send'", "from './send.mjs'").replace("from './html'", "from './html.mjs'").replace("from '@/lib/pricing'", "from './pricing.mjs'").replace("from '@/lib/offers'", "from './offers.mjs'"))
+  put('trial-notices', read('src/lib/trial-notices.ts').replace(/from '@\/lib\/email\/trial-emails'/, "from './trial-emails.mjs'"))
+  const { trialEndingLine } = await import(pathToFileURL(join(dir, 'trial-emails.mjs')).href)
+  const end = '2026-11-27T04:00:00Z'
+  assert.equal(
+    trialEndingLine(end, { hasPaymentMethod: true, cancelAtPeriodEnd: false }, 'America/Chicago', 50),
+    'Your free trial ends on Thursday, November 26. Your card will be charged $4.99 for your first paid month (50% off) on that day, then $9.99/month until you cancel.'
+  )
+  assert.equal(
+    trialEndingLine(end, { hasPaymentMethod: false, cancelAtPeriodEnd: false }, 'America/Chicago', 50),
+    'Your free trial ends on Thursday, November 26. No card is on file, so nothing will be charged and your membership will stop on that day. To keep going, sign in and use the "Add a card" button at the top of any page: $4.99 for your first paid month (50% off) when the trial ends, then $9.99/month.'
+  )
+  // The sender reads the percentage off the trial row and passes it through.
+  const src = read('src/lib/trial-notices.ts')
+  assert.match(src, /trialEndingLine\(t\.trial_end, state, await deps\.timezoneForUser\(t\.user_id\), pct && pct > 0 \? pct : null\)/)
 })

@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { captureAttribution, getAttribution } from '@/lib/attribution'
+import { captureOfferCode } from '@/lib/offers'
 import { getExistingVisitorId } from '@/lib/utils/widget-session'
 import { reduceGetSession, reduceAuthEvent } from '@/lib/auth/session-state'
 
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // usually long before they create an account. Idempotent; never overwrites
     // an existing first touch; fails silent if localStorage is unavailable.
     captureAttribution()
+    captureOfferCode()
 
     let cancelled = false
 

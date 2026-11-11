@@ -146,7 +146,10 @@ const nextConfig = {
     return [
       {
         source: '/tt',
-        destination: '/?utm_source=tiktok&utm_medium=bio&from=tt_ss',
+        // code=BAILEY (Nov 10 2026): Bailey's own link applies her offer without
+        // anyone typing it. src/lib/offers.ts remembers it; Stripe decides
+        // whether it is still open.
+        destination: '/?utm_source=tiktok&utm_medium=bio&from=tt_ss&code=BAILEY',
         permanent: false,
       },
       {
