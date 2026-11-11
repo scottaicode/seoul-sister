@@ -421,7 +421,7 @@ export async function POST(request: NextRequest) {
           // declined, also ends here, and "no card was on file" would be false.
           const { data: lapsed } = await supabase
             .from('ss_trial_starts')
-            .select('id')
+            .select('id, offer_code')
             .eq('stripe_subscription_id', subscription.id)
             .eq('card_required', false)
             .is('card_added_at', null)
@@ -431,7 +431,7 @@ export async function POST(request: NextRequest) {
           if ((lapsed ?? []).length > 0) {
             const lapsedEmail = await emailForUser(supabase, userId)
             if (lapsedEmail) {
-              const sent = await sendTrialEndedEmail(lapsedEmail)
+              const sent = await sendTrialEndedEmail(lapsedEmail, { offerCode: (lapsed?.[0] as { offer_code?: string | null } | undefined)?.offer_code ?? null })
               if (!sent.sent) console.error(`[stripe webhook] trial-ended email NOT sent to user ${userId}: ${sent.reason}`)
             } else {
               console.error(`[stripe webhook] no email for user ${userId}; trial-ended email not sent`)

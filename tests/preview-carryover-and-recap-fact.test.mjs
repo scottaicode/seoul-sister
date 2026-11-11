@@ -60,7 +60,10 @@ test('the block carries the transcript, consent/ownership, and the provenance li
     assert.match(b, /2026-10-17/)
     assert.match(b, /You are not meeting them for the first time/)
     assert.match(b, /None of it was copied into their profile/)
-    assert.match(b, /confirm what still holds rather than asking from scratch/)
+    assert.match(b, /so confirm what they told you there rather than asking from scratch\. A name you used in the preview is not one they gave unless they typed it\./)
+    assert.doesNotMatch(b, /still holds/, '"still holds" assumes time has passed')
+    assert.match(b, /The last preview message was on 2026-10-17 \(UTC date\); how long ago that is from each message is stated in Current State\./)
+    assert.doesNotMatch(b, /things may have changed/, 'with no elapsed time beside it, this made her treat a chat from minutes ago as a past visit')
     assert.doesNotMatch(b, /profile looks empty/, 'false on every turn after the first fields are captured')
     assert.match(b, /Advice you gave there is something you said, not something they have done\./)
   }
@@ -267,4 +270,37 @@ test('headings without named products, one half, or one item do not count (rejec
   assert.ok(!am('**AM**\n- Gentle Cleanser\n- Mineral Sunscreen\n\n**PM**\n- Gentle Cleanser\n- Barrier Cream\n'), 'capitalised category skeleton')
   assert.ok(!am('**Morning**\n- Vitamin C Serum\n- Mineral Sunscreen\n\n**Night**\n- Retinol Cream\n- Barrier Cream\n'), 'ingredient skeleton')
   assert.ok(!am('**Morning**\n- Do you use a Vitamin C Serum?\n- Any Mineral Sunscreen?\n\n**Night**\n- Retinol Cream?\n- Gentle Cleanser?\n'), 'capitalised question list')
+})
+
+test('executed: setup Yuri is told how long ago the preview chat ended, so minutes do not read as a past visit', () => {
+  const now = Date.parse('2026-11-11T05:55:00Z')
+  const f = (iso) => carry.previewAgeFact(iso, now)
+  assert.equal(f('2026-11-11T05:46:24Z'), 'Their free preview chat on the landing page ended about 9 minutes before now.')
+  assert.equal(f('2026-11-11T05:54:10Z'), 'Their free preview chat on the landing page ended about 1 minute before now.')
+  assert.equal(f('2026-11-11T05:54:50Z'), 'Their free preview chat on the landing page ended less than a minute before now.')
+  assert.equal(f('2026-11-11T05:56:00Z'), 'Their free preview chat on the landing page ended less than a minute before now.', 'a clock skew never reads as the future')
+  assert.equal(f('2026-11-11T04:26:00Z'), 'Their free preview chat on the landing page ended about 89 minutes before now.')
+  assert.equal(f('2026-11-11T00:55:00Z'), 'Their free preview chat on the landing page ended about 5 hours before now.')
+  assert.equal(f('2026-11-09T06:55:00Z'), 'Their free preview chat on the landing page ended about 47 hours before now.')
+  assert.equal(f('2026-10-28T05:55:00Z'), 'Their free preview chat on the landing page ended 14 days before now.')
+  for (const bad of [null, undefined, '', 'not a date']) assert.equal(f(bad), null)
+  // Boundaries: hours until 48h, then days, rounded to the nearest.
+  assert.equal(f('2026-11-09T06:24:00Z'), 'Their free preview chat on the landing page ended about 48 hours before now.', '47h31m')
+  assert.equal(f('2026-11-09T05:55:00Z'), 'Their free preview chat on the landing page ended 2 days before now.', 'exactly 48h')
+  assert.equal(f('2026-11-08T17:55:00Z'), 'Their free preview chat on the landing page ended 3 days before now.', '2.5 days rounds up')
+  assert.equal(f('2026-11-11T04:25:00Z'), 'Their free preview chat on the landing page ended about 2 hours before now.', '90 minutes is hours')
+  // It is per-turn state (uncached), given only when a preview was carried over.
+  const ob = readFileSync(join(root, 'src', 'lib', 'yuri', 'onboarding.ts'), 'utf8')
+  assert.match(ob, /offerFact,\n    previewAgeFact: carryover \? previewAgeFact\(carryover\.lastAt, Date\.now\(\)\) : null,\n  \}\)/, 'the last entry of the facts object: nothing after it can override it')
+  assert.match(ob, /if \(facts\?\.previewAgeFact\) statusLines\.push\(facts\.previewAgeFact\)/)
+  const cachedBlock = readFileSync(join(root, 'src', 'lib', 'yuri', 'widget-carryover.ts'), 'utf8')
+  const fn = cachedBlock.slice(cachedBlock.indexOf('export function carryoverBlock'), cachedBlock.indexOf('/** Load the carryover'))
+  assert.doesNotMatch(fn, /Date\.now|previewAgeFact\(/, 'the cached block must not change from turn to turn')
+  // Executed: the cached block is the same text whatever the clock says.
+  const c = { match: 'email', lastAt: '2026-11-11T05:46:24Z', messages: msgs }
+  const RealDate = Date
+  const at = (iso) => { globalThis.Date = class extends RealDate { constructor(...a) { super(...(a.length ? a : [iso])) } static now() { return RealDate.parse(iso) } } }
+  let first, later
+  try { at('2026-11-11T05:55:00Z'); first = carry.carryoverBlock(c); at('2026-12-25T00:00:00Z'); later = carry.carryoverBlock(c) } finally { globalThis.Date = RealDate }
+  assert.equal(first, later)
 })

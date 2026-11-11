@@ -70,6 +70,10 @@ export async function restoreFromResumeToken(token: string): Promise<ResumeResto
       return null
     }
 
+    // A link OPEN is countable in SQL, but an open is not a person: mail
+    // scanners load every link in an incoming email. The count of people who
+    // came back is `widget_resume_message_sent` (logged by the chat route when
+    // a message follows the reopen).
     // Email returns are countable in SQL. There is no column on
     // ss_widget_sessions that fits (source/landing_path are first-touch and
     // already set), so this is a zero-cost breadcrumb rather than a migration.

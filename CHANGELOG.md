@@ -4,6 +4,39 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.55.1 — Seven fixes from the first real trials (Nov 11 2026)
+
+- **Why.** The owner's two real sign-ups on Nov 10-11 showed these on screen.
+- **Changed.**
+  - Setup Yuri is told, per turn, how long ago the carried-over preview chat ended ("about 9 minutes
+    before now"). In both sign-ups she opened "Welcome back. Last time..." about a chat minutes old.
+    The cached carryover block no longer says "still holds" or "things may have changed".
+  - A member whose only conversation is a recent setup chat sees "You're in" and a line pointing at
+    the ready message, not "Welcome back" (`src/lib/yuri/welcome-variant.ts`). Unknown states show a
+    neutral "Hi". "Continue last thread" never offers the setup chat.
+  - The trial notice's height is published as a CSS variable and the Yuri chat page subtracts it, so
+    the notice is no longer pushed under the top bar and the message box is no longer clipped. The
+    setup header sits under the top bar.
+  - Membership page: "Once you're a member, we start by building your routine from it, morning and
+    night where you need both." It no longer promises a fixed format.
+  - A name is never taken from an email address: stated in the landing prompt, the recap email prompt,
+    the carryover block and the setup extractor. (Yuri called a visitor by the name in their address.)
+  - A message sent after reopening from a recap link is logged as `widget_resume_message_sent`. A
+    link open alone is not a return: a mail scanner opened the owner's link 37 seconds after it was sent.
+  - The trial-ended email tells someone who started with a code that it can be used again while it is
+    still accepted, and where.
+- **Review.** Opus 5.5: 12 findings on the first version, including a pointer line that could never
+  render, a failed count that brought "Welcome back" straight back, and a pinned notice that would have
+  covered the open mobile menu (it is now in the page flow). Applied. 9 of 10 wrong versions failed the
+  tests; the tenth was closed. 1,593 tests.
+- **Not verified.** The layout change has not been looked at on a screen: the notice shows only for an
+  account on a live trial. No visitor or member has run through any of this yet.
+- **Still open.** A landing reply cut mid-sentence (cause unknown, now logged); Yuri volunteering that
+  she cannot see a code's remaining uses; the catalog search missing oil-free gel moisturizers;
+  Dashboard "Climate: Not set yet" with a city on file; setup Yuri inventing "two months".
+
+---
+
 ## v11.55.0 — The free chat gives the diagnosis and the one change; the routine is built in the free week (Nov 11 2026)
 
 - **Why.** Owner decision after testing the live funnel on Nov 10: Yuri laid out a visitor's full AM/PM

@@ -1,7 +1,7 @@
 import { getAnthropicClient, MODELS, CHAT_EFFORT, callAnthropicWithRetry } from '@/lib/anthropic'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import { onboardingUsageRow } from '@/lib/yuri/onboarding-usage'
-import { carryoverBlock, type Carryover } from '@/lib/yuri/widget-carryover'
+import { carryoverBlock, previewAgeFact, type Carryover } from '@/lib/yuri/widget-carryover'
 import { withTrailingContext, markPenultimateAssistant } from '@/lib/llm-request'
 import { getServiceClient } from '@/lib/supabase'
 import { buildAttributionFields } from '@/lib/attribution'
@@ -109,7 +109,7 @@ If they are not a member yet, this conversation is the last time you will see th
 - Exception: medical or safety topics (allergies, medications, reactions) deserve thorough responses
 
 ## Opening
-If this is your first message, introduce yourself as Yuri and ask about their biggest skin frustration, unless a "Before they signed up" section shows you have already talked with them, in which case you are not meeting them: pick up from that conversation instead. Make it feel like meeting someone interesting -- not reading a script. Every opening should feel slightly different because YOU are responding to a unique person. Use your voice: casual, Korean terms with a quick English gloss, insider energy.
+If this is your first message, introduce yourself as Yuri and ask about their biggest skin frustration, unless a "Before they signed up" section shows you have already talked with them, in which case you are not meeting them: continue from that conversation instead. It may have ended only minutes ago; how long ago is stated in Current State. Make it feel like meeting someone interesting -- not reading a script. Every opening should feel slightly different because YOU are responding to a unique person. Use your voice: casual, Korean terms with a quick English gloss, insider energy.
 
 ## What You Need to Learn (Not a Questionnaire)
 You need to understand these aspects of their skin through natural conversation. DO NOT ask about them in order. DO NOT use scripted phrasing. Let the conversation flow -- if they mention living in Houston, you've got climate without asking. If they say "I'm 23 and my skin is a mess," you've got age_range and can probe concerns.
@@ -173,6 +173,8 @@ export interface OnboardingTurnFacts {
   userMessageNumber?: number
   /** A creator code this person holds, as Stripe describes it now (offers-server.ts). */
   offerFact?: string | null
+  /** How long ago their carried-over preview chat ended (widget-carryover.ts previewAgeFact). */
+  previewAgeFact?: string | null
   /** The cap itself, so the number has a denominator. */
   userMessageCap?: number
   /**
@@ -221,6 +223,7 @@ export function buildOnboardingTurnState(
     )
     if (facts.offerFact) statusLines.push(facts.offerFact)
   }
+  if (facts?.previewAgeFact) statusLines.push(facts.previewAgeFact)
   if (
     typeof facts?.userMessageNumber === 'number' &&
     typeof facts?.userMessageCap === 'number'
@@ -270,7 +273,7 @@ export async function extractSkinProfileData(
 Return a JSON object with ONLY the fields that have been explicitly mentioned. Omit any field where the data is unclear or not provided.
 
 Possible fields:
-- first_name: string, what the user wants to be called, ONLY if they volunteered it or signed off with it. Just the given name, properly capitalized ("Caroline", not "caroline" or "Caroline Smith"). NEVER infer a name from their email address, and never guess. If they didn't say it, omit it.
+- first_name: string, what the user wants to be called, ONLY if they volunteered it or signed off with it. Just the given name, properly capitalized ("Caroline", not "caroline" or "Caroline Smith"). NEVER infer a name from their email address, and never guess. A name only Yuri used, and the user never typed, is not volunteered. If they didn't say it, omit it.
 - skin_type: one of "oily", "dry", "combination", "normal", "sensitive"
 - skin_concerns: array of concerns (e.g., ["acne", "dark spots", "dullness"]). Normalize to lowercase.
 - age_range: one of "18-24", "25-30", "31-35", "36-40", "41-50", "50+"
@@ -829,6 +832,7 @@ export async function* streamOnboardingResponse(
     userMessageCap: ONBOARDING_USER_MESSAGE_CAP,
     cumulativeGive,
     offerFact,
+    previewAgeFact: carryover ? previewAgeFact(carryover.lastAt, Date.now()) : null,
   })
 
   // Build message history for Claude

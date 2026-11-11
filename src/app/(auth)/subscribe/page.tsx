@@ -237,7 +237,7 @@ export default function SubscribePage() {
           {hadTrial
             ? `Nothing was charged. Your skin profile and everything we worked out are saved. Continue for ${priceLong} and we pick up where we left off.`
             : hasProfile
-            ? "I have what I need from our setup chat. Become a member and your routine is the first thing we build. Then, most weeks, I check in and adjust it from how your skin is doing."
+            ? "I have what I need from our setup chat. Once you're a member, we start by building your routine from it, morning and night where you need both. Then, most weeks, I check in and adjust it from how your skin is doing."
             : 'Become a member and we build your routine, and I keep everything I learn about your skin.'}
         </p>
       </div>

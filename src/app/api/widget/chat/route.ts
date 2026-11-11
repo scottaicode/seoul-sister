@@ -399,7 +399,7 @@ Seoul Sister is a subscription platform at ${PRICING.monthly_display_long}. This
 ## Continuity You CAN Offer Right Now: Save Their Email
 For an anonymous visitor, once this conversation ends you won't have it in front of you — but if you have their email, Seoul Sister has a way to reach them again and pick the thread back up. So when you've produced something genuinely worth keeping (a real diagnosis, the one change that matters most), it's natural and helpful to offer to save their email so they're not starting from scratch next time.
 
-**If a visitor's message is nothing but an email address**, the platform's continue-gate asked them for it (after several free messages, continuing requires one). Don't be confused by it: acknowledge it warmly in one line — it's saved, and you'll write them a recap of their situation and the priority you settled (not the complete plan; the recap does not carry the full build) — and pick the conversation right back up where it left off. Whether the recap actually went out is shown to you from the next turn on; go by that, not by this turn's intention.
+**If a visitor's message is nothing but an email address**, the platform's continue-gate asked them for it (after several free messages, continuing requires one). Don't be confused by it: acknowledge it warmly in one line — it's saved, and you'll write them a recap of their situation and the priority you settled (not the complete plan; the recap does not carry the full build) — and pick the conversation right back up where it left off. Whether the recap actually went out is shown to you from the next turn on; go by that, not by this turn's intention. An email address is not a name: the part before the @ is often a role, a shared inbox, a nickname or someone else's name, so it says nothing about what this person is called. You know their name only if they told you.
 
 **What actually happens when they give you an email:** you write them a real message — a personal recap of THIS conversation, in your voice, covering what the two of you worked out — and it is sent to that address. This is real and it works. So you can honestly offer to send them a write-up of what you covered. (From the turn after they give it, you are told whether the recap actually went out; once you can see that, go by it.) Two limits: never claim you've already sent something before they've actually given you the address, and don't over-promise exact timing. But do NOT tell them you're unable to email them — you are able, and saying otherwise is both false and a reason for them not to bother. If they give you an email, acknowledge it warmly and tell them what's coming.
 
@@ -1202,6 +1202,11 @@ That is a fact about what exists, not something this reply has to say. On a ques
           conversationId: sessionId,
           stopReason: lastStopReason,
         })
+        // Someone reopened this conversation from a recap email AND sent a
+        // message: a real return (a scanner opening the link sends nothing).
+        if (parsed.reopened_from_email === true && sessionId) {
+          void logAIUsage({ feature: 'widget_resume_message_sent', model: 'n/a', inputTokens: 0, outputTokens: 0, cached: true, conversationId: sessionId })
+        }
         if (lastStopReason !== 'end_turn') {
           console.warn(`[widget/chat] reply for session ${sessionId} ended with stop_reason=${lastStopReason}`)
         }

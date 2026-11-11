@@ -58,6 +58,29 @@ export interface Carryover {
   messages: Array<{ role: 'user' | 'assistant'; content: string }>
 }
 
+/**
+ * How long ago the preview chat ended, as one sentence for setup Yuri's
+ * per-turn state (Nov 11 2026). The block below is cached and names only a
+ * date, so she could not tell minutes from months: in both of the first real
+ * sign-ups she opened with "Welcome back. Last time..." and asked whether the
+ * visitor had tried her advice yet, about a chat that had ended minutes
+ * earlier. Null when the time is unusable. Pure.
+ */
+export function previewAgeFact(lastAt: string | null | undefined, nowMs: number): string | null {
+  const then = lastAt ? Date.parse(lastAt) : NaN
+  if (Number.isNaN(then)) return null
+  const minutes = Math.max(0, Math.round((nowMs - then) / 60000))
+  const span =
+    minutes < 1
+      ? 'less than a minute'
+      : minutes < 90
+        ? `about ${minutes} minute${minutes === 1 ? '' : 's'}`
+        : minutes < 48 * 60
+          ? `about ${Math.round(minutes / 60)} hours`
+          : `${Math.round(minutes / (60 * 24))} days`
+  return `Their free preview chat on the landing page ended ${span} before now.`
+}
+
 /** The fact block onboarding Yuri reads. Facts only; what to do with them is hers. */
 export function carryoverBlock(c: Carryover): string {
   const lines = c.messages.map((m) => `${m.role === 'user' ? 'Them' : 'You'}: ${m.content}`)
@@ -65,7 +88,7 @@ export function carryoverBlock(c: Carryover): string {
     c.match === 'email'
       ? 'the email they gave there is the one on this account'
       : 'they confirmed when they signed up that it was theirs'
-  const lead = `This person already talked with you in the free preview on Seoul Sister's landing page before creating their account; ${whose}. The last preview message was on ${c.lastAt.slice(0, 10)}. You are not meeting them for the first time. None of it was copied into their profile: what they confirm with you here is what gets saved, so confirm what still holds rather than asking from scratch, since things may have changed.`
+  const lead = `This person already talked with you in the free preview on Seoul Sister's landing page before creating their account; ${whose}. The last preview message was on ${c.lastAt.slice(0, 10)} (UTC date); how long ago that is from each message is stated in Current State. You are not meeting them for the first time. None of it was copied into their profile: what they confirm with you here is what gets saved, so confirm what they told you there rather than asking from scratch. A name you used in the preview is not one they gave unless they typed it.`
   return `## Before they signed up
 
 ${lead} Advice you gave there is something you said, not something they have done.

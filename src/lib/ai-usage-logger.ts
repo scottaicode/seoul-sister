@@ -53,6 +53,11 @@ export type AIFeature =
   | 'widget_email_captured'
   // Nov 7 2026 — a visitor reopened a conversation from an email resume link (zero-cost breadcrumb)
   | 'widget_resume_link_opened'
+  // Nov 11 2026: a message was actually SENT after reopening from a recap
+  // link. This is the count of people who came back. `widget_resume_link_opened`
+  // also fires for mail scanners that open every link (one opened the owner's
+  // recap link 37 seconds after it was sent).
+  | 'widget_resume_message_sent'
   | 'widget_crisis_lookup_failed'
   // v10.13.3 — Yuri judged a captured email should NOT receive a follow-up
   // (third-party address, no consent intent, thin conversation). Zero-cost

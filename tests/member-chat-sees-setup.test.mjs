@@ -259,3 +259,9 @@ test('the landing chat records why a reply stopped and which conversation it was
   assert.match(read('src', 'lib', 'ai-usage-logger.ts'), /\.\.\.\(params\.stopReason !== undefined \? \{ stop_reason: params\.stopReason \} : \{\}\),/)
   assert.match(read('supabase', 'migrations', '20261111000001_ai_usage_stop_reason.sql'), /ADD COLUMN IF NOT EXISTS stop_reason text/)
 })
+
+test('a real return from a recap link is recorded apart from a link open', () => {
+  const route = read('src', 'app', 'api', 'widget', 'chat', 'route.ts')
+  assert.match(route, /if \(parsed\.reopened_from_email === true && sessionId\) \{\s*void logAIUsage\(\{ feature: 'widget_resume_message_sent', model: 'n\/a', inputTokens: 0, outputTokens: 0, cached: true, conversationId: sessionId \}\)/)
+  assert.match(read('src', 'lib', 'ai-usage-logger.ts'), /\| 'widget_resume_message_sent'\n/)
+})

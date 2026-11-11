@@ -494,7 +494,8 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen bg-seoul-darker flex flex-col">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-seoul-card/90 backdrop-blur-md border-b border-white/10 px-4 py-3">
+      {/* top-16: sits under the app's 64px top bar. At top-0 it slid beneath it. */}
+      <div className="sticky top-16 z-10 bg-seoul-card/90 backdrop-blur-md border-b border-white/10 px-4 py-3">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center shadow-glow-gold">

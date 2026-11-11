@@ -1,3 +1,4 @@
+import { isRecentSetup } from '@/lib/yuri/welcome-variant'
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase, getServiceClient } from '@/lib/supabase'
 import { AppError, handleApiError } from '@/lib/utils/error-handler'
@@ -73,15 +74,34 @@ export async function GET(request: NextRequest) {
     }
 
     // Parallel: total count + most-recent conversation id + recent decision_memory rows + profile existence
-    const [countRes, lastConvRes, recentRes, profileRes] = await Promise.all([
+    const [countRes, memberCountRes, setupRes, lastConvRes, recentRes, profileRes] = await Promise.all([
       db
         .from('ss_yuri_conversations')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user.id),
+      // Conversations other than setup. A brand-new member has only the setup
+      // chat, and was greeted "Welcome back" seconds after joining (Nov 11 2026).
+      db
+        .from('ss_yuri_conversations')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .or('conversation_type.is.null,conversation_type.neq.onboarding'),
+      // When the setup chat was last active: "just joined" is only true if it was recent.
+      db
+        .from('ss_yuri_conversations')
+        .select('updated_at')
+        .eq('user_id', user.id)
+        .eq('conversation_type', 'onboarding')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      // The thread to continue is never the setup chat: sending from it would
+      // put member messages into the setup conversation.
       db
         .from('ss_yuri_conversations')
         .select('id, title, updated_at')
         .eq('user_id', user.id)
+        .or('conversation_type.is.null,conversation_type.neq.onboarding')
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
@@ -99,6 +119,16 @@ export async function GET(request: NextRequest) {
     ])
 
     const totalConversations = countRes.count ?? 0
+    // null = the count could not be read: the page then makes no "first time" claim.
+    if (memberCountRes.error) console.error('[welcome-context] member conversation count failed:', memberCountRes.error.message)
+    const memberConversations = memberCountRes.error ? null : (memberCountRes.count ?? 0)
+    if (setupRes.error) console.error('[welcome-context] setup conversation read failed:', setupRes.error.message)
+    const newMember =
+      memberConversations === 0 && !setupRes.error
+        ? isRecentSetup((setupRes.data?.updated_at as string | undefined) ?? null, Date.now())
+        : memberConversations === null
+          ? null
+          : false
     const hasProfile = (profileRes.count ?? 0) > 0
     const lastConversationId =
       (lastConvRes.data?.id as string | undefined) ?? null
@@ -134,6 +164,8 @@ export async function GET(request: NextRequest) {
       first_name: firstName,
       active_phase: activePhase,
       total_conversations: totalConversations,
+      member_conversations: memberConversations,
+      new_member: newMember,
       has_profile: hasProfile,
       last_conversation_id: lastConversationId,
       last_conversation_title: lastConversationTitle,

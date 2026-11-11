@@ -390,7 +390,7 @@ test('final message, under-13 and specialist facts match the new path', () => {
 })
 
 const GATE_FINGERPRINT = '2fd840415bd523d0521dd9d444c099d1fa779180acfcb597c265c93ce7859b1a'
-const WIDGET_PROMPT_FINGERPRINT = '4a01c0d290c27cb42951a2465c3644e21487730302073b418d182892552ae6c0'
+const WIDGET_PROMPT_FINGERPRINT = '0516c168597c7f65bb2cc909758faeddd511a6d66571c59d90aaef6ef341c599'
 const SUBSCRIBER_BLOCK_FINGERPRINT = '4f6d5a533385b129bdaba88d928e8cd0b919309f7c6220459709204a2403c974'
 
 /** The five gate paragraphs of the widget prompt, as one string. */

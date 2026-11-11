@@ -1,5 +1,6 @@
 'use client'
 
+import { welcomeVariant } from '@/lib/yuri/welcome-variant'
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
@@ -48,6 +49,10 @@ export default function YuriPage() {
     first_name: string | null
     active_phase: string | null
     total_conversations: number
+    /** Conversations other than setup. 0 = this is their first chat as a member. null = unknown. */
+    member_conversations?: number | null
+    /** Only a recent setup chat and no member chat yet. */
+    new_member?: boolean | null
     has_profile: boolean
     last_conversation_id: string | null
     last_conversation_title: string | null
@@ -66,6 +71,10 @@ export default function YuriPage() {
   const askParam = searchParams?.get('ask') || null
   const [askConsumed, setAskConsumed] = useState(false)
   const pendingAsk = !askConsumed && askParam ? askParam : null
+  // Whether they ARRIVED with a ready message. `pendingAsk` goes null as soon as
+  // the input box takes the text, which is before the greeting data arrives.
+  const [arrivedWithAsk] = useState(() => Boolean(askParam))
+  const variant = welcomeVariant(welcomeContext)
 
   // Fetch usage status
   useEffect(() => {
@@ -161,7 +170,7 @@ export default function YuriPage() {
   const hasMessages = messages.length > 0
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px-5rem)] md:h-[calc(100vh-64px)] relative">
+    <div className="flex flex-col h-[calc(100vh-64px-5rem-var(--trial-notice-h,0px))] md:h-[calc(100vh-64px-var(--trial-notice-h,0px))] supports-[height:100dvh]:h-[calc(100dvh-64px-5rem-var(--trial-notice-h,0px))] md:supports-[height:100dvh]:h-[calc(100dvh-64px-var(--trial-notice-h,0px))] relative">
       {/* Conversation history sidebar (mobile overlay) */}
       {showHistory && (
         <div className="absolute inset-0 z-30">
@@ -282,7 +291,27 @@ export default function YuriPage() {
                 <Sparkles className="w-7 h-7 text-seoul-dark" strokeWidth={1.75} />
               </div>
               <div className="text-center">
-                {welcomeContext && welcomeContext.total_conversations > 0 ? (
+                {variant === 'first_member_chat' ? (
+                  /* First chat as a member: they have only done setup. Not "Welcome back". */
+                  <>
+                    <h2 className="font-display font-bold text-xl text-white">
+                      {welcomeContext?.first_name ? `You're in, ${welcomeContext.first_name}` : "You're in"}
+                    </h2>
+                    <p className="text-sm text-white/60 mt-1 max-w-sm">
+                      {arrivedWithAsk
+                        ? 'Your first message is in the box below. Send it, or change it, and we start on your routine from what you told me in setup.'
+                        : 'I have what you told me in setup. Ask me to build your routine, or anything else.'}
+                    </p>
+                  </>
+                ) : variant === 'neutral' ? (
+                  /* Not known to be new or returning: claim neither. */
+                  <>
+                    <h2 className="font-display font-bold text-xl text-white">
+                      {welcomeContext?.first_name ? `Hi, ${welcomeContext.first_name}` : 'Hi'}
+                    </h2>
+                    <p className="text-sm text-white/40 mt-1 max-w-xs">Ready when you are.</p>
+                  </>
+                ) : variant === 'returning' && welcomeContext ? (
                   <>
                     <h2 className="font-display font-bold text-xl text-white">
                       {welcomeContext.first_name

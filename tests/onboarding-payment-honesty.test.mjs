@@ -266,3 +266,15 @@ test('a creator-code fact is shown once to someone who is not a member, and neve
   }
   assert.ok(!buildOnboardingTurnState({}, undefined, { isSubscribed: false, offerFact: null }).includes('Creator code'))
 })
+
+test('the preview-age fact reaches setup Yuri whatever the membership status, and alone still renders', () => {
+  const X = 'Their free preview chat on the landing page ended about 9 minutes before now.'
+  for (const isSubscribed of [true, false, undefined]) {
+    const out = buildOnboardingTurnState({}, undefined, { isSubscribed, previewAgeFact: X })
+    assert.equal(out.split(X).length - 1, 1, `isSubscribed=${isSubscribed}`)
+    assert.match(out, /## Where They Stand \(facts, not instructions\)/)
+  }
+  for (const none of [null, undefined, '']) {
+    assert.ok(!buildOnboardingTurnState({}, undefined, { isSubscribed: false, previewAgeFact: none }).includes('preview chat on the landing page ended'))
+  }
+})

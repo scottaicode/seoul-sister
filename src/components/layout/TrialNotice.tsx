@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { chargePhrase, addCardPhrase } from '@/lib/offers'
 
@@ -24,6 +24,9 @@ interface TrialFacts {
  * it: each state makes a different promise, and "unknown" must never read as
  * either "a card is on file" or "no card is on file".
  */
+/** CSS variable holding the notice's rendered height (unset when no notice shows). */
+export const TRIAL_NOTICE_HEIGHT_VAR = '--trial-notice-h'
+
 export type TrialNoticeState = 'none' | 'cancelled' | 'card_on_file' | 'card_just_saved' | 'no_card' | 'unknown_card'
 
 export function trialNoticeState(trial: TrialFacts['trial'], justSaved: boolean): TrialNoticeState {
@@ -75,6 +78,27 @@ export default function TrialNotice() {
   }, [])
 
   const state = trialNoticeState(facts, justSaved)
+
+  // The notice's height, published for pages that fill the window (the Yuri
+  // chat). Without it that page was one notice too tall: the notice slid under
+  // the top bar and the message box was clipped (first real trial, Nov 11 2026).
+  const shellRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const root = document.documentElement
+    const el = shellRef.current
+    if (!el) {
+      root.style.removeProperty(TRIAL_NOTICE_HEIGHT_VAR)
+      return
+    }
+    const publish = () => root.style.setProperty(TRIAL_NOTICE_HEIGHT_VAR, `${el.offsetHeight}px`)
+    publish()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(publish)
+    observer?.observe(el)
+    return () => {
+      observer?.disconnect()
+      root.style.removeProperty(TRIAL_NOTICE_HEIGHT_VAR)
+    }
+  }, [state])
   if (state === 'none' || !facts) return null
 
   const ends = facts.ends_at ? new Date(facts.ends_at) : null
@@ -102,18 +126,21 @@ export default function TrialNotice() {
     }
   }
 
+  // In the page flow, not sticky: pinned on every page it covered the open
+  // mobile menu and sat on the setup header. Pages that fill the window (the
+  // Yuri chat) subtract its height instead, so it stays on screen there.
   const shell = 'bg-gold/5 border-b border-gold/20 px-4 py-2 text-center text-xs text-white/70'
 
   if (state === 'cancelled') {
     return (
-      <div className={shell} role="status">
+      <div ref={shellRef} className={shell} role="status">
         You cancelled. Your free trial runs until it ends {until}, and nothing will be charged.
       </div>
     )
   }
   if (state === 'card_on_file') {
     return (
-      <div className={shell} role="status">
+      <div ref={shellRef} className={shell} role="status">
         {justSaved ? 'Your card is saved. ' : ''}
         Your free trial ends {until}. Your card will be charged {chargePhrase(pct, 'on that day,')}.
       </div>
@@ -121,14 +148,14 @@ export default function TrialNotice() {
   }
   if (state === 'card_just_saved') {
     return (
-      <div className={shell} role="status">
+      <div ref={shellRef} className={shell} role="status">
         Your card was received. It can take a minute to show here. Your free trial ends {until}.
       </div>
     )
   }
 
   return (
-    <div className={shell} role="status">
+    <div ref={shellRef} className={shell} role="status">
       <span>
         Your free trial ends {until}.{' '}
         {state === 'no_card'

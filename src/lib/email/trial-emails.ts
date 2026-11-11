@@ -2,7 +2,7 @@ import { sendEmail, wrapEmailHtml } from './send'
 import { escapeHtml } from './html'
 import { PRICING } from '@/lib/pricing'
 import { validTimeZone } from './timezone'
-import { chargePhrase, addCardPhrase } from '@/lib/offers'
+import { chargePhrase, addCardPhrase, normalizeOfferCode } from '@/lib/offers'
 
 /**
  * Sent when a free trial ends with nothing paid (Nov 10 2026). Until now the
@@ -10,20 +10,26 @@ import { chargePhrase, addCardPhrase } from '@/lib/offers'
  * factual, fixed wording: nothing was charged, what is kept, how to continue.
  * No urgency and no offer; it states what is true.
  */
-export function buildTrialEndedEmail(): { subject: string; html: string } {
+export function buildTrialEndedEmail(opts: { offerCode?: string | null } = {}): { subject: string; html: string } {
   const price = escapeHtml(PRICING.monthly_display_long)
+  // Someone who started with a creator code is told the plain fact that it can
+  // be used again, and where. Nothing about how long it lasts: that is not known.
+  const code = normalizeOfferCode(opts.offerCode)
+  const codeLine = code
+    ? ` You started your trial with code ${escapeHtml(code)}. It can be used again there while it is still accepted: it is applied by itself in the browser you signed up in, and on another device you can type it on the payment page.`
+    : ''
   const html = wrapEmailHtml(
     `<p>Your ${PRICING.trial_days}-day free trial of Seoul Sister has ended.</p>
 <p><strong>Nothing was charged</strong>, and nothing will be: no card was on file.</p>
 <p>Your account, your skin profile and everything you worked out with Yuri are saved.</p>
-<p>If you would like to keep going, membership is ${price}. You can start it any time at <a href="https://www.seoulsister.com/subscribe">seoulsister.com/subscribe</a>, and Yuri picks up from where you left off. If not, there is nothing you need to do.</p>`,
+<p>If you would like to keep going, membership is ${price}. You can start it any time at <a href="https://www.seoulsister.com/subscribe">seoulsister.com/subscribe</a>, and Yuri picks up from where you left off.${codeLine} If not, there is nothing you need to do.</p>`,
     `<p style="font-size:12px;color:#999;margin:0;">You're receiving this because you started a free trial at seoulsister.com. Yuri is Seoul Sister's AI K-beauty advisor.</p>`
   )
   return { subject: 'Your Seoul Sister free trial has ended (nothing was charged)', html }
 }
 
-export async function sendTrialEndedEmail(to: string): Promise<{ sent: boolean; reason?: string }> {
-  const { subject, html } = buildTrialEndedEmail()
+export async function sendTrialEndedEmail(to: string, opts: { offerCode?: string | null } = {}): Promise<{ sent: boolean; reason?: string }> {
+  const { subject, html } = buildTrialEndedEmail(opts)
   const result = await sendEmail(to, subject, html)
   return result.sent
     ? { sent: true }

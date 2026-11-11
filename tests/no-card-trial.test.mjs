@@ -575,7 +575,8 @@ test('emails never promise a charge to a card that does not exist, and a lapsed 
   // The email body only (the file's comment describes what it avoids).
   const endedBody = ended.slice(ended.indexOf('const html = wrapEmailHtml('), ended.indexOf('return { subject'))
   assert.doesNotMatch(endedBody, /\b(hurry|last chance|don't lose|before it's too late|offer|discount)\b/i, 'it states what is true; it does not push')
-  assert.match(webhook, /await sendTrialEndedEmail\(lapsedEmail\)/)
+  assert.match(webhook, /await sendTrialEndedEmail\(lapsedEmail, \{ offerCode: \(lapsed\?\.\[0\] as \{ offer_code\?: string \| null \} \| undefined\)\?\.offer_code \?\? null \}\)/)
+  assert.match(lapseQuery, /\.select\('id, offer_code'\)/)
 })
 
 test('deleting an account cancels its Stripe subscription first', () => {
@@ -880,6 +881,13 @@ test('offer codes (executed): the trial-ending notice states the discounted pric
     trialEndingLine(end, { hasPaymentMethod: false, cancelAtPeriodEnd: false }, 'America/Chicago', 50),
     'Your free trial ends on Thursday, November 26. No card is on file, so nothing will be charged and your membership will stop on that day. To keep going, sign in and use the "Add a card" button at the top of any page: $4.99 for your first paid month (50% off) when the trial ends, then $9.99/month.'
   )
+  // The trial-ended email: unchanged without a code; with one, it says the code can be used again and where.
+  const { buildTrialEndedEmail } = await import(pathToFileURL(join(dir, 'trial-emails.mjs')).href)
+  const KEEP = 'If you would like to keep going, membership is $9.99/month. You can start it any time at <a href="https://www.seoulsister.com/subscribe">seoulsister.com/subscribe</a>, and Yuri picks up from where you left off.'
+  for (const none of [undefined, {}, { offerCode: null }, { offerCode: '' }, { offerCode: '<b>x</b>' }]) {
+    assert.ok(buildTrialEndedEmail(none).html.includes(`${KEEP} If not, there is nothing you need to do.</p>`), JSON.stringify(none))
+  }
+  assert.ok(buildTrialEndedEmail({ offerCode: 'bailey' }).html.includes(`${KEEP} You started your trial with code BAILEY. It can be used again there while it is still accepted: it is applied by itself in the browser you signed up in, and on another device you can type it on the payment page. If not, there is nothing you need to do.</p>`))
   // A stored zone the runtime does not know is treated as unknown, never a thrown error inside a notice.
   assert.equal(trialEndingLine(end, null, 'Mars/Olympus'), 'Your free trial ends on Friday, November 27 (UTC).')
   // The sender reads the percentage off the trial row and passes it through.
@@ -954,7 +962,7 @@ test('offer codes: the fact reaches both chats in the per-turn block, never the 
   assert.match(read('src/app/(app)/onboarding/page.tsx'), /\.\.\.\(getOfferCode\(\) \? \{ offer_code: getOfferCode\(\) \} : \{\}\),/)
   const lib = read('src/lib/yuri/onboarding.ts')
   assert.match(lib, /Nothing has been paid\.`\n    \)\n    if \(facts\.offerFact\) statusLines\.push\(facts\.offerFact\)\n  \}/, 'only for someone who is not a member yet')
-  assert.match(lib, /cumulativeGive,\n    offerFact,\n  \}\)/)
+  assert.match(lib, /cumulativeGive,\n    offerFact,\n    previewAgeFact: /)
   // Injected exactly once in the widget, with nothing added around it, and the
   // browser's value reaches the lookup unchanged on both routes.
   assert.equal((route.match(/offerFact/g) ?? []).length, 5, 'the import, one lookup, and one template expression (two mentions); nothing else')
