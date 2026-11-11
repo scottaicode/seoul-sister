@@ -17,6 +17,7 @@ import {
   ONBOARDING_USER_MESSAGE_CAP,
 } from '@/lib/yuri/onboarding'
 import { cleanYuriResponse } from '@/lib/yuri/voice-cleanup'
+import { offerFactLine } from '@/lib/offers-server'
 import type { ExtractedSkinProfile } from '@/types/database'
 
 // ---------------------------------------------------------------------------
@@ -34,6 +35,8 @@ const sendMessageSchema = z.object({
   action: z.literal('send_message'),
   message: z.string().min(1).max(10000),
   widget_visitor_id: widgetVisitorId,
+  // A creator code remembered by the browser. Never trusted: Stripe is asked.
+  offer_code: z.string().max(40).optional().nullable(),
 })
 
 const startSchema = z.object({
@@ -298,7 +301,8 @@ export async function POST(request: NextRequest) {
               parsed.message,
               history,
               progress,
-              carryover
+              carryover,
+              await offerFactLine(parsed.offer_code)
             )
 
             for await (const chunk of generator) {

@@ -207,3 +207,24 @@ export function priceWithOffer(percentOff: number | null | undefined): string {
  * is charged, and Stripe shows that amount on the same page.
  */
 export const CODE_BOX_NOTE = 'If you enter a promotion code on this page, the discounted price shown on this page is what is charged instead.'
+
+/**
+ * What Yuri is told when the visitor in front of her has a creator code
+ * (widget and setup chat, per-turn facts). Without it she would quote the full
+ * price to someone the page has just told a code was saved, or say no code
+ * exists. Facts only. It says where the code applies by itself and where it
+ * must be typed (the code lives in one browser's storage), and it reconciles
+ * the two prices she would otherwise hold for one person.
+ */
+export function offerFactForYuri(
+  offer: { state: 'active'; code: string; percentOff: number } | { state: 'ended'; code: string } | { state: 'unchecked' }
+): string {
+  const full = PRICING.monthly_display_long
+  if (offer.state === 'unchecked') {
+    return `Creator code: this visitor's browser holds a creator code that could not be checked just now, so whether it applies is not visible to you.`
+  }
+  if (offer.state === 'ended') {
+    return `Creator code: this visitor arrived with the code ${offer.code}, and it is no longer accepted, so membership for them is ${full}.`
+  }
+  return `Creator code: this visitor has the code ${offer.code} saved in this browser. For someone who is not yet a member, it takes ${validPercent(offer.percentOff)}% off the first paid month: ${firstMonthPrice(offer.percentOff)} instead of ${full.replace('/month', '')}. Every month after that is ${full}, so where anything else here says ${full}, for this person that begins with the second paid month. If they start membership in this same browser the code is applied for them; on another device or browser they can type it on the payment page. The free trial is the same with or without it. How many times the code can still be used is not visible to you. It matters only if price or the code comes up.`
+}

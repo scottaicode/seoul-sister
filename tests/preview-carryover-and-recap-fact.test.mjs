@@ -167,7 +167,7 @@ test('onboarding: the preview is context only, never extracted (rejects: seeding
   const route = read('src/app/api/yuri/onboarding/route.ts')
   assert.equal((route.match(/const carryover = await loadWidgetCarryover\(getServiceClient\(\), parsed\.widget_visitor_id, user\)/g) || []).length, 2)
   assert.match(route, /'__ONBOARDING_START__',\s*\[\],\s*progress,\s*carryover\s*\)/)
-  assert.match(route, /parsed\.message,\s*history,\s*progress,\s*carryover\s*\)/)
+  assert.match(route, /parsed\.message,\s*history,\s*progress,\s*carryover,\s*await offerFactLine\(parsed\.offer_code\)\s*\)/)
   assert.doesNotMatch(route, /extractAndUpdate\(user\.id, carryover/)
   assert.doesNotMatch(route, /carryover(?:\?)?\.messages/, 'the transcript must not reach extraction')
   assert.doesNotMatch(route, /widget_visitor_id:[^\n]*\.uuid\(\)/, 'a malformed stored id must not fail onboarding')

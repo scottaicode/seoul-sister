@@ -867,3 +867,82 @@ test('offer codes (executed): the trial-ending notice states the discounted pric
   const src = read('src/lib/trial-notices.ts')
   assert.match(src, /trialEndingLine\(t\.trial_end, state, await deps\.timezoneForUser\(t\.user_id\), pct && pct > 0 \? pct : null\)/)
 })
+
+// ---------------------------------------------------------------------------
+// Yuri is told about a visitor's code as a FACT (both chat surfaces).
+// ---------------------------------------------------------------------------
+const YURI_ACTIVE = 'Creator code: this visitor has the code BAILEY saved in this browser. For someone who is not yet a member, it takes 50% off the first paid month: $4.99 instead of $9.99. Every month after that is $9.99/month, so where anything else here says $9.99/month, for this person that begins with the second paid month. If they start membership in this same browser the code is applied for them; on another device or browser they can type it on the payment page. The free trial is the same with or without it. How many times the code can still be used is not visible to you. It matters only if price or the code comes up.'
+const YURI_ENDED = 'Creator code: this visitor arrived with the code BAILEY, and it is no longer accepted, so membership for them is $9.99/month.'
+const YURI_UNCHECKED = "Creator code: this visitor's browser holds a creator code that could not be checked just now, so whether it applies is not visible to you."
+
+test('offer codes (executed): what Yuri is told about a code is these exact sentences and nothing else', async () => {
+  const m = await loadModules()
+  try {
+    // Pinned whole: any added sentence (a deadline, a count, a nudge to sell) fails here.
+    assert.equal(m.offers.offerFactForYuri({ state: 'active', code: 'BAILEY', percentOff: 50 }), YURI_ACTIVE)
+    assert.equal(m.offers.offerFactForYuri({ state: 'ended', code: 'BAILEY' }), YURI_ENDED)
+    assert.equal(m.offers.offerFactForYuri({ state: 'unchecked' }), YURI_UNCHECKED)
+  } finally { m.restore() }
+})
+
+test('offer codes (executed): Yuri is told only what Stripe confirmed; when it cannot be asked she is told exactly that, and the turn does not wait', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ss-fact-'))
+  const put = (name, src) => writeFileSync(join(dir, `${name}.mjs`), transpile(src))
+  put('pricing', read('src/lib/pricing.ts'))
+  put('offers', read('src/lib/offers.ts').replace("from '@/lib/pricing'", "from './pricing.mjs'"))
+  writeFileSync(join(dir, 'stripe.mjs'), `export const getStripeClient = () => ({ promotionCodes: { list: async () => { globalThis.__factCalls = (globalThis.__factCalls ?? 0) + 1; if (globalThis.__factPromo === 'THROW') throw new Error('stripe down'); if (globalThis.__factPromo === 'HANG') await new Promise((r) => setTimeout(r, 4000)); return { data: globalThis.__factPromo ? [globalThis.__factPromo] : [] } } } })`)
+  put('offers-server', read('src/lib/offers-server.ts').replace("from '@/lib/stripe'", "from './stripe.mjs'").replace("from '@/lib/offers'", "from './offers.mjs'"))
+  const { offerFactLine } = await import(pathToFileURL(join(dir, 'offers-server.mjs')).href)
+  const promo = (over = {}) => ({ id: 'promo_1', active: true, metadata: creator, coupon: coupon(), ...over })
+  const t0 = 1_000_000
+
+  globalThis.__factCalls = 0
+  assert.equal(await offerFactLine(null), null)
+  assert.equal(await offerFactLine('<script>'), null)
+  assert.equal(globalThis.__factCalls, 0, 'no code, no Stripe call')
+
+  // Stripe down: she is told only that the code could not be checked. That is
+  // remembered for one minute, then Stripe is asked again.
+  globalThis.__factPromo = 'THROW'
+  assert.equal(await offerFactLine('BAILEY', t0 - 10 * 60 * 1000), YURI_UNCHECKED)
+  globalThis.__factPromo = promo()
+  assert.equal(await offerFactLine('BAILEY', t0 - 10 * 60 * 1000 + 30 * 1000), YURI_UNCHECKED)
+  assert.equal(await offerFactLine('bailey', t0), YURI_ACTIVE)
+  // Stripe slow: the chat turn gets an answer in about 1.5 seconds, not Stripe's 80.
+  globalThis.__factPromo = 'HANG'
+  const started = Date.now()
+  assert.equal(await offerFactLine('SLOWCODE', t0), YURI_UNCHECKED)
+  assert.ok(Date.now() - started < 2500, 'must not wait on Stripe')
+  globalThis.__factPromo = promo()
+  // Kept for five minutes, then asked again.
+  const before = globalThis.__factCalls
+  globalThis.__factPromo = promo({ active: false })
+  assert.equal(await offerFactLine('BAILEY', t0 + 4 * 60 * 1000), YURI_ACTIVE)
+  assert.equal(globalThis.__factCalls, before)
+  assert.equal(await offerFactLine('BAILEY', t0 + 6 * 60 * 1000), YURI_ENDED)
+  // A private code, or no such code: nothing at all.
+  globalThis.__factPromo = promo({ metadata: {} })
+  assert.equal(await offerFactLine('ANNKOREA', t0), null)
+  globalThis.__factPromo = null
+  assert.equal(await offerFactLine('NOPE', t0), null)
+})
+
+test('offer codes: the fact reaches both chats in the per-turn block, never the cached prompt', () => {
+  const route = read('src/app/api/widget/chat/route.ts')
+  assert.match(route, /const offerFact = await offerFactLine\(parsed\.offer_code\)/)
+  assert.match(route, /\$\{visitorCountryFact\([^\n]*\)\}\$\{offerFact \? `\\n- \$\{offerFact\}` : ''\}\n- Continuity in this browser/)
+  assert.match(read('src/components/widget/TryYuriSection.tsx'), /\.\.\.\(getOfferCode\(\) \? \{ offer_code: getOfferCode\(\) \} : \{\}\),/)
+  assert.match(read('src/app/(app)/onboarding/page.tsx'), /\.\.\.\(getOfferCode\(\) \? \{ offer_code: getOfferCode\(\) \} : \{\}\),/)
+  const lib = read('src/lib/yuri/onboarding.ts')
+  assert.match(lib, /Nothing has been paid\.`\n    \)\n    if \(facts\.offerFact\) statusLines\.push\(facts\.offerFact\)\n  \}/, 'only for someone who is not a member yet')
+  assert.match(lib, /cumulativeGive,\n    offerFact,\n  \}\)/)
+  // Injected exactly once in the widget, with nothing added around it, and the
+  // browser's value reaches the lookup unchanged on both routes.
+  assert.equal((route.match(/offerFact/g) ?? []).length, 5, 'the import, one lookup, and one template expression (two mentions); nothing else')
+  assert.doesNotMatch(route, /Creator code/, 'the wording lives in offers.ts only, never in the cached widget prompt')
+  for (const r of [route, read('src/app/api/yuri/onboarding/route.ts')]) assert.match(r, /\n  offer_code: z\.string\(\)\.max\(40\)\.optional\(\)\.nullable\(\),\n/)
+  assert.match(read('src/lib/offers.ts'), /export function getOfferCode\(\): string \| null \{\n  if \(typeof window === 'undefined'\) return null\n  try \{\n    return normalizeOfferCode\(window\.localStorage\.getItem\(OFFER_STORAGE_KEY\)\)\n  \} catch \{\n    return null\n  \}\n\}/)
+  const cached = lib.slice(lib.indexOf('function buildOnboardingSystemPrompt'), lib.indexOf('export interface OnboardingTurnFacts'))
+  assert.ok(cached.length > 2000)
+  assert.doesNotMatch(cached, /offerFact|Creator code/)
+})

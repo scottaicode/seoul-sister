@@ -23,6 +23,7 @@ import type { WidgetMessage } from '@/lib/utils/widget-shared'
 import { PRICING } from '@/lib/pricing'
 import { trackEvent, DemoEvent, WidgetEvent } from '@/lib/analytics'
 import { detectAiReferrer } from '@/lib/widget/ai-referrer'
+import { getOfferCode } from '@/lib/offers'
 
 /**
  * Stamp the first click on a sign-up link inside the chat (set-once server
@@ -691,6 +692,9 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             session_id: getWidgetSessionId(),
             ...(isWidgetFresh() ? { fresh: true } : {}),
             ...(reopenedFromEmailPending ? { reopened_from_email: true } : {}),
+            // A creator code this browser remembers, so Yuri states this
+            // visitor's real price. The server confirms it with Stripe.
+            ...(getOfferCode() ? { offer_code: getOfferCode() } : {}),
             // First-touch feeder attribution: send the source once, on the
             // request that will create the session. Server persists it.
             ...(includeSource ? { source: sourceRef.current } : {}),

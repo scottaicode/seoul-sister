@@ -35,6 +35,7 @@ import {
 } from '@/lib/widget/persistence'
 import { detectAndRecordSignals, type SignalContext } from '@/lib/widget/signals'
 import { recapStatusFact } from '@/lib/widget/recap-fact'
+import { offerFactLine } from '@/lib/offers-server'
 import { createResumeToken, widgetEmailLink, resumeLinksEnabled, redactResumeTokens } from '@/lib/widget/resume-token'
 import type Anthropic from '@anthropic-ai/sdk'
 
@@ -122,6 +123,8 @@ const widgetSchema = z.object({
   fresh: z.boolean().optional(),
   // First-touch feeder attribution (blog/product/ingredient/nav/...). Sent once,
   // on the request that creates the session. Bounded length, sanitized to a slug.
+  // A creator code remembered by the browser. Never trusted: Stripe is asked.
+  offer_code: z.string().max(40).optional().nullable(),
   source: z.string().max(40).optional().nullable()
     .transform(v => (v ? v.replace(/[^a-z0-9_]/gi, '').slice(0, 40) : undefined)),
   // Site-relative path of the page the visitor came FROM. Path only, never a
@@ -741,6 +744,9 @@ export async function POST(request: NextRequest) {
           ? ` The previous message in this conversation was at ${prevIso}.`
           : ''
 
+    // A creator code the visitor arrived with, as Stripe describes it right now.
+    const offerFact = await offerFactLine(parsed.offer_code)
+
     dynamicContext += `\n\n## Conversation State (facts, not instructions)
 - This is the visitor's message #${turnNumber} in this conversation.
 - Free preview usage: ${lifetimeUsed !== null ? `this is free message #${lifetimeUsed + 1} of ${MAX_FREE_MESSAGES} total (lifetime, across visits and devices). After you reply, exactly ${Math.max(0, MAX_FREE_MESSAGES - lifetimeUsed - 1)} free message${MAX_FREE_MESSAGES - lifetimeUsed - 1 === 1 ? '' : 's'} remain. These numbers are authoritative — if you state a count, use THESE; never estimate or count the transcript's bubbles yourself.` : `the preview allows ${MAX_FREE_MESSAGES} total free messages; exact usage unavailable this turn — don't state a specific count.`} If they ask about limits, that's the honest answer — never claim the preview is unlimited.${
@@ -761,7 +767,7 @@ Do NOT sell. The screen shows them a free-account button with the membership pri
 - Email on file for this visitor: ${!hasEmail && lifetimeUsed !== null && lifetimeUsed + 1 >= EMAIL_GATE_AFTER_MESSAGES ? `NO, and after this reply the platform requires an email before they can send another message (the continue-gate, at ${EMAIL_GATE_AFTER_MESSAGES} messages). ` : ''}${hasEmail ? `YES — you already have it. Do NOT ask again; just keep helping. ${recapStatusFact(visitor?.recap_status)}` :'NO — Seoul Sister has no way to reach them after they close this tab.'}${!hasEmail && history.length > 0 ? `
 - Your earlier messages are above. If you made a clean, standalone offer to save their email and they clearly passed on it, let it rest. But if an earlier mention got buried — tacked onto another question, or lost in a longer answer so they never actually responded to it — a single clear, standalone offer as this piece of work lands is not nagging; it's the one that should have been made. No email is captured yet, so the question is still genuinely open (unless they've told you they're under 13 — then it isn't).` : ''}${valueDensityFact ? `
 ${valueDensityFact}` : ''}
-${visitorCountryFact(visitorCountryCode(request.headers.get('x-vercel-ip-country')))}
+${visitorCountryFact(visitorCountryCode(request.headers.get('x-vercel-ip-country')))}${offerFact ? `\n- ${offerFact}` : ''}
 - Continuity in this browser: if they leave and come back within about an hour (even in a new tab), this same conversation continues and you'll still have it above. After that, or if they press "Start over", a new conversation begins and this transcript won't be in front of you (any visitor memory noted above may still carry over).${resumeLinksEnabled() ? ' Separately, a recap email sent from now on carries a link that reopens the conversation it was sent from (not a later one), on any device, for 30 days.' : ''}${resumedConversation ? ' They just reopened the page and this conversation was picked back up, so what they said earlier above is still theirs.' : ''}${reopenedFact}
 
 Use these facts with the judgment described above. They are context, not a trigger: a long conversation doesn't obligate an ask, and a short one doesn't forbid it. You decide when the value has actually landed. One placement rule when you do offer: let the email ask stand on its own — never staple it to another open question in the same message, or the other question gets answered and the offer gets missed.`

@@ -1,5 +1,5 @@
 import { getStripeClient } from '@/lib/stripe'
-import { normalizeOfferCode } from '@/lib/offers'
+import { normalizeOfferCode, offerFactForYuri } from '@/lib/offers'
 
 /**
  * Ask Stripe what a creator code is worth right now (Nov 10 2026). Stripe is
@@ -49,4 +49,40 @@ export async function resolveOffer(raw: string | null | undefined): Promise<Offe
     return { state: 'ended', code }
   }
   return { state: 'active', code, promotionCodeId: promo.id, percentOff }
+}
+
+/**
+ * The creator-code fact for Yuri's per-turn context, or null when there is no
+ * creator code to speak of. When Stripe cannot be asked (error, or no answer
+ * within FACT_WAIT_MS) she is told only that a code could not be checked:
+ * nothing unconfirmed is asserted, and a chat turn never waits on Stripe.
+ *
+ * Asked on every chat turn, so an answer is kept for a few minutes per warm
+ * instance (a failure for one minute). A code that closes inside that window
+ * is still stopped at the checkout, which always asks Stripe itself.
+ */
+const FACT_TTL_MS = 5 * 60 * 1000
+const FACT_FAIL_TTL_MS = 60 * 1000
+const FACT_WAIT_MS = 1500
+const factCache = new Map<string, { until: number; fact: string | null }>()
+
+export async function offerFactLine(raw: string | null | undefined, now: number = Date.now()): Promise<string | null> {
+  const code = normalizeOfferCode(raw)
+  if (!code) return null
+  const hit = factCache.get(code)
+  if (hit && now < hit.until) return hit.fact
+  try {
+    const offer = await Promise.race([
+      resolveOffer(code),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`no answer from Stripe in ${FACT_WAIT_MS}ms`)), FACT_WAIT_MS)),
+    ])
+    const fact = offer.state === 'unknown' ? null : offerFactForYuri(offer)
+    factCache.set(code, { until: now + FACT_TTL_MS, fact })
+    return fact
+  } catch (err) {
+    console.error('[offers] could not confirm a code for Yuri:', err instanceof Error ? err.message : String(err))
+    const fact = offerFactForYuri({ state: 'unchecked' })
+    factCache.set(code, { until: now + FACT_FAIL_TTL_MS, fact })
+    return fact
+  }
 }

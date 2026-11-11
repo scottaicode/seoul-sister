@@ -171,6 +171,8 @@ export interface OnboardingTurnFacts {
   isSubscribed?: boolean
   /** Which user message of the free onboarding cap this turn is. */
   userMessageNumber?: number
+  /** A creator code this person holds, as Stripe describes it now (offers-server.ts). */
+  offerFact?: string | null
   /** The cap itself, so the number has a denominator. */
   userMessageCap?: number
   /**
@@ -217,6 +219,7 @@ export function buildOnboardingTurnState(
     statusLines.push(
       `Membership status: NOT A MEMBER YET. This setup chat is free. The next screen offers membership: a first-time member's first ${PRICING.trial_days} days are free and need no card, and it is ${PRICING.monthly_display_long} after that only if they add a card. The complete routine is built in their first member conversation. Nothing has been paid.`
     )
+    if (facts.offerFact) statusLines.push(facts.offerFact)
   }
   if (
     typeof facts?.userMessageNumber === 'number' &&
@@ -784,7 +787,8 @@ export async function* streamOnboardingResponse(
   message: string,
   conversationHistory: YuriMessage[],
   currentProgress: OnboardingProgress,
-  carryover: Carryover | null = null
+  carryover: Carryover | null = null,
+  offerFact: string | null = null
 ): AsyncGenerator<string, void, unknown> {
   const extractedSoFar = currentProgress.skin_profile_data as ExtractedSkinProfile
   const extractedFields = currentProgress.extracted_fields as Record<string, boolean>
@@ -824,6 +828,7 @@ export async function* streamOnboardingResponse(
     userMessageNumber,
     userMessageCap: ONBOARDING_USER_MESSAGE_CAP,
     cumulativeGive,
+    offerFact,
   })
 
   // Build message history for Claude

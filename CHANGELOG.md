@@ -4,6 +4,27 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.54.1 — Yuri is told about a visitor's creator code, as a fact (Nov 10 2026)
+
+- **Why.** The page said "Code BAILEY saved" while Yuri's own facts said membership is $9.99/month and
+  that anything not listed does not exist. She would have quoted the wrong first charge or denied the code.
+- **Changed.** The browser sends its remembered code with each landing-chat and setup-chat message. The
+  server asks Stripe (`offerFactLine`, kept 5 minutes, never waits more than 1.5 seconds) and adds one
+  fact to the per-turn block (`offerFactForYuri`): the discounted first month, that $9.99 begins with
+  the second paid month, that the code applies by itself only in the same browser and is typed on the
+  payment page elsewhere, and that how many uses remain is not visible to her. If Stripe cannot be
+  asked she is told only that a code could not be checked. Setup chat: shown only to a non-member.
+- **Review.** Opus 5.5: 10 findings. Fixed: "they do not type it anywhere" was false on another device;
+  two prices for one person with nothing saying which wins; "confirmed a moment ago" could be 5 minutes
+  old; two sentences that steered rather than stated; every chat turn waited on Stripe with an 80-second
+  default timeout. 7 of its 20 wrong versions passed; those now fail (1,568 tests).
+- **Not changed.** The two lines under the landing chat still say "$9.99/mo after that" beside the
+  "code saved" line. Setup-chat Yuri's first message has no code fact (later ones do).
+- **Not verified.** No visitor has had this fact in a real conversation, so whether Yuri raises the code
+  unprompted is unobserved.
+
+---
+
 ## v11.54.0 — Creator codes: a code gives a percentage off the first paid month, and every price sentence says so (Nov 10 2026)
 
 - **Why.** Bailey's decision for her TikTok: code BAILEY, 50% off the first paid month, first 50 people, no

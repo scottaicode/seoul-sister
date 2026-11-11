@@ -256,3 +256,13 @@ test('the message cap is a single shared constant', () => {
  * 6. Drop the `turn.role !== 'assistant'` filter in detectCumulativeGive:
  *    "the instrument reads only Yuri, never the user" FAILS.
  */
+
+test('a creator-code fact is shown once to someone who is not a member, and never to a member or when status is unknown', () => {
+  const X = 'Creator code: TESTFACT.'
+  const shown = buildOnboardingTurnState({}, undefined, { isSubscribed: false, offerFact: X })
+  assert.equal(shown.split(X).length - 1, 1)
+  for (const isSubscribed of [true, undefined]) {
+    assert.ok(!buildOnboardingTurnState({}, undefined, { isSubscribed, offerFact: X }).includes(X), `isSubscribed=${isSubscribed}`)
+  }
+  assert.ok(!buildOnboardingTurnState({}, undefined, { isSubscribed: false, offerFact: null }).includes('Creator code'))
+})

@@ -9,6 +9,7 @@ import CarryoverPrompt from '@/components/onboarding/CarryoverPrompt'
 import ChatMessage from '@/components/yuri/ChatMessage'
 import ChatInput from '@/components/yuri/ChatInput'
 import type { ChatMessage as ChatMessageType } from '@/types/yuri'
+import { getOfferCode } from '@/lib/offers'
 
 // What a new member's first Yuri message is prefilled with after checkout. It is
 // only prefilled (the Yuri page's ?ask= never auto-sends), so they can edit it.
@@ -345,6 +346,9 @@ export default function OnboardingPage() {
             // Carries the free-preview conversation into onboarding, only after
             // the person said it was theirs (CarryoverPrompt).
             widget_visitor_id: consentedVisitorId(userId),
+            // A creator code this browser remembers, so Yuri states this
+            // person's real price. The server confirms it with Stripe.
+            ...(getOfferCode() ? { offer_code: getOfferCode() } : {}),
           }),
           signal: abortControllerRef.current.signal,
         })
