@@ -8,6 +8,8 @@ import {
   celsiusToFahrenheit,
 } from '@/lib/intelligence/temperature-units'
 import { geocodeLocation } from '@/lib/geo/geocode'
+import { loadSetupShelf } from '@/lib/yuri/memory'
+import { setupShelfForTool } from '@/lib/yuri/setup-carry'
 import { ageInDays } from '@/lib/yuri/price-freshness'
 import { cheapestUsOrderable } from '@/lib/pricing/price-scope'
 import { joinedAlnumParts, joinedAlnumMatches, joinedAlnumIlike } from '@/lib/yuri/joined-alnum'
@@ -1650,7 +1652,7 @@ export const YURI_TOOLS: ToolDef[] = [
   {
     name: 'get_routine_context',
     description:
-      'Fetch the user\'s product inventory, current saved routines, texture data, and ingredient conflict records. Call this when building or revising a routine so you have the full picture — their products, textures, and any known conflicts — before presenting it.',
+      'Fetch the user\'s product inventory, the routine items noted during setup, current saved routines, texture data, and ingredient conflict records. Call this when building or revising a routine so you have the full picture — their products, textures, and any known conflicts — before presenting it.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -4637,6 +4639,11 @@ async function executeGetRoutineContext(
     .eq('status', 'active')
     .order('category')
 
+  // Routine items setup recorded. A new member's library is empty, so without
+  // this the tool told Yuri "no products" at the moment she built a first
+  // routine, minutes after setup had listed them (Nov 11 2026).
+  const setupShelf = setupShelfForTool(await loadSetupShelf(db, userId))
+
   // ---- 2. Current saved routine of this type ----
   const { data: routine } = await db
     .from('ss_user_routines')
@@ -4736,6 +4743,8 @@ async function executeGetRoutineContext(
       texture_weight: p.texture_weight,
       notes: p.notes,
     })),
+    // Not the saved library: see `what_this_is`.
+    setup_noted_items: setupShelf,
     current_saved_routine: currentRoutineSteps.length > 0
       ? { name: routine?.name, steps: currentRoutineSteps }
       : null,

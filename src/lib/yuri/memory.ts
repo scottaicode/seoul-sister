@@ -1,5 +1,14 @@
 import { getServiceClient } from '@/lib/supabase'
 import { safeSlice } from '@/lib/utils/text-slice'
+import {
+  parseSetupShelf,
+  formatSetupShelfSection,
+  buildSetupChatExcerpt,
+  formatSetupChatSection,
+  SETUP_CHAT_FETCH,
+  type SetupShelf,
+  type SetupChatExcerpt,
+} from '@/lib/yuri/setup-carry'
 import type { SkinProfile, YuriConversation, YuriMessage, SpecialistType, CyclePhaseInfo, UserCycleTracking } from '@/types/database'
 import { getCyclePhase, getPhaseLabel } from '@/lib/intelligence/cycle-routine'
 import { detectRoutineOverlap, type IngredientOverlapResult } from '@/lib/intelligence/ingredient-overlap'
@@ -162,6 +171,11 @@ export interface RecentConversationExcerpt {
   conversationId: string
   title: string | null
   messages: Array<{ role: string; content: string }>
+  /**
+   * Set when this is the setup (onboarding) conversation shown directly because
+   * no summary of it exists yet (src/lib/yuri/setup-carry.ts).
+   */
+  setupChat?: SetupChatExcerpt
 }
 
 export interface UserProduct {
@@ -213,6 +227,8 @@ export interface UserContext {
   knownPreferences: string[]
   routineProducts: RoutineProductEntry[]
   userProducts: UserProduct[]
+  /** Routine items setup recorded. Null when it recorded none or the read failed (logged). */
+  setupShelf?: SetupShelf | null
   learningInsights: LearningContextData[]
   specialistInsights: SpecialistInsightMemory[]
   decisionMemory: DecisionMemory | null
@@ -345,6 +361,7 @@ export async function loadUserContext(
   options?: LoadUserContextOptions
 ): Promise<UserContext> {
   const db = getServiceClient()
+  const setupShelfPromise = loadSetupShelf(db, userId)
 
   // Classify intent to decide which context sections to load
   const topics = classifyIntent(
@@ -504,6 +521,10 @@ export async function loadUserContext(
   ])
 
   const skinProfile = profileResult.data as SkinProfile | null
+
+  // Routine items setup recorded (src/lib/yuri/setup-carry.ts). Started at the
+  // top of this function so it runs alongside the other reads.
+  const setupShelf = await setupShelfPromise
 
   // CONDITIONAL: learning insights (needed for ingredients, skin_profile, products, or general)
   const loadLearning = loadAll || topics.has('ingredients') || topics.has('skin_profile') || topics.has('products')
@@ -756,6 +777,7 @@ export async function loadUserContext(
     knownPreferences: [],
     routineProducts,
     userProducts,
+    setupShelf,
     learningInsights,
     specialistInsights,
     decisionMemory,
@@ -988,6 +1010,14 @@ ${ov.totalProducts} products analyzed across their routines + inventory. The act
 ${lines.join('\n')}
 
 This is information about THEIR routine, not advice. Some stacking is fine (a niacinamide cleanser + niacinamide moisturizer at low concentration may be unremarkable). Some is wasteful (4 products driving the same active hard). Some is risky (3 products with sensitizing actives at high concentration). Use your judgment about whether to mention this, when in the conversation, and how. If they ask about adding another product or are wondering if their routine is too heavy, this is the data you'd want to reference.`)
+  }
+
+  // Routine items setup recorded. Shown whatever the library holds: saving a
+  // routine adds its catalog steps to the library, so hiding this once the
+  // library was non-empty removed it at the moment it was needed.
+  if (context.setupShelf) {
+    const setupShelfSection = formatSetupShelfSection(context.setupShelf)
+    if (setupShelfSection) sections.push(setupShelfSection)
   }
 
   // User product inventory (products the user owns, with texture data for layering)
@@ -1245,8 +1275,19 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
   // Recent conversation excerpts (actual message content from past conversations)
   // This is the safety net — even if summaries missed specific recommendations,
   // Yuri can see what she actually said in the last few messages of recent conversations
-  if (context.recentExcerpts.length > 0) {
-    const excerptText = context.recentExcerpts
+  // The setup conversation, when no summary of it exists yet (a new member's
+  // first chat usually starts minutes after setup; the summary is written
+  // later by a background job). Without it she could not see the plan she had
+  // just given, and contradicted it.
+  const setupChats = context.recentExcerpts.flatMap((ex) => (ex.setupChat ? [ex.setupChat] : []))
+  if (setupChats.length > 0) {
+    const memberZone = ((context.skinProfile as unknown as Record<string, unknown> | null)?.timezone as string | null | undefined) ?? null
+    sections.push(formatSetupChatSection(setupChats, memberZone))
+  }
+
+  const otherExcerpts = context.recentExcerpts.filter((ex) => !ex.setupChat)
+  if (otherExcerpts.length > 0) {
+    const excerptText = otherExcerpts
       .map((ex) => {
         const msgs = ex.messages
           .map((m) => `${m.role === 'user' ? 'User' : 'Yuri'}: ${m.content}`)
@@ -2681,6 +2722,23 @@ export function validateResolutions(
 // Gives Yuri access to what she actually said, even if summaries missed it
 // ---------------------------------------------------------------------------
 
+/** Routine items setup recorded, or null. A failed read is logged; the member chat then simply lacks the list. */
+export async function loadSetupShelf(
+  db: ReturnType<typeof getServiceClient>,
+  userId: string
+): Promise<SetupShelf | null> {
+  const { data, error } = await db
+    .from('ss_onboarding_progress')
+    .select('skin_profile_data, updated_at')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) {
+    console.error('[yuri/memory] setup record read failed; setup items not shown:', error.message)
+    return null
+  }
+  return parseSetupShelf(data?.skin_profile_data, data?.updated_at)
+}
+
 async function loadRecentConversationExcerpts(
   db: ReturnType<typeof getServiceClient>,
   userId: string,
@@ -2691,7 +2749,7 @@ async function loadRecentConversationExcerpts(
     // Exclude the current conversation since those messages are already in the API history
     let query = db
       .from('ss_yuri_conversations')
-      .select('id, title, message_count')
+      .select('id, title, message_count, conversation_type, summary')
       .eq('user_id', userId)
       .gte('message_count', 3)
       .order('updated_at', { ascending: false })
@@ -2709,6 +2767,28 @@ async function loadRecentConversationExcerpts(
     const targetConversations = conversations.slice(0, 3)
 
     for (const conv of targetConversations) {
+      // A setup conversation with no summary yet is shown directly, newest
+      // messages first so a long one keeps its wrap-up (setup-carry.ts). Six
+      // messages cut to 500 characters dropped both the shelf and the plan.
+      if (conv.conversation_type === 'onboarding' && !conv.summary) {
+        const { data: newest, error: setupErr } = await db
+          .from('ss_yuri_messages')
+          .select('role, content, created_at')
+          .eq('conversation_id', conv.id)
+          .in('role', ['user', 'assistant'])
+          .order('created_at', { ascending: false })
+          .limit(SETUP_CHAT_FETCH)
+        if (setupErr) {
+          console.error('[yuri/memory] setup conversation load failed; member chat will not see it:', setupErr.message)
+        } else {
+          const setupChat = buildSetupChatExcerpt(conv.id, conv.title, newest ?? [], typeof conv.message_count === 'number' ? conv.message_count : null)
+          if (setupChat) {
+            excerpts.push({ conversationId: conv.id, title: conv.title, messages: [], setupChat })
+            continue
+          }
+        }
+      }
+
       const { data: messages } = await db
         .from('ss_yuri_messages')
         .select('role, content')

@@ -1,6 +1,7 @@
 import { sendEmail, wrapEmailHtml } from './send'
 import { escapeHtml } from './html'
 import { PRICING } from '@/lib/pricing'
+import { validTimeZone } from './timezone'
 import { chargePhrase, firstChargeText, thereafterText, firstMonthPrice } from '@/lib/offers'
 
 /**
@@ -18,12 +19,25 @@ export function buildSubscriptionConfirmationEmail(params: {
   cardOnFile?: boolean
   /** Percent off the first paid month, when the member joined with a creator code. */
   percentOff?: number | null
+  /**
+   * The member's profile time zone. Dates are written in it, with the zone
+   * named, so this email and the in-app notice name the same day when the
+   * profile zone matches the device. Until Nov 11 2026 this email was always
+   * UTC: a US evening sign-up was told "ends November 18" here and "Tuesday,
+   * November 17" in the app. Unknown or invalid: UTC. The zone is always
+   * printed, because a profile zone can come from the city someone typed.
+   */
+  timezone?: string | null
 }): { subject: string; html: string } {
   const noCardTrial = Boolean(params.trialEnd) && params.cardOnFile === false
+  const zone = validTimeZone(params.timezone) ?? 'UTC'
+  const zoneName = (d: Date) =>
+    new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 'short' }).formatToParts(d).find((p) => p.type === 'timeZoneName')?.value ?? zone
   const fmt = (d: Date) =>
-    d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+    `${d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: zone })} ${zoneName(d)}`
+  // The zone's short name is always printed ("PST", "UTC"), so the time is never ambiguous.
   const fmtTime = (d: Date) =>
-    d.toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short' })
+    d.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: zone, timeZoneName: 'short' })
   const pct = params.percentOff ?? null
   const discounted = firstMonthPrice(pct) !== null
   const firstCharge = noCardTrial && params.trialEnd
@@ -56,9 +70,9 @@ ${noCardTrial
 export async function sendSubscriptionConfirmation(
   to: string,
   trialEnd: Date | null,
-  opts: { cardOnFile?: boolean; percentOff?: number | null } = {}
+  opts: { cardOnFile?: boolean; percentOff?: number | null; timezone?: string | null } = {}
 ): Promise<{ sent: boolean; reason?: string }> {
-  const { subject, html } = buildSubscriptionConfirmationEmail({ trialEnd, cardOnFile: opts.cardOnFile, percentOff: opts.percentOff })
+  const { subject, html } = buildSubscriptionConfirmationEmail({ trialEnd, cardOnFile: opts.cardOnFile, percentOff: opts.percentOff, timezone: opts.timezone })
   const result = await sendEmail(to, subject, html)
   return result.sent ? { sent: true } : { sent: false, reason: 'reason' in result ? String(result.reason) : 'error' in result ? String(result.error) : 'unknown' }
 }

@@ -4,6 +4,38 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.54.2 — First real trials: the member chat is given what setup captured (Nov 11 2026)
+
+- **Why.** The owner ran the first two real no-card trials (one with code BAILEY). Both worked end to end:
+  rows written, nothing charged, lapse and emails correct, Stripe showing $4.99 after the trial for the
+  code. The same test showed member Yuri contradicting setup Yuri 20 minutes later: setup said keep the
+  CeraVe cleanser and buy one cream; the member chat replaced both with Korean products, then asked which
+  niacinamide the member uses.
+- **Cause, measured.** The items named in setup lived only in `ss_onboarding_progress`; the member chat
+  and `get_routine_context` never read them. Setup advice reached the member chat as the last 6 messages
+  cut to 500 characters, because the summary is written by a job that waits 30 idle minutes.
+- **Changed** (`src/lib/yuri/setup-carry.ts`, pure and executed by tests).
+  - The member chat and `get_routine_context` are given the routine items noted during setup, described
+    as what the person said they used, with no claim of ownership and no claim about what we carry.
+  - A setup conversation with no summary yet is shown directly: newest messages kept, capped at about 6K
+    tokens, times in the member's zone, and called complete only when it is.
+  - Landing chat: `ss_ai_usage.stop_reason` and the session id are recorded (migration
+    `20261111000001`). A reply ended mid-sentence at 532 output tokens and nothing said why.
+  - Trial-started email: dates in the member's profile time zone with the zone named (it said "ends
+    November 18 ... UTC" while the app said Tuesday, November 17). A bad stored zone no longer throws in
+    the trial-ending notice.
+- **Review.** Opus 5.5 twice. Round one: 11 defects in my first version (the list vanished once a routine
+  was saved; it claimed ownership; a long setup lost its wrap-up while called "complete"; 5 of 16 wrong
+  versions passed). Round two: 10 more on the rewrite (wording that could make Yuri say "not in our
+  catalog" or repeat internal terms; two clocks). All 14 wrong versions I replayed now fail. 1,576 tests.
+- **Not verified.** No member conversation has run on this yet. The cut-off reply's cause is unknown.
+- **Still open from the test.** Setup Yuri treats a minutes-old preview chat as a past visit; the
+  membership page promises "your routine" after one was given; the chat page hides the trial banner;
+  "Welcome back" to a new member; a first name taken from an email address; mail scanners opening the
+  recap link count as returns; the trial-ended email does not mention a still-open code.
+
+---
+
 ## v11.54.1 — Yuri is told about a visitor's creator code, as a fact (Nov 10 2026)
 
 - **Why.** The page said "Code BAILEY saved" while Yuri's own facts said membership is $9.99/month and

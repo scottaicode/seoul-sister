@@ -34,6 +34,16 @@ async function emailForUser(db: ReturnType<typeof getServiceClient>, userId: str
   }
 }
 
+/** The member's time zone, for dates in emails. null (then UTC, labelled) if unknown or unreadable. */
+async function timezoneForUser(db: ReturnType<typeof getServiceClient>, userId: string): Promise<string | null> {
+  const { data, error } = await db.from('ss_user_profiles').select('timezone').eq('user_id', userId).maybeSingle()
+  if (error) {
+    console.error('[stripe webhook] could not read the member time zone; email dates will be UTC:', error.message)
+    return null
+  }
+  return (data?.timezone as string | null) ?? null
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.text()
   const signature = request.headers.get('stripe-signature')
@@ -126,7 +136,7 @@ export async function POST(request: NextRequest) {
               const confirm = await sendSubscriptionConfirmation(
                 cardEmail,
                 trialRow?.trial_end ? new Date(trialRow.trial_end) : null,
-                { cardOnFile: true, percentOff: trialRow?.offer_percent_off == null ? null : Number(trialRow.offer_percent_off) }
+                { cardOnFile: true, percentOff: trialRow?.offer_percent_off == null ? null : Number(trialRow.offer_percent_off), timezone: await timezoneForUser(supabase, userId) }
               )
               if (!confirm.sent) console.error(`[stripe webhook] card-saved confirmation NOT sent to user ${userId}: ${confirm.reason}`)
             } else {
@@ -241,7 +251,7 @@ export async function POST(request: NextRequest) {
           if (buyerEmail) {
             try {
               const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null
-              const confirm = await sendSubscriptionConfirmation(buyerEmail, trialEnd, { cardOnFile: !noCardTrial, percentOff: offerPercentOff })
+              const confirm = await sendSubscriptionConfirmation(buyerEmail, trialEnd, { cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: await timezoneForUser(supabase, userId) })
               if (!confirm.sent) {
                 console.error(`[stripe webhook] subscription confirmation NOT sent to user ${userId}: ${confirm.reason}`)
               }

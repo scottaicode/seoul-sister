@@ -563,7 +563,7 @@ test('emails never promise a charge to a card that does not exist, and a lapsed 
   assert.match(branch, /No card is on file and you will not be charged\./)
   assert.match(branch, /with the "Add a card" button at the top of any page/)
   assert.doesNotMatch(branch, /your card will be charged|Profile page/i)
-  assert.match(webhook, /sendSubscriptionConfirmation\(buyerEmail, trialEnd, \{ cardOnFile: !noCardTrial, percentOff: offerPercentOff \}\)/)
+  assert.match(webhook, /sendSubscriptionConfirmation\(buyerEmail, trialEnd, \{ cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: await timezoneForUser\(supabase, userId\) \}\)/)
   assert.match(webhook, /const noCardTrial = isTrial && subscription\.metadata\?\.no_card === '1'/, 'stated by the checkout, not guessed from Stripe state')
   // "No card was on file" is only sent to a trial that began with no card and
   // never had one added. A cancelled card trial, or a card added then
@@ -782,7 +782,7 @@ test('offer codes: the discount follows the member into every later notice about
   assert.match(read('src/components/layout/TrialNotice.tsx'), /Your card will be charged \{chargePhrase\(pct, 'on that day,'\)\}\./)
   assert.match(read('src/components/layout/TrialNotice.tsx'), /const pct = facts\.percent_off \?\? null\n/)
   assert.match(read('src/lib/trial-notices.ts'), /const pct = t\.offer_percent_off == null \? null : Number\(t\.offer_percent_off\)\n/)
-  assert.match(webhook, /\{ cardOnFile: true, percentOff: trialRow\?\.offer_percent_off == null \? null : Number\(trialRow\.offer_percent_off\) \}/)
+  assert.match(webhook, /\{ cardOnFile: true, percentOff: trialRow\?\.offer_percent_off == null \? null : Number\(trialRow\.offer_percent_off\), timezone: await timezoneForUser\(supabase, userId\) \}/)
   const confirmRoute = read('src/app/api/stripe/confirm/route.ts')
   assert.match(confirmRoute, /const offer = offerFromSubscription\(subscription, session\.metadata\)/)
   assert.match(confirmRoute, /offer_code: offer\.code,\s*offer_percent_off: offer\.percentOff,/)
@@ -826,19 +826,35 @@ test('offer codes (executed): the confirmation email states the discounted first
   put('offers', read('src/lib/offers.ts').replace("from '@/lib/pricing'", "from './pricing.mjs'"))
   writeFileSync(join(dir, 'send.mjs'), 'export const sendEmail = async () => ({ sent: true }); export const wrapEmailHtml = (b, f) => b + f')
   writeFileSync(join(dir, 'html.mjs'), 'export const escapeHtml = (x) => String(x)')
-  put('confirm', read('src/lib/email/subscription-confirmation.ts').replace("from './send'", "from './send.mjs'").replace("from './html'", "from './html.mjs'").replace("from '@/lib/pricing'", "from './pricing.mjs'").replace("from '@/lib/offers'", "from './offers.mjs'"))
+  put('timezone', read('src/lib/email/timezone.ts'))
+  put('confirm', read('src/lib/email/subscription-confirmation.ts').replace("from './send'", "from './send.mjs'").replace("from './html'", "from './html.mjs'").replace("from './timezone'", "from './timezone.mjs'").replace("from '@/lib/pricing'", "from './pricing.mjs'").replace("from '@/lib/offers'", "from './offers.mjs'"))
   const { buildSubscriptionConfirmationEmail: build } = await import(pathToFileURL(join(dir, 'confirm.mjs')).href)
   const end = new Date('2026-11-17T00:00:00Z')
   const noCard = build({ trialEnd: end, cardOnFile: false, percentOff: 50 }).html
   assert.ok(noCard.includes('A card you add is charged $4.99 for your first paid month (50% off) when the trial ends, then $9.99/month until you cancel.'), noCard)
   const card = build({ trialEnd: end, cardOnFile: true, percentOff: 50 }).html
-  assert.ok(card.includes('your card will be charged $4.99 for your first paid month (50% off) when the trial ends, 7 days after you signed up (November 17, 2026 at 12:00 AM UTC)</strong>, then $9.99/month until you cancel.'), card)
+  assert.ok(card.includes('your card will be charged $4.99 for your first paid month (50% off) when the trial ends, 7 days after you signed up (Tuesday, November 17, 2026 at 12:00 AM UTC)</strong>, then $9.99/month until you cancel.'), card)
   const today = build({ trialEnd: null, percentOff: 50 }).html
   assert.ok(today.includes('Your card is charged $4.99 for your first paid month (50% off) today, then $9.99/month until you cancel.'), today)
   // Without a code, the wording is what it was.
   const plain = build({ trialEnd: end, cardOnFile: true }).html
-  assert.ok(plain.includes('your card will be charged $9.99/month when the trial ends, 7 days after you signed up (November 17, 2026 at 12:00 AM UTC)</strong>, and again every month after that until you cancel.'), plain)
+  assert.ok(plain.includes('your card will be charged $9.99/month when the trial ends, 7 days after you signed up (Tuesday, November 17, 2026 at 12:00 AM UTC)</strong>, and again every month after that until you cancel.'), plain)
   assert.ok(build({ trialEnd: null }).html.includes('Your card is charged $9.99/month today and every month after that until you cancel.'))
+  // Dates are in the member's own time zone, so the email and the app name the same day.
+  // The real case: a trial ending Nov 18 06:11 UTC is Tuesday Nov 17, 10:11 PM in California.
+  const real = new Date('2026-11-18T06:11:47Z')
+  const la = build({ trialEnd: real, cardOnFile: false, timezone: 'America/Los_Angeles' })
+  assert.equal(la.subject, 'Your Seoul Sister free trial has started (ends November 17, 2026 PST)', 'the zone is named in the subject too')
+  assert.ok(la.html.includes('The trial ends Tuesday, November 17, 2026 at 10:11 PM PST.'), la.html)
+  for (const unknown of [undefined, null, '', 'Not/AZone']) {
+    const utc = build({ trialEnd: real, cardOnFile: false, timezone: unknown })
+    assert.equal(utc.subject, 'Your Seoul Sister free trial has started (ends November 18, 2026 UTC)', `timezone=${unknown}`)
+  // A zone typed as a city can differ from the device: the zone is always printed, so the date is never bare.
+  const chi = build({ trialEnd: new Date('2026-11-18T06:30:00Z'), cardOnFile: false, timezone: 'America/Chicago' })
+  assert.equal(chi.subject, 'Your Seoul Sister free trial has started (ends November 18, 2026 CST)')
+  assert.ok(chi.html.includes('The trial ends Wednesday, November 18, 2026 at 12:30 AM CST.'))
+    assert.ok(utc.html.includes('The trial ends Wednesday, November 18, 2026 at 6:11 AM UTC.'), utc.html)
+  }
   for (const h of [noCard, card, today]) assert.doesNotMatch(h, /every month after that/, 'a discounted member is never told the first price repeats')
   assert.doesNotMatch(today, /free trial/, 'someone charged today has no free trial to cancel during')
   assert.match(card, /If you cancel during the free trial, you won\'t be charged\./)
@@ -851,7 +867,8 @@ test('offer codes (executed): the trial-ending notice states the discounted pric
   put('offers', read('src/lib/offers.ts').replace("from '@/lib/pricing'", "from './pricing.mjs'"))
   writeFileSync(join(dir, 'send.mjs'), 'export const sendEmail = async () => ({ sent: true }); export const wrapEmailHtml = (b, f) => b + f')
   writeFileSync(join(dir, 'html.mjs'), 'export const escapeHtml = (x) => String(x)')
-  put('trial-emails', read('src/lib/email/trial-emails.ts').replace("from './send'", "from './send.mjs'").replace("from './html'", "from './html.mjs'").replace("from '@/lib/pricing'", "from './pricing.mjs'").replace("from '@/lib/offers'", "from './offers.mjs'"))
+  put('timezone', read('src/lib/email/timezone.ts'))
+  put('trial-emails', read('src/lib/email/trial-emails.ts').replace("from './send'", "from './send.mjs'").replace("from './html'", "from './html.mjs'").replace("from './timezone'", "from './timezone.mjs'").replace("from '@/lib/pricing'", "from './pricing.mjs'").replace("from '@/lib/offers'", "from './offers.mjs'"))
   put('trial-notices', read('src/lib/trial-notices.ts').replace(/from '@\/lib\/email\/trial-emails'/, "from './trial-emails.mjs'"))
   const { trialEndingLine } = await import(pathToFileURL(join(dir, 'trial-emails.mjs')).href)
   const end = '2026-11-27T04:00:00Z'
@@ -863,6 +880,8 @@ test('offer codes (executed): the trial-ending notice states the discounted pric
     trialEndingLine(end, { hasPaymentMethod: false, cancelAtPeriodEnd: false }, 'America/Chicago', 50),
     'Your free trial ends on Thursday, November 26. No card is on file, so nothing will be charged and your membership will stop on that day. To keep going, sign in and use the "Add a card" button at the top of any page: $4.99 for your first paid month (50% off) when the trial ends, then $9.99/month.'
   )
+  // A stored zone the runtime does not know is treated as unknown, never a thrown error inside a notice.
+  assert.equal(trialEndingLine(end, null, 'Mars/Olympus'), 'Your free trial ends on Friday, November 27 (UTC).')
   // The sender reads the percentage off the trial row and passes it through.
   const src = read('src/lib/trial-notices.ts')
   assert.match(src, /trialEndingLine\(t\.trial_end, state, await deps\.timezoneForUser\(t\.user_id\), pct && pct > 0 \? pct : null\)/)

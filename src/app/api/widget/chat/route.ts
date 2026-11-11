@@ -949,6 +949,8 @@ That is a fact about what exists, not something this reply has to say. If you me
         // Accumulate real token usage across all tool-loop rounds for cost
         // observability (captured from stream.finalMessage().usage).
         const usageTotals = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0 }
+        // Why the last round stopped. null = the stream gave no final message.
+        let lastStopReason: string | null = null
 
         while (toolLoopCount <= MAX_WIDGET_TOOL_LOOPS) {
           const toolUseBlocks: Array<{ id: string; name: string; input: string }> = []
@@ -1002,10 +1004,12 @@ That is a fact about what exists, not something this reply has to say. If you me
           // keep the final message: its content is what the tool loop passes back.
           let finalContent: Anthropic.Messages.ContentBlock[] | null = null
           let stopReason: string | null = null
+          lastStopReason = null
           try {
             const finalMessage = await stream.finalMessage()
             finalContent = finalMessage.content
             stopReason = finalMessage.stop_reason
+            lastStopReason = stopReason
             const u = finalMessage.usage
             usageTotals.input += u.input_tokens ?? 0
             usageTotals.output += u.output_tokens ?? 0
@@ -1163,7 +1167,15 @@ That is a fact about what exists, not something this reply has to say. If you me
           cacheReadTokens: usageTotals.cacheRead,
           cacheCreationTokens: usageTotals.cacheCreation,
           cached: usageTotals.cacheRead > 0,
+          // Which conversation, and why the reply ended. On Nov 11 2026 a reply
+          // stopped mid-sentence at 532 output tokens (ceiling 6000) and neither
+          // was on record, so the cause could not be found.
+          conversationId: sessionId,
+          stopReason: lastStopReason,
         })
+        if (lastStopReason !== 'end_turn') {
+          console.warn(`[widget/chat] reply for session ${sessionId} ended with stop_reason=${lastStopReason}`)
+        }
 
         // Include session_id in done event so client can send it back, plus
         // the server-authoritative remaining free-message count (lifetime

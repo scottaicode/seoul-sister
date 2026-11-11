@@ -1,6 +1,7 @@
 import { sendEmail, wrapEmailHtml } from './send'
 import { escapeHtml } from './html'
 import { PRICING } from '@/lib/pricing'
+import { validTimeZone } from './timezone'
 import { chargePhrase, addCardPhrase } from '@/lib/offers'
 
 /**
@@ -41,7 +42,9 @@ export type TrialEndingState = { hasPaymentMethod: boolean; cancelAtPeriodEnd: b
  * a US evening sign-up was told the trial ended, and the card would be
  * charged, the day after it actually would.
  */
-export function trialEndingLine(endsAt: string, state: TrialEndingState, timezone: string | null, percentOff: number | null = null): string {
+export function trialEndingLine(endsAt: string, state: TrialEndingState, timezoneRaw: string | null, percentOff: number | null = null): string {
+  // An unusable stored zone is treated as unknown (UTC, labelled), never a thrown error.
+  const timezone = validTimeZone(timezoneRaw)
   const when = new Date(endsAt).toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',

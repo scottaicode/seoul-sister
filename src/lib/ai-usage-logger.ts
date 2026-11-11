@@ -73,6 +73,13 @@ interface AIUsageParams {
   userId?: string | null
   conversationId?: string | null
   cached?: boolean
+  /**
+   * Why the model stopped on the reply the person saw (Anthropic's
+   * `stop_reason`). Recorded so a reply that ends mid-sentence can be told
+   * apart: `max_tokens` is our ceiling, `end_turn` is the model's own ending,
+   * and null means the stream ended without a final message.
+   */
+  stopReason?: string | null
 }
 
 /**
@@ -123,6 +130,8 @@ export async function logAIUsage(params: AIUsageParams): Promise<void> {
       user_id: params.userId ?? null,
       conversation_id: params.conversationId ?? null,
       cached: params.cached ?? false,
+      // Only sent when the caller recorded one, so callers that do not are unchanged.
+      ...(params.stopReason !== undefined ? { stop_reason: params.stopReason } : {}),
     })
     if (error) {
       console.error('[logAIUsage] insert failed:', error)

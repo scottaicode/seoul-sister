@@ -221,6 +221,7 @@ async function loadNotices() {
     chargePhrase: `((pct, when) => (pct ? '$4.99 for your first paid month (' + pct + '% off) ' + when.replace(',', '') + ', then $9.99/month until you cancel' : '$9.99/month ' + when + ' and every month after that until you cancel'))`,
     addCardPhrase: `((pct) => (pct ? '$4.99 for your first paid month (' + pct + '% off) when the trial ends, then $9.99/month' : '$9.99/month, starting when the trial ends'))`,
     escapeHtml: `((x) => x)`,
+    validTimeZone: `((tz) => { if (!tz) return null; try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return tz } catch { return null } })`,
     wrapEmailHtml: `((body, footer) => body + footer)`,
     sendEmail: `(async () => ({ sent: true }))`,
   })
