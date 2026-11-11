@@ -141,7 +141,7 @@ test('the fact names what only Yuri can know: which parts she held back', () => 
   const arm = armFor(11)
   assert.match(
     arm,
-    /held back/,
+    /left their routine unbuilt \(it is built in their free week\) along with whatever else stayed open here/,
     'the cumulative give is invisible to the visitor — Yuri is the only party who ' +
       'knows which artifacts were withheld, which is exactly why the fact belongs here'
   )

@@ -4,6 +4,27 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.55.0 — The free chat gives the diagnosis and the one change; the routine is built in the free week (Nov 11 2026)
+
+- **Why.** Owner decision after testing the live funnel on Nov 10: Yuri laid out a visitor's full AM/PM
+  from products they already owned, then said "you don't need to pay for anything yet". In the Nov 11
+  trial test she again handed over the whole plan by her second reply.
+- **Changed.** The preview stops at the diagnosis and the single change that matters most. The routine,
+  including the order of products the visitor already owns, is built in a first-time member's free week.
+  A visitor who declines an account and asks only for the order of their own products gets the general
+  layering rule (owner confirmed). Factual questions still get complete answers. The recap email carries a
+  fixed account line that is true per recipient and is left off for a visitor who said they are under 13.
+- **Held until now on purpose.** Both reviewing models said it must not ship before a real no-card trial
+  was seen to start and lapse correctly. That happened on Nov 11 (v11.54.2 entry).
+- **Review.** Opus 5.5 and Fable 5.2 on the branch (Nov 10). It merged onto main with no conflicts; the
+  static widget prompt, subscriber block and give block are pinned by fingerprint and those tests pass
+  unchanged after the merge. 1,584 tests.
+- **Not verified.** No visitor has chatted on this yet. Grade by distinct chatters who create an account
+  (`ss_widget_visitors.register_clicked_at`, `registered_user_id`), then trial starts
+  (`ss_trial_starts`), read around Jan 10 2027.
+
+---
+
 ## v11.54.2 — First real trials: the member chat is given what setup captured (Nov 11 2026)
 
 - **Why.** The owner ran the first two real no-card trials (one with code BAILEY). Both worked end to end:

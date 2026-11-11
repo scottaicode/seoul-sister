@@ -31,6 +31,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import ts from 'typescript'
+import { createHash } from 'node:crypto'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const src = readFileSync(
@@ -491,14 +492,33 @@ test('an explicit build request is detected before the reply is written', () => 
   }
 })
 
-test('a sequencing question is NOT a build request', () => {
-  // "What order" is triage, and answering it is what the preview is for. If
-  // this fired here the block would be noise on the most common opening.
+test('a request to put their OWN products in order is now a request for the routine (Nov 10 2026 owner decision)', () => {
+  // Until now "what order do these go in" was triage and deliberately did not
+  // fire. The owner decided the laid-out order of a visitor's own products is
+  // the routine and is built in the free week, so on that turn Yuri needs the
+  // same fact as for "build me a routine".
   for (const msg of [
     "I've got way too many products and I don't know what order to use them in",
     'what order do these go in',
+    'can you put these in order for me',
+    'how should I layer these morning and night?',
+    'so what is my routine',
+    'Can you just tell me what order to use what I already have?',
+  ]) {
+    assert.ok(detectBuildRequest(msg).asked, `must fire on: ${JSON.stringify(msg)}`)
+  }
+})
+
+test('a question with the same answer for everyone is NOT a build request', () => {
+  // A single-pair layering question, or a statement about their skin, has no
+  // routine behind it. Firing here would point her at the gate on a question
+  // the prompt says to answer completely.
+  for (const msg of [
     'does niacinamide go before or after vitamin C',
+    'does eye cream go before sunscreen?',
     'my skin is oily and dehydrated',
+    'is this COSRX toner fake?',
+    'what does niacinamide do',
   ]) {
     assert.ok(!detectBuildRequest(msg).asked, `must NOT fire on: ${JSON.stringify(msg)}`)
   }
@@ -551,7 +571,7 @@ test('REGRESSION: the block never tells her to withhold, defer, or sell', () => 
   )
   assert.equal(
     BUILD_REQUEST_CLOSING,
-    'Two facts from "The Give and the Gate" apply to a request like this: this preview\'s part is their #1 priority solved in full, and putting products they already own in order is sequencing, not the build.'
+    'Two facts from "The Give and the Gate" apply to a request like this: this preview\'s part is the diagnosis and the one change that matters most, and the routine itself, including the order of products they already own, is built in a first-time member\'s free week.'
   )
 })
 
@@ -607,4 +627,22 @@ test('it reports the running count accurately when there IS one', () => {
 test('silence when the visitor did not ask', () => {
   assert.equal(buildRequestBlock({ asked: false, fullDay: false }, detectCumulativeGive([])), null,
     'an empty state is noise and costs tokens on every turn')
+})
+
+test('CLOSED WORLD: what the give block actually prints is pinned on two fixed conversations (executed)', () => {
+  // A source check on this block was beaten in review by adding "if they ask
+  // for their routine, lay it out". The block's real output is now
+  // fingerprinted for a shelf read and for one laid-out lineup, so any added
+  // or changed sentence fails here.
+  const fp = (msgs) => createHash('sha256').update(buildCumulativeGiveBlock(detectCumulativeGive(msgs))).digest('hex')
+  const audit = [{ role: 'assistant', content: 'Two of those are doing the same job, so you do not need both. Keep the Illiyoon cream, drop the glycolic.' }]
+  const lineup = [{ role: 'assistant', content: '- **AM:** cleanse → Sulwhasoo water → Goodal Vita C → Mediheal SPF50+\n- **PM:** cleanse → IOPE retinol → Illiyoon cream' }]
+  assert.equal(fp(audit), 'f211df874d8b53b64c2692c84b3c0de83113b69f84b6077beda336873da4e534')
+  assert.equal(fp(lineup), 'd9d290bc604cbf778337d9dab53e0095dede2462d4c6f7edf180c6dd597de348')
+  // And in words: a shelf read is the give; the gate decides where the routine is built.
+  const text = buildCumulativeGiveBlock(detectCumulativeGive(audit))
+  assert.match(text, /kinds of work this count tracks/)
+  assert.match(text, /Reading their shelf \(what clashes, what to keep or drop\) is the give itself; where the routine is built is settled in "The Give and the Gate"\./)
+  assert.doesNotMatch(text, /you are the one who decides that/, 'that sentence contradicted the gate')
+  assert.match(buildCumulativeGiveBlock(detectCumulativeGive(lineup)), /which is the routine "The Give and the Gate" places in their free week/)
 })

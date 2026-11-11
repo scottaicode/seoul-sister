@@ -28,6 +28,7 @@
  * slot-clears are logged (console + zero-cost breadcrumb) — the v10.3.4 lesson.
  */
 
+import { noCardTrialEnabled } from '@/lib/trial'
 import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import { PRICING } from '@/lib/pricing'
@@ -67,6 +68,11 @@ export interface RecapLink {
    * instead of a reply box, so Yuri must not imply they can just keep chatting.
    */
   remainingMessages?: number | null
+  /**
+   * Which fixed account line goes under the button. 'member' when this inbox
+   * has already used its free trial. Defaults to 'free_week'.
+   */
+  accountLine?: AccountLineKind
 }
 
 const HOMEPAGE_RECAP_LINK: RecapLink = { url: 'https://www.seoulsister.com/?from=recap', resumes: false }
@@ -78,9 +84,9 @@ export const RECAP_BUTTON_TEXT_HOMEPAGE = 'Chat with Yuri'
 function remainingFact(remaining: number | null | undefined): string {
   if (typeof remaining !== 'number') return ''
   if (remaining <= 0) {
-    return ' They have used all of their free preview messages, so the conversation they come back to can be read but not continued without a subscription.'
+    return ' They have used all of their free preview messages, so the conversation they come back to can be read but not continued there; continuing means the free account and free week linked under your email.'
   }
-  return ` They have ${remaining} free preview message${remaining === 1 ? '' : 's'} left; after that, continuing needs a subscription.`
+  return ` They have ${remaining} free preview message${remaining === 1 ? '' : 's'} left; after that, continuing means the free account and free week linked under your email.`
 }
 
 /** What the button below the email does, stated as a fact for Yuri. */
@@ -88,7 +94,45 @@ export function recapLinkFact(link: RecapLink): string {
   const base = link.resumes
     ? `A button labelled "${RECAP_BUTTON_TEXT_RESUME}" is placed below your email. It reopens this exact conversation on the Seoul Sister homepage, with everything the two of you said still on screen, for the next 30 days and on any device. That button is their way back, so don't add a seoulsister.com link of your own.`
     : `A button labelled "${RECAP_BUTTON_TEXT_HOMEPAGE}" is placed below your email. It opens the free chat on the Seoul Sister homepage. Only the browser they chatted in, within about an hour, still shows this conversation; on another device or later, a new conversation starts and this transcript will not be there. So it would not be true to promise that the link picks this conversation back up or brings them back to where you left off. Don't add a seoulsister.com link of your own.`
-  return `${base}${remainingFact(link.remainingMessages)}`
+  return `${base}${remainingFact(link.remainingMessages)} ${accountLineFact(link.accountLine ?? 'free_week', noCardTrialEnabled())}`
+}
+
+/**
+ * The fixed line under the recap button (Nov 10 2026). The preview now stops
+ * at the diagnosis and the routine is built in a member's first week, so the
+ * recap is where a lead is shown the way in. Deterministic, not written by
+ * Yuri: she is told what it says (accountLineFact) so she neither repeats it
+ * nor has to explain how to sign up.
+ *
+ * Which line, and whether there is one at all, depends on the recipient:
+ *   - 'free_week': someone who can still have the free week. The card wording
+ *     follows the trial setting (noCardTrialEnabled), so the email can never
+ *     promise "no card" while the checkout asks for one.
+ *   - 'member': this inbox already used its trial. Saying "that week is free"
+ *     would be false, so the line names membership and no free week.
+ *   - none: the visitor said they are under 13 (the widget prompt forbids
+ *     pointing a child at an account; this line must not do it for her).
+ */
+export type AccountLineKind = 'free_week' | 'member'
+export const ACCOUNT_LINK_LABEL = 'Create your free account'
+export const ACCOUNT_LINK_URL = 'https://www.seoulsister.com/register?plan=monthly&from=recap&utm_source=recap&utm_medium=email'
+
+/** The sentence itself. Pure given the two inputs, exported for tests. */
+export function accountLineText(kind: AccountLineKind, noCard: boolean): string {
+  if (kind === 'member') return 'Your routine is built with Yuri once you are a member.'
+  return noCard
+    ? `Your routine is built in your first week as a member. For a new member that week is free, with no card needed to start.`
+    : `Your routine is built in your first week as a member. For a new member that week is free; a card is needed to start it, and nothing is charged if you cancel before it ends.`
+}
+
+/** What Yuri is told about the line. */
+export function accountLineFact(kind: AccountLineKind, noCard: boolean): string {
+  return `Under that button Seoul Sister adds one fixed line: "${accountLineText(kind, noCard)}" with a link labelled "${ACCOUNT_LINK_LABEL}". So you do not need to explain how to sign up or what it costs, and you should not paste a link. The line is left off when the visitor said they are under 13.`
+}
+
+/** The fixed line as HTML, appended below the button. */
+export function accountLineHtml(kind: AccountLineKind, noCard: boolean): string {
+  return `<p style="margin:16px 0 0;font-size:14px;color:#444;">${accountLineText(kind, noCard)} <a href="${escapeAttr(ACCOUNT_LINK_URL)}" style="color:#8a6a1f;font-weight:600;">${ACCOUNT_LINK_LABEL}</a></p>`
 }
 
 function escapeAttr(s: string): string {
@@ -99,6 +143,16 @@ function escapeAttr(s: string): string {
 export function recapLinkButtonHtml(link: RecapLink): string {
   const text = link.resumes ? RECAP_BUTTON_TEXT_RESUME : RECAP_BUTTON_TEXT_HOMEPAGE
   return `<p style="margin:22px 0 0;"><a href="${escapeAttr(link.url)}" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">${text}</a></p>`
+}
+
+/**
+ * Yuri's body, the button, then the fixed account line (left off for a visitor
+ * who said they are under 13). Exported so the test executes the real
+ * composition: a source-text check passed with the line removed from the body.
+ */
+export function composeRecapBody(bodyHtml: string, link: RecapLink, visitorSaidUnder13: boolean): string {
+  const line = visitorSaidUnder13 ? '' : `\n${accountLineHtml(link.accountLine ?? 'free_week', noCardTrialEnabled())}`
+  return `${bodyHtml}\n${recapLinkButtonHtml(link)}${line}`
 }
 
 /**
@@ -140,11 +194,11 @@ JOB 2 — If (and only if) sending, write ONE short, warm follow-up email — th
 
 What this email IS:
 - A genuine continuation of YOUR conversation with THIS person, grounded in what they actually told you (their concern, the products they were curious about, where you left off).
-- A recap of their SITUATION and the #1 priority you gave them — the diagnosis, the single highest-leverage step, the one product pick that mattered. That's the whole recap.
-- An open door back to the conversation (the facts below say exactly what the button under your email does; describe it only as that) — they get ongoing conversations with you (${PRICING.yuri_allowance_display}), the complete routine built with them, a profile that remembers them, and progress tracking if they subscribe (${PRICING.monthly_display}), but lead with the relationship, not the pitch.
+- A recap of their SITUATION and what you gave them: the diagnosis and the single highest-leverage change (and the product pick, if one was needed). That's the whole recap.
+- An open door back to the conversation (the facts below say exactly what the button and the line under your email do; describe them only as that). What comes next for them is the routine itself, built with you in a free first week and adjusted from what they tell you most weeks after. Lead with the relationship, not the pitch, and leave the price and the sign-up steps to the line Seoul Sister adds.
 
 What this email is NOT:
-- NOT a complete take-home routine. Even if the conversation covered many products and steps, do NOT compile a full AM/PM routine, a multi-week schedule, or a complete shopping list into the email. The recap gives them their #1 priority and names what a complete build would cover; building, saving, and adjusting that full routine together is what a subscription is — say that plainly and warmly in one sentence, in your own words. A "complete plan" email is a stale snapshot with no one there to adjust it; the honest gift is the priority plus the open door.
+- NOT a complete take-home routine. Even if the conversation covered many products and steps, do NOT compile a full AM/PM routine, a multi-week schedule, or a complete shopping list into the email. The recap gives them the diagnosis and the one change that matters most, and names what the routine would cover; building it together and adjusting it is what their free week is for. Say that plainly and warmly in one sentence, in your own words. A "complete plan" email is a stale snapshot with no one there to adjust it; the honest gift is the priority plus the open door.
 - Not a generic newsletter. Not a hard sell. Not a list of features. Not "Dear valued customer."
 - Do NOT invent details you weren't told. If the facts are thin but a send is still warranted, keep it warm and light rather than fabricating specifics.
 
@@ -158,8 +212,8 @@ The reader may know Yuri is an AI; that's fine. But an email full of AI tells re
 - A slightly imperfect, conversational sentence beats a polished one.
 
 Return STRICT JSON only, no markdown fence:
-{"should_send": true|false, "address_is_visitors_own": true|false, "reason": "<one short sentence explaining the decision>", "subject": "<a short, human subject line — lowercase-casual is fine, no emoji spam>", "body_html": "<the email body as simple HTML: a few <p> paragraphs, no links (a fixed button is added below your email), no <html>/<head>/<body> tags, no inline styles>"}
-When should_send is false, set subject and body_html to empty strings.`
+{"should_send": true|false, "address_is_visitors_own": true|false, "visitor_said_under_13": true|false, "reason": "<one short sentence explaining the decision>", "subject": "<a short, human subject line — lowercase-casual is fine, no emoji spam>", "body_html": "<the email body as simple HTML: a few <p> paragraphs, no links (a fixed button is added below your email), no <html>/<head>/<body> tags, no inline styles>"}
+When should_send is false, set subject and body_html to empty strings. Set visitor_said_under_13 to true only when the visitor themselves said they are under 13 in the conversation; otherwise false.`
 
 function buildTranscript(conversation: ConversationTurn[]): string {
   return conversation
@@ -282,6 +336,7 @@ export async function generateLeadEmail(
       reason?: string
       subject?: string
       body_html?: string
+      visitor_said_under_13?: boolean
     }
 
     // Ownership verdict: ONLY an explicit false triggers slot-clearing
@@ -314,7 +369,7 @@ export async function generateLeadEmail(
       reason: parsed.reason,
       email: {
         subject: scrubEmailVoice(parsed.subject),
-        bodyHtml: `${scrubEmailVoice(parsed.body_html)}\n${recapLinkButtonHtml(link)}`,
+        bodyHtml: composeRecapBody(scrubEmailVoice(parsed.body_html), link, parsed.visitor_said_under_13 === true),
       },
     }
   } catch (err) {

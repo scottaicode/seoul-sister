@@ -87,7 +87,7 @@ function email1(
 ${opener}
 ${
   previewUsedUp && resumeUrl
-    ? `<p>Our conversation is saved, and the button below opens it again, on any device, for the next 30 days. You've used the free messages that come with the preview, so you can read it back, but carrying it on is the subscriber side.</p>
+    ? `<p>Our conversation is saved, and the button below opens it again, on any device, for the next 30 days. You've used the free messages that come with the preview, so you can read it back. Carrying it on means a free account, and new members get ${PRICING.trial_days} days free.</p>
 <p><a href="${escapeAttr(resumeUrl)}" style="${BUTTON_STYLE}">See our conversation</a></p>
 <p>The paid side is where I remember your skin, build your routine, and adjust it as your skin changes month to month.</p>`
     : `<p>So here's the part we should have led with: you can talk to me right now, no account needed. Ask me anything you'd ask a friend who knows Korean skincare inside out. What's actually worth it for your skin, whether that viral serum is right for you, how to tell if the snail mucin you bought is real. I'll give you a straight answer backed by a database of 5,900+ products, and I'll tell you when something is not worth your money too.</p>
@@ -130,8 +130,8 @@ function email3(_cohort: NurtureCohort, _unsubscribeUrl: string, _options?: Nurt
 <p>Hi, it's Yuri. Last email from me, as promised, so let me be straight about what's free and what isn't.</p>
 <p>The free conversation on the homepage is real. I'll diagnose, recommend, and warn you off wasted money, and none of that changes.</p>
 <p>But skin doesn't change in one conversation. It changes over months. The part of my job that actually moves skin is the follow-through: remembering what you're using and how you reacted, catching the conflict when you add a new product, adjusting your routine when the seasons change or your skin does, and tracking your progress photos so we know what's working instead of guessing.</p>
-<p>That follow-through is the subscriber side. It's ${PRICING.monthly_display_long}, cancel anytime, and it exists because an advisor who forgets you every conversation isn't really an advisor.</p>
-<p><a href="${SITE}/subscribe?from=nurture_3" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">Start with Yuri</a></p>
+<p>That follow-through is the member side. New members get the first ${PRICING.trial_days} days free, and it's ${PRICING.monthly_display_long} after that. It exists because an advisor who forgets you every conversation isn't really an advisor.</p>
+<p><a href="${SITE}/register?plan=monthly&from=nurture_3" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">Start with Yuri</a></p>
 <p>And if Seoul Sister isn't for you, no hard feelings. This is the last email either way. It was good to meet you.</p>
 <p>Yuri</p>`,
   }

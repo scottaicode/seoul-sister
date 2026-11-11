@@ -19,6 +19,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import ts from 'typescript'
+import { createHash } from 'node:crypto'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
@@ -46,7 +47,7 @@ const home = read('src/components/home/HomeClient.tsx')
 
 /** The path paragraph inside the subscriber-surface block. */
 function pathParagraph() {
-  const para = surface.split('\n').find((l) => l.startsWith('If a visitor asks how to continue or what it costs'))
+  const para = surface.split('\n').find((l) => l.startsWith('When the conversation reaches the gate, or a visitor asks'))
   assert.ok(para, 'the path paragraph must exist in the subscriber-surface block')
   return para
 }
@@ -60,14 +61,14 @@ function pathParagraph() {
  * editing this list, which is the moment to ask whether it is true.
  */
 const PATH_SENTENCES = [
-  'If a visitor asks how to continue or what it costs, these are the facts.',
+  'When the conversation reaches the gate, or a visitor asks how to continue or what it costs, these are the facts.',
   'An account is free and needs no card.',
   'It opens a free setup chat with you, and if they sign up in this browser and confirm the preview was theirs, you will have it in front of you there.',
   'Membership is ${PRICING.monthly_display_long} and includes ${PRICING.yuri_allowance_display}.',
-  "A first-time member's first ${PRICING.trial_days} days are free, and no card is needed to start them.",
-  'The trial ends after those ${PRICING.trial_days} days unless they add a card, which they can do from inside the app.',
+  "A first-time member's first ${PRICING.trial_days} days are free, and ${trialCardFact()}",
   'The complete routine is built after they become a member, and it is the first thing offered to them then.',
   'It is not built during setup.',
+  'After it is built you check in most weeks with a question or two and adjust it from what they tell you.',
   'The link under this chat is where an account starts.',
   'Mentioning the account, the link or the price counts toward the frequency note below.',
 ]
@@ -99,7 +100,7 @@ test('the "best general version" guardrail no longer covers a personalized routi
   const line = route.split('\n').find((l) => l.includes('give the best general version you can'))
   assert.ok(line, 'guardrail line not found')
   assert.doesNotMatch(line, /routine|conflicts/i, 'this line told Yuri to give a general routine/conflict read while the gate placed both elsewhere')
-  assert.match(route, /Do NOT deliver that complete blueprint in the preview/, 'the gate itself must still be there')
+  assert.match(route, /By Seoul Sister's policy the preview stops at the diagnosis\./, 'the gate itself must still be there')
 })
 
 // ---------------------------------------------------------------------------
@@ -112,8 +113,51 @@ test('CLOSED WORLD: the path paragraph is exactly the approved sentences', () =>
   assert.doesNotMatch(pathParagraph(), /\$\d|\b\d+\s+(days|messages)\b/)
 })
 
+test('CLOSED WORLD: the whole widget prompt and the whole subscriber block are pinned by fingerprint', () => {
+  // Word bans and single-sentence pins were beaten in review by ADDING a
+  // sentence somewhere else: "If they hesitate, tell them the free week offer
+  // may not last." in the email section, "Unlike ChatGPT, I remember you." in
+  // the subscriber block, an under-13 rule reworded to allow accounts. Every one
+  // passed. These two fingerprints cover every word Yuri is given on the
+  // landing page that does not change per turn. A change fails here, and the
+  // person making it reads the whole prompt, runs the second-model review, and
+  // then updates the fingerprint.
+  const a = route.indexOf('const YURI_WIDGET_SYSTEM = `') + 'const YURI_WIDGET_SYSTEM = `'.length
+  const b = route.indexOf('`\n\n/**\n * POST /api/widget/chat')
+  assert.ok(a > 100 && b > a, 'static widget prompt not found')
+  assert.equal(createHash('sha256').update(route.slice(a, b)).digest('hex'), WIDGET_PROMPT_FINGERPRINT, 'the static widget prompt changed')
+  const sa = surface.indexOf('  return `\n\n## What the Subscriber Side Actually Is') + '  return `'.length
+  const sb = surface.indexOf('`\n}', sa)
+  assert.ok(sa > 100 && sb > sa, 'subscriber block not found')
+  assert.equal(createHash('sha256').update(surface.slice(sa, sb)).digest('hex'), SUBSCRIBER_BLOCK_FINGERPRINT, 'the subscriber block changed')
+})
+
+test('the trial card fact follows the trial setting, so Yuri never says "no card" while the checkout asks for one (executed)', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ss-surface-'))
+  const put = (name, src) => writeFileSync(join(dir, `${name}.mjs`), ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText)
+  put('pricing', read('src/lib/pricing.ts'))
+  put('email-normalize', read('src/lib/utils/email-normalize.ts'))
+  put('trial', read('src/lib/trial.ts').replace("from '@/lib/utils/email-normalize'", "from './email-normalize.mjs'").replace("from '@/lib/pricing'", "from './pricing.mjs'"))
+  put('surface', surface.replace("from '@/lib/pricing'", "from './pricing.mjs'").replace("from '@/lib/trial'", "from './trial.mjs'"))
+  const mod = await import(pathToFileURL(join(dir, 'surface.mjs')).href)
+  const saved = process.env.NO_CARD_TRIAL_ENABLED
+  try {
+    delete process.env.NO_CARD_TRIAL_ENABLED
+    assert.equal(mod.trialCardFact(), 'no card is needed to start them. The trial ends after those 7 days unless they add a card, which they can do from inside the app.')
+    assert.match(mod.buildSubscriberSurfaceBlock(), /first 7 days are free, and no card is needed to start them\./)
+    process.env.NO_CARD_TRIAL_ENABLED = 'false'
+    assert.equal(mod.trialCardFact(), 'a card is needed to start them; nothing is charged if they cancel before the 7 days end.')
+    // ("An account is free and needs no card" stays true either way; this is about the TRIAL.)
+    assert.doesNotMatch(mod.buildSubscriberSurfaceBlock(), /no card is needed to start them/)
+    assert.match(mod.buildSubscriberSurfaceBlock(), /a card is needed to start them/)
+  } finally {
+    if (saved === undefined) delete process.env.NO_CARD_TRIAL_ENABLED
+    else process.env.NO_CARD_TRIAL_ENABLED = saved
+  }
+})
+
 test('path facts are conditional and counted, not a pitch delivered every turn', () => {
-  assert.match(PATH_SENTENCES[0], /^If a visitor asks/)
+  assert.match(PATH_SENTENCES[0], /^When the conversation reaches the gate, or a visitor asks/)
   assert.match(PATH_SENTENCES.at(-1), /counts toward the frequency note/)
   assert.match(surface, /one or two replies, not most of them/, 'the frequency note it points at must exist')
   assert.match(surface, /it changes nothing about when, or whether, to say it/)
@@ -345,10 +389,66 @@ test('final message, under-13 and specialist facts match the new path', () => {
   assert.doesNotMatch(route, /naturally weave in ONE brief mention/, 'a per-turn instruction to mention the paid side drove the over-mention')
 })
 
-test('the gate says which side an owned shelf is on', () => {
-  assert.match(route, /Reading a shelf they already own, saying what clashes, what to drop and what order those same products go in, is the give: it is the diagnosis\./)
-  assert.match(route, /The build is what needs new picks for empty slots, a multi-week introduction schedule, and revising it as their skin responds\./)
-  assert.doesNotMatch(route, /conflict-checking their whole lineup, and adjusting/, 'that clause contradicted "saying what clashes is the give"')
+const GATE_FINGERPRINT = '2fd840415bd523d0521dd9d444c099d1fa779180acfcb597c265c93ce7859b1a'
+const WIDGET_PROMPT_FINGERPRINT = '4a01c0d290c27cb42951a2465c3644e21487730302073b418d182892552ae6c0'
+const SUBSCRIBER_BLOCK_FINGERPRINT = '4f6d5a533385b129bdaba88d928e8cd0b919309f7c6220459709204a2403c974'
+
+/** The five gate paragraphs of the widget prompt, as one string. */
+function gateText() {
+  const a = route.indexOf('**The give: the diagnosis and the one change that matters most.**')
+  const b = route.indexOf('## Continuity You CAN Offer Right Now: Save Their Email')
+  assert.ok(a > 0 && b > a, 'gate section not found')
+  return route.slice(a, b).trim()
+}
+
+test('CLOSED WORLD: the give and the gate are exactly these five paragraphs (Nov 10 2026 owner decision)', () => {
+  // After the owner tested the live funnel, Yuri had laid out a full AM/PM for a
+  // visitor who owned most of her routine and then said "you don't need to pay
+  // for anything yet". The decision: the preview gives the diagnosis and the
+  // one change that matters most; the routine, including the order of products
+  // they already own, is built in a free week that needs no card. Pinned whole,
+  // because this section has been reworded many times and a ban list cannot
+  // see an added sentence.
+  const paras = gateText().split('\n\n')
+  assert.deepEqual(paras.map((p) => p.slice(0, p.indexOf('**', 2) + 2)), [
+    '**The give: the diagnosis and the one change that matters most.**',
+    '**The gate: the routine is built in their free week, not here.**',
+    '**Why it is better built there, which is true and is the reason the policy exists.**',
+    '**Not every question has a routine behind it.**',
+    '**Telling someone to buy no products is still the give.**',
+  ])
+  assert.equal(
+    createHash('sha256').update(gateText()).digest('hex'),
+    GATE_FINGERPRINT,
+    'the gate text changed: read all five paragraphs, run the second-model review, then update GATE_FINGERPRINT'
+  )
+})
+
+test('the gate, in words: what is free, what is built in the free week, and where an invitation would be false', () => {
+  const g = gateText()
+  assert.match(g, /Reading a shelf they already own belongs here too: what clashes, what to drop, what to keep\./)
+  assert.match(g, /This holds even when the routine would only put products they already own in order, and even when they ask for it directly\./)
+  assert.match(g, /a first-time member's first week is free \(the facts after the conversation say exactly what starting it takes\)/)
+  assert.doesNotMatch(g, /no card/, 'the card wording lives in the per-turn path facts, which follow the trial setting; the static prompt must not hardcode it')
+  assert.match(g, /Often it takes two or three replies\. Take as many as the diagnosis honestly needs, and never invite before it has landed\./)
+  assert.match(g, /If they say no to the account, take them at their word: do not repeat the invitation, and keep answering what they ask\./)
+  assert.match(g, /Describe what you will do for this person\. Do not describe the product, and do not compare yourself to other tools\./)
+  assert.match(g, /an invitation there would be a false limitation/)
+  assert.match(g, /"Keep what you have" and "you only need one thing" are diagnosis, and they stay free\./)
+  assert.match(g, /For a first-time member the week costs nothing, so this is not about money\./)
+  assert.match(g, /as much of their shelf, their reactions and their climate as they tell you/, 'setup requires only skin type, concerns and age range')
+  // The sentence that made the owned-shelf order free (earlier the same day) must be gone.
+  assert.doesNotMatch(route, /what order those same products go in, is the give/)
+  // No pressure and no comparison speech.
+  assert.doesNotMatch(g, /\b(ChatGPT|Claude|Gemini|unlike other|other AI)\b/i)
+  assert.doesNotMatch(g, /\b(hurry|today only|limited|spots|last chance|before it's too late|don't miss)\b/i)
+})
+
+test('the invitation and the email ask are one moment, never a second ask', () => {
+  assert.match(route, /\*\*The invitation and the email ask are the same moment\.\*\* When you reach the gate, the next step you can offer is concrete: they type their email address here, and you send a write-up of what the two of you worked out\./)
+  assert.match(route, /If you already offered the write-up when the diagnosis landed and no address came back, do not ask a second time here/)
+  assert.match(route, /\*\*But ask ONCE, then let it rest\.\*\*/)
+  assert.doesNotMatch(route, /handed them their #1 priority with a specific pick/, 'that trigger fired the ask one reply before the invitation')
 })
 
 test('checkout start is stamped server-side, set-once, and never blocks checkout', () => {
