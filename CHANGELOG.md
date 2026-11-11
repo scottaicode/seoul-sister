@@ -36,9 +36,9 @@ All notable changes to Seoul Sister are documented here.
 - **Stripe events.** `ss_subscription_events.event_data` stored whole Stripe objects: 65 of 79 rows
   held a customer email, many a name and address, and 78 of 79 had no link to a subscription row, so
   nothing could have found them. The webhook now stores only ids, status, amounts and our own metadata
-  (`eventObjectForLog`, a list of what is kept; the network code in metadata is dropped). Existing
-  rows were NOT rewritten: 49 of 79 still hold contact details, including 10 rows for customers whose
-  account is already gone or was never known. That rewrite is waiting on the owner's yes.
+  (`eventObjectForLog`, a list of what is kept; the network code in metadata is dropped). The 79
+  existing rows were rewritten to the same form the same evening, with the owner's yes: 49 had held
+  contact details, none do now.
 - **A leaving member is not emailed "everything is saved".** The cancel is marked
   (`cancellation_details.comment = account_deleted`) and the webhook skips the trial-ended email for it.
 - **Kept on purpose, and now stated in the Privacy Policy:** the free-week ledger row (address,
@@ -65,11 +65,14 @@ All notable changes to Seoul Sister are documented here.
   surviving mutations. All fixed.
 - **Verified:** the real `eraseAccount` on throwaway production accounts holding every kind of row
   above, including stored events matched three ways and a control event that had to survive; a sweep
-  by user id, visitor ids and address found only the rows kept by design. **Not verified:** anything
-  that writes to live Stripe (cancel and customer deletion were stubbed, including how Stripe answers
-  a repeat of either; the search was run read-only), the route over HTTP in production, the owner email,
-  reviews and retailer clicks (unit-tested only), and the policy's older "backups purged within 30
-  days" sentence.
+  by user id, visitor ids and address found only the rows kept by design. **Verified live after deploy:** one deletion through the production
+  route on a throwaway account with a real $0 no-card Stripe trial: 200, login gone, Stripe customer
+  deleted, subscription cancelled carrying `account_deleted`, no rows of ours left, and a repeat
+  cancel or customer delete answers `resource_missing` (which the helpers treat as done). The events
+  the webhook stored for it held no contact details. **Not verified:** that the trial-ended email was
+  withheld (not observed either way), the owner failure email, a failure path in production, reviews
+  and retailer clicks (unit-tested only), and the policy's older "backups purged within 30 days"
+  sentence.
 - **Known, not fixed:** the ledger's network code is an unsalted short hash of the IP address; a
   Stripe event that arrives after deletion is still logged (reference ids, amounts, our metadata; the
   policy now says so); a Stripe customer named in no stored event and not returned by the search would
