@@ -20,10 +20,10 @@ import {
 } from '@/lib/utils/widget-session'
 import { renderMarkdown, parseWidgetStream } from '@/lib/utils/widget-shared'
 import type { WidgetMessage } from '@/lib/utils/widget-shared'
-import { PRICING } from '@/lib/pricing'
 import { trackEvent, DemoEvent, WidgetEvent } from '@/lib/analytics'
 import { detectAiReferrer } from '@/lib/widget/ai-referrer'
-import { getOfferCode } from '@/lib/offers'
+import { widgetAccountLine, widgetMembershipLine } from '@/lib/offers'
+import { useSavedOffer } from '@/lib/use-saved-offer'
 
 /**
  * Stamp the first click on a sign-up link inside the chat (set-once server
@@ -172,6 +172,10 @@ interface TryYuriSectionProps {
 }
 
 export default function TryYuriSection({ variant = 'section' }: TryYuriSectionProps) {
+  // The saved creator code as it applies to this person (see useSavedOffer).
+  const savedOffer = useSavedOffer()
+  const offerCodeRef = useRef<string | null>(null)
+  offerCodeRef.current = savedOffer.codeForChat
   const [messages, setMessages] = useState<WidgetMessage[]>([])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
@@ -693,8 +697,9 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             ...(isWidgetFresh() ? { fresh: true } : {}),
             ...(reopenedFromEmailPending ? { reopened_from_email: true } : {}),
             // A creator code this browser remembers, so Yuri states this
-            // visitor's real price. The server confirms it with Stripe.
-            ...(getOfferCode() ? { offer_code: getOfferCode() } : {}),
+            // visitor's real price. The server confirms it with Stripe. Not
+            // sent for a signed-in member: the code is not theirs to use.
+            ...(offerCodeRef.current ? { offer_code: offerCodeRef.current } : {}),
             // First-touch feeder attribution: send the source once, on the
             // request that will create the session. Server persists it.
             ...(includeSource ? { source: sourceRef.current } : {}),
@@ -1114,7 +1119,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
                   Create my free account <ArrowRight className="w-3 h-3" />
                 </Link>
                 <p className="text-xs text-white/50 mt-2">
-                  Membership is {PRICING.monthly_display}. New members get the first {PRICING.trial_days} days free, no card needed to start.
+                  {widgetMembershipLine(savedOffer.percentOff)}
                 </p>
               </div>
             )}
@@ -1215,7 +1220,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             onClick={recordRegisterClick}
             className="inline-block text-xs py-2 px-3 text-gold/80 hover:text-gold underline underline-offset-2"
           >
-            Create a free account and continue with Yuri. New members get {PRICING.trial_days} days free with no card. {PRICING.monthly_display} after that, only if you add a card.
+            {widgetAccountLine(savedOffer.percentOff)}
           </Link>
         </p>
       )}

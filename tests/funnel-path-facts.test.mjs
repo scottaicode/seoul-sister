@@ -225,7 +225,10 @@ test('path fact "the link under this chat": it exists, is a real tap target, and
   // wall sat behind setup. It is true now that the trial needs no card, and
   // only for as long as it does.
   // It names who gets the free week (new members) and shows the price.
-  assert.match(link, /Create a free account and continue with Yuri\. New members get \{PRICING\.trial_days\} days free with no card\. \{PRICING\.monthly_display\} after that, only if you add a card\./)
+  // The sentence is built in offers.ts (exact text pinned in no-card-trial.test.mjs),
+  // so a saved creator code changes the price it states.
+  assert.match(link, /\{widgetAccountLine\(savedOffer\.percentOff\)\}/)
+  assert.match(read('src/lib/offers.ts'), /const lead = `Create a free account and continue with Yuri\. New members get \$\{PRICING\.trial_days\} days free with no card\.`/)
   assert.match(read('src/lib/pricing.ts'), /trial_requires_card: false,/, 'the link says "no card needed": true only with a no-card trial')
 })
 
@@ -373,7 +376,7 @@ test('the limit card body is exactly the approved text (no routine promised at t
   )
   const card = widget.slice(start, start + 2000)
   assert.match(card, /Create my free account/)
-  assert.match(card, /Membership is \{PRICING\.monthly_display\}\. New members get the first \{PRICING\.trial_days\} days free, no card needed to start\./)
+  assert.match(card, /\{widgetMembershipLine\(savedOffer\.percentOff\)\}/)
 })
 
 test('the paywall claims "I have what I need" only for a FINISHED setup', () => {

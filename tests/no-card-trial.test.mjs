@@ -15,6 +15,7 @@
  * notice's state are now run for real against fakes, and the outputs are
  * compared exactly.
  */
+import { createHash as sha } from 'node:crypto'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs'
@@ -624,6 +625,15 @@ test('offer codes: every charge sentence names the discounted first month AND th
     assert.equal(o.addCardPhrase(50), '$4.99 for your first paid month (50% off) when the trial ends, then $9.99/month')
     assert.equal(o.priceWithOffer(50), '$4.99 for your first paid month (50% off), then $9.99/month')
     assert.equal(o.priceWithOffer(null), '$9.99/month')
+    // The two price lines under the free chat.
+    assert.equal(o.widgetAccountLine(null), 'Create a free account and continue with Yuri. New members get 7 days free with no card. $9.99/mo after that, only if you add a card.')
+    assert.equal(o.widgetAccountLine(50), 'Create a free account and continue with Yuri. New members get 7 days free with no card. After that, $4.99 for your first paid month (50% off), then $9.99/month, only if you add a card.')
+    assert.equal(o.widgetMembershipLine(null), 'Membership is $9.99/mo. New members get the first 7 days free, no card needed to start.')
+    assert.equal(o.widgetMembershipLine(50), 'Membership is $4.99 for your first paid month (50% off), then $9.99/month. New members get the first 7 days free, no card needed to start.')
+    for (const bad of [0, 100, 0.5, '50', undefined, NaN]) {
+      assert.equal(o.widgetAccountLine(bad), o.widgetAccountLine(null), `must ignore ${bad}`)
+      assert.equal(o.widgetMembershipLine(bad), o.widgetMembershipLine(null), `must ignore ${bad}`)
+    }
     assert.equal(o.offerFailedLine('BAILEY'), 'Code BAILEY could not be applied just now. Press the button again to continue without it at $9.99/month, or try again in a few minutes to use the code.')
     for (const bad of [0, 100, 150, -5, 0.4, 99.5, 12.5, '50', undefined, NaN]) {
       assert.equal(o.firstMonthPrice(bad), null, `must ignore ${bad}`)
@@ -754,8 +764,20 @@ test('offer codes: the checkout stops if Stripe cannot confirm the code, and the
   assert.match(subscribe, /setOfferActive\(o\.state === 'active'\)/)
   assert.match(subscribe, /const priceLong = priceWithOffer\(offerActive \? offerPercent : null\)/)
   assert.doesNotMatch(subscribe, /PRICING\.monthly_display_long/, 'every price sentence on the paywall goes through priceLong, so none contradicts the code line')
-  const saved = read('src/components/widget/OfferSavedLine.tsx')
-  assert.match(saved, /if \(o\.state === 'active'\) \{\s*if \(live\) setLine\(o\.saved_line \?\? null\)\s*return\s*\}\s*clearOfferCode\(\)\s*if \(live && o\.state === 'ended'\) setLine\(o\.line \?\? null\)/, 'only a code Stripe confirmed is called saved')
+  // What the saved line says is decided in resolveSavedOffer (executed below).
+  assert.match(read('src/components/widget/OfferSavedLine.tsx'), /const \{ line \} = useSavedOffer\(\)\s*if \(!line\) return null/)
+  const hook = read('src/lib/use-saved-offer.ts')
+  // The hook only wires real readers into resolveSavedOffer. Its whole effect is pinned.
+  const effect = hook.slice(hook.indexOf('  useEffect(() => {'), hook.indexOf('  return offer'))
+  assert.equal(effect.replace(/\n\s*\/\/[^\n]*/g, '').replace(/\s+/g, ' ').trim(),
+    "useEffect(() => { let live = true captureOfferCode() setOffer(NO_SAVED_OFFER) if (loading) return resolveSavedOffer({ code: getOfferCode(), signedIn: userId !== null, readPlan: () => readMemberPlan(supabase, userId as string), askOffer: (code) => askOfferOnce(code, (url) => fetch(url)), forget: clearOfferCode, onUpdate: (o) => { if (live) setOffer(o) }, }).catch((err) => console.error('[offer] could not check the saved code:', err)) return () => { live = false } }, [userId, loading])")
+  assert.match(hook, /const \{ user, loading \} = useAuth\(\)\n  const userId = user\?\.id \?\? null\n/)
+  // The whole hook, comments aside, by fingerprint: a wrong return statement
+  // or initial state outside the effect passed every other assertion here
+  // (second-model review). Any edit needs a review and a new fingerprint.
+  const hookBody = hook.slice(hook.indexOf('export function useSavedOffer')).replace(/\n\s*\/\/[^\n]*/g, '').replace(/\s+/g, ' ').trim()
+  assert.equal(sha('sha256').update(hookBody).digest('hex'), '58da4587a782f5cd4e2e1fa2f575243dc0eaa335d93a9bff02ac907ee0bbf879')
+  assert.equal(sha('sha256').update(hook.split('\n').filter((l) => l.startsWith('import ')).join('\n')).digest('hex'), 'bef8127d6c2ae957642a0258fde4e1a625c1c4f31a659a3fe050be93c4fbd98f')
   assert.match(read('src/components/home/HomeClient.tsx'), /<TryYuriSection variant="hero" \/>\s*<OfferSavedLine \/>/)
   assert.match(block, /else if \(resolved\.state === 'ended'\) \{[\s\S]{0,260}return NextResponse\.json\(\{ error: offerEndedLine\(resolved\.code\), offer_ended: true \}, \{ status: 409 \}\)/, 'a code that closed stops the checkout and says so')
   assert.doesNotMatch(checkout, /error: message \}/, 'raw Stripe errors are not shown to customers')
@@ -875,11 +897,11 @@ test('offer codes (executed): the trial-ending notice states the discounted pric
   const end = '2026-11-27T04:00:00Z'
   assert.equal(
     trialEndingLine(end, { hasPaymentMethod: true, cancelAtPeriodEnd: false }, 'America/Chicago', 50),
-    'Your free trial ends on Thursday, November 26. Your card will be charged $4.99 for your first paid month (50% off) on that day, then $9.99/month until you cancel.'
+    'Your free trial ends on Thursday, November 26 (CST). Your card will be charged $4.99 for your first paid month (50% off) on that day, then $9.99/month until you cancel.'
   )
   assert.equal(
     trialEndingLine(end, { hasPaymentMethod: false, cancelAtPeriodEnd: false }, 'America/Chicago', 50),
-    'Your free trial ends on Thursday, November 26. No card is on file, so nothing will be charged and your membership will stop on that day. To keep going, sign in and use the "Add a card" button at the top of any page: $4.99 for your first paid month (50% off) when the trial ends, then $9.99/month.'
+    'Your free trial ends on Thursday, November 26 (CST). No card is on file, so nothing will be charged and your membership will stop on that day. To keep going, sign in and use the "Add a card" button at the top of any page: $4.99 for your first paid month (50% off) when the trial ends, then $9.99/month.'
   )
   // The trial-ended email: unchanged without a code; with one, it says the code can be used again and where.
   const { buildTrialEndedEmail } = await import(pathToFileURL(join(dir, 'trial-emails.mjs')).href)
@@ -958,7 +980,13 @@ test('offer codes: the fact reaches both chats in the per-turn block, never the 
   const route = read('src/app/api/widget/chat/route.ts')
   assert.match(route, /const offerFact = await offerFactLine\(parsed\.offer_code\)/)
   assert.match(route, /\$\{visitorCountryFact\([^\n]*\)\}\$\{offerFact \? `\\n- \$\{offerFact\}` : ''\}\n- Continuity in this browser/)
-  assert.match(read('src/components/widget/TryYuriSection.tsx'), /\.\.\.\(getOfferCode\(\) \? \{ offer_code: getOfferCode\(\) \} : \{\}\),/)
+  const widgetSrc = read('src/components/widget/TryYuriSection.tsx')
+  assert.match(widgetSrc, /\.\.\.\(offerCodeRef\.current \? \{ offer_code: offerCodeRef\.current \} : \{\}\),/)
+  assert.match(widgetSrc, /const savedOffer = useSavedOffer\(\)\n  const offerCodeRef = useRef<string \| null>\(null\)\n  offerCodeRef\.current = savedOffer\.codeForChat\n/)
+  // The code reaches the request from that one assignment and nowhere else.
+  assert.equal((widgetSrc.match(/offerCodeRef/g) ?? []).length, 4, 'declared, assigned once, read twice in one expression')
+  assert.equal((widgetSrc.match(/offer_code/g) ?? []).length, 1)
+  assert.doesNotMatch(widgetSrc, /getOfferCode|ss_offer_code|OFFER_STORAGE_KEY|localStorage\.getItem\('ss_offer/, 'the widget sends only the code useSavedOffer cleared for this person')
   assert.match(read('src/app/(app)/onboarding/page.tsx'), /\.\.\.\(getOfferCode\(\) \? \{ offer_code: getOfferCode\(\) \} : \{\}\),/)
   const lib = read('src/lib/yuri/onboarding.ts')
   assert.match(lib, /Nothing has been paid\.`\n    \)\n    if \(facts\.offerFact\) statusLines\.push\(facts\.offerFact\)\n  \}/, 'only for someone who is not a member yet')
@@ -972,4 +1000,132 @@ test('offer codes: the fact reaches both chats in the per-turn block, never the 
   const cached = lib.slice(lib.indexOf('function buildOnboardingSystemPrompt'), lib.indexOf('export interface OnboardingTurnFacts'))
   assert.ok(cached.length > 2000)
   assert.doesNotMatch(cached, /offerFact|Creator code/)
+})
+
+test('saved code: who it is spoken of to, and what is said at each step (executed)', async () => {
+  const m = await loadModules()
+  try {
+    const o = m.offers
+    // Every combination, closed world.
+    assert.deepEqual(
+      [[false, null, true], [false, 'pro_monthly', true], [false, null, false], [true, null, true], [true, 'free', true], [true, '', true],
+        [true, 'pro_monthly', true], [true, 'pro', true], [true, 'monthly', true], [true, 'anything_else', true],
+        [true, 'free', false], [true, 'pro_monthly', false], [true, 'monthly', false], [true, null, false]]
+        .map(([s, p, k]) => o.offerAudience(s, p, k)),
+      // 'monthly' is the plan every $9.99 member and every trial gets (planFromStripePriceId).
+      ['applies', 'applies', 'applies', 'applies', 'applies', 'applies', 'member', 'member', 'member', 'member', 'unknown', 'unknown', 'unknown', 'unknown']
+    )
+    const ACTIVE = { state: 'active', code: 'BAILEY', percent_off: 50, line: 'applied', saved_line: 'Code BAILEY saved: 50% off your first paid month.' }
+    const run = async ({ code = 'BAILEY', signedIn = false, plan = null, known = true, answer = ACTIVE, askThrows = false }) => {
+      const updates = []; const calls = { plan: 0, ask: 0, forget: 0 }
+      let thrown = null
+      await o.resolveSavedOffer({
+        code, signedIn,
+        readPlan: async () => { calls.plan++; return { plan, known } },
+        askOffer: async () => { calls.ask++; if (askThrows) throw new Error('net'); return answer },
+        forget: () => { calls.forget++ },
+        onUpdate: (u) => updates.push(u),
+      }).catch((e) => { thrown = e })
+      return { updates, calls, last: updates[updates.length - 1], thrown }
+    }
+    const NOTHING = { line: null, percentOff: null, codeForChat: null }
+    const SAVED = { line: 'Code BAILEY saved: 50% off your first paid month.', percentOff: 50, codeForChat: 'BAILEY' }
+    const PENDING = { line: null, percentOff: null, codeForChat: 'BAILEY' }
+
+    // No code: nothing, and nobody is asked anything.
+    let r = await run({ code: null })
+    assert.deepEqual([r.updates, r.calls], [[NOTHING], { plan: 0, ask: 0, forget: 0 }])
+    // A visitor who is not signed in: membership is not read.
+    r = await run({})
+    assert.deepEqual([r.updates, r.calls], [[PENDING, SAVED], { plan: 0, ask: 1, forget: 0 }])
+    // Signed in, not yet a member: the code is theirs to use.
+    for (const plan of [null, 'free']) {
+      r = await run({ signedIn: true, plan })
+      assert.deepEqual([r.updates, r.calls], [[PENDING, SAVED], { plan: 1, ask: 1, forget: 0 }])
+    }
+    // A member: nothing is shown, no code goes to Yuri, Stripe is not asked, the code is kept.
+    r = await run({ signedIn: true, plan: 'pro_monthly' })
+    assert.deepEqual([r.updates, r.calls], [[NOTHING], { plan: 1, ask: 0, forget: 0 }])
+    // Membership unreadable: the same silence.
+    r = await run({ signedIn: true, plan: null, known: false })
+    assert.deepEqual([r.updates, r.calls], [[NOTHING], { plan: 1, ask: 0, forget: 0 }])
+    // Stripe says the code ended: said once, forgotten, never sent to Yuri.
+    r = await run({ answer: { state: 'ended', code: 'BAILEY', line: 'Code BAILEY is no longer available, so membership is $9.99/month.' } })
+    assert.deepEqual(r.last, { line: 'Code BAILEY is no longer available, so membership is $9.99/month.', percentOff: null, codeForChat: null })
+    assert.equal(r.calls.forget, 1)
+    // A code Stripe does not know: forgotten and nothing said.
+    r = await run({ answer: { state: 'unknown' } })
+    assert.deepEqual([r.last, r.calls.forget], [NOTHING, 1])
+    // Stripe could not be asked: no claim, the code is kept and still goes with a chat message.
+    r = await run({ answer: null })
+    assert.deepEqual([r.updates, r.calls.forget], [[PENDING], 0])
+    r = await run({ askThrows: true })
+    assert.deepEqual([r.updates, r.calls.forget, r.thrown?.message], [[PENDING], 0, 'net'])
+    // A percentage that is not usable is never shown as a price.
+    r = await run({ answer: { ...ACTIVE, percent_off: 150 } })
+    assert.equal(r.last.percentOff, null)
+  } finally { m.restore() }
+})
+
+test('saved code: the plan is read by user_id, and /api/offer is asked once per page (executed)', async () => {
+  const m = await loadModules()
+  const realError = console.error
+  const errors = []
+  console.error = (...a) => errors.push(a.join(' '))
+  try {
+    const o = m.offers
+    // readMemberPlan: the exact table, column and key, and a failed read is "not known".
+    const calls = []
+    const db = (result) => ({
+      from(table) {
+        const q = {
+          select(c) { calls.push(['select', c]); return q },
+          eq(c, v) { calls.push(['eq', c, v]); return q },
+          maybeSingle: async () => result,
+        }
+        calls.push(['from', table])
+        return q
+      },
+    })
+    assert.deepEqual(await o.readMemberPlan(db({ data: { plan: 'monthly' }, error: null }), 'user-1'), { plan: 'monthly', known: true })
+    assert.deepEqual(calls, [['from', 'ss_user_profiles'], ['select', 'plan'], ['eq', 'user_id', 'user-1']])
+    assert.deepEqual(await o.readMemberPlan(db({ data: null, error: null }), 'user-1'), { plan: null, known: true }, 'no profile row yet: not a member')
+    assert.deepEqual(await o.readMemberPlan(db({ data: { plan: null }, error: null }), 'user-1'), { plan: null, known: true })
+    assert.deepEqual(await o.readMemberPlan(db({ data: null, error: { message: 'rls' } }), 'user-1'), { plan: null, known: false })
+    assert.equal(errors.filter((e) => e.includes('could not read membership') && e.includes('rls')).length, 1)
+
+    // askOfferOnce: two components, one request; the URL is encoded; a failure is not kept.
+    const urls = []
+    const ok = (body) => async (url) => { urls.push(url); return { ok: true, status: 200, json: async () => body } }
+    const [a, b] = await Promise.all([o.askOfferOnce('BAILEY', ok({ state: 'active', percent_off: 50 })), o.askOfferOnce('BAILEY', ok({ state: 'never' }))])
+    assert.deepEqual([a, b], [{ state: 'active', percent_off: 50 }, { state: 'active', percent_off: 50 }])
+    assert.deepEqual(urls, ['/api/offer?code=BAILEY'])
+    await o.askOfferOnce('BAILEY', ok({ state: 'never' }))
+    assert.equal(urls.length, 1, 'an answer is reused')
+    // ...for five minutes, then Stripe is asked again (a code may have ended).
+    assert.equal(o.OFFER_LOOKUP_TTL_MS, 5 * 60 * 1000)
+    const realNow = Date.now
+    try {
+      const t0 = realNow()
+      Date.now = () => t0 + 5 * 60 * 1000 - 1000
+      await o.askOfferOnce('BAILEY', ok({ state: 'never' }))
+      assert.equal(urls.length, 1)
+      Date.now = () => t0 + 5 * 60 * 1000 + 1000
+      assert.deepEqual(await o.askOfferOnce('BAILEY', ok({ state: 'ended', line: 'gone' })), { state: 'ended', line: 'gone' })
+      assert.equal(urls.length, 2)
+    } finally { Date.now = realNow }
+    urls.length = 1
+    await o.askOfferOnce('A B', ok({ state: 'unknown' }))
+    assert.equal(urls[1], '/api/offer?code=A%20B')
+    // 429 / 5xx: null, logged, and asked again next time.
+    const limited = async (url) => { urls.push(url); return { ok: false, status: 429, json: async () => ({}) } }
+    assert.equal(await o.askOfferOnce('LATER', limited), null)
+    await new Promise((r) => setTimeout(r, 0))
+    assert.deepEqual(await o.askOfferOnce('LATER', ok({ state: 'active', percent_off: 50 })), { state: 'active', percent_off: 50 })
+    assert.equal(errors.filter((e) => e.includes('/api/offer answered 429')).length, 1)
+    // A thrown fetch rejects (the hook logs it) and is asked again next time.
+    await assert.rejects(o.askOfferOnce('THROWS', async () => { throw new Error('offline') }), /offline/)
+    await new Promise((r) => setTimeout(r, 0))
+    assert.deepEqual(await o.askOfferOnce('THROWS', ok({ state: 'ended' })), { state: 'ended' })
+  } finally { console.error = realError; m.restore() }
 })

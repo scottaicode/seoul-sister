@@ -113,7 +113,27 @@ const BANNED_PATTERNS: CleanupRule[] = [
   // questions mid-paragraph are never touched. Only strip the closer-at-end
   // pattern. System prompt is the primary fix; this is a safety net.
   // Matches: optional leading newline/space, the filler, optional trailing punctuation.
-  { pattern: /\s*(?:Sound good|Sounds good|Does that sound good|Does that feel doable|Want me to [^?]{1,80}|Make sense|Does that make sense|Sound like a plan|Ready to (?:dive in|get started))\??\s*$/i, replacement: '' },
+  //
+  // The closer must be a WHOLE final sentence: it starts the text or follows
+  // sentence-ending punctuation, and it ends in a question mark. The first
+  // version had neither bound, so a normal sentence that happened to contain
+  // the words lost its ending: "...a way to keep me involved if you want me to
+  // keep checking in." was stored and shown as "...keep me involved if you"
+  // (Nov 11 2026), and "Sound good, or want me to slow it down?" as "Sound
+  // good, or". Measured before fixing: seven stored replies end on a dangling
+  // word this way ("if you", "Anything you", "..., or", "when you're back,").
+  //
+  // Four more bounds, each from a reply the second-model review showed being
+  // damaged (Nov 11 2026):
+  // - It follows a finished sentence, never the start of the reply, so a reply
+  //   that is ONLY the question is kept rather than stored empty.
+  // - The sentence end is punctuation after a non-digit: "2. Want me to check
+  //   the price?" is a list item, and stripping it left a bare "2.".
+  // - A line break or a colon before it is not a sentence end ("That is the
+  //   routine:\nWant me to save it?" was left ending on the colon).
+  // - A question offering a choice ("Want me to go with A, or B?") is a real
+  //   question and stays.
+  { pattern: /(?<=[^\d\s][.!?])\s*(?:Sound good|Sounds good|Does that sound good|Does that feel doable|Want me to (?![^?\n]*\bor\b)[^?\n]{1,80}|Make sense|Does that make sense|Sound like a plan|Ready to (?:dive in|get started))\?\s*$/i, replacement: '' },
 
   // Double spaces from removal
   { pattern: /  +/g, replacement: ' ' },

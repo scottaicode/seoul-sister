@@ -94,10 +94,16 @@ const searchMod = await (async () => {
     sliceDecl(TOOLS, 'function wordFormStem('),
     sliceDecl(TOOLS, 'function normalizeTerm('),
     readFileSync(join(root, 'src/lib/yuri/joined-alnum.ts'), 'utf8').replace(/^export /gm, ''),
+    // Nov 2026: which terms name the brand (separate module, same inlining).
+    readFileSync(join(root, 'src/lib/yuri/brand-match.ts'), 'utf8').replace(/^export /gm, ''),
     sliceDecl(TOOLS, 'function ilikeTerm('),
     sliceDecl(TOOLS, 'function termMatches('),
     sliceDecl(TOOLS, 'async function smartProductSearch('),
-  ].join('\n\n') + '\nexport { smartProductSearch }\n'
+  ].join('\n\n') + '\nexport { smartProductSearch }\n' +
+    // A fresh module per load. brand-match.ts keeps the catalog at module
+    // level, and an identical data: URL would hand every test the first
+    // test's catalog.
+    `// ${Math.random()}\n`
   const out = ts.transpileModule(mod, {
     compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
   }).outputText
@@ -115,6 +121,7 @@ function ilikeDb(rows) {
       const q = {
         select: () => q,
         eq(c, v) { set = set.filter((r) => r[c] === v); return q },
+        in(c, vals) { set = set.filter((r) => vals.includes(r[c])); return q },
         ilike(c, p) { set = set.filter((r) => like(r[c], p)); return q },
         or(s) {
           const preds = s.split(',').map((c) => { const [col, , ...rest] = c.split('.'); return { col, p: rest.join('.').replace(/^"|"$/g, '') } })
@@ -123,6 +130,8 @@ function ilikeDb(rows) {
         },
         order(c, o) { const d = o?.ascending === false ? -1 : 1; set = [...set].sort((a, b) => ((a[c] ?? -1e9) - (b[c] ?? -1e9)) * d); return q },
         limit(n) { lim = n; return Promise.resolve({ data: set.slice(0, lim), error: null }) },
+        // brand-match.ts pages the whole catalog with an exact count.
+        range(a, b) { return Promise.resolve({ data: set.slice(a, b + 1), error: null, count: set.length }) },
         then(res) { return Promise.resolve({ data: set.slice(0, lim), error: null }).then(res) },
       }
       return q

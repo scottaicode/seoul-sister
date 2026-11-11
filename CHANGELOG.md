@@ -4,6 +4,76 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.56.0 — Search no longer hands a brand's products to a word that only resembles it; four fixes from the trials (Nov 11 2026)
+
+- **Why.** A visitor asked for a "lightweight gel moisturizer" and got Physiogel lotions: any query word
+  sitting inside a brand name ("gel" in Physiogel, "acne" in Acnes, "no" in COSNORI, "free" in
+  Innisfree) earned the brand's weight. Two earlier fixes were measured and held back (v11.55.2).
+- **Search (`src/lib/yuri/brand-match.ts`, new; `smartProductSearch`).**
+  - A term names a brand only when the whole brand is typed (as one word or several: "manyo", "dr
+    jart", "roundlab"), or when it is one of the brand's words and not an ordinary product-name word.
+    "Ordinary" is measured over the whole verified catalog (a brand word that three or more other
+    brands use in product names: 38 words on Nov 11, e.g. skin, barrier, green, real, lab), read once
+    per server instance and kept six hours. A partial read is treated as a failure.
+  - A brand the query names always has its own products among the candidates. Before, candidates were
+    the best-rated rows matching any word, so the named brand was often missing, and a punctuated
+    brand typed plainly ("manyo" for ma:nyo, "dalba") was never fetched. This is what the open
+    "Innisfree Green Tea Ceramide Milk Barrier Essence" item was: it now returns Innisfree Green Tea
+    Ceramide Milk (the "Barrier Essence Set" row itself is unverified and stays hidden).
+  - The brand counts once per product (plus 2), however many words it has. A word of a brand typed in
+    full does not name a second brand ("Round Lab" no longer also names Round Around).
+  - In the search strategies a term inside a brand string no longer counts as a match at all. The
+    exact all-terms pass also sees the named brand's rows; the near match keeps to the rating window.
+  - A query containing a comma no longer fails to parse in every strategy ("Some By Mi AHA, BHA, PHA
+    30 Days Miracle Toner" returned nothing). Found by a hand-run probe; none of the 340 stored
+    searches contains one. "Dear, Klairs" still resolves exactly.
+  - Men's-line rows are dropped before a strategy decides it has an answer. "cool soothing gel" came
+    back empty because the one near match was an after-shave gel, removed afterwards.
+- **Resolver (`resolveProductByName`, feeds write paths).** A term also matches when it names the
+  brand under the rule above. It is added to the old substring test, never replacing it: a stricter
+  replacement was measured moving five correctly named products to 'partial'. On 93 names run against
+  production, old code vs new: 0 confident matches became partial, 28 partial matches became
+  confident, each the product that was typed ("DrJart Ceramidin Liquid", "Anua's Heartleaf...",
+  "Roundlab 1025 Dokdo Lotion", which had resolved to a toner-and-lotion set). On 46 further
+  spellings: 0 and 40. When more products qualify than the resolver is handed (10), the shortest
+  names are kept, so "Skin Food Mask Sheet" finds Mask Sheet and not Daily Mask Sheet.
+- **Measured.** All 340 distinct stored real `search_products` inputs and 42 stored resolver names
+  replayed before and after: 118 searches change (99 change their first result); searches returning
+  nothing go from 7 to 5; no resolver verdict changes among the 42.
+- **A reply cut off mid-sentence (voice cleanup).** The rule that strips a closing "Want me to...?" or
+  "Sound good?" was unanchored, so "...a way to keep me involved if you want me to keep checking in."
+  was stored and shown as "...keep me involved if you". Seven stored replies end on a dangling word
+  this way. The rule now removes only a whole final question after a finished sentence, and leaves a
+  reply that is only the question, a list item, a line after a colon, and a question offering a choice.
+- **Setup recap.** One sentence added where the wrap-up playback is asked for: facts about the
+  person's life in it are ones they gave. Measured first: 1 of 123 stored setup replies invented a
+  duration ("Two months of over-washing"), and it did not reach `skin_profile_data`.
+- **Creator code beside "$9.99/mo".** The two price lines under the free chat now state the
+  discounted first month when Stripe has confirmed the code. A signed-in member who reaches the
+  landing page (links with `?from=` are not redirected) is no longer shown "Code BAILEY saved" and the
+  code is no longer sent to Yuri for them. One lookup per page, reused five minutes.
+- **Trial-ending notice.** Always names the time zone ("Thursday, November 26 (CST)").
+- **Not fixed, known.**
+  - An everyday word that is also a brand word and appears in no other brand's product names still
+    pulls that brand: "happy glowy skin serum" leads with Happy Bath (also shop, seoul, ready,
+    whipped). The catalog cannot tell these from real brand words; an English word list would.
+  - The resolver still counts a term that only sits inside a brand string ("cica gel cream" is
+    'all_terms' for a Physiogel cream when no gel cream is found). Unchanged from before.
+  - The member prompt tells Yuri to ask "Want me to save this to your Routine page?" while the cleanup
+    deletes that question when it ends a reply. Owner decision.
+  - A price ceiling can now leave fewer rows (two stored searches: 3 to 1, 4 to 2): the ceiling is
+    applied after the top candidates are chosen. "Man In Blue" is a men's line the filter misses.
+  - `search_products` throws when `exclude_ingredients` arrives as a string (1 of 340 stored inputs).
+  - The trial notice layout is still unseen on a screen; no real person has used the funnel since
+    v11.54.2 (no chat rows since Nov 11 07:03 UTC).
+- **Review.** Opus 5.5, adversarial: four passes on search and two on the smaller fixes. Every full
+  pass found defects my own tests passed: 15 of the first 25 wrong versions of the search survived,
+  then 10 of 29, then 6 of 18; a resolver change I had described as safe was refuted against
+  production and replaced. Tests now execute the real search and the real resolver; the last run of
+  62 wrong versions left none passing. 1,644 tests.
+
+---
+
 ## v11.55.2 — Two small fixes from the trials; a search ranking change measured and held back (Nov 11 2026)
 
 - **Changed.**

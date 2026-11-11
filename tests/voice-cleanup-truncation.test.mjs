@@ -187,3 +187,76 @@ test('abbreviations like "vs." and "denat." are untouched', () => {
     assert.equal(clean(input), input, `abbreviation damaged: ${clean(input)}`)
   }
 })
+
+// ---------------------------------------------------------------------------
+// 6. The trailing-closer rule removes a whole final question, never the end of
+//    a sentence (Nov 11 2026).
+// ---------------------------------------------------------------------------
+
+test('a sentence that merely contains a closer phrase keeps its ending', () => {
+  // Each stored tail below is a real reply that was cut to a dangling word.
+  const cases = [
+    'All it takes is the CeraVe cream. Everything else is just a way to keep me involved if you want me to keep checking in.',
+    'Barrier heals first, then TXA solo, then we find a night for this. Sound good, or want me to slow it down?',
+    'A gentler exfoliation cadence and a winter-ready moisturizer swap. Anything you want me to change?',
+    'Snap the Glass Skin Score. Then when you are back, want me to compare it with the 62?',
+    'Do you know roughly where you land in Korean shade ranges, or want me to pull the shade chart?',
+    'Tell me if you want me to go deeper on the retinol',
+    'I can do that whenever you want me to.',
+    'It is fine to tell me this does not make sense',
+    'The plan will only sound good once the barrier calms down.',
+  ]
+  for (const input of cases) {
+    assert.equal(clean(input), input, `the ending was cut:\n  in:  ${input}\n  out: ${clean(input)}`)
+  }
+})
+
+test('a whole closing question is still removed, and only that sentence', () => {
+  assert.equal(clean('Use it every other night. Sound good?'), 'Use it every other night.')
+  assert.equal(clean('Use it every other night.\n\nDoes that make sense?'), 'Use it every other night.')
+  assert.equal(clean('That is the pick. Want me to pull live prices?'), 'That is the pick.')
+  assert.equal(clean('Why this one? It is gentle. Sound like a plan?'), 'Why this one? It is gentle.')
+  // A statement is not a closing question.
+  assert.equal(clean('Use it nightly. Sounds good.'), 'Use it nightly. Sounds good.')
+  const statement = 'Pick one tonight. Want me to choose is a fair thing to ask'
+  assert.equal(clean(statement), statement)
+  // The question must be the LAST thing in the reply.
+  assert.equal(clean('Sound good? Then start tonight.'), 'Sound good? Then start tonight.')
+  // After "!" or "?" as well as ".", across a blank line, in any case, with a
+  // dot inside it, and up to 80 characters.
+  assert.equal(clean('Great! Sound good?'), 'Great!')
+  // "or" inside a word ("for", "more", "before") is not a choice.
+  assert.equal(clean('Those are the three. Want me to look for more options before you decide?'), 'Those are the three.')
+  assert.equal(clean('Is it gentle? Yes. sound good?'), 'Is it gentle? Yes.')
+  assert.equal(clean('Use the pad.\n\nWant me to compare it vs. the toner?'), 'Use the pad.')
+  assert.equal(clean('Use the pad. Want me to pull live prices on the three I named and the one you own?'), 'Use the pad.')
+  // An offer longer than a short closer is a real question and stays.
+  const long = 'That is the pick. Want me to pull live prices from every retailer we track and then compare each one against what you already own?'
+  assert.equal(clean(long), long)
+})
+
+test('the closer rule leaves these alone (each was damaged or deleted before)', () => {
+  const cases = [
+    // The reply is only the question: storing an empty message is worse than the closer.
+    'Want me to pull live prices on any of these?',
+    'Sound good?',
+    // A list item, a colon and a line break are not sentence ends.
+    'Tell me two things.\n1. Where is it?\n2. Want me to check the price?',
+    'That is the routine:\nWant me to save this to your Routine page?',
+    'Use the cream: Want me to save it?',
+    'Plan\nWant me to save this?',
+    '- Want me to pull prices?',
+    'That one is right (the gentle one) Want me to save it?',
+    // A choice is a real question.
+    'Two options. Want me to go with A, or B?',
+    'Stop the BHA. Want me to check it or not?',
+    // Two questions: the first is not the end of the reply, the second is not a closer.
+    'Stop the BHA. Want me to check whether the Round Lab sunscreen is safe? Or the BOJ one?',
+    // A question that runs over a line break is not a one-line closer.
+    'Plan:\n1. CeraVe at night.\nWant me to save\nthis?',
+    'Use it nightly. Want me to save\nthis?',
+    // A number before the dot is not a sentence end.
+    'Use SPF 50. Want me to find one?',
+  ]
+  for (const input of cases) assert.equal(clean(input), input, input)
+})

@@ -49,15 +49,21 @@ export type TrialEndingState = { hasPaymentMethod: boolean; cancelAtPeriodEnd: b
  * charged, the day after it actually would.
  */
 export function trialEndingLine(endsAt: string, state: TrialEndingState, timezoneRaw: string | null, percentOff: number | null = null): string {
-  // An unusable stored zone is treated as unknown (UTC, labelled), never a thrown error.
-  const timezone = validTimeZone(timezoneRaw)
-  const when = new Date(endsAt).toLocaleDateString('en-US', {
+  // An unusable or missing stored zone is treated as UTC, never a thrown error.
+  const timezone = validTimeZone(timezoneRaw) ?? 'UTC'
+  const end = new Date(endsAt)
+  const when = end.toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
-    timeZone: timezone || 'UTC',
+    timeZone: timezone,
   })
-  const base = `Your free trial ends on ${when}${timezone ? '' : ' (UTC)'}.`
+  // The zone is always named ("CST", "UTC"), as the confirmation email does: a
+  // profile zone can come from the city someone typed rather than the device
+  // in their hand, and a date without its zone cannot be checked by the reader.
+  const zoneName =
+    new Intl.DateTimeFormat('en-US', { timeZone: timezone, timeZoneName: 'short' }).formatToParts(end).find((p) => p.type === 'timeZoneName')?.value ?? timezone
+  const base = `Your free trial ends on ${when} (${zoneName}).`
   if (!state) return base
   if (state.cancelAtPeriodEnd) return `${base} You cancelled, so nothing will be charged.`
   if (state.hasPaymentMethod) {

@@ -101,10 +101,16 @@ async function loadSearch() {
     sliceDecl(src, 'function normalizeTerm('),
     // Oct 2026: word-number seam helpers (separate module) + ilikeTerm.
     readFileSync(new URL('../src/lib/yuri/joined-alnum.ts', import.meta.url), 'utf8').replace(/^export /gm, ''),
+    // Nov 2026: which terms name the brand (separate module, same inlining).
+    readFileSync(new URL('../src/lib/yuri/brand-match.ts', import.meta.url), 'utf8').replace(/^export /gm, ''),
     sliceDecl(src, 'function ilikeTerm('),
     sliceDecl(src, 'function termMatches('),
     sliceDecl(src, 'async function smartProductSearch('),
-  ].join('\n\n') + '\nexport { smartProductSearch }\n'
+  ].join('\n\n') + '\nexport { smartProductSearch }\n' +
+    // A fresh module per load. brand-match.ts keeps the catalog at module
+    // level, and an identical data: URL would hand every test the first
+    // test's catalog.
+    `// ${Math.random()}\n`
   const js = ts.transpileModule(mod, {
     compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext },
   }).outputText
@@ -122,6 +128,7 @@ function fakeDb(rows) {
       const q = {
         select: () => q,
         eq(c, v) { set = set.filter((r) => r[c] === v); return q },
+        in(c, vals) { set = set.filter((r) => vals.includes(r[c])); return q },
         ilike(c, p) { set = set.filter((r) => like(r[c], p)); return q },
         or(clauses) {
           const preds = clauses.split(',').map((c) => {
@@ -141,6 +148,8 @@ function fakeDb(rows) {
           return q
         },
         limit(n) { lim = n; return Promise.resolve({ data: set.slice(0, lim), error: null }) },
+        // brand-match.ts pages the whole catalog with an exact count.
+        range(a, b) { return Promise.resolve({ data: set.slice(a, b + 1), error: null, count: set.length }) },
         then(res) { return Promise.resolve({ data: set.slice(0, lim), error: null }).then(res) },
       }
       return q

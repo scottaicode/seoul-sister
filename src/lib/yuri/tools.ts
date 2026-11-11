@@ -13,6 +13,7 @@ import { setupShelfForTool } from '@/lib/yuri/setup-carry'
 import { ageInDays } from '@/lib/yuri/price-freshness'
 import { cheapestUsOrderable } from '@/lib/pricing/price-scope'
 import { joinedAlnumParts, joinedAlnumMatches, joinedAlnumIlike } from '@/lib/yuri/joined-alnum'
+import { brandTokens, brandBonusTerms, brandsNamedInQuery, termsCoveredBy, wordsOfBrandsTypedInFull, loadBrandCatalog, NAMED_BRAND_ROW_LIMIT, type BrandCatalog, type TakenBrandWords } from '@/lib/yuri/brand-match'
 
 /**
  * Allowed provenances for a custom entry's INCI list. Mirrors the DB CHECK on
@@ -413,7 +414,7 @@ function termMatches(haystack: string, term: string): boolean {
 async function smartProductSearch(
   db: SupabaseClient,
   rawQuery: string,
-  options?: { category?: string; limit?: number; selectCols?: string }
+  options?: { category?: string; limit?: number; selectCols?: string; skip?: (p: Record<string, unknown>) => boolean; closestFitFirst?: boolean }
 ): Promise<Array<Record<string, unknown>>> {
   const cols = options?.selectCols || 'id, name_en, brand_en, category, subcategory, description_en, rating_avg, review_count, price_usd, image_url'
   const limit = options?.limit || 15
@@ -435,7 +436,16 @@ async function smartProductSearch(
   // collapse to spaces. Real-world example — Reddit/marketing copy writes
   // "Torriden Dive-In Low Molecular..." but the catalog stores "Dive In"
   // (no hyphen). Without normalization, name_en ILIKE %dive-in% fails.
-  const cleaned = rawQuery.trim()
+  // `,` `(` `)` and `"` are PostgREST filter syntax inside `.or()`. Left in, a
+  // query like "Some By Mi AHA, BHA, PHA 30 Days Miracle Toner" failed to
+  // parse in every strategy and returned nothing (a hand-run probe on Nov 11
+  // 2026, not observed traffic: none of 340 stored searches contains one).
+  // Parentheses and quotes become spaces here. A COMMA is kept in `cleaned`,
+  // because two stored brands contain one ("Dear, Klairs", "Comma, Nine") and
+  // the brand lookups below need it; it is removed from the search TERMS, and
+  // the one filter string built from `cleaned` quotes its value.
+  const cleaned = rawQuery.replace(/[()"]+/g, ' ').replace(/\s+/g, ' ').trim()
+  const hasComma = cleaned.includes(',')
   // Line numbers are joined BEFORE dots are flattened — see joinLineNumbers.
   // "No.9" must survive as one token; otherwise the digit is dropped by the
   // length filter below and No.9 silently resolves to No.1.
@@ -455,8 +465,93 @@ async function smartProductSearch(
   // non-numbered query behaves identically), and carry the digit separately for
   // the ranking stage, where both sides are normalized in memory.
   const lineNumber = /\bno\.?\s*(\d{1,2})\b/.exec(cleaned.toLowerCase())?.[1] ?? null
-  const originalTokens = normalized.split(/\s+/).filter(t => t.length > 0)
+  const originalTokens = normalized.split(/\s+/).map(t => t.replace(/,/g, '')).filter(t => t.length > 0)
   const terms = originalTokens.filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
+  // A typed brand prefix is matched with the comma optional: "dear klairs" and
+  // "dear, klairs" both find the stored "Dear, Klairs". Only when the query
+  // itself carries a comma, so every other query is built exactly as before.
+  // Rows the caller will not show (the men's lines, unless asked for) are
+  // dropped BEFORE any strategy decides it has an answer. Dropped afterwards,
+  // a strategy that returned only such a row left the caller with nothing:
+  // "cool soothing gel" came back empty because the one near match was an
+  // after-shave gel (measured Nov 11 2026).
+  const shown = (rows: unknown): Array<Record<string, unknown>> => {
+    const list = (rows ?? []) as Array<Record<string, unknown>>
+    return options?.skip ? list.filter(p => !options.skip!(p)) : list
+  }
+  /**
+   * Trim a set of equally-qualified rows to the caller's limit. Which rows
+   * survive the cut matters to the resolver (closestFitFirst): it picks the
+   * closest fit and can only pick from what it is handed, so the shortest
+   * names go first. Cut in rating order, "Skin Food Mask Sheet" lost the exact
+   * "Mask Sheet" (16th of 22 by rating) and resolved 'all_terms' to Daily Mask
+   * Sheet (second review, live, Nov 11 2026). The search tool keeps the order
+   * it was given.
+   */
+  const cutToLimit = (rows: Array<Record<string, unknown>>) => {
+    if (!options?.closestFitFirst || rows.length <= limit) return rows.slice(0, limit)
+    const fit = (p: Record<string, unknown>) => `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`.length
+    return rows.map((p, i) => ({ p, i })).sort((a, b) => fit(a.p) - fit(b.p) || a.i - b.i).map(x => x.p).slice(0, limit)
+  }
+  const brandPattern = (tokens: string[]) => `%${tokens.join(hasComma ? '%' : ' ')}%`
+  // The query's words under the one rule brand-match.ts uses for brands.
+  const queryBrandTokens = brandTokens(cleaned)
+  /**
+   * How many terms a product matches: in its NAME, or as its BRAND's own
+   * word(s). A term that merely sits inside the brand name is not a match:
+   * "cica gel cream" used to be satisfied in full by Physiogel's Cica Balance
+   * Cream, with "gel" found inside the brand.
+   */
+  // Words of a brand typed in full, which cannot name a second brand (filled
+  // in once the catalog is loaded; empty until then and when it cannot be read).
+  let takenBrandWords: TakenBrandWords = { words: new Set<string>(), brands: [] }
+  const coverageOf = (p: Record<string, unknown>) =>
+    termsCoveredBy(
+      (p.brand_en as string) || '',
+      ((p.name_en as string) || '').toLowerCase().replace(/[-/_.]+/g, ' '),
+      queryBrandTokens,
+      terms,
+      termMatches,
+      takenBrandWords
+    ).length
+
+  // THE NAMED BRAND'S OWN ROWS (Nov 2026), fetched once and shared by the two
+  // strategies that rank a rating-ordered window (2 and 3). That window is the
+  // best-RATED rows matching any term, so a brand the query names is often
+  // absent from it, and a punctuated brand typed plainly ("manyo" for ma:nyo)
+  // is never fetched at all: `brand_en ILIKE '%manyo%'` cannot match it. With
+  // the brand's rows always present, the exact product is a candidate whenever
+  // its brand is named. Without them "Roundlab 1025 Dokdo Lotion" resolved to
+  // the Toner + Lotion SET, the only all-terms row the window held.
+  // A null catalog means it could not be read (logged in brand-match.ts): no
+  // brand rows are fetched, and only a brand typed in full earns the bonus.
+  let namedBrandLoad: Promise<{ catalog: BrandCatalog | null; rows: Array<Record<string, unknown>> }> | null = null
+  const loadNamedBrandRows = () => {
+    namedBrandLoad ??= (async () => {
+      const catalog = await loadBrandCatalog(db)
+      if (!catalog) return { catalog, rows: [] }
+      takenBrandWords = wordsOfBrandsTypedInFull(catalog.brands, queryBrandTokens)
+      const namedBrands = brandsNamedInQuery(catalog, queryBrandTokens, terms)
+      if (!namedBrands.length) return { catalog, rows: [] }
+      let bq = db
+        .from('ss_products')
+        .select(cols)
+        .eq('is_verified', true)
+        .in('brand_en', namedBrands)
+      if (options?.category) bq = bq.eq('category', options.category)
+      const { data: named, error: namedError } = await bq
+        .order('rating_avg', { ascending: false, nullsFirst: false })
+        .limit(NAMED_BRAND_ROW_LIMIT)
+      if (namedError) console.error('[smartProductSearch] named-brand fetch failed:', namedError.message, { rawQuery, namedBrands })
+      return { catalog, rows: (named ?? []) as unknown as Array<Record<string, unknown>> }
+    })()
+    return namedBrandLoad
+  }
+  /** `rows` followed by the named brand's rows that are not already among them. */
+  const withNamedBrandRows = async (rows: Array<Record<string, unknown>>) => {
+    const seen = new Set(rows.map(r => r.id))
+    return [...rows, ...(await loadNamedBrandRows()).rows.filter(r => !seen.has(r.id))]
+  }
 
   // SUNSCREEN SIGNAL — the one category whose vocabulary the catalog's NAMES do
   // not carry (Aug 18 2026).
@@ -514,7 +609,11 @@ async function smartProductSearch(
   if (options?.category) baseQuery = baseQuery.eq('category', options.category)
 
   const { data: fullMatch, error: fullMatchError } = await baseQuery
-    .or(`name_en.ilike.%${cleaned}%,brand_en.ilike.%${cleaned}%`)
+    .or(
+      hasComma
+        ? `name_en.ilike."%${cleaned}%",brand_en.ilike."%${cleaned}%"`
+        : `name_en.ilike.%${cleaned}%,brand_en.ilike.%${cleaned}%`
+    )
     .order('rating_avg', { ascending: false, nullsFirst: false })
     .limit(limit)
 
@@ -525,7 +624,7 @@ async function smartProductSearch(
   // confident negative.
   if (fullMatchError) console.error('[smartProductSearch] strategy 1 failed:', fullMatchError.message, { rawQuery })
 
-  if (fullMatch?.length) return fullMatch as unknown as Array<Record<string, unknown>>
+  if (shown(fullMatch).length) return shown(fullMatch)
 
   // Strategy 1.5: Brand-prefix composite lookup (BP76 follow-up, May 20 2026).
   //
@@ -570,7 +669,7 @@ async function smartProductSearch(
         .from('ss_products')
         .select(cols)
         .eq('is_verified', true)
-        .ilike('brand_en', `%${brandCandidate}%`)
+        .ilike('brand_en', brandPattern(originalTokens.slice(0, brandTokenCount)))
       // Match on the singular stem so a plural query term ("pads") still hits
       // the catalog's singular storage ("Pad"). Substring semantics cover the
       // reverse case already.
@@ -596,19 +695,20 @@ async function smartProductSearch(
       if (lineNumber) {
         q = q.or(`name_en.ilike."%no.${lineNumber} %",name_en.ilike."%no. ${lineNumber} %",name_en.ilike."%no.${lineNumber}"`)
       }
-      const { data: compositeMatch, error: compositeError } = await q.limit(limit)
+      // The resolver over-fetches here so the cut below can keep the closest fit.
+      const { data: compositeMatch, error: compositeError } = await q.limit(options?.closestFitFirst ? NAMED_BRAND_ROW_LIMIT : limit)
       if (compositeError) console.error('[smartProductSearch] strategy 1.5 failed:', compositeError.message, { rawQuery, brandCandidate })
       // `%shot%100%` also admits "Shot 1000" in SQL, and this strategy returns
       // SQL rows directly, so joined word-number terms are re-checked with the
       // bounded in-memory matcher before anything is returned.
       const joinedNameTerms = nameTerms.filter(t => joinedAlnumParts(normalizeTerm(t)).length > 1)
-      const compositeRows = ((compositeMatch ?? []) as unknown as Array<Record<string, unknown>>).filter(p =>
+      const compositeRows = shown(compositeMatch).filter(p =>
         joinedNameTerms.every(t =>
           termMatches(`${(p.name_en as string) || ''}`.toLowerCase().replace(/[-/_.]+/g, ' '), t)
         )
       )
       if (compositeRows.length) {
-        return compositeRows
+        return cutToLimit(compositeRows)
       }
     }
   }
@@ -725,11 +825,19 @@ async function smartProductSearch(
       }
     }
 
-    if (windowRows.length) {
+    // The ALL-terms pass below also sees the named brand's own rows; the near
+    // match after it keeps to the window. All-terms is exact about what it
+    // accepts, so more candidates can only find the product that was named.
+    // A near match is a judgment about the best of what was fetched, and with
+    // the whole brand in view it answered ahead of the sunscreen retry
+    // (Strategy 2.5) with a same-named moisturizer.
+    const allTermRows = shown(await withNamedBrandRows(windowRows))
+
+    if (windowRows.length || allTermRows.length) {
       // `windowRows` = the rating-ordered window PLUS any line-number rescue
       // rows merged in above. Using `broadResults` here would silently discard
       // the rescue and reinstate the bug.
-      const rows = windowRows
+      const rows = shown(windowRows)
       // Post-filter: ALL terms must appear in combined brand + name.
       // Normalize punctuation on the catalog side too (the query was already
       // normalized during tokenization) so "Dive-In" queries match "Dive In"
@@ -751,14 +859,8 @@ async function smartProductSearch(
         return rn !== null && rn !== lineNumber
       }
 
-      const allTermMatch = rows.filter(p => {
-        if (lineNumberConflict(p)) return false
-        const combined = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`
-          .toLowerCase()
-          .replace(/[-/_.]+/g, ' ')
-        return terms.every(t => termMatches(combined, t))
-      })
-      if (allTermMatch.length) return allTermMatch.slice(0, limit)
+      const allTermMatch = allTermRows.filter(p => !lineNumberConflict(p) && coverageOf(p) === terms.length)
+      if (allTermMatch.length) return cutToLimit(allTermMatch)
 
       // ALL-terms didn't match. Before falling through, rescue a STRONG
       // near-match out of the window we already fetched.
@@ -790,16 +892,9 @@ async function smartProductSearch(
       // only thing that changes is that Yuri gets to SEE the near-match and
       // judge it, instead of being told nothing exists.
       const maxCoverage = Math.max(
-        ...rows.map(p => {
-          const combined = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`
-            .toLowerCase()
-            .replace(/[-/_.]+/g, ' ')
-          // A row whose line number contradicts the query scores 0 — it is a
-          // different product, however many words it shares.
-          return lineNumberConflict(p)
-            ? 0
-            : terms.filter(t => termMatches(combined, t)).length
-        })
+        // A row whose line number contradicts the query scores 0 — it is a
+        // different product, however many words it shares.
+        ...rows.map(p => (lineNumberConflict(p) ? 0 : coverageOf(p)))
       )
 
       // Require nearly the whole query to match: all but one term, and never
@@ -809,17 +904,7 @@ async function smartProductSearch(
 
       if (maxCoverage >= threshold) {
         const nearMatches = rows
-          .map(p => {
-            const combined = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`
-              .toLowerCase()
-              .replace(/[-/_.]+/g, ' ')
-            return {
-              p,
-              coverage: lineNumberConflict(p)
-                ? 0
-                : terms.filter(t => termMatches(combined, t)).length,
-            }
-          })
+          .map(p => ({ p, coverage: lineNumberConflict(p) ? 0 : coverageOf(p) }))
           .filter(r => r.coverage === maxCoverage)
           .map(r => r.p)
 
@@ -913,7 +998,7 @@ async function smartProductSearch(
         .select(cols)
         .eq('is_verified', true)
         .eq('category', 'sunscreen')
-        .ilike('brand_en', `%${brandCandidate}%`)
+        .ilike('brand_en', brandPattern(originalTokens.slice(0, brandTokenCount)))
       for (const t of nameTerms) {
         q = q.ilike('name_en', `%${ilikeTerm(t)}%`)
       }
@@ -925,8 +1010,8 @@ async function smartProductSearch(
       // Over-fetch so the ranking below sees every candidate, then trim.
       const { data: sunMatch, error: sunError } = await q.limit(Math.max(limit * 4, 40))
       if (sunError) console.error('[smartProductSearch] strategy 2.5 failed:', sunError.message, { rawQuery, brandCandidate })
-      if (sunMatch?.length) {
-        const rowsIn = sunMatch as unknown as Array<Record<string, unknown>>
+      if (shown(sunMatch).length) {
+        const rowsIn = shown(sunMatch)
         const coverage = (p: Record<string, unknown>) => {
           const combined = `${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`
             .toLowerCase()
@@ -984,7 +1069,11 @@ async function smartProductSearch(
 
     if (fallbackError) console.error('[smartProductSearch] strategy 3 failed:', fallbackError.message, { rawQuery })
 
-    if (data?.length) {
+    // The named brand's own rows join the window (see loadNamedBrandRows).
+    const brandCatalog = (await loadNamedBrandRows()).catalog
+    const candidateRows = shown(await withNamedBrandRows((data ?? []) as unknown as Array<Record<string, unknown>>))
+
+    if (candidateRows.length) {
       // Rank by RELEVANCE, not by rating.
       //
       // Why (Bailey, Aug 1 2026 — she was screen-recording for TikTok):
@@ -1004,18 +1093,25 @@ async function smartProductSearch(
       // nothing (the rows are already fetched) and makes the fallback degrade
       // toward the right BRAND instead of toward an arbitrary popular product.
       // Rating stays as the tiebreak among equally-relevant rows.
-      const rows = data as unknown as Array<Record<string, unknown>>
+      const rows = candidateRows
+      // Which terms NAME the brand is decided in brand-match.ts: the whole
+      // brand typed out, or one of its words that is not an ordinary
+      // product-name word across the catalog. A substring is not enough
+      // ("gel" inside Physiogel), and neither is an ordinary word ("skin" in
+      // It's Skin). With no catalog, nothing is known about which words are
+      // ordinary, so only a brand typed in full counts.
+      const isOrdinaryBrandWord = (w: string) => brandCatalog?.ordinary.has(w) ?? false
       const scoreOf = (p: Record<string, unknown>) => {
-        const brand = ((p.brand_en as string) || '').toLowerCase().replace(/[-/_.]+/g, ' ')
-        const combined = `${brand} ${((p.name_en as string) || '').toLowerCase()}`.replace(/[-/_.]+/g, ' ')
-        let score = 0
-        for (const t of terms) {
-          if (!termMatches(combined, t)) continue
-          // A term that matches the BRAND is worth more than one matching any
-          // name word: brand is the strongest identity signal a query carries,
-          // and "stick"/"cream"/"serum" are shared by hundreds of rows.
-          score += termMatches(brand, t) ? 3 : 1
-        }
+        const brandTerms = brandBonusTerms((p.brand_en as string) || '', queryBrandTokens, terms, isOrdinaryBrandWord, brandCatalog !== null, takenBrandWords)
+        // Every term the product matches counts 1 (in its name, or as its
+        // brand's own word: the same rule the precise strategies use, so
+        // "gel" inside Physiogel earns nothing here either). A product whose
+        // BRAND the query names gets 2 more: brand is the strongest identity
+        // signal a query carries, and "stick"/"cream"/"serum" are shared by
+        // hundreds of rows. The 2 is added ONCE per product, however many
+        // words the brand has. Scored 3 per brand word, "Beauty of Joseon"
+        // took every slot of a query that also named COSRX, Anua and Illiyoon.
+        let score = coverageOf(p) + (brandTerms.size > 0 ? 2 : 0)
         // SUNSCREEN CATEGORY — a TIE-BREAK, deliberately worth less than one
         // term match (Aug 18 2026).
         //
@@ -1120,6 +1216,7 @@ async function resolveProductByName(
   const results = await smartProductSearch(db, productName, {
     limit: 10,
     selectCols: 'id, name_en, brand_en, rating_avg',
+    closestFitFirst: true,
   })
   if (!results.length) return null
 
@@ -1127,19 +1224,42 @@ async function resolveProductByName(
   // the query (e.g. "Dive-In") must match unhyphenated catalog storage
   // ("Dive In"). Normalize BOTH the query and the catalog field we compare
   // against. Same normalization function used in smartProductSearch above.
+  // Commas, parentheses and quotes are flattened too (Nov 2026): the catalog
+  // stores both "AHA, BHA, PHA" and "AHA BHA PHA", and a term typed "aha,"
+  // matched neither.
   const normalizePunct = (s: string) =>
-    joinLineNumbers(s.toLowerCase()).replace(/[-/_.]+/g, ' ')
+    joinLineNumbers(s.toLowerCase()).replace(/[-/_.,()"]+/g, ' ')
   const queryLower = productName.toLowerCase()
-  const queryNormalized = normalizePunct(productName)
+  const queryNormalized = normalizePunct(productName).replace(/\s+/g, ' ').trim()
   const terms = queryNormalized.split(/\s+/).filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
+  const queryBrandTokens = brandTokens(productName)
 
   const combinedOf = (p: Record<string, unknown>) =>
     normalizePunct(`${(p.brand_en as string) || ''} ${(p.name_en as string) || ''}`)
 
-  /** How many query terms this product matches (singular/plural aware). */
+  /**
+   * How many query terms this product matches (singular/plural aware).
+   *
+   * A term matches when it appears in brand + name as before, OR when it
+   * names the brand under the brand-match rule ("drjart", "anua's", "dalba",
+   * "tony moly" for TONYMOLY), which the substring test could not see.
+   *
+   * It is a UNION on purpose. This verdict feeds write paths, which accept
+   * 'exact'/'all_terms' and refuse 'partial'. Replacing the substring test
+   * with the stricter rule was tried and measured (second review, Nov 11
+   * 2026, 93 names against production): it moved five correctly named
+   * products to 'partial' ("Tony Tako...", "CNP Lab...", "Klair...", "Too
+   * Cool...", "Numbuzins..."), which would save a catalog product as a custom
+   * entry and take it out of conflict checking. A union can only add matches,
+   * so nothing that was confident before becomes 'partial'.
+   *
+   * Left as it was, and known: a term that only sits INSIDE the brand string
+   * still counts here ("cica gel cream" is 'all_terms' for a Physiogel cream).
+   */
   const coverageOf = (p: Record<string, unknown>) => {
     const combined = combinedOf(p)
-    return terms.filter(t => termMatches(combined, t)).length
+    const namesBrand = new Set(termsCoveredBy((p.brand_en as string) || '', '', queryBrandTokens, terms, () => false))
+    return terms.filter(t => namesBrand.has(t) || termMatches(combined, t)).length
   }
 
   // Filter to candidates where ALL query terms appear in combined brand+name
@@ -1166,7 +1286,7 @@ async function resolveProductByName(
 
   const chosen = candidates[0]
   const combinedLower = `${(chosen.brand_en as string) || ''} ${(chosen.name_en as string) || ''}`.toLowerCase()
-  const combinedNormalized = normalizePunct(`${(chosen.brand_en as string) || ''} ${(chosen.name_en as string) || ''}`)
+  const combinedNormalized = normalizePunct(`${(chosen.brand_en as string) || ''} ${(chosen.name_en as string) || ''}`).replace(/\s+/g, ' ').trim()
 
   // Determine match quality from the chosen result.
   // 'exact' check uses normalized strings on both sides so "Torriden Dive-In"
@@ -1190,7 +1310,7 @@ async function resolveProductByName(
     match_quality = 'exact'
   } else if (combinedNormalized.includes(queryNormalized)) {
     match_quality = 'exact'
-  } else if (terms.length > 0 && terms.every(t => termMatches(combinedNormalized, t))) {
+  } else if (terms.length > 0 && coverageOf(chosen) === terms.length) {
     // Singular/plural aware: "Celimax BHA pads" fully covers the catalog's
     // "...BHA Blemish Toner Pad", so this is a genuine all_terms match, not a
     // 'partial' that would make write paths refuse and read paths warn.
@@ -1267,12 +1387,16 @@ function describeResolution(
     // genuinely different product. She decides which, and confirms with the
     // user either way.
     const normalizePunct = (s: string) =>
-    joinLineNumbers(s.toLowerCase()).replace(/[-/_.]+/g, ' ')
+    joinLineNumbers(s.toLowerCase()).replace(/[-/_.,()"]+/g, ' ')
     const requestedTerms = normalizePunct(requested)
       .split(/\s+/)
       .filter(t => t.length > 1 && !SEARCH_STOP_WORDS.has(t))
+    // The same matching the resolver used (substring in brand + name, or the
+    // term names the brand), so the words named here are the ones that
+    // actually failed to line up.
     const combined = normalizePunct(`${match.brand_en} ${match.name_en}`)
-    const unmatched = requestedTerms.filter(t => !termMatches(combined, t))
+    const namesBrand = new Set(termsCoveredBy(match.brand_en, '', brandTokens(requested), requestedTerms, () => false))
+    const unmatched = requestedTerms.filter(t => !namesBrand.has(t) && !termMatches(combined, t))
 
     base.warning =
       'PARTIAL MATCH — the names do not fully overlap, so this data may describe a DIFFERENT product than the user named. Tell the user which product this data is actually for, and confirm with them before treating it as being about their product.'
@@ -1939,6 +2063,7 @@ async function executeSearchProducts(
     products = await smartProductSearch(db, query, {
       category,
       limit: limit * 3, // over-fetch for post-filtering
+      skip: includeMens ? undefined : isMensLineProduct,
     })
   } else {
     // No query — just filters

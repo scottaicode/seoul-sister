@@ -139,12 +139,16 @@ async function loadSearch() {
     sliceDecl(src, 'function normalizeTerm('),
     // Oct 2026: word-number seam helpers (separate module) + ilikeTerm.
     readFileSync(new URL('../src/lib/yuri/joined-alnum.ts', import.meta.url), 'utf8').replace(/^export /gm, ''),
+    // Nov 2026: which terms name the brand (separate module, same inlining).
+    readFileSync(new URL('../src/lib/yuri/brand-match.ts', import.meta.url), 'utf8').replace(/^export /gm, ''),
     sliceDecl(src, 'function ilikeTerm('),
     sliceDecl(src, 'function termMatches('),
     sliceDecl(src, 'async function smartProductSearch('),
   ]
 
-  const module = pieces.join('\n\n') + '\nexport { smartProductSearch, singularize }\n'
+  const module = pieces.join('\n\n') + '\nexport { smartProductSearch, singularize }\n' +
+    // A fresh module per load (brand-match.ts keeps the catalog at module level).
+    `// ${Math.random()}\n`
   const js = ts.transpileModule(module, {
     compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext },
   }).outputText
@@ -166,6 +170,10 @@ function fakeDb(rows) {
     let limitN = Infinity
     const q = {
       select() { return q },
+      in(col, vals) {
+        set = set.filter((r) => vals.includes(r[col]))
+        return q
+      },
       eq(col, val) {
         set = set.filter((r) => r[col] === val)
         return q
@@ -200,6 +208,10 @@ function fakeDb(rows) {
       limit(n) {
         limitN = n
         return Promise.resolve({ data: set.slice(0, limitN), error: null })
+      },
+      // brand-match.ts pages the whole catalog with an exact count.
+      range(a, b) {
+        return Promise.resolve({ data: set.slice(a, b + 1), error: null, count: set.length })
       },
       then(resolve) {
         return Promise.resolve({ data: set.slice(0, limitN), error: null }).then(resolve)

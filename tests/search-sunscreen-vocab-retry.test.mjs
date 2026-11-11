@@ -78,10 +78,16 @@ async function loadSearch() {
     sliceDecl(src, 'function normalizeTerm('),
     // Oct 2026: word-number seam helpers (separate module) + ilikeTerm.
     readFileSync(new URL('../src/lib/yuri/joined-alnum.ts', import.meta.url), 'utf8').replace(/^export /gm, ''),
+    // Nov 2026: which terms name the brand (separate module, same inlining).
+    readFileSync(new URL('../src/lib/yuri/brand-match.ts', import.meta.url), 'utf8').replace(/^export /gm, ''),
     sliceDecl(src, 'function ilikeTerm('),
     sliceDecl(src, 'function termMatches('),
     sliceDecl(src, 'async function smartProductSearch('),
-  ].join('\n\n') + '\nexport { smartProductSearch }\n'
+  ].join('\n\n') + '\nexport { smartProductSearch }\n' +
+    // A fresh module per load. brand-match.ts keeps the catalog at module
+    // level, and an identical data: URL would hand every test the first
+    // test's catalog.
+    `// ${Math.random()}\n`
   const js = ts.transpileModule(mod, {
     compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext },
   }).outputText
@@ -99,6 +105,7 @@ function fakeDb(rows) {
       const q = {
         select: () => q,
         eq(c, v) { set = set.filter((r) => r[c] === v); return q },
+        in(c, vals) { set = set.filter((r) => vals.includes(r[c])); return q },
         ilike(c, p) { set = set.filter((r) => like(r[c], p)); return q },
         or(clauses) {
           // Split on the FIRST two dots only: real PostgREST accepts a quoted
@@ -121,6 +128,8 @@ function fakeDb(rows) {
           return q
         },
         limit(n) { lim = n; return Promise.resolve({ data: set.slice(0, lim), error: null }) },
+        // brand-match.ts pages the whole catalog with an exact count.
+        range(a, b) { return Promise.resolve({ data: set.slice(a, b + 1), error: null, count: set.length }) },
         then(res) { return Promise.resolve({ data: set.slice(0, lim), error: null }).then(res) },
       }
       return q
@@ -212,8 +221,14 @@ test('the retry requires every name word: an uncarried product is not bound to a
     { id: 'isn-onion', brand_en: 'Isntree', name_en: 'Onion Newpair Sunscreen', category: 'sunscreen', is_verified: true, rating_avg: 4.6, review_count: 52 },
   ])
   const rows = await smartProductSearch(db, 'Isntree Mugwort Calming Sun Stick sunscreen', { limit: 5 })
-  assert.ok(!['isn-gel', 'isn-onion'].includes(rows[0]?.id),
-    `an uncarried product must not resolve to a different Isntree sunscreen (got "${rows[0]?.name_en}")`)
+  // Since Nov 2026 the LOOSE search (Strategy 3) always has the named brand's
+  // rows to rank, so Isntree's other sunscreens now lead its answer, labelled
+  // 'partial' by the resolver. What this test guards is unchanged: the RETRY
+  // must not answer. The retry returns only the brand's sunscreen rows; the
+  // loose search returns the wider field alongside them.
+  assert.ok(rows.some((r) => String(r.id).startsWith('crowd-')),
+    `the retry answered for an uncarried product: only ${rows.map((r) => r.id).join(', ')} came back`)
+  assert.equal(rows.length, 5)
 })
 
 test('a query naming a second product type ("serum sunscreen") stands the retry down', async () => {

@@ -278,3 +278,27 @@ test('the preview-age fact reaches setup Yuri whatever the membership status, an
     assert.ok(!buildOnboardingTurnState({}, undefined, { isSubscribed: false, previewAgeFact: none }).includes('preview chat on the landing page ended'))
   }
 })
+
+// Nov 11 2026: a setup recap said "Two months of over-washing" to someone who
+// had given no duration. Measured: 1 of 123 stored setup replies, and it did
+// not reach skin_profile_data. The rule sits where the recap is asked for.
+test('the wrap-up playback is limited to facts the person gave', async () => {
+  const { readFileSync } = await import('node:fs')
+  const src = readFileSync(new URL('../src/lib/yuri/onboarding.ts', import.meta.url), 'utf8')
+  const start = src.indexOf('## Completion')
+  const end = src.indexOf('\n## ', start + 5)
+  assert.ok(start > -1 && end > start, 'Completion section not found')
+  const section = src.slice(start, end)
+  // The exact sentence, and then the whole section by fingerprint: a regex on
+  // two phrases passed against the rule inverted, gutted, and with an
+  // override appended after it (second-model review, Nov 11 2026). Any edit to
+  // this section needs a second-model review and a new fingerprint.
+  assert.ok(section.includes('play back what you now understand about their skin (this is where they feel genuinely heard, and it only works if it is theirs: your read of the cause is yours to give, but every fact in it about their life, how long, how often, how much, what happened, is one they told you, and one they did not tell you is a question to ask or a thing to leave out), give them their first move'))
+  const { createHash } = await import('node:crypto')
+  assert.equal(createHash('sha256').update(section).digest('hex'), 'ef5fffe4aadd96a445279328f52fe4a94eb9b27df278f2b42dd2f98aa6b3037c')
+  // And the whole static setup prompt: a sentence added to another section
+  // ("except that in the wrap-up you may state a likely duration as fact")
+  // would undo the rule while leaving this section untouched.
+  const whole = src.slice(src.indexOf('export function buildOnboardingSystemPrompt'), src.indexOf('export interface OnboardingTurnFacts'))
+  assert.equal(createHash('sha256').update(whole).digest('hex'), '78af2cedf4e567f9baeea4c6fae77c8eca1b34fb5d4fb778d3cd066f964b2daa')
+})

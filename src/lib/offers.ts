@@ -201,6 +201,138 @@ export function priceWithOffer(percentOff: number | null | undefined): string {
   return firstMonthPrice(percentOff) ? `${firstChargeText(percentOff)}, then ${PRICING.monthly_display_long}` : PRICING.monthly_display_long
 }
 
+/** The price line on the free chat's "you have used your free messages" card. */
+export function widgetMembershipLine(percentOff: number | null | undefined): string {
+  const price = firstMonthPrice(percentOff) ? priceWithOffer(percentOff) : PRICING.monthly_display
+  return `Membership is ${price}. New members get the first ${PRICING.trial_days} days free, no card needed to start.`
+}
+
+/**
+ * The account link under the free chat. With a confirmed code it states the
+ * discounted first month, so it never shows the full price one line away from
+ * "Code BAILEY saved: 50% off your first paid month".
+ */
+export function widgetAccountLine(percentOff: number | null | undefined): string {
+  const lead = `Create a free account and continue with Yuri. New members get ${PRICING.trial_days} days free with no card.`
+  return firstMonthPrice(percentOff)
+    ? `${lead} After that, ${priceWithOffer(percentOff)}, only if you add a card.`
+    : `${lead} ${PRICING.monthly_display} after that, only if you add a card.`
+}
+
+/**
+ * Whether a saved creator code is spoken of to this person. A code takes money
+ * off the first PAID month of someone who is not yet a member. A signed-in
+ * member can still reach the landing page (links carrying ?from= or ?ask= are
+ * not redirected), and telling them "50% off your first paid month" is false.
+ * When membership cannot be read, nothing is said about the code.
+ */
+export function offerAudience(
+  signedIn: boolean,
+  plan: string | null | undefined,
+  planKnown: boolean
+): 'applies' | 'member' | 'unknown' {
+  if (!signedIn) return 'applies'
+  if (!planKnown) return 'unknown'
+  return !plan || plan === 'free' ? 'applies' : 'member'
+}
+
+/** The saved creator code as it applies to the person looking at the page. */
+export interface SavedOffer {
+  /** Shown under the free chat: "Code X saved...", or that it is no longer available. */
+  line: string | null
+  /** Set only when Stripe confirmed the code and it applies to this person. */
+  percentOff: number | null
+  /** The code to send with a chat message so Yuri states this person's price; null for a member. */
+  codeForChat: string | null
+}
+
+export const NO_SAVED_OFFER: SavedOffer = { line: null, percentOff: null, codeForChat: null }
+
+/**
+ * Works out what to say about a remembered code, in order: who is looking,
+ * then what Stripe says. Each step reports through `onUpdate`. Kept free of
+ * React and the network so it can be run in a test; useSavedOffer supplies
+ * the real readers.
+ *
+ * - A member, or membership that could not be read: nothing, and no code sent.
+ * - Stripe not reachable: nothing is claimed, but the code still goes with a
+ *   chat message, where the server asks Stripe itself.
+ * - A code Stripe does not accept is forgotten.
+ */
+export async function resolveSavedOffer(input: {
+  code: string | null
+  signedIn: boolean
+  readPlan: () => Promise<{ plan: string | null; known: boolean }>
+  askOffer: (code: string) => Promise<{ state?: string; line?: string; saved_line?: string; percent_off?: number } | null>
+  forget: () => void
+  onUpdate: (offer: SavedOffer) => void
+}): Promise<void> {
+  const { code } = input
+  if (!code) return input.onUpdate(NO_SAVED_OFFER)
+  const membership = input.signedIn ? await input.readPlan() : { plan: null, known: true }
+  if (offerAudience(input.signedIn, membership.plan, membership.known) !== 'applies') return input.onUpdate(NO_SAVED_OFFER)
+  input.onUpdate({ line: null, percentOff: null, codeForChat: code })
+  const o = await input.askOffer(code)
+  if (!o) return
+  if (o.state === 'active') {
+    return input.onUpdate({ line: o.saved_line ?? null, percentOff: validPercent(o.percent_off), codeForChat: code })
+  }
+  input.forget()
+  input.onUpdate({ line: o.state === 'ended' ? o.line ?? null : null, percentOff: null, codeForChat: null })
+}
+
+/**
+ * A signed-in person's plan, read from their profile row. `ss_user_profiles`
+ * has a surrogate `id` and a separate `user_id`: the row is found by
+ * `user_id`. Joined on `id` it returns no row and no error, which would read
+ * as "not a member" for every member. A failed read is `known: false`.
+ */
+export async function readMemberPlan(
+  db: { from: (table: string) => unknown },
+  userId: string
+): Promise<{ plan: string | null; known: boolean }> {
+  type Query = { select: (c: string) => Query; eq: (c: string, v: string) => Query; maybeSingle: () => Promise<{ data: { plan?: string | null } | null; error: { message: string } | null }> }
+  const { data, error } = await (db.from('ss_user_profiles') as Query).select('plan').eq('user_id', userId).maybeSingle()
+  if (error) {
+    console.error('[offer] could not read membership; saying nothing about the saved code:', error.message)
+    return { plan: null, known: false }
+  }
+  return { plan: data?.plan ?? null, known: true }
+}
+
+type OfferAnswer = { state?: string; line?: string; saved_line?: string; percent_off?: number }
+/** How long an answer about a code is reused. The server keeps its own for the same five minutes. */
+export const OFFER_LOOKUP_TTL_MS = 5 * 60 * 1000
+const offerLookups = new Map<string, { at: number; lookup: Promise<OfferAnswer | null> }>()
+
+/**
+ * Asks /api/offer about a code once for every component that wants the answer
+ * (the saved line and the chat both do; the endpoint allows 30 requests an
+ * hour per IP, and phone carriers share IPs). An answer is reused for five
+ * minutes, not for the life of the page, so a code Stripe has since ended is
+ * not called "saved" indefinitely. A failed lookup is not kept at all.
+ */
+export function askOfferOnce(
+  code: string,
+  fetcher: (url: string) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>
+): Promise<OfferAnswer | null> {
+  const kept = offerLookups.get(code)
+  if (kept && Date.now() - kept.at < OFFER_LOOKUP_TTL_MS) return kept.lookup
+  const lookup = (async () => {
+    const res = await fetcher(`/api/offer?code=${encodeURIComponent(code)}`)
+    if (!res.ok) {
+      console.error(`[offer] /api/offer answered ${res.status}; saying nothing about the saved code`)
+      return null
+    }
+    return (await res.json()) as OfferAnswer
+  })()
+  const entry = { at: Date.now(), lookup }
+  offerLookups.set(code, entry)
+  const drop = () => { if (offerLookups.get(code) === entry) offerLookups.delete(code) }
+  lookup.then((answer) => { if (!answer) drop() }, drop)
+  return lookup
+}
+
 /**
  * Added to the consent text when the Stripe page shows its own code box. The
  * sentence above it states the normal price; a code typed there changes what

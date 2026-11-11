@@ -233,13 +233,23 @@ async function loadNotices() {
 test('the trial-ending line names the member\'s own day and claims a card only when Stripe says so', async () => {
   const { emails } = await loadNotices()
   const end = '2026-11-27T04:00:00Z' // Thursday 10pm in Chicago
-  assert.equal(emails.trialEndingLine(end, null, 'America/Chicago'), 'Your free trial ends on Thursday, November 26.')
+  assert.equal(emails.trialEndingLine(end, null, 'America/Chicago'), 'Your free trial ends on Thursday, November 26 (CST).')
+  // On the night the clocks change, the name is the one in force at the trial's end.
+  assert.equal(emails.trialEndingLine('2026-11-01T06:30:00Z', null, 'America/Chicago'), 'Your free trial ends on Sunday, November 1 (CDT).')
+  assert.equal(emails.trialEndingLine('2026-11-01T07:30:00Z', null, 'America/Chicago'), 'Your free trial ends on Sunday, November 1 (CST).')
+  assert.equal(emails.trialEndingLine('2026-03-08T07:59:00Z', null, 'America/Chicago'), 'Your free trial ends on Sunday, March 8 (CST).')
+  assert.equal(emails.trialEndingLine('2026-03-08T08:01:00Z', null, 'America/Chicago'), 'Your free trial ends on Sunday, March 8 (CDT).')
+  assert.equal(emails.trialEndingLine(end, null, 'Asia/Kolkata'), 'Your free trial ends on Friday, November 27 (GMT+5:30).')
+  // The zone is always named, and it is the zone's name on THAT date.
+  assert.equal(emails.trialEndingLine('2026-07-10T03:00:00Z', null, 'America/Chicago'), 'Your free trial ends on Thursday, July 9 (CDT).')
+  assert.equal(emails.trialEndingLine(end, null, 'America/Los_Angeles'), 'Your free trial ends on Thursday, November 26 (PST).')
+  assert.equal(emails.trialEndingLine(end, null, 'Asia/Seoul'), 'Your free trial ends on Friday, November 27 (GMT+9).')
   assert.equal(emails.trialEndingLine(end, null, null), 'Your free trial ends on Friday, November 27 (UTC).', 'with no timezone the date says which calendar it is')
-  assert.equal(emails.trialEndingLine(end, { hasPaymentMethod: true, cancelAtPeriodEnd: false }, 'America/Chicago'), 'Your free trial ends on Thursday, November 26. Your card will be charged $9.99/month on that day, and every month after that until you cancel.')
-  assert.equal(emails.trialEndingLine(end, { hasPaymentMethod: true, cancelAtPeriodEnd: true }, 'America/Chicago'), 'Your free trial ends on Thursday, November 26. You cancelled, so nothing will be charged.')
+  assert.equal(emails.trialEndingLine(end, { hasPaymentMethod: true, cancelAtPeriodEnd: false }, 'America/Chicago'), 'Your free trial ends on Thursday, November 26 (CST). Your card will be charged $9.99/month on that day, and every month after that until you cancel.')
+  assert.equal(emails.trialEndingLine(end, { hasPaymentMethod: true, cancelAtPeriodEnd: true }, 'America/Chicago'), 'Your free trial ends on Thursday, November 26 (CST). You cancelled, so nothing will be charged.')
   assert.equal(
     emails.trialEndingLine(end, { hasPaymentMethod: false, cancelAtPeriodEnd: false }, 'America/Chicago'),
-    'Your free trial ends on Thursday, November 26. No card is on file, so nothing will be charged and your membership will stop on that day. To keep going, sign in and use the "Add a card" button at the top of any page: $9.99/month, starting when the trial ends.'
+    'Your free trial ends on Thursday, November 26 (CST). No card is on file, so nothing will be charged and your membership will stop on that day. To keep going, sign in and use the "Add a card" button at the top of any page: $9.99/month, starting when the trial ends.'
   )
   const body = emails.buildTrialEndingEmail('LINE').html
   assert.match(body, /A note from Seoul Sister about your free trial\./)
@@ -279,7 +289,7 @@ test('trial notices (executed): sent once, stamped only AFTER a successful send,
   const ok = await notices.sendTrialEndingNotices(db, deps(), Date.parse('2026-11-25T12:00:00Z'))
   assert.deepEqual([ok.due, ok.sent, ok.errors.length], [1, 1, 0])
   assert.equal(db.stamps.length, 1)
-  assert.match(sent[0][1], /^Your free trial ends on Thursday, November 26\. No card is on file/)
+  assert.match(sent[0][1], /^Your free trial ends on Thursday, November 26 \(CST\)\. No card is on file/)
 
   // The send fails: NOT stamped, so the next hour tries again.
   const db2 = noticeDb([row])
@@ -291,7 +301,7 @@ test('trial notices (executed): sent once, stamped only AFTER a successful send,
   sent.length = 0
   const unknown = await notices.sendTrialEndingNotices(noticeDb([row]), deps({ liveState: async () => { throw new Error('stripe down') } }), Date.parse('2026-11-25T12:00:00Z'))
   assert.equal(unknown.sent, 1)
-  assert.equal(sent[0][1], 'Your free trial ends on Thursday, November 26.')
+  assert.equal(sent[0][1], 'Your free trial ends on Thursday, November 26 (CST).')
   assert.equal(notices.TRIAL_NOTICE_HOURS_BEFORE, 48)
 })
 
