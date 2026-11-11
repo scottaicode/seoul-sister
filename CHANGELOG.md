@@ -4,6 +4,81 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.57.1 — "Delete my account" actually deletes the account, and says so when it cannot (Nov 11 2026)
+
+- **What was wrong.** `DELETE /api/account/delete` deleted a list of tables, ignored every error,
+  called `auth.admin.deleteUser` without reading its result, and answered `success: true`. Measured on
+  throwaway accounts in production, the login could not be deleted ("Database error deleting user") for
+  anyone with an AI usage row (anyone who has talked to Yuri), a custom shelf product, a landing-chat
+  visitor marked as converted to them, or a conversation with messages. Their profile and routine
+  would be gone, the login would remain, and they would be told it worked. No real member had hit it:
+  59 logins, 59 profiles.
+- **The erasure** now lives in `src/lib/account/erase.ts`. Order: Stripe (cancel every live
+  subscription, then delete every Stripe customer of theirs, which cancels anything our
+  one-row-per-person table missed and removes the name, address and card Stripe holds; customers are
+  gathered from our row, from the events we stored, and from a Stripe search on the account id,
+  because each checkout creates a new customer and one live member already had a second one with 31
+  stored events and no row) → stop our own emails to them → photos →
+  the preview chat they had before signing up (found by the account it was carried into, the account
+  it converted to, or the email typed into it) → our stored Stripe events → everything that blocks the
+  login's deletion → the lead-email row → the login → a check that the login is really gone and no
+  profile remains. Every step is checked; any failure stops there.
+- **When it fails** the person is told what is true at that step (nothing removed; nothing of ours
+  removed but the membership may be cancelled; part-way; login deletion requested but unconfirmed; or
+  login confirmed deleted and a retry cannot work),
+  with the address to write to. A `failed` `account_deletion` row goes to `ss_pipeline_runs` and the owner is emailed
+  (`GUARDIAN_ALERT_EMAIL`), because the Guardian only emails on `critical`. A photo that could not be
+  removed does not stop the deletion but is recorded and emailed the same way.
+- **Left behind before, removed now:** the pre-signup preview chat (sessions, messages, intent
+  signals, campaign touches, follow-up decisions), the lead-email row, our copies of Stripe events,
+  catalog requests, retailer clicks, and photos past the first 100 in a folder (the list call was
+  never paged).
+- **Stripe events.** `ss_subscription_events.event_data` stored whole Stripe objects: 65 of 79 rows
+  held a customer email, many a name and address, and 78 of 79 had no link to a subscription row, so
+  nothing could have found them. The webhook now stores only ids, status, amounts and our own metadata
+  (`eventObjectForLog`, a list of what is kept; the network code in metadata is dropped). Existing
+  rows were NOT rewritten: 49 of 79 still hold contact details, including 10 rows for customers whose
+  account is already gone or was never known. That rewrite is waiting on the owner's yes.
+- **A leaving member is not emailed "everything is saved".** The cancel is marked
+  (`cancellation_details.comment = account_deleted`) and the webhook skips the trial-ended email for it.
+- **Kept on purpose, and now stated in the Privacy Policy:** the free-week ledger row (address,
+  dates, code, network code; no content; its Stripe subscription id is cleared) so the free week
+  cannot be retaken by deleting and re-registering, and AI cost-log rows with the account removed.
+- **Migrations (both applied).** `20261111000003_account_deletion_unblocked.sql`: the six foreign
+  keys with no ON DELETE action now have one, and the message-count trigger fires on INSERT only (on
+  DELETE it changed nothing but ran an UPDATE as the auth role, which failed the login's cascade).
+  After it a bare `deleteUser` succeeds for all nine probe cases; the app path does not depend on it.
+  `20261111000004_review_delete_keeps_product_rating.sql`: deleting a product's last local review no
+  longer writes NULL over its rating (all 20 reviewed products had exactly one local review).
+- **Found by running it, not reading it:** the first production run of the new code stopped at
+  treatment phases, because a skin score pointed at the phase. Scores and breakdowns now go first.
+- **Second-model review (Opus 5.5, told to refute), two passes before this entry was final.** Pass 1:
+  one ship-blocker (the stored Stripe payloads, which also made a sentence in my first policy wording
+  false) and twelve further findings; 14 of its mutations passed my first tests, most of them in the
+  route, which was only checked by reading its source. Pass 2: one ship-blocker (earlier Stripe
+  customers, above), a failure message that said "your login has been deleted" when it had not been,
+  an owner email that misreported what the person was told, and 15 more surviving mutations, mostly in
+  the Stripe helpers, which were only checked by reading. The route and the Stripe helpers are now
+  executed in tests. Pass 3 (the changes made after pass 2): no ship-blocker; it found that the
+  "could not confirm" message still stated the login was deleted and claimed a record that is not
+  guaranteed, that the "not found" check accepted any error containing those words, and two more
+  surviving mutations. All fixed.
+- **Verified:** the real `eraseAccount` on throwaway production accounts holding every kind of row
+  above, including stored events matched three ways and a control event that had to survive; a sweep
+  by user id, visitor ids and address found only the rows kept by design. **Not verified:** anything
+  that writes to live Stripe (cancel and customer deletion were stubbed, including how Stripe answers
+  a repeat of either; the search was run read-only), the route over HTTP in production, the owner email,
+  reviews and retailer clicks (unit-tested only), and the policy's older "backups purged within 30
+  days" sentence.
+- **Known, not fixed:** the ledger's network code is an unsalted short hash of the IP address; a
+  Stripe event that arrives after deletion is still logged (reference ids, amounts, our metadata; the
+  policy now says so); a Stripe customer named in no stored event and not returned by the search would
+  be missed (on the one member with two customers the search returned one and the events supplied the
+  other); rows under an address the member changed away from are not matched; a deleted reviewer's
+  rating stays in the product average; no rate limit on the route.
+
+---
+
 ## v11.57.0 — The free week leads the pricing card; Yuri's offers stay; the Sunday note names what is coming; one follow-up for new leads (Nov 11 2026)
 
 - **Why.** Bailey's two notes on the pricing card ("Is the limit necessary?", "you have to happen to

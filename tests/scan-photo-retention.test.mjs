@@ -102,13 +102,19 @@ test('account deletion purges photo buckets, not just rows', () => {
 })
 
 test('account deletion purges photos BEFORE deleting rows', () => {
-  const purgeIdx = ACCOUNT_DELETE.indexOf('await purgeUserPhotos(')
-  const tablesIdx = ACCOUNT_DELETE.indexOf('for (const table of tables)')
-  assert.ok(purgeIdx > -1 && tablesIdx > -1)
+  // The order now lives in src/lib/account/erase.ts and is EXECUTED in
+  // tests/account-erasure.test.mjs. Here: photos are purged before the first
+  // row is removed, and the route hands the real purge to the erasure.
+  const ERASE = readFileSync('src/lib/account/erase.ts', 'utf8')
+  const body = ERASE.slice(ERASE.indexOf('export async function eraseAccount'))
+  const purgeIdx = body.indexOf('await deps.purgePhotos(')
+  const firstRemoval = body.search(/\.delete\(\)/)
+  assert.ok(purgeIdx > -1 && firstRemoval > -1)
   assert.ok(
-    purgeIdx < tablesIdx,
+    purgeIdx < firstRemoval,
     'rows are deleted first — the rows are the only map to the storage objects'
   )
+  assert.ok(/const purged = await purgeUserPhotos\(db, userId\)/.test(ACCOUNT_DELETE))
 })
 
 test('a storage failure does not abort account erasure', () => {

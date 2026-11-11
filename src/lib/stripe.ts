@@ -193,6 +193,66 @@ export async function cancelSubscriptionNow(subscriptionId: string): Promise<voi
   }
 }
 
+/**
+ * The note put on a subscription cancelled because its owner deleted their
+ * account. The webhook reads it and sends no "your trial ended, everything is
+ * saved" email to someone who is leaving.
+ */
+export const ACCOUNT_DELETED_CANCEL_COMMENT = 'account_deleted'
+
+/** Cancel now, marked as an account deletion. A subscription already gone is not an error. */
+export async function cancelSubscriptionForDeletedAccount(subscriptionId: string): Promise<void> {
+  const stripe = getStripeClient()
+  try {
+    await stripe.subscriptions.cancel(subscriptionId, {
+      cancellation_details: { comment: ACCOUNT_DELETED_CANCEL_COMMENT },
+    })
+  } catch (err) {
+    const code = (err as { code?: string })?.code
+    if (code === 'resource_missing') return
+    throw err
+  }
+}
+
+/**
+ * Delete a customer in Stripe: their name, address and saved card, and any
+ * subscription they still have there. Stripe keeps its own record of past
+ * payments, as it must. A customer already gone is not an error.
+ */
+export async function deleteStripeCustomer(customerId: string): Promise<void> {
+  const stripe = getStripeClient()
+  try {
+    await stripe.customers.del(customerId)
+  } catch (err) {
+    const code = (err as { code?: string })?.code
+    if (code === 'resource_missing') return
+    throw err
+  }
+}
+
+/**
+ * Every Stripe customer that has held a subscription for this account. Each
+ * checkout creates a new customer and our table keeps only the latest, so
+ * Stripe is the one place that knows them all. Subscriptions carry our
+ * `user_id` in their metadata, which is what this searches on: never the email
+ * address, which could match a customer that is not ours to delete.
+ */
+export async function findStripeCustomersForUser(userId: string): Promise<string[]> {
+  if (!/^[0-9a-f-]{36}$/i.test(userId)) throw new Error('findStripeCustomersForUser: not an account id')
+  const stripe = getStripeClient()
+  const found = new Set<string>()
+  let page: string | undefined
+  do {
+    const result = await stripe.subscriptions.search({ query: `metadata['user_id']:'${userId}'`, limit: 100, page })
+    for (const sub of result.data) {
+      const customer = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id
+      if (customer) found.add(customer)
+    }
+    page = result.has_more ? (result.next_page ?? undefined) : undefined
+  } while (page)
+  return [...found]
+}
+
 export async function createBillingPortalSession(params: {
   stripeCustomerId: string
   returnUrl: string

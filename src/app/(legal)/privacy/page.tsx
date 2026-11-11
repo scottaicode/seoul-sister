@@ -13,7 +13,7 @@ export default function PrivacyPage() {
         <h1 className="font-display text-2xl md:text-3xl font-bold text-white mb-2">
           Privacy Policy
         </h1>
-        <p className="text-white/40 text-xs">Effective Date: February 18, 2026 &middot; Last updated: August 9, 2026</p>
+        <p className="text-white/40 text-xs">Effective Date: February 18, 2026 &middot; Last updated: November 11, 2026</p>
       </header>
 
       {/* Privacy Promise */}
@@ -101,7 +101,7 @@ export default function PrivacyPage() {
           <li><strong className="text-white/90">Skin progress photos:</strong> Stored the same way as scan images — private bucket, account-scoped path, expiring signed links, deleted when you delete your account</li>
           <li><strong className="text-white/90">Anonymous widget conversations:</strong> Stored. Messages you send to Yuri on the landing page before signing up are saved so Yuri can pick up where you left off, so we can improve her answers, and so we can email you a recap if you give us your address. They are tied to a random browser ID, not to your identity, unless you choose to give us your email. See below for how to have them deleted</li>
           <li><strong className="text-white/90">Analytics data:</strong> Aggregated usage analytics are retained for up to 90 days</li>
-          <li><strong className="text-white/90">After account deletion:</strong> All personal data (profile, conversations, scans, routines, reviews) is deleted within 30 days. Database backups containing your data are purged within 30 days of deletion. Anonymized learning contributions (which cannot be traced back to you) are retained</li>
+          <li><strong className="text-white/90">After account deletion:</strong> All personal data (profile, conversations, scans, routines, reviews) is deleted within 30 days. Database backups containing your data are purged within 30 days of deletion. Anonymized learning contributions (which cannot be traced back to you) are retained. Deleting your account also cancels any membership and deletes the customer records (name, address and saved card) we can find for you at Stripe, our payment processor; Stripe keeps its own record of past payments under its own privacy policy. We keep three records ourselves. One is a note that your email address has already had the free week: the address, the dates, any creator code used and a short code derived from your network address, with none of your conversations or skin details. It exists so the free week cannot be taken again and again by deleting an account and registering anew. The other is our AI cost log (which feature ran, when, and what it cost), kept with your account removed from it. The third is our log of billing notices from Stripe: the ones we can find for you are deleted, but a notice that reaches us after your account is gone is still logged, with reference numbers, amounts and dates and no name, address or email. The preview chat you had with Yuri before signing up is deleted along with your account when it is linked to it or to your email address</li>
         </ul>
       </section>
 

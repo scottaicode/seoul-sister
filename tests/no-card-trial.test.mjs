@@ -581,12 +581,18 @@ test('emails never promise a charge to a card that does not exist, and a lapsed 
 })
 
 test('deleting an account cancels its Stripe subscription first', () => {
+  // The order is EXECUTED in tests/account-erasure.test.mjs (Stripe down means
+  // nothing removed, photos included). Here: the route gives the erasure the
+  // real Stripe cancel, and the erasure cancels before anything else.
   const del = read('src/app/api/account/delete/route.ts')
-  const cancel = del.indexOf('await cancelSubscriptionNow(')
-  const wipe = del.indexOf("for (const table of tables)")
-  assert.ok(cancel > 0 && cancel < wipe, 'cancel in Stripe BEFORE our row is deleted, or a member with a card is billed with no account')
-  const photos = del.indexOf('await purgeUserPhotos(')
-  assert.ok(photos > cancel, 'if Stripe fails the deletion stops: nothing (photos included) may have been removed yet')
+  assert.match(del, /cancelSubscription: cancelSubscriptionForDeletedAccount,/)
+  const erase = read('src/lib/account/erase.ts')
+  const body = erase.slice(erase.indexOf('export async function eraseAccount'))
+  const cancel = body.indexOf('await deps.cancelSubscription(')
+  const photos = body.indexOf('await deps.purgePhotos(')
+  const wipe = body.search(/\.delete\(\)|\.update\(/)
+  assert.ok(body.indexOf('await deps.deleteStripeCustomer(') > cancel && body.indexOf('await deps.deleteStripeCustomer(') < wipe)
+  assert.ok(cancel > 0 && cancel < wipe && cancel < photos, 'cancel in Stripe BEFORE anything is removed, or a member with a card is billed with no account')
 })
 
 test('migrations: the ledger has RLS on, no account foreign key, and the network column', () => {

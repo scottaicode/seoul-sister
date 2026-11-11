@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getStripeClient, planFromStripePriceId, applySavedCardToSubscription, type TierKey } from '@/lib/stripe'
+import { getStripeClient, planFromStripePriceId, applySavedCardToSubscription, ACCOUNT_DELETED_CANCEL_COMMENT, type TierKey } from '@/lib/stripe'
 import { getServiceClient } from '@/lib/supabase'
 import { attributeConversion, leadSourceForEmail } from '@/lib/widget/visitor'
 import { recordTrialStart, markTrialLapsed, isStaleSubscriptionEvent } from '@/lib/trial'
@@ -8,7 +8,7 @@ import { offerFromSubscription } from '@/lib/offers'
 import { sendTrialEndedEmail } from '@/lib/email/trial-emails'
 import { notifyNewSubscriber } from '@/lib/email/new-subscriber-alert'
 import { sendSubscriptionConfirmation } from '@/lib/email/subscription-confirmation'
-import { subscriptionPeriod, invoiceSubscriptionId, invoiceAmountPaid } from '@/lib/stripe-payload'
+import { subscriptionPeriod, invoiceSubscriptionId, invoiceAmountPaid, eventObjectForLog } from '@/lib/stripe-payload'
 import type Stripe from 'stripe'
 
 /** Map plan key to the ss_subscriptions.tier column value */
@@ -87,7 +87,9 @@ export async function POST(request: NextRequest) {
   await supabase.from('ss_subscription_events').insert({
     event_type: event.type,
     stripe_event_id: event.id,
-    event_data: event.data.object as Record<string, unknown>,
+    // Ids, status, amounts and our own metadata only: never the customer's
+    // name, email or address (see eventObjectForLog).
+    event_data: eventObjectForLog(event.data.object),
   })
 
   try {
@@ -428,7 +430,10 @@ export async function POST(request: NextRequest) {
             .is('paid_at', null)
             .not('lapsed_at', 'is', null)
             .limit(1)
-          if ((lapsed ?? []).length > 0) {
+          // Cancelled because the person deleted their account: they are
+          // leaving, and "everything is saved" would be false.
+          const accountDeleted = subscription.cancellation_details?.comment === ACCOUNT_DELETED_CANCEL_COMMENT
+          if (!accountDeleted && (lapsed ?? []).length > 0) {
             const lapsedEmail = await emailForUser(supabase, userId)
             if (lapsedEmail) {
               const sent = await sendTrialEndedEmail(lapsedEmail, { offerCode: (lapsed?.[0] as { offer_code?: string | null } | undefined)?.offer_code ?? null })

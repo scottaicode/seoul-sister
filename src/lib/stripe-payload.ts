@@ -77,3 +77,45 @@ export function invoiceAmountPaid(invoice: unknown): number {
   const paid = (invoice as Record<string, unknown>).amount_paid
   return typeof paid === 'number' && Number.isFinite(paid) && paid > 0 ? paid : 0
 }
+
+/**
+ * The fields of a Stripe object we keep in our own event log, and nothing else
+ * (Nov 11 2026). The log used to store the whole object: invoices and checkout
+ * sessions carry the customer's name, email, address and phone, and 65 of 79
+ * stored rows held an address. Nothing reads those fields from the log, and a
+ * copy we never use is a copy that has to be found and erased when the person
+ * deletes their account. A list of what is kept, not of what is dropped, so a
+ * field Stripe adds next year is left out by default.
+ */
+const LOGGED_EVENT_FIELDS = [
+  'id', 'object', 'status', 'mode', 'payment_status', 'billing_reason', 'currency', 'livemode',
+  'amount', 'amount_due', 'amount_paid', 'amount_remaining', 'amount_total', 'total',
+  'created', 'cancel_at', 'canceled_at', 'cancel_at_period_end', 'ended_at',
+  'current_period_start', 'current_period_end', 'trial_start', 'trial_end',
+] as const
+
+export function eventObjectForLog(object: unknown): Record<string, unknown> {
+  if (!object || typeof object !== 'object') return {}
+  const source = object as Record<string, unknown>
+  const kept: Record<string, unknown> = {}
+  for (const key of LOGGED_EVENT_FIELDS) {
+    const value = source[key]
+    if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) kept[key] = value
+  }
+  // Ids only: either can arrive expanded into a whole object.
+  for (const key of ['customer', 'subscription'] as const) {
+    if (typeof source[key] === 'string') kept[key] = source[key]
+  }
+  // Our own flat keys (account id, code used, purpose). Stripe allows only strings here.
+  const metadata = source.metadata
+  if (metadata && typeof metadata === 'object') {
+    // Not the network code: the trial ledger holds it once, and a copy on every
+    // event would outlive an account whose events arrive after its deletion.
+    kept.metadata = Object.fromEntries(
+      Object.entries(metadata as Record<string, unknown>).filter(([k, v]) => typeof v === 'string' && k !== 'ip_hash')
+    )
+  }
+  const comment = (source.cancellation_details as { comment?: unknown } | null | undefined)?.comment
+  if (typeof comment === 'string') kept.cancellation_details = { comment }
+  return kept
+}
