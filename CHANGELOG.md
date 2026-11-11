@@ -4,6 +4,29 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.55.2 — Two small fixes from the trials; a search ranking change measured and held back (Nov 11 2026)
+
+- **Changed.**
+  - Dashboard: when no climate is recorded, the profile card shows the location on file ("Location:
+    Austin") in place of "Climate: Not set yet".
+  - Yuri's creator-code fact no longer mentions remaining uses. In a real conversation she volunteered
+    "I can't see how many uses the code has left". It now says the discount covers the first paid month
+    only, and that when the code stops being accepted is not shown to her.
+- **Held back: search ranking.** A visitor asking for a "lightweight gel moisturizer" got four Physiogel
+  lotions, because any query word that is a SUBSTRING of a brand name earns the 3x brand bonus ("gel" in
+  Physiogel, "acne" in Acnes, "no" in COSNORI). I replayed all 340 stored real searches twice.
+  Whole-word brand matching fixed those and exposed the same defect one level up ("skin" is a word of
+  It's Skin and April Skin). A second rule (no bonus for words other brands use in product names)
+  improved 104 searches, but Opus 5.5 found it judged "ordinary" from the fetched rows only, so a brand
+  with many products protected its own word ("body wash" returned five ON:THE BODY oils); it dropped the
+  bonus for Dr. Jart+, Skin&Lab and d'Alba through inconsistent punctuation handling; it could strip a
+  whole typed brand of its weight ("Real Barrier"); and all six wrong versions passed my tests. Not
+  shipped. The right design is a catalog-wide measure of how many brands use a word, one shared way of
+  splitting a brand into words, and full weight when the whole brand is typed.
+- **Review.** Opus 5.5 on all three; its wording for the code fact is the one shipped. 1,593 tests.
+
+---
+
 ## v11.55.1 — Seven fixes from the first real trials (Nov 11 2026)
 
 - **Why.** The owner's two real sign-ups on Nov 10-11 showed these on screen.

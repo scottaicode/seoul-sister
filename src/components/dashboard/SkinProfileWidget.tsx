@@ -10,6 +10,7 @@ interface SkinProfile {
   skin_type: string
   skin_concerns: string[]
   climate: string
+  location_text?: string | null
   onboarding_completed: boolean
 }
 
@@ -24,7 +25,7 @@ export default function SkinProfileWidget() {
       try {
         const { data } = await supabase
           .from('ss_user_profiles')
-          .select('skin_type, skin_concerns, climate, onboarding_completed')
+          .select('skin_type, skin_concerns, climate, location_text, onboarding_completed')
           .eq('user_id', user!.id)
           .maybeSingle()
 
@@ -51,7 +52,7 @@ export default function SkinProfileWidget() {
             if (onboardingData.status === 'completed') {
               const { data: refreshed } = await supabase
                 .from('ss_user_profiles')
-                .select('skin_type, skin_concerns, climate, onboarding_completed')
+                .select('skin_type, skin_concerns, climate, location_text, onboarding_completed')
                 .eq('user_id', user!.id)
                 .maybeSingle()
               setProfile(refreshed as SkinProfile | null)
@@ -98,9 +99,15 @@ export default function SkinProfileWidget() {
     const concerns = profile.skin_concerns?.length
       ? profile.skin_concerns.slice(0, 3).join(', ')
       : 'None set'
-    const climate = profile.climate
+    // The third tile shows what is on file: a recorded climate, else the
+    // location on file (stated to Yuri, or from the device). A member who had
+    // told Yuri "Austin" saw "Climate: Not set yet" (Nov 11 2026), which read
+    // as if nothing about where they live was kept.
+    const place = profile.location_text?.trim() || null
+    const whereLabel = profile.climate ? 'Climate' : place ? 'Location' : 'Climate'
+    const whereValue = profile.climate
       ? profile.climate.charAt(0).toUpperCase() + profile.climate.slice(1)
-      : 'Not set yet'
+      : place ?? 'Not set yet'
 
     return (
       <div className="rounded-2xl border border-gold/20 bg-gold/5 p-5">
@@ -132,8 +139,8 @@ export default function SkinProfileWidget() {
               <MapPin className="w-4 h-4 text-gold/60" />
             </div>
             <div>
-              <p className="text-[10px] text-white/30 uppercase tracking-wider">Climate</p>
-              <p className="text-sm text-white font-medium">{climate}</p>
+              <p className="text-[10px] text-white/30 uppercase tracking-wider">{whereLabel}</p>
+              <p className="text-sm text-white font-medium">{whereValue}</p>
             </div>
           </div>
         </div>
