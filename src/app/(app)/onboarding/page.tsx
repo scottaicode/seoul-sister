@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, SkipForward } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { consentedVisitorId, hasPreviewConversation, getCarryoverChoice, setCarryoverChoice, previewedAt } from '@/lib/utils/widget-session'
+import { consentedVisitorId, hasPreviewConversation, getCarryoverChoice, setCarryoverChoice, previewedAt, previewCameFromEmail } from '@/lib/utils/widget-session'
 import CarryoverPrompt from '@/components/onboarding/CarryoverPrompt'
 import ChatMessage from '@/components/yuri/ChatMessage'
 import ChatInput from '@/components/yuri/ChatInput'
@@ -469,6 +469,7 @@ export default function OnboardingPage() {
     return (
       <CarryoverPrompt
         previewedAt={previewedAt()}
+        fromEmail={previewCameFromEmail()}
         onChoose={(choice) => {
           setCarryoverChoice(userId, choice)
           setCarryChoice(choice)

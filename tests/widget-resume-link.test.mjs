@@ -513,3 +513,213 @@ test('SignedInRedirect keeps a signed-in reader on the page for a resume link', 
   const src = read('src', 'components', 'auth', 'SignedInRedirect.tsx')
   assert.match(src, /params\.has\('resume'\)/)
 })
+
+// ---------------------------------------------------------------------------
+// 5. "Create your free account" carries the conversation to any browser
+//    (Nov 11 2026). The owner chatted in one browser, opened the recap in
+//    another, and the setup chat greeted him as a stranger.
+// ---------------------------------------------------------------------------
+
+
+test('the account link carries the recap token only when the recap link really resumes (executed)', async () => {
+  const { mod } = await runRecap({ url: 'x', resumes: false })
+  const token = withSecret(SECRET, () => tokenMod.createResumeToken(VID, SID))
+  const recap = { url: tokenMod.widgetEmailLink('recap', token), resumes: true }
+  assert.equal(mod.resumeTokenOf(recap), token)
+  assert.equal(mod.accountLinkUrl(token), `${mod.ACCOUNT_LINK_URL}&resume=${token}`)
+  // The composed email: the same token under the button and in the account link, nowhere else.
+  const body = mod.composeRecapBody('<p>b</p>', recap, false)
+  assert.equal(body.split(token).length - 1, 2)
+  assert.ok(body.includes(`href="${(mod.ACCOUNT_LINK_URL + '&resume=' + token).replace(/&/g, '&amp;')}"`))
+  // No token to carry: the plain link, exactly as before.
+  for (const link of [{ url: 'https://www.seoulsister.com/?from=recap', resumes: false }, { url: 'not a url', resumes: true }, { url: `https://www.seoulsister.com/?resume=${token}`, resumes: false }]) {
+    assert.equal(mod.resumeTokenOf(link), null)
+    assert.ok(mod.composeRecapBody('<p>b</p>', link, false).includes(`href="${mod.ACCOUNT_LINK_URL.replace(/&/g, '&amp;')}"`))
+  }
+  // Nothing but a token-shaped value may be appended to a link we email.
+  for (const bad of [null, undefined, '', 'short', 'a b c d e f g h i j k l m n', '"><script>alert(1)</script>xxxxxxxxxx', 'x'.repeat(1001), 'aaaaaaaaaaaaaaaaaaaaaaaa&plan=free']) {
+    assert.equal(mod.accountLinkUrl(bad), mod.ACCOUNT_LINK_URL, String(bad).slice(0, 30))
+  }
+  // A child is still never pointed at an account, token or not.
+  assert.doesNotMatch(mod.composeRecapBody('<p>b</p>', recap, true), /register/)
+  // The stored copy of the email must not hold the credential in either link.
+  assert.ok(!tokenMod.redactResumeTokens(body).includes(token))
+})
+
+test('the recap footer says follow-ups may come, and never that they will not', async () => {
+  const { mod } = await runRecap({ url: 'x', resumes: false })
+  assert.match(mod.RECAP_FOOTER_HTML, /We may send you a few short follow-ups, and each of those has a one-click unsubscribe link\./)
+  assert.doesNotMatch(mod.RECAP_FOOTER_HTML, /won't follow up|will not follow up|never hear|ignore this/i)
+  assert.doesNotMatch(mod.RECAP_FOOTER_HTML, /[—–]/)
+  const route = read('src', 'app', 'api', 'widget', 'chat', 'route.ts')
+  assert.match(route, /wrapEmailHtml\(result\.email\.bodyHtml, RECAP_FOOTER_HTML\)/)
+  // The promise it replaces is made by the shared default footer; the recap was its only user.
+  const callers = ['src/app/api/widget/chat/route.ts', 'src/lib/email/nurture.ts', 'src/lib/proactive/lead-reengage.ts', 'src/lib/email/nudge-email.ts']
+  for (const f of callers) assert.doesNotMatch(read(...f.split('/')), /wrapEmailHtml\([^,()]*\)\s*[,)\n]/, `${f} sends with the default footer`)
+  // And the follow-ups it mentions do carry that link.
+  assert.match(read('src', 'lib', 'email', 'nurture-copy.ts'), /Unsubscribe with one click/)
+  assert.match(read('src', 'lib', 'proactive', 'lead-reengage.ts'), /Unsubscribe with one click/)
+})
+
+const signupMod = await load(['src', 'lib', 'widget', 'signup-link.ts'])
+function signupEnv(search, fetchImpl) {
+  const env = {
+    location: { pathname: '/register', search, hash: '#top' },
+    replaced: [], fetched: [], adopted: [],
+    history: { state: { k: 1 }, replaceState: (...a) => env.replaced.push(a) },
+    fetch: async (url) => { env.fetched.push(url); return fetchImpl(url) },
+    adopt: (id) => { env.adopted.push(id); return env.adoptAnswer },
+    adoptAnswer: true,
+    isSignedIn: false,
+    signedIn: async () => env.isSignedIn,
+  }
+  return env
+}
+const TOKEN_OK = 'A'.repeat(60)
+
+test('sign-up page: the token leaves the address bar at once and every other parameter stays (executed)', () => {
+  const env = signupEnv(`?plan=monthly&from=recap&resume=${TOKEN_OK}&utm_source=recap`)
+  assert.equal(signupMod.takeSignupResumeToken(env), TOKEN_OK)
+  assert.deepEqual(env.replaced, [[{ k: 1 }, '', '/register?plan=monthly&from=recap&utm_source=recap#top']])
+  // Something that is not a token is still removed from the address bar, and not used.
+  const junk = signupEnv('?resume=%22%3E%3Cscript%3E&plan=monthly')
+  assert.equal(signupMod.takeSignupResumeToken(junk), null)
+  assert.deepEqual(junk.replaced, [[{ k: 1 }, '', '/register?plan=monthly#top']])
+  // No token: the URL is left alone.
+  const none = signupEnv('?plan=monthly')
+  assert.equal(signupMod.takeSignupResumeToken(none), null)
+  assert.deepEqual(none.replaced, [])
+  const only = signupEnv(`?resume=${TOKEN_OK}`)
+  signupMod.takeSignupResumeToken(only)
+  assert.equal(only.replaced[0][2], '/register#top')
+})
+
+test('sign-up page: a good token makes this browser that visitor; anything else changes nothing (executed)', async () => {
+  const ok = signupEnv('', async () => ({ ok: true, json: async () => ({ visitor_id: VID }) }))
+  assert.equal(await signupMod.claimPreviewForSignup(TOKEN_OK, ok), true)
+  assert.deepEqual(ok.fetched, [`/api/widget/transcript?for=account&resume=${TOKEN_OK}`])
+  assert.deepEqual(ok.adopted, [VID])
+  const cases = {
+    'no token': [null, async () => ({ ok: true, json: async () => ({ visitor_id: VID }) })],
+    'expired link': [TOKEN_OK, async () => ({ ok: true, json: async () => ({ visitor_id: null, resume_failed: true }) })],
+    'server error': [TOKEN_OK, async () => ({ ok: false, json: async () => ({ visitor_id: VID }) })],
+    'network failure': [TOKEN_OK, async () => { throw new Error('offline') }],
+    'junk body': [TOKEN_OK, async () => ({ ok: true, json: async () => null })],
+    'not a visitor id': [TOKEN_OK, async () => ({ ok: true, json: async () => ({ visitor_id: '../../etc/passwd' }) })],
+    'bad json': [TOKEN_OK, async () => ({ ok: true, json: async () => { throw new Error('x') } })],
+  }
+  for (const [name, [token, impl]] of Object.entries(cases)) {
+    const env = signupEnv('', impl)
+    assert.equal(await signupMod.claimPreviewForSignup(token, env), false, name)
+    assert.deepEqual(env.adopted, [], name)
+    if (token === null) assert.deepEqual(env.fetched, [], name)
+  }
+  // Someone already signed in here: the link is not for making their account. Nothing is asked of the server.
+  const member = signupEnv('', async () => ({ ok: true, json: async () => ({ visitor_id: VID }) }))
+  member.isSignedIn = true
+  assert.equal(await signupMod.claimPreviewForSignup(TOKEN_OK, member), false)
+  assert.deepEqual([member.fetched, member.adopted], [[], []])
+  // The browser declined (it has a preview chat of its own): that is not a claim.
+  const declined = signupEnv('', async () => ({ ok: true, json: async () => ({ visitor_id: VID }) }))
+  declined.adoptAnswer = false
+  assert.equal(await signupMod.claimPreviewForSignup(TOKEN_OK, declined), false)
+  // A visitor id is exactly a UUID: nothing looser reaches storage.
+  for (const bad of ['abc', 'a'.repeat(36), `${VID}x`, ` ${VID}`, '11111111-2222-4333-8444-55555555555g']) {
+    const env = signupEnv('', async () => ({ ok: true, json: async () => ({ visitor_id: bad }) }))
+    assert.equal(await signupMod.claimPreviewForSignup(TOKEN_OK, env), false, bad)
+    assert.deepEqual(env.adopted, [], bad)
+  }
+  // And a token is exactly the token alphabet, bounded.
+  for (const bad of ['short', 'A'.repeat(19), 'A'.repeat(1001), `${'A'.repeat(30)} `, `${'A'.repeat(30)}.`, `${'A'.repeat(30)}/x`]) {
+    const env = signupEnv(`?resume=${encodeURIComponent(bad)}`)
+    assert.equal(signupMod.takeSignupResumeToken(env), null, bad)
+  }
+})
+
+test('sign-up waits for the claim, but never long (executed)', async () => {
+  const t0 = Date.now()
+  await signupMod.settleWithin(null, 5000)
+  await signupMod.settleWithin(Promise.resolve(true), 5000)
+  await signupMod.settleWithin(Promise.reject(new Error('x')), 5000)
+  assert.ok(Date.now() - t0 < 200, 'a settled or absent claim is not waited on')
+  let landed = false
+  const slow = new Promise((r) => setTimeout(() => { landed = true; r(true) }, 60))
+  await signupMod.settleWithin(slow, 2000)
+  assert.equal(landed, true, 'a claim that lands inside the limit is waited for')
+  const t1 = Date.now()
+  await signupMod.settleWithin(new Promise(() => {}), 80)
+  const waited = Date.now() - t1
+  assert.ok(waited >= 70 && waited < 600, `a claim that never lands is given up on (${waited}ms)`)
+})
+
+test('the sign-up claim passes the same checks as reopening the chat, and is counted separately (executed)', async () => {
+  const logged = []
+  globalThis.__logUsage = (e) => { logged.push(e.feature); return Promise.resolve() }
+  const m = await load(['src', 'lib', 'widget', 'resume-restore.ts'], {
+    getServiceClient: '(() => globalThis.__db)',
+    verifyResumeToken: '((t) => globalThis.__payload)',
+    MAX_FREE_MESSAGES: '12',
+    logAIUsage: '((e) => globalThis.__logUsage(e))',
+  })
+  globalThis.__db = restoreDb()
+  globalThis.__payload = { v: 'V', s: 'S', exp: 9e9 }
+  assert.equal((await m.restoreFromResumeToken('t', { purpose: 'account' })).visitor_id, 'V')
+  assert.equal((await m.restoreFromResumeToken('t')).visitor_id, 'V')
+  assert.deepEqual(logged, ['widget_account_link_opened', 'widget_resume_link_opened'])
+  // Refused exactly where a chat reopen is refused: someone else's session, an ended one, a bad token.
+  for (const payload of [{ v: 'OTHER', s: 'S', exp: 9e9 }, { v: 'V', s: 'ENDED', exp: 9e9 }, null]) {
+    globalThis.__payload = payload
+    assert.equal(await m.restoreFromResumeToken('t', { purpose: 'account' }), null)
+  }
+  assert.equal(logged.length, 2)
+})
+
+test('the transcript route answers a sign-up claim with the visitor id and nothing else', () => {
+  const route = read('src', 'app', 'api', 'widget', 'transcript', 'route.ts')
+  const block = route.slice(route.indexOf("if (req.nextUrl.searchParams.get('for') === 'account') {"), route.indexOf('const restored = await restoreFromResumeToken(resume)'))
+  assert.match(block, /const claimed = await restoreFromResumeToken\(resume, \{ purpose: 'account' \}\)\n\s+return NextResponse\.json\(claimed \? \{ visitor_id: claimed\.visitor_id \} : \{ visitor_id: null, resume_failed: true \}\)/)
+  assert.doesNotMatch(block, /messages|session_id|email/)
+})
+
+test('the sign-up page takes the token before anything else, then waits for the claim before leaving', () => {
+  const page = read('src', 'app', '(auth)', 'register', 'page.tsx')
+  const effect = page.slice(page.indexOf('  useEffect(() => {\n    // Always look:'), page.indexOf("  const [email, setEmail] = useState('')"))
+  // The strip is the first statement of the effect: no timer, no await, no promise before it.
+  assert.match(effect, /^  useEffect\(\(\) => \{\n    \/\/ Always look:[^\n]*\n    let fresh: string \| null = null\n    try \{\n      fresh = takeSignupResumeToken\(\{ location: window\.location, history: window\.history \}\)\n/)
+  // A new token on a later arrival replaces the old claim, so it is taken and claimed too.
+  assert.match(effect, /if \(fresh\) \{\n      pendingSignupToken = fresh\n      pendingClaim = null\n    \}/)
+  const beforeStrip = effect.slice(0, effect.indexOf('takeSignupResumeToken('))
+  assert.doesNotMatch(beforeStrip, /setTimeout|await|\.then\(|requestAnimationFrame|queueMicrotask/)
+  assert.match(effect, /\}, \[\]\)\n\s*$/)
+  assert.match(effect, /adopt: adoptPreviewForSignup,\n\s+signedIn: async \(\) => Boolean\(\(await supabase\.auth\.getSession\(\)\)\.data\.session\),/)
+  assert.doesNotMatch(page, /useSearchParams/, 'reading the query through the router would keep the token in the URL until hydration')
+  // Both ways off the page wait for the claim first.
+  assert.match(page, /await signUp\(email, password, captchaToken \?\? undefined\)\n\s+await settleWithin\(pendingClaim, CLAIM_WAIT_MS\)\n/)
+  assert.match(page, /setIsLoading\(true\)\n\s+await settleWithin\(pendingClaim, CLAIM_WAIT_MS\)\n\s+await signInWithGoogle\(\)/)
+  assert.match(page, /const CLAIM_WAIT_MS = 2000\n/)
+})
+
+test('the account purpose is refused for a used-up visitor exactly as little as the chat purpose is', async () => {
+  // Having used all 12 messages does not stop someone creating an account from the link.
+  globalThis.__db = fakeDb({
+    ss_widget_sessions: [{ id: 'S', visitor_id: 'V', ended_naturally: false }],
+    ss_widget_visitors: [{ visitor_id: 'V', total_messages: 15 }],
+    ss_widget_messages: [{ session_id: 'S', role: 'user', content: 'hi', created_at: '1' }],
+  })
+  globalThis.__payload = { v: 'V', s: 'S', exp: 9e9 }
+  const r = await restoreMod.restoreFromResumeToken('t', { purpose: 'account' })
+  assert.equal(r.visitor_id, 'V')
+  assert.equal(r.remaining_messages, 0)
+})
+
+test('the follow-ups the recap footer mentions really unsubscribe (executed)', async () => {
+  const copy = await load(['src', 'lib', 'email', 'nurture-copy.ts'], { PRICING: '({ monthly_price: 9.99, monthly_price_display: "$9.99" })', postalAddress: '(() => "1 Main St")', escapeHtml: '((s) => s)', widgetEmailLink: '(() => "https://www.seoulsister.com/")' }).catch(() => null)
+  const reengage = read('src', 'lib', 'proactive', 'lead-reengage.ts')
+  // The link in each footer IS the unsubscribe endpoint with the lead's own token, not just the words.
+  assert.match(reengage, /const unsubscribeUrl = `\$\{SITE\}\/api\/email\/unsubscribe\?token=\$\{lead\.unsubscribe_token\}`/)
+  assert.match(reengage, /<a href="\$\{unsubscribeUrl\}" style="color:#999;">Unsubscribe with one click<\/a>/)
+  const nurtureCopy = read('src', 'lib', 'email', 'nurture-copy.ts')
+  assert.match(nurtureCopy, /<a href="\$\{unsubscribeUrl\}" style="color:#999;">Unsubscribe with one click<\/a>/)
+  assert.match(nurtureCopy, /api\/email\/unsubscribe\?token=/)
+  void copy
+})

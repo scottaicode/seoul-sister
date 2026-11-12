@@ -11,12 +11,19 @@ import { Sparkles } from 'lucide-react'
 export default function CarryoverPrompt({
   onChoose,
   previewedAt,
+  fromEmail = false,
 }: {
   onChoose: (choice: 'yes' | 'no') => void
   previewedAt?: string | null
+  /**
+   * The conversation was handed to this browser by the recap email's account
+   * link, so it did not happen "on this device" and this browser has no true
+   * date for it. Say where it came from instead.
+   */
+  fromEmail?: boolean
 }) {
   // A date lets someone on a shared browser actually tell whether it was them.
-  const when = previewedAt
+  const when = previewedAt && !fromEmail
     ? new Date(previewedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
     : null
   return (
@@ -29,7 +36,9 @@ export default function CarryoverPrompt({
           Continue from your earlier chat?
         </h1>
         <p className="text-sm text-white/60 mb-6">
-          There&apos;s a conversation with Yuri on this device from before you signed up{when ? ` (last message ${when})` : ''}.
+          {fromEmail
+            ? 'The email link you opened belongs to a conversation someone had with Yuri before signing up.'
+            : `There's a conversation with Yuri on this device from before you signed up${when ? ` (last message ${when})` : ''}.`}{' '}
           If it was you, she can pick up from it instead of starting over.
         </p>
         <div className="flex flex-col gap-2">

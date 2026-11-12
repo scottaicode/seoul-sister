@@ -304,3 +304,146 @@ test('executed: setup Yuri is told how long ago the preview chat ended, so minut
   try { at('2026-11-11T05:55:00Z'); first = carry.carryoverBlock(c); at('2026-12-25T00:00:00Z'); later = carry.carryoverBlock(c) } finally { globalThis.Date = RealDate }
   assert.equal(first, later)
 })
+
+
+// ── Nov 11 2026: the recap email's account link can be forwarded ─────────────
+test('a preview another account already claimed is never loaded for a second account', () => {
+  const base = { captured_email: 'kim@example.com', converted_user_id: null }
+  assert.equal(carry.carryoverMatch({ ...base, registered_user_id: 'u2' }, me), null, 'claimed by someone else, even with a matching address')
+  assert.equal(carry.carryoverMatch({ captured_email: null, converted_user_id: null, registered_user_id: 'u2' }, me), null)
+  assert.equal(carry.carryoverMatch({ ...base, registered_user_id: me.id }, me), 'email', 'their own claim still loads on later turns')
+  assert.equal(carry.carryoverMatch({ ...base, registered_user_id: null }, me), 'email')
+  assert.equal(carry.carryoverMatch(base, me), 'email')
+})
+
+/** A fake that answers the three reads the loader makes, honouring every filter. */
+function carryDb({ visitor, sessions = [], messages = [], sessionsError = null, updates = [] }) {
+  return {
+    from(table) {
+      const f = { eq: [], in: [] }
+      const pass = (r) => f.eq.every(([c, v]) => r[c] === v) && f.in.every(([c, v]) => v.includes(r[c]))
+      const q = {
+        select: () => q,
+        eq(c, v) { f.eq.push([c, v]); return q },
+        in(c, v) { f.in.push([c, v]); return q },
+        order: () => q,
+        limit: (n) => Promise.resolve({ data: messages.filter(pass).slice(0, n), error: null }),
+        maybeSingle: () => Promise.resolve({ data: visitor && pass(visitor) ? visitor : null, error: null }),
+        update(values) {
+          const u = { values }
+          updates.push(u)
+          const uq = { eq: () => uq, is: () => Promise.resolve({ error: null }) }
+          return uq
+        },
+        then(resolve, reject) {
+          // The ended-session read must be scoped to this visitor: unscoped, it would
+          // fetch every ended session in the table and the 1,000-row cap would hide this one's.
+          if (table === 'ss_widget_sessions') {
+            assert.deepEqual(f.eq, [['visitor_id', V], ['ended_naturally', true]], 'ended-session read filters')
+          }
+          const out = table === 'ss_widget_sessions' ? (sessionsError ? { data: null, error: sessionsError } : { data: sessions.filter(pass), error: null }) : { data: [], error: null }
+          return Promise.resolve(out).then(resolve, reject)
+        },
+      }
+      return q
+    },
+  }
+}
+
+test('a conversation ended with "Start over" is not carried into the account', async () => {
+  const visitor = { visitor_id: V, captured_email: 'kim@example.com', converted_user_id: null }
+  const sessions = [
+    { id: 'open', visitor_id: V, ended_naturally: false },
+    { id: 'ended', visitor_id: V, ended_naturally: true },
+    { id: 'other-ended', visitor_id: 'someone-else', ended_naturally: true },
+  ]
+  const messages = [
+    { visitor_id: V, session_id: 'ended', role: 'user', content: 'the last person at this laptop', created_at: '2026-11-01T00:00:00Z' },
+    { visitor_id: V, session_id: 'open', role: 'user', content: 'mine', created_at: '2026-11-02T00:00:00Z' },
+    { visitor_id: V, session_id: 'open', role: 'assistant', content: 'reply', created_at: '2026-11-02T00:01:00Z' },
+  ]
+  const got = await carry.loadWidgetCarryover(carryDb({ visitor, sessions, messages }), V, me)
+  assert.deepEqual(got.messages.map((m) => m.content), ['mine', 'reply'])
+  assert.equal(got.lastAt, '2026-11-02T00:01:00Z')
+  // When the ENDED conversation is the newer one, the age Yuri is told is still that of what was carried.
+  const endedLater = [
+    { visitor_id: V, session_id: 'open', role: 'user', content: 'mine', created_at: '2026-11-02T00:00:00Z' },
+    { visitor_id: V, session_id: 'ended', role: 'user', content: 'someone else, later', created_at: '2026-11-09T00:00:00Z' },
+  ]
+  const older = await carry.loadWidgetCarryover(carryDb({ visitor, sessions, messages: endedLater }), V, me)
+  assert.deepEqual(older.messages.map((m) => m.content), ['mine'])
+  assert.equal(older.lastAt, '2026-11-02T00:00:00Z')
+  // Every conversation was ended: there is nothing to carry, and nothing is stamped.
+  const updates = []
+  const none = await carry.loadWidgetCarryover(carryDb({ visitor, sessions, messages: messages.slice(0, 1), updates }), V, me)
+  assert.equal(none, null)
+  assert.equal(updates.length, 0)
+  // If we cannot tell which were ended, we carry nothing rather than everything.
+  assert.equal(await carry.loadWidgetCarryover(carryDb({ visitor, sessions, messages, sessionsError: { message: 'down' } }), V, me), null)
+  // Claimed by another account: not loaded, not stamped.
+  const claimed = []
+  assert.equal(await carry.loadWidgetCarryover(carryDb({ visitor: { ...visitor, registered_user_id: 'u2' }, sessions, messages, updates: claimed }), V, me), null)
+  assert.equal(claimed.length, 0)
+})
+
+test('adopting a preview from an email link: never over a chat this browser already has, never consent, never a date (executed)', () => {
+  const A = '11111111-2222-4333-8444-555555555555'
+  const B = '99999999-2222-4333-8444-555555555555'
+  // A browser that has never chatted: adopts, and onboarding will now ask.
+  store.clear(); globalThis.document.cookie = ''
+  assert.equal(ws.hasPreviewConversation(), false)
+  assert.equal(ws.adoptPreviewForSignup(A), true)
+  assert.equal(store.get('yuri_visitor_id'), A)
+  assert.equal(ws.previewCameFromEmail(), true)
+  assert.equal(ws.hasPreviewConversation(), true)
+  // Adopting is not consenting: the account still has to say yes.
+  assert.equal(ws.getCarryoverChoice('userA'), null)
+  assert.equal(ws.consentedVisitorId('userA'), undefined)
+  // And it invents no date for a chat that did not happen here.
+  assert.equal(ws.previewedAt(), null)
+
+  // A browser with its own preview chat under another id keeps it.
+  store.clear(); globalThis.document.cookie = ''
+  store.set('yuri_visitor_id', B)
+  ws.incrementWidgetMessageCount()
+  assert.equal(ws.adoptPreviewForSignup(A), false)
+  assert.equal(store.get('yuri_visitor_id'), B)
+  assert.equal(ws.previewCameFromEmail(), false)
+  assert.equal(store.get('yuri_preview_from_email'), undefined, 'a declined adoption leaves no marker')
+
+  // ...including a chat older than 30 days, when the message counter has reset but the chat is still theirs.
+  store.clear(); globalThis.document.cookie = ''
+  store.set('yuri_visitor_id', B)
+  store.set('yuri_previewed_at', '2026-09-01T00:00:00Z')
+  assert.equal(ws.adoptPreviewForSignup(A), false)
+  assert.equal(store.get('yuri_visitor_id'), B)
+
+  // An id with no conversation behind it (the homepage was only opened) is replaced.
+  store.clear(); globalThis.document.cookie = ''
+  store.set('yuri_visitor_id', B)
+  assert.equal(ws.adoptPreviewForSignup(A), true)
+  assert.equal(store.get('yuri_visitor_id'), A)
+
+  // The same id again is fine; an empty id does nothing.
+  assert.equal(ws.adoptPreviewForSignup(A), true)
+  store.clear(); globalThis.document.cookie = ''
+  assert.equal(ws.adoptPreviewForSignup(''), false)
+  assert.equal(store.size, 0)
+
+  // The marker only counts while it names the id this browser actually holds.
+  store.clear(); globalThis.document.cookie = ''
+  ws.adoptPreviewForSignup(A)
+  store.set('yuri_visitor_id', B)
+  assert.equal(ws.previewCameFromEmail(), false)
+  assert.equal(ws.hasPreviewConversation(), false, 'a stale marker is not a conversation')
+})
+
+test('the "was that you?" screen says where an emailed conversation came from, not "on this device", and shows no date', () => {
+  const prompt = read('src/components/onboarding/CarryoverPrompt.tsx')
+  assert.match(prompt, /const when = previewedAt && !fromEmail\n/)
+  assert.match(prompt, /\{fromEmail\n\s+\? 'The email link you opened belongs to a conversation someone had with Yuri before signing up\.'\n\s+: `There's a conversation with Yuri on this device from before you signed up\$\{when \? ` \(last message \$\{when\}\)` : ''\}\.`\}/)
+  const page = read('src/app/(app)/onboarding/page.tsx')
+  assert.match(page, /previewedAt=\{previewedAt\(\)\}\n\s+fromEmail=\{previewCameFromEmail\(\)\}/)
+  // Unanswered means ASK, on every path: never a default yes.
+  assert.match(page, /hasPreviewConversation\(\) \? getCarryoverChoice\(id\) \?\? 'ask' : 'na'/)
+})

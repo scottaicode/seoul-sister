@@ -36,6 +36,8 @@ export const CARRYOVER_CHAR_BUDGET = 48000
 export interface CarryoverVisitor {
   captured_email: string | null
   converted_user_id: string | null
+  /** The first account that confirmed this preview as theirs (set once). */
+  registered_user_id?: string | null
 }
 
 export type CarryoverMatch = 'email' | 'browser'
@@ -47,6 +49,14 @@ export function carryoverMatch(
 ): CarryoverMatch | null {
   if (!visitor) return null
   if (visitor.converted_user_id && visitor.converted_user_id !== user.id) return null
+  // Claimed by another account already (Nov 11 2026). The recap email's account
+  // link can be forwarded, and a browser can be shared: whoever comes second
+  // does not get the first person's conversation, whatever they answer.
+  // The cost, accepted: if the wrong person answers "yes" first, the real
+  // owner is refused afterwards, even with a matching address. A matching
+  // address is not proof here (sign-up does not confirm the email), so it
+  // cannot be allowed to override the first claim.
+  if (visitor.registered_user_id && visitor.registered_user_id !== user.id) return null
   const captured = visitor.captured_email?.trim().toLowerCase()
   if (captured && captured === (user.email ?? '').trim().toLowerCase()) return 'email'
   return 'browser'
@@ -116,9 +126,22 @@ export async function loadWidgetCarryover(
     const match = carryoverMatch(visitor as CarryoverVisitor | null, user)
     if (!match) return null
 
-    const { data: rows, error: mErr } = await db
+    // A conversation ended with "Start over" is not carried: that button exists
+    // so the next person at a shared device is not handed the last one's chat.
+    const { data: ended, error: eErr } = await db
+      .from('ss_widget_sessions')
+      .select('id')
+      .eq('visitor_id', visitorId)
+      .eq('ended_naturally', true)
+    if (eErr) {
+      console.error('[widget-carryover] ended-session read failed:', eErr.message)
+      return null
+    }
+    const endedIds = new Set((ended ?? []).map((s) => s.id as string))
+
+    const { data: all, error: mErr } = await db
       .from('ss_widget_messages')
-      .select('role, content, created_at')
+      .select('role, content, created_at, session_id')
       .eq('visitor_id', visitorId)
       .in('role', ['user', 'assistant'])
       .order('created_at', { ascending: true })
@@ -127,7 +150,8 @@ export async function loadWidgetCarryover(
       console.error('[widget-carryover] messages read failed:', mErr.message)
       return null
     }
-    const messages = (rows ?? [])
+    const rows = (all ?? []).filter((r) => !endedIds.has(r.session_id as string))
+    const messages = rows
       .filter((r) => typeof r.content === 'string' && r.content.trim() !== '')
       .map((r) => ({ role: r.role as 'user' | 'assistant', content: r.content as string }))
     if (!messages.length) return null
@@ -148,7 +172,7 @@ export async function loadWidgetCarryover(
       console.error('[widget-carryover] registered stamp threw:', e instanceof Error ? e.message : String(e))
     }
 
-    return { match, lastAt: (rows ?? [])[(rows ?? []).length - 1].created_at as string, messages }
+    return { match, lastAt: rows[rows.length - 1].created_at as string, messages }
   } catch (e) {
     console.error('[widget-carryover] load failed:', e instanceof Error ? e.message : String(e))
     return null

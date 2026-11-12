@@ -1,12 +1,15 @@
 'use client'
 
-import { useState, useRef, FormEvent } from 'react'
+import { useState, useRef, useEffect, FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, Check, Sparkles, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { PRICING } from '@/lib/pricing'
 import { signupEmailRejection } from '@/lib/utils/email-normalize'
+import { adoptPreviewForSignup } from '@/lib/utils/widget-session'
+import { takeSignupResumeToken, claimPreviewForSignup, settleWithin } from '@/lib/widget/signup-link'
+import { supabase } from '@/lib/supabase'
 import {
   AuthCaptcha,
   requireCaptchaToken,
@@ -50,9 +53,47 @@ function PasswordStrengthBar({ password }: { password: string }) {
   )
 }
 
+/** The recap link's token, read once. `undefined` = not read yet. */
+let pendingSignupToken: string | null | undefined
+/** The claim in flight, so sign-up can wait a moment for it before leaving the page. */
+let pendingClaim: Promise<boolean> | null = null
+/** How long sign-up waits for the claim before going on without it. */
+const CLAIM_WAIT_MS = 2000
+
 export default function RegisterPage() {
   const router = useRouter()
   const { signUp, signInWithGoogle } = useAuth()
+
+  // Arriving from the recap email's "Create your free account" link: take the
+  // token out of the address bar first, then make this browser hold that
+  // preview chat so the setup chat can offer to continue from it. Kept at
+  // module level so React's development double-mount still finds the token
+  // after the first run stripped the URL.
+  useEffect(() => {
+    // Always look: a token in the address bar is removed on every arrival.
+    let fresh: string | null = null
+    try {
+      fresh = takeSignupResumeToken({ location: window.location, history: window.history })
+    } catch {
+      fresh = null
+    }
+    if (fresh) {
+      pendingSignupToken = fresh
+      pendingClaim = null
+    } else if (pendingSignupToken === undefined) {
+      pendingSignupToken = null
+    }
+    const token = pendingSignupToken
+    if (!token || pendingClaim) return
+    pendingClaim = claimPreviewForSignup(token, {
+      fetch: (url) => fetch(url),
+      adopt: adoptPreviewForSignup,
+      signedIn: async () => Boolean((await supabase.auth.getSession()).data.session),
+    }).then((claimed) => {
+      pendingSignupToken = null
+      return claimed
+    })
+  }, [])
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -103,6 +144,7 @@ export default function RegisterPage() {
 
     try {
       await signUp(email, password, captchaToken ?? undefined)
+      await settleWithin(pendingClaim, CLAIM_WAIT_MS)
       // Priority 2 (Jul 2026) — move the paywall to the VALUE MOMENT.
       // Previously this pushed straight to '/subscribe', so a stranger hit the
       // $24.99/mo wall BEFORE ever experiencing Yuri. FUNNEL-LEAK-AUDIT-JUL13
@@ -157,9 +199,12 @@ export default function RegisterPage() {
           onClick={async () => {
             setError(null)
             try {
+              setIsLoading(true)
+              await settleWithin(pendingClaim, CLAIM_WAIT_MS)
               await signInWithGoogle()
             } catch {
               setError('Google sign-in failed. Please try again.')
+              setIsLoading(false)
             }
           }}
           disabled={isLoading}

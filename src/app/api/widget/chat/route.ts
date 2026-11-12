@@ -21,7 +21,7 @@ import { buildSubscriberSurfaceBlock } from '@/lib/widget/subscriber-surface'
 import { detectValueDensity, buildValueDensityFact } from '@/lib/widget/value-density'
 import { visitorCountryCode, visitorCountryFact } from '@/lib/widget/visitor-country'
 import { PRICING } from '@/lib/pricing'
-import { generateLeadEmail, type VisitorMemoryFacts, type ConversationTurn } from '@/lib/email/lead-email'
+import { generateLeadEmail, RECAP_FOOTER_HTML, type VisitorMemoryFacts, type ConversationTurn } from '@/lib/email/lead-email'
 import { createSession, getSession, findResumableSession, fillSessionAttribution, incrementSessionCounters, updateSessionMetadata, RESUME_WINDOW_MS } from '@/lib/widget/session'
 import {
   saveUserMessage,
@@ -1350,7 +1350,7 @@ That is a fact about what exists, not something this reply has to say. On a ques
                         const send = await sendEmail(
                           email,
                           result.email.subject,
-                          wrapEmailHtml(result.email.bodyHtml)
+                          wrapEmailHtml(result.email.bodyHtml, RECAP_FOOTER_HTML)
                         )
                         await recordRecapStatus(
                           parsed.visitor_id!,

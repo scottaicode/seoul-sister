@@ -53,6 +53,8 @@ export type AIFeature =
   | 'widget_email_captured'
   // Nov 7 2026 — a visitor reopened a conversation from an email resume link (zero-cost breadcrumb)
   | 'widget_resume_link_opened'
+  // The recap email's "Create your free account" link was opened (sign-up page claiming the preview chat).
+  | 'widget_account_link_opened'
   // Nov 11 2026: a message was actually SENT after reopening from a recap
   // link. This is the count of people who came back. `widget_resume_link_opened`
   // also fires for mail scanners that open every link (one opened the owner's

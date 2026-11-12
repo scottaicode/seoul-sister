@@ -172,6 +172,37 @@ export function adoptVisitorId(id: string): void {
   setCookie(VISITOR_COOKIE_NAME, id, 365)
 }
 
+const FROM_EMAIL_KEY = 'yuri_preview_from_email'
+
+/**
+ * Make this browser hold the preview chat named by the recap email's
+ * "Create your free account" link (Nov 11 2026), so the setup chat can offer
+ * to continue from it. Returns whether it did.
+ *
+ * It does NOT replace a preview conversation this browser already has under a
+ * different id: that one is theirs too, and onboarding will ask about it.
+ * The marker records which id came from an email, so the question onboarding
+ * asks can say so. It never claims the chat happened "on this device", and it
+ * shows no date, because this browser has no true date for it.
+ */
+export function adoptPreviewForSignup(id: string): boolean {
+  if (!isClient() || !id) return false
+  const existing = getExistingVisitorId()
+  if (existing && existing !== id && hasPreviewConversation()) return false
+  adoptVisitorId(id)
+  try { localStorage.setItem(FROM_EMAIL_KEY, id) } catch { /* storage unavailable: onboarding simply does not ask */ }
+  return true
+}
+
+/** True when the preview this browser holds was handed to it by a recap email link. */
+export function previewCameFromEmail(): boolean {
+  if (!isClient()) return false
+  try {
+    const id = localStorage.getItem(FROM_EMAIL_KEY)
+    return Boolean(id) && id === getExistingVisitorId()
+  } catch { return false }
+}
+
 /**
  * The visitor UUID if this browser already has one, else null. Never creates
  * one: onboarding uses it only to carry an existing preview conversation over
@@ -197,7 +228,7 @@ export function previewedAt(): string | null {
 
 /** True when this browser has a free-preview conversation. */
 export function hasPreviewConversation(): boolean {
-  return Boolean(getExistingVisitorId()) && (getMessageCount() > 0 || Boolean(previewedAt()))
+  return Boolean(getExistingVisitorId()) && (getMessageCount() > 0 || Boolean(previewedAt()) || previewCameFromEmail())
 }
 
 function readChoices(): Record<string, 'yes' | 'no'> {

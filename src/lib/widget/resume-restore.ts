@@ -24,7 +24,16 @@ export interface ResumeRestoreResult {
   remaining_messages: number
 }
 
-export async function restoreFromResumeToken(token: string): Promise<ResumeRestoreResult | null> {
+/**
+ * `purpose: 'account'` is the sign-up page claiming the conversation for the
+ * account about to be created (the recap's "Create your free account" link).
+ * Same checks; counted separately, so a sign-up click is never read as someone
+ * reopening the chat.
+ */
+export async function restoreFromResumeToken(
+  token: string,
+  options: { purpose?: 'chat' | 'account' } = {}
+): Promise<ResumeRestoreResult | null> {
   const payload = verifyResumeToken(token)
   if (!payload) {
     console.warn('[widget/resume] token rejected (invalid, expired, or no secret)')
@@ -78,7 +87,7 @@ export async function restoreFromResumeToken(token: string): Promise<ResumeResto
     // ss_widget_sessions that fits (source/landing_path are first-touch and
     // already set), so this is a zero-cost breadcrumb rather than a migration.
     void logAIUsage({
-      feature: 'widget_resume_link_opened',
+      feature: options.purpose === 'account' ? 'widget_account_link_opened' : 'widget_resume_link_opened',
       conversationId: session.id,
       model: 'n/a',
       inputTokens: 0,

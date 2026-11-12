@@ -4,6 +4,42 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.57.2 — The recap email's account link brings the conversation with it; the recap footer stops promising no follow-up (Nov 11 2026)
+
+- **Found on the owner's own walkthrough.** He chatted with Yuri in one browser, opened the recap
+  email in another (his default), signed up, and the setup chat greeted him as a stranger. The preview
+  chat followed the browser only. Chatting in one place and opening the email in another is the
+  ordinary path for a lead, most of all on a phone.
+- **The fix.** "Create your free account" in the recap now carries the same signed 30-day token as
+  the "Continue our conversation" button. The sign-up page removes it from the address bar at once,
+  asks the server which preview it names, and makes that browser hold it. The setup chat then asks
+  its usual "was that you?" before using any of it. Address matching alone was not an option:
+  sign-up does not confirm the email, so anyone typing someone's address would get their chat.
+- **Hardening from the review.** A preview another account has already claimed is never loaded for a
+  second one (the link can be forwarded; first claim wins, even over a matching address, which is
+  not proof here). A conversation ended with "Start over" is not carried. The link never replaces a
+  preview chat the browser already has, and does nothing for someone already signed in. The consent
+  screen says the conversation came from an email link, not "on this device", and shows no date for
+  it. Sign-up waits up to two seconds for the claim before leaving the page.
+- **Recap footer.** It said "Just ignore this and we won't follow up", which was false: an address
+  given to Yuri is enrolled in the follow-up emails. It now says follow-ups may come and that each
+  has a one-click unsubscribe link. The recap was the only customer email using that default footer.
+- **Second-model review (Opus 5.5, told to refute), two passes; no ship-blocker in either.** Pass 1
+  found the forwarded-link claim, two false statements on the consent screen, the "Start over"
+  leak and 11 surviving mutations. Pass 2 found 5 more surviving mutations and two small page defects.
+  All fixed; the fixes after pass 2 were not re-reviewed.
+- **Not verified:** a real browser run of the new link (it needs a recap sent after this deploy);
+  whether analytics can see the token before it is stripped (the page meets the same conditions the
+  homepage link relies on).
+- **Known, not fixed:** a forwarded recap opened by someone else before the owner signs up still
+  offers them the chat, and on "yes" they get every open conversation of that visitor, not only the
+  one in the email; a person refused a claimed or ended chat is not told why and is greeted fresh;
+  the recap itself carries no unsubscribe link; the setup chat's extractor saves facts from Yuri's
+  own recap of the preview before the person confirms them, and marks setup complete as soon as a
+  skin type exists.
+
+---
+
 ## v11.57.1 — "Delete my account" actually deletes the account, and says so when it cannot (Nov 11 2026)
 
 - **What was wrong.** `DELETE /api/account/delete` deleted a list of tables, ignored every error,

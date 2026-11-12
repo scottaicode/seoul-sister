@@ -37,6 +37,13 @@ export async function GET(req: NextRequest) {
     // Invalid, expired, ended or foreign: no error page. The response says
     // resume_failed, so the widget tells the visitor this is a fresh chat and
     // then runs its normal same-browser restore.
+    // `for=account`: the sign-up page claiming this conversation for the
+    // account about to be created. It needs to know WHICH visitor, nothing
+    // more, so the transcript is not sent.
+    if (req.nextUrl.searchParams.get('for') === 'account') {
+      const claimed = await restoreFromResumeToken(resume, { purpose: 'account' })
+      return NextResponse.json(claimed ? { visitor_id: claimed.visitor_id } : { visitor_id: null, resume_failed: true })
+    }
     const restored = await restoreFromResumeToken(resume)
     if (restored) return NextResponse.json(restored)
     return NextResponse.json({ messages: [], session_id: null, resume_failed: true })

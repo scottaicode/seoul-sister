@@ -130,10 +130,41 @@ export function accountLineFact(kind: AccountLineKind, noCard: boolean): string 
   return `Under that button Seoul Sister adds one fixed line: "${accountLineText(kind, noCard)}" with a link labelled "${ACCOUNT_LINK_LABEL}". So you do not need to explain how to sign up or what it costs, and you should not paste a link. The line is left off when the visitor said they are under 13.`
 }
 
-/** The fixed line as HTML, appended below the button. */
-export function accountLineHtml(kind: AccountLineKind, noCard: boolean): string {
-  return `<p style="margin:16px 0 0;font-size:14px;color:#444;">${accountLineText(kind, noCard)} <a href="${escapeAttr(ACCOUNT_LINK_URL)}" style="color:#8a6a1f;font-weight:600;">${ACCOUNT_LINK_LABEL}</a></p>`
+/**
+ * Where "Create your free account" goes. With the recap's resume token it
+ * carries the same proof the button does, so the sign-up page can hand this
+ * conversation to the setup chat from ANY browser (Nov 11 2026). Without it the
+ * chat followed the browser only: a lead who chatted in one browser and opened
+ * the email in another (the owner's first walkthrough did exactly this) was
+ * greeted by the setup chat as a stranger. Only a token made by
+ * createResumeToken is accepted; anything else leaves the plain link.
+ */
+export function accountLinkUrl(resumeToken: string | null | undefined): string {
+  if (!resumeToken || !/^[A-Za-z0-9_-]{20,1000}$/.test(resumeToken)) return ACCOUNT_LINK_URL
+  return `${ACCOUNT_LINK_URL}&resume=${resumeToken}`
 }
+
+/** The resume token inside a recap link, or null (a plain homepage link has none). */
+export function resumeTokenOf(link: RecapLink): string | null {
+  if (!link.resumes) return null
+  try {
+    return new URL(link.url).searchParams.get('resume')
+  } catch {
+    return null
+  }
+}
+
+/** The fixed line as HTML, appended below the button. */
+export function accountLineHtml(kind: AccountLineKind, noCard: boolean, resumeToken?: string | null): string {
+  return `<p style="margin:16px 0 0;font-size:14px;color:#444;">${accountLineText(kind, noCard)} <a href="${escapeAttr(accountLinkUrl(resumeToken))}" style="color:#8a6a1f;font-weight:600;">${ACCOUNT_LINK_LABEL}</a></p>`
+}
+
+/**
+ * The recap's own footer (Nov 11 2026). It used the shared default, which says
+ * "Just ignore this and we won't follow up". That is false: an address given
+ * to Yuri is enrolled in the follow-up emails. This says what happens.
+ */
+export const RECAP_FOOTER_HTML = `<p style="font-size:12px;color:#999;margin:0;">Yuri is Seoul Sister's AI K-beauty advisor. You're receiving this because you gave Yuri this address while chatting at seoulsister.com. We may send you a few short follow-ups, and each of those has a one-click unsubscribe link.</p>`
 
 function escapeAttr(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -151,7 +182,7 @@ export function recapLinkButtonHtml(link: RecapLink): string {
  * composition: a source-text check passed with the line removed from the body.
  */
 export function composeRecapBody(bodyHtml: string, link: RecapLink, visitorSaidUnder13: boolean): string {
-  const line = visitorSaidUnder13 ? '' : `\n${accountLineHtml(link.accountLine ?? 'free_week', noCardTrialEnabled())}`
+  const line = visitorSaidUnder13 ? '' : `\n${accountLineHtml(link.accountLine ?? 'free_week', noCardTrialEnabled(), resumeTokenOf(link))}`
   return `${bodyHtml}\n${recapLinkButtonHtml(link)}${line}`
 }
 
