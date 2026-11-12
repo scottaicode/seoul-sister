@@ -83,12 +83,18 @@ export const LEGACY_USAGE_CAPS = {
 } as const
 
 /**
- * The current plan's monthly allowance in one plain sentence, for the small
- * print beside a price and for the Terms. The allowance is a real limit (the
- * heaviest real month on record was 79 messages), so it is stated wherever
- * someone decides to pay, in text a person can actually read (a first version
- * at 10px and 30% white under the button measured 2.7:1 contrast and was
- * refused in review); it is just not a headline feature.
+ * The current plan's monthly allowance in one plain sentence.
+ *
+ * WHERE IT IS STATED (owner decision, Nov 11 2026): in the Terms, to Yuri (who
+ * gives it when asked), and in the member
+ * chat once 80% of the month is used. It is NOT on the pricing card or the
+ * membership page any more. It sat there as small print for a few hours on the
+ * strength of "the heaviest real month was 79 messages"; the owner then
+ * pointed out that month was his own co-owner testing the product. Measured:
+ * 5 members have ever chatted, their heaviest months were 108 (the tester),
+ * 27, 14, 4 and 2 messages, and the median member-month is 8. A limit ordinary
+ * use does not approach is not something a buyer needs at the point of sale.
+ * If real members start reaching it, put it back where they decide to pay.
  */
 export function allowanceNote(): string {
   return `Includes ${USAGE_CAPS.yuri_messages_per_month} Yuri messages and ${USAGE_CAPS.scans_per_month} label scans each calendar month.`

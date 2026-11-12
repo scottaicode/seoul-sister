@@ -1136,7 +1136,7 @@ test('saved code: the plan is read by user_id, and /api/offer is asked once per 
   } finally { console.error = realError; m.restore() }
 })
 
-test('pricing card: the free week leads, the price and the allowance are stated at the point of sale (Nov 11 2026)', async () => {
+test('pricing card: the free week leads and the price is stated; the allowance lives in the Terms and the member chat (Nov 11 2026)', async () => {
   const m = await loadModules()
   try {
     // Exact wording, executed.
@@ -1169,25 +1169,37 @@ test('pricing card: the free week leads, the price and the allowance are stated 
   assert.match(card, /\) : \(\s*lines\.cta\s*\)\}/)
   // And the whole card file by fingerprint: an added line ("No card is ever
   // needed.") or a changed button label passed every assertion above in review.
-  assert.equal(sha('sha256').update(card).digest('hex'), 'ede26ab6e286ed15c14acb40f1dc05b9bb282029ff539f167d8ce04fc224dd81')
+  assert.equal(sha('sha256').update(card).digest('hex'), 'fbc8f7ea081f26a1cb81832253ce456bc1ba18ae3d0a8cc8f135ae067985b75d')
 
-  // The allowance note: readable (12px at 50% white, about 5.3:1 on the card;
-  // 10px at 30% measured 2.7:1 and was refused), ABOVE the button, shown to
-  // everyone, with a link to the Terms. Same on the paywall.
-  const NOTE = (linkOpen, linkClose) => `        <p className="text-xs text-white/50 mb-3">
-          {allowanceNote()} ${linkOpen}Terms${linkClose}
-        </p>
-
-        <button
-          onClick={handleCheckout}`
-  assert.ok(card.includes(NOTE('<Link href="/terms" className="underline underline-offset-2 hover:text-white/70">', '</Link>')), 'allowance note missing, restyled or moved on the pricing card')
+  // The allowance is NOT on the pricing card or the membership page (owner
+  // decision, Nov 11 2026: the "79 messages" month was the co-owner testing;
+  // real member-months have a median of 8 messages). It must still be stated
+  // in the Terms and shown in the member chat before it bites, and nothing
+  // may call membership unlimited.
   const paywall = read('src/app/(auth)/subscribe/page.tsx')
-  assert.ok(paywall.includes(NOTE('<a href="/terms" className="underline underline-offset-2 hover:text-white/70">', '</a>')), 'allowance note missing, restyled or moved on the paywall')
   for (const [name, src] of [['card', card], ['paywall', paywall]]) {
-    assert.equal((src.match(/allowanceNote\(\)/g) ?? []).length, 1, name)
-    assert.doesNotMatch(src, /(sr-only|hidden|invisible|opacity-0)[^\n]*allowanceNote|allowanceNote[^\n]*(sr-only|hidden|invisible|opacity-0)/, name)
-    assert.doesNotMatch(src, /&&\s*\(?\s*<p className="text-xs text-white\/50 mb-3">\s*\{allowanceNote/, `${name}: the note must not be conditional`)
+    assert.doesNotMatch(src, /allowanceNote|USAGE_CAPS|label scans each/, `${name}: the allowance note is back`)
+    // The SHAPE, not one wording: no count of messages, chats or scans, and no promise of endless use.
+    assert.doesNotMatch(src, /\b\d{2,4}\b[^.<>{}\n]{0,30}\b(messages?|chats?|scans?|conversations?|questions?)\b/i, `${name}: a usage count is stated`)
+    assert.doesNotMatch(src, /unlimited|no (limit|cap)|as (much|many|often) as|all you (want|like)|endless|without limit/i, name)
   }
+  assert.match(read('src/app/(legal)/terms/page.tsx'), /Membership includes a monthly allowance of \{USAGE_CAPS\.yuri_messages_per_month\} messages with Yuri and \{USAGE_CAPS\.scans_per_month\} label scans, counted per calendar month \(UTC\)/)
+  const chat = read('src/app/(app)/yuri/page.tsx')
+  // What a member is shown from 80% used: how many are left, of how many, and when it resets. The whole element, exactly.
+  assert.ok(chat.includes(`          {usage && usage.yuri_usage_pct >= 80 && (
+            <div className="flex items-center gap-1.5 text-xs" role="status">
+              <MessageCircle className="w-3 h-3 text-white/40" />
+              <span className={usage.yuri_usage_pct >= 100 ? 'text-red-400' : 'text-gold-light'}>
+                {usage.yuri_messages_remaining} of {usage.yuri_messages_limit} messages left this month, resets {nextMonthStart()}
+              </span>
+            </div>
+          )}`), 'the 80% notice is missing, hidden or reworded')
+  // The Terms sentence is rendered, not commented out.
+  const terms = read('src/app/(legal)/terms/page.tsx')
+  const sentenceAt = terms.indexOf('Membership includes a monthly allowance of')
+  assert.ok(terms.lastIndexOf('{/*', sentenceAt) <= terms.lastIndexOf('*/}', sentenceAt), 'the allowance sentence sits inside a comment')
+  assert.match(terms.slice(terms.lastIndexOf('\n', sentenceAt), sentenceAt), /^\n\s*<li>$/)
+  assert.match(chat, /You&apos;ve used this month&apos;s \{usage\.yuri_messages_limit\} messages with Yuri\./)
 
   // The feature bullets, closed world: exactly these nine, no number, no "unlimited".
   const stripe = read('src/lib/stripe.ts')

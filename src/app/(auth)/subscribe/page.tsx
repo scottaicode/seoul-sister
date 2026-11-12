@@ -6,7 +6,7 @@ import { Star, Loader2, Check, ArrowRight } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { SUBSCRIPTION_TIERS } from '@/lib/stripe'
-import { PRICING, allowanceNote } from '@/lib/pricing'
+import { PRICING } from '@/lib/pricing'
 import { trackEvent, PaywallEvent } from '@/lib/analytics'
 import type { ExtractedSkinProfile } from '@/types/database'
 import { onFileRows } from '@/lib/paywall/on-file'
@@ -310,10 +310,6 @@ export default function SubscribePage() {
             </li>
           ))}
         </ul>
-
-        <p className="text-xs text-white/50 mb-3">
-          {allowanceNote()} <a href="/terms" className="underline underline-offset-2 hover:text-white/70">Terms</a>
-        </p>
 
         <button
           onClick={handleCheckout}

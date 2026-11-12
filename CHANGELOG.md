@@ -4,6 +4,31 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.58.1 — The allowance note leaves the sale pages; the Routine page's separate "AI Generate" becomes "Build with Yuri" (Nov 11 2026)
+
+- **Allowance note.** "Includes 80 Yuri messages and 30 label scans each calendar month." is removed
+  from the pricing card and the membership page (owner decision). It had been kept there on the
+  strength of "the heaviest real month was 79 messages"; that month was the co-owner testing.
+  Measured: 5 members have ever chatted, heaviest months 108 (the tester), 27, 14, 4 and 2, median
+  member-month 8. The limit is unchanged and is still stated in the Terms, told to Yuri, and shown in
+  the member chat from 80% used. That in-chat notice was a 10px "{n} left"; it now reads
+  "{n} of 80 messages left this month, resets December 1".
+- **Routine generator.** The Routine page's "AI Generate" called `/api/routine/generate`, a one-shot
+  model call labelled "Yuri's Routine Architect" that built a routine from the profile and shelf
+  alone: nothing from the member's chats, no treatment phase, no corrections, outside the monthly
+  allowance and never written to the cost log (so its use cannot be counted). The buttons are now
+  links, "Build with Yuri", that open the chat with the request ready. "Build Manually" stays. The
+  component, the route and its test are deleted.
+- **Second-model review (Opus 5.5, told to refute):** no ship-blocker. It found the weak in-chat
+  notice and seven mutations my tests missed; both fixed. Edits after the review were not re-reviewed.
+- **Raised by the review, NOT changed:** "she never closes" on the pricing card now has no limit
+  stated beside it; the 30-scan allowance is invisible to a member until they hit it (the cap message
+  does appear then); the Dupe Finder page ("Yuri's Budget Optimizer") and the Shelf Scan
+  recommendations are the same class as the deleted generator: one-shot calls, labelled as Yuri's or
+  giving advice, that never see her conversations.
+
+---
+
 ## v11.58.0 — What the owner's own walkthrough found: Yuri's safety checks, and things members were shown that were not true (Nov 11 2026)
 
 The owner signed up as a new member and went from a blog post to a saved routine to deleting the

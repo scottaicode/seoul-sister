@@ -20,7 +20,6 @@ import { supabase } from '@/lib/supabase'
 import { ConflictWarning } from '@/components/routine/ConflictWarning'
 import { WaitTimeIndicator } from '@/components/routine/WaitTimeIndicator'
 import { AddProductModal } from '@/components/routine/AddProductModal'
-import { RoutineGenerator } from '@/components/routine/RoutineGenerator'
 import {
   suggestWaitTimes,
   type WaitTimeSuggestion,
@@ -369,7 +368,6 @@ export default function RoutinePage() {
   const { user } = useAuth()
   const [routines, setRoutines] = useState<Routine[]>([])
   const [loading, setLoading] = useState(true)
-  const [showGenerator, setShowGenerator] = useState<'am' | 'pm' | null>(null)
   const [creating, setCreating] = useState(false)
 
   const loadRoutines = useCallback(async () => {
@@ -430,46 +428,6 @@ export default function RoutinePage() {
     product_id: string
     frequency: string
   }
-  interface GeneratedRoutine {
-    routine_name: string
-    steps: GeneratedStep[]
-  }
-
-  async function handleAcceptGenerated(generated: GeneratedRoutine) {
-    const type = showGenerator!
-    const headers = await getAuthHeaders()
-
-    // Create the routine
-    const createRes = await fetch('/api/routine', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers },
-      body: JSON.stringify({
-        name: generated.routine_name,
-        routine_type: type,
-      }),
-    })
-
-    if (!createRes.ok) throw new Error('Failed to create routine')
-    const { routine } = await createRes.json()
-
-    // Add each product in order
-    for (let i = 0; i < generated.steps.length; i++) {
-      const step = generated.steps[i]
-      await fetch(`/api/routine/${routine.id}/products`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({
-          product_id: step.product_id,
-          step_order: i + 1,
-          frequency: step.frequency || 'daily',
-        }),
-      })
-    }
-
-    setShowGenerator(null)
-    await loadRoutines()
-  }
-
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -509,17 +467,14 @@ export default function RoutinePage() {
             </div>
           )}
 
-          {/* Generator UI */}
-          {showGenerator && (
-            <RoutineGenerator
-              routineType={showGenerator}
-              onAccept={handleAcceptGenerated}
-              onCancel={() => setShowGenerator(null)}
-            />
-          )}
-
+          {/* There was a one-shot "AI Generate" here, labelled as Yuri's (Nov 11
+              2026). It built a routine from the profile and shelf alone: none of
+              what the member and Yuri had worked out in chat, no treatment phase,
+              no corrections, and outside the monthly allowance and the cost log.
+              A routine is advice, and advice is Yuri's (Yuri Sole Authority,
+              CLAUDE.md), so the button now opens the chat with the request ready. */}
           {/* Create new routine buttons */}
-          {(!hasAM || !hasPM) && !showGenerator && (
+          {(!hasAM || !hasPM) && (
             <div className="space-y-3">
               {routines.length === 0 && (
                 <div className="dark-card-gold p-6 text-center">
@@ -528,8 +483,8 @@ export default function RoutinePage() {
                     Build Your First Routine
                   </h2>
                   <p className="text-sm text-white/40 mb-5 max-w-sm mx-auto">
-                    Choose how to start: let Yuri&apos;s AI build a personalized routine,
-                    or add products manually.
+                    Choose how to start: build it with Yuri in chat, where she knows your
+                    skin and what you have already worked out together, or add products yourself.
                   </p>
                 </div>
               )}
@@ -542,14 +497,13 @@ export default function RoutinePage() {
                       <span className="text-sm font-medium text-white">Morning Routine</span>
                     </div>
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowGenerator('am')}
-                        disabled={creating}
+                      <Link
+                        href="/yuri?ask=Build%20my%20morning%20routine."
                         className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-br from-gold to-gold-light text-seoul-dark text-xs font-semibold hover:shadow-glow-gold transition-all"
                       >
                         <Sparkles className="w-3.5 h-3.5" />
-                        AI Generate
-                      </button>
+                        Build with Yuri
+                      </Link>
                       <button
                         onClick={() => createEmptyRoutine('am')}
                         disabled={creating}
@@ -569,14 +523,13 @@ export default function RoutinePage() {
                       <span className="text-sm font-medium text-white">Evening Routine</span>
                     </div>
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowGenerator('pm')}
-                        disabled={creating}
+                      <Link
+                        href="/yuri?ask=Build%20my%20evening%20routine."
                         className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-br from-gold to-gold-light text-seoul-dark text-xs font-semibold hover:shadow-glow-gold transition-all"
                       >
                         <Sparkles className="w-3.5 h-3.5" />
-                        AI Generate
-                      </button>
+                        Build with Yuri
+                      </Link>
                       <button
                         onClick={() => createEmptyRoutine('pm')}
                         disabled={creating}

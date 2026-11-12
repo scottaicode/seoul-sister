@@ -105,8 +105,8 @@ test('the membership page leads with the free week in the public card\'s own wor
   assert.match(page, /setNoCardTrial\(t\.eligible === true && t\.no_card === true\)/)
   // Someone who cannot have the free week (trial used, network cap, card required) still sees the price first.
   for (const s of ['Your free trial has ended. Continue for', 'charged today. The free trial is not available here']) assert.ok(page.includes(s), s)
-  // The allowance note stays above the button (owner decision pending; do not drop it silently).
-  assert.ok(page.indexOf('{allowanceNote()}') < page.indexOf('onClick={handleCheckout}'))
+  // The allowance note is not on this page (owner decision, Nov 11 2026; see src/lib/pricing.ts allowanceNote).
+  assert.doesNotMatch(page, /allowanceNote/)
 })
 
 // ── Setup is "completed" only when it is ─────────────────────────────────────
@@ -235,4 +235,37 @@ test('a bare sender address is given Yuri\'s name; anything already named is lef
     assert.equal(withSenderName(named), named)
   }
   assert.match(read('src/lib/email/send.ts'), /const from = withSenderName\(\n\s+options\.from \|\|\n\s+process\.env\.EMAIL_FROM \|\|/)
+})
+
+// ── A routine is built with Yuri, not by a second generator wearing her name ──
+test('the Routine page hands "build me a routine" to Yuri; no separate generator exists', async () => {
+  const { existsSync } = await import('node:fs')
+  for (const gone of ['src/components/routine/RoutineGenerator.tsx', 'src/app/api/routine/generate/route.ts']) {
+    assert.equal(existsSync(join(root, gone)), false, `${gone} is back`)
+  }
+  const page = read('src/app/(app)/routine/page.tsx').replace(/\{\/\*[\s\S]*?\*\/\}|\/\/[^\n]*/g, '')
+  assert.doesNotMatch(page, /AI Generate|Generate (Morning|Evening) Routine|Routine Architect|showGenerator|RoutineGenerator/)
+  // Both gaps (no morning routine, no evening routine) open the chat with the request ready.
+  assert.match(page, /href="\/yuri\?ask=Build%20my%20morning%20routine\."/)
+  assert.match(page, /href="\/yuri\?ask=Build%20my%20evening%20routine\."/)
+  assert.equal((page.match(/Build with Yuri/g) ?? []).length, 2)
+  // Adding products by hand is still there: that is the member's own choice, not advice.
+  assert.equal((page.match(/Build Manually/g) ?? []).length, 2)
+  // Neither link is hidden or conditional.
+  for (const t of ['morning', 'evening']) {
+    const at = page.indexOf(`href="/yuri?ask=Build%20my%20${t}%20routine."`)
+    const tag = page.slice(page.lastIndexOf('<Link', at), page.indexOf('>', at))
+    assert.doesNotMatch(tag, /hidden|invisible|opacity-0|sr-only|aria-hidden/, t)
+  }
+  // Closed world: the only links into Yuri are those two and the existing ask-Yuri prompts, and
+  // the page talks to exactly these endpoints. A new "instant routine" call cannot be added quietly.
+  const calls = [...page.matchAll(/fetch\(\s*[`'"]([^`'"?$]+)/g)].map((m) => m[1]).sort()
+  assert.deepEqual([...new Set(calls)], ['/api/routine', '/api/routine/', '/api/tracking'])
+  assert.doesNotMatch(page, /instant|auto-?build|one[- ]click routine/i)
+  // The SHAPE, not only these names: no route under src/app/api/routine calls a model.
+  for (const f of walk('src/app/api/routine')) {
+    assert.doesNotMatch(read(f), /getAnthropicClient|anthropic\.messages|MODELS\./, `${f} makes its own model call`)
+  }
+  // And the chat page really does take the prefilled request.
+  assert.match(read('src/app/(app)/yuri/page.tsx'), /const askParam = searchParams\?\.get\('ask'\) \|\| null/)
 })

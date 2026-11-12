@@ -16,6 +16,12 @@ const SpecialistPicker = dynamic(() => import('@/components/yuri/SpecialistPicke
 import type { SpecialistType } from '@/types/database'
 import type { UsageStatus } from '@/lib/usage'
 
+/** The day the monthly allowance resets (the 1st of next month, UTC), e.g. "December 1". */
+function nextMonthStart(): string {
+  const n = new Date()
+  return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth() + 1, 1)).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' })
+}
+
 // These are shown to every member, so they must fit any member: no skin type,
 // no product they may not own. (They used to offer "a glass skin routine for
 // oily skin" to someone whose profile, written minutes earlier, said dry.)
@@ -225,11 +231,14 @@ export default function YuriPage() {
 
         <div className="flex items-center gap-3">
           {/* Usage indicator */}
+          {/* The monthly allowance is no longer stated where people sign up
+              (Nov 11 2026), so this is where a member first meets it: it has to
+              say WHAT is left and WHEN it resets, in type someone can read. */}
           {usage && usage.yuri_usage_pct >= 80 && (
-            <div className="flex items-center gap-1.5 text-[10px]">
-              <MessageCircle className="w-3 h-3 text-white/30" />
+            <div className="flex items-center gap-1.5 text-xs" role="status">
+              <MessageCircle className="w-3 h-3 text-white/40" />
               <span className={usage.yuri_usage_pct >= 100 ? 'text-red-400' : 'text-gold-light'}>
-                {usage.yuri_messages_remaining} left
+                {usage.yuri_messages_remaining} of {usage.yuri_messages_limit} messages left this month, resets {nextMonthStart()}
               </span>
             </div>
           )}
@@ -398,7 +407,7 @@ export default function YuriPage() {
               You&apos;ve used this month&apos;s {usage.yuri_messages_limit} messages with Yuri.
             </p>
             <p className="text-xs text-white/30">
-              They reset on {(() => { const n = new Date(); return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth() + 1, 1)).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' }) })()}. Product browsing, community, and trending remain available.
+              They reset on {nextMonthStart()}. Product browsing, community, and trending remain available.
             </p>
           </div>
         ) : (

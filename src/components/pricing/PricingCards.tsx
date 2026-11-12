@@ -5,7 +5,6 @@ import { Star, Loader2, Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { SUBSCRIPTION_TIERS } from '@/lib/stripe'
 import Link from 'next/link'
-import { allowanceNote } from '@/lib/pricing'
 import { pricingCardLines } from '@/lib/offers'
 import { MAX_FREE_MESSAGES } from '@/lib/utils/widget-session'
 
@@ -83,10 +82,6 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
             </li>
           ))}
         </ul>
-
-        <p className="text-xs text-white/50 mb-3">
-          {allowanceNote()} <Link href="/terms" className="underline underline-offset-2 hover:text-white/70">Terms</Link>
-        </p>
 
         <button
           onClick={handleCheckout}
