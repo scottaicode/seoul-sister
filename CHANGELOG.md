@@ -4,6 +4,31 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.58.3 — Yuri no longer calls stored prices "live"; the site description stops promising counterfeit detection (Nov 11 2026)
+
+- **"Live prices."** Both chat prompts scripted the line "Want me to pull live prices on any of
+  these?", and three other places told Yuri prices were live or today's. Measured: she said "live
+  prices" or "live pricing" in 66 of 609 free-chat replies and 8 of 520 member replies, while 215 of
+  5,222 stored prices had been checked in the previous week. The offer now reads "Want me to pull the
+  prices we have on any of these?"; the other mentions say "prices" with no freshness word
+  (widget prompt x3, member prompt x2, Budget Optimizer mode, tool-grounding note).
+- **Nothing was added about price age.** A first wording said "and how old it is"; the review read
+  that as a rule to caveat every price (80% of price rows are older than the 21-day threshold), the
+  opposite of the standing rule not to make Yuri hedge. Age stays a fact attached to tool results.
+- **Site description** (Google snippet, link previews): "detect counterfeits" and "check
+  authenticity" become "spot counterfeit warning signs".
+- **Guard:** `tests/no-live-price-claims.test.mjs` checks the shape (a freshness word directly on a
+  price word) across both prompts, all six specialist modes, every tool description and the grounding
+  notes. Written after the phrase list missed two more mentions that the shape check then found.
+- **Second-model review (Opus 5.5), read both whole prompts:** no ship-blocker. Its findings are the
+  second and fifth bullets above. Edits after the review were not re-reviewed.
+- **Raised, NOT changed:** the member chat never receives the price-age note the free chat gets (it
+  sees a bare number of days with no instruction about it); the Budget Optimizer mode carries
+  hard-coded example prices ("$0.25/pair", "$1-3", "$300"); `search_products` returns some prices
+  with no age at all (894 products with no price row, and every `other_listings` price).
+
+---
+
 ## v11.58.2 — One pricing bullet says what Yuri can do, and the sale pages are readable (Nov 11 2026)
 
 - **Bullet.** "Counterfeit detection & live price comparison" becomes "Counterfeit warning signs &

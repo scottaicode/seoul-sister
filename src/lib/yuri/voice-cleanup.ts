@@ -134,8 +134,8 @@ const BANNED_PATTERNS: CleanupRule[] = [
   //
   // "Want me to ...?" is NOT in this list any more (Nov 11 2026). It is an
   // offer of a real next step, which the prompts tell Yuri to make ("Want me
-  // to save this to your Routine page?", "Want me to pull live prices on any
-  // of these?"). The rule used to remove a short one (80 characters or fewer,
+  // to save this to your Routine page?", "Want me to pull the prices we have on
+  // any of these?"). The rule used to remove a short one (80 characters or fewer,
   // no "or") from the end of a reply: it appeared on screen, vanished when the
   // cleaned text replaced it, and was missing from the history when the
   // person answered "yes". Longer offers were always kept. The prompts now

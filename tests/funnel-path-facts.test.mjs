@@ -393,8 +393,8 @@ test('final message, under-13 and specialist facts match the new path', () => {
   assert.doesNotMatch(route, /naturally weave in ONE brief mention/, 'a per-turn instruction to mention the paid side drove the over-mention')
 })
 
-const GATE_FINGERPRINT = '2fd840415bd523d0521dd9d444c099d1fa779180acfcb597c265c93ce7859b1a'
-const WIDGET_PROMPT_FINGERPRINT = '8370a8031280e5f59d9cb6eb65e83fed7405858975f2451e6ac27935bdb5f39a'
+const GATE_FINGERPRINT = 'ebdd3b1cbe07dece80c4e7c81b4dcd1fd0dfc7582d40f04164012a2d83d74e27'
+const WIDGET_PROMPT_FINGERPRINT = '7dd664001c56eff109319ca3237007a9b3a05ca062d44a735fbd463d0ed4f46e'
 const SUBSCRIBER_BLOCK_FINGERPRINT = '15aff9f62cbe15e6789461fbef11338e571811aabafc47180f2e8e0ac30cb537'
 
 /** The five gate paragraphs of the widget prompt, as one string. */
@@ -473,5 +473,5 @@ test('CLOSED WORLD: the whole static member prompt is pinned by fingerprint (Nov
   const a = advisor.indexOf('const YURI_SYSTEM_PROMPT = `') + 'const YURI_SYSTEM_PROMPT = `'.length
   const b = advisor.indexOf('`\n\n// ---', a)
   assert.ok(a > 100 && b > a + 20000, 'static member prompt not found')
-  assert.equal(createHash('sha256').update(advisor.slice(a, b)).digest('hex'), '2cd8fb48725074c27ef0e581e6f71995dfd718dfe646a5389073ed30c09f9d67')
+  assert.equal(createHash('sha256').update(advisor.slice(a, b)).digest('hex'), 'c8411c087e5e86005eafd8baa44efcb34279c36ca25cb19e06274d226e316917')
 })

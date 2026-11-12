@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   // length. Re-measure the SERVED html after editing (curl | grep), not the
   // source — entities like &#x27; change the rendered count.
   description:
-    'An English-language AI advisor for Korean skincare. Scan Korean labels, decode ingredients, check authenticity, and build a routine that fits your skin.',
+    'An English-language AI advisor for Korean skincare. Scan Korean labels, decode ingredients, spot counterfeit warning signs, and build a routine for your skin.',
   keywords: [
     'K-beauty',
     'Korean skincare',
@@ -53,13 +53,13 @@ export const metadata: Metadata = {
     siteName: 'Seoul Sister',
     title: 'Seoul Sister - K-Beauty Intelligence',
     description:
-      'AI-powered K-beauty intelligence. Scan Korean labels, build personalized routines, detect counterfeits.',
+      'AI-powered K-beauty intelligence. Scan Korean labels, build personalized routines, spot counterfeit warning signs.',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Seoul Sister - K-Beauty Intelligence',
     description:
-      'AI-powered K-beauty intelligence. Scan Korean labels, build personalized routines, detect counterfeits.',
+      'AI-powered K-beauty intelligence. Scan Korean labels, build personalized routines, spot counterfeit warning signs.',
   },
   robots: {
     index: true,

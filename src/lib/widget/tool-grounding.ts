@@ -277,7 +277,7 @@ export function buildToolGroundingBlock(g: ToolGrounding): string | null {
 
   return `\n\n## Grounding So Far This Conversation (facts, not instructions)
 Tools fired: ${g.toolCalls}. Across your earlier replies you have named ${g.ungroundedProducts} specific product${g.ungroundedProducts === 1 ? '' : 's'} in ${g.ungroundedReplies} repl${g.ungroundedReplies === 1 ? 'y' : 'ies'} where no search ran.${offer}
-Worth knowing what a search can and cannot settle here: the catalog indexes Korean brands, so a search grounds those with live pricing and returns nothing at all for Western or Indian ones. An empty result is information about our catalog's coverage — never a verdict on the product, and never a reason to talk someone out of something good they already own.
+Worth knowing what a search can and cannot settle here: the catalog indexes Korean brands, so a search grounds those with the prices we hold and returns nothing at all for Western or Indian ones. An empty result is information about our catalog's coverage — never a verdict on the product, and never a reason to talk someone out of something good they already own.
 This is a running count you cannot see by reading any single reply — that is why it is here. It is context for your judgment, not a rule and not a cap. Nothing here asks you to withhold a recommendation, hedge one you're confident in, or change your voice.${searchRecord ?? ''}`
 }
 
