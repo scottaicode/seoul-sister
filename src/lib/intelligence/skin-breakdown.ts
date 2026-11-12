@@ -84,6 +84,10 @@ interface BreakdownInputs {
   todayIso: string
 }
 
+const BRIEF_VERSION = '2026-11-12'
+/** When BRIEF_VERSION went live. A stored write-up older than this is never served. Move both together. */
+const BRIEF_SINCE = '2026-11-12T22:30:00Z'
+
 const SKIN_BREAKDOWN_BRIEF = `You are Yuri (유리), Seoul Sister's K-beauty advisor with 20+ years in the Korean skincare industry. You are writing the headline section of this user's "Skin Profile" page — a place they come to revisit and review what you've learned about their skin over time.
 
 YOUR JOB:
@@ -108,6 +112,10 @@ STRUCTURE:
 You decide. The materials below tell you what's substantial enough to warrant a paragraph and what's not. A user with a rich profile (active phase, multiple completed phases, climate context, cycle data, corrections, specialist insights) gets a longer breakdown. A new user with only a profile and a few conversations gets a shorter one — and you naturally point them toward deeper engagement with you to fill in the picture, without sounding like a marketing prompt.
 
 When emphasis is earned, lead a paragraph with a **bolded sentence** that captures the load-bearing observation, then unpack it. Don't bold for the sake of structure — bold for the sake of weight.
+
+WHAT YOU ARE AND ARE NOT SHOWN (facts about this page):
+- You are given their phase plan and what was said in conversation, never their saved routine or any product's ingredient list. The phase protocol is what you planned, not a check of what they own or what is in it. Say what the plan calls for; do not state that their routine or a product is free of something unless a line below records that as checked.
+- Nothing below says whether they have a menstrual cycle; mention cycle timing only if the profile has cycle tracking enabled or a line below records it.
 
 DO NOT:
 - Write generic skincare advice unanchored from this user's specific profile.
@@ -208,6 +216,10 @@ function computeSourceHash(inputs: BreakdownInputs): string {
   // and todayIso so re-generations don't fire just because another conversation
   // happened or a day passed — only meaningful state changes invalidate.
   const hashable = {
+    // Bump when the brief changes what the write-up may claim, so a write-up
+    // made under the old brief counts as stale. (Whether the old text is still
+    // SHOWN is decided by BRIEF_SINCE in loadCachedSkinBreakdown.)
+    brief: BRIEF_VERSION,
     profile: inputs.profile,
     activePhaseId: inputs.activePhase?.id ?? null,
     activePhaseGoal: inputs.activePhase?.goal ?? null,
@@ -548,6 +560,11 @@ export async function loadCachedSkinBreakdown(
     .maybeSingle()
 
   if (!data) return null
+  // A write-up made before the current brief may state what the brief now
+  // rules out (one told a fragrance-reactive member their routine was
+  // fragrance-free). It is not shown again: the caller treats this as a first
+  // visit and writes a new one before answering.
+  if (new Date(data.generated_at).getTime() < Date.parse(BRIEF_SINCE)) return null
 
   return {
     text: data.breakdown_text,

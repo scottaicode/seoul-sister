@@ -14,7 +14,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { mergeDecisionMemory, type DecisionMemory, type UserContext } from '@/lib/yuri/memory'
 import { sendEmail } from '@/lib/email/send'
-import { leadOfferCode } from '@/lib/email/nurture'
+import { leadOfferCode, loadMembers } from '@/lib/email/nurture'
 import { sendNudgeEmail, buildNudgeEmailHtml, type NudgeEmailStatus } from '@/lib/email/nudge-email'
 import { getLocalClock } from '@/lib/yuri/clock'
 import {
@@ -478,9 +478,13 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
       convertedRes.error ||
       usersRes.error ||
       trialsRes.error
-    if (loadErr) {
+    // Who is a member RIGHT NOW (membership, free week, comped plan), by
+    // account and by address. "Ever paid" below leaves out a member on a
+    // no-card free week, who must not be sent a "come back" email either.
+    const members = loadErr ? null : await loadMembers(db)
+    if (loadErr || !members) {
       lead.phase = 'load_failed'
-      errors.push(`lead load: ${loadErr.message}`)
+      errors.push(`lead load: ${loadErr ? loadErr.message : 'could not read who is a member'}`)
     } else {
       const trialRows = (trialsRes.data ?? []) as Array<{ stripe_subscription_id: string | null; paid_at: string | null }>
       const everPaid = new Set(
@@ -505,7 +509,9 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
           now,
           ownerApproved,
           hasEverPaid:
-            (!!personId(l) && everPaid.has(personId(l)!)) || convertedEmails.has(l.email.toLowerCase()),
+            (!!personId(l) && (everPaid.has(personId(l)!) || members.ids.has(personId(l)!))) ||
+            convertedEmails.has(l.email.toLowerCase()) ||
+            members.emails.has(l.email.trim().toLowerCase()),
           internal: (!!personId(l) && internalUsers.has(personId(l)!)) || excluded.has(l.email.toLowerCase()),
           alreadyJudged: judged.has(l.id),
         })

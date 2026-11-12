@@ -48,7 +48,9 @@ async function handler(request: Request) {
 
   await logPipelineRun(db, {
     run_type: 'nurture_sequence',
-    status: summary.errors > 0 ? 'completed_with_errors' : 'completed',
+    // A run that could not tell members from leads did nothing: that is a
+    // failed run, visible to the pipeline health check, not a clean one.
+    status: summary.skipped_reason === 'members_unreadable' ? 'failed' : summary.errors > 0 ? 'completed_with_errors' : 'completed',
     completed_at: new Date().toISOString(),
     metadata: { ...summary, duration_ms: Date.now() - startedAt },
   })

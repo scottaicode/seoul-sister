@@ -196,7 +196,7 @@ export function CycleAdjustment() {
             <div className="flex-1">
               <p className="text-sm font-medium text-white">Cycle Tracking Active</p>
               <p className="text-[10px] text-white/40">
-                Log your cycle start date for personalized routine adjustments.
+                Log your cycle start date so your phase shows here and Yuri can take it into account.
               </p>
             </div>
             <button

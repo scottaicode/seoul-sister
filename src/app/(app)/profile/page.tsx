@@ -113,12 +113,12 @@ function CycleTrackingToggle({
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm text-white font-medium">
-            Cycle-Aware Routine Adjustments
+            Cycle phase
           </p>
           <p className="text-[10px] text-white/30 mt-0.5">
             {enabled
-              ? `Active \u00B7 ${avgLength}-day cycle \u00B7 Adjustments appear on your Routine page`
-              : 'Get personalized skincare tips based on your menstrual cycle phase'}
+              ? `Active \u00B7 ${avgLength}-day cycle \u00B7 Your phase shows on your Routine page`
+              : 'Shows your cycle phase on your Routine page, and lets Yuri take it into account'}
           </p>
         </div>
         <button
@@ -220,7 +220,7 @@ function WeatherLocationToggle({
   return (
     <div className="glass-card p-5">
       <h2 className="font-display font-semibold text-sm text-white/60 mb-3 uppercase tracking-wider">
-        Weather Alerts
+        Weather
       </h2>
       <div className="flex items-center gap-3 py-2">
         <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center flex-shrink-0">
@@ -228,14 +228,14 @@ function WeatherLocationToggle({
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm text-white font-medium">
-            Weather-Adaptive Routine Tips
+            Your location, for weather
           </p>
           <p className="text-[10px] text-white/30 mt-0.5 truncate">
             {enabled && hasLocation
               ? locationText
                 ? `Active \u00B7 ${locationText}`
-                : 'Active \u00B7 Adjustments appear on your dashboard'
-              : 'Get skincare tips based on your local weather conditions'}
+                : 'Active'
+              : 'Lets Yuri read the weather where you are (humidity, UV) when it matters to her advice'}
           </p>
         </div>
         <button

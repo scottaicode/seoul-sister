@@ -4,6 +4,38 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.59.1 — Members are no longer sent the lead emails; the Skin Profile write-up is told what it is not shown (Nov 12 2026)
+
+- **Members were being sent the lead follow-up emails.** A visitor who chatted, gave an email and
+  started the free week the same night got "we talked a while back... you can talk to me free" at
+  the next morning's run. The member check compared account ids, and a chat lead is enrolled from
+  the address they typed, with no account id. `loadMembers` (`src/lib/email/nurture.ts`) now answers
+  "who is a member" by id AND by address: an active, trialing or past-due subscription, or a profile
+  on a paid plan (comped accounts have no subscription; two were sent all three emails in July and
+  August). A chat tied to a member's account under a different address counts too. Checked at
+  enrolment and again at send time.
+- **A failed read no longer means "nobody is a member".** If subscriptions, plans or the account
+  list cannot be read, nothing is enrolled or sent and the run is recorded `failed`. The account
+  list is read to an empty page, not one page.
+- **The lead re-engagement campaign had the same gap** for a member on a no-card free week (its
+  check was "ever paid"). It now uses the same member list.
+- **"Yuri's Read of Your Skin"** told a fragrance-reactive member "your whole routine is
+  fragrance-free by design" with a fragranced serum in the evening routine. It is a one-shot write-up
+  that is given the profile, the phase plan and conversation records, never a routine or an
+  ingredient list. Its brief now says so, and says nothing tells it whether the person has a cycle.
+  A write-up made before this brief is not shown again; the page writes a new one first.
+- **Profile switches say what they do.** "Cycle phase" (shows your phase on the Routine page and
+  lets Yuri take it into account) and "Your location, for weather". Neither produces advice; the
+  word "tips" and the "Weather Alerts" heading are gone.
+
+Second-model review: one Opus pass. It found the re-engagement gap, that the first wording of the
+write-up's brief contradicted the phase plan it is handed, and seven wrong versions of the member
+check that my tests passed; all fixed, and the tests now fail on each. Changes made after the pass
+were not re-reviewed.
+
+Not verified at ship time: no scheduled run has yet skipped a member (first evidence is the next
+daily run), and no write-up has regenerated under the new brief.
+
 ## v11.59.0 — A creator code follows the lead into their email; three page fixes from the owner's TikTok-path walkthrough (Nov 12 2026)
 
 Found by the owner walking the sign-up path as a follower arriving from Bailey's TikTok link, each
