@@ -72,11 +72,11 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
         <p className="text-4xl font-bold text-white leading-tight">{lines.headline}</p>
         <p className="text-base font-semibold text-gold-light mb-3">{lines.noCard}</p>
         <p className="text-sm text-white/80 mb-1">{lines.after}</p>
-        <p className="text-xs text-white/40 mb-6">{lines.who} Less than a single skin consult, and she never closes.</p>
+        <p className="text-sm text-white/60 mb-6">{lines.who} Less than a single skin consult, and she never closes.</p>
 
         <ul className="space-y-3 mb-6">
           {tier.features.map((f) => (
-            <li key={f} className="flex gap-2.5 text-sm text-white/70">
+            <li key={f} className="flex gap-2.5 text-sm text-white/85">
               <Check className="w-4 h-4 text-gold shrink-0 mt-0.5" />
               {f}
             </li>
@@ -98,7 +98,7 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
         </button>
 
         {checkoutError && <p className="text-center text-xs text-rose-300 mt-3" role="alert">{checkoutError}</p>}
-        <p className="text-center text-[10px] text-white/30 mt-3">
+        <p className="text-center text-xs text-white/50 mt-3">
           Try {MAX_FREE_MESSAGES} free preview messages before subscribing.
         </p>
 

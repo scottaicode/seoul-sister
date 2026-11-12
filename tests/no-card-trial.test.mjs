@@ -1162,14 +1162,14 @@ test('pricing card: the free week leads and the price is stated; the allowance l
   assert.ok(card.includes(`        <p className="text-4xl font-bold text-white leading-tight">{lines.headline}</p>
         <p className="text-base font-semibold text-gold-light mb-3">{lines.noCard}</p>
         <p className="text-sm text-white/80 mb-1">{lines.after}</p>
-        <p className="text-xs text-white/40 mb-6">{lines.who} Less than a single skin consult, and she never closes.</p>`))
+        <p className="text-sm text-white/60 mb-6">{lines.who} Less than a single skin consult, and she never closes.</p>`))
   assert.equal((card.match(/text-4xl/g) ?? []).length, 1)
   assert.doesNotMatch(card, /text-(5|6|7|8|9)xl/)
   assert.doesNotMatch(card, /PRICING\.|tier\.price|\$\{?9|9\.99/, 'every price on the card comes from pricingCardLines')
   assert.match(card, /\) : \(\s*lines\.cta\s*\)\}/)
   // And the whole card file by fingerprint: an added line ("No card is ever
   // needed.") or a changed button label passed every assertion above in review.
-  assert.equal(sha('sha256').update(card).digest('hex'), 'fbc8f7ea081f26a1cb81832253ce456bc1ba18ae3d0a8cc8f135ae067985b75d')
+  assert.equal(sha('sha256').update(card).digest('hex'), 'ec662674e4e468fcee36b05ff177ed9b892042a1b47835a2d74436b3e6fa4e89')
 
   // The allowance is NOT on the pricing card or the membership page (owner
   // decision, Nov 11 2026: the "79 messages" month was the co-owner testing;
@@ -1211,7 +1211,7 @@ test('pricing card: the free week leads and the price is stated; the allowance l
     'Reads your Korean labels & builds conflict-aware routines',
     'Remembers your skin across every session',
     'Glass Skin Score photo tracking',
-    'Counterfeit detection & live price comparison',
+    'Counterfeit warning signs & price checks',
     'Finds dupes & the right sunscreen for your skin',
     'Weather- & cycle-aware guidance',
     'Trending in Korea before it hits the US',

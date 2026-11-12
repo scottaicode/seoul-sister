@@ -4,6 +4,24 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.58.2 — One pricing bullet says what Yuri can do, and the sale pages are readable (Nov 11 2026)
+
+- **Bullet.** "Counterfeit detection & live price comparison" becomes "Counterfeit warning signs &
+  price checks". Measured: 11 counterfeit markers across 5 brands; 215 of 5,222 stored prices checked
+  in the previous week (about 4,000 in the month); 270 of 5,311 verified products have a price from a
+  store that ships to the US. Found when the owner asked, from his phone, whether the card was accurate.
+- **Readability.** He could not read the grey print. On the pricing card and the membership page the
+  feature bullets are now 85% white, and nothing a buyer needs is under 12px or fainter than 50%.
+- **Second-model review (Opus 5.5):** no ship-blocker; the new bullet is true; all three wrong
+  versions it tried fail the tests.
+- **Raised by the review, NOT changed:** "cycle-aware guidance" is opt-in and on for 0 members;
+  "All 6 built-in AI specialists" are six modes of one model; "before it hits the US" rests on a
+  heuristic score; the site's meta description still says "detect counterfeits"; both chat prompts
+  and `tool-grounding.ts` still say "live prices"; the unsold legacy tier keeps the old bullet and
+  "Unlimited conversations & label scans".
+
+---
+
 ## v11.58.1 — The allowance note leaves the sale pages; the Routine page's separate "AI Generate" becomes "Build with Yuri" (Nov 11 2026)
 
 - **Allowance note.** "Includes 80 Yuri messages and 30 label scans each calendar month." is removed

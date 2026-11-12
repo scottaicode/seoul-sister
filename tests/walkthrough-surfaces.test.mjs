@@ -91,7 +91,22 @@ test('the membership page leads with the free week in the public card\'s own wor
   // Headline: the free week when it is on offer with no card; the price otherwise.
   assert.match(page, /\{freeWeekLeads \? \(\n\s+<>\n\s+<p className="text-4xl font-bold text-white leading-tight">\{card\.headline\}<\/p>\n\s+<p className="text-base font-semibold text-gold-light mb-2">\{card\.noCard\}<\/p>\n\s+<\/>\n\s+\) : \(\n\s+<div className="flex items-baseline gap-1 mb-1">\n\s+<p className="text-4xl font-bold text-white">\$\{tier\.price\}<\/p>/)
   // The sentence under it comes from offers.ts and is readable, not 40% grey at 12px.
-  assert.match(page, /<p className=\{freeWeekLeads \? 'text-sm text-white\/70 mb-6' : 'text-xs text-white\/40 mb-6'\}>\n\s+\{trialEligible === true && noCardTrial\n\s+\? paywallFreeWeekLine\(priceLong\)\n/)
+  assert.match(page, /<p className=\{freeWeekLeads \? 'text-sm text-white\/80 mb-6' : 'text-sm text-white\/60 mb-6'\}>\n\s+\{trialEligible === true && noCardTrial\n\s+\? paywallFreeWeekLine\(priceLong\)\n/)
+  // Readable type on both sale surfaces (the owner could not read the grey print, Nov 11 2026):
+  // nothing a buyer needs is smaller than 12px or fainter than 50% white.
+  for (const [name, src] of [['membership page', page], ['pricing card', read('src/components/pricing/PricingCards.tsx')]]) {
+    const cardAt = src.indexOf('dark-card-gold')
+    // The card and the links under it; a decorative separator dot is not text.
+    const body = src.slice(cardAt).replace(/<span className="text-white\/20">·<\/span>/g, '')
+    assert.doesNotMatch(body, /text-\[(9|10|11)px\]/, `${name}: type under 12px on the card`)
+    assert.doesNotMatch(body, /text-white\/(10|20|30|40)\b/, `${name}: text fainter than 50% white on the card`)
+    assert.match(body, /<li key=\{f\} className="flex gap-2\.5 text-sm text-white\/85">/, name)
+  }
+  // The feature list says what Yuri can do, not more.
+  const tiers = read('src/lib/stripe.ts')
+  const monthly = tiers.slice(tiers.indexOf('features: ['), tiers.indexOf('],', tiers.indexOf('features: [')))
+  assert.match(monthly, /'Counterfeit warning signs & price checks',/)
+  assert.doesNotMatch(monthly.replace(/\/\/[^\n]*/g, ''), /\blive\b|detection|guarantee|verif/i)
   assert.match(page, /\{freeWeekLeads \? card\.cta : trialEligible === true \? `Start \$\{PRICING\.trial_days\} days free` : 'Start membership'\}/)
   // Same badge as the public card.
   const publicCard = read('src/components/pricing/PricingCards.tsx')

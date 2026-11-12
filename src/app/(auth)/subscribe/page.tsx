@@ -281,10 +281,10 @@ export default function SubscribePage() {
         ) : (
           <div className="flex items-baseline gap-1 mb-1">
             <p className="text-4xl font-bold text-white">${tier.price}</p>
-            <span className="text-base font-normal text-white/40">/month</span>
+            <span className="text-base font-normal text-white/60">/month</span>
           </div>
         )}
-        <p className={freeWeekLeads ? 'text-sm text-white/70 mb-6' : 'text-xs text-white/40 mb-6'}>
+        <p className={freeWeekLeads ? 'text-sm text-white/80 mb-6' : 'text-sm text-white/60 mb-6'}>
           {trialEligible === true && noCardTrial
             ? paywallFreeWeekLine(priceLong)
             : trialEligible === true
@@ -304,7 +304,7 @@ export default function SubscribePage() {
 
         <ul className="space-y-3 mb-6">
           {tier.features.map((f) => (
-            <li key={f} className="flex gap-2.5 text-sm text-white/70">
+            <li key={f} className="flex gap-2.5 text-sm text-white/85">
               <Check className="w-4 h-4 text-gold shrink-0 mt-0.5" />
               {f}
             </li>
@@ -326,7 +326,7 @@ export default function SubscribePage() {
         </button>
         {checkoutError && <p className="text-center text-xs text-rose-300 mt-3" role="alert">{checkoutError}</p>}
 
-        <p className="text-center text-[10px] text-white/30 mt-3">
+        <p className="text-center text-xs text-white/50 mt-3">
           {trialEligible === true && noCardTrial ? 'No card needed to start. Handled by Stripe.' : 'Secure payment via Stripe.'}
         </p>
 
@@ -335,7 +335,7 @@ export default function SubscribePage() {
       {/* Escape hatch — a free user parked on the paywall must never be trapped.
           /subscribe is under the (auth) group with no nav bar, so without this
           there is NO link to manage or delete the account (right-to-erasure). */}
-      <div className="flex items-center justify-center gap-4 mt-6 text-[11px] text-white/40">
+      <div className="flex items-center justify-center gap-4 mt-6 text-xs text-white/60">
         <button
           onClick={() => router.push('/settings')}
           className="hover:text-white/70 transition-colors underline underline-offset-2"

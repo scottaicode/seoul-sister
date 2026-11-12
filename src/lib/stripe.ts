@@ -31,7 +31,10 @@ export const SUBSCRIPTION_TIERS = {
       'Reads your Korean labels & builds conflict-aware routines',
       'Remembers your skin across every session',
       'Glass Skin Score photo tracking',
-      'Counterfeit detection & live price comparison',
+      // "Counterfeit detection & live price comparison" overstated both (Nov 11
+      // 2026): 11 counterfeit markers across 5 brands, and 215 of 5,222 stored
+      // prices checked in the previous week. Say what she can actually do.
+      'Counterfeit warning signs & price checks',
       'Finds dupes & the right sunscreen for your skin',
       'Weather- & cycle-aware guidance',
       'Trending in Korea before it hits the US',
