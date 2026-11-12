@@ -29,11 +29,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
 const read = (...p) => readFileSync(join(root, ...p), 'utf8')
 
+const NORMALIZE_OFFER_CODE_SRC = `((raw) => { const code = (raw ?? '').trim().toUpperCase(); return /^[A-Z0-9]{3,20}$/.test(code) ? code : null })`
+
 /**
  * Transpile a module. Named imports from project modules are replaced with
  * stubs (or `impls`); `node:` built-ins are left as real imports.
  */
 async function load(relPath, impls = {}) {
+  // The creator-code format rule is pure; run the real one (pinned to the source below).
+  impls = { normalizeOfferCode: NORMALIZE_OFFER_CODE_SRC, ...impls }
   let js = ts.transpileModule(read(...relPath), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
   }).outputText
@@ -310,7 +314,7 @@ test("Yuri's live prompt names the email path only when links work, and states a
 test('the chat route tells Yuri "resumes" exactly when a token was created', () => {
   const route = read('src', 'app', 'api', 'widget', 'chat', 'route.ts')
   assert.match(route, /const resumeToken = createResumeToken\(parsed\.visitor_id!, sessionId!\)/)
-  assert.match(route, /url: widgetEmailLink\('recap', resumeToken\),\s*resumes: resumeToken !== null,/)
+  assert.match(route, /url: widgetEmailLink\('recap', resumeToken, recapOfferCode\),\s*resumes: resumeToken !== null,\s*offerCode: recapOfferCode,/)
 })
 
 // ---------------------------------------------------------------------------
@@ -722,4 +726,212 @@ test('the follow-ups the recap footer mentions really unsubscribe (executed)', a
   assert.match(nurtureCopy, /<a href="\$\{unsubscribeUrl\}" style="color:#999;">Unsubscribe with one click<\/a>/)
   assert.match(nurtureCopy, /api\/email\/unsubscribe\?token=/)
   void copy
+})
+
+// ---------------------------------------------------------------------------
+// 7. The creator code follows the lead into every email link (Nov 12 2026)
+//
+// Found on the owner's walkthrough: arrived by Bailey's link, opened the recap
+// email's account link in another browser, and the membership page showed full
+// price with no code. The code lived only in the first browser.
+// ---------------------------------------------------------------------------
+
+test('the code-format rule these tests run is the real one', () => {
+  const src = read('src', 'lib', 'offers.ts')
+  assert.match(
+    src,
+    /export function normalizeOfferCode\(raw: string \| null \| undefined\): string \| null \{\n  const code = \(raw \?\? ''\)\.trim\(\)\.toUpperCase\(\)\n  return \/\^\[A-Z0-9\]\{3,20\}\$\/\.test\(code\) \? code : null\n\}/
+  )
+})
+
+test('an email link carries the creator code, and only a code in the accepted format (executed)', () => {
+  const { widgetEmailLink } = tokenMod
+  assert.equal(widgetEmailLink('recap', 'TOKEN', 'BAILEY'), 'https://www.seoulsister.com/?from=recap&resume=TOKEN&code=BAILEY')
+  assert.equal(widgetEmailLink('recap', null, 'bailey'), 'https://www.seoulsister.com/?from=recap&code=BAILEY')
+  for (const none of [undefined, null, '', 'AB', 'BAILEY&plan=x', 'x"><script>', 'A'.repeat(21)]) {
+    assert.equal(widgetEmailLink('recap', 'TOKEN', none), 'https://www.seoulsister.com/?from=recap&resume=TOKEN', `no code for ${JSON.stringify(none)}`)
+  }
+})
+
+test('the recap that is sent: BOTH links carry the code, and neither does without one (executed)', async () => {
+  const token = 'A'.repeat(40)
+  const withCode = await runRecap({
+    url: `https://www.seoulsister.com/?from=recap&resume=${token}&code=BAILEY`,
+    resumes: true,
+    offerCode: 'BAILEY',
+  })
+  const hrefs = [...withCode.result.email.bodyHtml.matchAll(/href="([^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, '&'))
+  assert.equal(hrefs.length, 2, 'the button and the account link, nothing else')
+  for (const h of hrefs) {
+    const u = new URL(h)
+    assert.equal(u.searchParams.get('code'), 'BAILEY', `missing on ${u.pathname}`)
+    assert.equal(u.searchParams.get('resume'), token, 'the conversation still comes along')
+  }
+  assert.deepEqual(hrefs.map((h) => new URL(h).pathname).sort(), ['/', '/register'])
+
+  const without = await runRecap({ url: `https://www.seoulsister.com/?from=recap&resume=${token}`, resumes: true })
+  assert.doesNotMatch(without.result.email.bodyHtml, /code=/)
+  // A code that is not in the accepted format never reaches a link.
+  assert.equal(withCode.mod.accountLinkUrl(token, 'x"><b>'), withCode.mod.accountLinkUrl(token))
+  assert.equal(withCode.mod.accountLinkUrl(null, 'BAILEY'), 'https://www.seoulsister.com/register?plan=monthly&from=recap&utm_source=recap&utm_medium=email&code=BAILEY')
+})
+
+test('the follow-up emails: every link to the site carries the code (executed)', async () => {
+  const mod = await load(['src', 'lib', 'email', 'nurture-copy.ts'], {
+    PRICING: "({ monthly_display_long: 'M', trial_days: 7 })",
+  })
+  const siteLinks = (html) =>
+    [...html.matchAll(/href="(https:\/\/www\.seoulsister\.com\/[^"]*)"/g)]
+      .map((m) => new URL(m[1].replace(/&amp;/g, '&')))
+      // The blog article is content, not a way in; a code there does nothing useful.
+      .filter((u) => !u.pathname.startsWith('/blog/') && !u.pathname.startsWith('/unsubscribe') && !u.pathname.startsWith('/api/'))
+  let checked = 0
+  for (const step of [1, 2, 3]) {
+    const coded = mod.buildNurtureEmail(step, 'widget', 'tok', { offerCode: 'BAILEY' })
+    const plain = mod.buildNurtureEmail(step, 'widget', 'tok')
+    const links = siteLinks(coded.bodyHtml)
+    assert.ok(links.length >= 1, `email ${step} has a link back to the site`)
+    for (const u of links) {
+      assert.equal(u.searchParams.get('code'), 'BAILEY', `email ${step}: ${u.pathname}${u.search}`)
+      checked++
+    }
+    assert.doesNotMatch(plain.bodyHtml, /code=/, `email ${step} adds nothing without a code`)
+    // The code changes links only: not one word of what the lead reads.
+    assert.equal(coded.bodyHtml.replaceAll('&code=BAILEY', ''), plain.bodyHtml)
+    assert.equal(coded.subject, plain.subject)
+    // A code that is not in the accepted format never reaches a link.
+    for (const junk of ['x"><b>', 'BAILEY&plan=x', 'AB']) {
+      assert.equal(mod.buildNurtureEmail(step, 'widget', 'tok', { offerCode: junk }).bodyHtml, plain.bodyHtml, `email ${step}: ${junk}`)
+    }
+  }
+  assert.ok(checked >= 3)
+})
+
+test('leadOfferCode reads the code from the lead row, and a failed read is not a code (executed)', async () => {
+  const row = (data, error = null) => ({
+    from: (t) => {
+      assert.equal(t, 'ss_widget_visitors')
+      return { select: (c) => { assert.equal(c, 'offer_code'); return { eq: (col, v) => { assert.equal(col, 'id'); assert.equal(v, 'row-uuid'); return { maybeSingle: async () => ({ data, error }) } } } } }
+    },
+  })
+  const errs = []
+  const orig = console.error
+  console.error = (...a) => errs.push(a.join(' '))
+  try {
+    assert.equal(await nurtureMod.leadOfferCode(row({ offer_code: 'BAILEY' }), 'row-uuid'), 'BAILEY')
+    assert.equal(await nurtureMod.leadOfferCode(row({ offer_code: null }), 'row-uuid'), null)
+    assert.equal(await nurtureMod.leadOfferCode(row(null), 'row-uuid'), null)
+    assert.equal(await nurtureMod.leadOfferCode(row({ offer_code: 'not a code' }), 'row-uuid'), null)
+    assert.equal(errs.length, 0)
+    assert.equal(await nurtureMod.leadOfferCode(row(null, { message: 'boom' }), 'row-uuid'), null)
+    assert.equal(errs.length, 1, 'a failed lookup is logged')
+    assert.equal(await nurtureMod.leadOfferCode({ from: () => { throw new Error('must not query') } }, null), null)
+  } finally {
+    console.error = orig
+  }
+})
+
+test('widgetResumeUrl puts the code into the REAL follow-up link (executed)', async () => {
+  // The other widgetResumeUrl tests stub the link builder; this one runs the real one.
+  const real = await load(['src', 'lib', 'email', 'nurture.ts'], {
+    createResumeToken: "((v, s) => `TOK-${v}-${s}`)",
+    widgetEmailLink: tokenMod.widgetEmailLink.toString().replace(/^function widgetEmailLink/, 'function').replace(/\bSITE\b/g, "'https://www.seoulsister.com'").replace(/^/, '(').concat(')'),
+    MAX_FREE_MESSAGES: '12',
+  })
+  const db = () => fakeDb({
+    ss_widget_visitors: [{ id: 'row-uuid', visitor_id: 'text-vid', total_messages: 3 }],
+    ss_widget_sessions: [{ id: 'sess', visitor_id: 'text-vid', message_count: 3, ended_naturally: false, last_message_at: '2026-11-01' }],
+  })
+  const coded = await real.widgetResumeUrl(db(), 'row-uuid', 'BAILEY')
+  assert.equal(coded.url, 'https://www.seoulsister.com/?from=nurture_1&resume=TOK-text-vid-sess&code=BAILEY')
+  const plain = await real.widgetResumeUrl(db(), 'row-uuid')
+  assert.equal(plain.url, 'https://www.seoulsister.com/?from=nurture_1&resume=TOK-text-vid-sess')
+})
+
+test('the lead row: a code is stored exactly as given, a write that stores nothing is not a success, and it reads back (executed)', async () => {
+  const calls = []
+  globalThis.__offerDb = { rows: 1, error: null, stored: null }
+  const mod = await load(['src', 'lib', 'widget', 'visitor.ts'], {
+    getServiceClient: `(() => ({ from: (t) => ({
+      update: (v) => ({ eq: (c, id) => ({ select: async () => { globalThis.__offerCalls.push(['update', t, v, c, id]); const d = globalThis.__offerDb; if (!d.error && d.rows) d.stored = v.offer_code; return { data: d.error ? null : Array(d.rows).fill({ visitor_id: id }), error: d.error } } }) }),
+      select: (cols) => ({ eq: (c, id) => ({ maybeSingle: async () => { globalThis.__offerCalls.push(['select', t, cols, c, id]); const d = globalThis.__offerDb; return { data: d.error ? null : { offer_code: d.stored }, error: d.error } } }) }),
+    }) }))`,
+  })
+  globalThis.__offerCalls = calls
+  const errs = []
+  const orig = console.error
+  console.error = (...a) => errs.push(a.join(' '))
+  try {
+    assert.equal(await mod.recordOfferCode('vid-1', 'BAILEY'), true)
+    assert.deepEqual(calls[0], ['update', 'ss_widget_visitors', { offer_code: 'BAILEY' }, 'visitor_id', 'vid-1'])
+    assert.equal(await mod.readOfferCode('vid-1'), 'BAILEY')
+    assert.deepEqual(calls[1], ['select', 'ss_widget_visitors', 'offer_code', 'visitor_id', 'vid-1'])
+    assert.equal(errs.length, 0)
+    // No row matched: nothing was stored, and that is said, not passed off as done.
+    globalThis.__offerDb.rows = 0
+    assert.equal(await mod.recordOfferCode('vid-none', 'BAILEY'), false)
+    assert.equal(errs.length, 1)
+    globalThis.__offerDb = { rows: 1, error: { message: 'boom' }, stored: 'BAILEY' }
+    assert.equal(await mod.recordOfferCode('vid-1', 'BAILEY'), false)
+    assert.equal(await mod.readOfferCode('vid-1'), null, 'a failed read is not a code')
+    assert.equal(errs.length, 3)
+    // Whatever is on the row, only a code in the accepted format comes back.
+    for (const bad of [null, '', 'bailey', 'x"><b>', 'AB']) {
+      globalThis.__offerDb = { rows: 1, error: null, stored: bad }
+      assert.equal(await mod.readOfferCode('vid-1'), null, JSON.stringify(bad))
+    }
+  } finally {
+    console.error = orig
+    delete globalThis.__offerDb
+    delete globalThis.__offerCalls
+  }
+})
+
+test('a code goes into email links only on Stripe\'s word: open creator offers, nothing else (executed)', async () => {
+  globalThis.__stripePromo = null
+  const mod = await load(['src', 'lib', 'offers-server.ts'], {
+    getStripeClient: `(() => ({ promotionCodes: { list: async () => { const p = globalThis.__stripePromo; if (p instanceof Error) throw p; return { data: p ? [p] : [] } } } }))`,
+    offerFactForYuri: '((o) => `fact:${o.state}`)',
+  })
+  const open = { id: 'promo_1', active: true, metadata: { creator_offer: '1' }, max_redemptions: 50, times_redeemed: 3, expires_at: null, coupon: { valid: true, percent_off: 50, duration: 'repeating', duration_in_months: 1 } }
+  const cases = [
+    ['OPENCODE', open, 'OPENCODE'],
+    ['ENDEDONE', { ...open, active: false }, null],
+    ['FULLCODE', { ...open, times_redeemed: 50 }, null],
+    ['PRIVATE1', { ...open, metadata: {} }, null],
+    ['NOSUCH99', null, null],
+    ['STRIPEDOWN', new Error('stripe is down'), null],
+  ]
+  const orig = console.error
+  console.error = () => {}
+  try {
+    for (const [code, promo, expected] of cases) {
+      assert.equal(mod.confirmedOfferCode(code, 1000), null, `${code}: nothing is confirmed before Stripe is asked`)
+      globalThis.__stripePromo = promo
+      await mod.offerFactLine(code, 1000)
+      assert.equal(mod.confirmedOfferCode(code, 1001), expected, code)
+      assert.equal(mod.confirmedOfferCode(code.toLowerCase(), 1001), expected, 'same code, any case')
+    }
+    // Stripe's answer is trusted only while it is fresh.
+    assert.equal(mod.confirmedOfferCode('OPENCODE', 1000 + 5 * 60 * 1000 + 1), null)
+    assert.equal(mod.confirmedOfferCode('x"><b>', 1001), null)
+    assert.equal(mod.confirmedOfferCode(null, 1001), null)
+  } finally {
+    console.error = orig
+    delete globalThis.__stripePromo
+  }
+})
+
+test('wiring: the chat keeps only a code Stripe confirmed, the recap falls back to the stored one, and every lead email passes it on', () => {
+  const route = read('src', 'app', 'api', 'widget', 'chat', 'route.ts')
+  assert.match(route, /const offerFact = await offerFactLine\(parsed\.offer_code\)\n(?:    \/\/[^\n]*\n)+    const liveOfferCode = confirmedOfferCode\(parsed\.offer_code\)\n    if \(liveOfferCode && parsed\.visitor_id && \(hasEmail \|\| extractEmail\(parsed\.message\)\)\) \{\n      await recordOfferCode\(parsed\.visitor_id, liveOfferCode\)\n    \}\n/)
+  assert.equal((route.match(/recordOfferCode\(/g) ?? []).length, 1)
+  assert.match(route, /const recapOfferCode = liveOfferCode \?\? \(await readOfferCode\(parsed\.visitor_id!\)\)\n/)
+  assert.ok(route.indexOf('const hasEmail = Boolean(visitor?.captured_email)') < route.indexOf('const liveOfferCode'), 'hasEmail is read from the row before it is used')
+  const nurture = read('src', 'lib', 'email', 'nurture.ts')
+  assert.match(nurture, /const offerCode = lead\.cohort === 'widget' \? await leadOfferCode\(db, lead\.visitor_id\) : null\n/)
+  assert.match(nurture, /await widgetResumeUrl\(db, lead\.visitor_id, offerCode\)/)
+  assert.match(nurture, /resumeRemaining: resume\?\.remaining \?\? null, offerCode \}/)
+  assert.match(read('src', 'lib', 'proactive', 'run.ts'), /buildLeadEmail\(decision, l, tag, address, l\.cohort === 'widget' \? await leadOfferCode\(db, l\.visitor_id\) : null\)/)
+  assert.match(read('supabase', 'migrations', '20261112000001_widget_visitor_offer_code.sql'), /ADD COLUMN IF NOT EXISTS offer_code text\n  CONSTRAINT ss_widget_visitors_offer_code_format CHECK \(offer_code ~ '\^\[A-Z0-9\]\{3,20\}\$'\)/)
 })

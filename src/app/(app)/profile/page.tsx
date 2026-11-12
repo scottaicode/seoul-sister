@@ -23,7 +23,6 @@ import {
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import DisplayNameEditor from '@/components/profile/DisplayNameEditor'
-import { PRICING } from '@/lib/pricing'
 
 interface UserProfile {
   display_name: string | null
@@ -500,9 +499,12 @@ export default function ProfilePage() {
                     : 'No active subscription'}
                 </p>
                 <p className="text-xs text-white/40 mt-0.5">
-                  {profile.plan === 'monthly'
-                    ? `${PRICING.monthly_display_long} — Yuri + full intelligence suite`
-                    : profile.plan && profile.plan !== 'free'
+                  {/* No price here. What a member pays depends on their free
+                      week, their card and any creator code; the notice under
+                      the header states that from src/lib/offers.ts, and a bare
+                      "$9.99/month" on this card told a member on a free week
+                      with no card that they were being billed. */}
+                  {profile.plan && profile.plan !== 'free'
                     ? 'Yuri + full intelligence suite'
                     : 'Subscribe to unlock Yuri, scanning, and all features'}
                 </p>

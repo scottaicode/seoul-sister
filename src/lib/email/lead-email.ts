@@ -32,6 +32,7 @@ import { noCardTrialEnabled } from '@/lib/trial'
 import { getAnthropicClient, MODELS, callAnthropicWithRetry } from '@/lib/anthropic'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import { PRICING } from '@/lib/pricing'
+import { normalizeOfferCode } from '@/lib/offers'
 
 export interface VisitorMemoryFacts {
   summary?: string
@@ -73,6 +74,12 @@ export interface RecapLink {
    * has already used its free trial. Defaults to 'free_week'.
    */
   accountLine?: AccountLineKind
+  /**
+   * The creator code this lead arrived with, or null. Added to the account
+   * link so the discount follows the lead to whichever browser opens the
+   * email. (The button's own `url` is built with it by widgetEmailLink.)
+   */
+  offerCode?: string | null
 }
 
 const HOMEPAGE_RECAP_LINK: RecapLink = { url: 'https://www.seoulsister.com/?from=recap', resumes: false }
@@ -139,9 +146,11 @@ export function accountLineFact(kind: AccountLineKind, noCard: boolean): string 
  * greeted by the setup chat as a stranger. Only a token made by
  * createResumeToken is accepted; anything else leaves the plain link.
  */
-export function accountLinkUrl(resumeToken: string | null | undefined): string {
-  if (!resumeToken || !/^[A-Za-z0-9_-]{20,1000}$/.test(resumeToken)) return ACCOUNT_LINK_URL
-  return `${ACCOUNT_LINK_URL}&resume=${resumeToken}`
+export function accountLinkUrl(resumeToken: string | null | undefined, offerCode?: string | null): string {
+  const code = normalizeOfferCode(offerCode)
+  const base = code ? `${ACCOUNT_LINK_URL}&code=${code}` : ACCOUNT_LINK_URL
+  if (!resumeToken || !/^[A-Za-z0-9_-]{20,1000}$/.test(resumeToken)) return base
+  return `${base}&resume=${resumeToken}`
 }
 
 /** The resume token inside a recap link, or null (a plain homepage link has none). */
@@ -155,8 +164,8 @@ export function resumeTokenOf(link: RecapLink): string | null {
 }
 
 /** The fixed line as HTML, appended below the button. */
-export function accountLineHtml(kind: AccountLineKind, noCard: boolean, resumeToken?: string | null): string {
-  return `<p style="margin:16px 0 0;font-size:14px;color:#444;">${accountLineText(kind, noCard)} <a href="${escapeAttr(accountLinkUrl(resumeToken))}" style="color:#8a6a1f;font-weight:600;">${ACCOUNT_LINK_LABEL}</a></p>`
+export function accountLineHtml(kind: AccountLineKind, noCard: boolean, resumeToken?: string | null, offerCode?: string | null): string {
+  return `<p style="margin:16px 0 0;font-size:14px;color:#444;">${accountLineText(kind, noCard)} <a href="${escapeAttr(accountLinkUrl(resumeToken, offerCode))}" style="color:#8a6a1f;font-weight:600;">${ACCOUNT_LINK_LABEL}</a></p>`
 }
 
 /**
@@ -182,7 +191,7 @@ export function recapLinkButtonHtml(link: RecapLink): string {
  * composition: a source-text check passed with the line removed from the body.
  */
 export function composeRecapBody(bodyHtml: string, link: RecapLink, visitorSaidUnder13: boolean): string {
-  const line = visitorSaidUnder13 ? '' : `\n${accountLineHtml(link.accountLine ?? 'free_week', noCardTrialEnabled(), resumeTokenOf(link))}`
+  const line = visitorSaidUnder13 ? '' : `\n${accountLineHtml(link.accountLine ?? 'free_week', noCardTrialEnabled(), resumeTokenOf(link), link.offerCode)}`
   return `${bodyHtml}\n${recapLinkButtonHtml(link)}${line}`
 }
 

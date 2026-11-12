@@ -28,6 +28,7 @@
  */
 
 import { PRICING } from '@/lib/pricing'
+import { normalizeOfferCode } from '@/lib/offers'
 
 export type NurtureCohort = 'registered' | 'widget'
 
@@ -48,12 +49,23 @@ export interface NurtureEmailOptions {
    * say "you can talk to me right now".
    */
   resumeRemaining?: number | null
+  /**
+   * The creator code the lead arrived with. Added to this email's own links
+   * to the site so the discount follows the lead to any browser.
+   */
+  offerCode?: string | null
 }
 
 const BUTTON_STYLE =
   'display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;'
 
 const SITE = 'https://www.seoulsister.com'
+
+/** `&code=BAILEY` for a link that already has a query string, or '' with no usable code. */
+function codeParam(offerCode: string | null | undefined): string {
+  const code = normalizeOfferCode(offerCode)
+  return code ? `&code=${code}` : ''
+}
 
 function unsubFooter(unsubscribeUrl: string, cohort: NurtureCohort): string {
   const reason =
@@ -104,7 +116,7 @@ ${
 ${
   resumeUrl
     ? `<p><a href="${escapeAttr(resumeUrl)}" style="${BUTTON_STYLE}">Pick up our conversation</a></p>`
-    : `<p><a href="${SITE}/?from=nurture_1" style="${BUTTON_STYLE}">Talk to Yuri, free</a></p>`
+    : `<p><a href="${SITE}/?from=nurture_1${codeParam(options.offerCode)}" style="${BUTTON_STYLE}">Talk to Yuri, free</a></p>`
 }
 <p>If it turns out I'm useful, the paid side is where I remember your skin, build your routine, and adjust it as your skin changes month to month. But try the conversation first. That's the honest order to do it in.</p>`
 }
@@ -113,7 +125,7 @@ ${
 }
 
 /** Email 2 — Day 3. Pure value, zero ask: the counterfeit check. */
-function email2(_cohort: NurtureCohort, _unsubscribeUrl: string, _options?: NurtureEmailOptions): NurtureEmailContent {
+function email2(_cohort: NurtureCohort, _unsubscribeUrl: string, options: NurtureEmailOptions = {}): NurtureEmailContent {
   return {
     subject: `The 2-minute check before you buy any Korean skincare`,
     bodyHtml: `
@@ -127,13 +139,13 @@ function email2(_cohort: NurtureCohort, _unsubscribeUrl: string, _options?: Nurt
 <li><strong>Or skip all of this:</strong> buy from authorized retailers like Olive Young (its US store if you're in the US), Soko Glam, or the brand's own site, and the question never comes up.</li>
 </ol>
 <p>The full checklist, including the brand-specific tells for the most-faked products, is here: <a href="${SITE}/blog/how-to-tell-if-korean-skincare-is-fake-a-5-point-check-for-a?from=nurture_2" style="color:#C9A55C;">How to spot fake Korean skincare</a>.</p>
-<p>And if you're ever unsure about a specific bottle in your hands, describe it to me on the <a href="${SITE}/?from=nurture_2" style="color:#C9A55C;">homepage</a>. Free, no login, and I'll tell you straight.</p>
+<p>And if you're ever unsure about a specific bottle in your hands, describe it to me on the <a href="${SITE}/?from=nurture_2${codeParam(options.offerCode)}" style="color:#C9A55C;">homepage</a>. Free, no login, and I'll tell you straight.</p>
 <p>Yuri</p>`,
   }
 }
 
 /** Email 3 — Day 8. The continuity fact + the ask. Makes no promise about future email. */
-function email3(_cohort: NurtureCohort, _unsubscribeUrl: string, _options?: NurtureEmailOptions): NurtureEmailContent {
+function email3(_cohort: NurtureCohort, _unsubscribeUrl: string, options: NurtureEmailOptions = {}): NurtureEmailContent {
   return {
     subject: `What I can't do for you in one chat`,
     bodyHtml: `
@@ -141,7 +153,7 @@ function email3(_cohort: NurtureCohort, _unsubscribeUrl: string, _options?: Nurt
 <p>The free conversation on the homepage is real. I'll diagnose, recommend, and warn you off wasted money, and none of that changes.</p>
 <p>But skin doesn't change in one conversation. It changes over months. The part of my job that actually moves skin is the follow-through: remembering what you're using and how you reacted, catching the conflict when you add a new product, adjusting your routine when the seasons change or your skin does, and tracking your progress photos so we know what's working instead of guessing.</p>
 <p>That follow-through is the member side. New members get the first ${PRICING.trial_days} days free with no card needed, and it's ${PRICING.monthly_display_long} after that only if you add one. It exists because an advisor who forgets you every conversation isn't really an advisor.</p>
-<p><a href="${SITE}/register?plan=monthly&from=nurture_3" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">Start with Yuri</a></p>
+<p><a href="${SITE}/register?plan=monthly&from=nurture_3${codeParam(options.offerCode)}" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">Start with Yuri</a></p>
 <p>And if Seoul Sister isn't for you, no hard feelings. It was good to meet you.</p>
 <p>Yuri</p>`,
   }

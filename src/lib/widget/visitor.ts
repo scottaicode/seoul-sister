@@ -127,6 +127,59 @@ export async function recordCapturedEmail(
 }
 
 /**
+ * Keep the creator code a lead arrived with on their row (Nov 12 2026), so the
+ * emails sent to them can carry it. The latest code wins, as it does in the
+ * browser. Returns false, and logs why, when nothing was stored: a failed
+ * write, or no row for this visitor. The chat goes on either way.
+ */
+export async function recordOfferCode(visitorId: string, code: string): Promise<boolean> {
+  try {
+    const { data, error } = await getServiceClient()
+      .from('ss_widget_visitors')
+      .update({ offer_code: code })
+      .eq('visitor_id', visitorId)
+      .select('visitor_id')
+    if (error) {
+      console.error('[Widget] recordOfferCode failed:', error.message)
+      return false
+    }
+    if (!Array.isArray(data) || data.length === 0) {
+      console.error('[Widget] recordOfferCode stored nothing: no row for this visitor')
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('[Widget] recordOfferCode threw:', err)
+    return false
+  }
+}
+
+/**
+ * The creator code already kept on this visitor's row, or null. Used when the
+ * turn that sends the recap carries no code of its own (the lead is now in a
+ * different browser from the one that opened the creator's link). A failed
+ * read is logged and answers null.
+ */
+export async function readOfferCode(visitorId: string): Promise<string | null> {
+  try {
+    const { data, error } = await getServiceClient()
+      .from('ss_widget_visitors')
+      .select('offer_code')
+      .eq('visitor_id', visitorId)
+      .maybeSingle()
+    if (error) {
+      console.error('[Widget] readOfferCode failed:', error.message)
+      return null
+    }
+    const code = (data as { offer_code?: string | null } | null)?.offer_code
+    return typeof code === 'string' && /^[A-Z0-9]{3,20}$/.test(code) ? code : null
+  } catch (err) {
+    console.error('[Widget] readOfferCode threw:', err)
+    return null
+  }
+}
+
+/**
  * Increment visitor counters after a message exchange.
  * Uses read-then-write pattern (acceptable for widget traffic levels).
  */

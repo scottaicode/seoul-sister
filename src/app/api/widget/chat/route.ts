@@ -9,7 +9,7 @@ import { logAIUsage } from '@/lib/ai-usage-logger'
 import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
 import { cleanYuriResponse, stripPhantomToolCallNarration } from '@/lib/yuri/voice-cleanup'
 import { detectSpecialist, SPECIALISTS } from '@/lib/yuri/specialists'
-import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordCapturedEmail, isEmailCapturedByAnotherVisitor, clearCapturedEmail, recordRecapStatus, MAX_FREE_MESSAGES } from '@/lib/widget/visitor'
+import { getOrCreateVisitor, incrementVisitorCounters, isVisitorAtLimit, recordCapturedEmail, isEmailCapturedByAnotherVisitor, clearCapturedEmail, recordRecapStatus, recordOfferCode, readOfferCode, MAX_FREE_MESSAGES } from '@/lib/widget/visitor'
 import { getServiceClient } from '@/lib/supabase'
 import { consumeGlobalBudget, logBreakerTrip, BREAKER_MESSAGE } from '@/lib/widget/circuit-breaker'
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
@@ -36,7 +36,7 @@ import {
 } from '@/lib/widget/persistence'
 import { detectAndRecordSignals, type SignalContext } from '@/lib/widget/signals'
 import { recapStatusFact } from '@/lib/widget/recap-fact'
-import { offerFactLine } from '@/lib/offers-server'
+import { offerFactLine, confirmedOfferCode } from '@/lib/offers-server'
 import { createResumeToken, widgetEmailLink, resumeLinksEnabled, redactResumeTokens } from '@/lib/widget/resume-token'
 import type Anthropic from '@anthropic-ai/sdk'
 
@@ -775,6 +775,15 @@ export async function POST(request: NextRequest) {
 
     // A creator code the visitor arrived with, as Stripe describes it right now.
     const offerFact = await offerFactLine(parsed.offer_code)
+    // A code Stripe has just confirmed as an open creator offer is kept on the
+    // lead's row, so the emails sent to them carry it to whichever browser
+    // opens them (Nov 12 2026). Only for someone who has given an email or is
+    // giving one now: nobody else is sent anything, and the common turn stays
+    // free of an extra write.
+    const liveOfferCode = confirmedOfferCode(parsed.offer_code)
+    if (liveOfferCode && parsed.visitor_id && (hasEmail || extractEmail(parsed.message))) {
+      await recordOfferCode(parsed.visitor_id, liveOfferCode)
+    }
 
     dynamicContext += `\n\n## Conversation State (facts, not instructions)
 - This is the visitor's message #${turnNumber} in this conversation.
@@ -1328,14 +1337,19 @@ That is a fact about what exists, not something this reply has to say. On a ques
                       if (!resumeToken) {
                         console.warn('[widget/chat] recap resume link unavailable (WIDGET_RESUME_SECRET unset)')
                       }
+                      // This turn's confirmed code, else the one already on
+                      // their row (they may have moved browsers since the
+                      // creator's link).
+                      const recapOfferCode = liveOfferCode ?? (await readOfferCode(parsed.visitor_id!))
                       const result = await generateLeadEmail(
                         facts,
                         conversation,
                         email,
                         parsed.visitor_id!,
                         {
-                          url: widgetEmailLink('recap', resumeToken),
+                          url: widgetEmailLink('recap', resumeToken, recapOfferCode),
                           resumes: resumeToken !== null,
+                          offerCode: recapOfferCode,
                           // Free messages left after THIS turn (same ledger as the done event).
                           remainingMessages: visitor
                             ? Math.max(0, MAX_FREE_MESSAGES - (visitor.total_messages + 1))

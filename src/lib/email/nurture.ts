@@ -18,6 +18,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail, wrapEmailHtml, postalAddress } from './send'
 import { buildNurtureEmail, STEP_DELAYS_DAYS, type NurtureCohort } from './nurture-copy'
 import { createResumeToken, widgetEmailLink } from '@/lib/widget/resume-token'
+import { normalizeOfferCode } from '@/lib/offers'
 import { MAX_FREE_MESSAGES } from '@/lib/widget/visitor'
 
 const BATCH_LIMIT = 20
@@ -106,6 +107,21 @@ export async function enrollLeads(db: SupabaseClient): Promise<{ enrolled: numbe
 }
 
 /**
+ * The creator code a widget lead arrived with (ss_widget_visitors.offer_code),
+ * or null. A failed lookup is logged and sends the email without the code: the
+ * lead can still type it on the Stripe page.
+ */
+export async function leadOfferCode(db: SupabaseClient, visitorRowId: string | null): Promise<string | null> {
+  if (!visitorRowId) return null
+  const { data, error } = await db.from('ss_widget_visitors').select('offer_code').eq('id', visitorRowId).maybeSingle()
+  if (error) {
+    console.error('[nurture] offer code lookup failed:', error.message)
+    return null
+  }
+  return normalizeOfferCode((data?.offer_code as string | null | undefined) ?? null)
+}
+
+/**
  * Encrypted link reopening a widget lead's most recent open conversation, plus
  * the lead's remaining free preview messages, or null (no visitor, no
  * conversation, the visitor chose "Start over", a failed query, or no usable
@@ -115,7 +131,8 @@ export async function enrollLeads(db: SupabaseClient): Promise<{ enrolled: numbe
  */
 export async function widgetResumeUrl(
   db: SupabaseClient,
-  visitorRowId: string | null
+  visitorRowId: string | null,
+  offerCode: string | null = null
 ): Promise<{ url: string; remaining: number } | null> {
   if (!visitorRowId) return null
   const { data: visitor, error: vErr } = await db
@@ -145,7 +162,7 @@ export async function widgetResumeUrl(
   const token = createResumeToken(visitor.visitor_id as string, sessionId)
   if (!token) return null
   const used = typeof visitor.total_messages === 'number' ? visitor.total_messages : 0
-  return { url: widgetEmailLink('nurture_1', token), remaining: Math.max(0, MAX_FREE_MESSAGES - used) }
+  return { url: widgetEmailLink('nurture_1', token, offerCode), remaining: Math.max(0, MAX_FREE_MESSAGES - used) }
 }
 
 function isDue(lead: NurtureLead, now: Date): boolean {
@@ -201,13 +218,15 @@ export async function processDueSends(
     }
 
     const step = (lead.sequence_step + 1) as 1 | 2 | 3
+    // The creator code this lead arrived with, so the email's links carry it.
+    const offerCode = lead.cohort === 'widget' ? await leadOfferCode(db, lead.visitor_id) : null
     const resume =
-      step === 1 && lead.cohort === 'widget' ? await widgetResumeUrl(db, lead.visitor_id) : null
+      step === 1 && lead.cohort === 'widget' ? await widgetResumeUrl(db, lead.visitor_id, offerCode) : null
     const { subject, bodyHtml, footerHtml, unsubscribeUrl } = buildNurtureEmail(
       step,
       lead.cohort,
       lead.unsubscribe_token,
-      { resumeUrl: resume?.url ?? null, resumeRemaining: resume?.remaining ?? null }
+      { resumeUrl: resume?.url ?? null, resumeRemaining: resume?.remaining ?? null, offerCode }
     )
     const result = await sendEmail(lead.email, subject, wrapEmailHtml(bodyHtml, footerHtml), {
       unsubscribeUrl,

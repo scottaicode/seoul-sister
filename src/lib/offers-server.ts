@@ -64,7 +64,7 @@ export async function resolveOffer(raw: string | null | undefined): Promise<Offe
 const FACT_TTL_MS = 5 * 60 * 1000
 const FACT_FAIL_TTL_MS = 60 * 1000
 const FACT_WAIT_MS = 1500
-const factCache = new Map<string, { until: number; fact: string | null }>()
+const factCache = new Map<string, { until: number; fact: string | null; active: boolean }>()
 
 export async function offerFactLine(raw: string | null | undefined, now: number = Date.now()): Promise<string | null> {
   const code = normalizeOfferCode(raw)
@@ -77,12 +77,26 @@ export async function offerFactLine(raw: string | null | undefined, now: number 
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`no answer from Stripe in ${FACT_WAIT_MS}ms`)), FACT_WAIT_MS)),
     ])
     const fact = offer.state === 'unknown' ? null : offerFactForYuri(offer)
-    factCache.set(code, { until: now + FACT_TTL_MS, fact })
+    factCache.set(code, { until: now + FACT_TTL_MS, fact, active: offer.state === 'active' })
     return fact
   } catch (err) {
     console.error('[offers] could not confirm a code for Yuri:', err instanceof Error ? err.message : String(err))
     const fact = offerFactForYuri({ state: 'unchecked' })
-    factCache.set(code, { until: now + FACT_FAIL_TTL_MS, fact })
+    factCache.set(code, { until: now + FACT_FAIL_TTL_MS, fact, active: false })
     return fact
   }
+}
+
+/**
+ * The code, only if Stripe has just confirmed it as an open creator offer
+ * (the answer offerFactLine holds for this code, still fresh). Null for a code
+ * Stripe does not know, one that has ended, and one that could not be checked:
+ * a code is put into a lead's email links only on Stripe's word, never on the
+ * strength of a string in a URL. Call it after offerFactLine for the same code.
+ */
+export function confirmedOfferCode(raw: string | null | undefined, now: number = Date.now()): string | null {
+  const code = normalizeOfferCode(raw)
+  if (!code) return null
+  const hit = factCache.get(code)
+  return hit && now < hit.until && hit.active ? code : null
 }

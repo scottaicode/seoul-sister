@@ -63,7 +63,7 @@ const SAFE_SLICE_SRC = (() => {
 })()
 
 async function loadPure(relPath, impls = {}) {
-  impls = { safeSlice: SAFE_SLICE_SRC, ...impls }
+  impls = { safeSlice: SAFE_SLICE_SRC, normalizeOfferCode: `((raw) => { const code = (raw ?? '').trim().toUpperCase(); return /^[A-Z0-9]{3,20}$/.test(code) ? code : null })`, ...impls }
   let js = ts.transpileModule(read(...relPath), {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
   }).outputText
@@ -381,6 +381,12 @@ test('lead email: model text escaped, CTA carries the attribution tag, footer ha
   assert.match(withAddr.html, /123 Main St, Austin, TX 78701/)
 
   const noAddr = buildLeadEmail(decision, lead(), 'reengage_abc', null)
+  // The creator code the lead arrived with rides on the button (Nov 12 2026),
+  // and changes nothing else in the email.
+  const coded = buildLeadEmail(decision, lead(), 'reengage_abc', null, 'bailey')
+  assert.equal(coded.html.replace('&code=BAILEY', '').replace('&amp;code=BAILEY', ''), noAddr.html)
+  assert.match(coded.html, /href="https:\/\/www\.seoulsister\.com\/\?from=reengage_abc[^"]*code=BAILEY"/)
+  for (const junk of [null, undefined, 'AB', 'x"><b>']) assert.equal(buildLeadEmail(decision, lead(), 'reengage_abc', null, junk).html, noAddr.html)
   assert.match(noAddr.html, /POSTAL ADDRESS NOT CONFIGURED/)
 })
 

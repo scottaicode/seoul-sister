@@ -49,9 +49,23 @@ test('no page tells a member what their routine is "missing": that is advice, an
       assert.doesNotMatch(v, /\b(is|are|you're|your routine is) missing\b|\bmissing (a|an|your|steps?)\b|\byou (need|should add)\b|\badd (a|an) (moisturizer|sunscreen|cleanser|toner|serum)\b/i, `${f}: "${v.trim().slice(0, 80)}"`)
     }
   }
-  // The warnings that ARE data stay: ingredient conflicts and wait times.
+  // The warning that IS data stays: ingredient conflicts.
   assert.match(page, /<ConflictWarning conflicts=\{conflicts\} checkFailed=\{conflictCheckFailed\} \/>/)
-  assert.match(page, /suggestWaitTimes\(productsForAnalysis\)/)
+  // The page's own "Wait 20 min" notes are gone (Nov 12 2026). They came from a
+  // keyword table, not from Yuri: on the owner's walkthrough the page said 20
+  // minutes where she had said about 15, and, because own-name steps were left
+  // out of its count, showed the note under the cleanser instead of the BHA.
+  // The SHAPE, not the old names: no code the Routine page renders mentions
+  // waiting or a number of minutes at all, in JSX text, a string or a template.
+  const code = (f) => read(f).replace(/\{\/\*[\s\S]*?\*\/\}|\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g, '$1')
+  for (const f of rendered) {
+    assert.doesNotMatch(code(f), /\bwaits?\b|\bminutes?\b|(?<![.\-])\bmins?\b(?![-=(])|\bquarter hour\b|wait_|Wait[A-Z]/i, f)
+  }
+  assert.doesNotMatch(read('src/lib/intelligence/layering-order.ts'), /wait_minutes|suggestWaitTimes|WAIT_TIME_TRIGGERS/)
+  // What Yuri (or the member) saved on a step is shown on that step, linked to
+  // a catalog product or not. Before, a linked step's note appeared nowhere.
+  assert.match(page, /\{rp\.notes && <p className="[^"]*">\{rp\.notes\}<\/p>\}/)
+  assert.match(page, /\) : rp\.notes \? \(\n\s+<p className="[^"]*">\{rp\.notes\}<\/p>/)
 })
 
 test('Settings can be reached from the profile menu and from the Profile page, as the Terms and Privacy Policy say', () => {
@@ -63,6 +77,11 @@ test('Settings can be reached from the profile menu and from the Profile page, a
   assert.ok(menu.indexOf('href="/settings"') < menu.indexOf('{isAdmin && ('), 'the Settings link must sit outside the admin-only block')
   assert.doesNotMatch(menu.slice(menu.indexOf('href="/profile"'), menu.indexOf('href="/settings"')), /isAdmin|plan\b|&& \(/)
   const profile = read('src/app/(app)/profile/page.tsx')
+  // The Profile card states no price (Nov 12 2026): a member on a free week
+  // with no card and a creator code read "$9.99/month" there. Charges are
+  // stated by the notice under the header, through src/lib/offers.ts.
+  const profileCode = profile.replace(/\{\/\*[\s\S]*?\*\/\}|\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g, '$1')
+  assert.doesNotMatch(profileCode, /PRICING\.|@\/lib\/(pricing|offers)|\$\s?\d|\b\d?\d\.99\b|\/\s?month|per month|monthly|a month|\/mo\b|charged?\b|billed\b/i)
   assert.match(profile, /<Link\n\s+href="\/settings"[\s\S]{0,200}Settings: membership, or delete your account\n\s+<\/Link>/)
   // The pages that send people there, and the page itself.
   assert.match(read('src/app/(legal)/terms/page.tsx'), /delete your account at any time through Settings/)

@@ -4,6 +4,41 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.59.0 — A creator code follows the lead into their email; three page fixes from the owner's TikTok-path walkthrough (Nov 12 2026)
+
+Found by the owner walking the sign-up path as a follower arriving from Bailey's TikTok link, each
+step checked against the production database.
+
+- **The creator code was lost between browsers.** Arrived by `?code=BAILEY`, chatted, gave an email,
+  opened the recap's "Create your free account" link in another browser: the membership page showed
+  $9.99 with no code. The code lived only in the first browser's storage. TikTok's in-app browser is
+  rarely where someone reads email, so this is the usual path. Now: a code Stripe has just confirmed
+  as an open creator offer is kept on the lead's row (`ss_widget_visitors.offer_code`, migration
+  `20261112000001`), and the recap's two links, the three follow-up emails and the re-engagement
+  email carry it. The recap uses this turn's code, else the one on the row. A code is stored only on
+  Stripe's word (not on a timeout, not once ended) and only for someone who has given an email.
+  No email wording changed.
+- **The Routine page's own "Wait 20 min" notes are removed.** They came from a keyword table
+  (`suggestWaitTimes`), not from Yuri: the page said 20 minutes where she had said about 15, and
+  showed it under the cleanser because own-name steps were left out of its count. A step's saved
+  note (Yuri's instruction, or the member's) is now shown on catalog-linked steps too; it was shown
+  only on unlinked ones, so her instruction appeared nowhere.
+- **The Profile page's Subscription card no longer states a price.** It read "$9.99/month" to a
+  member on a free week with no card and a 50% code. The notice under the header states the charge
+  through `src/lib/offers.ts`.
+- **The setup chat is told one fact: it has no product database.** It named a fragranced sunscreen
+  from memory right after the member reported a fragrance reaction; the member chat looked it up one
+  message later and took it back.
+- An owned product whose shelf name is identical to its catalog name is no longer printed twice on a
+  routine step (a shelf name that adds the brand still shows both lines).
+
+Second-model review: three Opus passes (creator code x1; page and prompt changes x2).
+
+Tried and taken back out: adding owned own-name products (a CeraVe cleanser) to the shelf from the
+routine save. The review showed such rows reach Yuri labelled "not confirmed, do not say 'your X'",
+can duplicate a catalog-linked row for the same product, and would feed the brand-substring matcher
+that marks every product of that brand as owned. Open, with those three to solve first.
+
 ## v11.58.3 — Yuri no longer calls stored prices "live"; the site description stops promising counterfeit detection (Nov 11 2026)
 
 - **"Live prices."** Both chat prompts scripted the line "Want me to pull live prices on any of

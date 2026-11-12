@@ -18,12 +18,7 @@ import {
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { ConflictWarning } from '@/components/routine/ConflictWarning'
-import { WaitTimeIndicator } from '@/components/routine/WaitTimeIndicator'
 import { AddProductModal } from '@/components/routine/AddProductModal'
-import {
-  suggestWaitTimes,
-  type WaitTimeSuggestion,
-} from '@/lib/intelligence/layering-order'
 import { CycleAdjustment } from '@/components/routine/CycleAdjustment'
 import { RoutineEffectiveness } from '@/components/routine/RoutineEffectiveness'
 
@@ -91,22 +86,6 @@ function RoutineCard({
 
   const isAM = routine.routine_type === 'am'
   const Icon = isAM ? Sun : Moon
-
-  // Compute wait time suggestions from products
-  const productsForAnalysis = routine.products
-    .filter((rp) => rp.product)
-    .map((rp) => ({
-      id: rp.product!.id,
-      name_en: rp.product!.name_en,
-      brand_en: rp.product!.brand_en,
-      category: rp.product!.category,
-    }))
-
-  const waitTimes = suggestWaitTimes(productsForAnalysis)
-  const waitTimeByStep = new Map<number, WaitTimeSuggestion>()
-  for (const wt of waitTimes) {
-    waitTimeByStep.set(wt.after_step, wt)
-  }
 
   // The "Missing Steps" box was removed on Nov 11 2026. It told a new member
   // her morning routine was missing a moisturizer while step 2 was one (a
@@ -290,11 +269,15 @@ function RoutineCard({
                             )}
                           </div>
                           <p className="text-[10px] text-white/40">
-                            {rp.ownership?.custom_name
+                            {rp.ownership?.custom_name && rp.ownership.custom_name.trim().toLowerCase() !== rp.product.name_en.trim().toLowerCase()
                               ? `${rp.product.name_en} · ${rp.product.brand_en}`
                               : `${rp.product.brand_en} · ${rp.product.category}`
                             }
                           </p>
+                          {/* The note saved with this step (Yuri's own instruction, or the
+                              member's). It was shown only for steps with no catalog product,
+                              so "wait about 15 minutes" saved on a linked step appeared nowhere. */}
+                          {rp.notes && <p className="text-[11px] text-white/60 mt-1 whitespace-normal">{rp.notes}</p>}
                         </>
                       ) : rp.notes ? (
                         <p className="text-sm text-white/70">{rp.notes}</p>
@@ -342,11 +325,6 @@ function RoutineCard({
                       )}
                     </button>
                   </div>
-
-                  {/* Wait time indicator */}
-                  {waitTimeByStep.has(index + 1) && index < routine.products.length - 1 && (
-                    <WaitTimeIndicator suggestion={waitTimeByStep.get(index + 1)!} />
-                  )}
                 </div>
               ))}
           </div>

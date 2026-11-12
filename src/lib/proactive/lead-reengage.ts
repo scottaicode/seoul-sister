@@ -21,6 +21,7 @@
 import { safeSlice } from '@/lib/utils/text-slice'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { PRICING } from '@/lib/pricing'
+import { normalizeOfferCode } from '@/lib/offers'
 import { MAX_FREE_MESSAGES } from '@/lib/widget/visitor'
 import { getLocalClock, clockFactBlock } from '@/lib/yuri/clock'
 import { escapeHtml } from '@/lib/email/html'
@@ -324,7 +325,9 @@ export function buildLeadEmail(
   decision: ProactiveDecision,
   lead: LeadRow,
   tag: string,
-  address: string | null
+  address: string | null,
+  /** The creator code this lead arrived with, so the button carries it. */
+  offerCode: string | null = null
 ): { subject: string; html: string; unsubscribeUrl: string } {
   const paragraphs = (decision.message ?? '')
     .split(/\n{2,}/)
@@ -335,6 +338,8 @@ export function buildLeadEmail(
 
   const params = new URLSearchParams({ from: tag })
   if (decision.suggestedAsk) params.set('ask', decision.suggestedAsk)
+  const code = normalizeOfferCode(offerCode)
+  if (code) params.set('code', code)
   const href = `${SITE}/?${params.toString()}`
   const cta = `<p style="margin:22px 0 0;"><a href="${href}" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">Pick this up with Yuri</a></p>`
 

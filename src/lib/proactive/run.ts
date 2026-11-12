@@ -14,6 +14,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { mergeDecisionMemory, type DecisionMemory, type UserContext } from '@/lib/yuri/memory'
 import { sendEmail } from '@/lib/email/send'
+import { leadOfferCode } from '@/lib/email/nurture'
 import { sendNudgeEmail, buildNudgeEmailHtml, type NudgeEmailStatus } from '@/lib/email/nudge-email'
 import { getLocalClock } from '@/lib/yuri/clock'
 import {
@@ -584,7 +585,7 @@ export async function runYuriWakesUp(db: SupabaseClient, opts: RunOptions) {
           }
 
           const tag = attributionTag(judgmentId)
-          const email = buildLeadEmail(decision, l, tag, address)
+          const email = buildLeadEmail(decision, l, tag, address, l.cohort === 'widget' ? await leadOfferCode(db, l.visitor_id) : null)
           const result = await sendEmail(l.email, email.subject, email.html, { unsubscribeUrl: email.unsubscribeUrl })
           const status = result.sent ? 'sent' : result.reason === 'no_provider' ? 'no_provider' : 'send_failed'
           count(lead.sendOutcomes, status)

@@ -26,6 +26,7 @@
  * promise continuity). Pure functions: only node:crypto, no I/O.
  */
 
+import { normalizeOfferCode } from '@/lib/offers'
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from 'node:crypto'
 
 export const RESUME_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60
@@ -120,10 +121,18 @@ const SITE = 'https://www.seoulsister.com'
  * The link an email should carry. With a token it reopens the conversation;
  * without one it is the plain homepage chat. `from` keeps attribution and also
  * stops SignedInRedirect bouncing a signed-in reader to /dashboard.
+ *
+ * `offerCode` is the creator code the lead arrived with (Nov 12 2026). The
+ * code used to live only in the browser that opened the creator's link, so a
+ * lead who opened the email anywhere else lost the discount and the creator
+ * lost the sign-up. Only a code in the accepted format is added; the page
+ * that receives it still asks Stripe what it is worth.
  */
-export function widgetEmailLink(from: string, token: string | null): string {
+export function widgetEmailLink(from: string, token: string | null, offerCode?: string | null): string {
   const params = new URLSearchParams({ from })
   if (token) params.set('resume', token)
+  const code = normalizeOfferCode(offerCode)
+  if (code) params.set('code', code)
   return `${SITE}/?${params.toString()}`
 }
 

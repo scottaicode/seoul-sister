@@ -300,5 +300,46 @@ test('the wrap-up playback is limited to facts the person gave', async () => {
   // ("except that in the wrap-up you may state a likely duration as fact")
   // would undo the rule while leaving this section untouched.
   const whole = src.slice(src.indexOf('export function buildOnboardingSystemPrompt'), src.indexOf('export interface OnboardingTurnFacts'))
-  assert.equal(createHash('sha256').update(whole).digest('hex'), '78af2cedf4e567f9baeea4c6fae77c8eca1b34fb5d4fb778d3cd066f964b2daa')
+  assert.equal(createHash('sha256').update(whole).digest('hex'), '9c35294fc0964dd3a104bd77107923503360e30f730fdb2de1789b9429acd203')
+})
+
+test('the setup chat is told it has no product database, and that is true of the code', async () => {
+  const { readFileSync } = await import('node:fs')
+  const lib = readFileSync(new URL('../src/lib/yuri/onboarding.ts', import.meta.url), 'utf8')
+  // Owner's walkthrough, Nov 12 2026: in the same setup chat where the member
+  // reported a fragrance reaction, a fragranced sunscreen was named from
+  // memory. The member chat looked it up one message later and took it back.
+  const cached = lib.slice(lib.indexOf('function buildOnboardingSystemPrompt'), lib.indexOf('export interface OnboardingTurnFacts'))
+  const fact = `One fact about this chat: it has no product database. You cannot look up a product's ingredient list, price or stores from here. So unless a product's ingredients are already written out in this chat or in the "Before they signed up" transcript, what you say about its formula comes from memory and has not been checked against what this person has told you they react to.`
+  // The transcript it names is the real heading of the carried-over chat.
+  assert.match(readFileSync(new URL('../src/lib/yuri/widget-carryover.ts', import.meta.url), 'utf8'), /return `## Before they signed up\n/)
+  assert.ok(cached.includes(`\n${fact}\n`))
+  // A fact, not a gate: it must not point at membership as where products get checked.
+  assert.doesNotMatch(fact, /member|subscri|free week|paid|later|once you/i)
+  // The statement must stay true: nothing in the setup chat's model call, or
+  // the route that makes it, mentions tools in any form.
+  // The statement must stay true. The setup chat's one model call sends these
+  // five things and nothing else (a closed list: a tools entry, or a spread
+  // that could carry one, fails here), and the route calls only that function.
+  const stream = lib.slice(lib.indexOf('export async function* streamOnboardingResponse'))
+  const callStart = stream.indexOf('client.messages.stream({')
+  assert.ok(callStart > -1 && stream.indexOf('messages.stream(', callStart + 10) === -1 && !/messages\.create\(/.test(stream), 'exactly one model call')
+  let depth = 0, end = -1
+  for (let i = stream.indexOf('{', callStart); i < stream.length; i++) {
+    if (stream[i] === '{') depth++
+    else if (stream[i] === '}' && --depth === 0) { end = i; break }
+  }
+  const call = stream.slice(stream.indexOf('{', callStart) + 1, end).replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g, '$1')
+  // Top-level keys only: track nesting so keys inside system[] / output_config are not counted.
+  const keys = []
+  let d = 0, line = '', lineDepth = 0
+  for (const ch of call) {
+    if ('{[('.includes(ch)) d++
+    else if ('}])'.includes(ch)) d--
+    if (ch === '\n') { if (d === 0 || /^\s*[\w.]+\s*[:,]?\s*[[{(]?\s*$/.test(line)) { const m = /^\s*(\.\.\.[\w.()]+|\w+)\s*(?::|,|$)/.exec(line); if (m && lineDepth === 0) keys.push(m[1]) } line = ''; lineDepth = d } else line += ch
+  }
+  assert.deepEqual(keys, ['model', 'max_tokens', 'output_config', 'system', 'messages'])
+  assert.doesNotMatch(call, /^\s{0,6}\[/m, 'no computed key at the top level of the call')
+  const route = readFileSync(new URL('../src/app/api/yuri/onboarding/route.ts', import.meta.url), 'utf8')
+  assert.doesNotMatch(route.replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g, '$1'), /messages\.(stream|create)\(|getAnthropicClient|\btools?\b/i, 'the route makes no model call of its own')
 })
