@@ -103,7 +103,10 @@ test('cap check runs before the user message is saved or history loaded', () => 
 test('skipOnboarding returns early for a completed profile before the defaults upsert', () => {
   const fnIdx = onboardingLibSrc.indexOf('export async function skipOnboarding')
   const fnSrc = onboardingLibSrc.slice(fnIdx, onboardingLibSrc.indexOf('export', fnIdx + 10))
-  const guardIdx = fnSrc.indexOf('if (existing?.onboarding_completed) return')
+  // The guard is now a block (it records the skip, then returns); the
+  // behaviour is executed in tests/walkthrough-surfaces.test.mjs.
+  const guardIdx = fnSrc.indexOf('if (existing?.onboarding_completed) {')
+  assert.match(fnSrc.slice(guardIdx, fnSrc.indexOf('.upsert({')), /\n    return\n  \}\n/, 'the completed-profile branch must return before the upsert')
   // Anchor on the profiles upsert itself, NOT on a specific defaulted value.
   // This previously anchored on `skin_type: 'normal'`, which was removed on
   // July 27 2026 — writing a skin type for someone who told us nothing was the

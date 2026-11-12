@@ -10,7 +10,7 @@ import { PRICING, allowanceNote } from '@/lib/pricing'
 import { trackEvent, PaywallEvent } from '@/lib/analytics'
 import type { ExtractedSkinProfile } from '@/types/database'
 import { onFileRows } from '@/lib/paywall/on-file'
-import { getOfferCode, clearOfferCode, priceWithOffer } from '@/lib/offers'
+import { getOfferCode, clearOfferCode, priceWithOffer, pricingCardLines, paywallFreeWeekLine } from '@/lib/offers'
 
 export default function SubscribePage() {
   const router = useRouter()
@@ -226,6 +226,13 @@ export default function SubscribePage() {
   // Every price sentence on this page: with a confirmed code, the discounted
   // first month and the price after it, so no line contradicts the code line.
   const priceLong = priceWithOffer(offerActive ? offerPercent : null)
+  // Someone who can start the free week with no card sees THAT first, in the
+  // same words as the public pricing card (Nov 11 2026: this page still led
+  // with the price in large type and the free week in small grey print, at the
+  // exact moment a person decides). Anyone else sees the price first, because
+  // for them the price is what happens today.
+  const freeWeekLeads = trialEligible === true && noCardTrial
+  const card = pricingCardLines()
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -258,7 +265,7 @@ export default function SubscribePage() {
 
       <div className="relative dark-card-gold p-8 text-left shadow-glow-gold">
         <span className="absolute -top-3 left-1/2 -translate-x-1/2 badge-gold font-semibold px-4 py-1 text-xs">
-          Full AI Intelligence Suite
+          Your K-Beauty Advisor, Available 24/7
         </span>
 
         <div className="flex items-center gap-2 mb-2 mt-2">
@@ -266,13 +273,20 @@ export default function SubscribePage() {
           <p className="font-display font-bold text-xl text-white">Seoul Sister Pro</p>
         </div>
 
-        <div className="flex items-baseline gap-1 mb-1">
-          <p className="text-4xl font-bold text-white">${tier.price}</p>
-          <span className="text-base font-normal text-white/40">/month</span>
-        </div>
-        <p className="text-xs text-white/40 mb-6">
+        {freeWeekLeads ? (
+          <>
+            <p className="text-4xl font-bold text-white leading-tight">{card.headline}</p>
+            <p className="text-base font-semibold text-gold-light mb-2">{card.noCard}</p>
+          </>
+        ) : (
+          <div className="flex items-baseline gap-1 mb-1">
+            <p className="text-4xl font-bold text-white">${tier.price}</p>
+            <span className="text-base font-normal text-white/40">/month</span>
+          </div>
+        )}
+        <p className={freeWeekLeads ? 'text-sm text-white/70 mb-6' : 'text-xs text-white/40 mb-6'}>
           {trialEligible === true && noCardTrial
-            ? `First ${PRICING.trial_days} days free. No card needed to start. Add a card any time in those ${PRICING.trial_days} days to keep going at ${priceLong}. If you don't, the trial ends and nothing is charged.`
+            ? paywallFreeWeekLine(priceLong)
             : trialEligible === true
               ? `First ${PRICING.trial_days} days free, then ${priceLong}. Cancel anytime.`
               : hadTrial
@@ -310,7 +324,7 @@ export default function SubscribePage() {
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
             <>
-              {trialEligible === true ? `Start ${PRICING.trial_days} days free` : 'Start membership'} <ArrowRight className="w-4 h-4" />
+              {freeWeekLeads ? card.cta : trialEligible === true ? `Start ${PRICING.trial_days} days free` : 'Start membership'} <ArrowRight className="w-4 h-4" />
             </>
           )}
         </button>

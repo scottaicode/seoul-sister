@@ -4,6 +4,70 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.58.0 — What the owner's own walkthrough found: Yuri's safety checks, and things members were shown that were not true (Nov 11 2026)
+
+The owner signed up as a new member and went from a blog post to a saved routine to deleting the
+account. Everything below came from that one pass.
+
+- **Yuri could not see past the 20th ingredient.** `get_product_details` fetched the whole list and
+  then returned an EMPTY list for everything after the 20th: the tail read `name_en ?? name_inci` off
+  entries that only carry `name`. She told a member with a fragrance allergy she "could only see the
+  first 20 ingredients"; the sunscreen in question lists Fragrance after them. An earlier fix for
+  this same truncation had shipped with that mistake, and a source-text test passed over it. Fixed,
+  and tested by executing the real mapping.
+- **A description is no longer written as a product.** The step "Salicylic acid foaming cleanser"
+  was tied to Jumiso's cleanser because every word fits; her real cleanser was another brand with a
+  different active. A name is now linked to a catalog product on a WRITE only when its brand is named
+  (the same word rule the search uses: `brandIsNamed`), when Yuri passes the `product_id` from a
+  search, or, for the shelf tool, when that product is already on the member's shelf. Otherwise it
+  is saved under the member's own words and Yuri is told the closest product and how to link it.
+  Applies to `save_routine`, `update_user_product` and `add_to_routine`. A name that resolves to
+  another brand's product is refused, not re-aimed: Yuri is told to search by brand and pass the id.
+- **"Owned" means owned.** `save_routine` put every catalog step on the shelf as active, so a cream
+  Yuri had just recommended showed an "Owned" badge. A new optional `owned` flag on each step; only
+  an owned product goes on the shelf, each shelf write is checked, and the result says which catalog
+  products were left off.
+- **The Routine page's "Missing Steps" box is gone.** It said "Missing: Moisturizer" over a routine
+  whose second step was one, minutes after Yuri built it. A page rule giving advice (Yuri Sole
+  Authority). Eighth instance of that class; the first one the owner found himself.
+- **Settings is reachable.** Nothing linked to `/settings`, where the Terms and the Privacy Policy
+  send members to delete their account. Now in the profile menu and on the Profile page.
+- **The membership page leads with the free week** ("Free for 7 days", "No card needed to start.")
+  for anyone who can have it with no card, in the public card's own words (`pricingCardLines`,
+  `paywallFreeWeekLine`). It had the price in large type and the free week in small grey print.
+- **Setup is "completed" only when it is.** The profile sync that runs after each message stamped
+  the setup completed as soon as a skin type existed (31% done, required age missing): coming back to
+  `/onboarding` ended the chat, and the membership page said "I have what I need from our setup
+  chat". A skip part-way is now recorded as a skip.
+- **Small:** starter questions that assume no skin type or product; a bare `EMAIL_FROM` address now
+  shows as "Yuri at Seoul Sister"; the stale "v3.3.0" line on Settings is gone.
+- **Second-model review (Opus 5.5, told to refute), three passes.** Pass 1: two ship-blockers (my
+  first brand rule compared squashed strings, so "Klairs …" did not name Dear, Klairs while "acne
+  spot patch" named Acnes; and 13 of 14 mutations passed my tests). Pass 2: two more (a "whole product
+  name" shortcut would have linked 104 one- and two-word names such as "Bakuchiol Serum" and "PDRN
+  Toner"; and the shelf tool could no longer find a product the member already had, creating a
+  duplicate). The shortcut was dropped rather than tuned a third time. Pass 3: no ship-blocker; it
+  showed that asking the resolver with the brand prepended (added in the rework) would link an
+  arbitrary product of the right brand ("Anua" + "toner": the shortest of 44), so that was removed,
+  along with a false message in the shelf tool and four more test gaps. The edits after pass 3 were
+  not re-reviewed.
+- **Measured:** the brand rule against the real catalog with the real resolver on 34 names, before
+  the brand-prepending was removed (33 as expected; the one surprise was that prepending itself).
+  The 55 routine steps on record were replayed against the first version only. The final version is
+  covered by executed tests, not by a fresh catalog run.
+- **Not fixed, on purpose:** Yuri advising "give it two weeks" beside a seven-day free week (her
+  judgment, not a rule to add); Stripe's own "Then $9.99 per month starting…" line and the product
+  description there (they live in the Stripe account); the 80-message note (owner's decision); up
+  to 4 older shelf rows across 3 members that the old behaviour may have written for products they
+  do not own (cannot be told apart from owned ones in the data); a vague name for something already
+  on the shelf ("my snail essence") can still create a second row when the resolver lands on another
+  brand's product; a brand typed inside the name plus a generic word ("Anua toner") still links the
+  closest product of that brand, as it did before; `RoutineGenerator` on the Routine
+  page, a separate model call labelled as Yuri's; everyday words that are also brands ("happy",
+  "nature") still name that brand.
+
+---
+
 ## v11.57.2 — The recap email's account link brings the conversation with it; the recap footer stops promising no follow-up (Nov 11 2026)
 
 - **Found on the owner's own walkthrough.** He chatted with Yuri in one browser, opened the recap

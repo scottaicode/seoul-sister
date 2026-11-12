@@ -18,6 +18,7 @@ import {
   CloudSun,
   Navigation,
   LogOut,
+  Settings,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
@@ -412,6 +413,13 @@ export default function ProfilePage() {
                 />
               </div>
             )}
+            <Link
+              href="/settings"
+              className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors mb-3"
+            >
+              <Settings className="w-4 h-4" />
+              Settings: membership, or delete your account
+            </Link>
             <button
               type="button"
               onClick={async () => {

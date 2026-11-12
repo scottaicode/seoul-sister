@@ -268,8 +268,19 @@ export default function Header() {
                       onClick={() => setProfileMenuOpen(false)}
                       className="flex items-center gap-2 px-4 py-2.5 text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors"
                     >
-                      <Settings className="w-4 h-4" />
+                      <User className="w-4 h-4" />
                       Profile
+                    </Link>
+                    {/* Nov 11 2026: nothing in the app linked to /settings, while
+                        the Terms and the Privacy Policy both tell members to
+                        delete their account "through Settings". */}
+                    <Link
+                      href="/settings"
+                      onClick={() => setProfileMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors"
+                    >
+                      <Settings className="w-4 h-4" />
+                      Settings
                     </Link>
                     {isAdmin && (
                       <>

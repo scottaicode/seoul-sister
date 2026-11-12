@@ -46,6 +46,14 @@ import { buildCheckinMemory, type TrialInfo } from './checkin-context'
  * Calendar days, not hours, so a Sunday judged at 9am and the next Sunday
  * reached at 9am are 7 apart however the hours fall.
  */
+/**
+ * Before this day save_routine put EVERY catalog step on the shelf, owned or
+ * not, so an older shelf row that is also on a saved routine is not evidence
+ * of ownership. A whole-day boundary on purpose: the exact deploy instant is
+ * not knowable here, and a row from the changeover day is labelled cautiously.
+ */
+const SHELF_MEANS_OWNED_SINCE = '2026-11-13'
+
 export const CHECKIN_WEEKDAY = 'Sunday'
 export const REJUDGE_AFTER_LOCAL_DAYS = 6
 /**
@@ -332,9 +340,10 @@ export async function loadCheckinFacts(
       .eq('user_id', s.user_id)
       .order('created_at', { ascending: false })
       .limit(5),
-    // Catalog products that sit on one of their saved routines: save_routine
-    // writes those to the shelf as status 'active', so "on the shelf" alone
-    // does not mean owned (tools.ts save_routine).
+    // Catalog products that sit on one of their saved routines. Until Nov 11
+    // 2026 save_routine wrote EVERY catalog step to the shelf as 'active', so
+    // for rows from before then "on the shelf" alone does not mean owned.
+    // Since then only a step marked owned is written (tools.ts save_routine).
     db
       .from('ss_routine_products')
       .select('product_id, ss_user_routines!inner(user_id, is_active)')
@@ -407,7 +416,7 @@ export async function loadCheckinFacts(
       const brand = x.ss_products?.brand_en || x.custom_brand
       const size = x.ss_products?.volume_display || (x.ss_products?.volume_ml ? `${x.ss_products.volume_ml} ml` : null)
       const pao = x.ss_products?.pao_months ? `PAO ${x.ss_products.pao_months}M` : null
-      const meta = [x.category, size, pao, x.status !== 'active' ? `status ${x.status} (updated ${x.updated_at.slice(0, 10)})` : null, x.learned_from?.includes('inferred') ? 'inferred' : null, x.product_id && onSavedRoutine.has(x.product_id) ? 'on a plan you saved, not confirmed owned' : null]
+      const meta = [x.category, size, pao, x.status !== 'active' ? `status ${x.status} (updated ${x.updated_at.slice(0, 10)})` : null, x.learned_from?.includes('inferred') ? 'inferred' : null, x.product_id && onSavedRoutine.has(x.product_id) && x.created_at < SHELF_MEANS_OWNED_SINCE ? 'on a plan you saved, not confirmed owned' : null]
         .filter(Boolean)
         .join(', ')
       lines.push(`- ${brand ? `${brand} ` : ''}${name}${meta ? ` (${meta})` : ''}, added ${x.created_at.slice(0, 10)} (${daysSince(x.created_at, now)} days ago)`)

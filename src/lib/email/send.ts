@@ -37,6 +37,17 @@ export interface SendEmailResult {
 const RESEND_ENDPOINT = 'https://api.resend.com/emails'
 
 /**
+ * A bare address shows in the inbox as the address itself: the owner's recap
+ * arrived from "yuri@seoulsister.com <yuri@seoulsister.com>" (Nov 11 2026),
+ * because EMAIL_FROM held only the address. Anything that already has a display
+ * name is left alone.
+ */
+export function withSenderName(from: string): string {
+  const trimmed = from.trim()
+  return /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(trimmed) ? `Yuri at Seoul Sister <${trimmed}>` : from
+}
+
+/**
  * Send one HTML email. Never throws — returns a result object.
  */
 export async function sendEmail(
@@ -46,10 +57,11 @@ export async function sendEmail(
   options: { from?: string; replyTo?: string; unsubscribeUrl?: string } = {}
 ): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY
-  const from =
+  const from = withSenderName(
     options.from ||
     process.env.EMAIL_FROM ||
     'Yuri at Seoul Sister <yuri@seoulsister.com>'
+  )
   // Reply-To safety net: route visitor replies to a monitored inbox.
   // yuri@seoulsister.com is send-only — without this, replies vanish.
   const replyTo = options.replyTo || process.env.EMAIL_REPLY_TO

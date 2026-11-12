@@ -217,6 +217,15 @@ export function pricingCardLines(): { headline: string; noCard: string; after: s
   }
 }
 
+/**
+ * Under the membership page's "Free for N days / No card needed to start."
+ * headline: what adding a card does and what happens without one. `priceLong`
+ * is priceWithOffer(...), so a saved creator code shows here too.
+ */
+export function paywallFreeWeekLine(priceLong: string): string {
+  return `Add a card any time in those ${PRICING.trial_days} days to keep going at ${priceLong}. If you don't, the free week ends and nothing is charged.`
+}
+
 /** The price line on the free chat's "you have used your free messages" card. */
 export function widgetMembershipLine(percentOff: number | null | undefined): string {
   const price = firstMonthPrice(percentOff) ? priceWithOffer(percentOff) : PRICING.monthly_display

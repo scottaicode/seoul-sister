@@ -16,11 +16,14 @@ const SpecialistPicker = dynamic(() => import('@/components/yuri/SpecialistPicke
 import type { SpecialistType } from '@/types/database'
 import type { UsageStatus } from '@/lib/usage'
 
+// These are shown to every member, so they must fit any member: no skin type,
+// no product they may not own. (They used to offer "a glass skin routine for
+// oily skin" to someone whose profile, written minutes earlier, said dry.)
 const SUGGESTED_PROMPTS = [
-  { text: 'Analyze my COSRX Snail Mucin ingredients', specialist: 'ingredient_analyst' as SpecialistType },
-  { text: 'Build me a glass skin routine for oily skin', specialist: 'routine_architect' as SpecialistType },
+  { text: 'Check a product against what my skin reacts to', specialist: 'ingredient_analyst' as SpecialistType },
+  { text: 'Build my morning and night routine', specialist: 'routine_architect' as SpecialistType },
   { text: "What's trending in Korea right now?", specialist: 'trend_scout' as SpecialistType },
-  { text: 'Find me a budget dupe for Sulwhasoo', specialist: 'budget_optimizer' as SpecialistType },
+  { text: 'Is there a cheaper product that does the same job as one I use?', specialist: 'budget_optimizer' as SpecialistType },
 ]
 
 export default function YuriPage() {

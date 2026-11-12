@@ -219,10 +219,6 @@ export default function SettingsPage() {
         )}
       </div>
 
-      <div className="text-center pt-4">
-        <p className="text-[10px] text-white/20">Seoul Sister v3.3.0</p>
-      </div>
-
       <div className="h-16 md:h-0" />
     </div>
   )

@@ -360,3 +360,53 @@ export function resetBrandCatalogCache(): void {
   catalogFailedAt = null
   catalogInFlight = null
 }
+
+/**
+ * Whether a request to SAVE a product names the brand of the catalog product
+ * the resolver matched it to (Nov 11 2026).
+ *
+ * A member said she used "a foaming acne cleanser with salicylic acid". Saved
+ * as the step "Salicylic acid foaming cleanser", every word of it appears in
+ * Jumiso's "Pore Purifying Salicylic Acid Foaming Cleanser", so the resolver
+ * called it a confident match and the routine was written with a product she
+ * had never named. Her real cleanser was a different brand with a different
+ * active. A description is not an identity.
+ *
+ * "Names the brand" is the SAME rule the search uses (brandBonusTerms), on
+ * whole words: the brand typed in full ("dr jart", "drjart", "ma:nyo"), or one
+ * of its words that is not an ordinary product-name word ("klairs" for Dear,
+ * Klairs). A first version compared squashed strings; a second-model review
+ * ran it and showed both failures of that: "Klairs Supple Preparation Facial
+ * Toner" did NOT name Dear, Klairs, while "acne spot patch" DID name Acnes
+ * and "cica therapy cream" named HERA. The brand may be given in its own
+ * field or inside the name. With no catalog (it could not be read) only a
+ * brand typed in full counts.
+ *
+ * There is deliberately NO "they gave the whole product name" route. One was
+ * tried and a second review pass counted 104 catalog products whose whole name
+ * is a one- or two-word description only one brand sells ("Bakuchiol Serum",
+ * "PDRN Toner", "Rice Toner", "Soothing Cream"), each of which it would have
+ * linked. After two rounds of tuning, the rule is the simple one: name the
+ * brand, or pass the product_id from a search.
+ */
+export function brandIsNamed(
+  matchedBrand: string | null | undefined,
+  requestedName: string,
+  requestedBrand: string | null | undefined,
+  catalog: BrandCatalog | null
+): boolean {
+  const brandWords = brandTokens(matchedBrand ?? '')
+  if (!matchedBrand || brandWords.length === 0) return false
+  // The brand field holding exactly this brand names it, whatever the word is.
+  // (A one-word brand that is also an ordinary word, like "Cure", is otherwise
+  // never named by that word: "acne cure" is a description.)
+  const given = brandTokens(requestedBrand ?? '')
+  if (given.length === brandWords.length && given.every((w, i) => w === brandWords[i])) return true
+  const tokens = brandTokens(`${requestedBrand ?? ''} ${requestedName}`)
+  if (tokens.length === 0) return false
+  const taken = wordsOfBrandsTypedInFull(catalog ? catalog.brands : [matchedBrand], tokens)
+  // With no catalog nothing is known about which words are ordinary, so single
+  // words of a longer brand are not accepted (singleWords false); the brand
+  // typed in full still is, including a one-word brand ("cosrx").
+  return brandBonusTerms(matchedBrand, tokens, tokens, (w) => (catalog ? catalog.ordinary.has(w) : false), catalog !== null, taken).size > 0
+}

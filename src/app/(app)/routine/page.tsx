@@ -13,7 +13,6 @@ import {
   ChevronDown,
   Clock,
   Layers,
-  AlertCircle,
   PackageCheck,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
@@ -24,9 +23,7 @@ import { AddProductModal } from '@/components/routine/AddProductModal'
 import { RoutineGenerator } from '@/components/routine/RoutineGenerator'
 import {
   suggestWaitTimes,
-  detectMissingSteps,
   type WaitTimeSuggestion,
-  type MissingStepAlert,
 } from '@/lib/intelligence/layering-order'
 import { CycleAdjustment } from '@/components/routine/CycleAdjustment'
 import { RoutineEffectiveness } from '@/components/routine/RoutineEffectiveness'
@@ -78,25 +75,6 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${session.access_token}` }
 }
 
-function MissingStepBanner({ alerts }: { alerts: MissingStepAlert[] }) {
-  const required = alerts.filter((a) => a.importance === 'required')
-  if (required.length === 0) return null
-
-  return (
-    <div className="bg-amber-500/5 border border-amber-500/15 rounded-xl p-3">
-      <div className="flex items-center gap-2 mb-1.5">
-        <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-        <span className="text-xs font-medium text-amber-400">Missing Steps</span>
-      </div>
-      {required.map((a) => (
-        <p key={a.category} className="text-[10px] text-white/50 ml-5.5 mb-0.5">
-          <span className="text-amber-400/80">{a.label}</span> &mdash; {a.reason}
-        </p>
-      ))}
-    </div>
-  )
-}
-
 function RoutineCard({
   routine,
   onRefresh,
@@ -131,20 +109,12 @@ function RoutineCard({
     waitTimeByStep.set(wt.after_step, wt)
   }
 
-  // Custom step notes for category inference (v10.3.7) — null-product routine
-  // steps (devices, actions like "shower/cleanse") need to count toward
-  // category-present detection even though they have no DB-backed product.
-  const customStepNotes = routine.products
-    .filter((rp) => !rp.product)
-    .map((rp) => rp.notes)
-
-  const missingSteps = routine.products.length > 0
-    ? detectMissingSteps(
-        routine.routine_type as 'am' | 'pm',
-        productsForAnalysis,
-        { customStepNotes }
-      )
-    : []
+  // The "Missing Steps" box was removed on Nov 11 2026. It told a new member
+  // her morning routine was missing a moisturizer while step 2 was one (a
+  // product saved under its own name, which the rule could not classify),
+  // minutes after Yuri had built that routine with her. A page rule telling a
+  // member what her routine lacks is advice, and advice is Yuri's alone
+  // (Yuri Sole Authority, CLAUDE.md). Do not bring it back in another form.
 
   // Load conflicts for this routine
   useEffect(() => {
@@ -258,13 +228,6 @@ function RoutineCard({
         {!loadingConflicts && (conflicts.length > 0 || conflictCheckFailed) && (
           <div className="mb-3">
             <ConflictWarning conflicts={conflicts} checkFailed={conflictCheckFailed} />
-          </div>
-        )}
-
-        {/* Missing steps */}
-        {missingSteps.length > 0 && (
-          <div className="mb-3">
-            <MissingStepBanner alerts={missingSteps} />
           </div>
         )}
 

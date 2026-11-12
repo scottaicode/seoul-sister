@@ -13,7 +13,7 @@ import { setupShelfForTool } from '@/lib/yuri/setup-carry'
 import { ageInDays } from '@/lib/yuri/price-freshness'
 import { cheapestUsOrderable } from '@/lib/pricing/price-scope'
 import { joinedAlnumParts, joinedAlnumMatches, joinedAlnumIlike } from '@/lib/yuri/joined-alnum'
-import { brandTokens, brandBonusTerms, brandsNamedInQuery, termsCoveredBy, wordsOfBrandsTypedInFull, loadBrandCatalog, NAMED_BRAND_ROW_LIMIT, type BrandCatalog, type TakenBrandWords } from '@/lib/yuri/brand-match'
+import { brandTokens, brandBonusTerms, brandsNamedInQuery, termsCoveredBy, wordsOfBrandsTypedInFull, loadBrandCatalog, brandIsNamed, NAMED_BRAND_ROW_LIMIT, type BrandCatalog, type TakenBrandWords } from '@/lib/yuri/brand-match'
 
 /**
  * Allowed provenances for a custom entry's INCI list. Mirrors the DB CHECK on
@@ -1333,6 +1333,37 @@ async function resolveProductByName(
  * 'all_terms' — returns null on 'partial' matches. Callers can use the return
  * directly as "confident product ID" without having to inspect match_quality.
  */
+/**
+ * Whether a name-resolved match may be WRITTEN as that product (Nov 11 2026).
+ * The resolver answers "what is the closest product to these words"; a write
+ * needs "did the person identify this product". They did when they named its
+ * brand. Otherwise the words are a description ("salicylic acid foaming
+ * cleanser", "bakuchiol serum") that one product happens to fit, and writing
+ * it as theirs records a guess as a fact. The other ways to identify a product
+ * do not come through here: a product_id from a search, and (for the shelf
+ * tool) a product already on that member's shelf.
+ *
+ * The resolver is still asked by NAME only, not brand + name. Asking with the
+ * brand was tried for one afternoon: brand "Anua" + "toner" then resolved to
+ * the shortest of Anua's 44 toners and passed this gate, a wrong product of
+ * the right brand. So a name that resolves to another brand's product is
+ * refused here, and Yuri is told to search by brand and pass the product_id.
+ */
+async function identifiedForWrite(
+  db: SupabaseClient,
+  match: { brand_en: string; name_en: string },
+  requestedName: string,
+  requestedBrand: string | null | undefined
+): Promise<boolean> {
+  let catalog: BrandCatalog | null = null
+  try {
+    catalog = await loadBrandCatalog(db)
+  } catch (err) {
+    console.error('[identifiedForWrite] brand catalog unavailable:', err instanceof Error ? err.message : String(err))
+  }
+  return brandIsNamed(match.brand_en, requestedName, requestedBrand, catalog)
+}
+
 export async function resolveProductByNameStrict(
   db: SupabaseClient,
   productName: string
@@ -1795,7 +1826,7 @@ export const YURI_TOOLS: ToolDef[] = [
     description:
       'Save a complete routine to the user\'s app. Call when the user approves a routine you presented, or when they ask to save it. Ask first: "Want me to save this to your Routine page?"\n\n' +
       'REVISING an existing routine (fixing one step, correcting drift): there is no edit-one-step tool — call get_routine_context first, then call THIS tool with the complete corrected step list (kept steps + changed steps) and replace_existing: true. That deactivates the old version rather than deleting it, so it is the normal path for a correction, not a dangerous one. Saying a routine is fixed WITHOUT calling this tool leaves the user believing a write happened that did not.\n\n' +
-      'CRITICAL: For each step, prefer passing product_id (obtained from search_products or get_product_details earlier in this conversation). Falling back to product_name alone risks the wrong DB product being saved when names are ambiguous (e.g. multiple Goodal Vita C variants). After the tool returns, your reply MUST quote the tool\'s `message` field verbatim — it explicitly names any loose matches or unmatched products that the user needs to see.',
+      'CRITICAL: For each step, prefer passing product_id (obtained from search_products or get_product_details earlier in this conversation). Falling back to product_name alone risks the wrong DB product being saved when names are ambiguous (e.g. multiple Goodal Vita C variants). After the tool returns, read its `message` field: it names any step that was not tied to a catalog product (and why), and any catalog product that was not put on their shelf.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -1814,7 +1845,8 @@ export const YURI_TOOLS: ToolDef[] = [
                 type: 'string',
                 description: 'Product name. Required as a fallback identifier and for display when product_id is missing or the product isn\'t in the DB (custom entry).',
               },
-              product_brand: { type: 'string' },
+              product_brand: { type: 'string', description: 'The brand, when the member has named one. Without a brand (here or inside product_name) a step is saved under its own name and is not tied to a catalog product: a description like "salicylic acid cleanser" fits many brands.' },
+              owned: { type: 'boolean', description: 'true only when the member has told you they already have this product. Leave it out for something you are recommending that they have not bought: it goes in the routine either way, but only an owned product is added to their shelf and shown as Owned.' },
               category: { type: 'string' },
               step_order: { type: 'number' },
               frequency: { type: 'string', description: 'daily, weekdays_only, mon_wed_fri, etc.' },
@@ -2869,9 +2901,14 @@ async function executeGetProductDetails(
     // search_products: rich data where a recommendation needs it, complete names
     // where a safety question needs them.
     ingredients: ingredients.slice(0, 20),
+    // The entries built above carry `name`. This read `name_en ?? name_inci`,
+    // which those entries do not have, so every name past the 20th was dropped
+    // by the filter and the list came back EMPTY (Nov 11 2026: a member with a
+    // fragrance allergy was told "I could only see the first 20 ingredients";
+    // the sunscreen in question lists Fragrance at position 21+).
     other_ingredients: ingredients
       .slice(20)
-      .map((i: Record<string, unknown>) => (i.name_en ?? i.name_inci) as string)
+      .map((i: Record<string, unknown>) => i.name as string)
       .filter(Boolean),
     ingredients_total: ingredients.length,
     prices,
@@ -3961,7 +3998,11 @@ async function executeAddToRoutine(
   // put a custom name, so on a loose match the honest move is to REFUSE and tell
   // Yuri why — never to silently write the wrong product into the user's routine.
   if (!productId && productName) {
-    const match = await resolveProductByNameStrict(db, productName)
+    const found = await resolveProductByNameStrict(db, productName)
+    // Same gate as save_routine: a description that one product happens to fit
+    // is not that product (this path was missed by the first version of the
+    // gate, exactly as it was missed by the July hardening above).
+    const match = found && (await identifiedForWrite(db, found, productName, null)) ? found : null
     if (match) {
       productId = match.id
     } else {
@@ -4365,8 +4406,32 @@ async function executeUpdateUserProduct(
   // product_id with Bailey's custom_name. Now we only trust the catalog ID when
   // the match is confident; loose matches fall back to custom-entry behavior.
   const match = await resolveProductByName(db, productName)
-  const isConfidentMatch = match !== null && (match.match_quality === 'exact' || match.match_quality === 'all_terms')
+  // ...and only when the person identified it (see identifiedForWrite):
+  // "salicylic acid foaming cleanser" is a description that fits one brand's
+  // product by accident, and the shelf is what Yuri is told they own.
+  // A product ALREADY on this member's shelf is identified by that, so an
+  // update to it is not refused for want of a brand. The gate is for NEW
+  // links. (This helps only when the resolver lands on the product they have;
+  // a vague name that resolves to some other brand's product still becomes a
+  // separate custom row. Known, not solved here.)
+  let alreadyTheirs = false
+  if (match !== null && match.match_quality !== 'partial') {
+    const { data: onShelf, error: onShelfErr } = await db
+      .from('ss_user_products')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('product_id', match.id)
+      .limit(1)
+    if (onShelfErr) console.error('[update_user_product] shelf lookup failed:', onShelfErr.message)
+    alreadyTheirs = !onShelfErr && (onShelf ?? []).length > 0
+  }
+  const isConfidentMatch =
+    match !== null &&
+    (match.match_quality === 'exact' || match.match_quality === 'all_terms') &&
+    (alreadyTheirs || (await identifiedForWrite(db, match, productName ?? '', brand)))
   const productId = isConfidentMatch ? match!.id : null
+  /** Every word matched a catalog product, but nothing identified it as theirs (no brand, not on their shelf). */
+  const fitsButUnidentified = match !== null && !isConfidentMatch && (match.match_quality === 'exact' || match.match_quality === 'all_terms')
   const matchClassification: 'matched' | 'matched_loose' | 'no_db_match' = match === null
     ? 'no_db_match'
     : isConfidentMatch
@@ -4488,9 +4553,10 @@ async function executeUpdateUserProduct(
     )
     // The dangerous case — closest catalog match isn't quite what was asked for.
     // Save as custom entry (product_id=NULL) and surface the partial match honestly.
-    message =
-      `Saved "${displayLabel}" to your library as a custom entry${status !== 'active' ? ` (status: ${status})` : ''}.\n\n` +
-      `⚠️ Closest catalog match was "${matchedLabel}", but the names don't fully overlap — kept yours as a custom entry to avoid mixing the wrong product into your skin file. If you meant the catalog product, say so and I'll switch it.`
+    message = fitsButUnidentified
+      ? `Saved "${displayLabel}" to their library under their own words${status !== 'active' ? ` (status: ${status})` : ''}, NOT tied to a catalog product: the name fits "${matchedLabel}" but names no brand that identifies it, so it may or may not be that product. If it is, call this tool again with brand set to that product's brand and it will link.`
+      : `Saved "${displayLabel}" to your library as a custom entry${status !== 'active' ? ` (status: ${status})` : ''}.\n\n` +
+        `⚠️ Closest catalog match was "${matchedLabel}", but the names don't fully overlap — kept yours as a custom entry to avoid mixing the wrong product into your skin file. If you meant the catalog product, say so and I'll switch it.`
   } else {
     // No catalog hit at all — clean custom entry path.
     message =
@@ -4894,6 +4960,8 @@ interface SaveRoutineStep {
   product_id?: string
   product_name: string
   product_brand?: string
+  /** The member said they already have it. Only then does it go on their shelf. */
+  owned?: boolean
   category?: string
   step_order: number
   frequency?: string
@@ -4953,6 +5021,15 @@ async function executeSaveRoutine(
     matched_name: string | null
     matched_brand: string | null
     status: 'matched' | 'matched_loose' | 'no_db_match'
+    /**
+     * Set when the name fits a catalog product but names no brand, so nothing
+     * was linked. The product it would have been tied to, for Yuri to ask about.
+     */
+    brand_not_named_nearest?: string
+    /** With the above: a brand WAS given, and it is not that product's brand. */
+    brand_given_differs?: boolean
+    /** Whether this step's product was put on the member's shelf as owned. */
+    added_to_shelf?: boolean
   }
   const savedSteps: StepResult[] = []
 
@@ -4961,6 +5038,9 @@ async function executeSaveRoutine(
     let matchedName: string | null = null
     let matchedBrand: string | null = null
     let status: StepResult['status'] = 'no_db_match'
+    let brandNotNamedNearest: string | undefined
+    let brandGivenDiffers = false
+    let addedToShelf = false
 
     // If Yuri passed an explicit product_id, trust it directly — this is the
     // search-first pattern. Otherwise resolve by name.
@@ -4987,7 +5067,14 @@ async function executeSaveRoutine(
         // name the resolver classified as exact got re-classified loose and
         // demoted to a custom entry (July 12 audit — the invariant must live
         // in ONE place).
-        if (match.match_quality !== 'partial') {
+        if (match.match_quality !== 'partial' && !(await identifiedForWrite(db, match, step.product_name, step.product_brand))) {
+          // Every word fits, but the person did not identify this product (see
+          // identifiedForWrite). Saved under its own name, and Yuri is told
+          // which product it resembled so she can ask.
+          status = 'matched_loose'
+          brandNotNamedNearest = `${match.brand_en} ${match.name_en}`
+          brandGivenDiffers = (step.product_brand ?? '').trim().length > 0
+        } else if (match.match_quality !== 'partial') {
           productId = match.id
           matchedName = match.name_en
           matchedBrand = match.brand_en
@@ -5048,18 +5135,33 @@ async function executeSaveRoutine(
       )
     }
 
-    // Also ensure the product is in ss_user_products
-    if (productId) {
-      const { data: existing } = await db
+    // Put it on their shelf ONLY when the member has it (Nov 11 2026). This ran
+    // for every catalog step, so a cream Yuri had just recommended was stored
+    // as an active shelf product and the Routine page showed it as "Owned"
+    // before the member had bought anything. The shelf is what Yuri is told
+    // they own (the routine's own conflict check reads the routine, not the
+    // shelf, so leaving a product off the shelf removes no safety check).
+    // Every write here is checked: a failed one must not read as "on the shelf".
+    if (productId && step.owned === true) {
+      const { data: existing, error: readErr } = await db
         .from('ss_user_products')
-        .select('id')
+        .select('id, status')
         .eq('user_id', userId)
         .eq('product_id', productId)
         .limit(1)
-        .single()
+        .maybeSingle()
 
-      if (!existing) {
-        await db.from('ss_user_products').insert({
+      if (readErr) {
+        console.error('[save_routine] shelf read failed:', readErr.message)
+      } else if (existing && existing.status === 'active') {
+        addedToShelf = true
+      } else if (existing) {
+        // They finished or set it aside before and now say they have it again.
+        const { error: reviveErr } = await db.from('ss_user_products').update({ status: 'active' }).eq('id', existing.id)
+        if (reviveErr) console.error('[save_routine] shelf update failed:', reviveErr.message)
+        else addedToShelf = true
+      } else {
+        const { error: addErr } = await db.from('ss_user_products').insert({
           user_id: userId,
           product_id: productId,
           custom_name: step.product_name,
@@ -5068,8 +5170,16 @@ async function executeSaveRoutine(
           status: 'active',
           learned_from: 'conversation',
         })
+        if (addErr) console.error('[save_routine] shelf insert failed:', addErr.message)
+        else addedToShelf = true
       }
     }
+    const saved = savedSteps[savedSteps.length - 1]
+    if (brandNotNamedNearest) {
+      saved.brand_not_named_nearest = brandNotNamedNearest
+      saved.brand_given_differs = brandGivenDiffers
+    }
+    saved.added_to_shelf = addedToShelf
   }
 
   // Build an authoritative user-facing message. Yuri MUST quote this verbatim
@@ -5083,11 +5193,30 @@ async function executeSaveRoutine(
   if (replaceExisting) message += ' (previous routine deactivated)'
   message += '.'
 
-  if (looseMatches.length > 0) {
-    message += `\n\nℹ️ ${looseMatches.length} step${looseMatches.length > 1 ? 's were' : ' was'} saved under the exact name you gave, as a custom entry — we don't have a clean catalog match for ${looseMatches.length > 1 ? 'them' : 'it'} yet, so ${looseMatches.length > 1 ? 'they\'ll' : 'it\'ll'} show in your routine by name but without prices/ingredients:`
-    for (const s of looseMatches) {
+  // Two different things used to share one line. A step the catalog has no
+  // clean match for is a custom entry. A step that FITS a catalog product but
+  // did not identify it is something else: the product may well be carried.
+  const unidentified = looseMatches.filter((s) => s.brand_not_named_nearest)
+  const customLoose = looseMatches.filter((s) => !s.brand_not_named_nearest)
+  if (customLoose.length > 0) {
+    message += `\n\nℹ️ ${customLoose.length} step${customLoose.length > 1 ? 's were' : ' was'} saved under the exact name you gave, as a custom entry — we don't have a clean catalog match for ${customLoose.length > 1 ? 'them' : 'it'} yet, so ${customLoose.length > 1 ? 'they\'ll' : 'it\'ll'} show in your routine by name but without prices/ingredients:`
+    for (const s of customLoose) {
       message += `\n- Step ${s.step_order}: "${s.requested_name}"`
     }
+  }
+  if (unidentified.length > 0) {
+    message += `\n\n${unidentified.length} step${unidentified.length > 1 ? 's were' : ' was'} saved under the member's own words and NOT tied to a catalog product, because the words did not identify one. That alone does not tell you whether we carry it:`
+    for (const s of unidentified) {
+      message += s.brand_given_differs
+        ? `\n- Step ${s.step_order}: "${s.requested_name}" (the brand given, ${s.requested_brand}, was not recognised as the brand of the closest product by name, ${s.brand_not_named_nearest}; search for it by brand to see whether we carry theirs)`
+        : `\n- Step ${s.step_order}: "${s.requested_name}" (no brand was named; the closest catalog product is ${s.brand_not_named_nearest}, which may or may not be theirs)`
+    }
+    message += `\nTo link one: confirm with them which product it is, find it with search_products, then save the routine again with that product_id on the step and replace_existing: true.`
+  }
+
+  const notOnShelf = savedSteps.filter((s) => s.status === 'matched' && !s.added_to_shelf)
+  if (notOnShelf.length > 0) {
+    message += `\n\n${notOnShelf.length === 1 ? 'One catalog product is' : `${notOnShelf.length} catalog products are`} in the routine but NOT on their shelf (not marked as owned, or the shelf could not be written): ${notOnShelf.map((s) => `"${s.matched_brand} ${s.matched_name}"`).join(', ')}. The routine itself is saved and does not need saving again. If they tell you they have ${notOnShelf.length === 1 ? 'it' : 'one'}, record that with update_user_product.`
   }
 
   if (noMatches.length > 0) {

@@ -709,14 +709,24 @@ export async function finalizeOnboardingProfile(
     .from('ss_user_profiles')
     .upsert(profileData, { onConflict: 'user_id' })
 
-  // Mark onboarding as complete
-  await db
+  // Mark setup complete ONLY when it is (Nov 11 2026). This function also runs
+  // after every message once a skin type is known, to keep the profile in step
+  // with the conversation, and it used to stamp 'completed' each time. So setup
+  // read as finished at 31% with the required age still missing: coming back to
+  // /onboarding ended the chat instead of resuming it, and the membership page
+  // said "I have what I need from our setup chat" when Yuri did not.
+  // (ss_user_profiles.onboarding_completed above is left as it was on purpose:
+  // it means "has a usable profile" to AppShell, and turning it off mid-setup
+  // is what once locked accounts in a chat that could not accept input.)
+  if (!checkOnboardingComplete(extracted)) return
+  const { error: stampError } = await db
     .from('ss_onboarding_progress')
     .update({
       onboarding_status: 'completed',
       completed_at: new Date().toISOString(),
     })
     .eq('user_id', userId)
+  if (stampError) console.error(`[onboarding] could not mark setup completed for ${userId}:`, stampError.message)
 }
 
 // ---------------------------------------------------------------------------
@@ -730,13 +740,30 @@ export async function skipOnboarding(userId: string): Promise<void> {
   // link is always visible, and the message-cap copy points at it). Skipping
   // must never downgrade an extracted profile back to defaults — the upsert
   // below would overwrite their real skin_type with 'normal'.
-  const { data: existing } = await db
+  const { data: existing, error: existingError } = await db
     .from('ss_user_profiles')
     .select('onboarding_completed')
     .eq('user_id', userId)
     .maybeSingle()
+  // Not knowing whether a profile exists is not "no profile": the upsert below
+  // would overwrite real concerns and allergies with empty lists.
+  if (existingError) {
+    console.error(`[onboarding] skip: could not read the profile for ${userId}:`, existingError.message)
+    throw new Error('Could not skip setup just now. Please try again.')
+  }
 
-  if (existing?.onboarding_completed) return
+  if (existing?.onboarding_completed) {
+    // The profile is kept as it is, but the skip is still recorded. Setup is
+    // no longer stamped 'completed' the moment a skin type exists, so without
+    // this a person who skips part-way would stay 'in_progress' for good.
+    const { error: skipError } = await db
+      .from('ss_onboarding_progress')
+      .update({ onboarding_status: 'skipped' })
+      .eq('user_id', userId)
+      .eq('onboarding_status', 'in_progress')
+    if (skipError) console.error(`[onboarding] could not record the skip for ${userId}:`, skipError.message)
+    return
+  }
 
   // Create a minimal profile. Clinical fields stay NULL — a user who SKIPPED
   // onboarding has told us nothing, and inventing a Fitzpatrick/age/climate for
