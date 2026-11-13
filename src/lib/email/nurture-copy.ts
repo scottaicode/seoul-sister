@@ -28,6 +28,7 @@
  */
 
 import { PRICING } from '@/lib/pricing'
+import { LANDING_CHAT_OPEN } from '@/lib/landing-chat'
 import { normalizeOfferCode } from '@/lib/offers'
 
 export type NurtureCohort = 'registered' | 'widget'
@@ -91,6 +92,14 @@ function email1(
 ): NurtureEmailContent {
   const resumeUrl = cohort === 'widget' ? options.resumeUrl ?? null : null
   const previewUsedUp = Boolean(resumeUrl) && typeof options.resumeRemaining === 'number' && options.resumeRemaining <= 0
+  // The landing chat is closed (src/lib/landing-chat.ts): a reopened
+  // conversation can be read but not continued, whatever was left of the
+  // preview, and nobody can "talk to me right now" without an account.
+  const chatClosed = !LANDING_CHAT_OPEN
+  const readOnly = Boolean(resumeUrl) && (previewUsedUp || chatClosed)
+  const whyReadOnly = previewUsedUp
+    ? `You've used the free messages that come with the preview, so you can read it back.`
+    : `The free chat on the homepage has closed, so you can read it back.`
   const opener =
     cohort === 'registered'
       ? `<p>You created an account with us a little while back, and then we did the thing where the very next screen asked you to subscribe before you could try anything. If you closed the tab right there, honestly, fair.</p>`
@@ -99,24 +108,36 @@ function email1(
     subject:
       cohort === 'registered'
         ? `The part we should have led with`
-        : previewUsedUp
+        : readOnly
           ? `Your conversation with Yuri is saved`
           : resumeUrl
             ? `Picking up where we left off`
-            : `You can talk to me anytime, no account needed`,
+            : chatClosed
+              ? `How to talk to me now`
+              : `You can talk to me anytime, no account needed`,
     bodyHtml: `
 <p>Hi, it's Yuri from Seoul Sister.</p>
 ${opener}
 ${
-  previewUsedUp && resumeUrl
-    ? `<p>Our conversation is saved, and the button below opens it again, on any device, for the next 30 days. You've used the free messages that come with the preview, so you can read it back. Carrying it on means a free account, and new members get ${PRICING.trial_days} days free.</p>
+  readOnly && resumeUrl
+    ? `<p>Our conversation is saved, and the button below opens it again, on any device, for the next 30 days. ${whyReadOnly} Carrying it on means a free account, and new members get ${PRICING.trial_days} days free.</p>
 <p><a href="${escapeAttr(resumeUrl)}" style="${BUTTON_STYLE}">See our conversation</a></p>
 <p>The paid side is where I remember your skin, build your routine, and adjust it as your skin changes month to month.</p>`
-    : `<p>So here's the part we should have led with: you can talk to me right now, no account needed. Ask me anything you'd ask a friend who knows Korean skincare inside out. What's actually worth it for your skin, whether that viral serum is right for you, how to tell if the snail mucin you bought is real. I'll give you a straight answer backed by a database of 5,900+ products, and I'll tell you when something is not worth your money too.</p>
+    : `<p>So here's the part we should have led with: ${
+        !chatClosed
+          ? `you can talk to me right now, no account needed.`
+          : cohort === 'registered'
+            ? `you already have the account, so you can sign in and start your free week. New members get the first ${PRICING.trial_days} days free with no card needed.`
+            : `talking to me starts with a free account, and new members get the first ${PRICING.trial_days} days free with no card needed.`
+      } Ask me anything you'd ask a friend who knows Korean skincare inside out. What's actually worth it for your skin, whether that viral serum is right for you, how to tell if the snail mucin you bought is real. I'll give you a straight answer backed by a database of 5,900+ products, and I'll tell you when something is not worth your money too.</p>
 ${
   resumeUrl
     ? `<p><a href="${escapeAttr(resumeUrl)}" style="${BUTTON_STYLE}">Pick up our conversation</a></p>`
-    : `<p><a href="${SITE}/?from=nurture_1${codeParam(options.offerCode)}" style="${BUTTON_STYLE}">Talk to Yuri, free</a></p>`
+    : !chatClosed
+      ? `<p><a href="${SITE}/?from=nurture_1${codeParam(options.offerCode)}" style="${BUTTON_STYLE}">Talk to Yuri, free</a></p>`
+      : cohort === 'registered'
+        ? `<p><a href="${SITE}/login?from=nurture_1" style="${BUTTON_STYLE}">Sign in to Seoul Sister</a></p>`
+        : `<p><a href="${SITE}/register?plan=monthly&from=nurture_1${codeParam(options.offerCode)}" style="${BUTTON_STYLE}">Create my free account</a></p>`
 }
 <p>If it turns out I'm useful, the paid side is where I remember your skin, build your routine, and adjust it as your skin changes month to month. But try the conversation first. That's the honest order to do it in.</p>`
 }
@@ -139,7 +160,11 @@ function email2(_cohort: NurtureCohort, _unsubscribeUrl: string, options: Nurtur
 <li><strong>Or skip all of this:</strong> buy from authorized retailers like Olive Young (its US store if you're in the US), Soko Glam, or the brand's own site, and the question never comes up.</li>
 </ol>
 <p>The full checklist, including the brand-specific tells for the most-faked products, is here: <a href="${SITE}/blog/how-to-tell-if-korean-skincare-is-fake-a-5-point-check-for-a?from=nurture_2" style="color:#C9A55C;">How to spot fake Korean skincare</a>.</p>
-<p>And if you're ever unsure about a specific bottle in your hands, describe it to me on the <a href="${SITE}/?from=nurture_2${codeParam(options.offerCode)}" style="color:#C9A55C;">homepage</a>. Free, no login, and I'll tell you straight.</p>
+${
+  LANDING_CHAT_OPEN
+    ? `<p>And if you're ever unsure about a specific bottle in your hands, describe it to me on the <a href="${SITE}/?from=nurture_2${codeParam(options.offerCode)}" style="color:#C9A55C;">homepage</a>. Free, no login, and I'll tell you straight.</p>`
+    : `<p>And if you're ever unsure about a specific bottle in your hands, that is exactly the kind of thing to bring me. It starts with a <a href="${SITE}/register?plan=monthly&from=nurture_2${codeParam(options.offerCode)}" style="color:#C9A55C;">free account</a>, and I'll tell you straight.</p>`
+}
 <p>Yuri</p>`,
   }
 }
@@ -150,7 +175,11 @@ function email3(_cohort: NurtureCohort, _unsubscribeUrl: string, options: Nurtur
     subject: `What I can't do for you in one chat`,
     bodyHtml: `
 <p>Hi, it's Yuri. Let me be straight about what's free and what isn't.</p>
-<p>The free conversation on the homepage is real. I'll diagnose, recommend, and warn you off wasted money, and none of that changes.</p>
+${
+  LANDING_CHAT_OPEN
+    ? `<p>The free conversation on the homepage is real. I'll diagnose, recommend, and warn you off wasted money, and none of that changes.</p>`
+    : `<p>The free part is real: the account costs nothing, and a new member's first week is free.</p>`
+}
 <p>But skin doesn't change in one conversation. It changes over months. The part of my job that actually moves skin is the follow-through: remembering what you're using and how you reacted, catching the conflict when you add a new product, adjusting your routine when the seasons change or your skin does, and tracking your progress photos so we know what's working instead of guessing.</p>
 <p>That follow-through is the member side. New members get the first ${PRICING.trial_days} days free with no card needed, and it's ${PRICING.monthly_display_long} after that only if you add one. It exists because an advisor who forgets you every conversation isn't really an advisor.</p>
 <p><a href="${SITE}/register?plan=monthly&from=nurture_3${codeParam(options.offerCode)}" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">Start with Yuri</a></p>

@@ -7,6 +7,7 @@ import { SUBSCRIPTION_TIERS } from '@/lib/stripe'
 import Link from 'next/link'
 import { pricingCardLines } from '@/lib/offers'
 import { MAX_FREE_MESSAGES } from '@/lib/utils/widget-session'
+import { LANDING_CHAT_OPEN } from '@/lib/landing-chat'
 
 interface PricingCardsProps {
   /** If true, renders checkout CTAs for authenticated users */
@@ -98,9 +99,11 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
         </button>
 
         {checkoutError && <p className="text-center text-xs text-rose-300 mt-3" role="alert">{checkoutError}</p>}
-        <p className="text-center text-xs text-white/50 mt-3">
-          Try {MAX_FREE_MESSAGES} free preview messages before subscribing.
-        </p>
+        {LANDING_CHAT_OPEN && (
+          <p className="text-center text-xs text-white/50 mt-3">
+            Try {MAX_FREE_MESSAGES} free preview messages before subscribing.
+          </p>
+        )}
 
       </div>
     </div>

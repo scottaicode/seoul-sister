@@ -5,6 +5,7 @@ import { Sparkles, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { trackEvent, NudgeEvent } from '@/lib/analytics'
+import { yuriAccessSentence } from '@/lib/landing-chat'
 
 interface ContextualYuriNudgeProps {
   /**
@@ -179,7 +180,7 @@ export default function ContextualYuriNudge({ kind, name, brand }: ContextualYur
                 : kind === 'category'
                   ? `Not sure which one is for you? Tell Yuri your skin type and what you already use.`
                   : `Tell Yuri what you already use and she'll check whether ${name} conflicts with it.`}{' '}
-              <span className="text-white/50">Free, no signup.</span>
+              <span className="text-white/50">{yuriAccessSentence()}</span>
             </p>
             <button
               onClick={accept}

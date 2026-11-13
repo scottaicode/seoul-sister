@@ -10,6 +10,7 @@ import { signupEmailRejection } from '@/lib/utils/email-normalize'
 import { adoptPreviewForSignup } from '@/lib/utils/widget-session'
 import { takeSignupResumeToken, claimPreviewForSignup, settleWithin } from '@/lib/widget/signup-link'
 import { supabase } from '@/lib/supabase'
+import { stashCarriedQuestion, rememberSignupFrom } from '@/lib/landing-chat'
 import {
   AuthCaptcha,
   requireCaptchaToken,
@@ -69,6 +70,24 @@ export default function RegisterPage() {
   // preview chat so the setup chat can offer to continue from it. Kept at
   // module level so React's development double-mount still finds the token
   // after the first run stripped the URL.
+  // Arriving from the closed landing chat with a question (`?ask=`): hold it on
+  // this device so it is in the setup chat's box, ready for them to send, and
+  // take their words out of the address bar. See src/lib/landing-chat.ts.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      // Which link brought them here, for the account row (signup_from).
+      rememberSignupFrom(window.sessionStorage, params.get('from'))
+      if (!params.has('ask')) return
+      stashCarriedQuestion(window.localStorage, params.get('ask'), Date.now())
+      params.delete('ask')
+      const qs = params.toString()
+      window.history.replaceState(window.history.state, '', `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`)
+    } catch (err) {
+      console.warn('[register] carried question not kept:', err)
+    }
+  }, [])
+
   useEffect(() => {
     // Always look: a token in the address bar is removed on every arrival.
     let fresh: string | null = null

@@ -38,6 +38,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import ts from 'typescript'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
@@ -48,7 +49,22 @@ const read = (...p) => readFileSync(join(root, ...p), 'utf8')
  * redirected. The effect is extracted and executed rather than reimplemented, so
  * the test exercises the shipped decision.
  */
-async function runEffect({ session, search = '', hash = '' }) {
+/** The REAL decision function from src/lib/landing-chat.ts, with the chat open or closed. */
+async function loadDestination(open) {
+  const js = ts
+    .transpileModule(read('src', 'lib', 'landing-chat.ts'), {
+      compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+    })
+    .outputText.replaceAll('process.env.NEXT_PUBLIC_LANDING_CHAT', open ? "'open'" : 'undefined')
+  const m = await import('data:text/javascript;base64,' + Buffer.from(js + `\n// ${Math.random()}`).toString('base64'))
+  assert.equal(m.LANDING_CHAT_OPEN, open)
+  return m.signedInLandingDestination
+}
+
+// `open` defaults to true: the tests below were written for the open landing
+// chat (March to November 2026) and must keep holding whenever it is reopened.
+async function runEffect({ session, search = '', hash = '', open = true }) {
+  const signedInLandingDestination = await loadDestination(open)
   const src = read('src', 'components', 'auth', 'SignedInRedirect.tsx')
 
   // Pull the effect body out of the real source.
@@ -72,9 +88,10 @@ async function runEffect({ session, search = '', hash = '' }) {
     'supabase',
     'window',
     'URLSearchParams',
+    'signedInLandingDestination',
     `return (async () => { ${body} })()`
   )
-  await fn(router, supabase, window, URLSearchParams)
+  await fn(router, supabase, window, URLSearchParams, signedInLandingDestination)
   // getSession is awaited internally via .then; flush the microtask queue.
   await new Promise((r) => setTimeout(r, 0))
   return calls
@@ -131,6 +148,23 @@ test('a feeder ?ask= prefill stays on the landing page', async () => {
 test('a ?from= attribution link stays on the landing page', async () => {
   const calls = await runEffect({ session: SIGNED_IN, search: '?from=blog' })
   assert.deepEqual(calls, [], 'Source attribution links must reach the widget.')
+})
+
+// Nov 13 2026: with the landing chat CLOSED there is no chat on this page, and
+// the hero offers "Create my free account". A member following a feeder link
+// (LGAAS blog links are /?from=blog) goes to their own Yuri chat instead.
+test('closed chat: a signed-in member following a feeder link goes to their Yuri chat', async () => {
+  assert.deepEqual(await runEffect({ session: SIGNED_IN, search: '?from=blog', open: false }), ['/yuri?from=blog'])
+  assert.deepEqual(
+    await runEffect({ session: SIGNED_IN, search: '?ask=is+this+fake&from=product', open: false }),
+    ['/yuri?ask=is+this+fake&from=product']
+  )
+  // An anonymous visitor on the same link is left alone, and so is everyone on
+  // a bare visit, a resume link or a section link.
+  assert.deepEqual(await runEffect({ session: null, search: '?from=blog', open: false }), [])
+  assert.deepEqual(await runEffect({ session: SIGNED_IN, open: false }), ['/dashboard'])
+  assert.deepEqual(await runEffect({ session: SIGNED_IN, search: '?resume=tok&from=nurture_1', open: false }), [])
+  assert.deepEqual(await runEffect({ session: SIGNED_IN, hash: '#pricing', open: false }), [])
 })
 
 test('a #pricing anchor stays on the landing page', async () => {

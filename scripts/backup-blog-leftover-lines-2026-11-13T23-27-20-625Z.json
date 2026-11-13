@@ -1,0 +1,29 @@
+[
+  {
+    "id": "fbc0c149-e070-475b-859e-5ead25955a8b",
+    "slug": "late-20s-skin-spiral-your-barrier-is-probably-wrecked",
+    "field": "faq_schema",
+    "before": [
+      {
+        "answer": "Classic barrier damage signs: stinging when you apply products that used to feel fine, unusual dryness or flaking, redness that wasn't there before, and breakouts in new places. Normal skin changes in your late 20s are gradual and subtle, like slightly longer recovery from a breakout, or needing a bit more hydration in winter. If everything went sideways within a few months of changing your routine, it's almost definitely the routine.",
+        "question": "How do I know if my barrier is damaged or if this is just normal late-20s skin?"
+      },
+      {
+        "answer": "Most people see significant improvement in 2-4 weeks of a simplified, barrier-focused routine. Full recovery, where your skin can tolerate actives again without reacting, typically takes 6-8 weeks. I could be wrong for your specific situation, but that's the timeline I've seen most consistently across skincare communities and dermatological research.",
+        "question": "How long does it take to repair a damaged skin barrier?"
+      },
+      {
+        "answer": "Yes, absolutely, please do. A compromised barrier actually makes your skin *more* vulnerable to UV damage. Look for mineral [sunscreens](https://www.seoulsister.com/best/sunscreens) with simple formulas if chemical filters are stinging you right now. Zinc oxide and titanium dioxide are generally better tolerated on sensitized skin.",
+        "question": "Can I still use sunscreen while repairing my barrier?"
+      },
+      {
+        "answer": "Not during the initial 2-4 week repair phase, no. Salicylic acid is a BHA exfoliant, it's fantastic for pores and congestion, but it's lipophilic (dissolves in oil), which means it penetrates your already-weakened lipid barrier. Reintroduce it after your barrier feels solid again, starting at twice a week max.",
+        "question": "Is [salicylic acid](https://www.seoulsister.com/ingredients/salicylic-acid) okay to use during barrier repair?"
+      },
+      {
+        "answer": "This is one of the hardest parts, sometimes you're layering ingredients that actively cancel each other out or compound irritation. If you're stuck, the [ingredient encyclopedia](https://www.seoulsister.com/ingredients) can help you look up what each active in your current routine actually does, so you can spot potential conflicts. And if you want something faster, the advisor on the [Seoul Sister homepage](https://www.seoulsister.com) can help you sort through what stays and what goes.",
+        "question": "What if I don't know which products are conflicting in my current routine?"
+      }
+    ]
+  }
+]

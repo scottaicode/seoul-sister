@@ -75,10 +75,18 @@ test('the strip runs AFTER the attribution capture and the prefillArrived event'
 test('SignedInRedirect still gates on ask, and mounts BEFORE the widget that strips it', () => {
   // If this ever stops reading `ask`, the ordering constraint below is moot —
   // but so is the redirect's own guarantee, so it must be asserted.
+  // Nov 13 2026: the decision moved into signedInLandingDestination
+  // (src/lib/landing-chat.ts), executed in both modes by
+  // tests/signed-in-landing-redirect.test.mjs. What must hold HERE is that the
+  // redirect reads the address itself, synchronously, at the top of its effect.
+  assert.ok(
+    redirect.includes('    const destination = signedInLandingDestination(window.location.search, window.location.hash)\n    if (!destination) return\n'),
+    'SignedInRedirect must read ?ask= from the address before the widget strips it'
+  )
   assert.match(
-    redirect,
-    /params\.has\(['"]ask['"]\)/,
-    'SignedInRedirect must still treat ?ask= as intent to stay on the landing page'
+    readFileSync(new URL('../src/lib/landing-chat.ts', import.meta.url), 'utf8'),
+    /const feeder = params\.has\('ask'\) \|\| params\.has\('from'\)/,
+    'the landing decision must still treat ?ask= as a feeder link'
   )
 
   const redirectIdx = page.indexOf('<SignedInRedirect')

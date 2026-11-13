@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { productTopHref } from './product-ask-href'
+import { yuriAccessPhrase } from '@/lib/landing-chat'
 
 /**
  * Free Yuri entry at the top of a product page (Oct 12 2026).
@@ -35,7 +36,7 @@ export default function ProductTopAskYuri({
       href={href}
       className="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-violet-300 hover:text-violet-200 transition-colors"
     >
-      {user ? 'Ask Yuri about this product' : 'Is this right for your skin? Ask Yuri, free, no signup'}
+      {user ? 'Ask Yuri about this product' : `Is this right for your skin? Ask Yuri, ${yuriAccessPhrase()}`}
       <span aria-hidden="true">&rarr;</span>
     </Link>
   )

@@ -1169,7 +1169,7 @@ test('pricing card: the free week leads and the price is stated; the allowance l
   assert.match(card, /\) : \(\s*lines\.cta\s*\)\}/)
   // And the whole card file by fingerprint: an added line ("No card is ever
   // needed.") or a changed button label passed every assertion above in review.
-  assert.equal(sha('sha256').update(card).digest('hex'), 'ec662674e4e468fcee36b05ff177ed9b892042a1b47835a2d74436b3e6fa4e89')
+  assert.equal(sha('sha256').update(card).digest('hex'), '71455f161bf30a499b0c68ecc0ab627307f55248aeebdf28bd1e40a481e9e978')
 
   // The allowance is NOT on the pricing card or the membership page (owner
   // decision, Nov 11 2026: the "79 messages" month was the co-owner testing;

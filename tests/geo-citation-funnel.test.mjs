@@ -81,7 +81,9 @@ test('free-Yuri card states no signup is required', () => {
   const next = productSrc.indexOf('function GatedTeaser', start)
   const fn = start >= 0 && next > start ? productSrc.slice(start, next) : ''
   assert.ok(fn.length > 0, 'AskYuriAboutProduct must exist')
-  assert.match(fn, /[Ff]ree, no signup/)
+  // Nov 13 2026: the sentence comes from src/lib/landing-chat.ts so it is true
+  // whether the landing chat is open or closed (executed in tests/landing-chat-gate.test.mjs).
+  assert.match(fn, /\n\s*\{yuriAccessSentence\(\)\} Yuri is Seoul Sister&apos;s AI K-beauty advisor/)
   assert.ok(!/PRICING\./.test(fn), 'the free-Yuri card must not quote a price')
 })
 
@@ -142,7 +144,9 @@ test('detector documents that it is a floor, not a census', () => {
 test('best-of pages name the free Yuri route in crawlable markup', () => {
   assert.match(bestSrc, /What you can check here/)
   assert.match(bestSrc, /from=best/)
-  assert.match(bestSrc, /without an account|no signup/i)
+  // Nov 13 2026: the access sentence comes from src/lib/landing-chat.ts (true
+  // whether the landing chat is open or closed), inside the crawlable list.
+  assert.ok(bestSrc.includes('                  Ask Yuri. {yuriAccessSentence()}\n'))
 })
 
 test('the block describes and routes — it does not recommend', () => {

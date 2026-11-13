@@ -514,8 +514,12 @@ test('the widget strips the token synchronously, adopts ids only when it paints,
 })
 
 test('SignedInRedirect keeps a signed-in reader on the page for a resume link', () => {
+  // Nov 13 2026: the decision lives in signedInLandingDestination
+  // (src/lib/landing-chat.ts); a resume link stays in both modes, executed in
+  // tests/signed-in-landing-redirect.test.mjs.
   const src = read('src', 'components', 'auth', 'SignedInRedirect.tsx')
-  assert.match(src, /params\.has\('resume'\)/)
+  assert.match(src, /signedInLandingDestination\(window\.location\.search, window\.location\.hash\)/)
+  assert.match(read('src', 'lib', 'landing-chat.ts'), /if \(params\.has\('resume'\) \|\| hash\) return null/)
 })
 
 // ---------------------------------------------------------------------------

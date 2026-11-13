@@ -4,6 +4,72 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.60.0 — The landing chat is closed behind a free account, with one switch to reopen it (Nov 13 2026)
+
+Owner and co-owner decision (Nov 13 2026): talking to Yuri starts with a free account. In eight
+months 153 people chatted on the landing page, 28 left an email, and none of those emails became
+an account (the one paid member signed up under a different address).
+
+- **One switch.** `src/lib/landing-chat.ts`. The chat is CLOSED unless
+  `NEXT_PUBLIC_LANDING_CHAT=open` is set in Vercel and the site is redeployed. No code change either
+  way. Pass/fail line: the open chat captured about 4 to 7 emails a month; fewer than about 4 real
+  new accounts a month while closed means reopen it.
+- **The server holds the gate.** `/api/widget/chat` refuses (429, `limitReached` + `chatClosed`) as
+  the first statement of the handler, before rate limits, a visitor row or a model call.
+- **The hero.** `TryYuriSection` still mounts (so an emailed `?resume=` link is taken out of the
+  address bar and a saved conversation can still be read), but a new visitor sees
+  `GatedYuriIntro`: who Yuri is, their own `?ask=` question if a blog, product or ingredient page
+  sent them with one, "Create my free account", and a labelled example. No feeder link changed;
+  they all still land on `/`.
+- **The question follows them.** `/register` keeps `?ask=` on the device and removes it from the
+  address bar; the setup chat prefills it (never sends it). The copy says "create your account on
+  this device", because that is the only case in which it is true.
+- **The row that grades it.** `auth.users.raw_user_meta_data->>'signup_from'` now records the
+  `?from=` tag that led to the sign-up page (`gate_blog`, `gate_tiktok`, `nurture_3`, ...). Count
+  accounts where it starts with `gate`. Email/password sign-ups only; Google sign-ups do not carry it.
+- **Every "free, no signup" line** on the homepage, product, best-of and blog components and the
+  pricing card comes from the helper, so it is true in both modes. `public/llms.txt` is a static
+  file and cannot follow the switch, so its sentence is now true in both modes; its stale
+  "card required" was corrected to "no card needed to start".
+- **Lead emails.** The three nurture emails and the lead follow-up judge's facts have closed-mode
+  wording; the follow-up button goes to sign-up while closed. Open-mode emails are unchanged.
+- **Real example.** `src/content/yuri-example.ts` holds a real conversation for the hero only when
+  a member has approved the exact text. It is `null` today, so the page shows the labelled
+  illustrative example.
+
+**Second-model review (Opus 5.5, told to refute): run, 2 blockers and 5 should-fix found.**
+Fixed in this release: a hardcoded "free and without an account" on every best-of category page;
+the lead follow-up judge was told leads could read their saved chat on the homepage (only true
+within an hour) and its button would have shown Yuri's suggested opener as words the person typed;
+the registered cohort was told "sign in and talk to me" when sign-in lands on the membership page;
+"your question is saved on this device" was shown before anything was saved; the closed hero
+would have opened scrolled past its own button on a phone; and no row recorded a gate sign-up.
+Nine wrong versions passed the first tests; all nine now fail (hero, example and closed nurture
+emails are pinned by SHA-256, the refusal block and the setup-chat effect are pinned whole, the
+switch is tested closed-world). The fixes themselves were not sent back for a second review.
+
+**From the LGAAS session's report (same day):** a signed-in member following a blog link
+(`/?from=blog`) would have been shown the sign-up card, because the landing page keeps signed-in
+people on it whenever a link carries `from`. While the chat is closed they now go to their own Yuri
+chat with the question carried (`signedInLandingDestination`, executed in both modes by
+`tests/signed-in-landing-redirect.test.mjs`). LGAAS fixed its profile, recipes and 11 drafts
+(LGAAS `f8859bf`, `46fc950`); details in `LANDING-CHAT-GATE.md`.
+
+**Published blog posts, done the same day (was the deploy blocker).** 46 of 56 published posts
+said Yuri needs no account (84 times) and most said the chat was on the page. LGAAS fixed its
+source (profile, recipes, drafts), then wrote and second-model reviewed 134 before-and-after pairs
+across 53 posts and applied them to its own copies without re-sending. The same pairs were applied
+here with `scripts/apply-blog-no-account-replacements.mjs` (backup first, each row guarded,
+verified from the database: 0 claims left, 53 of 53 rows equal to the intended text). Two lines
+outside that list (an FAQ answer and the one post LGAAS does not hold) were fixed with
+`scripts/fix-blog-two-leftover-lines-nov13.mjs`; those two wordings were not second-model reviewed.
+The new wording is true whether the chat is open or closed.
+
+**Not verified at the time of commit:** nothing here had run in production, and the closed hero
+had not been seen in a browser. See `LANDING-CHAT-GATE.md` for what was checked after deploy. Known and accepted: in open mode `llms.txt` no longer states the
+12-message preview; a browser still running an old page bundle that posts to the chat gets the
+"end of the free preview" card.
+
 ## v11.59.1 — Members are no longer sent the lead emails; the Skin Profile write-up is told what it is not shown (Nov 12 2026)
 
 - **Members were being sent the lead follow-up emails.** A visitor who chatted, gave an email and

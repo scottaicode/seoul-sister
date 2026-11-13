@@ -11,6 +11,7 @@ import { productImageOrFallback } from '@/lib/utils/image-proxy'
 import LazyImage from '@/components/ui/LazyImage'
 import ContextualYuriNudge from '@/components/widget/ContextualYuriNudge'
 import { serializeJsonLd } from '@/lib/utils/json-ld'
+import { yuriAccessPhrase, yuriAccessSentence } from '@/lib/landing-chat'
 
 export const revalidate = 3600
 
@@ -533,7 +534,7 @@ export default async function BestOfCategoryPage({ params }: Props) {
               </li>
               <li>
                 <strong className="text-white/80">
-                  Ask Yuri, free and without an account.
+                  Ask Yuri. {yuriAccessSentence()}
                 </strong>{' '}
                 Yuri is Seoul Sister&apos;s AI K-beauty advisor. She can tell you which of
                 these suits your skin type, what conflicts with what you already use, and
@@ -722,7 +723,7 @@ export default async function BestOfCategoryPage({ params }: Props) {
             </h2>
             <p className="text-white/60 text-sm mb-4 max-w-lg mx-auto">
               Yuri, our AI beauty advisor, can narrow this list down to your
-              skin type, concerns, and budget — free, no signup.
+              skin type, concerns, and budget — {yuriAccessPhrase()}.
             </p>
             <Link
               href={`/?ask=${encodeURIComponent(`I'm looking at your ${meta.title} list — which one is right for my skin?`)}&from=best_cta`}

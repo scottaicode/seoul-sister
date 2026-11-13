@@ -96,7 +96,12 @@ for (const [name, { src, expected, prefix, next }] of Object.entries(PROMPTS)) {
 
 test('widget header discloses AI in rendered JSX, not a comment', () => {
   const w = visible(read('src', 'components', 'widget', 'TryYuriSection.tsx'))
-  assert.match(w, />Your honest AI K-beauty advisor\. Ask me anything\.</)
+  // Nov 13 2026: the subtitle has an open and a closed wording. BOTH must say
+  // AI, and the subtitle must be exactly this expression (not a comment).
+  assert.ok(
+    w.includes(`{chatClosed ? 'Your honest AI K-beauty advisor.' : 'Your honest AI K-beauty advisor. Ask me anything.'}`),
+    'the widget subtitle no longer discloses AI in both modes'
+  )
   assert.ok(!/friend in Seoul/.test(w), 'header must not read like a person in Seoul')
 })
 

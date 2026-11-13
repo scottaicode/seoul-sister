@@ -6,6 +6,7 @@ import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { proxyImageUrl } from '@/lib/utils/image-proxy'
 import { PRICING } from '@/lib/pricing'
 import { serializeJsonLd } from '@/lib/utils/json-ld'
+import { yuriAccessSentence } from '@/lib/landing-chat'
 // Shared source of truth: `dbCategory` is the ss_products.category value and is
 // NOT a URL slug — conflating the two produced /best/lip%20cares on ~860 pages.
 import { PRODUCT_CATEGORIES as CATEGORIES } from '@/lib/catalog/categories'
@@ -262,7 +263,7 @@ export default async function ProductsPage() {
             <p className="text-white/60 mb-6 max-w-xl mx-auto">
               Ask Yuri, your K-beauty AI advisor. Tell her your skin and your
               budget and she&apos;ll tell you what actually fits, what&apos;s
-              worth your money, and what to skip. Free, no signup.
+              worth your money, and what to skip. {yuriAccessSentence()}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { buildBlogPrefill, blogCtaHref, shownOpener } from './blog-prefill'
 import { trackEvent, BlogEvent } from '@/lib/analytics'
+import { LANDING_CHAT_OPEN } from '@/lib/landing-chat'
 
 interface BlogYuriCtaProps {
   title?: string | null
@@ -59,7 +60,9 @@ export default function BlogYuriCta({ title, category, primaryKeyword, feederPat
         <p className="text-white/60 mb-5">
           {user
             ? 'Yuri has access to our full product database: ingredients, prices, and personalized recommendations for your skin.'
-            : 'Yuri builds your routine, tells you what is worth your money, and tracks your skin as it changes. Start a free chat right now, no account needed. She just gets sharper once she really knows you.'}
+            : 'Yuri builds your routine, tells you what is worth your money, and tracks your skin as it changes. ' +
+              (LANDING_CHAT_OPEN ? 'Start a free chat right now, no account needed.' : 'It starts with a free account.') +
+              ' She just gets sharper once she really knows you.'}
         </p>
         {own && <p className="text-white/90 italic mb-5">&ldquo;{own}&rdquo;</p>}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">

@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback } from 'rea
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { captureAttribution, getAttribution } from '@/lib/attribution'
+import { readSignupFrom } from '@/lib/landing-chat'
 import { captureOfferCode } from '@/lib/offers'
 import { getExistingVisitorId } from '@/lib/utils/widget-session'
 import { reduceGetSession, reduceAuthEvent } from '@/lib/auth/session-state'
@@ -140,7 +141,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // an account" be read from data even when the person declines to carry
       // the preview into setup. It never loads or shows that conversation.
       options: {
-        data: { attribution: getAttribution() ?? undefined, widget_visitor_id: getExistingVisitorId() ?? undefined },
+        data: {
+          attribution: getAttribution() ?? undefined,
+          widget_visitor_id: getExistingVisitorId() ?? undefined,
+          // Which link led to the sign-up page (src/lib/landing-chat.ts).
+          signup_from: readSignupFrom(typeof window === 'undefined' ? null : window.sessionStorage),
+        },
         captchaToken,
       },
     })

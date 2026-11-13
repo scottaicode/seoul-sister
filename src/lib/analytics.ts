@@ -51,6 +51,10 @@ export const DemoEvent = {
   // ingredient "Ask Yuri" CTA) with a prefilled question via ?ask=. `source`
   // tags which feeder sent them, so we can measure the funnel each page drives.
   prefillArrived: 'yuri_prefill_arrived',
+  // The sign-up button on the closed landing hero (src/lib/landing-chat.ts).
+  // GA4 is bot-inflated, so this is a companion to the account rows
+  // (auth.users.raw_user_meta_data->>'signup_from'), never the measure itself.
+  gateSignupClick: 'yuri_gate_signup_click',
 } as const
 
 /** Landing widget send outcomes. Before this, a visitor who tried to send but

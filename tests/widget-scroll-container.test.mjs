@@ -106,7 +106,9 @@ test('the effect re-runs when the paywall card appears, not only on new messages
 test('the paywall card is still the last child of the scrolling region', () => {
   // If this stops being true the fold risk changes shape and the fix above
   // needs revisiting rather than silently continuing to "pass".
-  const cardIdx = src.indexOf('That&apos;s the end of the free preview.')
+  // Nov 13 2026: the headline has two wordings (the cap, and the chat being
+  // closed), so the anchor is the sentence both branches sit beside.
+  const cardIdx = src.indexOf('the end of the free preview.')
   assert.ok(cardIdx > -1, 'the paywall card copy must exist')
   const gate = src.lastIndexOf('{isAtLimit && (', cardIdx)
   assert.ok(gate > -1 && gate < cardIdx, 'the card must be gated on isAtLimit')

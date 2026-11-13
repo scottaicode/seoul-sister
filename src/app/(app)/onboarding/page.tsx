@@ -10,6 +10,7 @@ import ChatMessage from '@/components/yuri/ChatMessage'
 import ChatInput from '@/components/yuri/ChatInput'
 import type { ChatMessage as ChatMessageType } from '@/types/yuri'
 import { getOfferCode } from '@/lib/offers'
+import { takeCarriedQuestion } from '@/lib/landing-chat'
 
 // What a new member's first Yuri message is prefilled with after checkout. It is
 // only prefilled (the Yuri page's ?ask= never auto-sends), so they can edit it.
@@ -42,6 +43,18 @@ export default function OnboardingPage() {
   // until read on the client; 'ask' shows CarryoverPrompt and holds the start
   // until they answer; 'na' when there is no preview chat on this device.
   const [carryChoice, setCarryChoice] = useState<'pending' | 'ask' | 'yes' | 'no' | 'na'>('pending')
+  // The question they arrived at the site with, held across sign-up
+  // (src/lib/landing-chat.ts). Prefilled into the box once; they send it or
+  // delete it. Only set when there is one, so a second effect run cannot clear it.
+  const [carriedAsk, setCarriedAsk] = useState<string | null>(null)
+  useEffect(() => {
+    try {
+      const question = takeCarriedQuestion(window.localStorage, Date.now())
+      if (question) setCarriedAsk(question)
+    } catch (err) {
+      console.warn('[onboarding] carried question not read:', err)
+    }
+  }, [])
   // The answer is per ACCOUNT, so read it once we know who is signed in.
   const [userId, setUserId] = useState<string>('')
   useEffect(() => {
@@ -558,6 +571,8 @@ export default function OnboardingPage() {
           disabled={isStreaming}
           placeholder="Tell Yuri about your skin..."
           showImageUpload={false}
+          restoredValue={carriedAsk}
+          onRestoreConsumed={() => setCarriedAsk(null)}
         />
       </div>
 

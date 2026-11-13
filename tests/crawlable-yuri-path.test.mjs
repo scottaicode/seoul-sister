@@ -82,13 +82,17 @@ test('the homepage declares a canonical, and it is NOT in the root layout', () =
     'canonical must never live in the root layout — it would leak to 8 public routes')
 })
 
-test('llms.txt states the real free-message count and a reachable Yuri URL', () => {
+test('llms.txt gives a reachable Yuri URL and makes no claim the landing-chat switch could falsify', () => {
+  // Nov 13 2026: llms.txt is a static file, so it cannot follow
+  // NEXT_PUBLIC_LANDING_CHAT (src/lib/landing-chat.ts). It used to say
+  // "(12 messages, no signup)", which became false the day the chat closed.
+  // The sentence is now true in BOTH modes, and pinned whole.
   const txt = read('public/llms.txt')
-  const constant = read('src/lib/utils/widget-session.ts')
-  const max = constant.match(/MAX_FREE_MESSAGES\s*=\s*(\d+)/)?.[1]
-  assert.ok(max, 'MAX_FREE_MESSAGES must be findable')
-  assert.match(txt, new RegExp(`\\(${max} messages, no signup\\)`),
-    `llms.txt must match MAX_FREE_MESSAGES (${max}) — it claimed 20 for weeks`)
-  assert.match(txt, /talk to Yuri free at https:\/\/www\.seoulsister\.com\//,
-    'AI assistants need a URL to send people to, not just a description')
+  assert.ok(
+    txt.includes(' People can start with Yuri at https://www.seoulsister.com/ with a free account.\n'),
+    'AI assistants need a URL to send people to, stated in words that are true whether the landing chat is open or closed'
+  )
+  assert.doesNotMatch(txt, /no ?sign-?up|no account|without an account|\d+\s+(free\s+)?messages,/i,
+    'llms.txt must not promise an anonymous chat or a free-message count: the file cannot follow the switch')
+  assert.doesNotMatch(txt, /card required/i, 'the free week needs no card to start (PRICING.trial_requires_card is false)')
 })

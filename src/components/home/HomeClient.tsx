@@ -16,6 +16,7 @@ import OfferSavedLine from '@/components/widget/OfferSavedLine'
 import InstallBanner from '@/components/pwa/InstallBanner'
 import SignedInRedirect from '@/components/auth/SignedInRedirect'
 import { MAX_FREE_MESSAGES } from '@/lib/utils/widget-session'
+import { LANDING_CHAT_OPEN, heroBadge, heroFootnote, talkToYuriLabel, yuriAccessSentence } from '@/lib/landing-chat'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -61,7 +62,7 @@ const specialists = [
 // v11.0.0 Yuri-as-orchestrator repositioning. Scanning/search is a capability
 // inside the journey, not the front door.
 const steps = [
-  { icon: Sparkles, step: '01', title: 'Talk to Yuri', desc: 'Tell her about your skin, your products, and your goals. Free to start, no signup.' },
+  { icon: Sparkles, step: '01', title: 'Talk to Yuri', desc: `Tell her about your skin, your products, and your goals. ${LANDING_CHAT_OPEN ? 'Free to start, no signup.' : yuriAccessSentence()}` },
   { icon: Brain, step: '02', title: 'Get AI Intelligence', desc: 'Yuri and her 6 built-in AI specialists decode ingredients, flag conflicts, check authenticity, and compare prices — scan a Korean label or search 5,900+ products.' },
   { icon: ListOrdered, step: '03', title: 'Build Your Routine', desc: 'Add to your personalized routine with conflict detection, layering order, wait times, and skin cycling.' },
   { icon: Heart, step: '04', title: 'Track and Improve', desc: 'Monitor your Glass Skin Score, track product expiry, get weather alerts, and discover dupes.' },
@@ -220,7 +221,7 @@ export default function HomeClient() {
           {/* Left — Value Proposition */}
           <motion.div variants={stagger} initial="hidden" animate="show" className="pt-4 lg:pt-8">
             <motion.div variants={fadeUp}>
-              <span className="badge-gold mb-4 inline-block">Free to talk to. No signup.</span>
+              <span className="badge-gold mb-4 inline-block">{heroBadge()}</span>
             </motion.div>
             <motion.h1 variants={fadeUp} className="font-display font-bold text-3xl md:text-5xl lg:text-5xl text-white leading-tight mb-5">
               Stop guessing
@@ -235,7 +236,7 @@ export default function HomeClient() {
                 She gets to know your skin, your life, and what you&apos;re actually after. She&apos;ll tell you what&apos;s working, what&apos;s holding your skin back, and which products are worth your money. Members get a routine built around all of it, adjusted as their skin changes month to month.
               </p>
               <p className="text-white/40 text-sm">
-                Talk to her free, no signup. She just gets sharper once she really knows you.
+                {LANDING_CHAT_OPEN ? 'Talk to her free, no signup.' : 'It starts with a free account.'} She just gets sharper once she really knows you.
               </p>
             </motion.div>
 
@@ -264,7 +265,7 @@ export default function HomeClient() {
             </motion.div>
 
             <motion.p variants={fadeUp} className="text-xs text-white/30 mt-4">
-              Talk to Yuri free. {MAX_FREE_MESSAGES} messages, no signup.
+              {heroFootnote(MAX_FREE_MESSAGES)}
             </motion.p>
           </motion.div>
 
@@ -287,7 +288,7 @@ export default function HomeClient() {
             }}
             className="glass-button-primary w-full text-sm py-3"
           >
-            Ask Yuri About Your Skin
+            {LANDING_CHAT_OPEN ? 'Ask Yuri About Your Skin' : talkToYuriLabel()}
           </button>
         </div>
       </section>
@@ -543,10 +544,10 @@ export default function HomeClient() {
               }
               className="inline-flex items-center gap-2 dark-button-outline text-base py-3.5 px-10"
             >
-              <Sparkles className="w-4 h-4 text-gold" /> Talk to Yuri Free
+              <Sparkles className="w-4 h-4 text-gold" /> {talkToYuriLabel()}
             </button>
           </div>
-          <p className="text-xs text-white/30 mt-4">Talk to Yuri free. {MAX_FREE_MESSAGES} messages, no signup.</p>
+          <p className="text-xs text-white/30 mt-4">{heroFootnote(MAX_FREE_MESSAGES)}</p>
         </motion.div>
       </section>
 

@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { Trophy, ArrowRight } from 'lucide-react'
 import AuthAwareNav from '@/components/layout/AuthAwareNav'
 import { serializeJsonLd } from '@/lib/utils/json-ld'
+import { yuriAccessPhrase } from '@/lib/landing-chat'
 
 export const revalidate = 3600
 
@@ -182,7 +183,7 @@ export default async function BestOfIndexPage() {
             </h2>
             <p className="text-white/60 text-sm mb-4 max-w-lg mx-auto">
               Tell Yuri your skin type and what you&apos;re trying to fix, and she&apos;ll
-              pick from all {totalProducts.toLocaleString()} products for you — free, no signup.
+              pick from all {totalProducts.toLocaleString()} products for you — {yuriAccessPhrase()}.
             </p>
             <Link
               href={`/?ask=${encodeURIComponent('What are the best Korean skincare products for my skin type?')}&from=best_cta`}

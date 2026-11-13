@@ -23,6 +23,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { PRICING } from '@/lib/pricing'
 import { normalizeOfferCode } from '@/lib/offers'
 import { MAX_FREE_MESSAGES } from '@/lib/widget/visitor'
+import { LANDING_CHAT_OPEN } from '@/lib/landing-chat'
 import { getLocalClock, clockFactBlock } from '@/lib/yuri/clock'
 import { escapeHtml } from '@/lib/email/html'
 import { wrapEmailHtml } from '@/lib/email/send'
@@ -170,7 +171,9 @@ export function leadGuardEvidence(ctx: LeadContext) {
     plan: null,
     knownProducts: ctx.productsMentioned,
     verifiedStatements: [
-      `Seoul Sister is a paid subscription at ${PRICING.monthly_display}; the homepage chat is a short free preview.`,
+      LANDING_CHAT_OPEN
+        ? `Seoul Sister is a paid subscription at ${PRICING.monthly_display}; the homepage chat is a short free preview.`
+        : `Seoul Sister is a paid subscription at ${PRICING.monthly_display}; talking to Yuri now starts with a free account.`,
     ],
   }
 }
@@ -257,7 +260,7 @@ Decide first. Silence is a complete, respectable answer. Write only if you have 
 If you write:
 - Name what they actually asked, and offer one specific next step back into a conversation with you: the question you'd pick up with, which becomes the opening line they can send you with one tap. The facts below say what that link actually opens; describe it the way it really is.
 - You can be useful in the email itself. No brand pays you to recommend anything, so "you don't need to buy anything new for this" or "keep what you have" are things you can say when they're true.
-- Seoul Sister is a paid service (${PRICING.monthly_display}); the free preview is a short conversation. Don't hide that, and don't pitch it. At most one plain sentence, only if it's actually relevant to them.
+- Seoul Sister is a paid service (${PRICING.monthly_display}); ${LANDING_CHAT_OPEN ? 'the free preview is a short conversation' : 'talking with you now starts with a free account'}. Don't hide that, and don't pitch it. At most one plain sentence, only if it's actually relevant to them.
 - Use only facts below. Never invent details about them, their routine, or anything they told you.
 - No clinical credentials, no "dermatologist-level". If something they described needs a doctor, say so plainly.
 - No urgency, scarcity, discounts, or "spots are filling up" pressure of any kind.
@@ -295,7 +298,9 @@ export function buildLeadFacts(ctx: LeadContext, calibration: string, now: Date 
   if (ctx.freeMessagesUsed !== null) {
     const left = Math.max(0, MAX_FREE_MESSAGES - ctx.freeMessagesUsed)
     lines.push(
-      left > 0
+      !LANDING_CHAT_OPEN
+        ? `WHAT THE LINK OPENS: the sign-up page on seoulsister.com. The free chat on the homepage closed to new messages after they wrote to you, for everyone, and the conversation you had is not shown to them there. Continuing means creating a free account, which opens a free setup chat and then a ${PRICING.trial_days}-day free trial that needs no card. If they create the account on the device they open this email on, your one-line opener is put in the setup chat's box for them to send. Don't promise them a free conversation that picks up where you left off.`
+        : left > 0
         ? `WHAT THE LINK OPENS: the free chat on the seoulsister.com homepage, with your one-line opener prefilled for them to send. On the same browser they used before, ${left} of ${MAX_FREE_MESSAGES} free preview messages are left and you will have your saved note about them (not the full transcript). On any other device it is a fresh preview and you will not recognize them.`
         : `WHAT THE LINK OPENS: the free chat on the seoulsister.com homepage. On the browser they used before, all ${MAX_FREE_MESSAGES} free preview messages are used, so continuing means creating a free account, which opens a free setup chat and then a ${PRICING.trial_days}-day free trial that needs no card. On another device it is a fresh preview where you will not recognize them. Don't promise them a free conversation that picks up where you left off.`
     )
@@ -340,8 +345,12 @@ export function buildLeadEmail(
   if (decision.suggestedAsk) params.set('ask', decision.suggestedAsk)
   const code = normalizeOfferCode(offerCode)
   if (code) params.set('code', code)
-  const href = `${SITE}/?${params.toString()}`
-  const cta = `<p style="margin:22px 0 0;"><a href="${href}" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">Pick this up with Yuri</a></p>`
+  // Closed landing chat (src/lib/landing-chat.ts): the homepage would show a
+  // sign-up card and present Yuri's suggested opener as a question the person
+  // typed. The button goes to sign-up, which holds the opener for the setup chat.
+  if (!LANDING_CHAT_OPEN) params.set('plan', 'monthly')
+  const href = LANDING_CHAT_OPEN ? `${SITE}/?${params.toString()}` : `${SITE}/register?${params.toString()}`
+  const cta = `<p style="margin:22px 0 0;"><a href="${href}" style="display:inline-block;background:#C9A55C;color:#111;font-weight:600;padding:10px 22px;border-radius:10px;text-decoration:none;">${LANDING_CHAT_OPEN ? 'Pick this up with Yuri' : 'Create a free account'}</a></p>`
 
   const unsubscribeUrl = `${SITE}/api/email/unsubscribe?token=${lead.unsubscribe_token}`
   const why =

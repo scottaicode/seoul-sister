@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import ProductEnrichment from './ProductEnrichment'
 import { PRICING } from '@/lib/pricing'
+import { yuriAccessSentence } from '@/lib/landing-chat'
 
 interface Props {
   productId: string
@@ -227,7 +228,7 @@ function AskYuriAboutProduct({
             Ask Yuri about {label}
           </h3>
           <p className="text-white/60 text-xs mb-2">
-            Free, no signup. Yuri is Seoul Sister&apos;s AI K-beauty advisor — ask her whether
+            {yuriAccessSentence()} Yuri is Seoul Sister&apos;s AI K-beauty advisor — ask her whether
             this suits your skin type, what it conflicts with, or what a cheaper equivalent
             would be.
           </p>

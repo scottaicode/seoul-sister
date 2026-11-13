@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { signedInLandingDestination } from '@/lib/landing-chat'
 
 /**
  * Send an already-signed-in visitor from the marketing homepage to the app.
@@ -59,10 +60,14 @@ export default function SignedInRedirect() {
     // Respect explicit intent to be ON this page. A feeder CTA (?ask=/?from=)
     // targets the hero widget, and #pricing targets a section here — redirecting
     // those to /dashboard would break links we deliberately ship.
-    const params = new URLSearchParams(window.location.search)
     // `resume` (Nov 7 2026) is an email link reopening a widget conversation;
     // those links also carry `from`, but the check stands on its own.
-    if (params.has('ask') || params.has('from') || params.has('resume') || window.location.hash) return
+    // Nov 13 2026: with the landing chat closed, a feeder link no longer has a
+    // chat to land on, so a member goes to their own Yuri chat instead of a
+    // sign-up card (signedInLandingDestination, src/lib/landing-chat.ts). Read
+    // here, synchronously, before the widget strips `ask` from the address.
+    const destination = signedInLandingDestination(window.location.search, window.location.hash)
+    if (!destination) return
 
     supabase.auth
       .getSession()
@@ -70,7 +75,7 @@ export default function SignedInRedirect() {
         if (cancelled) return
         // Only a real, present session redirects. Absent/expired/errored → the
         // visitor stays on the marketing page, which is the safe default.
-        if (session?.user) router.replace('/dashboard')
+        if (session?.user) router.replace(destination)
       })
       .catch(() => {
         // Never let an auth hiccup break the public homepage.

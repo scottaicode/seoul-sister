@@ -39,6 +39,7 @@ import { recapStatusFact } from '@/lib/widget/recap-fact'
 import { offerFactLine, confirmedOfferCode } from '@/lib/offers-server'
 import { createResumeToken, widgetEmailLink, resumeLinksEnabled, redactResumeTokens } from '@/lib/widget/resume-token'
 import type Anthropic from '@anthropic-ai/sdk'
+import { LANDING_CHAT_OPEN, LANDING_CHAT_CLOSED_ERROR } from '@/lib/landing-chat'
 
 const WIDGET_RATE_LIMIT = 25
 const WIDGET_RATE_WINDOW = 24 * 60 * 60 * 1000
@@ -445,6 +446,17 @@ You are the only one who can tell whether a given person will parse it, so read 
  */
 export async function POST(request: NextRequest) {
   try {
+    // The landing chat is closed (src/lib/landing-chat.ts): refuse before a
+    // visitor row is made or a model is called, so the page is not the only
+    // thing holding the gate. Same shape as the per-visitor cap, which the
+    // client already turns into the sign-up card.
+    if (!LANDING_CHAT_OPEN) {
+      return new Response(
+        JSON.stringify({ error: LANDING_CHAT_CLOSED_ERROR, limitReached: true, chatClosed: true }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
     // IP rate limiting (25/IP/day abuse prevention)
     const ip =
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||

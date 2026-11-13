@@ -24,6 +24,8 @@ import { trackEvent, DemoEvent, WidgetEvent } from '@/lib/analytics'
 import { detectAiReferrer } from '@/lib/widget/ai-referrer'
 import { widgetAccountLine, widgetMembershipLine } from '@/lib/offers'
 import { useSavedOffer } from '@/lib/use-saved-offer'
+import { LANDING_CHAT_OPEN } from '@/lib/landing-chat'
+import GatedYuriIntro from '@/components/widget/GatedYuriIntro'
 
 /**
  * Stamp the first click on a sign-up link inside the chat (set-once server
@@ -193,6 +195,14 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   // still under the limit. Without it, a server-blocked visitor saw only a
   // generic "Something went wrong" error and no way to subscribe.
   const [serverLimitReached, setServerLimitReached] = useState(false)
+  // The landing chat is closed (src/lib/landing-chat.ts): this component still
+  // mounts so an emailed resume link is taken out of the address bar and a saved
+  // conversation can be read back, but nothing can be sent. A new visitor sees
+  // GatedYuriIntro in place of the greeting and the reply box.
+  const chatClosed = !LANDING_CHAT_OPEN
+  // Where they arrived from, as state (sourceRef alone would not re-render the
+  // sign-up link that carries it).
+  const [arrivalSource, setArrivalSource] = useState<string | null>(null)
   // Email continue-gate (July 19 2026): the server blocks message N+ for a
   // visitor with no email on file (429 `emailRequired`). We stash the question
   // that got blocked, ask for the email, send the email THROUGH the chat (the
@@ -449,6 +459,12 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
     }
   }, [])
 
+  // Runs after the capture effect above (same flush, declared later), so the
+  // closed-mode sign-up link carries the source that effect recorded.
+  useEffect(() => {
+    setArrivalSource(sourceRef.current)
+  }, [])
+
   // ---- RESTORE a conversation a reload wiped (Aug 18 2026) -----------------
   // `messages` lives in React state ONLY, while the session id lives in
   // sessionStorage. So a mid-conversation reload showed an EMPTY chat while the
@@ -612,7 +628,7 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
     }
   }, [])
 
-  const isAtLimit = messageCount >= MAX_FREE_MESSAGES || serverLimitReached
+  const isAtLimit = chatClosed || messageCount >= MAX_FREE_MESSAGES || serverLimitReached
 
   // Scroll within the chat container, not the page.
   //
@@ -635,11 +651,14 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   // `messages` alone would scroll to the bottom of the last bubble and stop
   // there, one render before the card exists.
   useEffect(() => {
+    // Only a conversation is followed to its end. With the chat closed,
+    // isAtLimit is true from the first paint, and scrolling then would open
+    // the sign-up view past its own greeting and button on a phone.
     const container = messagesScrollRef.current
-    if (container) {
+    if (container && (showLive || !chatClosed)) {
       container.scrollTop = container.scrollHeight
     }
-  }, [messages, isAtLimit])
+  }, [messages, isAtLimit, showLive, chatClosed])
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -938,7 +957,9 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
           <p className="text-sm font-semibold text-white">
             Yuri <span className="text-gold">(유리)</span>
           </p>
-          <p className="text-xs text-white/40">Your honest AI K-beauty advisor. Ask me anything.</p>
+          <p className="text-xs text-white/40">
+            {chatClosed ? 'Your honest AI K-beauty advisor.' : 'Your honest AI K-beauty advisor. Ask me anything.'}
+          </p>
         </div>
         {/* "Live" only once a real conversation is streaming — a scripted
             example under a "Live" badge read as a fake live chat (v11.9.1). */}
@@ -955,14 +976,28 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
           </button>
         )}
         <span className="badge-gold text-[10px] animate-pulse-soft">
-          {showLive ? 'Live' : 'Free preview'}
+          {chatClosed ? (showLive ? 'Saved chat' : 'Free account') : showLive ? 'Live' : 'Free preview'}
         </span>
       </div>
 
       {/* Messages area — this is the scrolling element, so it owns the ref. */}
       <div ref={messagesScrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
         {/* Pre-conversation state: greeting + prompts first, labeled example below */}
-        {!showLive && (
+        {!showLive && chatClosed && (
+          <GatedYuriIntro
+            question={input.trim()}
+            source={arrivalSource}
+            percentOff={savedOffer.percentOff}
+            fallbackExample={{
+              label:
+                demoScript === DEMO_BEGINNER
+                  ? 'Example: a new member’s first session with Yuri'
+                  : 'Example: Yuri with a subscriber she’s known for months',
+              messages: demoScript.slice(0, 2),
+            }}
+          />
+        )}
+        {!showLive && !chatClosed && (
           <div className="p-4 space-y-3">
             {/* Yuri's greeting — the visitor's entry point. Identify + value +
                 clear next step (the welcome-message pattern that beats a bare
@@ -1102,7 +1137,9 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             {isAtLimit && (
               <div className="bg-gold/5 rounded-2xl p-4 border border-gold/20 text-center">
                 <p className="text-sm text-white font-medium mb-1">
-                  That&apos;s the end of the free preview.
+                  {chatClosed && messageCount < MAX_FREE_MESSAGES && !serverLimitReached
+                    ? 'This chat now continues with a free account.'
+                    : 'That’s the end of the free preview.'}
                 </p>
                 <p className="text-xs text-white/50 mb-3">
                   Sign up on this device and we pick up where we left off: I&apos;ll have
@@ -1256,7 +1293,9 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
             Try Yuri <span className="text-gold">(유리)</span>
           </h2>
           <p className="section-subheading mx-auto">
-            Ask her anything about Korean skincare. No signup required.
+            {chatClosed
+              ? 'Your honest AI K-beauty advisor. It starts with a free account.'
+              : 'Ask her anything about Korean skincare. No signup required.'}
           </p>
         </motion.div>
 
