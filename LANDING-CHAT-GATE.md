@@ -145,9 +145,19 @@ The LGAAS session carried out its work order the same day (LGAAS commits `f8859b
 - **Left as is, on purpose:** phrases such as "the free AI skincare advisor" and "ask Yuri for free" remain in about a dozen places. Yuri is free to start and then $9.99/month, so a reviewer flagged "free" as a standing description. Owner decision, not made.
 - **The LGAAS risk that remains:** any future edit or redelivery of a post inside LGAAS overwrites Seoul Sister's copy with LGAAS's. Both copies now carry the fix, so that would not bring the claim back.
 
-## Open at the time of writing
+## Deployed Nov 13 2026 (commit `35d7bb0`), and what was checked on the live site
 
-- Not deployed. Not seen in a browser.
-- Blog body sweep and both LGAAS work orders were completed the same day (sections above).
-- No real example approved for the hero.
-- The fixes made after the review were not sent back for a second review.
+Checked by fetching the live pages, about two minutes after the production build went Ready:
+
+- The homepage HTML contains "Create my free account", "Free account. Start with Yuri." and Yuri's closed greeting, and no longer contains "No signup", the reply box placeholder or the "Free preview" badge.
+- `POST /api/widget/chat` returns 429 with `{"limitReached":true,"chatClosed":true}`.
+- `/llms.txt`, a blog post, a best-of page and the product list all carry the new access wording, and none carries "no account" or "no signup".
+
+## Still open
+
+- **Nobody has looked at the closed page in a browser,** on a phone or a laptop. The checks above read HTML; they cannot see layout.
+- **No real sign-up has come through the gate.** Until an account shows `signup_from` starting with `gate`, the carried question and the measurement are unverified. Name the row.
+- **No real example is approved for the hero.** It shows the labelled illustrative example. The candidate is Bailey's July 17 2026 exchange (conversation `0cd52d9a`), cut before the sentence that names a brand unfavourably; it needs her yes on the exact text.
+- **"Free" as a standing description** remains in about a dozen blog posts. Owner decision, not made.
+- The fixes made after the second-model review, and the three leftover blog lines, were not re-reviewed.
+- First read against the pass/fail line: about one month after deploy.
