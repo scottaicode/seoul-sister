@@ -16,7 +16,7 @@ import OfferSavedLine from '@/components/widget/OfferSavedLine'
 import InstallBanner from '@/components/pwa/InstallBanner'
 import SignedInRedirect from '@/components/auth/SignedInRedirect'
 import { MAX_FREE_MESSAGES } from '@/lib/utils/widget-session'
-import { LANDING_CHAT_OPEN, heroBadge, heroFootnote, talkToYuriLabel, yuriAccessSentence } from '@/lib/landing-chat'
+import { LANDING_CHAT_OPEN, gatedSignupHref, heroBadge, heroFootnote, talkToYuriLabel, yuriAccessSentence } from '@/lib/landing-chat'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -256,7 +256,16 @@ export default function HomeClient() {
             </motion.div>
 
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-3">
-              <Link href="#pricing" className="glass-button-primary text-sm py-3 px-6">
+              {/* Closed landing chat, on a phone: the sign-up card sits two
+                  screens down, below this column, so the first button a
+                  visitor reaches is the sign-up itself. Desktop keeps "View
+                  Plans" because the card and its button are beside it. */}
+              {!LANDING_CHAT_OPEN && (
+                <Link href={gatedSignupHref('hero_button', '')} className="lg:hidden glass-button-primary text-sm py-3 px-6">
+                  Create my free account
+                </Link>
+              )}
+              <Link href="#pricing" className={`${LANDING_CHAT_OPEN ? '' : 'hidden lg:inline-flex '}glass-button-primary text-sm py-3 px-6`}>
                 View Plans
               </Link>
               <Link href="#features" className="dark-button-outline text-sm py-3 px-6">
@@ -282,14 +291,22 @@ export default function HomeClient() {
 
         {/* Mobile sticky CTA bar — appears on scroll past hero */}
         <div className={`lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-seoul-dark/95 backdrop-blur-md border-t border-gold/20 p-3 transition-transform duration-300 ${showStickyCTA ? 'translate-y-0' : 'translate-y-full'}`} id="mobile-sticky-cta">
-          <button
-            onClick={() => {
-              document.getElementById('hero-yuri')?.scrollIntoView({ behavior: 'smooth' })
-            }}
-            className="glass-button-primary w-full text-sm py-3"
-          >
-            {LANDING_CHAT_OPEN ? 'Ask Yuri About Your Skin' : talkToYuriLabel()}
-          </button>
+          {LANDING_CHAT_OPEN ? (
+            <button
+              onClick={() => {
+                document.getElementById('hero-yuri')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+              className="glass-button-primary w-full text-sm py-3"
+            >
+              Ask Yuri About Your Skin
+            </button>
+          ) : (
+            // Closed: scrolling to a card whose only action is this same
+            // button was one tap too many.
+            <Link href={gatedSignupHref('sticky', '')} className="glass-button-primary w-full text-sm py-3 block text-center">
+              Create my free account
+            </Link>
+          )}
         </div>
       </section>
 

@@ -1270,7 +1270,11 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
       <div
         id="hero-yuri"
         className="dark-card-gold shadow-glow-gold flex flex-col overflow-hidden"
-        style={{ minHeight: '520px', maxHeight: '640px' }}
+        // The fixed height makes the card a chat window with its own scroll.
+        // The closed sign-up view is not a chat: on a phone a second scroll
+        // area inside the page clipped Yuri's greeting under the card header
+        // (owner's iPhone, Nov 13 2026), so it takes the height of its content.
+        style={chatClosed && !showLive ? undefined : { minHeight: '520px', maxHeight: '640px' }}
       >
         {chatContent}
       </div>

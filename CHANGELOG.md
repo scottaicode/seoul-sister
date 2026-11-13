@@ -4,6 +4,22 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.60.1 — The closed landing page on a phone: no clipped greeting, sign-up one tap away (Nov 13 2026)
+
+From the owner's iPhone, minutes after v11.60.0 went live:
+- **Yuri's greeting was clipped under the card header.** The card kept the chat window's fixed
+  height and its own scroll area, which a sign-up view does not need. While the chat is closed and no
+  saved conversation is showing, the card takes the height of its content.
+- **The sign-up card sits two screens down on a phone,** below the headline, copy, stats and two
+  buttons, and the first button in the page was "View Plans". On a phone that button is now
+  "Create my free account" (desktop keeps "View Plans", because the card is beside it).
+- **The sticky bar scrolled to a card whose only action was the same button.** While closed it
+  goes straight to sign-up.
+
+Sign-ups from these two buttons record `signup_from` as `gate_hero_button` and `gate_sticky`.
+Open mode is unchanged. No second-model review: the label reuses the reviewed "Create my free
+account" and nothing else a visitor reads changed. Not yet seen on a phone after the fix.
+
 ## v11.60.0 — The landing chat is closed behind a free account, with one switch to reopen it (Nov 13 2026)
 
 Owner and co-owner decision (Nov 13 2026): talking to Yuri starts with a free account. In eight

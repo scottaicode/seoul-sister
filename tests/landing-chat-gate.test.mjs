@@ -477,3 +477,38 @@ test('a signed-in member following a feeder link is never shown the sign-up card
   assert.ok(redirect.includes('        if (session?.user) router.replace(destination)\n'))
   assert.doesNotMatch(redirect, /router\.(replace|push)\('\/dashboard'\)/)
 })
+
+test('closed, on a phone: sign-up is one tap away and the sign-up card has no scroll area of its own', async () => {
+  // Owner's iPhone, Nov 13 2026: the card kept the chat window's fixed height
+  // and inner scroll, which clipped Yuri's greeting under the card header; the
+  // sticky bar scrolled to a card whose only action was the same button; and
+  // the first button in the page was "View Plans".
+  const widget = read('src/components/widget/TryYuriSection.tsx')
+  assert.ok(widget.includes("        style={chatClosed && !showLive ? undefined : { minHeight: '520px', maxHeight: '640px' }}\n"))
+  const home = read('src/components/home/HomeClient.tsx')
+  assert.ok(home.includes(`              {!LANDING_CHAT_OPEN && (
+                <Link href={gatedSignupHref('hero_button', '')} className="lg:hidden glass-button-primary text-sm py-3 px-6">
+                  Create my free account
+                </Link>
+              )}
+              <Link href="#pricing" className={\`\${LANDING_CHAT_OPEN ? '' : 'hidden lg:inline-flex '}glass-button-primary text-sm py-3 px-6\`}>
+                View Plans
+              </Link>`))
+  assert.ok(home.includes(`            <Link href={gatedSignupHref('sticky', '')} className="glass-button-primary w-full text-sm py-3 block text-center">
+              Create my free account
+            </Link>`))
+  // Open mode keeps the old sticky button, which scrolls to the chat.
+  assert.ok(home.includes(`          {LANDING_CHAT_OPEN ? (
+            <button
+              onClick={() => {
+                document.getElementById('hero-yuri')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+              className="glass-button-primary w-full text-sm py-3"
+            >
+              Ask Yuri About Your Skin
+            </button>
+          ) : (`))
+  const m = await loadLandingChat(undefined)
+  assert.equal(m.gatedSignupHref('hero_button', ''), '/register?plan=monthly&from=gate_hero_button')
+  assert.equal(m.gatedSignupHref('sticky', ''), '/register?plan=monthly&from=gate_sticky')
+})
