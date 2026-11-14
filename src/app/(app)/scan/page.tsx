@@ -28,9 +28,8 @@ export default function ScanPage() {
           <strong className="text-white/70">back</strong> for the ingredient list, then add the{' '}
           <strong className="text-white/70">front</strong> for the name and brand — the camera takes
           one shot at a time, so use &ldquo;Add other side&rdquo; for the second. Yuri reads the
-          Korean text, extracts every ingredient, and gives you personalized intelligence: safety
-          analysis, skin-type match, price comparison, community reviews, and authenticity
-          verification.
+          Korean text, extracts every ingredient, and gives you a safety read, how it fits your
+          skin profile, prices where we have them, and counterfeit markers for the brand if we hold any.
         </p>
         <p className="text-xs text-white/30 leading-relaxed mt-2">
           For the ingredient list, shoot the back panel straight-on in even light. Backlighting a

@@ -92,7 +92,7 @@ export async function runHealthCheck(db: SupabaseClient): Promise<HealthReport> 
     const total = data?.length ?? 0
     const empty = (data ?? []).filter((m) => !m.content || String(m.content).trim().length < 5).length
     const errorish = (data ?? []).filter((m) =>
-      /something went wrong|i'?m having a moment|stream error/i.test(String(m.content || ''))
+      /something went wrong|i'?m having a moment|stream error|i ran out of steps/i.test(String(m.content || ''))
     ).length
     const bad = empty + errorish
     push({

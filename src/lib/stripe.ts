@@ -38,7 +38,7 @@ export const SUBSCRIPTION_TIERS = {
       'Finds dupes & the right sunscreen for your skin',
       // Nov 13 2026: "cycle-aware" (on for 0 of 61 profiles) and "before it
       // hits the US" (a prediction, not a measurement) came off the sold plan.
-      'Local weather & UV in her advice, once you add your location',
+      'Check-in notes from Yuri, with your local forecast once your location is on file',
       'Daily Olive Young & Reddit trend data',
     ],
   },

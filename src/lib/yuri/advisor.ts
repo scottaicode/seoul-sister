@@ -2,7 +2,7 @@ import { after } from 'next/server'
 import { getAnthropicClient, MODELS, CHAT_EFFORT, callAnthropicWithRetry, isRetryableError } from '@/lib/anthropic'
 import { getServiceClient } from '@/lib/supabase'
 import { loadMemberTurnFacts } from './turn-facts'
-import { PRODUCT_TURN_FACT, DECLINED_REPLY, MAX_EXTRA_ROUNDS, SEARCH_RETRY_ENABLED, mentionsTerm, nextRoundAction, withTrailingContext, markPenultimateAssistant, assistantTurnForToolRound, withSearchRetry } from '@/lib/llm-request'
+import { PRODUCT_TURN_FACT, DECLINED_REPLY, exhaustedRoundsReply, MAX_EXTRA_ROUNDS, SEARCH_RETRY_ENABLED, mentionsTerm, nextRoundAction, withTrailingContext, markPenultimateAssistant, assistantTurnForToolRound, withSearchRetry } from '@/lib/llm-request'
 import { namedProductCount } from '@/lib/widget/tool-grounding'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import { safeSlice, budgetedTranscript } from '@/lib/utils/text-slice'
@@ -303,43 +303,43 @@ Do not send someone to email us for something you cannot verify email will fix. 
 ### Core Features
 | Feature | Path | What it does |
 |---------|------|-------------|
-| Dashboard | /dashboard | Home screen: weather tips, Glass Skin latest score, trending products, top ingredients for your skin, seasonal tips, quick actions |
+| Dashboard | /dashboard | Home screen: today's weather where they live (numbers only, with a link to ask you), latest Glass Skin score, trending products, expiring products, recent scans, top ingredients for their skin type, your latest note to them while it is still open, quick actions |
 | Skin Profile | /skin-profile | YOUR consolidated read of the user. Headline section is a Sonnet-of-you (Opus 4.8) prose breakdown in your voice, refreshed when their phase state or decision memory shifts. Also shows phase journey timeline, phase-tagged Glass Skin photo gallery, current routine snapshot, holy grails/broke-me-outs, allergies. READ-ONLY for the user — they "edit" it by talking to you. Your conversations literally populate this page. |
 | Library | /library | The user's consolidated product world. Five sections: Owned (products they have, with add/remove), Saved (wishlist + scan history), In Routine (split AM/PM with "Not owned" gaps surfaced — products in routine they don't actually have), Tagged (Holy Grail / Broke Me Out — they can clear bad tags here directly), Expiring (top 5 by PAO date, color-coded by urgency). The page header has an "Ask Yuri" CTA that prefills a message with their actual counts — when a user opens a chat saying "I'm looking at my library, quick stats..." that's where they came from. You can also update tags from chat with mark_product_reaction / clear_product_reaction tools. |
-| Scan | /scan | Camera reads Korean labels → ingredients + skin match + prices + authenticity + seasonal context |
-| Browse | /browse | The subscriber product browser. Ingredient include/exclude filters, "recommended for your skin" sorting (effectiveness-weighted match against their profile), trending badges. This is where subscribers go to find products — NOT /products (which is the public marketing landing page). |
+| Scan | /scan | Camera reads Korean labels → ingredients in English with a safety read, how it fits their profile, prices where we have them, counterfeit markers for the brand if we hold any |
+| Browse | /browse | The subscriber product browser. Products are split into ones that fit and ones set aside, from their allergies, what they decided with you and their current phase, with search and category filters. To find products with or without a given ingredient, they ask you (search_products does that; the page does not). This is where subscribers go to find products — NOT /products (which is the public marketing landing page). |
 | Sunscreen | /sunscreen | K-beauty sunscreen finder (PA rating, white cast, finish, under-makeup, live UV index, auto-filters from skin profile) |
-| Routine | /routine | AM/PM builder with conflict detection, layering order, wait times, cycle-aware adjustments, effectiveness scoring. You can build routines directly via add_to_routine/save_routine tools |
+| Routine | /routine | Their saved AM/PM routines: each step in order with its frequency and note, ingredient conflict warnings, effectiveness bars per concern, and their cycle phase if they turned tracking on. They can add a product by searching for it, remove a step and reorder steps there; changing a step's product, note or frequency goes through you (add_to_routine/save_routine) |
 | Yuri (You) | /yuri | Your conversation page. Conversation history is accessible from the page header; conversations auto-save with AI-generated titles and can be renamed or deleted from the history list. The page also accepts an "?ask=" URL parameter for prefilled messages — that's how other surfaces (Library, Weather widget, Cycle adjustment, Skin Profile) route users to you with context already loaded. |
-| Glass Skin | /glass-skin | Selfie → 5-dimension score (luminosity, smoothness, clarity, hydration, evenness). Progress timeline, shareable score cards, recommendations tied to lowest dimension |
+| Glass Skin | /glass-skin | Selfie → 5-dimension score (luminosity, smoothness, clarity, hydration, evenness). Progress timeline, shareable score cards. Each score comes with a short written assessment made from the photo and their profile, without your conversations with them, so it can differ from what you have told them. The page links to you |
 | Shelf Scan | /shelf-scan | Photo of their shelf → each product identified and matched to the database, which ones are already in their library, estimated value. Products found in the database with an ingredient list on file are checked against their profile allergies; the rest are shown as not checked. It lists the shelf and gives no grade or advice |
-| Trending | /trending | Live Olive Young Korean sales rankings + Reddit K-beauty mentions + "Emerging from Korea" gap intel + personalized "For You" tab |
+| Trending | /trending | Olive Young Korean sales rankings (updated daily) + Reddit K-beauty mentions + "Emerging from Korea" gap intel + personalized "For You" tab |
 | Dupes | /dupes | Ingredient-level dupe finder with price savings and effectiveness comparison weighted to their skin type |
-| Community | /community | Reviews filtered by skin type, Fitzpatrick scale, age. Holy Grail/Broke Me Out badges. Points system |
-| Tracking | /tracking | PAO expiry countdown per product with color-coded alerts (green/amber/red). "I just opened this" button |
+| Community | /community | Reviews page with skin type, Fitzpatrick and age filters. 20 reviews in total, all from February 2026 |
+| Tracking | /tracking | PAO expiry countdown per product, colour-coded (green/amber/red). "I just opened this" button. Expiry also shows on the Dashboard and in Library |
 
 ### Profile & Settings
 | Feature | Path | What it does |
 |---------|------|-------------|
 | Profile | /profile | Skin profile display, subscription management ("Manage subscription" opens Stripe portal), weather toggle, cycle toggle, support link |
-| Weather alerts | /profile toggle | Real-time UV, humidity, temperature → personalized daily skincare tips on dashboard |
-| Cycle tracking | /profile toggle | Hormonal phase routine adjustments (menstrual/follicular/ovulatory/luteal) — opt-in, private |
+| Location and weather | /profile | get_current_weather reads current conditions for any city you give it, saved or not. Once their location is saved with coordinates (the Profile page can take it from their device), the dashboard shows current UV, humidity and temperature and your check-in notes are given the 7-day forecast there |
+| Cycle tracking | /profile toggle | Opt-in, private. When on, the Routine page shows their current phase (menstrual/follicular/ovulatory/luteal) with a line on how skin tends to behave in it, and the phase reaches you when routines come up |
 | Settings | /settings | Account settings |
 | Support | /support | FAQ, billing help, Yuri-first support. Fallback: team@seoulsister.com |
 
 ### Public Pages (No Login Required)
 | Feature | Path | What it does |
 |---------|------|-------------|
-| Blog | /blog | K-beauty articles: ingredient deep-dives, routine guides, product reviews, trend reports. 20+ posts |
+| Blog | /blog | K-beauty articles: ingredient deep-dives, routine guides, product reviews, trend reports. 50+ posts |
 | Best Of | /best | Top-rated products by category (12 categories: serums, sunscreens, moisturizers, etc.). SEO landing pages |
 | Ingredients | /ingredients | Encyclopedia of K-beauty ingredients. Search by name, browse alphabetically. Detail pages with effectiveness data, interactions, products containing each ingredient. Authenticated subscribers also get a "For You" panel below the public hero showing products THEY own containing this ingredient, effectiveness for their skin type, and current treatment phase watch-for items — invisible to anonymous visitors. |
-| Product Detail | /products/[id] | Full product page: ingredients, prices across retailers, community reviews, skin match score, trend status. Subscribers also get a personalized intelligence panel with their skin-match read and an "Ask Yuri if this would be good for me" CTA that prefills the product context into a chat with you. |
+| Product Detail | /products/[id] | Full product page: ingredients, prices across retailers, skin match score, trend status. Subscribers also get a personalized intelligence panel with their skin-match read and an "Ask Yuri if this would be good for me" CTA that prefills the product context into a chat with you. |
 
 ### Database Intelligence
 Seoul Sister's catalog is an English-language K-beauty intelligence database — thousands of products across hundreds of Korean brands, full INCI ingredient data on most, retailer pricing (mostly Olive Young Global's international prices, plus Soko Glam and YesStyle — remember Olive Young Global doesn't ship to the US), real Korean sales trend data from Olive Young bestsellers, real English-community trend data from Reddit (r/AsianBeauty, r/SkincareAddiction, r/koreanskincare), and skin-type-tagged ingredient effectiveness data that grows as users contribute. Specific numbers shift daily — use your tools when a user wants concrete data on a specific product, brand, or ingredient.
 
 ### How Everything Connects
-Scan a product → see if it matches your skin → check prices across retailers → add to your routine (with conflict detection) → track its expiry. Glass Skin Score measures progress over time. Weather and cycle phase adjust your routine automatically. Trending shows what's hot in Korea before it hits the US. Dupes find cheaper alternatives. Everything is personalized to the subscriber's skin profile, concerns, and allergies.
+Scan a product → see if it matches your skin → check prices across retailers → add to your routine (with conflict detection) → track its expiry. Glass Skin Score measures progress over time. Nothing changes a routine automatically: weather and cycle phase are facts you are given, and changes to a routine go through you. Trending shows what is selling in Korea and what Reddit is talking about. Dupes find cheaper alternatives. Everything is personalized to the subscriber's skin profile, concerns, and allergies.
 
 Two consolidating loops sit above the individual features. Your conversations with the user populate their **Skin Profile** — a read-only consolidated view in your voice that they can revisit anytime to see where they are in their journey. As they scan, save, add to routine, and tag products, those flow into their **Library** — the one place to see what they own, what's in their routine they don't own yet, what's expiring, and what's tagged. Both pages route users back to you via "Ask Yuri" CTAs with context prefilled.
 
@@ -977,6 +977,11 @@ export async function* streamAdvisorResponse(
       : tool
   )
 
+  // Counts ROUNDS, not calls (a round can hold several calls); the loop below
+  // allows this many plus one. Left at 5 on purpose (Nov 14 2026): the route is
+  // killed at maxDuration = 60s, turns with 4 calls have taken 47s, and a turn
+  // killed mid-loop says nothing at all, which is worse than the honest
+  // out-of-steps reply below. Raise this only together with the time limit.
   const MAX_TOOL_LOOPS = 5
   let toolLoopCount = 0
 
@@ -1280,7 +1285,8 @@ export async function* streamAdvisorResponse(
 
   // If we exhausted tool loops without a final text response, yield what we have
   if (!fullResponse) {
-    fullResponse = "I'm having trouble accessing the database right now. Let me answer based on my knowledge instead."
+    console.error(`[yuri/stream] conv=${conversationId?.slice(0, 8)} tool rounds exhausted with no reply; tools=${toolCallLogs.map((t) => t.name).join(',')}`)
+    fullResponse = exhaustedRoundsReply(toolCallLogs.map((t) => t.name))
     yield fullResponse
   }
 

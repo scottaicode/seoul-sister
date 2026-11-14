@@ -14,7 +14,7 @@
 - **Counterfeit Warning Signs**: Yuri explains what to check on packaging and sellers; known counterfeit markers are held for a small number of brands
 - **Personalized Routine Builder**: Yuri builds AM/PM routines with the member in conversation, with layering order, how often to use each product, and ingredient conflict checks
 - **Trending Intelligence**: Olive Young bestseller rankings from Korea refreshed daily, Reddit community mention scanning across r/AsianBeauty and related subreddits, "Emerging from Korea" gap scores for products selling in Korea with few Reddit mentions, and personalized "For You" trending filtered by skin type
-- **Local Weather and UV**: Humidity, UV index and temperature for the member's location (Open-Meteo data), shown on the dashboard and available to Yuri when she advises
+- **Local Weather and UV**: Once a member adds a location, Yuri's check-in notes read the 7-day forecast there (Open-Meteo data), the dashboard shows current humidity, UV index and temperature, and Yuri can read current conditions when she advises
 
 ## Product Categories
 Cleansers, toners, essences, serums, ampoules, moisturizers, sunscreens, masks, eye care, lip care, exfoliators, oils, mists, spot treatments
@@ -74,7 +74,7 @@ COSRX, Sulwhasoo, Laneige, Innisfree, Missha, Etude House, Klairs, Beauty of Jos
 6. **Sensitivity Guardian** — Allergy cross-reactivity, barrier repair, gentle alternatives, hormonal cycle skin effects
 
 ## Pricing
-Seoul Sister Pro: $9.99/month, with a 7-day free trial for new members (no card needed to start, cancel anytime). Includes 80 messages a month with the Yuri AI advisor and 30 Korean label scans, all 6 built-in AI specialists, cross-session skin memory, conflict-aware routine builder, counterfeit warning signs, price comparison where retailer prices are available, Glass Skin Score photo tracking, dupe finder, sunscreen matching, local weather and UV in Yuri's advice, and daily Korean trend data. People can start with Yuri at https://www.seoulsister.com/ with a free account.
+Seoul Sister Pro: $9.99/month, with a 7-day free trial for new members (no card needed to start, cancel anytime). Includes 80 messages a month with the Yuri AI advisor and 30 Korean label scans, all 6 built-in AI specialists, cross-session skin memory, conflict-aware routine builder, counterfeit warning signs, price comparison where retailer prices are available, Glass Skin Score photo tracking, dupe finder, sunscreen matching, check-in notes from Yuri that read the local forecast, and daily Korean trend data. People can start with Yuri at https://www.seoulsister.com/ with a free account.
 
 ## Contact
 Website: https://seoulsister.com

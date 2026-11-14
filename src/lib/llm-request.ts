@@ -105,6 +105,30 @@ export const MAX_EXTRA_ROUNDS = 2
 export const DECLINED_REPLY = `I'm not able to take that one on. If it's a spot or a symptom that worries you, a dermatologist (피부과) is the right next stop. Anything about your skin, your routine, or a product, ask away.`
 
 /**
+ * Tools that only read. Anything NOT listed here is treated as a tool that may
+ * have changed the member's data, so a new write tool is covered without being
+ * added anywhere (and a new read tool errs toward "check your pages").
+ */
+export const READ_ONLY_TOOLS: readonly string[] = [
+  'search_products', 'get_product_details', 'check_ingredient_conflicts', 'get_trending_products',
+  'compare_prices', 'get_personalized_match', 'get_ingredient_guide', 'get_counterfeit_markers',
+  'web_search', 'get_current_weather', 'get_routine_context', 'find_sunscreen_match', 'find_product_dupes',
+]
+
+/**
+ * What the member reads when a turn used every tool round and never reached a
+ * written answer. It used to say "I'm having trouble accessing the database",
+ * which was false, and worse after a save: the routine was on their page and
+ * they were told nothing worked. This says what is true either way.
+ */
+export function exhaustedRoundsReply(toolNamesThisTurn: readonly string[]): string {
+  const mayHaveWritten = toolNamesThisTurn.some((name) => !READ_ONLY_TOOLS.includes(name))
+  return mayHaveWritten
+    ? 'I ran out of steps before I could finish that answer. Some of the changes I was making may already be saved, so check your Routine and Library pages, then ask me to pick it up from here.'
+    : 'I ran out of steps before I could finish that answer. Ask me again and I will pick it up from here.'
+}
+
+/**
  * Append the per-turn context as a mid-conversation system message AFTER the
  * newest user message. Valid placement on Opus 4.8 and 5.5 (no beta): it must
  * follow a user message and be last or followed by an assistant turn — which

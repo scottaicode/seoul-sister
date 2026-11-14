@@ -4,6 +4,45 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.3 — Yuri's description of the app made true; an honest out-of-steps reply; weather copy corrected (Nov 14 2026)
+
+- **Yuri's own description of the app** (the page table in her prompt) told members about things
+  that are gone or were never used. Corrected 13 rows to plain facts: the dashboard shows weather
+  numbers, not tips; scan has no seasonal context; the Routine page's real contents and what a
+  member can and cannot change there; the community page holds 20 reviews, all from February; expiry
+  shows on three pages; nothing changes a routine automatically.
+- **Out-of-steps reply.** When a turn used every tool round without reaching an answer, the member
+  was told "I'm having trouble accessing the database", which was never true and is worse after a
+  save. It now says she ran out of steps, and, if a tool that writes ran, to check the Routine and
+  Library pages. The Guardian's health check counts this reply as a bad one. Never fired in
+  production (0 stored rows with the old text).
+- **Weather copy corrected. An earlier entry in this file was wrong:** v11.61.0 said there was no
+  notification channel for weather. Yuri's check-in notes are given the 7-day forecast; two sent on
+  Nov 8 cite it (rows in `ss_proactive_judgments`, users `551569d3` and `b6decb40`). The homepage
+  card, pricing bullet and `llms.txt` now say so, "once your location is on file" (the forecast
+  needs coordinates; 2 of 3 current free-week members have them).
+- **Community reviews** removed from the signed-out product page teaser and the scan page.
+- **Homepage "Ingredient Filters" card reworded** to "Search by Ingredient: ask Yuri". The filter
+  controls on the member Browse page do nothing (see below); Yuri's own search does filter.
+- **Second-model review: run** (Opus 5.5, told to refute). Three blockers, all confirmed and fixed:
+  two of my new rows were false (Glass Skin "gives no advice": each score carries a written
+  assessment with advice in it; Browse "ingredient filters": inert), and I had raised the tool-round
+  limit from 5 to 8, which could push a long turn past the 60-second function limit and end it with
+  no reply at all. The limit is back at 5. **The fixes made after the review were not re-reviewed.**
+
+**Open, found by this review and NOT changed:**
+- **The Browse page's ingredient filters do nothing.** The controls are shown, the page sends
+  only search text and category, and the server reads no ingredient parameters.
+- **Glass Skin's written assessment gives advice** from one photo and the profile, without Yuri's
+  history with the member (e.g. "Boosting hydration and barrier support is the priority here").
+  Same class as Shelf Scan before v11.61.0.
+- **A long routine-build turn can run past 60 seconds** and be cut off with nothing shown, with
+  any saves already written. Turns with 4 tool calls have taken 47s. Needs a decision on the
+  function time limit or a time budget inside the loop.
+- The Profile page's weather switch writes a flag nothing reads; only its "use my location" step
+  matters. Dupe Finder is unchanged. The landing chat's own "having a moment accessing our
+  database" line is still there for when the chat is reopened.
+
 ## v11.61.2 — Yuri saves the routine a member asked for, and sees each step's instruction (Nov 14 2026)
 
 - **What happened.** The first stranger in a free week (conversation `56ccea80`) opened with the

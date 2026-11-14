@@ -51,8 +51,8 @@ const advancedFeatures = [
   { icon: DollarSign, title: 'K-Beauty Dupe Finder', desc: 'Compare ingredient lists to find lower-priced products with the same key actives, and see exactly where they overlap.' },
   { icon: Sun, title: 'Sunscreen Finder', desc: 'Filter Korean sunscreens by PA rating, white cast, finish, and how they sit under makeup.' },
   { icon: Package, title: 'Shelf Scan', desc: 'Photograph your shelf and each product is identified and matched against our database. Then ask Yuri what she makes of it.' },
-  { icon: Filter, title: 'Ingredient Filters', desc: 'Search 5,300+ products by ingredients you want and ingredients you avoid. Fragrance-free and low-comedogenic shortcuts built in.' },
-  { icon: CloudSun, title: 'Local Weather and UV', desc: 'Once you add your location, your dashboard shows the humidity and UV where you live, and Yuri can read the same conditions when you ask how they affect your skin.' },
+  { icon: Filter, title: 'Search by Ingredient', desc: 'Ask Yuri for products with the ingredients you want and without the ones you avoid, across 5,300+ products.' },
+  { icon: CloudSun, title: 'Local Weather and UV', desc: 'Once you add your location, Yuri\'s check-in notes read the week\'s forecast where you live, and your dashboard shows today\'s humidity and UV.' },
 ]
 
 const specialists = [

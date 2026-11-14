@@ -1213,7 +1213,7 @@ test('pricing card: the free week leads and the price is stated; the allowance l
     'Glass Skin Score photo tracking',
     'Counterfeit warning signs & price checks',
     'Finds dupes & the right sunscreen for your skin',
-    'Local weather & UV in her advice, once you add your location',
+    'Check-in notes from Yuri, with your local forecast once your location is on file',
     'Daily Olive Young & Reddit trend data',
   ])
 

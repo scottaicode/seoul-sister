@@ -168,8 +168,8 @@ export default function ProductIntelligenceSection({ productId, productName, pro
         />
         <GatedTeaser
           icon={<Star className="w-5 h-5 text-rose-400" />}
-          title="Community Reviews by Skin Type"
-          description="Read reviews filtered by your skin type, age, and concerns. See Holy Grail and Broke Me Out counts."
+          title="Checked Against Your Shelf and Routine"
+          description="As a member, Yuri answers with your saved products and routine in front of her."
         />
       </div>
 
@@ -179,8 +179,7 @@ export default function ProductIntelligenceSection({ productId, productName, pro
         </h2>
         <p className="text-white/60 text-sm mb-6 max-w-lg mx-auto">
           Seoul Sister Pro gives you personalized skin matching, full ingredient analysis,
-          multi-retailer price comparison, community reviews, AI-powered advice, and more
-          for every product in our database.
+          where-to-buy guidance and Yuri&apos;s advice for the products in our database.
         </p>
         <Link
           href="/register"
