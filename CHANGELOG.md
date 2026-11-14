@@ -4,6 +4,36 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.60.2 — 426 catalog products were filed under the wrong brand (data correction, Nov 13 2026)
+
+Found by the first real trial member, who went to buy her routine and reported "two products where
+the name didn't fully match". Yuri had recommended "Anua Retinal Skin Booster Serum" and "Beplain
+Phytoncide Mild Cleansing Foam". The products are real, but they are Meditherapy's and KLAVUU's,
+and Yuri named US stores for the wrong brands.
+
+- **Cause.** The Olive Young import of Feb 19 2026 saved a wrong `brand_en` on some products. The
+  true brand was the front of the scraped title (`ss_product_staging.raw_data.name_en`), and
+  processing stripped it off the name. Ingredients, prices and links were right; only the brand
+  (and for some rows the name) was wrong. Rows scraped since March do not show it.
+- **Scope, measured.** 499 of 5,656 products had a stored brand that appears nowhere in their
+  scraped title; 470 came from that one import, mostly under Anua, Beplain, Aestura, CAREPLUS,
+  Banila Co, Centellian24 and Medicube.
+- **Fixed: 426.** `scripts/fix-wrong-brand-feb19-scrape.mjs` (276: the name sat inside the title
+  with the brand in front) and `scripts/fix-wrong-brand-feb19-pass2.mjs` (150: the brand was still
+  the first word of the name, or the name differed slightly, plus 22 read by eye). Three rows had
+  been renamed into best-sellers they are not (a plodica cream as "Aestura Atobarrier 365", a SHHOM
+  balm as "Banila Co Clean It Zero", a The Harnay serum as "Anua Heartleaf Ampoule Serum"). Every
+  row was guarded on still holding the wrong value; verified from the database afterwards (0 rows
+  differ from the intended brand and name). Before-and-after lists are in `scripts/wrong-brand-feb19-*.json`.
+- **Checked.** No published blog post names a corrected product under its old brand. 6 saved
+  routine steps point at corrected products (same product ids, so they now show the right brand).
+- **Not fixed: 73.** 17 need a manual look (10 would duplicate a correctly listed product, 5 have
+  unusable titles, 2 unplaced) and 58 are under brands outside the affected group, where a 45-row
+  sample suggested most are false alarms (edition tags, Korean-only titles). Not gone through.
+- **Not done.** Yuri's saved notes about that member still say "Anua" and "Beplain"; her account was
+  not touched. Nothing stops a future import repeating this: there is no check that the stored
+  brand appears in the scraped title.
+
 ## v11.60.1 — The closed landing page on a phone: no clipped greeting, sign-up one tap away (Nov 13 2026)
 
 From the owner's iPhone, minutes after v11.60.0 went live:

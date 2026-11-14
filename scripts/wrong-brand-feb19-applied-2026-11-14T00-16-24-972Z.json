@@ -1,0 +1,3801 @@
+{
+  "taken_at": "2026-11-14T00:16:24.973Z",
+  "applied": true,
+  "fix": [
+    {
+      "id": "384cdb43-7dbe-434b-8dd7-eeece1df4ef8",
+      "stored_brand": "Anua",
+      "name": "Green Barley Zinc Serum",
+      "scraped_title": "veganifect. Green Barley Zinc Serum 30ml",
+      "source_id": "GA250531110",
+      "true_brand": "Veganifect"
+    },
+    {
+      "id": "a62ee11e-2312-4518-b436-b6c0761b67bc",
+      "stored_brand": "Centellian24",
+      "name": "Differensea Blue Biome Repair Melting Cream",
+      "scraped_title": "picore Differensea Blue Biome Repair Melting Cream 40ml",
+      "source_id": "GA241026429",
+      "true_brand": "picore"
+    },
+    {
+      "id": "097d37ad-12a6-4304-ac28-483b4d123a5b",
+      "stored_brand": "Medicube",
+      "name": "Vitamin Pudding Mist Ampoule",
+      "scraped_title": "Chaewun Vitamin Pudding Mist Ampoule 100g",
+      "source_id": "GA251135104",
+      "true_brand": "Chaewun"
+    },
+    {
+      "id": "4415cb5b-5040-4408-a97a-5f8a04a5a00f",
+      "stored_brand": "Anua",
+      "name": "At Clinic Volufiline Shot Ampoule",
+      "scraped_title": "Dominas At Clinic Volufiline Shot Ampoule 30ml",
+      "source_id": "GA250228873",
+      "true_brand": "Dominas"
+    },
+    {
+      "id": "0eeb4355-bc02-4233-b2d1-598feb6b822c",
+      "stored_brand": "Anua",
+      "name": "Bakuchiol Serum",
+      "scraped_title": "VANCOR Bakuchiol Serum 30ml",
+      "source_id": "GA240925790",
+      "true_brand": "VANCOR"
+    },
+    {
+      "id": "e0a56a07-67e3-4dd5-b0b0-c3d77e83a5d0",
+      "stored_brand": "Anua",
+      "name": "Pore Tightener EX",
+      "scraped_title": "MdoC Skin Pore Tightener EX 50ml",
+      "source_id": "GA240724606",
+      "true_brand": "MdoC Skin"
+    },
+    {
+      "id": "e32585b4-0357-42dd-ae82-3e94f499f946",
+      "stored_brand": "BOHO",
+      "name": "Tone Up All In One Essence",
+      "scraped_title": "PORMANS Tone Up All In One Essence 150mL",
+      "source_id": "GA220113213",
+      "true_brand": "PORMANS"
+    },
+    {
+      "id": "09b2d1d4-e549-45b8-8775-844d5a57c7eb",
+      "stored_brand": "CAREPLUS",
+      "name": "Patch Clear",
+      "scraped_title": "HAPYDOPY Patch Clear 88P",
+      "source_id": "GA250128285",
+      "true_brand": "HAPYDOPY"
+    },
+    {
+      "id": "22474af6-9e29-45de-9d24-5d0090e1a69c",
+      "stored_brand": "Beplain",
+      "name": "Propolis Gentle Cleansing Foam",
+      "scraped_title": "JOODOC Propolis Gentle Cleansing Foam 160ml",
+      "source_id": "GA251135126",
+      "true_brand": "JOODOC"
+    },
+    {
+      "id": "756a9287-5f84-450d-93fb-417c369401aa",
+      "stored_brand": "Anua",
+      "name": "Tea Tree 90 Calming Toner",
+      "scraped_title": "essenHERB Tea Tree 90 Calming Toner 320mL",
+      "source_id": "GA220815812",
+      "true_brand": "essenHERB"
+    },
+    {
+      "id": "06b67001-8d32-47c0-b5e9-f35ed9e790ce",
+      "stored_brand": "Anua",
+      "name": "Etsere Melatonic Ampoule",
+      "scraped_title": "DEMAR3 Etsere Melatonic Ampoule 70mL",
+      "source_id": "GA231020677",
+      "true_brand": "DEMAR3"
+    },
+    {
+      "id": "bfe33d72-2da7-4df9-95dc-e7c2b386cb41",
+      "stored_brand": "Anua",
+      "name": "The Real Vita C 20 Ampoule",
+      "scraped_title": "BLIVU The Real Vita C 20 Ampoule 12mL",
+      "source_id": "GA230719539",
+      "true_brand": "BLIVU"
+    },
+    {
+      "id": "b0cbfcda-6cb4-4c2b-8892-aee881a99d4c",
+      "stored_brand": "Anua",
+      "name": "Forest Relaxing Toner",
+      "scraped_title": "ASIS-TOBE Forest Relaxing Toner 200ml",
+      "source_id": "GA250229058",
+      "true_brand": "ASIS-TOBE"
+    },
+    {
+      "id": "16a2b0bd-c796-4aa7-a190-bf2833f8b88d",
+      "stored_brand": "Anua",
+      "name": "Cica Expert Mist Toner",
+      "scraped_title": "CICA·GO Cica Expert Mist Toner 150ml",
+      "source_id": "GA210001062",
+      "true_brand": "CICA·GO"
+    },
+    {
+      "id": "553c8424-24c2-489c-9eab-66630fd2b9ef",
+      "stored_brand": "Ariul",
+      "name": "Camo Cleansing Pad",
+      "scraped_title": "Keenoniks Camo Cleansing Pad 70 Sheets",
+      "source_id": "GA210002644",
+      "true_brand": "Keenoniks"
+    },
+    {
+      "id": "96424b49-b635-4b5e-be8c-abad0bfeccf0",
+      "stored_brand": "Aestura",
+      "name": "Derma Teca Calming Cream",
+      "scraped_title": "OAZO Derma Teca Calming Cream",
+      "source_id": "GA251034530",
+      "true_brand": "OAZO"
+    },
+    {
+      "id": "b83f481d-57a2-4433-9768-b16428d5e188",
+      "stored_brand": "Aestura",
+      "name": "Color Food Series Green Glow-Up Cream",
+      "scraped_title": "Tovegan Color Food Series Green Glow-Up Cream 50ml",
+      "source_id": "GA250933416",
+      "true_brand": "Tovegan"
+    },
+    {
+      "id": "1b56cbe9-1d72-46f3-9f9f-75e8b7079cb5",
+      "stored_brand": "Anua",
+      "name": "Expert Pore Ampoule Mask",
+      "scraped_title": "AIPPO Expert Pore Ampoule Mask 30ml",
+      "source_id": "GA250732010",
+      "true_brand": "AIPPO"
+    },
+    {
+      "id": "09505779-fa30-45d2-a719-63b46841e5fb",
+      "stored_brand": "Anua",
+      "name": "PDRN Yeon-Uh Ampoule",
+      "scraped_title": "COOPY PDRN Yeon-Uh Ampoule 30ml",
+      "source_id": "GA241126941",
+      "true_brand": "COOPY"
+    },
+    {
+      "id": "80745bfe-d81e-4801-9064-596df64414ee",
+      "stored_brand": "Anua",
+      "name": "Meliturn Ampoule 2.0",
+      "scraped_title": "CELLOLOGY Meliturn Ampoule 2.0 30ml",
+      "source_id": "GA250228515",
+      "true_brand": "CELLOLOGY"
+    },
+    {
+      "id": "b225a393-570d-4e7b-b2f8-833b7afa85cf",
+      "stored_brand": "Aestura",
+      "name": "Melaless Cream",
+      "scraped_title": "WONJIN EFFECT Melaless Cream 80g",
+      "source_id": "GA240121574",
+      "true_brand": "WONJIN EFFECT"
+    },
+    {
+      "id": "f2fc0f5a-5b66-4aa3-b338-040be161822b",
+      "stored_brand": "Medicube",
+      "name": "Hyaluronic Acid Pudding Mist Ampoule",
+      "scraped_title": "Chaewun Hyaluronic Acid Pudding Mist Ampoule 100g",
+      "source_id": "GA251135111",
+      "true_brand": "Chaewun"
+    },
+    {
+      "id": "0748aa7e-b1f2-4eb3-ae90-9498216c8840",
+      "stored_brand": "Centellian24",
+      "name": "Erseongcho Cream",
+      "scraped_title": "Heynature Erseongcho Cream 80g",
+      "source_id": "GA210811633",
+      "true_brand": "Heynature"
+    },
+    {
+      "id": "c87ee0db-d933-47d4-aac3-ecf0216c1a6f",
+      "stored_brand": "Centellian24",
+      "name": "Peptide Recovery Cream",
+      "scraped_title": "OGANACELL New Peptide Recovery Cream 50mL",
+      "source_id": "GA220213515",
+      "true_brand": "OGANACELL"
+    },
+    {
+      "id": "1a9b4d50-f1fd-4ab3-bde2-6b72e19f2b72",
+      "stored_brand": "Anua",
+      "name": "Regen Crystal Ampoule",
+      "scraped_title": "SeohaeSol Regen Crystal Ampoule 50ml",
+      "source_id": "GA250631239",
+      "true_brand": "SeohaeSol"
+    },
+    {
+      "id": "e33f80b1-18d2-4aea-8ea3-cfe26f614574",
+      "stored_brand": "Anua",
+      "name": "Fountain Water Toner",
+      "scraped_title": "MUGSCOOP Fountain Water Toner 500ml",
+      "source_id": "GA250731985",
+      "true_brand": "MUGSCOOP"
+    },
+    {
+      "id": "374fed13-37cc-4d85-a8a2-9802eaee6f0c",
+      "stored_brand": "Aestura",
+      "name": "Sea Grape Pore Lifting Cream",
+      "scraped_title": "mommycare Sea Grape Pore Lifting Cream 50g",
+      "source_id": "GA250429817",
+      "true_brand": "Mommycare"
+    },
+    {
+      "id": "fe61da71-b041-4d79-95ac-9b39e0d10f53",
+      "stored_brand": "CAREPLUS",
+      "name": "Trouble Cure",
+      "scraped_title": "acropass Trouble Cure 36P",
+      "source_id": "GA210610723",
+      "true_brand": "Acropass"
+    },
+    {
+      "id": "94f23527-b44b-415f-a2e4-15129a5c501b",
+      "stored_brand": "Beplain",
+      "name": "Vegan Clarifying Foam Cleanser",
+      "scraped_title": "melixir Vegan Clarifying Foam Cleanser 100ml",
+      "source_id": "GA250933356",
+      "true_brand": "Melixir"
+    },
+    {
+      "id": "3ea4943b-e7d1-4c43-9ecc-bac3de951dbf",
+      "stored_brand": "Anua",
+      "name": "Nutritious Watery Essence Toner",
+      "scraped_title": "neaf neaf Nutritious Watery Essence Toner 180ml",
+      "source_id": "GA260136453",
+      "true_brand": "neaf neaf"
+    },
+    {
+      "id": "4e6ceca2-9575-4fc6-aa51-708aed10ea33",
+      "stored_brand": "CAREPLUS",
+      "name": "Handy Tok! Point Patch 45P",
+      "scraped_title": "snow2plus Handy Tok! Point Patch 45P",
+      "source_id": "GA250731911",
+      "true_brand": "Snow2plus"
+    },
+    {
+      "id": "6d8fba64-ada0-4627-9842-26995d7402df",
+      "stored_brand": "Aestura",
+      "name": "Pure Phagy Cream RX",
+      "scraped_title": "LA DOLF Pure Phagy Cream RX 80g",
+      "source_id": "GA240825303",
+      "true_brand": "LA DOLF"
+    },
+    {
+      "id": "061587d5-4125-46b1-be45-67411d11fd51",
+      "stored_brand": "Anua",
+      "name": "Soop Calming Aqua Serum",
+      "scraped_title": "AboutMe Soop Calming Aqua Serum 50mL",
+      "source_id": "GA230920539",
+      "true_brand": "AboutMe"
+    },
+    {
+      "id": "21d9b789-52bb-4f61-8b64-d0318d720695",
+      "stored_brand": "Aestura",
+      "name": "Wonder Veggie Hydrating Gel Cream",
+      "scraped_title": "hersteller Wonder Veggie Hydrating Gel Cream 80ml",
+      "source_id": "GA251236061",
+      "true_brand": "Hersteller"
+    },
+    {
+      "id": "a771566b-1cbf-4ae6-9989-d53fba930441",
+      "stored_brand": "Anua",
+      "name": "Rice Enzyme Protein Toner",
+      "scraped_title": "FLASKIN Rice Enzyme Protein Toner 250mL",
+      "source_id": "GA240122019",
+      "true_brand": "FLASKIN"
+    },
+    {
+      "id": "f45a4c2f-91e6-403d-ad3b-55cf15918c34",
+      "stored_brand": "Beplain",
+      "name": "Pick Pack Cleanser",
+      "scraped_title": "OFBASE Pick Pack Cleanser 200ml",
+      "source_id": "GA240724607",
+      "true_brand": "OFBASE"
+    },
+    {
+      "id": "4e054ebb-40e7-4856-9ce0-c2f82cc7059f",
+      "stored_brand": "Centellian24",
+      "name": "Clean & Glow Green Sedum Moisture Cream",
+      "scraped_title": "Veganifect Clean & Glow Green Sedum Moisture Cream 50g",
+      "source_id": "GA220816013",
+      "true_brand": "Veganifect"
+    },
+    {
+      "id": "b3785d43-53f4-47a7-a234-d4065e4faf54",
+      "stored_brand": "Anua",
+      "name": "Amino Acid Toner",
+      "scraped_title": "dixionist Amino Acid Toner 250ml",
+      "source_id": "GA241026017",
+      "true_brand": "dixionist"
+    },
+    {
+      "id": "6d53ef68-3c32-44af-ab1d-7b6b32eba3aa",
+      "stored_brand": "Anua",
+      "name": "Multox Booster Ampoule",
+      "scraped_title": "Bnote Multox Booster Ampoule 30ml",
+      "source_id": "GA251034227",
+      "true_brand": "Bnote"
+    },
+    {
+      "id": "ba1f80a8-913f-4981-875e-578958a311d7",
+      "stored_brand": "Anua",
+      "name": "Hyper Hyal Plumping Ampoule",
+      "scraped_title": "Re:NK Hyper Hyal Plumping Ampoule 100ml",
+      "source_id": "GA250530664",
+      "true_brand": "Re:NK"
+    },
+    {
+      "id": "91f1dbb8-529e-4544-b71b-3b5797a08b5a",
+      "stored_brand": "Anua",
+      "name": "Cita DU Reacting Toner 2.0",
+      "scraped_title": "DEMAR3 Cita DU Reacting Toner 2.0 150mL",
+      "source_id": "GA230820066",
+      "true_brand": "DEMAR3"
+    },
+    {
+      "id": "68735389-1ace-4272-addb-043949a4a304",
+      "stored_brand": "Anua",
+      "name": "PDRN Yeon-Uh Ampoule Toner",
+      "scraped_title": "COOPY PDRN Yeon-Uh Ampoule Toner 300ml",
+      "source_id": "GA241126944",
+      "true_brand": "COOPY"
+    },
+    {
+      "id": "fd417f56-4f25-4522-8f19-d07fdad0b7cf",
+      "stored_brand": "CAREPLUS",
+      "name": "V-Fit Patch",
+      "scraped_title": "dr.ppae V-Fit Patch 1 Pair*5ea",
+      "source_id": "GA250631209",
+      "true_brand": "Dr.ppae"
+    },
+    {
+      "id": "c41320ae-460f-49f8-b681-06cf1225831a",
+      "stored_brand": "Aestura",
+      "name": "Soop Calming Aqua Cream",
+      "scraped_title": "AboutMe Soop Calming Aqua Cream 80mL",
+      "source_id": "GA220414248",
+      "true_brand": "AboutMe"
+    },
+    {
+      "id": "93169d39-25b3-4325-a73b-3246976d9c01",
+      "stored_brand": "Beplain",
+      "name": "Anti-Cne Gel Cleanser",
+      "scraped_title": "Belprimo Anti-Cne Gel Cleanser 125g Set (+30g)",
+      "source_id": "GA241026052",
+      "true_brand": "Belprimo"
+    },
+    {
+      "id": "a0e186c7-3354-4d3e-9f28-3f731082e638",
+      "stored_brand": "Aestura",
+      "name": "Regenerative Schild Cream",
+      "scraped_title": "ARZTIN Regenerative Schild Cream 50g",
+      "source_id": "GA250228449",
+      "true_brand": "ARZTIN"
+    },
+    {
+      "id": "715a3fe5-dced-40ff-a8fe-579fb938241b",
+      "stored_brand": "Aestura",
+      "name": "Calming Tok Cica Heartleaf Cream",
+      "scraped_title": "EDIT.B Calming Tok Cica Heartleaf Cream 100ml",
+      "source_id": "GA240724601",
+      "true_brand": "EDIT.B"
+    },
+    {
+      "id": "1aafacdc-ba43-40ad-901e-01fd99698b31",
+      "stored_brand": "Anua",
+      "name": "Kombucha Plant Biome Serum",
+      "scraped_title": "herbloom Kombucha Plant Biome Serum 50mL",
+      "source_id": "GA220816010",
+      "true_brand": "Herbloom"
+    },
+    {
+      "id": "b3ebd236-8ffc-4df4-8d7d-06a68fbb176e",
+      "stored_brand": "Banila Co",
+      "name": "2X Fresh Bam Balm To Foam Facial Cleanser",
+      "scraped_title": "PODL 2X Fresh Bam Balm To Foam Facial Cleanser 130ml",
+      "source_id": "GA250732096",
+      "true_brand": "PODL"
+    },
+    {
+      "id": "95862eda-896d-4026-a77d-b24bbacf212c",
+      "stored_brand": "Centellian24",
+      "name": "Centellascar Ointment",
+      "scraped_title": "MILD LAB Centellascar Ointment 30g",
+      "source_id": "GA230317979",
+      "true_brand": "MILD LAB"
+    },
+    {
+      "id": "c3bed0d3-6d12-4002-8570-b67791042467",
+      "stored_brand": "Anua",
+      "name": "4GF Derma Repair Hydro Serum",
+      "scraped_title": "CELORABY 4GF Derma Repair Hydro Serum 30ml",
+      "source_id": "GA250228439",
+      "true_brand": "CELORABY"
+    },
+    {
+      "id": "c45bbe3f-0b13-4343-a776-35a6e3741e46",
+      "stored_brand": "Anua",
+      "name": "The Origin Mist Toner",
+      "scraped_title": "Unstraum The Origin Mist Toner 150ml",
+      "source_id": "GA240925601",
+      "true_brand": "Unstraum"
+    },
+    {
+      "id": "777e0e6c-407f-4c78-b474-8e061ff586e9",
+      "stored_brand": "Banila Co",
+      "name": "Tea Tree Anti-Sebum Deep Cleansing Oil",
+      "scraped_title": "essenHERB Tea Tree Anti-Sebum Deep Cleansing Oil 300ml",
+      "source_id": "GA240925807",
+      "true_brand": "essenHERB"
+    },
+    {
+      "id": "6a896e1b-ef3f-43ba-9419-92041d94206d",
+      "stored_brand": "Aestura",
+      "name": "Dr. Ceramide Cream",
+      "scraped_title": "VANCOR Dr. Ceramide Cream 60ml",
+      "source_id": "GA241026339",
+      "true_brand": "VANCOR"
+    },
+    {
+      "id": "97c33ea0-dbe8-4559-8d1b-36ba8a1c3294",
+      "stored_brand": "CAREPLUS",
+      "name": "Hydro Dot Eraser Patch",
+      "scraped_title": "ELABAND Hydro Dot Eraser Patch",
+      "source_id": "GA210000320",
+      "true_brand": "ELABAND"
+    },
+    {
+      "id": "5db27198-8628-4138-afbc-4792c11c6e19",
+      "stored_brand": "Centellian24",
+      "name": "Kombucha Vegan Collagen Cream",
+      "scraped_title": "herbloom Kombucha Vegan Collagen Cream 50mL",
+      "source_id": "GA220816011",
+      "true_brand": "Herbloom"
+    },
+    {
+      "id": "9b98e902-78ef-456a-ba70-ec2d7470ae9d",
+      "stored_brand": "Banila Co",
+      "name": "Pear Scrub Cleansing Oil",
+      "scraped_title": "FORTUNA  Pear Scrub Cleansing Oil 250ml",
+      "source_id": "GA241126962",
+      "true_brand": "FORTUNA"
+    },
+    {
+      "id": "710d19fd-a9ad-4686-820f-3394d73b153f",
+      "stored_brand": "Anua",
+      "name": "Soothing Calm Ampoule",
+      "scraped_title": "neaf neaf Soothing Calm Ampoule 30ml",
+      "source_id": "GA260136432",
+      "true_brand": "neaf neaf"
+    },
+    {
+      "id": "1379704d-a68f-430f-b43b-4f4e383d02cb",
+      "stored_brand": "Aestura",
+      "name": "Pore Solution Tightening Cream",
+      "scraped_title": "Feelkeen Pore Solution Tightening Cream 50ml",
+      "source_id": "GA241227388",
+      "true_brand": "Feelkeen"
+    },
+    {
+      "id": "6b9e3ca8-66a1-4def-abb1-5105cced10e2",
+      "stored_brand": "CAREPLUS",
+      "name": "LIGHT Retinal Age Reset Neck Patch",
+      "scraped_title": "essl LIGHT Retinal Age Reset Neck Patch 7g*3P",
+      "source_id": "GA251135250",
+      "true_brand": "essl"
+    },
+    {
+      "id": "754e1701-5b99-41a1-b238-9221e306d509",
+      "stored_brand": "Ilso",
+      "name": "Sea Grape Aqua Sebum Softener",
+      "scraped_title": "mommycare Sea Grape Aqua Sebum Softener 145ml",
+      "source_id": "GA250429895",
+      "true_brand": "Mommycare"
+    },
+    {
+      "id": "7f0929b1-1a19-4b6c-b62f-0bd2e7ec2367",
+      "stored_brand": "Centellian24",
+      "name": "Birch Rich Origin Cream",
+      "scraped_title": "Soofe'e Birch Rich Origin Cream 50mL",
+      "source_id": "GA220916093",
+      "true_brand": "Soofe'e"
+    },
+    {
+      "id": "6125da30-c6c6-4f66-ba4c-59919e399b44",
+      "stored_brand": "Ariul",
+      "name": "Daily Derma Cleansing Pads Mild",
+      "scraped_title": "Nightingale Daily Derma Cleansing Pads Mild 70 Sheets",
+      "source_id": "GA210000506",
+      "true_brand": "Nightingale"
+    },
+    {
+      "id": "5c7508ee-695e-4558-8273-27745d098a72",
+      "stored_brand": "Anua",
+      "name": "Pore Shot Ampoule",
+      "scraped_title": "CELLOLOGY Pore Shot Ampoule 30ml",
+      "source_id": "GA250228516",
+      "true_brand": "CELLOLOGY"
+    },
+    {
+      "id": "73a32d12-19dd-4cb5-84d3-d85e0cb23a44",
+      "stored_brand": "Anua",
+      "name": "Octuple Hyaluron Moist Essence",
+      "scraped_title": "12GRABS Octuple Hyaluron Moist Essence 50ml",
+      "source_id": "GA241126938",
+      "true_brand": "12GRABS"
+    },
+    {
+      "id": "bb680646-af79-462a-b4ab-c221b6cfe81d",
+      "stored_brand": "Centellian24",
+      "name": "Cica Aloe Fresh Water Cream",
+      "scraped_title": "FLEEF Cica Aloe Fresh Water Cream 150mL",
+      "source_id": "GA220414277",
+      "true_brand": "FLEEF"
+    },
+    {
+      "id": "32b78af7-111a-44d1-9451-2c9d3484c3a8",
+      "stored_brand": "Anua",
+      "name": "VITA MAPS 53% Toning Serum",
+      "scraped_title": "INFOD+ VITA MAPS 53% Toning Serum 30ml",
+      "source_id": "GA250732013",
+      "true_brand": "INFOD+"
+    },
+    {
+      "id": "6146eb40-ec69-46e2-9fed-b7b7ed0cf949",
+      "stored_brand": "Anua",
+      "name": "Glow Repair Bakuchiol Serum",
+      "scraped_title": "SeohaeSol Glow Repair Bakuchiol Serum 30ml",
+      "source_id": "GA250631240",
+      "true_brand": "SeohaeSol"
+    },
+    {
+      "id": "0b1f1729-11a8-4a29-8e72-930041306877",
+      "stored_brand": "Banila Co",
+      "name": "Cleansing Repair",
+      "scraped_title": "SHHOM Cleansing Repair 100ml",
+      "source_id": "GA241026059",
+      "true_brand": "SHHOM"
+    },
+    {
+      "id": "76109f75-317e-4cac-8259-71efd6ab0403",
+      "stored_brand": "Anua",
+      "name": "Sea Grape Ampoule",
+      "scraped_title": "mommycare Sea Grape Ampoule 50ml",
+      "source_id": "GA250731884",
+      "true_brand": "Mommycare"
+    },
+    {
+      "id": "e8cd5a0b-d7f8-4a5d-bb18-316591b347d4",
+      "stored_brand": "Banila Co",
+      "name": "Deep Clean Pore Cleansing Oil",
+      "scraped_title": "POINT& Deep Clean Pore Cleansing Oil 200ml",
+      "source_id": "GA240724647",
+      "true_brand": "POINT&"
+    },
+    {
+      "id": "f9cd813a-ca93-4101-91b3-827944c147be",
+      "stored_brand": "CAREPLUS",
+      "name": "Wrinkle Patches For Frown Lines 45P",
+      "scraped_title": "onslo Wrinkle Patches For Frown Lines 45P",
+      "source_id": "GA251235683",
+      "true_brand": "onslo"
+    },
+    {
+      "id": "21928aa7-3a78-4df6-89e8-8179663a5cf6",
+      "stored_brand": "Aestura",
+      "name": "Minari Deep Cool Soothing Cream",
+      "scraped_title": "CLEARDEA. Minari Deep Cool Soothing Cream 30ml",
+      "source_id": "GA240825377",
+      "true_brand": "CLEARDEA"
+    },
+    {
+      "id": "729f030b-0618-4526-aebd-ce0a0d7621ef",
+      "stored_brand": "Beplain",
+      "name": "Blue Freedom Capsule Cleansing Foam",
+      "scraped_title": "scotthamish Blue Freedom Capsule Cleansing Foam 150ml",
+      "source_id": "GA240825067",
+      "true_brand": "Scott Hamish"
+    },
+    {
+      "id": "3e360591-bfc0-4675-af68-ad3b13e0733c",
+      "stored_brand": "Beplain",
+      "name": "Mild Alkaline Cleansing Foam Hyaluron Whip",
+      "scraped_title": "NUNIES Mild Alkaline Cleansing Foam Hyaluron Whip 120ml",
+      "source_id": "GA250631841",
+      "true_brand": "NUNIES"
+    },
+    {
+      "id": "250815ae-2cd1-4cc3-9489-f454e1f4bfa3",
+      "stored_brand": "Medicube",
+      "name": "Sebum Strike Anti-Trouble Mist",
+      "scraped_title": "MdoC Sebum Strike Anti-Trouble Mist 55g",
+      "source_id": "GA240724605",
+      "true_brand": "MdoC"
+    },
+    {
+      "id": "c4879f6f-cf18-45a2-8ac2-77283cbc5512",
+      "stored_brand": "Medicube",
+      "name": "Biome Barrier Cream Mist",
+      "scraped_title": "UIQ Biome Barrier Cream Mist 100ml",
+      "source_id": "GA240724775",
+      "true_brand": "UIQ"
+    },
+    {
+      "id": "94a45177-f2ce-4b21-a36b-04d6c95fff25",
+      "stored_brand": "Beplain",
+      "name": "Avocado Butter Tart Pack Cleanser",
+      "scraped_title": "Flaner Avocado Butter Tart Pack Cleanser 120g",
+      "source_id": "GA250631321",
+      "true_brand": "Flaner"
+    },
+    {
+      "id": "17f14ebe-f350-462b-8531-05c6dae7bbcf",
+      "stored_brand": "Anua",
+      "name": "Pore Solution Radiance Serum",
+      "scraped_title": "Feelkeen Pore Solution Radiance Serum 30ml",
+      "source_id": "GA241227389",
+      "true_brand": "Feelkeen"
+    },
+    {
+      "id": "2874fdb1-af73-474d-8543-9b5a25883f21",
+      "stored_brand": "Beplain",
+      "name": "Origin Pure Balancing Cleansing Foam",
+      "scraped_title": "ATRUE Origin Pure Balancing Cleansing Foam 150ml",
+      "source_id": "GA210003734",
+      "true_brand": "ATRUE"
+    },
+    {
+      "id": "16fe233b-d22f-459c-a2d0-0fe2b40316b0",
+      "stored_brand": "Beplain",
+      "name": "Rice Balance Cleanser",
+      "scraped_title": "SAL SARANG Rice Balance Cleanser 120mL",
+      "source_id": "GA230920522",
+      "true_brand": "SAL SARANG"
+    },
+    {
+      "id": "0cace362-8071-4404-8e8a-d42f760c4675",
+      "stored_brand": "Anua",
+      "name": "Medi Ampoule Cica",
+      "scraped_title": "MILLIMILLI Medi Ampoule Cica 15ml",
+      "source_id": "GA250732360",
+      "true_brand": "MILLIMILLI"
+    },
+    {
+      "id": "6f636a97-dede-4409-8110-3f75ddd60a7f",
+      "stored_brand": "Medicube",
+      "name": "Calming Shot Dew Drop Mist",
+      "scraped_title": "One of them Calming Shot Dew Drop Mist 150ml",
+      "source_id": "GA240624046",
+      "true_brand": "One of them"
+    },
+    {
+      "id": "2b1c1f4e-f36a-45bd-b6fe-0f3567726409",
+      "stored_brand": "Anua",
+      "name": "Minary Calming Gel Serum Duo",
+      "scraped_title": "CLEARDEA. Minary Calming Gel Serum Duo",
+      "source_id": "GA250732076",
+      "true_brand": "CLEARDEA"
+    },
+    {
+      "id": "ce3d70f4-94ed-4db6-ae12-c1949a23f8f5",
+      "stored_brand": "Anua",
+      "name": "Centellution Hyaluronic Ampoule",
+      "scraped_title": "PIBUMI Centellution Hyaluronic Ampoule 30mL",
+      "source_id": "GA221016550",
+      "true_brand": "PIBUMI"
+    },
+    {
+      "id": "d6bf362f-f631-4f7b-88e9-fec1c59170ce",
+      "stored_brand": "Beplain",
+      "name": "Berry Smoothie Scrub Cleanser",
+      "scraped_title": "ZIGTAG Berry Smoothie Scrub Cleanser 130ml",
+      "source_id": "GA250732088",
+      "true_brand": "ZIGTAG"
+    },
+    {
+      "id": "31e4a280-7617-4a46-9a6c-aa22accdffa0",
+      "stored_brand": "Anua",
+      "name": "Aloe Water Jelly Toner Special Set",
+      "scraped_title": "Cure Aloe Water Jelly Toner Special Set 500mL+50mL",
+      "source_id": "GA220514756",
+      "true_brand": "Cure"
+    },
+    {
+      "id": "743be7c9-588a-402d-b1b3-b2bc1728d46f",
+      "stored_brand": "Ilso",
+      "name": "Lifting And Balancing Fig Chestnut Pore Deep Scaling",
+      "scraped_title": "veganifect. Lifting And Balancing Fig Chestnut Pore Deep Scaling 150mL",
+      "source_id": "GA230920388",
+      "true_brand": "Veganifect"
+    },
+    {
+      "id": "901bdcad-5322-40ba-b4e9-a629000265c6",
+      "stored_brand": "Beplain",
+      "name": "Clean & Glow Green Barley LHA Deep Cleansing Foam",
+      "scraped_title": "veganifect. Clean & Glow Green Barley LHA Deep Cleansing Foam 165ml",
+      "source_id": "GA250430092",
+      "true_brand": "Veganifect"
+    },
+    {
+      "id": "f0f08485-77dd-4def-adfb-1089c42c67b0",
+      "stored_brand": "Beplain",
+      "name": "P.Z. SSG SSAG Deep Cleansing Foam",
+      "scraped_title": "One-day's you P.Z. SSG SSAG Deep Cleansing Foam 150mL",
+      "source_id": "GA221217059",
+      "true_brand": "One Day's You"
+    },
+    {
+      "id": "7cdb3e33-7e5a-45bc-b810-b000af0a895b",
+      "stored_brand": "Anua",
+      "name": "Cicaffeine Trouble Reset Serum",
+      "scraped_title": "B.READY Cicaffeine Trouble Reset Serum 40mL",
+      "source_id": "GA240121558",
+      "true_brand": "B.READY"
+    },
+    {
+      "id": "08c6b09e-ab48-4d1a-b04a-647efd6652a9",
+      "stored_brand": "Ilso",
+      "name": "Stabilized Rice Bran Enzyme Powder Wash",
+      "scraped_title": "SRB Stabilized Rice Bran Enzyme Powder Wash 70g",
+      "source_id": "GA230920545",
+      "true_brand": "SRB"
+    },
+    {
+      "id": "c772fdfa-6d04-4f6e-a1f7-abfd57607b84",
+      "stored_brand": "Anua",
+      "name": "Angelcica Calming-aging Water Serum",
+      "scraped_title": "LASSIE'EL Angelcica Calming-aging Water Serum 30ml",
+      "source_id": "GA251235635",
+      "true_brand": "LASSIE'EL"
+    },
+    {
+      "id": "52127a94-75d8-4d51-844e-e435ad29d57b",
+      "stored_brand": "Beplain",
+      "name": "Regenerative Schild Cleansing Foam",
+      "scraped_title": "ARZTIN Regenerative Schild Cleansing Foam 150ml",
+      "source_id": "GA250228459",
+      "true_brand": "ARZTIN"
+    },
+    {
+      "id": "abe5a538-18ae-48be-8bdf-861990fcb92c",
+      "stored_brand": "BOHO",
+      "name": "Essential All In One",
+      "scraped_title": "Unstraum Essential All In One 150ml",
+      "source_id": "GA240925603",
+      "true_brand": "Unstraum"
+    },
+    {
+      "id": "81cb489e-20b1-45f6-b995-4d0bfc94ded8",
+      "stored_brand": "Centellian24",
+      "name": "Acerola Dark Spot & Blemish Care Cream",
+      "scraped_title": "RAVIEL Acerola Dark Spot & Blemish Care Cream 50ml",
+      "source_id": "GA241126946",
+      "true_brand": "RAVIEL"
+    },
+    {
+      "id": "d572927f-2a2c-4604-b126-4673765086c5",
+      "stored_brand": "Beplain",
+      "name": "Vita Rose Whip Cleansing Foam",
+      "scraped_title": "POINT& Vita Rose Whip Cleansing Foam 200g",
+      "source_id": "GA251034263",
+      "true_brand": "POINT&"
+    },
+    {
+      "id": "a40bba79-06f3-4260-a956-f688ec695fef",
+      "stored_brand": "BOHO",
+      "name": "All In One Tone Up Cream",
+      "scraped_title": "BOWLOW All In One Tone Up Cream 30g",
+      "source_id": "GA260136934",
+      "true_brand": "BOWLOW"
+    },
+    {
+      "id": "16ead97e-5f67-447d-8da8-7b49842e7944",
+      "stored_brand": "Anua",
+      "name": "Eau Briller Concentre",
+      "scraped_title": "equlib Eau Briller Concentre 50ml",
+      "source_id": "GA250732012",
+      "true_brand": "Equlib"
+    },
+    {
+      "id": "5a34940f-5982-4545-a170-a9c2e1adb741",
+      "stored_brand": "Beplain",
+      "name": "Phytoncide Mild Cleansing Foam",
+      "scraped_title": "KLAVUU Phytoncide Mild Cleansing Foam 150mL",
+      "source_id": "GA230117377",
+      "true_brand": "KLAVUU"
+    },
+    {
+      "id": "f20255c1-8612-42bb-94e4-05629c9328bf",
+      "stored_brand": "Beplain",
+      "name": "UnderPore Foam Cleanser",
+      "scraped_title": "P.CALM UnderPore Foam Cleanser 150mL",
+      "source_id": "GA220514955",
+      "true_brand": "P.CALM"
+    },
+    {
+      "id": "b3f2d2d4-d16a-4cf0-81b7-6fc958e6cd15",
+      "stored_brand": "Centellian24",
+      "name": "Medi AHA Cream Strong",
+      "scraped_title": "mediorga Medi AHA Cream Strong 1+1 Special Set (30mL+30mL)",
+      "source_id": "GA220916089",
+      "true_brand": "mediorga"
+    },
+    {
+      "id": "43e64926-aca3-4b20-8962-47d67cfa09f8",
+      "stored_brand": "Anua",
+      "name": "LHA Pause Toner",
+      "scraped_title": "i'm unau LHA PAUSE TONER 150ml",
+      "source_id": "GA241126949",
+      "true_brand": "I'm Unau"
+    },
+    {
+      "id": "0459332b-7abb-45b1-a4b0-c44baa1c0e55",
+      "stored_brand": "Aestura",
+      "name": "Cerachiol Crush Cream",
+      "scraped_title": "ZIGTAG Cerachiol Crush Cream 50ml",
+      "source_id": "GA250732021",
+      "true_brand": "ZIGTAG"
+    },
+    {
+      "id": "37ea21e8-8c55-41b5-a391-a98bf8e3d6d5",
+      "stored_brand": "Medicube",
+      "name": "Differensea Blue Biome Repair Serum Mist",
+      "scraped_title": "picore Differensea Blue Biome Repair Serum Mist 100ml",
+      "source_id": "GA241026428",
+      "true_brand": "picore"
+    },
+    {
+      "id": "a237a829-a4c0-40f0-8b36-de1bf13cb418",
+      "stored_brand": "Anua",
+      "name": "Dr. Squalane Deep Moisturizing Ampoule",
+      "scraped_title": "VANCOR Dr. Squalane Deep Moisturizing Ampoule 50ml",
+      "source_id": "GA241026336",
+      "true_brand": "VANCOR"
+    },
+    {
+      "id": "36cf6cd7-f141-47b8-b3c0-b1635c7e0f95",
+      "stored_brand": "Banila Co",
+      "name": "One Shot Oil Foam Cleanser",
+      "scraped_title": "B. READY One Shot Oil Foam Cleanser 200ml",
+      "source_id": "GA240523772",
+      "true_brand": "B.READY"
+    },
+    {
+      "id": "6341bfe1-e739-4324-afc1-5f7d82b78e6a",
+      "stored_brand": "Anua",
+      "name": "10 Elements Vita Serum",
+      "scraped_title": "12GRABS 10 Elements Vita Serum 50ml",
+      "source_id": "GA241126939",
+      "true_brand": "12GRABS"
+    },
+    {
+      "id": "9995518d-b8a1-476c-aba7-2dd4434e0ceb",
+      "stored_brand": "Beplain",
+      "name": "Cicaffeine Trouble Reset Cleansing Foam",
+      "scraped_title": "B.READY Cicaffeine Trouble Reset Cleansing Foam 150g",
+      "source_id": "GA240121992",
+      "true_brand": "B.READY"
+    },
+    {
+      "id": "283ecc05-485d-498f-8444-122b2db4e90e",
+      "stored_brand": "Anua",
+      "name": "Baobab Hydrogel To Drop Ampoule",
+      "scraped_title": "vividraw Baobab Hydrogel To Drop Ampoule 40mL 1+1 Special Set",
+      "source_id": "GA240322783",
+      "true_brand": "vividraw"
+    },
+    {
+      "id": "4d0b6667-d109-4ab1-9b64-d7723fb4ddfa",
+      "stored_brand": "Anua",
+      "name": "Hyalcube Flooding Toner",
+      "scraped_title": "DPPR Hyalcube Flooding Toner 300ml",
+      "source_id": "GA250731980",
+      "true_brand": "DPPR"
+    },
+    {
+      "id": "658eff06-b15a-4803-a7c0-27222b170fa8",
+      "stored_brand": "Anua",
+      "name": "Baekdango Rice Wine Dark Spot Corrector Ampoule",
+      "scraped_title": "Cosme Chef Baekdango Rice Wine Dark Spot Corrector Ampoule 30ml",
+      "source_id": "GA250631230",
+      "true_brand": "Cosme Chef"
+    },
+    {
+      "id": "dc922d37-1a34-4319-9a53-71411bdf035d",
+      "stored_brand": "Beplain",
+      "name": "Vita Rose Serum Jam Pack Cleanser",
+      "scraped_title": "POINT& Vita Rose Serum Jam Pack Cleanser 100g",
+      "source_id": "GA251034265",
+      "true_brand": "POINT&"
+    },
+    {
+      "id": "fdd90328-c56b-43ef-9635-7d8688f2539a",
+      "stored_brand": "Beplain",
+      "name": "Mucin Vera Zero Vegan Cleanser",
+      "scraped_title": "GASH Mucin Vera Zero Vegan Cleanser 210ml",
+      "source_id": "GA260136573",
+      "true_brand": "GASH"
+    },
+    {
+      "id": "84af89ae-69f5-4c26-8373-221ba77fd6d8",
+      "stored_brand": "Centellian24",
+      "name": "Cica Spot Gel",
+      "scraped_title": "CICA∙GO Cica Spot Gel 25g",
+      "source_id": "GA211012115",
+      "true_brand": "CICA·GO"
+    },
+    {
+      "id": "834d255d-ac5b-4019-8472-7ec29129c8cf",
+      "stored_brand": "Beplain",
+      "name": "Makiol Foaming Cleanser",
+      "scraped_title": "BOTANITY MAKIOL FOAMING CLEANSER 150ml",
+      "source_id": "GA241126965",
+      "true_brand": "BOTANITY"
+    },
+    {
+      "id": "c9943fa5-610f-49a8-b37f-38fcb2ed8930",
+      "stored_brand": "Ariul",
+      "name": "Joyfull Heart All In One Cleansing Pad",
+      "scraped_title": "EDIT.B Joyfull Heart All In One Cleansing Pad 30P",
+      "source_id": "GA240825071",
+      "true_brand": "EDIT.B"
+    },
+    {
+      "id": "3e36f900-3acc-4943-917b-c40123f14379",
+      "stored_brand": "Beplain",
+      "name": "XCESPI 316 Gel Cleanser",
+      "scraped_title": "INFOD+ XCESPI 316 Gel Cleanser 100ml",
+      "source_id": "GA250732033",
+      "true_brand": "INFOD+"
+    },
+    {
+      "id": "883b0544-0eab-4b85-a8b8-9441461b8e2c",
+      "stored_brand": "Beplain",
+      "name": "Tea Tree Relief Foam Cleanser",
+      "scraped_title": "essenHERB Tea Tree Relief Foam Cleanser 150ml",
+      "source_id": "GA240825323",
+      "true_brand": "essenHERB"
+    },
+    {
+      "id": "42146086-2e22-4ea7-bddf-f9a795c868b6",
+      "stored_brand": "Anua",
+      "name": "Blue Eraser Serum Refill",
+      "scraped_title": "CELLOLOGY Blue Eraser Serum Refill 15ml*2EA",
+      "source_id": "GA250228443",
+      "true_brand": "CELLOLOGY"
+    },
+    {
+      "id": "001d8baa-6da5-494e-bc32-4c4a39546172",
+      "stored_brand": "Anua",
+      "name": "Pore Shooter Ampoule",
+      "scraped_title": "RETURNU Pore Shooter Ampoule 30mL",
+      "source_id": "GA231121135",
+      "true_brand": "RETURNU"
+    },
+    {
+      "id": "b9d5fd5e-48af-4448-8510-ea1c3983a2d5",
+      "stored_brand": "Aestura",
+      "name": "Fig Pudding Repair Cream",
+      "scraped_title": "Flaner Fig Pudding Repair Cream 50ml",
+      "source_id": "GA250530955",
+      "true_brand": "Flaner"
+    },
+    {
+      "id": "65f0fd66-3054-4308-9acf-e0313751d50b",
+      "stored_brand": "Beplain",
+      "name": "Clean & Glow Green Barley LHA Gel Cleanser",
+      "scraped_title": "Veganifect. Clean & Glow Green Barley LHA Gel Cleanser 205mL Special Set (Special Gift: Toner Pad 4ea)",
+      "source_id": "GA231221294",
+      "true_brand": "Veganifect"
+    },
+    {
+      "id": "b5bf9d05-9cee-4fbb-835f-c0cf6d961f28",
+      "stored_brand": "Medicube",
+      "name": "Re:Blue Balancing Cream In Mist",
+      "scraped_title": "carenology Re:Blue Balancing Cream In Mist 120ml",
+      "source_id": "GA241126653",
+      "true_brand": "Carenology"
+    },
+    {
+      "id": "76fc27c4-9b46-400c-873e-3575fb6e300d",
+      "stored_brand": "Anua",
+      "name": "Moisture Barrier Pang Hyaluronic Acid Panthenol Ampoule",
+      "scraped_title": "EDIT.B Moisture Barrier Pang Hyaluronic Acid Panthenol Ampoule 100ml",
+      "source_id": "GA240724599",
+      "true_brand": "EDIT.B"
+    },
+    {
+      "id": "3396d9a4-f338-4e83-b6b3-0fa89a9d62b3",
+      "stored_brand": "Anua",
+      "name": "Bakuchiol Pause Serum",
+      "scraped_title": "i'm unau BAKUCHIOL PAUSE SERUM 30ml",
+      "source_id": "GA241126950",
+      "true_brand": "I'm Unau"
+    },
+    {
+      "id": "4e21bb3a-64e3-48a1-b283-3b0272d66912",
+      "stored_brand": "Anua",
+      "name": "Chaga Biome Smoothing Ampoule",
+      "scraped_title": "efilow Chaga Biome Smoothing Ampoule 50ml",
+      "source_id": "GA241126840",
+      "true_brand": "Efilow"
+    },
+    {
+      "id": "7cdecb8d-7464-4e8a-8db6-b5eb36413bc1",
+      "stored_brand": "Beplain",
+      "name": "Face Wash For Skincare Double Pack",
+      "scraped_title": "ULOS Face Wash For Skincare Double Pack (+Lotion 15ml+ Lotion 2ml)",
+      "source_id": "GA251235886",
+      "true_brand": "ULOS"
+    },
+    {
+      "id": "bd74be4d-4817-4e45-acac-bee7c567ad79",
+      "stored_brand": "CAREPLUS",
+      "name": "Hydro Dot Eraser Patch 10mm (60+24 Count)",
+      "scraped_title": "ELABAND Hydro Dot Eraser Patch 10mm (60+24 Count)",
+      "source_id": "GA210002084",
+      "true_brand": "ELABAND"
+    },
+    {
+      "id": "ac5774f3-66b3-4410-b2be-a4db0bdfffa0",
+      "stored_brand": "Anua",
+      "name": "Birch Rich Origin Ampoule",
+      "scraped_title": "Soofe'e Birch Rich Origin Ampoule 100mL",
+      "source_id": "GA220916092",
+      "true_brand": "Soofe'e"
+    },
+    {
+      "id": "b0d5441f-2982-4361-8fb9-959d40f2b283",
+      "stored_brand": "Aestura",
+      "name": "Centellution Cica Cream 3X",
+      "scraped_title": "PIBUMI Centellution Cica Cream 3X 100mL [For dry skin]",
+      "source_id": "GA221016552",
+      "true_brand": "PIBUMI"
+    },
+    {
+      "id": "cf22538a-53a2-4812-87d0-e6ec7f72648a",
+      "stored_brand": "Anua",
+      "name": "Signature Vit Roise Toner",
+      "scraped_title": "DEMAR3 Signature Vit Roise Toner 150mL",
+      "source_id": "GA231020674",
+      "true_brand": "DEMAR3"
+    },
+    {
+      "id": "7989e3b4-2d8d-4c81-9138-f5e16f16f09e",
+      "stored_brand": "Aestura",
+      "name": "Heartleaf Biome Hydra Calming Cream",
+      "scraped_title": "efilow Heartleaf Biome Hydra Calming Cream 70ml",
+      "source_id": "GA241126841",
+      "true_brand": "Efilow"
+    },
+    {
+      "id": "35de8d1a-6d1b-4631-a8da-64830aaad12a",
+      "stored_brand": "Anua",
+      "name": "Niacinamide 87% Rice Serum",
+      "scraped_title": "Erigeron Niacinamide 87% Rice Serum 50ml",
+      "source_id": "GA250732066",
+      "true_brand": "Erigeron"
+    },
+    {
+      "id": "f927fb1f-653a-430f-9735-cced08e3d437",
+      "stored_brand": "Anua",
+      "name": "Heukdango Vintage Herb Nutri Wrinkle Ampoule",
+      "scraped_title": "Cosme Chef Heukdango Vintage Herb Nutri Wrinkle Ampoule 30ml",
+      "source_id": "GA250631231",
+      "true_brand": "Cosme Chef"
+    },
+    {
+      "id": "05378007-4a40-431f-b6c6-8f37c0994c29",
+      "stored_brand": "Aestura",
+      "name": "Minary Deep Cool Soothing Cream Duo",
+      "scraped_title": "CLEARDEA. Minary Deep Cool Soothing Cream Duo",
+      "source_id": "GA250732075",
+      "true_brand": "CLEARDEA"
+    },
+    {
+      "id": "f4f6da75-8b65-40e6-b4d5-921809339b4e",
+      "stored_brand": "Anua",
+      "name": "Rest-Up Serum Skin",
+      "scraped_title": "Intermission Rest-Up Serum Skin 290ml",
+      "source_id": "GA240925605",
+      "true_brand": "Intermission"
+    },
+    {
+      "id": "89bbfa2e-0905-4cc2-a492-da3c67388460",
+      "stored_brand": "Medicube",
+      "name": "All In One Cream Spray",
+      "scraped_title": "LazySOCIETY All In One Cream Spray 120ml",
+      "source_id": "GA250429814",
+      "true_brand": "LazySOCIETY"
+    },
+    {
+      "id": "67d2cf40-d03b-4bb4-8728-247feedfa56a",
+      "stored_brand": "Banila Co",
+      "name": "All Cleansing Balm Soft Peeling",
+      "scraped_title": "simplog All Cleansing Balm Soft Peeling 95ml",
+      "source_id": "GA250732611",
+      "true_brand": "simplog"
+    },
+    {
+      "id": "038e2e64-3f98-4684-ab35-9d764038a6cd",
+      "stored_brand": "CAREPLUS",
+      "name": "Twinkle Little Star Acne Spot Patch",
+      "scraped_title": "OOTD Twinkle Little Star Acne Spot Patch (80 Counts)",
+      "source_id": "GA251135095",
+      "true_brand": "OOTD"
+    },
+    {
+      "id": "6f4bfd42-a859-46c0-a1b4-08ca77c17a24",
+      "stored_brand": "CAREPLUS",
+      "name": "LIGHT Cica Lactobacillus Spot Control Patch 4P (Big Size)",
+      "scraped_title": "essl LIGHT Cica Lactobacillus Spot Control Patch 4P (Big Size)",
+      "source_id": "GA251135251",
+      "true_brand": "essl"
+    },
+    {
+      "id": "cfdfbb8a-33ab-419f-8f28-0f9772c6c9a5",
+      "stored_brand": "Anua",
+      "name": "CMAPS 62% Repair Serum",
+      "scraped_title": "INFOD+ CMAPS 62% Repair Serum 30ml",
+      "source_id": "GA250732014",
+      "true_brand": "INFOD+"
+    },
+    {
+      "id": "f3bf0e68-bc5f-4c0f-a6a8-77cca2a777f8",
+      "stored_brand": "Anua",
+      "name": "Soybean Bouncy Protein Essence",
+      "scraped_title": "FLASKIN Soybean Bouncy Protein Essence 80mL",
+      "source_id": "GA240122022",
+      "true_brand": "FLASKIN"
+    },
+    {
+      "id": "b21c7f1b-16a0-4254-8915-5cf57ed985b9",
+      "stored_brand": "Anua",
+      "name": "Calming Tok Cica Heartleaf Gel Essence",
+      "scraped_title": "EDIT.B Calming Tok Cica Heartleaf Gel Essence 200ml",
+      "source_id": "GA240724598",
+      "true_brand": "EDIT.B"
+    },
+    {
+      "id": "62b0fc3f-087d-45b5-9b14-70f08e7aba49",
+      "stored_brand": "Aestura",
+      "name": "Derma Trouble AC Calming Spot Gel",
+      "scraped_title": "FUSIDYNE Derma Trouble AC Calming Spot Gel",
+      "source_id": "GA240623985",
+      "true_brand": "FUSIDYNE"
+    },
+    {
+      "id": "604fe9c5-df41-4f2d-bfe4-8d2e23d9f702",
+      "stored_brand": "Anua",
+      "name": "Essence Compact",
+      "scraped_title": "groundplan Essence Compact 40ml",
+      "source_id": "GA241227038",
+      "true_brand": "Groundplan"
+    },
+    {
+      "id": "f18d7ab7-42a5-49c5-a070-8d925f4a35ef",
+      "stored_brand": "CAREPLUS",
+      "name": "Retinol Wrinkle Patches For Frown Lines 45P",
+      "scraped_title": "Pira Retinol Wrinkle Patches For Frown Lines 45P",
+      "source_id": "GA251034069",
+      "true_brand": "Pira"
+    },
+    {
+      "id": "2fa17f74-6b27-4fee-a6c1-642f56ab90f4",
+      "stored_brand": "Aestura",
+      "name": "Blue Centella Derma Repair Cream",
+      "scraped_title": "MILD LAB Blue Centella Derma Repair Cream 50mL",
+      "source_id": "GA230317978",
+      "true_brand": "MILD LAB"
+    },
+    {
+      "id": "42b99006-5b61-4f11-88ff-f669bc0e5802",
+      "stored_brand": "Banila Co",
+      "name": "Deep Melting Soy Cleansing Balm",
+      "scraped_title": "POINT& Deep Melting Soy Cleansing Balm 90mL",
+      "source_id": "GA230920542",
+      "true_brand": "POINT&"
+    },
+    {
+      "id": "f8a7ba65-cc9a-4aad-a31d-6861cba9ed33",
+      "stored_brand": "Anua",
+      "name": "Little Drops Calming Days Ampoule",
+      "scraped_title": "hersteller Little Drops Calming Days Ampoule 30ml",
+      "source_id": "GA250228377",
+      "true_brand": "Hersteller"
+    },
+    {
+      "id": "eef57097-0386-480d-a323-1fa1f00796c9",
+      "stored_brand": "Aestura",
+      "name": "Collagen-Peptide Booster Cream",
+      "scraped_title": "DOCTOR BARBOR Collagen-Peptide Booster Cream 50ml",
+      "source_id": "GA250429827",
+      "true_brand": "Doctor Barbor"
+    },
+    {
+      "id": "e60230b3-fcbf-44f0-b011-205cfcbfd997",
+      "stored_brand": "Banila Co",
+      "name": "Perfect Off Cleansing Oil",
+      "scraped_title": "TISS Perfect Off Cleansing Oil 230ml",
+      "source_id": "GA251236151",
+      "true_brand": "TISS"
+    },
+    {
+      "id": "d6cb66a2-0b4e-4726-a26d-3da508bda852",
+      "stored_brand": "Medicube",
+      "name": "Cica Cabbage Pudding Mist Ampoule",
+      "scraped_title": "Chaewun Cica Cabbage Pudding Mist Ampoule 100g",
+      "source_id": "GA251135103",
+      "true_brand": "Chaewun"
+    },
+    {
+      "id": "476d7299-f538-4d2e-a50c-a060f7c38f4c",
+      "stored_brand": "Banila Co",
+      "name": "Double Shot Oil To Foam Cleanser",
+      "scraped_title": "HAMEL Double Shot Oil To Foam Cleanser 200mL",
+      "source_id": "GA230819802",
+      "true_brand": "HAMEL"
+    },
+    {
+      "id": "7ac34741-ae07-47db-a4e0-9f1367bee5ed",
+      "stored_brand": "Anua",
+      "name": "Clear Tone Dark Spot Serum",
+      "scraped_title": "LAYER LAB Clear Tone Dark Spot Serum 30ml",
+      "source_id": "GA260136948",
+      "true_brand": "LAYER LAB"
+    },
+    {
+      "id": "72d6a82d-1450-4e4c-8533-ca9690bd2ea3",
+      "stored_brand": "Anua",
+      "name": "Erseongcho Ampoule",
+      "scraped_title": "Heynature Erseongcho Ampoule 20mL",
+      "source_id": "GA210811634",
+      "true_brand": "Heynature"
+    },
+    {
+      "id": "0ef41d46-fc04-4575-8f3e-6ef80b0dad6e",
+      "stored_brand": "Anua",
+      "name": "Minari Calming Gel Serum",
+      "scraped_title": "CLEARDEA. Minari Calming Gel Serum 30ml",
+      "source_id": "GA240825378",
+      "true_brand": "CLEARDEA"
+    },
+    {
+      "id": "b50f348a-5f35-497d-afc5-7b2f5a2a5584",
+      "stored_brand": "BOHO",
+      "name": "Perfect Collard Green Calming All In One",
+      "scraped_title": "MINIC Perfect Collard Green Calming All In One 200ml",
+      "source_id": "GA250329681",
+      "true_brand": "MINIC"
+    },
+    {
+      "id": "1a1f75da-3d55-4928-ad48-e41819157fc8",
+      "stored_brand": "Beplain",
+      "name": "Deep Clean Mini Cleansing Travel Kit",
+      "scraped_title": "POINT& Deep Clean Mini Cleansing Travel Kit (Lip & Eye Remover Long Pad 3ea+Oil 15ml+Foam 15ml)",
+      "source_id": "GA250530713",
+      "true_brand": "POINT&"
+    },
+    {
+      "id": "eb4a884c-a529-45b6-b89b-4f1a788d9dc0",
+      "stored_brand": "Beplain",
+      "name": "Deep Clean Whip Cleansing Foam",
+      "scraped_title": "POINT& Deep Clean Whip Cleansing Foam 120g 1+1 Special Set",
+      "source_id": "GA230619376",
+      "true_brand": "POINT&"
+    },
+    {
+      "id": "2778889a-6243-49d0-aec4-26eff60e37b7",
+      "stored_brand": "CAREPLUS",
+      "name": "Vita C Patch",
+      "scraped_title": "ARTPE Vita C Patch 9 Sheets",
+      "source_id": "GA231121144",
+      "true_brand": "ARTPE"
+    },
+    {
+      "id": "657cebc4-82cc-4ea5-bc9e-ea652e21d5a0",
+      "stored_brand": "Aestura",
+      "name": "Kintsugi Firming Cream",
+      "scraped_title": "huecalm Kintsugi Firming Cream 70g",
+      "source_id": "GA230518743",
+      "true_brand": "HUECALM"
+    },
+    {
+      "id": "240bc015-451d-475b-943b-be212b84ad88",
+      "stored_brand": "Anua",
+      "name": "ReLeaf Mild Acidic Wormwood Ampoule",
+      "scraped_title": "JMsolution ReLeaf Mild Acidic Wormwood Ampoule 50ml",
+      "source_id": "GA210711343",
+      "true_brand": "JM Solution"
+    },
+    {
+      "id": "5c394df2-07db-4366-855e-e31b74263a3e",
+      "stored_brand": "Aestura",
+      "name": "Barrier Recovery Cream",
+      "scraped_title": "RAWQUEST Barrier Recovery Cream 80mL",
+      "source_id": "GA240121766",
+      "true_brand": "RAWQUEST"
+    },
+    {
+      "id": "06a9be9e-c37d-4bc8-99a6-b9a082621688",
+      "stored_brand": "Anua",
+      "name": "Clotho Toner",
+      "scraped_title": "ONDO SKIN CLOTHO TONER 150ml",
+      "source_id": "GA241126955",
+      "true_brand": "Ondo Skin"
+    },
+    {
+      "id": "0d03b3fe-a4f8-4699-9707-e1c8bad03d0b",
+      "stored_brand": "CAREPLUS",
+      "name": "Hydro Dot Tea Tree Set",
+      "scraped_title": "ElaBAND Hydro Dot Tea Tree Set (60ea + 32ea)",
+      "source_id": "GA251034087",
+      "true_brand": "ELABAND"
+    },
+    {
+      "id": "d153e8b3-f3f2-42ac-8d55-d5de987e1570",
+      "stored_brand": "Anua",
+      "name": "Hydra-Hyaluronic Serum",
+      "scraped_title": "PUREGRAM Hydra-Hyaluronic Serum 30ml",
+      "source_id": "GA250832990",
+      "true_brand": "PUREGRAM"
+    },
+    {
+      "id": "4bccfd80-08ca-435a-b1d6-e46cd13344d9",
+      "stored_brand": "Aestura",
+      "name": "Perfect Collard Green Calming Cream",
+      "scraped_title": "MINIC Perfect Collard Green Calming Cream 80ml",
+      "source_id": "GA251236141",
+      "true_brand": "MINIC"
+    },
+    {
+      "id": "ab9a1688-91cf-4712-baa2-ea88b3945c14",
+      "stored_brand": "Centellian24",
+      "name": "CERA HYALURONIC PAUSE CREAM",
+      "scraped_title": "i'm unau CERA HYALURONIC PAUSE CREAM 50ml",
+      "source_id": "GA241126951",
+      "true_brand": "I'm Unau"
+    },
+    {
+      "id": "c018ae4e-e28a-434f-a826-27f541ac445f",
+      "stored_brand": "Aestura",
+      "name": "A-Cure Clarifying Emulsion",
+      "scraped_title": "CAREZONE A-Cure Clarifying Emulsion 200mL",
+      "source_id": "GA230418223",
+      "true_brand": "CAREZONE"
+    },
+    {
+      "id": "e5d95c54-c598-4e45-bf58-83fdb0757b5a",
+      "stored_brand": "Ariul",
+      "name": "Deep Clean All Kill Makeup Cleansing Tissue",
+      "scraped_title": "POINT& Deep Clean All Kill Makeup Cleansing Tissue 100P",
+      "source_id": "GA241126639",
+      "true_brand": "POINT&"
+    },
+    {
+      "id": "1d3ff257-90b9-428f-8398-9ffd316714ff",
+      "stored_brand": "Anua",
+      "name": "Tone & Soft Peach Niacinamide Glutathione Gel Essence",
+      "scraped_title": "EDIT.B Tone & Soft Peach Niacinamide Glutathione Gel Essence 200ml",
+      "source_id": "GA240724600",
+      "true_brand": "EDIT.B"
+    },
+    {
+      "id": "8b3a25e5-18aa-4f07-8e45-2f3984c28129",
+      "stored_brand": "Aestura",
+      "name": "Etsere Melacare Creme",
+      "scraped_title": "DEMAR3 Etsere Melacare Creme 65mL",
+      "source_id": "GA231020676",
+      "true_brand": "DEMAR3"
+    },
+    {
+      "id": "bf1fc81c-1e09-4977-99f6-1e738d28ccde",
+      "stored_brand": "Anua",
+      "name": "Blue Eraser Serum",
+      "scraped_title": "CELLOLOGY Blue Eraser Serum 15ml",
+      "source_id": "GA250228442",
+      "true_brand": "CELLOLOGY"
+    },
+    {
+      "id": "88669b60-7fee-4b40-bd38-22bee27cdcf8",
+      "stored_brand": "Banila Co",
+      "name": "Vegan Moist Oil To Foam Cleanser",
+      "scraped_title": "May young Vegan Moist Oil To Foam Cleanser 195ml",
+      "source_id": "GA260136482",
+      "true_brand": "May young"
+    },
+    {
+      "id": "46babb94-3af9-41ce-a034-27aaa0d85569",
+      "stored_brand": "Anua",
+      "name": "Panthenol Serum",
+      "scraped_title": "TOXNFILL Panthenol Serum 30mL",
+      "source_id": "GA240322516",
+      "true_brand": "TOXNFILL"
+    },
+    {
+      "id": "65744128-f9fb-439c-b1ef-bc09df177d8f",
+      "stored_brand": "Aestura",
+      "name": "Cica Bio-Placenta Cream",
+      "scraped_title": "NDP Cica Bio-Placenta Cream 50ml",
+      "source_id": "GA240925773",
+      "true_brand": "NDP"
+    },
+    {
+      "id": "463b3dbc-efd4-41d1-80ef-df69965cb301",
+      "stored_brand": "Aestura",
+      "name": "Essentially Epic Radiant Cream",
+      "scraped_title": "THOME Essentially Epic Radiant Cream 50g",
+      "source_id": "GA250329163",
+      "true_brand": "THOME"
+    },
+    {
+      "id": "fda1f588-0a2b-4524-8fc4-83bb25222ebe",
+      "stored_brand": "Beplain",
+      "name": "Dewtox Lift Boosting Pack Cleanser",
+      "scraped_title": "dewdap Dewtox Lift Boosting Pack Cleanser 150ml",
+      "source_id": "GA250531035",
+      "true_brand": "dewdap"
+    },
+    {
+      "id": "0ae016d7-76df-4122-aee4-c40ebb4fb351",
+      "stored_brand": "Anua",
+      "name": "Amino Acid Ampoule",
+      "scraped_title": "dixionist Amino Acid Ampoule 30ml",
+      "source_id": "GA241026015",
+      "true_brand": "dixionist"
+    },
+    {
+      "id": "bbf00c4a-b4c6-454b-8f2b-3acdf32733bb",
+      "stored_brand": "Anua",
+      "name": "Makiol Sebum Serum",
+      "scraped_title": "BOTANITY MAKIOL SEBUM SERUM 50ml",
+      "source_id": "GA241126964",
+      "true_brand": "BOTANITY"
+    },
+    {
+      "id": "4cbf9621-9983-4d75-bf2b-c4345fad02e4",
+      "stored_brand": "Aestura",
+      "name": "Soothing Calm Cream",
+      "scraped_title": "neaf neaf Soothing Calm Cream 50g",
+      "source_id": "GA260136436",
+      "true_brand": "neaf neaf"
+    },
+    {
+      "id": "9dab43fe-8ded-47cf-a15a-5b6b783b3f12",
+      "stored_brand": "Anua",
+      "name": "Rebalancing Mild Toner",
+      "scraped_title": "Feelkeen Rebalancing Mild Toner 300ml",
+      "source_id": "GA250430289",
+      "true_brand": "Feelkeen"
+    },
+    {
+      "id": "9688a39b-b9a6-4e2b-8e62-f3b08448dbab",
+      "stored_brand": "Beplain",
+      "name": "Dew Soap",
+      "scraped_title": "SEEDBEE Dew Soap",
+      "source_id": "GA230719549",
+      "true_brand": "SEEDBEE"
+    },
+    {
+      "id": "3a654225-dd51-47ec-b0d8-c31d99c3bb48",
+      "stored_brand": "Beplain",
+      "name": "pH Hyaluron Gel Cleanser",
+      "scraped_title": "HYGGEE pH Hyaluron Gel Cleanser 400ml",
+      "source_id": "GA210004693",
+      "true_brand": "HYGGEE"
+    },
+    {
+      "id": "d6276278-bbc5-4598-a8c8-015bb3f0683a",
+      "stored_brand": "Beplain",
+      "name": "Homme Brightening Foam Cleansing Large Size",
+      "scraped_title": "Briall Homme Brightening Foam Cleansing Large Size 500ml",
+      "source_id": "GA250631268",
+      "true_brand": "Briall"
+    },
+    {
+      "id": "75e955f5-0f05-4aad-b82e-b76fd45f6c7d",
+      "stored_brand": "Anua",
+      "name": "Zeroca 81 Serum",
+      "scraped_title": "dermagency Zeroca 81 Serum 30ml",
+      "source_id": "GA260136953",
+      "true_brand": "dermagency"
+    },
+    {
+      "id": "ccc5f87f-ea7b-47f8-94da-544b02d0d33c",
+      "stored_brand": "Aestura",
+      "name": "Phyton Hydra Cica Cream",
+      "scraped_title": "Green Finger Forest Phyton Hydra Cica Cream 50ml",
+      "source_id": "GA241126719",
+      "true_brand": "Green Finger Forest"
+    },
+    {
+      "id": "73697ac9-c43c-41f3-8af6-75d9a4fc16d9",
+      "stored_brand": "CAREPLUS",
+      "name": "Wrinkle Patches For Smile Lines 36P",
+      "scraped_title": "onslo Wrinkle Patches For Smile Lines 36P",
+      "source_id": "GA251235684",
+      "true_brand": "onslo"
+    },
+    {
+      "id": "c4548e01-c5ef-497e-b005-cf72d40e671c",
+      "stored_brand": "Beplain",
+      "name": "Ceramide Yuja pH Balancing Cleansing Foam",
+      "scraped_title": "irecipe Ceramide Yuja pH Balancing Cleansing Foam 150ml Set (+30ml)",
+      "source_id": "GA250531057",
+      "true_brand": "iRecipe"
+    },
+    {
+      "id": "079403f2-7168-4943-9598-28677cdd1721",
+      "stored_brand": "Medicube",
+      "name": "Afternoon Facial Mist",
+      "scraped_title": "motomont Afternoon Facial Mist 100ml",
+      "source_id": "GA260136417",
+      "true_brand": "motomont"
+    },
+    {
+      "id": "cec9426c-d358-41b4-9e80-134e43142fcf",
+      "stored_brand": "Anua",
+      "name": "Sebum Strike Toner",
+      "scraped_title": "MdoC Sebum Strike Toner 150ml",
+      "source_id": "GA210000146",
+      "true_brand": "MdoC"
+    },
+    {
+      "id": "60544cd7-c9e0-4ca5-9465-b5a3ab60d04b",
+      "stored_brand": "Medicube",
+      "name": "Collagen PDRN Pudding Mist Ampoule",
+      "scraped_title": "Chaewun Collagen PDRN Pudding Mist Ampoule 100g",
+      "source_id": "GA251135102",
+      "true_brand": "Chaewun"
+    },
+    {
+      "id": "1c7017f9-951f-418c-9594-cc6745576fe6",
+      "stored_brand": "Beplain",
+      "name": "My BHA Foaming Cleanser",
+      "scraped_title": "12GRABS My BHA Foaming Cleanser 200ml",
+      "source_id": "GA241126940",
+      "true_brand": "12GRABS"
+    },
+    {
+      "id": "7ae38067-55be-4fb2-ac33-f6546a8924db",
+      "stored_brand": "Ilso",
+      "name": "P.Z. Ssoc Ssoc No More Blackhead",
+      "scraped_title": "One-Day's You P.Z. Ssoc Ssoc No More Blackhead 100ml",
+      "source_id": "GA210003348",
+      "true_brand": "One Day's You"
+    },
+    {
+      "id": "5630e8f3-3a08-4c31-a134-12438f222fe2",
+      "stored_brand": "Centellian24",
+      "name": "DNA Yeon-Uh Cream",
+      "scraped_title": "COOPY DNA Yeon-Uh Cream 50ml",
+      "source_id": "GA241126943",
+      "true_brand": "COOPY"
+    },
+    {
+      "id": "c58e8832-3402-4975-a83e-b4241f01c611",
+      "stored_brand": "CAREPLUS",
+      "name": "Blemish Care Microcone Patch",
+      "scraped_title": "acropass Blemish Care Microcone Patch 8P",
+      "source_id": "GA251033910",
+      "true_brand": "Acropass"
+    },
+    {
+      "id": "cff3f6ff-d1de-40cc-8e05-e28f1663551e",
+      "stored_brand": "Anua",
+      "name": "Hyper Hyal Plumping Toner",
+      "scraped_title": "Re:NK Hyper Hyal Plumping Toner 200ml",
+      "source_id": "GA250530662",
+      "true_brand": "Re:NK"
+    },
+    {
+      "id": "9084890a-f9d5-4fbb-bd9f-89364bd1943e",
+      "stored_brand": "Aestura",
+      "name": "Cica-Some Calming Water Gel Cream",
+      "scraped_title": "Reve:am Cica-Some Calming Water Gel Cream 100ml",
+      "source_id": "GA250832989",
+      "true_brand": "Reve:am"
+    },
+    {
+      "id": "e39ae26a-a2e4-45e9-b662-dd0b47cb15c0",
+      "stored_brand": "Centellian24",
+      "name": "Dr. Dexpanthenol Cream",
+      "scraped_title": "VANCOR Dr. Dexpanthenol Cream 60ml",
+      "source_id": "GA241026337",
+      "true_brand": "VANCOR"
+    },
+    {
+      "id": "239c4475-8de4-4937-9a83-3c75c4153a43",
+      "stored_brand": "Anua",
+      "name": "Black Micro Infusion Bubble Shot",
+      "scraped_title": "groundplan Black Micro Infusion Bubble Shot 115ml",
+      "source_id": "GA260136955",
+      "true_brand": "Groundplan"
+    },
+    {
+      "id": "046e510c-ec8f-4703-b5e8-6d5ea6e25ce9",
+      "stored_brand": "CAREPLUS",
+      "name": "LIGHT Trapezius Patch",
+      "scraped_title": "essl LIGHT Trapezius Patch 2g*6P",
+      "source_id": "GA251034133",
+      "true_brand": "essl"
+    },
+    {
+      "id": "c0b91699-b8a0-44b3-8ad8-20f12ec362d2",
+      "stored_brand": "Beplain",
+      "name": "Pore Deep Clean Bubble Cleanser",
+      "scraped_title": "PONGDANG Pore Deep Clean Bubble Cleanser 145g",
+      "source_id": "GA260136544",
+      "true_brand": "PONGDANG"
+    },
+    {
+      "id": "5e1d3ad8-987c-47e8-80fd-a8712026536b",
+      "stored_brand": "CAREPLUS",
+      "name": "Unnoticeable Spot Patch 125 Counts",
+      "scraped_title": "Me factory Unnoticeable Spot Patch 125 Counts",
+      "source_id": "GA220113284",
+      "true_brand": "Me Factory"
+    },
+    {
+      "id": "1207e2f2-f9a9-4fdb-b180-575b8056c3ae",
+      "stored_brand": "Banila Co",
+      "name": "Deep Melting Mud Pore Cleansing Oil",
+      "scraped_title": "BRMUD Deep Melting Mud Pore Cleansing Oil 200ml",
+      "source_id": "GA250732051",
+      "true_brand": "BRMUD"
+    },
+    {
+      "id": "72dcb769-e4ad-490a-85e6-d191df6cf024",
+      "stored_brand": "Aestura",
+      "name": "Soymilk Relief Protein Lotion",
+      "scraped_title": "FLASKIN Soymilk Relief Protein Lotion 150mL",
+      "source_id": "GA240122020",
+      "true_brand": "FLASKIN"
+    },
+    {
+      "id": "75a9fca6-4c37-4b5e-abf4-b367e18b0dda",
+      "stored_brand": "Centellian24",
+      "name": "Mulberry 5D Pore Lifting Cream",
+      "scraped_title": "rooTree Mulberry 5D Pore Lifting Cream 50mL",
+      "source_id": "GA220916084",
+      "true_brand": "rooTree"
+    },
+    {
+      "id": "db04e023-0379-42a4-a78e-654d9e0a464c",
+      "stored_brand": "Anua",
+      "name": "Glycolic Acid 10% Ampoule",
+      "scraped_title": "NANO RECIPE. Glycolic Acid 10% Ampoule 30ml",
+      "source_id": "GA250832987",
+      "true_brand": "NANO RECIPE"
+    },
+    {
+      "id": "7368052a-b03d-46e5-9247-9f4e497a5dd4",
+      "stored_brand": "Aestura",
+      "name": "Melasma Blemish Cream Kakadu Plum",
+      "scraped_title": "CHUNGMIJUNG Melasma Blemish Cream Kakadu Plum 50g",
+      "source_id": "GA250732398",
+      "true_brand": "CHUNGMIJUNG"
+    },
+    {
+      "id": "5948e3b0-ebbf-4067-afc9-6fca1a9c4562",
+      "stored_brand": "Medicube",
+      "name": "Cicaide Cream Mist",
+      "scraped_title": "The Harnay Cicaide Cream Mist 120ml",
+      "source_id": "GA241126711",
+      "true_brand": "The Harnay"
+    },
+    {
+      "id": "b9dcf91f-b2d2-4f6a-b20e-32bd620bb793",
+      "stored_brand": "Beplain",
+      "name": "White Tea Tree AC Plus Pack Cleanser",
+      "scraped_title": "Telse White Tea Tree AC Plus Pack Cleanser 100ml",
+      "source_id": "GA240825081",
+      "true_brand": "Telse"
+    },
+    {
+      "id": "3107c783-ac40-459d-8b0c-09ff813fb4e1",
+      "stored_brand": "Anua",
+      "name": "Dr. Ceramide Toner",
+      "scraped_title": "VANCOR Dr. Ceramide Toner 150ml",
+      "source_id": "GA241026338",
+      "true_brand": "VANCOR"
+    },
+    {
+      "id": "17b0fbd6-0e10-4c23-ac05-0338073c861b",
+      "stored_brand": "Anua",
+      "name": "Dangyuja Firming Serum",
+      "scraped_title": "Deardot Dangyuja Firming Serum 30ml",
+      "source_id": "GA241126959",
+      "true_brand": "Deardot"
+    },
+    {
+      "id": "434a851d-4479-4a96-a76b-368f09e25b51",
+      "stored_brand": "CAREPLUS",
+      "name": "Trouble Cure X ZZA DOT Calming Patch Duo",
+      "scraped_title": "acropass Trouble Cure X ZZA DOT Calming Patch Duo",
+      "source_id": "GA260136886",
+      "true_brand": "Acropass"
+    },
+    {
+      "id": "642bbaaa-bb84-4954-99e4-6ac7938e03e2",
+      "stored_brand": "Ariul",
+      "name": "Vita Rose Multi Cleansing Pad",
+      "scraped_title": "POINT& Vita Rose Multi Cleansing Pad 60P",
+      "source_id": "GA251034264",
+      "true_brand": "POINT&"
+    },
+    {
+      "id": "c141c527-aa6e-4414-9efb-39148ae72b69",
+      "stored_brand": "Anua",
+      "name": "PDRN Bounce Ball Serum",
+      "scraped_title": "frankly PDRN Bounce Ball Serum 30ml",
+      "source_id": "GA250933238",
+      "true_brand": "Frankly"
+    },
+    {
+      "id": "a9e06860-9c56-443f-967a-e9229795f43b",
+      "stored_brand": "Beplain",
+      "name": "Cicatea Pore & Sebum Pack Cleanser",
+      "scraped_title": "dewdap Cicatea Pore & Sebum Pack Cleanser 150ml Set (+15ml)",
+      "source_id": "GA250530966",
+      "true_brand": "dewdap"
+    },
+    {
+      "id": "d4c92af0-c301-4d4e-9348-2263563df347",
+      "stored_brand": "Beplain",
+      "name": "Mild Gel To Foam Cleanser",
+      "scraped_title": "beiskin Mild Gel To Foam Cleanser 200ml",
+      "source_id": "GA241026340",
+      "true_brand": "Beiskin"
+    },
+    {
+      "id": "7c0b07b4-8309-4852-bba6-5f296f783eaa",
+      "stored_brand": "Anua",
+      "name": "Re:wake Moist Treatment",
+      "scraped_title": "plodica Re:wake Moist Treatment 150ml",
+      "source_id": "GA250732028",
+      "true_brand": "plodica"
+    },
+    {
+      "id": "7934a297-a69c-463b-8e0b-0f5395bedc5d",
+      "stored_brand": "Anua",
+      "name": "Red Orange Niacinamide Toner",
+      "scraped_title": "Telse Red Orange Niacinamide Toner 150ml",
+      "source_id": "GA240825082",
+      "true_brand": "Telse"
+    },
+    {
+      "id": "12c818b1-7b04-46af-a6cb-af27a5977bf4",
+      "stored_brand": "Anua",
+      "name": "Teca-Micro Bubble Ampoule Toner",
+      "scraped_title": "ZIGTAG Teca-Micro Bubble Ampoule Toner 100ml",
+      "source_id": "GA250732020",
+      "true_brand": "ZIGTAG"
+    },
+    {
+      "id": "1b1f89fe-4092-483a-9ed9-03b2c7ba6f1a",
+      "stored_brand": "Anua",
+      "name": "D-Panthenol 75% Ampoule",
+      "scraped_title": "NANO RECIPE. D-Panthenol 75% Ampoule 33g",
+      "source_id": "GA250832984",
+      "true_brand": "NANO RECIPE"
+    },
+    {
+      "id": "19883240-d2ca-4753-9059-5a13fb583a6e",
+      "stored_brand": "CAREPLUS",
+      "name": "Domedones Soonsak Patch Booster",
+      "scraped_title": "Dr.Wellmadeone Domedones Soonsak Patch Booster 30P",
+      "source_id": "GA240121753",
+      "true_brand": "Dr. Wellmadeone"
+    },
+    {
+      "id": "24111b06-8316-44c4-8048-7697f6e71285",
+      "stored_brand": "Ilso",
+      "name": "Deep Clean Soft Peeling Gel",
+      "scraped_title": "PONGDANG Deep Clean Soft Peeling Gel 120g",
+      "source_id": "GA260136545",
+      "true_brand": "PONGDANG"
+    },
+    {
+      "id": "e974e7f9-1af2-4aa0-a6c3-81fabaf40006",
+      "stored_brand": "Ilso",
+      "name": "Bye Blackhead Melting Remover",
+      "scraped_title": "B Project Bye Blackhead Melting Remover 30ml",
+      "source_id": "GA240724579",
+      "true_brand": "B Project"
+    },
+    {
+      "id": "a991cd25-0476-43af-8075-ddb21aa758a6",
+      "stored_brand": "CAREPLUS",
+      "name": "Niacin Vita C Snow Patch",
+      "scraped_title": "huecalm Niacin Vita C Snow Patch 6ea",
+      "source_id": "GA250228537",
+      "true_brand": "HUECALM"
+    },
+    {
+      "id": "b8cbe464-79ad-4b23-838b-d39a492358f1",
+      "stored_brand": "Anua",
+      "name": "Re:Blue Regenerating Serum",
+      "scraped_title": "carenology Re:Blue Regenerating Serum 50ml",
+      "source_id": "GA241126655",
+      "true_brand": "Carenology"
+    },
+    {
+      "id": "cd6fd1ef-c6da-41d0-92f4-f6384d72a738",
+      "stored_brand": "Anua",
+      "name": "Potension Pore Tightening Boost Serum",
+      "scraped_title": "CELORABY Potension Pore Tightening Boost Serum 30ml",
+      "source_id": "GA250228438",
+      "true_brand": "CELORABY"
+    },
+    {
+      "id": "9bf228d3-6bde-45eb-8ad9-cef03c6600d0",
+      "stored_brand": "Aestura",
+      "name": "Homme Re:charge Cica Emulsion",
+      "scraped_title": "LACVERT Homme Re:charge Cica Emulsion 180mL",
+      "source_id": "GA230518662",
+      "true_brand": "LACVERT"
+    },
+    {
+      "id": "fff88097-c413-459f-a3a8-28d685d62cfd",
+      "stored_brand": "Anua",
+      "name": "Vita PDRN Ampoule",
+      "scraped_title": "neaf neaf Vita PDRN Ampoule 20ml",
+      "source_id": "GA260136431",
+      "true_brand": "neaf neaf"
+    },
+    {
+      "id": "d80b14ba-8926-4671-852e-936c6364bd13",
+      "stored_brand": "Anua",
+      "name": "Azulene Banul Essence",
+      "scraped_title": "COOPY Azulene Banul Essence 40ml",
+      "source_id": "GA241126942",
+      "true_brand": "COOPY"
+    },
+    {
+      "id": "47a30169-2dad-4940-a36c-021871d9d050",
+      "stored_brand": "Anua",
+      "name": "Retinal Skin Booster Serum",
+      "scraped_title": "Meditherapy Retinal Skin Booster Serum 150ml",
+      "source_id": "GA250732358",
+      "true_brand": "Meditherapy"
+    },
+    {
+      "id": "e4005e2f-db4b-400f-97f8-02b38e55480d",
+      "stored_brand": "Anua",
+      "name": "Mucin Collanetinal Deep Wrinkle Shot",
+      "scraped_title": "CLEARDEA. Mucin Collanetinal Deep Wrinkle Shot",
+      "source_id": "GA250732074",
+      "true_brand": "CLEARDEA"
+    },
+    {
+      "id": "7887177f-6d33-4cb9-a8ff-56963e6f3887",
+      "stored_brand": "Centellian24",
+      "name": "Green Cica Derma Repair Cream",
+      "scraped_title": "Sovonn Green Cica Derma Repair Cream 40mL",
+      "source_id": "GA211213109",
+      "true_brand": "Sovonn"
+    },
+    {
+      "id": "36147823-07b0-4c46-b146-44e910db61b4",
+      "stored_brand": "Anua",
+      "name": "Dr. Radiata Blemish Serum Loto",
+      "scraped_title": "VANCOR Dr. Radiata Blemish Serum Loto 30ml",
+      "source_id": "GA241026335",
+      "true_brand": "VANCOR"
+    },
+    {
+      "id": "b3032519-675a-47bb-9c52-5078ce9f47df",
+      "stored_brand": "Anua",
+      "name": "Calendula Toning Lotion",
+      "scraped_title": "Oligodermie Calendula Toning Lotion 500ml",
+      "source_id": "GA241227096",
+      "true_brand": "Oligodermie"
+    },
+    {
+      "id": "bbf9ebb8-30e8-44e2-9e26-2a362416f0cf",
+      "stored_brand": "Anua",
+      "name": "Into The Water-Hole Ampoule",
+      "scraped_title": "plodica Into The Water-Hole Ampoule 50ml",
+      "source_id": "GA250732029",
+      "true_brand": "plodica"
+    },
+    {
+      "id": "1f1e0ecd-deee-4a1b-9a58-aa36fe90c272",
+      "stored_brand": "Beplain",
+      "name": "Soycube Exorepair Pack To Foam Cleanser",
+      "scraped_title": "DPPR Soycube Exorepair Pack To Foam Cleanser 120ml",
+      "source_id": "GA260136575",
+      "true_brand": "DPPR"
+    },
+    {
+      "id": "42ec39f8-e124-4d8a-b588-adff22f49864",
+      "stored_brand": "Aestura",
+      "name": "Deep Melacare Spot Treatment Oint-Gel",
+      "scraped_title": "MILD LAB Deep Melacare Spot Treatment Oint-Gel 20ml",
+      "source_id": "GA240825307",
+      "true_brand": "MILD LAB"
+    },
+    {
+      "id": "17cfd9ea-9d10-4442-9e6a-61e8379d0ab4",
+      "stored_brand": "Aestura",
+      "name": "Mugwort Zero Film Moisturizer",
+      "scraped_title": "orien Mugwort Zero Film Moisturizer 60ml",
+      "source_id": "GA250530833",
+      "true_brand": "Orien"
+    },
+    {
+      "id": "a8ad19ee-0caa-45e0-879b-5a8ca30c21a0",
+      "stored_brand": "Anua",
+      "name": "Mucin Collagen Voluming Cream Ampoule",
+      "scraped_title": "CLEARDEA. Mucin Collagen Voluming Cream Ampoule 4ml*2ea",
+      "source_id": "GA250732077",
+      "true_brand": "CLEARDEA"
+    },
+    {
+      "id": "47bfb172-7e6a-4aa5-9d4f-e357c40f6cbc",
+      "stored_brand": "Aestura",
+      "name": "Dangyuja Inner Barrier Cream",
+      "scraped_title": "Deardot Dangyuja Inner Barrier Cream 50ml",
+      "source_id": "GA241126960",
+      "true_brand": "Deardot"
+    },
+    {
+      "id": "660f29d4-d72d-4dea-8543-8ae5783d522d",
+      "stored_brand": "Anua",
+      "name": "Birch Rich Origin Essence",
+      "scraped_title": "Soofe'e Birch Rich Origin Essence 150mL",
+      "source_id": "GA220916091",
+      "true_brand": "Soofe'e"
+    },
+    {
+      "id": "4df450be-adfa-4c9e-9464-7b090e170b51",
+      "stored_brand": "Anua",
+      "name": "Phyton Hydra Cica Serum",
+      "scraped_title": "Green Finger Forest Phyton Hydra Cica Serum 50mL",
+      "source_id": "GA240322505",
+      "true_brand": "Green Finger Forest"
+    },
+    {
+      "id": "0c00c84b-2d9b-455c-b4ff-6d5b77d098ad",
+      "stored_brand": "Anua",
+      "name": "Derma Pore 4D Collagen Serum",
+      "scraped_title": "FUSIDYNE Derma Pore 4D Collagen Serum 50ml",
+      "source_id": "GA240825097",
+      "true_brand": "FUSIDYNE"
+    },
+    {
+      "id": "390228a1-a581-4c59-a43f-6e35b9b93b5b",
+      "stored_brand": "Ilso",
+      "name": "Rice Bran Enzyme Powder Wash",
+      "scraped_title": "SRB Rice Bran Enzyme Powder Wash 100g Large Size Special Set",
+      "source_id": "GA240222399",
+      "true_brand": "SRB"
+    },
+    {
+      "id": "c3e98a72-018f-4893-b099-43753dbba230",
+      "stored_brand": "Medicube",
+      "name": "Toning And Brightening Kakadu Vita C Blemish Glow Mist",
+      "scraped_title": "veganifect. Toning And Brightening Kakadu Vita C Blemish Glow Mist 100ml",
+      "source_id": "GA250429834",
+      "true_brand": "Veganifect"
+    },
+    {
+      "id": "fcb984b2-37c6-4410-8528-24aa8a033312",
+      "stored_brand": "Anua",
+      "name": "Signature Estud Protector Ampoule 5.2",
+      "scraped_title": "DEMAR3 Signature Estud Protector Ampoule 5.2 30ml",
+      "source_id": "GA240423006",
+      "true_brand": "DEMAR3"
+    },
+    {
+      "id": "8bc25b34-9118-4eda-9a05-1ed1ed0dcbfc",
+      "stored_brand": "Anua",
+      "name": "Clotho Ampoule",
+      "scraped_title": "Ondo Skin Clotho Ampoule 50ml",
+      "source_id": "GA241126957",
+      "true_brand": "Ondo Skin"
+    },
+    {
+      "id": "d9ffa72e-638a-41e3-8565-a1d6e5862e06",
+      "stored_brand": "CAREPLUS",
+      "name": "Patch Deep Care 8P",
+      "scraped_title": "HAPYDOPY Patch Deep Care 8P",
+      "source_id": "GA250128287",
+      "true_brand": "HAPYDOPY"
+    },
+    {
+      "id": "e70af30b-e4af-4362-b7f8-b3ffe8423a46",
+      "stored_brand": "Anua",
+      "name": "Clean & Glow Green Barley First Essence",
+      "scraped_title": "Veganifect Clean & Glow Green Barley First Essence 150mL",
+      "source_id": "GA220816014",
+      "true_brand": "Veganifect"
+    },
+    {
+      "id": "188e85f7-a65c-4f88-8ff2-bc1c20f7be81",
+      "stored_brand": "Aestura",
+      "name": "Re:Blue Ultra Repair Cream",
+      "scraped_title": "carenology Re:Blue Ultra Repair Cream 50ml",
+      "source_id": "GA241126654",
+      "true_brand": "Carenology"
+    },
+    {
+      "id": "62369574-fa88-4715-ad56-a4040cfcfe0d",
+      "stored_brand": "Anua",
+      "name": "Bakuchiol Mela Free Serum",
+      "scraped_title": "RAVIEL Bakuchiol Mela Free Serum 30ml",
+      "source_id": "GA241126948",
+      "true_brand": "RAVIEL"
+    },
+    {
+      "id": "19a65ffe-1326-4ef4-99a4-236f9fa2ee75",
+      "stored_brand": "Anua",
+      "name": "Kombucha Plant Biome Toner",
+      "scraped_title": "herbloom Kombucha Plant Biome Toner 150mL",
+      "source_id": "GA220816012",
+      "true_brand": "Herbloom"
+    },
+    {
+      "id": "032d9b78-3909-4720-bce8-9a1a3c377379",
+      "stored_brand": "Aestura",
+      "name": "Differensea Blue Biome Repair Soothing Cream",
+      "scraped_title": "picore Differensea Blue Biome Repair Soothing Cream 50ml",
+      "source_id": "GA241026430",
+      "true_brand": "picore"
+    },
+    {
+      "id": "5c57707c-2bae-4ebb-829d-de4c78e518b2",
+      "stored_brand": "Centellian24",
+      "name": "Wonder Remedy Tube",
+      "scraped_title": "keenoniks Wonder Remedy Tube 50ml",
+      "source_id": "GA210004029",
+      "true_brand": "Keenoniks"
+    },
+    {
+      "id": "44f85895-3fb6-4d5d-8f8e-58a7ad07fd97",
+      "stored_brand": "Anua",
+      "name": "Dangyuja Watery Essence",
+      "scraped_title": "Deardot Dangyuja Watery Essence 130ml",
+      "source_id": "GA241126958",
+      "true_brand": "Deardot"
+    },
+    {
+      "id": "a7b0607e-250b-4d53-ab2b-435fd3162a1f",
+      "stored_brand": "Anua",
+      "name": "Color Food Series Red Remedy Toner",
+      "scraped_title": "Tovegan Color Food Series Red Remedy Toner 150ml",
+      "source_id": "GA250732026",
+      "true_brand": "Tovegan"
+    },
+    {
+      "id": "b599bec8-8ca3-42c4-baa0-d4bf097b32f9",
+      "stored_brand": "Aestura",
+      "name": "Oatmeal Barrier Protein Cream",
+      "scraped_title": "FLASKIN Oatmeal Barrier Protein Cream 80mL",
+      "source_id": "GA240122021",
+      "true_brand": "FLASKIN"
+    },
+    {
+      "id": "ace572c1-3469-4b6d-af11-0b97671e3088",
+      "stored_brand": "Beplain",
+      "name": "Be:Fine The AC Pore Deep Cleanser",
+      "scraped_title": "carenology Be:Fine The AC Pore Deep Cleanser 120ml",
+      "source_id": "GA241126657",
+      "true_brand": "Carenology"
+    },
+    {
+      "id": "4b169949-b2d0-4b74-83be-c6840a4d8274",
+      "stored_brand": "Ariul",
+      "name": "Deep Clean All Kill Lip & Eye Makeup Remover",
+      "scraped_title": "POINT& Deep Clean All Kill Lip & Eye Makeup Remover 200ml 1+1 Set",
+      "source_id": "GA241126640",
+      "true_brand": "POINT&"
+    },
+    {
+      "id": "0fe31f8e-636e-4097-9000-992e38e25367",
+      "stored_brand": "Aestura",
+      "name": "Angelcica Calming-aging Fit Cream",
+      "scraped_title": "LASSIE'EL Angelcica Calming-aging Fit Cream 50ml",
+      "source_id": "GA251235634",
+      "true_brand": "LASSIE'EL"
+    },
+    {
+      "id": "6657272d-d649-4b79-a7c1-915e19c40f3b",
+      "stored_brand": "Beplain",
+      "name": "Rice Matgeolli Cleansing Foam",
+      "scraped_title": "About Me Rice Matgeolli Cleansing Foam 120mL",
+      "source_id": "GA220815984",
+      "true_brand": "AboutMe"
+    },
+    {
+      "id": "03e93539-bc23-4048-9898-2bb9339cb424",
+      "stored_brand": "Anua",
+      "name": "Collagen Bomb Hydrating Ampoule",
+      "scraped_title": "BADSKIN Collagen Bomb Hydrating Ampoule 400mL Special Set (+100mL)",
+      "source_id": "GA230518694",
+      "true_brand": "BADSKIN"
+    },
+    {
+      "id": "3ab99236-9f56-472d-9f20-9309be8e7a9c",
+      "stored_brand": "Anua",
+      "name": "Re:Blue Boosting Multi Toner",
+      "scraped_title": "carenology Re:Blue Boosting Multi Toner 150ml",
+      "source_id": "GA241126652",
+      "true_brand": "Carenology"
+    },
+    {
+      "id": "61110f9b-2c77-4d7c-9eea-ff56fb43d825",
+      "stored_brand": "Beplain",
+      "name": "Trouble Solution Foam Cleanser",
+      "scraped_title": "LazySOCIETY Trouble Solution Foam Cleanser 120ml",
+      "source_id": "GA250429897",
+      "true_brand": "LazySOCIETY"
+    },
+    {
+      "id": "2d92f0d1-e34f-43da-a36c-38b5b03b8d3b",
+      "stored_brand": "Aestura",
+      "name": "Water-Fit 8 Layering Moisture Cream",
+      "scraped_title": "Reve:am Water-Fit 8 Layering Moisture Cream 100ml",
+      "source_id": "GA250832988",
+      "true_brand": "Reve:am"
+    },
+    {
+      "id": "b92da36d-8fcc-4bd3-b682-5a8573359a7c",
+      "stored_brand": "Anua",
+      "name": "Eau Briller Brume Water Essence",
+      "scraped_title": "equlib Eau Briller Brume Water Essence 50ml",
+      "source_id": "GA250732011",
+      "true_brand": "Equlib"
+    },
+    {
+      "id": "d9262136-0ad6-4076-a890-9b06e0e3c96a",
+      "stored_brand": "Beplain",
+      "name": "Pumpkin Blended Cream Cleanser",
+      "scraped_title": "Monight Pumpkin Blended Cream Cleanser 100g",
+      "source_id": "GA241026331",
+      "true_brand": "Monight"
+    },
+    {
+      "id": "1b80bad9-ce77-4841-a243-25282094a47d",
+      "stored_brand": "Anua",
+      "name": "Mulberry 5D Pore Refining Ampoule",
+      "scraped_title": "rooTree Mulberry 5D Pore Refining Ampoule 50mL",
+      "source_id": "GA220916085",
+      "true_brand": "rooTree"
+    },
+    {
+      "id": "c8c2f95d-45e3-4d1a-b765-f9c1c577e040",
+      "stored_brand": "Aestura",
+      "name": "Signature Silt Vale Creme 2.7",
+      "scraped_title": "DEMAR3 Signature Silt Vale Creme 2.7 50mL",
+      "source_id": "GA231020675",
+      "true_brand": "DEMAR3"
+    },
+    {
+      "id": "5b482afe-a9ab-4888-974a-7089f439c04d",
+      "stored_brand": "Ilso",
+      "name": "Pore Repair Spicule Peeling Ampoule",
+      "scraped_title": "May young Pore Repair Spicule Peeling Ampoule 50ml",
+      "source_id": "GA260136483",
+      "true_brand": "May young"
+    },
+    {
+      "id": "0f503071-12f1-4291-a81f-3bc6ff43e26d",
+      "stored_brand": "Beplain",
+      "name": "Sea Grape Cleansing Foam",
+      "scraped_title": "mommycare Sea Grape Cleansing Foam 120ml",
+      "source_id": "GA250429893",
+      "true_brand": "Mommycare"
+    },
+    {
+      "id": "f6f2f8bf-f451-4e9d-9210-bd1e00a0e763",
+      "stored_brand": "Medicube",
+      "name": "Spa Relief Frozen Pore Mask",
+      "scraped_title": "Aperire Spa Relief Frozen Pore Mask 200g",
+      "source_id": "GA250732095",
+      "true_brand": "Aperire"
+    },
+    {
+      "id": "94da6277-ef8d-4546-8d06-58db7fbcd7f3",
+      "stored_brand": "Beplain",
+      "name": "Cica-Aloe Cleansing Gel Foam",
+      "scraped_title": "FLEFF Cica-Aloe Cleansing Gel Foam 200ml",
+      "source_id": "GA210711354",
+      "true_brand": "FLEFF"
+    },
+    {
+      "id": "112eb28a-c238-41a9-8e7d-e8de6e06f790",
+      "stored_brand": "Anua",
+      "name": "Aloe Flower Cica Serum",
+      "scraped_title": "Botanity Aloe Flower Cica Serum 30ml",
+      "source_id": "GA250732558",
+      "true_brand": "BOTANITY"
+    }
+  ],
+  "skipped": {
+    "not_in_cluster": [
+      {
+        "id": "14827e4c-79b2-406e-940d-e0e880d5e0ab",
+        "stored_brand": "Biodance",
+        "name": "Limited Perfect Collagen Set",
+        "scraped_title": "Limited Perfect Collagen Set",
+        "source_id": "GS261044416"
+      },
+      {
+        "id": "967884d0-30a9-4936-b80b-edc58b919b3b",
+        "stored_brand": "Physiogel",
+        "name": "Cica Balance For Men 2P Set",
+        "scraped_title": "[SET] Cica Balance For Men 2P Set (Toner 200ml+Cream 70ml)",
+        "source_id": "GA240925824"
+      },
+      {
+        "id": "82c0dc35-9352-40ac-8750-d21a94a2a4cb",
+        "stored_brand": "VT",
+        "name": "AM Intense Eye Serum",
+        "scraped_title": "OOTD AM Intense Eye Serum 30mL",
+        "source_id": "GA220514944"
+      },
+      {
+        "id": "83a15000-8900-4047-8860-704e01b5a3e2",
+        "stored_brand": "Faith in Face",
+        "name": "Centella Sensitive Ampoule Mask Sheet",
+        "scraped_title": "FIF Centella Sensitive Ampoule Mask Sheet 10 Sheets",
+        "source_id": "GA210004503"
+      },
+      {
+        "id": "c448be1c-71f5-4b7f-be15-03a609ec295b",
+        "stored_brand": "Cell Fusion C",
+        "name": "Low pH pHarrier Moisture Cream",
+        "scraped_title": "Cell Fushion C Low pH pHarrier Moisture Cream 80mL",
+        "source_id": "GA220213646"
+      },
+      {
+        "id": "645fcc27-b602-4dac-80af-fa386703fad2",
+        "stored_brand": "Cell Fusion C",
+        "name": "Post α Cooling Gel Cream",
+        "scraped_title": "Cell Fusion Post α Cooling Gel Cream 50ml Set (+20ml)",
+        "source_id": "GA250329230"
+      },
+      {
+        "id": "67a0c12d-3bfd-476a-8089-500077187249",
+        "stored_brand": "Infodplus",
+        "name": "XCESPI 316T Hydrovita Gel Pad",
+        "scraped_title": "INFOD+ XCESPI 316T Hydrovita Gel Pad 70P",
+        "source_id": "GA250731997"
+      },
+      {
+        "id": "db3f329c-164a-4888-87a2-57ef06271b42",
+        "stored_brand": "Crystal Forest",
+        "name": "YURISUP Modeling Pack",
+        "scraped_title": "YURISUP Modeling Pack 28g (1 serving)",
+        "source_id": "GA240322604"
+      },
+      {
+        "id": "7d5314fe-a906-45ee-88d1-2615c9d7337e",
+        "stored_brand": "VT",
+        "name": "Dr.Melaxin Eyephalt Eye Cream for Eyebags",
+        "scraped_title": "Dr.Melaxin Eyephalt Eye Cream for Eyebags 10ml",
+        "source_id": "GA250429811"
+      },
+      {
+        "id": "4b422e1a-e52b-4a95-9abe-7a5b7e06aba2",
+        "stored_brand": "Avène",
+        "name": "Cleanance Cleansing Gel Double Pack",
+        "scraped_title": "Avene Cleanance Cleansing Gel 400ml Double Pack",
+        "source_id": "GA251236255"
+      },
+      {
+        "id": "69b5c3ac-9e9f-46f3-afbc-05422448fd53",
+        "stored_brand": "CKD Healthcare",
+        "name": "Retino Collagen Low Molecular 300 Guasha Neck Cream",
+        "scraped_title": "CKD Healthcrae Retino Collagen Low Molecular 300 Guasha Neck Cream 50ml For Refill",
+        "source_id": "GA250732079"
+      },
+      {
+        "id": "58cf5cba-4f1f-4d2f-9379-25c09ee81c3d",
+        "stored_brand": "Makeprem",
+        "name": "Rose Gentle Cleansing Milk",
+        "scraped_title": "JOODOC Rose Gentle Cleansing Milk 250ml",
+        "source_id": "GA250933290"
+      },
+      {
+        "id": "7d26524c-c0e2-44ad-ba47-b30033c57a46",
+        "stored_brand": "Bringgreen",
+        "name": "Artemisia Calming EX Essence Toner",
+        "scraped_title": "브링그린 사철쑥카밍EX에센스토너 500mL",
+        "source_id": "GA241227367"
+      },
+      {
+        "id": "5ae2ac05-f86a-4ed8-927a-ba85eee95d48",
+        "stored_brand": "Rejuran",
+        "name": "Healer UV Protection Balm",
+        "scraped_title": "RAJURAN Healer UV Protection Balm 19g",
+        "source_id": "GA220715308"
+      },
+      {
+        "id": "8bd5a9ad-5fa6-4804-b109-158d9edc0e49",
+        "stored_brand": "Neuraderm",
+        "name": "Intensive Sun Cream",
+        "scraped_title": "Medytox NERURADERM Intensive Sun Cream 50ml",
+        "source_id": "GA240624180"
+      },
+      {
+        "id": "04b56c09-b57f-4904-8036-60ec6bc1d5e9",
+        "stored_brand": "Mediheal",
+        "name": "Product Name Unknown",
+        "scraped_title": "OLIVE YOUNG Global | Korea's No. 1 Health & Beauty Store",
+        "source_id": "GS230318076"
+      },
+      {
+        "id": "664488cf-a407-4e30-80a2-f45de23f5ffb",
+        "stored_brand": "Heimish",
+        "name": "Artless Glow Tinted Sunscreen",
+        "scraped_title": "Hemish Artless Glow Tinted Sunscreen 40ml",
+        "source_id": "GA240724667"
+      },
+      {
+        "id": "a9b69ae0-964e-4dfc-bf4e-ee78332ecb3d",
+        "stored_brand": "rom&nd",
+        "name": "Glasting Melting Balm #06 Kaya Fig",
+        "scraped_title": "[TANNING POCHACCO EDITION] Glasting Melting Balm 3.5g #06 Kaya Fig",
+        "source_id": "GA250631697"
+      },
+      {
+        "id": "d2ebffd0-8f1d-48c4-9572-a456dc4a3564",
+        "stored_brand": "Neuraderm",
+        "name": "Hydro Brightening Mask Pack",
+        "scraped_title": "Medytox NERURADERM Hydro Brightening Mask Pack 1ea",
+        "source_id": "GA240624181"
+      },
+      {
+        "id": "8fa65de1-d49a-4675-9b7d-9286fcc11090",
+        "stored_brand": "The Ordinary",
+        "name": "Multi-Peptide Lash and Brow Serum",
+        "scraped_title": "The Oridnary Multi-Peptide Lash and Brow Serum 5mL",
+        "source_id": "GA220815783"
+      },
+      {
+        "id": "a45fe08e-7a29-4ebd-91b8-bcae559d8503",
+        "stored_brand": "PURCELL",
+        "name": "Biom Glow Barrier Serum Set",
+        "scraped_title": "Pixcell Biom Glow Barrier Serum 50ml Set (+15ml)",
+        "source_id": "GA250631420"
+      },
+      {
+        "id": "e987a562-7aeb-42a0-baa7-2b3fedc9b6ec",
+        "stored_brand": "Bringgreen",
+        "name": "Artemisia Calming EX Barrier Cream",
+        "scraped_title": "브링그린 사철쑥카밍EX베리어크림 100mL 더블기획",
+        "source_id": "GA241227368"
+      },
+      {
+        "id": "bc8e5238-fb2e-4349-b885-2bdc8f1836b5",
+        "stored_brand": "Avène",
+        "name": "Cicalfate+ Repairing Protective Cream",
+        "scraped_title": "Avene Cicalfate+ Repairing Protective Cream 40ml",
+        "source_id": "GA210002370"
+      },
+      {
+        "id": "91f2c12d-2c81-47ba-85b6-807fea75c9cc",
+        "stored_brand": "Torriden",
+        "name": "Cellmazing Firming Gel Mask",
+        "scraped_title": "Torrriden Cellmazing Firming Gel Mask Sheet 1P (Upper/Lower Sheets)",
+        "source_id": "GA231221536"
+      },
+      {
+        "id": "82a541f0-57c6-45ee-b085-1dcf20a73f31",
+        "stored_brand": "Dermall Matrix",
+        "name": "Quick Vitalizing Patch",
+        "scraped_title": "Dermall Materix Quick Vitalizing Patch 10P",
+        "source_id": "GA230819957"
+      },
+      {
+        "id": "a77acc64-ad16-4111-be21-3448b3a96b0e",
+        "stored_brand": "Chasin' Rabbits",
+        "name": "Bunny Line Smoother",
+        "scraped_title": "Chasin'Rabbit Bunny Line Smoother 15mL",
+        "source_id": "GA221116814"
+      },
+      {
+        "id": "3ef7ae6f-77e2-48c0-b999-d8c1ae101a3b",
+        "stored_brand": "SUM37",
+        "name": "One-day Aesthetic Glazed Program",
+        "scraped_title": "THOME One-day Aesthetic Glazed Program",
+        "source_id": "GA250329161"
+      },
+      {
+        "id": "43281e7d-8865-429e-988b-c99a3507b167",
+        "stored_brand": "CELORABY by Anua",
+        "name": "PDRN Collagen Bubble Quick Mask Serum",
+        "scraped_title": "CELORABY PDRN Collagen Bubble Quick Mask Serum 100ml",
+        "source_id": "GA250530620"
+      },
+      {
+        "id": "fd65f1e6-301b-40e3-8dcf-8af3e3fbcb5c",
+        "stored_brand": "Crystal Forest",
+        "name": "Modeling Pack",
+        "scraped_title": "YURISUP Modeling Pack 500g (30 servings)",
+        "source_id": "GA240322848"
+      },
+      {
+        "id": "762d92b4-f9e1-45cf-9ec3-d366ae89c062",
+        "stored_brand": "Cell Fusion C",
+        "name": "Toning C Vita Shot Ampoule Double Pack",
+        "scraped_title": "Cell Fusion Toning C Vita Shot Ampoule 20g Double Pack",
+        "source_id": "GA250228880"
+      },
+      {
+        "id": "5c6a2dd6-ca19-4bc7-986b-d8ab27531eaa",
+        "stored_brand": "VT",
+        "name": "Lifderm Auto Eye Cream",
+        "scraped_title": "Dr.twentyproject Lifderm Auto Eye Cream 20mL",
+        "source_id": "GA230518657"
+      },
+      {
+        "id": "2ed4c0d9-c0c6-4ab5-8f03-8c3f22f04036",
+        "stored_brand": "Avène",
+        "name": "Hydrance Deep Moist Lotion",
+        "scraped_title": "Avene Hydrance Deep Moist Lotion 200ml",
+        "source_id": "GA210002916"
+      },
+      {
+        "id": "9f8e5116-942e-460b-9a08-2d4bd9398ce2",
+        "stored_brand": "VT",
+        "name": "Anti-Fatigue Eye Contour Stick",
+        "scraped_title": "LA ROSEE Anti-Fatigue Eye Contour Stick 15mL",
+        "source_id": "GA240222431"
+      },
+      {
+        "id": "db9d6a26-f5c4-40bd-8dd5-925d85cc5ca9",
+        "stored_brand": "Dongkook Pharmaceutical",
+        "name": "Mela-Set Dark Spot Toning Cream Double Set",
+        "scraped_title": "Dongkook Pharm Mela-Set Dark Spot Toning Cream 35g Double Set (+2 Wide Patches)",
+        "source_id": "GA260539982"
+      },
+      {
+        "id": "cb6eb10f-fcd2-4430-b128-b5cc443ed40d",
+        "stored_brand": "Neuraderm",
+        "name": "Repair Lifting Cream Mask Pack",
+        "scraped_title": "Medytox NERURADERM Repair Lifting Cream Mask Pack 5ea",
+        "source_id": "GA240624177"
+      },
+      {
+        "id": "21efbaa0-ff1f-4c7c-a73f-52bfb2d3a707",
+        "stored_brand": "Etude",
+        "name": "Sugar Coloring Jelly Balm",
+        "scraped_title": "[Tanning Cinnamoroll] Sugar Coloring Jelly Balm 9g (+Mini Jelly Balm)",
+        "source_id": "GA250631683"
+      },
+      {
+        "id": "c8f572f3-4ed5-4447-b2fb-07133e032165",
+        "stored_brand": "Dongkook Pharmaceutical",
+        "name": "Madecaxel Spot Patch Tape 130ea",
+        "scraped_title": "Dongkook Pharm Madecaxel Spot Patch Tape 130ea",
+        "source_id": "GA260338375"
+      },
+      {
+        "id": "e277728d-6450-4b5a-9af4-140e1b30db6e",
+        "stored_brand": "Dear, Klairs",
+        "name": "Gentle Black Sugar Facial Polish",
+        "scraped_title": "Klairs Gentle Black Sugar Facial Polish 110g",
+        "source_id": "GA210610828"
+      },
+      {
+        "id": "6376b96f-b684-4fe2-85fa-9d30e631f1de",
+        "stored_brand": "CNP Laboratory",
+        "name": "After-Ray Watery Tone Up Sun Double Pack",
+        "scraped_title": "CNP After-Ray Watery Tone Up Sun 50ml Double Pack",
+        "source_id": "GA250429923"
+      },
+      {
+        "id": "26edb7fe-2c38-4c2c-9e90-09c1f5e87f26",
+        "stored_brand": "VT",
+        "name": "Ondo Skin Clotho Eye Cream",
+        "scraped_title": "Ondo Skin Clotho Eye Cream 35ml",
+        "source_id": "GA241126954"
+      },
+      {
+        "id": "75fda796-d8fd-4a9a-b77c-18947c855359",
+        "stored_brand": "Faith in Face",
+        "name": "Teatree ACPAIR Ampoule Mask Sheet",
+        "scraped_title": "FIF Teatree ACPAIR Ampoule Mask Sheet 10 Sheets",
+        "source_id": "GA210004505"
+      },
+      {
+        "id": "aa67380a-b7aa-4538-8c91-46e209bff9fe",
+        "stored_brand": "VT",
+        "name": "OOTD PM Overnight Eye Cream",
+        "scraped_title": "OOTD PM Overnight Eye Cream 25mL",
+        "source_id": "GA220514943"
+      },
+      {
+        "id": "19a346d7-17f1-46b9-96bc-0e2b7bb106ca",
+        "stored_brand": "Neuraderm",
+        "name": "Hydro Brightening Mask Pack 5ea",
+        "scraped_title": "Medytox NERURADERM Hydro Brightening Mask Pack 5ea",
+        "source_id": "GA240624182"
+      },
+      {
+        "id": "f0a23ce4-1f0e-4658-afe4-0ce2cbfc8275",
+        "stored_brand": "CNP Laboratory",
+        "name": "Derma Answer Anti Pore Active Peel Set",
+        "scraped_title": "[Atom EDITION] CNP Derma Answer Anti Pore Active Peel 50ml Set (+15ml)",
+        "source_id": "GA241026234"
+      },
+      {
+        "id": "2b84b596-0c2f-4e95-b669-3f87d4ad0d41",
+        "stored_brand": "BBIA",
+        "name": "Last Auto Gel Eyeliner Mini Book Set EP4 Rosy Open",
+        "scraped_title": "[Tanning Sanrio Characters]  Last Auto Gel Eyeliner Mini Book 0.2g*3ea Set EP4 Rosy Open",
+        "source_id": "GA250631686"
+      },
+      {
+        "id": "0b229f7a-ddc8-4e2f-a0a8-a4e02b3ad957",
+        "stored_brand": "I'm From",
+        "name": "Black Rice Toner",
+        "scraped_title": "I'm form Black Rice Toner 150ml",
+        "source_id": "GA250832688"
+      },
+      {
+        "id": "1181005a-ea2b-4489-8921-7e73bfa54d6d",
+        "stored_brand": "Nuse",
+        "name": "Color Care Lip Balm",
+        "scraped_title": "nuze Color Care Lip Balm (6 Colors)",
+        "source_id": "GA230719667"
+      },
+      {
+        "id": "8f0292a8-c107-4ec2-b2a2-7ae7f8b29ae6",
+        "stored_brand": "CNP Laboratory",
+        "name": "Derma+ Answer Barrier Reset Cream",
+        "scraped_title": "[ATAMAm'MA EDITION] CNP Derma+ Answer Barrier Reset Cream 80ml Set (+31ml+Sticker Pack)",
+        "source_id": "GA250933231"
+      },
+      {
+        "id": "13ec6811-341d-4929-862d-dc8433b2e437",
+        "stored_brand": "Neuraderm",
+        "name": "Age Defence Bio Mask Pack",
+        "scraped_title": "Medytox NERURADERM Age Defence Bio Mask Pack 5ea",
+        "source_id": "GA240624179"
+      },
+      {
+        "id": "5005f4a5-f200-4ddc-9384-10406974be87",
+        "stored_brand": "Nightingale",
+        "name": "Toning Peeling Pads Tea Tree",
+        "scraped_title": "Nightinggale Toning Peeling Pads Tea Tree 60 Sheets",
+        "source_id": "GA210000734"
+      },
+      {
+        "id": "0d58d0ce-b097-4867-9afa-cd8be139dbad",
+        "stored_brand": "Vaseline",
+        "name": "Lip Therapy Colour + Care Lip Balm",
+        "scraped_title": "Veseline Lip Theapy Colour + Care Lip Balm (8 Options)",
+        "source_id": "GA230619394"
+      },
+      {
+        "id": "f9e1509a-c243-4b05-b38f-2c984ab5588e",
+        "stored_brand": "Fation",
+        "name": "Pigmentation Pro Cream",
+        "scraped_title": "DONG-A Pharm Pigmentation Pro Cream 40ml",
+        "source_id": "GA260338354"
+      },
+      {
+        "id": "e9018c9c-e92e-4f37-88f7-5f38c809b245",
+        "stored_brand": "Chasin' Rabbits",
+        "name": "Green Colden Ruler Cream",
+        "scraped_title": "Chasin'Rabbit Green Colden Ruler Cream 75mL",
+        "source_id": "GA221116813"
+      },
+      {
+        "id": "a539567c-362e-4f9c-840b-ffcddfc381be",
+        "stored_brand": "Neuraderm",
+        "name": "Deep Calming Mask Pack",
+        "scraped_title": "Medytox NERURADERM Deep Calming Mask Pack 5ea",
+        "source_id": "GA240624175"
+      },
+      {
+        "id": "e1688805-49e9-44a1-bf30-8d7c161e3840",
+        "stored_brand": "Makeprem",
+        "name": "Barle Yuja Milk In Gel",
+        "scraped_title": "Barle Yuja Milk In Gel 200ml",
+        "source_id": "GA250732610"
+      },
+      {
+        "id": "c0d2e8ad-acc3-4e2e-affe-b555ff5b6104",
+        "stored_brand": "Mediheal",
+        "name": "Product Name Unavailable",
+        "scraped_title": "OLIVE YOUNG Global | Korea's No. 1 Health & Beauty Store",
+        "source_id": "GS230318073"
+      }
+    ],
+    "name_at_start": [
+      {
+        "id": "25a21382-336f-473b-a022-fec9696b1ff8",
+        "stored_brand": "Aestura",
+        "name": "Briall Homme Perfect Whitening Lotion",
+        "scraped_title": "Briall Homme Perfect Whitening Lotion 120ml",
+        "source_id": "GA250531107"
+      },
+      {
+        "id": "e6b2fa94-341e-4045-b322-d66fb186a81a",
+        "stored_brand": "Medicube",
+        "name": "THOME Glow Layering Ampoule Mist",
+        "scraped_title": "THOME Glow Layering Ampoule Mist 73.8ml",
+        "source_id": "GA250732577"
+      },
+      {
+        "id": "b6079c03-925c-4359-9d1e-ba09c1042b83",
+        "stored_brand": "Beplain",
+        "name": "ReSaltZ Salt Massage Ocean Cleansing Bar",
+        "scraped_title": "ReSaltZ Salt Massage Ocean Cleansing Bar 90g",
+        "source_id": "GA250933287"
+      },
+      {
+        "id": "9b1935f0-dc54-4060-912f-1b748ab36d66",
+        "stored_brand": "Anua",
+        "name": "Slowpure Glow Up Fluid Sun Serum",
+        "scraped_title": "slowpure Glow Up Fluid Sun Serum 50ml",
+        "source_id": "GA250732001"
+      },
+      {
+        "id": "9a390f77-f20a-45d1-a871-4847d43ec530",
+        "stored_brand": "Anua",
+        "name": "Groundplan Ampoule",
+        "scraped_title": "groundplan Ampoule 40ml",
+        "source_id": "GA241227037"
+      },
+      {
+        "id": "60219283-3048-4e18-a11c-c9a136e5ffa8",
+        "stored_brand": "Beplain",
+        "name": "z+piderm EGF Skin Barrier Cleansing Foam",
+        "scraped_title": "z+piderm EGF Skin Barrier Cleansing Foam 120ml",
+        "source_id": "GA251034283"
+      },
+      {
+        "id": "35bf389a-934b-4fd9-9364-f28d51cca9b4",
+        "stored_brand": "Anua",
+        "name": "Slowpure Pore Peel Serum",
+        "scraped_title": "slowpure Pore Peel Serum 50ml",
+        "source_id": "GA250732007"
+      },
+      {
+        "id": "309ea080-030b-426c-aa79-06ea5db88a14",
+        "stored_brand": "Beplain",
+        "name": "Tovegan Color Food Series Blue Balancing Foam Cleanser",
+        "scraped_title": "Tovegan Color Food Series Blue Balancing Foam Cleanser 150mL",
+        "source_id": "GA230117367"
+      },
+      {
+        "id": "0c662782-b2e2-49b9-99bc-82cef77738d3",
+        "stored_brand": "Beplain",
+        "name": "Nightingale Daily Derma Cleansing Foam Mild Acid",
+        "scraped_title": "Nightingale Daily Derma Cleansing Foam Mild Acid 1+1",
+        "source_id": "GA210610825"
+      },
+      {
+        "id": "33fc67d6-e3db-4f27-a9ed-61f4068526a6",
+        "stored_brand": "Beplain",
+        "name": "Erigeron Snow Oatmeal Cleanser",
+        "scraped_title": "Erigeron Snow Oatmeal Cleanser 100ml",
+        "source_id": "GA250631848"
+      },
+      {
+        "id": "8733740c-5be6-47b6-9f74-3ef06c85900f",
+        "stored_brand": "Anua",
+        "name": "Hyggee Repair Serum",
+        "scraped_title": "Hyggee Repair Serum 30ml",
+        "source_id": "GA210003010"
+      },
+      {
+        "id": "47a044b7-3a85-4fdf-a10d-d2e3c882ceed",
+        "stored_brand": "Anua",
+        "name": "Vitkle Aurora Glow Grip Primer Prep",
+        "scraped_title": "Vitkle Aurora Glow Grip Primer Prep 30ml",
+        "source_id": "GA250933428"
+      },
+      {
+        "id": "523020e0-851d-47c6-9b60-fa66472ea95a",
+        "stored_brand": "Medicube",
+        "name": "Groundplan Mist",
+        "scraped_title": "groundplan Mist 50ml",
+        "source_id": "GA260136954"
+      },
+      {
+        "id": "db2c926c-2f41-4b0f-8ec0-fdaab51b9d9c",
+        "stored_brand": "Beplain",
+        "name": "Unstraum The Original Face Wash",
+        "scraped_title": "Unstraum The Original Face Wash 120ml",
+        "source_id": "GA240925604"
+      },
+      {
+        "id": "b4224bc6-33a5-4ef1-b8bc-9c09e9d631d7",
+        "stored_brand": "Beplain",
+        "name": "ReSaltZ Salt Massage Rose Cleansing Bar",
+        "scraped_title": "ReSaltZ Salt Massage Rose Cleansing Bar 90g",
+        "source_id": "GA250933288"
+      },
+      {
+        "id": "48d97b30-35ee-4ec7-bd47-1a7a84cbadac",
+        "stored_brand": "Anua",
+        "name": "B.READY Cicaffeine Trouble Reset Toner",
+        "scraped_title": "B.READY Cicaffeine Trouble Reset Toner 250ml Set (+Toner 50ml)",
+        "source_id": "GA240623968"
+      },
+      {
+        "id": "7fa618d0-c8ff-49a2-8e80-b14d9fe80199",
+        "stored_brand": "Banila Co",
+        "name": "Pongdang Pore Deep Clean Cleansing Oil",
+        "scraped_title": "PONGDANG Pore Deep Clean Cleansing Oil 200ml",
+        "source_id": "GA260136543"
+      },
+      {
+        "id": "930d35ba-6603-4a8e-8106-ca01cb56f03b",
+        "stored_brand": "Aestura",
+        "name": "Ondo Skin Clotho Cream",
+        "scraped_title": "Ondo Skin Clotho Cream\t50ml",
+        "source_id": "GA241126956"
+      },
+      {
+        "id": "64a71cf8-6dd5-416c-b959-a5dcf02f8c90",
+        "stored_brand": "Anua",
+        "name": "P.CALM Barrier Cycle Toner",
+        "scraped_title": "P.CALM Barrier Cycle Toner 200ml Set (+30ml)",
+        "source_id": "GA251135084"
+      },
+      {
+        "id": "717e3357-f708-4629-94a0-0adc8f0863ed",
+        "stored_brand": "Anua",
+        "name": "Telse Red Orange Niacinamide Serum",
+        "scraped_title": "Telse Red Orange Niacinamide Serum 30ml",
+        "source_id": "GA240825083"
+      },
+      {
+        "id": "c7b0c2db-5b6f-4cca-a14b-de86af8c8385",
+        "stored_brand": "Anua",
+        "name": "Vari:Hope AHA BHA PHA Refining Boost Serum",
+        "scraped_title": "VARI:HOPE AHA BHA PHA Refining Boost Serum 15g",
+        "source_id": "GA211112797"
+      },
+      {
+        "id": "79d7a972-34b6-489b-8113-de6ca4c6c5b9",
+        "stored_brand": "Aestura",
+        "name": "Briall Homme Whitening Moisture Cream",
+        "scraped_title": "Briall Homme Whitening Moisture Cream 50ml",
+        "source_id": "GA250531109"
+      },
+      {
+        "id": "c10c86ab-4565-4dd0-84ac-3711e67872cc",
+        "stored_brand": "Anua",
+        "name": "Troubless Mild Clear Toner Essence",
+        "scraped_title": "Troubless Mild Clear Toner Essence 200mL",
+        "source_id": "GA221116834"
+      },
+      {
+        "id": "7b36c686-5072-4e75-9a39-f86716f90ee8",
+        "stored_brand": "Beplain",
+        "name": "P.CALM Holy Basil Green Capsule Pack To Foam Cleanser",
+        "scraped_title": "P.CALM Holy Basil Green Capsule Pack To Foam Cleanser 120ml",
+        "source_id": "GA260136712"
+      },
+      {
+        "id": "5a6557bd-769e-4deb-b777-23fe35d96ba0",
+        "stored_brand": "Anua",
+        "name": "NDP BeBe Biome Anti-aging Serum",
+        "scraped_title": "NDP BeBe Biome Anti-aging Serum 20ml",
+        "source_id": "GA240925774"
+      },
+      {
+        "id": "12fcbddb-9a8f-4ef4-a564-8f9320aa0855",
+        "stored_brand": "Ariul",
+        "name": "SRB Stabilized Rice Bran Cleansing Pad",
+        "scraped_title": "SRB Stabilized Rice Bran Cleansing Pad 60P",
+        "source_id": "GA230618883"
+      },
+      {
+        "id": "99647b77-5f41-4cdc-99b3-f0dd3cd845ec",
+        "stored_brand": "Ilso",
+        "name": "Black Monster Scrubber",
+        "scraped_title": "Black Monster Scrubber",
+        "source_id": "GA250329777"
+      },
+      {
+        "id": "af2e2f8d-6f15-4638-9ab7-99df03052730",
+        "stored_brand": "Centellian24",
+        "name": "CELLOLOGY Blue Eraser Cream",
+        "scraped_title": "CELLOLOGY Blue Eraser Cream 50ml",
+        "source_id": "GA250228441"
+      },
+      {
+        "id": "59b8d25b-41cf-4136-a01a-245253ba3c05",
+        "stored_brand": "Beplain",
+        "name": "Monight Rose Oil Blended Cream Cleanser",
+        "scraped_title": "Monight Rose Oil Blended Cream Cleanser 100g",
+        "source_id": "GA241026329"
+      },
+      {
+        "id": "6c1ada8f-1408-45cc-9bdc-669029805579",
+        "stored_brand": "Aestura",
+        "name": "Cell In Shot EGF Allantenol Repair Cream",
+        "scraped_title": "CELL IN SHOT EGF Allantenol Repair Cream 70ml",
+        "source_id": "GA250530686"
+      },
+      {
+        "id": "27e52eec-4932-49d8-9193-f183ea11ef93",
+        "stored_brand": "Aestura",
+        "name": "DPPR Hyalcube Flooding Cream",
+        "scraped_title": "DPPR Hyalcube Flooding Cream 100ml",
+        "source_id": "GA250731979"
+      },
+      {
+        "id": "751d97c9-dff2-420e-aab7-613f80bef43d",
+        "stored_brand": "Aestura",
+        "name": "Unstraum The Origin Lotion",
+        "scraped_title": "Unstraum The Origin Lotion 150ml",
+        "source_id": "GA240925602"
+      },
+      {
+        "id": "21ae9c44-43f9-4ebd-87cc-865c4fe07c4e",
+        "stored_brand": "Anua",
+        "name": "SeohaeSol Vital Shine Serum",
+        "scraped_title": "SeohaeSol Vital Shine Serum 30ml",
+        "source_id": "GA250631238"
+      },
+      {
+        "id": "1dadc176-0c5b-4d99-8296-97a21e914964",
+        "stored_brand": "Banila Co",
+        "name": "Veramore Brightening Milk Foaming Balm",
+        "scraped_title": "veramore Brightening Milk Foaming Balm 100g",
+        "source_id": "GA251034672"
+      },
+      {
+        "id": "ea982d18-1847-4a37-8793-f20a687ac065",
+        "stored_brand": "Beplain",
+        "name": "P.CALM Under Pore Foam Cleanser",
+        "scraped_title": "P.CALM Under Pore Foam Cleanser 250mL",
+        "source_id": "GA220816008"
+      },
+      {
+        "id": "dc5a984c-da73-497b-9654-600a3ed05084",
+        "stored_brand": "Beplain",
+        "name": "Monight Green Tea Blended Cream Cleanser",
+        "scraped_title": "Monight Green Tea Blended Cream Cleanser 100g",
+        "source_id": "GA241026330"
+      },
+      {
+        "id": "242d222b-d751-4c5e-a3c6-f38055ec481f",
+        "stored_brand": "Beplain",
+        "name": "ReSaltZ Salt Massage Lavender Cleansing Bar",
+        "scraped_title": "ReSaltZ Salt Massage Lavender Cleansing Bar 90g",
+        "source_id": "GA250933289"
+      },
+      {
+        "id": "5bd161e6-3718-4e21-86dd-b5f3f07415b9",
+        "stored_brand": "Banila Co",
+        "name": "irecipe Ceramide Yuja Bio Cleansing Oil",
+        "scraped_title": "irecipe Ceramide Yuja Bio Cleansing Oil 200ml Set (+20ml)",
+        "source_id": "GA250531056"
+      },
+      {
+        "id": "7419682f-3ee6-4674-ad6c-60af8bc1e98c",
+        "stored_brand": "Aestura",
+        "name": "Re:NK Hyper Hyal Plumping Cream",
+        "scraped_title": "Re:NK Hyper Hyal Plumping Cream 105ml",
+        "source_id": "GA250530665"
+      },
+      {
+        "id": "f0c6cd5c-b508-44a2-b51c-613ecc5af4a5",
+        "stored_brand": "Anua",
+        "name": "Green Finger Forest Phyton Hydra Cica Serum Toner",
+        "scraped_title": "Green Finger Forest Phyton Hydra Cica Serum Toner 200ml",
+        "source_id": "GA241126721"
+      },
+      {
+        "id": "f31f6eb9-b21e-45f7-a203-6e79d6e290e0",
+        "stored_brand": "Aestura",
+        "name": "B.READY Cicaffeine Trouble Reset Cream",
+        "scraped_title": "B.READY Cicaffeine Trouble Reset Cream 70mL",
+        "source_id": "GA240121556"
+      },
+      {
+        "id": "d442b9ef-dd1d-48f5-889b-b72f4e28f55d",
+        "stored_brand": "Anua",
+        "name": "SeohaeSol Intense Hydrating Booster Serum",
+        "scraped_title": "SeohaeSol Intense Hydrating Booster Serum 30ml",
+        "source_id": "GA250631236"
+      },
+      {
+        "id": "278aba90-ab82-41ae-bfe9-9efe9a4f8247",
+        "stored_brand": "Banila Co",
+        "name": "AIDA Glutathione Milk Oil Cleanser",
+        "scraped_title": "AIDA Glutathione Milk Oil Cleanser 150g",
+        "source_id": "GA241227171"
+      },
+      {
+        "id": "8c40f5c0-d8cf-48d6-8330-a49510332855",
+        "stored_brand": "Aestura",
+        "name": "Groundplan Gel Moisture",
+        "scraped_title": "groundplan Gel Moisture 110ml",
+        "source_id": "GA241227039"
+      },
+      {
+        "id": "548789ff-8b1f-4ac6-8889-9f2c91d28eca",
+        "stored_brand": "Anua",
+        "name": "Slowpure Aqua Fluid Sun Serum",
+        "scraped_title": "slowpure Aqua Fluid Sun Serum 50ml",
+        "source_id": "GA250732002"
+      },
+      {
+        "id": "58e2e553-cb9a-49b6-98f0-c439a2db1a31",
+        "stored_brand": "Anua",
+        "name": "P.CALM Retinolagen Ampoule",
+        "scraped_title": "P.CALM Retinolagen Ampoule 30mL",
+        "source_id": "GA230820174"
+      },
+      {
+        "id": "7bccc497-83a4-4adb-ad49-4903f0c54d23",
+        "stored_brand": "Medicube",
+        "name": "Vitkle Apricot Collagen Gel Serum Mist",
+        "scraped_title": "Vitkle Apricot Collagen Gel Serum Mist 100ml",
+        "source_id": "GA250933427"
+      },
+      {
+        "id": "2580059c-8473-4e0f-a755-85e0c06b43d9",
+        "stored_brand": "Aestura",
+        "name": "P.CALM Cato Cream",
+        "scraped_title": "P.CALM Cato Cream 80mL",
+        "source_id": "GA220815822"
+      },
+      {
+        "id": "398d8b74-35cc-4481-9b4c-e2c446e75a19",
+        "stored_brand": "Beplain",
+        "name": "Monight Oatmeal Blended Cream Cleanser",
+        "scraped_title": "Monight Oatmeal Blended Cream Cleanser 100g",
+        "source_id": "GA241026332"
+      },
+      {
+        "id": "61bd1c13-6b5a-4ca5-9430-ec963615eca7",
+        "stored_brand": "Banila Co",
+        "name": "AboutMe Rice Makgeolli Cleansing Oil",
+        "scraped_title": "AboutMe Rice Makgeolli Cleansing Oil 195mL",
+        "source_id": "GA230820181"
+      },
+      {
+        "id": "a58ba2db-04d3-4a48-a946-96da54df121d",
+        "stored_brand": "Beplain",
+        "name": "Erigeron Soy Yogurt Cleanser",
+        "scraped_title": "Erigeron Soy Yogurt Cleanser 100ml",
+        "source_id": "GA250631846"
+      },
+      {
+        "id": "da26ac44-73f8-4a64-ac62-de39f4b87679",
+        "stored_brand": "Beplain",
+        "name": "CLEARDEA. Minari Pore Ampoule Cleanser",
+        "scraped_title": "CLEARDEA. Minari Pore Ampoule Cleanser 80ml",
+        "source_id": "GA250530586"
+      },
+      {
+        "id": "b71ee5be-d4c3-417d-9b29-6971fea4b386",
+        "stored_brand": "Anua",
+        "name": "P.CALM PDRN Caffeine Blue Capsule 11 Serum",
+        "scraped_title": "P.CALM PDRN Caffeine Blue Capsule 11 Serum 30ml",
+        "source_id": "GA251135086"
+      },
+      {
+        "id": "e1798741-2998-4550-873b-f6ad12b7ff56",
+        "stored_brand": "Aestura",
+        "name": "z+piderm EGF Skin Barrier Intensive Cream",
+        "scraped_title": "z+piderm EGF Skin Barrier Intensive Cream 80ml",
+        "source_id": "GA250732019"
+      },
+      {
+        "id": "169b2671-a283-4db7-80e6-c6898bb7d80a",
+        "stored_brand": "Banila Co",
+        "name": "P.CALM Underpore Holy Basil Cleansing Oil",
+        "scraped_title": "P.CALM Underpore Holy Basil Cleansing Oil 190mL",
+        "source_id": "GA230518740"
+      },
+      {
+        "id": "1dc2ec4f-2fd2-4271-9828-c670b29e202c",
+        "stored_brand": "Centellian24",
+        "name": "CICAGO Cica Finish Cream",
+        "scraped_title": "CICAGO Cica Finish Cream 50ml",
+        "source_id": "GA210001067"
+      },
+      {
+        "id": "d4f72014-8a47-4de0-b529-be69ba889475",
+        "stored_brand": "Banila Co",
+        "name": "TISS Deep Off Cleansing Oil",
+        "scraped_title": "TISS Deep Off Cleansing Oil 320ml",
+        "source_id": "GA251236149"
+      },
+      {
+        "id": "6feb0634-b53c-45a7-ae9d-b8269d253b79",
+        "stored_brand": "Banila Co",
+        "name": "Mommycare Sea Grape Cleansing Oil",
+        "scraped_title": "mommycare Sea Grape Cleansing Oil 200ml",
+        "source_id": "GA250429894"
+      },
+      {
+        "id": "c30abf3a-3c00-438e-889c-fbf6fff31510",
+        "stored_brand": "Beplain",
+        "name": "P.CALM Retinolagen Ampoule Shot Foam Cleanser",
+        "scraped_title": "P.CALM Retinolagen Ampoule Shot Foam Cleanser 120mL",
+        "source_id": "GA240222274"
+      },
+      {
+        "id": "f5303708-a7cd-4b1d-b172-da2ad47c1c3d",
+        "stored_brand": "Aestura",
+        "name": "Rataplan Water Parsley Calming Moisture Cream",
+        "scraped_title": "rataplan Water Parsley Calming Moisture Cream 75mL",
+        "source_id": "GA220916248"
+      },
+      {
+        "id": "c5096e2b-ce2c-4deb-a97c-5b1e56fc750b",
+        "stored_brand": "Anua",
+        "name": "DPPR Hyalcube Flooding Serum",
+        "scraped_title": "DPPR Hyalcube Flooding Serum 50ml",
+        "source_id": "GA250731978"
+      },
+      {
+        "id": "f73e110f-0591-4d25-9a36-ac8dee169d0b",
+        "stored_brand": "Anua",
+        "name": "NDP HA Boosting Serum",
+        "scraped_title": "NDP HA Boosting Serum 30ml",
+        "source_id": "GA250429810"
+      },
+      {
+        "id": "26fab562-09a6-4a32-95f8-d4e21569afa4",
+        "stored_brand": "Medicube",
+        "name": "AIDA Glutathione Brightening Ampoule Mist",
+        "scraped_title": "AIDA Glutathione Brightening Ampoule Mist 60ml",
+        "source_id": "GA240724592"
+      },
+      {
+        "id": "31d29395-df43-488c-88d2-db12c5318fd3",
+        "stored_brand": "Anua",
+        "name": "SeohaeSol Peptide Repair Serum",
+        "scraped_title": "SeohaeSol Peptide Repair Serum 30ml",
+        "source_id": "GA250631237"
+      },
+      {
+        "id": "22512b10-44e7-4dbc-9322-34d94d1921c3",
+        "stored_brand": "Aestura",
+        "name": "P.CALM Centella Trouble Spot",
+        "scraped_title": "P.CALM Centella Trouble Spot 15ml",
+        "source_id": "GA240623983"
+      },
+      {
+        "id": "16f510bb-c95a-4e36-a7e7-0b560cbc8619",
+        "stored_brand": "CAREPLUS",
+        "name": "AC Magnesium Patch Small",
+        "scraped_title": "AC Magnesium Patch Small 10P",
+        "source_id": "GA230117300"
+      },
+      {
+        "id": "e0227b97-5360-4e28-b499-f9444debd86a",
+        "stored_brand": "Anua",
+        "name": "TOXNFILL Eye & Face Serum",
+        "scraped_title": "TOXNFILL Eye & Face Serum 30mL",
+        "source_id": "GA240322517"
+      },
+      {
+        "id": "1ae0afdf-5528-4466-8f68-b2f89411ff40",
+        "stored_brand": "Anua",
+        "name": "DPPR Soycube Exorepair Serum",
+        "scraped_title": "DPPR Soycube Exorepair Serum 50ml",
+        "source_id": "GA251034526"
+      },
+      {
+        "id": "11f5c191-f151-411b-9516-33d0b6076912",
+        "stored_brand": "Beplain",
+        "name": "Menthology Super Cool Cleansing Foam",
+        "scraped_title": "Menthology Super Cool Cleansing Foam 140ml",
+        "source_id": "GA241126835"
+      },
+      {
+        "id": "0e4c7cc0-7a19-49a5-a47c-ec4284b5073c",
+        "stored_brand": "Aestura",
+        "name": "Dr.Iaso Complete Moisturizer EX",
+        "scraped_title": "DR.IASO Complete Moisturizer EX 140ml",
+        "source_id": "GA210001083"
+      },
+      {
+        "id": "04487132-8f32-45ce-b8a6-3a261eca6bb6",
+        "stored_brand": "CAREPLUS",
+        "name": "Troubless Invisible Spot Patch The Classic",
+        "scraped_title": "Troubless Invisible Spot Patch The Classic",
+        "source_id": "GA230317834"
+      },
+      {
+        "id": "db8a4ffb-90c5-425e-937f-ade65296ebe0",
+        "stored_brand": "Aestura",
+        "name": "P.CALM PDRN Caffeine Blue Capsule 60 Cream",
+        "scraped_title": "P.CALM PDRN Caffeine Blue Capsule 60 Cream 50ml",
+        "source_id": "GA251135172"
+      },
+      {
+        "id": "f4d590e1-961a-49c2-b9fa-352191832704",
+        "stored_brand": "Banila Co",
+        "name": "Tovegan Color Food Series White Wholesome Cleansing Balm",
+        "scraped_title": "Tovegan Color Food Series White Wholesome Cleansing Balm 120mL",
+        "source_id": "GA230117366"
+      },
+      {
+        "id": "5592f470-e780-4f11-a08e-7ec97827b9c6",
+        "stored_brand": "Beplain",
+        "name": "Black Monster Mud Pack & Foam",
+        "scraped_title": "Black Monster Mud Pack & Foam",
+        "source_id": "GA250329776"
+      },
+      {
+        "id": "853ac2aa-ac6e-482f-9e5d-90cf20cb007a",
+        "stored_brand": "Beplain",
+        "name": "Monight Charcoal Blended Cream Cleanser",
+        "scraped_title": "Monight Charcoal Blended Cream Cleanser 100g",
+        "source_id": "GA241026333"
+      },
+      {
+        "id": "c8d948fc-8561-4f19-930b-7f554b4a54f9",
+        "stored_brand": "Anua",
+        "name": "Slowpure Brightening Tone Serum",
+        "scraped_title": "slowpure Brightening Tone Serum 50ml",
+        "source_id": "GA250732003"
+      },
+      {
+        "id": "1f3b2fed-8fd1-4e65-aa18-15ed18968661",
+        "stored_brand": "Banila Co",
+        "name": "One Day's You P.Z. SSG SSAG Deep Cleansing Oil",
+        "scraped_title": "One day's you P.Z. SSG SSAG Deep Cleansing Oil 200mL",
+        "source_id": "GA221217060"
+      },
+      {
+        "id": "3a97983b-2c2a-4ebd-b068-c16c506141bf",
+        "stored_brand": "Aestura",
+        "name": "Botanity Makiol Water Gel Cream",
+        "scraped_title": "BOTANITY MAKIOL WATER GEL CREAM 80ml",
+        "source_id": "GA241126966"
+      },
+      {
+        "id": "916b4e2a-e9cb-42fb-96f2-e17f2839513f",
+        "stored_brand": "Aestura",
+        "name": "IASO Progressive Age Care Emulsion",
+        "scraped_title": "IASO Progressive Age Care Emulsion",
+        "source_id": "GA210000030"
+      },
+      {
+        "id": "3d9dbc84-bb7d-4098-b553-1692d83777cc",
+        "stored_brand": "Aestura",
+        "name": "NuTexture Comforting Cream",
+        "scraped_title": "NuTexture Comforting Cream 40ml",
+        "source_id": "GA240825276"
+      },
+      {
+        "id": "d3291c0c-4ee6-4635-bd87-3eb5ba62f8d0",
+        "stored_brand": "Anua",
+        "name": "Cell In Shot TX Gluta Shot",
+        "scraped_title": "CELL IN SHOT TX Gluta Shot 50ml",
+        "source_id": "GA250530687"
+      },
+      {
+        "id": "46dfd7bb-8a2b-47e5-bbba-45aefe85de7b",
+        "stored_brand": "CAREPLUS",
+        "name": "Troubless Spot Gel",
+        "scraped_title": "Troubless Spot Gel 15mL",
+        "source_id": "GA210911993"
+      },
+      {
+        "id": "bf125e23-9fb2-4a61-9cbf-93fd983e30ce",
+        "stored_brand": "CAREPLUS",
+        "name": "Sllight Multi Patch 5.0",
+        "scraped_title": "Sllight Multi Patch 5.0 6.5g*10ea",
+        "source_id": "GA251034057"
+      },
+      {
+        "id": "753e33ef-f0d3-4309-ab80-ad6cd143fbf3",
+        "stored_brand": "Beplain",
+        "name": "Erigeron Heartleaf Green Cleanser",
+        "scraped_title": "Erigeron Heartleaf Green Cleanser 100ml",
+        "source_id": "GA250631847"
+      },
+      {
+        "id": "002f8634-000d-4d84-bac8-7b3fe93be786",
+        "stored_brand": "Aestura",
+        "name": "Slowpure Splash Hydration Gel Cream",
+        "scraped_title": "slowpure Splash Hydration Gel Cream 50ml",
+        "source_id": "GA250732008"
+      },
+      {
+        "id": "f6fe5dee-fe6a-486e-8dfa-4aa3077f2a68",
+        "stored_brand": "Beplain",
+        "name": "Fortuna Pear Scrub Cleansing Foam",
+        "scraped_title": "FORTUNA Pear Scrub Cleansing Foam 150g",
+        "source_id": "GA241126961"
+      },
+      {
+        "id": "874d4bbf-f188-4784-9312-df72854234fa",
+        "stored_brand": "Banila Co",
+        "name": "irecipe Ceramide Yuja Healing Cleansing Balm",
+        "scraped_title": "irecipe Ceramide Yuja Healing Cleansing Balm 120g Set (+10g)",
+        "source_id": "GA240523759"
+      },
+      {
+        "id": "c4e7c4ba-f96a-4b31-9525-8201edc4313c",
+        "stored_brand": "Beplain",
+        "name": "OGANACELL DERX Cleanser",
+        "scraped_title": "OGANACELL DERX Cleanser 120ml",
+        "source_id": "GA250329577"
+      },
+      {
+        "id": "678fe7c6-0b62-4b33-a284-a1b9b7122668",
+        "stored_brand": "Anua",
+        "name": "P.CALM Porsica Ampoule",
+        "scraped_title": "P.CALM Porsica Ampoule 30mL",
+        "source_id": "GA220815823"
+      },
+      {
+        "id": "c3cdf4e2-3aba-4b80-b1c7-fd733bb8c116",
+        "stored_brand": "Anua",
+        "name": "z+piderm EGF Skin Barrier Cream Toner",
+        "scraped_title": "z+piderm EGF Skin Barrier Cream Toner 150ml",
+        "source_id": "GA250732017"
+      },
+      {
+        "id": "1a2f7537-1247-4273-9472-0af9661f6ff3",
+        "stored_brand": "Aestura",
+        "name": "Groundplan Cream",
+        "scraped_title": "groundplan Cream 50ml",
+        "source_id": "GA241227040"
+      },
+      {
+        "id": "ccd2dbdd-80ee-42e9-b182-f2b574837785",
+        "stored_brand": "Anua",
+        "name": "Slowpure Hydration Texture Serum",
+        "scraped_title": "slowpure Hydration Texture Serum 50ml",
+        "source_id": "GA250732004"
+      },
+      {
+        "id": "f2002d53-5539-4105-a1c6-d1d84ce18a16",
+        "stored_brand": "Anua",
+        "name": "Ultra V Idebenone Prestige Ampoule 3ea",
+        "scraped_title": "Ultra V Idebenone Prestige Ampoule 3ea",
+        "source_id": "GA220916098"
+      },
+      {
+        "id": "bb7f6db3-168a-4b79-b49c-0f086c57a48f",
+        "stored_brand": "CAREPLUS",
+        "name": "Sllight Belly Patch 5.0",
+        "scraped_title": "Sllight Belly Patch 5.0 18g*5ea",
+        "source_id": "GA251034058"
+      },
+      {
+        "id": "80a39ab8-c7bb-4def-bef8-fc990b8e2e48",
+        "stored_brand": "Anua",
+        "name": "Slowpure Lifting Firm Serum",
+        "scraped_title": "slowpure Lifting Firm Serum 50ml",
+        "source_id": "GA250732006"
+      },
+      {
+        "id": "4e6e8cf7-d6cc-4e1b-ba75-a6385b914a2a",
+        "stored_brand": "Medicube",
+        "name": "Hesul Rice Protein Serum Mist",
+        "scraped_title": "Hesul Rice Protein Serum Mist 150ml",
+        "source_id": "GA251034154"
+      },
+      {
+        "id": "d1f71c23-8683-4666-a141-00aa23933187",
+        "stored_brand": "BOHO",
+        "name": "Black Monster All Day Moisture All In One",
+        "scraped_title": "Black Monster All Day Moisture All In One",
+        "source_id": "GA250933225"
+      },
+      {
+        "id": "a05e3415-2c78-4de3-94d8-0da190c9e5da",
+        "stored_brand": "Banila Co",
+        "name": "XOUL After Glow Cleansing Balm",
+        "scraped_title": "XOUL After Glow Cleansing Balm 80g",
+        "source_id": "GA230920530"
+      },
+      {
+        "id": "326c4195-dbf1-41d6-9718-cd941f1827e6",
+        "stored_brand": "Centellian24",
+        "name": "Mediorga Brightening Cream Plus",
+        "scraped_title": "mediorga Brightening Cream Plus 1+1 Special Set (30mL+30mL)",
+        "source_id": "GA220916088"
+      },
+      {
+        "id": "01d55da7-5a7e-4784-949f-ea2290175584",
+        "stored_brand": "Banila Co",
+        "name": "The phi Sunflower Cleansing Oil",
+        "scraped_title": "The phi Sunflower Cleansing Oil 200mL",
+        "source_id": "GA221116645"
+      },
+      {
+        "id": "8b8d6e42-3a9a-415b-8368-77a2ae5b2cf0",
+        "stored_brand": "Beplain",
+        "name": "Blanc Nature Mousse Nettoyante Cleansing Foam",
+        "scraped_title": "Blanc Nature Mousse Nettoyante Cleansing Foam 150mL",
+        "source_id": "GA230619176"
+      }
+    ],
+    "name_not_in_title": [
+      {
+        "id": "fcde0d93-e3b3-477b-843d-e0100104b3a7",
+        "stored_brand": "Banila Co",
+        "name": "2X Fresh Bam Balm To Foam Facial Cleanser Set",
+        "scraped_title": "PODL 2X Fresh Bam Balm To Foam Facial Cleanser 130ml Set (+Dual Pore Brush)",
+        "source_id": "GA250832727"
+      },
+      {
+        "id": "c0644d40-3e61-4f64-86f6-f5ba7ca30039",
+        "stored_brand": "Aestura",
+        "name": "Cicaffeine Trouble Reset Cream Set",
+        "scraped_title": "B.READY Cicaffeine Trouble Reset Cream 70ml Set (+Cream 20ml+Serum 15ml)",
+        "source_id": "GA240623967"
+      },
+      {
+        "id": "d310d759-bc91-45f7-b81a-a04942f2afec",
+        "stored_brand": "Beplain",
+        "name": "Monight Solid Cleansing Bar Herb & Oat Blended",
+        "scraped_title": "Monight Solid Cleansing Bar #Herb & Oat Blended 150g",
+        "source_id": "GA241227061"
+      },
+      {
+        "id": "35206248-3c36-4cf4-ba71-0fa4f32e8ee9",
+        "stored_brand": "CAREPLUS",
+        "name": "Tok Tok Tiger Trouble Patch Small 8P",
+        "scraped_title": "snow2plus Tok Tok Tiger Trouble Patch #Small 8P",
+        "source_id": "GA250631651"
+      },
+      {
+        "id": "c59b8381-8a4a-48ae-98ce-a8cb2aa0d2ad",
+        "stored_brand": "Banila Co",
+        "name": "Clean & Glow Green Barley LHA Deep Cleansing Oil Set",
+        "scraped_title": "veganifect.Clean & Glow Green Barley LHA Deep Cleansing Oil 205ml Set (+Foam 30ml)",
+        "source_id": "GA240523761"
+      },
+      {
+        "id": "5e00244c-6dcd-44fe-946b-0e1ab6975d33",
+        "stored_brand": "Ariul",
+        "name": "Point & Deep Clean All Kill Make-up Cleansing Tissue",
+        "scraped_title": "Point& Deep Clean All Kill Make-up Cleansing Tissue 20P",
+        "source_id": "GA241026434"
+      },
+      {
+        "id": "64ea6020-6254-46ba-aec2-e7baa80e1fa1",
+        "stored_brand": "CAREPLUS",
+        "name": "Tok Tok Tiger Trouble Patch (Medium 6P + Clear 45P)",
+        "scraped_title": "snow2plus Tok Tok Tiger Trouble Patch (#Medium 6P+#Clear 45P)",
+        "source_id": "GA250430322"
+      },
+      {
+        "id": "2b248523-5eb9-41fc-91e2-207de6097ae7",
+        "stored_brand": "Beplain",
+        "name": "Monight Solid Cleansing Bar Blueberry Blended",
+        "scraped_title": "Monight Solid Cleansing Bar #Blueberry Blended 150g",
+        "source_id": "GA241227062"
+      },
+      {
+        "id": "60eb7e26-3c9a-4bd2-bb47-84e105c66af9",
+        "stored_brand": "Aestura",
+        "name": "Aepiderm EGF Skin Barrier Hydrating Cream",
+        "scraped_title": "z+piderm EGF Skin Barrier Hydrating Cream 80ml",
+        "source_id": "GA250732367"
+      },
+      {
+        "id": "f153459c-77c0-4d80-a19a-0cd703ba56cc",
+        "stored_brand": "Anua",
+        "name": "Veganifect Collagen EGF Serum",
+        "scraped_title": "veganifect. Collagen EGF Serum 30ml",
+        "source_id": "GA251034545"
+      },
+      {
+        "id": "c07c35a1-d8b7-4118-b7f1-e36ea86b7666",
+        "stored_brand": "BOHO",
+        "name": "All In One Skin Lotion Set",
+        "scraped_title": "ULOS All In One Skin Lotion 200ml Set (+Wash 10ml+Shampoo 10ml)",
+        "source_id": "GA251034221"
+      },
+      {
+        "id": "2024dfe4-b4ac-472f-a3d5-0d7ba951eecd",
+        "stored_brand": "Aestura",
+        "name": "Veganifect Collagen NMN Capsule Cream",
+        "scraped_title": "veganifect. Collagen NMN Capsule Cream 50ml",
+        "source_id": "GA251034546"
+      },
+      {
+        "id": "6ecdb6cc-08a1-4f59-b201-217b663f31a7",
+        "stored_brand": "Banila Co",
+        "name": "essenHERB Soybean 90 Deep Cleansing Oil Eucalyptus",
+        "scraped_title": "essenHERB Soybean 90 Deep Cleansing Oil #Eucalyptus",
+        "source_id": "GA220815986"
+      },
+      {
+        "id": "be710b92-82c0-4863-9b3a-96503fdaca9c",
+        "stored_brand": "Anua",
+        "name": "Redence Tone & Spot Corrector Ampoule Double Pack",
+        "scraped_title": "Redence Tone & Spot Corrector Ampoule 30ml Double Pack",
+        "source_id": "GA250732239"
+      },
+      {
+        "id": "0a081f02-e7c9-4cdc-9f67-a508183af690",
+        "stored_brand": "Medicube",
+        "name": "Collagen Glow Layering Ampoule Mist Set",
+        "scraped_title": "THOME Collagen Glow Layering Ampoule Mist 73.8ml Set (+30ml)",
+        "source_id": "GA260136979"
+      },
+      {
+        "id": "59b212b9-9d6d-44bd-9f19-ff2c40144a3f",
+        "stored_brand": "Anua",
+        "name": "Heartleaf Ampoule Serum",
+        "scraped_title": "The Harnay Ampoule Serum 50ml Special Set (+Refill 50ml)",
+        "source_id": "GA240423000"
+      },
+      {
+        "id": "6cf8c4de-215c-4cd1-9518-ae0709891166",
+        "stored_brand": "BOHO",
+        "name": "IASO Youth Balm Special Set",
+        "scraped_title": "IASO Youth Balm 10g Special Set (+Foam Cleanser 15ml)",
+        "source_id": "GA220414654"
+      },
+      {
+        "id": "e27c04cf-b631-48ba-9da8-48a00bdae7f4",
+        "stored_brand": "Aestura",
+        "name": "Aestura Uno Skin Serum Duo Set",
+        "scraped_title": "uno Skin Serum Duo Set (Serum Water 200m+Serum Moisture 180ml)",
+        "source_id": "GA251235629"
+      },
+      {
+        "id": "8728d05d-fb7a-4d28-a3b5-a721b2f621c4",
+        "stored_brand": "CAREPLUS",
+        "name": "Tok Tok Tiger Trouble Patch Small 16P",
+        "scraped_title": "snow2plus Tok Tok Tiger Trouble Patch #Small 16P",
+        "source_id": "GA250430323"
+      },
+      {
+        "id": "294a88fe-9587-46f1-883b-85f279376a88",
+        "stored_brand": "Beplain",
+        "name": "Organacell Derx Calm Active Cleanser",
+        "scraped_title": "OGANACELL DERX Calm Active Cleanser 120ml",
+        "source_id": "GA250530721"
+      },
+      {
+        "id": "98d6f5e2-9022-4c3a-a544-8937de85c57b",
+        "stored_brand": "Anua",
+        "name": "Triple Layer HyaluronCica 7sec Serum in Ampoule Special Set",
+        "scraped_title": "Oearth Triple Layer HyaluronCica 7sec Serum in Ampoule 105mL Speical Set (+Pad 2P*3ea)",
+        "source_id": "GA240122007"
+      },
+      {
+        "id": "8de4aaa1-c93d-4eb4-a1eb-f86a81036bcb",
+        "stored_brand": "Beplain",
+        "name": "Cica Beta Ampoule To Foam Cleanser",
+        "scraped_title": "The Phi Cica Beta Amopule To Foam Cleanser 200mL",
+        "source_id": "GA220314009"
+      },
+      {
+        "id": "7cd069cd-3afa-49c2-8bf2-14884b910677",
+        "stored_brand": "Anua",
+        "name": "No-Sebum Blue Chamomile Hydro Toner",
+        "scraped_title": "MINIC No-Sebum Blue Charmomile Hydro Toner 200ml",
+        "source_id": "GA250933222"
+      },
+      {
+        "id": "2b993f10-6f4c-4265-afde-ea4b73509a87",
+        "stored_brand": "CAREPLUS",
+        "name": "AC Magnesium Patch Mini",
+        "scraped_title": "snow2plus AC Magnesium Patch #Mini 15P",
+        "source_id": "GA251236178"
+      },
+      {
+        "id": "28f0e294-6f74-4b63-8bde-cfdb5c926817",
+        "stored_brand": "Beplain",
+        "name": "Monight Solid Cleansing Bar Tangerine Blended",
+        "scraped_title": "Monight Solid Cleansing Bar #Tangerine Blended 150g",
+        "source_id": "GA241227063"
+      },
+      {
+        "id": "1522cbfc-e73a-4a91-9c8a-b79db361de9a",
+        "stored_brand": "Aestura",
+        "name": "Atobarrier 365 Water-Bag Barrier Cream",
+        "scraped_title": "plodica Water-bag Barrier Cream 50ml",
+        "source_id": "GA250732030"
+      },
+      {
+        "id": "f8c902bf-dc0f-4e46-8370-748937b96fff",
+        "stored_brand": "Centellian24",
+        "name": "Shimoment V-Lifting Roller Cream (Refill)",
+        "scraped_title": "shimoment V-Lifting Roller Cream 150mL (Refill-type)",
+        "source_id": "GA231120891"
+      },
+      {
+        "id": "83fd87ea-3b6c-48f8-8160-2b2b58454997",
+        "stored_brand": "Aestura",
+        "name": "Cicaide Cream Special Set",
+        "scraped_title": "The Harnay Cicaide Cream 100mL+30mL Special Set",
+        "source_id": "GA231020865"
+      },
+      {
+        "id": "d78fdc29-395c-45e5-aff9-ede5bdb2587c",
+        "stored_brand": "Anua",
+        "name": "PDRN 3D Boosting Ampoule",
+        "scraped_title": "OAZO PDRN 3D Boosting Amopoule",
+        "source_id": "GA251034527"
+      },
+      {
+        "id": "1a69922a-c059-4351-8de4-b965c042b633",
+        "stored_brand": "Banila Co",
+        "name": "Natural Deep Cleansing Oil Set",
+        "scraped_title": "Lanbelle Natural Deep Cleansing Oil 205ml Set (+23ml)",
+        "source_id": "GA260136474"
+      },
+      {
+        "id": "2798b940-356f-47f1-9187-150a5840cdd9",
+        "stored_brand": "Beplain",
+        "name": "Dewtox Lift Boosting Pack Cleanser Set",
+        "scraped_title": "dewdap Dewtox Lift Boosting Pack Cleanser 150ml Set (+15ml)",
+        "source_id": "GA250530967"
+      },
+      {
+        "id": "93d07807-216e-4bf3-bd98-b30edfcfa7da",
+        "stored_brand": "Banila Co",
+        "name": "Grain Cleansing Oil Special Set",
+        "scraped_title": "LASSIE'EL Grain Cleasing Oil 200mL Special Set (+Powder Wash 10g)",
+        "source_id": "GA240121983"
+      },
+      {
+        "id": "5d516fd0-2bd7-4625-96d6-27d0547f65b0",
+        "stored_brand": "Aestura",
+        "name": "Centellascar Ointment Ylang-Ylang Double Pack",
+        "scraped_title": "nots Centellascar Ointment #Ylang-Ylang Double Pack (15g + 15g)",
+        "source_id": "GA230619212"
+      },
+      {
+        "id": "0f243087-1197-4e8c-b44a-32078f515529",
+        "stored_brand": "Centellian24",
+        "name": "Soop Calming Aqua Cream Special Set",
+        "scraped_title": "AboutMe Soop Calming Aqua Cream 80mL Special Set (+10mL)",
+        "source_id": "GA231121145"
+      },
+      {
+        "id": "14fdd10d-36ca-4325-b020-333cd0a811a5",
+        "stored_brand": "CAREPLUS",
+        "name": "AC Magnesium Patch Large",
+        "scraped_title": "snow2plus AC Magnesium Patch #Large 6ea",
+        "source_id": "GA251033960"
+      },
+      {
+        "id": "ab432edf-b8af-41c3-9059-51573e5b65a1",
+        "stored_brand": "Aestura",
+        "name": "Tea Tree Soothing In Calming Cream Set",
+        "scraped_title": "essenHERB Tea Tree Soothing In Calming Cream 80ml Set (+Cream 30ml)",
+        "source_id": "GA241026060"
+      },
+      {
+        "id": "c0f241c0-d046-4c6a-88fe-bcd7c5eb0eb5",
+        "stored_brand": "Ilso",
+        "name": "P.Z Ssoc Ssoc No More Black Head Special Set",
+        "scraped_title": "One-day's you P.Z Ssoc Ssoc No More Black Head 100mL Special Set (+Nose Pack 10 Pads)",
+        "source_id": "GA220715431"
+      },
+      {
+        "id": "1754f6ba-a8cc-4b96-8080-c517e8a2d61e",
+        "stored_brand": "Anua",
+        "name": "Botanity Uniglow Brightening Serum",
+        "scraped_title": "Botanity Uniglow Brighthening Serum 30ml",
+        "source_id": "GA250732557"
+      },
+      {
+        "id": "eadd11b8-1607-43c5-bade-fee2cde405e3",
+        "stored_brand": "Medicube",
+        "name": "Clean Face Solid Mist Calming",
+        "scraped_title": "laundryou Clean Face Sold Mist Calming 100g Set (+30g)",
+        "source_id": "GA250933797"
+      },
+      {
+        "id": "f4b712b5-6ecb-4ddf-93e6-e27212b3e5e9",
+        "stored_brand": "Ariul",
+        "name": "Nightingale Daily Derma Cleansing Pads Mild Acid Special Set",
+        "scraped_title": "Nightinggale Daily Derma Cleansing Pads Mild Acid Special Set (70 Sheets + 10 Sheets)",
+        "source_id": "GA210003261"
+      },
+      {
+        "id": "446eef10-842f-4259-bf86-aeef450ee164",
+        "stored_brand": "Aestura",
+        "name": "Cicaide Balm Set",
+        "scraped_title": "The Harnay Cicaide Balm 100ml Set (+Ampoule 5ml*3P+Cream 5ml*2P)",
+        "source_id": "GA241026321"
+      },
+      {
+        "id": "0541754a-d2fe-4f8f-8551-ec357e764f1e",
+        "stored_brand": "Centellian24",
+        "name": "Curepair Mela Cream Set",
+        "scraped_title": "KOPHER Curepair Mela Cream 21ml Set (+4ml)",
+        "source_id": "GA260136947"
+      },
+      {
+        "id": "37c233ca-bdb4-4885-8ebf-62fa8c4275ce",
+        "stored_brand": "Anua",
+        "name": "Cicaffeine Trouble Reset Serum 40ml + Refill Set",
+        "scraped_title": "B.READY Cicaffeine Trouble Reset Serum 40ml+Refill Set",
+        "source_id": "GA240724572"
+      },
+      {
+        "id": "9448dbcd-527b-4426-80be-577c13e5ad9c",
+        "stored_brand": "Banila Co",
+        "name": "Clean It Zero Cleansing Balm White",
+        "scraped_title": "SHHOM White Vegan Cleansing Balm 60ml Double pack",
+        "source_id": "GA220514956"
+      },
+      {
+        "id": "09555fcf-2e0b-4c5f-9885-d1643cd1282e",
+        "stored_brand": "Anua",
+        "name": "Vitamin C 15% Super Blast Ampoule",
+        "scraped_title": "ZIGTAG Vitmain C 15% Super Blast Ampoule 24ml",
+        "source_id": "GA250732022"
+      },
+      {
+        "id": "af0877c8-d530-4d1d-a633-42b6a95a4181",
+        "stored_brand": "Anua",
+        "name": "Erseongcho Ampoule Special Set",
+        "scraped_title": "Heynature Erseongcho Ampoule 20mL Special Set (+Erseongcho Mask Sheet 2P)",
+        "source_id": "GA231221296"
+      },
+      {
+        "id": "fd38c920-98f4-454a-b96d-baa5ec6997bc",
+        "stored_brand": "CAREPLUS",
+        "name": "AC Magnesium Patch Medium",
+        "scraped_title": "snow2plus AC Magnesium Patch #Medium 12ea",
+        "source_id": "GA251033961"
+      },
+      {
+        "id": "7e1e585c-e154-48ca-9576-2790565bc667",
+        "stored_brand": "Banila Co",
+        "name": "Soft Vegan Cleansing Balm Double Pack",
+        "scraped_title": "SHHOM Soft Vegan Cleansing Balm 60ml Double pack",
+        "source_id": "GA220514957"
+      },
+      {
+        "id": "98e4e36a-6635-4d78-bcb2-8c38f06f338e",
+        "stored_brand": "Aestura",
+        "name": "No-Sebum Blue Chamomile Hydro Gel Lotion",
+        "scraped_title": "MINIC No-Sebum Blue Charmomile Hydro Gel Lotion 80ml",
+        "source_id": "GA250933220"
+      },
+      {
+        "id": "3e05c61c-6c02-402c-a296-89d195e375cd",
+        "stored_brand": "Anua",
+        "name": "Orthotamin Vitamin C Ampoule",
+        "scraped_title": "mommycare Orthotamin Vitmain C Ampoule 15ml",
+        "source_id": "GA250832884"
+      },
+      {
+        "id": "501ef3a1-2826-4f96-97f7-b3dedb06e839",
+        "stored_brand": "Centellian24",
+        "name": "Bio Actiome Recovery Cream",
+        "scraped_title": "OGANACELL Bio Actiome Reovery Cream 50mL",
+        "source_id": "GA220213516"
+      },
+      {
+        "id": "8f6d6faa-5828-4810-a23a-edcf3a4e73df",
+        "stored_brand": "CAREPLUS",
+        "name": "Troubleless Clear Gel Cream Double Pack",
+        "scraped_title": "Troubleless Clear Gel Cream 15ml 1+1 Double Pack",
+        "source_id": "GA240523763"
+      },
+      {
+        "id": "3648ad68-5449-4b42-aa26-d4a286768178",
+        "stored_brand": "CAREPLUS",
+        "name": "Acropass Trouble Cure Patch Set",
+        "scraped_title": "★AWARDS★ acropass Trouble Cure 16+2 Limited Set (+ Small 9P)",
+        "source_id": "GA251134892"
+      },
+      {
+        "id": "742111e5-62cc-41d9-b2f2-242a30b96dca",
+        "stored_brand": "Banila Co",
+        "name": "Clean It Zero 2X Fresh Bam Balm To Foam Facial Cleanser",
+        "scraped_title": "PODL 2X Fresh Bam Balm To Foam Facial Cleanser 130ml Set (+Dual Pore Brush + Wrist Wash Band)",
+        "source_id": "GA251235721"
+      }
+    ],
+    "unusable_prefix": [
+      {
+        "id": "15881640-6244-4da2-a6b3-26ea936a2f38",
+        "stored_brand": "CAREPLUS",
+        "name": "DUODERM Spot Patch 72 Counts",
+        "scraped_title": "[Medical Device] DUODERM Spot Patch 72 Counts",
+        "source_id": "GA240222203",
+        "prefix": "[Medical Device]"
+      },
+      {
+        "id": "62080d5f-ad64-4d26-aaed-849a75474bae",
+        "stored_brand": "Banila Co",
+        "name": "Matcha Cleansing Balm",
+        "scraped_title": "[ZO&FRIENDS EDITION] Matcha Cleansing Balm 100ml (+Headband) (2 Options)",
+        "source_id": "GA260943552",
+        "prefix": "[ZO&FRIENDS EDITION]"
+      },
+      {
+        "id": "7de6aa97-3b5b-4d2a-9bb7-6a546465c874",
+        "stored_brand": "Centellian24",
+        "name": "Phi Hyaluronic Moisture-Barrier Cream",
+        "scraped_title": "The Phi Hyaluronic Moisture-Barrier Cream 80mL",
+        "source_id": "GA220314011",
+        "prefix": "The"
+      },
+      {
+        "id": "cc689b65-dae7-469c-8475-a26f9ed02560",
+        "stored_brand": "Beplain",
+        "name": "Relief Mud Pack To Foam Cleanser",
+        "scraped_title": "[ATEEZ PICK] BRMUD Relief Mud Pack To Foam Cleanser 110mL",
+        "source_id": "GA220715324",
+        "prefix": "[ATEEZ PICK] BRMUD"
+      },
+      {
+        "id": "11bd9867-8413-4094-9745-a705a95bde58",
+        "stored_brand": "Beplain",
+        "name": "BRMUD Relief Mud Pack To Foam Cleanser",
+        "scraped_title": "[ATEEZ PICK] BRMUD Relief Mud Pack To Foam Cleanser 310mL Large Size",
+        "source_id": "GA240322785",
+        "prefix": "[ATEEZ PICK]"
+      }
+    ],
+    "near_same_brand": [
+      {
+        "id": "2c720eb6-7210-45b0-b9b3-789ef0d9fdcd",
+        "stored_brand": "Anua",
+        "name": "Retinol Capsule Deep Moisture Ampoule",
+        "scraped_title": "AIDA Retinol Capsule Deep Moisture Ampoule 50ml",
+        "source_id": "GA240724768",
+        "prefix": "AIDA"
+      }
+    ],
+    "would_duplicate": [
+      {
+        "id": "d8128017-38df-4574-9163-be48ce3096bf",
+        "stored_brand": "BOHO",
+        "name": "All In One Skin Milk",
+        "scraped_title": "ULOS All In One Skin Milk 200ml Set (+Wash 10ml+Shampoo 10ml)",
+        "source_id": "GA251034222",
+        "true_brand": "ULOS"
+      },
+      {
+        "id": "027959c7-6e3d-47b2-aad4-0d770ff6bf36",
+        "stored_brand": "Anua",
+        "name": "Sea Grape Pore Lifting Retinol Ampoule",
+        "scraped_title": "mommycare Sea Grape Pore Lifting Retinol Ampoule 50ml",
+        "source_id": "GA251236131",
+        "true_brand": "Mommycare"
+      },
+      {
+        "id": "882cae4d-8dfc-42b9-bb96-58b518a06b8b",
+        "stored_brand": "CAREPLUS",
+        "name": "Eye Bag Lift 1100 Shot Patch",
+        "scraped_title": "charde Eye Bag Lift 1100 Shot Patch",
+        "source_id": "GA250228849",
+        "true_brand": "charde"
+      },
+      {
+        "id": "345f919e-2397-4900-bceb-712363d65141",
+        "stored_brand": "Centellian24",
+        "name": "Flow Lifting Wrapping Cream",
+        "scraped_title": "koy Flow Lifting Wrapping Cream 50ml Set (+Mini Cream 10ml*2ea)",
+        "source_id": "GA241126649",
+        "true_brand": "koy"
+      },
+      {
+        "id": "1d426856-7f74-48c0-93b8-311e4f73a05c",
+        "stored_brand": "Ilso",
+        "name": "Clay Enzyme Cleanser #Green",
+        "scraped_title": "SKIN SIGNAL Clay Enzyme Cleanser #Green 70g Set (+Pack Brush)",
+        "source_id": "GA250228746",
+        "true_brand": "SKIN SIGNAL"
+      },
+      {
+        "id": "4900ec27-73a1-472b-8f7d-1cf1a2144045",
+        "stored_brand": "Anua",
+        "name": "Here-Oh My First Serum",
+        "scraped_title": "De:maf Here-Oh My First Serum 155ml",
+        "source_id": "GA250933793",
+        "true_brand": "Demaf"
+      }
+    ]
+  }
+}
