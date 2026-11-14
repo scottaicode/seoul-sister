@@ -4,6 +4,30 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.10 — 13 blog posts no longer claim first-hand use or experience (content correction, Nov 14 2026)
+
+- **What was wrong.** Every post is bylined "Seoul Sister Team" and was written by a model. Some
+  said things only a person could: "better than some dedicated primers I've tried", "running
+  uncontrolled experiments on my own face", "I've been burned before", "I've seen this pattern so
+  many times", "we can and do verify the formula", and a title ending "...the K-Beauty Routine That
+  Finally Changed Mine".
+- **Fixed.** 43 exact replacements across 13 posts (39 in the body, 2 FAQ answers, 1 title, 1
+  excerpt), written and second-model reviewed in LGAAS and applied to its copies there; applied
+  here with `scripts/apply-blog-first-person-claims-replacements.mjs`. Every old sentence occurred
+  exactly once, every touched field matched the agreed fingerprint before and after, and all 13
+  posts were read back equal. The sebaceous filaments post kept its address; only the title and
+  heading changed. Checked live: 0 of the old phrases on that page.
+  Backup: `scripts/backup-blog-before-first-person-claims-2026-11-14T09-20-57-171Z.json`.
+- Opinion wording was left in on purpose ("the one I'd point you toward", "in my opinion").
+
+**Open, sent back to LGAAS as a follow-up (both copies must change together):**
+- Three sentences are now flat claims nobody measured, because removing "I've seen" took the
+  anecdote out: "This cycle accounts for the vast majority of late-20s skin freakouts", "is
+  genuinely the most effective approach", "It works on virtually every skin type".
+- One sentence tells readers they can check on Seoul Sister whether a product was reformulated.
+  Formulation history exists for 2 products and is shown to members only.
+- The other 42 published posts were not read in full for first-person claims.
+
 ## v11.61.9 — Members' learning notes are no longer readable with the public key (Nov 14 2026)
 
 - **Applied** `20261114000001_learning_notes_not_public.sql` on the owner's instruction. The open
