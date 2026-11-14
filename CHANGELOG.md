@@ -4,6 +4,30 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.7 — The learning-notes job is paused; the 5 orphaned notes are deleted (Nov 14 2026)
+
+Owner decisions, Nov 14.
+
+- **Paused: `aggregate-learning`.** It wrote a note from every conversation and review into
+  `ss_learning_patterns`, and nothing reads them. The schedule is out of `vercel.json`, and the
+  route refuses unless `LEARNING_NOTES_ENABLED=true`, so a manual call cannot write either. Build
+  the reader before turning it back on. Recorded in data: `ss_pipeline_runs`, source
+  `deferral-learning-notes-paused`.
+- **Deleted: the 5 notes whose conversations were already gone** (2 conversations, written March
+  2026). Guarded on the conversations still being absent; verified 0 notes point at them now. This
+  also proved the `data->>source_id` delete used by account and conversation deletion works in
+  production.
+- **Written for LGAAS:** `lgaas/LGAAS-WORK-ORDER-SEOUL-SISTER-UNMEASURED-EFFECTIVENESS.md` and
+  `lgaas/ss-unmeasured-effectiveness-replacements.json` (16 exact sentence pairs for the two blog
+  posts that state the estimates as data). Not applied to either copy yet.
+
+**Still open:**
+- **305 notes remain and are readable with the public key** until the owner runs
+  `supabase/migrations/20261114000001_learning_notes_not_public.sql`. I tried to delete all of them
+  to close that at once; it was blocked as more than the owner had approved, which was right.
+  Deleting the rest, or running the SQL, is the owner's call.
+- The two blog posts are unchanged on Seoul Sister until LGAAS acts on the work order.
+
 ## v11.61.6 — Fragrance-free search, no invented percentages in public, and members' learning notes handled as personal data (Nov 14 2026)
 
 Three fixes the owner approved, and what two second-model reviews found underneath them.

@@ -8,12 +8,36 @@ import {
 } from '@/lib/learning/patterns'
 
 // POST /api/cron/aggregate-learning
-// Daily: Aggregate new reviews + conversations into learning patterns
+// Aggregate new reviews + conversations into learning patterns
 // Secured with CRON_SECRET header
+//
+// PAUSED (owner decision, Nov 14 2026). This job wrote a note from every
+// conversation and review into ss_learning_patterns: 310 rows by that day, some
+// carrying what members told Yuri about their health. NOTHING READS THEM. Every
+// reader of that table asks for pattern_type = 'seasonal', and the one that
+// does not needs sample_size >= 3 while each note has 1. Collecting sensitive
+// text that nothing uses is a cost with no benefit, so it is off: the schedule
+// is removed from vercel.json, and this handler refuses unless the switch below
+// is set, so a manual call cannot write either.
+//
+// To turn it back on: build the thing that reads the notes first, then set
+// LEARNING_NOTES_ENABLED=true and put the schedule back. The pause is also
+// recorded in data: ss_pipeline_runs, source 'deferral-learning-notes-paused'.
+const LEARNING_NOTES_SWITCH = 'LEARNING_NOTES_ENABLED'
+
 export async function POST(request: Request) {
   try {
     const authError = verifyCronAuth(request)
     if (authError) return authError
+
+    if (process.env[LEARNING_NOTES_SWITCH] !== 'true') {
+      return NextResponse.json({
+        success: true,
+        paused: true,
+        reason: 'Learning notes are paused: nothing reads them. See the comment at the top of this route.',
+        patterns_stored: 0,
+      })
+    }
 
     const db = getServiceClient()
     let reviewsProcessed = 0

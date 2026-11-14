@@ -272,3 +272,21 @@ test('the privacy page says what the notes are, what they can contain and when t
   assert.ok(!/fully anonymized|cannot be identified from|cannot be traced back|Anonymized learning contributions|Cross-User Learning/.test(privacy))
   assert.ok(!/\d+% of users|found Product X effective/.test(privacy))
 })
+
+test('the job that writes learning notes is off: not scheduled, and it refuses when called', () => {
+  // Owner decision, Nov 14 2026: nothing reads the notes, and some carried health details.
+  const crons = JSON.parse(read('vercel.json')).crons.map((c) => c.path)
+  assert.ok(!crons.includes('/api/cron/aggregate-learning'), 'the schedule is back')
+  const route = read('src/app/api/cron/aggregate-learning/route.ts')
+  const gate = route.indexOf("if (process.env[LEARNING_NOTES_SWITCH] !== 'true') {")
+  assert.ok(gate > route.indexOf('const authError = verifyCronAuth(request)'), 'still authenticated first')
+  // The refusal comes before anything is read from the database or sent to a model.
+  for (const later of ["getServiceClient()", "extractPatternsFromReview(", "extractPatternsFromConversation(", "storeLearningPatterns("]) {
+    assert.ok(gate < route.indexOf(later, route.indexOf('export async function POST')), `${later} runs before the switch is checked`)
+  }
+  assert.match(route.slice(gate, gate + 400), /paused: true,[\s\S]*patterns_stored: 0,/)
+  // Nothing else writes notes from conversations or reviews.
+  const walk = (dir) => readdirSync(dir).flatMap((f) => { const q = join(dir, f); return statSync(q).isDirectory() ? walk(q) : /\.tsx?$/.test(f) ? [q] : [] })
+  const callers = walk(join(ROOT, 'src')).filter((f) => /storeLearningPatterns\(/.test(code(readFileSync(f, 'utf8')))).map((f) => relative(ROOT, f)).sort()
+  assert.deepEqual(callers, ['src/app/api/cron/aggregate-learning/route.ts', 'src/lib/learning/patterns.ts'])
+})

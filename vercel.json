@@ -13,10 +13,6 @@
       "schedule": "15 4 * * *"
     },
     {
-      "path": "/api/cron/aggregate-learning",
-      "schedule": "0 5 * * *"
-    },
-    {
       "path": "/api/cron/update-effectiveness",
       "schedule": "30 5 * * *"
     },
