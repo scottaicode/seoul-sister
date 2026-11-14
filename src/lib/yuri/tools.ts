@@ -1824,7 +1824,7 @@ export const YURI_TOOLS: ToolDef[] = [
   {
     name: 'save_routine',
     description:
-      'Save a complete routine to the user\'s app. Call when the user approves a routine you presented, or when they ask to save it. Ask first: "Want me to save this to your Routine page?"\n\n' +
+      'Save a complete routine to the user\'s app. Call it when the member asked you to build or change their routine and it is ready, when they approve one you suggested, or when they ask to save it. A routine left only in the chat is not on their Routine page.\n\n' +
       'REVISING an existing routine (fixing one step, correcting drift): there is no edit-one-step tool — call get_routine_context first, then call THIS tool with the complete corrected step list (kept steps + changed steps) and replace_existing: true. That deactivates the old version rather than deleting it, so it is the normal path for a correction, not a dangerous one. Saying a routine is fixed WITHOUT calling this tool leaves the user believing a write happened that did not.\n\n' +
       'CRITICAL: For each step, prefer passing product_id (obtained from search_products or get_product_details earlier in this conversation). Falling back to product_name alone risks the wrong DB product being saved when names are ambiguous (e.g. multiple Goodal Vita C variants). After the tool returns, read its `message` field: it names any step that was not tied to a catalog product (and why), and any catalog product that was not put on their shelf.',
     input_schema: {

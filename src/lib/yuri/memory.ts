@@ -422,6 +422,7 @@ export async function loadUserContext(
             step_order,
             product_id,
             notes,
+            frequency,
             ss_products (name_en, brand_en, category)
           )
         `)
@@ -630,9 +631,19 @@ export async function loadUserContext(
             (productId && ownedProductIds.has(productId)) || matchesInventoryName
               ? 'owned'
               : 'planned_only'
+          // The step's own instruction travels with it (Nov 14 2026). Only the
+          // name was shown, so "do not start until week 3" or "3 nights a week"
+          // saved on a catalog step was missing from Yuri's standing view of
+          // the routine and from the check-in's, while custom steps showed it.
+          const stepNote = (rp.notes as string | null)?.trim()
+          const stepFrequency = (rp.frequency as string | null)?.trim()
+          const how = [
+            stepFrequency && stepFrequency !== 'daily' ? stepFrequency.replace(/_/g, ' ') : '',
+            stepNote ? `note: ${stepNote}` : '',
+          ].filter(Boolean).join('; ')
           routineProducts.push({
             productId,
-            display: `${product.name_en} (${product.brand_en}) - ${product.category}`,
+            display: `${product.name_en} (${product.brand_en}) - ${product.category}${how ? ` [${how}]` : ''}`,
             ownership,
             kind: 'catalog',
           })

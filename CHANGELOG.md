@@ -4,6 +4,37 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.2 — Yuri saves the routine a member asked for, and sees each step's instruction (Nov 14 2026)
+
+- **What happened.** The first stranger in a free week (conversation `56ccea80`) opened with the
+  app's own "Let's build my routine from what you learned in my setup chat." Yuri said she would
+  finish both routines and save them, then asked "Want me to save this?" in three replies running.
+  The member never answered and left with nothing on her Routine page. Of the 5 member
+  conversations since Sep 1 where a save came up, another member was asked four times first.
+- **Cause.** The ask was scripted word for word in three places: the member prompt (twice), the
+  `save_routine` tool description, and the Routine Architect block, which is added on every turn
+  that mentions a routine. Yuri was doing as told.
+- **Fix.** All three now say the same thing as a fact: a routine left only in the chat is not on
+  the Routine page, so a member's request to build or change their own routine is the go-ahead.
+  She asks first only when the routine was her idea. The paragraph also states that a save is what
+  the page shows from then on (so not a what-if, and not a routine for someone else), that without
+  `replace_existing` it sits beside one already saved, and that "saved" is said only once the save
+  went through.
+- **Also fixed.** Yuri's standing view of a saved routine showed a catalog step as name, brand and
+  category only. Its frequency and note ("do not start until week 3") were missing, for her and for
+  the check-in, while custom steps showed theirs. Both now travel with the step.
+- **Second-model review: run** (Opus 5.5, told to refute). Its blocker was real: my first version
+  left the Routine Architect line untouched, which is the copy closest to her reply and the one her
+  three asks matched word for word. It also found "your Sunday note" was wrong for free-week members
+  (they get day 3 and day 6). Both fixed. **The final wording was not re-reviewed.**
+- **Not verified.** No conversation has run under the new wording. Name a production conversation
+  where Yuri saved on the build turn before calling this working. Unmeasured risk the review
+  raised: a build turn that already makes six lookups plus two saves may reach the tool-round
+  limit, which would show the member an "I'm having trouble" line after the saves had written. It
+  has never been hit (0 times since Sep 1; the most calls in one turn is 7).
+- **Not done.** That member's routine is still unsaved; her account was not touched. Yuri cannot
+  update a member's location from the member chat (hers is still "Korea").
+
 ## v11.61.1 — A Google sign-up now records where it came from (Nov 14 2026)
 
 - **What was wrong.** An email-and-password sign-up records the first-touch attribution, the
