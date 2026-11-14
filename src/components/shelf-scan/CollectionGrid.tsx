@@ -41,9 +41,11 @@ function getConfidenceLabel(confidence: number): string {
 
 interface CollectionGridProps {
   products: ShelfScanProduct[]
+  /** How many allergies the member has on file; 0 hides the "not checked" note. */
+  allergiesOnProfile: number
 }
 
-export default function CollectionGrid({ products }: CollectionGridProps) {
+export default function CollectionGrid({ products, allergiesOnProfile }: CollectionGridProps) {
   if (products.length === 0) {
     return (
       <div className="glass-card p-4 text-center">
@@ -117,6 +119,13 @@ export default function CollectionGrid({ products }: CollectionGridProps) {
                   </div>
                 ))}
               </div>
+            )}
+
+            {/* A product we could not check must not read as a product that is clear. */}
+            {allergiesOnProfile > 0 && !product.allergens_checked && (
+              <p className="text-[10px] text-amber-400/80 mt-1.5">
+                Not checked against your allergies: we do not have this product&apos;s ingredient list.
+              </p>
             )}
 
             {/* Position */}

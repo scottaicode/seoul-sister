@@ -10,12 +10,9 @@ import {
   AlertTriangle,
   Layers,
   MessageCircle,
-  Sparkles,
-  Plus,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import CollectionGrid from '@/components/shelf-scan/CollectionGrid'
-import RoutineGrade from '@/components/shelf-scan/RoutineGrade'
 import CollectionStats from '@/components/shelf-scan/CollectionStats'
 import type { ShelfScanProduct, ShelfScanCollectionAnalysis } from '@/types/database'
 
@@ -51,6 +48,22 @@ interface ShelfScanAPIResponse {
   collection_analysis: ShelfScanCollectionAnalysis
   products_count: number
   matched_count: number
+  allergies_on_profile: number
+}
+
+/**
+ * The message that opens Yuri's chat after a scan: the identified products and
+ * nothing else. No grade and no "missing" list, so she judges the shelf from
+ * what she knows about the member, not from a verdict made without it. The
+ * member reads it in the box and sends it themselves.
+ */
+function askYuriAboutShelf(products: ShelfScanProduct[]): string {
+  const names = products
+    .slice(0, 25)
+    .map((p) => [p.brand, p.name].filter(Boolean).join(' '))
+    .filter(Boolean)
+  const list = names.length ? ` It found: ${names.join('; ')}.` : ''
+  return `I just scanned my skincare shelf.${list} What do you make of it for my skin?`
 }
 
 export default function ShelfScanPage() {
@@ -153,53 +166,35 @@ export default function ShelfScanPage() {
           </h1>
         </div>
         <p className="text-white/40 text-sm mt-1">
-          Photo your skincare shelf for a full collection analysis
+          Photograph your skincare shelf to identify what is on it
         </p>
       </section>
 
       {/* Results */}
       {result && (
         <section className="space-y-5">
-          {/* Routine Grade */}
-          <RoutineGrade
-            grade={result.collection_analysis.overall_routine_grade}
-            rationale={result.collection_analysis.grade_rationale}
-          />
-
-          {/* Collection stats */}
+          {/* Collection stats: counts, estimated value, database matches */}
           <CollectionStats
             analysis={result.collection_analysis}
             products={result.products_identified}
             matchedCount={result.matched_count}
           />
 
-          {/* Recommendations */}
-          {result.collection_analysis.recommendations.length > 0 && (
-            <div className="glass-card p-4 space-y-3">
-              <h3 className="font-display font-semibold text-sm text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-gold" />
-                Recommendations
-              </h3>
-              <ul className="space-y-2">
-                {result.collection_analysis.recommendations.map((rec, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-white/60">
-                    <span className="text-gold mt-0.5 flex-shrink-0">
-                      {i + 1}.
-                    </span>
-                    <span>{rec}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <Link
-                href={`/yuri?ask=I just scanned my skincare shelf and got a grade of ${result.collection_analysis.overall_routine_grade}. I have ${result.products_identified.length} products. Missing categories: ${result.collection_analysis.missing_categories.join(', ') || 'none'}. What should I add or change?`}
-                className="flex items-center justify-center gap-2 mt-3 py-2 rounded-xl bg-gold/10 text-gold text-xs font-medium hover:bg-gold/20 transition-colors duration-200"
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-                Ask Yuri to optimize your collection
-              </Link>
-            </div>
-          )}
+          {/* This page says what is on the shelf. What to add, drop or change
+              is Yuri's call, with the member's history in front of her. */}
+          <div className="glass-card p-4 space-y-3">
+            <p className="text-xs text-white/60 leading-relaxed">
+              This scan lists what is on your shelf. It does not judge it. Yuri knows your skin and
+              your history, so ask her what she makes of it.
+            </p>
+            <Link
+              href={`/yuri?ask=${encodeURIComponent(askYuriAboutShelf(result.products_identified))}`}
+              className="flex items-center justify-center gap-2 py-2 rounded-xl bg-gold/10 text-gold text-xs font-medium hover:bg-gold/20 transition-colors duration-200"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              Ask Yuri about this shelf
+            </Link>
+          </div>
 
           {/* Products identified */}
           <div>
@@ -207,19 +202,8 @@ export default function ShelfScanPage() {
               <Camera className="w-4 h-4 text-gold" />
               Products Identified ({result.products_count})
             </h3>
-            <CollectionGrid products={result.products_identified} />
+            <CollectionGrid products={result.products_identified} allergiesOnProfile={result.allergies_on_profile} />
           </div>
-
-          {/* Add to routine CTA */}
-          {result.matched_count > 0 && (
-            <Link
-              href="/routine"
-              className="w-full glass-card py-3 text-sm font-medium text-gold hover:text-gold-light transition-colors duration-200 flex items-center justify-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Build routine from these products
-            </Link>
-          )}
 
           {/* Scan again */}
           <button
@@ -297,14 +281,14 @@ export default function ShelfScanPage() {
                   <li>Arrange products with labels facing the camera</li>
                   <li>Good lighting helps identify brands and names</li>
                   <li>Include all your skincare products in one photo</li>
-                  <li>Avoid blurry photos — hold the camera steady</li>
+                  <li>Avoid blurry photos. Hold the camera steady</li>
                 </ul>
               </div>
             </>
           ) : (
             <>
               {/* Image preview — stays visible during analysis so users can
-                  confirm they uploaded the right shelf while Yuri works */}
+                  confirm they uploaded the right shelf while it is read */}
               <div className="relative glass-card overflow-hidden">
                 <img
                   src={image}
@@ -327,7 +311,7 @@ export default function ShelfScanPage() {
                     <div className="bg-black/60 backdrop-blur-sm rounded-2xl px-5 py-4 flex flex-col items-center gap-2">
                       <Loader2 className="w-7 h-7 animate-spin text-gold" />
                       <p className="text-xs font-semibold text-white">
-                        Yuri is analyzing your shelf
+                        Reading your shelf
                       </p>
                     </div>
                   </div>
@@ -341,7 +325,7 @@ export default function ShelfScanPage() {
                   className="w-full glass-button-primary py-3 text-base font-semibold flex items-center justify-center gap-2"
                 >
                   <Layers className="w-5 h-5" />
-                  Analyze Collection
+                  Identify My Products
                 </button>
               )}
 
@@ -355,10 +339,8 @@ export default function ShelfScanPage() {
                     </p>
                   </div>
                   <p className="text-xs text-white/50 leading-relaxed">
-                    This usually takes 15-25 seconds for rich photos. Yuri is reading
-                    each label, matching products against the Seoul Sister database,
-                    and analyzing your collection for gaps, redundancies, and
-                    personalized recommendations.
+                    This usually takes 15-25 seconds for a full shelf. Each label is
+                    read and matched against the Seoul Sister database.
                   </p>
                   <p className="text-[10px] text-white/30 pt-1">
                     Please keep this tab open until analysis completes.

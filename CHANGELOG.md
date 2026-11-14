@@ -4,6 +4,74 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.0 — Landing page honesty pass; Shelf Scan and the Routine picker stop advising (Nov 13 2026)
+
+**Why.** Every card, claim and testimonial on the homepage was checked against the code and the
+production database. Separately, the first real trial member was steered into a daily acid: Shelf
+Scan graded her shelf "C, missing cleanser, sunscreen, toner, exfoliator, lip_care" twenty minutes
+after Yuri told her to leave exfoliation out (precancer history), and the Routine page's Add window
+then listed 20 catalog products she did not own. Yuri caught it and removed the toner.
+
+**Landing page (`HomeClient.tsx`), cut or reworded, with the row behind each:**
+- Cut: Community Reviews (20 reviews, 2 accounts, last Feb 19); Expiration Tracking (0 rows ever);
+  Cycle-Aware Routine (on for 0 of 61 profiles); batch-code checks (0 rows ever, and the model
+  recalls, nothing is looked up); "wait times" (no such column); the "Viral / Popular / Unique"
+  badges; "Features No Other K-Beauty App Has"; the Learning Engine card; "Join the community".
+- Cut: both testimonials. They were the owner and the co-owner, labelled "Early user" under five stars.
+- Reworded: weather "alerts" (there is no notification channel) to the dashboard weather and UV
+  that exists, "once you add your location" (7 of 61 profiles have coordinates); "Live" trend data
+  to "refreshed daily" (scheduler row: Nov 13 06:30 and 08:30 UTC); the dupe card's "$12 for $94";
+  the routine card (Yuri builds it in chat; the one-shot generator went in v11.58.1).
+- "Search 5,900+ products" is now 5,300+ (5,311 verified, which is what search covers). The hero
+  stat stays 5,900+ (6,375 rows in the database).
+- One sign-up label everywhere: "Create my free account". The nav button is hidden on phones and at
+  tablet width, where it does not fit; phones get it as the first menu item.
+- The em-dash in step 02 is gone.
+- Pricing card bullets (`stripe.ts`): "Weather- & cycle-aware guidance" and "Trending in Korea
+  before it hits the US" replaced. `public/llms.txt` brought into line, including a "Hwahae
+  rankings" claim nothing in the pipeline supports.
+
+**Shelf Scan now identifies and states facts; it does not grade or advise.**
+- Removed from the prompt, the response, the types and the page: the A to F grade, missing
+  categories, redundancies, guessed ingredient overlap, recommendations, and the "Build routine from
+  these products" link. The loading text no longer says Yuri is doing it.
+- One way out of the results: a prefilled message to Yuri listing the identified products.
+- Only five named fields are read from each product the model returns, so nothing it adds reaches the page.
+- A product that could not be checked against the member's allergies now says so. Before, not in
+  the database, no ingredient list on file and a failed lookup all looked the same as "clear".
+- The database match is quoted and ordered (an unquoted "." silently matched nothing, and with no
+  order an arbitrary row won).
+
+**Routine page Add window.**
+- With an empty search it listed 20 catalog products "by rating". A descending sort puts unrated
+  rows first, so it was 20 arbitrary products; the first was Benton Aloe BHA Skin Toner. Rows 2 and
+  8 of that list (Benton Fermentation Essence, Pyunkang Yul Moisture Serum) are in that member's
+  superseded routines. The BHA row itself was deleted by Yuri, so that it came from this list is
+  an inference from the other two, not a row.
+- Now: the member's own products, and catalog rows only for what they type. A failed search says it
+  failed. A typed "%" or "_" is searched literally (measured: "100%" returned 112 rows, now 0, the
+  true count). New shared helper `quotedIlikePattern` in `sanitize-search.ts`.
+
+**Second-model review: run** (Opus 5.5, told to refute). It found five blockers, all confirmed
+against the database and fixed here: the batch-code claim, "wait times", the pricing card repeating
+the cut cycle claim, the 5,900+ search figure, and "look up any of 14,900+ ingredients". It also got
+six wrong versions past the first guard test; the test was rewritten closed-world and 11 of 12
+reintroduced bugs now fail it (the 12th is behaviourally identical to the fix). **The fixes made
+after the review, including the final wording of Yuri's Shelf Scan row, were not re-reviewed.**
+
+**Open, found by the review and NOT changed:**
+- Yuri's own surface table (`advisor.ts` around lines 305 to 342) still describes dashboard "weather
+  tips" and "seasonal tips", Glass Skin "recommendations tied to lowest dimension", a Community
+  "points system", expiry tracking, cycle tracking and "wait times". Each needs the same check.
+- Public product pages (`ProductIntelligenceSection.tsx`) and the member scan page still sell
+  community reviews. "5,900+" remains on `/products`, in nurture emails and the SEO prompt.
+- The Dupe Finder page is still a one-shot recommender labelled as Yuri's, and is still advertised.
+- Cycle context reaches Yuri with hardcoded "key recommendations for this phase" strings
+  (`memory.ts`, from `cycle-routine.ts`). No member has cycle tracking on, so it has never fired.
+- Shelf Scan's database match is a loose substring match and overwrites the model's name with the
+  matched row's. How often it picks the wrong product is unmeasured: scans are not stored.
+- Nothing here has been seen in a browser, on a phone or a laptop.
+
 ## v11.60.2 — 426 catalog products were filed under the wrong brand (data correction, Nov 13 2026)
 
 Found by the first real trial member, who went to buy her routine and reported "two products where

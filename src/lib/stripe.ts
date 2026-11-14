@@ -36,8 +36,10 @@ export const SUBSCRIPTION_TIERS = {
       // prices checked in the previous week. Say what she can actually do.
       'Counterfeit warning signs & price checks',
       'Finds dupes & the right sunscreen for your skin',
-      'Weather- & cycle-aware guidance',
-      'Trending in Korea before it hits the US',
+      // Nov 13 2026: "cycle-aware" (on for 0 of 61 profiles) and "before it
+      // hits the US" (a prediction, not a measurement) came off the sold plan.
+      'Local weather & UV in her advice, once you add your location',
+      'Daily Olive Young & Reddit trend data',
     ],
   },
   // Legacy/comped plan (the old $24.99 "unlimited" price). Not sold; kept so

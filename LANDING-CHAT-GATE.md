@@ -54,6 +54,7 @@ where raw_user_meta_data->>'signup_from' like 'gate%'
 - It is recorded for email and password sign-ups only. Google sign-ups do not carry it, so also look at total new accounts and at `raw_user_meta_data->'attribution'->>'landing_path'` (the first page the person landed on).
 - Exclude owner tests and bot sign-ups before reading it.
 - Never grade this with GA4. It is bot-inflated. The GA4 event `yuri_gate_signup_click` is a companion, not the measure.
+- From v11.61.0 (Nov 13 2026, the day the gate shipped) the nav, phone menu and bottom-of-page sign-up buttons are tagged too (`gate_nav`, `gate_menu`, `gate_final_cta`). Before that they went to sign-up with no tag, so those sign-ups were not counted.
 - A sign-up is not a paid member. Paid is still `converted_user_id` and the first invoice with `amount_paid > 0`.
 
 Until a real stranger's account shows `signup_from` starting with `gate`, the measurement is unverified. Name the row before saying it works.

@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Search, X, Plus, AlertTriangle, Loader2, PackageCheck } from 'lucide-react'
+import Link from 'next/link'
+import { Search, X, Plus, AlertTriangle, Loader2, PackageCheck, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { sanitizeSearchTerm, quotedIlikePattern } from '@/lib/utils/sanitize-search'
 import LazyImage from '@/components/ui/LazyImage'
 
 interface Product {
@@ -34,6 +36,7 @@ export function AddProductModal({ isOpen, onClose, onAdd, routineType, existingP
   const [products, setProducts] = useState<Product[]>([])
   const [ownedProducts, setOwnedProducts] = useState<OwnedProduct[]>([])
   const [loading, setLoading] = useState(false)
+  const [searchFailed, setSearchFailed] = useState(false)
   const [adding, setAdding] = useState<string | null>(null)
   const [addResult, setAddResult] = useState<{ productId: string; conflicts: Array<{ ingredient_a: string; ingredient_b: string; severity: string; description: string }> } | null>(null)
 
@@ -57,24 +60,42 @@ export function AddProductModal({ isOpen, onClose, onAdd, routineType, existingP
     loadOwned()
   }, [isOpen, existingProductIds])
 
+  // The catalog appears only for what the member types. With an empty box this
+  // used to list 20 catalog products "by rating", and a descending sort puts
+  // unrated rows first, so it was 20 arbitrary products the member did not own,
+  // each one tap from their routine. The first was a BHA toner. On Nov 13 2026
+  // a member told by Shelf Scan that she was missing a toner and an exfoliator
+  // added from that list, against what Yuri had just advised. A default list
+  // reads as a suggestion; what to add is Yuri's call (Yuri Sole Authority).
   const searchProducts = useCallback(async (searchQuery: string) => {
+    const term = sanitizeSearchTerm(searchQuery)
+    if (!term) {
+      setProducts([])
+      setSearchFailed(false)
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
-      let q = supabase
+      // Quoted: an unquoted "." inside .or() is read as filter syntax and
+      // silently returns nothing ("No.9").
+      const pattern = quotedIlikePattern(searchQuery)
+      const { data, error } = await supabase
         .from('ss_products')
         .select('id, name_en, brand_en, category, image_url, price_usd')
         .eq('is_verified', true)
-        .order('rating_avg', { ascending: false })
+        .or(`name_en.ilike.${pattern},brand_en.ilike.${pattern}`)
+        .order('rating_avg', { ascending: false, nullsFirst: false })
+        .order('name_en', { ascending: true })
         .limit(20)
-
-      if (searchQuery.trim()) {
-        q = q.or(`name_en.ilike.%${searchQuery}%,brand_en.ilike.%${searchQuery}%`)
-      }
-
-      const { data } = await q
+      if (error) throw error
+      setSearchFailed(false)
       setProducts((data ?? []).filter((p) => !existingProductIds.includes(p.id)))
-    } catch {
-      // Non-critical
+    } catch (err) {
+      // A failed search must not read as "no such product".
+      console.error('[routine] product search failed:', err)
+      setProducts([])
+      setSearchFailed(true)
     } finally {
       setLoading(false)
     }
@@ -133,7 +154,7 @@ export function AddProductModal({ isOpen, onClose, onAdd, routineType, existingP
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search products..."
+              placeholder="Search by product or brand name"
               className="w-full pl-9 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-gold/30"
               autoFocus
             />
@@ -215,19 +236,33 @@ export function AddProductModal({ isOpen, onClose, onAdd, routineType, existingP
                   </div>
                 )
               })}
-              <div className="flex items-center gap-2 px-1 pt-3 pb-2">
-                <span className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">Browse Catalog</span>
-              </div>
             </>
           )}
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="w-5 h-5 animate-spin text-gold" />
             </div>
-          ) : products.length === 0 && ownedProducts.length === 0 ? (
-            <p className="text-center text-sm text-white/30 py-8">
-              {query ? 'No matching products found' : 'No products available'}
+          ) : searchFailed ? (
+            <p className="text-center text-sm text-amber-400/80 py-8">
+              The search did not go through. Please try again.
             </p>
+          ) : !query.trim() ? (
+            <div className="px-1 py-4 space-y-3">
+              <p className="text-xs text-white/40 leading-relaxed">
+                {ownedProducts.length > 0
+                  ? 'To add something else, search for it by name.'
+                  : 'Search for a product by name to add it.'}
+              </p>
+              <Link
+                href={`/yuri?ask=${encodeURIComponent(`What, if anything, should I add to my ${routineType === 'am' ? 'morning' : 'evening'} routine?`)}`}
+                className="flex items-center justify-center gap-2 py-2 rounded-xl bg-gold/10 text-gold text-xs font-medium hover:bg-gold/20 transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Ask Yuri about this routine
+              </Link>
+            </div>
+          ) : products.length === 0 ? (
+            <p className="text-center text-sm text-white/30 py-8">No matching products found</p>
           ) : (
             products.map((product) => (
               <div
@@ -253,7 +288,7 @@ export function AddProductModal({ isOpen, onClose, onAdd, routineType, existingP
                   </p>
                   <p className="text-[10px] text-white/40">
                     {product.brand_en} &middot; {product.category}
-                    {product.price_usd ? ` &middot; $${product.price_usd}` : ''}
+                    {product.price_usd ? ` · $${product.price_usd}` : ''}
                   </p>
                 </div>
                 <button

@@ -846,8 +846,6 @@ export interface WeatherRoutineResponse {
 // Feature 8.11: Shelf Scan — Collection Analysis
 // =============================================================================
 
-export type RoutineGradeLevel = 'A' | 'B' | 'C' | 'D' | 'F'
-
 export interface ShelfScanProduct {
   name: string
   brand: string
@@ -856,17 +854,18 @@ export interface ShelfScanProduct {
   matched_product_id: string | null
   position_in_image: string
   allergen_warnings: string[]
+  /** False when no check ran: not in our database, no ingredient list on file, or the lookup failed. Empty warnings then mean "not checked", not "clear". */
+  allergens_checked: boolean
   already_in_inventory?: boolean
 }
 
+/**
+ * Facts only. The grade, missing categories, redundancies, overlap guesses and
+ * recommendations were removed Nov 13 2026: what to add or change is Yuri's
+ * call, made with the member's history (see src/app/api/shelf-scan/route.ts).
+ */
 export interface ShelfScanCollectionAnalysis {
   total_estimated_value: number
-  ingredient_overlap_warnings: string[]
-  missing_categories: string[]
-  redundant_products: string[]
-  overall_routine_grade: RoutineGradeLevel
-  grade_rationale: string
-  recommendations: string[]
 }
 
 export interface ShelfScanResult {

@@ -4,168 +4,62 @@ import { getServiceClient } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { hasActiveSubscription } from '@/lib/subscription'
-import type { ShelfScanProduct, ShelfScanCollectionAnalysis, RoutineGradeLevel } from '@/types/database'
-import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
+import type { ShelfScanProduct, ShelfScanCollectionAnalysis } from '@/types/database'
+import { quotedIlikePattern } from '@/lib/utils/sanitize-search'
 
 export const maxDuration = 60
 export const runtime = 'nodejs'
 
 // ---------------------------------------------------------------------------
-// User profile types (same pattern as skin-score)
+// What this route does, and what it deliberately does not (Nov 13 2026)
+//
+// It IDENTIFIES the products in a photo and reports facts about them: which
+// ones are in our database, which the member already has in their library, an
+// estimated value, and any ingredient that matches an allergy on their profile.
+//
+// It used to also grade the shelf A to F by how many categories were filled,
+// list "missing categories", redundancies and guessed ingredient overlap, and
+// write recommendations, all from one photo plus skin type and climate. On
+// Nov 13 2026 it told a 60-year-old trial member with a precancer history that
+// she was missing an exfoliator and a toner, twenty minutes after Yuri had
+// told her to leave exfoliation out on purpose. She added a daily BHA toner.
+// What a member should add or change is advice, and advice is Yuri's (Yuri
+// Sole Authority, CLAUDE.md): she has the history, the medical facts and the
+// decisions this call never sees. The page hands her the identified list.
+// tests/shelf-scan-identifies-only.test.mjs fails if a verdict comes back.
 // ---------------------------------------------------------------------------
 
-interface UserProfileData {
-  skin_type: string | null
-  skin_concerns: string[] | null
-  climate: string | null
-  location_text: string | null
-  age_range: string | null
-  allergies: string[] | null
-  fitzpatrick_scale: number | null
+async function loadAllergies(userId: string): Promise<string[]> {
+  const { data, error } = await getServiceClient()
+    .from('ss_user_profiles')
+    .select('allergies')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) {
+    // Not fatal for identification, but never silent: an allergy check that
+    // did not run must not look like one that found nothing.
+    console.error('[shelf-scan] allergy lookup failed:', error.message)
+    throw new AppError('Could not load your profile to check allergies. Please try again.', 503)
+  }
+  // An empty string would match every ingredient.
+  return ((data?.allergies as string[] | null) ?? []).map((a) => (typeof a === 'string' ? a.trim() : '')).filter(Boolean)
 }
 
-interface EffectivenessRow {
-  ingredientName: string
-  concern: string
-  effectivenessScore: number
-  sampleSize: number
-}
+const SHELF_SCAN_SYSTEM_PROMPT = `You identify skincare products in a photo of someone's shelf or collection. Identification only: say what each product is. Do not grade the collection, say what is missing, call anything redundant, or suggest what to buy, add, stop or change. Someone with the person's full history does that separately.
 
-// ---------------------------------------------------------------------------
-// Load user profile + ingredient effectiveness
-// ---------------------------------------------------------------------------
+For each visually distinct product, give the brand, the product name, a category, and how confident you are.
 
-async function loadUserProfileAndEffectiveness(
-  userId: string
-): Promise<{
-  profile: UserProfileData | null
-  effectiveness: EffectivenessRow[]
-}> {
-  const db = getServiceClient()
+List each distinct product ONCE, even if it is visible from several angles or there are several bottles of it. If two items might be the same product, list the one you are surer of and leave the other out. Never write "duplicate", "variant" or "or similar" in a product name.
 
-  let profile: UserProfileData | null = null
-  try {
-    const { data } = await db
-      .from('ss_user_profiles')
-      .select(
-        'skin_type, skin_concerns, climate, location_text, age_range, allergies, fitzpatrick_scale'
-      )
-      .eq('user_id', userId)
-      .maybeSingle()
+Category is one of: cleanser, toner, essence, serum, ampoule, moisturizer, sunscreen, mask, eye_care, lip_care, exfoliator, oil, mist, spot_treatment
 
-    if (data) {
-      profile = data as UserProfileData
-    }
-  } catch {
-    // Non-critical — continue without profile
-  }
+If you cannot read a label with confidence, still include the product with your best guess and a lower confidence.
 
-  let effectiveness: EffectivenessRow[] = []
-  if (profile?.skin_type) {
-    try {
-      const { data } = await db
-        .from('ss_ingredient_effectiveness')
-        .select(
-          `effectiveness_score, sample_size, concern,
-           ingredient:ss_ingredients(name_en, name_inci)`
-        )
-        .or(
-          `skin_type.eq.${profile.skin_type},skin_type.eq.__all__`
-        )
-        .gte('sample_size', 5)
-        .order('effectiveness_score', { ascending: false })
-        .limit(10)
-
-      effectiveness = (data || []).map(
-        (row: Record<string, unknown>) => {
-          const ing = row.ingredient as Record<string, unknown> | null
-          return {
-            ingredientName:
-              (ing?.name_en as string) ||
-              (ing?.name_inci as string) ||
-              'Unknown',
-            concern: (row.concern as string) || '',
-            effectivenessScore: row.effectiveness_score as number,
-            sampleSize: row.sample_size as number,
-          }
-        }
-      )
-    } catch {
-      // Non-critical
-    }
-  }
-
-  return { profile, effectiveness }
-}
-
-// ---------------------------------------------------------------------------
-// Build personalized system prompt
-// ---------------------------------------------------------------------------
-
-function buildSystemPrompt(
-  profile: UserProfileData | null,
-  effectiveness: EffectivenessRow[]
-): string {
-  let userContextSection = ''
-
-  if (profile) {
-    const lines: string[] = []
-    if (profile.skin_type) lines.push(`- Skin type: ${profile.skin_type}`)
-    if (profile.skin_concerns?.length)
-      lines.push(`- Primary concerns: ${profile.skin_concerns.join(', ')}`)
-    if (profile.climate)
-      lines.push(
-        `- Climate: ${profile.climate}${profile.location_text ? ` (${profile.location_text})` : ''}`
-      )
-    if (profile.age_range) lines.push(`- Age range: ${profile.age_range}`)
-    if (profile.allergies?.length)
-      lines.push(`- Known allergies/sensitivities: ${profile.allergies.join(', ')}`)
-    if (profile.fitzpatrick_scale)
-      lines.push(`- Fitzpatrick scale: ${profile.fitzpatrick_scale}`)
-
-    if (lines.length > 0) {
-      userContextSection += `\n\n## User Skin Profile (Personalize Your Analysis)\n${lines.join('\n')}`
-
-      userContextSection += `\n\nWhen analyzing this collection:
-- Flag any products likely containing ingredients the user is allergic to
-- Assess whether the collection addresses the user's stated skin concerns
-- Recommend missing product categories based on their skin type and climate
-- Factor personal relevance into the routine grade — a collection that doesn't address their primary concerns should score lower, even if it covers all categories
-- For missing categories, suggest what would specifically help THIS user (e.g., "Your oily skin would benefit from a BHA exfoliator" rather than just "missing exfoliator")`
-    }
-
-    if (effectiveness.length > 0) {
-      const ingredientLines = effectiveness
-        .slice(0, 10)
-        .map(
-          (e) =>
-            `- ${e.ingredientName}: ${Math.round(e.effectivenessScore * 100)}% effective for ${e.concern} (${e.sampleSize} reports)`
-        )
-      userContextSection += `\n\n## Top Effective Ingredients for This User's Skin Type\n${ingredientLines.join('\n')}\n\nWhen recommending products to add, prioritize those containing ingredients proven effective for this user's skin type.`
-    }
-  }
-
-  return `You are Yuri's Shelf Scan specialist. You analyze photos of skincare product shelves and collections.
-
-Your task:
-1. Identify each visually distinct Korean beauty / skincare product in the photo
-2. For each product, determine: brand, product name, category, and your confidence level
-3. Analyze the collection as a whole
-
-DEDUPLICATION RULE (critical):
-- Only list each distinct product ONCE, even if you see it from multiple angles or if multiple bottles of the same product are visible
-- If a product might be a duplicate or variant of one you already listed, DO NOT include it a second time
-- Never include the phrase "duplicate", "variant", "or similar", or "(duplicate" in a product name
-- If unsure whether two items are the same product or different variants, pick the one you're most confident about and skip the other
-
-For each product, determine the category from this list:
-cleanser, toner, essence, serum, ampoule, moisturizer, sunscreen, mask, eye_care, lip_care, exfoliator, oil, mist, spot_treatment
-
-Respond in JSON format:
+Respond with JSON only:
 {
   "products_identified": [
     {
-      "name": "product name in English (NO parenthetical duplicate notes)",
+      "name": "product name in English",
       "brand": "brand name in English",
       "category": "one of the categories above",
       "confidence": 0.0 to 1.0,
@@ -173,65 +67,51 @@ Respond in JSON format:
     }
   ],
   "collection_analysis": {
-    "total_estimated_value": estimated total USD value of all visible products,
-    "ingredient_overlap_warnings": ["products that likely overlap significantly in function"],
-    "missing_categories": ["categories missing for a complete routine, e.g. 'sunscreen', 'cleanser'"],
-    "redundant_products": ["products that are redundant, e.g. 'Two hyaluronic acid serums'"],
-    "overall_routine_grade": "A" or "B" or "C" or "D" or "F",
-    "grade_rationale": "one sentence explaining the grade",
-    "recommendations": ["actionable suggestions to improve the collection"]
+    "total_estimated_value": estimated total USD retail value of the visible products
   }
-}
-
-Grading criteria:
-- A: Covers all essential categories (cleanser, toner/essence, serum, moisturizer, sunscreen), good variety, minimal redundancy
-- B: Covers most categories, minor gaps or slight redundancy
-- C: Missing 1-2 key categories or notable redundancy
-- D: Missing several categories or heavy redundancy with no clear routine structure
-- F: Very incomplete or entirely redundant with no skincare structure
-
-Be generous but honest in your grading. If you cannot identify a product with confidence, still include it with a lower confidence score and your best guess — but only list each distinct product once.${userContextSection}`
-}
+}`
 
 // ---------------------------------------------------------------------------
 // Post-match allergen cross-reference
 // ---------------------------------------------------------------------------
 
+/**
+ * `checked` is false whenever no comparison actually ran (no allergies to
+ * compare is handled by the caller): no ingredient list on file, or the lookup
+ * failed. An empty `warnings` with `checked: false` means "not checked".
+ */
 async function checkAllergens(
   productId: string,
   allergies: string[]
-): Promise<string[]> {
-  if (!allergies.length) return []
+): Promise<{ checked: boolean; warnings: string[] }> {
+  const { data: ingredients, error } = await getServiceClient()
+    .from('ss_product_ingredients')
+    .select('ingredient:ss_ingredients(name_inci, name_en)')
+    .eq('product_id', productId)
 
-  const db = getServiceClient()
+  if (error) {
+    console.error('[shelf-scan] ingredient lookup failed:', productId, error.message)
+    return { checked: false, warnings: [] }
+  }
+  if (!ingredients?.length) return { checked: false, warnings: [] }
+
   const warnings: string[] = []
+  for (const row of ingredients) {
+    const ing = row.ingredient as unknown as Record<string, unknown> | null
+    if (!ing) continue
+    const ingName = (ing.name_en as string) || (ing.name_inci as string) || ''
+    const ingNameLower = ingName.trim().toLowerCase()
+    if (!ingNameLower) continue
 
-  try {
-    const { data: ingredients } = await db
-      .from('ss_product_ingredients')
-      .select('ingredient:ss_ingredients(name_inci, name_en)')
-      .eq('product_id', productId)
-
-    if (!ingredients?.length) return []
-
-    for (const row of ingredients) {
-      const ing = row.ingredient as unknown as Record<string, unknown> | null
-      if (!ing) continue
-      const ingName = (ing.name_en as string) || (ing.name_inci as string) || ''
-      const ingNameLower = ingName.toLowerCase()
-
-      for (const allergy of allergies) {
-        const allergyLower = allergy.toLowerCase()
-        if (ingNameLower.includes(allergyLower) || allergyLower.includes(ingNameLower)) {
-          warnings.push(`Contains ${ingName} — you listed "${allergy}" as an allergy`)
-        }
+    for (const allergy of allergies) {
+      const allergyLower = allergy.toLowerCase()
+      if (ingNameLower.includes(allergyLower) || allergyLower.includes(ingNameLower)) {
+        warnings.push(`Contains ${ingName}. You listed "${allergy}" as an allergy`)
       }
     }
-  } catch {
-    // Non-critical — return empty
   }
 
-  return [...new Set(warnings)]
+  return { checked: true, warnings: [...new Set(warnings)] }
 }
 
 // ---------------------------------------------------------------------------
@@ -260,18 +140,14 @@ export async function POST(request: NextRequest) {
     const mediaType = match[1] as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif'
     const imageBase64 = match[3]
 
-    // Load user profile + ingredient effectiveness for personalized prompt
-    const { profile, effectiveness } =
-      await loadUserProfileAndEffectiveness(user.id)
-
-    const systemPrompt = buildSystemPrompt(profile, effectiveness)
+    const userAllergies = await loadAllergies(user.id)
 
     const anthropic = getAnthropicClient()
 
     const response = await anthropic.messages.create({
       model: MODELS.primary,
       max_tokens: 4096,
-      system: systemPrompt,
+      system: SHELF_SCAN_SYSTEM_PROMPT,
       messages: [
         {
           role: 'user',
@@ -286,7 +162,7 @@ export async function POST(request: NextRequest) {
             },
             {
               type: 'text',
-              text: 'Analyze this skincare shelf/collection photo. Identify every product and provide a full collection analysis.',
+              text: 'Identify every skincare product in this photo.',
             },
           ],
         },
@@ -298,7 +174,7 @@ export async function POST(request: NextRequest) {
       throw new AppError('No analysis result from AI', 500)
     }
 
-    let analysis: { products_identified: ShelfScanProduct[]; collection_analysis: ShelfScanCollectionAnalysis }
+    let analysis: { products_identified?: Array<Record<string, unknown>>; collection_analysis?: { total_estimated_value?: number } }
     try {
       analysis = JSON.parse(textContent.text.trim())
     } catch {
@@ -309,19 +185,26 @@ export async function POST(request: NextRequest) {
       analysis = JSON.parse(jsonMatch[0])
     }
 
-    // Validate grade
-    const validGrades: RoutineGradeLevel[] = ['A', 'B', 'C', 'D', 'F']
-    if (!validGrades.includes(analysis.collection_analysis?.overall_routine_grade)) {
-      analysis.collection_analysis.overall_routine_grade = 'C'
-    }
+    // Only a number is read from collection_analysis. Anything else the model
+    // adds (a grade, gaps, suggestions) is dropped here and never returned.
+    const rawValue = Number(analysis.collection_analysis?.total_estimated_value)
+    const aiEstimatedValue = Number.isFinite(rawValue) && rawValue > 0 ? rawValue : 0
 
     // Post-process: filter out Claude-flagged duplicates and dedupe by brand+name.
     // Even with the DEDUPLICATION RULE in the prompt, Claude occasionally embeds
     // "(duplicate or similar variant)" in names. Belt and suspenders.
     const DUP_PATTERN = /\b(duplicate|similar variant|or variant|appears twice|same as)\b/i
     const seenKeys = new Set<string>()
-    analysis.products_identified = (analysis.products_identified ?? []).filter((p) => {
-      if (!p?.name) return false
+    // Only these five fields are read from each product the model returns.
+    // Anything else it adds (a note, a verdict, a "replace with") stops here.
+    const identified = (analysis.products_identified ?? []).map((raw) => ({
+      name: typeof raw?.name === 'string' ? raw.name : '',
+      brand: typeof raw?.brand === 'string' ? raw.brand : '',
+      category: typeof raw?.category === 'string' ? raw.category : '',
+      confidence: typeof raw?.confidence === 'number' ? raw.confidence : 0,
+      position_in_image: typeof raw?.position_in_image === 'string' ? raw.position_in_image : '',
+    })).filter((p) => {
+      if (!p.name) return false
       if (DUP_PATTERN.test(p.name)) return false
       // Dedupe by normalized brand + first 3 meaningful tokens of name
       const key = `${(p.brand || '').toLowerCase().trim()}|${p.name
@@ -337,29 +220,36 @@ export async function POST(request: NextRequest) {
 
     // Try to match identified products against our database
     const supabase = getServiceClient()
-    const userAllergies = profile?.allergies || []
 
     const matchedProducts: ShelfScanProduct[] = []
-    for (const product of analysis.products_identified) {
+    const unmatched = { matched_product_id: null, allergen_warnings: [], allergens_checked: false }
+    for (const product of identified) {
       try {
         const searchTerm = product.name || product.brand
         if (!searchTerm) {
-          matchedProducts.push({ ...product, allergen_warnings: [] })
+          matchedProducts.push({ ...product, ...unmatched })
           continue
         }
 
-        const { data } = await supabase
+        // Quoted: an unquoted "." inside .or() is read as filter syntax and
+        // silently returns nothing. Ordered, so the same photo matches the
+        // same row every time.
+        const pattern = quotedIlikePattern(searchTerm)
+        const { data, error: matchError } = await supabase
           .from('ss_products')
           .select('id, name_en, brand_en, category, price_usd')
-          .or(`name_en.ilike.%${sanitizeSearchTerm(searchTerm)}%,brand_en.ilike.%${sanitizeSearchTerm(searchTerm)}%`)
+          .or(`name_en.ilike.${pattern},brand_en.ilike.${pattern}`)
+          .order('is_verified', { ascending: false })
+          .order('rating_avg', { ascending: false, nullsFirst: false })
+          .order('id', { ascending: true })
           .limit(1)
+        if (matchError) throw new Error(matchError.message)
 
         if (data && data.length > 0) {
           // Post-match allergen cross-reference
-          const allergenWarnings = await checkAllergens(
-            data[0].id,
-            userAllergies
-          )
+          const allergens = userAllergies.length
+            ? await checkAllergens(data[0].id, userAllergies)
+            : { checked: false, warnings: [] }
 
           matchedProducts.push({
             ...product,
@@ -367,13 +257,15 @@ export async function POST(request: NextRequest) {
             name: data[0].name_en || product.name,
             brand: data[0].brand_en || product.brand,
             category: data[0].category || product.category,
-            allergen_warnings: allergenWarnings,
+            allergen_warnings: allergens.warnings,
+            allergens_checked: allergens.checked,
           })
         } else {
-          matchedProducts.push({ ...product, allergen_warnings: [] })
+          matchedProducts.push({ ...product, ...unmatched })
         }
-      } catch {
-        matchedProducts.push({ ...product, allergen_warnings: [] })
+      } catch (err) {
+        console.error('[shelf-scan] product match failed:', product.name, err)
+        matchedProducts.push({ ...product, ...unmatched })
       }
     }
 
@@ -433,23 +325,23 @@ export async function POST(request: NextRequest) {
       }
       // Estimate per-product from AI total / count
       const productCount = matchedProducts.length || 1
-      unmatchedEstimate += (analysis.collection_analysis.total_estimated_value || 0) / productCount
+      unmatchedEstimate += aiEstimatedValue / productCount
     }
 
     const totalValue = matchedCount > 0
       ? refinedValue + unmatchedEstimate
-      : analysis.collection_analysis.total_estimated_value || 0
+      : aiEstimatedValue
 
     return NextResponse.json({
       success: true,
       products_identified: matchedProducts,
       collection_analysis: {
-        ...analysis.collection_analysis,
         total_estimated_value: Math.round(totalValue * 100) / 100,
-      },
+      } satisfies ShelfScanCollectionAnalysis,
       products_count: matchedProducts.length,
       matched_count: matchedProducts.filter(p => p.matched_product_id).length,
       already_owned_count: matchedProducts.filter(p => p.already_in_inventory).length,
+      allergies_on_profile: userAllergies.length,
     })
   } catch (error) {
     return handleApiError(error)

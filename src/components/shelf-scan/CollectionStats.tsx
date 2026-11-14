@@ -1,13 +1,6 @@
 'use client'
 
-import {
-  DollarSign,
-  Package,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  Layers,
-} from 'lucide-react'
+import { DollarSign, Package, CheckCircle2, Layers } from 'lucide-react'
 import type { ShelfScanCollectionAnalysis, ShelfScanProduct } from '@/types/database'
 
 interface CollectionStatsProps {
@@ -68,60 +61,6 @@ export default function CollectionStats({
               </span>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Missing categories */}
-      {analysis.missing_categories.length > 0 && (
-        <div className="glass-card p-4 ring-1 ring-amber-400/20">
-          <h4 className="font-display font-semibold text-xs text-amber-400 mb-2 flex items-center gap-1.5">
-            <AlertTriangle className="w-3.5 h-3.5" />
-            Missing Categories
-          </h4>
-          <div className="flex flex-wrap gap-1.5">
-            {analysis.missing_categories.map((cat) => (
-              <span
-                key={cat}
-                className="text-[10px] text-amber-400/80 bg-amber-400/10 px-2 py-1 rounded-full"
-              >
-                {cat.replace('_', ' ')}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Redundant products */}
-      {analysis.redundant_products.length > 0 && (
-        <div className="glass-card p-4 ring-1 ring-rose-400/20">
-          <h4 className="font-display font-semibold text-xs text-rose-400 mb-2 flex items-center gap-1.5">
-            <XCircle className="w-3.5 h-3.5" />
-            Redundancies
-          </h4>
-          <ul className="space-y-1">
-            {analysis.redundant_products.map((item, i) => (
-              <li key={i} className="text-xs text-white/50">
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Ingredient overlap warnings */}
-      {analysis.ingredient_overlap_warnings.length > 0 && (
-        <div className="glass-card p-4 ring-1 ring-amber-400/10">
-          <h4 className="font-display font-semibold text-xs text-amber-300 mb-2 flex items-center gap-1.5">
-            <AlertTriangle className="w-3.5 h-3.5" />
-            Ingredient Overlap
-          </h4>
-          <ul className="space-y-1">
-            {analysis.ingredient_overlap_warnings.map((warning, i) => (
-              <li key={i} className="text-xs text-white/50">
-                {warning}
-              </li>
-            ))}
-          </ul>
         </div>
       )}
 

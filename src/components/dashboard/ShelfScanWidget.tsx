@@ -15,7 +15,7 @@ export default function ShelfScanWidget() {
       <div className="flex-1">
         <p className="text-sm font-semibold text-white">Scan Your Shelf</p>
         <p className="text-xs text-white/40 mt-0.5">
-          Photo your collection for a full analysis and routine grade
+          Photograph your collection to identify what is on it
         </p>
       </div>
       <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-gold transition-colors" />

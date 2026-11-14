@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Camera, ShieldCheck, Search, Sparkles, Users,
-  ScanLine, Brain, ListOrdered, Star, ArrowRight,
-  Menu, X, FlaskConical, Sun, Timer, CloudSun,
-  Activity, BookOpen, Heart, Beaker, DollarSign, TrendingUp,
+  Camera, ShieldCheck, Search, Sparkles,
+  Brain, ListOrdered, ArrowRight,
+  Menu, X, FlaskConical, Sun, CloudSun,
+  BookOpen, Heart, Beaker, DollarSign, TrendingUp,
   Filter, Package, Layers, PiggyBank, HeartPulse, Smartphone
 } from 'lucide-react'
 import PricingCards from '@/components/pricing/PricingCards'
@@ -28,32 +28,39 @@ const stagger = {
   show: { transition: { staggerChildren: 0.1 } },
 }
 
+// Honesty pass, Nov 13 2026: the cards below were checked against the code and
+// the production database, then attacked by a second model. Cut: Community
+// Reviews (20 reviews from 2 accounts, none since February), Expiration
+// Tracking (0 rows ever), Cycle-Aware Routine (on for 0 of 61 profiles), batch
+// code checks (0 rows ever; the model recalls, nothing is looked up), "wait
+// times" (no such column), the "Viral" / "Popular" badges, and the two
+// testimonials (the owner and co-owner labelled "Early user"). NOT verified by
+// use: Dupe Finder, Sunscreen Finder and Glass Skin sharing exist in code but
+// have no usage record to check. Put a claim back only with a production row.
 const coreFeatures = [
-  { icon: Camera, title: 'Korean Label Decoder', desc: 'Point your camera at any Korean label for instant ingredient translation, safety scoring, and personalized skin match.' },
+  { icon: Camera, title: 'Korean Label Decoder', desc: 'Photograph a Korean label and get the ingredient list in English, with a safety read on what is in it.' },
   { icon: Sparkles, title: 'AI Beauty Advisor', desc: 'Yuri is your personal AI advisor backed by 6 built-in AI specialists, cross-session memory, and your full skin profile.' },
-  { icon: ListOrdered, title: 'Smart Routine Builder', desc: 'AI-generated routines with ingredient conflict detection, layering order, wait times, and skin cycling schedules.' },
-  { icon: ShieldCheck, title: 'Authenticity Checks', desc: 'Check packaging and batch codes for warning signs before you buy, for the brands we cover.' },
+  { icon: ListOrdered, title: 'A Routine Built With Yuri', desc: 'Yuri builds your morning and evening routine with you in chat: the order, how often to use each product, and what should not be layered together.' },
+  { icon: ShieldCheck, title: 'Counterfeit Warning Signs', desc: 'Ask Yuri what to check on the packaging and the seller before you buy. We hold known counterfeit markers for a small number of brands so far.' },
   { icon: Search, title: 'Where to Buy', desc: 'Authorized stores that ship to you, with the US price where we have one and the international price for comparison.' },
-  { icon: Users, title: 'Community Reviews', desc: 'Reviews filtered by skin type, Fitzpatrick scale, age, and concern. Not just star ratings.' },
+  { icon: BookOpen, title: 'Ingredient Encyclopedia', desc: 'Look up an ingredient to see what it does, its safety and comedogenic ratings, and which products contain it.' },
 ]
 
 const advancedFeatures = [
-  { icon: FlaskConical, title: 'Glass Skin Score', desc: 'AI photo analysis scores your skin across 5 dimensions. Track progress over time and share your results.', badge: 'Viral' },
-  { icon: DollarSign, title: 'K-Beauty Dupe Finder', desc: 'Find $12 alternatives to $94 products. Ingredient-level matching shows exactly where the overlap is.', badge: 'Popular' },
-  { icon: Sun, title: 'Sunscreen Finder', desc: 'Filter by PA rating, white cast, finish, and under-makeup compatibility. Every detail K-beauty sunscreen lovers need.', badge: 'High Intent' },
-  { icon: Package, title: 'Shelf Scan', desc: 'Photograph your entire collection. Get a routine grade, redundancy alerts, gap analysis, and estimated value.', badge: 'Unique' },
-  { icon: Filter, title: 'Ingredient Filters', desc: 'Search 5,900+ products by ingredients you want and ingredients you avoid. Fragrance-free and low-comedogenic shortcuts built in.', badge: 'Power User' },
-  { icon: Timer, title: 'Expiration Tracking', desc: 'Track when you opened each product. Get alerts before they expire. No more guessing if that serum is still good.', badge: 'Unique' },
-  { icon: CloudSun, title: 'Weather-Adaptive Alerts', desc: 'Real-time weather data adjusts your routine. High humidity? Skip the oil. UV spike? Reapply sunscreen reminder.', badge: 'Proactive' },
-  { icon: Activity, title: 'Cycle-Aware Routine', desc: 'Opt-in hormonal cycle tracking adjusts your skincare by phase. Luteal breakouts get BHA, not just moisturizer.', badge: 'Unique' },
+  { icon: FlaskConical, title: 'Glass Skin Score', desc: 'AI photo analysis scores your skin across 5 dimensions. Track progress over time and share your results.' },
+  { icon: DollarSign, title: 'K-Beauty Dupe Finder', desc: 'Compare ingredient lists to find lower-priced products with the same key actives, and see exactly where they overlap.' },
+  { icon: Sun, title: 'Sunscreen Finder', desc: 'Filter Korean sunscreens by PA rating, white cast, finish, and how they sit under makeup.' },
+  { icon: Package, title: 'Shelf Scan', desc: 'Photograph your shelf and each product is identified and matched against our database. Then ask Yuri what she makes of it.' },
+  { icon: Filter, title: 'Ingredient Filters', desc: 'Search 5,300+ products by ingredients you want and ingredients you avoid. Fragrance-free and low-comedogenic shortcuts built in.' },
+  { icon: CloudSun, title: 'Local Weather and UV', desc: 'Once you add your location, your dashboard shows the humidity and UV where you live, and Yuri can read the same conditions when you ask how they affect your skin.' },
 ]
 
 const specialists = [
   { icon: FlaskConical, name: 'Ingredient Analyst', desc: 'Deep ingredient science: safety ratings, comedogenic scores, interaction warnings, and INCI translation.' },
-  { icon: Layers, name: 'Routine Architect', desc: 'Builds personalized AM/PM routines with Korean layering order, wait times, and skin cycling schedules.' },
-  { icon: ShieldCheck, name: 'Authenticity Investigator', desc: 'Spots counterfeits through packaging analysis, batch codes, seller reputation, and crowdsourced signals.' },
-  { icon: TrendingUp, name: 'Trend Scout', desc: 'Live Olive Young bestseller data and Reddit K-beauty mentions. Identifies products trending in Korea before they hit the US.' },
-  { icon: PiggyBank, name: 'Budget Optimizer', desc: 'Finds ingredient-matched dupes at a fraction of the price. Same key actives, dramatically lower cost.' },
+  { icon: Layers, name: 'Routine Architect', desc: 'Builds your morning and evening routines with you: the layering order and how often to use each product.' },
+  { icon: ShieldCheck, name: 'Authenticity Investigator', desc: 'Walks you through the packaging and seller warning signs to check before you buy.' },
+  { icon: TrendingUp, name: 'Trend Scout', desc: 'Olive Young bestseller rankings and Reddit K-beauty mentions, refreshed daily. Shows what is selling in Korea that English-speaking communities are not talking about yet.' },
+  { icon: PiggyBank, name: 'Budget Optimizer', desc: 'Finds products with the same key actives at a lower price, and shows where the ingredient lists overlap.' },
   { icon: HeartPulse, name: 'Sensitivity Guardian', desc: 'Allergy and reaction prevention. Flags irritants, cross-references your history, and protects sensitive skin.' },
 ]
 
@@ -63,23 +70,15 @@ const specialists = [
 // inside the journey, not the front door.
 const steps = [
   { icon: Sparkles, step: '01', title: 'Talk to Yuri', desc: `Tell her about your skin, your products, and your goals. ${LANDING_CHAT_OPEN ? 'Free to start, no signup.' : yuriAccessSentence()}` },
-  { icon: Brain, step: '02', title: 'Get AI Intelligence', desc: 'Yuri and her 6 built-in AI specialists decode ingredients, flag conflicts, check authenticity, and compare prices — scan a Korean label or search 5,900+ products.' },
-  { icon: ListOrdered, step: '03', title: 'Build Your Routine', desc: 'Add to your personalized routine with conflict detection, layering order, wait times, and skin cycling.' },
-  { icon: Heart, step: '04', title: 'Track and Improve', desc: 'Monitor your Glass Skin Score, track product expiry, get weather alerts, and discover dupes.' },
+  { icon: Brain, step: '02', title: 'Get AI Intelligence', desc: 'Yuri and her 6 built-in AI specialists decode ingredients, flag conflicts, point out counterfeit warning signs, and compare prices. Scan a Korean label or search 5,300+ products.' },
+  { icon: ListOrdered, step: '03', title: 'Build Your Routine', desc: 'Yuri builds your routine with you: the order, how often to use each product, and what not to layer.' },
+  { icon: Heart, step: '04', title: 'Track and Improve', desc: 'Track your Glass Skin Score over time, and check in with Yuri as your skin, the season and your shelf change.' },
 ]
 
-const testimonials = [
-  {
-    quote: 'I\'ve been using my Acwell licorice toner for years and I still love it. Yuri helped me build a real routine around the products I already love instead of starting over.',
-    name: 'Early user',
-    skin: 'Combination skin, Fitzpatrick III, Austin TX',
-  },
-  {
-    quote: 'I\'ve never felt this understood by a skincare recommendation. Yuri asks the questions no one ever has, then actually listens.',
-    name: 'Early user',
-    skin: 'Dry skin, Fitzpatrick I, Sacramento CA',
-  },
-]
+// The one label for every button that leads to sign-up, matching the hero.
+const SIGNUP_LABEL = 'Create my free account'
+/** Sign-up link. Tagged `gate_<source>` only while the landing chat is closed, which is what the tag means. */
+const signupHref = (source: string) => (LANDING_CHAT_OPEN ? '/register' : gatedSignupHref(source, ''))
 
 const navLinks = [
   { label: 'Features', href: '#features' },
@@ -150,8 +149,12 @@ export default function HomeClient() {
             ))}
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/register" className="glass-button-primary text-sm py-2 px-5">
-              Get Started
+            {/* Shown from sm, except at md where the six links share the row
+                and it does not fit (not rendered in a browser; check it).
+                Phones get it as the first item of the menu below; the hero
+                carries the same button below lg. */}
+            <Link href={signupHref('nav')} className="hidden sm:inline-flex md:hidden lg:inline-flex glass-button-primary text-sm py-2 px-5 whitespace-nowrap">
+              {SIGNUP_LABEL}
             </Link>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -179,6 +182,13 @@ export default function HomeClient() {
               className="md:hidden overflow-hidden border-t border-white/5"
             >
               <div className="px-4 py-3 flex flex-col gap-1">
+                <Link
+                  href={signupHref('menu')}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="sm:hidden mb-2 glass-button-primary text-sm py-2.5 px-3 text-center"
+                >
+                  {SIGNUP_LABEL}
+                </Link>
                 {navLinks.map((link) => (
                   <Link
                     key={link.label}
@@ -316,7 +326,7 @@ export default function HomeClient() {
           <div className="text-center mb-12">
             <span className="badge-gold mb-3 inline-block">Core Intelligence</span>
             <h2 className="section-heading mb-3">The Foundation of Smarter Skincare</h2>
-            <p className="section-subheading mx-auto">Six AI-powered pillars: from label to routine to community.</p>
+            <p className="section-subheading mx-auto">From the label on the bottle to the routine you actually follow.</p>
           </div>
           <motion.div
             variants={stagger}
@@ -343,7 +353,7 @@ export default function HomeClient() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <span className="badge-gold mb-3 inline-block">Beyond the Basics</span>
-            <h2 className="section-heading mb-3">Features No Other K-Beauty App Has</h2>
+            <h2 className="section-heading mb-3">More Inside the Membership</h2>
             <p className="section-subheading mx-auto">Built for the ingredient-obsessed, the budget-conscious, and the routine-perfectionists.</p>
           </div>
           <motion.div
@@ -351,19 +361,16 @@ export default function HomeClient() {
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, margin: '-80px' }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
           >
-            {advancedFeatures.map(({ icon: Icon, title, desc, badge }) => (
+            {advancedFeatures.map(({ icon: Icon, title, desc }) => (
               <motion.div
                 key={title}
                 variants={fadeUp}
                 className="dark-card p-5 hover:border-gold/20 transition-all duration-300 group"
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center">
-                    <Icon className="w-4 h-4 text-gold" />
-                  </div>
-                  <span className="text-[10px] font-medium text-gold/60 bg-gold/5 px-2 py-0.5 rounded-full border border-gold/10">{badge}</span>
+                <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center mb-3">
+                  <Icon className="w-4 h-4 text-gold" />
                 </div>
                 <h3 className="font-display font-semibold text-sm text-white mb-1.5">{title}</h3>
                 <p className="text-white/40 text-xs leading-relaxed">{desc}</p>
@@ -443,7 +450,7 @@ export default function HomeClient() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="section-heading mb-3">Why Seoul Sister Exists</h2>
-            <p className="section-subheading mx-auto">Korean consumers have deep skincare intelligence: ingredient analysis, safety ratings, millions of reviews filtered by skin type. Seoul Sister brings that depth to English speakers, with an AI advisor you can talk to.</p>
+            <p className="section-subheading mx-auto">Rankings, reviews and ingredient lists for Korean skincare are easy to find. Seoul Sister adds what a ranking cannot: an advisor who knows your skin and your shelf, and who will tell you when to keep what you already have.</p>
           </div>
           <motion.div
             variants={stagger}
@@ -456,17 +463,17 @@ export default function HomeClient() {
               {
                 icon: Beaker,
                 title: 'Ingredient-Level Intelligence',
-                desc: '14,900+ ingredients decoded with safety ratings, comedogenic scores, and function explanations. Every product analyzed down to the INCI list.',
+                desc: '14,900+ ingredients decoded with safety ratings, comedogenic scores, and function explanations. Products are broken down to the ingredient list wherever we have it.',
               },
               {
                 icon: BookOpen,
-                title: 'Learning Engine',
-                desc: 'Every scan, review, and routine adjustment teaches the system. Recommendations improve as the community grows. A dataset no competitor can replicate.',
+                title: 'Memory That Carries Over',
+                desc: 'Yuri keeps what you tell her between conversations: your skin, your shelf, what reacted badly, and what the two of you decided.',
               },
               {
                 icon: TrendingUp,
-                title: 'Real-Time Korean Trends',
-                desc: 'Live Olive Young bestseller rankings scraped daily from Korea. Reddit mention counts from K-beauty communities. Gap scores reveal what\'s trending in Korea before the US notices.',
+                title: 'Daily Korean Trend Data',
+                desc: 'Olive Young bestseller rankings and Reddit K-beauty mention counts, refreshed daily. A gap score flags what is selling in Korea that Reddit is not talking about yet.',
               },
             ].map(({ icon: Icon, title, desc }) => (
               <motion.div key={title} variants={fadeUp} className="dark-card p-6 text-center">
@@ -481,47 +488,11 @@ export default function HomeClient() {
         </div>
       </section>
 
-      {/* Social Proof */}
-      <section className="py-20 px-4 bg-seoul-dark">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="section-heading mb-3">What Early Users Are Saying</h2>
-            <p className="section-subheading mx-auto">The intelligence platform built for ingredient-literate skincare lovers.</p>
-          </div>
-
-          {/* Testimonials */}
-          <motion.div
-            variants={stagger}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: '-40px' }}
-            className="grid grid-cols-1 md:grid-cols-2 gap-5"
-          >
-            {testimonials.map((t) => (
-              <motion.div key={t.name} variants={fadeUp} className="dark-card p-6">
-                <div className="flex gap-1 mb-3">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className="w-4 h-4 text-gold fill-current" />
-                  ))}
-                </div>
-                <p className="text-sm text-white/70 leading-relaxed mb-4">
-                  &ldquo;{t.quote}&rdquo;
-                </p>
-                <div>
-                  <p className="text-xs font-semibold text-white">{t.name}</p>
-                  <p className="text-xs text-white/40">{t.skin}</p>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
       {/* Pricing */}
       <section id="pricing" className="py-20 px-4 bg-seoul-darker">
         <div className="max-w-6xl mx-auto text-center">
           <h2 className="section-heading mb-3">Simple, Transparent Pricing</h2>
-          <p className="section-subheading mx-auto mb-12">One plan. Full AI intelligence. Cancel anytime.</p>
+          <p className="section-subheading mx-auto mb-12">One plan. Cancel anytime.</p>
           <PricingCards />
         </div>
       </section>
@@ -541,7 +512,7 @@ export default function HomeClient() {
             Your Skin Deserves Intelligence
           </h2>
           <p className="text-white/40 text-base md:text-lg mb-8 leading-relaxed">
-            Join the community of ingredient-literate K-beauty lovers who make smarter skincare decisions every day.
+            Tell Yuri about your skin and what is on your shelf. She will tell you what is working, what is not, and what is worth your money.
           </p>
           {/* Two exits, honestly labeled (July 19 2026): the caption promised a
               free no-signup chat while the only button led to /register — the
@@ -550,19 +521,22 @@ export default function HomeClient() {
               same anchor the mobile prefill flow uses). */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
-              href="/register"
+              href={signupHref('final_cta')}
               className="inline-flex items-center gap-2 glass-button-primary text-base py-3.5 px-10"
             >
-              Start Your Journey <ArrowRight className="w-4 h-4" />
+              {SIGNUP_LABEL} <ArrowRight className="w-4 h-4" />
             </Link>
-            <button
+            {/* Open chat only. Closed, the hero card this scrolls to has one
+                action, the same sign-up, so a second button with another
+                label led to the same place. */}
+            {LANDING_CHAT_OPEN && (<button
               onClick={() =>
                 document.getElementById('hero-yuri')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
               }
               className="inline-flex items-center gap-2 dark-button-outline text-base py-3.5 px-10"
             >
               <Sparkles className="w-4 h-4 text-gold" /> {talkToYuriLabel()}
-            </button>
+            </button>)}
           </div>
           <p className="text-xs text-white/30 mt-4">{heroFootnote(MAX_FREE_MESSAGES)}</p>
         </motion.div>

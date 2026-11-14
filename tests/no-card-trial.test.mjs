@@ -1213,8 +1213,8 @@ test('pricing card: the free week leads and the price is stated; the allowance l
     'Glass Skin Score photo tracking',
     'Counterfeit warning signs & price checks',
     'Finds dupes & the right sunscreen for your skin',
-    'Weather- & cycle-aware guidance',
-    'Trending in Korea before it hits the US',
+    'Local weather & UV in her advice, once you add your location',
+    'Daily Olive Young & Reddit trend data',
   ])
 
   // "Unlimited" and its near phrases are said about the current plan nowhere a
