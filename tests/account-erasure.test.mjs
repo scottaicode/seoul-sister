@@ -80,6 +80,7 @@ const FULL = {
   'ss_widget_visitors:or': [{ id: 'row-1', visitor_id: 'vis-1' }, { id: 'row-2', visitor_id: 'vis-2' }],
   'ss_widget_visitors:ilike': [{ id: 'row-2', visitor_id: 'vis-2' }, { id: 'row-3', visitor_id: 'vis-3' }],
   ss_yuri_conversations: [{ id: 'conv-1' }, { id: 'conv-2' }],
+  ss_reviews: [{ id: 'rev-1' }],
   ss_user_profiles: [],
 }
 function deps(over = {}) {
@@ -123,11 +124,18 @@ test('the whole erasure, in order: these calls and no others', async () => {
     'delete ss_catalog_requests',
     'delete ss_affiliate_clicks',
     'delete ss_review_helpfulness',
+    'select ss_reviews',
+    // The notes the learning job wrote from their reviews and conversations
+    // (Nov 14 2026): personal data that used to be left behind. Each set goes
+    // BEFORE its source, so a failed run that is tried again still finds the
+    // source and cannot leave its notes orphaned.
+    'delete ss_learning_patterns',
     'delete ss_reviews',
     'delete ss_glass_skin_scores',
     'delete ss_skin_breakdown_history',
     'delete ss_treatment_phases',
     'select ss_yuri_conversations',
+    'delete ss_learning_patterns',
     'delete ss_yuri_messages',
     'delete ss_yuri_conversations',
     'delete ss_user_products',
@@ -164,6 +172,7 @@ test('every query is scoped to this person: no call can touch anyone else', asyn
     'delete ss_affiliate_clicks': [['eq', 'user_id', USER]],
     'update ss_ai_usage': [['eq', 'user_id', USER]],
     'delete ss_review_helpfulness': [['eq', 'user_id', USER]],
+    'select ss_reviews': [['eq', 'user_id', USER]],
     'delete ss_reviews': [['eq', 'user_id', USER]],
     'delete ss_glass_skin_scores': [['eq', 'user_id', USER]],
     'delete ss_skin_breakdown_history': [['eq', 'user_id', USER]],
@@ -186,6 +195,10 @@ test('every query is scoped to this person: no call can touch anyone else', asyn
     [['ilike', 'captured_email', 'person@example.com']],
   ])
   const by = (signature) => db.calls.filter((c) => sig(c) === signature)
+  assert.deepEqual(by('delete ss_learning_patterns').map((c) => c.filters), [
+    [['in', 'data->>source_id', ['rev-1']]],
+    [['in', 'data->>source_id', ['conv-1', 'conv-2']]],
+  ])
   assert.deepEqual(by('update ss_nurture_leads').map((c) => c.filters), [[['eq', 'user_id', USER]], [['ilike', 'email', 'person@example.com']]])
   assert.deepEqual(by('delete ss_nurture_leads').map((c) => c.filters), [[['ilike', 'email', 'person@example.com']]])
   assert.deepEqual(by('delete ss_subscription_events').map((c) => c.filters), [

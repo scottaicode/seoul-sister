@@ -202,17 +202,11 @@ export function IngredientEnrichmentSection({
                   For {effectiveness.skin_type} skin
                 </span>
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="font-display font-bold text-2xl text-sky-300">
-                  {Math.round(effectiveness.score * 100)}%
-                </span>
-                <span className="text-[10px] text-white/40">effectiveness</span>
-              </div>
-              <p className="text-xs text-white/60 mt-1 capitalize">
-                for {effectiveness.concern.replace(/_/g, ' ')}
+              <p className="text-sm text-white/80 mt-1 capitalize">
+                Commonly used for {effectiveness.concern.replace(/_/g, ' ')}
               </p>
               <p className="text-[10px] text-white/30 mt-1">
-                Editorial baseline from K-beauty research
+                Seoul Sister editorial guidance. Ask Yuri how it fits your routine.
               </p>
             </div>
           )}

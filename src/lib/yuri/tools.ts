@@ -1,5 +1,7 @@
 import { getServiceClient } from '@/lib/supabase'
 import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
+import { cleanGuide, withoutUnmeasuredClaims } from '@/lib/content/unmeasured-claims'
+import { isFragranceTerm, ingredientIsFragrance, exclusionVerdict, splitExclusionTerms, FRAGRANCE_FILTER_NOTE } from '@/lib/yuri/fragrance'
 import { excludePollutedIngredientRows } from '@/lib/pipeline/ingredient-parser'
 import { readIngredientInput } from '@/lib/yuri/ingredient-input'
 import { fetchWeather } from '@/lib/intelligence/weather-routine'
@@ -1477,7 +1479,7 @@ export const YURI_TOOLS: ToolDef[] = [
         exclude_ingredients: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Must NOT contain these ingredients',
+          description: 'Must NOT contain these ingredients. "fragrance" is treated as a class: it also leaves out parfum and every ingredient our database marks as a fragrance component, not only the word.',
         },
         max_price_usd: {
           type: 'number',
@@ -2331,7 +2333,7 @@ async function executeSearchProducts(
 
   // Post-filter by ingredient include/exclude
   // Facts about the ingredient filter that Yuri needs in order not to present
-  // an unchecked list as a checked one. Empty when the filter ran cleanly.
+  // an unchecked list as a checked one, and to know what "fragrance" covered.
   const ingredientFilterNotes: string[] = []
   if (includeIngredients?.length || excludeIngredients?.length) {
     // Null product ids inside .in() on a uuid column throw 22P02 and take the
@@ -2357,7 +2359,7 @@ async function executeSearchProducts(
     for (let from = 0; ; from += PAGE) {
       const { data: page, error: pageErr } = await db
         .from('ss_product_ingredients')
-        .select('product_id, ingredient:ss_ingredients(name_inci, name_en)')
+        .select('product_id, ingredient:ss_ingredients(name_inci, name_en, is_fragrance)')
         .in('product_id', productIds)
         .range(from, from + PAGE - 1)
       if (pageErr) {
@@ -2382,13 +2384,18 @@ async function executeSearchProducts(
     }
 
     const productIngredientMap = new Map<string, string[]>()
+    // Products with at least one ingredient that counts as fragrance: the
+    // table's flag, corrected by what the name says (src/lib/yuri/fragrance.ts).
+    const hasFragrance = new Set<string>()
     for (const link of ingredientLinks || []) {
       const pid = (link as Record<string, unknown>).product_id as string
-      const ing = (link as Record<string, unknown>).ingredient as Record<string, string> | null
+      const ing = (link as Record<string, unknown>).ingredient as Record<string, unknown> | null
       if (!ing) continue
       const names = productIngredientMap.get(pid) || []
-      names.push((ing.name_inci || ing.name_en || '').toLowerCase())
+      const name = (((ing.name_inci as string) || (ing.name_en as string) || '')).toLowerCase()
+      names.push(name)
       productIngredientMap.set(pid, names)
+      if (ingredientIsFragrance(name, ing.is_fragrance === true)) hasFragrance.add(pid)
     }
 
     // Raw INCI as a fallback for products the link cron hasn't processed yet.
@@ -2430,23 +2437,49 @@ async function executeSearchProducts(
     }
     if (excludeIngredients?.length && !linkError) {
       let uncheckable = 0
+      // "fragrance" is a class, not a word (src/lib/yuri/fragrance.ts). Every
+      // other term is matched as the text the person gave.
+      const exclusionTerms = splitExclusionTerms(excludeIngredients)
+      const wantsNoFragrance = exclusionTerms.some(isFragranceTerm)
+      const otherTerms = exclusionTerms.filter((e) => !isFragranceTerm(e)).map((e) => e.toLowerCase())
+      // For products known only by raw INCI text there is no flag to read, so
+      // the flagged names are matched against the text. Fetched only when needed.
+      let flaggedNames: string[] = []
+      if (wantsNoFragrance && rawInciById.size > 0) {
+        const { data: flagged, error: flaggedError, count: flaggedCount } = await db
+          .from('ss_ingredients')
+          .select('name_inci', { count: 'exact' })
+          .eq('is_fragrance', true)
+          .range(0, 999)
+        // PostgREST caps a response at 1,000 rows without saying so. If the
+        // flagged list ever outgrows one page, say it instead of half-checking.
+        if (!flaggedError && typeof flaggedCount === 'number' && flaggedCount > (flagged?.length ?? 0)) {
+          console.error(`[search_products] fragrance list truncated: ${flagged?.length} of ${flaggedCount}`)
+          ingredientFilterNotes.push('Some products are known only by their raw ingredient text; those were checked against part of the fragrance list only.')
+        }
+        if (flaggedError) {
+          console.error('[search_products] fragrance-flag lookup failed:', flaggedError.message)
+          ingredientFilterNotes.push('Some products are known only by their raw ingredient text; those were checked for the words fragrance and parfum only, because the fragrance list could not be loaded.')
+        } else {
+          flaggedNames = (flagged ?? [])
+            .map((r) => ((r as Record<string, unknown>).name_inci as string | null)?.toLowerCase().trim() ?? '')
+            .filter(Boolean)
+        }
+      }
       filtered = filtered.filter((p: Record<string, unknown>) => {
         const id = p.id as string
-        const ings = productIngredientMap.get(id) || []
-        // Exclusion is a safety filter, so an unlinked product is checked
-        // against its raw INCI too rather than passing unexamined.
-        if (ings.length === 0) {
-          const raw = rawInciById.get(id)
-          if (raw) return !excludeIngredients.some((exc) => raw.includes(exc.toLowerCase()))
-          // No ingredient list at all: nothing was checked, so it cannot be
-          // offered as "without X". It used to pass (`!some([])` is true).
-          uncheckable++
-          return false
-        }
-        return !excludeIngredients.some((exc) =>
-          ings.some((i) => i.includes(exc.toLowerCase()))
+        // Exclusion is a safety filter: the whole decision is one tested
+        // function, and a product with no ingredient list is never "without X".
+        const verdict = exclusionVerdict(
+          { names: productIngredientMap.get(id) || [], hasFragrance: hasFragrance.has(id), raw: rawInciById.get(id) },
+          otherTerms,
+          wantsNoFragrance,
+          flaggedNames
         )
+        if (verdict === 'unchecked') uncheckable++
+        return verdict === 'keep'
       })
+      if (wantsNoFragrance) ingredientFilterNotes.push(FRAGRANCE_FILTER_NOTE)
       if (uncheckable > 0) {
         ingredientFilterNotes.push(`${uncheckable} matching product${uncheckable === 1 ? ' was' : 's were'} left out because we have no ingredient list for ${uncheckable === 1 ? 'it' : 'them'}, so "without" could not be checked.`)
       }
@@ -2863,7 +2896,7 @@ async function executeGetProductDetails(
     }
     // Include condensed overview for active ingredients with guides
     if (ing?.is_active && rc?.overview) {
-      entry.overview = (rc.overview as string).slice(0, 200)
+      entry.overview = withoutUnmeasuredClaims(rc.overview as string).slice(0, 200)
     }
     return entry
   })
@@ -3039,7 +3072,9 @@ async function executeGetIngredientGuide(
 
   // Add rich content guide if available
   if (ing.rich_content) {
-    const rc = ing.rich_content as Record<string, unknown>
+    // Read through cleanGuide: the stored guide states our launch estimates as
+    // measured data, and Yuri would repeat "Seoul Sister users report 79%".
+    const rc = (cleanGuide(ing.rich_content as Record<string, unknown>) ?? {}) as Record<string, unknown>
     result.guide = {
       overview: rc.overview,
       how_it_works: rc.how_it_works,

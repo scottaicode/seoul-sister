@@ -35,7 +35,7 @@ Seoul Sister ranks the best products in every category by real Olive Young revie
 - Best Korean Spot Treatments: https://www.seoulsister.com/best/spot-treatments
 
 ## Ingredient Encyclopedia
-Searchable database of 14,400+ cosmetic ingredients with safety ratings, comedogenic scores, function descriptions, skin-type effectiveness data, and known interactions. Each ingredient page includes products containing it and research-backed effectiveness by skin type.
+Searchable database of 14,400+ cosmetic ingredients with safety ratings, comedogenic scores, function descriptions, skin-type guidance, and known interactions. Each ingredient page includes products containing it and which skin types and concerns it is commonly used for.
 - Ingredient directory: https://www.seoulsister.com/ingredients
 - Example: https://www.seoulsister.com/ingredients/niacinamide
 - Example: https://www.seoulsister.com/ingredients/hyaluronic-acid

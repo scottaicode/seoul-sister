@@ -4,6 +4,76 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.6 — Fragrance-free search, no invented percentages in public, and members' learning notes handled as personal data (Nov 14 2026)
+
+Three fixes the owner approved, and what two second-model reviews found underneath them.
+
+**ACTION NEEDED (owner): run `supabase/migrations/20261114000001_learning_notes_not_public.sql`
+in the Supabase SQL editor.** `ss_learning_patterns` has a SELECT policy open to everyone, so the
+site's public key can read every row. Checked Nov 14 with that key, counts only: 315 rows
+readable, 310 of them notes written from members' conversations and reviews, some with health
+details. The database connection available to this session is read-only, so the fix could not be
+applied from here. Until it is run, those notes are publicly readable.
+
+**"Without fragrance" in Yuri's search is a class of ingredients, not a word.**
+- It matched the typed word, so it kept everything listing Parfum, linalool, limonene or an
+  essential oil. It now uses the ingredient table's fragrance flag plus the ingredient name
+  (fragrance, parfum, perfume, flavor, aroma, and plant oils named for peel, flower, leaf or wood).
+- A row that says the fragrance was left out ("Synthetic Fragrance and Allergens (Excluded from
+  Final Process)") no longer counts: 12 sheet masks were being dropped on it.
+- "Fragrance (Parfum)", "fragrance-free", "unscented", "fragrance, alcohol" and similar are all
+  understood. Yuri is told what the filter covered.
+- Run against production: 35 products returned by four "without fragrance" searches; none
+  contains a flagged ingredient, a fragrance word or a scented plant oil.
+- Known miss, not fixed: an essential oil named only by its plant. Artemisia Vulgaris Oil is in
+  97 products and unflagged; 7 products would pass on it. Its row should be flagged in the table.
+
+**Public pages publish no percentage for ingredient "effectiveness".**
+- Product and ingredient pages, their FAQ data for search engines, meta descriptions and
+  `llms.txt` now state the pairing in words ("commonly used for acne in oily skin").
+- Only estimates of 0.70 and up are shown. The four below it are the cautions (tea tree oil,
+  retinol, salicylic acid and vitamin C for sensitive skin) and read as endorsements without
+  their number.
+- **The stored ingredient guides state the estimates as measurements** ("Seoul Sister users with
+  sensitive skin report 79% effectiveness"). Measured: 65 such sentences in 26 of 590 guides. They
+  are now dropped wherever a guide is read: the public page and its search data, Yuri's ingredient
+  tool, and the feed to the LGAAS blog writer. **The stored text is not corrected.**
+- The two writers that produced that text are no longer handed the estimates as data.
+
+**Members' learning notes are treated as what they are.**
+- A nightly job writes a note from each conversation and review into `ss_learning_patterns`,
+  linked to its source. Some carry what the member said about their health. The privacy page
+  called them anonymized contributions that are kept after deletion.
+- Deleting an account or a single conversation now deletes its notes (before the source, so a
+  retried deletion cannot orphan them).
+- The privacy page says what the notes are, what they can contain and when they are deleted.
+  Terms says the same in one line. **This is legal text written by an engineer, not a lawyer.**
+
+**Second-model review: run twice** (Opus 5.5, told to refute). The first found the stored guides,
+the cautions-as-endorsements problem and the privacy gap. The second, on the fixes, found the open
+read access, two broken sentence fragments my filter was publishing (it split after "No." and
+"Dr."), an unfiltered feed to LGAAS, and an ordering flaw in deletion. All fixed here. **The fixes
+made after the second review were not re-reviewed.** The guard tests now run the real functions
+and fail on 25 reintroduced bugs.
+
+**Correction to something I told the owner:** I said 54 notes pointed at deleted conversations.
+5 do (from 2 conversations). The other 49 are notes from reviews that still exist.
+
+**Open, owner decisions:**
+- Run the migration above.
+- The 5 notes whose conversations were already deleted are still stored. Deleting them is what
+  the privacy page now promises.
+- Nothing in the app reads the conversation and review notes (310 rows, written nightly). Keep
+  writing them, or switch the job off until something uses them.
+- Two blog posts still publish the estimates as data (`retinol-or-retinal-how-to-pick-the-right-one`,
+  `oily-skin-routine-guide`, 12 sentences). LGAAS holds the source and overwrites our copy.
+- The filter drops whole sentences, so some guides lose a caution with the number (retinol for
+  sensitive skin: "higher risk of irritation, redness, and peeling"). Rewriting the 26 guides is
+  the real fix.
+- Notes are not deleted when a login is removed from the Supabase dashboard, or when a product
+  delete cascades to its reviews. Member pages (dashboard, routine, scan, sunscreen picks) still
+  show the estimate as a number, labelled as an estimate.
+
 ## v11.61.5 — Estimates stop being called "user reports"; dead Browse filters removed; "without X" search made safe (Nov 14 2026)
 
 **Correction to v11.61.4.** That entry called `ss_ingredient_effectiveness` "seeded-looking,

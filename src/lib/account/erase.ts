@@ -229,6 +229,22 @@ export async function eraseAccount(
   // login's own cascade runs as a role that may not write those counters. So
   // they are deleted here, by the service role, before the login goes.
   await must('review votes', () => db.from('ss_review_helpfulness').delete().eq('user_id', userId))
+  // The notes the learning job wrote from a conversation or review, by its id.
+  // (Written here, not imported: this file has no imports so its test can run
+  // it as it is. src/lib/learning/forget.ts does the same for one conversation.)
+  const forgetNotesFrom = async (sourceIds: string[]) => {
+    for (let i = 0; i < sourceIds.length; i += 40) {
+      await must('learning notes', () =>
+        db.from('ss_learning_patterns').delete().in('data->>source_id', sourceIds.slice(i, i + 40))
+      )
+    }
+  }
+  // Their ids are read before they go: the learning job writes notes from
+  // reviews too, keyed by the review's id (see src/lib/learning/forget.ts).
+  const reviews = await rows<{ id: string }>('find reviews', () => db.from('ss_reviews').select('id').eq('user_id', userId))
+  // Notes first, then their source: if a later step fails and this runs again,
+  // the reviews are still there to be found, so their notes cannot be orphaned.
+  await forgetNotesFrom(reviews.map((r) => r.id))
   await must('reviews', () => db.from('ss_reviews').delete().eq('user_id', userId))
   // Scores and breakdowns point at a treatment phase with a key that blocks the
   // phase's deletion (found by running this on a throwaway account), so they go first.
@@ -239,6 +255,10 @@ export async function eraseAccount(
     db.from('ss_yuri_conversations').select('id').eq('user_id', userId)
   )
   const conversationIds = conversations.map((c) => c.id)
+  // The notes the learning job wrote from this person's conversations and
+  // reviews. They carry what was said about skin and health, so they are
+  // personal data and go with their source; they used to be left behind.
+  await forgetNotesFrom(conversationIds)
   if (conversationIds.length) {
     await must('messages', () => db.from('ss_yuri_messages').delete().in('conversation_id', conversationIds))
     await must('conversations', () => db.from('ss_yuri_conversations').delete().in('id', conversationIds))

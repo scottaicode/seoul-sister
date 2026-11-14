@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
+import { COMMON_USE_FLOOR } from '@/lib/content/unmeasured-claims'
 import { getServiceClient } from '@/lib/supabase'
 import { AppError, handleApiError } from '@/lib/utils/error-handler'
 
@@ -153,6 +154,10 @@ export async function GET(
         .eq('ingredient_id', ingredientId)
         .eq('skin_type', skinType)
         .gte('sample_size', 5)
+        // Only a pairing strong enough to state as a common use; the low
+        // estimates are the cautions (retinol for sensitive skin) and would
+        // read as endorsements without their number.
+        .gte('effectiveness_score', COMMON_USE_FLOOR)
         .order('effectiveness_score', { ascending: false })
         .limit(1)
       if (effRows && effRows.length > 0) {

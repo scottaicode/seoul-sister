@@ -11,13 +11,13 @@ import { excludePollutedIngredientRows } from '@/lib/pipeline/ingredient-parser'
 export const metadata: Metadata = {
   title: 'K-Beauty Ingredient Encyclopedia | 14,000+ Ingredients',
   description:
-    'A searchable K-beauty ingredient database. Safety ratings, comedogenic scores, skin-type effectiveness, and which Korean products contain each ingredient.',
+    'A searchable K-beauty ingredient database. Safety ratings, comedogenic scores, skin-type guidance, and which Korean products contain each ingredient.',
   robots: { index: true, follow: true },
   alternates: { canonical: 'https://www.seoulsister.com/ingredients' },
   openGraph: {
     title: 'K-Beauty Ingredient Encyclopedia | Seoul Sister',
     description:
-      'A searchable database of 14,000+ K-beauty ingredients with safety ratings and effectiveness data.',
+      'A searchable database of 14,000+ K-beauty ingredients with safety ratings and skin-type guidance.',
     type: 'website',
     url: 'https://www.seoulsister.com/ingredients',
   },
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'K-Beauty Ingredient Encyclopedia | Seoul Sister',
     description:
-      'A searchable database of 14,000+ K-beauty ingredients with safety ratings and effectiveness data.',
+      'A searchable database of 14,000+ K-beauty ingredients with safety ratings and skin-type guidance.',
   },
 }
 
@@ -148,7 +148,7 @@ export default async function IngredientsPage() {
         '@id': 'https://www.seoulsister.com/ingredients#collection',
         name: 'K-Beauty Ingredient Encyclopedia',
         description:
-          'Comprehensive database of Korean skincare ingredients with safety ratings, comedogenic scores, and skin-type effectiveness data.',
+          'Comprehensive database of Korean skincare ingredients with safety ratings, comedogenic scores, and skin-type guidance.',
         url: 'https://www.seoulsister.com/ingredients',
         isPartOf: {
           '@type': 'WebSite',
@@ -199,7 +199,7 @@ export default async function IngredientsPage() {
             </h1>
             <p className="text-white/60 max-w-2xl mx-auto mb-8">
               Every ingredient in Korean skincare, decoded. Safety ratings,
-              comedogenic scores, skin-type effectiveness, and which products
+              comedogenic scores, skin-type guidance, and which products
               contain each one.
             </p>
 

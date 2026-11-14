@@ -167,7 +167,7 @@ export default function TermsPage() {
           <li><strong className="text-white/90">Label Scanning:</strong> AI vision analysis identifies ingredients and provides safety assessments</li>
           <li><strong className="text-white/90">Routine Builder:</strong> Automated ingredient conflict detection and layering order suggestions</li>
           <li><strong className="text-white/90">Personalized Matching:</strong> Automated scoring of product suitability for your skin type</li>
-          <li><strong className="text-white/90">Learning Engine:</strong> Automated aggregation of anonymized community data for effectiveness scores</li>
+          <li><strong className="text-white/90">Learning Notes:</strong> An automated process reads conversations and reviews and writes short notes about what it finds, as described in the Privacy Policy</li>
         </ul>
         <p className="mt-2">These automated processes inform recommendations but do not make binding decisions about your healthcare, financial status, or legal rights. You always make the final decision about which products to use. If you have concerns about automated processing, contact us at the email below.</p>
       </section>

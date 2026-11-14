@@ -117,7 +117,10 @@ test('"without X" never includes a product whose ingredients were not checked, a
   const a = tools.indexOf('if (excludeIngredients?.length && !linkError) {')
   const block = tools.slice(a, tools.indexOf('\n  }\n', a))
   // No list and no raw INCI: dropped and counted, never passed.
-  assert.match(block, /if \(raw\) return !excludeIngredients\.some\(\(exc\) => raw\.includes\(exc\.toLowerCase\(\)\)\)\s*(\/\/[^\n]*\n\s*)*uncheckable\+\+\s*return false/)
+  // The decision itself is one function, run case by case in
+  // tests/fragrance-and-public-estimates.test.mjs; here, that an unchecked
+  // product is counted and never kept.
+  assert.match(block, /if \(verdict === 'unchecked'\) uncheckable\+\+\s*return verdict === 'keep'/)
   assert.match(block, /if \(uncheckable > 0\) \{\s*ingredientFilterNotes\.push\(/)
   // Run the note builder for 1 and for several.
   const tpl = block.slice(block.indexOf('ingredientFilterNotes.push(`') + 'ingredientFilterNotes.push('.length, block.lastIndexOf('`)') + 1)

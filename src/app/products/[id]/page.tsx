@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { scopePrices, usPriceRange } from '@/lib/pricing/price-scope'
+import { commonUses } from '@/lib/content/unmeasured-claims'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
@@ -172,13 +173,13 @@ export default async function PublicProductPage({ params }: Props) {
   ])
 
   const relatedProducts = relatedProductsRes.data || []
-  const effectivenessData = (effectivenessRes.data || []) as Array<{
+  const effectivenessData = commonUses((effectivenessRes.data || []) as Array<{
     ingredient_id: string
     skin_type: string
     concern: string
     effectiveness_score: number
     sample_size: number
-  }>
+  }>)
 
   const ingredients = (ingredientRows).map((row) => ({
     position: row.position,
@@ -291,14 +292,16 @@ export default async function PublicProductPage({ params }: Props) {
     effectivenessMap.set(row.ingredient_id, existing)
   }
 
-  // Build ingredient effectiveness summary for FAQ answers (stats boost AI citation 30-40%)
-  // v10.8.20: reframed from "user reports" → "research baseline" — see CLAUDE.md
-  // for the effectiveness-data-honesty investigation. The sample sizes are
-  // editorial bootstrap (Phase 11.4 research-backed seed), not real subscriber
-  // reports yet, and the FAQ text feeds JSON-LD that AI search engines crawl.
+  // What the key ingredients are used for, in words (Nov 14 2026). This used to
+  // publish a percentage ("key ingredients show 82% effectiveness for acne in
+  // oily skin") in the page body and in the FAQ data search engines read. The
+  // number is one of 47 estimates we wrote at launch, not a measurement, and a
+  // precise-looking figure in a citation surface is the last place for one.
+  // The pairing itself (this ingredient, this concern, this skin type) is
+  // ordinary skincare guidance and stays.
   const topEffective = effectivenessData.slice(0, 3)
   const effectivenessSummary = topEffective.length > 0
-    ? ` Drawing on K-beauty research and community consensus, key ingredients show ${Math.round(topEffective[0].effectiveness_score * 100)}% effectiveness for ${topEffective[0].concern} in ${topEffective[0].skin_type} skin types.`
+    ? ` By Seoul Sister's editorial guidance, its key ingredients are commonly used for ${topEffective[0].concern} in ${topEffective[0].skin_type} skin.`
     : ''
 
   // Build FAQ questions — expanded with skin-type-specific questions and statistics
@@ -312,7 +315,7 @@ export default async function PublicProductPage({ params }: Props) {
           ? `The key active ingredients in ${product.name_en} by ${product.brand_en} include ${activeIngredients
               .slice(0, 5)
               .map((i) => `${i.ingredient?.name_en || i.ingredient?.name_inci}${i.ingredient?.function ? ` (${i.ingredient.function})` : ''}`)
-              .join(', ')}.${effectivenessSummary} Seoul Sister tracks ingredient effectiveness across 5,900+ K-beauty products to provide data-backed recommendations.`
+              .join(', ')}.${effectivenessSummary} Seoul Sister lists the full ingredient breakdown for this product.`
           : `${product.name_en} is a ${categoryLabel.toLowerCase()} by ${product.brand_en}. Subscribe to Seoul Sister for full ingredient analysis across our database of 5,900+ K-beauty products.`,
       },
     },
@@ -729,15 +732,16 @@ export default async function PublicProductPage({ params }: Props) {
             </div>
           )}
 
-          {/* Ingredient Effectiveness Stats — FREE (data-rich content for AI citation) */}
+          {/* What the key ingredients are used for. Words only: see the note
+              where effectivenessSummary is built. */}
           {effectivenessData.length > 0 && (
             <div className="bg-white/5 rounded-xl border border-white/10 p-5 mb-6">
               <h2 className="font-display font-semibold text-lg text-white mb-3 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-400" />
-                Ingredient Effectiveness Data
+                What Its Key Ingredients Are Used For
               </h2>
               <p className="text-xs text-white/40 mb-3">
-                Seoul Sister&apos;s editorial estimates, not counts of member reports.
+                Seoul Sister&apos;s editorial guidance on common uses. How a product works for you depends on your skin.
               </p>
               <div className="space-y-2">
                 {Array.from(effectivenessMap.entries()).slice(0, 5).map(([ingId, entries]) => {
@@ -746,25 +750,12 @@ export default async function PublicProductPage({ params }: Props) {
                   const topEntry = entries[0]
                   return (
                     <div key={ingId} className="flex items-center justify-between gap-3 py-2 border-b border-white/5 last:border-0">
-                      <div className="min-w-0">
-                        <span className="text-sm text-white font-medium">
-                          {ing.name_en || ing.name_inci}
-                        </span>
-                        <span className="text-xs text-white/40 ml-2">
-                          for {topEntry.concern} ({topEntry.skin_type} skin)
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-emerald-400"
-                            style={{ width: `${Math.round(topEntry.score * 100)}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium text-emerald-400 w-8 text-right">
-                          {Math.round(topEntry.score * 100)}%
-                        </span>
-                      </div>
+                      <span className="text-sm text-white font-medium min-w-0">
+                        {ing.name_en || ing.name_inci}
+                      </span>
+                      <span className="text-xs text-white/50 shrink-0 capitalize">
+                        {topEntry.concern} · {topEntry.skin_type} skin
+                      </span>
                     </div>
                   )
                 })}

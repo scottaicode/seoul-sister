@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { cleanGuide, commonUses } from '@/lib/content/unmeasured-claims'
 import Link from 'next/link'
 import { createClient } from '@supabase/supabase-js'
 import ContextualYuriNudge from '@/components/widget/ContextualYuriNudge'
@@ -263,11 +264,11 @@ export async function generateMetadata({
   }
 
   const displayName = ingredient.name_en || ingredient.name_inci
-  const rc = ingredient.rich_content
+  const rc = cleanGuide(ingredient.rich_content)
   const description = rc?.overview
     ? rc.overview.slice(0, 155).replace(/\s+\S*$/, '') + '...'
     : ingredient.description ||
-      `${displayName} in K-beauty: safety rating, comedogenic score, skin-type effectiveness, and which Korean skincare products contain it.`
+      `${displayName} in K-beauty: safety rating, comedogenic score, which skin types it suits, and which Korean skincare products contain it.`
 
   return {
     title: `${displayName} — K-Beauty Ingredient Guide`,
@@ -345,7 +346,7 @@ export default async function IngredientDetailPage({
         .eq('ingredient_id', ingredient.id),
     ])
 
-  const effectiveness = (effectivenessRes.data || []) as EffectivenessRow[]
+  const effectiveness = commonUses((effectivenessRes.data || []) as EffectivenessRow[])
 
   // Flatten products from the join
   const products = (productsRes.data || [])
@@ -414,7 +415,9 @@ export default async function IngredientDetailPage({
   }
 
   const safety = safetyLabel(ingredient.safety_rating)
-  const richContent = ingredient.rich_content
+  // Read through cleanGuide: the stored guide states our launch estimates as
+  // measured data ("Seoul Sister users report 79% effectiveness").
+  const richContent = cleanGuide(ingredient.rich_content)
 
   // JSON-LD
   const jsonLd = {
@@ -450,7 +453,7 @@ export default async function IngredientDetailPage({
         description:
           richContent?.overview?.slice(0, 300) ||
           ingredient.description ||
-          `Complete guide to ${displayName} in Korean skincare. Safety rating, comedogenic score, effectiveness by skin type, and products containing this ingredient.`,
+          `Complete guide to ${displayName} in Korean skincare. Safety rating, comedogenic score, which skin types it suits, and products containing this ingredient.`,
         url: `https://www.seoulsister.com/ingredients/${slug}`,
         datePublished: ingredient.rich_content_generated_at
           ? new Date(ingredient.rich_content_generated_at).toISOString()
@@ -546,12 +549,9 @@ export default async function IngredientDetailPage({
                             name: `What skin type is ${displayName} best for?`,
                             acceptedAnswer: {
                               '@type': 'Answer',
-                              text: `Based on effectiveness data, ${displayName} works best for ${effectiveness
+                              text: `By Seoul Sister's editorial guidance, ${displayName} is commonly used for ${effectiveness
                                 .slice(0, 3)
-                                .map(
-                                  (e) =>
-                                    `${e.skin_type} skin (${Math.round(e.effectiveness_score * 100)}% effective for ${e.concern})`
-                                )
+                                .map((e) => `${e.concern} in ${e.skin_type} skin`)
                                 .join(', ')}.`,
                             },
                           },
@@ -620,7 +620,7 @@ export default async function IngredientDetailPage({
               </div>
               <ShareButton
                 title={`${displayName} — K-Beauty Ingredient Analysis`}
-                text={`${displayName} on Seoul Sister — function, safety, effectiveness by skin type, and products containing it`}
+                text={`${displayName} on Seoul Sister — function, safety, which skin types it suits, and products containing it`}
                 variant="icon"
               />
             </div>
@@ -825,50 +825,36 @@ export default async function IngredientDetailPage({
               </section>
             )}
 
-          {/* Effectiveness by skin type */}
+          {/* Skin types and concerns. Words only (Nov 14 2026): this section
+              used to print a percentage and a bar per skin type. Those figures
+              are 47 estimates we wrote at launch, not measurements, and this
+              page is one search engines quote. The pairing of ingredient,
+              concern and skin type is ordinary guidance and stays. */}
           {effectiveness.length > 0 && (
             <section>
               <h2 className="font-display font-semibold text-lg text-white mb-4 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-amber-400" />
-                Effectiveness by Skin Type
+                Skin Types and Concerns
               </h2>
-              {/* Citation-friendly summary paragraph for AI search engines */}
               <p className="text-white/70 text-sm leading-relaxed mb-4">
-                Drawing on K-beauty clinical research and community consensus, {displayName} shows the highest effectiveness for{' '}
+                By Seoul Sister&apos;s editorial guidance, {displayName} is commonly used for{' '}
                 {effectiveness.slice(0, 2).map((e, i) => (
                   <span key={`${e.skin_type}-${e.concern}`}>
                     {i > 0 && ' and '}
-                    <strong className="text-white">{e.skin_type} skin targeting {e.concern}</strong> (editorial estimate {Math.round(e.effectiveness_score * 100)}%)
+                    <strong className="text-white">{e.concern} in {e.skin_type} skin</strong>
                   </span>
                 ))}.
-                {effectiveness.length > 2 && ` It also benefits ${effectiveness.slice(2).map(e => `${e.skin_type} skin for ${e.concern}`).join(', ')}.`}
+                {effectiveness.length > 2 && ` It is also used for ${effectiveness.slice(2).map(e => `${e.concern} in ${e.skin_type} skin`).join(', ')}.`}
+                {' '}How it works for you depends on your skin and the rest of your routine.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex flex-wrap gap-2">
                 {effectiveness.map((e) => (
-                  <div
+                  <span
                     key={`${e.skin_type}-${e.concern}`}
-                    className="bg-white/5 rounded-xl border border-white/10 p-4"
+                    className="bg-white/5 rounded-full border border-white/10 px-3 py-1.5 text-xs text-white/70 capitalize"
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-white font-medium capitalize text-sm">
-                        {e.skin_type} skin
-                      </span>
-                      <span className="text-amber-400 font-semibold text-sm">
-                        {Math.round(e.effectiveness_score * 100)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-white/10 rounded-full h-2 mb-2">
-                      <div
-                        className="bg-gradient-to-r from-amber-500 to-amber-400 h-2 rounded-full transition-all"
-                        style={{
-                          width: `${Math.round(e.effectiveness_score * 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <p className="text-xs text-white/50 capitalize">
-                      For {e.concern} · editorial estimate
-                    </p>
-                  </div>
+                    {e.skin_type} skin · {e.concern}
+                  </span>
                 ))}
               </div>
             </section>

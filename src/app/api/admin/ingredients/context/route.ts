@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { cleanGuide } from '@/lib/content/unmeasured-claims'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { secureCompare } from '@/lib/utils/secure-compare'
@@ -299,7 +300,9 @@ interface IngredientContext {
 }
 
 function toContext(ing: Record<string, unknown>): IngredientContext {
-  const rc = ing.rich_content as Record<string, unknown> | null
+  // Through cleanGuide: this is what the blog writer in LGAAS is handed, and
+  // the stored guides state our launch estimates as measured data.
+  const rc = cleanGuide(ing.rich_content as Record<string, unknown> | null) as Record<string, unknown> | null
 
   return {
     name: (ing.name_en as string) || (ing.name_inci as string),

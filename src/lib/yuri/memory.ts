@@ -1,5 +1,6 @@
 import { getServiceClient } from '@/lib/supabase'
 import { safeSlice } from '@/lib/utils/text-slice'
+import { deleteLearningNotesFrom } from '@/lib/learning/forget'
 import {
   parseSetupShelf,
   formatSetupShelfSection,
@@ -1608,6 +1609,12 @@ export async function deleteConversation(
   if (!conv || conv.user_id !== userId) {
     throw new Error('Conversation not found')
   }
+
+  // The learning notes written from this conversation go with it. A failure
+  // stops the delete: the member asked for this conversation to be gone, and
+  // "deleted" with its notes still stored would not be true.
+  const forgotten = await deleteLearningNotesFrom(db, [conversationId])
+  if (forgotten.error) throw new Error(`Could not delete this conversation's learning notes: ${forgotten.error.message}`)
 
   // Delete messages first (FK constraint)
   await db

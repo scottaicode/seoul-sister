@@ -69,7 +69,7 @@ const SYSTEM_PROMPT = `You are a cosmetic chemist and K-beauty expert writing in
 
 VOICE:
 - Authoritative and scientific but accessible to Gen Z women (18-30) interested in skincare
-- Reference real data when provided (effectiveness scores, product names, conflict info)
+- Reference real data when provided (product names, conflict info)
 - Natural tone — informative but not clinical or dry
 - NO AI buzzwords (no "delve", "crucial", "landscape", "harness", "game-changer")
 - NO em dashes — use commas, periods, or parentheses instead
@@ -99,8 +99,8 @@ RULES:
 - Generate exactly 3-5 FAQ items
 - Generate exactly 3-5 usage tips
 - All text must be factual and scientifically grounded
-- Reference Seoul Sister data (products, effectiveness scores) when provided
-- If effectiveness data shows this ingredient works better for certain skin types, reflect that
+- Reference Seoul Sister's products when provided
+- The skin-type notes you are given are Seoul Sister's own editorial estimates, written at launch. They are not measurements and not user reports. Use them to decide which skin types to emphasise. Never quote one as a percentage, and never write that users report, data shows, or the community rates anything
 - If there are known conflicts, mention them in relevant skin_type sections and FAQs
 - Do NOT invent product names or data not provided`
 

@@ -91,7 +91,7 @@ async function ingredientDeepDive(supabase: ReturnType<typeof getServiceClient>)
   const ingredient = candidates[0] || ingredients[0]
   const effData = effective.filter(e => e.ingredient_id === ingredient.id)
   const effLines = effData.map(e =>
-    `- Skin type: ${e.skin_type}, Concern: ${e.concern}, Effectiveness: ${Math.round(e.effectiveness_score * 100)}% (Seoul Sister editorial estimate, not member reports)`
+    `- Skin type: ${e.skin_type}, Concern: ${e.concern}, commonly used for this (Seoul Sister editorial estimate, not a measurement and not member reports; do not quote a number)`
   ).join('\n')
 
   const slugName = (ingredient.name_en || ingredient.name_inci).toLowerCase().replace(/[^a-z0-9]+/g, '-')
@@ -172,7 +172,7 @@ async function skinTypeguide(supabase: ReturnType<typeof getServiceClient>): Pro
 
   const ingredientMap = new Map((ingredients || []).map(i => [i.id, i.name_en]))
   const effLines = (effData || []).map(e =>
-    `- ${ingredientMap.get(e.ingredient_id) || 'Unknown'}: ${Math.round(e.effectiveness_score * 100)}% effective for ${e.concern}`
+    `- ${ingredientMap.get(e.ingredient_id) || 'Unknown'}: commonly used for ${e.concern}`
   ).join('\n')
 
   return {
@@ -182,7 +182,7 @@ async function skinTypeguide(supabase: ReturnType<typeof getServiceClient>): Pro
     primary_keyword: `K-beauty routine ${skinType} skin`,
     secondary_keywords: [`Korean skincare ${skinType} skin`, `${skinType} skin products`, `best K-beauty for ${skinType} skin`, `${skinType} skin routine steps`],
     tags: ['routines', skinType, 'skin type guide', 'K-beauty'],
-    prompt_context: `Top effective ingredients for ${skinType} skin from Seoul Sister's learning engine:\n\n${effLines}`,
+    prompt_context: `Ingredients commonly used for ${skinType} skin, by Seoul Sister's own editorial estimate (not measurements and not user reports: do not quote a number or say users report or data shows):\n\n${effLines}`,
   }
 }
 
@@ -274,7 +274,7 @@ Secondary keywords: ${topic.secondary_keywords.join(', ')}
 DATA FROM SEOUL SISTER'S DATABASE:
 ${topic.prompt_context}
 
-Remember: Reference the actual products and data above. This is what makes Seoul Sister's content authoritative — it's backed by real data from 5,900+ K-beauty products and community intelligence.`
+Remember: Reference the actual products above. Product ratings and review counts come from retailers. Seoul Sister has no member ratings or member reports of its own to cite, so cite none.`
 
   const response = await callAnthropicWithRetry(() =>
     anthropic.messages.create({
