@@ -274,7 +274,7 @@ Secondary keywords: ${topic.secondary_keywords.join(', ')}
 DATA FROM SEOUL SISTER'S DATABASE:
 ${topic.prompt_context}
 
-Remember: Reference the actual products above. Product ratings and review counts come from retailers. Seoul Sister has no member ratings or member reports of its own to cite, so cite none.`
+Remember: Reference the actual products above. Seoul Sister has no member ratings or member reports of its own to cite, so cite none.`
 
   const response = await callAnthropicWithRetry(() =>
     anthropic.messages.create({

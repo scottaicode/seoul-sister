@@ -4,6 +4,36 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.8 — 12 blog posts no longer say Seoul Sister measured ingredient effectiveness (content correction, Nov 14 2026)
+
+- **What was wrong.** Two posts printed our launch estimates as measurements ("salicylic acid
+  scores 86% effective for acne"), 16 places. An LGAAS session carrying out the work order found
+  ten more posts that made the same claim without a number: that the Ingredient Encyclopedia holds
+  "effectiveness by skin type" or "efficacy data", or that Seoul Sister has "the research to back
+  up your choices" or "clinical evidence".
+- **Fixed.** 26 exact sentence replacements across 12 published posts, applied with
+  `scripts/apply-blog-unmeasured-effectiveness-replacements.mjs`. Every old sentence occurred
+  exactly once; all 12 bodies were read back equal to the intended text; the two original posts
+  match the fingerprints agreed with LGAAS. Checked on the live oily-skin post: 0 percentages.
+  Backup: `scripts/backup-blog-bodies-before-unmeasured-effectiveness-2026-11-14T08-45-59-544Z.json`.
+- **LGAAS's side** (its report, not re-checked from here): the same pairs applied to its stored
+  copies, nothing re-sent, two drafts fixed, the Seoul Sister profile corrected in nine fields, a
+  test added. Uncommitted there at the time of its report.
+- **A premise of mine it corrected, confirmed here.** The work order said product star ratings
+  "come from retailers". Measured: 5,842 products have a rating; 5,232 trace to a retailer scrape;
+  about 610 do not (seed migrations from Feb 16 to 19 2026 hold hand-written ratings), and a
+  trigger recalculates a product's rating from member reviews (20 products). The sentence is gone
+  from the blog writer's instructions here.
+
+**Open:**
+- **About 610 products show a rating and review count that came from a seed file, not a
+  retailer.** Yuri and the blog quote ratings ("4.7 stars from 963 reviews"). Which of the quoted
+  ones are seed values is not measured.
+- LGAAS flagged, unverified from here: a dehydrated-skin post FAQ ("Seoul Sister often points to
+  Korean moisturizers as particularly effective"), and shared blog prompts that tell every client's
+  writer to say "from what I've tested".
+- LGAAS's changes need committing and deploying on its side.
+
 ## v11.61.7 — The learning-notes job is paused; the 5 orphaned notes are deleted (Nov 14 2026)
 
 Owner decisions, Nov 14.
