@@ -5,6 +5,11 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { postSignInDestination } from '@/lib/auth/post-sign-in'
 import { afterSignIn, RETURN_TO_STORAGE_KEY } from '@/lib/auth/return-to'
+import { oauthSignupMetadata } from '@/lib/auth/oauth-signup-source'
+import { getAttribution } from '@/lib/attribution'
+import { readSignupFrom } from '@/lib/landing-chat'
+import { getExistingVisitorId } from '@/lib/utils/widget-session'
+import type { User } from '@supabase/supabase-js'
 
 /**
  * OAuth Callback Page (Client-Side)
@@ -43,6 +48,7 @@ export default function AuthCallbackPage() {
               if (event === 'SIGNED_IN' && newSession) {
                 clearTimeout(timeoutId)
                 subscription.unsubscribe()
+                await recordSignupSource(newSession.user)
                 await redirectBasedOnProfile(newSession.user.id)
               }
             }
@@ -58,11 +64,36 @@ export default function AuthCallbackPage() {
         }
 
         // Session exists — redirect based on profile
+        await recordSignupSource(session.user)
         await redirectBasedOnProfile(session.user.id)
       } catch (err) {
         console.error('Auth callback error:', err)
         setError('Something went wrong. Redirecting to login...')
         setTimeout(() => router.replace('/login'), 2000)
+      }
+    }
+
+    // A new Google account gets the same three source facts an email sign-up
+    // carries. Measurement never blocks sign-in: a failure is logged and the
+    // person carries on.
+    async function recordSignupSource(user: User) {
+      try {
+        let signupFrom: string | undefined
+        try {
+          signupFrom = readSignupFrom(window.sessionStorage)
+        } catch {
+          signupFrom = undefined
+        }
+        const data = oauthSignupMetadata(
+          user,
+          { attribution: getAttribution(), widgetVisitorId: getExistingVisitorId(), signupFrom },
+          Date.now()
+        )
+        if (!data) return
+        const { error: updateError } = await supabase.auth.updateUser({ data })
+        if (updateError) console.error('[auth/callback] could not record sign-up source:', updateError.message)
+      } catch (err) {
+        console.error('[auth/callback] could not record sign-up source:', err)
       }
     }
 

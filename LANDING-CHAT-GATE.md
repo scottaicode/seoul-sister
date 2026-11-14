@@ -51,7 +51,8 @@ where raw_user_meta_data->>'signup_from' like 'gate%'
 ```
 
 - `signup_from` is the `?from=` tag that led to the sign-up page: `gate_blog`, `gate_product`, `gate_tiktok`, `gate_landing`, and also `nurture_3`, `widget_limit` and others.
-- It is recorded for email and password sign-ups only. Google sign-ups do not carry it, so also look at total new accounts and at `raw_user_meta_data->'attribution'->>'landing_path'` (the first page the person landed on).
+- Until v11.61.1 (Nov 14 2026) it was recorded for email and password sign-ups only; Google sign-ups carried nothing. From v11.61.1 the Google callback writes it too, **unverified until a real Google sign-up shows it**. Also look at total new accounts and at `raw_user_meta_data->'attribution'->>'landing_path'` (the first page the person landed on).
+- The first stranger account after the gate (`4c3a4b6c`, Nov 14 01:09 UTC, Google) does NOT count as a gate sign-up: she chatted in the open chat on Nov 13, left her email and came back from the recap. Her row is `ss_widget_visitors.registered_user_id`. That is evidence for the open chat plus email, and the first of its leads to become an account.
 - Exclude owner tests and bot sign-ups before reading it.
 - Never grade this with GA4. It is bot-inflated. The GA4 event `yuri_gate_signup_click` is a companion, not the measure.
 - From v11.61.0 (Nov 13 2026, the day the gate shipped) the nav, phone menu and bottom-of-page sign-up buttons are tagged too (`gate_nav`, `gate_menu`, `gate_final_cta`). Before that they went to sign-up with no tag, so those sign-ups were not counted.

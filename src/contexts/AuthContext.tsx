@@ -159,11 +159,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
-        // Same attribution payload on the OAuth path, so a Google signup from
-        // Bailey's bio link is credited identically to an email signup.
-        queryParams: {},
-        data: { attribution: getAttribution() ?? undefined },
-      } as Parameters<typeof supabase.auth.signInWithOAuth>[0]['options'],
+        // No attribution here: signInWithOAuth has no `data` option. One was
+        // passed behind a type cast until Nov 14 2026 and was dropped without
+        // an error, so no Google sign-up ever carried its source. It is now
+        // written by /auth/callback (src/lib/auth/oauth-signup-source.ts).
+      },
     })
     if (error) throw error
   }, [])

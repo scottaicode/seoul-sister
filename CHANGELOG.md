@@ -4,6 +4,29 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.1 — A Google sign-up now records where it came from (Nov 14 2026)
+
+- **What was wrong.** An email-and-password sign-up records the first-touch attribution, the
+  landing-chat visitor id and the `signup_from` tag on the account. A Google sign-up recorded none
+  of them. `signInWithOAuth` has no `data` option; one was passed behind a type cast and dropped
+  without an error, under a comment saying Google sign-ups were "credited identically".
+- **How it was found.** Account `4c3a4b6c` (Nov 14, 01:09 UTC): the first stranger to start a free
+  week after the landing chat closed. Signed up with Google; nothing on the account said how she
+  arrived. Her path was recovered from the landing-chat tables instead: Google search, the dark
+  spots blog post, 5 messages in the open chat on Nov 13, left her email, recap delivered, account
+  22 hours later, setup carried over. **She is the first of the chat's email leads to become an
+  account, and she came through the open chat and its recap email, not through the gate.**
+- **Fix.** `/auth/callback` writes the three facts once with `updateUser`, for an account created
+  in the last 10 minutes only (a member signing in from a tagged link is not a sign-up), never
+  replacing a key already there, never writing an empty value
+  (`src/lib/auth/oauth-signup-source.ts`). Supabase merges provider claims into user metadata key
+  by key on later sign-ins (read in supabase/auth source), so the keys stay.
+- **Not verified.** No real Google sign-up has happened since the deploy. Until one shows
+  `signup_from` or `attribution` on `auth.users`, this is unproven in production. If Google opens
+  in a different browser context than the page that started it (some in-app browsers), the stored
+  values will not be there and nothing is written.
+- No prompt or customer-facing wording changed, so no second-model review was run.
+
 ## v11.61.0 — Landing page honesty pass; Shelf Scan and the Routine picker stop advising (Nov 13 2026)
 
 **Why.** Every card, claim and testimonial on the homepage was checked against the code and the
