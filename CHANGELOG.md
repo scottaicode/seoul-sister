@@ -20,13 +20,15 @@ All notable changes to Seoul Sister are documented here.
   Backup: `scripts/backup-blog-before-first-person-claims-2026-11-14T09-20-57-171Z.json`.
 - Opinion wording was left in on purpose ("the one I'd point you toward", "in my opinion").
 
-**Open, sent back to LGAAS as a follow-up (both copies must change together):**
-- Three sentences are now flat claims nobody measured, because removing "I've seen" took the
-  anecdote out: "This cycle accounts for the vast majority of late-20s skin freakouts", "is
-  genuinely the most effective approach", "It works on virtually every skin type".
-- One sentence tells readers they can check on Seoul Sister whether a product was reformulated.
-  Formulation history exists for 2 products and is shown to members only.
-- The other 42 published posts were not read in full for first-person claims.
+**Follow-up, applied the same day (4 more pairs, `ss-first-person-claims-followup-replacements.json`):**
+- Three sentences had become flat claims nobody measured once "I've seen" was removed. They now
+  read "a common cause of", "one of the most effective approaches" and "suits most skin types".
+- One sentence told readers they could check on Seoul Sister whether a product was reformulated.
+  Formulation history exists for 2 products and is shown to members only, so it now says to check
+  the ingredient order again on repurchase.
+- Same checks: exactly once, agreed fingerprints, read back. LGAAS's copies carry the same text.
+
+**Open:** the other 42 published posts were not read in full for first-person claims.
 
 ## v11.61.9 — Members' learning notes are no longer readable with the public key (Nov 14 2026)
 

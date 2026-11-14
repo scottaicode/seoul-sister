@@ -15,7 +15,7 @@
  * after, or NOTHING is written. Backup first; each write is guarded on the
  * `updated_at` that was read; everything is read back.
  *
- *   node --env-file=.env.local scripts/apply-blog-first-person-claims-replacements.mjs [--apply]
+ *   node --env-file=.env.local scripts/apply-blog-first-person-claims-replacements.mjs [pairs-file.json] [--apply]
  */
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -24,7 +24,11 @@ import { createHash } from 'node:crypto'
 const APPLY = process.argv.includes('--apply')
 const md5 = (s) => createHash('md5').update(s, 'utf8').digest('hex')
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
-const file = JSON.parse(readFileSync(new URL('../../lgaas/ss-first-person-claims-replacements.json', import.meta.url), 'utf8'))
+// Optional first argument: another pairs file in the LGAAS folder with the same format
+// (the Nov 14 follow-up is ss-first-person-claims-followup-replacements.json).
+const named = process.argv.slice(2).find((a) => a.endsWith('.json')) ?? 'ss-first-person-claims-replacements.json'
+if (!/^[a-z0-9-]+\.json$/.test(named)) throw new Error('pairs file must be a plain file name in the lgaas folder')
+const file = JSON.parse(readFileSync(new URL('../../lgaas/' + named, import.meta.url), 'utf8'))
 
 const slugs = [...new Set(file.replacements.map((r) => r.slug))]
 const { data: posts, error } = await db.from('ss_content_posts').select('id, slug, title, excerpt, body, faq_schema, updated_at').in('slug', slugs)
