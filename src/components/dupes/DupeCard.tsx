@@ -9,7 +9,6 @@ import {
   ChevronUp,
   ExternalLink,
   MessageCircle,
-  Beaker,
 } from 'lucide-react'
 import IngredientComparison from './IngredientComparison'
 
@@ -144,16 +143,6 @@ export default function DupeCard({ original, dupe, rank }: DupeCardProps) {
             {dupe.shared_ingredients.length > 4 && ` +${dupe.shared_ingredients.length - 4} more`}
           </span>
         </p>
-
-        {/* Effectiveness insight for authenticated users */}
-        {dupe.effectiveness_insight && (
-          <div className="flex items-center gap-1.5 text-[10px]">
-            <Beaker className="w-3 h-3 text-emerald-400 flex-shrink-0" />
-            <span className="text-emerald-300/80">
-              Contains {dupe.effectiveness_insight.ingredientName} ({dupe.effectiveness_insight.score}% effective for {dupe.effectiveness_insight.concern})
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Expand toggle */}

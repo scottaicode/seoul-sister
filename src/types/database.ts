@@ -718,6 +718,8 @@ export interface GlassSkinPhotoQuality {
   lighting_quality: 'natural' | 'artificial' | 'mixed' | 'uncertain'
   conditions: string[]
   confidence_modifier: number
+  /** 2 = scored from the photo alone, description only. Absent on rows from the earlier scorer, whose notes carry advice. */
+  scorer_version?: number
 }
 
 export interface GlassSkinScore {
@@ -743,17 +745,6 @@ export interface GlassSkinDimensionScore {
   description: string
 }
 
-export interface GlassSkinProductSuggestion {
-  product_id: string
-  name: string
-  brand: string
-  category: string
-  rating_avg: number | null
-  price_usd: number | null
-  retailer: string | null
-  relevance: string // e.g. "hydration", "vitamin C serum"
-}
-
 export interface GlassSkinAnalysisResult {
   overall_score: number
   luminosity_score: number
@@ -761,10 +752,9 @@ export interface GlassSkinAnalysisResult {
   clarity_score: number
   hydration_score: number
   evenness_score: number
+  /** Always empty since Nov 14 2026: the score describes, Yuri advises. */
   recommendations: string[]
   analysis_notes: string
-  recommended_ingredients?: string[]
-  recommended_categories?: string[]
   photo_quality?: GlassSkinPhotoQuality
 }
 

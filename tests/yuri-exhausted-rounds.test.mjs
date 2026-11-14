@@ -63,7 +63,14 @@ test('the member chat uses it, logs the event, and the false sentence is gone fr
   assert.match(advisor, /if \(!fullResponse\) \{\s*console\.error\(`\[yuri\/stream\][^`]*tool rounds exhausted[^`]*`\)\s*fullResponse = exhaustedRoundsReply\(toolCallLogs\.map\(\(t\) => t\.name\)\)\s*yield fullResponse\s*\}/)
   // Not raised without the route's time limit: a turn killed at 60s says nothing.
   assert.match(advisor, /const MAX_TOOL_LOOPS = 5\n/)
-  assert.match(read('src/app/api/yuri/chat/route.ts'), /^export const maxDuration = 60$/m)
+  const limit = Number(read('src/app/api/yuri/chat/route.ts').match(/^export const maxDuration = (\d+)$/m)?.[1])
+  assert.ok(limit >= 120, `member chat time limit is ${limit}s; six tool rounds need the room`)
+  // A long turn is silent until its last round: the stream carries a comment
+  // line every 15s, stopped when the stream closes, and the client skips it.
+  const chat = read('src/app/api/yuri/chat/route.ts')
+  assert.match(chat, /const heartbeat = setInterval\(\(\) => \{\s*writer\.write\(encoder\.encode\(': ping\\n\\n'\)\)\.catch\(\(\) => \{\}\)\s*\}, 15000\)/)
+  assert.match(chat, /\} finally \{\s*clearInterval\(heartbeat\)\s*await writer\.close\(\)/)
+  assert.match(read('src/hooks/useYuri.ts'), /if \(!line\.startsWith\('data: '\)\) continue/)
   // The health check counts this reply as a bad one, so it reaches the Guardian.
   assert.match(read('src/lib/guardian/healthcheck.ts'), /i ran out of steps/)
   const walk = (dir) => readdirSync(dir).flatMap((f) => {

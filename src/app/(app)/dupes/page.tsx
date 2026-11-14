@@ -5,7 +5,6 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   Search,
-  Sparkles,
   FlaskConical,
   ArrowRight,
   Loader2,
@@ -14,7 +13,6 @@ import {
   MessageCircle,
 } from 'lucide-react'
 import DupeCard from '@/components/dupes/DupeCard'
-import AiDupeCard from '@/components/dupes/AiDupeCard'
 import LoadingSpinner from '@/components/ui/LoadingSpinner'
 import EmptyState from '@/components/ui/EmptyState'
 import LazyImage from '@/components/ui/LazyImage'
@@ -40,27 +38,23 @@ interface DupeResponse {
   dupes: DupeResult[]
 }
 
-interface AiDupe {
-  name: string
-  brand: string
-  estimated_price_usd: number
-  key_shared_actives: string[]
-  match_reasoning: string
-  key_differences: string
-  where_to_buy: string
-}
-
-interface AiDupeResponse {
-  success: boolean
-  analysis: {
-    original_analysis: {
-      key_actives: string[]
-      price_range_usd: string
-      why_its_popular: string
-    }
-    dupes: AiDupe[]
-    savings_summary: string
-  }
+/**
+ * This page shows DATA: catalog products whose ingredient lists overlap with
+ * the one chosen, with the overlap and the price difference. Which of them
+ * suits a member, or whether to switch at all, is Yuri's call.
+ *
+ * It used to have a second tab, "AI Dupe Search", that sent any product name
+ * to a one-shot model call presented as "Yuri's Budget Optimizer" and showed
+ * "AI-recommended dupes" with estimated prices: products and prices named from
+ * the model's memory, with none of what Yuri knows about the member and outside
+ * her monthly allowance. Removed Nov 14 2026 (Yuri Sole Authority, CLAUDE.md).
+ * A product we do not list now goes to Yuri's chat, where she can look it up.
+ */
+function askYuriForAlternative(productText: string): string {
+  const name = productText.replace(/\s+/g, ' ').trim().slice(0, 120)
+  return name
+    ? `Is there a cheaper product with the same key ingredients as ${name}? Tell me if it is worth switching.`
+    : ''
 }
 
 export default function DupesPage() {
@@ -78,12 +72,8 @@ export default function DupesPage() {
   const [dupeData, setDupeData] = useState<DupeResponse | null>(null)
   const [dupeLoading, setDupeLoading] = useState(false)
 
-  // AI dupe state
-  const [aiQuery, setAiQuery] = useState('')
-  const [aiResult, setAiResult] = useState<AiDupeResponse | null>(null)
-  const [aiLoading, setAiLoading] = useState(false)
-
-  const [activeMode, setActiveMode] = useState<'database' | 'ai'>('database')
+  // A product we do not list: typed here, then taken to Yuri's chat.
+  const [otherProduct, setOtherProduct] = useState('')
 
   // Auto-fetch dupes for preselected product
   useEffect(() => {
@@ -146,31 +136,6 @@ export default function DupesPage() {
     fetchDupesForProduct(product.id)
   }
 
-  async function handleAiSearch() {
-    if (!aiQuery.trim()) return
-    setAiLoading(true)
-    setAiResult(null)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`
-      }
-      const res = await fetch('/api/dupes/ai', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ product_name: aiQuery }),
-      })
-      if (!res.ok) throw new Error('AI search failed')
-      const data: AiDupeResponse = await res.json()
-      setAiResult(data)
-    } catch {
-      setAiResult(null)
-    } finally {
-      setAiLoading(false)
-    }
-  }
-
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
       {/* Header */}
@@ -183,35 +148,8 @@ export default function DupesPage() {
         </p>
       </div>
 
-      {/* Mode toggle */}
-      <div className="flex gap-1 bg-white/5 rounded-xl p-1">
-        <button
-          onClick={() => setActiveMode('database')}
-          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${
-            activeMode === 'database'
-              ? 'bg-gold/20 text-gold shadow-sm'
-              : 'text-white/40 hover:text-white/60'
-          }`}
-        >
-          <FlaskConical className="w-3.5 h-3.5" />
-          Ingredient Match
-        </button>
-        <button
-          onClick={() => setActiveMode('ai')}
-          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${
-            activeMode === 'ai'
-              ? 'bg-gold/20 text-gold shadow-sm'
-              : 'text-white/40 hover:text-white/60'
-          }`}
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          AI Dupe Search
-        </button>
-      </div>
-
       {/* Database mode: product search + ingredient matching */}
-      {activeMode === 'database' && (
-        <div className="space-y-4">
+      <div className="space-y-4">
           {/* Product search */}
           <div className="relative">
             <div className="relative">
@@ -331,7 +269,7 @@ export default function DupesPage() {
                 <div className="space-y-2.5">
                   <h2 className="text-sm font-semibold text-white/70 flex items-center gap-2">
                     <ArrowRight className="w-3.5 h-3.5 text-gold" />
-                    {dupeData.dupes.length} alternative{dupeData.dupes.length !== 1 ? 's' : ''} found
+                    {dupeData.dupes.length} product{dupeData.dupes.length !== 1 ? 's' : ''} with overlapping key ingredients
                   </h2>
                   {dupeData.dupes.map((dupe, idx) => (
                     <DupeCard
@@ -346,22 +284,22 @@ export default function DupesPage() {
                 <EmptyState
                   icon={FlaskConical}
                   title="No dupes found"
-                  description={`No products in our database share enough key ingredients with ${selectedProduct.name_en}. Try the AI search for broader results.`}
+                  description={`No products in our database share enough key ingredients with ${selectedProduct.name_en}. Yuri can look further.`}
                 />
               )}
 
               {/* Ask Yuri CTA */}
               <Link
-                href={`/yuri?ask=${encodeURIComponent(`Find me a cheaper alternative to ${selectedProduct.name_en} by ${selectedProduct.brand_en}`)}`}
+                href={`/yuri?ask=${encodeURIComponent(askYuriForAlternative(`${selectedProduct.brand_en} ${selectedProduct.name_en}`))}`}
                 className="glass-card p-4 flex items-center gap-3 group"
               >
                 <MessageCircle className="w-5 h-5 text-gold group-hover:scale-110 transition-transform duration-200" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-white group-hover:text-gold transition-colors duration-200">
-                    Ask Yuri for deeper dupe analysis
+                    Ask Yuri whether to switch
                   </p>
                   <p className="text-[10px] text-white/40">
-                    Budget Optimizer specialist for formulation-level comparison
+                    This list is ingredient overlap and price. She knows your skin and what you own.
                   </p>
                 </div>
                 <ArrowRight className="w-4 h-4 text-white/30 group-hover:text-gold transition-colors duration-200" />
@@ -377,107 +315,37 @@ export default function DupesPage() {
               description="Search for a K-beauty product above to discover budget-friendly alternatives with matching key ingredients."
             />
           )}
-        </div>
-      )}
+      </div>
 
-      {/* AI mode: free-text search */}
-      {activeMode === 'ai' && (
-        <div className="space-y-4">
-          <div className="glass-card p-4 space-y-3">
-            <p className="text-xs text-white/40">
-              Describe any product — even brands not in our database. Yuri&apos;s Budget Optimizer will find K-beauty dupes.
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={aiQuery}
-                onChange={e => setAiQuery(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleAiSearch()}
-                placeholder="e.g. Sulwhasoo Concentrated Ginseng Cream"
-                className="glass-input px-3 py-2.5 text-sm flex-1"
-              />
-              <button
-                onClick={handleAiSearch}
-                disabled={aiLoading || !aiQuery.trim()}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-br from-gold to-gold-light text-seoul-dark text-sm font-semibold disabled:opacity-40 transition-all duration-200 flex items-center gap-1.5 flex-shrink-0"
-              >
-                {aiLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4" />
-                )}
-                Find Dupes
-              </button>
-            </div>
-          </div>
-
-          {/* AI loading */}
-          {aiLoading && (
-            <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <LoadingSpinner size="lg" />
-              <p className="text-sm text-white/40">Analyzing formulations...</p>
-            </div>
-          )}
-
-          {/* AI results */}
-          {aiResult?.analysis && !aiLoading && (
-            <div className="space-y-4">
-              {/* Original analysis */}
-              <div className="glass-card-strong p-4 space-y-2">
-                <h3 className="font-display font-semibold text-sm text-white">Original Product Analysis</h3>
-                <p className="text-xs text-white/60">{aiResult.analysis.original_analysis.why_its_popular}</p>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {aiResult.analysis.original_analysis.key_actives.map(active => (
-                    <span
-                      key={active}
-                      className="px-2 py-0.5 rounded-full text-[10px] bg-gold/15 text-gold-light"
-                    >
-                      {active}
-                    </span>
-                  ))}
-                </div>
-                {aiResult.analysis.original_analysis.price_range_usd && (
-                  <p className="text-[10px] text-white/30">
-                    Estimated price: {aiResult.analysis.original_analysis.price_range_usd}
-                  </p>
-                )}
-              </div>
-
-              {/* AI dupes */}
-              {aiResult.analysis.dupes?.length > 0 && (
-                <div className="space-y-2.5">
-                  <h2 className="text-sm font-semibold text-white/70 flex items-center gap-2">
-                    <Sparkles className="w-3.5 h-3.5 text-gold" />
-                    {aiResult.analysis.dupes.length} AI-recommended dupe{aiResult.analysis.dupes.length !== 1 ? 's' : ''}
-                  </h2>
-                  {aiResult.analysis.dupes.map((dupe, idx) => (
-                    <AiDupeCard key={`${dupe.brand}-${dupe.name}`} dupe={dupe} rank={idx + 1} />
-                  ))}
-                </div>
-              )}
-
-              {/* Savings summary */}
-              {aiResult.analysis.savings_summary && (
-                <div className="glass-card p-3">
-                  <p className="text-xs text-emerald-300/80">
-                    <span className="font-semibold">Savings Summary:</span>{' '}
-                    {aiResult.analysis.savings_summary}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Initial state for AI */}
-          {!aiLoading && !aiResult && (
-            <EmptyState
-              icon={Sparkles}
-              title="AI-powered dupe search"
-              description="Enter any product name — even Western brands or products outside our database. Yuri will find K-beauty alternatives with similar formulations."
-            />
+      {/* A product that is not in our catalog goes to Yuri, who can look it up. */}
+      <div className="glass-card p-4 space-y-3">
+        <p className="text-xs text-white/40">
+          Looking at a product we do not list, or a Western brand? Type it and ask Yuri.
+        </p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={otherProduct}
+            onChange={e => setOtherProduct(e.target.value)}
+            placeholder="e.g. Sulwhasoo Concentrated Ginseng Cream"
+            className="glass-input px-3 py-2.5 text-sm flex-1"
+          />
+          {otherProduct.trim() ? (
+            <Link
+              href={`/yuri?ask=${encodeURIComponent(askYuriForAlternative(otherProduct))}`}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-br from-gold to-gold-light text-seoul-dark text-sm font-semibold flex items-center gap-1.5 flex-shrink-0"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Ask Yuri
+            </Link>
+          ) : (
+            <span className="px-4 py-2.5 rounded-xl bg-white/5 text-white/30 text-sm font-semibold flex items-center gap-1.5 flex-shrink-0">
+              <MessageCircle className="w-4 h-4" />
+              Ask Yuri
+            </span>
           )}
         </div>
-      )}
+      </div>
 
       {/* Bottom spacer */}
       <div className="h-4" />

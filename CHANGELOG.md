@@ -4,6 +4,57 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.4 — Glass Skin and the Dupe Finder stop advising; the member chat gets room to finish (Nov 14 2026)
+
+Owner decisions, Nov 14: hand the Dupe Finder's and Glass Skin's recommendations to Yuri, and
+address the 60-second cut-off properly.
+
+**Glass Skin scores and describes. It no longer advises.**
+- The one-shot vision call wrote 3 to 5 tips, picked ingredients and categories, matched catalog
+  products, and put advice in the written assessment (a stored row from Nov 13: "Boosting hydration
+  and barrier support is the priority here"). The tips panel left the page in v10.7.1; everything
+  else was still generated on every score, and the assessment was still shown.
+- Now: scores, photo quality, and a description of what is visible, from the photo alone. Tips,
+  ingredient picks and product matches are gone from the prompt, the response and the types.
+- Scores from the new scorer carry `photo_quality.scorer_version = 2`. The timeline shows a score's
+  note only for version 2; the 18 earlier rows keep their notes in the database, not on the page
+  (15 of 18 contain advice).
+- A score that is missing or not a number now fails the request. My first version turned it into
+  0, which would have been saved as a real measurement in the table the check-in outcome grader
+  reads; the second-model review caught it.
+
+**Dupe Finder lists overlap and price. It no longer has its own AI search.**
+- Removed the "AI Dupe Search" tab, its endpoint (`/api/dupes/ai`) and its card: a one-shot call
+  presented as "Yuri's Budget Optimizer" that named products and prices from the model's memory.
+- The ingredient-overlap list stays. A product we do not list goes to Yuri's chat with the question
+  filled in. The card no longer prints "N% effective for <concern>" (see open items).
+
+**Member chat time limit 60s to 120s, with a keep-alive.**
+- Measured since Sep 1 2026: 49 member turns, longest 34.9s, none over 45s, every message answered.
+  So no member has been cut off. But a turn shows nothing until its last round, a routine build
+  now ends in two saves, and a turn killed at the limit would show nothing with the saves already
+  written. The plan allows more (a scheduled job ran 249s on Nov 9). Billed on time used.
+- The stream now carries a comment line every 15 seconds, so a long turn is not a silent
+  connection. The client already ignores such lines.
+
+**Second-model review: run** (Opus 5.5, told to refute). One blocker (the score-as-0 above) and
+six should-fix items, all applied except where listed below. It also got six wrong versions past
+the first guard test; the test was rewritten and 9 of 9 of those now fail it. **The fixes made
+after the review were not re-reviewed.** Yuri's prompt changed in three rows.
+
+**Open, NOT changed:**
+- **`ss_ingredient_effectiveness` looks seeded.** 47 rows, every sample size between 50 and 70 in
+  an app with 61 profiles, scores all 0.58 to 0.90, Retinol and Salicylic Acid marked effective for
+  sensitive skin. Provenance not traced. It still re-orders the Dupe Finder list, and may feed the
+  dashboard's "top ingredients" and Yuri's context. Measure which before touching it.
+- **The outcome grader compares scores across the scorer change.** Version 1 scores had the
+  profile in the prompt; version 2 does not. The marker is in the data; the grader does not read
+  it yet. Cost today is nil (7 acted nudges, none graded).
+- **Browse page ingredient filters still do nothing** (since v10.8.0, May 22). Owner decision
+  pending: remove the controls, or build the filter properly.
+- No score or member turn has run under these changes yet. Whether the new Glass Skin prompt
+  really writes advice-free notes is unverified until a row exists.
+
 ## v11.61.3 — Yuri's description of the app made true; an honest out-of-steps reply; weather copy corrected (Nov 14 2026)
 
 - **Yuri's own description of the app** (the page table in her prompt) told members about things

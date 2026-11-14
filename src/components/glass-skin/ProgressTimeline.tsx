@@ -174,7 +174,15 @@ function ScoreHistoryList({ scores }: { scores: GlassSkinScore[] }) {
         const isExpanded = expandedId === s.id
         // Expand-affordance is gated on analysis_notes only — recommendations
         // are no longer rendered (Yuri Sole Authority, v10.7.1).
-        const hasDetails = !!s.analysis_notes
+        // Notes are shown only for scores from the current scorer, which
+        // describes the photo. Earlier rows' notes carry advice written from
+        // one photo and the profile ("...is the priority here"), without what
+        // Yuri and the member had worked out; they stay stored, not shown.
+        const notes =
+          (s.photo_quality as { scorer_version?: number } | undefined)?.scorer_version === 2
+            ? s.analysis_notes
+            : null
+        const hasDetails = !!notes
 
         return (
           <div key={s.id} className="rounded-lg bg-white/[0.03] overflow-hidden">
@@ -215,9 +223,9 @@ function ScoreHistoryList({ scores }: { scores: GlassSkinScore[] }) {
 
             {isExpanded && hasDetails && (
               <div className="px-3 pb-3 space-y-2 border-t border-white/[0.05]">
-                {s.analysis_notes && (
+                {notes && (
                   <p className="text-xs text-white/50 mt-2 leading-relaxed">
-                    {s.analysis_notes}
+                    {notes}
                   </p>
                 )}
                 {/* Old "Recommendations" bullet list removed (v10.7.1,

@@ -1,4 +1,11 @@
-export const maxDuration = 60
+// 120s, up from 60 (Nov 14 2026). A turn is not shown until its last round, so
+// one that is killed at the limit shows the member nothing at all, with any
+// saves from earlier rounds already written. Measured since Sep 1 2026 (49
+// member turns): longest 35s, none over 45s, none cut off. A routine build now
+// ends in two saves, and the loop allows six tool rounds, so 60s left too
+// little room. The plan allows it: a scheduled job ran 249s on Nov 9 2026.
+// Billed for time used, not for the limit.
+export const maxDuration = 120
 
 import { NextRequest } from 'next/server'
 import { z } from 'zod'
@@ -158,6 +165,14 @@ export async function POST(request: NextRequest) {
     const { readable, writable } = new TransformStream()
     const writer = writable.getWriter()
 
+    // Keep the connection visibly alive. Nothing is written until the last
+    // round of a turn, so a long turn was a silent stream for its whole length;
+    // a phone network or proxy may drop a connection that carries nothing. An
+    // SSE comment line is ignored by the client (it reads only "data: " lines).
+    const heartbeat = setInterval(() => {
+      writer.write(encoder.encode(': ping\n\n')).catch(() => {})
+    }, 15000)
+
     // Run the generator in the background — each write flushes immediately
     const streamPromise = (async () => {
       try {
@@ -224,6 +239,7 @@ export async function POST(request: NextRequest) {
         const errorData = JSON.stringify({ type: 'error', message: friendlyMessage })
         await writer.write(encoder.encode(`data: ${errorData}\n\n`))
       } finally {
+        clearInterval(heartbeat)
         await writer.close()
       }
     })()
