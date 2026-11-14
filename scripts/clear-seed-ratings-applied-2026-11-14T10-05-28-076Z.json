@@ -1,0 +1,3763 @@
+{
+  "taken_at": "2026-11-14T10:05:28.076Z",
+  "applied": true,
+  "seeded": [
+    {
+      "id": "00b5cf9b-47de-4e2e-82f6-bcb05fd29d9e",
+      "brand": "CNP Laboratory",
+      "name": "Aqua Soothing Sun Cream SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.6,
+      "review_count": 6700
+    },
+    {
+      "id": "019087c4-e862-4785-b70f-407733abfc8f",
+      "brand": "Illiyoon",
+      "name": "Probiotics Skin Barrier Essence Drop",
+      "category": "essence",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "020e6759-e8f2-40b3-89be-ccb57584b1e6",
+      "brand": "Torriden",
+      "name": "Cellmazing Vita Tone-Up Sun Cream SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "02e6c080-2721-4d74-998c-1267d3d39925",
+      "brand": "Skinfood",
+      "name": "Egg White Pore Foam",
+      "category": "cleanser",
+      "rating_avg": 4.4,
+      "review_count": 7200
+    },
+    {
+      "id": "0330897b-19c4-4a9e-a0c2-9c63c0495687",
+      "brand": "Pyunkang Yul",
+      "name": "ACNE Spot Cream",
+      "category": "spot_treatment",
+      "rating_avg": 4.4,
+      "review_count": 3800
+    },
+    {
+      "id": "03532116-02b2-4e7a-9053-458c5cf9639f",
+      "brand": "I'm From",
+      "name": "Rice Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "043c5db5-2f17-4575-8d03-3fcef27362c8",
+      "brand": "Peripera",
+      "name": "Sunnyproof Tone Up Sun Cream SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 5200
+    },
+    {
+      "id": "045b3f3d-ce3a-4790-888c-ee34bd2100b2",
+      "brand": "Beplain",
+      "name": "Cicaful Calming Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.7,
+      "review_count": 5400
+    },
+    {
+      "id": "04b30d1d-b435-44fc-8767-00d7137bfc2b",
+      "brand": "Innisfree",
+      "name": "Green Tea Seed Eye Cream",
+      "category": "eye_care",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "04ccc13e-ddf1-4337-94ce-f68c0b1fcaa2",
+      "brand": "Anua",
+      "name": "Heartleaf 80% Moisture Soothing Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "05233174-e391-4d76-ae12-788c556bad32",
+      "brand": "TIRTIR",
+      "name": "Milk Skin Toner",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "053241fd-1046-4b3c-bab1-a7ddd8182323",
+      "brand": "Anua",
+      "name": "Peach 70% Niacinamide Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 2200
+    },
+    {
+      "id": "059c9bdf-44cc-439f-9d5a-212c1f63ac5d",
+      "brand": "COSRX",
+      "name": "AHA/BHA Clarifying Treatment Toner",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 1200
+    },
+    {
+      "id": "064ca432-c338-4f4e-b7d6-b9dac7f1986e",
+      "brand": "Beauty of Joseon",
+      "name": "Ginseng Essence Water",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "0689c7b4-a595-4272-ab8a-0871310e4917",
+      "brand": "Apieu",
+      "name": "Madecassoside Cica Gel",
+      "category": "moisturizer",
+      "rating_avg": 4.4,
+      "review_count": 5800
+    },
+    {
+      "id": "06d1f9f9-af50-419d-aed8-b8c7d48b58a0",
+      "brand": "Banila Co",
+      "name": "Dear Hydration Skin Softening Toner",
+      "category": "toner",
+      "rating_avg": 4.4,
+      "review_count": 3200
+    },
+    {
+      "id": "06e5fac5-fb80-446c-bcb7-79b5e4def14d",
+      "brand": "Beauty of Joseon",
+      "name": "Matte Sun Stick: Mugwort + Camelia SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 5200
+    },
+    {
+      "id": "06f87555-38e9-46b9-bca3-213337b13a6e",
+      "brand": "Mamonde",
+      "name": "Ceramide Light Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "08617819-ade4-4de9-886b-628b3b718b5a",
+      "brand": "Jumiso",
+      "name": "Have a Good Cream Snail & Centella",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 5800
+    },
+    {
+      "id": "092c4059-1c4f-4405-994e-747c8e8a4b0b",
+      "brand": "su:m37°",
+      "name": "Losec Summa Elixir Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 1800
+    },
+    {
+      "id": "0974b7b2-5fba-45e8-a917-e613a38606f8",
+      "brand": "Abib",
+      "name": "Jericho Rose Collagen Pad",
+      "category": "essence",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "09be0c30-e6f7-46e2-8bc4-200739f9b357",
+      "brand": "Goodal",
+      "name": "Lemon Vita C Clear Serum",
+      "category": "serum",
+      "rating_avg": 4.4,
+      "review_count": 3800
+    },
+    {
+      "id": "0a167e7b-0e00-4a69-b437-6aa781346120",
+      "brand": "Biodance",
+      "name": "Bio-Collagen Real Deep Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "0ba27f6b-eff8-483c-ac98-4da7b8f9046d",
+      "brand": "Medicube",
+      "name": "Deep Vita C Ampoule 2.0",
+      "category": "ampoule",
+      "rating_avg": 4.4,
+      "review_count": 4800
+    },
+    {
+      "id": "0beecd6e-8220-407a-bc7a-e37df6416e9e",
+      "brand": "Beplain",
+      "name": "Greenful pH-Balanced Cleansing Foam",
+      "category": "cleanser",
+      "rating_avg": 4.6,
+      "review_count": 4200
+    },
+    {
+      "id": "0c2c37eb-e9f3-48c9-ab9d-74975eecb465",
+      "brand": "Heimish",
+      "name": "Bulgarian Rose Water Mist Serum",
+      "category": "mist",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "0cce3e51-af5d-4edb-8d69-69452ffe0b26",
+      "brand": "Goodal",
+      "name": "Heartleaf Calming Moisture Toner Pad",
+      "category": "exfoliator",
+      "rating_avg": 4.5,
+      "review_count": 5200
+    },
+    {
+      "id": "0e297bf4-c054-4c5c-bf4f-ad369af1ed39",
+      "brand": "Medicube",
+      "name": "Triple Collagen Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "0e2d7702-eab9-4a3d-b974-768e321c04de",
+      "brand": "Purito",
+      "name": "Defence Barrier pH Cleanser",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "0e72cbff-5040-42c9-b972-70f0e0edeb12",
+      "brand": "Biodance",
+      "name": "Bio-Collagen Real Deep Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "10638805-5731-4ae0-8f74-f7859a062bae",
+      "brand": "Secret Key",
+      "name": "Witch Hazel Pore Clear Toner Pad",
+      "category": "exfoliator",
+      "rating_avg": 4.4,
+      "review_count": 4100
+    },
+    {
+      "id": "10c37157-91b4-4bfc-839c-72058fa8925b",
+      "brand": "Pyunkang Yul",
+      "name": "Acne Facial Cleanser",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "10f2f3dd-96f6-4287-85fe-fac4c27a97a9",
+      "brand": "Aromatica",
+      "name": "Aloe Vera Gel 95%",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "112b64ec-6f20-4051-81c0-57ce1811e505",
+      "brand": "Beplain",
+      "name": "Multi Vitamin Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "1145cd2d-4b36-452b-9fc3-1e642147ee9a",
+      "brand": "Frudia",
+      "name": "Avocado Relief Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "12a52f3c-8b6b-46ae-bcaf-0020b3619dfe",
+      "brand": "Hanyul",
+      "name": "White Chrysanthemum Radiance Sunscreen SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "12ec079c-4176-4930-bbb5-48145a2927ea",
+      "brand": "Neogen",
+      "name": "Real Ferment Micro Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "13535c3a-b9be-45f4-8398-9391dbc5551f",
+      "brand": "Mixsoon",
+      "name": "Bean Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 2800
+    },
+    {
+      "id": "145739a9-d5e1-4e43-b1eb-17aab151ff94",
+      "brand": "Medicube",
+      "name": "PDRN Pink Collagen Gel Toner Pad",
+      "category": "exfoliator",
+      "rating_avg": 4.4,
+      "review_count": 5600
+    },
+    {
+      "id": "14b40634-bc2b-45af-85b7-6ccf61c02b1e",
+      "brand": "Aromatica",
+      "name": "Neroli Brightening Facial Oil",
+      "category": "oil",
+      "rating_avg": 4.5,
+      "review_count": 2200
+    },
+    {
+      "id": "14c19302-d656-407c-ad27-9d735c003990",
+      "brand": "Jumiso",
+      "name": "First Skin Brightening Toner",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 3400
+    },
+    {
+      "id": "15948dbc-7a56-410a-b717-d5c99eef3efc",
+      "brand": "Medicube",
+      "name": "Zero Pore Pad 2.0",
+      "category": "exfoliator",
+      "rating_avg": 4.4,
+      "review_count": 8800
+    },
+    {
+      "id": "168646f2-5456-4f92-8e91-a2a987115647",
+      "brand": "KAHI",
+      "name": "Wrinkle Bounce Moisture Skin Balm",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "1752111c-36dd-4822-8c3f-ad4413691bd4",
+      "brand": "Isntree",
+      "name": "TW-Real Bifida Collagen Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "17828d38-09d9-42e5-8434-812a3c3eb11f",
+      "brand": "Beauty of Joseon",
+      "name": "Apricot Blossom Peeling Gel",
+      "category": "exfoliator",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "17c645f9-a307-4a31-b34d-7bcbe4827c92",
+      "brand": "Purito",
+      "name": "Cica Clearing BB Cream SPF38 PA+++",
+      "category": "sunscreen",
+      "rating_avg": 4.4,
+      "review_count": 4200
+    },
+    {
+      "id": "1867c6ee-4c65-47cf-ab59-3e6ef5dc57af",
+      "brand": "SKIN1004",
+      "name": "Madagascar Centella Watergel Daily Sun Block SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.6,
+      "review_count": 4200
+    },
+    {
+      "id": "18e9a451-5c98-4da3-8d3e-7933000e8629",
+      "brand": "Aestura",
+      "name": "Regederm 365 Repair Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 2800
+    },
+    {
+      "id": "19334f54-6eac-40f2-89c5-89d342d91350",
+      "brand": "Real Barrier",
+      "name": "Aqua Soothing Gel Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 4200
+    },
+    {
+      "id": "1a025a76-341a-4a0b-b3b7-e6712a83bfba",
+      "brand": "Haruharu Wonder",
+      "name": "Black Rice Moisture Airyfit Daily Sunscreen SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "1a16fa7b-4ffb-4bb2-a9c6-5ddf261d313b",
+      "brand": "Nacific",
+      "name": "Vita Ceramide Moisture Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "1a20605a-2d7c-41c4-9160-0b9d3ffb123d",
+      "brand": "Purito",
+      "name": "Dermide Cica Barrier Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3200
+    },
+    {
+      "id": "1a82a32c-2dad-4bce-ac49-8dc7c582b4c0",
+      "brand": "Anua",
+      "name": "Heartleaf Pore Control Cleansing Oil",
+      "category": "cleanser",
+      "rating_avg": 4.6,
+      "review_count": 1700
+    },
+    {
+      "id": "1afe09fb-22fe-42b5-8653-0ee62941dfa4",
+      "brand": "Secret Key",
+      "name": "Rose Water Base Toner",
+      "category": "toner",
+      "rating_avg": 4.4,
+      "review_count": 4200
+    },
+    {
+      "id": "1b2fe74a-d3a7-4e0a-86f9-7bb0e25f6b81",
+      "brand": "Beauty of Joseon",
+      "name": "Ginseng Eye Cream",
+      "category": "eye_care",
+      "rating_avg": 4.5,
+      "review_count": 4800
+    },
+    {
+      "id": "1bac9586-9337-400a-af93-35b32bcfb333",
+      "brand": "The Face Shop",
+      "name": "Jeju Aloe Fresh Soothing Foam Cleanser",
+      "category": "cleanser",
+      "rating_avg": 4.4,
+      "review_count": 5600
+    },
+    {
+      "id": "1c19ed4c-adb8-4455-aacc-fb2f8f45c832",
+      "brand": "Nacific",
+      "name": "Jeju Artemisia Essence",
+      "category": "essence",
+      "rating_avg": 4.6,
+      "review_count": 3400
+    },
+    {
+      "id": "1cbde211-b5c7-4e52-832a-d63e7caeb27a",
+      "brand": "Dr.G",
+      "name": "Red Blemish Cica S.O.S Recovery Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.7,
+      "review_count": 4500
+    },
+    {
+      "id": "1d6ba44e-422f-4c4f-b6a3-aba62cb354d7",
+      "brand": "Laneige",
+      "name": "Bouncy & Firm Sleeping Mask",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "1da13fd5-8d97-452c-8840-c1a08c8a604e",
+      "brand": "MISSHA",
+      "name": "Time Revolution The First Treatment Essence RX",
+      "category": "essence",
+      "rating_avg": 4.6,
+      "review_count": 2400
+    },
+    {
+      "id": "1da7931f-4882-497a-8d68-a0629a83359a",
+      "brand": "Mixsoon",
+      "name": "Glacier Water Hyaluronic Acid Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 4200
+    },
+    {
+      "id": "1e04cddf-ce00-410e-9995-073770534751",
+      "brand": "COSRX",
+      "name": "Advanced Snail Radiance Dual Essence",
+      "category": "essence",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "1e0e35ea-21be-49a8-ae4e-6b0c397a630d",
+      "brand": "Hanyul",
+      "name": "Optimizing Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "1e20702c-c127-4ef8-b4c8-0f9ea4b0f056",
+      "brand": "Jumiso",
+      "name": "Yes I Am Toner AHA 5%",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "1ead4d41-e205-44fc-8b56-012ef09f65a8",
+      "brand": "Frudia",
+      "name": "Peach Repairing Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "1ec8a787-8993-462c-bfa0-47942101c042",
+      "brand": "Bioderma",
+      "name": "Photoderm MAX Cream SPF50+",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 5100
+    },
+    {
+      "id": "1f23be72-e9a5-40b5-a65d-0c1d0335bced",
+      "brand": "Thank You Farmer",
+      "name": "Rice Pure Essential Toner",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "20262cee-9637-4fc6-a402-1a1058078a42",
+      "brand": "Thank You Farmer",
+      "name": "Miracle Age Repair Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 2200
+    },
+    {
+      "id": "20a17aad-d08f-40c8-a7de-38fab9b84e09",
+      "brand": "AmorePacific",
+      "name": "Dual Nourishing Lip Treatment",
+      "category": "lip_care",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "20b8c764-69c1-4c33-b7e6-220e863e74aa",
+      "brand": "Hanyul",
+      "name": "Artemisia Calming Essence",
+      "category": "essence",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "20c259d4-b1f1-4170-9792-4d841b26d62b",
+      "brand": "Abib",
+      "name": "Quick Sunstick Protection Bar SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.6,
+      "review_count": 6800
+    },
+    {
+      "id": "2169dc84-997c-4949-9729-717dc1eed513",
+      "brand": "Round Lab",
+      "name": "Birch Juice Moisturizing Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.4,
+      "review_count": 820
+    },
+    {
+      "id": "21df0604-df9d-4124-bcca-06162a284290",
+      "brand": "CNP Laboratory",
+      "name": "Anti-Pore Black Head Clear Kit",
+      "category": "exfoliator",
+      "rating_avg": 4.4,
+      "review_count": 5800
+    },
+    {
+      "id": "23740e9a-f7bc-4477-b92d-b6c9bfc4915d",
+      "brand": "Beplain",
+      "name": "Cicaful Calming Toner",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 4100
+    },
+    {
+      "id": "2434f60b-185b-4763-b915-b83a45f7b21a",
+      "brand": "It's Skin",
+      "name": "Prestige Creme D'Escargot",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "24877447-996a-4520-acc6-b7cfc0dfc771",
+      "brand": "Purito",
+      "name": "Comfy Water Sun Block SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.6,
+      "review_count": 2100
+    },
+    {
+      "id": "258b976b-23c6-48e5-939e-b0981cb7ffea",
+      "brand": "AXIS-Y",
+      "name": "Complete No-Stress Physical Sunscreen SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 6200
+    },
+    {
+      "id": "269777a2-1658-4c58-813e-22544c83f036",
+      "brand": "AmorePacific",
+      "name": "Color Control Cushion Compact SPF50+",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "26a7d215-b6c5-4ce0-a08c-6b1d1c57eb82",
+      "brand": "Purito",
+      "name": "Centella Green Level Buffet Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "275cf905-19bd-465c-a5fe-935c1be3b168",
+      "brand": "Skin&Lab",
+      "name": "Red Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3600
+    },
+    {
+      "id": "278081c1-76db-4c52-b97f-97e637264d19",
+      "brand": "Some By Mi",
+      "name": "Truecica Mineral 100 Calming Suncream SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 5200
+    },
+    {
+      "id": "282f5b25-0eb2-4398-90b7-81a750c9adfc",
+      "brand": "SKIN1004",
+      "name": "Madagascar Centella Toning Toner",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "28b5dcd0-21e5-4a0a-a071-def151beba9a",
+      "brand": "Sioris",
+      "name": "Cleanse Me Softly Milk Cleanser",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "29908f8e-8f06-4be0-9a16-8e2294d105da",
+      "brand": "AmorePacific",
+      "name": "Time Response Skin Reserve Creme",
+      "category": "moisturizer",
+      "rating_avg": 4.7,
+      "review_count": 1200
+    },
+    {
+      "id": "2a308639-88c2-45b5-93fc-7147e136cfdd",
+      "brand": "AmorePacific",
+      "name": "Botanical Radiance Oil",
+      "category": "oil",
+      "rating_avg": 4.5,
+      "review_count": 1800
+    },
+    {
+      "id": "2bab0731-f4e0-48e3-a917-2423ca604928",
+      "brand": "Some By Mi",
+      "name": "AHA BHA PHA 30 Days Miracle Cleansing Foam",
+      "category": "cleanser",
+      "rating_avg": 4.4,
+      "review_count": 5800
+    },
+    {
+      "id": "2bbf57a0-ba08-404b-a35e-6e398a15764d",
+      "brand": "Mary&May",
+      "name": "Houttuynia Cordata + Tea Tree Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "2dcea43e-628e-4fd6-8daa-b35912759072",
+      "brand": "Real Barrier",
+      "name": "Cream Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.6,
+      "review_count": 2900
+    },
+    {
+      "id": "2f02447e-9886-4d3d-a3e4-bedc4c285272",
+      "brand": "OHUI",
+      "name": "The First Geniture Cell Essential Source",
+      "category": "essence",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "2f8145ee-4710-4245-a095-05c6407394ff",
+      "brand": "Innisfree",
+      "name": "Daily UV Defense Sunscreen SPF36 PA+++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 5600
+    },
+    {
+      "id": "2f8297b8-8435-4de2-b2a2-3d77668abec7",
+      "brand": "Laneige",
+      "name": "Radian-C Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "3015f1af-0516-4d74-85a7-8f11e153703d",
+      "brand": "Holika Holika",
+      "name": "Smooth Egg Skin Peeling Gel",
+      "category": "exfoliator",
+      "rating_avg": 4.4,
+      "review_count": 5600
+    },
+    {
+      "id": "30d8c56e-fb73-4221-843a-5f681910040d",
+      "brand": "Haruharu Wonder",
+      "name": "Black Rice Bakuchiol Eye Cream",
+      "category": "eye_care",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "3101356b-df81-4abe-844f-1917364c706d",
+      "brand": "TIRTIR",
+      "name": "Collagen Core Glow Essence",
+      "category": "essence",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "31a415ec-63dc-43fb-9165-3d871f9c447a",
+      "brand": "Papa Recipe",
+      "name": "Blemish Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 4800
+    },
+    {
+      "id": "3213cf05-9b7a-48ba-b8ed-ae202ba126ab",
+      "brand": "Nature Republic",
+      "name": "Real Nature Green Tea Mask Sheet",
+      "category": "mask",
+      "rating_avg": 4.4,
+      "review_count": 8200
+    },
+    {
+      "id": "324f4a6a-3c63-4bcb-9e6c-d7188987916c",
+      "brand": "VT Cosmetics",
+      "name": "Cica Sun Spray SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.4,
+      "review_count": 6200
+    },
+    {
+      "id": "32c8773c-7050-4082-93db-c7f46f41950b",
+      "brand": "VT Cosmetics",
+      "name": "Reedle Shot 700",
+      "category": "serum",
+      "rating_avg": 4.4,
+      "review_count": 4100
+    },
+    {
+      "id": "331c703a-e260-41f7-aaaa-cd01bef93dda",
+      "brand": "Biodance",
+      "name": "Skin-Glow Essence Toner",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "33304c1e-eca1-424c-adc5-5baa16b57ac5",
+      "brand": "TIRTIR",
+      "name": "Our Vegan Cica Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3400
+    },
+    {
+      "id": "337a8885-5463-46f3-a887-6fc087997350",
+      "brand": "Etude",
+      "name": "SoonJung Lip Balm",
+      "category": "lip_care",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "33a49f92-cd5c-406e-888c-14e5cea3390c",
+      "brand": "KAHI",
+      "name": "Multi Balm UV Aqua SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 3400
+    },
+    {
+      "id": "33da68f4-d2ae-4323-b1f2-b416b8eb0e7c",
+      "brand": "TonyMoly",
+      "name": "Vital Vita 12 Brightening Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.4,
+      "review_count": 3800
+    },
+    {
+      "id": "342f9f81-5567-4b27-8c1d-f1108abdbc05",
+      "brand": "Etude",
+      "name": "SoonJung pH 5.5 Relief Toner",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 1700
+    },
+    {
+      "id": "34f08420-8d99-423a-96dc-131fb90fd447",
+      "brand": "Innisfree",
+      "name": "Jeju Volcanic Pore Cleansing Foam",
+      "category": "cleanser",
+      "rating_avg": 4.4,
+      "review_count": 1900
+    },
+    {
+      "id": "35da6994-544f-4e5e-80fd-e67647004edd",
+      "brand": "MISSHA",
+      "name": "Vita C Plus Spot Correcting Concentrate Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "35f60753-749a-4014-b253-de35812239ac",
+      "brand": "Aestura",
+      "name": "Atobarrier 365 Lotion",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 5100
+    },
+    {
+      "id": "36557954-e1b3-4e1e-a98b-63fdf4cf6fe4",
+      "brand": "d'Alba",
+      "name": "White Truffle Nourishing Treatment Mask",
+      "category": "mask",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "382079a4-36d4-4444-aa9d-91da2af2b54c",
+      "brand": "Heimish",
+      "name": "Matcha Biome Oil-Free Calming Gel Moisturizer",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 4800
+    },
+    {
+      "id": "38c35323-f9ae-4897-8b46-5000db9bfa02",
+      "brand": "Illiyoon",
+      "name": "Ceramide Ato Foam Cleanser",
+      "category": "cleanser",
+      "rating_avg": 4.6,
+      "review_count": 5800
+    },
+    {
+      "id": "392e2152-2c1b-4964-b2ef-4f1a12fba21c",
+      "brand": "Biodance",
+      "name": "Pore Tightening Bio-Collagen Mask",
+      "category": "mask",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "39934a00-9c5a-45f9-9de5-ce0da47a3131",
+      "brand": "Purito",
+      "name": "From Green Cleansing Oil",
+      "category": "cleanser",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "39c4c259-4ad9-4df5-bde6-982fb0f6b751",
+      "brand": "I'm From",
+      "name": "Beet Energy Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "39e7599e-707b-4b9d-b8d1-1f36dbf87530",
+      "brand": "VT Cosmetics",
+      "name": "Progloss Collagen Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3400
+    },
+    {
+      "id": "3c89ea21-fd06-4abd-954d-4f0e3c136ceb",
+      "brand": "Dr. Jart+",
+      "name": "Ceramidin Liquid",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 6800
+    },
+    {
+      "id": "3d736cf0-1ce3-4ea5-a48e-8bdedfb8f723",
+      "brand": "The Face Shop",
+      "name": "Rice & Ceramide Moisturizing Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.4,
+      "review_count": 6200
+    },
+    {
+      "id": "3da7dd9a-742e-4e9a-83d0-19c7873acd95",
+      "brand": "SKIN1004",
+      "name": "Madagascar Centella Poremizing Fresh Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "3f2531e5-21a0-41fc-9280-d6b93be18f3e",
+      "brand": "Mixsoon",
+      "name": "Master Repair Cream Panthenol",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3100
+    },
+    {
+      "id": "3f7136f2-e3b8-4834-910c-f45d69f6960c",
+      "brand": "Dr. Jart+",
+      "name": "Every Sun Day Sun Fluid SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "3fa0c2b1-3c94-41da-acf6-b2c59d774259",
+      "brand": "SKIN1004",
+      "name": "Centella Light Cleansing Oil",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 1100
+    },
+    {
+      "id": "4017d6ea-94af-4a20-ada6-e2e0f3808643",
+      "brand": "Nature Republic",
+      "name": "Vitapair C Dark Spot Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "40e1122f-45e8-476a-97c0-a324adde9150",
+      "brand": "Thank You Farmer",
+      "name": "True Water Light Gel Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3400
+    },
+    {
+      "id": "41e88438-605c-484a-93c6-b3df9f5dff26",
+      "brand": "su:m37°",
+      "name": "Secret Essence",
+      "category": "essence",
+      "rating_avg": 4.7,
+      "review_count": 5800
+    },
+    {
+      "id": "427cffad-a511-4e3a-9d8d-05b449a9b5e0",
+      "brand": "Secret Key",
+      "name": "Aloe Soothing Moist Toner",
+      "category": "toner",
+      "rating_avg": 4.4,
+      "review_count": 5600
+    },
+    {
+      "id": "427d3359-ef1b-41ca-a2f5-6f1a744f8226",
+      "brand": "Skinfood",
+      "name": "Black Sugar Perfect First Serum The Light",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 6800
+    },
+    {
+      "id": "43455cc9-0ca6-40ac-acbc-bed76e0c7e72",
+      "brand": "Isntree",
+      "name": "Yam Root Vegan Milk Cleanser",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 3600
+    },
+    {
+      "id": "444d0d20-c2b9-487d-98a5-cac7fbc846d0",
+      "brand": "Rovectin",
+      "name": "Skin Essentials Conditioning Cleanser",
+      "category": "cleanser",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "44b12988-d390-405f-b332-09e917ce8897",
+      "brand": "Heimish",
+      "name": "Black Tea Mask Pack",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 4100
+    },
+    {
+      "id": "44b9fc0c-27cb-4ec3-b3de-9b2626644db0",
+      "brand": "Heimish",
+      "name": "Artless Glow Base SPF 50+ PA+++",
+      "category": "sunscreen",
+      "rating_avg": 4.4,
+      "review_count": 3800
+    },
+    {
+      "id": "454e5db8-f1ef-4a15-a6a5-d93a798ff163",
+      "brand": "Innisfree",
+      "name": "Cherry Blossom Tone Up Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.4,
+      "review_count": 5800
+    },
+    {
+      "id": "4620d59b-af1d-4098-b2f8-e9599ace0c52",
+      "brand": "Mizon",
+      "name": "AHA 8% Peeling Serum",
+      "category": "serum",
+      "rating_avg": 4.4,
+      "review_count": 6100
+    },
+    {
+      "id": "469bf2ef-212e-4d07-935c-2bd757e38ace",
+      "brand": "d'Alba",
+      "name": "White Truffle Double Serum & Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "47bb8360-2c2b-4dfd-a113-98b77a995bc9",
+      "brand": "Laneige",
+      "name": "Cream Skin Cerapeptide Refiner",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "487d387f-aa47-4d0f-afb8-74752d162809",
+      "brand": "Heimish",
+      "name": "All Clean Green Foam",
+      "category": "cleanser",
+      "rating_avg": 4.4,
+      "review_count": 4200
+    },
+    {
+      "id": "48e4f6d5-5161-4716-b7bc-9a64cd8693ff",
+      "brand": "Round Lab",
+      "name": "Birch Juice Moisturizing Sun Cream SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "4914ca00-9aff-485f-93ac-ece43eb34377",
+      "brand": "Sioris",
+      "name": "My First Essener",
+      "category": "essence",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "49370f36-e6b5-409e-a047-d9b3c3c1531b",
+      "brand": "Rovectin",
+      "name": "Skin Essentials Barrier Repair Face Oil",
+      "category": "oil",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "4a659910-7f44-4f6d-846c-d420be5a701f",
+      "brand": "Beplain",
+      "name": "Chamomile pH-Balanced Lotion",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3200
+    },
+    {
+      "id": "4ab6e793-3514-4ac7-9303-b9fc24bbe00e",
+      "brand": "Purito",
+      "name": "Centella Green Level Unscented Sun SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.6,
+      "review_count": 3200
+    },
+    {
+      "id": "4c437752-9c19-490f-8622-eb392615b3ef",
+      "brand": "Isntree",
+      "name": "Chestnut AHA 8% Clear Essence",
+      "category": "essence",
+      "rating_avg": 4.5,
+      "review_count": 6200
+    },
+    {
+      "id": "4c60bfd6-33c1-419c-853c-52cead5f8d24",
+      "brand": "Klairs",
+      "name": "Rich Moist Soothing Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "4c617867-edad-4f4c-be9a-ff6f4216dc98",
+      "brand": "Mixsoon",
+      "name": "Bifida Ferment Essence",
+      "category": "essence",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "4d0d7663-ccbd-4a0b-9a16-613eb2845629",
+      "brand": "It's Skin",
+      "name": "Power 10 Formula GF Effector",
+      "category": "serum",
+      "rating_avg": 4.4,
+      "review_count": 4200
+    },
+    {
+      "id": "4ef3bc27-1c97-493f-bf6c-7e055ae7f6bd",
+      "brand": "Laneige",
+      "name": "Water Sleeping Mask EX",
+      "category": "mask",
+      "rating_avg": 4.7,
+      "review_count": 6800
+    },
+    {
+      "id": "4f2e1e27-94fe-40a2-b7a3-6709755aa239",
+      "brand": "It's Skin",
+      "name": "Power 10 Formula VC Effector",
+      "category": "serum",
+      "rating_avg": 4.4,
+      "review_count": 6800
+    },
+    {
+      "id": "4f77c234-2642-4b20-b43b-b44a41340279",
+      "brand": "HERA",
+      "name": "White Program Deep Brightening Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "505362c3-c9d4-414c-bd29-2224140035d5",
+      "brand": "Sulwhasoo",
+      "name": "Essential Lip Serum Stick",
+      "category": "lip_care",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "50b4a281-ce07-4d49-801e-cd06dc902466",
+      "brand": "Rovectin",
+      "name": "LHA Blemish Ampule",
+      "category": "ampoule",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "51de07a2-66aa-4ed7-8812-979c8231cfb7",
+      "brand": "SNP",
+      "name": "Prep Peptaronic Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "5258f2d2-7143-48fa-98cb-fb25655e14c7",
+      "brand": "Skinfood",
+      "name": "Carrot Carotene Calming Water Pad",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 4800
+    },
+    {
+      "id": "5298f3d2-7777-4690-b2f2-9a7dc813c0d6",
+      "brand": "Etude",
+      "name": "SoonJung 2x Barrier Intensive Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 1400
+    },
+    {
+      "id": "530e833f-37fe-491b-a34b-c61c8c01ff19",
+      "brand": "Innisfree",
+      "name": "Green Tea Seed Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 2200
+    },
+    {
+      "id": "5349f059-7930-469f-8f9c-02e798ba5e6f",
+      "brand": "Some By Mi",
+      "name": "AHA BHA PHA 30 Days Miracle Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 6200
+    },
+    {
+      "id": "5444c999-3814-4d24-9b8b-2b0624004a4e",
+      "brand": "Mary&May",
+      "name": "Idebenone + Blackberry Complex Intensive Total Care Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "55da180f-47b1-4690-ace5-31124e9b8247",
+      "brand": "AXIS-Y",
+      "name": "Artichoke Intensive Skin Barrier Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "5604a79a-eec9-4e11-938f-dbfcf5a30818",
+      "brand": "VT Cosmetics",
+      "name": "Super Hyalon Essence",
+      "category": "essence",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "560ecfd7-54bd-43a2-ad2c-9281c1daab39",
+      "brand": "ONE THING",
+      "name": "Centella Asiatica Extract",
+      "category": "essence",
+      "rating_avg": 4.6,
+      "review_count": 2800
+    },
+    {
+      "id": "58140efd-7245-4cbf-b568-05a8b67b35b7",
+      "brand": "iUNIK",
+      "name": "Centella Calming Gel Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 5800
+    },
+    {
+      "id": "58580230-3f4d-4cd7-8d3f-de3b3d2887c9",
+      "brand": "MISSHA",
+      "name": "Time Revolution Artemisia Treatment Essence",
+      "category": "essence",
+      "rating_avg": 4.6,
+      "review_count": 6800
+    },
+    {
+      "id": "59796141-5c79-40ed-af6c-ca0af339b945",
+      "brand": "Sioris",
+      "name": "Bring the Light Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "59daf950-f3e7-4827-8a5a-200045e296bb",
+      "brand": "The History of Whoo",
+      "name": "Bichup Self-Generating Anti-Aging Essence",
+      "category": "essence",
+      "rating_avg": 4.8,
+      "review_count": 6800
+    },
+    {
+      "id": "5abe2f77-502b-401c-bdee-c47cd99dc379",
+      "brand": "Numbuzin",
+      "name": "No.1 Pure-Fit Cica Calming Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "5b5a1491-5fca-4c75-bc41-77a445af1fca",
+      "brand": "AXIS-Y",
+      "name": "New Skin Resolution Gel Mask",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 4100
+    },
+    {
+      "id": "5dbe4e33-feb1-48ea-8ff4-cfcc4a069e3f",
+      "brand": "Nacific",
+      "name": "Phyto Niacin Whitening Essence",
+      "category": "essence",
+      "rating_avg": 4.5,
+      "review_count": 5200
+    },
+    {
+      "id": "5dea90d7-c67a-48e2-8ed3-1c847747f007",
+      "brand": "COSRX",
+      "name": "Balancium Comfort Ceramide Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "5e95f739-3910-41bc-ace3-df3f25ac4d4b",
+      "brand": "Jumiso",
+      "name": "Have a Good Cream Vitamin C 5%",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "5f5231bf-681c-424c-8c24-e215add466d1",
+      "brand": "Nature Republic",
+      "name": "Herb Blending Eye Cream",
+      "category": "eye_care",
+      "rating_avg": 4.4,
+      "review_count": 3200
+    },
+    {
+      "id": "5fdd8a31-fdd2-48ee-b599-5b6273838035",
+      "brand": "Real Barrier",
+      "name": "Intense Moisture Lip Balm",
+      "category": "lip_care",
+      "rating_avg": 4.5,
+      "review_count": 2100
+    },
+    {
+      "id": "6035bb62-cc33-4c03-8e30-5850d85161ad",
+      "brand": "Banila Co",
+      "name": "Clean It Zero Cleansing Balm Nourishing",
+      "category": "cleanser",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "61353aab-fc3b-483c-bb60-6a20eb6673d6",
+      "brand": "Mixsoon",
+      "name": "Galactomyces Ferment Essence",
+      "category": "essence",
+      "rating_avg": 4.6,
+      "review_count": 3400
+    },
+    {
+      "id": "61eb181f-4657-4efa-a54c-5ad45f7d38e5",
+      "brand": "Numbuzin",
+      "name": "No.4 Collagen Firming Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "6215d356-47f2-47e2-8182-825c7b765801",
+      "brand": "Innisfree",
+      "name": "Black Tea Youth Enhancing Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "6273198c-3560-4c04-8c8f-23958cb7d960",
+      "brand": "Aromatica",
+      "name": "Tea Tree Balancing Emulsion",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "638067ed-47de-439b-9e05-1bdbc92adc47",
+      "brand": "Isntree",
+      "name": "Aloe Soothing Gel Fresh Type",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 5400
+    },
+    {
+      "id": "63889cc2-11ce-4d9f-9e75-4b27d2d89cc2",
+      "brand": "Anua",
+      "name": "Heartleaf 70% Daily Relief Lotion",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "63c8fdfc-a18b-4af9-bfe2-2ef096e0fc8e",
+      "brand": "Anua",
+      "name": "Birch 70% Moisture Boosting Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "63f92462-6f69-42fe-a8a7-70ce90001e75",
+      "brand": "Torriden",
+      "name": "DIVE-IN Low Molecular Hyaluronic Acid Soothing Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "640117e1-d3df-4f72-882a-9831c8d28134",
+      "brand": "Numbuzin",
+      "name": "No.5 Vitamin Niacinamide Concentrated Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 980
+    },
+    {
+      "id": "65018314-901c-4fd4-8f98-71e5b91098c6",
+      "brand": "The Face Shop",
+      "name": "The Therapy Royal Made Oil Blending Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 2400
+    },
+    {
+      "id": "66e34f79-746e-482d-b89a-709e23522009",
+      "brand": "HERA",
+      "name": "Age Away Aesthetic BX Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3400
+    },
+    {
+      "id": "66f1a40d-3904-4162-ae66-9d121ee484cc",
+      "brand": "Numbuzin",
+      "name": "No.2 Superbicol Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 5200
+    },
+    {
+      "id": "670ab226-293f-4077-8f94-db5689cd71ea",
+      "brand": "Heimish",
+      "name": "Matcha Biome Intensive Repair Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3600
+    },
+    {
+      "id": "680f91de-c84f-4e68-b3c4-2b1e36840381",
+      "brand": "Neogen",
+      "name": "Day-Light Protection Airy Sun Stick SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "689ce947-3881-4dbe-a479-5d2f55162bcd",
+      "brand": "Holika Holika",
+      "name": "Pig-Nose Clear Black Head 3-Step Kit",
+      "category": "exfoliator",
+      "rating_avg": 4.2,
+      "review_count": 8900
+    },
+    {
+      "id": "69794bee-aca1-4a26-9ed6-c4f1dcd51169",
+      "brand": "The History of Whoo",
+      "name": "Secret Court Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 1800
+    },
+    {
+      "id": "6987ee5b-5ca5-49ce-b4fb-26f75178969c",
+      "brand": "Papa Recipe",
+      "name": "Bombee Green Honey Mask Pack",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 5800
+    },
+    {
+      "id": "6a29e83c-9fcc-4bbc-9edd-eebce09aed3d",
+      "brand": "Thank You Farmer",
+      "name": "Rice Pure Clay Mask to Foam",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "6adbd04b-ed9f-4ad1-810a-ff58e72c84cf",
+      "brand": "Mizon",
+      "name": "Vita Lemon Calming Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.4,
+      "review_count": 3200
+    },
+    {
+      "id": "6bd8cc65-7b76-4f8f-9d22-d15008e7722e",
+      "brand": "COSRX",
+      "name": "Advanced Snail 92 All in One Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.7,
+      "review_count": 2900
+    },
+    {
+      "id": "6ca04d4b-d005-4e24-bfac-bc9f8767da77",
+      "brand": "d'Alba",
+      "name": "White Truffle Return Oil Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "6cab3590-e5c8-4560-a451-a30924f474fb",
+      "brand": "iUNIK",
+      "name": "Propolis Vitamin Synergy Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 5400
+    },
+    {
+      "id": "6d3298d5-1e18-4052-8731-6f63290d1f1d",
+      "brand": "The Face Shop",
+      "name": "Yehwadam Hwansaenggo Rejuvenating Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 3400
+    },
+    {
+      "id": "6d744619-4dbb-4095-bfbd-4b2b0afcea59",
+      "brand": "Mixsoon",
+      "name": "Soondy Centella Asiatica Essence",
+      "category": "essence",
+      "rating_avg": 4.7,
+      "review_count": 5600
+    },
+    {
+      "id": "6dc3a65e-7d90-4fd9-bba6-58fc126768ad",
+      "brand": "Numbuzin",
+      "name": "No.2 Soothing Green Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "6ddb84af-a384-4508-ac11-96837951308e",
+      "brand": "HERA",
+      "name": "Hydro Reflecting Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 2400
+    },
+    {
+      "id": "6decd6b3-1536-469a-9fea-b9d45f9cf119",
+      "brand": "Banila Co",
+      "name": "Covericious Power Fit Cushion SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 4800
+    },
+    {
+      "id": "6e1a4ed5-5f3f-482b-9b5c-9a05db838c52",
+      "brand": "Benton",
+      "name": "Snail Bee High Content Skin",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "6e5ec1cc-1fe4-4286-a0e6-39723a78489b",
+      "brand": "Papa Recipe",
+      "name": "Bombee Honey Pudding Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "6f900137-2302-4061-8d93-06a7435bed91",
+      "brand": "The History of Whoo",
+      "name": "Hwanyu Imperial Youth Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.8,
+      "review_count": 800
+    },
+    {
+      "id": "70550ece-96e1-43a8-8c25-94ab2fb69885",
+      "brand": "TonyMoly",
+      "name": "My Sunny All-In-One Sun SPF47 PA+++",
+      "category": "sunscreen",
+      "rating_avg": 4.4,
+      "review_count": 5200
+    },
+    {
+      "id": "7130b832-5cf9-452b-9978-15ac37921a58",
+      "brand": "Benton",
+      "name": "Snail Bee High Content Lotion",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "71437187-060e-4823-a994-56355e535445",
+      "brand": "Sulwhasoo",
+      "name": "Essential Balancing Water",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "731b0377-3635-49e9-bafe-6e1790b18e32",
+      "brand": "Mary&May",
+      "name": "Calendula Peptide Ageless Sleeping Mask",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 3400
+    },
+    {
+      "id": "742618cb-ec61-4eed-8f4f-685289e32bbc",
+      "brand": "Pyunkang Yul",
+      "name": "Black Tea Time Reverse Eye Cream",
+      "category": "eye_care",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "755ea87c-ec32-4722-ad40-432c8daeed80",
+      "brand": "Mizon",
+      "name": "Snail Repair Intensive Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "7568cdae-c1d5-4972-87e2-07cae712378f",
+      "brand": "Dr.G",
+      "name": "Dermoist Barrier.D Intense Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "771c553e-0173-4de1-ba08-e8636847d032",
+      "brand": "Dr. Jart+",
+      "name": "Cicapair Tiger Grass Camo Drops SPF35 PA++",
+      "category": "sunscreen",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "7768659a-c373-4271-8b09-7dcc7dda5229",
+      "brand": "It's Skin",
+      "name": "Hyaluronic Acid Moisture Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "77b52e4b-72c6-472a-9cab-d04e04fe8f01",
+      "brand": "Benton",
+      "name": "Goodbye Redness Centella Cica Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "78ada71c-4d70-4fdb-b63f-a28981d89014",
+      "brand": "The Face Shop",
+      "name": "Yehwadam Hwansaenggo Ultimate Rejuvenating Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3200
+    },
+    {
+      "id": "78eae632-bc8b-4e28-9814-7ae08f3630d7",
+      "brand": "CNP Laboratory",
+      "name": "Mugener Ampule",
+      "category": "ampoule",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "7933ce2f-10fd-45f7-b95b-223efbabc4cf",
+      "brand": "Dr. Jart+",
+      "name": "Ctrl-A Teatreement Cleansing Foam",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 4800
+    },
+    {
+      "id": "796318f3-4829-4334-8ad3-432f8d2a3e03",
+      "brand": "Holika Holika",
+      "name": "Prime Youth Black Snail Repair Emulsion",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "7a7f58ff-c4c9-4e26-a026-6b46ca0d2806",
+      "brand": "Atopalm",
+      "name": "Maternity Care Body Oil",
+      "category": "oil",
+      "rating_avg": 4.5,
+      "review_count": 2200
+    },
+    {
+      "id": "7b40e17d-5c43-4436-a4f9-11b6440e8d1a",
+      "brand": "Klairs",
+      "name": "Gentle Black Deep Cleansing Oil",
+      "category": "cleanser",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "7c0d7bc2-3163-47ee-a574-93c52790699f",
+      "brand": "iUNIK",
+      "name": "Tea Tree Relief Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 6100
+    },
+    {
+      "id": "7d8188ba-62f7-4c72-8010-3ac752e31f6e",
+      "brand": "Sulwhasoo",
+      "name": "Clarifying Mask EX",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "7df5dce2-e836-4bd9-a675-51161786d7f2",
+      "brand": "Aromatica",
+      "name": "Calendula Juicy Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "7efe21a2-c86e-486f-92cd-7010998e451a",
+      "brand": "Real Barrier",
+      "name": "Extreme Essence Toner",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 5800
+    },
+    {
+      "id": "7f0edf46-d5d2-4594-898c-2dd8f587ba8d",
+      "brand": "OHUI",
+      "name": "Miracle Aqua Eye Serum",
+      "category": "eye_care",
+      "rating_avg": 4.5,
+      "review_count": 2200
+    },
+    {
+      "id": "7f193a12-ed3e-4d07-92b3-0f1d5a5cfe0e",
+      "brand": "Dr. Jart+",
+      "name": "Cicapair Tiger Grass Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 2900
+    },
+    {
+      "id": "7f6a49d6-520c-468a-8bf5-fde831fbf59e",
+      "brand": "Goodal",
+      "name": "Heartleaf Calming Tone Up Sun Cream SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 6400
+    },
+    {
+      "id": "7fa12b32-f724-4684-ba60-27db02f91bad",
+      "brand": "Medicube",
+      "name": "Collagen Niacinamide Jelly Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 6400
+    },
+    {
+      "id": "7ff28abf-0e68-4e0b-b55d-0d2b67c2cc91",
+      "brand": "I'm From",
+      "name": "Pear Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "8022301b-c126-45bc-ba5b-4f9d810d1a6a",
+      "brand": "COSRX",
+      "name": "The Retinol 0.1 Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 5800
+    },
+    {
+      "id": "8093f1ac-1e79-4be8-929d-28fc8b04720c",
+      "brand": "Sioris",
+      "name": "Enriched By Nature Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 2200
+    },
+    {
+      "id": "80ba47d2-eb45-496f-8a7d-b53e449b81d3",
+      "brand": "Sioris",
+      "name": "Day by Day Cleansing Gel",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "80f860e6-5cb0-4c5b-9bc6-cae94db0cf62",
+      "brand": "Klairs",
+      "name": "Midnight Blue Calming Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 1900
+    },
+    {
+      "id": "818da026-d030-4f28-8b6f-90dd1d850426",
+      "brand": "Neogen",
+      "name": "Bio-Peel Gauze Peeling Wine",
+      "category": "exfoliator",
+      "rating_avg": 4.6,
+      "review_count": 6800
+    },
+    {
+      "id": "81a4de39-f480-4bbf-bb5e-5e2ddada3b06",
+      "brand": "Mary&May",
+      "name": "Tranexamic Acid + Glutathione Eye Cream",
+      "category": "eye_care",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "81e15748-b781-4c13-aa4f-707ed1670035",
+      "brand": "Sulwhasoo",
+      "name": "Gentle Cleansing Oil",
+      "category": "cleanser",
+      "rating_avg": 4.6,
+      "review_count": 4200
+    },
+    {
+      "id": "827bf313-498c-4499-8950-15aa04f99529",
+      "brand": "SNP",
+      "name": "Prep Cicaronic Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "82ca4f44-d2a3-41c5-9217-525e1dbe156a",
+      "brand": "SNP",
+      "name": "Prep Peptaronic Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 4800
+    },
+    {
+      "id": "83e8351d-e56b-4b65-b244-e1215d992619",
+      "brand": "CNP Laboratory",
+      "name": "Propolis Energy Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 5600
+    },
+    {
+      "id": "85477224-c6fa-4969-be45-cf3fcd65544d",
+      "brand": "Anua",
+      "name": "Heartleaf Real Sun Protection Cream SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.6,
+      "review_count": 5800
+    },
+    {
+      "id": "854aee90-e92e-4dd6-89bf-151ff4c7cdc9",
+      "brand": "SKIN1004",
+      "name": "Madagascar Centella Tea-Trica Relief Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "855abd9c-7d27-4a80-bf96-870950c901fe",
+      "brand": "Banila Co",
+      "name": "Dear Hydration Boosting Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "85a58883-0755-4617-89e5-f5fc880bb159",
+      "brand": "su:m37°",
+      "name": "Flawless Regenerating Eye Cream",
+      "category": "eye_care",
+      "rating_avg": 4.5,
+      "review_count": 2200
+    },
+    {
+      "id": "85c1ffee-9761-4516-ac65-4077d5136cce",
+      "brand": "Benton",
+      "name": "Fermentation Eye Cream",
+      "category": "eye_care",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "85d78a15-33cb-41f4-ba36-409e93590cc0",
+      "brand": "Round Lab",
+      "name": "Dokdo Toner",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 1300
+    },
+    {
+      "id": "86b75831-4730-4803-a881-9c7bd37a94b9",
+      "brand": "HERA",
+      "name": "Eye Cream Cell Essential",
+      "category": "eye_care",
+      "rating_avg": 4.5,
+      "review_count": 1800
+    },
+    {
+      "id": "86e9c1d1-0e28-46b4-a5a6-666dabf3240b",
+      "brand": "Heimish",
+      "name": "Marine Care Deep Moisture Nourishing Melting Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "86ec4aa0-b7d2-4a13-9c0f-bb766e65bb9f",
+      "brand": "OHUI",
+      "name": "Extreme White Sleeping Mask",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "877a0124-5c41-4225-bc1d-4aacc106cbcd",
+      "brand": "Isntree",
+      "name": "Green Tea Fresh Emulsion",
+      "category": "moisturizer",
+      "rating_avg": 4.4,
+      "review_count": 720
+    },
+    {
+      "id": "8821f4e3-c9d8-48d0-9cee-04f31de40b83",
+      "brand": "AXIS-Y",
+      "name": "Sunday Morning Refreshing Cleansing Foam",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 3600
+    },
+    {
+      "id": "88b4acfc-41c6-4743-b2fe-a356148b06c6",
+      "brand": "Haruharu Wonder",
+      "name": "Maqui Berry Anti-Oxidant Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "8aa11ca3-b43f-4d6a-a7ed-839dea5ce0e8",
+      "brand": "SNP",
+      "name": "Prep Vitaronic Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.4,
+      "review_count": 3600
+    },
+    {
+      "id": "8af3d453-86b7-4a5a-871e-8fa6e5350c88",
+      "brand": "Sulwhasoo",
+      "name": "Concentrated Ginseng Renewing Eye Cream EX",
+      "category": "eye_care",
+      "rating_avg": 4.6,
+      "review_count": 2200
+    },
+    {
+      "id": "8b99a9a3-319b-46a6-8942-0e5bc5226db0",
+      "brand": "Rovectin",
+      "name": "Skin Essentials Aqua Soothing Sun Cream SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.6,
+      "review_count": 5100
+    },
+    {
+      "id": "8ba7acd0-6f1d-4547-9c82-b2eb626d7243",
+      "brand": "Beauty of Joseon",
+      "name": "Red Bean Refreshing Pore Mask",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "8c6a91c5-b574-443f-9621-8d66267ce73a",
+      "brand": "TIRTIR",
+      "name": "SOS Double Glow Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "8da67a40-d6cc-4fe6-a367-b3edade062fc",
+      "brand": "Rovectin",
+      "name": "Clean Lotus Water Calming Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3500
+    },
+    {
+      "id": "8decec21-c7f0-4458-9aee-3a782c01d44c",
+      "brand": "Banila Co",
+      "name": "Clean It Zero Cleansing Balm Purifying",
+      "category": "cleanser",
+      "rating_avg": 4.6,
+      "review_count": 6800
+    },
+    {
+      "id": "8f26ae7a-8041-4138-bb2f-b1f085d5041d",
+      "brand": "AmorePacific",
+      "name": "Treatment Enzyme Peel Cleansing Powder",
+      "category": "cleanser",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "8f45d840-a8ef-4df2-85b5-4598e9c0691d",
+      "brand": "Papa Recipe",
+      "name": "Eggplant Clearing Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.4,
+      "review_count": 2800
+    },
+    {
+      "id": "8fa01cca-7eed-45a9-ab5a-f93ba31dcfb4",
+      "brand": "OHUI",
+      "name": "Ultimate Cover CC Cushion SPF50+ PA+++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "8fbb4822-2241-4236-8036-2411847a3fa2",
+      "brand": "Haruharu Wonder",
+      "name": "Black Rice Hyaluronic Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3400
+    },
+    {
+      "id": "9067d738-959c-4468-b8a6-6f8d11173666",
+      "brand": "It's Skin",
+      "name": "Power 10 Formula VE Effector",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 5600
+    },
+    {
+      "id": "907cdd73-5306-4e3c-9522-fd0c06f870ca",
+      "brand": "Anua",
+      "name": "BHA 2% Gentle Exfoliating Toner",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "90a035a7-fc33-4fc8-833f-8728972443d4",
+      "brand": "Sulwhasoo",
+      "name": "Concentrated Ginseng Renewing Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 920
+    },
+    {
+      "id": "90cfcc1c-8b41-4009-b479-ff9d9757c914",
+      "brand": "Haruharu Wonder",
+      "name": "Black Rice Facial Cleansing Oil",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "9109eb32-2d4e-40f1-a0f3-8166c9bb2202",
+      "brand": "Sidmool",
+      "name": "Dr. Troub Skin Returning Niaten Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "915dab0b-419c-402a-8eaf-214f62dccec0",
+      "brand": "AXIS-Y",
+      "name": "Biome Resetting Moringa Cleansing Oil",
+      "category": "cleanser",
+      "rating_avg": 4.6,
+      "review_count": 3200
+    },
+    {
+      "id": "91c2a58f-064d-4a24-8278-2ac00e42f7e3",
+      "brand": "Numbuzin",
+      "name": "No.3 Super Glowing Essence Toner",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "921fa959-5fe0-4be7-8a1d-453068b3b622",
+      "brand": "Medicube",
+      "name": "PDRN Pink Collagen Capsule Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 6800
+    },
+    {
+      "id": "92e07aa9-2953-48ee-8183-86cca6e32802",
+      "brand": "Mary&May",
+      "name": "Cica Soothing Sun Cream SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.6,
+      "review_count": 5400
+    },
+    {
+      "id": "9321187e-e079-46e6-b5cb-2bdfc5430c6a",
+      "brand": "Innisfree",
+      "name": "Daily UV Protection Cream SPF35 PA++",
+      "category": "sunscreen",
+      "rating_avg": 4.3,
+      "review_count": 850
+    },
+    {
+      "id": "93d06173-84b2-43b6-8ef6-552d2c461b0f",
+      "brand": "Secret Key",
+      "name": "Lemon Sparkling Cleansing Oil",
+      "category": "cleanser",
+      "rating_avg": 4.4,
+      "review_count": 4800
+    },
+    {
+      "id": "93fdbc83-cbd0-41af-99c6-e5d3d03c8b52",
+      "brand": "Secret Key",
+      "name": "Starting Treatment Essence Rose Edition",
+      "category": "essence",
+      "rating_avg": 4.5,
+      "review_count": 6200
+    },
+    {
+      "id": "949424f4-141d-4689-8723-e7359b160fdc",
+      "brand": "Beplain",
+      "name": "Cicaful Calming Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.7,
+      "review_count": 6800
+    },
+    {
+      "id": "94b2f171-1fbf-4909-a5fe-9477b4c15ee2",
+      "brand": "The Face Shop",
+      "name": "Natural Sun Eco Mild Watery Sun Cream SPF45 PA+++",
+      "category": "sunscreen",
+      "rating_avg": 4.4,
+      "review_count": 8200
+    },
+    {
+      "id": "94d22268-a64c-4761-bdcf-f4260b696477",
+      "brand": "Frudia",
+      "name": "Pomegranate Nutri-Moisturizing Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "9537b0ad-8b6f-4864-8b35-ab72fcffa4a5",
+      "brand": "Klairs",
+      "name": "Freshly Juiced Vitamin E Mask",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "9544c6c8-1820-4607-88b9-be8160dde00c",
+      "brand": "d'Alba",
+      "name": "Waterfull Essence Sun Cream SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "96edc3ba-9d75-4306-b453-e35666773170",
+      "brand": "COSRX",
+      "name": "Oil-Free Ultra-Moisturizing Lotion with Birch Sap",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 6200
+    },
+    {
+      "id": "9819a47a-4362-4210-bd30-c554166cd8a8",
+      "brand": "MISSHA",
+      "name": "Chogongjin Sosaeng Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "9942f737-165c-49a8-a5f4-8488042c077a",
+      "brand": "Goodal",
+      "name": "Apple AHA Clearing Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.4,
+      "review_count": 3200
+    },
+    {
+      "id": "99435cae-20f6-4194-8c72-2678db72b7c4",
+      "brand": "Heimish",
+      "name": "Marine Care Eye Cream",
+      "category": "eye_care",
+      "rating_avg": 4.4,
+      "review_count": 2400
+    },
+    {
+      "id": "99a28f6f-7b17-4009-90cd-18fd988f4881",
+      "brand": "Aestura",
+      "name": "Atobarrier 365 Hydro Essence",
+      "category": "essence",
+      "rating_avg": 4.6,
+      "review_count": 3400
+    },
+    {
+      "id": "99c65703-5aad-4eea-a27d-f842d9ac0f09",
+      "brand": "Beplain",
+      "name": "Mung Bean Pore Clay Mask",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "9a11cdc1-8bf8-4977-ad0e-d375d82808c8",
+      "brand": "The History of Whoo",
+      "name": "Gongjinhyang Soo Yeon Balancer",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 3200
+    },
+    {
+      "id": "9a7eb694-077e-49b8-8b32-9ca677cc016f",
+      "brand": "I'm From",
+      "name": "Mugwort Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "9afaa524-a14f-4ef4-a10f-1ad084eb7173",
+      "brand": "AXIS-Y",
+      "name": "Mugwort Pore Clarifying Wash Off Pack",
+      "category": "mask",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "9b809a9a-6722-49b6-882f-a98d9f279f41",
+      "brand": "SKIN1004",
+      "name": "Madagascar Centella Hyalu-Cica Water-Fit Sun Serum SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.6,
+      "review_count": 5800
+    },
+    {
+      "id": "9b9f61ad-ec9a-4b19-9a63-cbe16688b695",
+      "brand": "Innisfree",
+      "name": "Green Tea Seed Hyaluronic Toner",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 6800
+    },
+    {
+      "id": "9c34611a-71b7-49cf-b588-d40f122120d6",
+      "brand": "Isntree",
+      "name": "Hyaluronic Acid Toner",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 1800
+    },
+    {
+      "id": "9c8f2ec7-5a9c-41a0-977b-ddb830ae6ff0",
+      "brand": "Illiyoon",
+      "name": "Ceramide Ato Soothing Gel",
+      "category": "moisturizer",
+      "rating_avg": 4.7,
+      "review_count": 6200
+    },
+    {
+      "id": "9cf3d620-7c9b-4199-bcea-bbf302007c6f",
+      "brand": "TonyMoly",
+      "name": "Tako Pore Blackhead Scrub Stick",
+      "category": "exfoliator",
+      "rating_avg": 4.3,
+      "review_count": 5800
+    },
+    {
+      "id": "9e088676-4505-4851-a3e4-e602c0598de2",
+      "brand": "Mamonde",
+      "name": "Flower Lab Essence Mask Rose",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 5600
+    },
+    {
+      "id": "9e33eb9e-2e62-4294-8726-31447bc52622",
+      "brand": "Nature Republic",
+      "name": "Forest Garden Chamomile Cleansing Oil",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 5200
+    },
+    {
+      "id": "9e8206d8-1bad-4559-bf26-6d54ecdf3470",
+      "brand": "Beauty of Joseon",
+      "name": "Revive Eye Serum: Ginseng + Retinal",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 980
+    },
+    {
+      "id": "9f29aed1-fb55-4dfc-b176-f8ec01ffd9c7",
+      "brand": "Sulwhasoo",
+      "name": "First Care Activating Serum VI",
+      "category": "essence",
+      "rating_avg": 4.7,
+      "review_count": 1800
+    },
+    {
+      "id": "9fcbeacd-7519-445b-8714-ddce2c21a265",
+      "brand": "Some By Mi",
+      "name": "V10 Hyal Antioxidant Sunscreen SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "9fd33485-cb3b-45b6-9511-4bc3e0620a68",
+      "brand": "TonyMoly",
+      "name": "Intense Care Gold 24K Snail Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 5200
+    },
+    {
+      "id": "a0f11439-5382-49bf-84f3-9bc0f0cbdcc9",
+      "brand": "su:m37°",
+      "name": "Secret Programming Essence",
+      "category": "essence",
+      "rating_avg": 4.6,
+      "review_count": 3200
+    },
+    {
+      "id": "a1478c5e-87e8-48b9-8aa1-dcca2a68c8c1",
+      "brand": "Abib",
+      "name": "Rice Probiotics Overnight Mask",
+      "category": "mask",
+      "rating_avg": 4.6,
+      "review_count": 3400
+    },
+    {
+      "id": "a38213db-8907-42d1-bdf0-2ad571515041",
+      "brand": "The Face Shop",
+      "name": "Dr. Belmeur Advanced Cica Recovery Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "a3b42ab4-5967-4208-a59c-843c838bed18",
+      "brand": "Laneige",
+      "name": "Cream Skin Toner & Moisturizer",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 1600
+    },
+    {
+      "id": "a41796ac-18a4-40f2-886f-db404d3d13c5",
+      "brand": "Biodance",
+      "name": "Miracle Overnight Mask",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "a4c724fc-6dba-4df3-a9aa-903396bd4d3b",
+      "brand": "Hanyul",
+      "name": "Yoja Sleeping Mask",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "a5b742ef-11a1-49a9-80df-3d64f604d0cc",
+      "brand": "Torriden",
+      "name": "DIVE-IN Cleansing Foam",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 940
+    },
+    {
+      "id": "a5c476c6-3b47-424f-89fe-584a5bf6710e",
+      "brand": "The History of Whoo",
+      "name": "Bichup Moisture Anti-Aging Mask",
+      "category": "mask",
+      "rating_avg": 4.6,
+      "review_count": 2200
+    },
+    {
+      "id": "a61453a4-3304-481e-afa7-b92c9b4873cf",
+      "brand": "Medicube",
+      "name": "Red Erasing Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 5600
+    },
+    {
+      "id": "a61ad761-e19d-46e5-bfa0-8c823dc69b13",
+      "brand": "Anua",
+      "name": "Peach 70% Niacin Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "a65608f6-281f-4252-8527-a49bc66779ff",
+      "brand": "Aestura",
+      "name": "Theracne 365 Clear pH Balancing Gel Cleanser",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "a6c0ab59-555a-4945-aaa2-db20b969e995",
+      "brand": "COSRX",
+      "name": "AC Collection Blemish Spot Clearing Serum",
+      "category": "spot_treatment",
+      "rating_avg": 4.5,
+      "review_count": 6800
+    },
+    {
+      "id": "a9940f94-b3da-4838-a2f5-4b78d55ccabb",
+      "brand": "Neogen",
+      "name": "Dermalogy Real Vita C Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "a9a607b5-88af-4dbc-bf1b-36ff903ceb7d",
+      "brand": "The Face Shop",
+      "name": "Yehwadam Hwansaenggo Rejuvenating Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "a9c1f9d1-7181-4f34-8251-591b2520b029",
+      "brand": "Heimish",
+      "name": "Bulgarian Rose Satin Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "a9ee97fa-7d41-43d5-8e45-77b5f1fa1ef9",
+      "brand": "Secret Key",
+      "name": "Snail + EGF Repairing Gel Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.4,
+      "review_count": 3800
+    },
+    {
+      "id": "aa17fd0e-ec6a-47a4-a791-129923fda93f",
+      "brand": "Abib",
+      "name": "Acne Foam Cleanser Heartleaf",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 4800
+    },
+    {
+      "id": "aaac8c85-5100-4ae6-a267-51db35e96f2e",
+      "brand": "Sidmool",
+      "name": "Royal Honey Peptide Deep Moisture Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 2200
+    },
+    {
+      "id": "ab148701-cf8b-48e9-b00b-35ae822aadd2",
+      "brand": "KAHI",
+      "name": "Extin C Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "ab3f2b8c-5e30-48b4-afa7-98fc728c2429",
+      "brand": "SKIN1004",
+      "name": "Hyalu-Cica Water-Fit Sun Serum SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.7,
+      "review_count": 3400
+    },
+    {
+      "id": "abbfcffc-0785-4d2d-aadd-de0598af5cdd",
+      "brand": "Sulwhasoo",
+      "name": "Snowise Brightening Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 2200
+    },
+    {
+      "id": "acb9e57c-528f-481e-a034-30d0a0872a73",
+      "brand": "MISSHA",
+      "name": "Super Aqua Cell Renew Snail Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 5200
+    },
+    {
+      "id": "acda30d5-c614-411a-a2af-86959be276fa",
+      "brand": "Klairs",
+      "name": "Rich Moist Soothing Tencel Sheet Mask",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 2200
+    },
+    {
+      "id": "ad0aa2b0-91c5-4eac-906b-d54d40d77a84",
+      "brand": "Skin&Lab",
+      "name": "Vitamin C Brightening Serum",
+      "category": "serum",
+      "rating_avg": 4.4,
+      "review_count": 2800
+    },
+    {
+      "id": "ad54cf16-ade6-49f6-bc75-c8adf4dbefa4",
+      "brand": "CNP Laboratory",
+      "name": "Dual-Balance Waterlock Lotion",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 4100
+    },
+    {
+      "id": "add1c864-7082-41b5-a618-d219e41a63fb",
+      "brand": "Hanyul",
+      "name": "Rice Essential Skin Softening Toner",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "afb269bc-b505-4519-bf88-f4d3cc114b9c",
+      "brand": "Numbuzin",
+      "name": "No.5 Vitamin-Niacinamide Concentrated Pad",
+      "category": "exfoliator",
+      "rating_avg": 4.6,
+      "review_count": 6800
+    },
+    {
+      "id": "afeb6ff6-6a2e-4d6c-9109-b5387d35b74e",
+      "brand": "Real Barrier",
+      "name": "Control-T Moisturizer",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "b07d9748-bd67-4f5d-a7c9-1820743773ce",
+      "brand": "Sioris",
+      "name": "Time Is Running Out Mist",
+      "category": "mist",
+      "rating_avg": 4.6,
+      "review_count": 4200
+    },
+    {
+      "id": "b07e6191-64bd-4353-bdc5-60e606086800",
+      "brand": "Medicube",
+      "name": "Triple Collagen Toner 4.0",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 5400
+    },
+    {
+      "id": "b07ec842-7b97-4be2-a460-bb415fe15422",
+      "brand": "d'Alba",
+      "name": "White Truffle Anti Wrinkle Eye Cream",
+      "category": "eye_care",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "b08ee8c2-f661-4c5b-94af-04193fea5c6e",
+      "brand": "KAHI",
+      "name": "Real Pearl Collagen Mist",
+      "category": "mist",
+      "rating_avg": 4.4,
+      "review_count": 2800
+    },
+    {
+      "id": "b111d7f4-9172-4036-adab-9ba1d4af6dc4",
+      "brand": "Benton",
+      "name": "Honest Cleansing Foam",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "b3151c98-ad9f-4440-8c9c-990fafda8623",
+      "brand": "MISSHA",
+      "name": "Glow Skin Balm",
+      "category": "moisturizer",
+      "rating_avg": 4.4,
+      "review_count": 2800
+    },
+    {
+      "id": "b3e8d67d-830f-4e51-bdcc-9d4882601a60",
+      "brand": "Holika Holika",
+      "name": "Gold Kiwi Vita C+ Brightening Serum",
+      "category": "serum",
+      "rating_avg": 4.4,
+      "review_count": 3800
+    },
+    {
+      "id": "b474f183-f95c-4a1d-9f29-1ae13a8e33bc",
+      "brand": "Some By Mi",
+      "name": "Super Matcha Pore Clean Cleansing Gel",
+      "category": "cleanser",
+      "rating_avg": 4.4,
+      "review_count": 4200
+    },
+    {
+      "id": "b4a3596b-187d-488f-974f-89911c127b62",
+      "brand": "Some By Mi",
+      "name": "Retinol Intense Reactivating Serum",
+      "category": "serum",
+      "rating_avg": 4.4,
+      "review_count": 3800
+    },
+    {
+      "id": "b5294d45-20d5-45cd-ac5a-548652930052",
+      "brand": "Numbuzin",
+      "name": "No.1 Pure-Fit Cica Calming Toner",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "b541e71c-7dcc-4f86-95cf-1e37f28bc547",
+      "brand": "SNP",
+      "name": "Bird Nest Moisture Mask",
+      "category": "mask",
+      "rating_avg": 4.4,
+      "review_count": 5600
+    },
+    {
+      "id": "b6068479-f953-49bb-b560-a9e29fdae8c8",
+      "brand": "Hanyul",
+      "name": "Pure Artemisia Cleansing Foam",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "b6264665-ac77-456c-91c5-e4c63b102797",
+      "brand": "Torriden",
+      "name": "Balanceful Cica Calming Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "b6793182-d2b8-4a58-815e-af9db433247a",
+      "brand": "COSRX",
+      "name": "Pure Fit Cica Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "b7220f50-346e-4f81-9dc9-dd4405f2dd21",
+      "brand": "Neogen",
+      "name": "Probiotics Youth Repair Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "b7374451-f62d-4e7d-8f6a-dba02bed86fc",
+      "brand": "Skinfood",
+      "name": "Royal Honey 100 Hour Moisture Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "b7c15677-503b-4050-bacc-f3ab0ce9ecd5",
+      "brand": "Dr. Jart+",
+      "name": "Vital Hydra Solution Capsule Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "b7f040ab-1761-48c4-a9da-ef8d14b88ff3",
+      "brand": "It's Skin",
+      "name": "Collagen Nutrition Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.4,
+      "review_count": 2800
+    },
+    {
+      "id": "b8d4c4ef-77d1-4415-bcaa-d337894360b7",
+      "brand": "Aestura",
+      "name": "Theracne 365 Spot Treatment",
+      "category": "spot_treatment",
+      "rating_avg": 4.4,
+      "review_count": 3100
+    },
+    {
+      "id": "b9c759d7-96da-486f-a831-da9bc3e9b6b8",
+      "brand": "Nacific",
+      "name": "Uyu Cream (Milk Cream)",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "babb8015-9d8d-4623-b623-e332220b7b26",
+      "brand": "Mizon",
+      "name": "Good Night White Sleeping Mask",
+      "category": "mask",
+      "rating_avg": 4.4,
+      "review_count": 5600
+    },
+    {
+      "id": "bb7ae8fa-f369-4b20-975c-e0b7f3cc2a47",
+      "brand": "I'm From",
+      "name": "Mugwort Essence",
+      "category": "essence",
+      "rating_avg": 4.7,
+      "review_count": 1900
+    },
+    {
+      "id": "bc649eb1-2555-4495-997e-5e400101a9c9",
+      "brand": "TIRTIR",
+      "name": "Ceramic Milk Ampoule Toner",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "bcbc7f58-12c2-4ff1-8c53-0194e27aaea6",
+      "brand": "Thank You Farmer",
+      "name": "Back To Iceland Cleansing Water",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "bceecfe0-ebb8-404a-8ca6-e53151e4cd85",
+      "brand": "Round Lab",
+      "name": "1025 Dokdo Lotion",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 5800
+    },
+    {
+      "id": "bd3d10f6-ff23-459d-a2d6-cd9a1e968b38",
+      "brand": "Atopalm",
+      "name": "MLE Lotion",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 5800
+    },
+    {
+      "id": "bed608a2-f1df-42aa-acef-928a3f1cab9b",
+      "brand": "HERA",
+      "name": "Signia Deluxe Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 2200
+    },
+    {
+      "id": "bf24d91b-2a34-43f7-9554-87de0d56ec86",
+      "brand": "Pyunkang Yul",
+      "name": "Calming Moisture Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "bf5cf309-ab62-4cbe-b5fa-8aaa1f9dc26c",
+      "brand": "Bioderma",
+      "name": "Atoderm Intensive Baume",
+      "category": "moisturizer",
+      "rating_avg": 4.7,
+      "review_count": 6400
+    },
+    {
+      "id": "bfadb0bb-3df3-4f9f-8426-8db0f2359b31",
+      "brand": "Atopalm",
+      "name": "Intensive Moisturizing Balm",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3200
+    },
+    {
+      "id": "c102e49a-2cbf-41b2-81f4-9cbf30f9a9fe",
+      "brand": "Etude",
+      "name": "SoonJung 10-Free Moist Emulsion",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 5200
+    },
+    {
+      "id": "c11ffc52-9bd4-42fe-a44b-6b6ddca6d667",
+      "brand": "Laneige",
+      "name": "Water Bank Blue Hyaluronic Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "c17a8ce1-5f15-4e4e-a727-0a1a164cb076",
+      "brand": "Klairs",
+      "name": "Midnight Blue Youth Activating Drop",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "c1838995-0c42-4081-a9b8-7125ae14887a",
+      "brand": "su:m37°",
+      "name": "Water-Full Timeless Water Gel Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 4200
+    },
+    {
+      "id": "c1b2d916-72ca-47c8-aaed-9362c777c219",
+      "brand": "Nacific",
+      "name": "Fresh Herb Origin Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 6200
+    },
+    {
+      "id": "c279058d-3272-45c8-9013-878bf578e226",
+      "brand": "OHUI",
+      "name": "Cell Power No.1 Essence",
+      "category": "essence",
+      "rating_avg": 4.6,
+      "review_count": 2200
+    },
+    {
+      "id": "c279996b-e821-4c19-8950-6a192b3d952d",
+      "brand": "Heimish",
+      "name": "All Clean Low pH AHA/PHA Hydro Vegan Essence",
+      "category": "essence",
+      "rating_avg": 4.4,
+      "review_count": 3200
+    },
+    {
+      "id": "c423a77b-9a0e-4173-8ded-5dc9b2c1e126",
+      "brand": "Bioderma",
+      "name": "Cicabio Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "c4d80a6d-5238-409a-afd6-b152a0aaf748",
+      "brand": "Klairs",
+      "name": "Mid-Day Blue UV Shield SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "c534ea4d-32ee-4c1d-8f26-ed68b61b1860",
+      "brand": "Benton",
+      "name": "Deep Green Tea Lotion",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "c59a0732-61d1-4a38-8beb-89349f710891",
+      "brand": "Neogen",
+      "name": "Bio-Peel Gauze Peeling Green Tea",
+      "category": "exfoliator",
+      "rating_avg": 4.6,
+      "review_count": 5800
+    },
+    {
+      "id": "c63f4644-8674-45c0-aab5-3d1e092b263a",
+      "brand": "Klairs",
+      "name": "Rich Moist Soothing Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 5800
+    },
+    {
+      "id": "c7d7c9d0-5245-42c3-8af5-d954bd783178",
+      "brand": "Torriden",
+      "name": "SOLID-IN Ceramide Moisturizing Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 780
+    },
+    {
+      "id": "c86affe7-71ca-48fb-82e4-cd68e3a3026f",
+      "brand": "It's Skin",
+      "name": "Green Tea Watery Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.4,
+      "review_count": 3800
+    },
+    {
+      "id": "cc19673a-1841-484d-85fc-f1a40dd7efb7",
+      "brand": "The History of Whoo",
+      "name": "Gongjinhyang Mi Luxury BB SPF20 PA++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "ccf497a9-a358-4eb1-a508-04f08a72afe6",
+      "brand": "SNP",
+      "name": "Gold Collagen Ampoule Mask",
+      "category": "mask",
+      "rating_avg": 4.4,
+      "review_count": 4200
+    },
+    {
+      "id": "cddf97ab-434d-4def-8b1e-483b8aedbb62",
+      "brand": "TonyMoly",
+      "name": "Wonder Ceramide Mochi Toner",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "ce116e34-afef-416e-bd17-a052ede2357a",
+      "brand": "OHUI",
+      "name": "Miracle Moisture Cleansing Foam",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "cee26099-98d8-4695-9b9c-97ca4666e575",
+      "brand": "Goodal",
+      "name": "Houttuynia Cordata Calming Essence",
+      "category": "essence",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "d2a8035e-291e-4204-b758-4b0d75fe5a87",
+      "brand": "su:m37°",
+      "name": "Bright Award Bubble-De Mask",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 4800
+    },
+    {
+      "id": "d2bafdcf-cfdc-4b38-ae07-6d5638f4bd25",
+      "brand": "Goodal",
+      "name": "Heartleaf Calming Moisture Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 4600
+    },
+    {
+      "id": "d6ea49ee-e7e7-4ce0-aa7a-17741a60a28f",
+      "brand": "Mamonde",
+      "name": "Floral Hydro Eye Gel Cream",
+      "category": "eye_care",
+      "rating_avg": 4.4,
+      "review_count": 2800
+    },
+    {
+      "id": "d792155e-0b14-4aa2-942d-62d7d02361e4",
+      "brand": "Aromatica",
+      "name": "Reviving Rose Infusion Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "d7f74e81-66a6-4d85-bd55-848a864e4133",
+      "brand": "Frudia",
+      "name": "Citrus Brightening Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "d82a1c97-9e45-41cc-bbea-757d5a28693a",
+      "brand": "Frudia",
+      "name": "Green Grape Pore Control Toner",
+      "category": "toner",
+      "rating_avg": 4.4,
+      "review_count": 4800
+    },
+    {
+      "id": "d95d1692-5764-43f3-9725-0b8f890e3714",
+      "brand": "I'm From",
+      "name": "Fig Cleansing Balm",
+      "category": "cleanser",
+      "rating_avg": 4.6,
+      "review_count": 3200
+    },
+    {
+      "id": "d9c8140b-6515-4ee9-8619-31733b1b08c1",
+      "brand": "AmorePacific",
+      "name": "Vintage Single Extract Essence",
+      "category": "essence",
+      "rating_avg": 4.7,
+      "review_count": 4200
+    },
+    {
+      "id": "d9f68719-55b5-403d-9564-218b938efae7",
+      "brand": "Espoir",
+      "name": "Water Splash Sun Cream SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "da00f0d2-50ef-4c36-92c1-b2dd4cf140aa",
+      "brand": "iUNIK",
+      "name": "Calendula Complete Cleansing Oil",
+      "category": "cleanser",
+      "rating_avg": 4.6,
+      "review_count": 3900
+    },
+    {
+      "id": "da06d8fd-89b8-4761-9a35-28ed328a4893",
+      "brand": "Atopalm",
+      "name": "Daytime Under Makeup Moisture Cream SPF30",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "da1d31f3-9081-44c9-b083-d3793d82db9c",
+      "brand": "Dr.G",
+      "name": "R.E.D Blemish Clear Soothing Toner",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 5600
+    },
+    {
+      "id": "da43a622-702e-41eb-96ab-dab7f5be3082",
+      "brand": "Thank You Farmer",
+      "name": "Sun Project Water Sun Cream SPF50+ PA+++",
+      "category": "sunscreen",
+      "rating_avg": 4.6,
+      "review_count": 6800
+    },
+    {
+      "id": "da8f4759-4328-4c0e-9a8a-c03c2134b5ba",
+      "brand": "The Face Shop",
+      "name": "Herb Day 365 Master Blending Cleansing Foam",
+      "category": "cleanser",
+      "rating_avg": 4.3,
+      "review_count": 7800
+    },
+    {
+      "id": "dae12afa-8d6b-46df-9cc9-39ef43bce674",
+      "brand": "Aestura",
+      "name": "A-Cica 365 Calming Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.7,
+      "review_count": 6100
+    },
+    {
+      "id": "db68a205-ca87-4148-91db-4d5f9029779c",
+      "brand": "Haruharu Wonder",
+      "name": "Black Rice Hyaluronic Anti-Wrinkle Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "dc15dec5-e5a2-4681-ad23-815f89500017",
+      "brand": "Torriden",
+      "name": "DIVE-IN Cleansing Water",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "dc77a2cf-f8f0-491b-9c08-6d628967a5ca",
+      "brand": "Mamonde",
+      "name": "Petal Spa Oil To Foam",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "de179315-d7d1-404e-bd59-ff73e28d2e35",
+      "brand": "Mizon",
+      "name": "Snail Repair Eye Cream",
+      "category": "eye_care",
+      "rating_avg": 4.5,
+      "review_count": 5800
+    },
+    {
+      "id": "de933d6e-133a-4d8b-a55d-bffec73cf456",
+      "brand": "The History of Whoo",
+      "name": "Cheongidan Radiant Regenerating Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.7,
+      "review_count": 2200
+    },
+    {
+      "id": "df87ebe9-023d-4a29-9cda-f2a72943ad4e",
+      "brand": "Dr. Jart+",
+      "name": "Ceramidin Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 4200
+    },
+    {
+      "id": "e0184ef6-c2b2-4d4c-b132-7e4a58b5162b",
+      "brand": "Beauty of Joseon",
+      "name": "Dynasty Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.7,
+      "review_count": 3100
+    },
+    {
+      "id": "e02630ac-cd76-4f56-8500-6798e625da2f",
+      "brand": "Round Lab",
+      "name": "Pine Calming Cica Sleeping Mask",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "e0ae5107-adaa-4401-b1dd-c6d3a2ebf2f4",
+      "brand": "Mary&May",
+      "name": "6 Peptide Complex Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "e0b818b5-a45c-4489-a9ef-2c60f1f0f6ae",
+      "brand": "COSRX",
+      "name": "Propolis Light Ampule",
+      "category": "ampoule",
+      "rating_avg": 4.6,
+      "review_count": 1400
+    },
+    {
+      "id": "e107170e-ac3b-4acd-bca0-bc50ae2d9751",
+      "brand": "Pyunkang Yul",
+      "name": "Calming Deep Moisture Toner",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 4200
+    },
+    {
+      "id": "e1b4d9c0-d456-445d-9987-af0dfe7d5b43",
+      "brand": "Abib",
+      "name": "Mild Acidic pH Sheet Mask Heartleaf Fit",
+      "category": "mask",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "e1be9577-e19f-4fcb-b7a9-0842a6990bd6",
+      "brand": "Some By Mi",
+      "name": "Yuja Niacin 30 Days Brightening Toner",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 4800
+    },
+    {
+      "id": "e23ae0e7-139e-4800-9f58-2d604aea55ab",
+      "brand": "Rovectin",
+      "name": "Clean Lotus Water Calming Toner",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 4200
+    },
+    {
+      "id": "e2697d2f-9e55-4fa8-8101-c19bdef854c4",
+      "brand": "Mamonde",
+      "name": "Enriched Nutri Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "e2df95f3-81bf-44d8-ac70-22250761cf54",
+      "brand": "Atopalm",
+      "name": "Soothing Gel Lotion",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "e345a6ab-921f-4da9-965f-50e2638d5b16",
+      "brand": "Dewytree",
+      "name": "Ultra Vitalizing Snail Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3400
+    },
+    {
+      "id": "e43456a3-8091-493c-9d8f-80cc53003d72",
+      "brand": "Innisfree",
+      "name": "Intensive Hydrating Serum with Green Tea Seed",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "e5b54608-45c7-4b54-ab83-aebf5865682c",
+      "brand": "Mizon",
+      "name": "Black Snail All In One Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "e61c0ad6-e837-4e6b-97f9-047182b5fdca",
+      "brand": "Dr. Jart+",
+      "name": "Dermask Micro Jet Brightening Solution",
+      "category": "mask",
+      "rating_avg": 4.5,
+      "review_count": 5800
+    },
+    {
+      "id": "e63fec6a-d5db-4e5d-b0bd-914597535377",
+      "brand": "Isntree",
+      "name": "Spot Saver Mugwort Ampoule",
+      "category": "ampoule",
+      "rating_avg": 4.5,
+      "review_count": 3600
+    },
+    {
+      "id": "e667cbab-14a6-483d-9a74-f8130a391874",
+      "brand": "Secret Key",
+      "name": "Hyaluron Aqua Micro Peel Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.3,
+      "review_count": 3200
+    },
+    {
+      "id": "e6d6544f-8f7c-449b-873b-4b75b7c4020f",
+      "brand": "Holika Holika",
+      "name": "Skin & Good Cera Ultra Emulsion",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "e8ee9bfc-d8c2-40dd-8826-2967ef631b37",
+      "brand": "Laka",
+      "name": "Bonding Lip Oil",
+      "category": "lip_care",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "e9341fb4-c8c2-4efd-9ca1-7504a0fd7d67",
+      "brand": "The Face Shop",
+      "name": "Rice Water Bright Foaming Cleanser",
+      "category": "cleanser",
+      "rating_avg": 4.4,
+      "review_count": 9800
+    },
+    {
+      "id": "e9498a6f-273f-44f2-8c4d-ea2c27caa0e8",
+      "brand": "Goodal",
+      "name": "Vegan Rice Milk Moisturizing Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.4,
+      "review_count": 3600
+    },
+    {
+      "id": "e9519569-e600-46b8-9cf2-39892f695155",
+      "brand": "Heimish",
+      "name": "Matcha Biome Redness Relief Hydrating Toner",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 5400
+    },
+    {
+      "id": "e9a66b12-6f3d-457f-9ab9-f25c5ac317b5",
+      "brand": "Medicube",
+      "name": "Zero Pore Serum",
+      "category": "serum",
+      "rating_avg": 4.4,
+      "review_count": 4800
+    },
+    {
+      "id": "e9ea52b2-e1b3-454a-8697-53bc5bb9f957",
+      "brand": "d'Alba",
+      "name": "White Truffle Vital Spray Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "e9ed7b46-fc42-43b6-967c-a5268bd61772",
+      "brand": "Anua",
+      "name": "Heartleaf Quercetinol Pore Deep Cleansing Foam",
+      "category": "cleanser",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "e9f44bd4-f794-4a18-8bd6-0a47d59b8d0e",
+      "brand": "Illiyoon",
+      "name": "Ceramide Ato 6.0 Top to Toe Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.7,
+      "review_count": 4800
+    },
+    {
+      "id": "eb87ce8c-9b80-405a-a10b-55630ead53c1",
+      "brand": "Klairs",
+      "name": "Supple Preparation All-Over Lotion",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "ec8c5308-149d-4d2c-b323-e304c3002d4c",
+      "brand": "Sulwhasoo",
+      "name": "Concentrated Ginseng Renewing Serum",
+      "category": "serum",
+      "rating_avg": 4.7,
+      "review_count": 4800
+    },
+    {
+      "id": "ed1a4652-64b6-4f77-8a0c-2ccb54975ab9",
+      "brand": "Papa Recipe",
+      "name": "White Flower Clear Up Enzyme Powder Cleanser",
+      "category": "cleanser",
+      "rating_avg": 4.4,
+      "review_count": 3200
+    },
+    {
+      "id": "ed312451-fb2b-4b22-a361-b63754b2ea16",
+      "brand": "Isntree",
+      "name": "Yam Root Vegan Milk Toner",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "edccfbda-d04b-44f3-a3e8-42fe4908b014",
+      "brand": "Mamonde",
+      "name": "Red Energy Recovery Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "eebe79da-c2c1-442c-ad53-fa1fec557167",
+      "brand": "Nature Republic",
+      "name": "Good Skin Ampoule Hyaluronic Acid",
+      "category": "ampoule",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "ef6d63eb-97a1-49bf-ae46-f74c0d6d7ecd",
+      "brand": "Nacific",
+      "name": "Real Floral Toner Rose",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 4800
+    },
+    {
+      "id": "ef7382b5-0002-4f06-9845-cd5580bac4f9",
+      "brand": "Real Barrier",
+      "name": "Cicarelief Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.7,
+      "review_count": 6200
+    },
+    {
+      "id": "efcc916e-292b-4afe-a6e6-1a8b6030c527",
+      "brand": "Romand",
+      "name": "Glasting Melting Balm",
+      "category": "lip_care",
+      "rating_avg": 4.6,
+      "review_count": 5800
+    },
+    {
+      "id": "eff17242-df12-44c1-8b18-6de00aca4748",
+      "brand": "MISSHA",
+      "name": "M Perfect Cover BB Cream SPF42 PA+++",
+      "category": "sunscreen",
+      "rating_avg": 4.4,
+      "review_count": 3200
+    },
+    {
+      "id": "f0846c3a-731f-43eb-8d2c-641d15689f7c",
+      "brand": "Torriden",
+      "name": "DIVE-IN Low Molecular Hyaluronic Acid Pad",
+      "category": "exfoliator",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "f132cc5d-4d9f-487e-b5b4-4b70dd6bf061",
+      "brand": "Heimish",
+      "name": "Moringa Cleansing Balm",
+      "category": "cleanser",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "f15f5eb0-5638-4222-aeac-9f88a6f466ca",
+      "brand": "Beauty of Joseon",
+      "name": "Glow Deep Serum: Rice + Alpha-Arbutin",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 5800
+    },
+    {
+      "id": "f1af8629-c9a2-4933-bff6-3860c8561605",
+      "brand": "iUNIK",
+      "name": "Noni Light Oil Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "f1ef3772-fb61-4c0c-9517-a09ad220d573",
+      "brand": "KAHI",
+      "name": "Wrinkle Bounce Collagen Mist",
+      "category": "mist",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "f2452824-63df-4885-93de-b4752dfa7a1f",
+      "brand": "Medicube",
+      "name": "PDRN Pink Peptide Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 5600
+    },
+    {
+      "id": "f2763ac5-232d-42f5-8f03-1d50ee952c65",
+      "brand": "iUNIK",
+      "name": "Black Snail Restore Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "f2840303-7e74-4c19-aa4a-a748fa4bd5fc",
+      "brand": "Frudia",
+      "name": "Ultra UV Shield Sun Essence SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.4,
+      "review_count": 4200
+    },
+    {
+      "id": "f2948d93-6674-45dc-af27-545edfd4712d",
+      "brand": "Goodal",
+      "name": "Green Tangerine Vita C Dark Spot Care Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.5,
+      "review_count": 6200
+    },
+    {
+      "id": "f29789de-b3e6-4cd9-b5c9-124e349d89bb",
+      "brand": "Laneige",
+      "name": "Water Bank Blue Hyaluronic Essence",
+      "category": "essence",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "f2f9b654-7394-4338-9ba4-fc8edfe703d3",
+      "brand": "Nacific",
+      "name": "Fresh Herb Origin Cleansing Oil",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "f30b69cc-3996-4f00-b0da-abb35f8b88c3",
+      "brand": "COSRX",
+      "name": "Full Fit Propolis Synergy Toner",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 1100
+    },
+    {
+      "id": "f4382b3d-b031-43c6-b357-cbd670c6ba9c",
+      "brand": "Banila Co",
+      "name": "Clean It Zero Pore Clarifying Foam Cleanser",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "f54175e6-f396-4ea5-83fc-c5d9bf8d4778",
+      "brand": "The Face Shop",
+      "name": "Yehwadam Plum Flower Revitalizing Serum",
+      "category": "serum",
+      "rating_avg": 4.4,
+      "review_count": 2800
+    },
+    {
+      "id": "f5d85fba-aa62-4a8c-b872-2e1c6b3b232e",
+      "brand": "HERA",
+      "name": "Cell Essence",
+      "category": "essence",
+      "rating_avg": 4.6,
+      "review_count": 4200
+    },
+    {
+      "id": "f6d3b61b-011f-43b2-bbe0-0217a1131ce4",
+      "brand": "MISSHA",
+      "name": "Bee Pollen Renew Ampouler",
+      "category": "ampoule",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    },
+    {
+      "id": "f7566a07-fed6-4cd6-a960-ba29feee80cd",
+      "brand": "Frudia",
+      "name": "Blueberry Hydrating Serum",
+      "category": "serum",
+      "rating_avg": 4.5,
+      "review_count": 3800
+    },
+    {
+      "id": "f8178b9e-e019-4065-a743-44777679b258",
+      "brand": "Isntree",
+      "name": "Green Tea Fresh Toner",
+      "category": "toner",
+      "rating_avg": 4.6,
+      "review_count": 6800
+    },
+    {
+      "id": "f81a92a7-c7f5-43eb-8277-310ba0819d4b",
+      "brand": "Bioderma",
+      "name": "Sensibio Defensive Rich Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 4800
+    },
+    {
+      "id": "fa3fc092-c5ba-42f4-9b55-d3c241f5e822",
+      "brand": "Laka",
+      "name": "Soothing Vegan Sun Cream SPF50+ PA++++",
+      "category": "sunscreen",
+      "rating_avg": 4.5,
+      "review_count": 2800
+    },
+    {
+      "id": "fa908d64-5b5d-4d30-ad7b-720bd2c06847",
+      "brand": "Espoir",
+      "name": "Colorful Nude Lip Pencil",
+      "category": "lip_care",
+      "rating_avg": 4.4,
+      "review_count": 2800
+    },
+    {
+      "id": "fd799784-b7a3-4717-af50-aa2ea5947466",
+      "brand": "Round Lab",
+      "name": "1025 Dokdo Cleansing Oil",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 4200
+    },
+    {
+      "id": "fd7b8b43-3d2f-43cd-a569-b5bb7a7e3317",
+      "brand": "OHUI",
+      "name": "Age Recovery Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 2800
+    },
+    {
+      "id": "fdeb45e3-a038-4a47-a145-0789017c7258",
+      "brand": "Jumiso",
+      "name": "Waterfull Hyaluronic Cream",
+      "category": "moisturizer",
+      "rating_avg": 4.6,
+      "review_count": 4200
+    },
+    {
+      "id": "fe232508-5604-474c-b535-b3919d90eb35",
+      "brand": "Mary&May",
+      "name": "Wash Off Pack Lemon Niacinamide Glow",
+      "category": "mask",
+      "rating_avg": 4.6,
+      "review_count": 5200
+    },
+    {
+      "id": "fe3a3571-aeb7-45fd-863c-c1f0d8b718fc",
+      "brand": "AmorePacific",
+      "name": "Moisture Bound Hydration Intense Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 2200
+    },
+    {
+      "id": "fe875b25-d1ae-479c-8d3c-0a9c840396b6",
+      "brand": "Thank You Farmer",
+      "name": "True Water Deep Serum",
+      "category": "serum",
+      "rating_avg": 4.6,
+      "review_count": 3800
+    },
+    {
+      "id": "feae8e11-e369-4a66-886d-e475d3e7562e",
+      "brand": "VT Cosmetics",
+      "name": "Cica Mild Toner",
+      "category": "toner",
+      "rating_avg": 4.5,
+      "review_count": 5200
+    },
+    {
+      "id": "ff3057ee-0740-47f4-97b6-c31916821dd8",
+      "brand": "Dewytree",
+      "name": "AC Dew Blemish Spot",
+      "category": "spot_treatment",
+      "rating_avg": 4.3,
+      "review_count": 2600
+    },
+    {
+      "id": "ffc64cff-51bd-4970-b17b-b654bd6f8f7b",
+      "brand": "Round Lab",
+      "name": "Soybean Nourishing Cleansing Oil",
+      "category": "cleanser",
+      "rating_avg": 4.5,
+      "review_count": 3200
+    }
+  ],
+  "countOnly": [
+    {
+      "id": "1641e43c-713a-463d-9ab3-00ac7c642636",
+      "brand": "Holika Holika",
+      "name": "Good Cera Super Ceramide Cream",
+      "category": "moisturizer",
+      "rating_avg": 3,
+      "review_count": 7201,
+      "member_reviews": 1
+    },
+    {
+      "id": "1ad9fa3f-76e2-4f24-9569-b91dab00b22e",
+      "brand": "Bioderma",
+      "name": "Sensibio H2O Micellar Water",
+      "category": "cleanser",
+      "rating_avg": 5,
+      "review_count": 15201,
+      "member_reviews": 1
+    },
+    {
+      "id": "1cd3fca6-80c0-4881-9c4f-3e76f11e1582",
+      "brand": "Medicube",
+      "name": "Exosome Shot PDRN Pink Collagen 2000 Serum",
+      "category": "ampoule",
+      "rating_avg": 5,
+      "review_count": 7201,
+      "member_reviews": 1
+    },
+    {
+      "id": "4877cdec-dedb-4678-b7e4-4c9c82cab345",
+      "brand": "CNP Laboratory",
+      "name": "Invisible Peeling Booster",
+      "category": "exfoliator",
+      "rating_avg": 5,
+      "review_count": 8901,
+      "member_reviews": 1
+    },
+    {
+      "id": "72273ec2-dd25-4e25-befa-d5c3f4fdfc5f",
+      "brand": "Innisfree",
+      "name": "Super Volcanic Pore Clay Mask 2X",
+      "category": "mask",
+      "rating_avg": 5,
+      "review_count": 8201,
+      "member_reviews": 1
+    },
+    {
+      "id": "776ef10e-568f-486e-b36a-f72324622ee4",
+      "brand": "Etude",
+      "name": "SoonJung pH 5.5 Relief Toner",
+      "category": "toner",
+      "rating_avg": 5,
+      "review_count": 7201,
+      "member_reviews": 1
+    },
+    {
+      "id": "8ee9b92f-5539-407b-a192-93d95ac78554",
+      "brand": "Dr.G",
+      "name": "Red Blemish Clear Soothing Cream",
+      "category": "moisturizer",
+      "rating_avg": 3,
+      "review_count": 12501,
+      "member_reviews": 1
+    },
+    {
+      "id": "afdce97d-30f5-49ed-8a7b-196c293e5ddb",
+      "brand": "AXIS-Y",
+      "name": "Dark Spot Correcting Glow Serum",
+      "category": "serum",
+      "rating_avg": 5,
+      "review_count": 8901,
+      "member_reviews": 1
+    },
+    {
+      "id": "dca4a38b-ea65-403b-a3fc-d3649f0f94db",
+      "brand": "Real Barrier",
+      "name": "Extreme Cream",
+      "category": "moisturizer",
+      "rating_avg": 5,
+      "review_count": 11501,
+      "member_reviews": 1
+    },
+    {
+      "id": "e548c2c2-6bdc-41e4-a529-20441919bbb2",
+      "brand": "Skinfood",
+      "name": "Black Sugar Honey Mask Wash Off",
+      "category": "mask",
+      "rating_avg": 5,
+      "review_count": 7601,
+      "member_reviews": 1
+    },
+    {
+      "id": "e6aba59e-984e-46c6-a873-c8f13f8d5ff0",
+      "brand": "I'm From",
+      "name": "Rice Toner",
+      "category": "toner",
+      "rating_avg": 5,
+      "review_count": 5199,
+      "member_reviews": 1
+    }
+  ]
+}

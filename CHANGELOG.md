@@ -4,6 +4,41 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.11 — Ratings and review counts typed in at launch are removed from the catalog (data correction, Nov 14 2026)
+
+- **What was wrong.** The February 2026 launch seed files gave products a star rating and a round
+  review count that came from no retailer and no member ("4.6 from 5,800 reviews"). They showed on
+  product pages, in structured data, on `/best`, to Yuri, and they ordered search results.
+- **Fixed, on the owner's approval** (`scripts/clear-seed-ratings.mjs`, rows picked by shape: created
+  Feb 17 or 19 2026, no retailer scrape behind them). 517 rows, each write guarded on the values read:
+  - 457 products with a seeded rating and count now show no rating.
+  - 11 products whose rating is one member review but whose count was still the seeded one
+    ("5.0 from 15,201 reviews") now show a count of 1. Seven of them were first on a `/best` page.
+  - 49 products with no rating but a seeded count (6,800 to 18,200) now show a count of 0. The
+    first pass required a rating and missed these; matching blog sentences to the catalog found them.
+- **Verified.** 0 launch-cohort rows carry a figure. Live: the Isntree Green Tea Fresh Emulsion page
+  publishes no rating, Bioderma Sensibio publishes 5.0 from 1 review, and `/best/cleansers` no longer
+  shows 15,201. Backups: `scripts/clear-seed-ratings-applied-2026-11-14T10-05-28-076Z.json` and
+  `...T15-55-29-756Z.json`.
+- **Cost to search, measured.** All 378 recorded searches were replayed before and after (two
+  identical runs showed no run-to-run variation). After the first 468 rows, 178 searches changed; in
+  23 a launch product left Yuri's top five. Most are reshuffles among relevant products and some are
+  better. One is worse: "SKIN1004 Hyalu-Cica Water-Fit Sun Serum" returns the Twin Pack first.
+  After the last 49 rows, replayed six hours later, 48 more searches differed (some of that may be
+  ordinary catalog change over those hours) and none lost one of the 49 from its top five. No
+  search went from results to none in either step.
+- **Tried and not shipped.** Ranking an unrated product at the 4.5 prior instead of zero in the two
+  search tiebreaks changed 167 more searches, brought no launch product back and moved sets and
+  double packs up. Reverted. No code changed in this release.
+
+**Open:**
+- 38 sentences in 18 published posts quote these figures exactly. Work order for LGAAS:
+  `LGAAS-WORK-ORDER-BLOG-SEEDED-REVIEW-FIGURES.md`. Only one sentence shape was searched.
+- Only 37 of these products have an Olive Young US link, so real figures cannot be fetched for most.
+- Products whose only review is an insider's now publish "5.0 from 1 review" in structured data.
+- 549 scraped products have a real rating with a count of 0 (the listing page gives the rating, not
+  the count); 318 of them are 5.00. Not changed.
+
 ## v11.61.10 — 13 blog posts no longer claim first-hand use or experience (content correction, Nov 14 2026)
 
 - **What was wrong.** Every post is bylined "Seoul Sister Team" and was written by a model. Some
