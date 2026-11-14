@@ -7,15 +7,19 @@
  * Browse is now curated by default (phase + decision_memory + allergens),
  * so an algorithmic ingredient-effectiveness sort would compete with Yuri's
  * authority. This is the sixth Yuri Sole Authority Principle compliance
- * step in the codebase. Component now surfaces: search, category, and
- * ingredient include/exclude — additive filters on top of curation.
+ * step in the codebase. Component surfaces: search and category.
+ *
+ * The ingredient include/exclude, fragrance-free and comedogenic controls were
+ * removed Nov 14 2026. They had done nothing since v10.8.0 (May 22 2026): the
+ * Browse page kept their state and never sent it, and the curated endpoint
+ * read no ingredient parameters. A control that changes nothing is worse than
+ * none. Yuri's product search does filter by ingredient, so Browse links to her.
  *
  * The `sortBy` and `onSortChange` props are retained for backward
  * compatibility but currently unused; sort is always 'curated' from /browse.
  */
 
 import { Search, SlidersHorizontal, X } from 'lucide-react'
-import IngredientPicker from '@/components/products/IngredientPicker'
 import type { ProductCategory } from '@/types/database'
 
 const CATEGORIES: { value: ProductCategory; label: string }[] = [
@@ -40,38 +44,21 @@ interface ProductFiltersProps {
   category: string
   sortBy: string
   showFilters: boolean
-  includeIngredients: string[]
-  excludeIngredients: string[]
-  fragranceFree: boolean
-  comedogenicMax: number | null
   isAuthenticated?: boolean
   onQueryChange: (query: string) => void
   onCategoryChange: (category: string) => void
   onSortChange: (sort: string) => void
   onToggleFilters: () => void
-  onIncludeIngredientsChange: (ingredients: string[]) => void
-  onExcludeIngredientsChange: (ingredients: string[]) => void
-  onFragranceFreeChange: (value: boolean) => void
-  onComedogenicMaxChange: (value: number | null) => void
 }
 
 export default function ProductFilters({
   query,
   category,
   showFilters,
-  includeIngredients,
-  excludeIngredients,
-  fragranceFree,
-  comedogenicMax,
   onQueryChange,
   onCategoryChange,
   onToggleFilters,
-  onIncludeIngredientsChange,
-  onExcludeIngredientsChange,
-  onFragranceFreeChange,
-  onComedogenicMaxChange,
 }: ProductFiltersProps) {
-  const hasIngredientFilters = includeIngredients.length > 0 || excludeIngredients.length > 0 || fragranceFree || comedogenicMax !== null
 
   return (
     <div className="flex flex-col gap-3">
@@ -98,16 +85,13 @@ export default function ProductFilters({
         <button
           onClick={onToggleFilters}
           className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-            showFilters || category || hasIngredientFilters
+            showFilters || category
               ? 'bg-gold text-white'
               : 'bg-white/10 border border-white/20 text-white/80 hover:bg-white/15 hover:text-white'
           }`}
         >
           <SlidersHorizontal className="w-4 h-4" />
           <span className="hidden sm:inline">Filters</span>
-          {hasIngredientFilters && (
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          )}
         </button>
       </div>
 
@@ -143,18 +127,6 @@ export default function ProductFilters({
               ))}
             </div>
           </div>
-
-          {/* Ingredient filters */}
-          <IngredientPicker
-            includeIngredients={includeIngredients}
-            excludeIngredients={excludeIngredients}
-            fragranceFree={fragranceFree}
-            comedogenicMax={comedogenicMax}
-            onIncludeChange={onIncludeIngredientsChange}
-            onExcludeChange={onExcludeIngredientsChange}
-            onFragranceFreeChange={onFragranceFreeChange}
-            onComedogenicMaxChange={onComedogenicMaxChange}
-          />
         </div>
       )}
     </div>

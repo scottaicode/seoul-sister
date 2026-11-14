@@ -838,7 +838,7 @@ export default async function IngredientDetailPage({
                 {effectiveness.slice(0, 2).map((e, i) => (
                   <span key={`${e.skin_type}-${e.concern}`}>
                     {i > 0 && ' and '}
-                    <strong className="text-white">{e.skin_type} skin targeting {e.concern}</strong> ({Math.round(e.effectiveness_score * 100)}% positive)
+                    <strong className="text-white">{e.skin_type} skin targeting {e.concern}</strong> (editorial estimate {Math.round(e.effectiveness_score * 100)}%)
                   </span>
                 ))}.
                 {effectiveness.length > 2 && ` It also benefits ${effectiveness.slice(2).map(e => `${e.skin_type} skin for ${e.concern}`).join(', ')}.`}
@@ -866,7 +866,7 @@ export default async function IngredientDetailPage({
                       />
                     </div>
                     <p className="text-xs text-white/50 capitalize">
-                      For {e.concern} · {e.sample_size} reports
+                      For {e.concern} · editorial estimate
                     </p>
                   </div>
                 ))}
@@ -938,13 +938,13 @@ export default async function IngredientDetailPage({
                 <h2 className="font-display font-semibold text-lg text-white">
                   K-Beauty Products with {displayName}
                 </h2>
+                {/* This was a link to /products?include_ingredients=..., a filter
+                    that page has never read, so it opened the general product
+                    list. The count stays; the dead link is gone. */}
                 {productCount > 12 && (
-                  <Link
-                    href={`/products?include_ingredients=${encodeURIComponent(ingredient.name_inci)}`}
-                    className="text-amber-400 text-sm hover:underline"
-                  >
-                    View all {productCount.toLocaleString()} →
-                  </Link>
+                  <span className="text-white/40 text-sm">
+                    {productCount.toLocaleString()} in our catalog
+                  </span>
                 )}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

@@ -105,7 +105,7 @@ export default function CommunityInsights({ productIds, onEffectivenessData }: C
         <div className="flex items-center gap-2">
           <Beaker className="w-4 h-4 text-gold" strokeWidth={1.75} />
           <span className="text-xs font-medium text-white/70">
-            Community Insights for Your Skin
+            Ingredient Estimates for Your Skin Type
           </span>
         </div>
         <Link
@@ -137,7 +137,7 @@ export default function CommunityInsights({ productIds, onEffectivenessData }: C
                 {ing.concern}
               </span>
               <Link
-                href={`/products?include_ingredients=${encodeURIComponent(ing.ingredientName)}`}
+                href={`/yuri?ask=${encodeURIComponent(`Which products with ${ing.ingredientName} would suit me?`)}`}
                 className="text-gold-light hover:text-gold text-[10px] font-medium flex items-center gap-0.5"
               >
                 <Search className="w-2.5 h-2.5" />

@@ -91,7 +91,7 @@ async function ingredientDeepDive(supabase: ReturnType<typeof getServiceClient>)
   const ingredient = candidates[0] || ingredients[0]
   const effData = effective.filter(e => e.ingredient_id === ingredient.id)
   const effLines = effData.map(e =>
-    `- Skin type: ${e.skin_type}, Concern: ${e.concern}, Effectiveness: ${Math.round(e.effectiveness_score * 100)}% (${e.sample_size} reports)`
+    `- Skin type: ${e.skin_type}, Concern: ${e.concern}, Effectiveness: ${Math.round(e.effectiveness_score * 100)}% (Seoul Sister editorial estimate, not member reports)`
   ).join('\n')
 
   const slugName = (ingredient.name_en || ingredient.name_inci).toLowerCase().replace(/[^a-z0-9]+/g, '-')

@@ -171,5 +171,5 @@ function buildReasoning(
     )
   }
 
-  return `Contains ${parts.join(', ')} — proven for ${skinType} skin.`
+  return `Contains ${parts.join(', ')} (editorial estimates for ${skinType} skin).`
 }

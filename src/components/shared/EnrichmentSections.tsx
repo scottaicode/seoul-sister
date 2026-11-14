@@ -264,7 +264,10 @@ export function CommunityIntelligence({ data }: { data: CommunityData }) {
             <span className="text-[11px] text-white/50">
               Effectiveness
               {data.effectiveness_sample_size > 0 && (
-                <span className="text-white/30"> (n={data.effectiveness_sample_size})</span>
+                <span className="text-white/30">
+                  {/* Real member data (ss_product_effectiveness), unlike the ingredient estimates below. */}
+                  {' '}({data.effectiveness_sample_size} member {data.effectiveness_sample_size === 1 ? 'report' : 'reports'})
+                </span>
               )}
             </span>
             <div className="flex items-center gap-1.5">
@@ -369,7 +372,7 @@ export function IngredientInsights({ data }: { data: IngredientInsightsData }) {
                   {insight.ingredientName}
                 </p>
                 <p className="text-[10px] text-white/40">
-                  for {insight.concern} (n={insight.sampleSize})
+                  for {insight.concern} (editorial estimate)
                 </p>
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">

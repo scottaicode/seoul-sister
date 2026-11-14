@@ -83,14 +83,6 @@ function CuratedBrowseInner() {
   const [showFilters, setShowFilters] = useState(false)
   const [page, setPage] = useState(1)
 
-  // Filter state retained from v10.7.x for compatibility — UI still surfaces
-  // ingredient filters even on curated browse (additive on top of the
-  // phase-filter, not a replacement).
-  const [includeIngredients, setIncludeIngredients] = useState<string[]>([])
-  const [excludeIngredients, setExcludeIngredients] = useState<string[]>([])
-  const [fragranceFree, setFragranceFree] = useState(false)
-  const [comedogenicMax, setComedogenicMax] = useState<number | null>(null)
-
   const [data, setData] = useState<CuratedPayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -179,8 +171,6 @@ function CuratedBrowseInner() {
     )
   }
 
-  const hasIngredientFilters = includeIngredients.length > 0 || excludeIngredients.length > 0 || fragranceFree || comedogenicMax !== null
-
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 space-y-5 animate-fade-in">
       {/* Header */}
@@ -211,33 +201,31 @@ function CuratedBrowseInner() {
         )}
       </div>
 
-      {/* Filters — ingredient picker etc. still useful additively on top of curation */}
+      {/* Search and category. The ingredient controls that used to sit here
+          did nothing (see ProductFilters); ingredient questions go to Yuri,
+          whose search does filter by what a product contains. */}
       <ProductFilters
         query={query}
         category={category}
         sortBy="curated"
         showFilters={showFilters}
-        includeIngredients={includeIngredients}
-        excludeIngredients={excludeIngredients}
-        fragranceFree={fragranceFree}
-        comedogenicMax={comedogenicMax}
         isAuthenticated={!!user}
         onQueryChange={setQuery}
         onCategoryChange={setCategory}
         onSortChange={() => { /* sort is curated; ignore */ }}
         onToggleFilters={() => setShowFilters(!showFilters)}
-        onIncludeIngredientsChange={setIncludeIngredients}
-        onExcludeIngredientsChange={setExcludeIngredients}
-        onFragranceFreeChange={setFragranceFree}
-        onComedogenicMaxChange={setComedogenicMax}
       />
 
-      {/* Active ingredient filter summary */}
-      {!showFilters && hasIngredientFilters && (
-        <p className="text-[11px] text-white/40">
-          Ingredient filters are client-side only on curated browse for now. Open Filters to adjust.
-        </p>
-      )}
+      <p className="text-[11px] text-white/40">
+        Looking for products with, or without, a particular ingredient?{' '}
+        <Link
+          href={`/yuri?ask=${encodeURIComponent('I am looking for products with or without a certain ingredient: ')}`}
+          className="text-gold-light underline underline-offset-2"
+        >
+          Ask Yuri
+        </Link>
+        . Her search reads each product&apos;s ingredient list.
+      </p>
 
       {/* Error states */}
       {error && (

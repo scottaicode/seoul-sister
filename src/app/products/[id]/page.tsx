@@ -737,8 +737,7 @@ export default async function PublicProductPage({ params }: Props) {
                 Ingredient Effectiveness Data
               </h2>
               <p className="text-xs text-white/40 mb-3">
-                Editorial baseline from K-beauty clinical research and community
-                consensus. Real subscriber reports layer on as the community grows.
+                Seoul Sister&apos;s editorial estimates, not counts of member reports.
               </p>
               <div className="space-y-2">
                 {Array.from(effectivenessMap.entries()).slice(0, 5).map(([ingId, entries]) => {

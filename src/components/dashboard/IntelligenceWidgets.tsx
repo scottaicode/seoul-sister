@@ -149,7 +149,7 @@ export default function IntelligenceWidgets({ onRelevantTrendingIds }: Intellige
                     {ing.concern}
                   </span>
                   <Link
-                    href={`/products?include_ingredients=${encodeURIComponent(ing.ingredientName)}`}
+                    href={`/yuri?ask=${encodeURIComponent(`Which products with ${ing.ingredientName} would suit me?`)}`}
                     className="text-gold-light hover:text-gold text-[10px] font-medium flex items-center gap-0.5"
                   >
                     <Search className="w-2.5 h-2.5" />

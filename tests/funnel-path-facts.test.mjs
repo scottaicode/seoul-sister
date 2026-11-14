@@ -473,5 +473,5 @@ test('CLOSED WORLD: the whole static member prompt is pinned by fingerprint (Nov
   const a = advisor.indexOf('const YURI_SYSTEM_PROMPT = `') + 'const YURI_SYSTEM_PROMPT = `'.length
   const b = advisor.indexOf('`\n\n// ---', a)
   assert.ok(a > 100 && b > a + 20000, 'static member prompt not found')
-  assert.equal(createHash('sha256').update(advisor.slice(a, b)).digest('hex'), '3247c5108ba86c31e9a3f3ab976b028df06a603aafa845ac45539e5b61e316fc')
+  assert.equal(createHash('sha256').update(advisor.slice(a, b)).digest('hex'), '9b7439d6fe20e2a5ca18f4ea1c54b964bf507c87ec09ae12594eb4edd602d95b')
 })

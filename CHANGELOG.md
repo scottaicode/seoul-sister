@@ -4,6 +4,63 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.5 — Estimates stop being called "user reports"; dead Browse filters removed; "without X" search made safe (Nov 14 2026)
+
+**Correction to v11.61.4.** That entry called `ss_ingredient_effectiveness` "seeded-looking,
+provenance not traced". It is a known, deliberate table: 47 rows written at launch (Feb 22) and
+reset on May 28 2026 (v10.8.20). Checked now: all 47 current rows match the reset migration exactly
+and none has moved. The reset relabelled the public headings. It left these:
+
+**Yuri was told the estimates were what users report.** Her context said, for example, "Users with
+dry skin report 88% satisfaction with Ceramide NP ... based on 70 reports", under a heading that
+read "Learning Engine Insights (From Community Data). Cite the data when relevant". No member
+reported that. Now each line reads "Ceramide NP (barrier repair): editorial estimate 88% for dry
+skin, dehydration", and the heading says once that these are Seoul Sister's own estimates, not
+counts of member reports. Her ingredient tool no longer hands back the seeded "sample size".
+- The seed's stated source ("clinical studies, Hwahae ratings, r/AsianBeauty consensus") cites
+  nothing, so the new wording claims no research source.
+- Same relabel on the public ingredient page ("70 reports" and "% positive"), the scan results,
+  the community page heading, the sunscreen picks ("proven for oily skin") and the disabled blog
+  writer's input. The product page's "Real subscriber reports layer on as the community grows" is
+  gone: nothing layers on until a slot passes 50 real reports.
+- One line was the opposite case and is now labelled as what it is: the scan's product
+  effectiveness figure comes from real single member reviews ("1 member report").
+
+**Browse page: the ingredient controls are removed.** Include, exclude, fragrance-free and
+comedogenic had done nothing since v10.8.0 (May 22): the page never sent them and the server never
+read them. Search and category remain, with a link to ask Yuri. Three links elsewhere pointed at
+`/products?include_ingredients=...`, a filter that page has never read; two now ask Yuri and the
+public one is a plain count.
+
+**Yuri's "without X" search no longer returns products it could not check.** A product with no
+ingredient list passed an exclusion filter (8% of the catalog, 517 products). It is now left out
+and Yuri is told how many were. If the ingredient lookup fails, she is told the results are not
+filtered; before, unfiltered results looked the same as filtered ones. Run against production:
+a product with no ingredient list was returned for a plain search and left out, with the note,
+when "without fragrance" was added.
+
+**The outcome grader does not compare Glass Skin scores made by different scorers.** Such a pair
+is marked insufficient data with the reason. One open nudge (`bfb20b55`) will end that way.
+
+**Second-model review: run** (Opus 5.5, told to refute). Two blockers, both real and fixed: I had
+relabelled the one line of real member data as a "baseline", and I had written "from published
+research", which nothing in the repo supports. It also showed the first guard test missed the
+original defect when written as a template; the test now fails on all 12 bugs put back.
+**The fixes made after the review were not re-reviewed.**
+
+**Open, owner decisions:**
+- **Public pages publish these estimates as numbers** ("82% effectiveness for acne in oily skin"),
+  in body text and in the FAQ data search engines read, with the lead-in "K-beauty clinical
+  research and community consensus". Now labelled as estimates where I touched them; whether to
+  keep publishing invented percentages at all is not mine to decide.
+- **Privacy and Terms** describe a learning engine aggregating community data, with the example
+  "88% of users with dry skin rated this moisturizer positively" (88% is the seeded value).
+- Yuri's search has no fragrance-free option; "fragrance" matches the word only, not parfum,
+  linalool or limonene.
+- `admin/ingredients/context` (feeds the LGAAS blog writer) filters `effectiveness_score >= 70` on
+  a 0 to 1 column, so it returns nothing from this table.
+- Dead code found: `src/lib/intelligence/context.ts` and `src/lib/learning/recommendations.ts`.
+
 ## v11.61.4 — Glass Skin and the Dupe Finder stop advising; the member chat gets room to finish (Nov 14 2026)
 
 Owner decisions, Nov 14: hand the Dupe Finder's and Glass Skin's recommendations to Yuri, and

@@ -45,8 +45,14 @@ interface ScoreRow {
   id: string
   overall_score: number
   created_at: string
-  photo_quality: { confidence_modifier?: number } | null
+  photo_quality: { confidence_modifier?: number; scorer_version?: number } | null
   treatment_phase_id: string | null
+}
+
+/** 1 = scored with the profile in the prompt (before Nov 14 2026); 2 = from the photo alone. */
+export function scorerVersionOf(score: { photo_quality: { scorer_version?: number } | null }): number {
+  const v = score.photo_quality?.scorer_version
+  return typeof v === 'number' && v >= 1 ? v : 1
 }
 
 interface NudgeRow {
@@ -112,6 +118,12 @@ async function gradeOne(
       return await writeGrade(db, nudge.id, 'insufficient_data', null, baseline.id, null, `No follow-up score within ${ABANDON_CEILING_DAYS} days of acting.`)
     }
     return 'pending'
+  }
+
+  // 3b. Same instrument. A baseline from one scorer and a follow-up from
+  // another is a change of ruler, not a change of skin.
+  if (scorerVersionOf(baseline) !== scorerVersionOf(followup)) {
+    return await writeGrade(db, nudge.id, 'insufficient_data', null, baseline.id, followup.id, `Baseline and follow-up were scored by different scorer versions (${scorerVersionOf(baseline)} and ${scorerVersionOf(followup)}); not comparable.`)
   }
 
   // 4. Confidence gate — either score low-confidence → not gradeable.

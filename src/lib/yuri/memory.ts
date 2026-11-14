@@ -1337,7 +1337,7 @@ This user has hormonal/cycle-related concerns in their profile but has NOT enabl
     const insightLines = context.learningInsights
       .map((i) => `- [${i.type}] ${i.summary}`)
       .join('\n')
-    sections.push(`## Learning Engine Insights (From Community Data)\nUse these data-backed insights to personalize your advice. Cite the data when relevant:\n${insightLines}`)
+    sections.push(`## Reference Data\nBackground you can draw on. The [effectiveness] lines are Seoul Sister's own editorial estimates, set when the app launched; they are not counts of member reports.\n${insightLines}`)
   }
 
   // Specialist insights from past conversations (accumulated intelligence)
@@ -2905,7 +2905,7 @@ async function loadLearningContext(
         const pct = Math.round((ti.effectiveness_score as number) * 100)
         insights.push({
           type: 'effectiveness',
-          summary: `Users with ${skinProfile.skin_type} skin report ${pct}% satisfaction with ${ingredient.name_en} (${ingredient.function}) based on ${ti.sample_size} reports${ti.concern && ti.concern !== '__all__' ? ` for ${ti.concern}` : ''}`,
+          summary: `${ingredient.name_en} (${ingredient.function}): editorial estimate ${pct}% for ${skinProfile.skin_type} skin${ti.concern && ti.concern !== '__all__' ? `, ${ti.concern}` : ''}`,
         })
       }
 

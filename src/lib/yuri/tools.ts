@@ -2330,6 +2330,9 @@ async function executeSearchProducts(
   }
 
   // Post-filter by ingredient include/exclude
+  // Facts about the ingredient filter that Yuri needs in order not to present
+  // an unchecked list as a checked one. Empty when the filter ran cleanly.
+  const ingredientFilterNotes: string[] = []
   if (includeIngredients?.length || excludeIngredients?.length) {
     // Null product ids inside .in() on a uuid column throw 22P02 and take the
     // whole query down — the documented silent-failure class.
@@ -2373,6 +2376,9 @@ async function executeSearchProducts(
     // we never actually checked.
     if (linkError) {
       console.error('[search_products] ingredient link lookup failed:', linkError.message)
+      // Skipping is right, but it must not be silent: unfiltered results read
+      // exactly like filtered ones, and "without X" is a safety request.
+      ingredientFilterNotes.push('The ingredient lookup failed, so these results are NOT filtered by ingredient. Nothing here has been checked for the ingredients asked about.')
     }
 
     const productIngredientMap = new Map<string, string[]>()
@@ -2423,6 +2429,7 @@ async function executeSearchProducts(
       })
     }
     if (excludeIngredients?.length && !linkError) {
+      let uncheckable = 0
       filtered = filtered.filter((p: Record<string, unknown>) => {
         const id = p.id as string
         const ings = productIngredientMap.get(id) || []
@@ -2431,11 +2438,18 @@ async function executeSearchProducts(
         if (ings.length === 0) {
           const raw = rawInciById.get(id)
           if (raw) return !excludeIngredients.some((exc) => raw.includes(exc.toLowerCase()))
+          // No ingredient list at all: nothing was checked, so it cannot be
+          // offered as "without X". It used to pass (`!some([])` is true).
+          uncheckable++
+          return false
         }
         return !excludeIngredients.some((exc) =>
           ings.some((i) => i.includes(exc.toLowerCase()))
         )
       })
+      if (uncheckable > 0) {
+        ingredientFilterNotes.push(`${uncheckable} matching product${uncheckable === 1 ? ' was' : 's were'} left out because we have no ingredient list for ${uncheckable === 1 ? 'it' : 'them'}, so "without" could not be checked.`)
+      }
     }
   }
 
@@ -2682,7 +2696,11 @@ async function executeSearchProducts(
   // listed twice, and that "Ampoule" is a different product. Nothing is filtered.
   const withSiblings = await attachSiblingListings(db, results)
 
-  return JSON.stringify({ products: withSiblings, total_found: filtered.length })
+  return JSON.stringify({
+    products: withSiblings,
+    total_found: filtered.length,
+    ...(ingredientFilterNotes.length ? { ingredient_filter_notes: ingredientFilterNotes } : {}),
+  })
 }
 
 /**
@@ -3039,9 +3057,13 @@ async function executeGetIngredientGuide(
         skin_type: e.skin_type,
         concern: e.concern,
         score: e.effectiveness_score,
-        sample_size: e.sample_size,
       })
     )
+    // Said once, not per row. These 47 rows are estimates written by us at
+    // launch (the seed migration cites no source) and reset on May 28 2026.
+    // With a bare sample_size of 50-70 Yuri could have said "60 users report".
+    result.effectiveness_basis = "Seoul Sister's own editorial estimates, not counts of member reports"
+
   }
 
   // Add conflicts
