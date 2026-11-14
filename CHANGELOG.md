@@ -4,6 +4,32 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.9 — Members' learning notes are no longer readable with the public key (Nov 14 2026)
+
+- **Applied** `20261114000001_learning_notes_not_public.sql` on the owner's instruction. The open
+  SELECT policy on `ss_learning_patterns` is replaced by one limited to `pattern_type = 'seasonal'`.
+- **Verified:** with the public key, 5 rows are readable and 0 of them are member notes (it was
+  315 and 310). The service role still reads all 310, so nothing in the app changes.
+- **Swept for the same mistake:** every other table with an open SELECT policy is catalog, price,
+  trend or published-review data. No `ss_` table has row security off.
+- **Owner delegated the remaining decisions. Made:**
+  - The 305 remaining notes are KEPT. With the exposure closed and the job paused there is no
+    urgency, they are deleted with their conversation or account, and deleting them would only be
+    worth it if we decide never to build a reader.
+  - Seed ratings are NOT changed tonight (see below). It touches the best-known products and how
+    search ranks them, so it gets measured first.
+
+**Next honesty item, measured but not changed: about 450 products carry invented ratings.**
+- 5,842 products have a rating. 5,226 trace to a retailer scrape. 616 do not.
+- Of those 616, 477 were created on Feb 17 and Feb 19 2026 by seed migrations, and 450 have a
+  review count that is an exact multiple of 100. A real review count is not round 450 times.
+- The rest of the 616 arrive about one a day from the trending backfill, which reads the
+  retailer's product page, and look real.
+- These are the famous products (the seeds were the launch catalog), so Yuri and the blog quote
+  them. Open question for the fix: replace them with the retailer's real figures where the product
+  can be matched, or show no rating. Rating also orders search results, so removing 450 of them
+  changes what ranks first; replay recorded searches before and after.
+
 ## v11.61.8 — 12 blog posts no longer say Seoul Sister measured ingredient effectiveness (content correction, Nov 14 2026)
 
 - **What was wrong.** Two posts printed our launch estimates as measurements ("salicylic acid

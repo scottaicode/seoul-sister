@@ -11,9 +11,10 @@
 -- nothing depends on the open policy. The five 'seasonal' rows are written by
 -- a cron and are not about any person; they stay readable.
 --
--- APPLY BY HAND in the Supabase SQL editor (the MCP connection is read-only).
--- Verify afterwards with the query at the bottom: it must return one policy,
--- limited to seasonal rows.
+-- APPLIED Nov 14 2026 (owner's instruction, through the Supabase connector;
+-- the project's own MCP connection is read-only). Verified afterwards: one
+-- policy, limited to seasonal rows; the public key reads 5 rows, 0 of them
+-- member notes; the service role still reads all 310.
 
 begin;
 
