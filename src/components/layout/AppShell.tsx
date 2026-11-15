@@ -8,6 +8,7 @@ import { loginUrlFor } from '@/lib/auth/return-to'
 import { appGateDestination } from '@/lib/auth/post-sign-in'
 import TrialNotice from './TrialNotice'
 import Header from './Header'
+import SetupHeader from './SetupHeader'
 import BottomNav from './BottomNav'
 
 interface AppShellProps {
@@ -84,6 +85,7 @@ export default function AppShell({ children }: AppShellProps) {
   // plan — gating /settings behind the paywall trapped unpaid users with no way
   // to delete their data (a GDPR/CCPA right-to-erasure + trust problem).
   const ALWAYS_ALLOWED = pathname === '/onboarding' || pathname.startsWith('/settings')
+  const inSetup = pathname === '/onboarding'
   useEffect(() => {
     if (!user || loading || ALWAYS_ALLOWED) {
       setReady(true)
@@ -178,12 +180,14 @@ export default function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="min-h-screen bg-seoul-darker">
-      <Header />
+      {/* During the setup chat no member page is open yet, so the member menu
+          is not shown: its buttons could only bounce back here. */}
+      {inSetup ? <SetupHeader /> : <Header />}
       <TrialNotice />
-      <main className="pt-0 pb-20 md:pb-0">
+      <main className={inSetup ? 'pt-0' : 'pt-0 pb-20 md:pb-0'}>
         {children}
       </main>
-      <BottomNav />
+      {!inSetup && <BottomNav />}
     </div>
   )
 }

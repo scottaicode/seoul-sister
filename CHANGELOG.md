@@ -4,6 +4,30 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.16 — The setup chat loses its "Listening" light and the member menu that could not be used (Nov 15 2026)
+
+Both from Bailey, testing a new account.
+
+- **"Listening" indicator removed.** A pulsing dot labelled "Listening" sat in the setup chat's
+  header. It was a fixed decoration added Feb 17 2026 in place of a progress bar, connected to
+  nothing, and it reads like a live microphone light on the first screen after sign-up. The
+  setup chat is text only.
+- **The member menu is not shown during setup.** Dashboard, Skin Profile, Library, Routine,
+  Trending and More sat above the setup chat, but none of those pages is open until setup is
+  finished, so a tap flashed and returned to the chat (since v11.61.12; before that it went to
+  the pricing page). During setup the top bar is now the logo and an "Account" link
+  (`SetupHeader.tsx`), and the phone bottom bar is hidden.
+- **Tests.** `tests/setup-chat-chrome.test.mjs`: the chat header shows its title and subtitle and
+  nothing else; the setup header may link only to pages the gate leaves open. 1,807 pass; build clean.
+- **Not verified.** Not seen in a browser. No second-model review was run (no wording Yuri is
+  given and no customer promise changed).
+
+**Open:**
+- From the Account page a setup account still sees the full member menu, and a tap there
+  returns to the setup chat.
+- Bailey's proposal that the free week include Yuri only, with the other pages opening on
+  payment, is not built; the owner asked for an opinion first.
+
 ## v11.61.15 — Yuri is told when a member's location has no coordinates, and no longer gets a fixed cycle list (Nov 15 2026)
 
 - **Location.** The owner told Yuri "Northern California" in setup. The geocoder rightly will not

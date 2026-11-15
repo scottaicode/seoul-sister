@@ -522,12 +522,6 @@ export default function OnboardingPage() {
               <p className="text-xs text-white/40">Your AI K-beauty advisor</p>
             </div>
           </div>
-
-          {/* Subtle status dot — no numeric progress */}
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-gold/60 animate-pulse" />
-            <span className="text-xs text-white/30">Listening</span>
-          </div>
         </div>
       </div>
 
