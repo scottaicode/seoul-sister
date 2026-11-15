@@ -343,3 +343,17 @@ test('the setup chat is told it has no product database, and that is true of the
   const route = readFileSync(new URL('../src/app/api/yuri/onboarding/route.ts', import.meta.url), 'utf8')
   assert.doesNotMatch(route.replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g, '$1'), /messages\.(stream|create)\(|getAnthropicClient|\btools?\b/i, 'the route makes no model call of its own')
 })
+
+// Nov 15 2026: a location with no coordinates reaches Yuri as one of the facts
+// about where the person stands, marked as possibly one message old, and the
+// block still ends by handing the decision back. Executed, not read.
+test('the setup facts carry an unplaced location, and nothing when there is none', () => {
+  const fact = 'Location on file: "Northern California". There are no map coordinates on file for it, so there is no saved-location weather or weekly forecast for them.'
+  const out = buildOnboardingTurnState({}, undefined, { isSubscribed: false, locationFact: fact })
+  const block = out.slice(out.indexOf('## Where They Stand (facts, not instructions)'))
+  assert.ok(block.includes(`${fact} (Read before their latest message.)`))
+  assert.ok(block.trimEnd().endsWith('how and whether to use them is yours, every time.') || /how and whether to use them is yours, every time\./.test(block))
+  for (const none of [null, undefined, '']) {
+    assert.ok(!buildOnboardingTurnState({}, undefined, { isSubscribed: false, locationFact: none }).includes('Location on file'))
+  }
+})

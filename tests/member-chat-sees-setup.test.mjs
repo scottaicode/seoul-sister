@@ -46,7 +46,7 @@ function cut(signature) {
 let n = 0
 async function loadWithCarry(code) {
   const file = join(dir, `m${n++}.mjs`)
-  writeFileSync(file, transpile(`import { parseSetupShelf, formatSetupShelfSection, buildSetupChatExcerpt, formatSetupChatSection, SETUP_CHAT_FETCH } from './setup-carry.mjs'\nconst safeSlice = (s, n) => String(s).slice(0, n)\n${code}`))
+  writeFileSync(file, transpile(`import { parseSetupShelf, formatSetupShelfSection, buildSetupChatExcerpt, formatSetupChatSection, SETUP_CHAT_FETCH } from './setup-carry.mjs'\nconst safeSlice = (s, n) => String(s).slice(0, n)\n${read('src', 'lib', 'geo', 'location-fact.ts').replace('export function', 'function')}\n${code}`))
   return import(pathToFileURL(file).href)
 }
 
@@ -231,6 +231,14 @@ test('executed: the formatter shows the list whatever the library holds, and the
   const setupChat = carry.buildSetupChatExcerpt('s', 'Skin Profile Onboarding', [row(3, 'assistant', 'Keep the CeraVe cleanser for nights.'), row(2, 'user', 'I use a CeraVe cleanser.'), row(1, 'assistant', 'What do you wash with?')], 3)
   const out = fmt(ctx({ recentExcerpts: [{ conversationId: 's', title: 'Skin Profile Onboarding', messages: [], setupChat }, { conversationId: 'o', title: 'Sunscreen', messages: [{ role: 'user', content: 'which SPF?' }] }] }))
   assert.equal(out.split(carry.formatSetupChatSection([setupChat], null)).length - 1, 1, 'the setup chat appears once, whole')
+  // Nov 15 2026: a stated location with no coordinates is said so; a placed
+  // one reads as before. Executed on the three account shapes that exist.
+  const unplaced = fmt(ctx({ skinProfile: { location_text: 'Northern California', latitude: null, longitude: null } }))
+  assert.ok(unplaced.includes('- Location on file: "Northern California". There are no map coordinates on file for it, so there is no saved-location weather or weekly forecast for them.'))
+  assert.ok(!unplaced.includes('- Location: Northern California'))
+  const placed = fmt(ctx({ skinProfile: { location_text: 'Austin, Texas', latitude: 30.27, longitude: -97.74 } }))
+  assert.ok(placed.includes('- Location: Austin, Texas') && !placed.includes('no map coordinates'))
+  assert.ok(!fmt(ctx({ skinProfile: { location_text: null, latitude: null, longitude: null } })).includes('Location'))
   // The member's profile zone is what the times are written in.
   const zoned = fmt(ctx({ skinProfile: { timezone: 'America/Los_Angeles' }, recentExcerpts: [{ conversationId: 's', title: 'S', messages: [], setupChat }] }))
   assert.ok(zoned.includes(carry.formatSetupChatSection([setupChat], 'America/Los_Angeles')) && zoned.includes('Tue, Nov 10, 9:'), 'times are in the member zone')

@@ -4,6 +4,43 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.15 — Yuri is told when a member's location has no coordinates, and no longer gets a fixed cycle list (Nov 15 2026)
+
+- **Location.** The owner told Yuri "Northern California" in setup. The geocoder rightly will not
+  guess a point for a region, so the account had no coordinates, its weekly note had no forecast,
+  and nothing told Yuri, so she never asked for a city. Two of nine members were in this state.
+  She is now given one fact, in the setup chat's per-turn facts and in the member context:
+  `Location on file: "…". There are no map coordinates on file for it, so there is no
+  saved-location weather or weekly forecast for them.` (`src/lib/geo/location-fact.ts`). Whether
+  and when to raise it is hers.
+- **Cycle.** With cycle tracking on, Yuri's context carried a hardcoded "skin behavior" line and
+  "Key recommendations for this phase" from a fixed list (`cycle-routine.ts`), plus a sentence
+  telling her to factor the phase in. All three are gone; the phase, day and cycle length stay.
+  No member has tracking on, so this had never fired.
+- **Found by the second-model review (Opus) of the first wording, and fixed before shipping:**
+  - "A city would give both" was false in the member chat: nothing there saves coordinates from
+    a city said in conversation (only setup and the Profile page's device location do), and it
+    contradicted the member prompt's own "Location and weather" row. The remedy is removed.
+  - "Too broad, or not recognised" was a reason the code cannot know: the geocoder also returns
+    nothing on a timeout or outage. The reason is removed.
+  - The setup read can be one message behind; the setup line now says so.
+  - The echoed place name was unbounded and could break its quotes; it is cleaned and cut to 80.
+  - The first tests passed with the coordinates check inverted. They now pin the sentence,
+    execute the real context builders on the account shapes that exist, and fail on that inversion.
+- **Checks.** `/ai-first-guard` on the plan and `/ai-first-check` on the diff: pass. 1,804 tests
+  pass; build clean.
+- **Not verified.** No conversation has yet shown how Yuri uses the fact (whether she asks once,
+  every turn, or not at all). The fixes made after the review were not re-reviewed.
+
+**Open:**
+- Nothing records that Yuri already asked for a city, and a city given in the member chat still
+  saves no coordinates, so the weekly forecast stays missing until the member uses the Profile
+  page's device location.
+- `specialists.ts` ("Menstrual Cycle Effects on Skin") still carries per-phase advice and an
+  unsourced "clinically backed" line; `CycleAdjustment.tsx` still shows the hardcoded skin-behavior
+  text on the Routine page, including "a great time to try new products".
+- Whether setup's extractor replaces "Northern California" when a city is given later is unchecked.
+
 ## v11.61.14 — Stars say whose rating they are; the "Verified" badge and the launch seed reviews are gone (Nov 15 2026)
 
 - **What a member saw.** Her product page showed "5.0 (2 reviews)" beside a green "Verified" shield.

@@ -12,6 +12,7 @@ import {
 } from '@/lib/yuri/setup-carry'
 import type { SkinProfile, YuriConversation, YuriMessage, SpecialistType, CyclePhaseInfo, UserCycleTracking } from '@/types/database'
 import { getCyclePhase, getPhaseLabel } from '@/lib/intelligence/cycle-routine'
+import { unplacedLocationFact } from '@/lib/geo/location-fact'
 import { detectRoutineOverlap, type IngredientOverlapResult } from '@/lib/intelligence/ingredient-overlap'
 
 // ---------------------------------------------------------------------------
@@ -882,7 +883,15 @@ export function formatContextForPrompt(context: UserContext): string {
     const onboarded = profileRaw.onboarding_completed
     // Location fallback chain: stated location (from onboarding) > GPS reverse-geocode > nothing
     const locationText = profileRaw.location_text as string | null
-    const locationLine = locationText
+    // A stated location that could not be placed on a map is said so, with
+    // what follows from it (no weather). See geo/location-fact.ts.
+    const unplaced = unplacedLocationFact(
+      locationText,
+      profileRaw.latitude != null && profileRaw.longitude != null
+    )
+    const locationLine = unplaced
+      ? `\n- ${unplaced}`
+      : locationText
       ? `\n- Location: ${locationText}`
       : context.locationName
         ? `\n- Location: ${context.locationName} (from GPS)`
@@ -1316,9 +1325,7 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
     sections.push(`## Menstrual Cycle Phase (User has opted into cycle tracking)
 - Current phase: ${getPhaseLabel(cp.phase)} (Day ${cp.day_in_cycle} of ${cp.cycle_length}-day cycle)
 - Days until next phase: ${cp.days_until_next_phase}
-- Skin behavior: ${cp.skin_behavior}
-- Key recommendations for this phase: ${cp.recommendations.slice(0, 3).join('; ')}
-When making skincare recommendations, factor in the user's current cycle phase. This is especially relevant for actives, exfoliation, moisturizer weight, and breakout prevention.`)
+These are facts about where they are in their cycle. What it means for their skin today, and whether it bears on what you are discussing, is yours to judge.`)
   } else if (context.skinProfile) {
     // No cycle tracking enabled. If their concerns include hormonal triggers,
     // give Yuri permission to mention the feature ONCE per conversation when

@@ -6,6 +6,7 @@ import { withTrailingContext, markPenultimateAssistant } from '@/lib/llm-request
 import { getServiceClient } from '@/lib/supabase'
 import { buildAttributionFields } from '@/lib/attribution'
 import { geocodeLocation } from '@/lib/geo/geocode'
+import { unplacedLocationFact } from '@/lib/geo/location-fact'
 import { hasActiveSubscription } from '@/lib/subscription'
 import { PRICING } from '@/lib/pricing'
 // Shared with the public widget — same artifacts, same conservative detection,
@@ -180,6 +181,11 @@ export interface OnboardingTurnFacts {
   /** The cap itself, so the number has a denominator. */
   userMessageCap?: number
   /**
+   * Set when the location they gave could not be placed on a map
+   * (geo/location-fact.ts). Null or undefined when there is nothing to say.
+   */
+  locationFact?: string | null
+  /**
    * What Yuri has ALREADY delivered across her own earlier replies in this
    * conversation, detected by the shared widget instrument. Undefined when
    * nothing substantial has been given yet.
@@ -226,6 +232,9 @@ export function buildOnboardingTurnState(
     if (facts.offerFact) statusLines.push(facts.offerFact)
   }
   if (facts?.previewAgeFact) statusLines.push(facts.previewAgeFact)
+  // Read from the stored profile before this turn's extraction runs, so it can
+  // be one message behind: said so, in case they have just given a city.
+  if (facts?.locationFact) statusLines.push(`${facts.locationFact} (Read before their latest message.)`)
   if (
     typeof facts?.userMessageNumber === 'number' &&
     typeof facts?.userMessageCap === 'number'
@@ -855,8 +864,26 @@ export async function* streamOnboardingResponse(
     conversationHistory.map((m) => ({ role: m.role, content: m.content }))
   )
 
+  // Whether the location they gave was placed on a map. Read from the stored
+  // profile, where `location_text` is written in the same step that geocodes
+  // it, so a location nobody has tried to place yet says nothing. Best-effort:
+  // a failed read says nothing rather than guess.
+  let locationFact: string | null = null
+  try {
+    const { data: placed, error: placedError } = await getServiceClient()
+      .from('ss_user_profiles')
+      .select('location_text, latitude, longitude')
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (placedError) throw new Error(placedError.message)
+    locationFact = unplacedLocationFact(placed?.location_text, placed?.latitude != null && placed?.longitude != null)
+  } catch (e) {
+    console.error('[onboarding] location placement lookup failed:', e)
+  }
+
   const turnState = buildOnboardingTurnState(extractedSoFar, quality.suggestions, {
     isSubscribed,
+    locationFact,
     userMessageNumber,
     userMessageCap: ONBOARDING_USER_MESSAGE_CAP,
     cumulativeGive,
