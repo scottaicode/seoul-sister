@@ -1,0 +1,735 @@
+{
+ "taken_at": "2026-11-15T08:29:43.816Z",
+ "applied": true,
+ "reviews": [
+  {
+   "id": "f1468991-39a2-42bd-a95f-6b23ae35dbb9",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "dca4a38b-ea65-403b-a3fc-d3649f0f94db",
+   "rating": 5,
+   "title": "Perfect for combination skin",
+   "body": "Extreme Cream sinks in immediately without any greasy residue. My combination skin drinks it up. I wake up with plump, hydrated skin every morning. This is the moisturizer I recommend to everyone.",
+   "skin_type": "combination",
+   "skin_concerns": [
+    "pores",
+    "dullness"
+   ],
+   "reaction": "holy_grail",
+   "would_repurchase": true,
+   "usage_duration": "6+ months",
+   "helpful_count": 20,
+   "created_at": "2026-02-06T10:37:05.588+00:00",
+   "updated_at": "2026-04-09T05:00:46.008911+00:00",
+   "fitzpatrick_scale": 4,
+   "age_range": "18-24",
+   "learning_contributed": true
+  },
+  {
+   "id": "ae6b6633-0442-4755-ae54-865173c13b8d",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "afdce97d-30f5-49ed-8a7b-196c293e5ddb",
+   "rating": 5,
+   "title": "The glow is real",
+   "body": "I layer this under my moisturizer every night and my morning skin looks insane. That \"glass skin\" glow everyone talks about, this is what gets me there. Already stocked up on two backups because AXIS-Y sells out constantly.",
+   "skin_type": "oily",
+   "skin_concerns": [
+    "acne",
+    "texture"
+   ],
+   "reaction": "holy_grail",
+   "would_repurchase": true,
+   "usage_duration": "6+ months",
+   "helpful_count": 18,
+   "created_at": "2026-02-07T19:37:07.074+00:00",
+   "updated_at": "2026-04-18T05:00:49.900646+00:00",
+   "fitzpatrick_scale": 6,
+   "age_range": "18-24",
+   "learning_contributed": true
+  },
+  {
+   "id": "6786e00c-7550-4b2e-951e-a7b45fe56c33",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "e548c2c2-6bdc-41e4-a529-20441919bbb2",
+   "rating": 5,
+   "title": "Best sheet mask for the price",
+   "body": "I've tried expensive Japanese masks, budget Korean ones, everything. This Skinfood mask gives the best results for what you pay. The essence actually does something instead of just sitting on top of your face.",
+   "skin_type": "combination",
+   "skin_concerns": [
+    "pores",
+    "dullness"
+   ],
+   "reaction": "holy_grail",
+   "would_repurchase": true,
+   "usage_duration": "6+ months",
+   "helpful_count": 2,
+   "created_at": "2026-02-08T01:37:08.915+00:00",
+   "updated_at": "2026-04-09T05:00:58.588397+00:00",
+   "fitzpatrick_scale": 4,
+   "age_range": "18-24",
+   "learning_contributed": true
+  },
+  {
+   "id": "ac217d5b-ab99-4b09-9291-e4667db81d97",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "4877cdec-dedb-4678-b7e4-4c9c82cab345",
+   "rating": 5,
+   "title": "Gentle enough for my sensitive skin",
+   "body": "I was scared to exfoliate but Invisible Peeling Booster is so gentle. No redness, no irritation, just smooth glowing skin. I use it 2-3x a week and the texture improvement on my combination skin is dramatic. CNP Laboratory nailed the balance.",
+   "skin_type": "combination",
+   "skin_concerns": [
+    "pores",
+    "dullness"
+   ],
+   "reaction": "holy_grail",
+   "would_repurchase": true,
+   "usage_duration": "3-6 months",
+   "helpful_count": 17,
+   "created_at": "2026-02-08T02:37:07.274+00:00",
+   "updated_at": "2026-10-20T05:00:07.0609+00:00",
+   "fitzpatrick_scale": 4,
+   "age_range": "18-24",
+   "learning_contributed": true
+  },
+  {
+   "id": "bcd836d6-828a-42b5-a364-f380d4932107",
+   "user_id": "551569d3-aed0-4feb-a340-47bfb146a835",
+   "product_id": "776ef10e-568f-486e-b36a-f72324622ee4",
+   "rating": 5,
+   "title": "Essential step in my routine",
+   "body": "I do 3-5 layers of SoonJung pH 5.5 Relief Toner after cleansing and the hydration is unmatched. My normal skin just soaks it up. This is the product that taught me why toner matters in K-beauty. Etude makes the best one.",
+   "skin_type": "normal",
+   "skin_concerns": [
+    "anti-aging",
+    "dullness"
+   ],
+   "reaction": "holy_grail",
+   "would_repurchase": true,
+   "usage_duration": "6+ months",
+   "helpful_count": 12,
+   "created_at": "2026-02-09T07:37:09.428+00:00",
+   "updated_at": "2026-04-09T05:01:10.148475+00:00",
+   "fitzpatrick_scale": 5,
+   "age_range": "25-34",
+   "learning_contributed": true
+  },
+  {
+   "id": "8f132c75-2c75-4369-b66f-ea7c30d296b3",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "1ad9fa3f-76e2-4f24-9569-b91dab00b22e",
+   "rating": 5,
+   "title": "Best cleanser I've found for sensitive skin",
+   "body": "I've tried so many cleansers and Sensibio H2O Micellar Water by Bioderma is the one I keep coming back to. Removes everything without that tight stripped feeling. My skin actually feels balanced after washing. The texture is perfect and a little goes a long way.",
+   "skin_type": "sensitive",
+   "skin_concerns": [
+    "redness",
+    "sensitivity"
+   ],
+   "reaction": "holy_grail",
+   "would_repurchase": true,
+   "usage_duration": "6+ months",
+   "helpful_count": 7,
+   "created_at": "2026-02-13T14:37:05.063+00:00",
+   "updated_at": "2026-04-19T05:00:56.370183+00:00",
+   "fitzpatrick_scale": 1,
+   "age_range": "35-44",
+   "learning_contributed": true
+  },
+  {
+   "id": "915644be-8ce5-42ba-a790-5d103ac2523e",
+   "user_id": "551569d3-aed0-4feb-a340-47bfb146a835",
+   "product_id": "8ee9b92f-5539-407b-a192-93d95ac78554",
+   "rating": 3,
+   "title": "Decent but not for my skin type",
+   "body": "It's a fine moisturizer but felt a bit heavy for my normal skin during summer. Might work better in winter. The ingredients are good, just not the right texture match for me personally.",
+   "skin_type": "normal",
+   "skin_concerns": [
+    "anti-aging",
+    "dullness"
+   ],
+   "reaction": null,
+   "would_repurchase": false,
+   "usage_duration": "1-3 months",
+   "helpful_count": 11,
+   "created_at": "2026-02-13T21:37:05.206+00:00",
+   "updated_at": "2026-04-08T05:01:21.061479+00:00",
+   "fitzpatrick_scale": 5,
+   "age_range": "25-34",
+   "learning_contributed": true
+  },
+  {
+   "id": "9cbbc2a7-5ac0-4c46-abda-6c399afc4aa3",
+   "user_id": "551569d3-aed0-4feb-a340-47bfb146a835",
+   "product_id": "72273ec2-dd25-4e25-befa-d5c3f4fdfc5f",
+   "rating": 5,
+   "title": "Best sheet mask for the price",
+   "body": "I've tried expensive Japanese masks, budget Korean ones, everything. This Innisfree mask gives the best results for what you pay. The essence actually does something instead of just sitting on top of your face.",
+   "skin_type": "normal",
+   "skin_concerns": [
+    "anti-aging",
+    "dullness"
+   ],
+   "reaction": "holy_grail",
+   "would_repurchase": true,
+   "usage_duration": "6+ months",
+   "helpful_count": 9,
+   "created_at": "2026-02-13T22:37:07.779+00:00",
+   "updated_at": "2026-04-09T05:01:23.474141+00:00",
+   "fitzpatrick_scale": 5,
+   "age_range": "25-34",
+   "learning_contributed": true
+  },
+  {
+   "id": "50fc8509-939f-4a2b-bc61-46b58f0cf405",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "1cd3fca6-80c0-4881-9c4f-3e76f11e1582",
+   "rating": 5,
+   "title": "Concentrated and effective",
+   "body": "A few drops of Exosome Shot PDRN Pink Collagen 2000 Serum and my face is set. The concentration of actives is noticeably higher than regular serums. My oily skin improved faster with this than anything else I've tried. Medicube knows what they're doing.",
+   "skin_type": "oily",
+   "skin_concerns": [
+    "acne",
+    "texture"
+   ],
+   "reaction": "holy_grail",
+   "would_repurchase": true,
+   "usage_duration": "3-6 months",
+   "helpful_count": 4,
+   "created_at": "2026-02-15T04:37:09.576+00:00",
+   "updated_at": "2026-05-16T05:00:33.132477+00:00",
+   "fitzpatrick_scale": 6,
+   "age_range": "18-24",
+   "learning_contributed": true
+  },
+  {
+   "id": "7527f9e7-d405-430b-87b9-2cd203637133",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "1641e43c-713a-463d-9ab3-00ac7c642636",
+   "rating": 3,
+   "title": "Decent but not for my skin type",
+   "body": "It's a fine moisturizer but felt a bit heavy for my dry skin during summer. Might work better in winter. The ingredients are good, just not the right texture match for me personally.",
+   "skin_type": "dry",
+   "skin_concerns": [
+    "dryness",
+    "aging"
+   ],
+   "reaction": null,
+   "would_repurchase": false,
+   "usage_duration": "1-3 months",
+   "helpful_count": 1,
+   "created_at": "2026-02-18T14:37:09.921+00:00",
+   "updated_at": "2026-04-08T05:01:38.569318+00:00",
+   "fitzpatrick_scale": 2,
+   "age_range": "25-34",
+   "learning_contributed": true
+  },
+  {
+   "id": "d3add71a-e8cc-42ad-b63a-37abcecf706e",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "c70d74fa-0aea-4d1b-ac74-ae125687d733",
+   "rating": 5,
+   "title": "Barrier repair hero",
+   "body": "When I over-exfoliated and destroyed my moisture barrier, this cream was my salvation. The 5-cera complex truly repairs and protects. It's rich but not greasy. My skin went from red and flaky to calm and healthy in about 10 days. Worth the premium price.",
+   "skin_type": "dry",
+   "skin_concerns": [
+    "sensitivity",
+    "dryness",
+    "damaged_barrier"
+   ],
+   "reaction": "holy_grail",
+   "would_repurchase": true,
+   "usage_duration": "6+ months",
+   "helpful_count": 19,
+   "created_at": "2026-02-19T00:18:17.03614+00:00",
+   "updated_at": "2026-10-20T05:00:24.206139+00:00",
+   "fitzpatrick_scale": 2,
+   "age_range": "25-34",
+   "learning_contributed": true
+  },
+  {
+   "id": "67345d09-9d36-4a15-a85f-b9d19fa0abe2",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "114d5b5f-ce87-4bfe-9989-621128b962e8",
+   "rating": 5,
+   "title": "Must-have for dry skin types",
+   "body": "I use this 3x a week and my morning skin is always soft and bouncy. Seals in all my nighttime serums perfectly. The texture is jelly-like and cooling — very spa-like experience. This is one product I always have a backup of.",
+   "skin_type": "dry",
+   "skin_concerns": [
+    "dryness",
+    "aging"
+   ],
+   "reaction": "holy_grail",
+   "would_repurchase": true,
+   "usage_duration": "6+ months",
+   "helpful_count": 7,
+   "created_at": "2026-02-19T00:18:17.03614+00:00",
+   "updated_at": "2026-02-28T07:13:13.307687+00:00",
+   "fitzpatrick_scale": 2,
+   "age_range": "25-34",
+   "learning_contributed": true
+  },
+  {
+   "id": "77a95d3c-d295-483c-9726-c2e1867f7ac3",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "e9e4db3a-e589-44a5-a2de-a7edf43f0629",
+   "rating": 4,
+   "title": "Nice glow but not moisturizing enough alone",
+   "body": "Gives beautiful luminosity and the niacinamide has evened out my skin tone. But for dry skin types like me, you definitely need a heavier moisturizer on top. Not a standalone product for winter.",
+   "skin_type": "dry",
+   "skin_concerns": [
+    "dullness",
+    "dryness"
+   ],
+   "reaction": "love",
+   "would_repurchase": true,
+   "usage_duration": "1-3 months",
+   "helpful_count": 5,
+   "created_at": "2026-02-19T00:18:17.03614+00:00",
+   "updated_at": "2026-05-14T05:01:04.518945+00:00",
+   "fitzpatrick_scale": 2,
+   "age_range": "25-34",
+   "learning_contributed": true
+  },
+  {
+   "id": "52d19bc6-a64d-48c5-9477-fc3e5e5585bb",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "f2ba1ae1-8ed2-4ea7-b658-fd191f144008",
+   "rating": 5,
+   "title": "Finally a sunscreen for sensitive skin",
+   "body": "No burning, no stinging, no breakouts. I've tried dozens of sunscreens that irritated my sensitive skin and this is the first one I can wear daily without issues. The formula is so elegant — like a moisturizer.",
+   "skin_type": "dry",
+   "skin_concerns": [
+    "sensitivity",
+    "sun_protection"
+   ],
+   "reaction": "holy_grail",
+   "would_repurchase": true,
+   "usage_duration": "3-6 months",
+   "helpful_count": 11,
+   "created_at": "2026-02-19T00:18:17.03614+00:00",
+   "updated_at": "2026-10-03T05:00:21.38032+00:00",
+   "fitzpatrick_scale": 2,
+   "age_range": "25-34",
+   "learning_contributed": true
+  },
+  {
+   "id": "073d89b4-f4ab-4e3d-b7ad-50207cd526ae",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "09dabfa8-b373-4006-9bbc-2393fb2743db",
+   "rating": 5,
+   "title": "Saved my dry winter skin",
+   "body": "My skin was flaking and irritated from the winter air. Started layering this under my moisturizer and within a week the flaking stopped. So gentle — no stinging or redness at all. Will never stop repurchasing.",
+   "skin_type": "dry",
+   "skin_concerns": [
+    "dryness",
+    "sensitivity"
+   ],
+   "reaction": "holy_grail",
+   "would_repurchase": true,
+   "usage_duration": "6+ months",
+   "helpful_count": 15,
+   "created_at": "2026-02-19T00:18:17.03614+00:00",
+   "updated_at": "2026-10-20T05:00:10.924601+00:00",
+   "fitzpatrick_scale": 2,
+   "age_range": "25-34",
+   "learning_contributed": true
+  },
+  {
+   "id": "7514193f-1a95-4a5e-90dd-59009913696e",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "7606df77-b0ff-4d7b-ba5e-f02c14f3c4a6",
+   "rating": 5,
+   "title": "Hydration powerhouse",
+   "body": "This serum has 5 different molecular weights of hyaluronic acid and you can FEEL the difference. My skin drinks this up. Plumps up fine lines and gives the most beautiful dewy finish. The pump bottle is hygienic and travel-friendly too.",
+   "skin_type": "dry",
+   "skin_concerns": [
+    "dryness",
+    "fine_lines"
+   ],
+   "reaction": "holy_grail",
+   "would_repurchase": true,
+   "usage_duration": "6+ months",
+   "helpful_count": 13,
+   "created_at": "2026-02-19T00:18:17.03614+00:00",
+   "updated_at": "2026-10-20T05:00:15.318056+00:00",
+   "fitzpatrick_scale": 2,
+   "age_range": "25-34",
+   "learning_contributed": true
+  },
+  {
+   "id": "2b9501e4-c51e-42ad-8e2f-4ff9540a829b",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "785754d7-80f0-4ea1-9e28-2716ea6d4358",
+   "rating": 4,
+   "title": "Gentle but effective brightening",
+   "body": "I can't use high-concentration vitamin C serums so this 5% formula is perfect. Has gradually brightened my overall complexion. Just be aware it oxidizes fast — keep it in the fridge and use within 2-3 months of opening.",
+   "skin_type": "dry",
+   "skin_concerns": [
+    "dullness",
+    "sensitivity"
+   ],
+   "reaction": "love",
+   "would_repurchase": true,
+   "usage_duration": "3-6 months",
+   "helpful_count": 7,
+   "created_at": "2026-02-19T00:18:17.03614+00:00",
+   "updated_at": "2026-03-13T05:01:04.477203+00:00",
+   "fitzpatrick_scale": 2,
+   "age_range": "25-34",
+   "learning_contributed": true
+  },
+  {
+   "id": "deebc744-1ab1-4be7-b8b8-8eec6056c9ed",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "1c8c5a25-37d3-4188-bc38-c6c9a87a2484",
+   "rating": 5,
+   "title": "Perfect for sensitive, reactive skin",
+   "body": "This is the toner I recommend to everyone with sensitive skin. No fragrance, no essential oils, just pure hydrating goodness. Layers beautifully and preps skin for serums. I've been using it for over a year and my skin has never been happier.",
+   "skin_type": "sensitive",
+   "skin_concerns": [
+    "sensitivity",
+    "dryness"
+   ],
+   "reaction": "holy_grail",
+   "would_repurchase": true,
+   "usage_duration": "6+ months",
+   "helpful_count": 13,
+   "created_at": "2026-02-19T00:18:17.03614+00:00",
+   "updated_at": "2026-04-29T05:01:10.866612+00:00",
+   "fitzpatrick_scale": 2,
+   "age_range": "25-34",
+   "learning_contributed": true
+  },
+  {
+   "id": "a17d4336-15d8-4b80-b738-fb91d5b96f36",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "6ef1a629-bd58-4d9a-86c2-761315bc12d1",
+   "rating": 5,
+   "title": "Redness rescue",
+   "body": "My rosacea-prone skin loves centella and this ampoule is basically pure centella extract. Calms redness within minutes and has reduced my overall skin reactivity over time. Fragrance-free, simple ingredients — exactly what sensitive skin needs.",
+   "skin_type": "sensitive",
+   "skin_concerns": [
+    "redness",
+    "sensitivity"
+   ],
+   "reaction": "holy_grail",
+   "would_repurchase": true,
+   "usage_duration": "6+ months",
+   "helpful_count": 16,
+   "created_at": "2026-02-19T00:18:17.03614+00:00",
+   "updated_at": "2026-05-06T05:01:15.342032+00:00",
+   "fitzpatrick_scale": 2,
+   "age_range": "25-34",
+   "learning_contributed": true
+  },
+  {
+   "id": "c9425ca7-8b4c-473b-8ee4-357435451601",
+   "user_id": "cdb2a7e8-b182-4da8-864f-4417fa6416be",
+   "product_id": "e6aba59e-984e-46c6-a873-c8f13f8d5ff0",
+   "rating": 5,
+   "title": "Brightening and hydrating in one",
+   "body": "The milky texture is so satisfying to apply. My skin looks brighter and more even-toned after just 2 weeks. It's like a mini facial every time I use it. The rice ferment filtrate gives a natural glow that looks like you're lit from within.",
+   "skin_type": "dry",
+   "skin_concerns": [
+    "dullness",
+    "dryness"
+   ],
+   "reaction": "holy_grail",
+   "would_repurchase": true,
+   "usage_duration": "6+ months",
+   "helpful_count": 9,
+   "created_at": "2026-02-19T00:18:17.03614+00:00",
+   "updated_at": "2026-10-20T05:00:19.605226+00:00",
+   "fitzpatrick_scale": 2,
+   "age_range": "25-34",
+   "learning_contributed": true
+  }
+ ],
+ "products": [
+  {
+   "id": "09dabfa8-b373-4006-9bbc-2393fb2743db",
+   "brand_en": "COSRX",
+   "name_en": "Advanced Snail 96 Mucin Power Essence",
+   "rating_avg": 5,
+   "review_count": 1
+  },
+  {
+   "id": "114d5b5f-ce87-4bfe-9989-621128b962e8",
+   "brand_en": "Laneige",
+   "name_en": "Water Sleeping Mask",
+   "rating_avg": 5,
+   "review_count": 1
+  },
+  {
+   "id": "1641e43c-713a-463d-9ab3-00ac7c642636",
+   "brand_en": "Holika Holika",
+   "name_en": "Good Cera Super Ceramide Cream",
+   "rating_avg": 3,
+   "review_count": 1
+  },
+  {
+   "id": "1ad9fa3f-76e2-4f24-9569-b91dab00b22e",
+   "brand_en": "Bioderma",
+   "name_en": "Sensibio H2O Micellar Water",
+   "rating_avg": 5,
+   "review_count": 1
+  },
+  {
+   "id": "1c8c5a25-37d3-4188-bc38-c6c9a87a2484",
+   "brand_en": "Klairs",
+   "name_en": "Supple Preparation Unscented Toner",
+   "rating_avg": 5,
+   "review_count": 1
+  },
+  {
+   "id": "1cd3fca6-80c0-4881-9c4f-3e76f11e1582",
+   "brand_en": "Medicube",
+   "name_en": "Exosome Shot PDRN Pink Collagen 2000 Serum",
+   "rating_avg": 5,
+   "review_count": 1
+  },
+  {
+   "id": "4877cdec-dedb-4678-b7e4-4c9c82cab345",
+   "brand_en": "CNP Laboratory",
+   "name_en": "Invisible Peeling Booster",
+   "rating_avg": 5,
+   "review_count": 1
+  },
+  {
+   "id": "6ef1a629-bd58-4d9a-86c2-761315bc12d1",
+   "brand_en": "SKIN1004",
+   "name_en": "Madagascar Centella Ampoule",
+   "rating_avg": 5,
+   "review_count": 1
+  },
+  {
+   "id": "72273ec2-dd25-4e25-befa-d5c3f4fdfc5f",
+   "brand_en": "Innisfree",
+   "name_en": "Super Volcanic Pore Clay Mask 2X",
+   "rating_avg": 5,
+   "review_count": 1
+  },
+  {
+   "id": "7606df77-b0ff-4d7b-ba5e-f02c14f3c4a6",
+   "brand_en": "Torriden",
+   "name_en": "DIVE-IN Low Molecular Hyaluronic Acid Serum",
+   "rating_avg": 5,
+   "review_count": 1
+  },
+  {
+   "id": "776ef10e-568f-486e-b36a-f72324622ee4",
+   "brand_en": "Etude",
+   "name_en": "SoonJung pH 5.5 Relief Toner",
+   "rating_avg": 5,
+   "review_count": 1
+  },
+  {
+   "id": "785754d7-80f0-4ea1-9e28-2716ea6d4358",
+   "brand_en": "Klairs",
+   "name_en": "Freshly Juiced Vitamin Drop",
+   "rating_avg": 4,
+   "review_count": 1
+  },
+  {
+   "id": "8ee9b92f-5539-407b-a192-93d95ac78554",
+   "brand_en": "Dr.G",
+   "name_en": "Red Blemish Clear Soothing Cream",
+   "rating_avg": 3,
+   "review_count": 1
+  },
+  {
+   "id": "afdce97d-30f5-49ed-8a7b-196c293e5ddb",
+   "brand_en": "AXIS-Y",
+   "name_en": "Dark Spot Correcting Glow Serum",
+   "rating_avg": 5,
+   "review_count": 1
+  },
+  {
+   "id": "c70d74fa-0aea-4d1b-ac74-ae125687d733",
+   "brand_en": "Dr. Jart+",
+   "name_en": "Ceramidin Cream",
+   "rating_avg": 5,
+   "review_count": 1
+  },
+  {
+   "id": "dca4a38b-ea65-403b-a3fc-d3649f0f94db",
+   "brand_en": "Real Barrier",
+   "name_en": "Extreme Cream",
+   "rating_avg": 5,
+   "review_count": 1
+  },
+  {
+   "id": "e548c2c2-6bdc-41e4-a529-20441919bbb2",
+   "brand_en": "Skinfood",
+   "name_en": "Black Sugar Honey Mask Wash Off",
+   "rating_avg": 5,
+   "review_count": 1
+  },
+  {
+   "id": "e6aba59e-984e-46c6-a873-c8f13f8d5ff0",
+   "brand_en": "I'm From",
+   "name_en": "Rice Toner",
+   "rating_avg": 5,
+   "review_count": 1
+  },
+  {
+   "id": "e9e4db3a-e589-44a5-a2de-a7edf43f0629",
+   "brand_en": "Beauty of Joseon",
+   "name_en": "Glow Serum: Propolis + Niacinamide",
+   "rating_avg": 4,
+   "review_count": 1
+  },
+  {
+   "id": "f2ba1ae1-8ed2-4ea7-b658-fd191f144008",
+   "brand_en": "Beauty of Joseon",
+   "name_en": "Relief Sun: Rice + Probiotics SPF50+ PA++++",
+   "rating_avg": 5,
+   "review_count": 1
+  }
+ ],
+ "effectiveness": [
+  {
+   "id": "591ba533-5faa-41c3-86fe-8a0082bf9aee",
+   "product_id": "e548c2c2-6bdc-41e4-a529-20441919bbb2",
+   "skin_type": "combination",
+   "effectiveness_score": 1,
+   "sample_size": 1,
+   "updated_at": "2026-04-08T05:30:43.594844+00:00"
+  },
+  {
+   "id": "96f8d1f4-19c8-456a-b63f-7371f73d53de",
+   "product_id": "1ad9fa3f-76e2-4f24-9569-b91dab00b22e",
+   "skin_type": "sensitive",
+   "effectiveness_score": 1,
+   "sample_size": 1,
+   "updated_at": "2026-04-08T05:30:42.94915+00:00"
+  },
+  {
+   "id": "045ba26e-f758-4a53-98a2-fb4f00d9fa6e",
+   "product_id": "4877cdec-dedb-4678-b7e4-4c9c82cab345",
+   "skin_type": "combination",
+   "effectiveness_score": 1,
+   "sample_size": 1,
+   "updated_at": "2026-04-08T05:30:43.351739+00:00"
+  },
+  {
+   "id": "c00a26c1-3d2d-4f7a-adce-6e75c2464086",
+   "product_id": "dca4a38b-ea65-403b-a3fc-d3649f0f94db",
+   "skin_type": "combination",
+   "effectiveness_score": 1,
+   "sample_size": 1,
+   "updated_at": "2026-04-08T05:30:43.835186+00:00"
+  },
+  {
+   "id": "1a686f12-2533-48ac-a6a7-c1a04af39b28",
+   "product_id": "776ef10e-568f-486e-b36a-f72324622ee4",
+   "skin_type": "normal",
+   "effectiveness_score": 1,
+   "sample_size": 1,
+   "updated_at": "2026-04-08T05:30:44.437656+00:00"
+  },
+  {
+   "id": "62314f17-d206-4046-b9b1-165b5877a8ed",
+   "product_id": "afdce97d-30f5-49ed-8a7b-196c293e5ddb",
+   "skin_type": "oily",
+   "effectiveness_score": 1,
+   "sample_size": 1,
+   "updated_at": "2026-04-08T05:30:44.230098+00:00"
+  },
+  {
+   "id": "f0ce4676-2621-4aab-99bd-f512bcc58541",
+   "product_id": "114d5b5f-ce87-4bfe-9989-621128b962e8",
+   "skin_type": "dry",
+   "effectiveness_score": 1,
+   "sample_size": 1,
+   "updated_at": "2026-02-28T05:30:18.41597+00:00"
+  },
+  {
+   "id": "b7f0d60d-6cdc-4ca6-ac68-42086f7021a2",
+   "product_id": "e9e4db3a-e589-44a5-a2de-a7edf43f0629",
+   "skin_type": "dry",
+   "effectiveness_score": 0.5,
+   "sample_size": 1,
+   "updated_at": "2026-02-28T05:30:17.258716+00:00"
+  },
+  {
+   "id": "614dc01c-7218-41f1-8ad0-a07f400d191e",
+   "product_id": "f2ba1ae1-8ed2-4ea7-b658-fd191f144008",
+   "skin_type": "dry",
+   "effectiveness_score": 1,
+   "sample_size": 1,
+   "updated_at": "2026-02-28T05:30:16.652052+00:00"
+  },
+  {
+   "id": "27504e00-a043-499b-836d-efe0f95ccda2",
+   "product_id": "09dabfa8-b373-4006-9bbc-2393fb2743db",
+   "skin_type": "dry",
+   "effectiveness_score": 1,
+   "sample_size": 1,
+   "updated_at": "2026-02-28T05:30:14.950238+00:00"
+  },
+  {
+   "id": "481369d8-eca5-4ee7-b136-ba58741cec63",
+   "product_id": "7606df77-b0ff-4d7b-ba5e-f02c14f3c4a6",
+   "skin_type": "dry",
+   "effectiveness_score": 1,
+   "sample_size": 1,
+   "updated_at": "2026-02-28T05:30:19.199727+00:00"
+  },
+  {
+   "id": "71d14ac9-1c23-4dd6-ab29-b2e1937f668a",
+   "product_id": "785754d7-80f0-4ea1-9e28-2716ea6d4358",
+   "skin_type": "dry",
+   "effectiveness_score": 0.5,
+   "sample_size": 1,
+   "updated_at": "2026-02-28T05:30:20.603947+00:00"
+  },
+  {
+   "id": "e0db4531-89c9-48e6-8903-5d73b667281e",
+   "product_id": "72273ec2-dd25-4e25-befa-d5c3f4fdfc5f",
+   "skin_type": "normal",
+   "effectiveness_score": 1,
+   "sample_size": 1,
+   "updated_at": "2026-04-08T05:30:51.775052+00:00"
+  },
+  {
+   "id": "d525d59d-c533-4692-95ff-2f892a1925de",
+   "product_id": "1c8c5a25-37d3-4188-bc38-c6c9a87a2484",
+   "skin_type": "sensitive",
+   "effectiveness_score": 1,
+   "sample_size": 1,
+   "updated_at": "2026-02-28T05:30:23.239642+00:00"
+  },
+  {
+   "id": "3f7ea383-8958-4c90-810c-797fa82b11a5",
+   "product_id": "6ef1a629-bd58-4d9a-86c2-761315bc12d1",
+   "skin_type": "sensitive",
+   "effectiveness_score": 1,
+   "sample_size": 1,
+   "updated_at": "2026-02-28T05:30:20.002597+00:00"
+  },
+  {
+   "id": "ccdb22cd-ab2b-4e5a-abba-ffe1dbc920bb",
+   "product_id": "1cd3fca6-80c0-4881-9c4f-3e76f11e1582",
+   "skin_type": "oily",
+   "effectiveness_score": 1,
+   "sample_size": 1,
+   "updated_at": "2026-04-08T05:30:53.858586+00:00"
+  },
+  {
+   "id": "dbca7fb0-0510-4679-9c7b-f1defa1b3105",
+   "product_id": "e6aba59e-984e-46c6-a873-c8f13f8d5ff0",
+   "skin_type": "dry",
+   "effectiveness_score": 1,
+   "sample_size": 1,
+   "updated_at": "2026-02-28T05:30:21.410431+00:00"
+  },
+  {
+   "id": "dcaa83e6-729d-41db-a1fa-d39933ab85cd",
+   "product_id": "c70d74fa-0aea-4d1b-ac74-ae125687d733",
+   "skin_type": "dry",
+   "effectiveness_score": 1,
+   "sample_size": 1,
+   "updated_at": "2026-02-28T05:30:22.239+00:00"
+  }
+ ]
+}

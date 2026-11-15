@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Star, Shield, Package, TrendingUp, Sparkles } from 'lucide-react'
+import { Star, Package, TrendingUp, Sparkles } from 'lucide-react'
 import type { Product } from '@/types/database'
 import LazyImage from '@/components/ui/LazyImage'
 
@@ -125,12 +125,6 @@ export default function ProductCard({ product, trendingInfo, basePath = '/produc
             </span>
           )}
 
-          {product.is_verified && (
-            <span className="flex items-center gap-0.5 text-[10px] text-green-600">
-              <Shield className="w-2.5 h-2.5" />
-              Verified
-            </span>
-          )}
         </div>
       </div>
 

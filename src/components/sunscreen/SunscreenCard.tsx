@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Star, Shield, Package, Droplets, Sun, Sparkles } from 'lucide-react'
+import { Star, Package, Droplets, Sun, Sparkles } from 'lucide-react'
 import type { Product } from '@/types/database'
 import LazyImage from '@/components/ui/LazyImage'
 
@@ -68,12 +68,6 @@ export default function SunscreenCard({ product, priority = false }: SunscreenCa
                 {product.review_count > 0 && (
                   <span className="text-white/30">({product.review_count})</span>
                 )}
-              </span>
-            )}
-            {product.is_verified && (
-              <span className="flex items-center gap-0.5 text-[10px] text-green-600">
-                <Shield className="w-2.5 h-2.5" />
-                Verified
               </span>
             )}
           </div>

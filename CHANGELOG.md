@@ -4,6 +4,44 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.14 — Stars say whose rating they are; the "Verified" badge and the launch seed reviews are gone (Nov 15 2026)
+
+- **What a member saw.** Her product page showed "5.0 (2 reviews)" beside a green "Verified" shield.
+  The two reviews were Olive Young's, and "Verified" only meant the catalog row passed a completeness
+  check (67 of the 5,311 rows carrying the flag have no ingredient list at all).
+- **Fixed in the app.**
+  - Both product pages (public and member) label the rating through `src/lib/rating-source.ts`:
+    "N reviews on Olive Young", "rated on Olive Young" when no count was recorded, or
+    "N member reviews" once members have reviewed the product.
+  - The "Verified" badge is removed from the public product page, the member product page, and
+    the product and sunscreen cards.
+- **Found by the second-model review (Opus) before shipping, and fixed in the data on the owner's approval:**
+  - **All 20 rows in `ss_reviews` were launch seed text**, written in February under two insider
+    accounts from a template. The first version of the label would have called them "member
+    reviews". Deleted (`scripts/delete-seed-reviews.mjs`), with the 20 product ratings that came
+    only from them and the 18 `ss_product_effectiveness` rows computed from them. Verified: 0
+    reviews left, 0 of those products carry a figure. Backup:
+    `scripts/delete-seed-reviews-applied-2026-11-15T08-29-43-814Z.json`.
+  - **One more typed-in rating**, on a Haruharu toner ("4.6 from 3,400 reviews" in a May migration,
+    outside the dates v11.61.11 covered). Cleared. Backup:
+    `scripts/clear-migration-rating-haruharu-2026-11-15.json`.
+  - The member product page, where the screenshot was taken, was not labelled in the first version.
+  - The first tests passed against several wrong pages; they now fail on any "Verified" text or
+    hand-written review count in those files.
+- **Correction.** v11.61.11 described 11 of these as "one member review" and set their count to 1.
+  They were seed text. That entry's "shape B" is superseded by this one.
+- **Tests.** `tests/rating-source.test.mjs`. 1,798 pass; build clean.
+- **Not verified.** The fixes made after the review were not re-reviewed.
+
+**Open:**
+- The public product page publishes Olive Young's rating to search engines as the page's own
+  `AggregateRating`. Google's rule on third-party ratings was not checked.
+- Cards, `/best` pages, the blog generator and Yuri's tools still pass the count with no source.
+- Yuri's prompt still says "5,300+ verified Korean products".
+- Three rated products have no traceable source (`51532da5`, `82337feb`, `7ffa4ecb`), and the
+  extractor prefers the model's parsed rating over the scraped one; neither was sampled.
+- If a member review is later deleted, the member average stays on the product with nothing behind it.
+
 ## v11.61.13 — A question from a blog post now reaches Yuri's box whichever sign-up button is used (Nov 14 2026)
 
 - **What happened.** The owner tested the path a reader takes: a blog post's "Ask Yuri, free" line,

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { ratingSourceNote } from '@/lib/rating-source'
 import { scopePrices, usPriceRange } from '@/lib/pricing/price-scope'
 import { commonUses } from '@/lib/content/unmeasured-claims'
 import { notFound } from 'next/navigation'
@@ -8,7 +9,6 @@ import ContextualYuriNudge from '@/components/widget/ContextualYuriNudge'
 import {
   Star,
   Package,
-  Shield,
   FlaskConical,
   TrendingUp,
   BookOpen,
@@ -501,17 +501,9 @@ export default async function PublicProductPage({ params }: Props) {
                       <span className="font-semibold text-white">
                         {Number(product.rating_avg).toFixed(1)}
                       </span>
-                      {reviewCount > 0 && (
-                        <span className="text-white/40 text-xs">
-                          ({reviewCount.toLocaleString()} reviews)
-                        </span>
-                      )}
-                    </span>
-                  )}
-                  {product.is_verified && (
-                    <span className="flex items-center gap-1 text-xs text-emerald-400">
-                      <Shield className="w-3.5 h-3.5" />
-                      Verified
+                      <span className="text-white/40 text-xs">
+                        ({ratingSourceNote(reviewRes.count ?? 0, product.review_count ?? 0)})
+                      </span>
                     </span>
                   )}
                   {trending && (

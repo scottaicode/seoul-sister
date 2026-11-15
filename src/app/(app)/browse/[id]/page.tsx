@@ -7,7 +7,6 @@ import dynamic from 'next/dynamic'
 import {
   ArrowLeft,
   Star,
-  Shield,
   Package,
   Heart,
   Share2,
@@ -19,6 +18,7 @@ import {
   Repeat2,
   FlaskConical,
 } from 'lucide-react'
+import { ratingSourceNote } from '@/lib/rating-source'
 import IngredientList from '@/components/products/IngredientList'
 import PriceComparison from '@/components/products/PriceComparison'
 import ReviewCard from '@/components/community/ReviewCard'
@@ -267,17 +267,9 @@ export default function ProductDetailPage() {
                 <span className="font-semibold text-white">
                   {Number(product.rating_avg).toFixed(1)}
                 </span>
-                {product.review_count > 0 && (
-                  <span className="text-white/40 text-xs">
-                    ({product.review_count} reviews)
-                  </span>
-                )}
-              </span>
-            )}
-            {product.is_verified && (
-              <span className="flex items-center gap-1 text-xs text-green-600">
-                <Shield className="w-3.5 h-3.5" />
-                Verified
+                <span className="text-white/40 text-xs">
+                  ({ratingSourceNote(review_summary?.count ?? 0, product.review_count ?? 0)})
+                </span>
               </span>
             )}
             {product.last_reformulated_at && (
