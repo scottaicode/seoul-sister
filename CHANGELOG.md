@@ -4,6 +4,25 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.13 — A question from a blog post now reaches Yuri's box whichever sign-up button is used (Nov 14 2026)
+
+- **What happened.** The owner tested the path a reader takes: a blog post's "Ask Yuri, free" line,
+  the landing page showing that question with "Create your account on this device and this question
+  will be waiting in the box, ready to send", then sign-up through the header button. The setup
+  chat's box was empty.
+- **Cause.** Only the button inside the Yuri panel carried the question, in its link. The header,
+  phone menu and page-bottom buttons carry none, and the header button is the most prominent one.
+- **Fixed.** The landing page holds the question on the device as soon as it shows it
+  (`TryYuriSection.tsx`, same store and 24-hour limit the link used), so every sign-up button keeps
+  the promise. The panel itself (`GatedYuriIntro.tsx`, pinned by fingerprint) is unchanged, and no
+  wording changed.
+- **Tests.** `tests/landing-chat-gate.test.mjs` runs the hold-then-read round trip and checks the
+  wiring; it fails on the old code. 1,795 tests pass; build clean.
+- **Not verified.** Not yet seen working in a browser. No second-model review was run (no wording
+  or promise changed; an existing promise was made true).
+- **Also seen in the same test, not changed:** the member menu (Dashboard, Skin Profile, Library,
+  Routine, Trending) is shown above the setup chat; the landing page still says "5,900+ Products".
+
 ## v11.61.12 — A new free account that leaves the setup chat is sent back to it, not to the pricing page (Nov 14 2026)
 
 - **What happened.** The first account to come through the closed landing page (Nov 14, 7:52 PM

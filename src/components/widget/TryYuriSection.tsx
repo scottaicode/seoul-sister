@@ -24,7 +24,7 @@ import { trackEvent, DemoEvent, WidgetEvent } from '@/lib/analytics'
 import { detectAiReferrer } from '@/lib/widget/ai-referrer'
 import { widgetAccountLine, widgetMembershipLine } from '@/lib/offers'
 import { useSavedOffer } from '@/lib/use-saved-offer'
-import { LANDING_CHAT_OPEN } from '@/lib/landing-chat'
+import { LANDING_CHAT_OPEN, stashCarriedQuestion } from '@/lib/landing-chat'
 import GatedYuriIntro from '@/components/widget/GatedYuriIntro'
 
 /**
@@ -222,6 +222,24 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   const messagesScrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Closed chat: the panel shows the visitor's question with the line "this
+  // question will be waiting in the box". Only the panel's own button carried
+  // it (in its link); the header, phone menu and page-bottom buttons carry
+  // nothing, so a visitor who signed up through one of those met an empty box
+  // (Nov 14 2026, the owner's own test through the header button). Hold it on
+  // this device as soon as it is shown, so every way of signing up keeps the
+  // promise. Same store and 24-hour limit as the link. `input` is only ever
+  // the arriving question here: the closed hero has no box to type in.
+  const shownQuestion = chatClosed ? input.trim() : ''
+  useEffect(() => {
+    if (!shownQuestion) return
+    try {
+      stashCarriedQuestion(window.localStorage, shownQuestion, Date.now())
+    } catch (err) {
+      console.warn('[try yuri] question not held for sign-up:', err)
+    }
+  }, [shownQuestion])
 
   useEffect(() => {
     setMessageCountState(getMessageCount())

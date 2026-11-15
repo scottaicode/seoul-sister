@@ -512,3 +512,34 @@ test('closed, on a phone: sign-up is one tap away and the sign-up card has no sc
   assert.equal(m.gatedSignupHref('hero_button', ''), '/register?plan=monthly&from=gate_hero_button')
   assert.equal(m.gatedSignupHref('sticky', ''), '/register?plan=monthly&from=gate_sticky')
 })
+
+// Nov 14 2026: the owner arrived from a blog post with a question, signed up
+// through the header button, and met an empty box. Only the panel's own button
+// carried the question (in its link). The panel now holds it on the device as
+// soon as it is shown, so every sign-up button keeps the promise printed under it.
+test('a question shown on the closed landing page is held for any sign-up path', async () => {
+  const m = await loadLandingChat(undefined)
+  const mem = new Map()
+  const store = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, v), removeItem: (k) => mem.delete(k) }
+  const now = 1_800_000_000_000
+  // What the panel does on show, then what the setup chat does on open: no link involved.
+  assert.equal(m.stashCarriedQuestion(store, "I'm eyeing a PDRN serum. Is it worth it for my skin?", now), true)
+  assert.equal(m.takeCarriedQuestion(store, now + 60_000), "I'm eyeing a PDRN serum. Is it worth it for my skin?")
+  assert.equal(m.takeCarriedQuestion(store, now + 61_000), '', 'read once')
+  // No question shown: nothing held.
+  assert.equal(m.stashCarriedQuestion(store, '', now), false)
+  assert.equal(mem.size, 0)
+
+  const widget = read('src/components/widget/TryYuriSection.tsx')
+  assert.ok(widget.includes("  const shownQuestion = chatClosed ? input.trim() : ''\n"))
+  assert.match(
+    widget,
+    /useEffect\(\(\) => \{\s*if \(!shownQuestion\) return\s*try \{\s*stashCarriedQuestion\(window\.localStorage, shownQuestion, Date\.now\(\)\)[\s\S]{0,160}\}, \[shownQuestion\]\)/
+  )
+  // The panel is handed the same value it shows.
+  assert.ok(widget.includes('            question={input.trim()}'))
+  // The header and page-bottom buttons still carry no question in their links,
+  // which is why the panel must hold it.
+  const home = read('src/components/home/HomeClient.tsx')
+  assert.ok(home.includes("gatedSignupHref(source, '')"))
+})
