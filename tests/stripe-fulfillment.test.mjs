@@ -110,14 +110,18 @@ test('onboarding calls confirm on arrival and clears the id', () => {
 test('AppShell still absorbs webhook lag before showing the paywall', () => {
   const start = shellSrc.indexOf('async function checkAccess()')
   assert.ok(start > 0, 'checkAccess not found')
-  const body = shellSrc.slice(start, start + 2200)
+  const body = shellSrc.slice(start, shellSrc.indexOf('checkAccess()\n', start + 10))
   assert.ok(
-    /attempt < 3|for \(let attempt/.test(body),
+    /for \(let attempt = 0; attempt < 3 && destination === '\/subscribe'; attempt\+\+\)/.test(body),
     'the retry window is gone — a customer whose webhook is a second late gets the paywall again'
   )
-  // Never grant access without a real paid plan.
+  // Never grant access without a real paid plan. Since Nov 14 2026 the decision
+  // is appGateDestination (executed for every account state in
+  // oauth-callback-onboarding-first.test.mjs); here: the gate re-decides after
+  // each re-read, redirects on any destination, and only then lets the page show.
   assert.ok(
-    /data\.plan === 'free'/.test(body) && /router\.replace\('\/subscribe'\)/.test(body),
+    /retry\.data\s*\n\s*destination = appGateDestination\(data, setupStatus\)/.test(body) &&
+      /if \(destination\) \{\s*router\.replace\(destination\)\s*return\s*\}\s*setReady\(true\)/.test(body),
     'access must still require a genuine paid plan after the grace window'
   )
 })

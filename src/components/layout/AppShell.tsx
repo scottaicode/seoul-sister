@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { loginUrlFor } from '@/lib/auth/return-to'
+import { appGateDestination } from '@/lib/auth/post-sign-in'
 import TrialNotice from './TrialNotice'
 import Header from './Header'
 import BottomNav from './BottomNav'
@@ -91,11 +92,35 @@ export default function AppShell({ children }: AppShellProps) {
 
     async function checkAccess() {
       try {
-        let { data } = await supabase
-          .from('ss_user_profiles')
-          .select('plan, onboarding_completed')
-          .eq('user_id', user!.id)
-          .maybeSingle()
+        const readProfile = () =>
+          supabase
+            .from('ss_user_profiles')
+            .select('plan, onboarding_completed')
+            .eq('user_id', user!.id)
+            .maybeSingle()
+        const [profileRes, progressRes] = await Promise.all([
+          readProfile(),
+          supabase
+            .from('ss_onboarding_progress')
+            .select('onboarding_status')
+            .eq('user_id', user!.id)
+            .maybeSingle(),
+        ])
+        // A failed read is not "no profile". Treating it as one would send a
+        // member to the setup chat, which sends a finished setup straight back
+        // here. Let them in; every member API checks the plan on the server.
+        if (profileRes.error) {
+          console.error('[app shell] profile read failed; not gating this page:', profileRes.error.message)
+          setReady(true)
+          return
+        }
+        if (progressRes.error) {
+          console.error('[app shell] setup status read failed; gating on the profile alone:', progressRes.error.message)
+        }
+        // undefined = could not be read; null = no setup row yet.
+        const setupStatus = progressRes.error ? undefined : (progressRes.data?.onboarding_status ?? null)
+        let data = profileRes.data
+        let destination = appGateDestination(data, setupStatus)
 
         // WEBHOOK-LAG RETRY (July 21 2026).
         //
@@ -111,27 +136,19 @@ export default function AppShell({ children }: AppShellProps) {
         // of highest trust. A short bounded re-check absorbs the normal lag.
         // Deliberately NOT optimistic: we never grant access without a real
         // paid plan in the database — we just give the webhook a beat to land.
-        if (!data?.plan || data.plan === 'free') {
-          for (let attempt = 0; attempt < 3 && (!data?.plan || data.plan === 'free'); attempt++) {
-            await new Promise((r) => setTimeout(r, 1200))
-            const retry = await supabase
-              .from('ss_user_profiles')
-              .select('plan, onboarding_completed')
-              .eq('user_id', user!.id)
-              .maybeSingle()
+        // Only an account headed for the pricing page waits; one still in
+        // setup goes back to the setup chat at once.
+        for (let attempt = 0; attempt < 3 && destination === '/subscribe'; attempt++) {
+          await new Promise((r) => setTimeout(r, 1200))
+          const retry = await readProfile()
+          if (!retry.error) {
             data = retry.data
+            destination = appGateDestination(data, setupStatus)
           }
         }
 
-        // Still free after the grace window → genuinely unpaid.
-        if (!data?.plan || data.plan === 'free') {
-          router.replace('/subscribe')
-          return
-        }
-
-        // Not onboarded → redirect to onboarding
-        if (data && !data.onboarding_completed) {
-          router.replace('/onboarding')
+        if (destination) {
+          router.replace(destination)
           return
         }
 

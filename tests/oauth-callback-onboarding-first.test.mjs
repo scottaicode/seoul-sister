@@ -21,7 +21,7 @@ const src = readFileSync(join(root, 'src', 'lib', 'auth', 'post-sign-in.ts'), 'u
 const js = ts.transpileModule(src, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText
-const { postSignInDestination } = await import(
+const { postSignInDestination, appGateDestination } = await import(
   'data:text/javascript;base64,' + Buffer.from(js).toString('base64')
 )
 
@@ -50,4 +50,64 @@ test('the callback page routes through postSignInDestination and nothing else', 
   // result (tests/weekly-checkin.test.mjs), so onboarding/subscribe still win.
   assert.match(page, /router\.replace\(afterSignIn\(postSignInDestination\(profile\), next\)\)/)
   assert.doesNotMatch(page, /router\.replace\('\/subscribe'\)/)
+})
+
+// Nov 14 2026: the in-app gate checked the plan first, so a new free account
+// that left the setup chat through the menu was sent to the pricing page 29
+// seconds after signing up. A second-model review then found the profile flag
+// turns true as soon as a skin type is known, so the gate needs the setup
+// status too, and that a finished setup must never be sent back to the setup
+// chat (that page sends it on again: a loop).
+//
+// Closed world: every plan x profile flag x setup status, and the exact answer.
+test('app gate: every account state has exactly one destination', () => {
+  const FREE = ['free', null]
+  const PAID = ['monthly', 'pro_monthly']
+  const expected = (paid, flag, status) => {
+    const finished = status === 'completed' || status === 'skipped'
+    if (paid) return !flag && !finished ? '/onboarding' : null
+    if (finished) return '/subscribe'
+    if (status === 'in_progress') return '/onboarding'
+    return flag ? '/subscribe' : '/onboarding' // no setup row, or it could not be read
+  }
+  let n = 0
+  for (const plan of [...FREE, ...PAID]) {
+    for (const flag of [true, false, null]) {
+      for (const status of [null, undefined, 'in_progress', 'completed', 'skipped']) {
+        const got = appGateDestination({ plan, onboarding_completed: flag }, status)
+        assert.equal(got, expected(PAID.includes(plan), !!flag, status), `${plan} / ${flag} / ${status}`)
+        n++
+      }
+    }
+  }
+  assert.equal(n, 60)
+})
+
+test('app gate: the shapes that failed, spelled out', () => {
+  // The Nov 14 visitor: free, no profile yet, greeting shown.
+  assert.equal(appGateDestination({ plan: 'free', onboarding_completed: false }, 'in_progress'), '/onboarding')
+  // Two answers in: the flag is already true, setup is not finished.
+  assert.equal(appGateDestination({ plan: 'free', onboarding_completed: true }, 'in_progress'), '/onboarding')
+  // No profile row at all.
+  assert.equal(appGateDestination(null, null), '/onboarding')
+  // Finished or skipped setup, unpaid: the pricing page, never back to setup.
+  assert.equal(appGateDestination({ plan: 'free', onboarding_completed: true }, 'completed'), '/subscribe')
+  assert.equal(appGateDestination({ plan: 'free', onboarding_completed: false }, 'completed'), '/subscribe')
+  assert.equal(appGateDestination({ plan: null, onboarding_completed: true }, 'skipped'), '/subscribe')
+  // A member mid-setup with a usable profile keeps the app, as before.
+  assert.equal(appGateDestination({ plan: 'monthly', onboarding_completed: true }, 'in_progress'), null)
+  // A member whose setup is marked finished is never sent back to it.
+  assert.equal(appGateDestination({ plan: 'monthly', onboarding_completed: false }, 'completed'), null)
+})
+
+test('the app gate decides only through appGateDestination', () => {
+  const shell = readFileSync(join(root, 'src', 'components', 'layout', 'AppShell.tsx'), 'utf8')
+  assert.match(shell, /destination = appGateDestination\(data, setupStatus\)/)
+  assert.match(shell, /if \(destination\) \{\s*router\.replace\(destination\)/)
+  // No hand-written route to either page, in any quoting, by push or replace.
+  assert.doesNotMatch(shell, /router\.(replace|push)\(\s*['"`]\/(subscribe|onboarding)/)
+  // The setup chat must stay reachable without passing the gate.
+  assert.match(shell, /const ALWAYS_ALLOWED = pathname === '\/onboarding' \|\| pathname\.startsWith\('\/settings'\)/)
+  // A failed profile read lets the page through instead of reading as "no profile".
+  assert.match(shell, /if \(profileRes\.error\) \{[\s\S]{0,200}setReady\(true\)\s*return/)
 })

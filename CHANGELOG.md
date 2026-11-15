@@ -4,6 +4,42 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.12 — A new free account that leaves the setup chat is sent back to it, not to the pricing page (Nov 14 2026)
+
+- **What happened.** The first account to come through the closed landing page (Nov 14, 7:52 PM
+  Pacific, Google sign-up on an iPad) saw Yuri's greeting, opened a member page from the menu 20
+  seconds later, was sent to the pricing page, and left without typing. The request log shows the
+  sequence; the setup record shows she did not use "Skip for now". The pricing page has no link back
+  to the setup chat.
+- **Cause.** The in-app gate (`AppShell`) checked the plan before it checked setup. The Google
+  sign-in page (Oct 14) and the email login page already put setup first; this was the third copy.
+- **Fixed.** The gate decides through one function, `appGateDestination` in
+  `src/lib/auth/post-sign-in.ts`, from the plan, the profile flag and the setup status:
+  - Unpaid and still in setup: back to the setup chat, at once (no 3.6 second wait).
+  - Unpaid with setup finished or skipped: the pricing page, as before, after the same short wait
+    for a payment that has just been made.
+  - Members: unchanged, except that a member whose setup is marked finished is never sent back to it.
+- **Found by the second-model review (Opus) of the first version, and fixed here:**
+  - The profile flag `onboarding_completed` turns true as soon as a skin type is known, so a gate
+    reading only that flag stopped working a turn or two into setup. The gate now reads
+    `ss_onboarding_progress.onboarding_status` as well.
+  - A setup marked completed while the profile flag is still false would have been passed back and
+    forth between the setup chat and the gate for ever. No account is in that state today.
+  - A failed profile read was treated as "no profile". It now lets the page through and logs;
+    member APIs check the plan on the server.
+  - My first guard test matched source text only and passed against several wrong gates.
+- **Tests.** `tests/oauth-callback-onboarding-first.test.mjs` executes the decision for all 60
+  combinations of plan, flag and setup status and for the shapes that failed; it fails when the
+  plan-first rule is put back. The `AppShell` wiring is checked by source text, not executed.
+  `tests/stripe-fulfillment.test.mjs` was updated to the new shape. 1,794 tests pass; build clean.
+- **Not verified.** Not seen in a browser. No production account has yet been sent back to the
+  setup chat by this gate. The fixes made after the review were not re-reviewed.
+
+**Open:**
+- A menu tap during setup now returns the person to the chat with no explanation. Hiding the menu
+  during setup would be clearer; not done.
+- The profile write at the end of setup does not check its error (`finalizeOnboardingProfile`).
+
 ## v11.61.11 — Ratings and review counts typed in at launch are removed from the catalog (data correction, Nov 14 2026)
 
 - **What was wrong.** The February 2026 launch seed files gave products a star rating and a round
