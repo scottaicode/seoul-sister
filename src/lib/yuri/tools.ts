@@ -1503,7 +1503,7 @@ export const YURI_TOOLS: ToolDef[] = [
   {
     name: 'get_product_details',
     description:
-      'Get full details for a specific product including all ingredients, prices across retailers, community ratings, and counterfeit markers. Use when a user asks about a specific product by name. IMPORTANT: if a previous tool result in this conversation already returned this product, pass its product_id rather than product_name — an id is exact, while re-searching by a name you composed can land on a different product or find nothing.',
+      'Get full details for a specific product including all ingredients, prices across retailers, its rating (from Olive Young unless a member has reviewed it), and counterfeit markers. Use when a user asks about a specific product by name. IMPORTANT: if a previous tool result in this conversation already returned this product, pass its product_id rather than product_name — an id is exact, while re-searching by a name you composed can land on a different product or find nothing.',
     input_schema: {
       type: 'object' as const,
       properties: {

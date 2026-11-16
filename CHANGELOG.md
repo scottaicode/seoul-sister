@@ -4,6 +4,27 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.62.1 — A retailer's rating is no longer marked up as ours; the check-in prompt stops calling every member "she" (Nov 15 2026)
+
+- **Structured data.** The public product page told Google its star rating was our own
+  (`AggregateRating`) using Olive Young's review count; the best-of lists did the same for 20
+  products each. Google's review-snippet guideline, read today: "Don't aggregate reviews or
+  ratings from other websites", with a possible manual action. The markup is now emitted only
+  from Seoul Sister members' own reviews (there are none yet, so no page emits it), and the
+  best-of lists emit none. Expect star snippets in search results to go; they were not ours.
+- **Labels.** The best-of lists say the ratings are Olive Young's; product cards say so on hover;
+  "ranked by real user reviews" and two "community ratings" phrases (one in a Yuri tool
+  description) are corrected.
+- **Check-in prompt** (`proactive-nudge`): the member is "they", not "she". The memory note pasted
+  into it is written by a summariser and sometimes genders the member (51 of 194 stored notes
+  contain she/her, some meaning the member); Yuri is now told that wording is the summariser's.
+- **Review.** Opus 5.5 reviewed the batch; its findings are fixed here. The one sentence added
+  to the prompt after that review was not reviewed again.
+- **Open.** The count trigger adds member reviews to the same column as Olive Young's count, so
+  the "on Olive Young" labels need the member count passed in before the first member review
+  exists (noted in `src/lib/rating-source.ts`). The summariser itself still writes gendered notes.
+- "5,900+ products" was checked and is true (6,380 in the catalog, 5,311 verified).
+
 ## v11.62.0 — The free week can start on our own page, with no Stripe page (built, switched OFF) (Nov 15 2026)
 
 - **Why.** A tester met Stripe's hosted page (a price, a promotion-code box, the word "trial") on

@@ -387,3 +387,16 @@ ${src.slice(start, end)}
   assert.equal(out.capturedEmails, 1, 'casing/whitespace must not mint a second lead')
   assert.equal(out.distinctPeople, 3, 'two anonymous visitors stay two people')
 })
+
+test('the check-in note prompt never gives the member a gender (Nov 15 2026)', () => {
+  // The prompt called every member "she/her". Gender is recorded only when a
+  // member states it (src/lib/yuri/stated-identity.ts), and one member was a man.
+  const src = read('src', 'app', 'api', 'cron', 'proactive-nudge', 'route.ts')
+  const a = src.indexOf('  const system = `You are Yuri')
+  const b = src.indexOf('Write the check-in message body now.`', a)
+  assert.ok(a > 0 && b > a, 'prompt builder not found')
+  // Everything the model is sent from this function, comments removed.
+  const sent = src.slice(a, b).replace(/^\s*\/\/.*$/gm, '')
+  assert.doesNotMatch(sent, /\b(she|her|hers|herself|he|him|his|himself|woman|women|girl|lady|ladies|sis)\b/i)
+  assert.ok(sent.includes('You are talking TO them.'))
+})

@@ -141,7 +141,7 @@ async function categoryBestOf(supabase: ReturnType<typeof getServiceClient>): Pr
     primary_keyword: `best Korean ${catPlural}`,
     secondary_keywords: [`top K-beauty ${catPlural}`, `Korean ${category} recommendations`, `${catPlural} for sensitive skin`, `affordable Korean ${catPlural}`],
     tags: ['best of', category, 'K-beauty', 'product recommendations'],
-    prompt_context: `Top ${products.length} Korean ${catPlural} by community rating from Seoul Sister's database of 5,900+ K-beauty products:\n\n${lines}`,
+    prompt_context: `Top ${products.length} Korean ${catPlural} by Olive Young rating in Seoul Sister's database of 5,900+ K-beauty products:\n\n${lines}`,
   }
 }
 

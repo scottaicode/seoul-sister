@@ -19,6 +19,12 @@
  *     `rating_avg` with the member average.
  * So: member reviews if there are any, otherwise Olive Young. If a second
  * retailer's ratings are ever imported, this needs the source per product.
+ * Known gap (Nov 15 2026): the count trigger `ss_products_review_count` adds
+ * each member review to the SAME `review_count` column that holds Olive
+ * Young's count. After the first member review, a surface that passes 0
+ * member reviews here (ProductCard, the best-of list) would label a member
+ * average "N reviews on Olive Young". True today only because there are no
+ * member reviews; fix the trigger or pass the member count before there are.
  * Known gap: if a member review is later deleted, the trigger leaves the
  * member average in place with no review behind it.
  */

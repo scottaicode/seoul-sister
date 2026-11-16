@@ -142,7 +142,6 @@ export default async function PublicProductPage({ params }: Props) {
   if (!product) notFound()
 
   const categoryLabel = labelFor(product.category)
-  const reviewCount = reviewRes.count || product.review_count || 0
 
   // Second wave: queries that depend on product data (category, ingredient IDs)
   const ingredientRows = ingredientsRes.data || []
@@ -398,12 +397,19 @@ export default async function PublicProductPage({ params }: Props) {
             ...(availability && { availability }),
           },
         }),
-        ...(reviewCount > 0 &&
+        // Only our own members' reviews are marked up as a rating. The stars
+        // shown on the page for most products are Olive Young's, and Google's
+        // review-snippet guideline is "Don't aggregate reviews or ratings from
+        // other websites" (read Nov 15 2026; a breach can bring a manual
+        // action). Until this date the block was emitted from Olive Young's
+        // count. With a member review the rating trigger has already replaced
+        // rating_avg with the member average.
+        ...((reviewRes.count ?? 0) > 0 &&
           product.rating_avg && {
             aggregateRating: {
               '@type': 'AggregateRating',
               ratingValue: Number(product.rating_avg).toFixed(1),
-              reviewCount,
+              reviewCount: reviewRes.count ?? 0,
               bestRating: 5,
               worstRating: 1,
             },

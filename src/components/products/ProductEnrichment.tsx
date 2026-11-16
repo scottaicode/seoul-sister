@@ -111,7 +111,7 @@ export default function ProductEnrichment({ productId, productName, productBrand
             Sign in for personalized intelligence
           </p>
           <p className="text-xs text-white/40 mt-0.5">
-            Get skin match analysis, price comparison, community ratings, and authenticity checks.
+            Get skin match analysis, price comparison, and authenticity checks.
           </p>
         </div>
       </div>

@@ -40,7 +40,10 @@
  *
  * It does not assert that `offers` is absent. Removing offers was the original
  * hypothesis and it was REFUTED by measurement: aggregateRating is gated on a
- * real ss_reviews row, and only 20 of 6,105 indexable products have one — so
+ * real ss_reviews row (CORRECTION Nov 15 2026: it was NOT; it fell back to
+ * Olive Young's review count, and the 20 ss_reviews rows were launch seeds,
+ * since deleted. It is gated on member reviews now, see the last test), and
+ * only 20 of 6,105 indexable products have one — so
  * dropping offers would strip rich-result eligibility from 6,085 pages to
  * silence two warnings Google itself labels non-critical. Emitting third-party
  * retailer prices via AggregateOffer is the documented pattern for comparison
@@ -174,4 +177,21 @@ test('public SEO copy never steers buyers to a non-recommended retailer', () => 
         `contradicting the retailer policy Yuri follows.`
     )
   }
+})
+
+test('a rating is marked up for Google only from our own members\' reviews, never from a retailer\'s', () => {
+  // Google, review-snippet guidelines (read Nov 15 2026): "Don't aggregate
+  // reviews or ratings from other websites." Until then the product page
+  // emitted Olive Young's count as its own AggregateRating.
+  const detail = readFileSync(DETAIL, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+  assert.equal(detail.split("'@type': 'AggregateRating'").length - 1, 1)
+  assert.equal(detail.split('aggregateRating').length - 1, 1, 'one rating block, built in one place')
+  assert.doesNotMatch(detail, /product\.review_count \|\| |\|\| product\.review_count/, 'the retailer count is never a fallback for the member count')
+  assert.match(detail, /\.\.\.\(\(reviewRes\.count \?\? 0\) > 0 &&\s*product\.rating_avg && \{\s*aggregateRating: \{\s*'@type': 'AggregateRating',\s*ratingValue: Number\(product\.rating_avg\)\.toFixed\(1\),\s*reviewCount: reviewRes\.count \?\? 0,/)
+  // reviewRes is the member-review count and nothing else.
+  assert.match(detail, /\.from\('ss_reviews'\)\s*\.select\('id', \{ count: 'exact', head: true \}\)/)
+  // The best-of list shows the retailer's ratings, labelled, and marks none up.
+  const best = readFileSync(BEST, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+  assert.doesNotMatch(best, /aggregateRating|AggregateRating/)
+  assert.ok(best.includes('Ratings and review counts are Olive Young&apos;s, not Seoul Sister members&apos;.'))
 })

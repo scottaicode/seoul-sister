@@ -157,7 +157,7 @@ const CATEGORIES: CategoryMeta[] = [
     title: 'Best Korean Spot Treatments',
     h1: 'Best Korean Spot Treatments in 2026',
     description:
-      'Pimple patches, acne treatments, and dark spot correctors from Korea. The most effective spot treatments ranked by real user reviews.',
+      'Pimple patches, acne treatments, and dark spot correctors from Korea. Spot treatments ranked by their Olive Young ratings.',
     skinTip:
       'Hydrocolloid pimple patches work best on whiteheads — they absorb pus overnight. For cystic acne, look for microneedle patches that deliver actives deeper.',
     keyIngredients: ['Salicylic Acid', 'Centella Asiatica', 'Tea Tree Oil', 'Niacinamide', 'Tranexamic Acid'],
@@ -425,20 +425,10 @@ export default async function BestOfCategoryPage({ params }: Props) {
                 priceCurrency: 'USD',
               },
             }),
-            // reviewCount was `p.review_count || 1`, which invented a review for
-            // the 2,179 rated products that have none. A rating with no reviews
-            // is a rating with no reviews; emit the block only when the count is real.
-            ...(p.rating_avg &&
-              p.review_count &&
-              p.review_count > 0 && {
-                aggregateRating: {
-                  '@type': 'AggregateRating',
-                  ratingValue: Number(p.rating_avg).toFixed(1),
-                  reviewCount: p.review_count,
-                  bestRating: 5,
-                  worstRating: 1,
-                },
-              }),
+            // No aggregateRating here. These ratings are Olive Young's, not our
+            // members', and Google's guideline is "Don't aggregate reviews or
+            // ratings from other websites" (read Nov 15 2026). The list below
+            // shows them, labelled with where they come from.
           },
         })),
       },
@@ -584,9 +574,10 @@ export default async function BestOfCategoryPage({ params }: Props) {
 
         {/* Product Rankings */}
         <div className="max-w-6xl mx-auto px-4 py-8">
-          <h2 className="font-display font-semibold text-xl text-white mb-6">
+          <h2 className="font-display font-semibold text-xl text-white mb-1">
             Top 20 Highest-Rated
           </h2>
+          <p className="text-sm text-white/60 mb-6">Ratings and review counts are Olive Young&apos;s, not Seoul Sister members&apos;.</p>
           <div className="space-y-4">
             {products.map((product, idx) => (
               <Link

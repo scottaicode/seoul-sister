@@ -1,5 +1,6 @@
 'use client'
 
+import { ratingSourceNote } from '@/lib/rating-source'
 import Link from 'next/link'
 import { Star, Package, TrendingUp, Sparkles } from 'lucide-react'
 import type { Product } from '@/types/database'
@@ -116,7 +117,11 @@ export default function ProductCard({ product, trendingInfo, basePath = '/produc
           </span>
 
           {product.rating_avg && (
-            <span className="flex items-center gap-0.5 text-[10px] text-white/40">
+            <span
+              className="flex items-center gap-0.5 text-[10px] text-white/40"
+              // A card does not load member reviews. There are none yet (Nov 15 2026); when there are, this needs the count.
+              title={`${Number(product.rating_avg).toFixed(1)} (${ratingSourceNote(0, product.review_count ?? 0)})`}
+            >
               <Star className="w-2.5 h-2.5 fill-gold text-gold" />
               {Number(product.rating_avg).toFixed(1)}
               {product.review_count > 0 && (
