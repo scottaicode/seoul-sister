@@ -197,5 +197,5 @@ test('weekly check-ins carry the prescriber and person-first rules, and the guar
   assert.match(guard, /lists 3-8 are all empty/)
   // The key the reader model copies from the JSON template must be the key the enforce loop reads.
   assert.match(guard, /"routine_changes": \[\], "harmful_followups": \[\], "verdict"/)
-  assert.match(guard, /for \(const h of v\.harmful_followups \?\? \[\]\) if \(h\?\.trim\(\)\) reasons\.push/)
+  assert.match(guard, /for \(const h of said\(v\.harmful_followups\)\) reasons\.push\(`follows up on a harmful plan or a prescription change: \$\{h\}`\)/)
 })
