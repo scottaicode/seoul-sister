@@ -25,6 +25,9 @@
 import { sendEmail, wrapEmailHtml } from '@/lib/email/send'
 import { escapeHtml } from '@/lib/email/html'
 
+/** The zone the owner reads these alerts in (Sacramento). The zone's name is printed with every time. */
+const OWNER_TIME_ZONE = 'America/Los_Angeles'
+
 export interface NewSubscriberInfo {
   email: string | null
   plan: string
@@ -74,7 +77,10 @@ export async function notifyNewSubscriber(info: NewSubscriberInfo): Promise<Noti
 
   const isTrial = info.kind === 'trial_started'
   const trialEndText = info.trialEnd
-    ? info.trialEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+    ? // The day AND the time, in the owner's zone, with the zone named. It
+      // used to be a bare UTC date, which for an evening start is the day
+      // after the one the member's own emails and banner show.
+      info.trialEnd.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: OWNER_TIME_ZONE, timeZoneName: 'short' })
     : 'date unknown'
   const subject = isTrial
     ? `Free week started (not yet paying): ${info.email ?? 'new member'}`

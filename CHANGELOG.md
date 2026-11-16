@@ -4,6 +4,14 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.62.3 — The owner alert gives the free week's end as a day and time in Pacific time (Nov 15 2026)
+
+- The "Free week started" alert said "ends November 23, 2026", a bare UTC date, for a week that
+  ends Sunday November 22 at 7:51 PM Pacific. It now reads like the member's own emails: weekday,
+  date, time, zone. Owner-only email; nothing a member sees changed.
+- `DIRECT_FREE_WEEK=on` was set in production this evening and one live run passed (no tick
+  refused, one subscription, second press refused, rows and both emails correct, account erased).
+
 ## v11.62.2 — The Profile page shows the gender, age and medical history on file, and lets a member take them off (Nov 15 2026)
 
 - **Why.** The privacy policy says a member can view what we hold on their Profile page. Gender,
