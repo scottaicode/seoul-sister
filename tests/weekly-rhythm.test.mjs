@@ -180,8 +180,14 @@ test('facts (executed): why today, in the member\'s own calendar, and nothing th
 
 test('facts (executed): whether they were told, and what became of the notes already sent', async () => {
   const m = await loadCheckin()
-  assert.equal(m.rhythmFact('2026-11-11T09:00:00Z'), 'They were told when they joined (on the membership page and in their welcome email) that you check in every week and adjust their routine from what they tell you. A weekly note is expected.')
-  assert.equal(m.rhythmFact('2026-07-21T00:00:00Z'), 'They joined before members were told to expect a weekly check-in, and nothing has told them one is coming. If you write, one short line saying you will check in each week from now on is fair.')
+  // "Most weeks", word for word what members are told (the welcome email and the
+  // membership page). It said "every week" and "each week" until Nov 16 2026:
+  // Yuri then wrote "each Sunday from now on" and the guard blocked the note.
+  assert.equal(m.rhythmFact('2026-11-11T09:00:00Z'), 'They were told when they joined (in their welcome email) that most weeks you check in and adjust their routine from what they tell you. A note most weeks is expected.')
+  assert.equal(m.rhythmFact('2026-07-21T00:00:00Z'), 'They joined before members were told to expect check-ins, and nothing has told them one is coming. If you write, one short line saying you will check in most weeks from now on is fair. "Most weeks" is what Seoul Sister tells members; "every week" or "each Sunday" says more than that.')
+  // The writer's fact and the guard's verified statement promise the same thing, in the same two words.
+  for (const told of [m.rhythmFact('2026-11-11T09:00:00Z'), m.rhythmFact(null), m.weeklyCheckinStatement(6), m.weeklyCheckinStatement(3)]) assert.match(told, /most weeks/i)
+  assert.match(read('src', 'lib', 'email', 'subscription-confirmation.ts'), /most weeks she checks in/)
   assert.equal(m.rhythmFact(null), m.rhythmFact('2026-07-21T00:00:00Z'), 'unknown must not be reported as "they were told"')
 
   const nudges = [

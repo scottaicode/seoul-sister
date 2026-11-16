@@ -246,6 +246,67 @@ export function enforceGuard(v: VerifierOutput | null, evidence: GuardEvidence, 
   return { pass: reasons.length === 0, reasons, verifier: v }
 }
 
+/** The asserted facts a reader named without copying any words that establish them. */
+export function unquotedFacts(v: VerifierOutput | null): Array<{ n: number; fact: string; source: 'user' | 'record' | 'facts' }> {
+  return (v?.asserted_facts ?? [])
+    .filter((f) => typeof f.fact === 'string' && f.fact.trim() && !f.user_quote?.trim())
+    .map((f, i) => ({ n: i + 1, fact: f.fact!.trim(), source: f.source === 'record' ? 'record' : f.source === 'facts' ? 'facts' : 'user' }))
+}
+
+/** The shortest quote the second look may supply: long enough to be a statement, not a stray phrase. */
+export const SECOND_LOOK_MIN_QUOTE = 20
+
+/**
+ * Fill in quotes found by the second look, for facts the reader left unquoted
+ * and for nothing else. Held to MORE than a reader's own quote, because the
+ * second look is asked to find words and nobody reads its answer:
+ *  - its answers are matched to facts by NUMBER (the n-th fact left unquoted),
+ *    never by wording: a first version matched on the fact's text, the second
+ *    look echoed the text back with a note attached, and nothing matched;
+ *  - a quote the reader gave is never replaced; no fact is removed or added;
+ *  - the SOURCE the reader named for the fact is kept. The second look cannot
+ *    move a fact about the person onto the record (words a summariser wrote);
+ *  - the quote must be in that source word for word, be at least
+ *    SECOND_LOOK_MIN_QUOTE characters, and not sit in a negated sentence.
+ * enforceGuard then runs as it always has. Pure, exported for tests.
+ */
+export function withFoundQuotes(
+  v: VerifierOutput,
+  found: Array<{ n?: unknown; user_quote?: unknown }>,
+  evidence: GuardEvidence
+): VerifierOutput {
+  const corpora = {
+    user: norm(evidence.userMessages.join('\n')),
+    record: norm([...evidence.recordedDecisions, evidence.plan ?? ''].join('\n')),
+    facts: norm((evidence.sourceFacts ?? []).join('\n')),
+  }
+  const byNumber = new Map<number, string>()
+  for (const f of Array.isArray(found) ? found : []) {
+    if (Number.isInteger(f?.n) && typeof f?.user_quote === 'string' && f.user_quote.trim() && !byNumber.has(f.n as number)) byNumber.set(f.n as number, f.user_quote.trim())
+  }
+  let n = 0
+  return {
+    ...v,
+    asserted_facts: (v.asserted_facts ?? []).map((f) => {
+      // Numbered exactly as unquotedFacts lists them, which is how they are asked.
+      if (typeof f.fact !== 'string' || !f.fact.trim() || f.user_quote?.trim()) return f
+      n += 1
+      const quote = byNumber.get(n)
+      if (!quote) return f
+      const corpus = f.source === 'record' ? corpora.record : f.source === 'facts' ? corpora.facts : corpora.user
+      const q = norm(quote)
+      if (q.length < SECOND_LOOK_MIN_QUOTE || !inCorpus(corpus, q) || negatedInContext(corpus, q)) return f
+      return { ...f, user_quote: quote }
+    }),
+  }
+}
+
+const QUOTE_FINDER_SYSTEM = `A checker read a short message an AI skincare advisor wants to send a person, and listed things the message states or presupposes about them. For the facts below it copied no supporting words. Look again, only for those facts.
+
+Each fact is given with the place the checker said its support would be: "user" (THEIR OWN MESSAGES), "record" (RECORDED DECISIONS or ACTIVE PLAN), or "facts" (FACTS ON FILE). Look only there. Copy VERBATIM a whole sentence or clause that by itself establishes the fact as stated. Words that are only about the same topic do not establish a fact, and neither does a sentence that says the opposite. If nothing there establishes it, return an empty quote. An empty quote is the right answer whenever you are unsure.
+
+Return STRICT JSON only, one entry per fact, by its number: {"found": [{"n": 1, "user_quote": ""}]}`
+
 /** Any block wins; reasons are de-duplicated. Exported for tests. */
 export function combineReads(reads: GuardResult[]): GuardResult {
   const blocked = reads.filter((r) => !r.pass)
@@ -349,7 +410,34 @@ ${evidence.verifiedStatements?.length ? evidence.verifiedStatements.map((s) => `
         .filter((b): b is Extract<typeof b, { type: 'text' }> => b.type === 'text')
         .map((b) => b.text)
         .join('')
-      return enforceGuard(parseVerifier(text), evidence, `${subject ?? ''}\n${message}`)
+      let verdict = parseVerifier(text)
+      // A reader sometimes names a fact and copies no words for it although the
+      // words are in the record. Measured Nov 16 2026: the same note with the
+      // same evidence passed two reads in three, and the third blocked on
+      // "user_quote": "" for a plan step recorded word for word. One second
+      // look, for the unquoted facts only. It can fill a quote in; it cannot
+      // remove a fact, and the quote must still be in the evidence verbatim.
+      const missing = unquotedFacts(verdict)
+      if (verdict && missing.length) {
+        try {
+          const second = await callAnthropicWithRetry(() =>
+            getAnthropicClient().messages.create({
+              model: MODELS.primary,
+              max_tokens: 900,
+              system: QUOTE_FINDER_SYSTEM,
+              messages: [{ role: 'user', content: `${facts}\n\nFACTS TO LOOK AGAIN FOR:\n${missing.map((m) => `${m.n}. [look in: ${m.source}] ${m.fact}`).join('\n')}` }],
+            })
+          )
+          void logAIUsage({ feature: 'proactive_content_guard', model: MODELS.primary, inputTokens: second.usage.input_tokens, outputTokens: second.usage.output_tokens, userId: params.userId })
+          const secondText = second.content.filter((b): b is Extract<typeof b, { type: 'text' }> => b.type === 'text').map((b) => b.text).join('')
+          const parsed = parseVerifier(secondText) as { found?: Array<{ n?: unknown; user_quote?: unknown }> } | null
+          if (Array.isArray(parsed?.found)) verdict = withFoundQuotes(verdict, parsed.found, evidence)
+        } catch (err) {
+          // The first read stands, and it blocks: nothing is passed on a failed second look.
+          console.error('[proactive] quote second look failed; the first read stands:', err instanceof Error ? err.message : String(err))
+        }
+      }
+      return enforceGuard(verdict, evidence, `${subject ?? ''}\n${message}`)
     }
     return combineReads(await Promise.all([readOnce(VERIFIER_SYSTEM_A), readOnce(VERIFIER_SYSTEM_B)]))
   } catch (err) {

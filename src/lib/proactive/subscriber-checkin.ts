@@ -276,9 +276,13 @@ export function checkinReasonFact(trialDay: number | null, trial: TrialInfo | nu
 /** Whether this member was told to expect a weekly check-in. Pure, exported for tests. */
 export function rhythmFact(joinedAt: string | null): string {
   if (joinedAt && joinedAt.slice(0, 10) >= RHYTHM_EXPLAINED_FROM) {
-    return `They were told when they joined (on the membership page and in their welcome email) that you check in every week and adjust their routine from what they tell you. A weekly note is expected.`
+    return `They were told when they joined (in their welcome email) that most weeks you check in and adjust their routine from what they tell you. A note most weeks is expected.`
   }
-  return `They joined before members were told to expect a weekly check-in, and nothing has told them one is coming. If you write, one short line saying you will check in each week from now on is fair.`
+  // "Most weeks" is the promise members are given, word for word. This fact
+  // used to say "each week", Yuri wrote "I'll be checking in each Sunday from
+  // now on", and the content guard, which is told only "most weeks", blocked
+  // the note as a new promise: two of four notes on Nov 15 2026.
+  return `They joined before members were told to expect check-ins, and nothing has told them one is coming. If you write, one short line saying you will check in most weeks from now on is fair. "Most weeks" is what Seoul Sister tells members; "every week" or "each Sunday" says more than that.`
 }
 
 /**

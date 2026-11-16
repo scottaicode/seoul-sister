@@ -1196,3 +1196,84 @@ test('check-in guard evidence carries the forecast the judge saw and the locatio
   assert.match(guard, /FACTS ON FILE \(true at the source/)
   assert.match(guard, /"source": "user" \| "record" \| "facts"/)
 })
+
+// ---------------------------------------------------------------------------
+// The second look for a fact a reader named but did not quote (Nov 16 2026).
+// Earned: a free-week member's day-3 note said "the day we said the jaw patch
+// would tell us something". The record held that plan step word for word. On
+// replay the same note with the same evidence passed two reads in three; the
+// third returned the fact with "user_quote": "" and the note was blocked.
+// ---------------------------------------------------------------------------
+test('second look (executed): it can fill in a quote that IS in the evidence, under the source the reader named, and nothing else', async () => {
+  const { enforceGuard, unquotedFacts, withFoundQuotes, SECOND_LOOK_MIN_QUOTE } = await loadGuard()
+  const evidence = {
+    userMessages: ['Can I use a sheet mask from mediheal tonight?', 'my cheeks sting a little after the toner', 'I never got dry patches on my forehead this week'],
+    recordedDecisions: ['decision (2026-11-15): mediheal_sheet_mask_test: Do the jaw test tonight. If the patch stays calm through Tuesday, the mask is fine for the whole face.'],
+    plan: null,
+  }
+  const note = 'Tomorrow is Tuesday, the day we said the jaw patch would tell us something. Did you try it?'
+  const FACT = 'A jaw patch test was planned to tell something by Tuesday'
+  const first = { products_mentioned: [], using_claims: [], asserted_facts: [{ fact: FACT, user_quote: '', source: 'record' }], verdict: 'pass' }
+  assert.equal(enforceGuard(first, evidence, note).pass, false, 'unquoted, it blocks (this is what happened)')
+  assert.deepEqual(unquotedFacts(first), [{ n: 1, fact: FACT, source: 'record' }])
+  const fill = (v, found) => withFoundQuotes(v, found, evidence)
+
+  // The words are in the record: filled in, and the code finds them there.
+  const good = fill(first, [{ n: 1, user_quote: 'If the patch stays calm through Tuesday, the mask is fine for the whole face.' }])
+  assert.equal(enforceGuard(good, evidence, note).pass, true)
+
+  // A quote that is not in the evidence is not filled in at all.
+  assert.deepEqual(fill(first, [{ n: 1, user_quote: 'We agreed to read the jaw patch on Tuesday.' }]), first)
+  // The reader said RECORD. Their own words do not count for it, and the second look cannot relabel.
+  assert.deepEqual(fill(first, [{ n: 1, user_quote: 'Can I use a sheet mask from mediheal tonight?', source: 'user' }]), first)
+  // The reader said USER (a fact about the person). A record line, written by a summariser,
+  // is not filled in whatever source the second look claims for it.
+  const person = { products_mentioned: [], using_claims: [], asserted_facts: [{ fact: 'Their jaw stayed calm', user_quote: '', source: 'user' }], verdict: 'pass' }
+  for (const claimed of ['record', 'user', undefined]) {
+    const out = fill(person, [{ n: 1, user_quote: 'If the patch stays calm through Tuesday, the mask is fine for the whole face.', source: claimed }])
+    assert.deepEqual(out, person, `source claimed: ${claimed}`)
+    assert.equal(enforceGuard(out, evidence, 'Glad your jaw stayed calm.').pass, false)
+  }
+  // A stray phrase is too short to be support, and a sentence that says the opposite is not support.
+  assert.equal(SECOND_LOOK_MIN_QUOTE, 20)
+  const dry = { products_mentioned: [], using_claims: [], asserted_facts: [{ fact: 'They have dry patches', user_quote: '', source: 'user' }], verdict: 'pass' }
+  assert.deepEqual(fill(dry, [{ n: 1, user_quote: 'dry patches' }]), dry)
+  assert.deepEqual(fill(dry, [{ n: 1, user_quote: 'got dry patches on my forehead this week' }]), dry, 'the sentence begins "I never"')
+  const sting = { products_mentioned: [], using_claims: [], asserted_facts: [{ fact: 'Their cheeks sting after toner', user_quote: '', source: 'user' }], verdict: 'pass' }
+  assert.equal(enforceGuard(fill(sting, [{ n: 1, user_quote: 'my cheeks sting a little after the toner' }]), evidence, 'Is the stinging after toner any better?').pass, true)
+
+  // It cannot remove a fact, add one, or replace a quote the reader gave; junk changes nothing.
+  const two = { products_mentioned: [], using_claims: [], asserted_facts: [{ fact: 'A', user_quote: '', source: 'record' }, { fact: 'B', user_quote: 'reader gave this', source: 'user' }], verdict: 'pass' }
+  // Number 2 does not exist (B was quoted by the reader and is not numbered); 0, 1.5, a string and a blank change nothing.
+  for (const junk of [[], [{ n: 2, user_quote: 'If the patch stays calm through Tuesday, the mask is fine for the whole face.' }, { n: 0, user_quote: 'my cheeks sting a little after the toner' }, { n: 1, user_quote: '  ' }], [{ n: '1', user_quote: 'If the patch stays calm through Tuesday, the mask is fine for the whole face.' }, { n: 1.5, user_quote: 'x' }, { n: 7, user_quote: {} }, null, 'x'], 'not an array']) {
+    assert.deepEqual(fill(two, junk).asserted_facts, two.asserted_facts)
+  }
+  assert.deepEqual(unquotedFacts(two), [{ n: 1, fact: 'A', source: 'record' }])
+  // Matched by number, so wording the second look changes (it echoed the fact with a note attached) cannot break it,
+  // and the second of two unquoted facts gets the second answer, not the first.
+  const pair = { products_mentioned: [], using_claims: [], asserted_facts: [{ fact: 'Their cheeks sting after toner', user_quote: '', source: 'user' }, { fact: 'quoted already', user_quote: 'reader gave this', source: 'user' }, { fact: FACT, user_quote: '', source: 'record' }], verdict: 'pass' }
+  const filled = fill(pair, [{ n: 2, fact: `${FACT} (look in: record)`, user_quote: 'If the patch stays calm through Tuesday, the mask is fine for the whole face.' }, { n: 1, user_quote: 'my cheeks sting a little after the toner' }])
+  assert.deepEqual(filled.asserted_facts.map((f) => f.user_quote), ['my cheeks sting a little after the toner', 'reader gave this', 'If the patch stays calm through Tuesday, the mask is fine for the whole face.'])
+  // Swapped numbers put each quote under the wrong source, so neither is filled.
+  assert.deepEqual(fill(pair, [{ n: 1, user_quote: 'If the patch stays calm through Tuesday, the mask is fine for the whole face.' }, { n: 2, user_quote: 'my cheeks sting a little after the toner' }]), pair)
+  assert.deepEqual(unquotedFacts(null), [])
+  // The verdict is never touched, and every other reason to block still blocks.
+  assert.equal(fill({ ...first, verdict: 'block' }, [{ n: 1, user_quote: 'If the patch stays calm through Tuesday, the mask is fine for the whole face.' }]).verdict, 'block')
+  assert.equal(enforceGuard({ ...good, verdict: 'block' }, evidence, note).pass, false)
+  assert.equal(enforceGuard({ ...good, promises: ['you will hear from me every Monday'] }, evidence, note).pass, false)
+
+  // Wiring: one second look per read, only when a fact was left unquoted; a failure leaves the first read standing.
+  const src = read('src', 'lib', 'proactive', 'content-guard.ts')
+  assert.match(src, /const missing = unquotedFacts\(verdict\)\s*if \(verdict && missing\.length\) \{/)
+  assert.ok(src.includes('FACTS TO LOOK AGAIN FOR:\\n${missing.map((m) => `${m.n}. [look in: ${m.source}] ${m.fact}`).join(\'\\n\')}'))
+  assert.match(src, /if \(Array\.isArray\(parsed\?\.found\)\) verdict = withFoundQuotes\(verdict, parsed\.found, evidence\)/)
+  assert.match(src, /catch \(err\) \{\s*\/\/ The first read stands, and it blocks[^\n]*\n\s*console\.error\(/)
+  assert.equal(src.split('enforceGuard(verdict,').length - 1, 1, 'every read ends in the same enforcement')
+  assert.equal(src.split('withFoundQuotes(').length - 1, 2, 'defined once, called once')
+  // Nothing after the second look may set the verdict.
+  const tail = src.slice(src.indexOf('verdict = withFoundQuotes('), src.indexOf('return enforceGuard(verdict,'))
+  assert.doesNotMatch(tail, /verdict\.verdict\s*=|\.pass\s*=/)
+  // The second look is told where to look and that empty is the right answer when unsure.
+  assert.match(src, /Look only there\. Copy VERBATIM a whole sentence or clause that by itself establishes the fact as stated\./)
+  assert.match(src, /An empty quote is the right answer whenever you are unsure\./)
+})

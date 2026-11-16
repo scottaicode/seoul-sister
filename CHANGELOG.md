@@ -4,6 +4,46 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.62.5 — Three of four check-in notes were blocked on Nov 15; two causes fixed (Nov 16 2026)
+
+- **Measured.** On Sunday Nov 15 Yuri wrote four check-in notes. One was sent (Lauri). The
+  content guard blocked the other three: Elin (day 3 of her free week), Bailey and Caroline.
+  "Most weeks she checks in" was not being kept.
+- **Cause 1, the writer and the guard disagreed.** The writer was told that for a long-standing
+  member "one short line saying you will check in each week from now on is fair"; the guard is
+  told only "most weeks" and blocked "each Sunday from now on" as a new promise. The fact given
+  to the writer also said members had been told "every week"; the welcome email says "most
+  weeks". `rhythmFact` now says "most weeks" in both branches.
+- **Cause 2, the guard's readers are inconsistent.** Elin's note said "the day we said the jaw
+  patch would tell us something". Her record held that step word for word. Replayed on the same
+  evidence the note passed two reads in three; the third named the fact and copied no words for
+  it. The guard now takes one second look for facts a reader left unquoted. It can only fill in
+  a quote of 20+ characters that is in the evidence word for word, under the source the reader
+  named, and not in a negated sentence; it cannot remove a fact, change a source or a verdict.
+- **Replays on real evidence, after the fix.** Elin's true note: passed 8 of 10 (the two blocks
+  were a reader giving the quote and still saying "block"). A note inventing an outcome about
+  her skin: blocked 6 of 6. A note inventing an agreement that was never recorded: blocked 6 of 6.
+- **My own bug on the way.** The first version matched the second look's answers by the fact's
+  wording; the second look echoed the wording back with a note attached and nothing matched
+  (4 of 8 passed, no better than before). Answers are matched by number now. Found only by
+  printing the raw answer, not by reading the code.
+- **Review.** Opus 5.5 reviewed the first version and found that the second look could move a
+  fact about the person onto the record; fixed (the reader's source is kept). The tightened
+  version was not reviewed again.
+- **Open, measured, NOT fixed.**
+  - The guard also passes things it should not. With the jaw-test plan removed from the record,
+    the same "we said" note passed 3 of 8 times on the OLD code and 2 of 5 on the new: both
+    readers simply did not list the claim. This is older than today's change and is the more
+    serious weakness.
+  - A reader sometimes says "block" with every quote in place (2 of 10 above).
+  - `checkinReasonFact` still says "once a week, on Sunday" (it describes when Yuri is asked).
+  - Yuri's reasoning for Bailey and Caroline said the forecast she was given covered last week,
+    not the coming one. Not investigated.
+  - A reader returning a non-string in `routine_changes` throws inside `enforceGuard` (seen once
+    in a replay); it fails closed.
+- Elin's blocked day-3 note was not sent late: by the evening she had told Yuri what happened
+  with the mask, so the note was out of date. Her day-6 note is due Thursday Nov 19.
+
 ## v11.62.4 — One member can be given extra messages for a month (Nov 16 2026)
 
 - **Why.** Elin, the first stranger in a free week, used 57 of the month's 80 messages in three
