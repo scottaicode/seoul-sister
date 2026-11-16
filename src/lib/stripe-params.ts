@@ -28,7 +28,7 @@ export function noCardTrialTerms(trialDays: number, percentOff: number | null = 
 
 /** Consent text for a card-required trial (the emergency-stop path). */
 export function cardTrialTerms(trialDays: number, percentOff: number | null = null): string {
-  return `Your ${trialDays}-day free trial starts today. Unless you cancel before it ends, your card will be charged ${chargePhrase(percentOff, `on day ${trialDays + 1}`)}. Cancel anytime from your Profile page (Manage subscription) or by replying to any Seoul Sister email.`
+  return `Your free week (Stripe calls it a trial) starts today. Unless you cancel before it ends, your card will be charged ${chargePhrase(percentOff, `on day ${trialDays + 1}`)}. Cancel anytime from your Profile page (Manage subscription) or by replying to any Seoul Sister email.`
 }
 
 /** Consent text when there is no trial: charged today. */
@@ -38,9 +38,11 @@ export function noTrialTerms(percentOff: number | null = null): string {
 
 /** What the add-a-card page says next to the button during a no-card trial. */
 export function addCardTerms(trialEnd: Date | null, percentOff: number | null = null): string {
-  const when = trialEnd
-    ? `when your free trial ends on ${trialEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })},`
-    : 'when your free trial ends,'
+  // No date here. It used to print the end date in UTC, which for an evening
+  // start is a different calendar day from the one the banner shows in the
+  // member's own time. The banner has the day and the time.
+  void trialEnd
+  const when = 'when your free week ends (the day and time are shown at the top of the app when you are signed in),'
   return `Saving this card keeps your Seoul Sister membership going. It will be charged ${chargePhrase(percentOff, when)}. Cancel anytime from your Profile page (Manage subscription) or by replying to any Seoul Sister email.`
 }
 
@@ -51,11 +53,11 @@ export interface CheckoutParamsInput {
   priceId: string
   successUrl: string
   cancelUrl: string
-  /** First-time members get the free trial; the caller decides eligibility. */
+  /** First-time members get the free week; the caller decides eligibility. */
   withTrial: boolean
   /** Start that trial with no card. Ignored without a trial. */
   noCard: boolean
-  /** Hashed network address, kept on the subscription so the trial ledger can cap trials per network. */
+  /** Hashed network address, kept on the subscription so the free week ledger can cap trials per network. */
   ipHash?: string | null
   /**
    * A creator code Stripe has confirmed is active (offers-server.ts). When set,
@@ -79,7 +81,7 @@ export function buildCheckoutParams(p: CheckoutParamsInput) {
     metadata.offer_percent_off = String(p.offer.percentOff)
   }
   if (p.ipHash) metadata.ip_hash = p.ipHash
-  // Stated, not inferred: the webhook reads this to know the trial began with
+  // Stated, not inferred: the webhook reads this to know the free week began with
   // no card (it used to guess from the subscription having no default card).
   if (noCard) metadata.no_card = '1'
 
@@ -101,7 +103,7 @@ export function buildCheckoutParams(p: CheckoutParamsInput) {
     metadata,
     subscription_data: {
       ...(trialDays > 0 ? { trial_period_days: trialDays } : {}),
-      // With no card the trial must END, not invoice an empty wallet.
+      // With no card the free week must END, not invoice an empty wallet.
       ...(noCard ? { trial_settings: { end_behavior: { missing_payment_method: 'cancel' as const } } } : {}),
       metadata,
     },
@@ -120,7 +122,7 @@ export function buildAddCardParams(p: {
   trialEnd: Date | null
   successUrl: string
   cancelUrl: string
-  /** Percent off the first paid month, when the trial started with a creator code. */
+  /** Percent off the first paid month, when the free week started with a creator code. */
   percentOff?: number | null
 }) {
   return {

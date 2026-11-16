@@ -64,6 +64,17 @@ export const SUBSCRIPTION_TIERS = {
   },
 } as const
 
+/**
+ * The lines shown on the membership page, where someone is deciding whether to
+ * start. Four of the plan's own lines, not the full list: nine bullets pushed
+ * the button off a phone screen at the moment of decision, and a list of
+ * features is not what the person came for (Nov 15 2026). The list is BUILT
+ * from SUBSCRIPTION_TIERS.monthly.features by position, so a line cannot be
+ * added here that the plan does not already state: memory, the routine,
+ * the check-in notes, then Yuri herself.
+ */
+export const PAYWALL_FEATURES: readonly string[] = [3, 2, 7, 0].map((i) => SUBSCRIPTION_TIERS.monthly.features[i])
+
 export type TierKey = keyof typeof SUBSCRIPTION_TIERS
 
 function getPriceId(plan: TierKey): string {

@@ -64,11 +64,11 @@ export async function POST(request: NextRequest) {
     // the card instead.
     if (priorSub && ['active', 'trialing', 'past_due', 'incomplete'].includes(priorSub.status)) {
       return NextResponse.json(
-        { error: 'You already have a membership. If you are on the free trial, use the "Add a card" button at the top of any page. To change a card on a paid membership, go to your Profile page and choose "Manage subscription".' },
+        { error: 'You already have a membership. If you are in your free week, use the "Add a card" button at the top of any page. To change a card on a paid membership, go to your Profile page and choose "Manage subscription".' },
         { status: 409 }
       )
     }
-    // One free trial per person, and a few per network (src/lib/trial.ts; the
+    // One free week per person, and a few per network (src/lib/trial.ts; the
     // paywall reads the same function through /api/me/trial, so what the button
     // said and what happens here cannot disagree). If the lookup fails we stop
     // rather than quietly charging today someone who was promised a trial.

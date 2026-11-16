@@ -39,6 +39,11 @@ export default function OnboardingPage() {
   // they are a member, so a new member whose setup is already done lands in
   // Yuri with that request ready to send, not on the dashboard.
   const justPaidRef = useRef(false)
+  // The confirm step for someone just back from Stripe, resolving to whether
+  // they are a member now. Awaited before a just-started member who skipped
+  // setup is sent to the member chat, so the app gate there never meets a plan
+  // that is still being written.
+  const confirmedRef = useRef<Promise<boolean> | null>(null)
   // Whether to carry this browser's free-preview chat into onboarding. 'pending'
   // until read on the client; 'ask' shows CarryoverPrompt and holds the start
   // until they answer; 'na' when there is no preview chat on this device.
@@ -102,9 +107,10 @@ export default function OnboardingPage() {
   // get bounced to the paywall. This confirms payment DIRECTLY with Stripe on
   // arrival (Stripe's documented dual-trigger fulfillment). Idempotent and
   // safe: the endpoint verifies ownership and payment_status server-side, so
-  // it grants nothing to someone who simply types the URL. Fire-and-forget —
-  // onboarding must never be blocked by it, because the webhook is still a
-  // second chance and /subscribe self-corrects.
+  // it grants nothing to someone who simply types the URL. Setup itself
+  // never waits for it (the webhook is still a second chance and /subscribe
+  // self-corrects). Only the redirect for a member who skipped setup awaits
+  // the result, through confirmedRef, and the request gives up after 8s.
   useEffect(() => {
     const sessionId = new URLSearchParams(window.location.search).get('session_id')
     if (!sessionId) return
@@ -118,11 +124,11 @@ export default function OnboardingPage() {
     // routine request and left /onboarding in the address bar (review, Nov 10
     // 2026). The id is already captured in `sessionId`.
     window.history.replaceState({}, '', '/onboarding')
-    ;(async () => {
+    confirmedRef.current = (async (): Promise<boolean> => {
       try {
         const { data } = await supabase.auth.getSession()
         const token = data.session?.access_token
-        if (!token) return
+        if (!token) return false
         await fetch('/api/stripe/confirm', {
           method: 'POST',
           headers: {
@@ -130,16 +136,25 @@ export default function OnboardingPage() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ session_id: sessionId }),
+          // Bounded: a member who skipped setup waits on this before being sent
+          // to the member chat, and must not sit on the loading screen if it stalls.
+          // Older Safari has no AbortSignal.timeout; there the request is sent unbounded.
+          signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(8000) : undefined,
         })
         // The plan is written by now (or the webhook will write it). Read it,
         // so this page stops describing a member as someone yet to choose.
         const uid = data.session?.user?.id
         if (uid) {
           const { data: profile, error: planError } = await supabase.from('ss_user_profiles').select('plan').eq('user_id', uid).maybeSingle()
-          if (!planError && profile?.plan && profile.plan !== 'free') setIsMember(true)
+          if (!planError && profile?.plan && profile.plan !== 'free') {
+            setIsMember(true)
+            return true
+          }
         }
+        return false
       } catch (err) {
         console.error('[onboarding] payment confirm failed:', err)
+        return false
       }
     })()
   }, [])
@@ -300,12 +315,34 @@ export default function OnboardingPage() {
           if (cancelled) return
 
           if (data.status === 'completed') {
+            // A just-paid member waits for the payment check first, so the
+            // member chat does not open while the plan still reads "free" and
+            // send them to the membership page.
+            if (justPaidRef.current && confirmedRef.current) {
+              await confirmedRef.current
+              if (cancelled) return
+            }
             router.replace(
               justPaidRef.current
                 ? `/yuri?ask=${encodeURIComponent(FIRST_MEMBER_ASK)}`
                 : '/dashboard'
             )
             return
+          }
+
+          // Someone who skipped this chat and has just started membership is
+          // not put back in front of it: they go to the member chat, with no
+          // prefilled message (the usual one speaks of "what you learned in my
+          // setup chat", which may be nothing). Only once the plan is confirmed;
+          // otherwise, or if the confirm takes more than 8 seconds, they stay,
+          // and the chat is still usable.
+          if (data.status === 'skipped' && justPaidRef.current && confirmedRef.current) {
+            const member = await confirmedRef.current
+            if (cancelled) return
+            if (member) {
+              router.replace('/yuri')
+              return
+            }
           }
 
           if (data.conversation_id) setConversationId(data.conversation_id)

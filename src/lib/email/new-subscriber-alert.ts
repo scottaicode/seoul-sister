@@ -33,7 +33,7 @@ export interface NewSubscriberInfo {
   leadSource: string | null
   amountDisplay?: string | null
   /**
-   * 'trial_started' = a free trial began and NO money has moved. 'paid' = a
+   * 'trial_started' = a free week began and NO money has moved. 'paid' = a
    * real payment (a no-trial checkout, or a trial that just converted). Until
    * Nov 10 2026 every trial start was announced as "Someone just subscribed".
    */
@@ -77,10 +77,10 @@ export async function notifyNewSubscriber(info: NewSubscriberInfo): Promise<Noti
     ? info.trialEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
     : 'date unknown'
   const subject = isTrial
-    ? `Free trial started (not yet paying): ${info.email ?? 'new member'}`
+    ? `Free week started (not yet paying): ${info.email ?? 'new member'}`
     : `🎉 New PAYING Seoul Sister subscriber: ${info.email ?? 'new customer'}`
   const headline = isTrial
-    ? `Someone started the free trial. No money has moved. ${info.cardOnFile ? 'A card is on file' : 'No card is on file'}; the trial ends ${escapeHtml(trialEndText)}${info.cardOnFile ? ' and will be charged then unless they cancel' : ' and stops then unless they add a card'}.`
+    ? `Someone started the free week. No money has moved. ${info.cardOnFile ? 'A card is on file' : 'No card is on file'}; the free week ends ${escapeHtml(trialEndText)}${info.cardOnFile ? ' and will be charged then unless they cancel' : ' and stops then unless they add a card'}.`
     : 'Someone just paid for Seoul Sister Pro. 💳'
   const closing = isTrial
     ? 'This is a trial, not a customer yet. The row is in ss_trial_starts; paid_at is set if they convert.'

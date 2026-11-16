@@ -12,7 +12,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
  *    coming in the member's week and leaves the working-out for the chat, so
  *    the chat has to open knowing what that was: her own reason as she recorded
  *    it, and the forecast she had in front of her.
- * 3. The free trial. The advisor prompt says a trial member's dates appear "in
+ * 3. The free week. The advisor prompt says a trial member's dates appear "in
  *    the per-turn facts when known"; nothing ever put them there.
  *
  * Facts only. What she does with them is hers.
@@ -63,7 +63,7 @@ export function formatMemberTurnFacts(input: MemberTurnFactsInput): string {
   }
   if (input.trial) {
     lines.push(
-      `They are on the free trial. The date it ends and whether a card is on file are shown to them at the top of the app and sent to them by email; you cannot see either, so if they ask, point them there.`
+      `They are in their free week (Stripe's pages and receipts call it a trial). The date it ends and whether a card is on file are shown to them at the top of the app and sent to them by email; you cannot see either, so if they ask, point them there.`
     )
   }
   return lines.length ? `\n\n## Member facts this turn (facts, not instructions)\n${lines.map((l) => `- ${l}`).join('\n')}` : ''

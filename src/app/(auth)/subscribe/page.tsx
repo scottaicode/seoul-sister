@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Star, Loader2, Check, ArrowRight } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { SUBSCRIPTION_TIERS } from '@/lib/stripe'
+import { SUBSCRIPTION_TIERS, PAYWALL_FEATURES } from '@/lib/stripe'
 import { PRICING } from '@/lib/pricing'
 import { trackEvent, PaywallEvent } from '@/lib/analytics'
 import type { ExtractedSkinProfile } from '@/types/database'
@@ -33,9 +33,9 @@ export default function SubscribePage() {
   const [trialEligible, setTrialEligible] = useState<boolean | null>(null)
   // true = that trial starts with no card. Only meaningful when eligible.
   const [noCardTrial, setNoCardTrial] = useState(false)
-  // true = this person already used their free trial (it ended without a card).
+  // true = this person already used their free week (it ended without a card).
   const [hadTrial, setHadTrial] = useState(false)
-  // true = no free trial here because several were started from this network recently.
+  // true = no free week here because several were started from this network recently.
   const [networkCap, setNetworkCap] = useState(false)
   // The setup chat is unfinished and can be gone back to (started or skipped).
   const [setupOpen, setSetupOpen] = useState(false)
@@ -334,9 +334,9 @@ export default function SubscribePage() {
             : trialEligible === true
               ? `First ${PRICING.trial_days} days free, then ${priceLong}. Cancel anytime.`
               : hadTrial
-                ? `Your free trial has ended. Continue for ${priceLong}. Cancel anytime.`
+                ? `Your free week has ended. Continue for ${priceLong}. Cancel anytime.`
                 : networkCap
-                  ? `${priceLong}, charged today. The free trial is not available here because several have already been started from this network recently. Cancel anytime.`
+                  ? `${priceLong}, charged today. The free week is not available here because several have already been started from this network recently. Cancel anytime.`
                   : `${priceLong}. Cancel anytime.`}
         </p>
 
@@ -347,7 +347,7 @@ export default function SubscribePage() {
         )}
 
         <ul className="space-y-3 mb-6">
-          {tier.features.map((f) => (
+          {PAYWALL_FEATURES.map((f) => (
             <li key={f} className="flex gap-2.5 text-sm text-white/85">
               <Check className="w-4 h-4 text-gold shrink-0 mt-0.5" />
               {f}

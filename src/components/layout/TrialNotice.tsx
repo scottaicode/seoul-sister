@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { chargePhrase, addCardPhrase } from '@/lib/offers'
 
 /**
- * Tells a member on the free trial when it ends and what happens then, and
+ * Tells a member on the free week when it ends and what happens then, and
  * lets them add a card (Nov 10 2026). Before this, nothing in the app showed a
  * trial's end date, so a no-card trial would have stopped on day 7 with no
  * warning.
@@ -102,10 +102,12 @@ export default function TrialNotice() {
   if (state === 'none' || !facts) return null
 
   const ends = facts.ends_at ? new Date(facts.ends_at) : null
+  // The day AND the time: the free week ends exactly seven days after it
+  // started, to the minute, so "ends on Sunday" was wrong for someone whose
+  // week ends at 12:00 AM Sunday and vague for everyone else.
   const endText = ends
-    ? ends.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+    ? ends.toLocaleString(undefined, { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })
     : null
-  const until = endText ? `on ${endText}` : 'when it ends'
   // The price as this member will pay it: with a creator code the first month is discounted.
   const pct = facts.percent_off ?? null
 
@@ -134,7 +136,7 @@ export default function TrialNotice() {
   if (state === 'cancelled') {
     return (
       <div ref={shellRef} className={shell} role="status">
-        You cancelled. Your free trial runs until it ends {until}, and nothing will be charged.
+        You cancelled, so nothing will be charged.{endText ? ` Your free week still runs until ${endText}.` : ''}
       </div>
     )
   }
@@ -142,14 +144,16 @@ export default function TrialNotice() {
     return (
       <div ref={shellRef} className={shell} role="status">
         {justSaved ? 'Your card is saved. ' : ''}
-        Your free trial ends {until}. Your card will be charged {chargePhrase(pct, 'on that day,')}.
+        {endText
+          ? `Your free week ends ${endText}. Your card will be charged ${chargePhrase(pct, 'once it ends,')}.`
+          : `Your card will be charged ${chargePhrase(pct, 'when your free week ends,')}.`}
       </div>
     )
   }
   if (state === 'card_just_saved') {
     return (
       <div ref={shellRef} className={shell} role="status">
-        Your card was received. It can take a minute to show here. Your free trial ends {until}.
+        Your card was received. It can take a minute to show here.{endText ? ` Your free week ends ${endText}.` : ''}
       </div>
     )
   }
@@ -157,10 +161,10 @@ export default function TrialNotice() {
   return (
     <div ref={shellRef} className={shell} role="status">
       <span>
-        Your free trial ends {until}.{' '}
+        {endText ? `Your free week ends ${endText}. ` : ''}
         {state === 'no_card'
-          ? `You have not added a card, so your membership will stop on that day and nothing will be charged. To continue, add a card: ${addCardPhrase(pct)}.`
-          : `To continue after that, add a card: ${addCardPhrase(pct)}.`}
+          ? `No card is on file, so nothing will be charged and your membership stops ${endText ? 'then' : 'when the free week ends'}. To continue, add a card: ${addCardPhrase(pct)}.`
+          : `If you have not added a card, add one to continue: ${addCardPhrase(pct)}.`}
       </span>{' '}
       <button
         type="button"

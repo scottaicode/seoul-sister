@@ -122,7 +122,7 @@ test('a row that still says "trialing" after its last day does not silence the m
   // started Thursday and was ended an hour ago. The day count alone would call
   // this "a trial day that is not 3 or 6" and skip the Sunday.
   assert.equal(gate(m, at('2026-11-08T17:00:00Z'), { trial: { startedAt: '2026-11-05T18:00:00Z', endsAt: '2026-11-08T16:00:00Z' } }), null)
-  // No end date on the row, but past the trial's length: same.
+  // No end date on the row, but past the free week's length: same.
   assert.equal(gate(m, at('2026-11-08T17:00:00Z'), { trial: { startedAt: '2026-10-20T18:00:00Z', endsAt: null } }), null)
 })
 
@@ -143,7 +143,7 @@ test('CLOSED WORLD: the entire check-in judge prompt is pinned by fingerprint', 
   const a = src.indexOf('const CHECKIN_SYSTEM = `') + 'const CHECKIN_SYSTEM = `'.length
   const b = src.indexOf('`\n\nfunction daysSince')
   assert.ok(a > 100 && b > a)
-  assert.equal(createHash('sha256').update(src.slice(a, b)).digest('hex'), 'd59b6d1b537bd495ab25ebe82aa58a558d4d311085b2566f14da869315bbbe1a')
+  assert.equal(createHash('sha256').update(src.slice(a, b)).digest('hex'), 'aa8f2c2ee3a9a05c3ebbaddf60f90d774da64fb95839e1e7b354ceb28c558d99')
 })
 
 test('what the judge prompt says about speaking and silence, in words', () => {
@@ -152,7 +152,7 @@ test('what the judge prompt says about speaking and silence, in words', () => {
   assert.match(system, /When nothing in the coming week bears on them, the question alone is enough to write; you do not need news, and you never reach for a forecast day just to have one\./)
   assert.match(system, /Ask WHETHER before HOW/, 'a "how is X going" question claims use and is blocked by the content guard')
   assert.match(system, /Silence is yours to choose, and it fits when they have left your recent check-ins unanswered/)
-  assert.match(system, /During a free trial, an unanswered day-3 note is not a reason to skip the first-week review\./)
+  assert.match(system, /During the free week, an unanswered day-3 note is not a reason to skip the first-week review\./)
   assert.doesNotMatch(system, /Silence is the normal answer/)
   assert.doesNotMatch(system, /two or three specific questions/, 'that produced a questionnaire and contradicted the "one specific thing" bullet')
   // No number of unanswered notes forces her either way.
@@ -171,9 +171,9 @@ test('facts (executed): why today, in the member\'s own calendar, and nothing th
   const trial = { startedAt: '2026-11-20T04:00:00Z', endsAt: '2026-11-27T04:00:00Z' }
   assert.equal(
     m.checkinReasonFact(6, trial, 'America/Chicago'),
-    'Why you are being asked today: it is day 6 of their 7-day free trial, which ends Thursday, November 26 in their time. This is their first-week review: ask how the first days went. Any adjustment is worked out in chat once they answer, not in this note. Seoul Sister sends them a separate plain notice about when the trial ends and how to keep going, so do not write about the trial ending, the price, or a card yourself.'
+    'Why you are being asked today: it is day 6 of their free week, which ends Thursday, November 26 in their time. This is their first-week review: ask how the first days went. Any adjustment is worked out in chat once they answer, not in this note. Seoul Sister sends them a separate plain notice about when the free week ends and how to keep going, so do not write about the free week ending, the price, or a card yourself.'
   )
-  assert.equal(m.checkinReasonFact(3, trial, 'America/Chicago'), 'Why you are being asked today: it is day 3 of their free trial (the mid-trial check-in). You write again on day 6; after the trial you are asked once a week, on Sunday.')
+  assert.equal(m.checkinReasonFact(3, trial, 'America/Chicago'), 'Why you are being asked today: it is day 3 of their free week (the check-in halfway through). You write again on day 6; after the free week you are asked once a week, on Sunday.')
   assert.equal(m.checkinReasonFact(null, null), 'Why you are being asked today: it is their weekly check-in (once a week, on Sunday, about the week just gone and the week ahead).')
   assert.doesNotMatch(m.checkinReasonFact(6, trial, 'America/Chicago'), /what you would adjust next/, 'asking her to propose a change makes the guard block the note')
 })
@@ -200,7 +200,7 @@ test('facts (executed): whether they were told, and what became of the notes alr
 
 test('the guard is told what is true for THIS member: during a trial the next note is day 6, not Sunday', async () => {
   const m = await loadCheckin()
-  assert.equal(m.weeklyCheckinStatement(3), 'Yuri writes to this member again on day 6 of their free trial, and after the trial most weeks on Sunday, adjusting their routine from what they tell her.')
+  assert.equal(m.weeklyCheckinStatement(3), 'Yuri writes to this member again on day 6 of their free week, and after that most weeks on Sunday, adjusting their routine from what they tell her.')
   assert.equal(m.weeklyCheckinStatement(6), 'Yuri checks in with this member most weeks, on Sunday, and adjusts their routine from what they tell her.')
   assert.equal(m.weeklyCheckinStatement(null), m.weeklyCheckinStatement(6))
   assert.match(src, /evidence\.verifiedStatements = \[\.\.\.\(evidence\.verifiedStatements \?\? \[\]\), weeklyCheckinStatement\(trialDayNumber\(trial, s\.timezone, now\)\)\]/)
@@ -214,13 +214,13 @@ test('"were they told" is read from the subscription they are on now, never defa
 })
 
 // ---------------------------------------------------------------------------
-// The trial-ending notice: its own email, sent whatever Yuri decides (executed)
+// The free week-ending notice: its own email, sent whatever Yuri decides (executed)
 // ---------------------------------------------------------------------------
 async function loadNotices() {
   const emails = await load(['src', 'lib', 'email', 'trial-emails.ts'], {
     PRICING: `({ trial_days: 7, monthly_display_long: '$9.99/month' })`,
     chargePhrase: `((pct, when) => (pct ? '$4.99 for your first paid month (' + pct + '% off) ' + when.replace(',', '') + ', then $9.99/month until you cancel' : '$9.99/month ' + when + ' and every month after that until you cancel'))`,
-    addCardPhrase: `((pct) => (pct ? '$4.99 for your first paid month (' + pct + '% off) when the trial ends, then $9.99/month' : '$9.99/month, starting when the trial ends'))`,
+    addCardPhrase: `((pct) => (pct ? '$4.99 for your first paid month (' + pct + '% off) when the free week ends, then $9.99/month' : '$9.99/month, starting when the free week ends'))`,
     escapeHtml: `((x) => x)`,
     validTimeZone: `((tz) => { if (!tz) return null; try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return tz } catch { return null } })`,
     wrapEmailHtml: `((body, footer) => body + footer)`,
@@ -231,29 +231,29 @@ async function loadNotices() {
   return { emails, notices }
 }
 
-test('the trial-ending line names the member\'s own day and claims a card only when Stripe says so', async () => {
+test('the free week-ending line names the member\'s own day and claims a card only when Stripe says so', async () => {
   const { emails } = await loadNotices()
   const end = '2026-11-27T04:00:00Z' // Thursday 10pm in Chicago
-  assert.equal(emails.trialEndingLine(end, null, 'America/Chicago'), 'Your free trial ends on Thursday, November 26 (CST).')
-  // On the night the clocks change, the name is the one in force at the trial's end.
-  assert.equal(emails.trialEndingLine('2026-11-01T06:30:00Z', null, 'America/Chicago'), 'Your free trial ends on Sunday, November 1 (CDT).')
-  assert.equal(emails.trialEndingLine('2026-11-01T07:30:00Z', null, 'America/Chicago'), 'Your free trial ends on Sunday, November 1 (CST).')
-  assert.equal(emails.trialEndingLine('2026-03-08T07:59:00Z', null, 'America/Chicago'), 'Your free trial ends on Sunday, March 8 (CST).')
-  assert.equal(emails.trialEndingLine('2026-03-08T08:01:00Z', null, 'America/Chicago'), 'Your free trial ends on Sunday, March 8 (CDT).')
-  assert.equal(emails.trialEndingLine(end, null, 'Asia/Kolkata'), 'Your free trial ends on Friday, November 27 (GMT+5:30).')
+  assert.equal(emails.trialEndingLine(end, null, 'America/Chicago'), 'Your free week ends on Thursday, November 26 at 10:00 PM CST.')
+  // On the night the clocks change, the name is the one in force at the free week's end.
+  assert.equal(emails.trialEndingLine('2026-11-01T06:30:00Z', null, 'America/Chicago'), 'Your free week ends on Sunday, November 1 at 1:30 AM CDT.')
+  assert.equal(emails.trialEndingLine('2026-11-01T07:30:00Z', null, 'America/Chicago'), 'Your free week ends on Sunday, November 1 at 1:30 AM CST.')
+  assert.equal(emails.trialEndingLine('2026-03-08T07:59:00Z', null, 'America/Chicago'), 'Your free week ends on Sunday, March 8 at 1:59 AM CST.')
+  assert.equal(emails.trialEndingLine('2026-03-08T08:01:00Z', null, 'America/Chicago'), 'Your free week ends on Sunday, March 8 at 3:01 AM CDT.')
+  assert.equal(emails.trialEndingLine(end, null, 'Asia/Kolkata'), 'Your free week ends on Friday, November 27 at 9:30 AM GMT+5:30.')
   // The zone is always named, and it is the zone's name on THAT date.
-  assert.equal(emails.trialEndingLine('2026-07-10T03:00:00Z', null, 'America/Chicago'), 'Your free trial ends on Thursday, July 9 (CDT).')
-  assert.equal(emails.trialEndingLine(end, null, 'America/Los_Angeles'), 'Your free trial ends on Thursday, November 26 (PST).')
-  assert.equal(emails.trialEndingLine(end, null, 'Asia/Seoul'), 'Your free trial ends on Friday, November 27 (GMT+9).')
-  assert.equal(emails.trialEndingLine(end, null, null), 'Your free trial ends on Friday, November 27 (UTC).', 'with no timezone the date says which calendar it is')
-  assert.equal(emails.trialEndingLine(end, { hasPaymentMethod: true, cancelAtPeriodEnd: false }, 'America/Chicago'), 'Your free trial ends on Thursday, November 26 (CST). Your card will be charged $9.99/month on that day, and every month after that until you cancel.')
-  assert.equal(emails.trialEndingLine(end, { hasPaymentMethod: true, cancelAtPeriodEnd: true }, 'America/Chicago'), 'Your free trial ends on Thursday, November 26 (CST). You cancelled, so nothing will be charged.')
+  assert.equal(emails.trialEndingLine('2026-07-10T03:00:00Z', null, 'America/Chicago'), 'Your free week ends on Thursday, July 9 at 10:00 PM CDT.')
+  assert.equal(emails.trialEndingLine(end, null, 'America/Los_Angeles'), 'Your free week ends on Thursday, November 26 at 8:00 PM PST.')
+  assert.equal(emails.trialEndingLine(end, null, 'Asia/Seoul'), 'Your free week ends on Friday, November 27 at 1:00 PM GMT+9.')
+  assert.equal(emails.trialEndingLine(end, null, null), 'Your free week ends on Friday, November 27 at 4:00 AM UTC.', 'with no timezone the date says which calendar it is')
+  assert.equal(emails.trialEndingLine(end, { hasPaymentMethod: true, cancelAtPeriodEnd: false }, 'America/Chicago'), 'Your free week ends on Thursday, November 26 at 10:00 PM CST. Your card will be charged $9.99/month once it ends, and every month after that until you cancel.')
+  assert.equal(emails.trialEndingLine(end, { hasPaymentMethod: true, cancelAtPeriodEnd: true }, 'America/Chicago'), 'Your free week ends on Thursday, November 26 at 10:00 PM CST. You cancelled, so nothing will be charged.')
   assert.equal(
     emails.trialEndingLine(end, { hasPaymentMethod: false, cancelAtPeriodEnd: false }, 'America/Chicago'),
-    'Your free trial ends on Thursday, November 26 (CST). No card is on file, so nothing will be charged and your membership will stop on that day. To keep going, sign in and use the "Add a card" button at the top of any page: $9.99/month, starting when the trial ends.'
+    'Your free week ends on Thursday, November 26 at 10:00 PM CST. No card is on file, so nothing will be charged and your membership stops then. To keep going, sign in and use the "Add a card" button at the top of any page: $9.99/month, starting when the free week ends.'
   )
   const body = emails.buildTrialEndingEmail('LINE').html
-  assert.match(body, /A note from Seoul Sister about your free trial\./)
+  assert.match(body, /A note from Seoul Sister about your free week\./)
   assert.match(body, /This is an account notice, not a message from Yuri\./)
 })
 
@@ -290,7 +290,7 @@ test('trial notices (executed): sent once, stamped only AFTER a successful send,
   const ok = await notices.sendTrialEndingNotices(db, deps(), Date.parse('2026-11-25T12:00:00Z'))
   assert.deepEqual([ok.due, ok.sent, ok.errors.length], [1, 1, 0])
   assert.equal(db.stamps.length, 1)
-  assert.match(sent[0][1], /^Your free trial ends on Thursday, November 26 \(CST\)\. No card is on file/)
+  assert.match(sent[0][1], /^Your free week ends on Thursday, November 26 at 10:00 PM CST\. No card is on file/)
 
   // The send fails: NOT stamped, so the next hour tries again.
   const db2 = noticeDb([row])
@@ -302,7 +302,7 @@ test('trial notices (executed): sent once, stamped only AFTER a successful send,
   sent.length = 0
   const unknown = await notices.sendTrialEndingNotices(noticeDb([row]), deps({ liveState: async () => { throw new Error('stripe down') } }), Date.parse('2026-11-25T12:00:00Z'))
   assert.equal(unknown.sent, 1)
-  assert.equal(sent[0][1], 'Your free trial ends on Thursday, November 26 (CST).')
+  assert.equal(sent[0][1], 'Your free week ends on Thursday, November 26 at 10:00 PM CST.')
   assert.equal(notices.TRIAL_NOTICE_HOURS_BEFORE, 48)
 })
 
@@ -371,7 +371,7 @@ test('member turn facts: stated as facts, with no date she could get wrong and n
   assert.equal(CHECKIN_ANSWER_WINDOW_DAYS, 7)
   assert.equal(
     formatMemberTurnFacts({ checkin: { created_at: '2026-11-08T17:30:00Z', message: 'Did you start the oil cleanse?\n\nIf so, how does it feel?' }, trial: { trial_end: '2026-11-12T15:00:00Z' } }),
-    '\n\n## Member facts this turn (facts, not instructions)\n- Your last weekly check-in to them, sent 2026-11-08 by email and on their dashboard: "Did you start the oil cleanse? If so, how does it feel?". They may be answering it, or writing about something else.\n- They are on the free trial. The date it ends and whether a card is on file are shown to them at the top of the app and sent to them by email; you cannot see either, so if they ask, point them there.'
+    '\n\n## Member facts this turn (facts, not instructions)\n- Your last weekly check-in to them, sent 2026-11-08 by email and on their dashboard: "Did you start the oil cleanse? If so, how does it feel?". They may be answering it, or writing about something else.\n- They are in their free week (Stripe\'s pages and receipts call it a trial). The date it ends and whether a card is on file are shown to them at the top of the app and sent to them by email; you cannot see either, so if they ask, point them there.'
   )
   // Nov 11 2026 (Bailey's idea): the note names what is coming and leaves the
   // working-out for the chat, so the chat is given WHY she wrote it and the
@@ -469,7 +469,7 @@ test('member turn facts: stated as facts, with no date she could get wrong and n
 
 test('the advisor prompt: the check-in is "most weeks", mentioned once, and a named day is not promised to the day', () => {
   const advisor = read('src', 'lib', 'yuri', 'advisor.ts')
-  assert.match(advisor, /\*\*The weekly check-in\.\*\* Most weeks you send each member a short note on their Sunday \(day 3 and day 6 during a free trial\) asking how their skin did, and their answers are how the routine gets adjusted\. It is not guaranteed every week\./)
+  assert.match(advisor, /\*\*The weekly check-in\.\*\* Most weeks you send each member a short note on their Sunday \(day 3 and day 6 during a free week\) asking how their skin did, and their answers are how the routine gets adjusted\. It is not guaranteed every week\./)
   assert.match(advisor, /from November 11 2026 on were told to expect it; you cannot see who was\. Mention it once when you first build someone's routine, not in ordinary answers\./)
   assert.doesNotMatch(advisor, /Every member hears from you once a week/)
   assert.doesNotMatch(advisor, /the proactive check-in fires on that day/)

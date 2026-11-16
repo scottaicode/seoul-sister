@@ -56,7 +56,7 @@ function pathParagraph() {
  * CLOSED WORLD. The paragraph is exactly these sentences, in this order, and
  * nothing else. A ban list cannot see an ADDED sentence: in review (Nov 10
  * 2026) "Members also get a board-certified dermatologist review within 24
- * hours, and most visitors who get this far start the trial the same day" was
+ * hours, and most visitors who get this far start the free week the same day" was
  * appended and every test still passed. Adding or changing a sentence now means
  * editing this list, which is the moment to ask whether it is true.
  */
@@ -133,7 +133,7 @@ test('CLOSED WORLD: the whole widget prompt and the whole subscriber block are p
   assert.equal(createHash('sha256').update(surface.slice(sa, sb)).digest('hex'), SUBSCRIBER_BLOCK_FINGERPRINT, 'the subscriber block changed')
 })
 
-test('the trial card fact follows the trial setting, so Yuri never says "no card" while the checkout asks for one (executed)', async () => {
+test('the free week card fact follows the free week setting, so Yuri never says "no card" while the checkout asks for one (executed)', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ss-surface-'))
   const put = (name, src) => writeFileSync(join(dir, `${name}.mjs`), ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText)
   put('pricing', read('src/lib/pricing.ts'))
@@ -144,7 +144,7 @@ test('the trial card fact follows the trial setting, so Yuri never says "no card
   const saved = process.env.NO_CARD_TRIAL_ENABLED
   try {
     delete process.env.NO_CARD_TRIAL_ENABLED
-    assert.equal(mod.trialCardFact(), 'no card is needed to start them. The trial ends after those 7 days unless they add a card, which they can do from inside the app.')
+    assert.equal(mod.trialCardFact(), 'no card is needed to start them. Those 7 days are the free week, and membership stops when it ends unless they add a card, which they can do from inside the app.')
     assert.match(mod.buildSubscriberSurfaceBlock(), /first 7 days are free, and no card is needed to start them\./)
     process.env.NO_CARD_TRIAL_ENABLED = 'false'
     assert.equal(mod.trialCardFact(), 'a card is needed to start them; nothing is charged if they cancel before the 7 days end.')
@@ -172,7 +172,7 @@ test('path fact "free, no card": registration and the setup chat never start a c
 
 test('path fact "first-time member": matches the checkout rule and the Stripe session', () => {
   assert.match(checkout, /const withTrial = eligibility\.eligible/, 'the checkout rule the claim rests on')
-  assert.match(read('src/lib/stripe-params.ts'), /trial_period_days/, 'the trial must actually be set on the Stripe session')
+  assert.match(read('src/lib/stripe-params.ts'), /trial_period_days/, 'the free week must actually be set on the Stripe session')
   // "No card is needed" and "add a card from inside the app" are true only
   // while these hold (details in tests/no-card-trial.test.mjs).
   assert.match(read('src/lib/pricing.ts'), /trial_requires_card: false,/)
@@ -223,7 +223,7 @@ test('path fact "the link under this chat": it exists, is a real tap target, and
   // membership. "Pick this up with Yuri. No card needed" was true for one
   // session and then met the card wall.
   // "Pick this up with Yuri ... no card needed" was misleading while a card
-  // wall sat behind setup. It is true now that the trial needs no card, and
+  // wall sat behind setup. It is true now that the free week needs no card, and
   // only for as long as it does.
   // It names who gets the free week (new members) and shows the price.
   // The sentence is built in offers.ts (exact text pinned in no-card-trial.test.mjs),
@@ -433,7 +433,7 @@ test('the gate, in words: what is free, what is built in the free week, and wher
   assert.match(g, /Reading a shelf they already own belongs here too: what clashes, what to drop, what to keep\./)
   assert.match(g, /This holds even when the routine would only put products they already own in order, and even when they ask for it directly\./)
   assert.match(g, /a first-time member's first week is free \(the facts after the conversation say exactly what starting it takes\)/)
-  assert.doesNotMatch(g, /no card/, 'the card wording lives in the per-turn path facts, which follow the trial setting; the static prompt must not hardcode it')
+  assert.doesNotMatch(g, /no card/, 'the card wording lives in the per-turn path facts, which follow the free week setting; the static prompt must not hardcode it')
   assert.match(g, /Often it takes two or three replies\. Take as many as the diagnosis honestly needs, and never invite before it has landed\./)
   assert.match(g, /If they say no to the account, take them at their word: do not repeat the invitation, and keep answering what they ask\./)
   assert.match(g, /Describe what you will do for this person\. Do not describe the product, and do not compare yourself to other tools\./)
@@ -473,5 +473,5 @@ test('CLOSED WORLD: the whole static member prompt is pinned by fingerprint (Nov
   const a = advisor.indexOf('const YURI_SYSTEM_PROMPT = `') + 'const YURI_SYSTEM_PROMPT = `'.length
   const b = advisor.indexOf('`\n\n// ---', a)
   assert.ok(a > 100 && b > a + 20000, 'static member prompt not found')
-  assert.equal(createHash('sha256').update(advisor.slice(a, b)).digest('hex'), 'af8d425d4f17c83643adbc112fb4e22d840f8d25b714bce94327968cff004a54')
+  assert.equal(createHash('sha256').update(advisor.slice(a, b)).digest('hex'), '8f993e8bb5c2f6f817a724aec65bbc337746763d221debe32b9f65c2229ed514')
 })

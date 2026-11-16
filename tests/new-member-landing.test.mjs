@@ -2,7 +2,7 @@
  * What a brand-new member sees (Nov 11 2026, from the first real trials).
  *
  * Seen: "Welcome back, Scott" seconds after joining; the routine offer only as
- * text in the input box; the trial notice hidden under the top bar on the chat
+ * text in the input box; the free week notice hidden under the top bar on the chat
  * page; a membership page promising "your routine" in a fixed form. A second
  * model then found the first fix's pointer line could never render (the input
  * takes the text before the greeting data arrives), a failed count brought
@@ -63,7 +63,7 @@ test('the page uses the variant, points at the ready message, and never continue
   assert.match(route, /new_member: newMember,/)
 })
 
-test('the trial notice is in the page flow and the chat page makes room for it', () => {
+test('the free week notice is in the page flow and the chat page makes room for it', () => {
   const notice = read('src', 'components', 'layout', 'TrialNotice.tsx')
   const shell = notice.match(/const shell = '([^']+)'/)[1]
   assert.doesNotMatch(shell, /sticky|fixed|\bz-/, 'pinned, it covered the open mobile menu and the setup header')

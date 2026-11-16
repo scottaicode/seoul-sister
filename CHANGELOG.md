@@ -4,6 +4,35 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.19 — "Free week" everywhere a member reads it, and three loose ends on the path to membership (Nov 15 2026)
+
+- **"Trial" is no longer our word.** v11.61.18 changed the pages on the way in; the banner, the
+  emails, the Terms, the card page and the facts Yuri is given still said "free trial". They now
+  say "free week". Stripe's own page and receipts say "trial", so four sentences bridge it once
+  (the Stripe consent text, the confirmation email, the Terms, and Yuri's facts: a member who
+  says "my trial" means their free week).
+- **The end is stated as a day AND a time.** The free week ends 7x24 hours after it starts, to the
+  minute. The banner, the ending notice and the confirmation subject now give the time in the
+  member's zone. The card page used to print the end date in UTC, a different calendar day for an
+  evening start; it now points to the banner instead.
+- **A member who skipped setup and then started membership** landed back on the setup chat. They
+  now go to the member chat, once the payment check confirms they are a member (8s limit).
+- **The membership page lists four lines, not nine.** `PAYWALL_FEATURES` is built from the plan's
+  own feature list by position, so it cannot state something the plan does not.
+- **Tests.** Pinned strings and the two prompt fingerprints updated. New: `trial_days` is 7 (the
+  wording depends on it); a scan of every source file that fails if "free trial", "the trial" and
+  similar return in a sentence that does not name Stripe. Each new guard was confirmed to fail
+  with its bug put back.
+- **Review.** Opus 5.5 and Fable 5.2 reviewed the first version; their findings were fixed, and a
+  third pass (Opus) on the fixed version found six more, all fixed here: Yuri's prompt implied a
+  card stops the free week ending; the card page pointed at "every page" for a banner that only
+  shows in the app; the payment check was skipped on Safari before 16; a member who finished
+  setup and then paid could be bounced to the membership page; "charged at that time" claimed a
+  precision Stripe's invoicing does not give ("once it ends" now); and the banner told a member
+  whose card status is unknown to add one. The last round of fixes was not reviewed again.
+- **Not verified.** How long after the free week ends Stripe takes the first charge. Nothing here
+  has been seen in a browser yet.
+
 ## v11.61.18 — The path from "create my free account" to the free week says what each step is (Nov 15 2026)
 
 - **What happened.** Bailey, testing a new account, created it with email and password and believed

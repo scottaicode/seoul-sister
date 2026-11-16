@@ -4,13 +4,13 @@ import { PRICING } from '@/lib/pricing'
  * Creator offer codes (Nov 10 2026). First use: Bailey's TikTok.
  *
  * Bailey's decision: code BAILEY gives 50% off the first PAID month, for the
- * first 50 people, with no end date. The free trial stays 7 days for everyone;
+ * first 50 people, with no end date. The free week stays 7 days for everyone;
  * a code never lengthens it.
  *
  * What makes each word true:
  *   - "50% off the first paid month": a Stripe coupon (percent_off, duration
  *     `repeating`, 1 month) applied when the subscription is created. A `once`
- *     coupon would be used up by the free trial's $0 invoice.
+ *     coupon would be used up by the free week's $0 invoice.
  *   - "first 50 people": the Stripe promotion code's `max_redemptions`. Stripe
  *     stops accepting the code itself; nothing here counts by hand.
  * Nothing in the app states how many spots are left, and nothing may claim the
@@ -117,8 +117,8 @@ export function thereafterText(percentOff: number | null | undefined): string {
 /** The price as stated after "add a card:". */
 export function addCardPhrase(percentOff: number | null | undefined): string {
   return firstMonthPrice(percentOff)
-    ? `${firstChargeText(percentOff)} when the trial ends, then ${PRICING.monthly_display_long}`
-    : `${PRICING.monthly_display_long}, starting when the trial ends`
+    ? `${firstChargeText(percentOff)} when the free week ends, then ${PRICING.monthly_display_long}`
+    : `${PRICING.monthly_display_long}, starting when the free week ends`
 }
 
 /** Shown on the membership page when Stripe confirms the code. */
@@ -477,5 +477,5 @@ export function offerFactForYuri(
   if (offer.state === 'ended') {
     return `Creator code: this visitor arrived with the code ${offer.code}, and it is no longer accepted, so membership for them is ${full}.`
   }
-  return `Creator code: this visitor has the code ${offer.code} saved in this browser. For someone who is not yet a member, it takes ${validPercent(offer.percentOff)}% off the first paid month: ${firstMonthPrice(offer.percentOff)} instead of ${full.replace('/month', '')}. Every month after that is ${full}, so where anything else here says ${full}, for this person that begins with the second paid month. If they start membership in this same browser the code is applied for them; on another device or browser they can type it on the payment page. The free trial is the same with or without it. The discount covers the first paid month only. When the code itself stops being accepted is not shown to you. It matters only if price or the code comes up.`
+  return `Creator code: this visitor has the code ${offer.code} saved in this browser. For someone who is not yet a member, it takes ${validPercent(offer.percentOff)}% off the first paid month: ${firstMonthPrice(offer.percentOff)} instead of ${full.replace('/month', '')}. Every month after that is ${full}, so where anything else here says ${full}, for this person that begins with the second paid month. If they start membership in this same browser the code is applied for them; on another device or browser they can type it on the payment page. The free week is the same with or without it. The discount covers the first paid month only. When the code itself stops being accepted is not shown to you. It matters only if price or the code comes up.`
 }

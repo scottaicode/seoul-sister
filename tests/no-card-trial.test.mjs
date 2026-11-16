@@ -1,8 +1,8 @@
 /**
  * No-card 7-day trial (Nov 10 2026).
  *
- * Until now the free trial needed a card: 29 accounts reached the payment page
- * and about 1 paid. The trial now starts with no card and Stripe ends it on its
+ * Until now the free week needed a card: 29 accounts reached the payment page
+ * and about 1 paid. The free week now starts with no card and Stripe ends it on its
  * last day unless the member adds one.
  *
  * WHY THESE TESTS EXECUTE CODE. The first version of this file was mostly
@@ -131,7 +131,7 @@ const stripe = read('src/lib/stripe.ts')
 // ---------------------------------------------------------------------------
 // One trial per person, a few per network (executed)
 // ---------------------------------------------------------------------------
-test('eligibility: a brand-new person gets the trial', async () => {
+test('eligibility: a brand-new person gets the free week', async () => {
   const m = await loadModules()
   try {
     assert.deepEqual(await m.trial.checkTrialEligibility(fakeDb(), { id: 'u1', email: 'New.Person@gmail.com' }, { ipHash: 'net1', now: NOW }), { eligible: true })
@@ -175,7 +175,7 @@ test('eligibility: the network cap counts trials that STARTED, inside the window
   } finally { m.restore() }
   // Button presses must not be what is counted: that charged a hesitant person
   // on a button that said "Start 7 days free".
-  assert.doesNotMatch(checkout, /checkRateLimit/, 'the checkout must not count presses against the trial')
+  assert.doesNotMatch(checkout, /checkRateLimit/, 'the checkout must not count presses against the free week')
 })
 
 test('eligibility: any failed lookup is NOT eligible and says so (never a silent yes)', async () => {
@@ -192,7 +192,7 @@ test('eligibility: any failed lookup is NOT eligible and says so (never a silent
   assert.match(checkout, /if \(!eligibility\.eligible && eligibility\.reason === 'lookup_failed'\) \{\s*return NextResponse\.json\(\{ error: 'Could not start checkout\. Please try again in a minute\.' \}, \{ status: 503 \}\)\s*\}\s*const withTrial = eligibility\.eligible\n/)
 })
 
-test('the trial ledger is written once per inbox, with the network, and a failed write is reported', async () => {
+test('the free week ledger is written once per inbox, with the network, and a failed write is reported', async () => {
   const m = await loadModules()
   try {
     const db = fakeDb()
@@ -201,7 +201,7 @@ test('the trial ledger is written once per inbox, with the network, and a failed
     assert.equal(await m.trial.recordTrialStart(db, { ...t, subscriptionId: 'sub_RETRY' }), true)
     assert.equal(db.tables.ss_trial_starts.length, 1, 'a retried webhook must not add or overwrite')
     assert.deepEqual(db.tables.ss_trial_starts[0], { email_canonical: 'jdoe@gmail.com', user_id: 'u1', stripe_subscription_id: 'sub_1', card_required: false, trial_end: '2026-11-17T00:00:00Z', ip_hash: 'net1', offer_code: null, offer_percent_off: null })
-    // A creator code is recorded with the trial, so "who used the code, who paid" is one table.
+    // A creator code is recorded with the free week, so "who used the code, who paid" is one table.
     const coded = fakeDb()
     await m.trial.recordTrialStart(coded, { ...t, email: 'other@x.com', offerCode: 'BAILEY', offerPercentOff: 50 })
     assert.deepEqual([coded.tables.ss_trial_starts[0].offer_code, coded.tables.ss_trial_starts[0].offer_percent_off], ['BAILEY', 50])
@@ -260,7 +260,7 @@ test('a checkout with NO trial always takes a card and says it is charged today,
     assert.equal('payment_method_collection' in card, false)
     assert.equal('trial_settings' in card.subscription_data, false)
     assert.equal('no_card' in card.metadata, false, 'a card trial must not be marked no-card')
-    assert.match(card.custom_text.submit.message, /^Your 7-day free trial starts today\. Unless you cancel before it ends, your card will be charged \$9\.99\/month on day 8/)
+    assert.match(card.custom_text.submit.message, /^Your free week \(Stripe calls it a trial\) starts today\. Unless you cancel before it ends, your card will be charged \$9\.99\/month on day 8/)
   } finally { m.restore() }
   // The real session is built from exactly this function, with nothing added.
   assert.match(stripe, /stripe\.checkout\.sessions\.create\(\s*buildCheckoutParams\(\{/)
@@ -280,7 +280,7 @@ test('add-a-card session: setup mode, tied to the subscription, exact terms', as
       custom_text: {
         submit: {
           message:
-            'Saving this card keeps your Seoul Sister membership going. It will be charged $9.99/month when your free trial ends on November 17, 2026, and every month after that until you cancel. Cancel anytime from your Profile page (Manage subscription) or by replying to any Seoul Sister email.',
+            'Saving this card keeps your Seoul Sister membership going. It will be charged $9.99/month when your free week ends (the day and time are shown at the top of the app when you are signed in), and every month after that until you cancel. Cancel anytime from your Profile page (Manage subscription) or by replying to any Seoul Sister email.',
         },
       },
       setup_intent_data: { metadata: { user_id: 'u1', subscription_id: 'sub_1' } },
@@ -311,7 +311,7 @@ const trialTables = () => ({
   ss_subscriptions: [{ id: 's1', user_id: 'u1', stripe_subscription_id: 'sub_1', lead_source: null }],
 })
 
-test('the $0 invoice a free trial starts with is NOT a conversion', async () => {
+test('the $0 invoice a free week starts with is NOT a conversion', async () => {
   const m = await loadModules()
   try {
     const h = paymentHarness(m, trialTables())
@@ -322,7 +322,7 @@ test('the $0 invoice a free trial starts with is NOT a conversion', async () => 
   } finally { m.restore() }
 })
 
-test('the first paid invoice converts the trial ONCE; a retry or a renewal does nothing', async () => {
+test('the first paid invoice converts the free week ONCE; a retry or a renewal does nothing', async () => {
   const m = await loadModules()
   try {
     const h = paymentHarness(m, trialTables())
@@ -367,7 +367,7 @@ test('a declined card is not a conversion: a trial that lapses is marked lapsed,
     await m.trial.markTrialLapsed(db, 'sub_2', 'L')
     assert.equal(db.tables.ss_trial_starts[0].lapsed_at, 'L')
     assert.equal(db.tables.ss_trial_starts[1].lapsed_at, null, 'a trial that paid is never marked lapsed')
-    // An old invoice settled after the trial lapsed is not a conversion: that
+    // An old invoice settled after the free week lapsed is not a conversion: that
     // subscription has no access.
     const h = paymentHarness(m, { ss_trial_starts: [{ id: 't1', stripe_subscription_id: 'sub_1', paid_at: null, lapsed_at: 'L' }], ss_subscriptions: [{ id: 's1', user_id: 'u1', stripe_subscription_id: 'sub_1' }] })
     assert.equal(await h.pay(999), 'not_first_payment')
@@ -376,7 +376,7 @@ test('a declined card is not a conversion: a trial that lapses is marked lapsed,
   } finally { m.restore() }
 })
 
-test('the webhook: the trial path never stamps a conversion; only a paid invoice does', () => {
+test('the webhook: the free week path never stamps a conversion; only a paid invoice does', () => {
   // attributeConversion is CALLED in exactly one place (a checkout with no
   // trial, which is paid today) and handed to the paid-invoice handler in one
   // other. A second call anywhere (the attack that passed the first tests)
@@ -393,7 +393,7 @@ test('the webhook: the trial path never stamps a conversion; only a paid invoice
   assert.match(paid, /amountPaid: invoiceAmountPaid\(event\.data\.object\)/)
   const lookup = read('src/lib/widget/visitor.ts')
   const fn = lookup.slice(lookup.indexOf('export async function leadSourceForEmail'))
-  assert.doesNotMatch(fn, /\.update\(|converted_at/, 'the trial-time lookup must not write anything')
+  assert.doesNotMatch(fn, /\.update\(|converted_at/, 'the free week-time lookup must not write anything')
 })
 
 test('"who paid?" counts exclude an unpaid trial everywhere', async () => {
@@ -412,8 +412,8 @@ test('"who paid?" counts exclude an unpaid trial everywhere', async () => {
 test('the owner is told "trial started, no money has moved", and "paying" only when money moves', () => {
   const alert = read('src/lib/email/new-subscriber-alert.ts')
   assert.match(webhook, /kind: isTrial \? 'trial_started' : 'paid'/)
-  assert.match(alert, /`Free trial started \(not yet paying\): /)
-  assert.match(alert, /Someone started the free trial\. No money has moved\./)
+  assert.match(alert, /`Free week started \(not yet paying\): /)
+  assert.match(alert, /Someone started the free week\. No money has moved\./)
 })
 
 // ---------------------------------------------------------------------------
@@ -478,7 +478,7 @@ test('trial facts: a trial whose end date has passed is over, even if the cancel
   } finally { m.restore() }
 })
 
-test('trial facts: "your free trial has ended" only for someone who HAD a trial', async () => {
+test('trial facts: "your free week has ended" only for someone who HAD a trial', async () => {
   const m = await loadModules()
   try {
     const live = async () => ({ status: 'canceled', hasPaymentMethod: false, cancelAtPeriodEnd: false })
@@ -538,8 +538,11 @@ test('the in-app notice: each state makes its own promise, and unknown is never 
   assert.equal(state(t(true, true), false), 'cancelled', 'a member who cancelled must not be told they will be charged')
   assert.equal(state(t(false, true), true), 'cancelled')
   const notice = read('src/components/layout/TrialNotice.tsx')
-  assert.match(notice, /state === 'no_card'\s*\? `You have not added a card, so your membership will stop on that day and nothing will be charged\./)
-  assert.match(notice, /You cancelled\. Your free trial runs until it ends \{until\}, and nothing will be charged\./)
+  assert.ok(notice.includes("? `No card is on file, so nothing will be charged and your membership stops ${endText ? 'then' : 'when the free week ends'}. To continue, add a card: ${addCardPhrase(pct)}.`"))
+  assert.ok(notice.includes("You cancelled, so nothing will be charged.{endText ? ` Your free week still runs until ${endText}.` : ''}"))
+  // The day and the time, and no sentence that needs a date when there is none.
+  assert.ok(notice.includes("ends.toLocaleString(undefined, { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })"))
+  assert.doesNotMatch(notice, /on that day|free trial/)
   assert.match(read('src/components/layout/AppShell.tsx'), /<TrialNotice \/>/)
 })
 
@@ -606,7 +609,7 @@ test('migrations: the ledger has RLS on, no account foreign key, and the network
 
 // ---------------------------------------------------------------------------
 // Creator offer codes (Bailey's decision, Nov 10 2026): 50% off the first PAID
-// month, first 50 people, no end date. The free trial stays 7 days for everyone.
+// month, first 50 people, no end date. The free week stays 7 days for everyone.
 // ---------------------------------------------------------------------------
 test('offer codes: only a plain 3-20 character code is accepted from a URL', async () => {
   const m = await loadModules()
@@ -627,8 +630,8 @@ test('offer codes: every charge sentence names the discounted first month AND th
     assert.equal(o.chargePhrase(null, 'on that day,'), '$9.99/month on that day, and every month after that until you cancel')
     assert.equal(o.chargePhrase(50, 'today'), '$4.99 for your first paid month (50% off) today, then $9.99/month until you cancel')
     assert.equal(o.chargePhrase(50, 'on that day,'), '$4.99 for your first paid month (50% off) on that day, then $9.99/month until you cancel')
-    assert.equal(o.addCardPhrase(null), '$9.99/month, starting when the trial ends')
-    assert.equal(o.addCardPhrase(50), '$4.99 for your first paid month (50% off) when the trial ends, then $9.99/month')
+    assert.equal(o.addCardPhrase(null), '$9.99/month, starting when the free week ends')
+    assert.equal(o.addCardPhrase(50), '$4.99 for your first paid month (50% off) when the free week ends, then $9.99/month')
     assert.equal(o.priceWithOffer(50), '$4.99 for your first paid month (50% off), then $9.99/month')
     assert.equal(o.priceWithOffer(null), '$9.99/month')
     // The two price lines under the free chat.
@@ -696,14 +699,14 @@ test('offer codes: every charge sentence names the discounted first month AND th
   } finally { m.restore() }
 })
 
-test('offer codes: Stripe applies the exact promotion code, the consent text states the discount, and the trial is still 7 days with no card', async () => {
+test('offer codes: Stripe applies the exact promotion code, the consent text states the discount, and the free week is still 7 days with no card', async () => {
   const m = await loadModules()
   try {
     const offer = { code: 'BAILEY', promotionCodeId: 'promo_123', percentOff: 50 }
     const p = m.params.buildCheckoutParams({ ...base, withTrial: true, noCard: true, offer })
     assert.deepEqual(p.discounts, [{ promotion_code: 'promo_123' }])
     assert.equal('allow_promotion_codes' in p, false, 'Stripe accepts only one of the two')
-    assert.equal(p.subscription_data.trial_period_days, 7, 'a code never lengthens the free trial')
+    assert.equal(p.subscription_data.trial_period_days, 7, 'a code never lengthens the free week')
     assert.equal(p.payment_method_collection, 'if_required')
     assert.deepEqual(p.metadata, { user_id: 'u1', plan: 'monthly', offer_code: 'BAILEY', offer_percent_off: '50', ip_hash: 'net1', no_card: '1' })
     assert.equal(
@@ -723,7 +726,7 @@ test('offer codes: Stripe applies the exact promotion code, the consent text sta
     assert.equal(paid.custom_text.submit.message, 'Your card will be charged $4.99 for your first paid month (50% off) today, then $9.99/month until you cancel. Cancel anytime from your Profile page (Manage subscription) or by replying to any Seoul Sister email.')
     // The add-a-card page states it too.
     const add = m.params.buildAddCardParams({ userId: 'u1', stripeCustomerId: 'cus_1', stripeSubscriptionId: 'sub_1', trialEnd: null, successUrl: 's', cancelUrl: 'c', percentOff: 50 })
-    assert.match(add.custom_text.submit.message, /It will be charged \$4\.99 for your first paid month \(50% off\) when your free trial ends, then \$9\.99\/month until you cancel\. Cancel anytime/)
+    assert.match(add.custom_text.submit.message, /It will be charged \$4\.99 for your first paid month \(50% off\) when your free week ends \(the day and time are shown at the top of the app when you are signed in\), then \$9\.99\/month until you cancel\. Cancel anytime/)
     const card = m.params.buildCheckoutParams({ ...base, withTrial: true, noCard: false, offer })
     assert.match(card.custom_text.submit.message, /your card will be charged \$4\.99 for your first paid month \(50% off\) on day 8, then \$9\.99\/month until you cancel\. Cancel anytime/)
   } finally { m.restore() }
@@ -772,7 +775,7 @@ test('offer codes (executed): Stripe is the only source of truth for whether a c
 
 test('offer codes (executed): a coupon that is not "a percentage off for exactly one month" is refused, never misdescribed', async () => {
   // Every sentence the app writes says "the first month". A forever discount, a
-  // `once` coupon (used up by the free trial's $0 invoice), a fixed amount, or
+  // `once` coupon (used up by the free week's $0 invoice), a fixed amount, or
   // 100% off would each make those sentences false.
   for (const bad of [
     coupon({ duration: 'forever', duration_in_months: null }),
@@ -838,10 +841,10 @@ test('offer codes: the discount follows the member into every later notice about
   assert.match(webhook, /stripe\.subscriptions\.retrieve\(subscriptionId, \{ expand: \['discount\.promotion_code'\] \}\)/)
   assert.match(webhook, /const \{ code: offerCode, percentOff: offerPercentOff \} = offerFromSubscription\(subscription, session\.metadata\)/)
   assert.match(webhook, /offer_code: offerCode,\s*offer_percent_off: offerPercentOff,/)
-  assert.match(webhook, /offerCode,\s*offerPercentOff,\s*\}\)/, 'recorded on the trial row')
-  assert.match(read('src/lib/email/trial-emails.ts'), /Your card will be charged \$\{chargePhrase\(percentOff, 'on that day,'\)\}\./)
+  assert.match(webhook, /offerCode,\s*offerPercentOff,\s*\}\)/, 'recorded on the free week row')
+  assert.match(read('src/lib/email/trial-emails.ts'), /Your card will be charged \$\{chargePhrase\(percentOff, 'once it ends,'\)\}\./)
   assert.match(read('src/lib/trial-notices.ts'), /trialEndingLine\(t\.trial_end, state, await deps\.timezoneForUser\(t\.user_id\), pct && pct > 0 \? pct : null\)/)
-  assert.match(read('src/components/layout/TrialNotice.tsx'), /Your card will be charged \{chargePhrase\(pct, 'on that day,'\)\}\./)
+  assert.match(read('src/components/layout/TrialNotice.tsx'), /Your card will be charged \$\{chargePhrase\(pct, 'once it ends,'\)\}\./)
   assert.match(read('src/components/layout/TrialNotice.tsx'), /const pct = facts\.percent_off \?\? null\n/)
   assert.match(read('src/lib/trial-notices.ts'), /const pct = t\.offer_percent_off == null \? null : Number\(t\.offer_percent_off\)\n/)
   assert.match(webhook, /\{ cardOnFile: true, percentOff: trialRow\?\.offer_percent_off == null \? null : Number\(trialRow\.offer_percent_off\), timezone: await timezoneForUser\(supabase, userId\) \}/)
@@ -893,36 +896,36 @@ test('offer codes (executed): the confirmation email states the discounted first
   const { buildSubscriptionConfirmationEmail: build } = await import(pathToFileURL(join(dir, 'confirm.mjs')).href)
   const end = new Date('2026-11-17T00:00:00Z')
   const noCard = build({ trialEnd: end, cardOnFile: false, percentOff: 50 }).html
-  assert.ok(noCard.includes('A card you add is charged $4.99 for your first paid month (50% off) when the trial ends, then $9.99/month until you cancel.'), noCard)
+  assert.ok(noCard.includes('A card you add is charged $4.99 for your first paid month (50% off) when the free week ends, then $9.99/month until you cancel.'), noCard)
   const card = build({ trialEnd: end, cardOnFile: true, percentOff: 50 }).html
-  assert.ok(card.includes('your card will be charged $4.99 for your first paid month (50% off) when the trial ends, 7 days after you signed up (Tuesday, November 17, 2026 at 12:00 AM UTC)</strong>, then $9.99/month until you cancel.'), card)
+  assert.ok(card.includes('your card will be charged $4.99 for your first paid month (50% off) when it ends, 7 days after it started (Tuesday, November 17, 2026 at 12:00 AM UTC)</strong>, then $9.99/month until you cancel.'), card)
   const today = build({ trialEnd: null, percentOff: 50 }).html
   assert.ok(today.includes('Your card is charged $4.99 for your first paid month (50% off) today, then $9.99/month until you cancel.'), today)
   // Without a code, the wording is what it was.
   const plain = build({ trialEnd: end, cardOnFile: true }).html
-  assert.ok(plain.includes('your card will be charged $9.99/month when the trial ends, 7 days after you signed up (Tuesday, November 17, 2026 at 12:00 AM UTC)</strong>, and again every month after that until you cancel.'), plain)
+  assert.ok(plain.includes('your card will be charged $9.99/month when it ends, 7 days after it started (Tuesday, November 17, 2026 at 12:00 AM UTC)</strong>, and again every month after that until you cancel.'), plain)
   assert.ok(build({ trialEnd: null }).html.includes('Your card is charged $9.99/month today and every month after that until you cancel.'))
   // Dates are in the member's own time zone, so the email and the app name the same day.
   // The real case: a trial ending Nov 18 06:11 UTC is Tuesday Nov 17, 10:11 PM in California.
   const real = new Date('2026-11-18T06:11:47Z')
   const la = build({ trialEnd: real, cardOnFile: false, timezone: 'America/Los_Angeles' })
-  assert.equal(la.subject, 'Your Seoul Sister free trial has started (ends November 17, 2026 PST)', 'the zone is named in the subject too')
-  assert.ok(la.html.includes('The trial ends Tuesday, November 17, 2026 at 10:11 PM PST.'), la.html)
+  assert.equal(la.subject, 'Your Seoul Sister free week has started (ends Tuesday, November 17 at 10:11 PM PST)', 'the zone is named in the subject too')
+  assert.ok(la.html.includes('It ends Tuesday, November 17, 2026 at 10:11 PM PST.'), la.html)
   for (const unknown of [undefined, null, '', 'Not/AZone']) {
     const utc = build({ trialEnd: real, cardOnFile: false, timezone: unknown })
-    assert.equal(utc.subject, 'Your Seoul Sister free trial has started (ends November 18, 2026 UTC)', `timezone=${unknown}`)
+    assert.equal(utc.subject, 'Your Seoul Sister free week has started (ends Wednesday, November 18 at 6:11 AM UTC)', `timezone=${unknown}`)
   // A zone typed as a city can differ from the device: the zone is always printed, so the date is never bare.
   const chi = build({ trialEnd: new Date('2026-11-18T06:30:00Z'), cardOnFile: false, timezone: 'America/Chicago' })
-  assert.equal(chi.subject, 'Your Seoul Sister free trial has started (ends November 18, 2026 CST)')
-  assert.ok(chi.html.includes('The trial ends Wednesday, November 18, 2026 at 12:30 AM CST.'))
-    assert.ok(utc.html.includes('The trial ends Wednesday, November 18, 2026 at 6:11 AM UTC.'), utc.html)
+  assert.equal(chi.subject, 'Your Seoul Sister free week has started (ends Wednesday, November 18 at 12:30 AM CST)')
+  assert.ok(chi.html.includes('It ends Wednesday, November 18, 2026 at 12:30 AM CST.'))
+    assert.ok(utc.html.includes('It ends Wednesday, November 18, 2026 at 6:11 AM UTC.'), utc.html)
   }
   for (const h of [noCard, card, today]) assert.doesNotMatch(h, /every month after that/, 'a discounted member is never told the first price repeats')
-  assert.doesNotMatch(today, /free trial/, 'someone charged today has no free trial to cancel during')
-  assert.match(card, /If you cancel during the free trial, you won\'t be charged\./)
+  assert.doesNotMatch(today, /free week/, 'someone charged today has no free week to cancel during')
+  assert.match(card, /If you cancel during the free week, you won\'t be charged\./)
 })
 
-test('offer codes (executed): the trial-ending notice states the discounted price to a member who has the code', async () => {
+test('offer codes (executed): the free week-ending notice states the discounted price to a member who has the code', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ss-ending-'))
   const put = (name, src) => writeFileSync(join(dir, `${name}.mjs`), transpile(src))
   put('pricing', read('src/lib/pricing.ts'))
@@ -936,22 +939,22 @@ test('offer codes (executed): the trial-ending notice states the discounted pric
   const end = '2026-11-27T04:00:00Z'
   assert.equal(
     trialEndingLine(end, { hasPaymentMethod: true, cancelAtPeriodEnd: false }, 'America/Chicago', 50),
-    'Your free trial ends on Thursday, November 26 (CST). Your card will be charged $4.99 for your first paid month (50% off) on that day, then $9.99/month until you cancel.'
+    'Your free week ends on Thursday, November 26 at 10:00 PM CST. Your card will be charged $4.99 for your first paid month (50% off) once it ends, then $9.99/month until you cancel.'
   )
   assert.equal(
     trialEndingLine(end, { hasPaymentMethod: false, cancelAtPeriodEnd: false }, 'America/Chicago', 50),
-    'Your free trial ends on Thursday, November 26 (CST). No card is on file, so nothing will be charged and your membership will stop on that day. To keep going, sign in and use the "Add a card" button at the top of any page: $4.99 for your first paid month (50% off) when the trial ends, then $9.99/month.'
+    'Your free week ends on Thursday, November 26 at 10:00 PM CST. No card is on file, so nothing will be charged and your membership stops then. To keep going, sign in and use the "Add a card" button at the top of any page: $4.99 for your first paid month (50% off) when the free week ends, then $9.99/month.'
   )
-  // The trial-ended email: unchanged without a code; with one, it says the code can be used again and where.
+  // The free week-ended email: unchanged without a code; with one, it says the code can be used again and where.
   const { buildTrialEndedEmail } = await import(pathToFileURL(join(dir, 'trial-emails.mjs')).href)
   const KEEP = 'If you would like to keep going, membership is $9.99/month. You can start it any time at <a href="https://www.seoulsister.com/subscribe">seoulsister.com/subscribe</a>, and Yuri picks up from where you left off.'
   for (const none of [undefined, {}, { offerCode: null }, { offerCode: '' }, { offerCode: '<b>x</b>' }]) {
     assert.ok(buildTrialEndedEmail(none).html.includes(`${KEEP} If not, there is nothing you need to do.</p>`), JSON.stringify(none))
   }
-  assert.ok(buildTrialEndedEmail({ offerCode: 'bailey' }).html.includes(`${KEEP} You started your trial with code BAILEY. It can be used again there while it is still accepted: it is applied by itself in the browser you signed up in, and on another device you can type it on the payment page. If not, there is nothing you need to do.</p>`))
+  assert.ok(buildTrialEndedEmail({ offerCode: 'bailey' }).html.includes(`${KEEP} You started your free week with code BAILEY. It can be used again there while it is still accepted: it is applied by itself in the browser you signed up in, and on another device you can type it on the payment page. If not, there is nothing you need to do.</p>`))
   // A stored zone the runtime does not know is treated as unknown, never a thrown error inside a notice.
-  assert.equal(trialEndingLine(end, null, 'Mars/Olympus'), 'Your free trial ends on Friday, November 27 (UTC).')
-  // The sender reads the percentage off the trial row and passes it through.
+  assert.equal(trialEndingLine(end, null, 'Mars/Olympus'), 'Your free week ends on Friday, November 27 at 4:00 AM UTC.')
+  // The sender reads the percentage off the free week row and passes it through.
   const src = read('src/lib/trial-notices.ts')
   assert.match(src, /trialEndingLine\(t\.trial_end, state, await deps\.timezoneForUser\(t\.user_id\), pct && pct > 0 \? pct : null\)/)
 })
@@ -959,7 +962,7 @@ test('offer codes (executed): the trial-ending notice states the discounted pric
 // ---------------------------------------------------------------------------
 // Yuri is told about a visitor's code as a FACT (both chat surfaces).
 // ---------------------------------------------------------------------------
-const YURI_ACTIVE = 'Creator code: this visitor has the code BAILEY saved in this browser. For someone who is not yet a member, it takes 50% off the first paid month: $4.99 instead of $9.99. Every month after that is $9.99/month, so where anything else here says $9.99/month, for this person that begins with the second paid month. If they start membership in this same browser the code is applied for them; on another device or browser they can type it on the payment page. The free trial is the same with or without it. The discount covers the first paid month only. When the code itself stops being accepted is not shown to you. It matters only if price or the code comes up.'
+const YURI_ACTIVE = 'Creator code: this visitor has the code BAILEY saved in this browser. For someone who is not yet a member, it takes 50% off the first paid month: $4.99 instead of $9.99. Every month after that is $9.99/month, so where anything else here says $9.99/month, for this person that begins with the second paid month. If they start membership in this same browser the code is applied for them; on another device or browser they can type it on the payment page. The free week is the same with or without it. The discount covers the first paid month only. When the code itself stops being accepted is not shown to you. It matters only if price or the code comes up.'
 const YURI_ENDED = 'Creator code: this visitor arrived with the code BAILEY, and it is no longer accepted, so membership for them is $9.99/month.'
 const YURI_UNCHECKED = "Creator code: this visitor's browser holds a creator code that could not be checked just now, so whether it applies is not visible to you."
 
@@ -1299,7 +1302,7 @@ test('pricing card: the free week leads and the price is stated; the allowance l
   assert.deepEqual(U.currentUsagePeriod(new Date('2026-12-31T23:30:00-08:00')), { start: '2027-01-01T00:00:00.000Z', end: '2027-02-01T00:00:00.000Z' }, 'UTC, not local time')
 
   // The Terms state the allowance from the same numbers, what the month is, and what happens at the limit.
-  assert.ok(read('src/app/(legal)/terms/page.tsx').includes('<li>Membership includes a monthly allowance of {USAGE_CAPS.yuri_messages_per_month} messages with Yuri and {USAGE_CAPS.scans_per_month} label scans, counted per calendar month (UTC). A free trial counts toward the same month. When an allowance is used up, that feature pauses until the next month begins. Your routine, shelf and history stay available, weekly check-in notes may still arrive, and nothing extra is charged</li>'))
+  assert.ok(read('src/app/(legal)/terms/page.tsx').includes('<li>Membership includes a monthly allowance of {USAGE_CAPS.yuri_messages_per_month} messages with Yuri and {USAGE_CAPS.scans_per_month} label scans, counted per calendar month (UTC). Messages and scans used during the free week count toward that month&apos;s allowance. When an allowance is used up, that feature pauses until the next month begins. Your routine, shelf and history stay available, weekly check-in notes may still arrive, and nothing extra is charged</li>'))
   assert.match(read('src/lib/usage.ts'), /The current usage period: this calendar month in UTC/)
   // Members are still told their allowance, and so is Yuri on the member side.
   assert.match(read('src/lib/email/subscription-confirmation.ts'), /PRICING\.yuri_allowance_display/)

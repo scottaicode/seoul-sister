@@ -106,13 +106,13 @@ import { noCardTrialEnabled } from '@/lib/trial'
  * commit.
  */
 /**
- * How the free trial starts, from the trial setting itself, so Yuri can never
+ * How the free week starts, from the free week setting itself, so Yuri can never
  * say "no card" while the checkout asks for one. This block is per turn and
  * uncached, so reading the setting here costs nothing.
  */
 export function trialCardFact(): string {
   return noCardTrialEnabled()
-    ? `no card is needed to start them. The trial ends after those ${PRICING.trial_days} days unless they add a card, which they can do from inside the app.`
+    ? `no card is needed to start them. Those ${PRICING.trial_days} days are the free week, and membership stops when it ends unless they add a card, which they can do from inside the app.`
     : `a card is needed to start them; nothing is charged if they cancel before the ${PRICING.trial_days} days end.`
 }
 

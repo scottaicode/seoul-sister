@@ -284,7 +284,7 @@ test('the fixed account line: appended to the real email body, true for the reci
   assert.doesNotMatch(mod.accountLineText('free_week', true) + mod.accountLineText('member', true), /[—–]/)
 })
 
-test('the recap asks the model whether the visitor said they are under 13, and the chat route picks the line from the trial ledger', async () => {
+test('the recap asks the model whether the visitor said they are under 13, and the chat route picks the line from the free week ledger', async () => {
   const { system } = await runRecap({ url: 'x', resumes: false })
   assert.match(system, /"visitor_said_under_13": true\|false/)
   assert.match(system, /Set visitor_said_under_13 to true only when the visitor themselves said they are under 13/)

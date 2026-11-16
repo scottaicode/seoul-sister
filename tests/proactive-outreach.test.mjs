@@ -268,7 +268,7 @@ test('the payer check counts ANY subscription status and converted widget visito
   const run = read('src', 'lib', 'proactive', 'run.ts')
   // A status filter here is exactly how a canceled payer slipped through review.
   assert.match(run, /db\.from\('ss_subscriptions'\)\.select\('user_id, stripe_subscription_id'\),/)
-  // Nov 10 2026: a free trial creates a subscription row with no payment, so
+  // Nov 10 2026: a free week creates a subscription row with no payment, so
   // "any row" no longer means "paid". An unpaid trial is excluded by one shared
   // rule; a status filter is still not allowed.
   assert.match(run, /\.filter\(\(r\) => !isUnpaidTrialSubscription\(/)
@@ -1119,7 +1119,7 @@ test('price-change email: reviewed facts only, unsubscribe in footer, no pressur
   assert.match(src, /USAGE_CAPS\.scans_per_month/)
   assert.match(src, /PRICING\.trial_days/)
   assert.match(src, /Unsubscribe with one click/)
-  // The trial promise is conditional for account holders (no trial after any past subscription).
+  // The free week promise is conditional for account holders (no trial after any past subscription).
   assert.match(src, /since you've never had a subscription/)
   // No old-price anchor (owner's call: reads as a markdown).
   assert.doesNotMatch(src, /24\.99/)

@@ -16,7 +16,7 @@
  * Deterministic rails only: non-demo subscriber, local daytime, the shared
  * nudge cap/spacing (nudge-limits.ts), and the weekly cadence: judged on their
  * LOCAL Sunday, at most once per 6 local days, plus one extra judgment on day 3
- * of a free trial (checkinGate). A "speak" becomes an ss_user_nudges row, so the dashboard card, the
+ * of a free week (checkinGate). A "speak" becomes an ss_user_nudges row, so the dashboard card, the
  * existing email adapter, the opt-out and the acted tracking all apply unchanged.
  */
 
@@ -57,7 +57,7 @@ const SHELF_MEANS_OWNED_SINCE = '2026-11-13'
 export const CHECKIN_WEEKDAY = 'Sunday'
 export const REJUDGE_AFTER_LOCAL_DAYS = 6
 /**
- * A trial member is judged on these days of the trial (day 1 = start date) and
+ * A trial member is judged on these days of the free week (day 1 = start date) and
  * on no other: day 3, and day 6 as the first-week review, which arrives before
  * a 7-day trial ends (Nov 10 2026). The ordinary Sunday is skipped during a
  * trial so they get these two notes, not three.
@@ -174,7 +174,7 @@ export function checkinGate(
   const lastJudgedLocal = opts.lastJudgedAt ? getLocalClock(s.timezone, new Date(opts.lastJudgedAt)).isoDate : null
   const daysSinceJudged = lastJudgedLocal ? daysBetweenIso(lastJudgedLocal, today.isoDate) : null
 
-  // During a trial only the trial's own days count, whatever the weekday: day 3
+  // During a trial only the free week's own days count, whatever the weekday: day 3
   // and the day-6 first-week review. Never twice on the same day, and the
   // ordinary Sunday is not added on top. A trial is only a trial WHILE IT RUNS:
   // a row that still says 'trialing' after its last day (a late or dropped
@@ -204,7 +204,7 @@ export function checkinGate(
  */
 export function weeklyCheckinStatement(trialDay: number | null): string {
   if (trialDay != null && trialDay >= 1 && trialDay < TRIAL_REVIEW_DAY) {
-    return `Yuri writes to this member again on day ${TRIAL_REVIEW_DAY} of their free trial, and after the trial most weeks on Sunday, adjusting their routine from what they tell her.`
+    return `Yuri writes to this member again on day ${TRIAL_REVIEW_DAY} of their free week, and after that most weeks on Sunday, adjusting their routine from what they tell her.`
   }
   return 'Yuri checks in with this member most weeks, on Sunday, and adjusts their routine from what they tell her.'
 }
@@ -213,7 +213,7 @@ const CHECKIN_SYSTEM = `You are Yuri (유리), Seoul Sister's K-beauty advisor: 
 
 Below is what you know about one of your subscribers that bears on a check-in: a selection from the memory you use when you talk to them (older conversation summaries and past message excerpts are left out, so something missing here may still have happened), plus this week's facts. This check-in looks at the coming seven days; the facts below say why you are being asked today. You are deciding whether to reach out to them FIRST about the coming week, before they come to you.
 
-A routine only gets better from what the person tells you about how their skin did, and this weekly note is where that happens; the facts below say whether they were told to expect it. Seoul Sister's policy is that most weeks a note goes out. When something in the coming week matters for what they are doing, open with it: a day in the forecast that bears on their routine, or something in your memory of them below that you told them to expect around now. Name it and say in a clause why it matters for them, and stop there. The working-out belongs in the chat, where you can check it properly, so the note gives them the reason to talk, not the advice. Then one question, two at most, about the thing that matters most in what they are doing. Ask WHETHER before HOW ("Did you start the oil cleanse? If so, how does your skin feel after rinsing?") unless their own words already say they started. When nothing in the coming week bears on them, the question alone is enough to write; you do not need news, and you never reach for a forecast day just to have one. Silence is yours to choose, and it fits when they have left your recent check-ins unanswered (their silence is an answer; if you write at all, keep it short and say they need not reply), when they asked for fewer messages or said they would be away, when you would only repeat last week's note, or when the subject belongs to their prescriber, a doctor, or the person-first rule below. During a free trial, an unanswered day-3 note is not a reason to skip the first-week review.
+A routine only gets better from what the person tells you about how their skin did, and this weekly note is where that happens; the facts below say whether they were told to expect it. Seoul Sister's policy is that most weeks a note goes out. When something in the coming week matters for what they are doing, open with it: a day in the forecast that bears on their routine, or something in your memory of them below that you told them to expect around now. Name it and say in a clause why it matters for them, and stop there. The working-out belongs in the chat, where you can check it properly, so the note gives them the reason to talk, not the advice. Then one question, two at most, about the thing that matters most in what they are doing. Ask WHETHER before HOW ("Did you start the oil cleanse? If so, how does your skin feel after rinsing?") unless their own words already say they started. When nothing in the coming week bears on them, the question alone is enough to write; you do not need news, and you never reach for a forecast day just to have one. Silence is yours to choose, and it fits when they have left your recent check-ins unanswered (their silence is an answer; if you write at all, keep it short and say they need not reply), when they asked for fewer messages or said they would be away, when you would only repeat last week's note, or when the subject belongs to their prescriber, a doctor, or the person-first rule below. During the free week, an unanswered day-3 note is not a reason to skip the first-week review.
 
 The forecast is day by day, so you can point to a specific day ("Tuesday looks humid"). Anything after today is a forecast, not a fact, and reads that way when you say it.
 
@@ -265,10 +265,10 @@ export function localDateText(iso: string, timezone: string | null): string {
 /** Why the judge is being asked today. Pure, exported for tests. */
 export function checkinReasonFact(trialDay: number | null, trial: TrialInfo | null, timezone: string | null = null): string {
   if (trial && trialDay === TRIAL_REVIEW_DAY) {
-    return `Why you are being asked today: it is day ${TRIAL_REVIEW_DAY} of their ${PRICING.trial_days}-day free trial${trial.endsAt ? `, which ends ${localDateText(trial.endsAt, timezone)} in their time` : ''}. This is their first-week review: ask how the first days went. Any adjustment is worked out in chat once they answer, not in this note. Seoul Sister sends them a separate plain notice about when the trial ends and how to keep going, so do not write about the trial ending, the price, or a card yourself.`
+    return `Why you are being asked today: it is day ${TRIAL_REVIEW_DAY} of their free week${trial.endsAt ? `, which ends ${localDateText(trial.endsAt, timezone)} in their time` : ''}. This is their first-week review: ask how the first days went. Any adjustment is worked out in chat once they answer, not in this note. Seoul Sister sends them a separate plain notice about when the free week ends and how to keep going, so do not write about the free week ending, the price, or a card yourself.`
   }
   if (trial && trialDay != null && TRIAL_CHECKIN_DAYS.includes(trialDay)) {
-    return `Why you are being asked today: it is day ${trialDay} of their free trial (the mid-trial check-in). You write again on day ${TRIAL_REVIEW_DAY}; after the trial you are asked once a week, on Sunday.`
+    return `Why you are being asked today: it is day ${trialDay} of their free week (the check-in halfway through). You write again on day ${TRIAL_REVIEW_DAY}; after the free week you are asked once a week, on Sunday.`
   }
   return `Why you are being asked today: it is their weekly check-in (once a week, on Sunday, about the week just gone and the week ahead).`
 }
@@ -360,7 +360,7 @@ export async function loadCheckinFacts(
   const trialDay = trialDayNumber(trial, s.timezone, now)
   if (trial) {
     lines.push(
-      `They are on a free trial: started ${trial.startedAt.slice(0, 10)}${trial.endsAt ? `, ends ${trial.endsAt.slice(0, 10)}` : ''}; today is day ${trialDay ?? 'unknown'} of it.`
+      `They are in their free week: started ${trial.startedAt.slice(0, 10)}${trial.endsAt ? `, ends ${trial.endsAt.slice(0, 10)}` : ''}; today is day ${trialDay ?? 'unknown'} of it.`
     )
   }
   lines.push(checkinReasonFact(trialDay, trial, s.timezone))

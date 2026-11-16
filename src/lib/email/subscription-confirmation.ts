@@ -38,13 +38,17 @@ export function buildSubscriptionConfirmationEmail(params: {
   // The zone's short name is always printed ("PST", "UTC"), so the time is never ambiguous.
   const fmtTime = (d: Date) =>
     d.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: zone, timeZoneName: 'short' })
+  // For the subject line: the day and the time, no year. The week ends to the
+  // minute, so a date alone ("ends November 22") misleads for a 12:00 AM end.
+  const fmtShort = (d: Date) =>
+    d.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: zone, timeZoneName: 'short' })
   const pct = params.percentOff ?? null
   const discounted = firstMonthPrice(pct) !== null
   const firstCharge = noCardTrial && params.trialEnd
-    ? `<p>Your ${PRICING.trial_days}-day free trial has started. <strong>No card is on file and you will not be charged.</strong> The trial ends ${escapeHtml(fmtTime(params.trialEnd))}.</p>
-<p><strong>To keep your membership,</strong> add a card before then with the "Add a card" button at the top of any page once you are signed in at <a href="https://www.seoulsister.com/dashboard">seoulsister.com</a>. A card you add is charged ${escapeHtml(chargePhrase(pct, 'when the trial ends'))}. If you add no card, your membership stops when the trial ends. Your account and skin profile are kept.</p>`
+    ? `<p>Your free week has started. This is the ${PRICING.trial_days}-day trial you confirmed on Stripe's page; we call it your free week. <strong>No card is on file and you will not be charged.</strong> It ends ${escapeHtml(fmtTime(params.trialEnd))}.</p>
+<p><strong>To keep your membership,</strong> add a card before then with the "Add a card" button at the top of any page once you are signed in at <a href="https://www.seoulsister.com/dashboard">seoulsister.com</a>. A card you add is charged ${escapeHtml(chargePhrase(pct, 'when the free week ends'))}. If you add no card, your membership stops at that time and nothing is charged. Your account and skin profile are kept.</p>`
     : params.trialEnd
-    ? `<p>Your ${PRICING.trial_days}-day free trial has started. <strong>Unless you cancel before it ends, your card will be charged ${escapeHtml(firstChargeText(pct))} when the trial ends, ${PRICING.trial_days} days after you signed up (${escapeHtml(fmtTime(params.trialEnd))})</strong>, ${discounted ? escapeHtml(thereafterText(pct)) : 'and again every month after that until you cancel'}.</p>`
+    ? `<p>Your free week has started. This is the ${PRICING.trial_days}-day trial you confirmed on Stripe's page; we call it your free week. <strong>Unless you cancel before it ends, your card will be charged ${escapeHtml(firstChargeText(pct))} when it ends, ${PRICING.trial_days} days after it started (${escapeHtml(fmtTime(params.trialEnd))})</strong>, ${discounted ? escapeHtml(thereafterText(pct)) : 'and again every month after that until you cancel'}.</p>`
     : `<p>Your subscription has started. Your card is charged ${escapeHtml(chargePhrase(pct, 'today'))}.</p>`
 
   const html = wrapEmailHtml(
@@ -53,15 +57,15 @@ ${firstCharge}
 <p><strong>What to expect:</strong> Yuri builds your routine with you in your first conversation. After that, most weeks she checks in with a question or two about how your skin did, and adjusts the routine from what you tell her. Your answers are what make it better.</p>
 <p><strong>What's included:</strong> ${escapeHtml(PRICING.yuri_allowance_display)}, label scans, and the full Seoul Sister intelligence suite. Your allowance resets on the first of each month.</p>
 ${noCardTrial
-      ? `<p><strong>How to stop:</strong> you don't need to do anything. With no card on file the trial ends by itself. If you add a card and change your mind, go to your Profile page and choose "Manage subscription", or reply to this email and we'll cancel it for you.</p>`
-      : `<p><strong>How to cancel:</strong> go to your Profile page at <a href="https://www.seoulsister.com/profile">seoulsister.com/profile</a> and choose "Manage subscription", or reply to this email and we'll cancel it for you.${params.trialEnd ? " If you cancel during the free trial, you won't be charged." : ''}</p>`}
+      ? `<p><strong>How to stop:</strong> you don't need to do anything. With no card on file, your membership stops by itself when the free week ends, and nothing is charged. If you add a card and change your mind, go to your Profile page and choose "Manage subscription", or reply to this email and we'll cancel it for you.</p>`
+      : `<p><strong>How to cancel:</strong> go to your Profile page at <a href="https://www.seoulsister.com/profile">seoulsister.com/profile</a> and choose "Manage subscription", or reply to this email and we'll cancel it for you.${params.trialEnd ? " If you cancel during the free week, you won't be charged." : ''}</p>`}
 <p>Keep this email for your records.</p>`,
-    `<p style="font-size:12px;color:#999;margin:0;">You're receiving this because you subscribed to Seoul Sister at seoulsister.com.</p>`
+    `<p style="font-size:12px;color:#999;margin:0;">You're receiving this because you started a Seoul Sister membership at seoulsister.com.</p>`
   )
 
   return {
     subject: params.trialEnd
-      ? `Your Seoul Sister free trial has started (ends ${fmt(params.trialEnd)})`
+      ? `Your Seoul Sister free week has started (ends ${fmtShort(params.trialEnd)})`
       : 'Your Seoul Sister subscription is confirmed',
     html,
   }

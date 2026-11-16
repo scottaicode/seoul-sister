@@ -139,7 +139,7 @@ export function buildCheckinMemory(
 }
 
 export interface TrialInfo {
-  /** When the free trial started (ISO). */
+  /** When the free week started (ISO). */
   startedAt: string
   /** When it ends (ISO), if Stripe told us. */
   endsAt: string | null
@@ -147,7 +147,7 @@ export interface TrialInfo {
 
 /**
  * Trial start for a 'trialing' subscription row. Stripe's current_period_start
- * IS the trial start while trialing; created_at is the fallback for rows written
+ * IS the free week start while trialing; created_at is the fallback for rows written
  * without it. Null when the row is not trialing. Pure.
  */
 export function trialInfoFromSubscription(

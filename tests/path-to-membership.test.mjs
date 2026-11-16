@@ -9,9 +9,9 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
+import { dirname, join, relative } from 'node:path'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const read = (...p) => readFileSync(join(root, ...p), 'utf8')
@@ -50,7 +50,7 @@ test('the setup chat says what it is, and its two exits say where they go', () =
   // Someone just back from Stripe is not read as "not a member": the plan is
   // still being written, so it is left unknown and read after the confirm.
   assert.ok(page.includes("      if (justPaidRef.current || new URLSearchParams(window.location.search).has('session_id')) return\n"))
-  assert.ok(page.includes("          if (!planError && profile?.plan && profile.plan !== 'free') setIsMember(true)\n"))
+  assert.match(page, /if \(!planError && profile\?\.plan && profile\.plan !== 'free'\) \{\s*setIsMember\(true\)\s*return true/)
   // The link runs the handler that goes where the label says.
   assert.match(page, /onClick=\{handleSkip\}[\s\S]{0,260}\{skipSetupLabel\(isMember\)\}/)
   assert.ok(page.includes('const [isMember, setIsMember] = useState<boolean | null>(null)'))
@@ -98,4 +98,77 @@ test('the first member screen does not claim a setup conversation that never hap
   assert.ok(api.includes('      setup_said_anything: setupSaidAnything,\n'))
   const page = read('src', 'app', '(app)', 'yuri', 'page.tsx')
   assert.match(page, /\{welcomeContext\?\.setup_said_anything === false \? \(\s*"I don't know your skin yet, so tell me what bothers you most about it and we start there\."/)
+})
+
+test('closed world: the membership page lists four of the plan\'s own lines and nothing else', () => {
+  const stripe = read('src', 'lib', 'stripe.ts')
+  // The list is built from the plan's own lines by position, on this exact
+  // line and nowhere else, so nothing can be added here that the plan does not state.
+  assert.ok(stripe.includes('\nexport const PAYWALL_FEATURES: readonly string[] = [3, 2, 7, 0].map((i) => SUBSCRIPTION_TIERS.monthly.features[i])\n'))
+  assert.equal(stripe.split('PAYWALL_FEATURES').length - 1, 1, 'defined once, never reassigned or extended')
+  // Which four lines those positions are today, word for word.
+  const monthly = stripe.slice(stripe.indexOf('  monthly: {'), stripe.indexOf('  pro_monthly'))
+  const features = [...monthly.slice(monthly.indexOf('features: ['), monthly.indexOf('\n    ]')).matchAll(/^\s+'([^']+)',$/gm)].map((m) => m[1])
+  assert.deepEqual([3, 2, 7, 0].map((i) => features[i]), [
+    'Remembers your skin across every session',
+    'Reads your Korean labels & builds conflict-aware routines',
+    'Check-in notes from Yuri, with your local forecast once your location is on file',
+    'Yuri, your K-beauty advisor, available 24/7',
+  ])
+  const page = read('src', 'app', '(auth)', 'subscribe', 'page.tsx')
+  assert.ok(page.includes('          {PAYWALL_FEATURES.map((f) => ('))
+  assert.equal(page.split('<li').length - 1, 1, 'the mapped line is the only list item on the page')
+  assert.doesNotMatch(monthly, /^\s+"/m, 'a double-quoted feature would shift the positions unseen')
+  assert.doesNotMatch(page, /tier\.features/)
+})
+
+test('a just-started member who skipped setup goes to the member chat, only once the plan is confirmed', () => {
+  const page = read('src', 'app', '(app)', 'onboarding', 'page.tsx')
+  // The confirm step resolves to whether they are a member; the redirect waits for it.
+  assert.ok(page.includes('    confirmedRef.current = (async (): Promise<boolean> => {'))
+  assert.match(page, /if \(data\.status === 'skipped' && justPaidRef\.current && confirmedRef\.current\) \{\s*const member = await confirmedRef\.current\s*if \(cancelled\) return\s*if \(member\) \{\s*router\.replace\('\/yuri'\)\s*return/)
+  // No prefilled "from what you learned in my setup chat" for them.
+  assert.doesNotMatch(page, /router\.replace\('\/yuri\?ask/)
+  assert.equal(page.split('FIRST_MEMBER_ASK').length - 1, 2, 'the prefilled first message is used on the completed-setup path only')
+})
+
+test('"free week" is true only while the free period is 7 days', () => {
+  // Every "free week" in the app, the emails and Yuri's facts rests on this number.
+  // Change it and the wording has to change with it.
+  assert.match(read('src', 'lib', 'pricing.ts'), /^\s+trial_days: 7,$/m)
+  // And the Stripe session takes its length from that number and nowhere else.
+  const params = read('src', 'lib', 'stripe-params.ts')
+  assert.ok(params.includes('  const trialDays = p.withTrial ? PRICING.trial_days : 0\n'))
+  assert.ok(params.includes('      ...(trialDays > 0 ? { trial_period_days: trialDays } : {}),\n'))
+  assert.equal(params.split('trial_period_days').length - 1, 1)
+})
+
+test('closed world: "trial" is not our word. It appears only where a sentence says it is Stripe\'s', () => {
+  const files = []
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name)
+      if (e.isDirectory()) walk(p)
+      else if (/\.tsx?$/.test(e.name)) files.push(p)
+    }
+  }
+  walk(join(root, 'src'))
+  assert.ok(files.length > 300, `only ${files.length} files scanned`)
+  // Read by the owner or by a log, never by a member.
+  const internal = ['src/lib/email/new-subscriber-alert.ts']
+  const hits = []
+  for (const f of files) {
+    const rel = relative(root, f)
+    if (internal.includes(rel)) continue
+    const shown = code(readFileSync(f, 'utf8'))
+    for (const line of shown.split('\n')) {
+      // The word in prose (after another word and a space), in any phrasing.
+      // A log or a thrown error is not read by a member. The only pass is a
+      // sentence that says the word is Stripe's.
+      if (!/\b(?!(?:const|let|var|return|typeof|await|new|in|of|type)\b)[A-Za-z0-9'-]+ trials?\b(?!\s*[.:=?)\],;&|(!<>{}\[])/i.test(line)) continue
+      if (/console\.|new Error\(/.test(line)) continue
+      if (!/Stripe(&apos;|')?s? (calls?|page|pages|checkout)/.test(line)) hits.push(`${rel}: ${line.trim().slice(0, 140)}`)
+    }
+  }
+  assert.deepEqual(hits, [])
 })

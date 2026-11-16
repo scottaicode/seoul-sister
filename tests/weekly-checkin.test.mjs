@@ -136,7 +136,7 @@ test('trial day 3: one extra judgment on any weekday, counted in the member\'s l
   assert.equal(trialDayNumber(trial, 'UTC', fri), 2, 'the same instant is day 2 on a UTC calendar')
   assert.equal(checkinGate(s, opts(fri, { trial })), null)
   assert.equal(checkinGate(s, opts(fri, { trial, lastJudgedAt: '2026-11-06T15:00:00Z' })), 'judged_recently', 'once that day')
-  // Judged on the Sunday before the trial reached day 3 does not take day 3 away.
+  // Judged on the Sunday before the free week reached day 3 does not take day 3 away.
   assert.equal(checkinGate(s, opts(fri, { trial, lastJudgedAt: '2026-11-05T16:00:00Z' })), null)
   // Day 2 (Thursday) is an ordinary weekday; no trial = ordinary weekday.
   assert.equal(checkinGate(s, opts(at('2026-11-05T17:00:00Z'), { trial })), 'not_checkin_day')
@@ -145,7 +145,7 @@ test('trial day 3: one extra judgment on any weekday, counted in the member\'s l
   assert.equal(checkinGate(s, opts(at('2026-11-06T05:00:00Z'), { trial: { ...trial, startedAt: '2026-11-04T05:00:00Z' } })), 'night')
 })
 
-test('trial info: only a trialing row; Stripe period start is the trial start, created_at the fallback', async () => {
+test('trial info: only a trialing row; Stripe period start is the free week start, created_at the fallback', async () => {
   const { trialInfoFromSubscription } = await load(['src', 'lib', 'proactive', 'checkin-context.ts'])
   assert.equal(trialInfoFromSubscription({ status: 'active', current_period_start: '2026-11-01T00:00:00Z' }), null)
   assert.equal(trialInfoFromSubscription(undefined), null)

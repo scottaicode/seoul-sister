@@ -138,14 +138,14 @@ test('the membership page leads with the free week in the public card\'s own wor
   const badge = 'Your K-Beauty Advisor, Available 24/7'
   assert.ok(page.includes(badge) && publicCard.includes(badge))
   assert.doesNotMatch(page, /Full AI Intelligence Suite/)
-  // "No card needed" under the button only when that is true: the trial is on offer AND takes no card.
+  // "No card needed" under the button only when that is true: the free week is on offer AND takes no card.
   assert.match(page, /\{trialEligible === true && noCardTrial \? stripeHandoffLine\(\) : 'Secure payment via Stripe\.'\}/)
   assert.equal((page.match(/stripeHandoffLine\(\)/g) ?? []).length, 1)
   assert.doesNotMatch(page, /Handled by Stripe/)
   // And "no card" is only believed when the server says so in as many words.
   assert.match(page, /setNoCardTrial\(t\.eligible === true && t\.no_card === true\)/)
   // Someone who cannot have the free week (trial used, network cap, card required) still sees the price first.
-  for (const s of ['Your free trial has ended. Continue for', 'charged today. The free trial is not available here']) assert.ok(page.includes(s), s)
+  for (const s of ['Your free week has ended. Continue for', 'charged today. The free week is not available here']) assert.ok(page.includes(s), s)
   // The allowance note is not on this page (owner decision, Nov 11 2026; see src/lib/pricing.ts allowanceNote).
   assert.doesNotMatch(page, /allowanceNote/)
 })
