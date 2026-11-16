@@ -83,6 +83,60 @@ hand-edit generated CSS.
 
 ---
 
+## DEFERRED on purpose — an owner "Members" page (decided Nov 16 2026)
+
+**Decision.** Scott asked whether to build a page where he can watch member activity and raise a
+member's message allowance himself. Decided together: not yet. This is a deliberate deferral,
+not a gap.
+
+**Why not now.** On Nov 16 2026 there were two real members in a free week (Elin, Lauri) and one
+owner test account. An activity report on request takes a few minutes and can read the
+conversations behind the numbers. The open question is whether a stranger pays (see
+`NORTH-STAR.md`), and a table of three rows does not answer it.
+
+**Build it when any one of these is true.**
+- About ten or more active members, so reading them one by one stops being practical.
+- Scott wants to check activity or raise an allowance outside a working session.
+- Someone without database access (Bailey) needs to see it.
+
+**What to build, when it is time.** A third page in the existing owner-only admin area
+(`src/app/(app)/admin/`, beside `traffic` and `widget`; reuse their owner check).
+- One row per member with a plan other than `free`: masked email or first name, plan,
+  free-week end and whether a card is on file, messages this month against their limit,
+  conversations, model cost so far, last active.
+- A control that sets extra messages for the current month.
+- It displays records and changes one number. It recommends nothing (Yuri Sole Authority).
+- The write path needs a second-model review and an executed test that another member's row
+  cannot be changed (same shape as `tests/stated-facts-profile.test.mjs`).
+
+**Where the numbers come from.**
+- Messages used and the limit: `getUsageStatus(userId)` in `src/lib/usage.ts`. The limit is the
+  plan allowance plus `ss_usage_tracking.yuri_messages_bonus` for that month's row.
+- Cost: `sum(cost_usd)` from `ss_ai_usage` by `user_id` (the `yuri_chat` feature is nearly all of it).
+- Conversations and last activity: `ss_yuri_messages` joined to `ss_yuri_conversations`.
+  `ss_user_profiles` joins on `user_id`, never on `id`.
+- Free week: `ss_subscriptions.status = 'trialing'` and `trial_end`; card on file is asked of
+  Stripe (`trialFacts` in `src/lib/trial.ts`).
+
+**Until then: how to give one member extra messages by hand.** Find the member's row for the
+current month and set the bonus. It is added to the plan's 80 and ends with the month.
+
+```sql
+update ss_usage_tracking
+   set yuri_messages_bonus = 70            -- 80 + 70 = 150 for the month
+ where user_id = '<member uuid>'
+   and billing_period_start = date_trunc('month', now() at time zone 'utc') at time zone 'utc'
+returning yuri_messages_used, yuri_messages_bonus;
+```
+
+Never lower `yuri_messages_used` to make room: Yuri and the chat counter state that number to
+the member. First use: Elin, November 2026, raised to 150 (v11.62.4).
+
+**Baseline when this was written.** Elin, the first stranger in a free week, sent 59 messages in
+three days across 10 conversations for $8.06 of model cost (about $0.14 a message). She is the
+most active person who is not an insider: only Bailey (331 messages over nine months) and the
+owner's own account (75) have more, and the next stranger is Lauri at 24.
+
 ## Remaining work and pipeline audit, moved from CLAUDE.md (Nov 11 2026)
 
 ### Remaining Work
