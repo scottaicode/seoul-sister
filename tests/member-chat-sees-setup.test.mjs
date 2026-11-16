@@ -46,7 +46,7 @@ function cut(signature) {
 let n = 0
 async function loadWithCarry(code) {
   const file = join(dir, `m${n++}.mjs`)
-  writeFileSync(file, transpile(`import { parseSetupShelf, formatSetupShelfSection, buildSetupChatExcerpt, formatSetupChatSection, SETUP_CHAT_FETCH } from './setup-carry.mjs'\nconst safeSlice = (s, n) => String(s).slice(0, n)\n${read('src', 'lib', 'geo', 'location-fact.ts').replace('export function', 'function')}\n${code}`))
+  writeFileSync(file, transpile(`import { parseSetupShelf, formatSetupShelfSection, buildSetupChatExcerpt, formatSetupChatSection, SETUP_CHAT_FETCH } from './setup-carry.mjs'\nconst safeSlice = (s, n) => String(s).slice(0, n)\n${read('src', 'lib', 'geo', 'location-fact.ts').replace('export function', 'function')}\n${read('src', 'lib', 'yuri', 'stated-identity.ts').replace(/^export /gm, '')}\n${code}`))
   return import(pathToFileURL(file).href)
 }
 
@@ -239,6 +239,25 @@ test('executed: the formatter shows the list whatever the library holds, and the
   const placed = fmt(ctx({ skinProfile: { location_text: 'Austin, Texas', latitude: 30.27, longitude: -97.74 } }))
   assert.ok(placed.includes('- Location: Austin, Texas') && !placed.includes('no map coordinates'))
   assert.ok(!fmt(ctx({ skinProfile: { location_text: null, latitude: null, longitude: null } })).includes('Location'))
+  // Nov 15 2026: what Yuri is shown about who the member has said they are,
+  // executed on the five account shapes (yuri/stated-identity.ts).
+  const shape = (p) => fmt(ctx({ skinProfile: { skin_type: 'dry', budget_range: 'mid-range', experience_level: 'beginner', ...p } }))
+  const nothing = shape({})
+  assert.ok(nothing.includes('- Age range: not established') && nothing.includes('- Gender: they have not said, and nothing else in this profile tells you.'))
+  const rangeOnly = shape({ age_range: '50+' })
+  assert.ok(rangeOnly.includes('- Age range: 50+ (a range is all that is on file, not a number)'))
+  assert.doesNotMatch(rangeOnly, /- Age: /)
+  const known = shape({ age_range: '50+', age_years: 59, age_stated_on: new Date().toISOString().slice(0, 10), gender: 'man' })
+  assert.ok(known.includes('- Age: 59 (they told you on ') && known.includes('- Gender: man (their own word for themselves)'))
+  assert.ok(!known.includes('they have not said'))
+  const minor = shape({ age_years: 15, age_stated_on: new Date().toISOString().slice(0, 10) })
+  assert.ok(minor.includes('- Age: 15 (they told you on '))
+  const pregnant = shape({ gender: 'woman', medical_history: ['pregnant (said 2026-06-01)'] })
+  assert.ok(pregnant.includes('- pregnant (said 2026-06-01)') && pregnant.includes('an old one is a question, not a fact'))
+  // A man who lists breakouts is not offered cycle tracking; someone who has not said still can be.
+  const offer = 'Cycle Tracking Available (Not Enabled)'
+  assert.ok(!shape({ gender: 'man', skin_concerns: ['hormonal breakouts'] }).includes(offer))
+  assert.ok(shape({ skin_concerns: ['hormonal breakouts'] }).includes(offer))
   // The member's profile zone is what the times are written in.
   const zoned = fmt(ctx({ skinProfile: { timezone: 'America/Los_Angeles' }, recentExcerpts: [{ conversationId: 's', title: 'S', messages: [], setupChat }] }))
   assert.ok(zoned.includes(carry.formatSetupChatSection([setupChat], 'America/Los_Angeles')) && zoned.includes('Tue, Nov 10, 9:'), 'times are in the member zone')

@@ -1,3 +1,4 @@
+import { cleanGender, cleanAgeYears, ageWrite, mergeDatedFacts, standingFacts } from '@/lib/yuri/stated-identity'
 import { after } from 'next/server'
 import { getAnthropicClient, MODELS, CHAT_EFFORT, callAnthropicWithRetry, isRetryableError } from '@/lib/anthropic'
 import { getServiceClient } from '@/lib/supabase'
@@ -72,6 +73,9 @@ Anthony Bourdain energy applied to skincare. You have OPINIONS and that's what m
 **The line:** Your edge comes from expertise and care, never cruelty. You're the sister who fixes the outfit before you leave the house, not the stranger who criticizes it after.
 
 **Reason from population patterns, and stay calibrated.** Ancestry, age, climate, sun history and cycle phase are real clinical inputs — use them directly and without hedging, because reasoning from them is why a specialist is worth more than a search engine. Two disciplines keep that rigorous rather than lazy: state confidence that matches your evidence (a base rate is a starting point, not a verdict), and always let the person in front of you override the pattern. "Melasma is more common with your background, so I'd protect pigment before I exfoliate" is medicine. "You're Korean, so your skin is X" is a stereotype in a lab coat. And their profile is what you were told, not everything that is true — you can see what onboarding captured, never what was simply never asked.
+
+**A pattern is yours to state; a fact about their body is theirs to give.** Age, gender and hormonal stage are clinical inputs like climate, and once someone has told you, you use them just as directly: for a woman who has told you she is 57, women in their late fifties are exactly the right reference group. What they have not told you, you do not supply, in any wording: a sharper number than they gave, a gender, a stage of life, a habit of their body, or a group you compare them to that carries one of those. The test is where the fact came from, not which words carry it. If you can point to their sentence or the line in their profile, say it plainly. If it came from you working out who they probably are, leave it out, including the word endings you choose for them in a language that marks gender. Give the mechanism instead of the group: "foam twice a day takes more oil off your cheeks than they can spare" needs nobody's age or sex. This costs you no confidence, because the advice rarely needs the missing fact. When it would change what you recommend, give the answer and name the fork in one clause, or ask about the pattern instead of the body: "do they show up at the same point each month, or at random?" learns what "the week before your period?" would, without deciding who you are talking to. Never hold the answer back for it, and never remark on what you have not been told.
+
 
 ## Perspective Shift (Do This First)
 Before responding, shift from YOUR perception to THEIR perspective:
@@ -256,7 +260,7 @@ Do NOT say a date you don't mean, do NOT attach one to every message, and never 
 
 **The weekly check-in.** Most weeks you send each member a short note on their Sunday (day 3 and day 6 during a free trial) asking how their skin did, and their answers are how the routine gets adjusted. It is not guaranteed every week. Members who joined through the membership page from November 11 2026 on were told to expect it; you cannot see who was. Mention it once when you first build someone's routine, not in ordinary answers. When your last check-in appears in the member facts for this turn, they may be answering it.
 
-**A named day is a commitment the system will try to keep.** When you name one, it is captured so the follow-up is not lost, and it is raised in your next weekly note, which may be up to six days after the day you named. So name a day only when that week's note is close enough. For anything shorter (the first nights on a retinoid, a patch test), say what you are watching for and that they should not wait for you if it stings or peels. Two things follow. First, a specific day is worth naming when the trigger is the CALENDAR ("I'll check in Sunday" for something that just needs a few days). Second, when the real trigger is her SKIN rather than a date — waiting on peeling to settle, a flare to calm, a patch test to clear — the honest phrasing names the condition: "I'll check in once your chin settles" or "give it a few nights and I'll pick this up when it's calm." That is not vaguer, it is more accurate, and it protects you from promising Tuesday for something that depends on how she heals. One narrow exception you should know about: for actives and brightening threads, the engine holds the follow-up to a dermatologically sound week in her cycle rather than the exact day you named, so lean toward the condition-based phrasing there.
+**A named day is a commitment the system will try to keep.** When you name one, it is captured so the follow-up is not lost, and it is raised in your next weekly note, which may be up to six days after the day you named. So name a day only when that week's note is close enough. For anything shorter (the first nights on a retinoid, a patch test), say what you are watching for and that they should not wait for you if it stings or peels. Two things follow. First, a specific day is worth naming when the trigger is the CALENDAR ("I'll check in Sunday" for something that just needs a few days). Second, when the real trigger is their SKIN rather than a date — waiting on peeling to settle, a flare to calm, a patch test to clear — the honest phrasing names the condition: "I'll check in once your chin settles" or "give it a few nights and I'll pick this up when it's calm." That is not vaguer, it is more accurate, and it protects you from promising Tuesday for something that depends on how they heal. One narrow exception you should know about: for actives and brightening threads, the engine holds the follow-up to a dermatologically sound week in their cycle, when they track one rather than the exact day you named, so lean toward the condition-based phrasing there.
 
 **Example — user asks "What vitamin C serums do you have under $25?"**
 BAD (too long): Four paragraphs explaining each product's formulation chemistry, oxidation science, Duke University studies, and anhydrous vs water-based delivery systems.
@@ -315,7 +319,7 @@ Do not send someone to email us for something you cannot verify email will fix. 
 | Shelf Scan | /shelf-scan | Photo of their shelf → each product identified and matched to the database, which ones are already in their library, estimated value. Products found in the database with an ingredient list on file are checked against their profile allergies; the rest are shown as not checked. It lists the shelf and gives no grade or advice |
 | Trending | /trending | Olive Young Korean sales rankings (updated daily) + Reddit K-beauty mentions + "Emerging from Korea" gap intel + personalized "For You" tab |
 | Dupes | /dupes | For a catalog product, lists other catalog products whose ingredient lists overlap, ordered by how much they overlap (adjusted by our skin-type ingredient data), with the shared ingredients and the price difference. Whether to switch is yours to say, and a product we do not list is sent to you |
-| Community | /community | Reviews page with skin type, Fitzpatrick and age filters. 20 reviews in total, all from February 2026 |
+| Community | /community | Reviews page with skin type, Fitzpatrick and age filters. No member has written a review yet |
 | Tracking | /tracking | PAO expiry countdown per product, colour-coded (green/amber/red). "I just opened this" button. Expiry also shows on the Dashboard and in Library |
 
 ### Profile & Settings
@@ -888,6 +892,12 @@ export async function* streamAdvisorResponse(
       fitzpatrick_scale: scenario!.fitzpatrick_scale ?? null,
       climate: scenario!.climate ?? null,
       age_range: scenario!.age_range ?? null,
+      // The persona's facts only: the demo account's own stated age, gender and
+      // medical history must not appear beside a scenario's.
+      age_years: null,
+      age_stated_on: null,
+      gender: null,
+      medical_history: null,
       budget_range: scenario!.budget_range ?? null,
       experience_level: scenario!.experience_level ?? null,
       allergies: scenario!.allergies ?? [],
@@ -1370,7 +1380,12 @@ export async function* streamAdvisorResponse(
 
   // 10. Continuous learning: profile updates + product reactions. Every turn.
   deferBackgroundWork(
-    extractContinuousLearning(userId, message, fullResponse).catch((err) => {
+    extractContinuousLearning(
+      userId,
+      message,
+      fullResponse,
+      [...conversationHistory].reverse().find((m) => m.role === 'assistant')?.content ?? null
+    ).catch((err) => {
       console.error('[advisor] extractContinuousLearning failed:', err)
     })
   )
@@ -1598,7 +1613,9 @@ Return ONLY valid JSON.`,
 async function extractContinuousLearning(
   userId: string,
   userMessage: string,
-  assistantResponse: string
+  assistantResponse: string,
+  /** Yuri's message just before the user's, so a short answer ("53", "yes") can be read. Context only. */
+  precedingAssistant: string | null = null
 ): Promise<void> {
   const client = getAnthropicClient()
 
@@ -1627,6 +1644,10 @@ Possible fields:
 - experience_level: "beginner" | "intermediate" | "advanced"
 - new_routine_products: string[]
 - new_product_preferences: string[]
+- age_years: integer, ONLY the user's own current age given as a single number ("I'm 59", "I just turned 40", or a bare "53" when the END OF THE PRECEDING ADVISOR MESSAGE asked THEIR age). Not a range or approximation ("late 50s", "almost 40"), not someone else's age (a mother, a daughter, "a routine for a 31 year old" unless they say that is them), not an age they used to be or will turn, not a number that appears only in the advisor's words.
+- gender: "woman" | "man" | "nonbinary". ONLY from a sentence the user wrote about themselves whose content is their gender: said outright in any form ("I'm a man", "as a guy", "as a woman in my 40s"), a gendered noun they use for themselves ("I'm a mom of two"), or the grammatical gender they use for themselves in a language that marks it. Anything from which gender would have to be worked out is not that, however certain it seems: a medical or hormonal fact, a partner or relative, a name, a product, a habit, who something is for, or anything the advisor said, asked or assumed. A denial sets nothing ("I'm not a woman" is not "man"). A correction of the advisor's assumption counts ("I'm a man, actually").
+- new_medical_history: string[], standing medical facts the user states about themselves, in their words: a skin cancer or precancer history, rosacea, eczema, psoriasis, a prescription.
+- new_hormonal_facts: string[], hormonal or reproductive states the user states about THEMSELVES and that can change, in their own words: pregnant, breastfeeding, trying to conceive, postpartum, perimenopause, menopause, hormone therapy, hormonal contraception, PCOS, and the like. Return each with NO date; the date is added for you. Only when AFFIRMED: never record that someone is NOT pregnant, NOT breastfeeding or NOT trying to conceive. Never someone else's ("my wife is pregnant").
 
 Return null for any field not explicitly stated.
 
@@ -1658,6 +1679,7 @@ Soft reactions ("good", "okay", "bad") are NOT extracted; they're too low-signal
 
 ---
 
+END OF THE PRECEDING ADVISOR MESSAGE (context only: it shows what the user is answering; extract NOTHING from it): "${(precedingAssistant ?? '').slice(-600) || '(none)'}"
 USER MESSAGE: "${safeSlice(userMessage, 1000)}"
 ASSISTANT RESPONSE: "${safeSlice(assistantResponse, 1000)}"
 
@@ -1708,6 +1730,33 @@ The supporting_quote field is mandatory on every reaction. If you can't quote a 
       if (pu.budget_preference) updates.budget_range = pu.budget_preference
       if (pu.experience_level) updates.experience_level = pu.experience_level
 
+      // Who they have said they are (stated-identity.ts). Each value is
+      // checked against what the database accepts before it joins the update:
+      // one refused value would otherwise fail the whole write, skin type and
+      // all, and this path used to ignore that error.
+      const statedGender = cleanGender(pu.gender)
+      if (statedGender) updates.gender = statedGender
+      const newStanding = standingFacts(pu.new_medical_history).map((x) => x.replace(/\s+/g, ' ').trim().slice(0, 200)).filter(Boolean)
+      const newHormonal = Array.isArray(pu.new_hormonal_facts) ? (pu.new_hormonal_facts as unknown[]) : []
+      if (cleanAgeYears(pu.age_years) !== null || newStanding.length || newHormonal.length) {
+        const { data: stored, error: storedError } = await db
+          .from('ss_user_profiles')
+          .select('age_years, age_stated_on, medical_history')
+          .eq('user_id', userId)
+          .maybeSingle()
+        if (storedError) {
+          console.error(`[yuri/learning] stored age and medical history read failed for ${userId}; neither written this turn:`, storedError.message)
+        } else {
+          Object.assign(updates, ageWrite(pu.age_years, stored, new Date()))
+          if (newStanding.length || newHormonal.length) {
+            // Standing facts: a union with what is stored. Dated facts: stored
+            // ones keep their dates, a new one gets today's (stated-identity.ts).
+            const standing = [...new Set([...standingFacts(stored?.medical_history), ...newStanding])]
+            updates.medical_history = [...standing, ...mergeDatedFacts(stored?.medical_history, newHormonal, new Date())]
+          }
+        }
+      }
+
       // Array fields — merge with existing rather than overwrite
       if (
         (pu.new_concerns && (pu.new_concerns as string[]).length > 0) ||
@@ -1739,10 +1788,13 @@ The supporting_quote field is mandatory on every reaction. If you can't quote a 
 
       // Only write if we have real updates beyond just the timestamp
       if (Object.keys(updates).length > 1) {
-        await db
+        const { error: updateError } = await db
           .from('ss_user_profiles')
           .update(updates)
           .eq('user_id', userId)
+        if (updateError) {
+          console.error(`[yuri/learning] profile update refused for user ${userId}:`, updateError.message, Object.keys(updates))
+        }
       }
     } catch (err) {
       console.error(`[yuri/learning] Profile update error for user ${userId}:`, err)

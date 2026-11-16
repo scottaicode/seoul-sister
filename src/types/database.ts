@@ -640,7 +640,13 @@ export interface ExtractedSkinProfile {
   first_name?: string
   skin_type?: 'oily' | 'dry' | 'combination' | 'normal' | 'sensitive'
   skin_concerns?: string[]
-  age_range?: '13-17' | '18-24' | '25-30' | '31-40' | '41-50' | '51+'
+  // Matches the database CHECK and the extractor prompt. It used to read
+  // '13-17' | '31-40' | '51+', values the column has never accepted.
+  age_range?: '18-24' | '25-30' | '31-35' | '36-40' | '41-50' | '50+'
+  /** The member's own word for themselves, only when they said it. Never inferred. See yuri/stated-identity.ts. */
+  gender?: 'woman' | 'man' | 'nonbinary'
+  /** Their exact age, only when they gave a number. A range sets age_range and leaves this out. */
+  age_years?: number
   fitzpatrick_scale?: 1 | 2 | 3 | 4 | 5 | 6
   /**
    * How `fitzpatrick_scale` was arrived at. 'stated' ONLY when the user gave a
@@ -667,6 +673,8 @@ export interface ExtractedSkinProfile {
    * protection-first advice and a low referral threshold.
    */
   medical_history?: string[]
+  /** Hormonal or reproductive states that change, as the member stated them, undated. Dated on write (yuri/stated-identity.ts). */
+  hormonal_facts?: string[]
   /**
    * Cumulative lifetime sun exposure — where they grew up, outdoor years, burn
    * history. Photoaging is driven by decades of UV, not today's weather:

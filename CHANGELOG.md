@@ -4,6 +4,72 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.17 — Yuri knows a member's gender and exact age when they have said it, and stops supplying facts about someone's body (Nov 15 2026)
+
+- **The incident.** In the owner's own test he wrote "I'm in my late 50s". Yuri replied "after
+  menopause the skin barrier makes less of its own oil... don't at 57" to a 59-year-old man. Her
+  setup prompt already said never to assume profile data. The profile had nowhere to hold gender or
+  an exact age, so his correction lived only in that conversation's text.
+- **Measured before changing anything.** A read of production by a second model found the same
+  shape in 9 conversations, three of them setup chats with people aged 57 to 60. The common form is
+  a group she has placed the person in ("many Korean women your age") or a presupposing question
+  ("do these flare the week before your period?"), not the word menopause.
+- **What changed.**
+  - **Profile:** `gender` (woman, man or nonbinary), `age_years` and `age_stated_on`
+    (migration `20261115000001`, applied). Written only when the member states them; gender is
+    never inferred, not from a name, a product, a pregnancy or a period.
+  - **Hormonal facts that change** (pregnancy, breastfeeding, menopause, hormone therapy, PCOS and
+    the like) are saved in `medical_history` in the member's words, with the date added by code. A
+    denial ("not pregnant") is never stored.
+  - **What Yuri is shown:** gender and a current age when known ("about 62 now (they told you 59
+    on ...)"); when not, a plain line saying they have not said. Gender is not added to the fields
+    the setup chat collects.
+  - **Both prompts** carry one principle: a pattern is hers to state; a fact about someone's body
+    is theirs to give. The test is where the fact came from, not which words carry it.
+  - **Code that assumed a woman:** product search no longer tells her the audience is women; the
+    cycle-tracking suggestion is not offered to a member who has said he is a man; three "her"
+    references to the member in the member prompt are neutral.
+  - **Member chat** now saves a stated gender, age or medical fact (it saved none of those), and
+    reads the end of Yuri's previous message so a bare "53" can be understood.
+  - **Privacy policy** lists what is actually collected, including gender and health facts.
+  - The Community row in Yuri's surface table said "20 reviews"; there are none since v11.61.14.
+- **Graded on real conversations** (`scripts/replay-unstated-body-facts.ts`: 8 setup chats where
+  the person gave an age of 50 or more, 4 replies each, judged by a different model):
+
+  | | Old prompt | New prompt |
+  |---|---|---|
+  | Presumed gender | 10 of 32 | 1 of 32 |
+  | Presumed a hormonal stage | 6 of 32 | 0 of 32 |
+  | Stated an exact age nobody gave | 0 | 0 |
+  | Asked the person's gender | 0 | 0 |
+  | Announced what it did not know | 0 | 0 |
+
+  The one remaining flag is Yuri calling herself 언니 (the word a woman uses for an older sister).
+  Reply length and question count did not rise.
+- **Review.** Plan and finished change were each reviewed by Opus 5.5 and Fable 5.2, and a third
+  pass checked the fixes. What they changed: a two-value "sex" field became gender as stated; the
+  "not established, ask" line became a plain state; my first principle listed two bad phrases and
+  she wrote the same thing in new words ("Korean women your T-zone's twin"), so it now describes
+  the shape; dates moved from the model to code; a re-opened, finished setup no longer overwrites
+  a later correction; a proposed pregnancy check was removed (see Open). A fact-check on a third
+  model found the example sentence both reviewers proposed is not supported for men; it was not used.
+- **Checks.** `/ai-first-guard` and `/ai-first-check`: pass. 1,820 tests pass; build clean.
+- **Not verified.** The member chat was not graded, only setup. The extractor rules were reviewed
+  against real sentences but not run on them. No production row holds a gender or exact age yet.
+
+**Open:**
+- **Pregnancy check before a retinoid.** Left out: it named retinoids as the one concern while the
+  Sensitivity Guardian lists three, its breastfeeding claim was not verified at a primary source,
+  and "where that could apply" cannot be judged without guessing a gender.
+- A stored gender or age can be replaced by a correction but not cleared ("I'd rather not say").
+- A correction made in the very message that completes setup is applied; one made by re-opening
+  finished setup is not (by design; the member chat is where it is corrected).
+- The Profile page shows none of gender, exact age, medical history or sun history, though the
+  privacy policy says all data can be viewed there. Existing gap, now two fields wider.
+- The weekly note's prompt (`proactive-nudge`) still calls the member "she"; the cycle-tracking
+  suggestion still fires on the word "breakout" for someone who has not stated a gender.
+- Different wordings of one hormonal fact ("pregnant", "currently pregnant") are stored as two.
+
 ## v11.61.16 — The setup chat loses its "Listening" light and the member menu that could not be used (Nov 15 2026)
 
 Both from Bailey, testing a new account.

@@ -7,6 +7,7 @@ import { getServiceClient } from '@/lib/supabase'
 import { buildAttributionFields } from '@/lib/attribution'
 import { geocodeLocation } from '@/lib/geo/geocode'
 import { unplacedLocationFact } from '@/lib/geo/location-fact'
+import { cleanGender, cleanAgeYears, ageWrite, setupIdentityFacts, mergeDatedFacts, standingFacts } from '@/lib/yuri/stated-identity'
 import { hasActiveSubscription } from '@/lib/subscription'
 import { PRICING } from '@/lib/pricing'
 // Shared with the public widget — same artifacts, same conservative detection,
@@ -138,6 +139,7 @@ When you have enough to build a meaningful profile (at minimum: skin_type + 2 co
 
 ## Important Rules
 - NEVER make up or assume profile data the user hasn't shared
+- **A pattern is yours to state; a fact about their body is theirs to give.** Age, gender and hormonal stage are clinical inputs like climate, and once someone has told you, you use them just as directly: for a woman who has told you she is 57, women in their late fifties are exactly the right reference group. What they have not told you, you do not supply, in any wording: a sharper number than they gave, a gender, a stage of life, a habit of their body, or a group you compare them to that carries one of those. The test is where the fact came from, not which words carry it. If you can point to their sentence or the line in their profile, say it plainly. If it came from you working out who they probably are, leave it out, including the word endings you choose for them in a language that marks gender. Give the mechanism instead of the group: "foam twice a day takes more oil off your cheeks than they can spare" needs nobody's age or sex. This costs you no confidence, because the advice rarely needs the missing fact. When it would change what you recommend, give the answer and name the fork in one clause, or ask about the pattern instead of the body: "do they show up at the same point each month, or at random?" learns what "the week before your period?" would, without deciding who you are talking to. Never hold the answer back for it, and never remark on what you have not been told.
 - If they give vague answers, ask a gentle follow-up to clarify
 - If they want to skip something, respect that and move on
 - NEVER diagnose medical conditions -- recommend a dermatologist (피부과) for persistent issues
@@ -232,6 +234,10 @@ export function buildOnboardingTurnState(
     if (facts.offerFact) statusLines.push(facts.offerFact)
   }
   if (facts?.previewAgeFact) statusLines.push(facts.previewAgeFact)
+  // What they have and have not said about who they are (stated-identity.ts).
+  // A fact in this block, never an entry in "Fields still needed": measured on
+  // real setup chats, a listed field becomes a question in most of them.
+  statusLines.push(...setupIdentityFacts(extractedSoFar))
   // Read from the stored profile before this turn's extraction runs, so it can
   // be one message behind: said so, in case they have just given a city.
   if (facts?.locationFact) statusLines.push(`${facts.locationFact} (Read before their latest message.)`)
@@ -288,6 +294,9 @@ Possible fields:
 - skin_type: one of "oily", "dry", "combination", "normal", "sensitive"
 - skin_concerns: array of concerns (e.g., ["acne", "dark spots", "dullness"]). Normalize to lowercase.
 - age_range: one of "18-24", "25-30", "31-35", "36-40", "41-50", "50+"
+- age_years: integer, ONLY the user's own current age given as a single number, whether in a sentence ("I'm 59", "I just turned 40") or as a bare reply to Yuri asking THEIR age ("53", "60 year old", "20 ans"). When you set it, set age_range to match. Omit for a range or approximation in any form ("late 50s", "I am 27-30", "almost 40"): set age_range only. Omit a number that is someone else's age (a mother, a daughter, "a routine for a 31 year old" unless they say that is them), an age they used to be, an age they will turn, or any number that appears only in Yuri's words.
+- gender: "woman", "man" or "nonbinary". Set it ONLY from a sentence the user wrote about themselves whose content is their gender: said outright in any form ("I'm a man", "as a guy", "as a woman in my 40s", "I'm nonbinary"), a gendered noun they use for themselves ("I'm a mom of two"), or the grammatical gender they use for themselves in a language that marks it. Anything from which gender would have to be worked out is not that, however certain it seems: a medical or hormonal fact, a partner or relative, a name, a product, a habit, who something is for, or anything Yuri said, asked or assumed. A denial sets nothing ("I'm not a woman" is not "man"). A bare "yes" counts only when Yuri's question was about their own gender and the yes affirms it. If they correct an assumption, the correction is the statement.
+- hormonal_facts: array of hormonal or reproductive states the user states about THEMSELVES and that can change, in their own words: pregnant, breastfeeding, trying to conceive, postpartum, perimenopause, menopause, hormone therapy, hormonal contraception, PCOS, and the like. Return each with NO date; the date is added for you. Only when AFFIRMED: never record that someone is NOT pregnant, NOT breastfeeding or NOT trying to conceive, because a stored "not pregnant" goes stale and later reads as clearance. Never someone else's ("my wife is pregnant"). These go here and NOT in medical_history.
 - fitzpatrick_scale: integer 1-6. Extract ONLY when you know BOTH halves of the burn/tan response — what happens first (burn) AND what happens after (tan or not). A HALF ANSWER IS NOT AN ANSWER: "I burn easily" alone is types 1 THROUGH 3 and you cannot tell which, so OMIT the field and let Yuri ask the tan half. "Burns at first, then tans" is 2-3, NEVER 1. Type 1 means always burns and NEVER tans — reserve it for someone who says they never tan at all. Do NOT infer from ethnicity, location, or a photo description. A guessed value is stored as fact, drives retinoid strength, acid aggressiveness and skin-cancer caution, and — because a captured field is never re-asked — SILENCES the very question that would have corrected it. When in doubt, omit.
 - medical_history: array of standing medical facts — skin cancer/precancer history, rosacea, eczema, psoriasis, dermatologist care, prescriptions (tretinoin, isotretinoin). Keep the user's own phrasing where possible (e.g. "skin cancer history, 25+ excisions since early 30s"). NOT allergies — allergies exclude an ingredient, these reframe the approach.
 - fitzpatrick_source: "stated" ONLY if the user gave a COMPLETE burn AND tan response (or named their type outright). "estimated" if you derived the number from a partial answer. Omit when you omit fitzpatrick_scale.
@@ -592,9 +601,20 @@ export async function updateOnboardingProgress(
 // Convert extracted profile to a full ss_user_profiles record and save
 // ---------------------------------------------------------------------------
 
+/**
+ * `reopened`: a member whose setup already finished opened /onboarding again,
+ * so `extracted` is the OLD setup record, not something just said. It then
+ * only fills gaps: it must not put back an age, gender, age range or medical
+ * fact the member has since corrected or added in the member chat.
+ */
+export interface FinalizeOptions {
+  reopened?: boolean
+}
+
 export async function finalizeOnboardingProfile(
   userId: string,
-  extracted: ExtractedSkinProfile
+  extracted: ExtractedSkinProfile,
+  opts?: FinalizeOptions
 ): Promise<void> {
   const db = getServiceClient()
 
@@ -649,6 +669,52 @@ export async function finalizeOnboardingProfile(
   }
   if (extracted.sun_history) profileData.sun_history = extracted.sun_history
   if (extracted.first_name) profileData.first_name = extracted.first_name
+
+  // Who they have said they are, and hormonal facts that change
+  // (stated-identity.ts). One read of what is already stored decides whether
+  // an age is new (its date moves only then) and which dated facts are already
+  // on file (their dates are never rewritten).
+  //
+  // A live setup chat is the source of truth and may correct itself. A
+  // re-opened, finished setup (opts.reopened) only FILLS gaps: it carries the
+  // old setup record, and without this an age, gender, age range or medical
+  // fact the member corrected later in the member chat was put back, the age
+  // with today's date on it (second-model reviews, Nov 15 2026).
+  const fillOnly = opts?.reopened === true
+  const statedGender = cleanGender(extracted.gender)
+  const statedAge = cleanAgeYears(extracted.age_years)
+  const hormonal = Array.isArray(extracted.hormonal_facts) ? extracted.hormonal_facts : []
+  if (fillOnly || statedGender || statedAge !== null || hormonal.length || extracted.medical_history?.length) {
+    const { data: stored, error: storedError } = await db
+      .from('ss_user_profiles')
+      .select('gender, age_years, age_stated_on, age_range, medical_history')
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (storedError) {
+      // Not knowing what is stored is not "nothing is stored": writing now
+      // could move a date, drop a dated fact or undo a correction. Skipped
+      // this turn and logged; the next message tries again.
+      console.error(`[onboarding] stored identity read failed for ${userId}; gender, age and medical history not written this turn:`, storedError.message)
+      delete profileData.medical_history
+      if (fillOnly) delete profileData.age_range
+    } else {
+      if (statedGender && (!fillOnly || !cleanGender(stored?.gender))) profileData.gender = statedGender
+      if (statedAge !== null && (!fillOnly || cleanAgeYears(stored?.age_years) === null)) {
+        Object.assign(profileData, ageWrite(statedAge, stored, new Date()))
+      }
+      if (fillOnly && stored?.age_range) delete profileData.age_range
+      const storedStanding = standingFacts(stored?.medical_history)
+      const standing =
+        fillOnly && storedStanding.length
+          ? storedStanding
+          : extracted.medical_history?.length
+            ? standingFacts(extracted.medical_history)
+            : storedStanding
+      const dated = mergeDatedFacts(stored?.medical_history, hormonal, new Date())
+      if (standing.length || dated.length) profileData.medical_history = [...standing, ...dated]
+      else delete profileData.medical_history
+    }
+  }
 
   // Only set location_text if explicitly extracted (don't overwrite existing with null)
   if (extracted.location_text) {
@@ -716,9 +782,15 @@ export async function finalizeOnboardingProfile(
     // Attribution is a measurement nicety. It must never block onboarding.
   }
 
-  await db
+  const { error: profileWriteError } = await db
     .from('ss_user_profiles')
     .upsert(profileData, { onConflict: 'user_id' })
+  // This write was unchecked, so a refused profile (a CHECK constraint, an
+  // outage) looked the same as a saved one. Logged, not thrown: setup must
+  // still be able to finish.
+  if (profileWriteError) {
+    console.error(`[onboarding] profile write failed for ${userId}:`, profileWriteError.message)
+  }
 
   // Mark setup complete ONLY when it is (Nov 11 2026). This function also runs
   // after every message once a skin type is known, to keep the profile in step

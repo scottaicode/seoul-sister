@@ -140,7 +140,15 @@ const give = await import(
 globalThis.__detectCumulativeGive = give.detectCumulativeGive
 globalThis.__buildCumulativeGiveBlock = give.buildCumulativeGiveBlock
 
+// The real stated-identity module (gender and exact age), with `export` removed
+// so its functions are in scope the way the stripped import expects.
+const identityJs = ts.transpileModule(
+  readFileSync(new URL('../src/lib/yuri/stated-identity.ts', import.meta.url), 'utf8').replace(/^export /gm, ''),
+  { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }
+).outputText
+
 const shimmed =
+  identityJs + '\n' +
   `const PRICING = { monthly_display: '$24.99/mo', monthly_display_long: '$24.99/month', trial_days: 7 };\n` +
   `const detectCumulativeGive = globalThis.__detectCumulativeGive;\n` +
   `const buildCumulativeGiveBlock = globalThis.__buildCumulativeGiveBlock;\n` +
@@ -300,7 +308,7 @@ test('the wrap-up playback is limited to facts the person gave', async () => {
   // ("except that in the wrap-up you may state a likely duration as fact")
   // would undo the rule while leaving this section untouched.
   const whole = src.slice(src.indexOf('export function buildOnboardingSystemPrompt'), src.indexOf('export interface OnboardingTurnFacts'))
-  assert.equal(createHash('sha256').update(whole).digest('hex'), '9c35294fc0964dd3a104bd77107923503360e30f730fdb2de1789b9429acd203')
+  assert.equal(createHash('sha256').update(whole).digest('hex'), '3c5f15611be0a6327c229541f1606a743754808ad4227d0d9fe393774d3acdf7')
 })
 
 test('the setup chat is told it has no product database, and that is true of the code', async () => {

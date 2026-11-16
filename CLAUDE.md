@@ -184,6 +184,12 @@ Related: `signOut()` in supabase-js defaults to `scope: 'global'`, which deletes
 
 **4. Reason from population patterns, stay calibrated.** Ancestry, age, climate, sun history, and cycle phase are real clinical inputs and Yuri should use them directly without hedging. Two disciplines keep that rigorous: state confidence matching the evidence (a base rate is a starting point, not a verdict), and let the individual override the pattern. *"Melasma is more common with your background, so I'd protect pigment before I exfoliate"* is medicine; *"you're Korean so your skin is X"* is a stereotype in a lab coat.
 
+**5. A fact about someone's body is theirs to give (v11.61.17, Nov 15 2026).** Told "I'm in my late 50s", Yuri answered "after menopause... at 57" to a 59-year-old man, under a prompt that already said never to assume profile data. A read of production found the same shape in 9 conversations, usually as a group she had placed the person in ("women your age") or a presupposing question ("the week before your period"), not as the word menopause.
+- `gender` (woman | man | nonbinary) and `age_years` + `age_stated_on` are written ONLY when the member states them. Gender is never inferred, not from a name, a product, a pregnancy or a period. Hormonal facts that change live in `medical_history` in the member's words, each dated by CODE ("pregnant (said 2026-11-15)"), never by the model. All of it goes through `src/lib/yuri/stated-identity.ts`.
+- **Gender is NOT one of the fields the setup chat collects.** Measured: a field listed as "still needed" became a question in most setup chats. It reaches Yuri as a fact in the "Where They Stand" block and as a plain line in the member profile.
+- **Grade it by counting replies, not by reading source.** `scripts/replay-unstated-body-facts.ts` replays real setup chats and has a second model judge each reply. Old prompt: 11 of 32 replies presumed a gender or hormonal stage; new: 1 of 32. Read the replies by hand too: the first judge missed a new wording of the same mistake.
+- **Never give Yuri a list of bad phrases for this.** The first version did, and she avoided those two phrases while writing "Korean women your T-zone's twin". The rule is where the fact came from.
+
 ## Shelf Visibility & the Western Shelf (LOAD-BEARING — v11.15.0, July 29 2026)
 
 **Acquisition is Korean. Retention is the whole shelf.** Every public and acquisition surface stays 100% Korean — the catalog, `/best`, `/ingredients`, the blog, positioning. The 525 Bing citations/week exist *because* we are the one structured English source on Korean products. But once someone pays, Yuri's safety duty extends to every product they actually own, delivered by **private per-user data that is never indexed and never a catalog row**.
@@ -339,7 +345,7 @@ ss_counterfeit_reports      - User-submitted counterfeit reports
 
 #### Users & Profiles
 ```
-ss_user_profiles            - Extended skin profile (first_name, type, concerns, allergies, climate, location_text + latitude/longitude/timezone, medical_history, sun_history, fitzpatrick_scale + fitzpatrick_source)
+ss_user_profiles            - Extended skin profile (first_name, type, concerns, allergies, climate, location_text + latitude/longitude/timezone, medical_history, sun_history, fitzpatrick_scale + fitzpatrick_source, gender, age_years + age_stated_on)
                               NOTE: surrogate `id` PK + separate `user_id` FK. ALWAYS join on user_id — a Jul 29 audit
                               joined on `id` and wrongly concluded all 37 users were missing profiles.
 ss_user_routines            - Personalized routines (AM/PM, skin cycling schedule)
@@ -571,7 +577,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Current version**: 11.61.16 (November 15 2026). One line only: every release's detail goes in `CHANGELOG.md`, never here.
+**Current version**: 11.61.17 (November 15 2026). One line only: every release's detail goes in `CHANGELOG.md`, never here.
 **AI Advisor**: Yuri (유리) — "Glass"
 
 **Full version history**: See `CHANGELOG.md` (repo root). The detailed, dated changelog — every version from v3.0.0 through the current release — lives there, not in this file. Per the project's documentation standard: CLAUDE.md is for current architecture and how the system works NOW; CHANGELOG.md is for what changed and when. When shipping a feature, update the relevant architecture section here and put the detailed entry in CHANGELOG.md.

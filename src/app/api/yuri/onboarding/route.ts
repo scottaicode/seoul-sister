@@ -112,7 +112,8 @@ export async function POST(request: NextRequest) {
         const extracted = progress.skin_profile_data as ExtractedSkinProfile
         if (extracted && checkOnboardingComplete(extracted)) {
           try {
-            await finalizeOnboardingProfile(user.id, extracted)
+            // The old setup record, not something just said: fill gaps only.
+            await finalizeOnboardingProfile(user.id, extracted, { reopened: true })
           } catch (finalizeErr) {
             // Usually a benign re-finalize, but log it: a persistent failure here
             // means a completed onboarding never produced a usable profile.

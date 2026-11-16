@@ -13,6 +13,7 @@ import {
 import type { SkinProfile, YuriConversation, YuriMessage, SpecialistType, CyclePhaseInfo, UserCycleTracking } from '@/types/database'
 import { getCyclePhase, getPhaseLabel } from '@/lib/intelligence/cycle-routine'
 import { unplacedLocationFact } from '@/lib/geo/location-fact'
+import { cleanGender, cleanAgeYears, ageLine, genderLine } from '@/lib/yuri/stated-identity'
 import { detectRoutineOverlap, type IngredientOverlapResult } from '@/lib/intelligence/ingredient-overlap'
 
 // ---------------------------------------------------------------------------
@@ -925,7 +926,8 @@ export function formatContextForPrompt(context: UserContext): string {
 - Allergies (ingredients to AVOID): ${p.allergies?.length ? p.allergies.join(', ') : 'none known'}${p.allergies?.length ? ' — NOTE: some entries are whole PRODUCTS rather than ingredients, because the extractor accepted product names. A product here means that formula broke them out; the culprit ingredient is unknown, so do not extrapolate the ban to everything sharing an ingredient with it. Ask what specifically went wrong when it matters.' : ''}
 - Fitzpatrick scale: ${fitzLine}
 - Climate: ${p.climate || 'not established'}${locationLine}
-- Age range: ${p.age_range || 'not established — ask if it changes your answer (retinoid strength, pigment timelines, collagen)'}
+${p.age_range || cleanAgeYears(profileRaw.age_years) !== null ? ageLine(profileRaw, new Date()) : '- Age range: not established — ask if it changes your answer (retinoid strength, pigment timelines, collagen)'}
+${genderLine(profileRaw.gender)}
 - Budget: ${p.budget_range}
 - Experience level: ${p.experience_level}${
       sunHistory ? `\n- Lifetime sun exposure: ${sunHistory}` : ''
@@ -939,7 +941,9 @@ export function formatContextForPrompt(context: UserContext): string {
       sections.push(`## Medical History (standing facts — these REFRAME your advice, they are not allergens)
 - ${medical.join('\n- ')}
 
-This is not a list of things to avoid applying; it is who you are advising. Let it change your actual reasoning: a skin cancer or precancer history makes daily sun protection the treatment rather than a footnote, makes photosensitizing actives (retinoids, AHAs) something to introduce with explicit sun-exposure framing, and lowers your threshold for saying plainly "that's a dermatologist question, not mine." Rosacea, eczema, or psoriasis change what a "gentle" routine even means. You are not being cautious for its own sake — you are giving the advice a specialist who knew this would give.`)
+This is not a list of things to avoid applying; it is who you are advising. Let it change your actual reasoning: a skin cancer or precancer history makes daily sun protection the treatment rather than a footnote, makes photosensitizing actives (retinoids, AHAs) something to introduce with explicit sun-exposure framing, and lowers your threshold for saying plainly "that's a dermatologist question, not mine." Rosacea, eczema, or psoriasis change what a "gentle" routine even means. You are not being cautious for its own sake — you are giving the advice a specialist who knew this would give.
+
+Pregnancy, breastfeeding and hormone therapy change. An entry that carries the date it was said is true as of that date, and an old one is a question, not a fact.`)
     } else {
       // An EMPTY medical history rendered nothing at all, which is the silent
       // failure this codebase keeps paying for: "asked, and there is none" and
@@ -1334,7 +1338,9 @@ These are facts about where they are in their cycle. What it means for their ski
     const concerns = (context.skinProfile.skin_concerns || []).map((c) => c.toLowerCase())
     const hormonalCues = ['hormonal', 'cycle', 'period', 'menstrual', 'pms', 'breakout']
     const hasHormonalConcern = concerns.some((c) => hormonalCues.some((cue) => c.includes(cue)))
-    if (hasHormonalConcern) {
+    // Not offered to a member who has said he is a man.
+    const saidMan = cleanGender((context.skinProfile as unknown as Record<string, unknown>).gender) === 'man'
+    if (hasHormonalConcern && !saidMan) {
       sections.push(`## Cycle Tracking Available (Not Enabled)
 This user has hormonal/cycle-related concerns in their profile but has NOT enabled cycle tracking. If — and only if — the conversation touches on hormonal breakouts, cycle-aware skincare, or "phase of my period," you may briefly mention ONCE that they can log their cycle dates at /profile so you can anticipate hormonal weeks instead of reacting to flare photos. Frame as an offer, not a sales pitch ("if you want, you can…"). Do not mention again in this session if they decline or change topic.`)
     }

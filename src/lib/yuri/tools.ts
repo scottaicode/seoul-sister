@@ -1491,7 +1491,7 @@ export const YURI_TOOLS: ToolDef[] = [
         },
         include_mens: {
           type: 'boolean',
-          description: 'Men\'s-line products are EXCLUDED by default (Seoul Sister\'s audience is women). Only set true if the user explicitly asks for men\'s skincare. You almost never need this.',
+          description: 'Men\'s-line products are excluded by default. Set true when the person has told you they are a man (their profile says so, or they said it in this conversation), or asks for men\'s skincare.',
         },
         limit: {
           type: 'number',

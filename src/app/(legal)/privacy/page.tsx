@@ -13,7 +13,7 @@ export default function PrivacyPage() {
         <h1 className="font-display text-2xl md:text-3xl font-bold text-white mb-2">
           Privacy Policy
         </h1>
-        <p className="text-white/40 text-xs">Effective Date: February 18, 2026 &middot; Last updated: November 14, 2026</p>
+        <p className="text-white/40 text-xs">Effective Date: February 18, 2026 &middot; Last updated: November 15, 2026</p>
       </header>
 
       {/* Privacy Promise */}
@@ -35,7 +35,7 @@ export default function PrivacyPage() {
         <h3 className="text-white/90 font-medium mb-2">Information You Provide:</h3>
         <ul className="list-disc pl-5 space-y-1">
           <li><strong className="text-white/90">Account information:</strong> Email address, password (hashed)</li>
-          <li><strong className="text-white/90">Skin profile:</strong> Skin type, concerns, allergies, Fitzpatrick scale, climate, age range, budget</li>
+          <li><strong className="text-white/90">Skin profile:</strong> Skin type, concerns, allergies, Fitzpatrick scale, climate and location, age or age range, budget, and, when you tell Yuri, your gender and health facts that affect skincare (medical history, medications, sun history, pregnancy, menopause or hormone therapy, and menstrual cycle dates if you turn on cycle tracking)</li>
           <li><strong className="text-white/90">Product interactions:</strong> Scanned labels, reviews, routines, wishlists, reactions</li>
           <li><strong className="text-white/90">Conversations:</strong> Messages with Yuri AI advisor</li>
         </ul>
