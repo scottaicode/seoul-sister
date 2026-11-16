@@ -4,6 +4,26 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.62.2 — The Profile page shows the gender, age and medical history on file, and lets a member take them off (Nov 15 2026)
+
+- **Why.** The privacy policy says a member can view what we hold on their Profile page. Gender,
+  exact age and dated medical facts have been stored since v11.61.17 and were shown nowhere.
+- **What.** A section "On your profile" lists gender, age (with the day it was said), each
+  medical-history entry, sun history and location, exactly as stored, with "Not stated" where
+  nothing is. Gender, age and each medical entry have a Remove (`/api/me/stated-facts`).
+- **What Remove does, and does not.** It takes the value off the profile and off the setup
+  record a reopened setup chat would refill it from (including `hormonal_facts`, where a dated
+  entry is rebuilt from). It does NOT edit conversations, summaries or Yuri's notes, so she may
+  still see it there, and a setup chat still in progress re-reads its transcript and can write it
+  back. The page says exactly that. A removal that sticks everywhere needs a "removed by the
+  member" record every writer respects; not built.
+- **Review.** Opus 5.5 reviewed it. The first version promised "Yuri is then told it was not
+  stated" and "only what you said yourself is kept here"; both were false in part (summaries
+  still carry it; location can come from device coordinates; two fields were once backfilled by
+  script) and are gone. The corrected version was not reviewed again.
+- **Still not shown on the Profile page:** coordinates, time zone, cycle entries, and Yuri's own
+  notes and summaries. "View all data" is still wider than the page.
+
 ## v11.62.1 — A retailer's rating is no longer marked up as ours; the check-in prompt stops calling every member "she" (Nov 15 2026)
 
 - **Structured data.** The public product page told Google its star rating was our own

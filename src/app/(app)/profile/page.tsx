@@ -23,6 +23,7 @@ import {
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import DisplayNameEditor from '@/components/profile/DisplayNameEditor'
+import StatedFacts from '@/components/profile/StatedFacts'
 
 interface UserProfile {
   display_name: string | null
@@ -466,6 +467,9 @@ export default function ProfilePage() {
             <ProfileField icon={Wallet} label="Budget" value={capitalize(profile.budget_range)} />
             <ProfileField icon={Award} label="K-Beauty Experience" value={capitalize(profile.experience_level)} />
           </div>
+
+          {/* What they told Yuri about themselves, as stored, with a way to take it back */}
+          <StatedFacts />
 
           {/* Cycle Tracking */}
           <CycleTrackingToggle
