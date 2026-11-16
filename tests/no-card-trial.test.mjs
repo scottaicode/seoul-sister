@@ -1321,3 +1321,21 @@ test('pricing card: the free week leads and the price is stated; the allowance l
   assert.match(read('src/lib/email/subscription-confirmation.ts'), /PRICING\.yuri_allowance_display/)
   assert.match(read('src/lib/yuri/advisor.ts'), /\$\{PRICING\.yuri_allowance_display\} plus \$\{USAGE_CAPS\.scans_per_month\} label scans/)
 })
+
+test('a member can be given extra messages for one month, and every surface states the same limit (Nov 16 2026)', () => {
+  // Earned: a free-week member hit 57 of 80 in three days. The only lever was
+  // lowering her "used" count, which would have had Yuri state a false number.
+  const usage = read('src/lib/usage.ts')
+  assert.ok(usage.includes("  const bonus = Number.isInteger(record?.yuri_messages_bonus) && record.yuri_messages_bonus > 0 ? (record.yuri_messages_bonus as number) : 0\n  const yuriLimit = caps.yuri_messages_per_month + bonus\n"))
+  // The count of messages used is never touched to make room.
+  assert.equal(usage.split('yuri_messages_bonus').length - 1, 4)
+  assert.match(usage, /yuri_at_limit: yuri_used >= yuriLimit,/)
+  assert.match(usage, /yuri_messages_remaining: Math\.max\(0, yuriLimit - yuri_used\),/)
+  // The chat counter and Yuri's own per-turn fact read the limit from that one status, not from the plan constant.
+  assert.match(read('src/app/(app)/yuri/page.tsx'), /\{usage\.yuri_messages_remaining\} of \{usage\.yuri_messages_limit\} messages left this month/)
+  const chat = read('src/app/api/yuri/chat/route.ts')
+  assert.match(chat, /const u = await getUsageStatus\(user\.id\)/)
+  assert.doesNotMatch(chat, /USAGE_CAPS\.yuri_messages_per_month/)
+  const sql = read('supabase/migrations/20261116000001_usage_message_bonus.sql')
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS yuri_messages_bonus integer NOT NULL DEFAULT 0\s+CHECK \(yuri_messages_bonus >= 0 AND yuri_messages_bonus <= 2000\)/)
+})

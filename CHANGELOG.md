@@ -4,6 +4,20 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.62.4 — One member can be given extra messages for a month (Nov 16 2026)
+
+- **Why.** Elin, the first stranger in a free week, used 57 of the month's 80 messages in three
+  days (she is in Korea, shopping, with 10 separate conversations; $8.06 of model cost, about
+  $0.14 a message). The owner chose to give her 150 for November.
+- **What.** New column `ss_usage_tracking.yuri_messages_bonus` (migration
+  `20261116000001`, applied), added to the plan allowance in `getUsageStatus`. The chat counter
+  and Yuri's per-turn allowance fact already read the limit from there, so both state the new
+  number. The bonus sits on the month's row and ends with the month.
+- **Not done on purpose.** The "used" count was not lowered: that would have had Yuri tell a
+  member a false number. The global allowance stays 80; a typical member-month is 8 messages.
+- **Open.** Cost per message is far above the $0.02 to $0.03 in `pricing.ts` for a member who
+  opens a new conversation for each question (each pays the opening cost again).
+
 ## v11.62.3 — The owner alert gives the free week's end as a day and time in Pacific time (Nov 15 2026)
 
 - The "Free week started" alert said "ends November 23, 2026", a bare UTC date, for a week that

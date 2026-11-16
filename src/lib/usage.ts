@@ -91,7 +91,12 @@ export async function getUsageStatus(userId: string): Promise<UsageStatus> {
 
   const yuri_used = record?.yuri_messages_used ?? 0
   const scans_used = record?.scans_used ?? 0
-  const yuriLimit = caps.yuri_messages_per_month
+  // The plan's allowance plus anything added for this member for this month
+  // (ss_usage_tracking.yuri_messages_bonus, set by hand, 0 otherwise). Every
+  // surface reads the limit from here, so the chat, the counter and what Yuri
+  // is told all state the same number.
+  const bonus = Number.isInteger(record?.yuri_messages_bonus) && record.yuri_messages_bonus > 0 ? (record.yuri_messages_bonus as number) : 0
+  const yuriLimit = caps.yuri_messages_per_month + bonus
   const scanLimit = caps.scans_per_month
 
   return {

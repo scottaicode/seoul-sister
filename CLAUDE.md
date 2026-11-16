@@ -404,6 +404,7 @@ The single source of truth is **`src/lib/pricing.ts`** (`PRICING`, `USAGE_CAPS`)
 - **Free week:** a first-time member's first 7 days are free and need no card (`trial_requires_card: false`, rules in `src/lib/trial.ts`, ledger `ss_trial_starts`). Nothing is charged unless they add a card; with no card the membership stops on day 7.
 - **Where the free week starts:** on Stripe's hosted page by default. With `DIRECT_FREE_WEEK=on` (then redeploy; `directFreeWeekEnabled()` in `src/lib/trial.ts`) it starts on our own membership page: terms and a box to tick there, no Stripe page, the subscription made by `startDirectFreeWeek` (`src/lib/stripe.ts`). Stripe's page remains for returning members, for a promotion code we cannot apply ourselves, and as the fallback. Every new subscription, either way, is fulfilled by `fulfilNewSubscription` (`src/lib/subscription-fulfilment.ts`); do not write those rows anywhere else. As of v11.62.0 the direct path has never run against live Stripe.
 - **Monthly allowance:** 80 Yuri messages and 30 label scans per calendar month (UTC). It is stated in the Terms, told to Yuri (who gives it when asked), and shown in the member chat once 80% of the month is used. It is NOT on the pricing card or the membership page (owner decision, Nov 11 2026): the one month that came near it was the co-owner testing, and real member-months have a median of 8 messages. If real members start reaching it, put it back at the point of sale.
+- **Extra messages for one member:** set `ss_usage_tracking.yuri_messages_bonus` on that member's row for the month (added to the plan allowance in `src/lib/usage.ts`; it ends with the month). Never lower `yuri_messages_used` to make room: Yuri and the chat counter state that number to the member.
 - **Creator codes:** a percentage off the first paid month (e.g. BAILEY, 50%). Wording and rules in `src/lib/offers.ts`.
 - **Legacy plan key `pro_monthly`:** comped and grandfathered accounts from the earlier price. Not sold. Do not quote its price anywhere.
 
@@ -580,7 +581,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Current version**: 11.62.3 (November 15 2026). One line only: every release's detail goes in `CHANGELOG.md`, never here.
+**Current version**: 11.62.4 (November 16 2026). One line only: every release's detail goes in `CHANGELOG.md`, never here.
 **AI Advisor**: Yuri (유리) — "Glass"
 
 **Full version history**: See `CHANGELOG.md` (repo root). The detailed, dated changelog — every version from v3.0.0 through the current release — lives there, not in this file. Per the project's documentation standard: CLAUDE.md is for current architecture and how the system works NOW; CHANGELOG.md is for what changed and when. When shipping a feature, update the relevant architecture section here and put the detailed entry in CHANGELOG.md.
