@@ -62,6 +62,8 @@ export default function YuriPage() {
     member_conversations?: number | null
     /** Only a recent setup chat and no member chat yet. */
     new_member?: boolean | null
+    /** false = they said nothing in the setup chat (skipped it). null = unknown. */
+    setup_said_anything?: boolean | null
     has_profile: boolean
     last_conversation_id: string | null
     last_conversation_title: string | null
@@ -310,9 +312,16 @@ export default function YuriPage() {
                       {welcomeContext?.first_name ? `You're in, ${welcomeContext.first_name}` : "You're in"}
                     </h2>
                     <p className="text-sm text-white/60 mt-1 max-w-sm">
-                      {arrivedWithAsk
-                        ? 'Your first message is in the box below. Send it, or change it, and we start on your routine from what you told me in setup.'
-                        : 'I have what you told me in setup. Ask me to build your routine, or anything else.'}
+                      {/* They skipped the setup chat without answering: nothing was told. */}
+                      {welcomeContext?.setup_said_anything === false ? (
+                        "I don't know your skin yet, so tell me what bothers you most about it and we start there."
+                      ) : (
+                        <>
+                          {arrivedWithAsk
+                            ? 'Your first message is in the box below. Send it, or change it, and we start on your routine from what you told me in setup.'
+                            : 'I have what you told me in setup. Ask me to build your routine, or anything else.'}
+                        </>
+                      )}
                     </p>
                   </>
                 ) : variant === 'neutral' ? (

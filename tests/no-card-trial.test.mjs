@@ -238,7 +238,7 @@ test('no-card trial session: no payment method collected, CANCEL at the end, exa
     assert.deepEqual(p.custom_text, {
       submit: {
         message:
-          'Your 7-day free trial starts today. No card is needed and nothing is charged. The trial ends after 7 days and your membership stops then, unless you have added a card with the "Add a card" button inside Seoul Sister. If you add one, it is charged $9.99/month when the trial ends and every month after that until you cancel. If you enter a promotion code on this page, the discounted price shown on this page is what is charged instead.',
+          '**Nothing is charged today, and this page does not ask for a card.** This starts your free week (Stripe calls it a trial). The price shown here applies only if you add a card, with the "Add a card" button inside Seoul Sister. Without one, your membership stops after 7 days. A card you add is charged $9.99/month when the free week ends and every month after that until you cancel. If you enter a promotion code on this page, the discounted price shown on this page is what is charged instead.',
       },
     })
     assert.equal(p.mode, 'subscription')
@@ -634,8 +634,41 @@ test('offer codes: every charge sentence names the discounted first month AND th
     // The two price lines under the free chat.
     assert.equal(o.widgetAccountLine(null), 'Create a free account and continue with Yuri. New members get 7 days free with no card. $9.99/mo after that, only if you add a card.')
     assert.equal(o.widgetAccountLine(50), 'Create a free account and continue with Yuri. New members get 7 days free with no card. After that, $4.99 for your first paid month (50% off), then $9.99/month, only if you add a card.')
-    assert.equal(o.widgetMembershipLine(null), 'Membership is $9.99/mo. New members get the first 7 days free, no card needed to start.')
-    assert.equal(o.widgetMembershipLine(50), 'Membership is $4.99 for your first paid month (50% off), then $9.99/month. New members get the first 7 days free, no card needed to start.')
+    // Nov 15 2026: this line sits directly under "Create my free account". It
+    // used to read as what that button does, so it now separates the two.
+    assert.equal(o.widgetMembershipLine(null), 'The account is free. Membership is separate and optional: new members get the first 7 days free with no card, then $9.99/mo only if you add a card.')
+    assert.equal(o.widgetMembershipLine(50), 'The account is free. Membership is separate and optional: new members get the first 7 days free with no card, then $4.99 for your first paid month (50% off), then $9.99/month only if you add a card.')
+
+    // The path to membership in one vocabulary (Nov 15 2026): free account,
+    // setup chat, membership, free week. Executed, exact.
+    assert.equal(
+      o.registerFootnote(null),
+      'This creates a free account. It does not start your free week. Next is a setup chat with Yuri, and membership is your choice after that. New members get the first 7 days free with no card, then $9.99/month only if you add a card.'
+    )
+    // A creator code shows in the same sentence; an unusable percent is ignored.
+    assert.equal(
+      o.registerFootnote(50),
+      'This creates a free account. It does not start your free week. Next is a setup chat with Yuri, and membership is your choice after that. New members get the first 7 days free with no card, then $4.99 for your first paid month (50% off), then $9.99/month only if you add a card.'
+    )
+    for (const bad of [0, 100, 0.5, '50', undefined, NaN]) assert.equal(o.registerFootnote(bad), o.registerFootnote(null), `must ignore ${bad}`)
+    // The setup chat says the free week has not started only to someone who is
+    // not a member; a member, or an unknown plan, is told nothing about it.
+    // No claim about a free week: some non-members have had theirs, some will not be offered one.
+    assert.equal(o.setupChatLine(false), 'Free setup chat. Membership is separate, and starts only if you choose it.')
+    assert.doesNotMatch(o.setupChatLine(false), /free week|trial/i)
+    assert.equal(o.setupChatLine(true), 'Setup chat')
+    assert.equal(o.setupChatLine(null), 'Setup chat')
+    // The skip link names where it goes, and a member is never sent to membership.
+    assert.equal(o.skipSetupLabel(false), 'Skip this chat and see membership')
+    assert.equal(o.skipSetupLabel(null), 'Skip this chat and see membership')
+    assert.equal(o.skipSetupLabel(true), 'Skip this chat and go to Yuri')
+    assert.equal(o.freeWeekChangedLine(), 'The no-card free week could not be started just now, so nothing was started and nothing was charged. The page now shows what you can start instead.')
+    // Our own words never call the account step joining, or the free week a trial.
+    assert.equal(o.accountCtaNote(), 'This creates your free account. The free week starts later, when you choose membership.')
+    for (const line of [o.registerFootnote(null), o.setupChatLine(false), o.skipSetupLabel(false), o.paywallStartLine(), o.stripeHandoffLine(), o.freeWeekChangedLine(), o.widgetMembershipLine(null), o.accountCtaNote()]) {
+      assert.doesNotMatch(line, /\btrial\b|\bjoin/i, line)
+      assert.doesNotMatch(line, /[—–]/, line)
+    }
     for (const bad of [0, 100, 0.5, '50', undefined, NaN]) {
       assert.equal(o.widgetAccountLine(bad), o.widgetAccountLine(null), `must ignore ${bad}`)
       assert.equal(o.widgetMembershipLine(bad), o.widgetMembershipLine(null), `must ignore ${bad}`)
@@ -675,7 +708,7 @@ test('offer codes: Stripe applies the exact promotion code, the consent text sta
     assert.deepEqual(p.metadata, { user_id: 'u1', plan: 'monthly', offer_code: 'BAILEY', offer_percent_off: '50', ip_hash: 'net1', no_card: '1' })
     assert.equal(
       p.custom_text.submit.message,
-      'Your 7-day free trial starts today. No card is needed and nothing is charged. The trial ends after 7 days and your membership stops then, unless you have added a card with the "Add a card" button inside Seoul Sister. If you add one, it is charged $4.99 for your first paid month (50% off) when the trial ends, then $9.99/month until you cancel.'
+      '**Nothing is charged today, and this page does not ask for a card.** This starts your free week (Stripe calls it a trial). The price shown here applies only if you add a card, with the "Add a card" button inside Seoul Sister. Without one, your membership stops after 7 days. A card you add is charged $4.99 for your first paid month (50% off) when the free week ends, then $9.99/month until you cancel.'
     )
     assert.doesNotMatch(p.custom_text.submit.message, /promotion code/, 'with a confirmed code there is no code box to talk about')
     // Without a code the page keeps its code box and the plain price, and says a typed code changes it.
@@ -1145,7 +1178,11 @@ test('pricing card: the free week leads and the price is stated; the allowance l
       noCard: 'No card needed to start.',
       after: 'Then $9.99/month, only if you add a card. Cancel anytime.',
       who: 'The free week is for new members.',
-      cta: 'Start my 7 free days',
+      // The membership page's button starts the free week; the public card's
+      // button only creates an account, and says so (Nov 15 2026).
+      cta: 'Start my free week',
+      accountCta: 'Create my free account',
+      accountNote: 'This creates your free account. The free week starts later, when you choose membership.',
     })
   } finally { m.restore() }
   // The allowance has ONE source. Executed: the number Yuri, the emails and the
@@ -1166,10 +1203,11 @@ test('pricing card: the free week leads and the price is stated; the allowance l
   assert.equal((card.match(/text-4xl/g) ?? []).length, 1)
   assert.doesNotMatch(card, /text-(5|6|7|8|9)xl/)
   assert.doesNotMatch(card, /PRICING\.|tier\.price|\$\{?9|9\.99/, 'every price on the card comes from pricingCardLines')
-  assert.match(card, /\) : \(\s*lines\.cta\s*\)\}/)
+  assert.match(card, /\) : \(\s*lines\.accountCta\s*\)\}/)
+  assert.doesNotMatch(card, /lines\.cta\b/, 'the public card must not offer to start the free week: its button creates an account')
   // And the whole card file by fingerprint: an added line ("No card is ever
   // needed.") or a changed button label passed every assertion above in review.
-  assert.equal(sha('sha256').update(card).digest('hex'), '71455f161bf30a499b0c68ecc0ab627307f55248aeebdf28bd1e40a481e9e978')
+  assert.equal(sha('sha256').update(card).digest('hex'), '813fb4bc368d719852696bcb9ab165ef366cb035ab514167c52df7ef4f0df9a0')
 
   // The allowance is NOT on the pricing card or the membership page (owner
   // decision, Nov 11 2026: the "79 messages" month was the co-owner testing;

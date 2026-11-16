@@ -207,14 +207,104 @@ export function priceWithOffer(percentOff: number | null | undefined): string {
  * on its own: the week is free for new members, it needs no card, and the
  * price applies only to someone who adds one.
  */
-export function pricingCardLines(): { headline: string; noCard: string; after: string; who: string; cta: string } {
+export function pricingCardLines(): { headline: string; noCard: string; after: string; who: string; cta: string; accountCta: string; accountNote: string } {
   return {
     headline: `Free for ${PRICING.trial_days} days`,
     noCard: 'No card needed to start.',
     after: `Then ${PRICING.monthly_display_long}, only if you add a card. Cancel anytime.`,
     who: 'The free week is for new members.',
-    cta: `Start my ${PRICING.trial_days} free days`,
+    // The button that STARTS the free week (membership page only).
+    cta: 'Start my free week',
+    // The same card on the public page, where the button creates an account
+    // and starts nothing. It used to say "Start my 7 free days" there too.
+    accountCta: 'Create my free account',
+    accountNote: accountCtaNote(),
   }
+}
+
+// ---------------------------------------------------------------------------
+// One vocabulary for the path to membership (Nov 15 2026).
+//
+// A tester created an account and believed that had started her free week;
+// then a page offering "Free for 7 days" appeared, and then Stripe's page with
+// a price on it. Two different things were both called "free", the account
+// step was called "Join", and nothing said when the free week starts.
+//
+//   free account   the login. Never "join" or "member" for this step.
+//   setup chat     the free first conversation with Yuri.
+//   membership     the paid thing.
+//   free week      the first 7 days of membership. "Trial" is Stripe's word;
+//                  it is bridged once, on Stripe's own page.
+//
+// Wherever the free week is mentioned before it has started, the sentence says
+// when it starts. Every sentence below is true for every account that can see
+// it: the price comes from priceWithOffer (so a creator code shows), "new
+// members" stays (an inbox that already had a free week does not get another),
+// and the no-card clause follows PRICING.trial_requires_card.
+// ---------------------------------------------------------------------------
+
+/** On the sign-up form, under the heading: what this step is, and what it is not. */
+export function registerFootnote(percentOff: number | null | undefined): string {
+  const price = priceWithOffer(percentOff)
+  const week = PRICING.trial_requires_card
+    ? `New members get the first ${PRICING.trial_days} days free, then ${price}.`
+    : `New members get the first ${PRICING.trial_days} days free with no card, then ${price} only if you add a card.`
+  return `This creates a free account. It does not start your free week. Next is a setup chat with Yuri, and membership is your choice after that. ${week}`
+}
+
+/**
+ * Under the public pricing card's button, for someone not signed in. The card
+ * above it says "Free for 7 days"; the button only creates an account.
+ */
+export function accountCtaNote(): string {
+  return 'This creates your free account. The free week starts later, when you choose membership.'
+}
+
+/**
+ * On the membership card, under "Free for N days", when the no-card free week
+ * is on offer. The button opens Stripe's page and the week starts once it is
+ * confirmed there, so this does not say "when you press the button".
+ */
+export function paywallStartLine(): string {
+  return 'Starts on the next page, once you confirm there. No card needed.'
+}
+
+/**
+ * Under the button that starts the no-card free week: what the next page is.
+ * It names no figure on purpose. Stripe's page shows the price (and, with a
+ * creator code, its own arithmetic) and nobody here has seen every variant of
+ * it, so this says only what is true whatever it shows. The email there is
+ * filled in and fixed, so it is "shows", not "asks for".
+ */
+export function stripeHandoffLine(): string {
+  return "The next page is Stripe's. It shows your email and asks you to check a box for our terms. It does not ask for a card. The price it shows applies after your free week, and only if you add a card. Nothing is charged today."
+}
+
+/**
+ * Said when the page offered the no-card free week and the checkout, deciding
+ * again a moment later, could not give it (the per-network limit filled, the
+ * connection changed, the no-card week was switched off). Nothing is started:
+ * the alternative was a Stripe page asking for a card under a button that had
+ * just said it would not. The page re-reads what applies before showing this.
+ */
+export function freeWeekChangedLine(): string {
+  return 'The no-card free week could not be started just now, so nothing was started and nothing was charged. The page now shows what you can start instead.'
+}
+
+/**
+ * The setup chat's line under "Meet Yuri". For someone who is not a member it
+ * says the chat is free and that membership is a separate choice. It makes no
+ * claim about a free week: some non-members have already had theirs, and some
+ * will not be offered one. A member, or an unread plan, is told only what the
+ * chat is.
+ */
+export function setupChatLine(isMember: boolean | null): string {
+  return isMember === false ? 'Free setup chat. Membership is separate, and starts only if you choose it.' : 'Setup chat'
+}
+
+/** The link under the setup chat that leaves it, by where it goes. */
+export function skipSetupLabel(isMember: boolean | null): string {
+  return isMember === true ? 'Skip this chat and go to Yuri' : 'Skip this chat and see membership'
 }
 
 /**
@@ -229,7 +319,11 @@ export function paywallFreeWeekLine(priceLong: string): string {
 /** The price line on the free chat's "you have used your free messages" card. */
 export function widgetMembershipLine(percentOff: number | null | undefined): string {
   const price = firstMonthPrice(percentOff) ? priceWithOffer(percentOff) : PRICING.monthly_display
-  return `Membership is ${price}. New members get the first ${PRICING.trial_days} days free, no card needed to start.`
+  // The free week comes before the price, so a creator code's first-month
+  // figure is not read as what is paid first.
+  return PRICING.trial_requires_card
+    ? `The account is free. Membership is separate and optional: new members get the first ${PRICING.trial_days} days free, then ${price}.`
+    : `The account is free. Membership is separate and optional: new members get the first ${PRICING.trial_days} days free with no card, then ${price} only if you add a card.`
 }
 
 /**

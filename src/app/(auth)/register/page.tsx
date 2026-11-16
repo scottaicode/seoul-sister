@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, Check, Sparkles, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { PRICING } from '@/lib/pricing'
+import { registerFootnote } from '@/lib/offers'
+import { useSavedOffer } from '@/lib/use-saved-offer'
 import { signupEmailRejection } from '@/lib/utils/email-normalize'
 import { adoptPreviewForSignup } from '@/lib/utils/widget-session'
 import { takeSignupResumeToken, claimPreviewForSignup, settleWithin } from '@/lib/widget/signup-link'
@@ -63,6 +64,8 @@ const CLAIM_WAIT_MS = 2000
 
 export default function RegisterPage() {
   const router = useRouter()
+  // A creator code this visitor holds, so the price sentence below shows it.
+  const savedOffer = useSavedOffer()
   const { signUp, signInWithGoogle } = useAuth()
 
   // Arriving from the recap email's "Create your free account" link: take the
@@ -199,10 +202,13 @@ export default function RegisterPage() {
 
       {/* Dark Card */}
       <div className="dark-card-gold p-8">
-        <h2 className="text-xl font-bold text-white text-center mb-2">Join Seoul Sister</h2>
-        <p className="text-white/40 text-sm text-center mb-8">
-          Create your account to start your K-beauty journey
-        </p>
+        {/* "Join" read as "become a member", which is a later, separate step. */}
+        <h2 className="text-xl font-bold text-white text-center mb-2">Create your free account</h2>
+        {/* What this step is and is not, under the heading and above BOTH ways
+            of signing up (Nov 15 2026: a tester believed creating the account
+            had started her free week; placed inside the email form it was
+            never read by someone using Google). Wording and price: offers.ts. */}
+        <p className="text-white/70 text-sm leading-relaxed mb-8">{registerFootnote(savedOffer.percentOff)}</p>
 
         {/* Error Banner */}
         {error && (
@@ -373,17 +379,11 @@ export default function RegisterPage() {
                 Creating account...
               </>
             ) : (
-              'Create Account'
+              'Create my free account'
             )}
           </button>
         </form>
 
-        {/* Post-registration flow note (Priority 2 — the paywall now sits AFTER
-            onboarding, not at account creation, so the old "subscription required
-            after account creation" copy was false). */}
-        <p className="text-xs text-center text-white/30 mt-4">
-          Next is a free setup chat where Yuri gets to know your skin. No card needed. New members then get their first {PRICING.trial_days} days free, with no card needed, and that is where your routine is built. After that it is {PRICING.monthly_display_long}, only if you add a card.
-        </p>
 
         {/* Divider */}
         <div className="relative my-6">
@@ -408,7 +408,7 @@ export default function RegisterPage() {
 
       {/* Footer note */}
       <p className="text-center text-xs text-white/30 mt-6">
-        By joining you agree to our{' '}
+        By creating an account you agree to our{' '}
         <Link href="/terms" className="underline hover:text-white/60 transition-colors">
           Terms
         </Link>{' '}

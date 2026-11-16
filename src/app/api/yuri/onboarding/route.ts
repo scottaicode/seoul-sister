@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
         return Response.json(
           {
             error:
-              "We've covered a lot — Yuri has everything she needs to build your profile. Subscribe to keep working with her, or tap \"I'll fill in details later\" to continue.",
+              "We've covered a lot, and Yuri has what she needs from this setup chat. Tap \"Skip this chat\" under the message box to go on.",
             code: 'onboarding_message_cap',
           },
           { status: 429 }

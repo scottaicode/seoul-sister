@@ -103,7 +103,7 @@ User registers
 - Yuri's onboarding system prompt guides her to collect all required fields naturally
 - Minimum required: skin_type, primary_concerns, fitzpatrick_estimate, climate
 - Onboarding complete when all required fields captured (Yuri announces this naturally)
-- User can skip ("I'll fill in details later") but gets reminded on next Yuri conversation
+- User can skip (the link under the chat: "Skip this chat and see membership", or "...go to Yuri" for a member)
 
 **Why Not Both (Form + Conversation)**: The form wizard was the MVP approach. Now that Yuri exists, the conversational path IS the product experience. Offering both dilutes the first impression. A user who fills out a form has a "meh, another app" experience. A user who chats with Yuri has a "wow, this AI gets skincare" experience. The onboarding IS the conversion moment.
 
@@ -410,6 +410,8 @@ Seoul Sister is a paid membership. **Since v11.60.0 (Nov 13 2026) talking to Yur
 
 **Yuri is the single orchestrating star.** The standalone feature pages (Scan, Sunscreen, Glass Skin, Shelf Scan, Dupes) are demoted from front-door nav to surfaces Yuri drives: usage data showed essentially everyone lives in Yuri chat. The Sunscreen Finder and Dupe Finder are **Yuri tools** (`find_sunscreen_match`, `find_product_dupes`) backed by shared cores in `src/lib/intelligence/{sunscreen-finder,dupe-finder}.ts` (the API routes call the same cores). They return DATA; Yuri owns the recommendation (Yuri Sole Authority). The nav (`Header.tsx`/`BottomNav.tsx`) leads with Yuri; the demoted pages live under a "More" menu.
 
+**One vocabulary for this path (v11.61.18, Nov 15 2026; the helpers and the reason are at the top of the "path to membership" block in `src/lib/offers.ts`):** *free account* (the login; never "join"), *setup chat*, *membership*, *free week* (never "trial" in our own words on the way in; Stripe's page says "trial" and our paragraph there bridges it once). Wherever the free week is mentioned before it has started, the sentence says when it starts. A tester created an account and believed that had started her free week; the cause was two things both called "free" and a sign-up page headed "Join".
+
 **Path to membership** (current, see `.claude/rules/widget.md`): the landing page shows Yuri and a sign-up button (while the chat is open: a free chat giving the diagnosis and the one change) → free account → free setup chat with Yuri (capped at 50 user messages) → the 7-day free week, no card → the complete routine is built in the first member chat → add a card to continue at $9.99/month. AppShell gates paid surfaces behind `plan != 'free'`; `/api/yuri/chat` checks `hasActiveSubscription` server-side.
 
 **What members get**: Yuri with all six specialist modes and her database tools, memory across sessions, the routine builder with conflict detection, label scanning, counterfeit checks, price comparison, Glass Skin Score tracking, weather- and cycle-aware guidance, and weekly check-ins.
@@ -577,7 +579,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Current version**: 11.61.17 (November 15 2026). One line only: every release's detail goes in `CHANGELOG.md`, never here.
+**Current version**: 11.61.18 (November 15 2026). One line only: every release's detail goes in `CHANGELOG.md`, never here.
 **AI Advisor**: Yuri (유리) — "Glass"
 
 **Full version history**: See `CHANGELOG.md` (repo root). The detailed, dated changelog — every version from v3.0.0 through the current release — lives there, not in this file. Per the project's documentation standard: CLAUDE.md is for current architecture and how the system works NOW; CHANGELOG.md is for what changed and when. When shipping a feature, update the relevant architecture section here and put the detailed entry in CHANGELOG.md.

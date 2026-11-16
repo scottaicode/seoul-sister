@@ -9,7 +9,7 @@ import CarryoverPrompt from '@/components/onboarding/CarryoverPrompt'
 import ChatMessage from '@/components/yuri/ChatMessage'
 import ChatInput from '@/components/yuri/ChatInput'
 import type { ChatMessage as ChatMessageType } from '@/types/yuri'
-import { getOfferCode } from '@/lib/offers'
+import { getOfferCode, setupChatLine, skipSetupLabel } from '@/lib/offers'
 import { takeCarriedQuestion } from '@/lib/landing-chat'
 
 // What a new member's first Yuri message is prefilled with after checkout. It is
@@ -55,6 +55,12 @@ export default function OnboardingPage() {
       console.warn('[onboarding] carried question not read:', err)
     }
   }, [])
+  // Whether this person is already a member: null until read, and null if the
+  // read fails, in which case nothing is claimed either way. A member is sent
+  // here too (after starting the free week with setup unfinished, or from the
+  // "complete your skin profile" links), and "your free week has not started"
+  // or "see membership" would be false for them.
+  const [isMember, setIsMember] = useState<boolean | null>(null)
   // The answer is per ACCOUNT, so read it once we know who is signed in.
   const [userId, setUserId] = useState<string>('')
   useEffect(() => {
@@ -65,6 +71,23 @@ export default function OnboardingPage() {
       if (!live) return
       setUserId(id)
       setCarryChoice(id && hasPreviewConversation() ? getCarryoverChoice(id) ?? 'ask' : 'na')
+      if (!id) return
+      // Someone just back from Stripe: their plan is still being written, so a
+      // read now would say "not a member" seconds after they started the free
+      // week. Left unknown here; the confirm step below reads it afterwards.
+      if (justPaidRef.current || new URLSearchParams(window.location.search).has('session_id')) return
+      // Their own profile row (RLS). A failed read leaves isMember null.
+      const { data: profile, error: planError } = await supabase
+        .from('ss_user_profiles')
+        .select('plan')
+        .eq('user_id', id)
+        .maybeSingle()
+      if (!live) return
+      if (planError) {
+        console.warn('[onboarding] plan not read; nothing is said about membership:', planError.message)
+        return
+      }
+      setIsMember(!!profile?.plan && profile.plan !== 'free')
     })()
     return () => { live = false }
   }, [])
@@ -108,6 +131,13 @@ export default function OnboardingPage() {
           },
           body: JSON.stringify({ session_id: sessionId }),
         })
+        // The plan is written by now (or the webhook will write it). Read it,
+        // so this page stops describing a member as someone yet to choose.
+        const uid = data.session?.user?.id
+        if (uid) {
+          const { data: profile, error: planError } = await supabase.from('ss_user_profiles').select('plan').eq('user_id', uid).maybeSingle()
+          if (!planError && profile?.plan && profile.plan !== 'free') setIsMember(true)
+        }
       } catch (err) {
         console.error('[onboarding] payment confirm failed:', err)
       }
@@ -468,15 +498,15 @@ export default function OnboardingPage() {
         },
         body: JSON.stringify({ action: 'skip_onboarding' }),
       })
-      // Priority 2 — a free user who skips onboarding still can't enter the paid
-      // app; AppShell gates '/dashboard' behind a non-free plan and would bounce
-      // them to '/subscribe' regardless. Route there directly (self-correcting:
-      // paid insiders are bounced onward by the subscribe page's plan check).
-      router.push('/subscribe')
+      // Where the link says it goes. A member goes to Yuri. Anyone else goes
+      // to the membership page (AppShell would send a free account there
+      // anyway, and that page sends a member onward if the plan was not known
+      // here).
+      router.push(isMember === true ? '/yuri' : '/subscribe')
     } catch {
-      router.push('/subscribe')
+      router.push(isMember === true ? '/yuri' : '/subscribe')
     }
-  }, [getToken, router])
+  }, [getToken, router, isMember])
 
   if (carryChoice === 'ask') {
     return (
@@ -520,6 +550,9 @@ export default function OnboardingPage() {
                 Meet Yuri
               </h1>
               <p className="text-xs text-white/40">Your AI K-beauty advisor</p>
+              {/* What this chat is, and for someone who is not a member, that
+                  the free week has not started (offers.ts). */}
+              <p className="text-xs text-white/60">{setupChatLine(isMember)}</p>
             </div>
           </div>
         </div>
@@ -540,7 +573,7 @@ export default function OnboardingPage() {
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-br from-gold to-gold-light text-seoul-dark text-sm font-semibold shadow-glow-gold hover:shadow-glow-gold-lg hover:scale-[1.02] transition-all duration-200"
               >
                 <Sparkles className="w-4 h-4" />
-                Finish setup and see membership
+                {isMember === true ? 'Finish setup' : 'Finish setup and see membership'}
               </button>
             </div>
           )}
@@ -577,7 +610,7 @@ export default function OnboardingPage() {
           className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors"
         >
           <SkipForward className="w-3 h-3" />
-          Skip for now -- you can complete your profile anytime
+          {skipSetupLabel(isMember)}
         </button>
       </div>
     </div>

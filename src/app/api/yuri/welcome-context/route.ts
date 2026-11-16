@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       // When the setup chat was last active: "just joined" is only true if it was recent.
       db
         .from('ss_yuri_conversations')
-        .select('updated_at')
+        .select('id, updated_at')
         .eq('user_id', user.id)
         .eq('conversation_type', 'onboarding')
         .order('updated_at', { ascending: false })
@@ -129,6 +129,23 @@ export async function GET(request: NextRequest) {
         : memberConversations === null
           ? null
           : false
+    // Whether they said anything in the setup chat. Someone who skipped it
+    // without answering was greeted "I have what you told me in setup", and
+    // they had told Yuri nothing (Nov 15 2026). Counted from their own
+    // messages, not from the setup status: a setup can be marked completed or
+    // skipped either way. null = no setup chat, or the count could not be read,
+    // and then the page claims nothing about it.
+    let setupSaidAnything: boolean | null = null
+    const setupId = (setupRes.data?.id as string | undefined) ?? null
+    if (setupId && !setupRes.error) {
+      const { count: saidCount, error: saidError } = await db
+        .from('ss_yuri_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('conversation_id', setupId)
+        .eq('role', 'user')
+      if (saidError) console.error('[welcome-context] setup message count failed:', saidError.message)
+      else setupSaidAnything = (saidCount ?? 0) > 0
+    }
     const hasProfile = (profileRes.count ?? 0) > 0
     const lastConversationId =
       (lastConvRes.data?.id as string | undefined) ?? null
@@ -166,6 +183,7 @@ export async function GET(request: NextRequest) {
       total_conversations: totalConversations,
       member_conversations: memberConversations,
       new_member: newMember,
+      setup_said_anything: setupSaidAnything,
       has_profile: hasProfile,
       last_conversation_id: lastConversationId,
       last_conversation_title: lastConversationTitle,

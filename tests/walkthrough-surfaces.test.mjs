@@ -98,7 +98,13 @@ const offers = await import('data:text/javascript;base64,' + Buffer.from(offersJ
 
 test('the membership page leads with the free week in the public card\'s own words, and says what a card does (executed wording)', () => {
   const card = offers.pricingCardLines()
-  assert.deepEqual([card.headline, card.noCard, card.cta], ['Free for 7 days', 'No card needed to start.', 'Start my 7 free days'])
+  assert.deepEqual([card.headline, card.noCard, card.cta], ['Free for 7 days', 'No card needed to start.', 'Start my free week'])
+  // Nov 15 2026: on this page the line under the headline says WHEN the free
+  // week starts, and the line under the button says what Stripe's page is,
+  // naming no figure (Stripe's arithmetic with a creator code is not ours to quote).
+  assert.equal(offers.paywallStartLine(), 'Starts on the next page, once you confirm there. No card needed.')
+  assert.equal(offers.stripeHandoffLine(), "The next page is Stripe's. It shows your email and asks you to check a box for our terms. It does not ask for a card. The price it shows applies after your free week, and only if you add a card. Nothing is charged today.")
+  assert.doesNotMatch(offers.stripeHandoffLine(), /\$|\d/, 'the hand-off line quotes no price')
   const line = offers.paywallFreeWeekLine('$9.99/month')
   assert.equal(line, "Add a card any time in those 7 days to keep going at $9.99/month. If you don't, the free week ends and nothing is charged.")
   assert.doesNotMatch(line, /[—–]|unlimited/i)
@@ -108,7 +114,7 @@ test('the membership page leads with the free week in the public card\'s own wor
   const page = read('src/app/(auth)/subscribe/page.tsx')
   assert.match(page, /const freeWeekLeads = trialEligible === true && noCardTrial\n/)
   // Headline: the free week when it is on offer with no card; the price otherwise.
-  assert.match(page, /\{freeWeekLeads \? \(\n\s+<>\n\s+<p className="text-4xl font-bold text-white leading-tight">\{card\.headline\}<\/p>\n\s+<p className="text-base font-semibold text-gold-light mb-2">\{card\.noCard\}<\/p>\n\s+<\/>\n\s+\) : \(\n\s+<div className="flex items-baseline gap-1 mb-1">\n\s+<p className="text-4xl font-bold text-white">\$\{tier\.price\}<\/p>/)
+  assert.match(page, /\{freeWeekLeads \? \(\n\s+<>\n\s+<p className="text-4xl font-bold text-white leading-tight">\{card\.headline\}<\/p>\n\s+<p className="text-base font-semibold text-gold-light mb-2">\{paywallStartLine\(\)\}<\/p>\n\s+<\/>\n\s+\) : \(\n\s+<div className="flex items-baseline gap-1 mb-1">\n\s+<p className="text-4xl font-bold text-white">\$\{tier\.price\}<\/p>/)
   // The sentence under it comes from offers.ts and is readable, not 40% grey at 12px.
   assert.match(page, /<p className=\{freeWeekLeads \? 'text-sm text-white\/80 mb-6' : 'text-sm text-white\/60 mb-6'\}>\n\s+\{trialEligible === true && noCardTrial\n\s+\? paywallFreeWeekLine\(priceLong\)\n/)
   // Readable type on both sale surfaces (the owner could not read the grey print, Nov 11 2026):
@@ -133,8 +139,9 @@ test('the membership page leads with the free week in the public card\'s own wor
   assert.ok(page.includes(badge) && publicCard.includes(badge))
   assert.doesNotMatch(page, /Full AI Intelligence Suite/)
   // "No card needed" under the button only when that is true: the trial is on offer AND takes no card.
-  assert.match(page, /\{trialEligible === true && noCardTrial \? 'No card needed to start\. Handled by Stripe\.' : 'Secure payment via Stripe\.'\}/)
-  assert.equal((page.match(/No card needed to start\. Handled by Stripe\./g) ?? []).length, 1)
+  assert.match(page, /\{trialEligible === true && noCardTrial \? stripeHandoffLine\(\) : 'Secure payment via Stripe\.'\}/)
+  assert.equal((page.match(/stripeHandoffLine\(\)/g) ?? []).length, 1)
+  assert.doesNotMatch(page, /Handled by Stripe/)
   // And "no card" is only believed when the server says so in as many words.
   assert.match(page, /setNoCardTrial\(t\.eligible === true && t\.no_card === true\)/)
   // Someone who cannot have the free week (trial used, network cap, card required) still sees the price first.

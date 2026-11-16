@@ -19,7 +19,11 @@ import { chargePhrase, CODE_BOX_NOTE } from '@/lib/offers'
 
 /** Consent text for a trial that needs no card. */
 export function noCardTrialTerms(trialDays: number, percentOff: number | null = null): string {
-  return `Your ${trialDays}-day free trial starts today. No card is needed and nothing is charged. The trial ends after ${trialDays} days and your membership stops then, unless you have added a card with the "Add a card" button inside Seoul Sister. If you add one, it is charged ${chargePhrase(percentOff, 'when the trial ends')}.`
+  // The eye arrives here from Stripe's own "Then $9.99 per month starting ..."
+  // on the left, so the first sentence answers that, in bold (Stripe renders
+  // Markdown bold in custom text; limit 1200 characters). "Trial" is Stripe's
+  // word on this page; it is bridged to ours once.
+  return `**Nothing is charged today, and this page does not ask for a card.** This starts your free week (Stripe calls it a trial). The price shown here applies only if you add a card, with the "Add a card" button inside Seoul Sister. Without one, your membership stops after ${trialDays} days. A card you add is charged ${chargePhrase(percentOff, 'when the free week ends')}.`
 }
 
 /** Consent text for a card-required trial (the emergency-stop path). */

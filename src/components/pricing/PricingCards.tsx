@@ -94,10 +94,12 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
           ) : isAuthenticated ? (
             'Subscribe'
           ) : (
-            lines.cta
+            lines.accountCta
           )}
         </button>
 
+        {/* The card says "Free for 7 days"; this button only creates an account. */}
+        {!isAuthenticated && <p className="text-center text-xs text-white/60 mt-3">{lines.accountNote}</p>}
         {checkoutError && <p className="text-center text-xs text-rose-300 mt-3" role="alert">{checkoutError}</p>}
         {LANDING_CHAT_OPEN && (
           <p className="text-center text-xs text-white/50 mt-3">

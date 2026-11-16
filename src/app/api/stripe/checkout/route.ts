@@ -5,7 +5,7 @@ import { createCheckoutSession, type TierKey } from '@/lib/stripe'
 import { getServiceClient } from '@/lib/supabase'
 import { checkTrialEligibility, noCardTrialEnabled, networkKey } from '@/lib/trial'
 import { resolveOffer } from '@/lib/offers-server'
-import { offerEndedLine, offerFailedLine, normalizeOfferCode } from '@/lib/offers'
+import { offerEndedLine, offerFailedLine, normalizeOfferCode, freeWeekChangedLine } from '@/lib/offers'
 
 // Only the current plan is sold. The legacy 'pro_monthly' plan exists for
 // comped/grandfathered accounts and cannot be bought.
@@ -14,6 +14,9 @@ const CheckoutSchema = z.object({
   // A creator code remembered by the browser (src/lib/offers.ts). Never
   // trusted: Stripe is asked whether it is real and still open.
   offer_code: z.string().max(40).optional(),
+  // True when the page has just told the person the next step needs no card
+  // and charges nothing today. The checkout refuses if it cannot honour that.
+  expect_free_week: z.boolean().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -80,6 +83,15 @@ export async function POST(request: NextRequest) {
     }
     const withTrial = eligibility.eligible
     const noCard = noCardTrialEnabled()
+
+    // The page read the same rule a moment ago and may have told the person
+    // "no card, nothing charged today". If the answer has changed since (the
+    // per-network limit filled, the connection changed, the no-card week was
+    // switched off), building a different session would show them a Stripe
+    // page asking for a card under a promise that it would not. Stop instead.
+    if (parsed.data.expect_free_week === true && !(withTrial && noCard)) {
+      return NextResponse.json({ error: freeWeekChangedLine(), free_week_changed: true }, { status: 409 })
+    }
 
     // A creator code, if the browser sent one. Stripe decides whether it is
     // real and still open. If Stripe cannot be asked we STOP: going on without

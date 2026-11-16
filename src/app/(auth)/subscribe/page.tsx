@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Star, Loader2, Check, ArrowRight } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -10,7 +11,7 @@ import { PRICING } from '@/lib/pricing'
 import { trackEvent, PaywallEvent } from '@/lib/analytics'
 import type { ExtractedSkinProfile } from '@/types/database'
 import { onFileRows } from '@/lib/paywall/on-file'
-import { getOfferCode, clearOfferCode, priceWithOffer, pricingCardLines, paywallFreeWeekLine } from '@/lib/offers'
+import { getOfferCode, clearOfferCode, priceWithOffer, pricingCardLines, paywallFreeWeekLine, paywallStartLine, stripeHandoffLine } from '@/lib/offers'
 
 export default function SubscribePage() {
   const router = useRouter()
@@ -36,6 +37,16 @@ export default function SubscribePage() {
   const [hadTrial, setHadTrial] = useState(false)
   // true = no free trial here because several were started from this network recently.
   const [networkCap, setNetworkCap] = useState(false)
+  // The setup chat is unfinished and can be gone back to (started or skipped).
+  const [setupOpen, setSetupOpen] = useState(false)
+
+  /** What this person can start, as /api/me/trial states it. Anything missing is treated as not on offer. */
+  function applyTrialFacts(t: { eligible?: boolean | null; no_card?: boolean; had_trial?: boolean; network_cap?: boolean }) {
+    setTrialEligible(t.eligible === true)
+    setNoCardTrial(t.eligible === true && t.no_card === true)
+    setHadTrial(t.had_trial === true)
+    setNetworkCap(t.network_cap === true)
+  }
   // A creator code remembered by this browser (e.g. BAILEY from her link), and
   // what Stripe says about it. The line is shown only when Stripe answered; if
   // it could not be asked, the page says nothing about the code.
@@ -95,6 +106,11 @@ export default function SubscribePage() {
           // Only a FINISHED setup backs "I have what I need". AppShell also
           // sends people here mid-setup (20 such accounts on Nov 10 2026, one
           // with partial data); they get the generic copy and no card.
+          // The setup chat can still be continued when it was started or
+          // skipped, not when it is finished (that page sends a finished setup
+          // straight back here) and not when its state could not be read.
+          const status = progressRes.data?.onboarding_status
+          setSetupOpen(status === 'in_progress' || status === 'skipped')
           setOnFile(
             progressRes.data?.onboarding_status === 'completed'
               ? ((progressRes.data.skin_profile_data as ExtractedSkinProfile | null) ?? null)
@@ -102,11 +118,7 @@ export default function SubscribePage() {
           )
         }
         if (trialRes && trialRes.ok) {
-          const t = (await trialRes.json()) as { eligible?: boolean; no_card?: boolean; had_trial?: boolean; network_cap?: boolean }
-          setTrialEligible(t.eligible === true)
-          setNoCardTrial(t.eligible === true && t.no_card === true)
-          setHadTrial(t.had_trial === true)
-          setNetworkCap(t.network_cap === true)
+          applyTrialFacts(await trialRes.json())
         } else {
           console.error('[subscribe] trial facts unavailable; making no trial claim')
         }
@@ -177,7 +189,13 @@ export default function SubscribePage() {
         },
         // The remembered code is always sent, even if this page could not ask
         // about it: the server asks Stripe itself and stops if the code closed.
-        body: JSON.stringify({ plan: 'monthly', ...(offerCode ? { offer_code: offerCode } : {}) }),
+        // expect_free_week: this page has just said "no card, nothing charged
+        // today". The checkout decides again and refuses if it cannot honour it.
+        body: JSON.stringify({
+          plan: 'monthly',
+          ...(offerCode ? { offer_code: offerCode } : {}),
+          ...(trialEligible === true && noCardTrial ? { expect_free_week: true } : {}),
+        }),
       })
 
       const result = await response.json()
@@ -189,6 +207,22 @@ export default function SubscribePage() {
         setOfferActive(false)
         setOfferPercent(null)
         setOfferLine(result.error)
+        return
+      }
+      if (response.status === 409 && result.free_week_changed) {
+        // The no-card free week is not available after all. Nothing was
+        // started. Read again what DOES apply (a card-required week, or
+        // membership charged today) so the page states it before a second
+        // press, then say what happened. If that read fails, offer nothing as
+        // free: the checkout decides again on the next press either way.
+        try {
+          const again = await fetch('/api/me/trial', { headers: { Authorization: `Bearer ${token}` } })
+          if (again.ok) applyTrialFacts(await again.json())
+          else applyTrialFacts({})
+        } catch {
+          applyTrialFacts({})
+        }
+        setCheckoutError(result.error)
         return
       }
       if (result.offer_failed) {
@@ -238,15 +272,25 @@ export default function SubscribePage() {
     <div className="w-full max-w-md mx-auto">
       <div className="text-center mb-6">
         <h1 className="font-display text-2xl font-bold text-gradient mb-2">
-          {hadTrial ? 'Your free week has ended' : hasProfile ? 'Ready to build your routine?' : fromOnboarding ? 'Want me to keep going?' : 'One last step'}
+          {hadTrial ? 'Your free week has ended' : hasProfile ? 'Ready to build your routine?' : fromOnboarding ? 'Want me to keep going?' : freeWeekLeads ? 'Start your free week' : 'Become a member'}
         </h1>
         <p className="text-white/50 text-sm">
           {hadTrial
             ? `Nothing was charged. Your skin profile and everything we worked out are saved. Continue for ${priceLong} and we pick up where we left off.`
             : hasProfile
             ? "I have what I need from our setup chat. Once you're a member, we start by building your routine from it, morning and night where you need both. Then, most weeks, I check in and adjust it from how your skin is doing."
-            : 'Become a member and we build your routine, and I keep everything I learn about your skin.'}
+            : 'You have a free account. Membership is separate: I learn your skin, we build your routine together, and I remember all of it.'}
         </p>
+        {/* Someone who has not finished the setup chat (they skipped it, or
+            arrived another way) can go back to it: it is free and still open.
+            Without this the page had no way back to the chat they left. */}
+        {!hadTrial && !hasProfile && setupOpen && (
+          <p className="text-sm mt-3">
+            <Link href="/onboarding" className="text-gold-light underline underline-offset-2 hover:text-gold">
+              Rather talk first? Back to the setup chat
+            </Link>
+          </p>
+        )}
       </div>
 
       {hasProfile && (
@@ -264,7 +308,7 @@ export default function SubscribePage() {
       )}
 
       <div className="relative dark-card-gold p-8 text-left shadow-glow-gold">
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 badge-gold font-semibold px-4 py-1 text-xs">
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 badge-gold font-semibold px-4 py-1 text-xs whitespace-nowrap">
           Your K-Beauty Advisor, Available 24/7
         </span>
 
@@ -276,7 +320,7 @@ export default function SubscribePage() {
         {freeWeekLeads ? (
           <>
             <p className="text-4xl font-bold text-white leading-tight">{card.headline}</p>
-            <p className="text-base font-semibold text-gold-light mb-2">{card.noCard}</p>
+            <p className="text-base font-semibold text-gold-light mb-2">{paywallStartLine()}</p>
           </>
         ) : (
           <div className="flex items-baseline gap-1 mb-1">
@@ -327,7 +371,7 @@ export default function SubscribePage() {
         {checkoutError && <p className="text-center text-xs text-rose-300 mt-3" role="alert">{checkoutError}</p>}
 
         <p className="text-center text-xs text-white/50 mt-3">
-          {trialEligible === true && noCardTrial ? 'No card needed to start. Handled by Stripe.' : 'Secure payment via Stripe.'}
+          {trialEligible === true && noCardTrial ? stripeHandoffLine() : 'Secure payment via Stripe.'}
         </p>
 
       </div>

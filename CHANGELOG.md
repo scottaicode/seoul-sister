@@ -4,6 +4,73 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.61.18 — The path from "create my free account" to the free week says what each step is (Nov 15 2026)
+
+- **What happened.** Bailey, testing a new account, created it with email and password and believed
+  that had started her 7-day free week. She did not answer the setup chat, later used the link
+  under it ("Skip for now -- you can complete your profile anytime"), met a page headed "One last
+  step" offering "Free for 7 days", then Stripe's page showing "Then $9.99 per month" and a
+  promotion-code box. Her account record confirms each step and the times.
+- **Cause.** Two different things were both called "free" (the account, and the first week of
+  membership); the sign-up form was headed "Join Seoul Sister"; the landing page put the membership
+  line directly under "Create my free account"; nothing said when the free week starts.
+- **One vocabulary** (helpers and the rule in `src/lib/offers.ts`): free account, setup chat,
+  membership, free week.
+- **Changed, screen by screen.**
+  - Landing, under the sign-up button: "The account is free. Membership is separate and optional…".
+  - Landing pricing card: the signed-out button was "Start my 7 free days" (it only made an
+    account). Now "Create my free account", with "The free week starts later, when you choose
+    membership." under it.
+  - Sign-up form: "Create your free account"; under the heading and above both the Google and
+    email buttons, "This creates a free account. It does not start your free week…"; the button
+    is "Create my free account"; the footer no longer says "By joining".
+  - Setup chat: for someone who is not a member, "Free setup chat. Membership is separate, and
+    starts only if you choose it." The link under it is "Skip this chat and see membership", or
+    "Skip this chat and go to Yuri" for a member. The message at the setup cap named a link that
+    did not exist; it now names this one.
+  - Membership page for someone who has not finished setup: "Start your free week" (was "One
+    last step"), "You have a free account. Membership is separate…", and a link back to the setup
+    chat when it can still be continued. Under "Free for 7 days": "Starts on the next page, once
+    you confirm there. No card needed." Under the button: what Stripe's page shows and asks for,
+    and that nothing is charged today. The button is "Start my free week".
+  - Stripe's page, our paragraph: opens in bold with "Nothing is charged today, and this page
+    does not ask for a card." and bridges Stripe's word once ("Stripe calls it a trial").
+  - First member screen for someone who said nothing in setup: "I don't know your skin yet…"
+    (was "I have what you told me in setup").
+- **Two changes that are not wording.**
+  - The page that has just promised "no card, nothing charged" tells the checkout so
+    (`expect_free_week`). If the checkout, deciding again, cannot honour it, it starts nothing and
+    the page re-reads what does apply before saying so.
+  - The setup page reads whether the person is already a member, and for someone just back from
+    Stripe waits for the confirmation before reading, so a member is not told membership is yet
+    to be chosen.
+- **Review.** The plan and the finished change were each read by Fable 5.2 (as five kinds of
+  visitor) and Opus 5.5 (each sentence against every account state). What they changed: my draft
+  never said the plain negative ("does not start your free week"); the explanation sat where a
+  Google sign-up never read it; the landing card still implied the button gave the free week; "it
+  shows $9.99" was wrong for someone holding a creator code, so the hand-off names no figure;
+  "your free week has not started" was false for people who have had one; "starts when you press
+  the button" was not literally true; the link back to setup could loop for a finished setup; and
+  an existing test caught that my setup-chat line had dropped the "AI" disclosure.
+- **Checks.** 1,825 tests pass; build clean. Stripe's documentation confirms bold in custom text
+  and a 1,200-character limit.
+- **Not verified.** None of it has been seen in a browser. Whether the bold renders on Stripe's
+  page, and what Stripe's page shows with a creator code, have not been seen. The fixes made after
+  the second review were not reviewed again.
+
+**Open:**
+- **Starting the free week without Stripe's page.** Scoped, not built: Checkout currently creates
+  the customer, records the Terms consent, takes a promotion code, and is the only path that
+  writes the free-week ledger, the plan, the confirmation email and the owner alert. Each would
+  need replacing, with care about duplicate starts.
+- After the free week starts, the app still says "trial": the banner on every page, the
+  confirmation and ending emails, the Terms. Several are pinned by tests.
+- Someone who skips setup and starts the free week still lands back on the setup chat.
+- The membership card still lists nine features and is named "Seoul Sister Pro".
+- Stripe's guidance says custom text should not create ambiguity with its own text; ours says the
+  price applies only if a card is added, beside Stripe's "Then $9.99 per month".
+- The small logo on Stripe's page comes from the Stripe Dashboard's branding settings.
+
 ## v11.61.17 — Yuri knows a member's gender and exact age when they have said it, and stops supplying facts about someone's body (Nov 15 2026)
 
 - **The incident.** In the owner's own test he wrote "I'm in my late 50s". Yuri replied "after
