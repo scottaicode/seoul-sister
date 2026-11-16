@@ -68,14 +68,16 @@ test('finds an invoice subscription id in both shapes', () => {
 })
 
 test('webhook no longer reads the removed top-level fields and no longer 200s a failure', () => {
-  const src = readFileSync(join(root, 'src/app/api/stripe/webhook/route.ts'), 'utf8')
+  // The new-subscription fulfilment the checkout case runs lives in its own file since Nov 15 2026.
+  const src = readFileSync(join(root, 'src/app/api/stripe/webhook/route.ts'), 'utf8') + '\n' + readFileSync(join(root, 'src/lib/subscription-fulfilment.ts'), 'utf8')
   assert.ok(
     !/subscription\.current_period_(start|end)\s*\*/.test(src),
     'webhook reads subscription.current_period_* directly — that is undefined on our endpoint version'
   )
   assert.equal((src.match(/subscriptionPeriod\(subscription\)/g) || []).length, 2,
     'both the checkout and subscription.updated paths must read the period through the helper')
-  const catchBlock = src.slice(src.lastIndexOf('} catch (err) {'))
+  const route = readFileSync(join(root, 'src/app/api/stripe/webhook/route.ts'), 'utf8')
+  const catchBlock = route.slice(route.lastIndexOf('} catch (err) {'))
   assert.ok(/status:\s*500/.test(catchBlock),
     'handler failures must return 500 so Stripe retries; a 200 silently drops the event')
   assert.ok(/\.delete\(\)[\s\S]*stripe_event_id/.test(catchBlock),

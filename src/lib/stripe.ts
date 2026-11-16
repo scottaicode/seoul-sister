@@ -1,5 +1,5 @@
 import Stripe from 'stripe'
-import { buildCheckoutParams, buildAddCardParams } from '@/lib/stripe-params'
+import { buildCheckoutParams, buildAddCardParams, buildDirectFreeWeekParams } from '@/lib/stripe-params'
 import { PRICING, USAGE_CAPS, LEGACY_USAGE_CAPS } from './pricing'
 
 let stripeInstance: Stripe | null = null
@@ -126,6 +126,86 @@ export async function createCheckoutSession(params: {
 
   if (!session.url) throw new Error('Failed to create checkout session')
   return session.url
+}
+
+/**
+ * Start a no-card free week with no Stripe-hosted page: a customer, then the
+ * subscription. Returns the subscription (with its discount expanded, as the
+ * fulfilment reads it).
+ *
+ * Two presses, or two tabs, must not make two:
+ *  - the customer call carries a fixed key per account, and an existing
+ *    customer for this account is reused before one is made;
+ *  - an open subscription on that customer is returned instead of a second;
+ *  - the subscription call carries a key per customer and code. The key holds
+ *    no timestamp: Stripe refuses a repeated key whose parameters differ.
+ * If any of this fails the caller says so and offers Stripe's own page, which
+ * does not share these keys.
+ */
+/** Thrown when this account already has a live subscription that is NOT a running free week (paid, past due, or half made). */
+export class HasLiveSubscriptionError extends Error {
+  constructor(public readonly status: string) {
+    super(`account already has a ${status} subscription`)
+  }
+}
+
+/**
+ * The Stripe customer made for this account by a direct start, and its running
+ * free week if there is one. A list, not a search: a list reads what was just
+ * written. Another account's customer on the same address is never used.
+ */
+export async function findDirectFreeWeek(userId: string, email: string): Promise<{ customerId: string | null; subscription: Stripe.Subscription | null }> {
+  if (!/^[0-9a-f-]{36}$/i.test(userId)) throw new Error('findDirectFreeWeek: not an account id')
+  const stripe = getStripeClient()
+  const existing = await stripe.customers.list({ email, limit: 100 })
+  const customerId = existing.data.find((c) => c.metadata?.user_id === userId)?.id ?? null
+  if (!customerId) return { customerId: null, subscription: null }
+  return { customerId, subscription: await runningFreeWeekOn(customerId) }
+}
+
+/** The running free week on this customer, or null. Throws if the customer has a live subscription that is not one. */
+async function runningFreeWeekOn(customerId: string): Promise<Stripe.Subscription | null> {
+  const subs = await getStripeClient().subscriptions.list({ customer: customerId, status: 'all', limit: 20, expand: ['data.discount.promotion_code'] })
+  const trialing = subs.data.find((s) => s.status === 'trialing')
+  if (trialing) return trialing
+  // Paid, past due or half made: not a free week, and never reported as one.
+  const other = subs.data.find((s) => s.status === 'active' || s.status === 'past_due' || s.status === 'incomplete')
+  if (other) throw new HasLiveSubscriptionError(other.status)
+  return null
+}
+
+export async function startDirectFreeWeek(params: {
+  userId: string
+  email: string
+  plan: TierKey
+  ipHash?: string | null
+  offer?: { code: string; promotionCodeId: string; percentOff: number } | null
+}): Promise<{ subscription: Stripe.Subscription; customerId: string }> {
+  const stripe = getStripeClient()
+  const found = await findDirectFreeWeek(params.userId, params.email)
+  let customerId = found.customerId
+  if (found.subscription && customerId) return { subscription: found.subscription, customerId }
+  if (!customerId) {
+    const customer = await stripe.customers.create(
+      { email: params.email, metadata: { user_id: params.userId } },
+      { idempotencyKey: `fw-cus-${params.userId}` }
+    )
+    customerId = customer.id
+    // The same key from a second tab returns the SAME customer, which may
+    // have its free week already. Look before making one.
+    const already = await runningFreeWeekOn(customerId)
+    if (already) return { subscription: already, customerId }
+  }
+  const subscription = await stripe.subscriptions.create(
+    {
+      ...buildDirectFreeWeekParams({ userId: params.userId, plan: params.plan, priceId: getPriceId(params.plan), customerId, ipHash: params.ipHash ?? null, offer: params.offer ?? null }),
+      expand: ['discount.promotion_code'],
+    },
+    { idempotencyKey: `fw-sub-${customerId}-${params.offer?.code ?? 'none'}` }
+  )
+  // Stripe decides the status. Anything but a running free week is not one.
+  if (subscription.status !== 'trialing') throw new HasLiveSubscriptionError(subscription.status)
+  return { subscription, customerId }
 }
 
 /**
@@ -266,6 +346,15 @@ export async function findStripeCustomersForUser(userId: string): Promise<string
     }
     page = result.has_more ? (result.next_page ?? undefined) : undefined
   } while (page)
+  // A direct free-week start makes the customer BEFORE the subscription. If
+  // the second call failed, the customer has no subscription to be found by,
+  // and would keep the person's email after their account is deleted.
+  let customerPage: string | undefined
+  do {
+    const result = await stripe.customers.search({ query: `metadata['user_id']:'${userId}'`, limit: 100, page: customerPage })
+    for (const c of result.data) found.add(c.id)
+    customerPage = result.has_more ? (result.next_page ?? undefined) : undefined
+  } while (customerPage)
   return [...found]
 }
 

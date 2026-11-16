@@ -39,6 +39,8 @@ export default function OnboardingPage() {
   // they are a member, so a new member whose setup is already done lands in
   // Yuri with that request ready to send, not on the dashboard.
   const justPaidRef = useRef(false)
+  // The free week was started on our own membership page (?started=1), not on Stripe's.
+  const startedHereRef = useRef(false)
   // The confirm step for someone just back from Stripe, resolving to whether
   // they are a member now. Awaited before a just-started member who skipped
   // setup is sent to the member chat, so the app gate there never meets a plan
@@ -80,7 +82,8 @@ export default function OnboardingPage() {
       // Someone just back from Stripe: their plan is still being written, so a
       // read now would say "not a member" seconds after they started the free
       // week. Left unknown here; the confirm step below reads it afterwards.
-      if (justPaidRef.current || new URLSearchParams(window.location.search).has('session_id')) return
+      const arrived = new URLSearchParams(window.location.search)
+      if (justPaidRef.current || arrived.has('session_id') || arrived.get('started') === '1') return
       // Their own profile row (RLS). A failed read leaves isMember null.
       const { data: profile, error: planError } = await supabase
         .from('ss_user_profiles')
@@ -112,8 +115,15 @@ export default function OnboardingPage() {
   // self-corrects). Only the redirect for a member who skipped setup awaits
   // the result, through confirmedRef, and the request gives up after 8s.
   useEffect(() => {
-    const sessionId = new URLSearchParams(window.location.search).get('session_id')
-    if (!sessionId) return
+    const search = new URLSearchParams(window.location.search)
+    const sessionId = search.get('session_id')
+    // ?started=1: the free week was started on our own membership page, with
+    // no Stripe page and so no session to confirm. The plan was written before
+    // that page moved on; it is read here, and that read is all that counts,
+    // so typing the address grants nothing.
+    const startedHere = !sessionId && search.get('started') === '1'
+    if (!sessionId && !startedHere) return
+    startedHereRef.current = startedHere
     // Read synchronously, before the start effect below can redirect: Stripe
     // only sends a buyer here with a session id right after checkout.
     justPaidRef.current = true
@@ -129,7 +139,7 @@ export default function OnboardingPage() {
         const { data } = await supabase.auth.getSession()
         const token = data.session?.access_token
         if (!token) return false
-        await fetch('/api/stripe/confirm', {
+        if (sessionId) await fetch('/api/stripe/confirm', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -145,12 +155,19 @@ export default function OnboardingPage() {
         // so this page stops describing a member as someone yet to choose.
         const uid = data.session?.user?.id
         if (uid) {
-          const { data: profile, error: planError } = await supabase.from('ss_user_profiles').select('plan').eq('user_id', uid).maybeSingle()
-          if (!planError && profile?.plan && profile.plan !== 'free') {
-            setIsMember(true)
-            return true
+          // A start on our own page normally has the plan written already; if
+          // that write failed, the webhook does it a moment later, so look twice more.
+          for (let attempt = 0; attempt < (startedHere ? 3 : 1); attempt++) {
+            if (attempt > 0) await new Promise((r) => setTimeout(r, 1500))
+            const { data: profile, error: planError } = await supabase.from('ss_user_profiles').select('plan').eq('user_id', uid).maybeSingle()
+            if (!planError && profile?.plan && profile.plan !== 'free') {
+              setIsMember(true)
+              return true
+            }
           }
         }
+        // Read and not a member: say so, or the page would stay on "unknown".
+        if (startedHere) setIsMember(false)
         return false
       } catch (err) {
         console.error('[onboarding] payment confirm failed:', err)
@@ -318,12 +335,17 @@ export default function OnboardingPage() {
             // A just-paid member waits for the payment check first, so the
             // member chat does not open while the plan still reads "free" and
             // send them to the membership page.
+            let member = true
             if (justPaidRef.current && confirmedRef.current) {
-              await confirmedRef.current
+              member = await confirmedRef.current
               if (cancelled) return
             }
+            // Back from Stripe, the member chat is opened even if the check
+            // did not confirm (the webhook may be seconds behind). With
+            // ?started=1 there is no such lag to allow for: not a member means
+            // the address was typed, and they go where anyone else does.
             router.replace(
-              justPaidRef.current
+              justPaidRef.current && (member || !startedHereRef.current)
                 ? `/yuri?ask=${encodeURIComponent(FIRST_MEMBER_ASK)}`
                 : '/dashboard'
             )

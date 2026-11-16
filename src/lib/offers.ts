@@ -44,6 +44,17 @@ export function captureOfferCode(): void {
   }
 }
 
+/** Remember a code the person typed on the membership page, once Stripe has confirmed it. Never throws. */
+export function rememberOfferCode(raw: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    const code = normalizeOfferCode(raw)
+    if (code) window.localStorage.setItem(OFFER_STORAGE_KEY, code)
+  } catch {
+    // The code is still sent with this page's button; it is only not kept for a later visit.
+  }
+}
+
 /** The code remembered in this browser, if any. */
 export function getOfferCode(): string | null {
   if (typeof window === 'undefined') return null
@@ -281,6 +292,60 @@ export function stripeHandoffLine(): string {
 }
 
 /**
+ * The free week started on OUR page (trial.ts `directFreeWeekEnabled`). These
+ * are every sentence that page adds. None names a "next page": there is none.
+ */
+export function paywallStartLineDirect(): string {
+  return 'Starts when you press the button below. No card needed.'
+}
+export function directAgreeLabel(): string {
+  return 'I have read this and agree to the Terms of Service.'
+}
+/** Shown in place of the membership card once the start has succeeded. `endText` is the day and time in the member's own zone, or null if unread. */
+export function directStartedLines(endText: string | null): { heading: string; body: string; cta: string } {
+  return {
+    heading: 'Your free week has started.',
+    body: `${endText ? `It ends ${endText}. ` : ''}No card is on file, so nothing will be charged, and membership stops when the free week ends unless you add a card with the "Add a card" button at the top of the app.`,
+    cta: 'Continue',
+  }
+}
+/** The start on our page failed. Nothing is claimed about Stripe's state beyond "nothing was charged" (no card exists to charge). */
+export function directStartFailedLine(): string {
+  return "Your free week could not be started here just now. Nothing was charged. Try again in a minute, or start it on Stripe's page instead."
+}
+/** A typed code that is not a creator code: we cannot apply it, Stripe's page can. No claim about whether it is valid. */
+export function codeNotAppliedHereLine(code: string): string {
+  return `We cannot apply ${code} on this page. If it is a Seoul Sister promotion code, start on Stripe's page instead, where it can be entered.`
+}
+/**
+ * Stripe made the subscription (the free week IS running) but our own records
+ * could not be written. Pressing the button again finds that subscription and
+ * finishes the job; it never makes a second one. Stripe's page is not offered
+ * here: that would.
+ */
+export function directStartedNotRecordedLine(): string {
+  return 'Your free week has started, but we could not finish setting up your membership just now. Nothing was charged. Press the button again in a minute to finish.'
+}
+/** Under the button while the terms box is not ticked. */
+export function tickToStartLine(): string {
+  return 'Tick the box above to start.'
+}
+export function startWithoutCodeLabel(): string {
+  return 'Start without a code'
+}
+/** Any failure to begin, on either way of starting, where nothing was started. */
+export function couldNotStartLine(): string {
+  return 'This could not be started just now. Nothing was charged. Please try again in a minute.'
+}
+export function useStripePageLabel(): string {
+  return "Start on Stripe's page instead"
+}
+/** The page showed one way to start and the server now uses the other. */
+export function startPageChangedLine(): string {
+  return 'This page was out of date, so nothing was started and nothing was charged. It now shows the current way to start.'
+}
+
+/**
  * Said when the page offered the no-card free week and the checkout, deciding
  * again a moment later, could not give it (the per-network limit filled, the
  * connection changed, the no-card week was switched off). Nothing is started:
@@ -477,5 +542,5 @@ export function offerFactForYuri(
   if (offer.state === 'ended') {
     return `Creator code: this visitor arrived with the code ${offer.code}, and it is no longer accepted, so membership for them is ${full}.`
   }
-  return `Creator code: this visitor has the code ${offer.code} saved in this browser. For someone who is not yet a member, it takes ${validPercent(offer.percentOff)}% off the first paid month: ${firstMonthPrice(offer.percentOff)} instead of ${full.replace('/month', '')}. Every month after that is ${full}, so where anything else here says ${full}, for this person that begins with the second paid month. If they start membership in this same browser the code is applied for them; on another device or browser they can type it on the payment page. The free week is the same with or without it. The discount covers the first paid month only. When the code itself stops being accepted is not shown to you. It matters only if price or the code comes up.`
+  return `Creator code: this visitor has the code ${offer.code} saved in this browser. For someone who is not yet a member, it takes ${validPercent(offer.percentOff)}% off the first paid month: ${firstMonthPrice(offer.percentOff)} instead of ${full.replace('/month', '')}. Every month after that is ${full}, so where anything else here says ${full}, for this person that begins with the second paid month. If they start membership in this same browser the code is applied for them; on another device or browser they can enter it when they start membership. The free week is the same with or without it. The discount covers the first paid month only. When the code itself stops being accepted is not shown to you. It matters only if price or the code comes up.`
 }

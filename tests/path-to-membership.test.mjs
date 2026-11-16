@@ -49,7 +49,7 @@ test('the setup chat says what it is, and its two exits say where they go', () =
   assert.equal((page.match(/\.select\('plan'\)\s*\.eq\('user_id', (id|uid)\)/g) ?? []).length, 2)
   // Someone just back from Stripe is not read as "not a member": the plan is
   // still being written, so it is left unknown and read after the confirm.
-  assert.ok(page.includes("      if (justPaidRef.current || new URLSearchParams(window.location.search).has('session_id')) return\n"))
+  assert.ok(page.includes("      if (justPaidRef.current || arrived.has('session_id') || arrived.get('started') === '1') return\n"))
   assert.match(page, /if \(!planError && profile\?\.plan && profile\.plan !== 'free'\) \{\s*setIsMember\(true\)\s*return true/)
   // The link runs the handler that goes where the label says.
   assert.match(page, /onClick=\{handleSkip\}[\s\S]{0,260}\{skipSetupLabel\(isMember\)\}/)
@@ -78,7 +78,7 @@ test('the checkout refuses to ask for a card after the page said it would not', 
   // After a refusal the page reads again what applies, so it states the
   // real terms (a card-required week, or charged today) before a second press.
   assert.match(page, /if \(response\.status === 409 && result\.free_week_changed\) \{[\s\S]{0,700}fetch\('\/api\/me\/trial'[\s\S]{0,200}applyTrialFacts\(await again\.json\(\)\)[\s\S]{0,200}setCheckoutError\(result\.error\)\s*return/)
-  assert.match(page, /function applyTrialFacts\([^)]*\) \{\s*setTrialEligible\(t\.eligible === true\)\s*setNoCardTrial\(t\.eligible === true && t\.no_card === true\)\s*setHadTrial\(t\.had_trial === true\)\s*setNetworkCap\(t\.network_cap === true\)/)
+  assert.match(page, /function applyTrialFacts\([^)]*\) \{\s*setTrialEligible\(t\.eligible === true\)\s*setNoCardTrial\(t\.eligible === true && t\.no_card === true\)\s*setDirectMode\(t\.eligible === true && t\.no_card === true && t\.direct === true\)\s*setHadTrial\(t\.had_trial === true\)\s*setNetworkCap\(t\.network_cap === true\)/)
   const route = read('src', 'app', 'api', 'stripe', 'checkout', 'route.ts')
   assert.ok(route.includes('  expect_free_week: z.boolean().optional(),\n'))
   // Decided from the checkout's own answer, before any session is created.
@@ -140,7 +140,9 @@ test('"free week" is true only while the free period is 7 days', () => {
   const params = read('src', 'lib', 'stripe-params.ts')
   assert.ok(params.includes('  const trialDays = p.withTrial ? PRICING.trial_days : 0\n'))
   assert.ok(params.includes('      ...(trialDays > 0 ? { trial_period_days: trialDays } : {}),\n'))
-  assert.equal(params.split('trial_period_days').length - 1, 1)
+  // The free week started on our own page takes the same number, directly.
+  assert.ok(params.includes('    trial_period_days: PRICING.trial_days,\n'))
+  assert.equal(params.split('trial_period_days').length - 1, 2)
 })
 
 test('closed world: "trial" is not our word. It appears only where a sentence says it is Stripe\'s', () => {

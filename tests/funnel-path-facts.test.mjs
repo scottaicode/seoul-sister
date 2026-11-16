@@ -190,7 +190,7 @@ test('path fact "not built during setup, first thing offered to a member"', () =
   // A buyer returning from Stripe with setup done lands in Yuri with the request prefilled.
   assert.match(
     onboardingPage,
-    /justPaidRef\.current\s*\?\s*`\/yuri\?ask=\$\{encodeURIComponent\(FIRST_MEMBER_ASK\)\}`\s*:\s*'\/dashboard'/,
+    /justPaidRef\.current && \(member \|\| !startedHereRef\.current\)\s*\?\s*`\/yuri\?ask=\$\{encodeURIComponent\(FIRST_MEMBER_ASK\)\}`\s*:\s*'\/dashboard'/,
     'a just-paid member whose setup is complete must land on the routine request, not the dashboard'
   )
   assert.match(onboardingPage, /const FIRST_MEMBER_ASK = "[^"]*routine[^"]*"/)
@@ -200,10 +200,12 @@ test('just-paid is set only for a real Stripe return, and the URL is cleaned bef
   // Order matters, so assert ORDER. Review moved `justPaidRef.current = true`
   // above the session check (every returning user then went to /yuri?ask) and
   // a source-presence test still passed.
-  const guard = onboardingPage.indexOf("if (!sessionId) return")
+  const guard = onboardingPage.indexOf("if (!sessionId && !startedHere) return")
   const flag = onboardingPage.indexOf('justPaidRef.current = true')
   const clean = onboardingPage.indexOf("window.history.replaceState({}, '', '/onboarding')")
-  const confirm = onboardingPage.indexOf("await fetch('/api/stripe/confirm'")
+  const confirm = onboardingPage.indexOf("if (sessionId) await fetch('/api/stripe/confirm'")
+  // ?started=1 (the free week started on our own page) is the only other way in, and only without a session id.
+  assert.ok(onboardingPage.includes("    const startedHere = !sessionId && search.get('started') === '1'\n"))
   assert.ok(guard > 0 && flag > guard, 'the flag must come AFTER the session-id guard')
   assert.ok(clean > flag && clean < confirm, 'the URL must be cleaned synchronously, BEFORE the confirm fetch: cleaning it after wiped the prefilled ?ask= on /yuri')
   assert.equal(onboardingPage.split("window.history.replaceState({}, '', '/onboarding')").length - 1, 1, 'no second, late URL rewrite')

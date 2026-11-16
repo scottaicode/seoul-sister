@@ -114,7 +114,7 @@ test('the membership page leads with the free week in the public card\'s own wor
   const page = read('src/app/(auth)/subscribe/page.tsx')
   assert.match(page, /const freeWeekLeads = trialEligible === true && noCardTrial\n/)
   // Headline: the free week when it is on offer with no card; the price otherwise.
-  assert.match(page, /\{freeWeekLeads \? \(\n\s+<>\n\s+<p className="text-4xl font-bold text-white leading-tight">\{card\.headline\}<\/p>\n\s+<p className="text-base font-semibold text-gold-light mb-2">\{paywallStartLine\(\)\}<\/p>\n\s+<\/>\n\s+\) : \(\n\s+<div className="flex items-baseline gap-1 mb-1">\n\s+<p className="text-4xl font-bold text-white">\$\{tier\.price\}<\/p>/)
+  assert.match(page, /\{freeWeekLeads \? \(\n\s+<>\n\s+<p className="text-4xl font-bold text-white leading-tight">\{card\.headline\}<\/p>\n\s+<p className="text-base font-semibold text-gold-light mb-2">\{directMode \? paywallStartLineDirect\(\) : paywallStartLine\(\)\}<\/p>\n\s+<\/>\n\s+\) : \(\n\s+<div className="flex items-baseline gap-1 mb-1">\n\s+<p className="text-4xl font-bold text-white">\$\{tier\.price\}<\/p>/)
   // The sentence under it comes from offers.ts and is readable, not 40% grey at 12px.
   assert.match(page, /<p className=\{freeWeekLeads \? 'text-sm text-white\/80 mb-6' : 'text-sm text-white\/60 mb-6'\}>\n\s+\{trialEligible === true && noCardTrial\n\s+\? paywallFreeWeekLine\(priceLong\)\n/)
   // Readable type on both sale surfaces (the owner could not read the grey print, Nov 11 2026):
@@ -140,7 +140,11 @@ test('the membership page leads with the free week in the public card\'s own wor
   assert.doesNotMatch(page, /Full AI Intelligence Suite/)
   // "No card needed" under the button only when that is true: the free week is on offer AND takes no card.
   assert.match(page, /\{trialEligible === true && noCardTrial \? stripeHandoffLine\(\) : 'Secure payment via Stripe\.'\}/)
-  assert.equal((page.match(/stripeHandoffLine\(\)/g) ?? []).length, 1)
+  // Its one other use: when our own page could not start the free week and offers Stripe's page instead.
+  assert.ok(page.includes(`        {freeWeekLeads && directMode && stripeOption && (
+          <p className="text-center text-xs text-white/50 mt-2">{stripeHandoffLine()}</p>
+        )}`))
+  assert.equal((page.match(/stripeHandoffLine\(\)/g) ?? []).length, 2)
   assert.doesNotMatch(page, /Handled by Stripe/)
   // And "no card" is only believed when the server says so in as many words.
   assert.match(page, /setNoCardTrial\(t\.eligible === true && t\.no_card === true\)/)

@@ -710,8 +710,15 @@ test('stripe: customers are found by OUR account id on their subscriptions, ever
     // The usual case for an earlier customer: its subscription is long canceled.
     p2: { data: [{ customer: 'cus_c', status: 'canceled' }, { customer: null }], has_more: false, next_page: null },
   }
-  const h = loadStripeHelpers({ subscriptions: { search: async (q) => { queries.push(q); return pages[q.page ?? 'first'] } } })
-  assert.deepEqual(await h.findStripeCustomersForUser(USER), ['cus_a', 'cus_b', 'cus_c'])
+  const customerQueries = []
+  // A direct free-week start makes the customer first; one left with no subscription is found by its own metadata.
+  const customerPages = { first: { data: [{ id: 'cus_c' }, { id: 'cus_orphan' }], has_more: false, next_page: null } }
+  const h = loadStripeHelpers({
+    subscriptions: { search: async (q) => { queries.push(q); return pages[q.page ?? 'first'] } },
+    customers: { search: async (q) => { customerQueries.push(q); return customerPages[q.page ?? 'first'] } },
+  })
+  assert.deepEqual(await h.findStripeCustomersForUser(USER), ['cus_a', 'cus_b', 'cus_c', 'cus_orphan'])
+  assert.deepEqual(customerQueries, [{ query: `metadata['user_id']:'${USER}'`, limit: 100, page: undefined }])
   assert.deepEqual(queries, [
     { query: `metadata['user_id']:'${USER}'`, limit: 100, page: undefined },
     { query: `metadata['user_id']:'${USER}'`, limit: 100, page: 'p2' },

@@ -11,7 +11,9 @@ import { PRICING } from '@/lib/pricing'
 import { trackEvent, PaywallEvent } from '@/lib/analytics'
 import type { ExtractedSkinProfile } from '@/types/database'
 import { onFileRows } from '@/lib/paywall/on-file'
-import { getOfferCode, clearOfferCode, priceWithOffer, pricingCardLines, paywallFreeWeekLine, paywallStartLine, stripeHandoffLine } from '@/lib/offers'
+import { getOfferCode, clearOfferCode, rememberOfferCode, normalizeOfferCode, priceWithOffer, pricingCardLines, paywallFreeWeekLine, paywallStartLine, stripeHandoffLine, paywallStartLineDirect, directAgreeLabel, useStripePageLabel, codeNotAppliedHereLine, tickToStartLine, startWithoutCodeLabel, couldNotStartLine } from '@/lib/offers'
+import { directFreeWeekTerms } from '@/lib/stripe-params'
+import FreeWeekStarted from '@/components/subscribe/FreeWeekStarted'
 
 export default function SubscribePage() {
   const router = useRouter()
@@ -37,13 +39,28 @@ export default function SubscribePage() {
   const [hadTrial, setHadTrial] = useState(false)
   // true = no free week here because several were started from this network recently.
   const [networkCap, setNetworkCap] = useState(false)
+  // The free week starts on this page (no Stripe page): the terms and a box to
+  // tick are shown here. Only what /api/me/trial says; the checkout decides again.
+  const [directMode, setDirectMode] = useState(false)
+  const [agreed, setAgreed] = useState(false)
+  // Set once the free week has started here: the page then says so before moving on.
+  const [started, setStarted] = useState<{ endsAt: string | null } | null>(null)
+  // Offer Stripe's page after our own could not do it (a failure, or a code we cannot apply).
+  const [stripeOption, setStripeOption] = useState(false)
+  // A code this page cannot apply (not a creator code). While it is set the
+  // free week is NOT started here: the person chooses Stripe's page, where it
+  // can be entered, or says to go on without it. Never dropped silently.
+  const [foreignCode, setForeignCode] = useState<string | null>(null)
+  const [codeInput, setCodeInput] = useState('')
+  const [codeBusy, setCodeBusy] = useState(false)
   // The setup chat is unfinished and can be gone back to (started or skipped).
   const [setupOpen, setSetupOpen] = useState(false)
 
   /** What this person can start, as /api/me/trial states it. Anything missing is treated as not on offer. */
-  function applyTrialFacts(t: { eligible?: boolean | null; no_card?: boolean; had_trial?: boolean; network_cap?: boolean }) {
+  function applyTrialFacts(t: { eligible?: boolean | null; no_card?: boolean; direct?: boolean; had_trial?: boolean; network_cap?: boolean }) {
     setTrialEligible(t.eligible === true)
     setNoCardTrial(t.eligible === true && t.no_card === true)
+    setDirectMode(t.eligible === true && t.no_card === true && t.direct === true)
     setHadTrial(t.had_trial === true)
     setNetworkCap(t.network_cap === true)
   }
@@ -117,8 +134,11 @@ export default function SubscribePage() {
               : null
           )
         }
+        let startsHere = false
         if (trialRes && trialRes.ok) {
-          applyTrialFacts(await trialRes.json())
+          const facts = await trialRes.json()
+          applyTrialFacts(facts)
+          startsHere = facts?.eligible === true && facts?.no_card === true && facts?.direct === true
         } else {
           console.error('[subscribe] trial facts unavailable; making no trial claim')
         }
@@ -137,6 +157,13 @@ export default function SubscribePage() {
             if (o.state !== 'active') {
               clearOfferCode()
               setOfferCode(null)
+              // On Stripe's page such a code can still be typed. Here there is
+              // no such box, so say what happened and offer that page.
+              if (startsHere && o.state === 'unknown') {
+                setForeignCode(code)
+                setOfferLine(codeNotAppliedHereLine(code))
+                setStripeOption(true)
+              }
             }
           } else {
             console.error('[subscribe] offer lookup unavailable; saying nothing about the code')
@@ -168,7 +195,52 @@ export default function SubscribePage() {
     checkSubscription()
   }, [user, authLoading, router])
 
-  async function handleCheckout() {
+  /** A code typed on this page (direct mode only). Stripe decides; nothing is said about how many are left. */
+  async function applyTypedCode() {
+    const code = normalizeOfferCode(codeInput)
+    if (!code) {
+      setOfferLine('That does not look like a code. Codes are 3 to 20 letters and numbers.')
+      return
+    }
+    setCodeBusy(true)
+    try {
+      const res = await fetch(`/api/offer?code=${encodeURIComponent(code)}`)
+      if (res.status === 429) {
+        setOfferLine('Too many tries just now. Please wait a few minutes and try the code again.')
+        return
+      }
+      if (!res.ok) {
+        setOfferLine('The code could not be checked just now. Please try again in a minute.')
+        return
+      }
+      const o = (await res.json()) as { state?: string; line?: string; percent_off?: number }
+      if (o.state === 'active' && typeof o.percent_off === 'number') {
+        setForeignCode(null)
+        rememberOfferCode(code)
+        setOfferCode(code)
+        setOfferActive(true)
+        setOfferPercent(o.percent_off)
+        setOfferLine(o.line ?? null)
+        setCodeInput('')
+      } else if (o.state === 'ended') {
+        setOfferLine(o.line ?? null)
+      } else {
+        // Not a creator code. It may still be a real promotion code, which
+        // only Stripe's page can take.
+        setForeignCode(code)
+        setOfferLine(codeNotAppliedHereLine(code))
+        setStripeOption(true)
+        setCodeInput('')
+      }
+    } catch (err) {
+      console.error('[subscribe] typed code lookup failed:', err)
+      setOfferLine('The code could not be checked just now. Please try again in a minute.')
+    } finally {
+      setCodeBusy(false)
+    }
+  }
+
+  async function handleCheckout(useStripePage = false) {
     if (!user) {
       router.push('/register')
       return
@@ -195,6 +267,13 @@ export default function SubscribePage() {
           plan: 'monthly',
           ...(offerCode ? { offer_code: offerCode } : {}),
           ...(trialEligible === true && noCardTrial ? { expect_free_week: true } : {}),
+          // Which way of starting this page showed. Stripe's page is always
+          // accepted; ours only while the server still starts it that way.
+          ...(trialEligible === true && noCardTrial
+            ? directMode && !useStripePage
+              ? { via: 'direct', agreed_terms: agreed }
+              : { via: 'stripe' }
+            : {}),
         }),
       })
 
@@ -225,6 +304,31 @@ export default function SubscribePage() {
         setCheckoutError(result.error)
         return
       }
+      if (response.status === 409 && result.already_member) {
+        // Started in another tab, or a moment ago: they are a member. Go on in.
+        router.replace('/yuri')
+        return
+      }
+      if (result.started_not_recorded) {
+        // The free week is running at Stripe; our records are not written.
+        // The same button finishes it. Stripe's page must NOT be offered: it
+        // would make a second subscription.
+        setStripeOption(false)
+        setCheckoutError(result.error)
+        return
+      }
+      if (result.code_not_applied || result.direct_failed) {
+        // Nothing was started here. Stripe's page can still do it.
+        setStripeOption(true)
+        setCheckoutError(result.error)
+        return
+      }
+      if (response.ok && result.started === true) {
+        // Started on this page. Say so, with when it ends, before moving on.
+        trackEvent(PaywallEvent.checkoutRedirect)
+        setStarted({ endsAt: typeof result.ends_at === 'string' ? result.ends_at : null })
+        return
+      }
       if (result.offer_failed) {
         // The code could not be applied right now. It stays remembered for a
         // later visit, but the next press of the button goes without it.
@@ -240,7 +344,7 @@ export default function SubscribePage() {
       window.location.href = result.url
     } catch (err) {
       console.error('Checkout error:', err)
-      setCheckoutError(err instanceof Error && err.message ? err.message : 'Could not start checkout. Please try again.')
+      setCheckoutError(err instanceof Error && err.message ? err.message : couldNotStartLine())
     } finally {
       setLoading(false)
     }
@@ -253,6 +357,8 @@ export default function SubscribePage() {
       </div>
     )
   }
+
+  if (started) return <FreeWeekStarted endsAt={started.endsAt} onContinue={() => router.replace('/onboarding?started=1')} />
 
   const tier = SUBSCRIPTION_TIERS.monthly
   const rows = onFileRows(onFile)
@@ -320,7 +426,7 @@ export default function SubscribePage() {
         {freeWeekLeads ? (
           <>
             <p className="text-4xl font-bold text-white leading-tight">{card.headline}</p>
-            <p className="text-base font-semibold text-gold-light mb-2">{paywallStartLine()}</p>
+            <p className="text-base font-semibold text-gold-light mb-2">{directMode ? paywallStartLineDirect() : paywallStartLine()}</p>
           </>
         ) : (
           <div className="flex items-baseline gap-1 mb-1">
@@ -340,7 +446,7 @@ export default function SubscribePage() {
                   : `${priceLong}. Cancel anytime.`}
         </p>
 
-        {offerLine && (
+        {offerLine && !(freeWeekLeads && directMode) && (
           <p className={`text-xs mb-6 -mt-3 ${offerActive ? 'text-gold-light' : 'text-white/50'}`} role="status">
             {offerLine}
           </p>
@@ -355,9 +461,48 @@ export default function SubscribePage() {
           ))}
         </ul>
 
+        {freeWeekLeads && directMode && (
+          <div className="mb-5">
+            {!offerActive && (
+              <div className="flex gap-2 mb-4">
+                <input
+                  value={codeInput}
+                  onChange={(e) => setCodeInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && codeInput.trim() && !codeBusy) void applyTypedCode() }}
+                  placeholder="Have a code?"
+                  aria-label="Have a code? Enter it here"
+                  maxLength={20}
+                  autoCapitalize="characters"
+                  className="flex-1 rounded-lg bg-white/5 border border-white/15 px-3 py-2 text-base text-white placeholder:text-white/50"
+                />
+                <button
+                  type="button"
+                  onClick={applyTypedCode}
+                  disabled={codeBusy || !codeInput.trim()}
+                  className="rounded-lg border border-white/20 px-3 py-2 text-sm text-white/80 disabled:opacity-40"
+                >
+                  Apply
+                </button>
+              </div>
+            )}
+            {offerLine && (
+              <p className={`text-xs mb-4 ${offerActive ? 'text-gold-light' : 'text-white/70'}`} role="status">{offerLine}</p>
+            )}
+            <p className="text-xs text-white/70 leading-relaxed mb-3">{directFreeWeekTerms(PRICING.trial_days, offerActive ? offerPercent : null)}</p>
+            <label className="flex items-start gap-2.5 text-xs text-white/85">
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 w-5 h-5 shrink-0" />
+              <span>
+                {directAgreeLabel()}{' '}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Read the Terms</a>
+              </span>
+            </label>
+          </div>
+        )}
+
         <button
-          onClick={handleCheckout}
-          disabled={loading}
+          onClick={() => handleCheckout()}
+          disabled={loading || (freeWeekLeads && directMode && (!agreed || foreignCode !== null))}
+          aria-describedby={freeWeekLeads && directMode && !agreed ? 'tick-to-start' : undefined}
           className="glass-button-primary w-full flex items-center justify-center gap-2 text-sm py-3 disabled:opacity-50"
         >
           {loading ? (
@@ -370,9 +515,37 @@ export default function SubscribePage() {
         </button>
         {checkoutError && <p className="text-center text-xs text-rose-300 mt-3" role="alert">{checkoutError}</p>}
 
-        <p className="text-center text-xs text-white/50 mt-3">
-          {trialEligible === true && noCardTrial ? stripeHandoffLine() : 'Secure payment via Stripe.'}
-        </p>
+        {freeWeekLeads && directMode && !agreed && (
+          <p id="tick-to-start" className="text-center text-xs text-white/60 mt-2">{tickToStartLine()}</p>
+        )}
+        {freeWeekLeads && directMode && foreignCode !== null && (
+          <button
+            type="button"
+            onClick={() => { setForeignCode(null); setOfferLine(null); setStripeOption(false) }}
+            className="block mx-auto mt-3 text-xs text-white/70 underline underline-offset-2"
+          >
+            {startWithoutCodeLabel()}
+          </button>
+        )}
+        {freeWeekLeads && directMode && stripeOption && (
+          <button
+            type="button"
+            onClick={() => handleCheckout(true)}
+            disabled={loading}
+            className="block mx-auto mt-3 text-xs text-white/70 underline underline-offset-2 disabled:opacity-50"
+          >
+            {useStripePageLabel()}
+          </button>
+        )}
+        {freeWeekLeads && directMode && stripeOption && (
+          <p className="text-center text-xs text-white/50 mt-2">{stripeHandoffLine()}</p>
+        )}
+
+        {!(freeWeekLeads && directMode) && (
+          <p className="text-center text-xs text-white/50 mt-3">
+            {trialEligible === true && noCardTrial ? stripeHandoffLine() : 'Secure payment via Stripe.'}
+          </p>
+        )}
 
       </div>
 

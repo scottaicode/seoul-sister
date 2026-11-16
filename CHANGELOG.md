@@ -4,6 +4,39 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.62.0 — The free week can start on our own page, with no Stripe page (built, switched OFF) (Nov 15 2026)
+
+- **Why.** A tester met Stripe's hosted page (a price, a promotion-code box, the word "trial") on
+  a step that takes no card, and read it as a charge.
+- **What.** With `DIRECT_FREE_WEEK=on` the membership page shows the terms, a box to tick and a
+  "Have a code?" field, and starts the free week itself. It then says "Your free week has
+  started" with the day and time it ends before moving on. Off by default: nothing changes for
+  anyone until the variable is set and the site redeployed.
+- **Stripe's page stays** for returning members, for a promotion code we cannot apply ourselves
+  (one exists: ANNKOREA), and as the fallback after a failure, offered only when Stripe has
+  confirmed that nothing was started.
+- **One fulfilment.** The block that writes a new subscription's rows, the free-week ledger, the
+  confirmation email and the owner alert moved out of the webhook into
+  `src/lib/subscription-fulfilment.ts`, used by the Stripe-page webhook (same behaviour), by the
+  direct start, and by the webhook's `customer.subscription.created` as the second chance.
+  For a direct start the mail goes out from whichever caller made the ledger row.
+- **Account deletion** also finds a Stripe customer that has no subscription (a direct start
+  makes the customer first).
+- **Wording.** The confirmation email follows how that member's subscription started. The Terms
+  line is true either way. "Could not start checkout" became "This could not be started just
+  now. Nothing was charged." Yuri's fact about a saved code no longer names a "payment page".
+- **Review.** Opus 5.5 and Fable 5.2 reviewed the plan (two reports) and the diff (two reports).
+  Fixed from the diff reviews: a private code could be dropped with one press; "started" could be
+  followed by a page treating the person as a stranger; a paid or past-due subscription could be
+  reported as a free week; Stripe's page could be offered while a free week was already running;
+  an unconditional "a confirmation is on its way". The fixes to those findings were not reviewed
+  again.
+- **Known gaps.** The direct path has never run against live Stripe, and the page has not been
+  seen in a browser. A confirmation email that fails twice is not retried (a
+  `confirmation_sent_at` column would close it). A customer created under a minute before an
+  account is deleted, whose subscription call failed, can be missed by deletion (Stripe search
+  lag). Stripe keeps a failed create under its key for 24 hours; the way out is Stripe's page.
+
 ## v11.61.19 — "Free week" everywhere a member reads it, and three loose ends on the path to membership (Nov 15 2026)
 
 - **"Trial" is no longer our word.** v11.61.18 changed the pages on the way in; the banner, the

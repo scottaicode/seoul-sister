@@ -28,6 +28,8 @@ export function buildSubscriptionConfirmationEmail(params: {
    * printed, because a profile zone can come from the city someone typed.
    */
   timezone?: string | null
+  /** The free week was started on our own membership page, so no Stripe page (and its word "trial") was seen. */
+  startedOnOurPage?: boolean
 }): { subject: string; html: string } {
   const noCardTrial = Boolean(params.trialEnd) && params.cardOnFile === false
   const zone = validTimeZone(params.timezone) ?? 'UTC'
@@ -43,12 +45,16 @@ export function buildSubscriptionConfirmationEmail(params: {
   const fmtShort = (d: Date) =>
     d.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: zone, timeZoneName: 'short' })
   const pct = params.percentOff ?? null
+  // Where they started it, in their terms: Stripe's page called it a trial; ours did not.
+  const whereStarted = params.startedOnOurPage
+    ? 'You started it on the Seoul Sister membership page.'
+    : `This is the ${PRICING.trial_days}-day trial you confirmed on Stripe's page; we call it your free week.`
   const discounted = firstMonthPrice(pct) !== null
   const firstCharge = noCardTrial && params.trialEnd
-    ? `<p>Your free week has started. This is the ${PRICING.trial_days}-day trial you confirmed on Stripe's page; we call it your free week. <strong>No card is on file and you will not be charged.</strong> It ends ${escapeHtml(fmtTime(params.trialEnd))}.</p>
+    ? `<p>Your free week has started. ${whereStarted} <strong>No card is on file and you will not be charged.</strong> It ends ${escapeHtml(fmtTime(params.trialEnd))}.</p>
 <p><strong>To keep your membership,</strong> add a card before then with the "Add a card" button at the top of any page once you are signed in at <a href="https://www.seoulsister.com/dashboard">seoulsister.com</a>. A card you add is charged ${escapeHtml(chargePhrase(pct, 'when the free week ends'))}. If you add no card, your membership stops at that time and nothing is charged. Your account and skin profile are kept.</p>`
     : params.trialEnd
-    ? `<p>Your free week has started. This is the ${PRICING.trial_days}-day trial you confirmed on Stripe's page; we call it your free week. <strong>Unless you cancel before it ends, your card will be charged ${escapeHtml(firstChargeText(pct))} when it ends, ${PRICING.trial_days} days after it started (${escapeHtml(fmtTime(params.trialEnd))})</strong>, ${discounted ? escapeHtml(thereafterText(pct)) : 'and again every month after that until you cancel'}.</p>`
+    ? `<p>Your free week has started. ${whereStarted} <strong>Unless you cancel before it ends, your card will be charged ${escapeHtml(firstChargeText(pct))} when it ends, ${PRICING.trial_days} days after it started (${escapeHtml(fmtTime(params.trialEnd))})</strong>, ${discounted ? escapeHtml(thereafterText(pct)) : 'and again every month after that until you cancel'}.</p>`
     : `<p>Your subscription has started. Your card is charged ${escapeHtml(chargePhrase(pct, 'today'))}.</p>`
 
   const html = wrapEmailHtml(
@@ -74,9 +80,9 @@ ${noCardTrial
 export async function sendSubscriptionConfirmation(
   to: string,
   trialEnd: Date | null,
-  opts: { cardOnFile?: boolean; percentOff?: number | null; timezone?: string | null } = {}
+  opts: { cardOnFile?: boolean; percentOff?: number | null; timezone?: string | null; startedOnOurPage?: boolean } = {}
 ): Promise<{ sent: boolean; reason?: string }> {
-  const { subject, html } = buildSubscriptionConfirmationEmail({ trialEnd, cardOnFile: opts.cardOnFile, percentOff: opts.percentOff, timezone: opts.timezone })
+  const { subject, html } = buildSubscriptionConfirmationEmail({ trialEnd, cardOnFile: opts.cardOnFile, percentOff: opts.percentOff, timezone: opts.timezone, startedOnOurPage: opts.startedOnOurPage })
   const result = await sendEmail(to, subject, html)
   return result.sent ? { sent: true } : { sent: false, reason: 'reason' in result ? String(result.reason) : 'error' in result ? String(result.error) : 'unknown' }
 }

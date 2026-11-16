@@ -91,11 +91,15 @@ function fakeDb(tables = {}, fail = {}) {
         },
         upsert(values, opts) {
           log.push({ table, op: 'upsert', values, opts })
-          if (fail[table]) return Promise.resolve({ error: { message: 'boom' } })
+          // Awaitable as before, and `.select()` returns only rows this call
+          // inserted (PostgREST does the same with ignoreDuplicates).
+          const answer = (res, selected) => Object.assign(Promise.resolve(res), { select: () => Promise.resolve(selected) })
+          if (fail[table]) return answer({ error: { message: 'boom' } }, { data: null, error: { message: 'boom' } })
           const key = opts?.onConflict
           const rows = (tables[table] ??= [])
-          if (!(key && opts.ignoreDuplicates && rows.some((r) => r[key] === values[key]))) rows.push({ ...values })
-          return Promise.resolve({ error: null })
+          const duplicate = !!(key && opts.ignoreDuplicates && rows.some((r) => r[key] === values[key]))
+          if (!duplicate) rows.push({ ...values })
+          return answer({ error: null }, { data: duplicate ? [] : [{ id: 'row' }], error: null })
         },
         update(values) {
           const uf = []
@@ -124,7 +128,9 @@ function fakeDb(tables = {}, fail = {}) {
 const NOW = Date.parse('2026-11-10T12:00:00Z')
 const daysAgo = (n) => new Date(NOW - n * 86400000).toISOString()
 
-const webhook = read('src/app/api/stripe/webhook/route.ts')
+// The fulfilment of a new subscription moved out of the route (Nov 15 2026) so the
+// free week that starts on our own page runs the same code. Read as one text.
+const webhook = read('src/app/api/stripe/webhook/route.ts') + '\n' + read('src/lib/subscription-fulfilment.ts')
 const checkout = read('src/app/api/stripe/checkout/route.ts')
 const stripe = read('src/lib/stripe.ts')
 
@@ -189,7 +195,7 @@ test('eligibility: any failed lookup is NOT eligible and says so (never a silent
       )
     }
   } finally { m.restore() }
-  assert.match(checkout, /if \(!eligibility\.eligible && eligibility\.reason === 'lookup_failed'\) \{\s*return NextResponse\.json\(\{ error: 'Could not start checkout\. Please try again in a minute\.' \}, \{ status: 503 \}\)\s*\}\s*const withTrial = eligibility\.eligible\n/)
+  assert.match(checkout, /if \(!eligibility\.eligible && eligibility\.reason === 'lookup_failed'\) \{\s*return NextResponse\.json\(\{ error: couldNotStartLine\(\) \}, \{ status: 503 \}\)\s*\}\s*const withTrial = eligibility\.eligible\n/)
 })
 
 test('the free week ledger is written once per inbox, with the network, and a failed write is reported', async () => {
@@ -206,8 +212,15 @@ test('the free week ledger is written once per inbox, with the network, and a fa
     await m.trial.recordTrialStart(coded, { ...t, email: 'other@x.com', offerCode: 'BAILEY', offerPercentOff: 50 })
     assert.deepEqual([coded.tables.ss_trial_starts[0].offer_code, coded.tables.ss_trial_starts[0].offer_percent_off], ['BAILEY', 50])
     assert.equal(await m.trial.recordTrialStart(fakeDb({}, { ss_trial_starts: true }), t), false)
+    // The same write, saying whether THIS call made the row: only that call sends mail.
+    const once = fakeDb()
+    assert.equal(await m.trial.recordTrialStartOnce(once, t), 'new')
+    assert.equal(await m.trial.recordTrialStartOnce(once, { ...t, subscriptionId: 'sub_RETRY' }), 'existing')
+    assert.equal(once.tables.ss_trial_starts.length, 1)
+    assert.equal(await m.trial.recordTrialStartOnce(fakeDb({}, { ss_trial_starts: true }), t), 'failed')
   } finally { m.restore() }
-  assert.match(webhook, /if \(!recorded\) throw new Error\(`could not record trial start/)
+  assert.match(webhook, /if \(recorded === 'failed'\) throw new Error\(`could not record trial start/)
+  assert.match(webhook, /if \(p\.mailOnlyIfNewLedgerRow && recorded === 'existing'\) return \{ plan, isTrial, mailed: false \}/)
   assert.doesNotMatch(webhook, /no-email\.invalid/, 'a made-up address can never match an eligibility lookup')
 })
 
@@ -567,7 +580,7 @@ test('emails never promise a charge to a card that does not exist, and a lapsed 
   assert.match(branch, /No card is on file and you will not be charged\./)
   assert.match(branch, /with the "Add a card" button at the top of any page/)
   assert.doesNotMatch(branch, /your card will be charged|Profile page/i)
-  assert.match(webhook, /sendSubscriptionConfirmation\(buyerEmail, trialEnd, \{ cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: await timezoneForUser\(supabase, userId\) \}\)/)
+  assert.match(webhook, /sendSubscriptionConfirmation\(buyerEmail, trialEnd, \{ cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: await timezoneForUser\(db, userId\), startedOnOurPage: subscription\.metadata\?\.direct === '1' \}\)/)
   assert.match(webhook, /const noCardTrial = isTrial && subscription\.metadata\?\.no_card === '1'/, 'stated by the checkout, not guessed from Stripe state')
   // "No card was on file" is only sent to a trial that began with no card and
   // never had one added. A cancelled card trial, or a card added then
@@ -839,7 +852,7 @@ test('offer codes: the checkout stops if Stripe cannot confirm the code, and the
 
 test('offer codes: the discount follows the member into every later notice about what their card will be charged', () => {
   assert.match(webhook, /stripe\.subscriptions\.retrieve\(subscriptionId, \{ expand: \['discount\.promotion_code'\] \}\)/)
-  assert.match(webhook, /const \{ code: offerCode, percentOff: offerPercentOff \} = offerFromSubscription\(subscription, session\.metadata\)/)
+  assert.match(webhook, /const \{ code: offerCode, percentOff: offerPercentOff \} = offerFromSubscription\(subscription, p\.metadata \?\? null\)/)
   assert.match(webhook, /offer_code: offerCode,\s*offer_percent_off: offerPercentOff,/)
   assert.match(webhook, /offerCode,\s*offerPercentOff,\s*\}\)/, 'recorded on the free week row')
   assert.match(read('src/lib/email/trial-emails.ts'), /Your card will be charged \$\{chargePhrase\(percentOff, 'once it ends,'\)\}\./)
@@ -962,7 +975,7 @@ test('offer codes (executed): the free week-ending notice states the discounted 
 // ---------------------------------------------------------------------------
 // Yuri is told about a visitor's code as a FACT (both chat surfaces).
 // ---------------------------------------------------------------------------
-const YURI_ACTIVE = 'Creator code: this visitor has the code BAILEY saved in this browser. For someone who is not yet a member, it takes 50% off the first paid month: $4.99 instead of $9.99. Every month after that is $9.99/month, so where anything else here says $9.99/month, for this person that begins with the second paid month. If they start membership in this same browser the code is applied for them; on another device or browser they can type it on the payment page. The free week is the same with or without it. The discount covers the first paid month only. When the code itself stops being accepted is not shown to you. It matters only if price or the code comes up.'
+const YURI_ACTIVE = 'Creator code: this visitor has the code BAILEY saved in this browser. For someone who is not yet a member, it takes 50% off the first paid month: $4.99 instead of $9.99. Every month after that is $9.99/month, so where anything else here says $9.99/month, for this person that begins with the second paid month. If they start membership in this same browser the code is applied for them; on another device or browser they can enter it when they start membership. The free week is the same with or without it. The discount covers the first paid month only. When the code itself stops being accepted is not shown to you. It matters only if price or the code comes up.'
 const YURI_ENDED = 'Creator code: this visitor arrived with the code BAILEY, and it is no longer accepted, so membership for them is $9.99/month.'
 const YURI_UNCHECKED = "Creator code: this visitor's browser holds a creator code that could not be checked just now, so whether it applies is not visible to you."
 

@@ -29,6 +29,16 @@ export function noCardTrialEnabled(): boolean {
   return !PRICING.trial_requires_card && process.env.NO_CARD_TRIAL_ENABLED !== 'false'
 }
 
+/**
+ * Start the no-card free week on our own page, without sending the person to
+ * Stripe's hosted page (Nov 15 2026). OFF unless DIRECT_FREE_WEEK=on. Stripe's
+ * page stays available either way: it is where a returning member pays, and
+ * where a promotion code we cannot apply ourselves is entered.
+ */
+export function directFreeWeekEnabled(): boolean {
+  return noCardTrialEnabled() && process.env.DIRECT_FREE_WEEK === 'on'
+}
+
 /** Trials one network may start within TRIAL_NETWORK_WINDOW_DAYS. */
 export const TRIAL_NETWORK_CAP = 3
 export const TRIAL_NETWORK_WINDOW_DAYS = 30
@@ -119,7 +129,19 @@ export async function recordTrialStart(
     offerPercentOff?: number | null
   }
 ): Promise<boolean> {
-  const { error } = await db.from('ss_trial_starts').upsert(
+  return (await recordTrialStartOnce(db, t)) !== 'failed'
+}
+
+/**
+ * The same write, reporting whether THIS call made the row. The direct start
+ * and the webhook can both reach it for one subscription; only the one that
+ * made the row sends the confirmation email and the owner alert.
+ */
+export async function recordTrialStartOnce(
+  db: SupabaseClient,
+  t: Parameters<typeof recordTrialStart>[1]
+): Promise<'new' | 'existing' | 'failed'> {
+  const { data, error } = await db.from('ss_trial_starts').upsert(
     {
       email_canonical: canonicalizeEmail(t.email),
       user_id: t.userId,
@@ -131,12 +153,13 @@ export async function recordTrialStart(
       offer_percent_off: t.offerPercentOff ?? null,
     },
     { onConflict: 'email_canonical', ignoreDuplicates: true }
-  )
+  ).select('id')
   if (error) {
     console.error('[trial] could not record trial start:', error.message)
-    return false
+    return 'failed'
   }
-  return true
+  // With ignoreDuplicates, a row that already existed is not returned.
+  return (data ?? []).length > 0 ? 'new' : 'existing'
 }
 
 /**
@@ -226,6 +249,8 @@ export interface TrialFacts {
   eligible: boolean | null
   /** That trial starts with no card. */
   no_card: boolean
+  /** It starts on our own page, not Stripe's. The page shows the terms and sends `via: 'direct'`. */
+  direct: boolean
   /** This person already used their free trial. */
   had_trial: boolean
   /** No trial because several were already started from this network recently. */
@@ -299,6 +324,7 @@ export async function trialFacts(
   return {
     eligible: unknown ? null : eligibility.eligible,
     no_card: noCardTrialEnabled(),
+    direct: directFreeWeekEnabled(),
     // "Your free trial has ended" is only true for someone who HAD one: a
     // ledger row for this inbox or this account. A paying member who cancelled
     // has subscription history but never had a trial.

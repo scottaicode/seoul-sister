@@ -66,6 +66,50 @@ export interface CheckoutParamsInput {
   offer?: { code: string; promotionCodeId: string; percentOff: number } | null
 }
 
+/**
+ * The terms shown on OUR membership page, above the box the person ticks,
+ * when the free week starts there instead of on Stripe's page. The version is
+ * stored on the Stripe subscription, whose own creation time is when they
+ * agreed. Change a word here and change the version with it (a test pins the
+ * two together). The version names this template; with the discount stored
+ * beside it (offer_percent_off) that is one exact text. The route refuses to
+ * start without the box ticked, and records that it was.
+ */
+export const DIRECT_TERMS_VERSION = '2026-11-15'
+export function directFreeWeekTerms(trialDays: number, percentOff: number | null = null): string {
+  return `Nothing is charged today and no card is asked for. Your free week is the first ${trialDays} days of membership and starts when you press the button. With no card, membership stops when the free week ends and nothing is ever charged. To keep going you add a card with the "Add a card" button inside Seoul Sister; a card you add is charged ${chargePhrase(percentOff, 'when the free week ends')}. The free week can be started once.`
+}
+
+/**
+ * The subscription itself, created by our server for a no-card free week
+ * (no Checkout Session). Everything the webhook reads from a Checkout
+ * subscription is here too, plus `direct` and the terms version.
+ */
+export function buildDirectFreeWeekParams(p: {
+  userId: string
+  plan: string
+  priceId: string
+  customerId: string
+  ipHash?: string | null
+  offer?: { code: string; promotionCodeId: string; percentOff: number } | null
+}) {
+  const metadata: Record<string, string> = { user_id: p.userId, plan: p.plan, no_card: '1', direct: '1', terms_version: DIRECT_TERMS_VERSION, terms_agreed: '1' }
+  if (p.offer) {
+    metadata.offer_code = p.offer.code
+    metadata.offer_percent_off = String(p.offer.percentOff)
+  }
+  if (p.ipHash) metadata.ip_hash = p.ipHash
+  return {
+    customer: p.customerId,
+    items: [{ price: p.priceId, quantity: 1 }],
+    trial_period_days: PRICING.trial_days,
+    // With no card the free week must END, not invoice an empty wallet.
+    trial_settings: { end_behavior: { missing_payment_method: 'cancel' as const } },
+    ...(p.offer ? { promotion_code: p.offer.promotionCodeId } : {}),
+    metadata,
+  }
+}
+
 /** The subscription Checkout Session. A paid checkout (no trial) ALWAYS takes a card. */
 export function buildCheckoutParams(p: CheckoutParamsInput) {
   const trialDays = p.withTrial ? PRICING.trial_days : 0

@@ -1,48 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getStripeClient, planFromStripePriceId, applySavedCardToSubscription, ACCOUNT_DELETED_CANCEL_COMMENT, type TierKey } from '@/lib/stripe'
+import { getStripeClient, planFromStripePriceId, applySavedCardToSubscription, ACCOUNT_DELETED_CANCEL_COMMENT } from '@/lib/stripe'
 import { getServiceClient } from '@/lib/supabase'
-import { attributeConversion, leadSourceForEmail } from '@/lib/widget/visitor'
-import { recordTrialStart, markTrialLapsed, isStaleSubscriptionEvent } from '@/lib/trial'
+import { attributeConversion } from '@/lib/widget/visitor'
+import { markTrialLapsed, isStaleSubscriptionEvent } from '@/lib/trial'
 import { onInvoicePaid } from '@/lib/trial-events'
 import { offerFromSubscription } from '@/lib/offers'
 import { sendTrialEndedEmail } from '@/lib/email/trial-emails'
 import { notifyNewSubscriber } from '@/lib/email/new-subscriber-alert'
 import { sendSubscriptionConfirmation } from '@/lib/email/subscription-confirmation'
 import { subscriptionPeriod, invoiceSubscriptionId, invoiceAmountPaid, eventObjectForLog } from '@/lib/stripe-payload'
+import { fulfilNewSubscription, planToTier, stripeCreatedAt, emailForUser, timezoneForUser } from '@/lib/subscription-fulfilment'
 import type Stripe from 'stripe'
-
-/** Map plan key to the ss_subscriptions.tier column value */
-function planToTier(_plan: TierKey): string {
-  return 'pro' // Single tier — all subscribers are pro
-}
-
-/** When Stripe created the subscription, as ISO, or null. */
-function stripeCreatedAt(subscription: { created?: number | null }): string | null {
-  return typeof subscription.created === 'number' && subscription.created > 0
-    ? new Date(subscription.created * 1000).toISOString()
-    : null
-}
-
-/** The account's email from auth, or null. Never throws. */
-async function emailForUser(db: ReturnType<typeof getServiceClient>, userId: string): Promise<string | null> {
-  try {
-    const { data } = await db.auth.admin.getUserById(userId)
-    return data?.user?.email ?? null
-  } catch (err) {
-    console.error('[stripe webhook] could not read the account email:', err)
-    return null
-  }
-}
-
-/** The member's time zone, for dates in emails. null (then UTC, labelled) if unknown or unreadable. */
-async function timezoneForUser(db: ReturnType<typeof getServiceClient>, userId: string): Promise<string | null> {
-  const { data, error } = await db.from('ss_user_profiles').select('timezone').eq('user_id', userId).maybeSingle()
-  if (error) {
-    console.error('[stripe webhook] could not read the member time zone; email dates will be UTC:', error.message)
-    return null
-  }
-  return (data?.timezone as string | null) ?? null
-}
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
@@ -165,125 +133,17 @@ export async function POST(request: NextRequest) {
 
         if (subscriptionId && customerId) {
           const subscription = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['discount.promotion_code'] })
-          const priceId = subscription.items.data[0]?.price?.id
-          const plan = planFromStripePriceId(priceId ?? '')
-
-          // Attribution (NORTH-STAR.md One Metric): tie this paid subscription
-          // back to a Yuri widget conversation by matching the buyer's email
-          // to a captured widget lead. Best-effort — never blocks the webhook.
-          // The buyer email comes from the Stripe session (collected at checkout).
-          const buyerEmail =
-            session.customer_details?.email || session.customer_email || null
-          // A free trial is NOT a paid conversion (Nov 10 2026). Stamping it
-          // here made every trial start count as paid in the One Metric. The
-          // stamp now happens when the trial becomes a paying subscription
-          // (customer.subscription.updated, trialing -> active). A checkout
-          // with no trial is paid today and is stamped here as before.
-          const isTrial = subscription.status === 'trialing'
-          const noCardTrial = isTrial && subscription.metadata?.no_card === '1'
-          const leadSource = isTrial
-            ? await leadSourceForEmail(buyerEmail)
-            : await attributeConversion(buyerEmail, userId)
-
-          const period = subscriptionPeriod(subscription)
-          if (!period) {
-            throw new Error(`subscription ${subscriptionId} has no readable billing period`)
-          }
-
-          // The discount this subscription actually carries, from Stripe's own
-          // record (a code typed into Stripe's box never reaches our metadata).
-          // Stored so "who used Bailey's code, who paid" is readable from our
-          // rows, and so later notices state the price the card will be charged.
-          const { code: offerCode, percentOff: offerPercentOff } = offerFromSubscription(subscription, session.metadata)
-
-          const { error: checkoutUpsertError } = await supabase.from('ss_subscriptions').upsert(
-            {
-              user_id: userId,
-              stripe_customer_id: customerId,
-              stripe_subscription_id: subscriptionId,
-              tier: planToTier(plan),
-              // Was hardcoded 'active'; a free trial reports 'trialing'.
-              status: subscription.status === 'trialing' ? 'trialing' : 'active',
-              stripe_price_id: priceId ?? null,
-              trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-              stripe_created_at: stripeCreatedAt(subscription),
-              offer_code: offerCode,
-              offer_percent_off: offerPercentOff,
-              lead_source: leadSource, // 'widget' if matched, else null (organic/unknown)
-              current_period_start: period.start,
-              current_period_end: period.end,
-            },
-            { onConflict: 'user_id' }
-          )
-          if (checkoutUpsertError) {
-            throw new Error(`ss_subscriptions upsert failed: ${checkoutUpsertError.message}`)
-          }
-
-          const { error: planWriteError } = await supabase
-            .from('ss_user_profiles')
-            .update({ plan })
-            .eq('user_id', userId)
-          if (planWriteError) {
-            throw new Error(`ss_user_profiles plan write failed: ${planWriteError.message}`)
-          }
-
-          // One row per trial ever started. It is the "trial started" count and
-          // the one-trial-per-person ledger, so a failed write must retry.
-          if (isTrial) {
-            // The ledger is keyed on the inbox, so it needs a real address:
-            // the one Stripe collected, else the account's own.
-            const ledgerEmail = buyerEmail ?? (await emailForUser(supabase, userId))
-            if (!ledgerEmail) throw new Error(`no email for user ${userId}; cannot record the trial`)
-            const recorded = await recordTrialStart(supabase, {
-              userId,
-              email: ledgerEmail,
-              subscriptionId,
-              cardRequired: !noCardTrial,
-              trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-              ipHash: session.metadata?.ip_hash ?? null,
-              offerCode,
-              offerPercentOff,
-            })
-            if (!recorded) throw new Error(`could not record trial start for ${subscriptionId}`)
-          }
-
-          // Auto-renewal confirmation the customer keeps (price, first charge
-          // date, how to cancel). Required by California's auto-renewal law;
-          // Stripe sends no receipt for a $0 trial invoice. Best-effort.
-          if (buyerEmail) {
-            try {
-              const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null
-              const confirm = await sendSubscriptionConfirmation(buyerEmail, trialEnd, { cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: await timezoneForUser(supabase, userId) })
-              if (!confirm.sent) {
-                console.error(`[stripe webhook] subscription confirmation NOT sent to user ${userId}: ${confirm.reason}`)
-              }
-            } catch (confirmErr) {
-              console.error('[stripe webhook] subscription confirmation threw:', confirmErr)
-            }
-          } else {
-            console.error(`[stripe webhook] no buyer email on session; confirmation not sent for user ${userId}`)
-          }
-
-          // Notify the owner — a paying customer is the most important event on
-          // the platform. Best-effort; never blocks or fails the webhook.
-          // Fired only here (once per checkout), not on subscription.created,
-          // to avoid double-notifying the same new subscription.
-          try {
-            const notify = await notifyNewSubscriber({
-              email: buyerEmail,
-              plan,
-              tier: planToTier(plan),
-              leadSource,
-              kind: isTrial ? 'trial_started' : 'paid',
-              trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
-              cardOnFile: !noCardTrial,
-            })
-            if (!notify.sent) {
-              console.warn(`[stripe webhook] new-subscriber notify not sent: ${notify.reason}`)
-            }
-          } catch (notifyErr) {
-            console.error('[stripe webhook] new-subscriber notify threw:', notifyErr)
-          }
+          // Everything a new subscription needs (rows, plan, the free-week
+          // ledger, the confirmation email, the owner alert) is one function,
+          // shared with the free week that starts without a Stripe page.
+          await fulfilNewSubscription(supabase, {
+            userId,
+            customerId,
+            subscription,
+            buyerEmail: session.customer_details?.email || session.customer_email || null,
+            metadata: session.metadata,
+            mailOnlyIfNewLedgerRow: false,
+          })
         }
         break
       }
@@ -373,6 +233,23 @@ export async function POST(request: NextRequest) {
           // here locked trial users out of the whole app (AppShell gates on plan).
           .update({ plan: subscription.status === 'active' || subscription.status === 'trialing' ? plan : null })
           .eq('user_id', userId)
+
+        // A free week started on our own page has no Checkout Session, so no
+        // checkout.session.completed will ever fulfil it. The route does that
+        // itself; this is the second chance if it failed after Stripe made the
+        // subscription. It runs after the stale-event check above, and it
+        // throws so Stripe retries: the ledger row is the only thing that
+        // stops a second free week after an account is deleted.
+        if (event.type === 'customer.subscription.created' && subscription.metadata?.direct === '1' && subscription.status === 'trialing') {
+          await fulfilNewSubscription(supabase, {
+            userId,
+            customerId,
+            subscription,
+            buyerEmail: await emailForUser(supabase, userId),
+            metadata: subscription.metadata,
+            mailOnlyIfNewLedgerRow: true,
+          })
+        }
 
         break
       }
