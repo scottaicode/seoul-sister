@@ -4,6 +4,49 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.62.6 — The check-in guard now answers for every sentence, so an invented "we agreed" cannot be left out (Nov 16 2026)
+
+- **The weakness.** A note may say "the day we said the jaw patch would tell us something". The
+  guard checked such a claim only if one of its two readers chose to list it. With the
+  supporting line removed from a member's record, the same note still passed 3 times in 8: both
+  readers left the claim out. An omitted claim is an unchecked claim.
+- **The fix.** A third read. Code cuts the note (subject and body) into numbered sentences and
+  the reader must say, for every number, whether that sentence leans on an earlier exchange or
+  event between them, and if so quote the words that establish it. A sentence it skips blocks
+  the note. So does an answer for a sentence that is not there, and a "yes" is never erased by a
+  second "no". A record quote must be a whole statement (20+ characters); the member's own words
+  count at any length. It is told the shape to look for, not a list of phrases.
+- **Replays on real members' evidence** (each run is three reads on a different model):
+
+  | Note | Should | Result |
+  |---|---|---|
+  | Elin's real note, record has the plan | pass | 8 of 8 (was 2 of 3 before today) |
+  | Same note, plan removed from the record | block | 8 of 8 (was 5 of 8) |
+  | Lauri's real note, the one actually sent | pass | 8 of 8 |
+  | An invented agreement | block | 5 of 5 |
+  | An invented test inside a question | block | 5 of 5 |
+  | An invented memory split across two sentences | block | 5 of 5 |
+  | A plain "how is your skin" question | pass | 5 of 5 |
+
+- **Caught on the way.** A stricter draft blocked Lauri's true note 0 of 4: it treated "your dry
+  skin" as a shared memory and rejected her one-word answer "Dry" as too short. The read is now
+  kept to earlier exchanges and events (the two readers check facts about the person), and her
+  own words count at any length. Found by replaying the note that had really been sent.
+- **Also fixed.** A reader returning an object where text was asked for crashed the check
+  ("trim is not a function") and blocked the note for no stated reason. It is now read as a
+  finding. Nothing that blocked before passes now.
+- **Review.** Fable 5.2 reviewed the first version and found an answer numbered past the last
+  sentence was ignored, and that "no" then "yes" for one sentence counted as "no". Both fixed.
+  The changes made after that review, including the Lauri fix, were not reviewed again.
+- **Limits that remain.**
+  - Code checks that quoted words EXIST in the right place. That they establish the claim is
+    still a reader's judgment.
+  - The evidence holds the member's messages and the recorded decisions, not Yuri's own past
+    messages. A true "last week I told you X" that the memory summary did not capture is blocked.
+  - Two notes sent on Nov 8 could not be replayed faithfully (their forecast was not stored).
+  - One more model call per note.
+- First scheduler-made evidence: Elin's day-6 note (Thu Nov 19) and the Sunday notes (Nov 22).
+
 ## v11.62.5 — Three of four check-in notes were blocked on Nov 15; two causes fixed (Nov 16 2026)
 
 - **Measured.** On Sunday Nov 15 Yuri wrote four check-in notes. One was sent (Lauri). The

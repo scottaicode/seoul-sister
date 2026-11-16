@@ -235,12 +235,22 @@ export function enforceGuard(v: VerifierOutput | null, evidence: GuardEvidence, 
       reasons.push(`asserts something about them they never said: ${fact}`)
     }
   }
-  for (const p of v.promises ?? []) if (p?.trim()) reasons.push(`makes a plan/pricing/capability promise: ${p.trim()}`)
-  for (const p of v.pressure ?? []) if (p?.trim()) reasons.push(`applies pressure or urgency: ${p.trim()}`)
-  for (const m of v.medical_reassurance ?? []) if (m?.trim()) reasons.push(`offers medical reassurance: ${m.trim()}`)
-  for (const h of v.harmful_followups ?? []) if (h?.trim()) reasons.push(`follows up on a harmful plan or a prescription change: ${h.trim()}`)
-  for (const d of v.contradicted_decisions ?? []) if (d?.trim()) reasons.push(`contradicts a recorded decision: ${d.trim()}`)
-  for (const ch of v.routine_changes ?? []) if (ch?.trim()) reasons.push(`introduces a routine change with no conflict check: ${ch.trim()}`)
+  // What a reader put in one of its lists, as text. A reader sometimes returns
+  // an object where a string was asked for; that used to throw here and fail
+  // the whole check closed (seen in replays, Nov 16 2026). It is still a
+  // finding, and still blocks: it is just read instead of crashing on. Nothing
+  // that blocked before passes now: only an empty string, null or a missing
+  // list counts as nothing found.
+  const said = (list: unknown): string[] =>
+    (Array.isArray(list) ? list : list == null ? [] : [list])
+      .map((x) => (typeof x === 'string' ? x : x == null ? '' : JSON.stringify(x)).trim())
+      .filter(Boolean)
+  for (const p of said(v.promises)) reasons.push(`makes a plan/pricing/capability promise: ${p}`)
+  for (const p of said(v.pressure)) reasons.push(`applies pressure or urgency: ${p}`)
+  for (const m of said(v.medical_reassurance)) reasons.push(`offers medical reassurance: ${m}`)
+  for (const h of said(v.harmful_followups)) reasons.push(`follows up on a harmful plan or a prescription change: ${h}`)
+  for (const d of said(v.contradicted_decisions)) reasons.push(`contradicts a recorded decision: ${d}`)
+  for (const ch of said(v.routine_changes)) reasons.push(`introduces a routine change with no conflict check: ${ch}`)
   if (v.verdict !== 'pass') reasons.push(`verifier verdict: ${v.verdict ?? 'missing'}${v.reason ? ` (${v.reason})` : ''}`)
 
   return { pass: reasons.length === 0, reasons, verifier: v }
@@ -306,6 +316,100 @@ const QUOTE_FINDER_SYSTEM = `A checker read a short message an AI skincare advis
 Each fact is given with the place the checker said its support would be: "user" (THEIR OWN MESSAGES), "record" (RECORDED DECISIONS or ACTIVE PLAN), or "facts" (FACTS ON FILE). Look only there. Copy VERBATIM a whole sentence or clause that by itself establishes the fact as stated. Words that are only about the same topic do not establish a fact, and neither does a sentence that says the opposite. If nothing there establishes it, return an empty quote. An empty quote is the right answer whenever you are unsure.
 
 Return STRICT JSON only, one entry per fact, by its number: {"found": [{"n": 1, "user_quote": ""}]}`
+
+/**
+ * The message cut into sentences, so a reader can be made to answer for each
+ * one. Pure, exported for tests. Splitting is deliberately simple (sentence
+ * punctuation and line breaks): a piece that is too long or too short is still
+ * a piece somebody has to account for.
+ */
+export function splitSentences(text: string): string[] {
+  const pieces = text
+    // A sentence ends at . ! ? only when what follows starts like a sentence, so
+    // "No. 9", "2.5%", "8 p.m. tonight" and "e.g. this" stay whole.
+    .split(/(?<=[.!?])\s+(?=["'(\p{Lu}])|\n+/u)
+    .map((p) => p.replace(/\s+/g, ' ').trim())
+    .filter((p) => /[\p{L}\p{N}]/u.test(p))
+  // A stub ("Dr.", "1.", "Hi!") is joined to what follows it (or, at the very
+  // end, to what came before): every numbered piece should be something a
+  // reader can answer for.
+  const out: string[] = []
+  let held = ''
+  for (const p of pieces) {
+    held = held ? `${held} ${p}` : p
+    if (held.length >= 12) { out.push(held); held = '' }
+  }
+  if (held) { if (out.length) out[out.length - 1] = `${out[out.length - 1]} ${held}`; else out.push(held) }
+  return out
+}
+
+export interface HistoryEntry { n?: unknown; leans?: unknown; claim?: unknown; user_quote?: unknown; source?: unknown }
+
+/**
+ * Turn the shared-past reader's answer into what enforceGuard checks, and say
+ * which sentences it failed to answer for. Closed world: EVERY sentence must
+ * come back with an explicit yes or no. A sentence the reader skipped is not a
+ * "no"; it is a reason to block. Until Nov 16 2026 a claim of shared history
+ * ("the day we said the patch would tell us something") was caught only if a
+ * reader chose to list it, and with the supporting line removed from the
+ * record the same note still passed 3 times in 8: both readers left it out.
+ *
+ * A record quote shorter than SECOND_LOOK_MIN_QUOTE is dropped here, so a
+ * stray phrase cannot stand for an agreement. What code can check is that the
+ * quoted words exist in the right place; that they ESTABLISH the claim is the
+ * reader's call, here as everywhere in this guard. Pure, exported for tests.
+ */
+export function historyToVerifier(entries: unknown, sentences: string[]): { verifier: VerifierOutput; unanswered: number[]; strays: number } {
+  const list = Array.isArray(entries) ? (entries as HistoryEntry[]) : []
+  const byN = new Map<number, HistoryEntry>()
+  // An answer that is not for one of OUR sentences (numbered past the end, from
+  // zero, or not numbered) means the reader cut the message differently, and a
+  // "yes" may be sitting on a number we would never look at. That blocks.
+  let strays = 0
+  for (const e of list) {
+    const n = e && Number.isInteger(e.n) ? (e.n as number) : 0
+    if (!e || typeof e.leans !== 'boolean' || n < 1 || n > sentences.length) { strays += 1; continue }
+    // Two answers for one sentence: a "yes" is never erased by a "no", in either order.
+    const had = byN.get(n)
+    if (!had || (e.leans === true && had.leans !== true)) byN.set(n, e)
+  }
+  const unanswered: number[] = []
+  const asserted: NonNullable<VerifierOutput['asserted_facts']> = []
+  sentences.forEach((sentence, i) => {
+    const e = byN.get(i + 1)
+    if (!e) { unanswered.push(i + 1); return }
+    if (e.leans !== true) return
+    const quote = typeof e.user_quote === 'string' ? e.user_quote.trim() : ''
+    const source = e.source === 'record' ? 'record' : e.source === 'facts' ? 'facts' : 'user'
+    // A line from the record has to be a whole statement. Their own words are
+    // their own words at any length the rest of the guard accepts: a member
+    // asked how her skin feels answered "Dry", and a floor of ten characters
+    // here blocked a true note that had been sent (replayed Nov 16 2026).
+    const floor = source === 'record' ? SECOND_LOOK_MIN_QUOTE : 0
+    asserted.push({
+      // The sentence itself is kept in the reason, so a blocked note says where.
+      fact: `${typeof e.claim === 'string' && e.claim.trim() ? e.claim.trim() : 'something you two said or agreed'} (in: "${sentence}")`,
+      user_quote: norm(quote).length >= floor ? quote : '',
+      source,
+    })
+  })
+  return { verifier: { products_mentioned: [], using_claims: [], asserted_facts: asserted, verdict: 'pass' }, unanswered, strays }
+}
+
+const HISTORY_SYSTEM = `You check ONE thing in a short message an AI skincare advisor wants to send a person unprompted: every place it leans on a shared past.
+
+A sentence leans on a shared past when it says, or takes for granted, that the two of them, or either one, EARLIER said, asked, agreed, decided, planned, promised, scheduled, started, or were told something. Examples of what can be leaned on: a plan step, a day or date set for something, a product they agreed to try, stop or swap, a test, something the advisor told them to expect, how long ago something began, a reason given before. The wording does not matter and you are not looking for particular phrases: a question leans on a shared past through whatever it takes for granted ("Did the switch we planned help?" takes a planned switch for granted).
+
+You are looking for an earlier EXCHANGE or EVENT between them. A plain fact about the person (their skin type, a concern they have, where they live, what they own or use) is not your concern here, even though they must have told the advisor at some point: other checkers handle those, so answer false for a sentence that only describes them ("your dry skin", "your rosacea").
+
+These also do not lean on a shared past: general skincare knowledge, a plain question about how they or their skin are, a forecast, an offer to talk, and anything listed under VERIFIED STATEMENTS.
+
+The message is given again at the end, cut into numbered sentences. Return exactly one entry for EVERY number, in order, using those numbers and no others: do not split, join or renumber the sentences. For each:
+- leans: true or false.
+- When true, claim: the earlier event it takes for granted, in a few words, with its specifics (which day, which product, how long).
+- When true, user_quote: a whole sentence or clause copied VERBATIM that establishes that this was said or agreed, and source: "user" if it is from THEIR OWN MESSAGES, "record" if it is from RECORDED DECISIONS or ACTIVE PLAN, "facts" if it is from FACTS ON FILE. Every specific in the claim must be in the words you quote, or follow from a date given there and today's date in FACTS ON FILE. Words that are only about the same topic do not establish it. If nothing establishes it, leave user_quote empty: that is the right answer whenever you are unsure, and an empty quote is what stops an invented memory from being sent.
+
+Return STRICT JSON only: {"sentences": [{"n": 1, "leans": false, "claim": "", "user_quote": "", "source": "user" | "record" | "facts"}]}`
 
 /** Any block wins; reasons are de-duplicated. Exported for tests. */
 export function combineReads(reads: GuardResult[]): GuardResult {
@@ -389,14 +493,14 @@ ${evidence.verifiedStatements?.length ? evidence.verifiedStatements.map((s) => `
   // one verifier call and passed by another. A guard whose verdict depends on
   // which call you got is not a guard, so a pass needs both readers to agree.
   try {
-    const readOnce = async (system: string): Promise<GuardResult> => {
+    const ask = async (system: string, content: string, maxTokens: number): Promise<string> => {
       const response = await callAnthropicWithRetry(() =>
         getAnthropicClient().messages.create({
           // A DIFFERENT model from the writer (MODELS.chat): the point is a second reader.
           model: MODELS.primary,
-          max_tokens: 1600,
+          max_tokens: maxTokens,
           system,
-          messages: [{ role: 'user', content: facts }],
+          messages: [{ role: 'user', content }],
         })
       )
       void logAIUsage({
@@ -406,40 +510,53 @@ ${evidence.verifiedStatements?.length ? evidence.verifiedStatements.map((s) => `
         outputTokens: response.usage.output_tokens,
         userId: params.userId,
       })
-      const text = response.content
+      return response.content
         .filter((b): b is Extract<typeof b, { type: 'text' }> => b.type === 'text')
         .map((b) => b.text)
         .join('')
-      let verdict = parseVerifier(text)
-      // A reader sometimes names a fact and copies no words for it although the
-      // words are in the record. Measured Nov 16 2026: the same note with the
-      // same evidence passed two reads in three, and the third blocked on
-      // "user_quote": "" for a plan step recorded word for word. One second
-      // look, for the unquoted facts only. It can fill a quote in; it cannot
-      // remove a fact, and the quote must still be in the evidence verbatim.
+    }
+    // A reader sometimes names a fact and copies no words for it although the
+    // words are in the record. Measured Nov 16 2026: the same note with the
+    // same evidence passed two reads in three, and the third blocked on
+    // "user_quote": "" for a plan step recorded word for word. One second
+    // look, for the unquoted facts only. It can fill a quote in; it cannot
+    // remove a fact, and the quote must still be in the evidence verbatim.
+    const secondLook = async (verdict: VerifierOutput | null): Promise<VerifierOutput | null> => {
       const missing = unquotedFacts(verdict)
-      if (verdict && missing.length) {
-        try {
-          const second = await callAnthropicWithRetry(() =>
-            getAnthropicClient().messages.create({
-              model: MODELS.primary,
-              max_tokens: 900,
-              system: QUOTE_FINDER_SYSTEM,
-              messages: [{ role: 'user', content: `${facts}\n\nFACTS TO LOOK AGAIN FOR:\n${missing.map((m) => `${m.n}. [look in: ${m.source}] ${m.fact}`).join('\n')}` }],
-            })
-          )
-          void logAIUsage({ feature: 'proactive_content_guard', model: MODELS.primary, inputTokens: second.usage.input_tokens, outputTokens: second.usage.output_tokens, userId: params.userId })
-          const secondText = second.content.filter((b): b is Extract<typeof b, { type: 'text' }> => b.type === 'text').map((b) => b.text).join('')
-          const parsed = parseVerifier(secondText) as { found?: Array<{ n?: unknown; user_quote?: unknown }> } | null
-          if (Array.isArray(parsed?.found)) verdict = withFoundQuotes(verdict, parsed.found, evidence)
-        } catch (err) {
-          // The first read stands, and it blocks: nothing is passed on a failed second look.
-          console.error('[proactive] quote second look failed; the first read stands:', err instanceof Error ? err.message : String(err))
-        }
+      if (!verdict || !missing.length) return verdict
+      try {
+        const secondText = await ask(QUOTE_FINDER_SYSTEM, `${facts}\n\nFACTS TO LOOK AGAIN FOR:\n${missing.map((m) => `${m.n}. [look in: ${m.source}] ${m.fact}`).join('\n')}`, 900)
+        const parsed = parseVerifier(secondText) as { found?: Array<{ n?: unknown; user_quote?: unknown }> } | null
+        return Array.isArray(parsed?.found) ? withFoundQuotes(verdict, parsed.found, evidence) : verdict
+      } catch (err) {
+        // The first read stands, and it blocks: nothing is passed on a failed second look.
+        console.error('[proactive] quote second look failed; the first read stands:', err instanceof Error ? err.message : String(err))
+        return verdict
       }
+    }
+    const readOnce = async (system: string): Promise<GuardResult> => {
+      const verdict = await secondLook(parseVerifier(await ask(system, facts, 1600)))
       return enforceGuard(verdict, evidence, `${subject ?? ''}\n${message}`)
     }
-    return combineReads(await Promise.all([readOnce(VERIFIER_SYSTEM_A), readOnce(VERIFIER_SYSTEM_B)]))
+    // The third read answers for EVERY sentence whether it leans on a shared
+    // past. The two readers above list claims as they see fit, and both can
+    // leave the same one out; this one cannot leave a sentence out.
+    const readHistory = async (): Promise<GuardResult> => {
+      const sentences = splitSentences(`${subject ?? ''}\n${message}`)
+      const text = await ask(HISTORY_SYSTEM, `${facts}\n\nTHE MESSAGE, SENTENCE BY SENTENCE:\n${sentences.map((x, i) => `${i + 1}. ${x}`).join('\n')}`, 1800)
+      const parsed = parseVerifier(text) as { sentences?: unknown } | null
+      if (!parsed) return { pass: false, reasons: ['the shared-past check returned nothing readable (fail closed)'], verifier: null }
+      const { verifier, unanswered, strays } = historyToVerifier(parsed.sentences, sentences)
+      // No product accounting here (the two readers do that): an empty message.
+      const result = enforceGuard(await secondLook(verifier), evidence, '')
+      const reasons = [
+        ...result.reasons,
+        ...unanswered.map((n) => `the shared-past check did not answer for sentence ${n}: "${sentences[n - 1]}"`),
+        ...(strays ? [`the shared-past check returned ${strays} answer(s) that match no sentence of the message`] : []),
+      ]
+      return { pass: reasons.length === 0, reasons, verifier: result.verifier }
+    }
+    return combineReads(await Promise.all([readOnce(VERIFIER_SYSTEM_A), readOnce(VERIFIER_SYSTEM_B), readHistory()]))
   } catch (err) {
     console.error('[proactive] content guard call failed:', err)
     return { pass: false, reasons: [`guard call failed (fail closed): ${err instanceof Error ? err.message : String(err)}`], verifier: null }

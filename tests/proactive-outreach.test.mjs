@@ -809,7 +809,7 @@ test('guard: two independent reads, any block wins', async () => {
   assert.equal(combineReads([block, pass]).pass, false)
   assert.equal(combineReads([pass, pass]).pass, true)
   // Two DIFFERENT framings, not the same prompt twice.
-  assert.match(read('src', 'lib', 'proactive', 'content-guard.ts'), /combineReads\(await Promise\.all\(\[readOnce\(VERIFIER_SYSTEM_A\), readOnce\(VERIFIER_SYSTEM_B\)\]\)\)/)
+  assert.match(read('src', 'lib', 'proactive', 'content-guard.ts'), /combineReads\(await Promise\.all\(\[readOnce\(VERIFIER_SYSTEM_A\), readOnce\(VERIFIER_SYSTEM_B\), readHistory\(\)\]\)\)/)
 })
 
 // ---------------------------------------------------------------------------
@@ -1264,16 +1264,134 @@ test('second look (executed): it can fill in a quote that IS in the evidence, un
 
   // Wiring: one second look per read, only when a fact was left unquoted; a failure leaves the first read standing.
   const src = read('src', 'lib', 'proactive', 'content-guard.ts')
-  assert.match(src, /const missing = unquotedFacts\(verdict\)\s*if \(verdict && missing\.length\) \{/)
+  assert.match(src, /const missing = unquotedFacts\(verdict\)\s*if \(!verdict \|\| !missing\.length\) return verdict\n/)
   assert.ok(src.includes('FACTS TO LOOK AGAIN FOR:\\n${missing.map((m) => `${m.n}. [look in: ${m.source}] ${m.fact}`).join(\'\\n\')}'))
-  assert.match(src, /if \(Array\.isArray\(parsed\?\.found\)\) verdict = withFoundQuotes\(verdict, parsed\.found, evidence\)/)
-  assert.match(src, /catch \(err\) \{\s*\/\/ The first read stands, and it blocks[^\n]*\n\s*console\.error\(/)
-  assert.equal(src.split('enforceGuard(verdict,').length - 1, 1, 'every read ends in the same enforcement')
+  assert.match(src, /return Array\.isArray\(parsed\?\.found\) \? withFoundQuotes\(verdict, parsed\.found, evidence\) : verdict/)
+  assert.match(src, /catch \(err\) \{\s*\/\/ The first read stands, and it blocks[^\n]*\n\s*console\.error\([^\n]*\n\s*return verdict\n/)
+  assert.ok(src.includes('      const verdict = await secondLook(parseVerifier(await ask(system, facts, 1600)))\n      return enforceGuard(verdict, evidence, `${subject ?? \'\'}\\n${message}`)\n'))
   assert.equal(src.split('withFoundQuotes(').length - 1, 2, 'defined once, called once')
-  // Nothing after the second look may set the verdict.
-  const tail = src.slice(src.indexOf('verdict = withFoundQuotes('), src.indexOf('return enforceGuard(verdict,'))
-  assert.doesNotMatch(tail, /verdict\.verdict\s*=|\.pass\s*=/)
+  // Nothing in the guard's reads sets a verdict or a pass by hand: enforceGuard decides, and the third read can only ADD reasons.
+  const reads = src.slice(src.indexOf('    const secondLook = async'), src.indexOf('    return combineReads(await Promise.all('))
+  assert.doesNotMatch(reads, /\.verdict\s*=[^=]|\.pass\s*=[^=]|pass: true/)
+  assert.ok(reads.includes('      return { pass: reasons.length === 0, reasons, verifier: result.verifier }\n'))
   // The second look is told where to look and that empty is the right answer when unsure.
   assert.match(src, /Look only there\. Copy VERBATIM a whole sentence or clause that by itself establishes the fact as stated\./)
   assert.match(src, /An empty quote is the right answer whenever you are unsure\./)
+})
+
+// ---------------------------------------------------------------------------
+// The third read: every sentence is answered for (Nov 16 2026).
+// Earned: with the supporting line removed from a member's record, the note
+// "the day we said the jaw patch would tell us something" still passed 3 times
+// in 8. Both readers list claims as they see fit, and both left this one out.
+// After: the same unsupported note was blocked 10 of 10, and the true one
+// passed 10 of 10 (replays on the member's real evidence).
+// ---------------------------------------------------------------------------
+test('shared-past read (executed): a sentence the reader skipped is a block, and a claimed memory needs real words behind it', async () => {
+  const { splitSentences, historyToVerifier, enforceGuard, SECOND_LOOK_MIN_QUOTE } = await loadGuard()
+  const note = 'How\'s your jaw looking?\nTomorrow is Tuesday, the day we said the jaw patch would tell us something. Did you try it? Come tell me in chat.\n\n   \n...'
+  const sentences = splitSentences(note)
+  assert.deepEqual(sentences, ['How\'s your jaw looking?', 'Tomorrow is Tuesday, the day we said the jaw patch would tell us something.', 'Did you try it?', 'Come tell me in chat.'])
+  assert.deepEqual(splitSentences(''), [])
+  // Numbers, abbreviations and times do not make sentences, and a stub is joined to its neighbour.
+  assert.deepEqual(splitSentences('Did the numbuzin No. 9 serum arrive? It is 2.5% and you said 8 p.m. tonight. Dr. Kim agreed. Hi! How are you?'), ['Did the numbuzin No. 9 serum arrive?', 'It is 2.5% and you said 8 p.m. tonight.', 'Dr. Kim agreed.', 'Hi! How are you?'])
+  assert.deepEqual(splitSentences('one long piece with no punctuation at all and nothing to cut on'), ['one long piece with no punctuation at all and nothing to cut on'])
+  const evidence = {
+    userMessages: ['Can I use a sheet mask from mediheal tonight?'],
+    recordedDecisions: ['decision (2026-11-15): mediheal_sheet_mask_test: Do the jaw test tonight. If the patch stays calm through Tuesday, the mask is fine for the whole face.'],
+    plan: null,
+  }
+  const QUOTE = 'If the patch stays calm through Tuesday, the mask is fine for the whole face.'
+  const all = (second) => [{ n: 1, leans: false }, second, { n: 3, leans: false }, { n: 4, leans: false }]
+  const check = (entries, ev = evidence) => {
+    const { verifier, unanswered, strays } = historyToVerifier(entries, sentences)
+    const r = enforceGuard(verifier, ev, '')
+    return { pass: r.pass && unanswered.length === 0 && strays === 0, reasons: r.reasons, unanswered, strays, verifier }
+  }
+  // Answered for, and the memory is on the record word for word: pass.
+  assert.equal(check(all({ n: 2, leans: true, claim: 'the jaw patch would be read on Tuesday', user_quote: QUOTE, source: 'record' })).pass, true)
+  // The same answer when the record does not hold those words: block.
+  assert.equal(check(all({ n: 2, leans: true, claim: 'the jaw patch would be read on Tuesday', user_quote: QUOTE, source: 'record' }), { ...evidence, recordedDecisions: [] }).pass, false)
+  // Leans on a shared past with no words offered: block, and the reason says which sentence.
+  const bare = check(all({ n: 2, leans: true, claim: 'the jaw patch would be read on Tuesday', user_quote: '', source: 'record' }))
+  assert.equal(bare.pass, false)
+  assert.match(bare.reasons.join('\n'), /asserts something about them they never said: the jaw patch would be read on Tuesday \(in: "Tomorrow is Tuesday, the day we said the jaw patch would tell us something\."\)/)
+  // A stray phrase is not an agreement, even though it is in the record.
+  assert.ok(SECOND_LOOK_MIN_QUOTE > 'through Tuesday'.length)
+  assert.equal(check(all({ n: 2, leans: true, claim: 'x', user_quote: 'through Tuesday', source: 'record' })).pass, false)
+  // The member's own words offered as the record, or the record as their words: the source is enforced.
+  assert.equal(check(all({ n: 2, leans: true, claim: 'x', user_quote: QUOTE, source: 'user' })).pass, false)
+  assert.equal(check(all({ n: 2, leans: true, claim: 'x', user_quote: QUOTE })).pass, false, 'no source named means their own words')
+
+  // CLOSED WORLD: every sentence must come back with an explicit yes or no.
+  for (const [label, entries] of [
+    ['nothing at all', []],
+    ['not a list', 'pass'],
+    ['null', null],
+    ['one sentence left out', [{ n: 1, leans: false }, { n: 3, leans: false }, { n: 4, leans: false }]],
+    ['"leans" missing', all({ n: 2, claim: 'x' })],
+    ['"leans" as text', all({ n: 2, leans: 'false' })],
+    ['numbered as text', all({ n: '2', leans: false })],
+    ['numbered from zero', [{ n: 0, leans: false }, { n: 1, leans: false }, { n: 2, leans: false }, { n: 3, leans: false }]],
+  ]) {
+    const r = check(entries)
+    assert.equal(r.pass, false, label)
+    assert.ok(r.unanswered.length > 0 || r.strays > 0, label)
+  }
+  // Two answers for one sentence: a "yes" is never erased by a "no", in either order.
+  assert.equal(check([...all({ n: 2, leans: true, claim: 'x', user_quote: '', source: 'record' }), { n: 2, leans: false }]).pass, false)
+  assert.equal(check([...all({ n: 2, leans: false }), { n: 2, leans: true, claim: 'x', user_quote: '', source: 'record' }]).pass, false)
+  // An answer for a sentence that is not there (the reader cut the message differently): a "yes" could be hiding on it. Block.
+  for (const stray of [{ n: 5, leans: true, claim: 'x', user_quote: '' }, { n: 5, leans: false }, { n: 0, leans: false }, { leans: true }, { n: 2.5, leans: false }]) {
+    const r = check([...all({ n: 2, leans: false }), stray])
+    assert.equal(r.pass, false, JSON.stringify(stray))
+    assert.equal(r.strays, 1)
+  }
+  // Their own words can be short; a record line cannot. (Asked how her skin
+  // feels, a member answered "Dry". A ten-character floor here blocked a true
+  // note that had already been sent.)
+  const oneWord = { userMessages: ['Dry'], recordedDecisions: [], plan: null }
+  assert.equal(check(all({ n: 2, leans: true, claim: 'she said her skin is dry', user_quote: 'Dry', source: 'user' }), oneWord).pass, true)
+  const rosacea = { userMessages: ['I have rosacea'], recordedDecisions: ['decision (2026-11-01): x: rosacea plan'], plan: null }
+  assert.equal(check(all({ n: 2, leans: true, claim: 'they said they have rosacea', user_quote: 'I have rosacea', source: 'user' }), rosacea).pass, true)
+  assert.equal(check(all({ n: 2, leans: true, claim: 'x', user_quote: 'rosacea plan', source: 'record' }), rosacea).pass, false)
+  // Today's date and the forecast are FACTS ON FILE, and may be quoted as such.
+  const dated = { userMessages: [], recordedDecisions: [], plan: null, sourceFacts: ["Today's date (their local date): Monday 2026-11-16"] }
+  assert.equal(check(all({ n: 2, leans: true, claim: 'today is Monday', user_quote: "Today's date (their local date): Monday 2026-11-16", source: 'facts' }), dated).pass, true)
+  // A note that leans on nothing passes this read (the other two readers still run).
+  assert.equal(check(all({ n: 2, leans: false })).pass, true)
+
+  const src = read('src', 'lib', 'proactive', 'content-guard.ts')
+  // It is told the shape, not a list of phrases, and that empty is the right answer when unsure.
+  assert.match(src, /The wording does not matter and you are not looking for particular phrases/)
+  // It stays in its lane: earlier exchanges and events, not facts about the person (the two readers check those).
+  assert.match(src, /A plain fact about the person \(their skin type, a concern they have, where they live, what they own or use\) is not your concern here/)
+  assert.match(src, /Return exactly one entry for EVERY number, in order, using those numbers and no others: do not split, join or renumber the sentences\./)
+  // The subject line is cut and checked with the body, and an unquoted memory gets the same single second look.
+  assert.ok(src.includes('      const sentences = splitSentences(`${subject ?? \'\'}\\n${message}`)\n'))
+  assert.ok(src.includes('      const { verifier, unanswered, strays } = historyToVerifier(parsed.sentences, sentences)\n'))
+  assert.ok(src.includes("      const result = enforceGuard(await secondLook(verifier), evidence, '')\n"))
+  assert.ok(src.includes('...(strays ? [`the shared-past check returned ${strays} answer(s) that match no sentence of the message`] : []),'))
+  assert.match(src, /an empty quote is what stops an invented memory from being sent\./)
+  // Unreadable answer: closed. Unanswered sentences: reasons. It runs beside the two readers and any block wins.
+  assert.ok(src.includes("      if (!parsed) return { pass: false, reasons: ['the shared-past check returned nothing readable (fail closed)'], verifier: null }\n"))
+  assert.ok(src.includes('...unanswered.map((n) => `the shared-past check did not answer for sentence ${n}: "${sentences[n - 1]}"`)'))
+})
+
+test('guard (executed): a list item that is not text is read as a finding, not crashed on', async () => {
+  const { enforceGuard } = await loadGuard()
+  const evidence = { userMessages: ['hello there'], recordedDecisions: [], plan: null }
+  const base = { products_mentioned: [], using_claims: [], asserted_facts: [], verdict: 'pass' }
+  assert.equal(enforceGuard(base, evidence, 'Hi').pass, true)
+  // A reader returned objects where strings were asked for. That used to throw
+  // ("ch?.trim is not a function") and fail the whole check closed.
+  for (const key of ['promises', 'pressure', 'medical_reassurance', 'harmful_followups', 'contradicted_decisions', 'routine_changes']) {
+    const r = enforceGuard({ ...base, [key]: [{ change: 'start azelaic acid nightly' }] }, evidence, 'Hi')
+    assert.equal(r.pass, false, key)
+    assert.match(r.reasons.join('\n'), /start azelaic acid nightly/, key)
+    // Only nothing is nothing: an empty string, null, or no list.
+    for (const empty of [[], [''], ['   '], [null], '', null, undefined]) assert.equal(enforceGuard({ ...base, [key]: empty }, evidence, 'Hi').pass, true, `${key} ${JSON.stringify(empty)}`)
+    // Everything that blocked before (by crashing, or by accident) still blocks: nothing got looser.
+    for (const flagged of [[7], [false], [0], [{}], [[]], 'start azelaic acid nightly', 'none', { change: 'x' }]) assert.equal(enforceGuard({ ...base, [key]: flagged }, evidence, 'Hi').pass, false, `${key} ${JSON.stringify(flagged)}`)
+  }
 })
