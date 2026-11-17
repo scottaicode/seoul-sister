@@ -74,7 +74,7 @@ test('the STATIC onboarding prompt never claims the user has subscribed', () => 
 test('the prompt defers to the queried status instead of assuming', () => {
   assert.match(
     source,
-    /subscription status is a FACT in Current State below -- read it there, never assume it/i,
+    /membership status is a FACT in Current State below -- read it there, never assume it/i,
     'prompt must point Yuri at the queried fact rather than stating a status statically'
   )
 })
@@ -170,8 +170,8 @@ test('someone who is not a member yet is told so, with the free week and the pri
   // before a screen that says free with no card. It now states the real next
   // step: a free week, no card, and the price only if they add one.
   assert.match(out, /NOT A MEMBER YET/)
-  assert.match(out, /first 7 days are free and need no card/)
-  assert.match(out, /\$24\.99\/month after that only if they add a card/)
+  assert.match(out, /someone who has not had a free week gets their first 7 days free with no card\. Whether this person has already had a free week is not shown to you\./)
+  assert.match(out, /The next screen shows what they can start: membership is \$24\.99\/month, and someone who has not had a free week/)
   assert.match(out, /Nothing has been paid/)
   assert.doesNotMatch(out, /subscribe step/)
   assert.match(out, /message 3 of the 50/)
@@ -181,7 +181,9 @@ test('a subscribed user is reported as SUBSCRIBED — no false scarcity', () => 
   // A paid user CAN re-enter onboarding. Telling them "nothing has been paid"
   // would be a NEW false fact — the exact bug class being fixed.
   const out = buildOnboardingTurnState({}, undefined, { isSubscribed: true })
-  assert.match(out, /SUBSCRIBED/)
+  assert.match(out, /Membership status: MEMBER\./)
+  // A member in a free week has paid nothing, so it must not call them a paying subscriber either.
+  assert.doesNotMatch(out, /paying subscriber/)
   assert.ok(!/NOT A MEMBER YET/.test(out), 'must not contradict a real subscriber')
   assert.ok(
     !/Nothing has been paid yet/i.test(out),
@@ -303,12 +305,12 @@ test('the wrap-up playback is limited to facts the person gave', async () => {
   // this section needs a second-model review and a new fingerprint.
   assert.ok(section.includes('play back what you now understand about their skin (this is where they feel genuinely heard, and it only works if it is theirs: your read of the cause is yours to give, but every fact in it about their life, how long, how often, how much, what happened, is one they told you, and one they did not tell you is a question to ask or a thing to leave out), give them their first move'))
   const { createHash } = await import('node:crypto')
-  assert.equal(createHash('sha256').update(section).digest('hex'), 'ef5fffe4aadd96a445279328f52fe4a94eb9b27df278f2b42dd2f98aa6b3037c')
+  assert.equal(createHash('sha256').update(section).digest('hex'), '9344e5effcc993621f272fa97fa5e375ff185688e5024d5479402fbd615b36cb')
   // And the whole static setup prompt: a sentence added to another section
   // ("except that in the wrap-up you may state a likely duration as fact")
   // would undo the rule while leaving this section untouched.
   const whole = src.slice(src.indexOf('export function buildOnboardingSystemPrompt'), src.indexOf('export interface OnboardingTurnFacts'))
-  assert.equal(createHash('sha256').update(whole).digest('hex'), '3c5f15611be0a6327c229541f1606a743754808ad4227d0d9fe393774d3acdf7')
+  assert.equal(createHash('sha256').update(whole).digest('hex'), '3bc69b84fd31c845460436534a7547eb26cc602bc8c25ef1ab54f4cb46020570')
 })
 
 test('the setup chat is told it has no product database, and that is true of the code', async () => {

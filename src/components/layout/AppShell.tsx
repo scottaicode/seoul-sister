@@ -85,7 +85,31 @@ export default function AppShell({ children }: AppShellProps) {
   // plan — gating /settings behind the paywall trapped unpaid users with no way
   // to delete their data (a GDPR/CCPA right-to-erasure + trust problem).
   const ALWAYS_ALLOWED = pathname === '/onboarding' || pathname.startsWith('/settings')
+  // Settings is open to everyone (log out, delete the account), but the member
+  // menu is not: for someone who is not a member every item in it bounces.
+  // Bailey, on a new account, Nov 16 2026: "All these options need to just
+  // disappear if they aren't gonna work before the membership." null = unread.
+  const [isMember, setIsMember] = useState<boolean | null>(null)
+  const onSettings = pathname.startsWith('/settings')
+  useEffect(() => {
+    if (!user || !onSettings) return
+    let live = true
+    supabase
+      .from('ss_user_profiles')
+      .select('plan')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!live) return
+        // A failed read shows the member menu, as before this check existed: a
+        // member must not lose their menu to a read error. Until the read
+        // answers, the plain header shows.
+        setIsMember(error ? true : !!data?.plan && data.plan !== 'free')
+      })
+    return () => { live = false }
+  }, [user, onSettings])
   const inSetup = pathname === '/onboarding'
+  const plainHeader = inSetup || (onSettings && isMember !== true)
   useEffect(() => {
     if (!user || loading || ALWAYS_ALLOWED) {
       setReady(true)
@@ -182,12 +206,12 @@ export default function AppShell({ children }: AppShellProps) {
     <div className="min-h-screen bg-seoul-darker">
       {/* During the setup chat no member page is open yet, so the member menu
           is not shown: its buttons could only bounce back here. */}
-      {inSetup ? <SetupHeader /> : <Header />}
+      {plainHeader ? <SetupHeader backToSetup={!inSetup} /> : <Header />}
       <TrialNotice />
-      <main className={inSetup ? 'pt-0' : 'pt-0 pb-20 md:pb-0'}>
+      <main className={plainHeader ? 'pt-0' : 'pt-0 pb-20 md:pb-0'}>
         {children}
       </main>
-      {!inSetup && <BottomNav />}
+      {!plainHeader && <BottomNav />}
     </div>
   )
 }

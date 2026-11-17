@@ -30,6 +30,8 @@ export function buildSubscriptionConfirmationEmail(params: {
   timezone?: string | null
   /** The free week was started on our own membership page, so no Stripe page (and its word "trial") was seen. */
   startedOnOurPage?: boolean
+  /** It started when the account was created (sign-up starts the free week). */
+  startedAtSignup?: boolean
 }): { subject: string; html: string } {
   const noCardTrial = Boolean(params.trialEnd) && params.cardOnFile === false
   const zone = validTimeZone(params.timezone) ?? 'UTC'
@@ -46,7 +48,9 @@ export function buildSubscriptionConfirmationEmail(params: {
     d.toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: zone, timeZoneName: 'short' })
   const pct = params.percentOff ?? null
   // Where they started it, in their terms: Stripe's page called it a trial; ours did not.
-  const whereStarted = params.startedOnOurPage
+  const whereStarted = params.startedAtSignup
+    ? 'It started when you created your account.'
+    : params.startedOnOurPage
     ? 'You started it on the Seoul Sister membership page.'
     : `This is the ${PRICING.trial_days}-day trial you confirmed on Stripe's page; we call it your free week.`
   const discounted = firstMonthPrice(pct) !== null
@@ -80,9 +84,9 @@ ${noCardTrial
 export async function sendSubscriptionConfirmation(
   to: string,
   trialEnd: Date | null,
-  opts: { cardOnFile?: boolean; percentOff?: number | null; timezone?: string | null; startedOnOurPage?: boolean } = {}
+  opts: { cardOnFile?: boolean; percentOff?: number | null; timezone?: string | null; startedOnOurPage?: boolean; startedAtSignup?: boolean } = {}
 ): Promise<{ sent: boolean; reason?: string }> {
-  const { subject, html } = buildSubscriptionConfirmationEmail({ trialEnd, cardOnFile: opts.cardOnFile, percentOff: opts.percentOff, timezone: opts.timezone, startedOnOurPage: opts.startedOnOurPage })
+  const { subject, html } = buildSubscriptionConfirmationEmail({ trialEnd, cardOnFile: opts.cardOnFile, percentOff: opts.percentOff, timezone: opts.timezone, startedOnOurPage: opts.startedOnOurPage, startedAtSignup: opts.startedAtSignup })
   const result = await sendEmail(to, subject, html)
   return result.sent ? { sent: true } : { sent: false, reason: 'reason' in result ? String(result.reason) : 'error' in result ? String(result.error) : 'unknown' }
 }

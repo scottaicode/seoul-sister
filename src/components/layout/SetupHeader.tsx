@@ -14,7 +14,7 @@ import Link from 'next/link'
  * which has log out and account deletion. No link here may point at a page the
  * app gate would bounce; a test holds that.
  */
-export default function SetupHeader() {
+export default function SetupHeader({ backToSetup = false }: { backToSetup?: boolean }) {
   return (
     <header className="sticky top-0 z-50 bg-seoul-dark/90 backdrop-blur-md border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -33,9 +33,17 @@ export default function SetupHeader() {
               Seoul Sister
             </span>
           </div>
-          <Link href="/settings" className="text-sm text-white/50 hover:text-white/80 transition-colors">
-            Account
-          </Link>
+          {backToSetup ? (
+            // On the account page of someone who is not a member: the one way back.
+            // /onboarding sends a finished or skipped setup on to the membership page.
+            <Link href="/onboarding" className="text-sm text-white/70 hover:text-white transition-colors">
+              Back
+            </Link>
+          ) : (
+            <Link href="/settings" className="text-sm text-white/50 hover:text-white/80 transition-colors">
+              Account
+            </Link>
+          )}
         </div>
       </div>
     </header>

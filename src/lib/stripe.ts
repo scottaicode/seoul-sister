@@ -180,6 +180,7 @@ export async function startDirectFreeWeek(params: {
   plan: TierKey
   ipHash?: string | null
   offer?: { code: string; promotionCodeId: string; percentOff: number } | null
+  termsShown?: 'membership_page' | 'signup'
 }): Promise<{ subscription: Stripe.Subscription; customerId: string }> {
   const stripe = getStripeClient()
   const found = await findDirectFreeWeek(params.userId, params.email)
@@ -198,10 +199,11 @@ export async function startDirectFreeWeek(params: {
   }
   const subscription = await stripe.subscriptions.create(
     {
-      ...buildDirectFreeWeekParams({ userId: params.userId, plan: params.plan, priceId: getPriceId(params.plan), customerId, ipHash: params.ipHash ?? null, offer: params.offer ?? null }),
+      ...buildDirectFreeWeekParams({ userId: params.userId, plan: params.plan, priceId: getPriceId(params.plan), customerId, ipHash: params.ipHash ?? null, offer: params.offer ?? null, termsShown: params.termsShown }),
       expand: ['discount.promotion_code'],
     },
-    { idempotencyKey: `fw-sub-${customerId}-${params.offer?.code ?? 'none'}` }
+    // The key names everything that can differ between two calls for one customer.
+    { idempotencyKey: `fw-sub-${customerId}-${params.offer?.code ?? 'none'}-${params.termsShown ?? 'membership_page'}` }
   )
   // Stripe decides the status. Anything but a running free week is not one.
   if (subscription.status !== 'trialing') throw new HasLiveSubscriptionError(subscription.status)

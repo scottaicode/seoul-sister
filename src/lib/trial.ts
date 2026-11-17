@@ -30,13 +30,30 @@ export function noCardTrialEnabled(): boolean {
 }
 
 /**
- * Start the no-card free week on our own page, without sending the person to
- * Stripe's hosted page (Nov 15 2026). OFF unless DIRECT_FREE_WEEK=on. Stripe's
- * page stays available either way: it is where a returning member pays, and
- * where a promotion code we cannot apply ourselves is entered.
+ * Start the no-card free week ourselves, without sending the person to
+ * Stripe's hosted page (Nov 15 2026). Since Nov 16 2026 this is how the free
+ * week starts for everyone (creating an account starts it).
+ *
+ *   DIRECT_FREE_WEEK=on            on
+ *   DIRECT_FREE_WEEK=off|false|0   off, in any letter case: the emergency
+ *                                  stop. Sign-up then makes an account only,
+ *                                  and the membership page starts the week
+ *                                  through Stripe's page.
+ *   not set                        on in the production deployment only
+ *                                  (VERCEL_ENV=production). A laptop or a
+ *                                  preview build with the live Stripe key must
+ *                                  not make real subscriptions from test
+ *                                  sign-ups just because nobody set a variable.
+ *
+ * Stripe's page stays available either way: it is where a returning member
+ * pays, and where a promotion code we cannot apply ourselves is entered.
  */
 export function directFreeWeekEnabled(): boolean {
-  return noCardTrialEnabled() && process.env.DIRECT_FREE_WEEK === 'on'
+  if (!noCardTrialEnabled()) return false
+  const v = (process.env.DIRECT_FREE_WEEK ?? '').trim().toLowerCase()
+  if (v === 'off' || v === 'false' || v === '0') return false
+  if (v === 'on' || v === 'true' || v === '1') return true
+  return process.env.VERCEL_ENV === 'production'
 }
 
 /** Trials one network may start within TRIAL_NETWORK_WINDOW_DAYS. */

@@ -580,7 +580,7 @@ test('emails never promise a charge to a card that does not exist, and a lapsed 
   assert.match(branch, /No card is on file and you will not be charged\./)
   assert.match(branch, /with the "Add a card" button at the top of any page/)
   assert.doesNotMatch(branch, /your card will be charged|Profile page/i)
-  assert.match(webhook, /sendSubscriptionConfirmation\(buyerEmail, trialEnd, \{ cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: await timezoneForUser\(db, userId\), startedOnOurPage: subscription\.metadata\?\.direct === '1' \}\)/)
+  assert.match(webhook, /sendSubscriptionConfirmation\(buyerEmail, trialEnd, \{ cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: await timezoneForUser\(db, userId\), startedOnOurPage: subscription\.metadata\?\.direct === '1', startedAtSignup: subscription\.metadata\?\.terms_shown === 'signup' \}\)/)
   assert.match(webhook, /const noCardTrial = isTrial && subscription\.metadata\?\.no_card === '1'/, 'stated by the checkout, not guessed from Stripe state')
   // "No card was on file" is only sent to a trial that began with no card and
   // never had one added. A cancelled card trial, or a card added then
@@ -648,23 +648,23 @@ test('offer codes: every charge sentence names the discounted first month AND th
     assert.equal(o.priceWithOffer(50), '$4.99 for your first paid month (50% off), then $9.99/month')
     assert.equal(o.priceWithOffer(null), '$9.99/month')
     // The two price lines under the free chat.
-    assert.equal(o.widgetAccountLine(null), 'Create a free account and continue with Yuri. New members get 7 days free with no card. $9.99/mo after that, only if you add a card.')
-    assert.equal(o.widgetAccountLine(50), 'Create a free account and continue with Yuri. New members get 7 days free with no card. After that, $4.99 for your first paid month (50% off), then $9.99/month, only if you add a card.')
+    assert.equal(o.widgetAccountLine(null), 'Create a free account and continue with Yuri. For a new member that starts your free week: 7 days, no card. $9.99/mo after that, only if you add a card.')
+    assert.equal(o.widgetAccountLine(50), 'Create a free account and continue with Yuri. For a new member that starts your free week: 7 days, no card. After that, $4.99 for your first paid month (50% off), then $9.99/month, only if you add a card.')
     // Nov 15 2026: this line sits directly under "Create my free account". It
     // used to read as what that button does, so it now separates the two.
-    assert.equal(o.widgetMembershipLine(null), 'The account is free. Membership is separate and optional: new members get the first 7 days free with no card, then $9.99/mo only if you add a card.')
-    assert.equal(o.widgetMembershipLine(50), 'The account is free. Membership is separate and optional: new members get the first 7 days free with no card, then $4.99 for your first paid month (50% off), then $9.99/month only if you add a card.')
+    assert.equal(o.widgetMembershipLine(null), 'For a new member, creating an account starts your free week: 7 days, no card. After that it is $9.99/mo, only if you add a card. One free week per person.')
+    assert.equal(o.widgetMembershipLine(50), 'For a new member, creating an account starts your free week: 7 days, no card. After that it is $4.99 for your first paid month (50% off), then $9.99/month, only if you add a card. One free week per person.')
 
     // The path to membership in one vocabulary (Nov 15 2026): free account,
     // setup chat, membership, free week. Executed, exact.
     assert.equal(
       o.registerFootnote(null),
-      'This creates a free account. It does not start your free week. Next is a setup chat with Yuri, and membership is your choice after that. New members get the first 7 days free with no card, then $9.99/month only if you add a card.'
+      'For a new member, creating your account starts your free week: 7 days, no card. After that it is $9.99/month, only if you add a card. One free week per person.'
     )
     // A creator code shows in the same sentence; an unusable percent is ignored.
     assert.equal(
       o.registerFootnote(50),
-      'This creates a free account. It does not start your free week. Next is a setup chat with Yuri, and membership is your choice after that. New members get the first 7 days free with no card, then $4.99 for your first paid month (50% off), then $9.99/month only if you add a card.'
+      'For a new member, creating your account starts your free week: 7 days, no card. After that it is $4.99 for your first paid month (50% off), then $9.99/month, only if you add a card. One free week per person.'
     )
     for (const bad of [0, 100, 0.5, '50', undefined, NaN]) assert.equal(o.registerFootnote(bad), o.registerFootnote(null), `must ignore ${bad}`)
     // The setup chat says the free week has not started only to someone who is
@@ -676,11 +676,12 @@ test('offer codes: every charge sentence names the discounted first month AND th
     assert.equal(o.setupChatLine(null), 'Setup chat')
     // The skip link names where it goes, and a member is never sent to membership.
     assert.equal(o.skipSetupLabel(false), 'Skip this chat and see membership')
-    assert.equal(o.skipSetupLabel(null), 'Skip this chat and see membership')
+    // Unread names no destination: right after sign-up the free week is still being started.
+    assert.equal(o.skipSetupLabel(null), 'Skip this chat')
     assert.equal(o.skipSetupLabel(true), 'Skip this chat and go to Yuri')
     assert.equal(o.freeWeekChangedLine(), 'The no-card free week could not be started just now, so nothing was started and nothing was charged. The page now shows what you can start instead.')
     // Our own words never call the account step joining, or the free week a trial.
-    assert.equal(o.accountCtaNote(), 'This creates your free account. The free week starts later, when you choose membership.')
+    assert.equal(o.accountCtaNote(), 'This creates your account and, for a new member, starts your free week.')
     for (const line of [o.registerFootnote(null), o.setupChatLine(false), o.skipSetupLabel(false), o.paywallStartLine(), o.stripeHandoffLine(), o.freeWeekChangedLine(), o.widgetMembershipLine(null), o.accountCtaNote()]) {
       assert.doesNotMatch(line, /\btrial\b|\bjoin/i, line)
       assert.doesNotMatch(line, /[—–]/, line)
@@ -695,13 +696,13 @@ test('offer codes: every charge sentence names the discounted first month AND th
       assert.equal(o.chargePhrase(bad, 'today'), '$9.99/month today and every month after that until you cancel')
     }
     assert.equal(o.offerAppliedLine('BAILEY', 50), 'Code BAILEY applied: your first paid month is $4.99 instead of $9.99 (50% off), then $9.99/month.')
-    assert.equal(o.offerSavedLine('BAILEY', 50), 'Code BAILEY saved: 50% off your first paid month.')
+    assert.equal(o.offerSavedLine('BAILEY', 50), 'Code BAILEY is saved in this browser: 50% off your first paid month.')
     assert.equal(o.offerEndedLine('BAILEY'), 'Code BAILEY is no longer available, so membership is $9.99/month.')
     // What the public endpoint returns is a closed set of keys.
     assert.deepEqual(o.offerResponse({ state: 'active', code: 'BAILEY', promotionCodeId: 'promo_1', percentOff: 50, times_redeemed: 49, max_redemptions: 50 }), {
       state: 'active', code: 'BAILEY', percent_off: 50,
       line: 'Code BAILEY applied: your first paid month is $4.99 instead of $9.99 (50% off), then $9.99/month.',
-      saved_line: 'Code BAILEY saved: 50% off your first paid month.',
+      saved_line: 'Code BAILEY is saved in this browser: 50% off your first paid month.',
     })
     assert.deepEqual(o.offerResponse({ state: 'ended', code: 'BAILEY', times_redeemed: 50 }), { state: 'ended', code: 'BAILEY', line: 'Code BAILEY is no longer available, so membership is $9.99/month.' })
     assert.deepEqual(o.offerResponse({ state: 'unknown', code: 'ANNKOREA' }), { state: 'unknown' }, 'a private code is not even echoed back')
@@ -1051,7 +1052,7 @@ test('offer codes: the fact reaches both chats in the per-turn block, never the 
   assert.equal((route.match(/offerFact/g) ?? []).length, 5, 'the import, one lookup, and one template expression (two mentions); nothing else')
   assert.doesNotMatch(route, /Creator code/, 'the wording lives in offers.ts only, never in the cached widget prompt')
   for (const r of [route, read('src/app/api/yuri/onboarding/route.ts')]) assert.match(r, /\n  offer_code: z\.string\(\)\.max\(40\)\.optional\(\)\.nullable\(\),\n/)
-  assert.match(read('src/lib/offers.ts'), /export function getOfferCode\(\): string \| null \{\n  if \(typeof window === 'undefined'\) return null\n  try \{\n    return normalizeOfferCode\(window\.localStorage\.getItem\(OFFER_STORAGE_KEY\)\)\n  \} catch \{\n    return null\n  \}\n\}/)
+  assert.match(read('src/lib/offers.ts'), /export function getOfferCode\(\): string \| null \{\n  if \(typeof window === 'undefined'\) return null\n  try \{\n    return readSavedOffer\(window\.localStorage, Date\.now\(\)\)\n  \} catch \{\n    return null\n  \}\n\}/)
   const cached = lib.slice(lib.indexOf('function buildOnboardingSystemPrompt'), lib.indexOf('export interface OnboardingTurnFacts'))
   assert.ok(cached.length > 2000)
   assert.doesNotMatch(cached, /offerFact|Creator code/)
@@ -1070,7 +1071,7 @@ test('saved code: who it is spoken of to, and what is said at each step (execute
       // 'monthly' is the plan every $9.99 member and every trial gets (planFromStripePriceId).
       ['applies', 'applies', 'applies', 'applies', 'applies', 'applies', 'member', 'member', 'member', 'member', 'unknown', 'unknown', 'unknown', 'unknown']
     )
-    const ACTIVE = { state: 'active', code: 'BAILEY', percent_off: 50, line: 'applied', saved_line: 'Code BAILEY saved: 50% off your first paid month.' }
+    const ACTIVE = { state: 'active', code: 'BAILEY', percent_off: 50, line: 'applied', saved_line: 'Code BAILEY is saved in this browser: 50% off your first paid month.' }
     const run = async ({ code = 'BAILEY', signedIn = false, plan = null, known = true, answer = ACTIVE, askThrows = false }) => {
       const updates = []; const calls = { plan: 0, ask: 0, forget: 0 }
       let thrown = null
@@ -1084,7 +1085,7 @@ test('saved code: who it is spoken of to, and what is said at each step (execute
       return { updates, calls, last: updates[updates.length - 1], thrown }
     }
     const NOTHING = { line: null, percentOff: null, codeForChat: null }
-    const SAVED = { line: 'Code BAILEY saved: 50% off your first paid month.', percentOff: 50, codeForChat: 'BAILEY' }
+    const SAVED = { line: 'Code BAILEY is saved in this browser: 50% off your first paid month.', percentOff: 50, codeForChat: 'BAILEY' }
     const PENDING = { line: null, percentOff: null, codeForChat: 'BAILEY' }
 
     // No code: nothing, and nobody is asked anything.
@@ -1198,7 +1199,7 @@ test('pricing card: the free week leads and the price is stated; the allowance l
       // button only creates an account, and says so (Nov 15 2026).
       cta: 'Start my free week',
       accountCta: 'Create my free account',
-      accountNote: 'This creates your free account. The free week starts later, when you choose membership.',
+      accountNote: 'This creates your account and, for a new member, starts your free week.',
     })
   } finally { m.restore() }
   // The allowance has ONE source. Executed: the number Yuri, the emails and the

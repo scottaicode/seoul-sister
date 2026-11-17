@@ -35,20 +35,39 @@ async function loadModules(env = {}) {
   put('timezone', read('src/lib/email/timezone.ts'))
   put('confirm', read('src/lib/email/subscription-confirmation.ts').replace("from './send'", "from './send.mjs'").replace("from './html'", "from './html.mjs'").replace("from './timezone'", "from './timezone.mjs'").replace("from '@/lib/pricing'", "from './pricing.mjs'").replace("from '@/lib/offers'", "from './offers.mjs'"))
   const saved = { ...process.env }
-  for (const k of ['DIRECT_FREE_WEEK', 'NO_CARD_TRIAL_ENABLED']) delete process.env[k]
+  for (const k of ['DIRECT_FREE_WEEK', 'NO_CARD_TRIAL_ENABLED', 'VERCEL_ENV', 'NODE_ENV']) delete process.env[k]
   Object.assign(process.env, env)
   const load = (name) => import(pathToFileURL(join(dir, `${name}.mjs`)).href)
   return { trial: await load('trial'), offers: await load('offers'), params: await load('stripe-params'), confirm: await load('confirm'), restore: () => { process.env = saved } }
 }
 
-test('the switch is off unless DIRECT_FREE_WEEK is exactly "on", and off whenever the no-card week is stopped', async () => {
+test('the switch: on in production unless stopped, off elsewhere unless turned on, and off whenever the no-card week is stopped', async () => {
+  // Since Nov 16 2026 creating an account starts the free week, so this is how
+  // the week starts for everyone. It was off-by-default while it was new.
   for (const [env, want] of [
+    // Not set: on in the production deployment only. A laptop or a preview
+    // build with the live Stripe key must not make real subscriptions.
     [{}, false],
+    [{ VERCEL_ENV: 'preview' }, false],
+    [{ VERCEL_ENV: 'development' }, false],
+    [{ NODE_ENV: 'production' }, false],
+    [{ VERCEL_ENV: 'production' }, true],
+    // Set: it decides, wherever it runs.
     [{ DIRECT_FREE_WEEK: 'on' }, true],
-    [{ DIRECT_FREE_WEEK: 'true' }, false],
-    [{ DIRECT_FREE_WEEK: '1' }, false],
-    [{ DIRECT_FREE_WEEK: 'ON' }, false],
+    [{ DIRECT_FREE_WEEK: 'ON', VERCEL_ENV: 'preview' }, true],
+    [{ DIRECT_FREE_WEEK: 'true' }, true],
+    // The emergency stop works however it is typed in a hurry.
+    [{ DIRECT_FREE_WEEK: 'off', VERCEL_ENV: 'production' }, false],
+    [{ DIRECT_FREE_WEEK: 'OFF', VERCEL_ENV: 'production' }, false],
+    [{ DIRECT_FREE_WEEK: 'false', VERCEL_ENV: 'production' }, false],
+    [{ DIRECT_FREE_WEEK: ' False ', VERCEL_ENV: 'production' }, false],
+    [{ DIRECT_FREE_WEEK: '0', VERCEL_ENV: 'production' }, false],
+    // Anything unrecognised is "not set".
+    [{ DIRECT_FREE_WEEK: 'maybe' }, false],
+    [{ DIRECT_FREE_WEEK: 'maybe', VERCEL_ENV: 'production' }, true],
+    // And never when the no-card week itself is stopped.
     [{ DIRECT_FREE_WEEK: 'on', NO_CARD_TRIAL_ENABLED: 'false' }, false],
+    [{ VERCEL_ENV: 'production', NO_CARD_TRIAL_ENABLED: 'false' }, false],
   ]) {
     const m = await loadModules(env)
     try { assert.equal(m.trial.directFreeWeekEnabled(), want, JSON.stringify(env)) } finally { m.restore() }
@@ -65,7 +84,7 @@ test('exactly what Stripe is sent for the subscription: no card, ends by itself,
       items: [{ price: 'price_1', quantity: 1 }],
       trial_period_days: 7,
       trial_settings: { end_behavior: { missing_payment_method: 'cancel' } },
-      metadata: { user_id: 'u1', plan: 'monthly', no_card: '1', direct: '1', terms_version: '2026-11-15', terms_agreed: '1', ip_hash: 'net1' },
+      metadata: { user_id: 'u1', plan: 'monthly', no_card: '1', direct: '1', terms_version: '2026-11-15', terms_agreed: '1', terms_shown: 'membership_page', ip_hash: 'net1' },
     })
     assert.deepEqual(m.params.buildDirectFreeWeekParams({ userId: 'u1', plan: 'monthly', priceId: 'price_1', customerId: 'cus_1', offer: { code: 'BAILEY', promotionCodeId: 'promo_1', percentOff: 50 } }), {
       customer: 'cus_1',
@@ -73,8 +92,11 @@ test('exactly what Stripe is sent for the subscription: no card, ends by itself,
       trial_period_days: 7,
       trial_settings: { end_behavior: { missing_payment_method: 'cancel' } },
       promotion_code: 'promo_1',
-      metadata: { user_id: 'u1', plan: 'monthly', no_card: '1', direct: '1', terms_version: '2026-11-15', terms_agreed: '1', offer_code: 'BAILEY', offer_percent_off: '50' },
+      metadata: { user_id: 'u1', plan: 'monthly', no_card: '1', direct: '1', terms_version: '2026-11-15', terms_agreed: '1', terms_shown: 'membership_page', offer_code: 'BAILEY', offer_percent_off: '50' },
     })
+    // Started by creating an account: the record names the sign-up page's sentence, not the membership page's paragraph.
+    assert.deepEqual(m.params.buildDirectFreeWeekParams({ userId: 'u1', plan: 'monthly', priceId: 'price_1', customerId: 'cus_1', termsShown: 'signup' }).metadata, { user_id: 'u1', plan: 'monthly', no_card: '1', direct: '1', terms_version: 'signup-2026-11-16', terms_agreed: '1', terms_shown: 'signup' })
+    assert.notEqual(m.params.SIGNUP_TERMS_VERSION, m.params.DIRECT_TERMS_VERSION)
   } finally { m.restore() }
 })
 
@@ -127,7 +149,14 @@ test('closed world: nothing the page adds for a start on our own page describes 
     assert.equal(m.offers.startPageChangedLine(), 'This page was out of date, so nothing was started and nothing was charged. It now shows the current way to start.')
   } finally { m.restore() }
   // Which email a member gets follows how THEIR subscription started, not the switch today.
-  assert.ok(read('src/lib/subscription-fulfilment.ts').includes("startedOnOurPage: subscription.metadata?.direct === '1' })"))
+  assert.equal(read('src/lib/subscription-fulfilment.ts').split("startedOnOurPage: subscription.metadata?.direct === '1', startedAtSignup: subscription.metadata?.terms_shown === 'signup' })").length - 1, 2)
+  // Started by creating the account: the email says that, and not that a membership page was used.
+  const m2 = await loadModules()
+  try {
+    const atSignup = m2.confirm.buildSubscriptionConfirmationEmail({ trialEnd: new Date('2026-11-23T06:11:00Z'), cardOnFile: false, startedOnOurPage: true, startedAtSignup: true }).html
+    assert.ok(atSignup.includes('Your free week has started. It started when you created your account. <strong>No card is on file and you will not be charged.</strong>'))
+    assert.doesNotMatch(atSignup, /membership page|Stripe/)
+  } finally { m2.restore() }
 })
 
 /** The direct-start helpers, executed against a fake Stripe client. */
@@ -162,7 +191,7 @@ test('two presses cannot make two: an existing customer is reused, an open subsc
     // Another account's customer on the same address is never reused.
     ['customers.create', { email: 'a@b.co', metadata: { user_id: USER } }, { idempotencyKey: `fw-cus-${USER}` }],
     ['subscriptions.list', { customer: 'cus_new', status: 'all', limit: 20, expand: ['data.discount.promotion_code'] }],
-    ['subscriptions.create', { built: { userId: USER, plan: 'monthly', priceId: 'price_1', customerId: 'cus_new', ipHash: 'net1', offer: { code: 'BAILEY', promotionCodeId: 'promo_1', percentOff: 50 } }, expand: ['discount.promotion_code'] }, { idempotencyKey: 'fw-sub-cus_new-BAILEY' }],
+    ['subscriptions.create', { built: { userId: USER, plan: 'monthly', priceId: 'price_1', customerId: 'cus_new', ipHash: 'net1', offer: { code: 'BAILEY', promotionCodeId: 'promo_1', percentOff: 50 }, termsShown: undefined }, expand: ['discount.promotion_code'] }, { idempotencyKey: 'fw-sub-cus_new-BAILEY-membership_page' }],
   ])
 
   // Second press: the customer exists and its free week is running. Nothing is created.
@@ -202,7 +231,10 @@ test('two presses cannot make two: an existing customer is reused, an open subsc
     subscriptions: { list: async () => ({ data: [] }), create: async (_b, opts) => { keys.push(opts.idempotencyKey); return { id: 's', status: 'trialing' } } },
   }
   await loadStart(noCode)({ userId: USER, email: 'a@b.co', plan: 'monthly' })
-  assert.deepEqual(keys, ['fw-sub-cus_new-none'])
+  assert.deepEqual(keys, ['fw-sub-cus_new-none-membership_page'])
+  keys.length = 0
+  await loadStart(noCode)({ userId: USER, email: 'a@b.co', plan: 'monthly', termsShown: 'signup' })
+  assert.deepEqual(keys, ['fw-sub-cus_new-none-signup'])
   // Nothing but an account id reaches Stripe.
   await assert.rejects(loadStart(fresh)({ userId: "x' OR 1", email: 'a@b.co', plan: 'monthly' }), /not an account id/)
   // A Stripe failure is thrown to the caller, which says so and offers Stripe's page.

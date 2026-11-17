@@ -63,7 +63,7 @@ function pathParagraph() {
 const PATH_SENTENCES = [
   'When the conversation reaches the gate, or a visitor asks how to continue or what it costs, these are the facts.',
   'An account is free and needs no card.',
-  'It opens a free setup chat with you, and if they sign up in this browser and confirm the preview was theirs, you will have it in front of you there.',
+  'For a first-time member, creating it starts their free week, and it opens a setup chat with you, and if they sign up in this browser and confirm the preview was theirs, you will have it in front of you there.',
   'Membership is ${PRICING.monthly_display_long} and includes a monthly allowance of ${PRICING.yuri_allowance_display}.',
   'You do not need to repeat the allowance every time the price comes up, but give it whenever someone asks what membership includes, about limits, or how much they can use you, and never describe membership as unlimited or as having no cap.',
   "A first-time member's first ${PRICING.trial_days} days are free, and ${trialCardFact()}",
@@ -231,7 +231,7 @@ test('path fact "the link under this chat": it exists, is a real tap target, and
   // The sentence is built in offers.ts (exact text pinned in no-card-trial.test.mjs),
   // so a saved creator code changes the price it states.
   assert.match(link, /\{widgetAccountLine\(savedOffer\.percentOff\)\}/)
-  assert.match(read('src/lib/offers.ts'), /const lead = `Create a free account and continue with Yuri\. New members get \$\{PRICING\.trial_days\} days free with no card\.`/)
+  assert.match(read('src/lib/offers.ts'), /const lead = `Create a free account and continue with Yuri\. For a new member that starts your free week: \$\{PRICING\.trial_days\} days, no card\.`/)
   assert.match(read('src/lib/pricing.ts'), /trial_requires_card: false,/, 'the link says "no card needed": true only with a no-card trial')
 })
 
@@ -396,8 +396,8 @@ test('final message, under-13 and specialist facts match the new path', () => {
 })
 
 const GATE_FINGERPRINT = 'ebdd3b1cbe07dece80c4e7c81b4dcd1fd0dfc7582d40f04164012a2d83d74e27'
-const WIDGET_PROMPT_FINGERPRINT = '7dd664001c56eff109319ca3237007a9b3a05ca062d44a735fbd463d0ed4f46e'
-const SUBSCRIBER_BLOCK_FINGERPRINT = '15aff9f62cbe15e6789461fbef11338e571811aabafc47180f2e8e0ac30cb537'
+const WIDGET_PROMPT_FINGERPRINT = '80bd076f65111c233b8dd507ff0b460cbb582ec8f6adbe2aedbf7cc0657dfe60'
+const SUBSCRIBER_BLOCK_FINGERPRINT = 'f25c99da94d9e7ab954e84faa33efe4f3a628fcdfbf27b465db39d36fa64eeed'
 
 /** The five gate paragraphs of the widget prompt, as one string. */
 function gateText() {
@@ -475,5 +475,5 @@ test('CLOSED WORLD: the whole static member prompt is pinned by fingerprint (Nov
   const a = advisor.indexOf('const YURI_SYSTEM_PROMPT = `') + 'const YURI_SYSTEM_PROMPT = `'.length
   const b = advisor.indexOf('`\n\n// ---', a)
   assert.ok(a > 100 && b > a + 20000, 'static member prompt not found')
-  assert.equal(createHash('sha256').update(advisor.slice(a, b)).digest('hex'), '8f993e8bb5c2f6f817a724aec65bbc337746763d221debe32b9f65c2229ed514')
+  assert.equal(createHash('sha256').update(advisor.slice(a, b)).digest('hex'), '8816cab14f23121a467ae2d51306d343a4690aa787f9c662ab37fc672e0eb291')
 })

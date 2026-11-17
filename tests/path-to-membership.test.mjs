@@ -37,13 +37,14 @@ test('the sign-up form calls this step an account, never joining, and its price 
 
 test('the setup chat says what it is, and its two exits say where they go', () => {
   const page = read('src', 'app', '(app)', 'onboarding', 'page.tsx')
-  assert.ok(page.includes('<p className="text-xs text-white/60">{setupChatLine(isMember)}</p>'))
+  assert.ok(page.includes('<p className="text-xs text-white/60">{setupChatLine(isMember, freeWeekJustStarted)}</p>'))
   assert.ok(page.includes('          {skipSetupLabel(isMember)}\n'))
-  assert.ok(page.includes("                {isMember === true ? 'Finish setup' : 'Finish setup and see membership'}"))
+  assert.ok(page.includes("                {isMember === false ? 'Finish setup and see membership' : 'Finish setup'}"))
   // The skip link goes where its label says: a member to Yuri, anyone else to membership.
   assert.equal(page.split("router.push(isMember === true ? '/yuri' : '/subscribe')").length - 1, 2)
   // Membership is read from their own profile row; a failed read claims nothing.
-  assert.ok(page.includes("      setIsMember(!!profile?.plan && profile.plan !== 'free')\n"))
+  assert.ok(page.includes("      const member = !!profile?.plan && profile.plan !== 'free'\n"))
+  assert.ok(page.includes('      setIsMember(member)\n'))
   // Read by user_id (the profile's `id` is a surrogate key and matches no one).
   assert.equal(page.split(".from('ss_user_profiles')").length - 1, 2)
   assert.equal((page.match(/\.select\('plan'\)\s*\.eq\('user_id', (id|uid)\)/g) ?? []).length, 2)
@@ -129,7 +130,7 @@ test('a just-started member who skipped setup goes to the member chat, only once
   assert.match(page, /if \(data\.status === 'skipped' && justPaidRef\.current && confirmedRef\.current\) \{\s*const member = await confirmedRef\.current\s*if \(cancelled\) return\s*if \(member\) \{\s*router\.replace\('\/yuri'\)\s*return/)
   // No prefilled "from what you learned in my setup chat" for them.
   assert.doesNotMatch(page, /router\.replace\('\/yuri\?ask/)
-  assert.equal(page.split('FIRST_MEMBER_ASK').length - 1, 2, 'the prefilled first message is used on the completed-setup path only')
+  assert.equal(page.split('FIRST_MEMBER_ASK').length - 1, 3, 'the prefilled first message is used when setup is finished: on arrival, and by the Finish button for a member')
 })
 
 test('"free week" is true only while the free period is 7 days', () => {

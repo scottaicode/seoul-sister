@@ -97,7 +97,18 @@ export default function HomeClient() {
   // no one-tap route back to the input. Reveal after ~1 viewport of scroll.
   const [showStickyCTA, setShowStickyCTA] = useState(false)
   useEffect(() => {
-    const onScroll = () => setShowStickyCTA(window.scrollY > window.innerHeight * 0.9)
+    // Shown once past the first screen, and only while no other sign-up button
+    // is on screen: two of the same button, one above the other, read as
+    // clutter (Bailey, Nov 16 2026: "there's just a lot of create your free
+    // account... do we need all the others then?").
+    const onScroll = () => {
+      const others = Array.from(document.querySelectorAll<HTMLElement>('a[href^="/register"]:not([data-sticky-signup])'))
+      const oneInView = others.some((el) => {
+        const r = el.getBoundingClientRect()
+        return r.width > 0 && r.bottom > 0 && r.top < window.innerHeight
+      })
+      setShowStickyCTA(window.scrollY > window.innerHeight * 0.9 && !oneInView)
+    }
     window.addEventListener('scroll', onScroll, { passive: true })
     onScroll()
     return () => window.removeEventListener('scroll', onScroll)
@@ -313,7 +324,7 @@ export default function HomeClient() {
           ) : (
             // Closed: scrolling to a card whose only action is this same
             // button was one tap too many.
-            <Link href={gatedSignupHref('sticky', '')} className="glass-button-primary w-full text-sm py-3 block text-center">
+            <Link href={gatedSignupHref('sticky', '')} data-sticky-signup className="glass-button-primary w-full text-sm py-3 block text-center">
               Create my free account
             </Link>
           )}

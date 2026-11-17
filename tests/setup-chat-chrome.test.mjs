@@ -37,8 +37,14 @@ test('the setup chat shows no status indicator of any kind', () => {
 test('during setup the member menu is replaced, top and bottom', () => {
   const shell = read('src', 'components', 'layout', 'AppShell.tsx')
   assert.ok(shell.includes("  const inSetup = pathname === '/onboarding'\n"))
-  assert.ok(shell.includes('      {inSetup ? <SetupHeader /> : <Header />}\n'))
-  assert.ok(shell.includes('      {!inSetup && <BottomNav />}'))
+  // The same plain header on Settings for anyone who is not a member (Nov 16
+  // 2026: from the setup chat, "Account" opened Settings with the whole member
+  // menu and bottom bar, every item of which bounced).
+  assert.ok(shell.includes('  const plainHeader = inSetup || (onSettings && isMember !== true)\n'))
+  assert.ok(shell.includes('      {plainHeader ? <SetupHeader backToSetup={!inSetup} /> : <Header />}\n'))
+  assert.ok(shell.includes('      {!plainHeader && <BottomNav />}'))
+  // A failed plan read keeps the member menu: a member must not lose it to an error.
+  assert.ok(shell.includes("        setIsMember(error ? true : !!data?.plan && data.plan !== 'free')\n"))
   // The member header and bottom bar appear nowhere else in the shell.
   assert.equal(shell.split('<Header />').length - 1, 1)
   assert.equal(shell.split('<BottomNav />').length - 1, 1)
@@ -47,7 +53,7 @@ test('during setup the member menu is replaced, top and bottom', () => {
 test('closed world: the setup header links only to pages open during setup', () => {
   const header = code(read('src', 'components', 'layout', 'SetupHeader.tsx'))
   const hrefs = [...header.matchAll(/href=(?:\{)?["'`]([^"'`]+)["'`]/g)].map((m) => m[1])
-  assert.deepEqual(hrefs, ['/settings'], 'every link must be a page the app gate lets a setup account open')
+  assert.deepEqual(hrefs, ['/onboarding', '/settings'], 'every link must be a page the app gate lets a setup account open')
   // And it cannot navigate any other way.
   assert.doesNotMatch(header, /router\.|window\.location|onClick/)
   // The gate's own list of always-open pages is what makes /settings safe.

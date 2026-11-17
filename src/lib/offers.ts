@@ -21,6 +21,16 @@ import { PRICING } from '@/lib/pricing'
  * offers-server.ts.
  */
 export const OFFER_STORAGE_KEY = 'ss_offer_code'
+/** When the code was saved (ms). A saved code is kept for OFFER_KEEP_DAYS, then forgotten. */
+export const OFFER_SAVED_AT_KEY = 'ss_offer_code_at'
+/**
+ * A code used to be kept for ever. Bailey opened the site weeks after testing
+ * her own link and found "Code BAILEY saved" and a $4.99 price she had not
+ * asked for (Nov 16 2026). Thirty days covers someone who watches a video and
+ * comes back later; after that the browser forgets it and the link, or typing
+ * the code, brings it back.
+ */
+export const OFFER_KEEP_DAYS = 30
 
 /** A code as we accept it from a URL or a form: 3-20 letters and digits, upper-cased. Else null. */
 export function normalizeOfferCode(raw: string | null | undefined): string | null {
@@ -37,7 +47,10 @@ export function captureOfferCode(): void {
   if (typeof window === 'undefined') return
   try {
     const code = normalizeOfferCode(new URLSearchParams(window.location.search).get('code'))
-    if (code) window.localStorage.setItem(OFFER_STORAGE_KEY, code)
+    if (code) {
+      window.localStorage.setItem(OFFER_STORAGE_KEY, code)
+      window.localStorage.setItem(OFFER_SAVED_AT_KEY, String(Date.now()))
+    }
   } catch {
     // localStorage can throw (private mode). A code is a convenience: the same
     // code can still be typed on the Stripe page.
@@ -49,7 +62,10 @@ export function rememberOfferCode(raw: string): void {
   if (typeof window === 'undefined') return
   try {
     const code = normalizeOfferCode(raw)
-    if (code) window.localStorage.setItem(OFFER_STORAGE_KEY, code)
+    if (code) {
+      window.localStorage.setItem(OFFER_STORAGE_KEY, code)
+      window.localStorage.setItem(OFFER_SAVED_AT_KEY, String(Date.now()))
+    }
   } catch {
     // The code is still sent with this page's button; it is only not kept for a later visit.
   }
@@ -59,10 +75,31 @@ export function rememberOfferCode(raw: string): void {
 export function getOfferCode(): string | null {
   if (typeof window === 'undefined') return null
   try {
-    return normalizeOfferCode(window.localStorage.getItem(OFFER_STORAGE_KEY))
+    return readSavedOffer(window.localStorage, Date.now())
   } catch {
     return null
   }
+}
+
+/**
+ * The saved code if it is still within OFFER_KEEP_DAYS, else null (and it is
+ * forgotten). A code saved before the date was recorded starts its thirty days
+ * at the first read. Pure but for the store it is handed; exported for tests.
+ */
+export function readSavedOffer(store: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>, now: number): string | null {
+  const code = normalizeOfferCode(store.getItem(OFFER_STORAGE_KEY))
+  if (!code) return null
+  const savedAt = Number(store.getItem(OFFER_SAVED_AT_KEY))
+  if (!Number.isFinite(savedAt) || savedAt <= 0) {
+    store.setItem(OFFER_SAVED_AT_KEY, String(now))
+    return code
+  }
+  if (now - savedAt > OFFER_KEEP_DAYS * 24 * 60 * 60 * 1000) {
+    store.removeItem(OFFER_STORAGE_KEY)
+    store.removeItem(OFFER_SAVED_AT_KEY)
+    return null
+  }
+  return code
 }
 
 /** Forget the remembered code (it does not exist, or Stripe no longer accepts it). Never throws. */
@@ -70,6 +107,7 @@ export function clearOfferCode(): void {
   if (typeof window === 'undefined') return
   try {
     window.localStorage.removeItem(OFFER_STORAGE_KEY)
+    window.localStorage.removeItem(OFFER_SAVED_AT_KEY)
   } catch {
     // Nothing to clean up if storage is unavailable.
   }
@@ -139,7 +177,9 @@ export function offerAppliedLine(code: string, percentOff: number): string {
 
 /** Shown under the free chat as soon as a code arrives and Stripe confirms it. */
 export function offerSavedLine(code: string, percentOff: number): string {
-  return `Code ${code} saved: ${validPercent(percentOff)}% off your first paid month.`
+  // "In this browser" says why it is here for someone who did not just enter
+  // it (it arrived on a link, or was typed on the membership page).
+  return `Code ${code} is saved in this browser: ${validPercent(percentOff)}% off your first paid month.`
 }
 
 /** Shown when Stripe no longer accepts the code. It never says why or how many were used. */
@@ -226,8 +266,8 @@ export function pricingCardLines(): { headline: string; noCard: string; after: s
     who: 'The free week is for new members.',
     // The button that STARTS the free week (membership page only).
     cta: 'Start my free week',
-    // The same card on the public page, where the button creates an account
-    // and starts nothing. It used to say "Start my 7 free days" there too.
+    // The same card on the public page, where the button creates the account.
+    // Since Nov 16 2026 that starts the free week too (accountCtaNote says so).
     accountCta: 'Create my free account',
     accountNote: accountCtaNote(),
   }
@@ -254,21 +294,37 @@ export function pricingCardLines(): { headline: string; noCard: string; after: s
 // and the no-card clause follows PRICING.trial_requires_card.
 // ---------------------------------------------------------------------------
 
-/** On the sign-up form, under the heading: what this step is, and what it is not. */
-export function registerFootnote(percentOff: number | null | undefined): string {
+/**
+ * What creating an account does, in one place (Nov 16 2026): it starts the
+ * free week. Until then the account was "free", the week began with a second
+ * press on a membership page, and this sentence had to explain the difference
+ * ("It does not start your free week... membership is your choice after
+ * that"). Two testers and the owner all read sign-up as the start. Now it is.
+ *
+ * "One free week per person" is here because the week is one per inbox: a
+ * returning person gets an account and is shown what membership costs.
+ * If the free week ever needs a card again (PRICING.trial_requires_card), it
+ * cannot start at sign-up, and this says so.
+ */
+export function signupStartsLine(percentOff: number | null | undefined): string {
   const price = priceWithOffer(percentOff)
-  const week = PRICING.trial_requires_card
-    ? `New members get the first ${PRICING.trial_days} days free, then ${price}.`
-    : `New members get the first ${PRICING.trial_days} days free with no card, then ${price} only if you add a card.`
-  return `This creates a free account. It does not start your free week. Next is a setup chat with Yuri, and membership is your choice after that. ${week}`
+  return PRICING.trial_requires_card
+    ? `Creating your account is free. Your free week (${PRICING.trial_days} days, then ${price}) starts on the next page, when you add a card.`
+    : `For a new member, creating your account starts your free week: ${PRICING.trial_days} days, no card. After that it is ${price}, only if you add a card. One free week per person.`
+}
+
+/** On the sign-up form, under the heading. */
+export function registerFootnote(percentOff: number | null | undefined): string {
+  return signupStartsLine(percentOff)
 }
 
 /**
  * Under the public pricing card's button, for someone not signed in. The card
- * above it says "Free for 7 days"; the button only creates an account.
+ * above it says "Free for 7 days"; the button creates the account, which is
+ * what starts them.
  */
 export function accountCtaNote(): string {
-  return 'This creates your free account. The free week starts later, when you choose membership.'
+  return PRICING.trial_requires_card ? 'This creates your account. The free week starts when you add a card.' : 'This creates your account and, for a new member, starts your free week.'
 }
 
 /**
@@ -363,13 +419,34 @@ export function freeWeekChangedLine(): string {
  * will not be offered one. A member, or an unread plan, is told only what the
  * chat is.
  */
-export function setupChatLine(isMember: boolean | null): string {
+/**
+ * Shown on the setup page when sign-up did NOT start the free week, because
+ * the sign-up page had just said it would. It says why, that nothing was
+ * charged, and what the way in is now. `detail` is the checkout's own
+ * sentence about a code, when there is one.
+ */
+export function freeWeekNotStartedLine(reason: 'had_week' | 'network' | 'code' | 'not_asked' | 'other', detail: string | null = null): string {
+  const next = 'This setup chat is free, and the membership page after it shows what you can start.'
+  // The account is new but this browser did not come through the sign-up page
+  // (another device, private mode, or signed up from the log-in page).
+  if (reason === 'not_asked') return `Your free week has not started yet. This setup chat is free, and the membership page after it starts your free week: ${PRICING.trial_days} days, no card.`
+  if (reason === 'had_week') return `Your free week has already been used, so it did not start again. ${next}`
+  if (reason === 'network') return `Your free week did not start: several have already been started from this network recently. ${next}`
+  if (reason === 'code') return `${detail ? `${detail} ` : ''}Your free week has not started yet. ${next}`
+  return `Your free week could not be started just now. Nothing was charged. ${next}`
+}
+
+export function setupChatLine(isMember: boolean | null, freeWeekJustStarted = false): string {
+  // Said only on the page load where this account's free week was started.
+  if (isMember === true && freeWeekJustStarted) return 'Your free week has started. This first chat is where I learn your skin.'
   return isMember === false ? 'Free setup chat. Membership is separate, and starts only if you choose it.' : 'Setup chat'
 }
 
 /** The link under the setup chat that leaves it, by where it goes. */
 export function skipSetupLabel(isMember: boolean | null): string {
-  return isMember === true ? 'Skip this chat and go to Yuri' : 'Skip this chat and see membership'
+  // Unread (null) names no destination: for a moment after sign-up the free
+  // week is still being started, and "see membership" would be wrong.
+  return isMember === true ? 'Skip this chat and go to Yuri' : isMember === false ? 'Skip this chat and see membership' : 'Skip this chat'
 }
 
 /**
@@ -387,8 +464,8 @@ export function widgetMembershipLine(percentOff: number | null | undefined): str
   // The free week comes before the price, so a creator code's first-month
   // figure is not read as what is paid first.
   return PRICING.trial_requires_card
-    ? `The account is free. Membership is separate and optional: new members get the first ${PRICING.trial_days} days free, then ${price}.`
-    : `The account is free. Membership is separate and optional: new members get the first ${PRICING.trial_days} days free with no card, then ${price} only if you add a card.`
+    ? `Creating an account is free. Your free week (${PRICING.trial_days} days, then ${price}) starts when you add a card.`
+    : `For a new member, creating an account starts your free week: ${PRICING.trial_days} days, no card. After that it is ${price}, only if you add a card. One free week per person.`
 }
 
 /**
@@ -397,7 +474,7 @@ export function widgetMembershipLine(percentOff: number | null | undefined): str
  * "Code BAILEY saved: 50% off your first paid month".
  */
 export function widgetAccountLine(percentOff: number | null | undefined): string {
-  const lead = `Create a free account and continue with Yuri. New members get ${PRICING.trial_days} days free with no card.`
+  const lead = `Create a free account and continue with Yuri. For a new member that starts your free week: ${PRICING.trial_days} days, no card.`
   return firstMonthPrice(percentOff)
     ? `${lead} After that, ${priceWithOffer(percentOff)}, only if you add a card.`
     : `${lead} ${PRICING.monthly_display} after that, only if you add a card.`

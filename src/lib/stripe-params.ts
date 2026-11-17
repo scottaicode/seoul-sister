@@ -76,6 +76,14 @@ export interface CheckoutParamsInput {
  * start without the box ticked, and records that it was.
  */
 export const DIRECT_TERMS_VERSION = '2026-11-15'
+/**
+ * What was shown when the free week started by creating an account: the
+ * sign-up page's one sentence (offers.ts signupStartsLine) and its line "By
+ * creating an account you agree to our Terms and Privacy Policy". NOT the
+ * paragraph above, which that page never shows; a different name so the
+ * record does not claim it was.
+ */
+export const SIGNUP_TERMS_VERSION = 'signup-2026-11-16'
 export function directFreeWeekTerms(trialDays: number, percentOff: number | null = null): string {
   return `Nothing is charged today and no card is asked for. Your free week is the first ${trialDays} days of membership and starts when you press the button. With no card, membership stops when the free week ends and nothing is ever charged. To keep going you add a card with the "Add a card" button inside Seoul Sister; a card you add is charged ${chargePhrase(percentOff, 'when the free week ends')}. The free week can be started once.`
 }
@@ -92,8 +100,10 @@ export function buildDirectFreeWeekParams(p: {
   customerId: string
   ipHash?: string | null
   offer?: { code: string; promotionCodeId: string; percentOff: number } | null
+  /** Where the person agreed to the terms. Default: the membership page's tick box. */
+  termsShown?: 'membership_page' | 'signup'
 }) {
-  const metadata: Record<string, string> = { user_id: p.userId, plan: p.plan, no_card: '1', direct: '1', terms_version: DIRECT_TERMS_VERSION, terms_agreed: '1' }
+  const metadata: Record<string, string> = { user_id: p.userId, plan: p.plan, no_card: '1', direct: '1', terms_version: p.termsShown === 'signup' ? SIGNUP_TERMS_VERSION : DIRECT_TERMS_VERSION, terms_agreed: '1', terms_shown: p.termsShown ?? 'membership_page' }
   if (p.offer) {
     metadata.offer_code = p.offer.code
     metadata.offer_percent_off = String(p.offer.percentOff)

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, Check, Sparkles, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { registerFootnote } from '@/lib/offers'
+import { rememberSignupAgreement } from '@/lib/signup-agreement'
 import { useSavedOffer } from '@/lib/use-saved-offer'
 import { signupEmailRejection } from '@/lib/utils/email-normalize'
 import { adoptPreviewForSignup } from '@/lib/utils/widget-session'
@@ -166,6 +167,10 @@ export default function RegisterPage() {
 
     try {
       await signUp(email, password, captchaToken ?? undefined)
+      // The account exists. Creating it starts the free week; the next page
+      // does that, and needs to know this browser came through here
+      // (signup-agreement.ts). Set only now: a failed sign-up leaves no mark.
+      rememberSignupAgreement()
       await settleWithin(pendingClaim, CLAIM_WAIT_MS)
       // Priority 2 (Jul 2026) — move the paywall to the VALUE MOMENT.
       // Previously this pushed straight to '/subscribe', so a stranger hit the
@@ -226,6 +231,7 @@ export default function RegisterPage() {
             try {
               setIsLoading(true)
               await settleWithin(pendingClaim, CLAIM_WAIT_MS)
+              rememberSignupAgreement()
               await signInWithGoogle()
             } catch {
               setError('Google sign-in failed. Please try again.')
@@ -407,7 +413,7 @@ export default function RegisterPage() {
       </div>
 
       {/* Footer note */}
-      <p className="text-center text-xs text-white/30 mt-6">
+      <p className="text-center text-xs text-white/60 mt-6">
         By creating an account you agree to our{' '}
         <Link href="/terms" className="underline hover:text-white/60 transition-colors">
           Terms

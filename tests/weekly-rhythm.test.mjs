@@ -476,7 +476,7 @@ test('member turn facts: stated as facts, with no date she could get wrong and n
 test('the advisor prompt: the check-in is "most weeks", mentioned once, and a named day is not promised to the day', () => {
   const advisor = read('src', 'lib', 'yuri', 'advisor.ts')
   assert.match(advisor, /\*\*The weekly check-in\.\*\* Most weeks you send each member a short note on their Sunday \(day 3 and day 6 during a free week\) asking how their skin did, and their answers are how the routine gets adjusted\. It is not guaranteed every week\./)
-  assert.match(advisor, /from November 11 2026 on were told to expect it; you cannot see who was\. Mention it once when you first build someone's routine, not in ordinary answers\./)
+  assert.match(advisor, /from November 11 2026 on were told to expect it in their welcome email; you cannot see who was\. Mention it once when you first build someone's routine, not in ordinary answers\./)
   assert.doesNotMatch(advisor, /Every member hears from you once a week/)
   assert.doesNotMatch(advisor, /the proactive check-in fires on that day/)
   assert.match(advisor, /it is raised in your next weekly note, which may be up to six days after the day you named/)

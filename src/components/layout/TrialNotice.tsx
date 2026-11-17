@@ -71,9 +71,14 @@ export default function TrialNotice() {
     // After saving a card, look again shortly: the webhook that attaches it
     // usually lands within seconds.
     const again = saved ? window.setTimeout(() => void load(), 4000) : null
+    // The free week can start while this page is open (sign-up starts it on
+    // the setup page): look again when told.
+    const onChange = () => void load()
+    window.addEventListener('ss:trial-changed', onChange)
     return () => {
       live = false
       if (again) window.clearTimeout(again)
+      window.removeEventListener('ss:trial-changed', onChange)
     }
   }, [])
 

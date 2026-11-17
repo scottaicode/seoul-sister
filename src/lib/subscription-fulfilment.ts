@@ -158,8 +158,8 @@ export async function fulfilNewSubscription(
       const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null
       // One more try on a failed send: for a start reached by two callers,
       // only this one will ever send it.
-      let confirm = await sendSubscriptionConfirmation(buyerEmail, trialEnd, { cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: await timezoneForUser(db, userId), startedOnOurPage: subscription.metadata?.direct === '1' })
-      if (!confirm.sent) confirm = await sendSubscriptionConfirmation(buyerEmail, trialEnd, { cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: await timezoneForUser(db, userId), startedOnOurPage: subscription.metadata?.direct === '1' })
+      let confirm = await sendSubscriptionConfirmation(buyerEmail, trialEnd, { cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: await timezoneForUser(db, userId), startedOnOurPage: subscription.metadata?.direct === '1', startedAtSignup: subscription.metadata?.terms_shown === 'signup' })
+      if (!confirm.sent) confirm = await sendSubscriptionConfirmation(buyerEmail, trialEnd, { cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: await timezoneForUser(db, userId), startedOnOurPage: subscription.metadata?.direct === '1', startedAtSignup: subscription.metadata?.terms_shown === 'signup' })
       if (!confirm.sent) {
         console.error(`[stripe webhook] subscription confirmation NOT sent to user ${userId}: ${confirm.reason}`)
       }

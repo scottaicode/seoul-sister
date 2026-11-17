@@ -24,6 +24,9 @@ const CheckoutSchema = z.object({
   via: z.enum(['direct', 'stripe']).optional(),
   // The box under the terms on our page. Required for 'direct'.
   agreed_terms: z.boolean().optional(),
+  // Where they agreed: the membership page's tick box, or the sign-up page
+  // (creating an account now starts the free week). Recorded on the subscription.
+  terms_shown: z.enum(['membership_page', 'signup']).optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -157,7 +160,7 @@ export async function POST(request: NextRequest) {
       // webhook's customer.subscription.created is the second chance.
       let started: Awaited<ReturnType<typeof startDirectFreeWeek>>
       try {
-        started = await startDirectFreeWeek({ userId: user.id, email: user.email!, plan: parsed.data.plan as TierKey, ipHash, offer })
+        started = await startDirectFreeWeek({ userId: user.id, email: user.email!, plan: parsed.data.plan as TierKey, ipHash, offer, termsShown: parsed.data.terms_shown === 'signup' ? 'signup' : 'membership_page' })
       } catch (err) {
         console.error('[stripe/checkout] direct free week failed at Stripe:', err instanceof Error ? err.message : String(err))
         if (err instanceof HasLiveSubscriptionError) {

@@ -9,7 +9,9 @@ import CarryoverPrompt from '@/components/onboarding/CarryoverPrompt'
 import ChatMessage from '@/components/yuri/ChatMessage'
 import ChatInput from '@/components/yuri/ChatInput'
 import type { ChatMessage as ChatMessageType } from '@/types/yuri'
-import { getOfferCode, setupChatLine, skipSetupLabel } from '@/lib/offers'
+import { getOfferCode, setupChatLine, skipSetupLabel, freeWeekNotStartedLine } from '@/lib/offers'
+import { hasFreshSignupAgreement, clearSignupAgreement, shouldStartAtSignup, isJustCreated, rememberStartNote, readStartNote } from '@/lib/signup-agreement'
+import { startFreeWeekOnce } from '@/lib/start-free-week'
 import { takeCarriedQuestion } from '@/lib/landing-chat'
 
 // What a new member's first Yuri message is prefilled with after checkout. It is
@@ -68,6 +70,10 @@ export default function OnboardingPage() {
   // "complete your skin profile" links), and "your free week has not started"
   // or "see membership" would be false for them.
   const [isMember, setIsMember] = useState<boolean | null>(null)
+  // True on the page load where this account's free week was started (sign-up starts it).
+  const [freeWeekJustStarted, setFreeWeekJustStarted] = useState(false)
+  // Why sign-up did not start the free week, when it did not (the sign-up page said it would).
+  const [startNote, setStartNote] = useState<string | null>(null)
   // The answer is per ACCOUNT, so read it once we know who is signed in.
   const [userId, setUserId] = useState<string>('')
   useEffect(() => {
@@ -95,7 +101,45 @@ export default function OnboardingPage() {
         console.warn('[onboarding] plan not read; nothing is said about membership:', planError.message)
         return
       }
-      setIsMember(!!profile?.plan && profile.plan !== 'free')
+      const member = !!profile?.plan && profile.plan !== 'free'
+      // Creating an account starts the free week (Nov 16 2026). This is the
+      // first page after sign-up, by email or by Google, so it is done here,
+      // once, for a browser that has just come through the sign-up page.
+      // Anything short of "started" leaves them as they were: an account, with
+      // the membership page as the way in.
+      // Only for an account made within the hour: an older free account that
+      // passes through the sign-up page (its Google button signs anyone in)
+      // is not started without being asked. The membership page asks them.
+      const createdAt = data.session?.user?.created_at
+      const token = data.session?.access_token
+      if (shouldStartAtSignup({ member, hasToken: !!token, accountCreatedAt: createdAt, hasMark: hasFreshSignupAgreement(), now: Date.now() })) {
+        // One start per account however often this effect runs.
+        const outcome = await startFreeWeekOnce(id, token as string, getOfferCode())
+        if (outcome.started) {
+          clearSignupAgreement()
+          if (!live) return
+          setIsMember(true)
+          setFreeWeekJustStarted(true)
+          // The banner at the top read "no free week" a moment ago; have it look again.
+          window.dispatchEvent(new Event('ss:trial-changed'))
+          return
+        }
+        // A reason that will not change (already used, the network limit, a
+        // code) ends it: the mark goes, and the sentence is kept so a reload
+        // says the same thing. A failure keeps the mark, so a reload tries again.
+        if (!outcome.retry) {
+          clearSignupAgreement()
+          rememberStartNote(id, outcome.note)
+        }
+        if (!live) return
+        setStartNote(outcome.note)
+      } else if (!member && isJustCreated(createdAt, Date.now())) {
+        // A new account with no start in progress. If this tab was already
+        // told why (above, before a reload), say that again; otherwise it did
+        // not come through the sign-up page in this browser.
+        setStartNote(readStartNote(id) ?? freeWeekNotStartedLine('not_asked'))
+      }
+      setIsMember(member)
     })()
     return () => { live = false }
   }, [])
@@ -539,11 +583,13 @@ export default function OnboardingPage() {
       // '/yuri', so this single route is correct for both free and paid.
       // '?from=onboarding' lets the subscribe page open on continuation framing
       // (the earned value moment) rather than the cold pricing wall.
-      router.push('/subscribe?from=onboarding')
+      // A member (their free week started at sign-up) goes straight to the
+      // first member chat, with the routine request ready to send.
+      router.push(isMember === true ? `/yuri?ask=${encodeURIComponent(FIRST_MEMBER_ASK)}` : '/subscribe?from=onboarding')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to complete onboarding')
     }
-  }, [getToken, router])
+  }, [getToken, router, isMember])
 
   // Skip onboarding
   const handleSkip = useCallback(async () => {
@@ -611,7 +657,8 @@ export default function OnboardingPage() {
               <p className="text-xs text-white/40">Your AI K-beauty advisor</p>
               {/* What this chat is, and for someone who is not a member, that
                   the free week has not started (offers.ts). */}
-              <p className="text-xs text-white/60">{setupChatLine(isMember)}</p>
+              <p className="text-xs text-white/60">{setupChatLine(isMember, freeWeekJustStarted)}</p>
+              {startNote && <p className="text-xs text-white/80 mt-1" role="status">{startNote}</p>}
             </div>
           </div>
         </div>
@@ -632,7 +679,7 @@ export default function OnboardingPage() {
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-br from-gold to-gold-light text-seoul-dark text-sm font-semibold shadow-glow-gold hover:shadow-glow-gold-lg hover:scale-[1.02] transition-all duration-200"
               >
                 <Sparkles className="w-4 h-4" />
-                {isMember === true ? 'Finish setup' : 'Finish setup and see membership'}
+                {isMember === false ? 'Finish setup and see membership' : 'Finish setup'}
               </button>
             </div>
           )}

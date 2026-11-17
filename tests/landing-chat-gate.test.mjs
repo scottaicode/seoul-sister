@@ -409,7 +409,7 @@ test('the lead follow-up judge is told the truth about the link in both modes', 
   const src = read('src/lib/proactive/lead-reengage.ts')
   assert.ok(src.includes("        : `Seoul Sister is a paid subscription at ${PRICING.monthly_display}; talking to Yuri now starts with a free account.`,"))
   assert.ok(src.includes(`      !LANDING_CHAT_OPEN
-        ? \`WHAT THE LINK OPENS: the sign-up page on seoulsister.com. The free chat on the homepage closed to new messages after they wrote to you, for everyone, and the conversation you had is not shown to them there. Continuing means creating a free account, which opens a free setup chat; after that, membership is their choice, and it begins with a free week that needs no card. If they create the account on the device they open this email on, your one-line opener is put in the setup chat's box for them to send. Don't promise them a free conversation that picks up where you left off.\`
+        ? \`WHAT THE LINK OPENS: the sign-up page on seoulsister.com. The free chat on the homepage closed to new messages after they wrote to you, for everyone, and the conversation you had is not shown to them there. Continuing means creating a free account, which for a first-time member starts a free week that needs no card, and opens a setup chat with you. If they create the account on the device they open this email on, your one-line opener is put in the setup chat's box for them to send. Don't promise them a free conversation that picks up where you left off.\`
         : left > 0`))
   // The button matches the fact: sign-up while closed, the homepage chat while open.
   assert.ok(src.includes(`  if (!LANDING_CHAT_OPEN) params.set('plan', 'monthly')
@@ -494,7 +494,7 @@ test('closed, on a phone: sign-up is one tap away and the sign-up card has no sc
               <Link href="#pricing" className={\`\${LANDING_CHAT_OPEN ? '' : 'hidden lg:inline-flex '}glass-button-primary text-sm py-3 px-6\`}>
                 View Plans
               </Link>`))
-  assert.ok(home.includes(`            <Link href={gatedSignupHref('sticky', '')} className="glass-button-primary w-full text-sm py-3 block text-center">
+  assert.ok(home.includes(`            <Link href={gatedSignupHref('sticky', '')} data-sticky-signup className="glass-button-primary w-full text-sm py-3 block text-center">
               Create my free account
             </Link>`))
   // Open mode keeps the old sticky button, which scrolls to the chat.

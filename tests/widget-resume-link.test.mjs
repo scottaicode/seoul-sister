@@ -702,8 +702,8 @@ test('the sign-up page takes the token before anything else, then waits for the 
   assert.match(effect, /adopt: adoptPreviewForSignup,\n\s+signedIn: async \(\) => Boolean\(\(await supabase\.auth\.getSession\(\)\)\.data\.session\),/)
   assert.doesNotMatch(page, /useSearchParams/, 'reading the query through the router would keep the token in the URL until hydration')
   // Both ways off the page wait for the claim first.
-  assert.match(page, /await signUp\(email, password, captchaToken \?\? undefined\)\n\s+await settleWithin\(pendingClaim, CLAIM_WAIT_MS\)\n/)
-  assert.match(page, /setIsLoading\(true\)\n\s+await settleWithin\(pendingClaim, CLAIM_WAIT_MS\)\n\s+await signInWithGoogle\(\)/)
+  assert.match(page, /await signUp\(email, password, captchaToken \?\? undefined\)\n(?:\s+\/\/[^\n]*\n)+\s+rememberSignupAgreement\(\)\n\s+await settleWithin\(pendingClaim, CLAIM_WAIT_MS\)\n/)
+  assert.match(page, /setIsLoading\(true\)\n\s+await settleWithin\(pendingClaim, CLAIM_WAIT_MS\)\n\s+rememberSignupAgreement\(\)\n\s+await signInWithGoogle\(\)/)
   assert.match(page, /const CLAIM_WAIT_MS = 2000\n/)
 })
 

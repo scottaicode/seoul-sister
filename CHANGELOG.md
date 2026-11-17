@@ -4,6 +4,55 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.63.0 — Creating an account starts the free week (Nov 16 2026)
+
+- **The owner's process, stated Nov 16:** sign up, agree to the terms, get 7 free days; with a
+  creator code also 50% off the first paid month; a card only through Stripe, when they want to
+  continue. That is what he believed was built.
+- **What was built instead:** sign-up made a "free account", then a setup chat, then a membership
+  page where a second press started the week. Nobody had decided to have that step: the no-card
+  week (Nov 10) was attached to the membership page that already existed. On Nov 15 a tester
+  thought creating an account had started her week, and the wording was changed to say it had
+  not (v11.61.18). On Nov 16 she tested again and said the two-step path itself was the
+  confusion ("the free account and membership need to just be required together"). She and the
+  one stranger who signed up at the gate both stopped before the second press.
+- **Now:** the sign-up page marks the browser once the account exists; the first page after it
+  (the setup chat) starts the free week for a non-member account under an hour old that carries
+  the mark, through the same checkout route and rules as before (one week per inbox, a few per
+  network, no card, no Stripe page). The page then says "Your free week has started" and the
+  banner shows when it ends. Finishing the setup chat opens the member chat with the routine
+  request ready.
+- **When it does not start** (already used, the network limit, a code that is not a creator
+  code, a failure, a different device) the setup page says why, a reload says the same thing,
+  and the membership page is the way in, as before. A failure is tried again on reload.
+- **Also from her test.** Settings no longer shows the member menu and bottom bar to someone
+  who is not a member. On a phone the sticky sign-up bar hides while another sign-up button is
+  on screen. A saved creator code is kept 30 days, not for ever, and its line says it is saved
+  in this browser. The sign-up page is one sentence where it was four.
+- **What Yuri is told.** Her setup prompt and status facts say most people she meets in setup are
+  already in their free week, that a member is not being offered membership, and that the
+  routine is built in the member chat that follows (the setup chat cannot save one).
+- **The switch.** `DIRECT_FREE_WEEK`: `on` is on; `off`, `false` or `0` in any case is the
+  emergency stop; not set is on in the production deployment only, so a laptop or preview build
+  with the live Stripe key does not make real subscriptions from test sign-ups.
+- **Records.** A week started at sign-up is recorded on the Stripe subscription as
+  `terms_shown: signup`, `terms_version: signup-2026-11-16`, and its confirmation email says
+  "It started when you created your account."
+- **Review.** Opus 5.5 (mechanics) and Fable 5.2 (wording) reviewed the first version; Opus 5.5
+  reviewed the fixed version and found more: "started" could be said for a subscription that
+  was not a free week; the mark was set before the account existed; a refusal was silent; a
+  second account in one tab got the first one's answer; the default would have made live Stripe
+  subscriptions from a developer's laptop. All fixed. The fixes to that last review were not
+  reviewed again.
+- **Not verified.** Nothing here has been seen in a browser. Whether Supabase asks new email
+  sign-ups to confirm their address (if it does, the week starts when they come back confirmed,
+  in the same browser, within the hour; otherwise at the membership page). The Google button on
+  the sign-up page marks the browser before Google returns; an existing account is protected by
+  its age, not by the mark.
+- **Still Scott's to do.** Google's sign-in screen shows the Supabase project address. Per
+  Supabase's docs the fixes are Google brand verification (free, a few business days) or a
+  Supabase custom domain (paid add-on).
+
 ## v11.62.6 — The check-in guard now answers for every sentence, so an invented "we agreed" cannot be left out (Nov 16 2026)
 
 - **The weakness.** A note may say "the day we said the jaw patch would tell us something". The
