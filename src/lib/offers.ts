@@ -57,17 +57,24 @@ export function captureOfferCode(): void {
   }
 }
 
-/** Remember a code the person typed on the membership page, once Stripe has confirmed it. Never throws. */
-export function rememberOfferCode(raw: string): void {
-  if (typeof window === 'undefined') return
+/**
+ * Remember a code the person typed, once Stripe has confirmed it. Never
+ * throws. Answers whether it was really kept: the sign-up page states the
+ * discount only if it was, because the saved code is what carries it into the
+ * free week.
+ */
+export function rememberOfferCode(raw: string): boolean {
+  if (typeof window === 'undefined') return false
   try {
     const code = normalizeOfferCode(raw)
-    if (code) {
-      window.localStorage.setItem(OFFER_STORAGE_KEY, code)
-      window.localStorage.setItem(OFFER_SAVED_AT_KEY, String(Date.now()))
-    }
+    if (!code) return false
+    window.localStorage.setItem(OFFER_STORAGE_KEY, code)
+    window.localStorage.setItem(OFFER_SAVED_AT_KEY, String(Date.now()))
+    return window.localStorage.getItem(OFFER_STORAGE_KEY) === code
   } catch {
-    // The code is still sent with this page's button; it is only not kept for a later visit.
+    // Storage blocked (private mode). On the membership page the code is still
+    // sent with that page's button; on the sign-up page the caller says so.
+    return false
   }
 }
 
@@ -180,6 +187,54 @@ export function offerSavedLine(code: string, percentOff: number): string {
   // "In this browser" says why it is here for someone who did not just enter
   // it (it arrived on a link, or was typed on the membership page).
   return `Code ${code} is saved in this browser: ${validPercent(percentOff)}% off your first paid month.`
+}
+
+/**
+ * Typing a code (Nov 16 2026). Since creating an account starts the free week,
+ * a new person never meets the membership page, which had the only code box;
+ * someone who heard "use code BAILEY" and came to the site directly had
+ * nowhere to enter it. There are now two places: the sign-up page, and the
+ * notice at the top of the app during the free week (the discount is on the
+ * first PAID month, so any time before a card is charged is in time).
+ * A code is not case sensitive: normalizeOfferCode upper-cases it.
+ */
+export function haveACodeLabel(): string {
+  return 'Have a code?'
+}
+export function codeShapeLine(): string {
+  return 'That does not look like a code. Codes are 3 to 20 letters and numbers.'
+}
+export function codeCheckFailedLine(): string {
+  return 'The code could not be checked just now. Please try again in a minute.'
+}
+export function codeTooManyTriesLine(): string {
+  return 'Too many tries. Please try the code again in an hour.'
+}
+/** Stripe would not take it right now (for example the last place went a moment ago, or Stripe could not be reached). Nothing was changed. */
+export function codeNotAppliedNowLine(code: string): string {
+  return `Code ${code} could not be applied just now. Nothing was changed. Please try again in a few minutes.`
+}
+/** The browser refused to keep the code, so sign-up cannot carry it. The notice in the app takes it after sign-up. */
+export function codeNotSavedLine(code: string): string {
+  return `Your browser would not save ${code}, so it cannot be carried into sign-up. Create your account, then enter it with "Have a code?" at the top of the app.`
+}
+/** They cancelled: the membership stops when the free week ends, so a code would take one of its places for nothing. */
+export function codeAfterCancelLine(): string {
+  return 'Your membership is set to stop when the free week ends, so a code would not be used.'
+}
+/**
+ * A code we do not recognise as a creator code. It may be a typo, or a code
+ * Seoul Sister gave this person directly; this page cannot tell which and does
+ * not say the code is wrong. The way through for the second kind is a person.
+ */
+export function codeNeedsHelpLine(code: string): string {
+  return `We could not apply ${code} here. Check the spelling. If Seoul Sister gave you this code directly, email team@seoulsister.com and we will apply it for you.`
+}
+export function codeAlreadyOnLine(code: string | null): string {
+  return code ? `Code ${code} is already on your membership.` : 'A code is already on your membership.'
+}
+export function codeNotInFreeWeekLine(): string {
+  return 'A code can be added during your free week, and there is no free week running on this account.'
 }
 
 /** Shown when Stripe no longer accepts the code. It never says why or how many were used. */

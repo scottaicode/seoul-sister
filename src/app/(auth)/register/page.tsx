@@ -7,6 +7,8 @@ import { Eye, EyeOff, Mail, Lock, Check, Sparkles, AlertCircle } from 'lucide-re
 import { useAuth } from '@/contexts/AuthContext'
 import { registerFootnote } from '@/lib/offers'
 import { rememberSignupAgreement } from '@/lib/signup-agreement'
+import { checkTypedCode } from '@/lib/typed-code'
+import CodeField from '@/components/offers/CodeField'
 import { useSavedOffer } from '@/lib/use-saved-offer'
 import { signupEmailRejection } from '@/lib/utils/email-normalize'
 import { adoptPreviewForSignup } from '@/lib/utils/widget-session'
@@ -126,6 +128,10 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  // A code typed here and confirmed by Stripe. It is remembered in the browser,
+  // so the free week that starts at sign-up carries it; this is what the
+  // sentence above the form states until the next load reads the saved code.
+  const [typedPercent, setTypedPercent] = useState<number | null>(null)
   const captchaRef = useRef<AuthCaptchaHandle>(null)
 
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword
@@ -213,7 +219,21 @@ export default function RegisterPage() {
             of signing up (Nov 15 2026: a tester believed creating the account
             had started her free week; placed inside the email form it was
             never read by someone using Google). Wording and price: offers.ts. */}
-        <p className="text-white/70 text-sm leading-relaxed mb-8">{registerFootnote(savedOffer.percentOff)}</p>
+        <p className="text-white/70 text-sm leading-relaxed mb-3">{registerFootnote(typedPercent ?? savedOffer.percentOff)}</p>
+        {/* Someone who heard a creator's code and came here directly, not by the
+            creator's link. Closed until asked for. Not shown once a code is on. */}
+        {(typedPercent ?? savedOffer.percentOff) == null ? (
+          <CodeField
+            className="mb-6 text-center"
+            onApply={async (raw) => {
+              const r = await checkTypedCode(raw)
+              if (r.ok) setTypedPercent(r.percentOff)
+              return { ok: r.ok, line: r.line }
+            }}
+          />
+        ) : (
+          <div className="mb-6" />
+        )}
 
         {/* Error Banner */}
         {error && (

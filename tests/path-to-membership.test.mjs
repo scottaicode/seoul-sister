@@ -25,10 +25,13 @@ test('the sign-up form calls this step an account, never joining, and its price 
   assert.doesNotMatch(shown, /\bJoin\b|\bjoining\b/)
   // Under the heading and above BOTH ways of signing up (Google and email),
   // readable, once, and with the visitor's creator code applied.
-  const footnote = page.indexOf('{registerFootnote(savedOffer.percentOff)}')
+  const footnote = page.indexOf('{registerFootnote(typedPercent ?? savedOffer.percentOff)}')
   assert.ok(footnote > 0 && footnote < page.indexOf('Continue with Google') && footnote < page.indexOf('type="submit"'), 'the explanation must come before both sign-up buttons')
-  assert.equal(page.split('registerFootnote(savedOffer.percentOff)').length - 1, 1)
-  assert.ok(page.includes('<p className="text-white/70 text-sm leading-relaxed mb-8">{registerFootnote(savedOffer.percentOff)}</p>'))
+  assert.equal(page.split('registerFootnote(').length - 1, 1)
+  assert.ok(page.includes('<p className="text-white/70 text-sm leading-relaxed mb-3">{registerFootnote(typedPercent ?? savedOffer.percentOff)}</p>'))
+  // The code control sits between that sentence and the buttons, so a typed code is on before either is pressed.
+  const field = page.indexOf('<CodeField')
+  assert.ok(field > footnote && field < page.indexOf('Continue with Google'))
   // The button is named for what it makes.
   assert.ok(shown.includes("'Create my free account'") && !shown.includes("'Create Account'"))
   // No price of its own (comments aside: one records an old price).

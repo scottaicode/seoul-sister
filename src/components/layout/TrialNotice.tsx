@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { chargePhrase, addCardPhrase } from '@/lib/offers'
+import { chargePhrase, addCardPhrase, codeCheckFailedLine } from '@/lib/offers'
+import CodeField from '@/components/offers/CodeField'
 
 /**
  * Tells a member on the free week when it ends and what happens then, and
@@ -106,6 +107,25 @@ export default function TrialNotice() {
   }, [state])
   if (state === 'none' || !facts) return null
 
+  // A creator code can be added any day of the free week: the discount is on
+  // the first paid month. Offered only while none is on the membership.
+  const applyCode = async (code: string): Promise<{ ok: boolean; line: string }> => {
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    if (!token) return { ok: false, line: 'Please sign in again.' }
+    const res = await fetch('/api/me/offer-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ code }),
+    })
+    const body = ((await res.json().catch(() => null)) ?? {}) as { ok?: unknown; line?: unknown }
+    const ok = res.ok && body.ok === true
+    // The sentence above states the price; have it read the facts again.
+    if (ok) window.dispatchEvent(new Event('ss:trial-changed'))
+    return { ok, line: typeof body.line === 'string' ? body.line : codeCheckFailedLine() }
+  }
+  const codeField = (facts.percent_off ?? null) === null ? <CodeField onApply={applyCode} className="mt-1" /> : null
+
   const ends = facts.ends_at ? new Date(facts.ends_at) : null
   // The day AND the time: the free week ends exactly seven days after it
   // started, to the minute, so "ends on Sunday" was wrong for someone whose
@@ -152,6 +172,7 @@ export default function TrialNotice() {
         {endText
           ? `Your free week ends ${endText}. Your card will be charged ${chargePhrase(pct, 'once it ends,')}.`
           : `Your card will be charged ${chargePhrase(pct, 'when your free week ends,')}.`}
+        {codeField}
       </div>
     )
   }
@@ -180,6 +201,7 @@ export default function TrialNotice() {
         {busy ? 'Opening…' : 'Add a card'}
       </button>
       {error && <span className="block text-rose-300 mt-1" role="alert">{error}</span>}
+      {codeField}
     </div>
   )
 }

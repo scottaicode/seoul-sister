@@ -4,6 +4,31 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.64.0 — A creator code can be typed: on the sign-up page, and any day of the free week (Nov 16 2026)
+
+- **The gap.** Once creating an account started the free week (v11.63.0), a new person never met
+  the membership page, which had the only code box. Someone who heard "use code BAILEY" and
+  came to the site directly, not by the creator's link, had nowhere to enter it, and a card
+  added later was charged $9.99. The link (`/tt`) was unaffected.
+- **Sign-up page.** A closed "Have a code?" control. A code Stripe confirms is saved in the
+  browser and goes on when the free week starts; the page says "saved", not "applied", and only
+  if the browser really kept it. An unconfirmed code is not kept, so a typo cannot stop the
+  free week from starting.
+- **During the free week.** The same control in the notice at the top of the app. The discount
+  is on the first paid month, so any day before the week ends is in time (Stripe's docs: a
+  repeating coupon covers invoices in its period "starting when the coupon is first applied").
+- **Rules.** Stripe is asked what is already on the subscription before anything is said, since
+  it and not our row is the record of what a card will be charged. One code per membership;
+  the row is claimed before Stripe is asked to apply, so two tabs cannot put on two. A member
+  who has cancelled is refused: the code would take one of the creator's 50 places for a month
+  that will never be paid. Only codes marked as creator offers are applied; anything else is
+  told to check the spelling or email team@seoulsister.com, and is never called wrong.
+- **Not case sensitive.** `bailey`, `Bailey` and `BAILEY` are the same code.
+- **Review.** Opus 5.5 reviewed the first version: it could tell a member "no longer available,
+  $9.99" when Stripe already had the code on; it reused a sentence about a button the notice
+  does not have; it said "applied" on the sign-up page where nothing is applied yet; and two
+  tabs could apply two codes. All fixed here. The fixed version was not reviewed again.
+
 ## v11.63.2 — Yuri's greeting waits for the free week to start (Nov 16 2026)
 
 - **Seen in a browser, second throwaway account.** Under a header reading "Your free week has

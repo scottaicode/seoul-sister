@@ -211,6 +211,40 @@ export async function startDirectFreeWeek(params: {
 }
 
 /**
+ * Put a creator code on a free week that is already running. Only on a
+ * subscription that is still in its free week and carries no discount: the
+ * code takes money off the first PAID month, so it must be on before that
+ * invoice, and one subscription takes one code.
+ */
+export async function applyPromotionToFreeWeek(subscriptionId: string, promotionCodeId: string): Promise<'applied' | 'not_in_free_week' | 'has_discount'> {
+  const stripe = getStripeClient()
+  const sub = await stripe.subscriptions.retrieve(subscriptionId)
+  if (sub.status !== 'trialing') return 'not_in_free_week'
+  if (sub.discount) return 'has_discount'
+  await stripe.subscriptions.update(subscriptionId, { promotion_code: promotionCodeId })
+  return 'applied'
+}
+
+/**
+ * What Stripe itself holds for a free week, asked BEFORE anything is said
+ * about a code: whether it is still a free week, whether the member has
+ * cancelled, and any discount already on it. Stripe is the record of what a
+ * card will be charged; our own row can be behind it (a lost reply, a failed
+ * write), and must not be what decides.
+ */
+export async function readFreeWeekDiscount(subscriptionId: string): Promise<{ status: string; cancelling: boolean; discount: { code: string | null; percentOff: number | null } | null }> {
+  const sub = await getStripeClient().subscriptions.retrieve(subscriptionId, { expand: ['discount.promotion_code'] })
+  const promo = sub.discount?.promotion_code
+  return {
+    status: sub.status,
+    cancelling: sub.cancel_at_period_end === true || sub.cancel_at != null,
+    discount: sub.discount
+      ? { code: promo && typeof promo !== 'string' ? (promo.code ?? null) : null, percentOff: sub.discount.coupon?.percent_off ?? null }
+      : null,
+  }
+}
+
+/**
  * A Stripe-hosted page where a member on a no-card trial saves a card. The
  * webhook then makes the saved card the subscription's default, which is what
  * Stripe checks at the end of the trial. The billing portal is not used for
