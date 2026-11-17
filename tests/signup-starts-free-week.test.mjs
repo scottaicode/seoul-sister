@@ -40,6 +40,9 @@ const store = (init = {}) => {
   return { map: m, getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, String(v)) }, removeItem: (k) => { m.delete(k) } }
 }
 
+// The browser's own zone is sent with the start, for the end time in the confirmation email.
+const TZ = Intl.DateTimeFormat().resolvedOptions().timeZone
+
 test('what the sign-up page says: one sentence, the week starts here, and what happens after', async () => {
   const { offers: o } = await load()
   assert.equal(o.signupStartsLine(null), 'For a new member, creating your account starts your free week: 7 days, no card. After that it is $9.99/month, only if you add a card. One free week per person.')
@@ -132,9 +135,9 @@ test('executed: it says "started" only when a free week is known to be running, 
   assert.deepEqual(ok, { started: true })
   assert.deepEqual(asked, [
     ['/api/me/trial', 'GET', null],
-    ['/api/stripe/checkout', 'POST', { plan: 'monthly', expect_free_week: true, via: 'direct', agreed_terms: true, terms_shown: 'signup', offer_code: 'BAILEY' }],
+    ['/api/stripe/checkout', 'POST', { plan: 'monthly', expect_free_week: true, via: 'direct', agreed_terms: true, terms_shown: 'signup', timezone: TZ, offer_code: 'BAILEY' }],
   ])
-  assert.deepEqual((await run({ facts: [ELIGIBLE], presses: [{ status: 200, body: { started: true } }] }))[1][1][2], { plan: 'monthly', expect_free_week: true, via: 'direct', agreed_terms: true, terms_shown: 'signup' })
+  assert.deepEqual((await run({ facts: [ELIGIBLE], presses: [{ status: 200, body: { started: true } }] }))[1][1][2], { plan: 'monthly', expect_free_week: true, via: 'direct', agreed_terms: true, terms_shown: 'signup', timezone: TZ })
 
   // Nothing is pressed for someone who cannot have one, and they are told why.
   for (const [facts, reason] of [
@@ -276,7 +279,7 @@ test('wiring: the mark is made only once the account exists, and the start is fo
   assert.ok(page.includes("      router.push(isMember === true ? `/yuri?ask=${encodeURIComponent(FIRST_MEMBER_ASK)}` : '/subscribe?from=onboarding')\n"))
   // The server records where they agreed, and the email says how the week started.
   const route = read('src/app/api/stripe/checkout/route.ts')
-  assert.ok(route.includes("termsShown: parsed.data.terms_shown === 'signup' ? 'signup' : 'membership_page' })"))
+  assert.ok(route.includes("termsShown: parsed.data.terms_shown === 'signup' ? 'signup' : 'membership_page', timezone: validTimeZone(parsed.data.timezone) })"))
   assert.ok(read('src/app/(legal)/terms/page.tsx').includes('starting when you create your account, or, if it did not start then, when you start it on our membership page'))
   // The banner looks again when the week starts under it.
   assert.ok(read('src/components/layout/TrialNotice.tsx').includes("window.addEventListener('ss:trial-changed', onChange)"))

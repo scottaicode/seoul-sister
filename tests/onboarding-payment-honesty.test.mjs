@@ -310,7 +310,7 @@ test('the wrap-up playback is limited to facts the person gave', async () => {
   // ("except that in the wrap-up you may state a likely duration as fact")
   // would undo the rule while leaving this section untouched.
   const whole = src.slice(src.indexOf('export function buildOnboardingSystemPrompt'), src.indexOf('export interface OnboardingTurnFacts'))
-  assert.equal(createHash('sha256').update(whole).digest('hex'), '3bc69b84fd31c845460436534a7547eb26cc602bc8c25ef1ab54f4cb46020570')
+  assert.equal(createHash('sha256').update(whole).digest('hex'), '9ae66161a1c6fc00db85ca30f9a54c6ea0badf86df08d4dfcf0d3b410c9aa620')
 })
 
 test('the setup chat is told it has no product database, and that is true of the code', async () => {

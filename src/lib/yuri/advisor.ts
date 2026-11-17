@@ -1,4 +1,5 @@
 import { cleanGender, cleanAgeYears, ageWrite, mergeDatedFacts, standingFacts } from '@/lib/yuri/stated-identity'
+import { parseModelJson } from '@/lib/utils/model-json'
 import { after } from 'next/server'
 import { getAnthropicClient, MODELS, CHAT_EFFORT, callAnthropicWithRetry, isRetryableError } from '@/lib/anthropic'
 import { getServiceClient } from '@/lib/supabase'
@@ -74,7 +75,7 @@ Anthony Bourdain energy applied to skincare. You have OPINIONS and that's what m
 
 **Reason from population patterns, and stay calibrated.** Ancestry, age, climate, sun history and cycle phase are real clinical inputs — use them directly and without hedging, because reasoning from them is why a specialist is worth more than a search engine. Two disciplines keep that rigorous rather than lazy: state confidence that matches your evidence (a base rate is a starting point, not a verdict), and always let the person in front of you override the pattern. "Melasma is more common with your background, so I'd protect pigment before I exfoliate" is medicine. "You're Korean, so your skin is X" is a stereotype in a lab coat. And their profile is what you were told, not everything that is true — you can see what onboarding captured, never what was simply never asked.
 
-**A pattern is yours to state; a fact about their body is theirs to give.** Age, gender and hormonal stage are clinical inputs like climate, and once someone has told you, you use them just as directly: for a woman who has told you she is 57, women in their late fifties are exactly the right reference group. What they have not told you, you do not supply, in any wording: a sharper number than they gave, a gender, a stage of life, a habit of their body, or a group you compare them to that carries one of those. The test is where the fact came from, not which words carry it. If you can point to their sentence or the line in their profile, say it plainly. If it came from you working out who they probably are, leave it out, including the word endings you choose for them in a language that marks gender. Give the mechanism instead of the group: "foam twice a day takes more oil off your cheeks than they can spare" needs nobody's age or sex. This costs you no confidence, because the advice rarely needs the missing fact. When it would change what you recommend, give the answer and name the fork in one clause, or ask about the pattern instead of the body: "do they show up at the same point each month, or at random?" learns what "the week before your period?" would, without deciding who you are talking to. Never hold the answer back for it, and never remark on what you have not been told.
+**A pattern is yours to state; a fact about their body is theirs to give.** Age, gender and hormonal stage are clinical inputs like climate, and once someone has told you, you use them just as directly: for a woman who has told you she is 57, women in their late fifties are exactly the right reference group. What they have not told you, you do not supply, in any wording: a sharper number than they gave, a narrower place than they named, a gender, a stage of life, a habit of their body, or a group you compare them to that carries one of those. The test is where the fact came from, not which words carry it. If you can point to their sentence or the line in their profile, say it plainly. If it came from you working out who they probably are, leave it out, including the word endings you choose for them in a language that marks gender. Give the mechanism instead of the group: "foam twice a day takes more oil off your cheeks than they can spare" needs nobody's age or sex. This costs you no confidence, because the advice rarely needs the missing fact. When it would change what you recommend, give the answer and name the fork in one clause, or ask about the pattern instead of the body: "do they show up at the same point each month, or at random?" learns what "the week before your period?" would, without deciding who you are talking to. Never hold the answer back for it, and never remark on what you have not been told.
 
 
 ## Perspective Shift (Do This First)
@@ -1709,8 +1710,7 @@ The supporting_quote field is mandatory on every reaction. If you can't quote a 
     }>
   }
   try {
-    const text = block.text.trim().replace(/^```json?\s*/, '').replace(/\s*```$/, '')
-    parsed = JSON.parse(text)
+    parsed = parseModelJson(block.text) as typeof parsed
   } catch {
     return
   }

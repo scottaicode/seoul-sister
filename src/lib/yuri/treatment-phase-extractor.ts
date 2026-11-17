@@ -25,6 +25,7 @@
  */
 
 import { getServiceClient } from '@/lib/supabase'
+import { parseModelJson } from '@/lib/utils/model-json'
 
 interface PhaseRow {
   id: string
@@ -233,8 +234,7 @@ Return JSON only.`,
 
   let parsed: { actions?: unknown }
   try {
-    const text = block.text.trim().replace(/^```json?\s*/, '').replace(/\s*```$/, '')
-    parsed = JSON.parse(text)
+    parsed = parseModelJson(block.text) as typeof parsed
   } catch {
     return // Parse failure — skip silently
   }

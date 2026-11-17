@@ -102,6 +102,8 @@ export function buildDirectFreeWeekParams(p: {
   offer?: { code: string; promotionCodeId: string; percentOff: number } | null
   /** Where the person agreed to the terms. Default: the membership page's tick box. */
   termsShown?: 'membership_page' | 'signup'
+  /** The browser's IANA zone, already validated, so the confirmation email gives the end time in the member's own time. */
+  timezone?: string | null
 }) {
   const metadata: Record<string, string> = { user_id: p.userId, plan: p.plan, no_card: '1', direct: '1', terms_version: p.termsShown === 'signup' ? SIGNUP_TERMS_VERSION : DIRECT_TERMS_VERSION, terms_agreed: '1', terms_shown: p.termsShown ?? 'membership_page' }
   if (p.offer) {
@@ -109,6 +111,7 @@ export function buildDirectFreeWeekParams(p: {
     metadata.offer_percent_off = String(p.offer.percentOff)
   }
   if (p.ipHash) metadata.ip_hash = p.ipHash
+  if (p.timezone) metadata.timezone = p.timezone
   return {
     customer: p.customerId,
     items: [{ price: p.priceId, quantity: 1 }],

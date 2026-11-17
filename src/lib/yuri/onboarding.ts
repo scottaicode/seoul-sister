@@ -1,4 +1,5 @@
 import { getAnthropicClient, MODELS, CHAT_EFFORT, callAnthropicWithRetry } from '@/lib/anthropic'
+import { parseModelJson } from '@/lib/utils/model-json'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import { onboardingUsageRow } from '@/lib/yuri/onboarding-usage'
 import { carryoverBlock, previewAgeFact, type Carryover } from '@/lib/yuri/widget-carryover'
@@ -139,7 +140,7 @@ When you have enough to build a meaningful profile (at minimum: skin_type + 2 co
 
 ## Important Rules
 - NEVER make up or assume profile data the user hasn't shared
-- **A pattern is yours to state; a fact about their body is theirs to give.** Age, gender and hormonal stage are clinical inputs like climate, and once someone has told you, you use them just as directly: for a woman who has told you she is 57, women in their late fifties are exactly the right reference group. What they have not told you, you do not supply, in any wording: a sharper number than they gave, a gender, a stage of life, a habit of their body, or a group you compare them to that carries one of those. The test is where the fact came from, not which words carry it. If you can point to their sentence or the line in their profile, say it plainly. If it came from you working out who they probably are, leave it out, including the word endings you choose for them in a language that marks gender. Give the mechanism instead of the group: "foam twice a day takes more oil off your cheeks than they can spare" needs nobody's age or sex. This costs you no confidence, because the advice rarely needs the missing fact. When it would change what you recommend, give the answer and name the fork in one clause, or ask about the pattern instead of the body: "do they show up at the same point each month, or at random?" learns what "the week before your period?" would, without deciding who you are talking to. Never hold the answer back for it, and never remark on what you have not been told.
+- **A pattern is yours to state; a fact about their body is theirs to give.** Age, gender and hormonal stage are clinical inputs like climate, and once someone has told you, you use them just as directly: for a woman who has told you she is 57, women in their late fifties are exactly the right reference group. What they have not told you, you do not supply, in any wording: a sharper number than they gave, a narrower place than they named, a gender, a stage of life, a habit of their body, or a group you compare them to that carries one of those. The test is where the fact came from, not which words carry it. If you can point to their sentence or the line in their profile, say it plainly. If it came from you working out who they probably are, leave it out, including the word endings you choose for them in a language that marks gender. Give the mechanism instead of the group: "foam twice a day takes more oil off your cheeks than they can spare" needs nobody's age or sex. This costs you no confidence, because the advice rarely needs the missing fact. When it would change what you recommend, give the answer and name the fork in one clause, or ask about the pattern instead of the body: "do they show up at the same point each month, or at random?" learns what "the week before your period?" would, without deciding who you are talking to. Never hold the answer back for it, and never remark on what you have not been told.
 - If they give vague answers, ask a gentle follow-up to clarify
 - If they want to skip something, respect that and move on
 - NEVER diagnose medical conditions -- recommend a dermatologist (피부과) for persistent issues
@@ -323,8 +324,7 @@ Return ONLY valid JSON, no explanation or markdown. If nothing can be extracted,
   if (block.type !== 'text') return {}
 
   try {
-    const cleaned = block.text.trim().replace(/^```json?\s*/, '').replace(/\s*```$/, '')
-    return JSON.parse(cleaned) as ExtractedSkinProfile
+    return parseModelJson(block.text) as ExtractedSkinProfile
   } catch (err) {
     // Was a silent `return {}` — indistinguishable from "the conversation
     // contained nothing to extract", which is the v10.3.4 silent-failure class.

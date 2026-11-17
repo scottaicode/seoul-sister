@@ -48,6 +48,8 @@ interface OpenMeteoPlace {
   country_code?: string
   admin1?: string
   timezone?: string
+  /** GeoNames feature code. "PCLI" and its relatives are whole countries. */
+  feature_code?: string
 }
 
 /**
@@ -118,7 +120,12 @@ async function search(query: string, count: number): Promise<OpenMeteoPlace[]> {
   )
   if (!res.ok) return []
   const data = (await res.json()) as { results?: OpenMeteoPlace[] }
-  return data.results ?? []
+  // A whole country is not somewhere a person lives. The provider lists
+  // "Canada" the country first, with coordinates in the Northwest Territories
+  // (seen Nov 17 2026), so a member who said only "Canada" would have been
+  // given the weather for a point 1,500 miles from most Canadians. Dropped
+  // here, a bare country stays unplaced and Yuri is told so.
+  return (data.results ?? []).filter((place) => !(place.feature_code ?? '').startsWith('PCL'))
 }
 
 /**
@@ -130,14 +137,32 @@ async function search(query: string, count: number): Promise<OpenMeteoPlace[]> {
 function matchesQualifiers(place: OpenMeteoPlace, qualifiers: string[]): boolean {
   if (qualifiers.length === 0) return true
 
-  const haystack = [place.admin1, place.country, place.country_code]
+  const haystack = [place.admin1, place.country]
     .filter((v): v is string => Boolean(v))
     .map(normalize)
+  // A country CODE is compared whole and as written. Run through `normalize`
+  // it became a US state ("CA", Canada's code, turned into "california"), so
+  // "London, CA" was accepted as London, Ontario; and "ca" is also a substring
+  // of "california".
+  const code = (place.country_code ?? '').toLowerCase()
 
   return qualifiers.some((q) =>
-    haystack.some((h) => h === q || h.includes(q) || q.includes(h))
+    (code !== '' && q === code) || haystack.some((h) => h === q || h.includes(q) || q.includes(h))
   )
 }
+
+/**
+ * Does the candidate sit in a REGION the member named (a state or province)?
+ * Stricter than `matchesQualifiers`, which a country alone satisfies: nearly
+ * every town name exists somewhere in the United States.
+ */
+function inNamedRegion(place: OpenMeteoPlace, qualifiers: string[]): boolean {
+  const region = place.admin1 ? normalize(place.admin1) : ''
+  return region !== '' && qualifiers.some((q) => q === region || q.includes(region) || region.includes(q))
+}
+
+/** How many leading words may be dropped from a place name. Each is one request to the provider, inside a chat turn. */
+const MAX_WORDS_DROPPED = 3
 
 function toResult(place: OpenMeteoPlace): GeocodeResult | null {
   if (
@@ -196,7 +221,24 @@ export async function geocodeLocation(
     // Fall back to the place name alone, then verify against the qualifiers the
     // user gave us. This is the path that rescues "Seoul, Korea" and
     // "London, UK", which return nothing when queried whole.
-    const candidates = await search(place, 10)
+    let candidates = await search(place, 10)
+    // People say where they live the way they talk: "near Sacramento", "just
+    // outside Austin". The provider knows no place called "near Sacramento",
+    // so a member who said exactly that got no coordinates and no weather
+    // (Nov 16 2026). Drop leading words one at a time until the provider
+    // knows the name. The town they named is the right weather for someone
+    // near it. ONLY when they also named a state or province the result sits
+    // in. Without one, dropping words turns "Northern California" into
+    // California, Missouri and "somewhere warm" into Warm, Netherlands; with
+    // only a country, "rural Iowa, USA" becomes Iowa, Louisiana (all
+    // measured). Wrong coordinates are worse than none.
+    let placeName = place
+    let dropped = 0
+    while (candidates.length === 0 && qualifiers.length > 0 && placeName.includes(' ') && dropped < MAX_WORDS_DROPPED) {
+      placeName = placeName.slice(placeName.indexOf(' ') + 1).trim()
+      dropped++
+      candidates = (await search(placeName, 10)).filter((c) => inNamedRegion(c, qualifiers))
+    }
     if (candidates.length === 0) return null
 
     if (qualifiers.length === 0) {
@@ -208,7 +250,7 @@ export async function geocodeLocation(
       //
       // So when the query looks like a region rather than a settlement, only
       // accept a candidate that actually sits in a region of that name.
-      const asRegion = normalize(place)
+      const asRegion = normalize(placeName)
       const looksLikeRegion = candidates.some(
         (c) => normalize(c.admin1 ?? '') === asRegion
       )

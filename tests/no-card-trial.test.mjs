@@ -580,7 +580,7 @@ test('emails never promise a charge to a card that does not exist, and a lapsed 
   assert.match(branch, /No card is on file and you will not be charged\./)
   assert.match(branch, /with the "Add a card" button at the top of any page/)
   assert.doesNotMatch(branch, /your card will be charged|Profile page/i)
-  assert.match(webhook, /sendSubscriptionConfirmation\(buyerEmail, trialEnd, \{ cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: await timezoneForUser\(db, userId\), startedOnOurPage: subscription\.metadata\?\.direct === '1', startedAtSignup: subscription\.metadata\?\.terms_shown === 'signup' \}\)/)
+  assert.match(webhook, /sendSubscriptionConfirmation\(buyerEmail, trialEnd, \{ cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: zone, startedOnOurPage: subscription\.metadata\?\.direct === '1', startedAtSignup: subscription\.metadata\?\.terms_shown === 'signup' \}\)/)
   assert.match(webhook, /const noCardTrial = isTrial && subscription\.metadata\?\.no_card === '1'/, 'stated by the checkout, not guessed from Stripe state')
   // "No card was on file" is only sent to a trial that began with no card and
   // never had one added. A cancelled card trial, or a card added then

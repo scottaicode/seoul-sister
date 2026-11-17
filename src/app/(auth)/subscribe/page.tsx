@@ -14,6 +14,7 @@ import { onFileRows } from '@/lib/paywall/on-file'
 import { getOfferCode, clearOfferCode, rememberOfferCode, normalizeOfferCode, priceWithOffer, pricingCardLines, paywallFreeWeekLine, paywallStartLine, stripeHandoffLine, paywallStartLineDirect, directAgreeLabel, useStripePageLabel, codeNotAppliedHereLine, tickToStartLine, startWithoutCodeLabel, couldNotStartLine } from '@/lib/offers'
 import { directFreeWeekTerms } from '@/lib/stripe-params'
 import FreeWeekStarted from '@/components/subscribe/FreeWeekStarted'
+import { browserTimeZone } from '@/lib/start-free-week'
 
 export default function SubscribePage() {
   const router = useRouter()
@@ -271,7 +272,7 @@ export default function SubscribePage() {
           // accepted; ours only while the server still starts it that way.
           ...(trialEligible === true && noCardTrial
             ? directMode && !useStripePage
-              ? { via: 'direct', agreed_terms: agreed }
+              ? { via: 'direct', agreed_terms: agreed, ...browserTimeZone() }
               : { via: 'stripe' }
             : {}),
         }),

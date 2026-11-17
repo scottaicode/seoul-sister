@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@supabase/supabase-js'
+import { validTimeZone } from '@/lib/email/timezone'
 import { createCheckoutSession, startDirectFreeWeek, findDirectFreeWeek, HasLiveSubscriptionError, type TierKey } from '@/lib/stripe'
 import { getServiceClient } from '@/lib/supabase'
 import { checkTrialEligibility, noCardTrialEnabled, directFreeWeekEnabled, networkKey } from '@/lib/trial'
@@ -27,6 +28,9 @@ const CheckoutSchema = z.object({
   // Where they agreed: the membership page's tick box, or the sign-up page
   // (creating an account now starts the free week). Recorded on the subscription.
   terms_shown: z.enum(['membership_page', 'signup']).optional(),
+  // The browser's time zone ("America/Los_Angeles"), for the end time in the
+  // confirmation email. Checked before use; anything else is ignored.
+  timezone: z.string().max(64).optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -160,7 +164,7 @@ export async function POST(request: NextRequest) {
       // webhook's customer.subscription.created is the second chance.
       let started: Awaited<ReturnType<typeof startDirectFreeWeek>>
       try {
-        started = await startDirectFreeWeek({ userId: user.id, email: user.email!, plan: parsed.data.plan as TierKey, ipHash, offer, termsShown: parsed.data.terms_shown === 'signup' ? 'signup' : 'membership_page' })
+        started = await startDirectFreeWeek({ userId: user.id, email: user.email!, plan: parsed.data.plan as TierKey, ipHash, offer, termsShown: parsed.data.terms_shown === 'signup' ? 'signup' : 'membership_page', timezone: validTimeZone(parsed.data.timezone) })
       } catch (err) {
         console.error('[stripe/checkout] direct free week failed at Stripe:', err instanceof Error ? err.message : String(err))
         if (err instanceof HasLiveSubscriptionError) {

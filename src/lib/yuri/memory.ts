@@ -1,4 +1,5 @@
 import { getServiceClient } from '@/lib/supabase'
+import { parseModelJson } from '@/lib/utils/model-json'
 import { safeSlice } from '@/lib/utils/text-slice'
 import { deleteLearningNotesFrom } from '@/lib/learning/forget'
 import {
@@ -2586,8 +2587,7 @@ Return ONLY valid JSON in this exact format (empty arrays are fine if nothing fo
     reopened_open_loops?: unknown[]
   }
   try {
-    const text = block.text.trim().replace(/^```json?\s*/, '').replace(/\s*```$/, '')
-    extracted = JSON.parse(text)
+    extracted = parseModelJson(block.text) as typeof extracted
   } catch {
     // Never silent: a truncated or malformed extraction means this
     // conversation's decisions were not saved, and the run looks identical to

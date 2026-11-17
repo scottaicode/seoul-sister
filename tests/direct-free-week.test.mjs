@@ -191,7 +191,7 @@ test('two presses cannot make two: an existing customer is reused, an open subsc
     // Another account's customer on the same address is never reused.
     ['customers.create', { email: 'a@b.co', metadata: { user_id: USER } }, { idempotencyKey: `fw-cus-${USER}` }],
     ['subscriptions.list', { customer: 'cus_new', status: 'all', limit: 20, expand: ['data.discount.promotion_code'] }],
-    ['subscriptions.create', { built: { userId: USER, plan: 'monthly', priceId: 'price_1', customerId: 'cus_new', ipHash: 'net1', offer: { code: 'BAILEY', promotionCodeId: 'promo_1', percentOff: 50 }, termsShown: undefined }, expand: ['discount.promotion_code'] }, { idempotencyKey: 'fw-sub-cus_new-BAILEY-membership_page' }],
+    ['subscriptions.create', { built: { userId: USER, plan: 'monthly', priceId: 'price_1', customerId: 'cus_new', ipHash: 'net1', offer: { code: 'BAILEY', promotionCodeId: 'promo_1', percentOff: 50 }, termsShown: undefined, timezone: null }, expand: ['discount.promotion_code'] }, { idempotencyKey: 'fw-sub-cus_new-BAILEY-membership_page' }],
   ])
 
   // Second press: the customer exists and its free week is running. Nothing is created.
@@ -271,7 +271,7 @@ test('the checkout starts it here only for the no-card free week, with the switc
 
   // The page sends which way it showed, and the box decides the button.
   const page = read('src/app/(auth)/subscribe/page.tsx')
-  assert.ok(page.includes("            ? directMode && !useStripePage\n              ? { via: 'direct', agreed_terms: agreed }\n              : { via: 'stripe' }\n"))
+  assert.ok(page.includes("            ? directMode && !useStripePage\n              ? { via: 'direct', agreed_terms: agreed, ...browserTimeZone() }\n              : { via: 'stripe' }\n"))
   assert.ok(page.includes('          disabled={loading || (freeWeekLeads && directMode && (!agreed || foreignCode !== null))}'))
   // A code this page cannot apply is never dropped silently: the start is held until the person chooses.
   assert.equal(page.split('setForeignCode(code)').length - 1, 2, 'typed, and remembered from a link')

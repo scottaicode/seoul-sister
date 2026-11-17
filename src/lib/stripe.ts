@@ -181,6 +181,7 @@ export async function startDirectFreeWeek(params: {
   ipHash?: string | null
   offer?: { code: string; promotionCodeId: string; percentOff: number } | null
   termsShown?: 'membership_page' | 'signup'
+  timezone?: string | null
 }): Promise<{ subscription: Stripe.Subscription; customerId: string }> {
   const stripe = getStripeClient()
   const found = await findDirectFreeWeek(params.userId, params.email)
@@ -199,7 +200,7 @@ export async function startDirectFreeWeek(params: {
   }
   const subscription = await stripe.subscriptions.create(
     {
-      ...buildDirectFreeWeekParams({ userId: params.userId, plan: params.plan, priceId: getPriceId(params.plan), customerId, ipHash: params.ipHash ?? null, offer: params.offer ?? null, termsShown: params.termsShown }),
+      ...buildDirectFreeWeekParams({ userId: params.userId, plan: params.plan, priceId: getPriceId(params.plan), customerId, ipHash: params.ipHash ?? null, offer: params.offer ?? null, termsShown: params.termsShown, timezone: params.timezone ?? null }),
       expand: ['discount.promotion_code'],
     },
     // The key names everything that can differ between two calls for one customer.

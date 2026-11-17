@@ -150,6 +150,7 @@ import {
   getProductPosition,
 } from '@/lib/intelligence/layering-order'
 import { findSunscreens } from '@/lib/intelligence/sunscreen-finder'
+import { fullIngredientLists, ingredientListsFact } from '@/lib/yuri/ingredient-lists'
 import { findDupes } from '@/lib/intelligence/dupe-finder'
 import type Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -5089,6 +5090,8 @@ async function executeSaveRoutine(
     added_to_shelf?: boolean
   }
   const savedSteps: StepResult[] = []
+  /** Each saved step -> the catalog product tied to it, for the ingredient lists returned below. Keyed by the step itself: two steps can share a step_order (alternating nights). */
+  const catalogProductOfStep = new Map<StepResult, string>()
 
   for (const step of steps) {
     let productId: string | null = null
@@ -5232,6 +5235,7 @@ async function executeSaveRoutine(
       }
     }
     const saved = savedSteps[savedSteps.length - 1]
+    if (productId) catalogProductOfStep.set(saved, productId)
     if (brandNotNamedNearest) {
       saved.brand_not_named_nearest = brandNotNamedNearest
       saved.brand_given_differs = brandGivenDiffers
@@ -5287,6 +5291,17 @@ async function executeSaveRoutine(
     message += ` All ${cleanCount} products matched cleanly. View on the Routine page.`
   }
 
+  // What is in what was just saved. The save itself checks nothing against
+  // this member; the lists are here so the reading can happen.
+  const saved = await fullIngredientLists(db, [...catalogProductOfStep.values()])
+  const ingredientsOfSavedProducts = savedSteps
+    .filter((s) => catalogProductOfStep.has(s))
+    .map((s) => ({
+      step_order: s.step_order,
+      product: [s.matched_brand, s.matched_name].filter(Boolean).join(' '),
+      ingredients: saved.failed ? null : saved.lists.get(catalogProductOfStep.get(s)!) ?? null,
+    }))
+
   return JSON.stringify({
     success: true,
     routine_id: newRoutine.id,
@@ -5299,6 +5314,9 @@ async function executeSaveRoutine(
     steps: savedSteps,
     replaced_existing: !!replaceExisting,
     message,
+    ...(ingredientsOfSavedProducts.length > 0
+      ? { ingredients_of_saved_products: ingredientsOfSavedProducts, about_ingredients: ingredientListsFact(saved.failed) }
+      : {}),
   })
 }
 
@@ -5336,6 +5354,7 @@ async function executeFindSunscreenMatch(
     })
   }
 
+  const held = await fullIngredientLists(getServiceClient(), products.map((r) => r.id))
   const matches = products.map((r) => ({
     id: r.id,
     name: r.name_en,
@@ -5352,12 +5371,14 @@ async function executeFindSunscreenMatch(
     water_resistant: r.water_resistant,
     tinted: r.is_tinted,
     volume: r.volume_display,
+    ingredients: held.failed ? null : held.lists.get(r.id) ?? null,
   }))
 
   return JSON.stringify({
     matches,
     total_matched: total,
-    note: 'These MATCH the filters. Recommend from them based on the user\'s skin type, concerns, allergies, and current routine — do not just list all of them.',
+    note: 'These match the filters you set. None of the filters looks at what is in the formula. Which of them suits this person, if any, is yours to judge.',
+    about_ingredients: ingredientListsFact(held.failed),
   })
 }
 

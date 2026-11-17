@@ -50,6 +50,7 @@ export async function startFreeWeekAfterSignup(
         // Agreed by creating the account under the sign-up page's Terms sentence.
         agreed_terms: true,
         terms_shown: 'signup',
+        ...browserTimeZone(),
         ...(offerCode ? { offer_code: offerCode } : {}),
       }),
     })
@@ -107,4 +108,14 @@ export function startFreeWeekOnce(
     })
   inflight.set(userId, started)
   return started
+}
+
+/** `{ timezone }` from the browser, or nothing when it cannot be read. Sent so the confirmation email gives the end time in the member's own time. */
+export function browserTimeZone(): { timezone?: string } {
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return typeof timezone === 'string' && timezone ? { timezone } : {}
+  } catch {
+    return {}
+  }
 }

@@ -199,6 +199,7 @@ Related: `signOut()` in supabase-js defaults to `scope: 'global'`, which deletes
 - **`check_ingredient_conflicts` accepts a raw `ingredient_names` array** with no catalog resolution (`tools.ts`). That is the ONLY custom-product-capable conflict path. `conflict-detector.ts` is catalog-only by construction (`ss_routine_products.product_id` is `NOT NULL REFERENCES ss_products(id)`) — don't rewrite it; use the tool path, which is where the safety judgment actually happens.
 - **INCI on a custom entry requires provenance** (`ingredients_source`: `label_scan` | `web_lookup`, DB-enforced paired + enum). Same discipline as `fitzpatrick_source`: a value whose origin we can't name isn't a fact.
 - **The variant trap is real.** Searching "Byoma toner" returns Brightening / Milky / Balancing — different actives. A near-miss INCI makes a safety check *look* done. Only record a list when the product name matches; otherwise ask for the label photo (the BACK of the bottle — a front-of-bottle photo has no INCI, which is how one subscriber's moisturizer stayed invisible).
+- **The ingredient list travels with the product (v11.64.2).** `find_sunscreen_match` and `save_routine` return the full list held for each catalog product (`src/lib/yuri/ingredient-lists.ts`). A sunscreen with four essential oils and retinol was saved for a member with rosacea on tretinoin because the tool that found it showed no ingredients. Any new tool that returns products to choose from should carry the list or say that it does not. Count the effect with `scripts/replay-routine-build.ts`.
 - **Yuri sees her own coverage as a FACT, never a cap.** The visibility block blocks nothing and ends by handing the decision back. A guard test fails if it becomes a command — the widget give/gate failed twice by rewording a rule before v11.10.0 fixed it with a fact.
 
 **Do NOT build a Western catalog.** Measured: cold widget traffic runs **~15:1 Korean-intent** (45 vs 3 across 226 messages / 54 visitors). Western ingredient lookup is free at INCI Decoder, SkinSort, Yuka. Two agents assigned opposite positions both converged here. **If a broader channel opens (Bailey's TikTok audience is not r/AsianBeauty), re-run that query before treating 15:1 as permanent.**
@@ -223,6 +224,7 @@ Onboarding captured `location_text` and stopped. `latitude`/`longitude` were wri
 - **Verify, don't trust the top hit.** Query the first comma-segment, then check the result against the user's own qualifiers. The whole-string query returns NOTHING for "Seoul, Korea" and "London, UK" — the exact formats our extraction prompt asks Yuri to produce — and returns *Ness City, Kansas* for "Iowa".
 - **Null beats a guess.** Wrong coordinates degrade INVISIBLY (Yuri confidently reads another state's weather); missing coordinates degrade visibly (Yuri asks). A bare region name is accepted only when the candidate actually sits in a region of that name. "Canada" alone stays unresolved on purpose.
 - **Never downgrade precision.** Finalize can run more than once; a city centroid must never overwrite device-level coordinates from the `/profile` button (`IS NULL` guard).
+- **How people say it.** "near Sacramento, Northern California" resolves by dropping leading words (at most three), only when the result sits in a state or province they named; a country alone verifies nothing ("rural Iowa, USA" became Iowa, Louisiana), a country code is never read as a state, and a whole country is never a location.
 - **Geocoding never gates onboarding.** It is best-effort, wrapped, and logged on failure — a slow API must not block a user from finishing.
 
 `first_name` follows the same honesty posture: captured only when volunteered, **never inferred from an email address**, and injected as a fact with judgment guidance ("use it the way you'd use a friend's name") rather than a template slot — absent entirely when unknown.
@@ -581,7 +583,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Current version**: 11.64.1 (November 16 2026). One line only: every release's detail goes in `CHANGELOG.md`, never here.
+**Current version**: 11.64.2 (November 17 2026). One line only: every release's detail goes in `CHANGELOG.md`, never here.
 **AI Advisor**: Yuri (유리) — "Glass"
 
 **Full version history**: See `CHANGELOG.md` (repo root). The detailed, dated changelog — every version from v3.0.0 through the current release — lives there, not in this file. Per the project's documentation standard: CLAUDE.md is for current architecture and how the system works NOW; CHANGELOG.md is for what changed and when. When shipping a feature, update the relevant architecture section here and put the detailed entry in CHANGELOG.md.

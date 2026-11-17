@@ -189,14 +189,17 @@ function fakeDb({ products = {}, shelf = [], fail = {} } = {}) {
   }
 }
 
-function loadTools(db, matches, { catalog = CATALOG } = {}) {
+const INGREDIENTS = { 'p-jumiso': ['Water', 'Salicylic Acid', 'Pogostemon Cablin Oil'] }
+function loadTools(db, matches, { catalog = CATALOG, listsFail = false } = {}) {
   const src = [sliceFnAny(TOOLS, 'async function identifiedForWrite('), sliceFn(TOOLS, 'async function executeSaveRoutine('), sliceFn(TOOLS, 'async function executeUpdateUserProduct(')].join('\n')
   const asked = []
   const errors = []
-  const run = new Function('getServiceClient', 'resolveProductByName', 'brandIsNamed', 'brandTokens', 'loadBrandCatalog', 'readIngredientInput', 'logCatalogGap', 'console',
+  const run = new Function('getServiceClient', 'resolveProductByName', 'brandIsNamed', 'brandTokens', 'loadBrandCatalog', 'readIngredientInput', 'logCatalogGap', 'console', 'fullIngredientLists', 'ingredientListsFact',
     `${js(src)}\nreturn { executeSaveRoutine, executeUpdateUserProduct, identifiedForWrite }`)
   const tools = run(() => db, async (_db, name) => { asked.push(name); return matches[name] ?? null }, brandIsNamed, brandTokens,
-    async () => { if (catalog instanceof Error) throw catalog; return catalog }, () => ({ ok: true, list: null }), async () => {}, { warn() {}, error: (...a) => errors.push(a.join(' ')), log() {} })
+    async () => { if (catalog instanceof Error) throw catalog; return catalog }, () => ({ ok: true, list: null }), async () => {}, { warn() {}, error: (...a) => errors.push(a.join(' ')), log() {} },
+    // The lists held for what was saved (src/lib/yuri/ingredient-lists.ts, executed in owner-signup-run-nov16.test.mjs).
+    async (_db, ids) => ({ lists: new Map(ids.filter((id) => INGREDIENTS[id]).map((id) => [id, INGREDIENTS[id]])), failed: listsFail }), (failed) => (failed ? 'LISTS FAILED' : 'LISTS FACT'))
   return { ...tools, errors, asked }
 }
 function sliceFnAny(src, signature) {
@@ -298,6 +301,30 @@ test('save_routine: a product id Yuri looked up is still trusted as it is', asyn
   const out = JSON.parse(await loadTools(db, {}).executeSaveRoutine({ routine_type: 'pm', steps: [{ product_id: 'p-jumiso', product_name: 'Salicylic acid foaming cleanser', step_order: 1 }] }, 'u1'))
   assert.equal(db.writes.find((w) => w.table === 'ss_routine_products').values.product_id, 'p-jumiso')
   assert.equal(out.steps[0].status, 'matched')
+  // What is in what was just saved comes back with the save (Nov 16 2026: a
+  // sunscreen with four essential oils was saved for a member with rosacea,
+  // unread, because no tool had shown its ingredients).
+  assert.deepEqual(out.ingredients_of_saved_products, [{ step_order: 1, product: 'Jumiso Pore Purifying Salicylic Acid Foaming Cleanser', ingredients: ['Water', 'Salicylic Acid', 'Pogostemon Cablin Oil'] }])
+  assert.equal(out.about_ingredients, 'LISTS FACT')
+})
+
+test('save_routine: a failed ingredient lookup says so, a product with no list is null, and a custom step has no entry', async () => {
+  const db = fakeDb({ products: { 'p-jumiso': JUMISO, 'p-obge': OBGE } })
+  const steps = [{ product_id: 'p-jumiso', product_name: 'x', step_order: 1 }, { product_id: 'p-obge', product_name: 'y', step_order: 2 }, { product_name: 'Lukewarm water rinse', step_order: 3 }]
+  const ok = JSON.parse(await loadTools(db, {}).executeSaveRoutine({ routine_type: 'am', steps }, 'u1'))
+  assert.deepEqual(ok.ingredients_of_saved_products.map((p) => [p.step_order, p.ingredients]), [[1, ['Water', 'Salicylic Acid', 'Pogostemon Cablin Oil']], [2, null]])
+  const failed = JSON.parse(await loadTools(fakeDb({ products: { 'p-jumiso': JUMISO } }), {}, { listsFail: true }).executeSaveRoutine({ routine_type: 'am', steps: steps.slice(0, 1) }, 'u1'))
+  assert.deepEqual(failed.ingredients_of_saved_products.map((p) => p.ingredients), [null])
+  assert.equal(failed.about_ingredients, 'LISTS FAILED')
+  // Two steps with the same number (alternating nights) each keep their own list.
+  const twin = JSON.parse(await loadTools(fakeDb({ products: { 'p-jumiso': JUMISO, 'p-obge': OBGE } }), {}).executeSaveRoutine({ routine_type: 'pm', steps: [{ product_id: 'p-jumiso', product_name: 'x', step_order: 3 }, { product_id: 'p-obge', product_name: 'y', step_order: 3 }] }, 'u1'))
+  assert.deepEqual(twin.ingredients_of_saved_products.map((p) => [p.product, p.ingredients]), [['Jumiso Pore Purifying Salicylic Acid Foaming Cleanser', ['Water', 'Salicylic Acid', 'Pogostemon Cablin Oil']], ['OBgE Moisture Protein Barrier Cream', null]])
+  // A step matched by NAME gets its list too, not only one given by id.
+  const byName = JSON.parse(await loadTools(fakeDb({}), { 'Pore Purifying Salicylic Acid Foaming Cleanser': JUMISO }).executeSaveRoutine({ routine_type: 'pm', steps: [{ product_name: 'Pore Purifying Salicylic Acid Foaming Cleanser', product_brand: 'Jumiso', step_order: 1 }] }, 'u1'))
+  assert.deepEqual(byName.ingredients_of_saved_products?.map((p) => p.ingredients), [['Water', 'Salicylic Acid', 'Pogostemon Cablin Oil']])
+  const custom = JSON.parse(await loadTools(fakeDb({}), {}).executeSaveRoutine({ routine_type: 'am', steps: steps.slice(2) }, 'u1'))
+  assert.equal('ingredients_of_saved_products' in custom, false)
+  assert.equal('about_ingredients' in custom, false)
 })
 
 test('save_routine: only a product the member HAS goes on their shelf, whether it came by id or by name (executed)', async () => {

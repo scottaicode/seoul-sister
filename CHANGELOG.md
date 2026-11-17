@@ -4,6 +4,68 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.64.2 — What the owner's own sign-up found (Nov 17 2026)
+
+The owner signed up as a new member with an email and password and went through the setup chat
+and a first routine. The sign-up path itself worked for the first time with a person at the
+keyboard: the free week started three seconds after the account was made, no email confirmation
+was needed, the notice, both emails and the hand-off to the member chat were as designed, and
+Yuri did not supply an age, a gender or a hormonal stage. Four defects and one slip came out of it.
+
+- **A sunscreen was saved without its ingredients being read.** For a member with rosacea, a
+  skin cancer history and prescription tretinoin, Yuri saved a sunscreen whose list holds four
+  essential oils, retinol and ascorbic acid, in a reply that said "no other actives". Cause:
+  `find_sunscreen_match` returned SPF, finish and white cast and no ingredients, and its note
+  told her to recommend from those. Asked afterwards, she read the list and withdrew it.
+  Now the finder returns each match's full list, and `save_routine` returns the lists of the
+  catalog products it saved (`src/lib/yuri/ingredient-lists.ts`), each with a sentence saying
+  what the list is, that `null` means no list is held, and that nothing has compared it with
+  the member. A failed lookup says it failed. Counted with
+  `scripts/replay-routine-build.ts` on a temporary copy of the profile: with the lists, 5 of 5
+  builds saved no sunscreen with fragrance oils or retinol (4 chose a catalog sunscreen with a
+  clean list, 1 a Western one). The old behaviour did not repeat the original pick in 5 tries
+  (she named Western or generic sunscreens every time), so this is not a before-and-after rate.
+- **A medical correction was lost for one turn.** After "no skin cancer, nothing prescribed"
+  the member corrected it: many skin cancers, four prescriptions. The profile kept "no skin
+  cancer" until the next message. Cause: the extractor wrote a complete JSON object and then a
+  sentence, and `JSON.parse` on the whole reply threw, which was treated as nothing to extract.
+  Replayed on that transcript it happened 1 time in 5 (`scripts/replay-setup-correction.ts`).
+  `parseModelJson` (`src/lib/utils/model-json.ts`) reads the first complete JSON value and
+  still throws on a cut-off one. The same parser now serves the three other background
+  extractors that had the same code.
+- **"near Sacramento, Northern California" had no coordinates,** so no weather. The geocoder
+  now drops leading words of the place ("near", "just outside") until the provider knows the
+  name, at most three words, and only when the result sits in a state or province they named.
+  Without that limit "Northern California" became California, Missouri, and with a country
+  alone "rural Iowa, USA" became Iowa, Louisiana (both measured). Found while fixing it:
+  the provider now lists "Canada" the country first, at a point in the Northwest Territories;
+  whole countries are dropped, so a bare country stays unplaced as intended.
+- **The confirmation email gave the end of the free week in UTC,** a different day from the
+  notice in the app, because a new account has no profile zone yet. The browser's zone is sent
+  with the start, checked, kept on the Stripe subscription, and used when the profile has none.
+- **"Bay Area" for "Northern California".** One clause in the existing rule about facts the
+  member has not given, in both prompts: "a narrower place than they named". The slip was 1
+  in 8 replies on that turn before and 0 in 12 after (`scripts/replay-setup-turn.ts`).
+- **A mistake made during this work, and undone.** A one-off that filled in missing coordinates
+  also wrote the country centroid for one real member whose location is "Canada". The row was
+  put back within a minute (coordinates empty again; nothing else on it had changed).
+- **Second-model review (Opus, told to refute): run, and it found defects in these fixes.** All
+  fixed before shipping. The word-dropping accepted a country as verification (wrong state).
+  A country code was read as a US state, so "London, CA" matched London, Ontario; that one was
+  already live. The JSON reader took the first bracket of any kind, so "Note [1]: {...}" was
+  read as the array [1] with no error. The save keyed lists by step number, so two steps with
+  the same number shared one list. Two sentences told to Yuri were not always true ("nothing
+  has compared these lists" when another tool may have; a closed list of filters that left
+  some out) and now speak only for the tool that says them. The replay script's copy of a
+  profile is now inert (not a member, not in metrics, no mail) and is removed on Ctrl-C.
+  Left as the reviewer found it: a few catalog ingredient rows are unsplit dumps and appear
+  inside a list as they do in `get_product_details`; the lists arrive with the save, after it,
+  because the member prompt says to save before presenting.
+- **Not changed:** "Many Korean women with dry skin skip the morning wash" (0 of 20 replays);
+  the catalog's first ingredient on one Dr.G sunscreen carries a product title in front of
+  "Water"; "5% panthenol" in Yuri's description of the Jumiso cream is not in our ingredient
+  record; the plan is still called "Seoul Sister Pro" in the confirmation email.
+
 ## v11.64.1 — The sentence confirming a typed code stays on screen (Nov 16 2026)
 
 - **Live test of v11.64.0** with a two-use test code on BAILEY's coupon and two throwaway

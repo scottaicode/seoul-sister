@@ -156,10 +156,15 @@ export async function fulfilNewSubscription(
   if (buyerEmail) {
     try {
       const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null
+      // The member's own zone: the profile's when there is one, else the one
+      // their browser gave when the free week started (a new account has no
+      // profile yet, and the email used to say "Tuesday 7:02 AM UTC" where the
+      // app said "Monday 11:02 PM").
+      const zone = (await timezoneForUser(db, userId)) ?? subscription.metadata?.timezone ?? null
       // One more try on a failed send: for a start reached by two callers,
       // only this one will ever send it.
-      let confirm = await sendSubscriptionConfirmation(buyerEmail, trialEnd, { cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: await timezoneForUser(db, userId), startedOnOurPage: subscription.metadata?.direct === '1', startedAtSignup: subscription.metadata?.terms_shown === 'signup' })
-      if (!confirm.sent) confirm = await sendSubscriptionConfirmation(buyerEmail, trialEnd, { cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: await timezoneForUser(db, userId), startedOnOurPage: subscription.metadata?.direct === '1', startedAtSignup: subscription.metadata?.terms_shown === 'signup' })
+      let confirm = await sendSubscriptionConfirmation(buyerEmail, trialEnd, { cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: zone, startedOnOurPage: subscription.metadata?.direct === '1', startedAtSignup: subscription.metadata?.terms_shown === 'signup' })
+      if (!confirm.sent) confirm = await sendSubscriptionConfirmation(buyerEmail, trialEnd, { cardOnFile: !noCardTrial, percentOff: offerPercentOff, timezone: zone, startedOnOurPage: subscription.metadata?.direct === '1', startedAtSignup: subscription.metadata?.terms_shown === 'signup' })
       if (!confirm.sent) {
         console.error(`[stripe webhook] subscription confirmation NOT sent to user ${userId}: ${confirm.reason}`)
       }
