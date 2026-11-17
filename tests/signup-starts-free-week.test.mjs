@@ -267,6 +267,11 @@ test('wiring: the mark is made only once the account exists, and the start is fo
   // "Started" is the only thing that makes the page say member here.
   assert.equal(page.split('setFreeWeekJustStarted(true)').length - 1, 1)
   assert.ok(page.includes('        if (outcome.started) {\n          clearSignupAgreement()\n          if (!live) return\n          setIsMember(true)\n          setFreeWeekJustStarted(true)\n'))
+  // Yuri's greeting is asked for only after membership has settled, so it is never written for a non-member a second before the week starts.
+  const settle = page.indexOf("        await Promise.race([membershipSettledRef.current ?? Promise.resolve(), new Promise((r) => setTimeout(r, 12000))])")
+  const greet = page.indexOf("body: JSON.stringify({ action: 'start_onboarding'")
+  assert.ok(settle > 0 && greet > settle, 'the wait must come before the greeting request')
+  assert.ok(page.includes('    membershipSettledRef.current = (async () => {\n'))
   // Finishing setup: a member to the member chat with the routine request ready; anyone else to membership.
   assert.ok(page.includes("      router.push(isMember === true ? `/yuri?ask=${encodeURIComponent(FIRST_MEMBER_ASK)}` : '/subscribe?from=onboarding')\n"))
   // The server records where they agreed, and the email says how the week started.

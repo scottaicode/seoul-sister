@@ -36,6 +36,12 @@ export default function OnboardingPage() {
   // start_onboarding twice, which (pre server-side lock) produced two different
   // greetings 0.9s apart. Survives re-renders; resets only on a true remount.
   const startedRef = useRef(false)
+  // Resolves when the membership read, and the free-week start that may follow
+  // sign-up, have finished. Yuri's greeting waits for it: written a moment
+  // too early, it told a brand-new member "this chat is free, afterward you'll
+  // see the membership option" under a header saying their free week had
+  // started (seen in a browser, Nov 16 2026).
+  const membershipSettledRef = useRef<Promise<void> | null>(null)
   // True when Stripe just returned this person from checkout (Nov 10 2026). The
   // paywall and the preview both say the routine is the first thing built once
   // they are a member, so a new member whose setup is already done lands in
@@ -78,7 +84,7 @@ export default function OnboardingPage() {
   const [userId, setUserId] = useState<string>('')
   useEffect(() => {
     let live = true
-    ;(async () => {
+    membershipSettledRef.current = (async () => {
       const { data } = await supabase.auth.getSession()
       const id = data.session?.user?.id ?? ''
       if (!live) return
@@ -140,7 +146,7 @@ export default function OnboardingPage() {
         setStartNote(readStartNote(id) ?? freeWeekNotStartedLine('not_asked'))
       }
       setIsMember(member)
-    })()
+    })().catch((err) => console.error('[onboarding] membership read failed:', err))
     return () => { live = false }
   }, [])
 
@@ -298,6 +304,11 @@ export default function OnboardingPage() {
 
     async function init() {
       try {
+        // Membership first (at most 12 seconds), so the greeting is written
+        // for who they are once the free week has started, not who they were
+        // a second before.
+        await Promise.race([membershipSettledRef.current ?? Promise.resolve(), new Promise((r) => setTimeout(r, 12000))])
+        if (cancelled) return
         const token = await getToken()
         const response = await fetch('/api/yuri/onboarding', {
           method: 'POST',

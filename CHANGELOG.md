@@ -4,6 +4,18 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.63.2 — Yuri's greeting waits for the free week to start (Nov 16 2026)
+
+- **Seen in a browser, second throwaway account.** Under a header reading "Your free week has
+  started", Yuri's opening message said "This chat is free... Afterward you'll see the
+  membership option". Her greeting was requested at the same moment the free week was being
+  started, so it was written for someone who was not yet a member. The first throwaway's
+  greeting did not mention membership, which is why the first run missed it.
+- **Fix.** The setup page asks for the greeting only after the membership read and the
+  free-week start have finished (at most 12 seconds).
+- Confirmed the same run: the notice now stays on screen in the setup chat, and Settings shows
+  the plain header with "Back" to a member who is still in setup.
+
 ## v11.63.1 — Two things only a browser showed, on the new sign-up path (Nov 16 2026)
 
 - **First run of v11.63.0 in a real browser** (a throwaway account signed in with a one-time
