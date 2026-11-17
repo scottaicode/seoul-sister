@@ -13,7 +13,6 @@ import {
   checkOnboardingComplete,
   updateOnboardingProgress,
   finalizeOnboardingProfile,
-  skipOnboarding,
   ONBOARDING_USER_MESSAGE_CAP,
 } from '@/lib/yuri/onboarding'
 import { cleanYuriResponse } from '@/lib/yuri/voice-cleanup'
@@ -249,6 +248,7 @@ export async function POST(request: NextRequest) {
         extracted_fields: progress.extracted_fields,
         is_complete: checkOnboardingComplete(profileData),
         quality_score: quality.overallScore,
+        at_limit: await setupAtMessageLimit(progress.conversation_id),
       })
     }
 
@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
         return Response.json(
           {
             error:
-              "We've covered a lot, and Yuri has what she needs from this setup chat. Tap \"Skip this chat\" under the message box to go on.",
+              "This setup chat has reached its limit, so Yuri will go on with what she has learned here. Tap \"Finish setup\" to continue.",
             code: 'onboarding_message_cap',
           },
           { status: 429 }
@@ -399,9 +399,10 @@ export async function POST(request: NextRequest) {
     }
 
     // ─── Skip Onboarding ──────────────────────────────────────────────
+    // Setup cannot be skipped (Nov 17 2026). The action is still answered so a
+    // page loaded before the link was removed gets a reason, not a crash.
     if (parsed.action === 'skip_onboarding') {
-      await skipOnboarding(user.id)
-      return Response.json({ success: true, status: 'skipped' })
+      return Response.json({ error: 'The setup chat can no longer be skipped. It is where Yuri learns your skin.', code: 'setup_required' }, { status: 400 })
     }
 
     // ─── Complete Onboarding ──────────────────────────────────────────
@@ -409,14 +410,26 @@ export async function POST(request: NextRequest) {
       const progress = await getOrCreateOnboardingProgress(user.id)
       const extracted = progress.skin_profile_data as ExtractedSkinProfile
 
-      if (!checkOnboardingComplete(extracted)) {
+      // The one way to finish with something missing: the chat has taken
+      // every message it allows, so there is no other way out of it.
+      const atLimit = !checkOnboardingComplete(extracted) && (await setupAtMessageLimit(progress.conversation_id))
+      if (!checkOnboardingComplete(extracted) && !atLimit) {
         return Response.json(
-          { error: 'Onboarding not yet complete. Required fields still missing.' },
+          { error: 'Yuri still has a few things to ask before setup can finish.', code: 'setup_incomplete' },
           { status: 400 }
         )
       }
 
-      await finalizeOnboardingProfile(user.id, extracted)
+      // Finished at the limit with a safety question unanswered: said so on
+      // the record, so the member chat asks it first (memory.ts).
+      if (atLimit && (extracted.medical_question_answered !== true || extracted.reactions_question_answered !== true)) {
+        const { error: markError } = await getServiceClient()
+          .from('ss_onboarding_progress')
+          .update({ skin_profile_data: { ...extracted, safety_followup: true } })
+          .eq('user_id', user.id)
+        if (markError) console.error(`[yuri/onboarding] could not mark the safety follow-up for ${user.id}:`, markError.message)
+      }
+      await finalizeOnboardingProfile(user.id, extracted, atLimit ? { atLimit: true } : undefined)
       return Response.json({ success: true, status: 'completed' })
     }
 
@@ -437,6 +450,25 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
     })
   }
+}
+
+// ---------------------------------------------------------------------------
+// Has this setup chat taken every message it allows?
+// ---------------------------------------------------------------------------
+// A count that fails reads as "not at the limit": the finish button then stays
+// behind the requirements, which is the safe side.
+async function setupAtMessageLimit(conversationId: string | null | undefined): Promise<boolean> {
+  if (!conversationId) return false
+  const { count, error } = await getServiceClient()
+    .from('ss_yuri_messages')
+    .select('id', { count: 'exact', head: true })
+    .eq('conversation_id', conversationId)
+    .eq('role', 'user')
+  if (error) {
+    console.error('[yuri/onboarding] could not count setup messages:', error.message)
+    return false
+  }
+  return (count ?? 0) >= ONBOARDING_USER_MESSAGE_CAP
 }
 
 // ---------------------------------------------------------------------------

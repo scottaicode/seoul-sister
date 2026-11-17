@@ -5,6 +5,7 @@ import { getServiceClient } from '@/lib/supabase'
 import { getAnthropicClient, MODELS } from '@/lib/anthropic'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { hasActiveSubscription } from '@/lib/subscription'
+import { setupRequiredResponse } from '@/lib/yuri/setup-gate'
 import type { GlassSkinScore, GlassSkinAnalysisResult } from '@/types/database'
 
 export const maxDuration = 60
@@ -90,6 +91,10 @@ export async function POST(request: NextRequest) {
     if (!isSubscribed) {
       throw new AppError('Active subscription required.', 403)
     }
+
+    // No member feature before the setup chat is finished (Nov 17 2026).
+    const setupBlock = await setupRequiredResponse(user.id)
+    if (setupBlock) return setupBlock
 
     const body = await request.json()
     const { image } = analyzeSchema.parse(body)

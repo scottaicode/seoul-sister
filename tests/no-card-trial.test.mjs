@@ -674,15 +674,12 @@ test('offer codes: every charge sentence names the discounted first month AND th
     assert.doesNotMatch(o.setupChatLine(false), /free week|trial/i)
     assert.equal(o.setupChatLine(true), 'Setup chat')
     assert.equal(o.setupChatLine(null), 'Setup chat')
-    // The skip link names where it goes, and a member is never sent to membership.
-    assert.equal(o.skipSetupLabel(false), 'Skip this chat and see membership')
-    // Unread names no destination: right after sign-up the free week is still being started.
-    assert.equal(o.skipSetupLabel(null), 'Skip this chat')
-    assert.equal(o.skipSetupLabel(true), 'Skip this chat and go to Yuri')
+    // The setup chat has no skip link any more (Nov 17 2026).
+    assert.equal(typeof o.skipSetupLabel, 'undefined')
     assert.equal(o.freeWeekChangedLine(), 'The no-card free week could not be started just now, so nothing was started and nothing was charged. The page now shows what you can start instead.')
     // Our own words never call the account step joining, or the free week a trial.
     assert.equal(o.accountCtaNote(), 'This creates your account and, for a new member, starts your free week.')
-    for (const line of [o.registerFootnote(null), o.setupChatLine(false), o.skipSetupLabel(false), o.paywallStartLine(), o.stripeHandoffLine(), o.freeWeekChangedLine(), o.widgetMembershipLine(null), o.accountCtaNote()]) {
+    for (const line of [o.registerFootnote(null), o.setupChatLine(false), o.paywallStartLine(), o.stripeHandoffLine(), o.freeWeekChangedLine(), o.widgetMembershipLine(null), o.accountCtaNote()]) {
       assert.doesNotMatch(line, /\btrial\b|\bjoin/i, line)
       assert.doesNotMatch(line, /[—–]/, line)
     }

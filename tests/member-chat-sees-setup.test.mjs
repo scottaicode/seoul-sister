@@ -274,7 +274,8 @@ test('the routine tool is given the setup list, and the routine instruction says
   const advisor = read('src', 'lib', 'yuri', 'advisor.ts')
   assert.ok(advisor.includes("1. Call get_routine_context to see their saved product inventory, the routine items noted during setup (a new member's inventory is often empty, so these and the setup conversation are the main record), texture data, any saved routine, and known ingredient conflicts. Build from what they really have, not hypothetical products."))
   assert.ok(advisor.includes('their product inventory with texture weights, the routine items noted during setup, their currently saved routine steps, known ingredient conflicts, and skin profile.'))
-  assert.match(memory, /const setupShelfPromise = loadSetupShelf\(db, userId\)/)
+  assert.match(memory, /const setupRecordPromise = loadSetupRecord\(db, userId\)/)
+  assert.match(memory, /const setupShelf = setupRecord\.shelf\n/)
   assert.match(memory, /routineProducts,\n    userProducts,\n    setupShelf,\n/)
 })
 

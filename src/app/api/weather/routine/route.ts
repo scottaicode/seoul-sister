@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/auth'
+import { requireSetupFinished } from '@/lib/yuri/setup-gate'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError } from '@/lib/utils/error-handler'
 import { fetchWeather } from '@/lib/intelligence/weather-routine'
@@ -28,6 +29,7 @@ const querySchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const db = getServiceClient()
 
     // Parse query params — accept explicit lat/lng or fall back to saved profile
@@ -98,6 +100,7 @@ const updateSchema = z.object({
 export async function PUT(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const body = await request.json()
     const updates = updateSchema.parse(body)
 

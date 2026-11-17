@@ -9,6 +9,7 @@ import { uploadScanPhotos } from '@/lib/scanning/scan-photos'
 import { detectReformulation, recordReformulation } from '@/lib/intelligence/reformulation-detector'
 import { getServiceClient } from '@/lib/supabase'
 import { hasActiveSubscription } from '@/lib/subscription'
+import { setupRequiredResponse } from '@/lib/yuri/setup-gate'
 import { incrementScanCount, getUsageStatus, currentUsagePeriod } from '@/lib/usage'
 import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 
@@ -77,6 +78,10 @@ export async function POST(request: NextRequest) {
     if (!isSubscribed) {
       throw new AppError('Active subscription required. Subscribe to use the label scanner.', 403)
     }
+
+    // No member feature before the setup chat is finished (Nov 17 2026).
+    const setupBlock = await setupRequiredResponse(user.id)
+    if (setupBlock) return setupBlock
 
     // Check and increment usage count
     const withinLimit = await incrementScanCount(user.id)

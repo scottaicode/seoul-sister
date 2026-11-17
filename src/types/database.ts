@@ -682,6 +682,19 @@ export interface ExtractedSkinProfile {
    * Central Valley skin. Distinct from `climate`, which is current conditions.
    */
   sun_history?: string
+  /**
+   * The person has REPLIED to Yuri's question about skin conditions and
+   * prescriptions, whatever the reply ("none" and "I'd rather not say" count).
+   * Only ever true. Setup cannot finish without it (yuri/setup-requirements.ts):
+   * an empty medical_history cannot tell "nothing to report" from "never asked".
+   */
+  medical_question_answered?: boolean
+  /** The same, for bad reactions to products and ingredients they avoid. */
+  reactions_question_answered?: boolean
+  /** Asked, and they chose not to say or did not know: any of 'age', 'where', 'sun'. */
+  declined_to_say?: Array<'age' | 'where' | 'sun'>
+  /** Set when they reached the member chat with a safety question unanswered (setup-requirements.ts SetupSafety.followUp). */
+  safety_followup?: boolean
 }
 
 // =============================================================================

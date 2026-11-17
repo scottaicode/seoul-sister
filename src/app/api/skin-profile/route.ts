@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
+import { requireSetupFinished } from '@/lib/yuri/setup-gate'
 import { getServiceClient } from '@/lib/supabase'
 import { AppError, handleApiError } from '@/lib/utils/error-handler'
 import {
@@ -28,6 +29,7 @@ import {
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const url = new URL(request.url)
     const forceRegen = url.searchParams.get('regenerate') === 'true'
 

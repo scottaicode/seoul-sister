@@ -1,5 +1,6 @@
 import { getServiceClient } from '@/lib/supabase'
 import { parseModelJson } from '@/lib/utils/model-json'
+import { parseSetupSafety, type SetupSafety } from '@/lib/yuri/setup-requirements'
 import { safeSlice } from '@/lib/utils/text-slice'
 import { deleteLearningNotesFrom } from '@/lib/learning/forget'
 import {
@@ -233,6 +234,8 @@ export interface UserContext {
   userProducts: UserProduct[]
   /** Routine items setup recorded. Null when it recorded none or the read failed (logged). */
   setupShelf?: SetupShelf | null
+  /** Whether setup's safety questions were ever answered (setup-requirements.ts). Null when the record could not be read. */
+  setupSafety?: SetupSafety | null
   learningInsights: LearningContextData[]
   specialistInsights: SpecialistInsightMemory[]
   decisionMemory: DecisionMemory | null
@@ -365,7 +368,7 @@ export async function loadUserContext(
   options?: LoadUserContextOptions
 ): Promise<UserContext> {
   const db = getServiceClient()
-  const setupShelfPromise = loadSetupShelf(db, userId)
+  const setupRecordPromise = loadSetupRecord(db, userId)
 
   // Classify intent to decide which context sections to load
   const topics = classifyIntent(
@@ -529,7 +532,8 @@ export async function loadUserContext(
 
   // Routine items setup recorded (src/lib/yuri/setup-carry.ts). Started at the
   // top of this function so it runs alongside the other reads.
-  const setupShelf = await setupShelfPromise
+  const setupRecord = await setupRecordPromise
+  const setupShelf = setupRecord.shelf
 
   // CONDITIONAL: learning insights (needed for ingredients, skin_profile, products, or general)
   const loadLearning = loadAll || topics.has('ingredients') || topics.has('skin_profile') || topics.has('products')
@@ -793,6 +797,7 @@ export async function loadUserContext(
     routineProducts,
     userProducts,
     setupShelf,
+    setupSafety: setupRecord.safety,
     learningInsights,
     specialistInsights,
     decisionMemory,
@@ -960,10 +965,36 @@ Pregnancy, breastfeeding and hormone therapy change. An entry that carries the d
       // instruction to interrogate before every actives recommendation is the
       // regression risk here — Bailey has already objected to unnecessary
       // preamble ("just makes it confusing", Aug 1 2026).
+      const safety = context.setupSafety
+      const askMedical = safety?.followUp === true && !safety.medicalAnswered
+      const askReactions = safety?.followUp === true && !safety.reactionsAnswered && !(p.allergies?.length)
+      if (askMedical || askReactions) {
+        // The owner's decision (Nov 17 2026), and the one place this block
+        // tells her what comes first. It renders ONLY for a member whose
+        // setup record is marked (setup-requirements.ts SetupSafety.followUp):
+        // the skip link, the old three-field finish, or the message limit.
+        // Members from before are not marked: the first version of this
+        // rendered for six of nine paid accounts, the lighthouse user among
+        // them, against the "no unnecessary preamble" note above.
+        const questions = [
+          ...(askMedical ? ['whether they have a skin condition, a history of skin cancer or precancers, or anything prescribed for their skin'] : []),
+          ...(askReactions ? ['whether a product has ever given them a bad reaction, and whether there are ingredients they avoid'] : []),
+        ]
+        sections.push(`## Safety ${questions.length > 1 ? 'questions' : 'question'} with no answer on this member's setup record
+Their setup ended without an answer to:
+- ${questions.join('\n- ')}
+
+If they have already told you in a conversation you can see, that is their answer: say what you understood and carry on. Otherwise this comes first, ahead of the routine-build instruction too: ask it before you name a new product or save or change a routine, plainly, the way a specialist would. Answer whatever else they asked in the same reply wherever that does not mean picking a product for them. Their reply is recorded from what follows the END of your message, so put the question last. "None" is an answer and so is "I'd rather not say"; once either is recorded this note is gone. If they decline, start gentler and go slower, which is right for skin you know less about.`)
+      } else if (safety?.medicalAnswered) {
+        // Asked, and they answered with nothing to report (or chose not to say).
+        sections.push(`## Medical History (asked; nothing reported)
+This member was asked about skin conditions, skin cancer or precancers, and anything prescribed for their skin, and reported none or chose not to say. That was their answer when asked; health changes, so a new mention from them replaces it.`)
+      } else {
       sections.push(`## Medical History (not on file)
 No standing medical history is recorded for this user. That means it was never captured — NOT that there is none. Skin cancer or precancers, rosacea, eczema, psoriasis, current dermatologist care, and prescriptions like tretinoin or isotretinoin all change the approach, and an allergy list does not capture any of them.
 
 Ask when it bears on what you're about to recommend — plainly, the way a specialist would, and never as a condition of helping them. If they'd rather not say, don't stall: start gentler and ramp slower, which is the right call for unknown skin anyway.`)
+      }
     }
   } else {
     sections.push(`## User's Skin Profile\nNot yet created. Encourage them to complete their skin profile for personalized advice. You can suggest they go through the onboarding conversation with you.`)
@@ -2768,6 +2799,23 @@ export async function loadSetupShelf(
     return null
   }
   return parseSetupShelf(data?.skin_profile_data, data?.updated_at)
+}
+
+/** The setup record's two uses in the member chat, from one read. `safety` is null when the read failed: unknown, not "never asked". */
+export async function loadSetupRecord(
+  db: ReturnType<typeof getServiceClient>,
+  userId: string
+): Promise<{ shelf: SetupShelf | null; safety: SetupSafety | null }> {
+  const { data, error } = await db
+    .from('ss_onboarding_progress')
+    .select('skin_profile_data, updated_at')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) {
+    console.error('[yuri/memory] setup record read failed; setup items and safety answers not shown:', error.message)
+    return { shelf: null, safety: null }
+  }
+  return { shelf: parseSetupShelf(data?.skin_profile_data, data?.updated_at), safety: parseSetupSafety(data?.skin_profile_data) }
 }
 
 async function loadRecentConversationExcerpts(

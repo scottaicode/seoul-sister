@@ -19,6 +19,7 @@ export const maxDuration = 30
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 import { hasActiveSubscription } from '@/lib/subscription'
+import { setupRequiredResponse } from '@/lib/yuri/setup-gate'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import {
   buildCurationContext,
@@ -61,6 +62,10 @@ export async function GET(
         { status: 403 }
       )
     }
+
+    // No member feature before the setup chat is finished (Nov 17 2026).
+    const setupBlock = await setupRequiredResponse(user.id)
+    if (setupBlock) return setupBlock
 
     // ---------------------------------------------------------------
     // Load curation context + compute cache key hash

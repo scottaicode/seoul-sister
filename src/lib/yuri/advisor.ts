@@ -1649,6 +1649,8 @@ Possible fields:
 - gender: "woman" | "man" | "nonbinary". ONLY from a sentence the user wrote about themselves whose content is their gender: said outright in any form ("I'm a man", "as a guy", "as a woman in my 40s"), a gendered noun they use for themselves ("I'm a mom of two"), or the grammatical gender they use for themselves in a language that marks it. Anything from which gender would have to be worked out is not that, however certain it seems: a medical or hormonal fact, a partner or relative, a name, a product, a habit, who something is for, or anything the advisor said, asked or assumed. A denial sets nothing ("I'm not a woman" is not "man"). A correction of the advisor's assumption counts ("I'm a man, actually").
 - new_medical_history: string[], standing medical facts the user states about themselves, in their words: a skin cancer or precancer history, rosacea, eczema, psoriasis, a prescription.
 - new_hormonal_facts: string[], hormonal or reproductive states the user states about THEMSELVES and that can change, in their own words: pregnant, breastfeeding, trying to conceive, postpartum, perimenopause, menopause, hormone therapy, hormonal contraception, PCOS, and the like. Return each with NO date; the date is added for you. Only when AFFIRMED: never record that someone is NOT pregnant, NOT breastfeeding or NOT trying to conceive. Never someone else's ("my wife is pregnant").
+- medical_question_answered: true, and only true. Set it when the END OF THE PRECEDING ADVISOR MESSAGE asked the user about skin conditions, skin cancer or precancers, or anything prescribed for their skin, and the USER MESSAGE replies to that: with facts, with "no" / "none" / "nothing prescribed", or by declining to say. Also set it when the user states such a fact unasked. Otherwise omit it.
+- reactions_question_answered: true, and only true. The same, for a question about bad reactions to a product or ingredients they avoid.
 
 Return null for any field not explicitly stated.
 
@@ -1798,6 +1800,35 @@ The supporting_quote field is mandatory on every reaction. If you can't quote a 
       }
     } catch (err) {
       console.error(`[yuri/learning] Profile update error for user ${userId}:`, err)
+    }
+
+    // A safety question setup never put to them, answered here (Nov 17 2026).
+    // Kept on the setup record, where the member context reads it, so the
+    // "never asked" note stops once they have answered, "none" included.
+    const answeredMedical = parsed.profile_updates.medical_question_answered === true
+    const answeredReactions = parsed.profile_updates.reactions_question_answered === true
+    if (answeredMedical || answeredReactions) {
+      try {
+        const { data: row, error: readError } = await db
+          .from('ss_onboarding_progress')
+          .select('skin_profile_data')
+          .eq('user_id', userId)
+          .maybeSingle()
+        if (readError) throw new Error(readError.message)
+        if (!row) {
+          console.error(`[yuri/learning] no setup record for ${userId}; a safety answer given in the member chat was not recorded`)
+        } else {
+          const merged = {
+            ...((row.skin_profile_data as Record<string, unknown> | null) ?? {}),
+            ...(answeredMedical ? { medical_question_answered: true } : {}),
+            ...(answeredReactions ? { reactions_question_answered: true } : {}),
+          }
+          const { error: writeError } = await db.from('ss_onboarding_progress').update({ skin_profile_data: merged }).eq('user_id', userId)
+          if (writeError) throw new Error(writeError.message)
+        }
+      } catch (err) {
+        console.error(`[yuri/learning] safety answer not recorded for user ${userId}:`, err instanceof Error ? err.message : err)
+      }
     }
   }
 

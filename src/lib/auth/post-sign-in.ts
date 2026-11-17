@@ -1,3 +1,5 @@
+import { stillInSetup } from '@/lib/yuri/setup-requirements'
+
 /**
  * Where a user goes right after OAuth sign-in (/auth/callback).
  *
@@ -30,10 +32,10 @@ export function postSignInDestination(
  * not say whether setup is finished: `onboarding_completed` turns true as soon
  * as a skin type is known, a turn or two into the chat.
  *
- * Unpaid and still in setup goes back to the setup chat. The gate used to check
- * the plan first, so a new free account that tapped a menu item during setup
- * was sent to the pricing page, which has no link back (Nov 14 2026: sign-up,
- * greeting, pricing page in 29 seconds, and nothing after).
+ * Still in setup goes to the setup chat, member or not (`stillInSetup`,
+ * yuri/setup-requirements.ts). Until Nov 17 2026 a MEMBER with a skin type on
+ * file was let in mid-chat; since creating an account starts the free week,
+ * that was every new person after their first message.
  *
  * A setup already marked completed or skipped is never sent back to the setup
  * chat, whatever the profile flag says: that page sends a finished setup on to
@@ -44,9 +46,6 @@ export function appGateDestination(
   setupStatus: string | null | undefined
 ): '/onboarding' | '/subscribe' | null {
   const paid = !!profile?.plan && profile.plan !== 'free'
-  const finished = setupStatus === 'completed' || setupStatus === 'skipped'
-  const hasProfile = !!profile?.onboarding_completed
-  if (paid) return !finished && !hasProfile ? '/onboarding' : null
-  const inSetup = !finished && (setupStatus === 'in_progress' || !hasProfile)
-  return inSetup ? '/onboarding' : '/subscribe'
+  if (stillInSetup(setupStatus, !!profile?.onboarding_completed)) return '/onboarding'
+  return paid ? null : '/subscribe'
 }

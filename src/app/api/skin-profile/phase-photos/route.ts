@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
+import { requireSetupFinished } from '@/lib/yuri/setup-gate'
 import { getServiceClient } from '@/lib/supabase'
 import { AppError, handleApiError } from '@/lib/utils/error-handler'
 
@@ -17,6 +18,7 @@ import { AppError, handleApiError } from '@/lib/utils/error-handler'
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const url = new URL(request.url)
     const phaseId = url.searchParams.get('phase_id')
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 100)

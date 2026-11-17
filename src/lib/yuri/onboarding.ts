@@ -1,5 +1,6 @@
 import { getAnthropicClient, MODELS, CHAT_EFFORT, callAnthropicWithRetry } from '@/lib/anthropic'
 import { parseModelJson } from '@/lib/utils/model-json'
+import { missingSetupRequirements, SETUP_REQUIREMENTS } from '@/lib/yuri/setup-requirements'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import { onboardingUsageRow } from '@/lib/yuri/onboarding-usage'
 import { carryoverBlock, previewAgeFact, type Carryover } from '@/lib/yuri/widget-carryover'
@@ -50,7 +51,9 @@ const ALL_FIELDS = [
   'sun_history',
 ] as const
 
-const REQUIRED_FIELDS = ['skin_type', 'skin_concerns', 'age_range'] as const
+// What setup must hold before it can be finished lives in setup-requirements.ts
+// (Nov 17 2026). It used to be three fields here: skin type, a concern, an age
+// range. "Finish setup" then appeared before the medical question was asked.
 
 /**
  * Lifetime user-message cap on the free onboarding conversation.
@@ -133,16 +136,16 @@ You need to understand these aspects of their skin through natural conversation.
 - **product_preferences**: Brands or products they already love.
 
 ## Priority
-Get skin_type, skin_concerns, and age_range first -- these are required. Everything else is bonus context that makes your advice better. Don't force every field. A natural 5-message conversation that captures 6 fields beats a 10-message interrogation that captures all 10.
+Setup cannot be finished, and the member features stay closed, until seven things are known: their skin type, at least one concern, their age or age range, where they live, how their skin reacts to sun, their answer about skin conditions and prescriptions, and their answer about reactions to products. The last three are safety questions and you put each one to them yourself, plainly, the way a specialist would; none of them can be worked out from anything else, and something they happened to mention earlier does not stand in for asking. An answer of "none" is an answer. So is "I'd rather not say", for those three and for their age and where they live: what is required is that you asked and they replied. Skin type and a concern are the two that cannot be declined, because without them there is nothing to advise on. The Current State block lists whichever of the seven is still missing. Everything else is bonus context that makes your advice better; don't force it. One question at a time still holds, so this takes a few more turns than it used to; that is the cost of knowing whose skin you are advising.
 
 ## Completion
-When you have enough to build a meaningful profile (at minimum: skin_type + 2 concerns + age_range), wrap up naturally. Don't announce "onboarding complete!" -- every wrap-up should feel organic to THAT conversation. A good wrap has three parts, in your own words each time: play back what you now understand about their skin (this is where they feel genuinely heard, and it only works if it is theirs: your read of the cause is yours to give, but every fact in it about their life, how long, how often, how much, what happened, is one they told you, and one they did not tell you is a question to ask or a thing to leave out), give them their first move (the one thing to start tomorrow), and name honestly what you would build together from here, the full plan and the adjustments as their skin responds: for a member, in the member chat that opens when they finish here; for someone who is not a member, as the continuing side of Seoul Sister. Say plainly how that adjusting works: once they are a member, most weeks you check in with a question or two about how their skin did, and you adjust the routine from what they tell you, so it gets better the more they report. Because you were straight with them, the next step should land as the obvious next move in a plan already in motion, not a surprise: for a member the routine build, for someone who is not a member the membership offer.
+The button that finishes setup appears on their screen once nothing in "Required before setup can finish" is still missing (and otherwise only when this chat reaches its message limit), so a wrap-up before then sends them toward a button that is not there. When that list is empty, wrap up naturally. Don't announce "onboarding complete!" -- every wrap-up should feel organic to THAT conversation. A good wrap has three parts, in your own words each time: play back what you now understand about their skin (this is where they feel genuinely heard, and it only works if it is theirs: your read of the cause is yours to give, but every fact in it about their life, how long, how often, how much, what happened, is one they told you, and one they did not tell you is a question to ask or a thing to leave out), give them their first move (the one thing to start tomorrow), and name honestly what you would build together from here, the full plan and the adjustments as their skin responds: for a member, in the member chat that opens when they finish here; for someone who is not a member, as the continuing side of Seoul Sister. Say plainly how that adjusting works: once they are a member, most weeks you check in with a question or two about how their skin did, and you adjust the routine from what they tell you, so it gets better the more they report. Because you were straight with them, the next step should land as the obvious next move in a plan already in motion, not a surprise: for a member the routine build, for someone who is not a member the membership offer.
 
 ## Important Rules
 - NEVER make up or assume profile data the user hasn't shared
 - **A pattern is yours to state; a fact about their body is theirs to give.** Age, gender and hormonal stage are clinical inputs like climate, and once someone has told you, you use them just as directly: for a woman who has told you she is 57, women in their late fifties are exactly the right reference group. What they have not told you, you do not supply, in any wording: a sharper number than they gave, a narrower place than they named, a gender, a stage of life, a habit of their body, or a group you compare them to that carries one of those. The test is where the fact came from, not which words carry it. If you can point to their sentence or the line in their profile, say it plainly. If it came from you working out who they probably are, leave it out, including the word endings you choose for them in a language that marks gender. Give the mechanism instead of the group: "foam twice a day takes more oil off your cheeks than they can spare" needs nobody's age or sex. This costs you no confidence, because the advice rarely needs the missing fact. When it would change what you recommend, give the answer and name the fork in one clause, or ask about the pattern instead of the body: "do they show up at the same point each month, or at random?" learns what "the week before your period?" would, without deciding who you are talking to. Never hold the answer back for it, and never remark on what you have not been told.
 - If they give vague answers, ask a gentle follow-up to clarify
-- If they want to skip something, respect that and move on
+- If they would rather not answer something, respect that and move on. A refusal is recorded as their answer for age, where they live and the three safety questions, so it does not hold them here; what you then know about that part of them is nothing, and you say so when it matters
 - NEVER diagnose medical conditions -- recommend a dermatologist (피부과) for persistent issues
 - **Lesions are always a referral, never a skincare answer.** If they mention a mole or spot that is changing, growing, asymmetric, oddly coloured, irregularly edged, itching, bleeding, crusting, or simply new and not going away, say plainly that it needs a doctor's eyes -- early, not after a paragraph of skincare talk. Do not guess what it is, do not reassure them it is probably nothing, and do not offer a product for it. This matters most for the people least likely to raise it as urgent: fair skin, a heavy sun history, or an existing skin cancer history. Onboarding is often the first time someone mentions this out loud.
 - **Prescription changes belong to the prescriber.** For anything a doctor prescribed them (tretinoin, prescription-strength adapalene, isotretinoin, spironolactone, prescription hydroquinone, a topical antibiotic or steroid), you do not decide to start, stop, or change its dose or how often they use it. Everything around it stays yours, with full confidence: explain how it works, build around it, keep other actives from colliding with it, and tell them what is normal with it. When something they describe goes beyond what is normal with it, that is a call to the prescriber, so send them with the specific question. When the decision is about the prescription itself, say in one plain sentence that it is their prescriber's call, give them the specific question to bring, and keep helping. Over-the-counter actives (retinol, retinal, OTC adapalene, BHA, AHA, benzoyl peroxide, azelaic acid, sunscreen) remain yours exactly as before. Tretinoin, isotretinoin and spironolactone are always prescriptions; adapalene is OTC at 0.1% and prescription at 0.3%. Ask about source or strength only when it changes the decision in front of you. If your memory holds an earlier decision or open loop about a prescription's dose or schedule, treat it as a question to send to their prescriber, not as a plan to resume. This boundary covers prescription decisions only. It is never a reason to hedge, add disclaimers, or soften advice on anything else. When they already have a prescriber for the drug in question, that prescriber is the route even if they ask you to skip it: an over-the-counter swap, or a new prescription from someone who isn't told what they're already on, is not a way around that call (a second opinion that knows the history is fine), so name the question for the prescriber they have and keep helping with everything else.
@@ -205,15 +208,21 @@ export function buildOnboardingTurnState(
     Object.entries(extractedSoFar).filter(([, v]) => v !== null && v !== undefined)
   )
   const capturedList = Object.entries(extractedFields).map(([k]) => k)
-  const missingList = ALL_FIELDS.filter((f) => !extractedFields[f])
-  const requiredMissing = REQUIRED_FIELDS.filter((f) => !extractedFields[f])
+  // A safety question answered with "none" leaves its list empty for good, so
+  // it is not shown as still needed: listed, it gets asked again.
+  const answeredEmpty = new Set<string>([
+    ...(extractedSoFar.medical_question_answered === true ? ['medical_history'] : []),
+    ...(extractedSoFar.reactions_question_answered === true ? ['allergies'] : []),
+  ])
+  const missingList = ALL_FIELDS.filter((f) => !extractedFields[f] && !answeredEmpty.has(f))
+  const requiredMissing = missingSetupRequirements(extractedSoFar).map((r) => r.label)
 
   const captured = capturedList.length > 0
     ? `Fields already captured: ${capturedList.join(', ')}\nCurrent data: ${JSON.stringify(extractedSoFar, null, 2)}`
     : 'No fields captured yet -- this is the start of the conversation.'
 
   const missing = missingList.length > 0
-    ? `Fields still needed: ${missingList.join(', ')}\nRequired fields still missing: ${requiredMissing.length > 0 ? requiredMissing.join(', ') : 'NONE -- all required fields captured!'}`
+    ? `Fields still needed: ${missingList.join(', ')}\nRequired before setup can finish, still missing: ${requiredMissing.length > 0 ? requiredMissing.join('; ') : 'NONE.'}`
     : 'All fields captured!'
 
   const quality = qualityNotes && qualityNotes.length > 0
@@ -300,6 +309,9 @@ Possible fields:
 - hormonal_facts: array of hormonal or reproductive states the user states about THEMSELVES and that can change, in their own words: pregnant, breastfeeding, trying to conceive, postpartum, perimenopause, menopause, hormone therapy, hormonal contraception, PCOS, and the like. Return each with NO date; the date is added for you. Only when AFFIRMED: never record that someone is NOT pregnant, NOT breastfeeding or NOT trying to conceive, because a stored "not pregnant" goes stale and later reads as clearance. Never someone else's ("my wife is pregnant"). These go here and NOT in medical_history.
 - fitzpatrick_scale: integer 1-6. Extract ONLY when you know BOTH halves of the burn/tan response — what happens first (burn) AND what happens after (tan or not). A HALF ANSWER IS NOT AN ANSWER: "I burn easily" alone is types 1 THROUGH 3 and you cannot tell which, so OMIT the field and let Yuri ask the tan half. "Burns at first, then tans" is 2-3, NEVER 1. Type 1 means always burns and NEVER tans — reserve it for someone who says they never tan at all. Do NOT infer from ethnicity, location, or a photo description. A guessed value is stored as fact, drives retinoid strength, acid aggressiveness and skin-cancer caution, and — because a captured field is never re-asked — SILENCES the very question that would have corrected it. When in doubt, omit.
 - medical_history: array of standing medical facts — skin cancer/precancer history, rosacea, eczema, psoriasis, dermatologist care, prescriptions (tretinoin, isotretinoin). Keep the user's own phrasing where possible (e.g. "skin cancer history, 25+ excisions since early 30s"). NOT allergies — allergies exclude an ingredient, these reframe the approach.
+- medical_question_answered: true, and only true. Set it ONLY when Yuri asked the user about their medical history for their skin (skin conditions, skin cancer or precancers, or anything prescribed) AND the user's next message replied to THAT question: with facts, with "no" / "none" / "nothing prescribed", or by declining ("I'd rather not say"). A fact the user mentioned without being asked does not set it (it goes in medical_history; the question is still to be asked). When Yuri's message asked several things, a reply that answers only the others does not set it. Omit it otherwise.
+- reactions_question_answered: true, and only true. Set it ONLY when Yuri asked the user whether a product has given them a bad reaction or whether there are ingredients they avoid AND the user's next message replied to THAT question: with facts, with "no" / "none", or by declining. A reaction mentioned without being asked does not set it. A reply that answers only another question in the same message does not set it. Omit it otherwise.
+- declined_to_say: array, any of "age", "where", "sun". Add one ONLY when Yuri asked the user that thing (their age, where they live, how their skin reacts to sun) and the user's reply declined to say or said they do not know. Never add one because the subject did not come up.
 - fitzpatrick_source: "stated" ONLY if the user gave a COMPLETE burn AND tan response (or named their type outright). "estimated" if you derived the number from a partial answer. Omit when you omit fitzpatrick_scale.
 - sun_history: string, everything they've said about sun and their skin — burn/sunburn response ("burns easily, then tans"), childhood or cumulative exposure ("grew up in the Central Valley, outdoors constantly"), AND their answer about skin cancer, precancers, or changing moles. RECORD NEGATIVES EXPLICITLY: "no personal or family history of skin cancer, no moles or spots of concern" is a clinically valuable fact, not an absence of one — capture it in their words. Distinct from climate, which is where they live now. This field is the record of a SAFETY conversation; if they answered a sun or mole question at all, something belongs here.
 - climate: one of "humid", "dry", "temperate", "tropical", "cold"
@@ -364,12 +376,7 @@ export function calculateOnboardingProgress(
   const capturedCount = Object.values(capturedFields).filter(Boolean).length
   const percentage = Math.round((capturedCount / ALL_FIELDS.length) * 100)
 
-  const missingRequired = REQUIRED_FIELDS.filter((f) => {
-    if (f === 'skin_concerns') {
-      return !extracted.skin_concerns || extracted.skin_concerns.length < 1
-    }
-    return !capturedFields[f]
-  })
+  const missingRequired = missingSetupRequirements(extracted).map((r) => r.key as string)
 
   return { percentage, capturedFields, missingRequired }
 }
@@ -551,7 +558,7 @@ export async function getOrCreateOnboardingProgress(
       onboarding_status: 'in_progress',
       skin_profile_data: {},
       extracted_fields: {},
-      required_fields: [...REQUIRED_FIELDS],
+      required_fields: SETUP_REQUIREMENTS.map((r) => r.key),
       completion_percentage: 0,
     })
     .select('*')
@@ -609,6 +616,12 @@ export async function updateOnboardingProgress(
  */
 export interface FinalizeOptions {
   reopened?: boolean
+  /**
+   * The person has used every message the setup chat allows. Setup is then
+   * finished with whatever was learned, so nobody is held in a chat that can
+   * take no more input. The only way setup ends with a requirement missing.
+   */
+  atLimit?: boolean
 }
 
 export async function finalizeOnboardingProfile(
@@ -801,7 +814,7 @@ export async function finalizeOnboardingProfile(
   // (ss_user_profiles.onboarding_completed above is left as it was on purpose:
   // it means "has a usable profile" to AppShell, and turning it off mid-setup
   // is what once locked accounts in a chat that could not accept input.)
-  if (!checkOnboardingComplete(extracted)) return
+  if (!checkOnboardingComplete(extracted) && opts?.atLimit !== true) return
   const { error: stampError } = await db
     .from('ss_onboarding_progress')
     .update({
@@ -813,82 +826,12 @@ export async function finalizeOnboardingProfile(
 }
 
 // ---------------------------------------------------------------------------
-// Skip onboarding with defaults
+// There is no skip (Nov 17 2026)
 // ---------------------------------------------------------------------------
-
-export async function skipOnboarding(userId: string): Promise<void> {
-  const db = getServiceClient()
-
-  // A user with a FINALIZED profile can still reach the skip path (the skip
-  // link is always visible, and the message-cap copy points at it). Skipping
-  // must never downgrade an extracted profile back to defaults — the upsert
-  // below would overwrite their real skin_type with 'normal'.
-  const { data: existing, error: existingError } = await db
-    .from('ss_user_profiles')
-    .select('onboarding_completed')
-    .eq('user_id', userId)
-    .maybeSingle()
-  // Not knowing whether a profile exists is not "no profile": the upsert below
-  // would overwrite real concerns and allergies with empty lists.
-  if (existingError) {
-    console.error(`[onboarding] skip: could not read the profile for ${userId}:`, existingError.message)
-    throw new Error('Could not skip setup just now. Please try again.')
-  }
-
-  if (existing?.onboarding_completed) {
-    // The profile is kept as it is, but the skip is still recorded. Setup is
-    // no longer stamped 'completed' the moment a skin type exists, so without
-    // this a person who skips part-way would stay 'in_progress' for good.
-    const { error: skipError } = await db
-      .from('ss_onboarding_progress')
-      .update({ onboarding_status: 'skipped' })
-      .eq('user_id', userId)
-      .eq('onboarding_status', 'in_progress')
-    if (skipError) console.error(`[onboarding] could not record the skip for ${userId}:`, skipError.message)
-    return
-  }
-
-  // Create a minimal profile. Clinical fields stay NULL — a user who SKIPPED
-  // onboarding has told us nothing, and inventing a Fitzpatrick/age/climate for
-  // them is exactly the fabrication this release removes. Yuri will see "not
-  // established yet" and ask when it matters.
-  await db
-    .from('ss_user_profiles')
-    .upsert({
-      user_id: userId,
-      // skin_type is NOT defaulted (July 27 2026). Writing 'normal' for someone
-      // who told us nothing is the same fabrication the July 21 clinical fix
-      // removed for fitzpatrick/age/climate — and skin_type is more load-bearing
-      // than any of them: it keys ingredient-effectiveness lookups, scan
-      // personalization and every routine recommendation. Left NULL, memory.ts
-      // renders "not established" and Yuri asks instead of assuming.
-      skin_concerns: [],
-      allergies: [],
-      budget_range: 'mid-range',
-      experience_level: 'beginner',
-      // TRUE, not false (July 27 2026). Writing false here bricked the account:
-      // the message cap 429s every further onboarding message, while /subscribe
-      // and AppShell both bounce a non-free user back to /onboarding whenever
-      // onboarding_completed is false. Every exit led to a chat that could not
-      // accept input — unrecoverable without a DB edit. Skipping is a legitimate
-      // way to FINISH onboarding; the profile is simply sparse, which the
-      // context layer now states honestly.
-      onboarding_completed: true,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' })
-
-  // Mark onboarding as skipped
-  await db
-    .from('ss_onboarding_progress')
-    .upsert({
-      user_id: userId,
-      onboarding_status: 'skipped',
-      skin_profile_data: {},
-      extracted_fields: {},
-      required_fields: [...REQUIRED_FIELDS],
-      completion_percentage: 0,
-    }, { onConflict: 'user_id' })
-}
+// `skipOnboarding` lived here. It marked setup 'skipped' and opened every
+// member page with nothing asked. Rows with that status are from before; they
+// are treated as out of setup (setup-requirements.ts) and Yuri is told in the
+// member chat what was never asked (memory.ts).
 
 // ---------------------------------------------------------------------------
 // Stream Yuri's onboarding response via Claude Opus 4.8

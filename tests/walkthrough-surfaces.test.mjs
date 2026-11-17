@@ -180,7 +180,8 @@ function loadFinalize(writes, { fn = 'finalizeOnboardingProfile', selected = nul
     cut(ONB, 'export function calculateOnboardingProgress('),
     cut(ONB, 'export function checkOnboardingComplete('),
     cut(ONB, 'export async function finalizeOnboardingProfile('),
-    cut(ONB, 'export async function skipOnboarding('),
+    // The real setup rules, so "complete" here is what it is in the app.
+    read('src/lib/yuri/setup-requirements.ts'),
   ].join('\n').replace(/^export /gm, '')
   const js = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
   const chain = (table) => {
@@ -200,43 +201,35 @@ function loadFinalize(writes, { fn = 'finalizeOnboardingProfile', selected = nul
   const db = { from: chain, auth: { admin: { getUserById: async () => ({ data: { user: null } }) } } }
   // Anything the function reaches for that is not defined here is a permissive stub.
   const scope = new Proxy({ getServiceClient: () => db, console: { log() {}, warn() {}, error() {} } }, {
-    has: (t, k) => typeof k === 'string' && !(k in globalThis) && k !== 'finalizeOnboardingProfile' && k !== 'skipOnboarding' && k !== 'checkOnboardingComplete' && k !== 'calculateOnboardingProgress' && !/^(ALL_FIELDS|REQUIRED_FIELDS)$/.test(k) || k in t,
+    has: (t, k) => typeof k === 'string' && !(k in globalThis) && k !== 'finalizeOnboardingProfile' && k !== 'missingSetupRequirements' && k !== 'SETUP_REQUIREMENTS' && k !== 'checkOnboardingComplete' && k !== 'calculateOnboardingProgress' && !/^(ALL_FIELDS|REQUIRED_FIELDS)$/.test(k) || k in t,
     get: (t, k) => (k in t ? t[k] : k === Symbol.unscopables ? undefined : async () => null),
   })
   return new Function('scope', `with (scope) { ${js}\n return ${fn} }`)(scope)
 }
 
-test('setup is stamped "completed" only with skin type, concerns AND age; the profile is synced either way (executed)', async () => {
+test('setup is stamped "completed" only when every requirement is met, or at the message limit; the profile is synced either way (executed)', async () => {
   const partial = { skin_type: 'dry', skin_concerns: ['breakouts'], current_routine: ['a cleanser'] }
-  const full = { ...partial, age_range: '31-35' }
-  for (const [name, extracted, expectStamp] of [['31% done, age missing', partial, false], ['required fields in', full, true], ['skin type only', { skin_type: 'dry' }, false], ['concerns empty', { skin_type: 'dry', skin_concerns: [], age_range: '31-35' }, false]]) {
+  // What used to be enough (skin type, a concern, an age range) no longer is.
+  const oldRule = { ...partial, age_range: '31-35' }
+  const full = { ...oldRule, climate: 'dry', sun_history: 'burns, then tans', medical_question_answered: true, reactions_question_answered: true }
+  for (const [name, extracted, opts, expectStamp] of [
+    ['31% done, age missing', partial, undefined, false],
+    ['the old three fields', oldRule, undefined, false],
+    ['everything but the medical answer', { ...full, medical_question_answered: undefined }, undefined, false],
+    ['every requirement met', full, undefined, true],
+    ['skin type only', { skin_type: 'dry' }, undefined, false],
+    ['skin type only, at the message limit', { skin_type: 'dry' }, { atLimit: true }, true],
+    ['reopened and incomplete is not the limit', oldRule, { reopened: true }, false],
+  ]) {
     const writes = []
-    await loadFinalize(writes)('u1', extracted)
+    await loadFinalize(writes)('u1', extracted, opts)
     const profile = writes.filter((w) => w.table === 'ss_user_profiles')
     assert.equal(profile.length, 1, `${name}: the profile is still written`)
     assert.equal(profile[0].values.skin_type, 'dry', name)
     const stamps = writes.filter((w) => w.table === 'ss_onboarding_progress' && w.values?.onboarding_status === 'completed')
     assert.equal(stamps.length, expectStamp ? 1 : 0, name)
   }
-})
-
-test('skipping part-way keeps the profile and still records the skip, so nobody is left "in progress" for good (executed)', async () => {
-  // A profile already exists (a skin type was captured): nothing in it is overwritten.
-  const writes = []
-  await loadFinalize(writes, { fn: 'skipOnboarding', selected: { onboarding_completed: true } })('u1')
-  assert.equal(writes.filter((w) => w.table === 'ss_user_profiles').length, 0, 'an extracted profile must not be reset to a blank one')
-  const status = writes.filter((w) => w.table === 'ss_onboarding_progress')
-  assert.deepEqual(status.map((w) => w.values), [{ onboarding_status: 'skipped' }])
-  // Only a setup still in progress: a finished one stays finished.
-  assert.deepEqual(status[0].eq, [['user_id', 'u1'], ['onboarding_status', 'in_progress']])
-  // Nothing yet: the minimal profile is written and the skip recorded, as before.
-  const fresh = []
-  await loadFinalize(fresh, { fn: 'skipOnboarding', selected: null })('u1')
-  assert.equal(fresh.filter((w) => w.table === 'ss_user_profiles').length, 1)
-  assert.ok(fresh.some((w) => w.table === 'ss_onboarding_progress' && w.values.onboarding_status === 'skipped'))
-  // Both status writes in this file read their result.
   assert.match(ONB, /if \(stampError\) console\.error\(/)
-  assert.match(ONB, /if \(skipError\) console\.error\(/)
 })
 
 test('the weekly note calls an old shelf row "not confirmed owned" only when it predates owned-only saving', () => {

@@ -9,7 +9,8 @@
 import './load-env'
 import { getServiceClient } from '../src/lib/supabase'
 import { getAnthropicClient, MODELS, CHAT_EFFORT, responseText } from '../src/lib/anthropic'
-import { buildOnboardingSystemPrompt, buildOnboardingTurnState, calculateOnboardingQuality, ONBOARDING_USER_MESSAGE_CAP } from '../src/lib/yuri/onboarding'
+import { buildOnboardingSystemPrompt, buildOnboardingTurnState, calculateOnboardingQuality, extractSkinProfileData, ONBOARDING_USER_MESSAGE_CAP } from '../src/lib/yuri/onboarding'
+import { missingSetupRequirements } from '../src/lib/yuri/setup-requirements'
 import { withTrailingContext, markPenultimateAssistant } from '../src/lib/llm-request'
 import type { ExtractedSkinProfile } from '../src/types/database'
 
@@ -26,7 +27,9 @@ async function main() {
   const history = list.slice(0, at).map((m) => ({ role: m.role, content: m.content }))
   const message = list[at].content
   console.log(`turn: "${message}"`)
-  const extracted = {} as ExtractedSkinProfile
+  // What setup would hold at this turn: the record as of the previous turn, as in production.
+  const extracted = (history.length > 1 ? await extractSkinProfileData(history) : {}) as ExtractedSkinProfile
+  console.log(`still required at this turn: ${missingSetupRequirements(extracted).map((r) => r.key).join(', ') || 'nothing'}`)
   const turnState = buildOnboardingTurnState(extracted, calculateOnboardingQuality(extracted).suggestions, { isSubscribed: true, userMessageNumber: Number(nRaw), userMessageCap: ONBOARDING_USER_MESSAGE_CAP })
   const messages = withTrailingContext(markPenultimateAssistant([...history, { role: 'user' as const, content: message }]), turnState)
   const client = getAnthropicClient()

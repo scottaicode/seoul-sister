@@ -88,13 +88,10 @@ test('onboarding never fabricates a Fitzpatrick, age, or climate', () => {
   )
 })
 
-test('skipping onboarding leaves clinical fields NULL, not invented', () => {
-  const body = fnBody(onboardingSrc, 'export async function skipOnboarding(')
-  assert.ok(
-    !/fitzpatrick_scale:\s*\d/.test(body),
-    'skipOnboarding invents a Fitzpatrick for someone who told us nothing at all'
-  )
-  assert.ok(!/age_range:\s*'/.test(body), 'skipOnboarding invents an age range')
+test('there is no skip path left to invent clinical fields for someone who told us nothing', () => {
+  // skipOnboarding wrote a minimal profile and opened the app. It is gone
+  // (Nov 17 2026); setup-is-required.test.mjs pins that nothing skips.
+  assert.equal(/export async function skipOnboarding\(/.test(onboardingSrc), false)
 })
 
 test('Yuri is told when Fitzpatrick is unknown instead of shown a number', () => {

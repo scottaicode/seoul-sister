@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
+import { requireSetupFinished } from '@/lib/yuri/setup-gate'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { deleteScanPhotos, signScanPhotos } from '@/lib/scanning/scan-photos'
@@ -29,6 +30,7 @@ interface RouteContext {
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const db = getServiceClient()
     const { id } = await context.params
 
@@ -111,6 +113,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const db = getServiceClient()
     const { id } = await context.params
 

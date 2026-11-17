@@ -17,7 +17,9 @@ import ts from 'typescript'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
-const src = readFileSync(join(root, 'src', 'lib', 'auth', 'post-sign-in.ts'), 'utf8')
+// post-sign-in.ts imports one pure function; its module is inlined so the two load as one.
+const src = readFileSync(join(root, 'src', 'lib', 'yuri', 'setup-requirements.ts'), 'utf8') + '\n' +
+  readFileSync(join(root, 'src', 'lib', 'auth', 'post-sign-in.ts'), 'utf8').replace("import { stillInSetup } from '@/lib/yuri/setup-requirements'\n", '')
 const js = ts.transpileModule(src, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText
@@ -65,10 +67,11 @@ test('app gate: every account state has exactly one destination', () => {
   const PAID = ['monthly', 'pro_monthly']
   const expected = (paid, flag, status) => {
     const finished = status === 'completed' || status === 'skipped'
-    if (paid) return !flag && !finished ? '/onboarding' : null
-    if (finished) return '/subscribe'
-    if (status === 'in_progress') return '/onboarding'
-    return flag ? '/subscribe' : '/onboarding' // no setup row, or it could not be read
+    // Still in setup goes to setup, member or not (Nov 17 2026). No setup row,
+    // or one that could not be read: a profile stands in for it.
+    const inSetup = status === 'in_progress' || (!finished && !flag)
+    if (inSetup) return '/onboarding'
+    return paid ? null : '/subscribe'
   }
   let n = 0
   for (const plan of [...FREE, ...PAID]) {
@@ -94,8 +97,10 @@ test('app gate: the shapes that failed, spelled out', () => {
   assert.equal(appGateDestination({ plan: 'free', onboarding_completed: true }, 'completed'), '/subscribe')
   assert.equal(appGateDestination({ plan: 'free', onboarding_completed: false }, 'completed'), '/subscribe')
   assert.equal(appGateDestination({ plan: null, onboarding_completed: true }, 'skipped'), '/subscribe')
-  // A member mid-setup with a usable profile keeps the app, as before.
-  assert.equal(appGateDestination({ plan: 'monthly', onboarding_completed: true }, 'in_progress'), null)
+  // A member mid-setup is held there, even with a skin type on file. This
+  // used to be `null`: creating an account starts the free week, so it let
+  // every new person out after their first message (Nov 17 2026).
+  assert.equal(appGateDestination({ plan: 'monthly', onboarding_completed: true }, 'in_progress'), '/onboarding')
   // A member whose setup is marked finished is never sent back to it.
   assert.equal(appGateDestination({ plan: 'monthly', onboarding_completed: false }, 'completed'), null)
 })

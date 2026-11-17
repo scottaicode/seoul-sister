@@ -497,13 +497,6 @@ export function setupChatLine(isMember: boolean | null, freeWeekJustStarted = fa
   return isMember === false ? 'Free setup chat. Membership is separate, and starts only if you choose it.' : 'Setup chat'
 }
 
-/** The link under the setup chat that leaves it, by where it goes. */
-export function skipSetupLabel(isMember: boolean | null): string {
-  // Unread (null) names no destination: for a moment after sign-up the free
-  // week is still being started, and "see membership" would be wrong.
-  return isMember === true ? 'Skip this chat and go to Yuri' : isMember === false ? 'Skip this chat and see membership' : 'Skip this chat'
-}
-
 /**
  * Under the membership page's "Free for N days / No card needed to start."
  * headline: what adding a card does and what happens without one. `priceLong`

@@ -4,6 +4,52 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.65.0 — Setup cannot be skipped, and no member feature works before it is finished (Nov 17 2026)
+
+The owner's rule: nobody uses the member features without going through the setup chat.
+
+- **What happened.** Since v11.63.0 creating an account starts the free week, so a new person is
+  a member before the setup chat begins, and nothing held a member in it. A stranger tapped
+  "Skip this chat" 23 seconds after signing up, uploaded a photo in the member chat and had a
+  routine saved with no health question asked. Another member had finished setup after two
+  messages, because "Finish setup" needed only a skin type, a concern and an age range. A
+  member with a skin type on file could also open any page mid-chat, and no server route
+  checked setup. The skip link was relabelled "go to Yuri" for members in v11.63.0 without
+  anyone noticing what it had become.
+- **Seven things before "Finish setup"** (`src/lib/yuri/setup-requirements.ts`): skin type, a
+  concern, age, where they live, sun reaction, and an answer to the medical question and to
+  the reactions question. The last two are met only by a reply to the question ("none" and
+  "I'd rather not say" count), never by a fact mentioned in passing. Age, place and sun
+  reaction can also be declined. Run over nine real setup chats
+  (`scripts/replay-setup-requirements.ts`), eight would not have been finishable as they stood.
+- **No skip.** The link and `skipOnboarding` are gone; the old request is refused.
+- **Held in setup.** The app gate sends anyone still in setup back to it, member or not. On
+  the server, 25 routes refuse until it is finished: the member chat, scans, skin score,
+  curated products, routines, library, tracking, cycle, weather and skin profile.
+- **One exit with something missing:** the 50-message limit. It marks the setup record, and
+  Yuri asks the unanswered safety question first in the member chat.
+- **The two members who got past it** carry the same mark (set by hand, both rows named in a
+  dry run first). Replayed (`scripts/replay-member-turn.ts`): for the one who skipped, Yuri
+  asked both questions and named no new product in 3 of 3; for the other she used what that
+  member had already told her and asked only about skin cancer in 2 of 3, and in the third
+  said what she understood and asked to be corrected.
+- **Second-model review (Opus, told to refute): run.** It found that the first version of the
+  member-chat note would have rendered for six of nine paid accounts, the lighthouse user
+  among them, because a flag that did not exist yesterday read as "never asked"; that two of
+  its sentences were false for those members; that it could never clear for an account with
+  no setup record; that the setup prompt promised a refusal would not hold anyone when only
+  two of the seven could be declined; that it contradicted "one question at a time"; that a
+  quality score could hide the finish button with everything answered; that routines, library
+  and other data routes had no server check; and that several tests did not bind. All fixed.
+  The fixes made after that review were not reviewed a second time.
+- **Wrong in an earlier report, corrected here.** The owner was told every member but two had
+  answered the medical question in setup. An empty list had been read as an answer; four
+  other paid accounts have nothing recorded either. They are not asked again on that account:
+  the existing "not on file" note already tells Yuri to ask when it bears on a recommendation.
+- **Still true.** Fifty one-character messages reach the limit and finish setup with nothing
+  learned; the member chat then asks the safety questions first. Five read-only data routes
+  are held by the app gate only. A stale installed app keeps the old page until it updates.
+
 ## v11.64.2 — What the owner's own sign-up found (Nov 17 2026)
 
 The owner signed up as a new member with an email and password and went through the setup chat

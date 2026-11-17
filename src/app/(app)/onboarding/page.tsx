@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, SkipForward } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { consentedVisitorId, hasPreviewConversation, getCarryoverChoice, setCarryoverChoice, previewedAt, previewCameFromEmail } from '@/lib/utils/widget-session'
 import CarryoverPrompt from '@/components/onboarding/CarryoverPrompt'
 import ChatMessage from '@/components/yuri/ChatMessage'
 import ChatInput from '@/components/yuri/ChatInput'
 import type { ChatMessage as ChatMessageType } from '@/types/yuri'
-import { getOfferCode, setupChatLine, skipSetupLabel, freeWeekNotStartedLine } from '@/lib/offers'
+import { getOfferCode, setupChatLine, freeWeekNotStartedLine } from '@/lib/offers'
 import { hasFreshSignupAgreement, clearSignupAgreement, shouldStartAtSignup, isJustCreated, rememberStartNote, readStartNote } from '@/lib/signup-agreement'
 import { startFreeWeekOnce } from '@/lib/start-free-week'
 import { takeCarriedQuestion } from '@/lib/landing-chat'
@@ -26,6 +26,9 @@ export default function OnboardingPage() {
   // progress tracked internally for completion detection only
   const [progress, setProgress] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
+  // The chat has taken every message it allows: setup can then be finished
+  // with what was learned, the one case where it ends with something missing.
+  const [atLimit, setAtLimit] = useState(false)
   const [qualityScore, setQualityScore] = useState(0)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -425,6 +428,7 @@ export default function OnboardingPage() {
           if (data.conversation_id) setConversationId(data.conversation_id)
           if (typeof data.progress === 'number') setProgress(data.progress)
           if (data.is_complete) setIsComplete(true)
+          if (data.at_limit === true) setAtLimit(true)
           if (typeof data.quality_score === 'number') setQualityScore(data.quality_score)
 
           // Convert existing messages
@@ -512,6 +516,7 @@ export default function OnboardingPage() {
 
         if (!response.ok) {
           const err = await response.json().catch(() => ({ error: 'Request failed' }))
+          if (err.code === 'onboarding_message_cap') setAtLimit(true)
           throw new Error(err.error || `HTTP ${response.status}`)
         }
 
@@ -602,28 +607,6 @@ export default function OnboardingPage() {
     }
   }, [getToken, router, isMember])
 
-  // Skip onboarding
-  const handleSkip = useCallback(async () => {
-    try {
-      const token = await getToken()
-      await fetch('/api/yuri/onboarding', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ action: 'skip_onboarding' }),
-      })
-      // Where the link says it goes. A member goes to Yuri. Anyone else goes
-      // to the membership page (AppShell would send a free account there
-      // anyway, and that page sends a member onward if the plan was not known
-      // here).
-      router.push(isMember === true ? '/yuri' : '/subscribe')
-    } catch {
-      router.push(isMember === true ? '/yuri' : '/subscribe')
-    }
-  }, [getToken, router, isMember])
-
   if (carryChoice === 'ask') {
     return (
       <CarryoverPrompt
@@ -689,7 +672,7 @@ export default function OnboardingPage() {
           ))}
 
           {/* Completion prompt */}
-          {isComplete && !isStreaming && qualityScore >= 65 && (
+          {!isStreaming && (isComplete || atLimit) && (
             <div className="flex justify-center py-6">
               <button
                 onClick={handleComplete}
@@ -724,17 +707,6 @@ export default function OnboardingPage() {
           restoredValue={carriedAsk}
           onRestoreConsumed={() => setCarriedAsk(null)}
         />
-      </div>
-
-      {/* Skip link */}
-      <div className="bg-seoul-card/90 backdrop-blur-md border-t border-white/10 py-2 text-center">
-        <button
-          onClick={handleSkip}
-          className="inline-flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors"
-        >
-          <SkipForward className="w-3 h-3" />
-          {skipSetupLabel(isMember)}
-        </button>
       </div>
     </div>
   )

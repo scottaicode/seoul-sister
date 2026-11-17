@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
+import { requireSetupFinished } from '@/lib/yuri/setup-gate'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 
@@ -39,6 +40,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const { id: alertId } = await params
 
     const serviceClient = getServiceClient()

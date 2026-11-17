@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
+import { requireSetupFinished } from '@/lib/yuri/setup-gate'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { reformulationReportSchema } from '@/lib/utils/validation'
@@ -15,6 +16,7 @@ import { detectReformulation, recordReformulation } from '@/lib/intelligence/ref
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const { searchParams } = new URL(request.url)
     const includeDismissed = searchParams.get('include_dismissed') === 'true'
 
@@ -73,6 +75,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const body = await request.json()
     const validated = reformulationReportSchema.parse(body)
 

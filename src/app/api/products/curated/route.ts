@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getServiceClient } from '@/lib/supabase'
 import { hasActiveSubscription } from '@/lib/subscription'
+import { setupRequiredResponse } from '@/lib/yuri/setup-gate'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import {
   buildCurationContext,
@@ -59,6 +60,10 @@ export async function GET(request: NextRequest) {
         { status: 403 }
       )
     }
+
+    // No member feature before the setup chat is finished (Nov 17 2026).
+    const setupBlock = await setupRequiredResponse(user.id)
+    if (setupBlock) return setupBlock
 
     // ---------------------------------------------------------------
     // Parse + validate query params

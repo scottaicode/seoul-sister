@@ -6,6 +6,7 @@ import { analyzeCounterfeit } from '@/lib/counterfeit/analyzer'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { requireAuth } from '@/lib/auth'
 import { hasActiveSubscription } from '@/lib/subscription'
+import { setupRequiredResponse } from '@/lib/yuri/setup-gate'
 import { sanitizeSearchTerm } from '@/lib/utils/sanitize-search'
 
 export async function POST(request: NextRequest) {
@@ -16,6 +17,10 @@ export async function POST(request: NextRequest) {
     if (!(await hasActiveSubscription(user.id))) {
       throw new AppError('Active subscription required for counterfeit scanning.', 403)
     }
+
+    // No member feature before the setup chat is finished (Nov 17 2026).
+    const setupBlock = await setupRequiredResponse(user.id)
+    if (setupBlock) return setupBlock
 
     const body = await request.json()
     if (!body.image) {

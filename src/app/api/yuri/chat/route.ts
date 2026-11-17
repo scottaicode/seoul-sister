@@ -15,6 +15,7 @@ import { loadConversationMessages, createConversation } from '@/lib/yuri/memory'
 import { cleanYuriResponse } from '@/lib/yuri/voice-cleanup'
 import { supabase, getServiceClient } from '@/lib/supabase'
 import { hasActiveSubscription } from '@/lib/subscription'
+import { setupRequiredResponse } from '@/lib/yuri/setup-gate'
 import { incrementYuriMessageCount, getUsageStatus, currentUsagePeriod } from '@/lib/usage'
 import type { SpecialistType } from '@/types/database'
 
@@ -86,6 +87,10 @@ export async function POST(request: NextRequest) {
         { status: 403, headers: { 'Content-Type': 'application/json' } }
       )
     }
+
+    // No member feature before the setup chat is finished (Nov 17 2026).
+    const setupBlock = await setupRequiredResponse(user.id)
+    if (setupBlock) return setupBlock
 
     const body = await request.json()
     const parsed = chatSchema.parse(body)

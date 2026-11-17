@@ -147,8 +147,14 @@ const identityJs = ts.transpileModule(
   { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }
 ).outputText
 
+// The real setup rules (what must be known before setup can finish).
+const requirementsJs = ts.transpileModule(
+  readFileSync(new URL('../src/lib/yuri/setup-requirements.ts', import.meta.url), 'utf8').replace(/^export /gm, ''),
+  { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }
+).outputText
+
 const shimmed =
-  identityJs + '\n' +
+  identityJs + '\n' + requirementsJs + '\n' +
   `const PRICING = { monthly_display: '$24.99/mo', monthly_display_long: '$24.99/month', trial_days: 7 };\n` +
   `const detectCumulativeGive = globalThis.__detectCumulativeGive;\n` +
   `const buildCumulativeGiveBlock = globalThis.__buildCumulativeGiveBlock;\n` +
@@ -305,12 +311,12 @@ test('the wrap-up playback is limited to facts the person gave', async () => {
   // this section needs a second-model review and a new fingerprint.
   assert.ok(section.includes('play back what you now understand about their skin (this is where they feel genuinely heard, and it only works if it is theirs: your read of the cause is yours to give, but every fact in it about their life, how long, how often, how much, what happened, is one they told you, and one they did not tell you is a question to ask or a thing to leave out), give them their first move'))
   const { createHash } = await import('node:crypto')
-  assert.equal(createHash('sha256').update(section).digest('hex'), '9344e5effcc993621f272fa97fa5e375ff185688e5024d5479402fbd615b36cb')
+  assert.equal(createHash('sha256').update(section).digest('hex'), '6dc6faf015e54823d0b3cc2eac24d1886888b0175a489df41dfa248c65031018')
   // And the whole static setup prompt: a sentence added to another section
   // ("except that in the wrap-up you may state a likely duration as fact")
   // would undo the rule while leaving this section untouched.
   const whole = src.slice(src.indexOf('export function buildOnboardingSystemPrompt'), src.indexOf('export interface OnboardingTurnFacts'))
-  assert.equal(createHash('sha256').update(whole).digest('hex'), '9ae66161a1c6fc00db85ca30f9a54c6ea0badf86df08d4dfcf0d3b410c9aa620')
+  assert.equal(createHash('sha256').update(whole).digest('hex'), '886a568f7b3e203994b74a3d506e1b9ae91f2797ce35da443223f3b8bf739cad')
 })
 
 test('the setup chat is told it has no product database, and that is true of the code', async () => {

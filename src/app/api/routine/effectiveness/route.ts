@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
+import { requireSetupFinished } from '@/lib/yuri/setup-gate'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError } from '@/lib/utils/error-handler'
 import { AppError } from '@/lib/utils/error-handler'
@@ -28,6 +29,7 @@ import { calculateRoutineEffectiveness } from '@/lib/intelligence/routine-effect
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const routineId = request.nextUrl.searchParams.get('routine_id')
 
     if (!routineId) {

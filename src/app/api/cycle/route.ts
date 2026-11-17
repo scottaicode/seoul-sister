@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/auth'
+import { requireSetupFinished } from '@/lib/yuri/setup-gate'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError } from '@/lib/utils/error-handler'
 import { getCyclePhase, getRoutineAdjustments } from '@/lib/intelligence/cycle-routine'
@@ -13,6 +14,7 @@ import type { SkinProfile, UserCycleTracking } from '@/types/database'
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const db = getServiceClient()
 
     // Load cycle tracking preference
@@ -98,6 +100,7 @@ const createCycleSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const body = await request.json()
     const { cycle_start_date, cycle_length_days, notes } = createCycleSchema.parse(body)
 
@@ -149,6 +152,7 @@ const updateCycleSettingsSchema = z.object({
 export async function PUT(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const body = await request.json()
     const updates = updateCycleSettingsSchema.parse(body)
 
@@ -182,6 +186,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const { searchParams } = new URL(request.url)
     const entryId = searchParams.get('id')
 

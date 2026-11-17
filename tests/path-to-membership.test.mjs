@@ -38,13 +38,12 @@ test('the sign-up form calls this step an account, never joining, and its price 
   assert.doesNotMatch(shown, /PRICING\.|\$\d|9\.99/)
 })
 
-test('the setup chat says what it is, and its two exits say where they go', () => {
+test('the setup chat says what it is, and its one exit says where it goes', () => {
   const page = read('src', 'app', '(app)', 'onboarding', 'page.tsx')
   assert.ok(page.includes('<p className="text-xs text-white/60">{setupChatLine(isMember, freeWeekJustStarted)}</p>'))
-  assert.ok(page.includes('          {skipSetupLabel(isMember)}\n'))
   assert.ok(page.includes("                {isMember === false ? 'Finish setup and see membership' : 'Finish setup'}"))
-  // The skip link goes where its label says: a member to Yuri, anyone else to membership.
-  assert.equal(page.split("router.push(isMember === true ? '/yuri' : '/subscribe')").length - 1, 2)
+  // There is no skip link (Nov 17 2026): Finish setup is the only way on.
+  assert.equal(page.includes("router.push(isMember === true ? '/yuri' : '/subscribe')"), false)
   // Membership is read from their own profile row; a failed read claims nothing.
   assert.ok(page.includes("      const member = !!profile?.plan && profile.plan !== 'free'\n"))
   assert.ok(page.includes('      setIsMember(member)\n'))
@@ -55,13 +54,12 @@ test('the setup chat says what it is, and its two exits say where they go', () =
   // still being written, so it is left unknown and read after the confirm.
   assert.ok(page.includes("      if (justPaidRef.current || arrived.has('session_id') || arrived.get('started') === '1') return\n"))
   assert.match(page, /if \(!planError && profile\?\.plan && profile\.plan !== 'free'\) \{\s*setIsMember\(true\)\s*return true/)
-  // The link runs the handler that goes where the label says.
-  assert.match(page, /onClick=\{handleSkip\}[\s\S]{0,260}\{skipSetupLabel\(isMember\)\}/)
   assert.ok(page.includes('const [isMember, setIsMember] = useState<boolean | null>(null)'))
   assert.doesNotMatch(code(page), /Skip for now|complete your profile anytime/)
   // The message shown at the setup cap points at a link that exists.
   const route = read('src', 'app', 'api', 'yuri', 'onboarding', 'route.ts')
-  assert.ok(route.includes('Tap \\"Skip this chat\\" under the message box to go on.'))
+  assert.ok(route.includes('Tap \\"Finish setup\\" to continue.'))
+  assert.ok(page.includes('{!isStreaming && (isComplete || atLimit) && ('))
   assert.doesNotMatch(route, /fill in details later/)
 })
 

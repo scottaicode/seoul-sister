@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
+import { requireSetupFinished } from '@/lib/yuri/setup-gate'
 import { getServiceClient } from '@/lib/supabase'
 import { handleApiError, AppError } from '@/lib/utils/error-handler'
 import { trackingUpdateSchema } from '@/lib/utils/validation'
@@ -10,6 +11,7 @@ export async function PUT(
 ) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const supabase = getServiceClient()
     const { id } = await params
     const body = await request.json()
@@ -68,6 +70,7 @@ export async function DELETE(
 ) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const supabase = getServiceClient()
     const { id } = await params
 

@@ -129,6 +129,9 @@ export function useYuri(): UseYuriReturn {
 
         if (!response.ok) {
           const err = await response.json().catch(() => ({ error: 'Request failed' }))
+          // Setup is not finished (a page loaded before the rule, or a typed
+          // address): go to the setup chat, where the way forward is.
+          if (err.code === 'setup_required' && typeof window !== 'undefined') window.location.assign('/onboarding')
           throw new Error(err.error || `HTTP ${response.status}`)
         }
 

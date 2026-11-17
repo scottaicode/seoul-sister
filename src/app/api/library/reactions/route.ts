@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/auth'
+import { requireSetupFinished } from '@/lib/yuri/setup-gate'
 import { getServiceClient } from '@/lib/supabase'
 import { AppError, handleApiError } from '@/lib/utils/error-handler'
 
@@ -34,6 +35,7 @@ const postSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const body = await request.json()
     const parsed = postSchema.parse(body)
 
@@ -89,6 +91,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const user = await requireAuth(request)
+    await requireSetupFinished(user.id)
     const url = new URL(request.url)
     const productId = url.searchParams.get('product_id')
 
