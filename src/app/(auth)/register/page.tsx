@@ -132,6 +132,8 @@ export default function RegisterPage() {
   // so the free week that starts at sign-up carries it; this is what the
   // sentence above the form states until the next load reads the saved code.
   const [typedPercent, setTypedPercent] = useState<number | null>(null)
+  // The sentence confirming it, kept here: the field closes once a code is on.
+  const [typedLine, setTypedLine] = useState<string | null>(null)
   const captchaRef = useRef<AuthCaptchaHandle>(null)
 
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword
@@ -227,10 +229,15 @@ export default function RegisterPage() {
             className="mb-6 text-center"
             onApply={async (raw) => {
               const r = await checkTypedCode(raw)
-              if (r.ok) setTypedPercent(r.percentOff)
+              if (r.ok) {
+                setTypedPercent(r.percentOff)
+                setTypedLine(r.line)
+              }
               return { ok: r.ok, line: r.line }
             }}
           />
+        ) : typedLine ? (
+          <p className="text-xs text-gold-light text-center mb-6" role="status">{typedLine}</p>
         ) : (
           <div className="mb-6" />
         )}

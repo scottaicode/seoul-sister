@@ -230,9 +230,12 @@ test('wiring: the two places a code can be typed, and the Stripe rule', () => {
   // Shown only while no code is on, and the sentence above it follows the code just typed.
   assert.ok(register.includes('{registerFootnote(typedPercent ?? savedOffer.percentOff)}'))
   assert.ok(register.includes('        {(typedPercent ?? savedOffer.percentOff) == null ? (\n          <CodeField'))
-  assert.ok(register.includes('              const r = await checkTypedCode(raw)\n              if (r.ok) setTypedPercent(r.percentOff)\n'))
+  assert.ok(register.includes('              const r = await checkTypedCode(raw)\n              if (r.ok) {\n                setTypedPercent(r.percentOff)\n                setTypedLine(r.line)\n'))
   const notice = read('src/components/layout/TrialNotice.tsx')
-  assert.ok(notice.includes("  const codeField = (facts.percent_off ?? null) === null ? <CodeField onApply={applyCode} className=\"mt-1\" /> : null\n"))
+  assert.ok(notice.includes('    (facts.percent_off ?? null) === null ? (\n      <CodeField onApply={applyCode} className="mt-1" />\n    ) : codeLine ? (\n'))
+  // The confirming sentence outlives the field, which closes once a code is on (seen in a browser: it vanished).
+  assert.ok(notice.includes('    if (ok) setCodeLine(line)\n'))
+  assert.ok(register.includes('        ) : typedLine ? (\n          <p className="text-xs text-gold-light text-center mb-6" role="status">{typedLine}</p>\n'))
   assert.ok(notice.includes("    if (ok) window.dispatchEvent(new Event('ss:trial-changed'))\n"))
   assert.equal(notice.split('{codeField}').length - 1, 2, 'with a card on file, and without one; not once cancelled')
   // The field is closed until asked for and states nothing of its own.

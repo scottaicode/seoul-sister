@@ -47,6 +47,9 @@ export default function TrialNotice() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [justSaved, setJustSaved] = useState(false)
+  // "Code X applied: ..." after a code is put on from this notice. Kept here:
+  // the field closes once the membership has a code.
+  const [codeLine, setCodeLine] = useState<string | null>(null)
 
   useEffect(() => {
     let live = true
@@ -122,9 +125,16 @@ export default function TrialNotice() {
     const ok = res.ok && body.ok === true
     // The sentence above states the price; have it read the facts again.
     if (ok) window.dispatchEvent(new Event('ss:trial-changed'))
-    return { ok, line: typeof body.line === 'string' ? body.line : codeCheckFailedLine() }
+    const line = typeof body.line === 'string' ? body.line : codeCheckFailedLine()
+    if (ok) setCodeLine(line)
+    return { ok, line }
   }
-  const codeField = (facts.percent_off ?? null) === null ? <CodeField onApply={applyCode} className="mt-1" /> : null
+  const codeField =
+    (facts.percent_off ?? null) === null ? (
+      <CodeField onApply={applyCode} className="mt-1" />
+    ) : codeLine ? (
+      <span className="block text-gold-light mt-1" role="status">{codeLine}</span>
+    ) : null
 
   const ends = facts.ends_at ? new Date(facts.ends_at) : null
   // The day AND the time: the free week ends exactly seven days after it

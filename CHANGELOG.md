@@ -4,6 +4,17 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.64.1 — The sentence confirming a typed code stays on screen (Nov 16 2026)
+
+- **Live test of v11.64.0** with a two-use test code on BAILEY's coupon and two throwaway
+  accounts. Typed in lower case on the sign-up page: kept, and the free week started with it.
+  Typed in mixed case in the notice of a running free week: applied. Stripe showed each
+  discount running one month from the day it was applied, which covers the first paid invoice
+  and not the second. BAILEY stayed at 0 of 50.
+- **Seen in that test.** Once a code was accepted the field closed, and its confirming sentence
+  went with it; only the price in the sentence above changed. The sign-up page and the notice
+  now keep that sentence on screen.
+
 ## v11.64.0 — A creator code can be typed: on the sign-up page, and any day of the free week (Nov 16 2026)
 
 - **The gap.** Once creating an account started the free week (v11.63.0), a new person never met
