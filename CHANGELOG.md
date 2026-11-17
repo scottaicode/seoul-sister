@@ -4,6 +4,24 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.63.1 — Two things only a browser showed, on the new sign-up path (Nov 16 2026)
+
+- **First run of v11.63.0 in a real browser** (a throwaway account signed in with a one-time
+  link; the sign-up form itself has a bot check and a password and was not driven). The path
+  worked end to end: "Your free week has started" in the setup chat, the banner with the end
+  time, Yuri answering "am I being charged?" correctly from her new facts, Finish setup opening
+  the member chat with the routine request ready.
+- **The banner was pushed off screen.** The setup page was a full screen tall underneath the top
+  bar and the free-week notice, so the first scroll-to-newest moved the notice, with the day the
+  week ends, out of view. The page is now exactly the space left under both, and the messages
+  scroll inside it.
+- **Settings still showed a menu that bounced** to a new member in the middle of setup. v11.63.0
+  asked "is this a member?"; the right question is whether the menu's items would open, which
+  is the app gate's own answer. Settings now asks the gate.
+- **Not checked.** The phone layout of the home page: the test window could not be narrowed, so
+  the sticky sign-up bar's new behaviour is still unseen. The sign-up form's own press (email or
+  Google) setting the browser mark: the test set the mark by hand.
+
 ## v11.63.0 — Creating an account starts the free week (Nov 16 2026)
 
 - **The owner's process, stated Nov 16:** sign up, agree to the terms, get 7 free days; with a

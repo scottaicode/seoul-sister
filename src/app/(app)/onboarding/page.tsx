@@ -641,7 +641,13 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-seoul-darker flex flex-col">
+    // Exactly the screen that is left under the app's top bar and the free-week
+    // notice (which reports its height in --trial-notice-h), so the page never
+    // scrolls as a whole and the messages scroll inside it. It used to be a
+    // full screen tall on top of both: the first scroll-to-newest pushed the
+    // notice, with the day the free week ends, out of view (seen in a browser
+    // Nov 16 2026, the first time a new member's setup chat had a notice).
+    <div className="h-[calc(100vh-64px-var(--trial-notice-h,0px))] supports-[height:100dvh]:h-[calc(100dvh-64px-var(--trial-notice-h,0px))] bg-seoul-darker flex flex-col">
       {/* Header */}
       {/* top-16: sits under the app's 64px top bar. At top-0 it slid beneath it. */}
       <div className="sticky top-16 z-10 bg-seoul-card/90 backdrop-blur-md border-b border-white/10 px-4 py-3">
@@ -665,7 +671,7 @@ export default function OnboardingPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
         <div className="max-w-2xl mx-auto space-y-4">
           {messages.map((msg) => (
             <ChatMessage key={msg.id} message={msg} />

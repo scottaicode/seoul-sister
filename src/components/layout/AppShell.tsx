@@ -89,27 +89,33 @@ export default function AppShell({ children }: AppShellProps) {
   // menu is not: for someone who is not a member every item in it bounces.
   // Bailey, on a new account, Nov 16 2026: "All these options need to just
   // disappear if they aren't gonna work before the membership." null = unread.
-  const [isMember, setIsMember] = useState<boolean | null>(null)
+  // The question is whether the member menu WORKS for this account: the same
+  // gate that guards every member page decides (a non-member is sent to
+  // membership, and anyone still in setup, member or not, back to the setup
+  // chat). First asked only "is this a member?", and a new member in their
+  // free week, mid-setup, still got a menu that bounced (seen in a browser the
+  // same day). null = unread.
+  const [menuWorks, setMenuWorks] = useState<boolean | null>(null)
   const onSettings = pathname.startsWith('/settings')
   useEffect(() => {
     if (!user || !onSettings) return
     let live = true
-    supabase
-      .from('ss_user_profiles')
-      .select('plan')
-      .eq('user_id', user.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (!live) return
-        // A failed read shows the member menu, as before this check existed: a
-        // member must not lose their menu to a read error. Until the read
-        // answers, the plain header shows.
-        setIsMember(error ? true : !!data?.plan && data.plan !== 'free')
-      })
+    Promise.all([
+      supabase.from('ss_user_profiles').select('plan, onboarding_completed').eq('user_id', user.id).maybeSingle(),
+      supabase.from('ss_onboarding_progress').select('onboarding_status').eq('user_id', user.id).maybeSingle(),
+    ]).then(([profileRes, progressRes]) => {
+      if (!live) return
+      // A failed profile read shows the member menu, as before this check
+      // existed: a member must not lose their menu to a read error. Until the
+      // read answers, the plain header shows.
+      if (profileRes.error) return setMenuWorks(true)
+      const setupStatus = progressRes.error ? undefined : (progressRes.data?.onboarding_status ?? null)
+      setMenuWorks(appGateDestination(profileRes.data, setupStatus) === null)
+    })
     return () => { live = false }
   }, [user, onSettings])
   const inSetup = pathname === '/onboarding'
-  const plainHeader = inSetup || (onSettings && isMember !== true)
+  const plainHeader = inSetup || (onSettings && menuWorks !== true)
   useEffect(() => {
     if (!user || loading || ALWAYS_ALLOWED) {
       setReady(true)
