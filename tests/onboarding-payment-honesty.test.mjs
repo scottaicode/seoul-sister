@@ -316,53 +316,108 @@ test('the wrap-up playback is limited to facts the person gave', async () => {
   // ("except that in the wrap-up you may state a likely duration as fact")
   // would undo the rule while leaving this section untouched.
   const whole = src.slice(src.indexOf('export function buildOnboardingSystemPrompt'), src.indexOf('export interface OnboardingTurnFacts'))
-  assert.equal(createHash('sha256').update(whole).digest('hex'), '886a568f7b3e203994b74a3d506e1b9ae91f2797ce35da443223f3b8bf739cad')
+  assert.equal(createHash('sha256').update(whole).digest('hex'), '432846c4939181dee83064ec9609a7f70a08412fabd9400daf38b846ae26be03')
 })
 
-test('the setup chat is told it has no product database, and that is true of the code', async () => {
+test('the setup chat can read the catalog for a member, ingredients only; for anyone else it has no product database', async () => {
   const { readFileSync } = await import('node:fs')
   const lib = readFileSync(new URL('../src/lib/yuri/onboarding.ts', import.meta.url), 'utf8')
-  // Owner's walkthrough, Nov 12 2026: in the same setup chat where the member
-  // reported a fragrance reaction, a fragranced sunscreen was named from
-  // memory. The member chat looked it up one message later and took it back.
+  // Nov 12 2026: a fragranced sunscreen was named from memory in setup to a
+  // member who had reported a fragrance reaction. Nov 17 2026: a member asked
+  // setup Yuri to check a cleansing oil's ingredients and was told to paste the
+  // label in, while the verified list sat in the catalog (replayed with the
+  // lookup, she found the oil she had recommended contains fragrance).
   const cached = lib.slice(lib.indexOf('function buildOnboardingSystemPrompt'), lib.indexOf('export interface OnboardingTurnFacts'))
-  const fact = `One fact about this chat: it has no product database. You cannot look up a product's ingredient list, price or stores from here. So unless a product's ingredients are already written out in this chat or in the "Before they signed up" transcript, what you say about its formula comes from memory and has not been checked against what this person has told you they react to.`
+  // The sentence for someone with no lookup is the one that was there before,
+  // and still does not point at membership as where products get checked.
+  const noLookup = `Where lookup is not available, this chat has no product database: unless a product's ingredients are already written out in this chat or in the "Before they signed up" transcript, what you say about its formula comes from memory and has not been checked against what this person has told you they react to.`
+  assert.ok(cached.includes(noLookup))
+  assert.doesNotMatch(noLookup, /member|subscri|free week|paid|later|once you/i)
+  const para = cached.slice(cached.indexOf('One fact about this chat differs by person'), cached.indexOf('Nothing in this chat saves a product or a routine.') + 60)
+  assert.ok(para.includes('Prices and stores are not shown in this chat.'))
+  // Facts about the chat, not orders to Yuri.
+  assert.doesNotMatch(para, /\byou say so\b|\bmust\b|\balways\b|\bnever\b|here and now|promise for later/i)
   // The transcript it names is the real heading of the carried-over chat.
   assert.match(readFileSync(new URL('../src/lib/yuri/widget-carryover.ts', import.meta.url), 'utf8'), /return `## Before they signed up\n/)
-  assert.ok(cached.includes(`\n${fact}\n`))
-  // A fact, not a gate: it must not point at membership as where products get checked.
-  assert.doesNotMatch(fact, /member|subscri|free week|paid|later|once you/i)
-  // The statement must stay true: nothing in the setup chat's model call, or
-  // the route that makes it, mentions tools in any form.
-  // The statement must stay true. The setup chat's one model call sends these
-  // five things and nothing else (a closed list: a tools entry, or a spread
-  // that could carry one, fails here), and the route calls only that function.
-  const stream = lib.slice(lib.indexOf('export async function* streamOnboardingResponse'))
-  const callStart = stream.indexOf('client.messages.stream({')
-  assert.ok(callStart > -1 && stream.indexOf('messages.stream(', callStart + 10) === -1 && !/messages\.create\(/.test(stream), 'exactly one model call')
-  let depth = 0, end = -1
-  for (let i = stream.indexOf('{', callStart); i < stream.length; i++) {
-    if (stream[i] === '{') depth++
-    else if (stream[i] === '}' && --depth === 0) { end = i; break }
+
+  // What each person is told this turn (executed).
+  assert.match(buildOnboardingTurnState({}, [], { isSubscribed: true }), /Product lookup: AVAILABLE in this chat \(search_products, get_product_details\), ingredients only, no prices or stores\./)
+  for (const facts of [{ isSubscribed: false }, {}, undefined]) {
+    const state = buildOnboardingTurnState({}, [], facts)
+    assert.match(state, /Product lookup: NOT available in this chat\./)
+    assert.doesNotMatch(state, /Product lookup: AVAILABLE/)
   }
-  const call = stream.slice(stream.indexOf('{', callStart) + 1, end).replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g, '$1')
-  // Top-level keys only: track nesting so keys inside system[] / output_config are not counted.
-  const keys = []
-  let d = 0, line = '', lineDepth = 0
-  for (const ch of call) {
-    if ('{[('.includes(ch)) d++
-    else if ('}])'.includes(ch)) d--
-    if (ch === '\n') { if (d === 0 || /^\s*[\w.]+\s*[:,]?\s*[[{(]?\s*$/.test(line)) { const m = /^\s*(\.\.\.[\w.()]+|\w+)\s*(?::|,|$)/.exec(line); if (m && lineDepth === 0) keys.push(m[1]) } line = ''; lineDepth = d } else line += ch
-  }
-  assert.deepEqual(keys, ['model', 'max_tokens', 'output_config', 'system', 'messages'])
-  assert.doesNotMatch(call, /^\s{0,6}\[/m, 'no computed key at the top level of the call')
+
+  // The statement must stay true of the code. Tools go to a confirmed member
+  // only (unknown membership gets none); the line above and the tools are
+  // decided by the same test.
+  const stream = lib.slice(lib.indexOf('export async function* streamOnboardingResponse'), lib.indexOf('export interface SetupStreamHooks'))
+  assert.ok(stream.includes('const lookupTools = isSubscribed === true ? setupLookupTools() : []'))
+  assert.ok(stream.includes('...(lookupTools.length > 0 ? { tools: lookupTools } : {}),'))
+  assert.equal(stream.split('messages.stream(').length - 1, 1, 'one model call site')
+  assert.equal(/messages\.create\(/.test(stream), false)
+  assert.equal(/tool_choice/.test(stream), false, 'never forced (a 400 on Opus 5.5)')
+  // The loop runs lookups only through the runner that refuses everything else.
+  assert.equal(stream.split('await runSetupLookup(use.name, input, userId)').length - 1, 1)
+  assert.equal(/executeYuriTool\(/.test(stream), false, 'the loop never calls a tool directly')
+  // The route makes no model call of its own.
   const route = readFileSync(new URL('../src/app/api/yuri/onboarding/route.ts', import.meta.url), 'utf8')
-  assert.doesNotMatch(route.replace(/\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g, '$1'), /messages\.(stream|create)\(|getAnthropicClient|\btools?\b/i, 'the route makes no model call of its own')
+  assert.equal(/messages\.(stream|create)\(|getAnthropicClient/.test(route), false)
+
+  const fn = (signature, deps, args) => {
+    const start = lib.indexOf(signature)
+    assert.ok(start > -1, signature)
+    const body = lib.slice(start, lib.indexOf('\n}\n', start) + 3).replace(/^export /, '')
+    const name = signature.match(/function (\w+)/)[1]
+    return new Function(...deps, `${ts.transpileModule(body, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText}\nreturn ${name}`)(...args)
+  }
+  const NAMES = ['search_products', 'get_product_details']
+
+  // The tools sent are those two out of everything Yuri has, and nothing else (executed).
+  const ALL = ['search_products', 'get_product_details', 'save_routine', 'add_to_routine', 'update_user_product', 'web_search', 'get_current_weather'].map((name) => ({ name }))
+  assert.deepEqual(fn('function setupLookupTools(', ['YURI_TOOLS', 'SETUP_LOOKUP_TOOL_NAMES'], [ALL, NAMES])().map((t) => t.name), NAMES)
+  assert.ok(lib.includes("export const SETUP_LOOKUP_TOOL_NAMES = ['search_products', 'get_product_details'] as const"))
+  assert.ok(lib.includes('export const SETUP_LOOKUP_ROUNDS = 3'))
+
+  // What comes back has no prices, stores or counterfeit notes at any depth,
+  // and a product with no list on file says so (executed).
+  const noteSrc = lib.slice(lib.indexOf('const NOT_SHOWN_IN_SETUP ='), lib.indexOf('export function setupLookupResult('))
+  const clean = new Function(`${ts.transpileModule(noteSrc + lib.slice(lib.indexOf('export function setupLookupResult('), lib.indexOf('\n}\n', lib.indexOf('export function setupLookupResult(')) + 3).replace('export ', ''), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText}\nreturn setupLookupResult`)()
+  const search = JSON.parse(clean(JSON.stringify({ products: [
+    { id: 'a', name: 'Oil', prices: [{ retailer: 'Olive Young Global', price_usd: 19, ships_to_us: false }], key_ingredients: [{ name: 'Fragrance' }], other_ingredients: ['Olive Oil'], ingredients_total: 2, other_listings: [{ price_usd: 25 }] },
+    { id: 'b', name: 'No list', price_usd: 12, key_ingredients: [], other_ingredients: [], ingredients_total: 0 },
+  ], total_found: 2 })))
+  assert.deepEqual(search.products[0], { id: 'a', name: 'Oil', key_ingredients: [{ name: 'Fragrance' }], other_ingredients: ['Olive Oil'], ingredients_total: 2 })
+  assert.equal(search.products[1].ingredients_note, 'No ingredient list is on file for this product. That is different from it containing nothing of concern.')
+  assert.equal(JSON.stringify(search).includes('price'), false)
+  const details = JSON.parse(clean(JSON.stringify({ product: { id: 'a', name: 'Oil' }, ingredients: [{ name: 'Water' }], other_ingredients: [], ingredients_total: 1, prices: [{ price_usd: 20 }], prices_error: 'x', community: { avg_rating: 5 }, counterfeit_markers: [{ brand: 'other' }], ingredients_error: 'could not be read' })))
+  assert.deepEqual(Object.keys(details).sort(), ['ingredients', 'ingredients_error', 'ingredients_total', 'other_ingredients', 'product'])
+  assert.match(clean('not json'), /did not return a readable result/)
+  // A failed ingredient read is said to be one, in the tool itself.
+  assert.ok(readFileSync(new URL('../src/lib/yuri/tools.ts', import.meta.url), 'utf8').includes("...(ingredientsRes.error ? { ingredients_error: 'The ingredient list could not be read on our side just now; this is not a product with no ingredients.' } : {}),"))
+
+  // The runner refuses anything else, whatever the model asks for, and cleans what it returns (executed).
+  const calls = []
+  const run = fn('export async function runSetupLookup(', ['SETUP_LOOKUP_TOOL_NAMES', 'executeYuriTool', 'setupLookupResult'], [NAMES, async (name, input, userId) => { calls.push([name, input, userId]); return JSON.stringify({ products: [{ id: 'a', prices: [1] }] }) }, clean])
+  assert.equal(await run('search_products', { query: 'x' }, 'u1'), JSON.stringify({ products: [{ id: 'a' }] }))
+  for (const other of ['save_routine', 'update_user_product', 'web_search', 'get_current_weather']) {
+    assert.match(await run(other, {}, 'u1'), /is not available in the setup chat/)
+  }
+  assert.deepEqual(calls.map((c) => c[0]), ['search_products'])
+
+  // What is written before a lookup is held, not shown; the round after the last lookup runs none; and a turn never ends on silence.
+  assert.ok(stream.includes('if (holdText) held += event.delta.text'))
+  assert.ok(stream.includes('if (round === SETUP_LOOKUP_ROUNDS) break'))
+  assert.ok(stream.indexOf('if (round === SETUP_LOOKUP_ROUNDS) break') < stream.indexOf('await runSetupLookup('))
+  assert.ok(stream.includes("loopMessages.push({ role: 'assistant', content: final.content as unknown as Anthropic.Messages.ContentBlockParam[] })"))
+  assert.ok(stream.includes('if (!answered) yield declined ? DECLINED_REPLY : SETUP_NO_ANSWER_REPLY'))
+  // Each lookup goes on the saved message, and an offer to look something up survives only where it can be taken up.
+  assert.equal(route.split("await saveMessage(progress.conversation_id!, 'assistant', fullResponse, null, [], lookups)").length - 1, 2)
+  assert.equal(route.split('cleanYuriResponse(fullResponse, { stripUnfulfillableOffers: !canLookUp })').length - 1, 2)
+  assert.equal(route.includes('stripUnfulfillableOffers: true'), false)
+  assert.ok(route.includes('export const maxDuration = 120'))
 })
 
-// Nov 15 2026: a location with no coordinates reaches Yuri as one of the facts
-// about where the person stands, marked as possibly one message old, and the
-// block still ends by handing the decision back. Executed, not read.
 test('the setup facts carry an unplaced location, and nothing when there is none', () => {
   const fact = 'Location on file: "Northern California". There are no map coordinates on file for it, so there is no saved-location weather or weekly forecast for them.'
   const out = buildOnboardingTurnState({}, undefined, { isSubscribed: false, locationFact: fact })

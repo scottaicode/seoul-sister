@@ -271,7 +271,7 @@ test('the closer rule leaves these alone (each was damaged or deleted before)', 
   for (const input of cases) assert.equal(clean(input), input, input)
 })
 
-test('the setup chat alone still drops a short trailing offer, which it has no tools to carry out', () => {
+test('the setup chat alone drops a short trailing offer, and only for someone whose setup chat has no lookups', () => {
   const start = src.indexOf('const OFFER_CLOSER = ')
   const re = eval(src.slice(start + 'const OFFER_CLOSER = '.length, src.indexOf('\n', start)))
   const setup = (s) => clean(s).replace(re, '').trim()
@@ -284,9 +284,12 @@ test('the setup chat alone still drops a short trailing offer, which it has no t
     'Two paths. Want me to start with the cleanser, or the sunscreen?',
     '1. Cleanser first.\n2. Want me to go on?',
   ]) assert.equal(setup(keep), keep, keep)
-  // Wiring: the setup route asks for it in both places, and nothing else does.
+  // Wiring: the setup route asks for it in both places, only where the chat
+  // cannot look anything up (a member's can since Nov 17 2026, and an offer
+  // they saw and said yes to must still be in the saved reply), and nothing
+  // else does.
   const read2 = (p) => readFileSync(join(__dirname, '..', p), 'utf8')
-  assert.equal((read2('src/app/api/yuri/onboarding/route.ts').match(/cleanYuriResponse\(fullResponse, \{ stripUnfulfillableOffers: true \}\)/g) ?? []).length, 2)
+  assert.equal((read2('src/app/api/yuri/onboarding/route.ts').match(/cleanYuriResponse\(fullResponse, \{ stripUnfulfillableOffers: !canLookUp \}\)/g) ?? []).length, 2)
   for (const p of ['src/app/api/yuri/chat/route.ts', 'src/app/api/widget/chat/route.ts', 'src/lib/yuri/advisor.ts', 'src/lib/email/lead-email.ts']) {
     assert.doesNotMatch(read2(p), /stripUnfulfillableOffers/, p)
   }

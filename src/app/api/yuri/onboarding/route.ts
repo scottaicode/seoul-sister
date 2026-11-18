@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { supabase, getServiceClient } from '@/lib/supabase'
 import { loadWidgetCarryover } from '@/lib/yuri/widget-carryover'
-import { saveMessage, loadConversationMessages } from '@/lib/yuri/memory'
+import { saveMessage, loadConversationMessages, type YuriToolCallLog } from '@/lib/yuri/memory'
 import {
   getOrCreateOnboardingProgress,
   streamOnboardingResponse,
@@ -18,6 +18,10 @@ import {
 import { cleanYuriResponse } from '@/lib/yuri/voice-cleanup'
 import { offerFactLine } from '@/lib/offers-server'
 import type { ExtractedSkinProfile } from '@/types/database'
+
+// A member's setup reply can make up to four model calls (three rounds of
+// catalog lookups and the answer). The member chat has the same allowance.
+export const maxDuration = 120
 
 // ---------------------------------------------------------------------------
 // Request schemas
@@ -180,13 +184,20 @@ export async function POST(request: NextRequest) {
           async start(controller) {
             try {
               let fullResponse = ''
+              const lookups: YuriToolCallLog[] = []
+              let canLookUp = false
               const generator = streamOnboardingResponse(
                 user.id,
                 progress.conversation_id!,
                 '__ONBOARDING_START__',
                 [],
                 progress,
-                carryover
+                carryover,
+                null,
+                {
+                  onLookup: (log) => lookups.push(log),
+                  onLookupsAvailable: (available) => { canLookUp = available },
+                }
               )
 
               // First emit progress metadata
@@ -205,10 +216,11 @@ export async function POST(request: NextRequest) {
               }
 
               // Clean AI artifacts before saving
-              fullResponse = cleanYuriResponse(fullResponse, { stripUnfulfillableOffers: true })
+              // An offer to look something up is only stripped where it cannot be taken up.
+              fullResponse = cleanYuriResponse(fullResponse, { stripUnfulfillableOffers: !canLookUp })
 
               // Save Yuri's opening message
-              await saveMessage(progress.conversation_id!, 'assistant', fullResponse, null)
+              await saveMessage(progress.conversation_id!, 'assistant', fullResponse, null, [], lookups)
 
               const done = JSON.stringify({
                 type: 'done',
@@ -295,6 +307,8 @@ export async function POST(request: NextRequest) {
         async start(controller) {
           try {
             let fullResponse = ''
+            const lookups: YuriToolCallLog[] = []
+            let canLookUp = false
 
             const generator = streamOnboardingResponse(
               user.id,
@@ -303,7 +317,11 @@ export async function POST(request: NextRequest) {
               history,
               progress,
               carryover,
-              await offerFactLine(parsed.offer_code)
+              await offerFactLine(parsed.offer_code),
+              {
+                onLookup: (log) => lookups.push(log),
+                onLookupsAvailable: (available) => { canLookUp = available },
+              }
             )
 
             for await (const chunk of generator) {
@@ -313,10 +331,11 @@ export async function POST(request: NextRequest) {
             }
 
             // Clean AI artifacts before saving
-            fullResponse = cleanYuriResponse(fullResponse, { stripUnfulfillableOffers: true })
+            // An offer to look something up is only stripped where it cannot be taken up.
+            fullResponse = cleanYuriResponse(fullResponse, { stripUnfulfillableOffers: !canLookUp })
 
-            // Save assistant response
-            await saveMessage(progress.conversation_id!, 'assistant', fullResponse, null)
+            // Save assistant response, with the lookups behind it
+            await saveMessage(progress.conversation_id!, 'assistant', fullResponse, null, [], lookups)
 
             // Extract skin profile data (awaited so progress event reaches client)
             // Onboarding messages only: the preview is never extracted (see the

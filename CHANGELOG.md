@@ -4,6 +4,43 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.66.0 — The setup chat can look a product up for a member (Nov 17 2026)
+
+- **What happened.** The first member through the required setup chat arrived from a Google
+  search on the cleansing-oil blog post and opened with a product question. Eight minutes in
+  they asked Yuri to compare two oils and "ideally check its ingredients". She answered
+  honestly that she could not from the setup chat and asked them to paste the label in. The
+  verified ingredient lists for every oil she had named were in the catalog. The setup chat had
+  no tools because it used to be the free step before membership; since v11.63.0 everyone in
+  it is already a member.
+- **Two read-only lookups, for members only** (`search_products`, `get_product_details`), up
+  to three rounds a reply. Ingredients and identity only: prices, stores, ratings from our
+  members and counterfeit notes are taken out of what the setup chat receives
+  (`setupLookupResult`), because the rules for reading them are the member chat's. A product
+  with no ingredient list on file says so. Nothing in setup saves a product or a routine.
+  Someone who is not a member gets no tools and is told the chat has no product database,
+  as before.
+- **Replayed on that member's real turns** (`scripts/replay-setup-turn.ts`, 8 replies): every
+  reply looked the products up; none quoted a price or a store. On the question that was
+  refused, Yuri found that the oil she had recommended from memory contains fragrance and
+  said so, and that we carry no cleansing oil from the second brand.
+- **Second-model review (Opus, told to refute): run.** It found that the first version handed
+  the setup chat prices and stores with none of the rules for reading them (stale prices,
+  stores that do not ship where the member is); that 522 catalog products have no ingredient
+  rows and came back as an empty list with nothing saying so; that a failed ingredient read
+  in `get_product_details` looked the same as an empty list (fixed in the tool, so the member
+  chat gains it too); that text written before a lookup was shown and saved; that the last
+  round could run a lookup nobody read; that a second refusal ended in silence; that lookups
+  were not recorded on the saved message; that offers to look something up were stripped from
+  the saved reply even though a member can now accept them; and that the tests did not bind.
+  All fixed. The fixes made after that review were not reviewed a second time.
+- **Cost of the fix.** A member's setup reply no longer streams word by word: it is held until
+  the round ends, as the member chat's is, so nothing written before a lookup is shown.
+- **Still true.** For a member, an offer Yuri cannot carry out in setup ("want me to build
+  your full routine?") is no longer stripped from the saved reply either. The tool
+  descriptions are the member chat's and mention tools setup does not have. Not seen in a
+  browser.
+
 ## v11.65.0 — Setup cannot be skipped, and no member feature works before it is finished (Nov 17 2026)
 
 The owner's rule: nobody uses the member features without going through the setup chat.

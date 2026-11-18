@@ -102,6 +102,7 @@ User registers
 - After each user message, Sonnet 4.5 extracts structured data and merges into profile
 - Yuri's onboarding system prompt guides her to collect all required fields naturally
 - Required before "Finish setup" appears: see the setup rule below (`src/lib/yuri/setup-requirements.ts`)
+- **A member's setup chat can look products up (v11.66.0):** `search_products` and `get_product_details`, read-only, ingredients only (prices, stores and counterfeit notes are removed by `setupLookupResult` in `src/lib/yuri/onboarding.ts`). It still cannot save anything. A non-member's setup chat has no tools.
 - **Setup cannot be skipped, and no member feature works before it is finished (owner's rule, Nov 17 2026).** What it must hold is in `src/lib/yuri/setup-requirements.ts`: skin type, a concern, age or range, where they live, sun reaction, and an ANSWER to the medical question and to the reactions question ("none" and "I'd rather not say" count). The app gate (`appGateDestination`) and seven member routes (`setupRequiredResponse`, `src/lib/yuri/setup-gate.ts`) both hold a member in setup until then. The one exit with something missing is the 50-message limit. Ending there with a safety question unanswered marks the setup record (`safety_followup`), and Yuri then asks it first in the member chat (`formatContextForPrompt`); `scripts/mark-safety-followup.ts` sets the same mark by hand. The server gate covers the member chat, the scans, skin score, curated products, routines, library, tracking, cycle, weather and skin profile; a few read-only data routes (dupes, sunscreen profile, dashboard intelligence, learning, the conversation list) are held by the app gate only
 
 **Why Not Both (Form + Conversation)**: The form wizard was the MVP approach. Now that Yuri exists, the conversational path IS the product experience. Offering both dilutes the first impression. A user who fills out a form has a "meh, another app" experience. A user who chats with Yuri has a "wow, this AI gets skincare" experience. The onboarding IS the conversion moment.
@@ -582,7 +583,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Current version**: 11.65.0 (November 17 2026). One line only: every release's detail goes in `CHANGELOG.md`, never here.
+**Current version**: 11.66.0 (November 17 2026). One line only: every release's detail goes in `CHANGELOG.md`, never here.
 **AI Advisor**: Yuri (유리) — "Glass"
 
 **Full version history**: See `CHANGELOG.md` (repo root). The detailed, dated changelog — every version from v3.0.0 through the current release — lives there, not in this file. Per the project's documentation standard: CLAUDE.md is for current architecture and how the system works NOW; CHANGELOG.md is for what changed and when. When shipping a feature, update the relevant architecture section here and put the detailed entry in CHANGELOG.md.

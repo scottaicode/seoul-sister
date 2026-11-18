@@ -2963,6 +2963,9 @@ async function executeGetProductDetails(
       .map((i: Record<string, unknown>) => i.name as string)
       .filter(Boolean),
     ingredients_total: ingredients.length,
+    // Present only when the read FAILED, so an empty list can't be read as
+    // "this product has nothing in it" (the same shape as prices_error).
+    ...(ingredientsRes.error ? { ingredients_error: 'The ingredient list could not be read on our side just now; this is not a product with no ingredients.' } : {}),
     prices,
     // Present only when the lookup FAILED, so an empty list can't be read as
     // "this product has no prices".

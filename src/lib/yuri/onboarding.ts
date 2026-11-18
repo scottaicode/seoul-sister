@@ -1,5 +1,8 @@
 import { getAnthropicClient, MODELS, CHAT_EFFORT, callAnthropicWithRetry } from '@/lib/anthropic'
 import { parseModelJson } from '@/lib/utils/model-json'
+import { DECLINED_REPLY } from '@/lib/llm-request'
+import type Anthropic from '@anthropic-ai/sdk'
+import { YURI_TOOLS, executeYuriTool } from '@/lib/yuri/tools'
 import { missingSetupRequirements, SETUP_REQUIREMENTS } from '@/lib/yuri/setup-requirements'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import { onboardingUsageRow } from '@/lib/yuri/onboarding-usage'
@@ -95,7 +98,7 @@ Their membership status is a FACT in Current State below -- read it there, never
 ## The Give and the Gate
 Give freely: your full attention, genuine reactions, and the sharp diagnosis they could not get from Google -- WHY their last treatment plateaued, WHY their skin behaves the way it does in their climate, what their current products are actually doing and missing. If one concern is burning a hole in them, solve it: one specific pick, one concrete first step, real instructions for that step.
 
-One fact about this chat: it has no product database. You cannot look up a product's ingredient list, price or stores from here. So unless a product's ingredients are already written out in this chat or in the "Before they signed up" transcript, what you say about its formula comes from memory and has not been checked against what this person has told you they react to.
+One fact about this chat differs by person and is stated under "Where They Stand": whether products can be looked up here. Where lookup is available, search_products finds products in our catalog and get_product_details returns the ingredient list we hold for one. Prices and stores are not shown in this chat. Where lookup is not available, this chat has no product database: unless a product's ingredients are already written out in this chat or in the "Before they signed up" transcript, what you say about its formula comes from memory and has not been checked against what this person has told you they react to. Nothing in this chat saves a product or a routine.
 
 The complete build is the subscriber side of Seoul Sister and is not delivered here: the full AM/PM construction, week-by-week ramp schedules, multi-week plans with adjustment rules, and ongoing follow-up. This is not withholding to tease. That work genuinely depends on how their skin responds over weeks -- which is exactly why it is a subscription and not a PDF. When the conversation reaches that door, say so plainly: name what you would build together. For someone who is already a member, that door is simply the end of this setup chat: the complete routine is built with them in the member chat that opens next.
 
@@ -243,6 +246,16 @@ export function buildOnboardingTurnState(
     )
     if (facts.offerFact) statusLines.push(facts.offerFact)
   }
+  // Whether the catalog can be read in this chat. Stated every turn, for
+  // members and non-members alike, so "no tools" is never mistaken for
+  // "nothing found" (Nov 17 2026: a member asked Yuri to check a cleansing
+  // oil's ingredients in setup and was told to paste the label in; the
+  // verified list was in the catalog).
+  statusLines.push(
+    facts?.isSubscribed === true
+      ? 'Product lookup: AVAILABLE in this chat (search_products, get_product_details), ingredients only, no prices or stores. Lookups from earlier replies are not kept, so what you know about a product\'s formula in this reply is what you looked up in this reply; the rest is from memory.'
+      : 'Product lookup: NOT available in this chat. What you know about a product\'s formula is from memory.'
+  )
   if (facts?.previewAgeFact) statusLines.push(facts.previewAgeFact)
   // What they have and have not said about who they are (stated-identity.ts).
   // A fact in this block, never an entry in "Fields still needed": measured on
@@ -844,7 +857,8 @@ export async function* streamOnboardingResponse(
   conversationHistory: YuriMessage[],
   currentProgress: OnboardingProgress,
   carryover: Carryover | null = null,
-  offerFact: string | null = null
+  offerFact: string | null = null,
+  hooks: SetupStreamHooks = {}
 ): AsyncGenerator<string, void, unknown> {
   const extractedSoFar = currentProgress.skin_profile_data as ExtractedSkinProfile
   const extractedFields = currentProgress.extracted_fields as Record<string, boolean>
@@ -920,6 +934,13 @@ export async function* streamOnboardingResponse(
   // front of the history, so every turn re-wrote the whole transcript to cache.
   const requestMessages = withTrailingContext(markPenultimateAssistant(apiMessages), turnState)
 
+  // A member can have the catalog read for them here (Nov 17 2026). Two
+  // read-only tools, nothing that writes: the setup chat still cannot save a
+  // product or a routine. Not for a non-member, whose setup chat is the free
+  // step before membership.
+  const lookupTools = isSubscribed === true ? setupLookupTools() : []
+  const loopMessages: Anthropic.Messages.MessageParam[] = [...(requestMessages as Anthropic.Messages.MessageParam[])]
+
   const streamFor = (model: string) =>
     client.messages.stream({
       model,
@@ -940,36 +961,138 @@ export async function* streamOnboardingResponse(
           ? [{ type: 'text' as const, text: carryoverBlock(carryover), cache_control: { type: 'ephemeral' as const } }]
           : []),
       ],
-      messages: requestMessages,
+      messages: loopMessages,
+      ...(lookupTools.length > 0 ? { tools: lookupTools } : {}),
     })
 
-  let stream = streamFor(MODELS.chat)
-  let yielded = false
-  for await (const event of stream) {
-    if (
-      event.type === 'content_block_delta' &&
-      event.delta.type === 'text_delta'
-    ) {
-      yielded = true
-      yield event.delta.text
-    }
-  }
+  hooks.onLookupsAvailable?.(lookupTools.length > 0)
+  // With lookups on offer, a round's text is held until the round ends: what
+  // the model writes before asking for a lookup ("let me check", or an answer
+  // from memory that the lookup then contradicts) is not shown or saved. The
+  // member chat does the same. With no lookups the reply streams as it is written.
+  const holdText = lookupTools.length > 0
 
-  // Opus 5.5 can decline (stop_reason 'refusal') before writing anything. Re-run
-  // once on MODELS.primary rather than leave the user with an empty reply.
-  const first = await stream.finalMessage()
-  await logAIUsage(onboardingUsageRow('yuri_onboarding', MODELS.chat, first.usage, userId, conversationId))
-  if (yielded || first.stop_reason !== 'refusal') return
-  console.warn('[onboarding] chat model declined; re-running on', MODELS.primary)
-  stream = streamFor(MODELS.primary)
-  for await (const event of stream) {
-    if (
-      event.type === 'content_block_delta' &&
-      event.delta.type === 'text_delta'
-    ) {
-      yield event.delta.text
+  let model: string = MODELS.chat
+  let answered = false
+  let declined = false
+  // Rounds 0 .. SETUP_LOOKUP_ROUNDS-1 may each run lookups; the round after
+  // the last of them is for the answer, and a lookup asked for there is not run.
+  for (let round = 0; round <= SETUP_LOOKUP_ROUNDS; round++) {
+    const stream = streamFor(model)
+    let held = ''
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+        if (holdText) held += event.delta.text
+        else {
+          answered = true
+          yield event.delta.text
+        }
+      }
     }
+    const final = await stream.finalMessage()
+    await logAIUsage(onboardingUsageRow('yuri_onboarding', model, final.usage, userId, conversationId))
+
+    // Opus 5.5 can decline (stop_reason 'refusal') before writing anything.
+    // Re-run once on MODELS.primary rather than leave the user with an empty
+    // reply; a second refusal is said as one (DECLINED_REPLY), never as silence.
+    if (final.stop_reason === 'refusal' && !answered) {
+      if (model === MODELS.chat) {
+        console.warn('[onboarding] chat model declined; re-running on', MODELS.primary)
+        model = MODELS.primary
+        round--
+        continue
+      }
+      declined = true
+      break
+    }
+
+    const uses = final.content.filter((b): b is Anthropic.Messages.ToolUseBlock => b.type === 'tool_use')
+    if (final.stop_reason !== 'tool_use' || uses.length === 0) {
+      if (held) {
+        answered = true
+        yield held
+      }
+      break
+    }
+    if (round === SETUP_LOOKUP_ROUNDS) break
+    // The model's turn goes back unchanged: Opus 5.5's thinking blocks are
+    // invalid if edited (.claude/rules/ai-models.md).
+    loopMessages.push({ role: 'assistant', content: final.content as unknown as Anthropic.Messages.ContentBlockParam[] })
+    const results: Anthropic.Messages.ToolResultBlockParam[] = []
+    for (const use of uses) {
+      const input = use.input as Record<string, unknown>
+      const result = await runSetupLookup(use.name, input, userId)
+      // On the record: a reply that says "I checked" has the lookup behind it.
+      hooks.onLookup?.({ name: use.name, input, result_summary: result.slice(0, 1000) })
+      results.push({ type: 'tool_result', tool_use_id: use.id, content: result })
+    }
+    loopMessages.push({
+      role: 'user',
+      content: round === SETUP_LOOKUP_ROUNDS - 1
+        ? [...results, { type: 'text', text: 'That was the last lookup available for this reply.' }]
+        : results,
+    })
   }
-  const rerun = await stream.finalMessage()
-  await logAIUsage(onboardingUsageRow('yuri_onboarding', MODELS.primary, rerun.usage, userId, conversationId))
+  if (!answered) yield declined ? DECLINED_REPLY : SETUP_NO_ANSWER_REPLY
+}
+
+/** What the route is told while a setup reply is made. */
+export interface SetupStreamHooks {
+  /** Each lookup that ran, for the saved message's tool record. */
+  onLookup?: (log: { name: string; input: Record<string, unknown>; result_summary: string }) => void
+  /** Whether this person's setup chat can look products up, known once membership is read. */
+  onLookupsAvailable?: (available: boolean) => void
+}
+
+/** Said when every round asked for another lookup, or a reply came back empty. */
+export const SETUP_NO_ANSWER_REPLY = 'I could not finish that just now. Ask me again and I will try once more.'
+
+/** How many rounds of lookups one setup reply may make before it must answer. */
+export const SETUP_LOOKUP_ROUNDS = 3
+
+/** The only tools the setup chat has: both read the catalog, neither writes. */
+export const SETUP_LOOKUP_TOOL_NAMES = ['search_products', 'get_product_details'] as const
+
+function setupLookupTools(): Anthropic.Messages.Tool[] {
+  return (YURI_TOOLS as unknown as Anthropic.Messages.Tool[]).filter((t) => (SETUP_LOOKUP_TOOL_NAMES as readonly string[]).includes(t.name))
+}
+
+/** Runs one of the two lookups. Anything else is refused here, whatever the model asked for. */
+export async function runSetupLookup(name: string, input: Record<string, unknown>, userId: string): Promise<string> {
+  if (!(SETUP_LOOKUP_TOOL_NAMES as readonly string[]).includes(name)) {
+    return JSON.stringify({ error: `${name} is not available in the setup chat. Only search_products and get_product_details are.` })
+  }
+  return setupLookupResult(await executeYuriTool(name, input, userId))
+}
+
+/**
+ * A lookup result as the setup chat gets it: what a product is and what is in
+ * it. Prices, stores and counterfeit notes are taken out, because the rules
+ * for reading them (which store ships where, how old a price is, which
+ * retailers are recommended) are the member chat's and are not in the setup
+ * prompt; second-model review, Nov 17 2026. A product with no ingredient list
+ * on file says so, so an empty list is not read as "nothing in it".
+ */
+const NOT_SHOWN_IN_SETUP = new Set(['prices', 'prices_error', 'price_usd', 'price', 'counterfeit_markers', 'other_listings', 'listings_note', 'community'])
+const NO_LIST_ON_FILE = 'No ingredient list is on file for this product. That is different from it containing nothing of concern.'
+
+export function setupLookupResult(raw: string): string {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    // Not JSON: nothing in it can be trusted to be free of prices.
+    return JSON.stringify({ error: 'The lookup did not return a readable result.' })
+  }
+  const clean = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(clean)
+    if (value === null || typeof value !== 'object') return value
+    const out: Record<string, unknown> = {}
+    for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+      if (!NOT_SHOWN_IN_SETUP.has(key)) out[key] = clean(v)
+    }
+    if (out.ingredients_total === 0) out.ingredients_note = NO_LIST_ON_FILE
+    return out
+  }
+  return JSON.stringify(clean(parsed))
 }

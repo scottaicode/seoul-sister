@@ -45,14 +45,16 @@ test('missing cache fields read as zero, not undefined', () => {
 
 const SRC = read('src/lib/yuri/onboarding.ts')
 
-test('the chat logs its first response on the line directly before the early return', () => {
+test('every round of the setup chat is logged straight after it finishes, priced as the model that ran it', () => {
+  // One call site inside the lookup loop serves every round: the first reply,
+  // each round after a lookup, and the re-run on MODELS.primary after a refusal
+  // (`model` is reassigned before that re-run, so its row is priced as primary).
   assert.match(SRC,
-    /\n  await logAIUsage\(onboardingUsageRow\('yuri_onboarding', MODELS\.chat, first\.usage, userId, conversationId\)\)\n  if \(yielded \|\| first\.stop_reason !== 'refusal'\) return\n/)
-})
-
-test('the refusal re-run is logged as the function\'s final statements, priced as MODELS.primary', () => {
-  assert.match(SRC,
-    /\n  const rerun = await stream\.finalMessage\(\)\n  await logAIUsage\(onboardingUsageRow\('yuri_onboarding', MODELS\.primary, rerun\.usage, userId, conversationId\)\)\n\}\n/)
+    /\n    const final = await stream\.finalMessage\(\)\n    await logAIUsage\(onboardingUsageRow\('yuri_onboarding', model, final\.usage, userId, conversationId\)\)\n/)
+  assert.match(SRC, /\n  let model: string = MODELS\.chat\n/)
+  assert.match(SRC, /console\.warn\('\[onboarding\] chat model declined; re-running on', MODELS\.primary\)\n        model = MODELS\.primary\n/)
+  // Nothing between the model call's result and its log can return or throw first.
+  assert.equal((SRC.match(/onboardingUsageRow\('yuri_onboarding'/g) ?? []).length, 1)
 })
 
 test('the extraction logs directly after its call, priced as MODELS.background, with the user id', () => {
