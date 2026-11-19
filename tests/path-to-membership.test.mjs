@@ -41,8 +41,7 @@ test('the sign-up form calls this step an account, never joining, and its price 
 test('the setup chat says what it is, and its one exit says where it goes', () => {
   const page = read('src', 'app', '(app)', 'onboarding', 'page.tsx')
   assert.ok(page.includes('<p className="text-xs text-white/60">{setupChatLine(isMember, freeWeekJustStarted)}</p>'))
-  // A member's button says what the press does: it finishes setup AND sends the routine request.
-  assert.ok(page.includes("                {isMember === false ? 'Finish setup and see membership' : pressBuildsRoutine ? 'Finish setup and build my routine' : 'Finish setup'}\n"))
+  assert.ok(page.includes("                {isMember === false ? 'Finish setup and see membership' : 'Finish setup'}"))
   // There is no skip link (Nov 17 2026): Finish setup is the only way on.
   assert.equal(page.includes("router.push(isMember === true ? '/yuri' : '/subscribe')"), false)
   // Membership is read from their own profile row; a failed read claims nothing.

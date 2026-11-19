@@ -193,7 +193,7 @@ test('path fact "not built during setup, first thing offered to a member"', () =
     /justPaidRef\.current && \(member \|\| !startedHereRef\.current\)\s*\?\s*`\/yuri\?ask=\$\{encodeURIComponent\(FIRST_MEMBER_ASK\)\}`\s*:\s*'\/dashboard'/,
     'a just-paid member whose setup is complete must land on the routine request, not the dashboard'
   )
-  assert.match(readFileSync(new URL('../src/lib/yuri/first-member-ask.ts', import.meta.url), 'utf8'), /export const FIRST_MEMBER_ASK = "[^"]*routine[^"]*"/)
+  assert.match(onboardingPage, /const FIRST_MEMBER_ASK = "[^"]*routine[^"]*"/)
 })
 
 test('just-paid is set only for a real Stripe return, and the URL is cleaned before any redirect can race it', () => {

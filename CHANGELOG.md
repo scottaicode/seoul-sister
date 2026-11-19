@@ -4,22 +4,6 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
-## v11.66.2 — Finishing setup sends the routine request (Nov 19 2026)
-
-**What happened.** The first two strangers to finish the setup chat (accounts `9b2f1271` on Nov 17 and `7ab342fb` on Nov 19, both from the cleansing-oil post) have no member chat and no routine. After Yuri's wrap-up a member still had to press "Finish setup" and then press Send on a prefilled message. The database cannot say which press each one skipped, and both may simply have left with the answer they came for.
-
-**Change.**
-- A member whose setup is complete sees **"Finish setup and build my routine"**. That press finishes setup and the member chat sends "Let's build my routine from what you learned in my setup chat." on arrival. One press, on a button that says what it does.
-- The send is carried by a mark the press writes in the browser tab (`sessionStorage`, two minutes), not by the address. A link cannot make a signed-in member send anything. With no mark (storage blocked, a link, a member back from Stripe) the sentence is put in the box as before.
-- At the 50-message limit with a required answer missing the label stays "Finish setup" and nothing is sent: Yuri asks the missing safety question first there, so a routine is not what the press gets.
-- `src/lib/yuri/first-member-ask.ts` holds the sentence and the rules. `public/sw.js` cache name is v61.
-
-**Second-model review: run (Opus 5.5, told to refute).** It rejected the first version: the send was triggered by `&send=1` in the address, so any link could spend a member's message; the label promised a routine to members Yuri would first ask a safety question; and five deliberately wrong versions passed the tests. All three were fixed. The rewritten tests run the rules and pin the page blocks whole; twelve wrong versions, the reviewer's five among them, each fail them. The reworked version was not sent back for a second review.
-
-**Not verified.** Nobody has seen this in a browser. No test runs the page itself: the effect is pinned as text, its rules are executed. Whether Yuri's first reply to the request is a routine or more questions was not measured. It works when a member chat row appears for someone who finished setup after this deploy.
-
-**Left alone.** A member returning from Stripe with setup done still gets the prefilled box (two presses). A failed send shows the member's message and offers the same text again in the box, as any failed send does. The BHA entry in one member's `allergies` (they said it tingled and was not an allergy) was not changed: Yuri herself said to keep BHA out for now, the setup chat that carries the nuance is in her context, and removing it would leave no record at all. The profile has nowhere to hold "irritates, not an allergy".
-
 ## v11.66.1 — A star rating is stored only with its review count (Nov 18 2026)
 
 **Found by a published post.** The new cleanser post quoted a product as "5 out of 5 on Olive Young". The catalog row held that rating with a review count of zero. 549 products did.
