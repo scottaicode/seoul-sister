@@ -78,7 +78,9 @@ export default function YuriPage() {
   // /skin-profile, etc. route here with ?ask=<message>. We surface the
   // message through the existing ChatInput.restoredValue mechanism so the
   // user lands with the question already typed — they can edit or send.
-  // Consumed once per page load via askConsumed flag.
+  // Consumed once per page load via askConsumed flag. One exception, below:
+  // the setup chat's routine request is sent, not typed in, when the member
+  // pressed the button that says so.
   const searchParams = useSearchParams()
   const askParam = searchParams?.get('ask') || null
   const [askConsumed, setAskConsumed] = useState(false)

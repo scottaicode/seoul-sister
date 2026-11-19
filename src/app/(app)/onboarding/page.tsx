@@ -603,7 +603,7 @@ export default function OnboardingPage() {
       // '?from=onboarding' lets the subscribe page open on continuation framing
       // (the earned value moment) rather than the cold pricing wall.
       // A member (their free week started at sign-up) goes straight to the
-      // first member chat, with the routine request ready to send.
+      // first member chat, with the routine request in the box.
       // When the button said "build my routine" the press is the send: a mark
       // in this tab tells the member chat to send the request (first-member-ask.ts).
       if (pressBuildsRoutine) markRoutineHandoff(window.sessionStorage, Date.now())

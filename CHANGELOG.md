@@ -12,13 +12,20 @@ All notable changes to Seoul Sister are documented here.
 - A member whose setup is complete sees **"Finish setup and build my routine"**. That press finishes setup and the member chat sends "Let's build my routine from what you learned in my setup chat." on arrival. One press, on a button that says what it does.
 - The send is carried by a mark the press writes in the browser tab (`sessionStorage`, two minutes), not by the address. A link cannot make a signed-in member send anything. With no mark (storage blocked, a link, a member back from Stripe) the sentence is put in the box as before.
 - At the 50-message limit with a required answer missing the label stays "Finish setup" and nothing is sent: Yuri asks the missing safety question first there, so a routine is not what the press gets.
-- `src/lib/yuri/first-member-ask.ts` holds the sentence and the rules. `public/sw.js` cache name is v61.
+- `src/lib/yuri/first-member-ask.ts` holds the sentence and the rules. `public/sw.js` cache name is v62 (v61 was used by the five-minute deploy).
 
-**Second-model review: run (Opus 5.5, told to refute).** It rejected the first version: the send was triggered by `&send=1` in the address, so any link could spend a member's message; the label promised a routine to members Yuri would first ask a safety question; and five deliberately wrong versions passed the tests. All three were fixed. The rewritten tests run the rules and pin the page blocks whole; twelve wrong versions, the reviewer's five among them, each fail them. The reworked version was not sent back for a second review.
+**Second-model review: run twice (Opus 5.5, told to refute).**
+- *First review, first version: rejected.* The send was triggered by `&send=1` in the address, so any link could spend a member's message; the label promised a routine to members Yuri would first ask a safety question; five deliberately wrong versions passed the tests. All three were fixed.
+- *Second review, this version: ship after fixes.* It found no path that sends twice or sends from a link. It found four more wrong versions that passed the rewritten tests (setup marked complete at the message limit, the sent message also left in the box, another file writing the mark, the failed-send restore removed), and two stale comments. Those are fixed: seventeen wrong versions, both reviewers' nine among them, now each fail the tests. The fixes to the tests were not reviewed a third time.
+- This release was pushed once before the second review (commit `9f79361`), was live for about five minutes, and was reverted (`f2e6d1f`). No setup was finished in that window.
 
-**Not verified.** Nobody has seen this in a browser. No test runs the page itself: the effect is pinned as text, its rules are executed. Whether Yuri's first reply to the request is a routine or more questions was not measured. It works when a member chat row appears for someone who finished setup after this deploy.
+**Not verified.** Nobody has seen this in a browser, an installed iPhone app or across a reload. No test runs the page: the effect, the button handler and the input box are pinned as text, and only the rules in `first-member-ask.ts` are executed. Whether Yuri's first reply to the request is a routine or more questions was not measured. It works when a member chat row appears for someone who finished setup after this deploy.
 
-**Left alone.** A member returning from Stripe with setup done still gets the prefilled box (two presses). A failed send shows the member's message and offers the same text again in the box, as any failed send does. The BHA entry in one member's `allergies` (they said it tingled and was not an allergy) was not changed: Yuri herself said to keep BHA out for now, the setup chat that carries the nuance is in her context, and removing it would leave no record at all. The profile has nowhere to hold "irritates, not an allergy".
+**Known and left alone.**
+- *A rare lost request.* The member chat can send before the app shell has finished checking access. If that check then sends the member back to setup (it would if the setup-finished stamp failed to save), the request is cancelled and is not in the box. They are back on the setup page with the same button.
+- *A failed send shows twice.* The member's message stays in the chat and the same text is offered again in the box, as for any failed send. Here it follows a press, not typing.
+- A member returning from Stripe with setup done still gets the prefilled box (two presses).
+- The BHA entry in one member's `allergies` (they said it tingled and was not an allergy) was not changed: Yuri herself said to keep BHA out for now, the setup chat that carries the nuance is in her context, and removing it would leave no record at all. The profile has nowhere to hold "irritates, not an allergy".
 
 ## v11.66.1 — A star rating is stored only with its review count (Nov 18 2026)
 

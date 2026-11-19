@@ -14,14 +14,20 @@
  *   - the label that promises a routine is shown only to a member whose setup
  *     is complete, and only that press writes the mark.
  *
- * A second-model review of the first version wrote five wrong versions that
- * passed (a second effect, an early return, an unguarded send, a non-member
- * sent along, the label shown to everyone). The page assertions below are
- * closed-world for that reason: whole blocks and exact counts, not substrings.
+ * Two second-model reviews wrote wrong versions that passed. The first: a
+ * second effect, an early return, an unguarded send, a non-member sent along,
+ * the label shown to everyone. The second, against the rewrite: `isComplete`
+ * set at the message limit, the sent message also left in the box, another
+ * file writing the mark, the failed-send restore removed. The page assertions
+ * are closed-world for that reason: whole blocks and exact counts.
+ *
+ * NOT EXECUTED by anything here: the effect, the useState initializer, the
+ * button handler, ChatInput's restore, and AppShell. Only the helpers in
+ * first-member-ask.ts run. The page is pinned as text.
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import ts from 'typescript'
@@ -122,6 +128,38 @@ test('closed world: the member chat has one automatic send, and it is this whole
   assert.deepEqual([...page.matchAll(/\.get\(\s*['"`]([^'"`]*)['"`]\s*\)/g)].map((m) => m[1]), ['ask'])
   // A message being sent is not also put in the box; any other arrival with ?ask= still is.
   assert.ok(page.includes("  const pendingAsk = !askConsumed && askParam && !routineHandoff ? askParam : null\n"))
+  // The box is fed by those two things and nothing else, so a sent message cannot also sit in it.
+  assert.deepEqual([...page.matchAll(/restoredValue=\{([^\n]*)\}/g)].map((m) => m[1]), ['pendingAsk || lastFailedDraft'])
+  assert.equal(count(page, 'routineHandoff'), 4, 'declared, the box, the check, and its dependency list')
+})
+
+test('closed world: setup is "complete" only when the server says so, never because the limit was reached', () => {
+  const page = read('src/app/(app)/onboarding/page.tsx')
+  // Both places it is set, with the line that guards each. At the limit with a
+  // safety answer missing the server sends at_limit and NOT is_complete, and
+  // Yuri then asks that question before any routine.
+  assert.equal(count(page, 'setIsComplete('), 2)
+  assert.ok(page.includes("          if (data.is_complete) setIsComplete(true)\n          if (data.at_limit === true) setAtLimit(true)\n"))
+  assert.ok(page.includes("            if (progressData.is_complete) {\n              setIsComplete(true)\n            }\n"))
+  assert.ok(page.includes("  const [isComplete, setIsComplete] = useState(false)\n"))
+})
+
+test('closed world: across all of src, one file names the mark and one line writes it', () => {
+  const files = []
+  const walk = (dir) => { for (const e of readdirSync(join(root, dir), { withFileTypes: true })) { const p = dir + '/' + e.name; if (e.isDirectory()) walk(p); else if (/\.(ts|tsx|js|mjs)$/.test(e.name)) files.push(p) } }
+  walk('src')
+  assert.ok(files.length > 300, 'the walk must see the app')
+  const naming = files.filter((f) => /ss_routine_handoff|routine_handoff_at/.test(read(f)))
+  assert.deepEqual(naming, ['src/lib/yuri/first-member-ask.ts'])
+  const writers = files.filter((f) => read(f).includes('markRoutineHandoff('))
+  assert.deepEqual(writers.sort(), ['src/app/(app)/onboarding/page.tsx', 'src/lib/yuri/first-member-ask.ts'])
+  // No sessionStorage write anywhere takes its key from a variable built at run time out of pieces of this name.
+  for (const f of files) assert.equal(/['"`]ss_routine_['"`]\s*\+/.test(read(f)), false, f)
+})
+
+test('a failed send still offers the text again (the member chat\'s existing behaviour, relied on here)', () => {
+  const hook = read('src/hooks/useYuri.ts')
+  assert.ok(hook.includes("          setLastFailedDraft((prev) => prev ?? message)\n"))
 })
 
 test('closed world: only a member whose setup is complete gets the label, and only that press writes the mark', () => {
