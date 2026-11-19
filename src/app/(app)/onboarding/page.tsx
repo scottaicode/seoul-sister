@@ -13,10 +13,7 @@ import { getOfferCode, setupChatLine, freeWeekNotStartedLine } from '@/lib/offer
 import { hasFreshSignupAgreement, clearSignupAgreement, shouldStartAtSignup, isJustCreated, rememberStartNote, readStartNote } from '@/lib/signup-agreement'
 import { startFreeWeekOnce } from '@/lib/start-free-week'
 import { takeCarriedQuestion } from '@/lib/landing-chat'
-
-// What a new member's first Yuri message is prefilled with after checkout. It is
-// only prefilled (the Yuri page's ?ask= never auto-sends), so they can edit it.
-const FIRST_MEMBER_ASK = "Let's build my routine from what you learned in my setup chat."
+import { FIRST_MEMBER_ASK, markRoutineHandoff } from '@/lib/yuri/first-member-ask'
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -570,6 +567,12 @@ export default function OnboardingPage() {
     [isStreaming, getToken, parseSSEStream, userId]
   )
 
+  // A member whose setup is COMPLETE: their button says it builds the routine,
+  // and pressing it sends the request. Not at the message limit with something
+  // still unanswered: there Yuri asks the missing safety question first, so the
+  // button promises only "Finish setup" and the request is left in the box.
+  const pressBuildsRoutine = isMember === true && isComplete
+
   // Complete onboarding
   const handleComplete = useCallback(async () => {
     try {
@@ -601,11 +604,14 @@ export default function OnboardingPage() {
       // (the earned value moment) rather than the cold pricing wall.
       // A member (their free week started at sign-up) goes straight to the
       // first member chat, with the routine request ready to send.
+      // When the button said "build my routine" the press is the send: a mark
+      // in this tab tells the member chat to send the request (first-member-ask.ts).
+      if (pressBuildsRoutine) markRoutineHandoff(window.sessionStorage, Date.now())
       router.push(isMember === true ? `/yuri?ask=${encodeURIComponent(FIRST_MEMBER_ASK)}` : '/subscribe?from=onboarding')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to complete onboarding')
     }
-  }, [getToken, router, isMember])
+  }, [getToken, router, isMember, pressBuildsRoutine])
 
   if (carryChoice === 'ask') {
     return (
@@ -679,7 +685,7 @@ export default function OnboardingPage() {
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-br from-gold to-gold-light text-seoul-dark text-sm font-semibold shadow-glow-gold hover:shadow-glow-gold-lg hover:scale-[1.02] transition-all duration-200"
               >
                 <Sparkles className="w-4 h-4" />
-                {isMember === false ? 'Finish setup and see membership' : 'Finish setup'}
+                {isMember === false ? 'Finish setup and see membership' : pressBuildsRoutine ? 'Finish setup and build my routine' : 'Finish setup'}
               </button>
             </div>
           )}

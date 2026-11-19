@@ -1,6 +1,7 @@
 'use client'
 
 import { welcomeVariant } from '@/lib/yuri/welcome-variant'
+import { hasFreshRoutineHandoff, clearRoutineHandoff, shouldSendOnArrival } from '@/lib/yuri/first-member-ask'
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
@@ -81,11 +82,26 @@ export default function YuriPage() {
   const searchParams = useSearchParams()
   const askParam = searchParams?.get('ask') || null
   const [askConsumed, setAskConsumed] = useState(false)
-  const pendingAsk = !askConsumed && askParam ? askParam : null
+  // The setup chat's "Finish setup and build my routine" button leaves a mark
+  // in this tab: the press was the send, so the request is sent here and not
+  // put in the box. Nothing in the address can cause a send (first-member-ask.ts).
+  const [routineHandoff] = useState(() => typeof window !== 'undefined' && hasFreshRoutineHandoff(window.sessionStorage, Date.now()))
+  const arrivalSentRef = useRef(false)
+  const pendingAsk = !askConsumed && askParam && !routineHandoff ? askParam : null
   // Whether they ARRIVED with a ready message. `pendingAsk` goes null as soon as
   // the input box takes the text, which is before the greeting data arrives.
   const [arrivedWithAsk] = useState(() => Boolean(askParam))
   const variant = welcomeVariant(welcomeContext)
+
+  useEffect(() => {
+    if (!shouldSendOnArrival({ handoff: routineHandoff, ask: askParam, signedIn: Boolean(user), messageCount: messages.length, busy: isStreaming || isLoadingHistory, alreadySent: arrivalSentRef.current })) return
+    arrivalSentRef.current = true
+    // The mark goes first, so a reload or a second tab cannot send it again.
+    clearRoutineHandoff(window.sessionStorage)
+    window.history.replaceState(null, '', '/yuri')
+    // If the send fails, the usual error shows and the text is offered again in the box.
+    void sendMessage(askParam as string)
+  }, [routineHandoff, askParam, user, messages.length, isStreaming, isLoadingHistory, sendMessage])
 
   // Fetch usage status
   useEffect(() => {
