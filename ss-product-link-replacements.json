@@ -1,0 +1,186 @@
+{
+  "made_at": "2026-11-18",
+  "made_by": "a Seoul Sister session",
+  "note": "Only the link target changes; no visible word does. Each old occurs exactly once at the point it is applied. Apply IN ORDER to the body (LGAAS: content). Products were matched to link text by hand against the catalog on Nov 18 2026. Not changed: links whose text says \"product database\" or \"price comparison\" (the products page is the right target), and the one below with no catalog row.",
+  "left_alone": [
+    "late-20s-skin-spiral-your-barrier-is-probably-wrecked: Etude SoonJung pH 6.5 Whip Cleanser"
+  ],
+  "replacements": [
+    {
+      "slug": "best-milky-toners-for-a-sensitive-dehydrated-skin-barrier",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "[Pine Calming Cica Ampoule](https://www.seoulsister.com/products)",
+      "new": "[Pine Calming Cica Ampoule](https://www.seoulsister.com/products/4256b1cd-49d8-48f7-95be-dc76a25f75a8)"
+    },
+    {
+      "slug": "best-milky-toners-for-a-sensitive-dehydrated-skin-barrier",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "[Madeca Cream Time Reverse](https://www.seoulsister.com/products)",
+      "new": "[Madeca Cream Time Reverse](https://www.seoulsister.com/products/ecabf893-ff7e-47db-84c8-4b5d799d196e)"
+    },
+    {
+      "slug": "how-do-you-build-a-korean-skincare-routine-youll-actually-stick-to",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "[SoonJung pH 5.5 Relief Toner](https://www.seoulsister.com/products)",
+      "new": "[SoonJung pH 5.5 Relief Toner](https://www.seoulsister.com/products/342f9f81-5567-4b27-8c1d-f1108abdbc05)"
+    },
+    {
+      "slug": "how-do-you-build-a-korean-skincare-routine-youll-actually-stick-to",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "[Supple Preparation Unscented Toner](https://www.seoulsister.com/products)",
+      "new": "[Supple Preparation Unscented Toner](https://www.seoulsister.com/products/f60cfa78-383b-4a94-b117-b7b3799987eb)"
+    },
+    {
+      "slug": "how-do-you-build-a-korean-skincare-routine-youll-actually-stick-to",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "[Madeca Cream Time Reverse](https://www.seoulsister.com/products)",
+      "new": "[Madeca Cream Time Reverse](https://www.seoulsister.com/products/ecabf893-ff7e-47db-84c8-4b5d799d196e)"
+    },
+    {
+      "slug": "how-do-you-build-a-korean-skincare-routine-youll-actually-stick-to",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "[Bakuchiol Plumping Serum](https://www.seoulsister.com/products)",
+      "new": "[Bakuchiol Plumping Serum](https://www.seoulsister.com/products/aee7f495-8e67-4592-bdda-b3c66093621c)"
+    },
+    {
+      "slug": "how-do-you-read-korean-skincare-expiration-dates-and-batch",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "[Klairs Supple Preparation Unscented Toner](https://www.seoulsister.com/products)",
+      "new": "[Klairs Supple Preparation Unscented Toner](https://www.seoulsister.com/products/f60cfa78-383b-4a94-b117-b7b3799987eb)"
+    },
+    {
+      "slug": "k-beauty-toners-the-ones-actually-worth-your-money",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "work. The [Klairs Supple Preparation Unscented Toner](https://www.seoulsister.com/products)",
+      "new": "work. The [Klairs Supple Preparation Unscented Toner](https://www.seoulsister.com/products/f60cfa78-383b-4a94-b117-b7b3799987eb)"
+    },
+    {
+      "slug": "k-beauty-toners-the-ones-actually-worth-your-money",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "[Klairs Supple Preparation Unscented Toner](https://www.seoulsister.com/products)",
+      "new": "[Klairs Supple Preparation Unscented Toner](https://www.seoulsister.com/products/f60cfa78-383b-4a94-b117-b7b3799987eb)"
+    },
+    {
+      "slug": "k-beauty-toners-the-ones-actually-worth-your-money",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "[Illiyoon Ceramide Ato Foam Cleanser](https://www.seoulsister.com/products)",
+      "new": "[Illiyoon Ceramide Ato Foam Cleanser](https://www.seoulsister.com/products/38c35323-f9ae-4897-8b46-5000db9bfa02)"
+    },
+    {
+      "slug": "k-beauty-toners-the-ones-actually-worth-your-money",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "[Bioderma Sensibio H2O](https://www.seoulsister.com/products)",
+      "new": "[Bioderma Sensibio H2O](https://www.seoulsister.com/products/1ad9fa3f-76e2-4f24-9569-b91dab00b22e)"
+    },
+    {
+      "slug": "the-7-minute-k-beauty-routine-that-actually-sticks",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "[Klairs Supple Preparation Unscented Toner](https://www.seoulsister.com/products)",
+      "new": "[Klairs Supple Preparation Unscented Toner](https://www.seoulsister.com/products/f60cfa78-383b-4a94-b117-b7b3799987eb)"
+    },
+    {
+      "slug": "things-i-wish-i-knew-before-buying-korean-skincare",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "oint, the [Klairs Supple Preparation Unscented Toner](https://www.seoulsister.com/products)",
+      "new": "oint, the [Klairs Supple Preparation Unscented Toner](https://www.seoulsister.com/products/f60cfa78-383b-4a94-b117-b7b3799987eb)"
+    },
+    {
+      "slug": "things-i-wish-i-knew-before-buying-korean-skincare",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "[Bioderma Sensibio H2O](https://www.seoulsister.com/products)",
+      "new": "[Bioderma Sensibio H2O](https://www.seoulsister.com/products/1ad9fa3f-76e2-4f24-9569-b91dab00b22e)"
+    },
+    {
+      "slug": "things-i-wish-i-knew-before-buying-korean-skincare",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "[Klairs Supple Preparation Unscented Toner](https://www.seoulsister.com/products)",
+      "new": "[Klairs Supple Preparation Unscented Toner](https://www.seoulsister.com/products/f60cfa78-383b-4a94-b117-b7b3799987eb)"
+    },
+    {
+      "slug": "why-does-sunscreen-pill-how-to-stop-it-for-good",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "[Supple Preparation Unscented Toner](https://www.seoulsister.com/products)",
+      "new": "[Supple Preparation Unscented Toner](https://www.seoulsister.com/products/f60cfa78-383b-4a94-b117-b7b3799987eb)"
+    },
+    {
+      "slug": "why-simplifying-your-skincare-routine-actually-works",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "[Sensibio H2O](https://www.seoulsister.com/products)",
+      "new": "[Sensibio H2O](https://www.seoulsister.com/products/1ad9fa3f-76e2-4f24-9569-b91dab00b22e)"
+    },
+    {
+      "slug": "why-simplifying-your-skincare-routine-actually-works",
+      "field": "content",
+      "finding": "a link naming a product opened the general products page",
+      "old": "[Supple Preparation Unscented Toner](https://www.seoulsister.com/products)",
+      "new": "[Supple Preparation Unscented Toner](https://www.seoulsister.com/products/f60cfa78-383b-4a94-b117-b7b3799987eb)"
+    }
+  ],
+  "fingerprints": {
+    "best-milky-toners-for-a-sensitive-dehydrated-skin-barrier": {
+      "content": {
+        "md5_before": "78d6a853ebcf197dd3f3f1f938993673",
+        "md5_after": "cd51e5da6ab556573720f7e343b9633f"
+      }
+    },
+    "how-do-you-build-a-korean-skincare-routine-youll-actually-stick-to": {
+      "content": {
+        "md5_before": "8a6a10af322ce00e79ef8a0bedd70c99",
+        "md5_after": "abb555cfb68ef55553341910c7675e3b"
+      }
+    },
+    "how-do-you-read-korean-skincare-expiration-dates-and-batch": {
+      "content": {
+        "md5_before": "f0038e7be6307ecb73e56a007578a413",
+        "md5_after": "5780f027b597ca1157f77694161b2fcf"
+      }
+    },
+    "k-beauty-toners-the-ones-actually-worth-your-money": {
+      "content": {
+        "md5_before": "3030dc5d6004d1cf642e2d8d17f9860a",
+        "md5_after": "9157992a3097b39b604e88765f75a361"
+      }
+    },
+    "the-7-minute-k-beauty-routine-that-actually-sticks": {
+      "content": {
+        "md5_before": "30aef22c210ede94b10a8e41ccecea6a",
+        "md5_after": "4de6de7b5007ba979bccc4b459e02e43"
+      }
+    },
+    "things-i-wish-i-knew-before-buying-korean-skincare": {
+      "content": {
+        "md5_before": "14204f2f0d36ec93890ac1cab3675250",
+        "md5_after": "403fefb4556e48b47eea5a8342409ac0"
+      }
+    },
+    "why-does-sunscreen-pill-how-to-stop-it-for-good": {
+      "content": {
+        "md5_before": "c54f12849396d1df53b2924c1eed8943",
+        "md5_after": "1a28cb6dda797efd0d6af67d6271f5e1"
+      }
+    },
+    "why-simplifying-your-skincare-routine-actually-works": {
+      "content": {
+        "md5_before": "8f59f70a777be446c0d4e48fa8f1ec3b",
+        "md5_after": "fe95b467f92b201ebe4f7ca3583cf959"
+      }
+    }
+  }
+}
