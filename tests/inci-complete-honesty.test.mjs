@@ -82,7 +82,9 @@ async function loadStamper() {
   )
 
   const snippet = `
-    export function stamp(product, full_inci) {
+    // The route's own state the expression reads: whether the ingredient read
+    // failed, and which products' lists were cut at the per-product cap.
+    export function stamp(product, full_inci, { ingredientsFailed = false, cappedProductIds = new Set(), p = { id: 'p1' } } = {}) {
       ${match[0]}
       return product
     }
@@ -135,4 +137,21 @@ test('inci_complete is not stamped at all when full_inci was not requested', asy
     'The default (non-full_inci) response shape must stay byte-identical for ' +
       'existing consumers — the marker is only meaningful on full_inci requests.'
   )
+})
+
+// Nov 18 2026: 20 products in one request came back with 56 of a mask's 100
+// ingredients marked complete. A list that was cut, or could not be read, is
+// not the complete label.
+test('inci_complete is FALSE when the ingredient read failed', async () => {
+  const stamp = await loadStamper()
+  const out = stamp({ ingredients: [{ position: 1, inci_name: 'Water' }] }, true, { ingredientsFailed: true })
+  assert.equal(out.inci_complete, false)
+})
+
+test('inci_complete is FALSE for a product whose list was cut at the cap', async () => {
+  const stamp = await loadStamper()
+  const out = stamp({ ingredients: [{ position: 1, inci_name: 'Water' }] }, true, { cappedProductIds: new Set(['p1']) })
+  assert.equal(out.inci_complete, false)
+  const other = stamp({ ingredients: [{ position: 1, inci_name: 'Water' }] }, true, { cappedProductIds: new Set(['someone-else']) })
+  assert.equal(other.inci_complete, true)
 })

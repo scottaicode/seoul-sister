@@ -26,3 +26,22 @@ test('a rating is returned only with its review count and whose reviews they are
 test('the query reads the review count', () => {
   assert.match(src, /const selectFields = '[^']*\breview_count\b/)
 })
+
+// Nov 18 2026: one request for 20 products came back with 56 of a mask's 100
+// ingredients, marked complete. PostgREST stops at 1,000 rows and says nothing.
+test('ingredient rows are read in pages, never with one capped request', () => {
+  const at = src.indexOf(".from('ss_product_ingredients')")
+  assert.ok(at > 0)
+  const block = src.slice(at, src.indexOf('us_price used to be', at))
+  assert.match(block, /\.range\(from, from \+ INGREDIENT_PAGE - 1\)/)
+  assert.doesNotMatch(block, /\.limit\(/, 'a .limit() here is silently capped at 1,000 rows')
+  assert.match(block, /\.order\('product_id'/, 'pages need a stable order')
+  assert.match(block, /page\.length < INGREDIENT_PAGE/)
+})
+
+test('a list that failed to read or was cut is never marked complete', () => {
+  const line = src.split('\n').find((l) => l.includes('product.inci_complete =')) ?? ''
+  assert.match(line, /!ingredientsFailed/)
+  assert.match(line, /!cappedProductIds\.has\(p\.id\)/)
+  assert.match(src, /if \(ingredientsFailed\) product\.ingredients_error =/)
+})

@@ -291,16 +291,36 @@ export async function POST(request: NextRequest) {
     // PostgREST's .in() over the product ID list; costs one extra round-trip.
     const productIds = (products || []).map(p => p.id).filter(Boolean)
     const ingredientsByProductId = new Map<string, Array<Record<string, unknown>>>()
+    // Which lists are known to be whole. A list that could not be read to its
+    // end must not be handed over as the product's ingredients: PostgREST stops
+    // at 1,000 rows without saying so, and one request for 20 products came back
+    // with 56 of a mask's 100 ingredients marked complete (Nov 18 2026). So the
+    // rows are read in pages, per product in label order, and a failed page
+    // marks every list unread.
+    let ingredientsFailed = false
+    const cappedProductIds = new Set<string>()
     if (productIds.length > 0) {
-      const { data: pi, error: piError } = await supabase
-        .from('ss_product_ingredients')
-        .select('product_id, position, ingredient:ss_ingredients(name_inci, name_en, function, is_active, safety_rating)')
-        .in('product_id', productIds)
-        .order('position')
-        .limit(productIds.length * inciCap)
-      if (piError) {
-        console.warn('Product ingredient fetch failed (non-fatal):', piError.message)
-      } else if (pi) {
+      const INGREDIENT_PAGE = 1000
+      type IngredientRow = { product_id: string; position: number; ingredient: unknown }
+      const pi: IngredientRow[] = []
+      for (let from = 0; ; from += INGREDIENT_PAGE) {
+        const { data: page, error: piError } = await supabase
+          .from('ss_product_ingredients')
+          .select('product_id, position, ingredient:ss_ingredients(name_inci, name_en, function, is_active, safety_rating)')
+          .in('product_id', productIds)
+          .order('product_id', { ascending: true })
+          .order('position', { ascending: true })
+          .range(from, from + INGREDIENT_PAGE - 1)
+        if (piError) {
+          console.error('Product ingredient fetch failed:', piError.message)
+          ingredientsFailed = true
+          pi.length = 0
+          break
+        }
+        pi.push(...((page ?? []) as unknown as IngredientRow[]))
+        if (!page || page.length < INGREDIENT_PAGE) break
+      }
+      if (pi.length > 0) {
         // Supabase's typegen infers the embedded `ingredient` relation as an
         // array even for a single-row relationship, so normalize defensively.
         for (const row of pi as unknown as Array<{
@@ -318,7 +338,7 @@ export async function POST(request: NextRequest) {
             ingredientsByProductId.set(row.product_id, [])
           }
           const existing = ingredientsByProductId.get(row.product_id)!
-          if (existing.length >= inciCap) continue
+          if (existing.length >= inciCap) { cappedProductIds.add(row.product_id); continue }
           existing.push({
             position: row.position,
             inci_name: ing.name_inci,
@@ -409,8 +429,10 @@ export async function POST(request: NextRequest) {
       // an empty-but-complete list confirms every such claim vacuously. A missing
       // label must read as missing, never as "contains nothing".
       if (full_inci) {
-        product.inci_complete = (product.ingredients as unknown[]).length > 0
+        product.inci_complete = !ingredientsFailed && !cappedProductIds.has(p.id) && (product.ingredients as unknown[]).length > 0
       }
+      // A list we could not read is not an empty list.
+      if (ingredientsFailed) product.ingredients_error = 'the ingredient list could not be read; treat it as unknown, not as empty'
       return product
     })
 
