@@ -1,0 +1,579 @@
+{
+ "made_at": "2026-11-18",
+ "made_by": "a Seoul Sister session",
+ "version": 2,
+ "note": "Removes ratings and review counts the Seoul Sister catalog does not hold, and the popularity claims that leaned on them, from 21 published posts. Every figure was checked against ss_products on Nov 18 2026 by product id (where the sentence links one) or exact product name; 11 figures are real Olive Young counts and are left in place. Pairs are grouped by post and must be applied in the order given, to the body (LGAAS: content). Each old text occurs exactly once at the point it is applied. Fingerprints are md5 of each body before and after. If a count is not 1 or an md5 does not match, stop and report. REVISED (version 2) after a second-model review (Opus, refute brief): it confirmed no real figure was removed and that the nine kept figures match the catalog, and asked for four wording changes and two extra sentences, all made. Version 2 has not itself been reviewed by a second model.",
+ "kept_as_real": [
+  "Numbuzin No.5+ Vitamin Concentrated Serum 4.7 / 5,356",
+  "Anua Niacinamide 10% + TXA 4% Dark Spot Correcting Serum 4.7 / 963",
+  "Dr. Althea Vitamin C Boosting Serum 4.7 / 553",
+  "Numbuzin No. 5+ Vitamin Boosting Essential Toner 4.7 / 633",
+  "Anua Rice 70 Glow Milky Toner 4.8 / 371",
+  "SKIN1004 Madagascar Centella Tone Brightening Capsule Ampoule 4.7 / 825",
+  "SKIN1004 Madagascar Centella Soothing Cream 4.8 / 1,249",
+  "Anua Heartleaf Pore Control Cleansing Oil Double Set 4.7 / 5,239",
+  "Etude Soonjung pH 5.5 Foam Cleanser 4.8 / 215"
+ ],
+ "replacements": [
+  {
+   "slug": "given-up-on-vitamin-c-heres-why-and-what-to-try",
+   "old": "If you want a sunscreen that doubles as light coverage, the **Goodal Heartleaf Calming Tone Up Sun Cream SPF50+ PA++++** (4.5 stars across roughly 6,400 reviews) is a sensible pairing with a brightening routine: the heartleaf keeps it calming rather than irritating, and the tone-up finish evens out redness while you wait on the actual fading.",
+   "new": "If you want a sunscreen that doubles as light coverage, the **Goodal Heartleaf Calming Tone Up Sun Cream SPF50+ PA++++** is a sensible pairing with a brightening routine: the heartleaf keeps it calming rather than irritating, and the tone-up finish evens out redness while you wait on the actual fading.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "given-up-on-vitamin-c-heres-why-and-what-to-try",
+   "old": "For a gentle daily wash, the **Illiyoon Ceramide Ato Foam Cleanser** (4.6 stars across roughly 5,800 reviews) cleans without that squeaky-tight feeling.",
+   "new": "For a gentle daily wash, the **Illiyoon Ceramide Ato Foam Cleanser** cleans without that squeaky-tight feeling.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "given-up-on-vitamin-c-heres-why-and-what-to-try",
+   "old": "*Grounded pick:* the **Neogen Dermalogy Real Vita C Serum** (4.5 stars across roughly 4,200 reviews).",
+   "new": "*Grounded pick:* the **Neogen Dermalogy Real Vita C Serum**.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "do-korean-eye-patches-actually-work-a-realistic-guide-to-whats-worth-your-money",
+   "old": "Our roundup of the [best Korean eye creams](https://www.seoulsister.com/best/eye-care) ranks the full category, and three are worth naming here: the [Mizon Snail Repair Eye Cream](https://www.seoulsister.com/products/de179315-d7d1-404e-bd59-ff73e28d2e35) (4.5 stars, roughly 5,800 reviews), the [Beauty of Joseon Ginseng Eye Cream](https://www.seoulsister.com/products/1b2fe74a-d3a7-4e0a-86f9-7bb0e25f6b81) (4.5 stars, roughly 4,800 reviews), or the [Mary&May Tranexamic Acid + Glutathione Eye Cream](https://www.seoulsister.com/products/81a4de39-f480-4bbf-bb5e-5e2ddada3b06) (4.5 stars, roughly 3,200 reviews) if pigmentation is your specific concern.",
+   "new": "Our roundup of the [best Korean eye creams](https://www.seoulsister.com/best/eye-care) ranks the full category, and three are worth naming here: the [Mizon Snail Repair Eye Cream](https://www.seoulsister.com/products/de179315-d7d1-404e-bd59-ff73e28d2e35), the [Beauty of Joseon Ginseng Eye Cream](https://www.seoulsister.com/products/1b2fe74a-d3a7-4e0a-86f9-7bb0e25f6b81), or the [Mary&May Tranexamic Acid + Glutathione Eye Cream](https://www.seoulsister.com/products/81a4de39-f480-4bbf-bb5e-5e2ddada3b06) if pigmentation is your specific concern.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "do-korean-eye-patches-actually-work-a-realistic-guide-to-whats-worth-your-money",
+   "old": "We checked our catalog for eye patches with enough verified review volume to call any single one a confident pick, and there aren't any that clear the bar we use elsewhere on this site (at least a couple of hundred real reviews on a verified listing). Patches are a fast-moving",
+   "new": "We are not naming a single best eye patch. Patches are a fast-moving",
+   "why": "second-model review: the sentence is false today (three eye patches in the catalog hold more than 200 reviews), and no post applies that bar any more"
+  },
+  {
+   "slug": "the-7-minute-k-beauty-routine-that-actually-sticks",
+   "old": "For mornings or sensitive skin, the **Illiyoon Ceramide Ato Foam Cleanser** (4.6 stars across roughly 5,800 reviews) cleans without that squeaky-tight feeling, and it is built around the same barrier lipids you are trying to protect rather than stripping them off.",
+   "new": "For mornings or sensitive skin, the **Illiyoon Ceramide Ato Foam Cleanser** cleans without that squeaky-tight feeling, and it is built around the same barrier lipids you are trying to protect rather than stripping them off.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "the-7-minute-k-beauty-routine-that-actually-sticks",
+   "old": "The **Illiyoon Ceramide Ato Concentrate Cream** (roughly 15,200 reviews) is the one we point people to when a barrier is wrecked or winter is coming.",
+   "new": "The **Illiyoon Ceramide Ato Concentrate Cream** is the one we point people to when a barrier is wrecked or winter is coming.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "the-7-minute-k-beauty-routine-that-actually-sticks",
+   "old": " It is also the most-reviewed moisturizer in our catalog, which matters more than a high rating from a handful of people.",
+   "new": "",
+   "why": "a popularity claim with no measurement behind it"
+  },
+  {
+   "slug": "best-korean-skincare-for-pih-fade-post-acne-dark-spots",
+   "old": "*Grounded picks:* **Numbuzin No.3 Skin Softening Serum** (<a href=\"/products/7edcdabd-e7fd-46f3-ab23-171b7e6459dd\">check the current price and stock</a>; the No.5 pad next to it is an alternative), which pairs niacinamide with fermented ingredients that support turnover gently, or the **Numbuzin No.5 Vitamin-Niacinamide Concentrated Pad** (4.6 stars across roughly 6,800 reviews, <a href=\"/products/afb269bc-b505-4519-bf88-f4d3cc114b9c\">see the current price</a>) if you prefer a pad format.",
+   "new": "*Grounded picks:* **Numbuzin No.3 Skin Softening Serum** (<a href=\"/products/7edcdabd-e7fd-46f3-ab23-171b7e6459dd\">check the current price and stock</a>; the No.5 pad next to it is an alternative), which pairs niacinamide with fermented ingredients that support turnover gently, or the **Numbuzin No.5 Vitamin-Niacinamide Concentrated Pad** (<a href=\"/products/afb269bc-b505-4519-bf88-f4d3cc114b9c\">see the current price</a>) if you prefer a pad format.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "best-korean-skincare-for-pih-fade-post-acne-dark-spots",
+   "old": "*Grounded pick:* **Beplain Cicaful Calming Ampoule** (4.7 stars across roughly 6,800 reviews, <a href=\"/products/949424f4-141d-4689-8723-e7359b160fdc\">see the current price</a>) for a centella-led calming step, or the **Illiyoon Ceramide Ato Concentrate Cream** (roughly 15,200 reviews, <a href=\"/products/aeb68155-76a8-47aa-8255-967475237633\">see the current price</a>) if what you need is barrier repair before anything else.",
+   "new": "*Grounded pick:* **Beplain Cicaful Calming Ampoule** (<a href=\"/products/949424f4-141d-4689-8723-e7359b160fdc\">see the current price</a>) for a centella-led calming step, or the **Illiyoon Ceramide Ato Concentrate Cream** (<a href=\"/products/aeb68155-76a8-47aa-8255-967475237633\">see the current price</a>) if what you need is barrier repair before anything else.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "best-korean-skincare-for-pih-fade-post-acne-dark-spots",
+   "old": "For a vitamin C that will not sting, the **Neogen Dermalogy Real Vita C Serum** (4.5 stars across roughly 4,200 reviews, <a href=\"/products/a9940f94-b3da-4838-a2f5-4b78d55ccabb\">see the current price</a>) leads with sodium ascorbyl phosphate, a derivative that sits near neutral pH instead of the low pH that makes pure L-ascorbic acid so reactive.",
+   "new": "For a vitamin C that will not sting, the **Neogen Dermalogy Real Vita C Serum** (<a href=\"/products/a9940f94-b3da-4838-a2f5-4b78d55ccabb\">see the current price</a>) leads with sodium ascorbyl phosphate, a derivative that sits near neutral pH instead of the low pH that makes pure L-ascorbic acid so reactive.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "best-korean-skincare-for-pih-fade-post-acne-dark-spots",
+   "old": "*Grounded pick:* **Beauty of Joseon Glow Deep Serum: Rice + Alpha-Arbutin** (4.6 stars across roughly 5,800 reviews, <a href=\"/products/f15f5eb0-5638-4222-aeac-9f88a6f466ca\">see the current price</a>).",
+   "new": "*Grounded pick:* **Beauty of Joseon Glow Deep Serum: Rice + Alpha-Arbutin** (<a href=\"/products/f15f5eb0-5638-4222-aeac-9f88a6f466ca\">see the current price</a>).",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "beauty-of-joseon-aqua-fresh-sunscreen-full-review",
+   "old": "**For mineral-only preferences:** the **AXIS-Y Complete No-Stress Physical Sunscreen SPF50+ PA++++** (roughly 6,200 reviews) is a genuine mineral option, with zinc oxide as its second ingredient.",
+   "new": "**For mineral-only preferences:** the **AXIS-Y Complete No-Stress Physical Sunscreen SPF50+ PA++++** is a genuine mineral option, with zinc oxide as its second ingredient.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "oily-skin-routine-guide",
+   "old": "Grounded picks from our catalog, filtered for real review volume: the <strong>Anua Heartleaf Quercetinol Pore Deep Cleansing Foam</strong> (4.6 stars across roughly 5,200 reviews) for the second cleanse, and the <strong>Isntree Green Tea Fresh Toner</strong> (4.6 stars, roughly 6,800 reviews) for a lightweight hydrating layer that will not sit heavy on oily skin.</p>",
+   "new": "Grounded picks from our catalog: the <strong>Anua Heartleaf Quercetinol Pore Deep Cleansing Foam</strong> for the second cleanse, and the <strong>Isntree Green Tea Fresh Toner</strong> for a lightweight hydrating layer that will not sit heavy on oily skin.</p>",
+   "why": "a rating or review count the catalog does not hold; a popularity claim with no measurement behind it"
+  },
+  {
+   "slug": "oily-skin-routine-guide",
+   "old": "If exfoliation is the priority instead, the <strong>Medicube Zero Pore Pad 2.0</strong> (4.4 stars, roughly 8,800 reviews) is the highest-reviewed salicylic pad we carry, used two or three nights a week rather than daily.</p>",
+   "new": "If exfoliation is the priority instead, the <strong>Medicube Zero Pore Pad 2.0</strong> pairs lactic acid with salicylic acid (lactic is listed first) and also lists citrus, lavender and eucalyptus oils; use it two or three nights a week rather than daily.</p>",
+   "why": "a rating or review count the catalog does not hold; a popularity claim with no measurement behind it; second-model review: say what the ingredient list shows, not what the product name suggests"
+  },
+  {
+   "slug": "oily-skin-routine-guide",
+   "old": "For the moisturizer, the <strong>iUNIK Centella Calming Gel Cream</strong> (4.6 stars, roughly 5,800 reviews) seals without weight.",
+   "new": "For the moisturizer, the <strong>iUNIK Centella Calming Gel Cream</strong> seals without weight.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "oily-skin-routine-guide",
+   "old": "is formulated for congestion specifically and emulsifies cleanly, which is the step most people get wrong.",
+   "new": "is an ester-based oil that emulsifies cleanly, which is the step most people get wrong. Its ingredient list includes added fragrance, listed ahead of every plant oil.",
+   "why": "the same oil is recommended here with no mention that it lists fragrance; second-model review: say what the ingredient list shows, not what the product name suggests"
+  },
+  {
+   "slug": "oily-skin-routine-guide",
+   "old": ", powered by live Olive Young bestseller rankings.</p>",
+   "new": ".</p>",
+   "why": "second-model review: the Best-of pages sort by rating then review count, not by bestseller rank"
+  },
+  {
+   "slug": "why-does-your-makeup-look-worse-over-korean-skincare-and-how-to-actually-fix-it",
+   "old": "**If you want water-based sunscreens that behave under makeup**, these are grounded picks from our catalog, filtered for real review volume: the **MISSHA All Around Safe Block Aqua Sun Gel SPF50+ PA++++** (roughly 8,200 reviews), the **Jumiso AWE Sun Airy-fit Daily Moisturizer SPF50+** (roughly 7,800 reviews), or the **Thank You Farmer Sun Project Water Sun Cream SPF50+** (4.6 stars across roughly 6,800 reviews).",
+   "new": "**If you want water-based sunscreens that behave under makeup**, these are picks from our catalog: the **MISSHA All Around Safe Block Aqua Sun Gel SPF50+ PA++++**, the **Jumiso AWE Sun Airy-fit Daily Moisturizer SPF50+**, or the **Thank You Farmer Sun Project Water Sun Cream SPF50+**.",
+   "why": "a rating or review count the catalog does not hold; a popularity claim with no measurement behind it"
+  },
+  {
+   "slug": "k-beauty-toners-the-ones-actually-worth-your-money",
+   "old": "If you want the option with the most verified reviews behind it in our catalog, the Isntree Hyaluronic Acid Toner Plus (roughly 8,400 reviews) does the same hydrating job.",
+   "new": "The Isntree Hyaluronic Acid Toner Plus does the same hydrating job.",
+   "why": "a rating or review count the catalog does not hold; a popularity claim with no measurement behind it"
+  },
+  {
+   "slug": "how-to-fix-dehydrated-skin-with-a-korean-skincare-routine",
+   "old": "Use a hydrating toner like the Laneige Cream Skin Cerapeptide Refiner (roughly 5,200 reviews) or the Klairs Supple Preparation Unscented Toner and pat on two to three layers before your moisturizer.",
+   "new": "Use a hydrating toner like the Laneige Cream Skin Cerapeptide Refiner or the Klairs Supple Preparation Unscented Toner and pat on two to three layers before your moisturizer.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "how-to-fix-dehydrated-skin-with-a-korean-skincare-routine",
+   "old": "A centella-led calming cream like the Beplain Cicaful Calming Cream (4.7 stars across roughly 5,400 reviews) works well if you need soothing without further irritation.",
+   "new": "A centella-led calming cream like the Beplain Cicaful Calming Cream works well if you need soothing without further irritation.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "why-your-sebaceous-filaments-keep-coming-back-and-the-k-beauty-routine-that-finally-changed-mine",
+   "old": "- **Niacinamide for oil regulation:** the **Numbuzin No.5 Vitamin-Niacinamide Concentrated Pad** (4.6 stars, roughly 6,800 reviews), or the **Numbuzin No.3 Skin Softening Serum** (roughly 8,200 reviews) if you prefer a serum.",
+   "new": "- **Niacinamide for oil regulation:** the **Numbuzin No.5 Vitamin-Niacinamide Concentrated Pad**, or the **Numbuzin No.3 Skin Softening Serum** if you prefer a serum.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "why-your-sebaceous-filaments-keep-coming-back-and-the-k-beauty-routine-that-finally-changed-mine",
+   "old": "- **BHA / exfoliation:** the **Medicube Zero Pore Pad 2.0** (4.4 stars across roughly 8,800 reviews) is the highest-reviewed salicylic pad in our catalog and is built for exactly this concern.",
+   "new": "- **BHA / exfoliation:** the **Medicube Zero Pore Pad 2.0** pairs lactic acid with salicylic acid (lactic is listed first) and also lists citrus and lavender oils.",
+   "why": "a rating or review count the catalog does not hold; a popularity claim with no measurement behind it; second-model review: say what the ingredient list shows, not what the product name suggests"
+  },
+  {
+   "slug": "why-your-sebaceous-filaments-keep-coming-back-and-the-k-beauty-routine-that-finally-changed-mine",
+   "old": "- **Calming, if the BHA is making you red:** the **Beplain Cicaful Calming Ampoule** (4.7 stars, roughly 6,800 reviews).",
+   "new": "- **Calming, if the BHA is making you red:** the **Beplain Cicaful Calming Ampoule**.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "why-your-sebaceous-filaments-keep-coming-back-and-the-k-beauty-routine-that-finally-changed-mine",
+   "old": ", heartleaf-based and formulated for congestion, and it emulsifies cleanly, which is the step most people get wrong.",
+   "new": ", an ester-based oil that lists added fragrance. It emulsifies cleanly, which is the step most people get wrong.",
+   "why": "the formula was described from the product name: heartleaf extract is 18th of 22 ingredients, and the list includes fragrance"
+  },
+  {
+   "slug": "why-your-sebaceous-filaments-keep-coming-back-and-the-k-beauty-routine-that-finally-changed-mine",
+   "old": "**Grounded picks**, filtered for verified listings with real review volume:",
+   "new": "**Grounded picks** from our catalog:",
+   "why": "a popularity claim with no measurement behind it"
+  },
+  {
+   "slug": "how-to-tell-if-korean-skincare-is-fake-a-5-point-check-for-a",
+   "old": "And if you want a sunscreen that does double duty, the **Goodal Heartleaf Calming Tone Up Sun Cream** (4.5 stars across roughly 6,400 reviews) gives you light tone-up coverage alongside the SPF, or the **Dr.G Green Mild Up Sun+** (roughly 9,200 reviews) if you would rather have a straight mineral filter.",
+   "new": "And if you want a sunscreen that does double duty, the **Goodal Heartleaf Calming Tone Up Sun Cream** gives you light tone-up coverage alongside the SPF, or the **Dr.G Green Mild Up Sun+** if you would rather have a straight mineral filter.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "how-to-tell-if-korean-skincare-is-fake-a-5-point-check-for-a",
+   "old": "For gentle cleansing, the [Bioderma Sensibio H2O](https://www.seoulsister.com/products/bioderma-sensibio-h2o) micellar water and the **Illiyoon Ceramide Ato Foam Cleanser** (4.6 stars across roughly 5,800 reviews) are both low-drama picks.",
+   "new": "For gentle cleansing, the [Bioderma Sensibio H2O](https://www.seoulsister.com/products/bioderma-sensibio-h2o) micellar water and the **Illiyoon Ceramide Ato Foam Cleanser** are both low-drama picks.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "things-i-wish-i-knew-before-buying-korean-skincare",
+   "old": "The **Dr.G Green Mild Up Sun+ SPF50+ PA++++** (roughly 9,200 reviews) is a good example of a physical sunscreen done well: mineral-filter based, formulated for sensitive skin, and cosmetically pleasant enough that people actually wear it daily, which is the only property that matters in the end.",
+   "new": "The **Dr.G Green Mild Up Sun+ SPF50+ PA++++** is a good example of a physical sunscreen done well: mineral-filter based, formulated for sensitive skin, and cosmetically pleasant enough that people actually wear it daily, which is the only property that matters in the end.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "things-i-wish-i-knew-before-buying-korean-skincare",
+   "old": "If you want a tone-up finish so the sunscreen doubles as light coverage, the **Goodal Heartleaf Calming Tone Up Sun Cream** (4.5 stars across roughly 6,400 reviews) does that job.",
+   "new": "If you want a tone-up finish so the sunscreen doubles as light coverage, the **Goodal Heartleaf Calming Tone Up Sun Cream** does that job.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "how-do-you-build-a-korean-skincare-routine-youll-actually-stick-to",
+   "old": "If you prefer mineral, the **Dr.G Green Mild Up Sun+ SPF50+ PA++++** (roughly 9,200 reviews) is the sensitive-skin standby, with the white cast that every real mineral formula trades for its filters.",
+   "new": "If you prefer mineral, the **Dr.G Green Mild Up Sun+ SPF50+ PA++++** is the sensitive-skin standby, with the white cast that every real mineral formula trades for its filters.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "how-do-you-build-a-korean-skincare-routine-youll-actually-stick-to",
+   "old": "If you want something hydrating and gentle, the **Jumiso AWE Sun Airy-fit Daily Moisturizer SPF50+ PA++++** (roughly 7,800 reviews) is a lightweight chemical-filter option that layers well.",
+   "new": "If you want something hydrating and gentle, the **Jumiso AWE Sun Airy-fit Daily Moisturizer SPF50+ PA++++** is a lightweight chemical-filter option that layers well.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "how-to-evaluate-your-k-beauty-routine-without-guessing",
+   "old": "For barrier repair specifically, the **Illiyoon Ceramide Ato Concentrate Cream** (roughly 15,200 reviews) is the one that keeps coming up for good reason.",
+   "new": "For barrier repair specifically, the **Illiyoon Ceramide Ato Concentrate Cream** is the one that keeps coming up for good reason.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "why-simplifying-your-skincare-routine-actually-works",
+   "old": "The **Goodal Heartleaf Calming Tone Up Sun Cream SPF50+ PA++++** (4.5 stars across roughly 6,400 reviews) is a good fit for this: the heartleaf keeps it calming on a compromised barrier, and the light tone-up coverage means you can skip foundation, which is one less thing on your face.",
+   "new": "The **Goodal Heartleaf Calming Tone Up Sun Cream SPF50+ PA++++** is a good fit for this: the heartleaf keeps it calming on a compromised barrier, and the light tone-up coverage means you can skip foundation, which is one less thing on your face.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "why-simplifying-your-skincare-routine-actually-works",
+   "old": "For the second cleanse, the **Illiyoon Ceramide Ato Foam Cleanser** (4.6 stars across roughly 5,800 reviews) does the actual washing without stripping, so your cleanser isn't undoing the simple routine you just built.",
+   "new": "For the second cleanse, the **Illiyoon Ceramide Ato Foam Cleanser** does the actual washing without stripping, so your cleanser isn't undoing the simple routine you just built.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "why-simplifying-your-skincare-routine-actually-works",
+   "old": "If you would rather have a straight mineral filter, the **Dr.G Green Mild Up Sun+** (roughly 9,200 reviews) is the sensitive-skin standby.",
+   "new": "If you would rather have a straight mineral filter, the **Dr.G Green Mild Up Sun+** is the sensitive-skin standby.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "how-to-get-rid-of-hyperpigmentation-k-beauty-guide",
+   "old": "*Grounded pick:* the **Illiyoon Ceramide Ato Concentrate Cream** (roughly 15,200 reviews) is the highest-reviewed ceramide cream in our catalog and has no actives in it to complicate a recovery week.",
+   "new": "*Grounded pick:* the **Illiyoon Ceramide Ato Concentrate Cream** has no exfoliating acids, retinoids or vitamin C in it to complicate a recovery week.",
+   "why": "a rating or review count the catalog does not hold; a popularity claim with no measurement behind it; second-model review: say what the ingredient list shows, not what the product name suggests"
+  },
+  {
+   "slug": "how-to-get-rid-of-hyperpigmentation-k-beauty-guide",
+   "old": "*Grounded pick:* the **Neogen Dermalogy Real Vita C Serum** (4.5 stars across roughly 4,200 reviews), which leads with sodium ascorbyl phosphate as its second ingredient.",
+   "new": "*Grounded pick:* the **Neogen Dermalogy Real Vita C Serum**, which leads with sodium ascorbyl phosphate as its second ingredient.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "how-to-get-rid-of-hyperpigmentation-k-beauty-guide",
+   "old": "*Grounded pick:* the **Numbuzin No.3 Skin Softening Serum** (roughly 8,200 reviews) is a quiet workhorse for pigmentation-prone skin.",
+   "new": "*Grounded pick:* the **Numbuzin No.3 Skin Softening Serum** is a quiet workhorse for pigmentation-prone skin.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "how-to-get-rid-of-hyperpigmentation-k-beauty-guide",
+   "old": "The **Real Barrier Cicarelief Cream** (4.7 stars across roughly 6,200 reviews) is the pick if redness is the dominant symptom.",
+   "new": "The **Real Barrier Cicarelief Cream** is the pick if redness is the dominant symptom.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "best-korean-skincare-for-pie-acne-scars-and-texture",
+   "old": "The [iUNIK Tea Tree Relief Serum](https://www.seoulsister.com/products/7c0d7bc2-3163-47ee-a574-93c52790699f) (roughly 6,100 reviews) is the strongest all-round pick because it calms inflammation without adding the congestion that worsens the whiteheads PIE often comes with.",
+   "new": "The [iUNIK Tea Tree Relief Serum](https://www.seoulsister.com/products/7c0d7bc2-3163-47ee-a574-93c52790699f) is the strongest all-round pick because it calms inflammation without adding the congestion that worsens the whiteheads PIE often comes with.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "best-korean-skincare-for-pie-acne-scars-and-texture",
+   "old": "[Etude SoonJung pH 5.5 Relief Toner](https://www.seoulsister.com/products/776ef10e-568f-486e-b36a-f72324622ee4) (roughly 7,200 reviews) is the strongest default: panthenol-led, minimal, and pH-appropriate for a barrier that is inflamed.",
+   "new": "[Etude SoonJung pH 5.5 Relief Toner](https://www.seoulsister.com/products/776ef10e-568f-486e-b36a-f72324622ee4) is the strongest default: panthenol-led, minimal, and pH-appropriate for a barrier that is inflamed.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "best-korean-skincare-for-pie-acne-scars-and-texture",
+   "old": "**Top pick: [Real Barrier Extreme Cream](https://www.seoulsister.com/products/dca4a38b-ea65-403b-a3fc-d3649f0f94db)**, 5.0 stars across roughly 11,500 reviews, the highest-reviewed moisturizer in this whole category in our catalog.",
+   "new": "**Top pick: [Real Barrier Extreme Cream](https://www.seoulsister.com/products/dca4a38b-ea65-403b-a3fc-d3649f0f94db)**.",
+   "why": "a rating or review count the catalog does not hold; a popularity claim with no measurement behind it"
+  },
+  {
+   "slug": "best-korean-skincare-for-pie-acne-scars-and-texture",
+   "old": "**[Beplain Cicaful Calming Cream](https://www.seoulsister.com/products/045b3f3d-ce3a-4790-888c-ee34bd2100b2)** (4.7 stars, roughly 5,400 reviews) is the equivalent pick if you want a cream texture that is still light.",
+   "new": "**[Beplain Cicaful Calming Cream](https://www.seoulsister.com/products/045b3f3d-ce3a-4790-888c-ee34bd2100b2)** is the equivalent pick if you want a cream texture that is still light.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "best-korean-skincare-for-pie-acne-scars-and-texture",
+   "old": "[Real Barrier Extreme Cream](https://www.seoulsister.com/products/dca4a38b-ea65-403b-a3fc-d3649f0f94db) (roughly 11,500 reviews) for most people, because barrier repair is the mechanism that matters here.",
+   "new": "[Real Barrier Extreme Cream](https://www.seoulsister.com/products/dca4a38b-ea65-403b-a3fc-d3649f0f94db) for most people, because barrier repair is the mechanism that matters here.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "best-korean-skincare-for-pie-acne-scars-and-texture",
+   "old": "**Redness-targeted alternate: [Heimish Matcha Biome Redness Relief Hydrating Toner](https://www.seoulsister.com/products/e9519569-e600-46b8-9cf2-39892f695155)**, 4.6 stars across roughly 5,400 reviews.",
+   "new": "**Redness-targeted alternate: [Heimish Matcha Biome Redness Relief Hydrating Toner](https://www.seoulsister.com/products/e9519569-e600-46b8-9cf2-39892f695155)**.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "best-korean-skincare-for-pie-acne-scars-and-texture",
+   "old": "**If whiteheads are the bigger problem: [Dr.G R.E.D Blemish Clear Soothing Toner](https://www.seoulsister.com/products/da1d31f3-9081-44c9-b083-d3793d82db9c)**, 4.6 stars across roughly 5,600 reviews.",
+   "new": "**If whiteheads are the bigger problem: [Dr.G R.E.D Blemish Clear Soothing Toner](https://www.seoulsister.com/products/da1d31f3-9081-44c9-b083-d3793d82db9c)**.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "best-korean-skincare-for-pie-acne-scars-and-texture",
+   "old": "**Budget alternate: [Beauty of Joseon Glow Deep Serum: Rice + Alpha-Arbutin](https://www.seoulsister.com/products/f15f5eb0-5638-4222-aeac-9f88a6f466ca)**, 4.6 stars across roughly 5,800 reviews.",
+   "new": "**Budget alternate: [Beauty of Joseon Glow Deep Serum: Rice + Alpha-Arbutin](https://www.seoulsister.com/products/f15f5eb0-5638-4222-aeac-9f88a6f466ca)**.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "best-korean-skincare-for-pie-acne-scars-and-texture",
+   "old": "**If you are oily or breaking out: [iUNIK Centella Calming Gel Cream](https://www.seoulsister.com/products/58140efd-7245-4cbf-b568-05a8b67b35b7)**, 4.6 stars across roughly 5,800 reviews.",
+   "new": "**If you are oily or breaking out: [iUNIK Centella Calming Gel Cream](https://www.seoulsister.com/products/58140efd-7245-4cbf-b568-05a8b67b35b7)**.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "best-korean-skincare-for-pie-acne-scars-and-texture",
+   "old": "**Sensitive-skin alternate: [ONE THING Centella Asiatica Extract](https://www.seoulsister.com/products/560ecfd7-54bd-43a2-ad2c-9281c1daab39)**, 4.6 stars across roughly 2,800 reviews.",
+   "new": "**Sensitive-skin alternate: [ONE THING Centella Asiatica Extract](https://www.seoulsister.com/products/560ecfd7-54bd-43a2-ad2c-9281c1daab39)**.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "best-korean-skincare-for-pie-acne-scars-and-texture",
+   "old": "**Calming alternate: [Aestura A-Cica 365 Calming Cream](https://www.seoulsister.com/products/dae12afa-8d6b-46df-9cc9-39ef43bce674)**, 4.7 stars across roughly 6,100 reviews.",
+   "new": "**Calming alternate: [Aestura A-Cica 365 Calming Cream](https://www.seoulsister.com/products/dae12afa-8d6b-46df-9cc9-39ef43bce674)**.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "best-korean-skincare-for-pie-acne-scars-and-texture",
+   "old": "**Top pick: [Etude SoonJung pH 5.5 Relief Toner](https://www.seoulsister.com/products/776ef10e-568f-486e-b36a-f72324622ee4)**, 5.0 stars across roughly 7,200 reviews.",
+   "new": "**Top pick: [Etude SoonJung pH 5.5 Relief Toner](https://www.seoulsister.com/products/776ef10e-568f-486e-b36a-f72324622ee4)**.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "best-korean-skincare-for-pie-acne-scars-and-texture",
+   "old": "**Top pick: [iUNIK Tea Tree Relief Serum](https://www.seoulsister.com/products/7c0d7bc2-3163-47ee-a574-93c52790699f)**, 4.5 stars across roughly 6,100 reviews.",
+   "new": "**Top pick: [iUNIK Tea Tree Relief Serum](https://www.seoulsister.com/products/7c0d7bc2-3163-47ee-a574-93c52790699f)**.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "how-to-get-glass-skin-a-k-beauty-routine-that-works",
+   "old": "If your skin runs dry rather than combination, the **Illiyoon Ceramide Ato Concentrate Cream** (roughly 15,200 reviews, the most-reviewed moisturizer in our catalog) is the better call.",
+   "new": "If your skin runs dry rather than combination, the **Illiyoon Ceramide Ato Concentrate Cream** is the better call.",
+   "why": "a rating or review count the catalog does not hold; a popularity claim with no measurement behind it"
+  },
+  {
+   "slug": "how-to-get-glass-skin-a-k-beauty-routine-that-works",
+   "old": "**Niacinamide serum:** the **Numbuzin No.3 Skin Softening Serum** (roughly 8,200 reviews) pairs niacinamide with fermented ingredients that support turnover gently.",
+   "new": "**Niacinamide serum:** the **Numbuzin No.3 Skin Softening Serum** pairs niacinamide with fermented ingredients that support turnover gently.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "how-to-get-glass-skin-a-k-beauty-routine-that-works",
+   "old": "**Gel-cream to seal:** the **iUNIK Centella Calming Gel Cream** (4.6 stars across roughly 5,800 reviews) gives you the seal without the weight.",
+   "new": "**Gel-cream to seal:** the **iUNIK Centella Calming Gel Cream** gives you the seal without the weight.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "how-to-get-glass-skin-a-k-beauty-routine-that-works",
+   "old": "These come from our catalog, filtered for real review volume rather than rating alone, because a 5-star average from nine people is noise.",
+   "new": "These come from our catalog.",
+   "why": "a popularity claim with no measurement behind it"
+  },
+  {
+   "slug": "how-to-get-glass-skin-a-k-beauty-routine-that-works",
+   "old": "**Hydrating toner (the layering step):** the **Isntree Hyaluronic Acid Toner Plus** (roughly 8,400 reviews) is the workhorse here.",
+   "new": "**Hydrating toner (the layering step):** the **Isntree Hyaluronic Acid Toner Plus** is the workhorse here.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "how-to-get-glass-skin-a-k-beauty-routine-that-works",
+   "old": "The **Haruharu Wonder Black Rice Hyaluronic Toner** (roughly 7,200 reviews) is the cheaper equivalent.",
+   "new": "The **Haruharu Wonder Black Rice Hyaluronic Toner** is the cheaper equivalent.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "retinol-or-retinal-how-to-pick-the-right-one",
+   "old": "On retinol nights especially, you don't want a stripping cleanser undoing your barrier work, a non-stripping option like the **[Illiyoon Ceramide Ato Foam Cleanser](https://www.seoulsister.com/best/cleansers)** (4.6 stars across roughly 5,800 reviews) or a gentle micellar water like **[Bioderma Sensibio H2O](https://www.seoulsister.com/best/cleansers)** (fragrance-free, made for sensitive skin) keeps things calm.",
+   "new": "On retinol nights especially, you don't want a stripping cleanser undoing your barrier work, a non-stripping option like the **[Illiyoon Ceramide Ato Foam Cleanser](https://www.seoulsister.com/best/cleansers)** or a gentle micellar water like **[Bioderma Sensibio H2O](https://www.seoulsister.com/best/cleansers)** (fragrance-free, made for sensitive skin) keeps things calm.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "late-20s-skin-spiral-your-barrier-is-probably-wrecked",
+   "old": "If you want another option in the same gentle lane, the **Illiyoon Ceramide Ato Foam Cleanser** (4.6 stars across roughly 5,800 reviews) is a solid alternative.",
+   "new": "If you want another option in the same gentle lane, the **Illiyoon Ceramide Ato Foam Cleanser** is a solid alternative.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "late-20s-skin-spiral-your-barrier-is-probably-wrecked",
+   "old": "The **Illiyoon Ceramide Ato Concentrate Cream** (with roughly 15,200 reviews) is the workhorse here.",
+   "new": "The **Illiyoon Ceramide Ato Concentrate Cream** is the workhorse here.",
+   "why": "a rating or review count the catalog does not hold"
+  },
+  {
+   "slug": "best-korean-skincare-for-dark-spots-what-actually-fades-hyperpigmentation-and-whats-just-marketing",
+   "old": "| Ingredient | Grounded pick | Reviews |\n|---|---|---|\n| Niacinamide | Numbuzin No.3 Skin Softening Serum | ~8,200 |\n| Vitamin C (derivative) | Neogen Dermalogy Real Vita C Serum | ~4,200 |\n| Alpha-arbutin | Beauty of Joseon Glow Deep Serum: Rice + Alpha-Arbutin | ~5,800 |\n| Tranexamic acid | Numbuzin No.5+ Vitamin Concentrated Serum | ~5,400 |\n| Rice / ferment | Beauty of Joseon Glow Deep Serum (rice-led) | ~5,800 |",
+   "new": "| Ingredient | Grounded pick |\n|---|---|\n| Niacinamide | Numbuzin No.3 Skin Softening Serum |\n| Vitamin C (derivative) | Neogen Dermalogy Real Vita C Serum |\n| Alpha-arbutin | Beauty of Joseon Glow Deep Serum: Rice + Alpha-Arbutin |\n| Tranexamic acid | Numbuzin No.5+ Vitamin Concentrated Serum |\n| Rice / ferment | Beauty of Joseon Glow Deep Serum (rice-led) |",
+   "why": "the Reviews column: four of its five counts are not held by the catalog (the tranexamic acid row, about 5,400, is real and goes with the column)"
+  },
+  {
+   "slug": "best-korean-skincare-for-dark-spots-what-actually-fades-hyperpigmentation-and-whats-just-marketing",
+   "old": "These are from our catalog, filtered for verified listings with real review volume rather than rating alone, because sorting by stars alone surfaces a wall of 5.00 ratings from two people.",
+   "new": "These are from our catalog.",
+   "why": "a popularity claim with no measurement behind it"
+  }
+ ],
+ "fingerprints": {
+  "given-up-on-vitamin-c-heres-why-and-what-to-try": {
+   "content": {
+    "md5_before": "ebcb8ed4efe5bf491b716b86162a3089",
+    "md5_after": "dd47030da6505d3350bfca12864f0143",
+    "chars_before": 11427,
+    "chars_after": 11304
+   }
+  },
+  "do-korean-eye-patches-actually-work-a-realistic-guide-to-whats-worth-your-money": {
+   "content": {
+    "md5_before": "7c7f8cdf87f59393ed8c056185cb1e53",
+    "md5_after": "71b0b66ddc1b020b5af1eb3c9039409c",
+    "chars_before": 17698,
+    "chars_after": 17384
+   }
+  },
+  "the-7-minute-k-beauty-routine-that-actually-sticks": {
+   "content": {
+    "md5_before": "59139fcc9aa505eae7c3c7d5e4450c9b",
+    "md5_after": "30aef22c210ede94b10a8e41ccecea6a",
+    "chars_before": 10041,
+    "chars_after": 9854
+   }
+  },
+  "best-korean-skincare-for-pih-fade-post-acne-dark-spots": {
+   "content": {
+    "md5_before": "f3b855115422682390af6d9a9f771d20",
+    "md5_after": "5a79410867e3c09d71c32a1f49d0e56d",
+    "chars_before": 23407,
+    "chars_after": 23223
+   }
+  },
+  "beauty-of-joseon-aqua-fresh-sunscreen-full-review": {
+   "content": {
+    "md5_before": "1c4b91a45e9e3e44419245f2c375eeac",
+    "md5_after": "681f8b437adf4f707da4a3d52c77ab05",
+    "chars_before": 19853,
+    "chars_after": 19829
+   }
+  },
+  "oily-skin-routine-guide": {
+   "content": {
+    "md5_before": "48c1f2edcc2652842ddd6a5f9ec4910b",
+    "md5_after": "f8953b40e123bfcc9e26198ed7be2c11",
+    "chars_before": 12525,
+    "chars_after": 12427
+   }
+  },
+  "why-does-your-makeup-look-worse-over-korean-skincare-and-how-to-actually-fix-it": {
+   "content": {
+    "md5_before": "e2c9adb968abc00e0c8e2b6404070d9c",
+    "md5_after": "53f7077154af5ae8702523c1b2176876",
+    "chars_before": 12941,
+    "chars_after": 12810
+   }
+  },
+  "k-beauty-toners-the-ones-actually-worth-your-money": {
+   "content": {
+    "md5_before": "54bd9eded97a6372b7f94c78f7e7bd24",
+    "md5_after": "3030dc5d6004d1cf642e2d8d17f9860a",
+    "chars_before": 9998,
+    "chars_after": 9894
+   }
+  },
+  "how-to-fix-dehydrated-skin-with-a-korean-skincare-routine": {
+   "content": {
+    "md5_before": "f96da7f501db8c2bb5025f261aafe23a",
+    "md5_after": "5ed286b752ab00ccb657b69129cbfb43",
+    "chars_before": 10702,
+    "chars_after": 10637
+   }
+  },
+  "why-your-sebaceous-filaments-keep-coming-back-and-the-k-beauty-routine-that-finally-changed-mine": {
+   "content": {
+    "md5_before": "5c368328bd666236c7b661dd31f2fc8e",
+    "md5_after": "7ec9a91de8b3d495d6fbeae844f127d5",
+    "chars_before": 21480,
+    "chars_after": 21314
+   }
+  },
+  "how-to-tell-if-korean-skincare-is-fake-a-5-point-check-for-a": {
+   "content": {
+    "md5_before": "5dd4fd84a0f58636065ab9dc298fa41c",
+    "md5_after": "87307a1ff96f1d1a97952d6e224025be",
+    "chars_before": 11234,
+    "chars_after": 11128
+   }
+  },
+  "things-i-wish-i-knew-before-buying-korean-skincare": {
+   "content": {
+    "md5_before": "2ffa12289ba878ac310c54d7b0cd9e1b",
+    "md5_after": "14204f2f0d36ec93890ac1cab3675250",
+    "chars_before": 11022,
+    "chars_after": 10957
+   }
+  },
+  "how-do-you-build-a-korean-skincare-routine-youll-actually-stick-to": {
+   "content": {
+    "md5_before": "e5ed4616277c1d99feebc64619ba7917",
+    "md5_after": "8a6a10af322ce00e79ef8a0bedd70c99",
+    "chars_before": 9234,
+    "chars_after": 9186
+   }
+  },
+  "how-to-evaluate-your-k-beauty-routine-without-guessing": {
+   "content": {
+    "md5_before": "0da7a096b007eba4f42f78ca764402dc",
+    "md5_after": "7655dc3ccc050ac22940c76ba161e124",
+    "chars_before": 11343,
+    "chars_after": 11318
+   }
+  },
+  "why-simplifying-your-skincare-routine-actually-works": {
+   "content": {
+    "md5_before": "3f5acd61e2a825f9cbb81d70c78dc192",
+    "md5_after": "8f59f70a777be446c0d4e48fa8f1ec3b",
+    "chars_before": 9218,
+    "chars_after": 9112
+   }
+  },
+  "how-to-get-rid-of-hyperpigmentation-k-beauty-guide": {
+   "content": {
+    "md5_before": "7de7d0cf7518f084598e59de7fecd627",
+    "md5_after": "50d3589339203fa4d02e53168d1edf45",
+    "chars_before": 11758,
+    "chars_after": 11603
+   }
+  },
+  "best-korean-skincare-for-pie-acne-scars-and-texture": {
+   "content": {
+    "md5_before": "502dff28c9470f376570f2db42eb44b2",
+    "md5_after": "3823383e3868870638973f2e9a7d0701",
+    "chars_before": 20394,
+    "chars_after": 19853
+   }
+  },
+  "how-to-get-glass-skin-a-k-beauty-routine-that-works": {
+   "content": {
+    "md5_before": "d70e1e033d95ba4e9d385dd956513def",
+    "md5_after": "b9e5e89169bd402f01865a408b2822b4",
+    "chars_before": 13239,
+    "chars_after": 12945
+   }
+  },
+  "retinol-or-retinal-how-to-pick-the-right-one": {
+   "content": {
+    "md5_before": "603df198687b01fc81e7c4e631e3a607",
+    "md5_after": "edc4d2aaea987b662773e31c8eeadb81",
+    "chars_before": 10692,
+    "chars_after": 10651
+   }
+  },
+  "late-20s-skin-spiral-your-barrier-is-probably-wrecked": {
+   "content": {
+    "md5_before": "90884d271edef7162ab914d80c8dd7d0",
+    "md5_after": "2230c5e034fc98b68bb7d4ddf967cbdf",
+    "chars_before": 12691,
+    "chars_after": 12620
+   }
+  },
+  "best-korean-skincare-for-dark-spots-what-actually-fades-hyperpigmentation-and-whats-just-marketing": {
+   "content": {
+    "md5_before": "fe3b2429adf788081915e05692ea690e",
+    "md5_after": "8221b056610bdac1929c55014b862809",
+    "chars_before": 18962,
+    "chars_after": 18742
+   }
+  }
+ }
+}
