@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
 
     // Build query
     // Include `id` so we can fetch ingredient lists per product (LGAAS Blueprint 44).
-    const selectFields = 'id, name_en, brand_en, category, price_usd, rating_avg, description_en, image_url, sunscreen_type, white_cast, finish'
+    const selectFields = 'id, name_en, brand_en, category, price_usd, rating_avg, review_count, description_en, image_url, sunscreen_type, white_cast, finish'
 
     // Blueprint 44 follow-up (Gap 3c, Apr 21) — text-query ranking.
     //
@@ -370,12 +370,22 @@ export async function POST(request: NextRequest) {
     const formatted = (products || []).map(p => {
       const scoped = scopedById.get(p.id)
       const product: Record<string, unknown> = {
+        // The row these facts were read from, and its page. Without them a
+        // writer could only link a product to the general listing, which is
+        // what 18 published links and both posts of Nov 18 2026 did.
+        id: p.id,
+        url: `https://www.seoulsister.com/products/${p.id}`,
         name: p.name_en,
         brand: p.brand_en,
         category: p.category,
         us_price: scoped?.us ?? null,
         international_price: scoped?.international ?? null,
-        rating: p.rating_avg,
+        // A rating is only quotable with the number of reviews behind it and
+        // whose reviews they are (see src/lib/rating-source.ts). A rating
+        // with no count is not returned at all.
+        rating: (p.review_count ?? 0) > 0 ? p.rating_avg : null,
+        review_count: (p.review_count ?? 0) > 0 ? p.review_count : null,
+        rating_source: (p.review_count ?? 0) > 0 && p.rating_avg != null ? 'Olive Young' : null,
         description: p.description_en,
         image_url: p.image_url,
       }
