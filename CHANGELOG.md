@@ -4,6 +4,20 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.66.1 — A star rating is stored only with its review count (Nov 18 2026)
+
+**Found by a published post.** The new cleanser post quoted a product as "5 out of 5 on Olive Young". The catalog row held that rating with a review count of zero. 549 products did.
+
+**Cause.** The Olive Young importer reads the rating from the listing page and the count from the detail page. When the detail read fails it has a rating and no count, and `batch-processor.ts` wrote the missing count as `0` (`review_count` is NOT NULL). "Unknown" became "nobody has reviewed this". The September review-count backfill named this line and left it as separate work; 240 more rows were written between March and November, 65 of them in November.
+
+**Fix.**
+- `src/lib/pipeline/stored-rating.ts`: a rating is stored only with a count above zero. Both product inserts (`batch-processor.ts`, `backfill-trending.ts`) go through it. `tests/stored-rating.test.mjs` runs the function and fails if either insert writes the pair by hand; reverting the rule fails it.
+- `scripts/clear-ratings-without-counts.ts` (dry run by default, snapshot, guarded updates): 5 rows had a count in their import record and got it back; 544 had their rating cleared. The figures remain in `ss_product_staging.raw_data`. Zero rows now hold a rating with 0 reviews.
+
+**The two posts published the same day** were corrected against the catalog before or just after publishing (`ss-cleanser-post-replacements.json`, `ss-fungal-acne-post-replacements.json`); `scripts/apply-blog-faq-schema.ts` is new.
+
+**Not done.** `review_count` still cannot say "unknown": 1,014 rows hold 0 with no rating, and whether those are unreviewed or unread is not known. The importer's detail-page read still fails for some products; this stops the bad pair being stored, it does not make the read succeed. No second-model review was run on this change (no prompt or customer wording changed).
+
 ## v11.66.0 — The setup chat can look a product up for a member (Nov 17 2026)
 
 - **What happened.** The first member through the required setup chat arrived from a Google

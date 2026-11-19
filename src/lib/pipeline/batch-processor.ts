@@ -5,6 +5,7 @@
  * runs Sonnet extraction, deduplicates against ss_products, and inserts new records.
  */
 
+import { storedRating } from './stored-rating'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { extractProductData } from './extractor'
 import { CostTracker } from './cost-tracker'
@@ -230,8 +231,7 @@ async function insertProduct(
       volume_display: data.volume_display,
       price_krw: data.price_krw != null ? Math.round(data.price_krw) : null,
       price_usd: data.price_usd,
-      rating_avg: data.rating_avg,
-      review_count: data.review_count != null ? Math.round(data.review_count) : 0,
+      ...storedRating(data.rating_avg, data.review_count),
       pao_months: data.pao_months != null ? Math.round(data.pao_months) : null,
       shelf_life_months: data.shelf_life_months != null ? Math.round(data.shelf_life_months) : 30,
       image_url: data.image_url,

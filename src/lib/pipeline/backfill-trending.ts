@@ -10,6 +10,7 @@
  * Vercel cron timeout.
  */
 
+import { storedRating } from './stored-rating'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { RawProductData } from './types'
 import { extractProductData } from './extractor'
@@ -435,8 +436,7 @@ async function insertProduct(
       volume_display: data.volume_display,
       price_krw: data.price_krw,
       price_usd: data.price_usd,
-      rating_avg: data.rating_avg,
-      review_count: data.review_count,
+      ...storedRating(data.rating_avg, data.review_count),
       pao_months: data.pao_months,
       shelf_life_months: data.shelf_life_months,
       image_url: data.image_url,
