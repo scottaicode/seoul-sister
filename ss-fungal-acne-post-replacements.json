@@ -1,0 +1,192 @@
+{
+  "made_at": "2026-11-18",
+  "made_by": "a Seoul Sister session",
+  "note": "Pairs for one UNPUBLISHED LGAAS draft (lgaas_blog_posts id c4261955-800b-4822-acbb-fcf228167122, status approved). Apply IN ORDER to content BEFORE publishing; each old occurs exactly once at the point it is applied. Then set excerpt to excerpt_after and faq_schema to faq_schema_after. Ingredient facts were read from the Seoul Sister catalog on Nov 18 2026. A second-model review (Opus, refute brief) ran on the first 10-pair version and found 11 defects, including a product link with a mistyped id; this 22-pair version folds them in and has not itself been reviewed by a second model.",
+  "replacements": [
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "heading level differs from the other posts",
+      "old": "### Quick Answer",
+      "new": "## Quick Answer"
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "Quick Answer: sodium hyaluronate is 7th, not at the top",
+      "old": "The top of the list is snail secretion filtrate, betaine, and humectants like sodium hyaluronate, none of which are in the families people avoid for Malassezia.",
+      "new": "The list opens with snail secretion filtrate, betaine and butylene glycol, and also carries humectants like sodium hyaluronate, none of which are in the families people avoid for Malassezia."
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "first-person voice",
+      "old": "You're hunting for a short list of word families I'll give you below.",
+      "new": "You're hunting for a short list of word families, given below."
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "mechanism stated as certain",
+      "old": "Some acne antibiotics can actually make it worse by clearing out the bacteria the yeast competes with.",
+      "new": "Antibiotics prescribed for acne can make it worse, likely by clearing out bacteria the yeast competes with."
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "any doctor can diagnose and prescribe",
+      "old": "A dermatologist confirms Malassezia folliculitis and treats it with an antifungal.",
+      "new": "A doctor, ideally a dermatologist, confirms Malassezia folliculitis and treats it with an antifungal."
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "'support that treatment' stated as fact; an antifungal cream is a cream",
+      "old": "Skincare can support that treatment by not throwing fuel on the fire, but no essence, serum, or cream treats or cures it. If those bumps",
+      "new": "Skincare can stay out of the way by not adding likely fuel, but no cosmetic essence, serum, or moisturizer treats or cures it. If those bumps"
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "first-person voice",
+      "old": "It's a petri-dish finding, and I want to be straight about that: no clinical trial",
+      "new": "It's a petri-dish finding, and to be clear: no clinical trial"
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "'their esters' also covered the ester the post calls fine",
+      "old": "fatty acids by name (lauric, myristic, palmitic, stearic, oleic), their esters, and polysorbates (polysorbate 20, 60, 80).",
+      "new": "fatty acids by name (lauric, myristic, palmitic, stearic, oleic), esters of those fatty acids (names ending in laurate, myristate, palmitate, stearate or oleate), and polysorbates (polysorbate 20, 60, 80)."
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "'usually considered fine' given with no basis",
+      "old": "The ones usually considered fine even on strict lists are squalane, caprylic/capric triglyceride, and mineral oil.",
+      "new": "By the same lab logic, the ones usually treated as fine are squalane and mineral oil, which are not fatty acids at all, and caprylic/capric triglyceride, whose chains are shorter than the range the yeast grows on. That reasoning comes from avoid-list communities, not from a clinical study."
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "first-person voice",
+      "old": "Ferment ingredients like galactomyces are genuinely disputed, and I'm not going to rule either way on them, just flag that reasonable people land in different places.",
+      "new": "Ferment ingredients like galactomyces are genuinely disputed, and this post doesn't rule either way on them; reasonable people land in different places."
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "first-person voice",
+      "old": "Here's what shows up when you actually read lists we hold, and I'm going to show you what's on them rather than stamp any of them \"safe.\"",
+      "new": "Here's what shows up when you actually read lists we hold, shown as they are, with no \"safe\" stamps."
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "first example had no link to its product page",
+      "old": "- COSRX Advanced Snail 96 Mucin Power Essence: the list we hold is built",
+      "new": "- [COSRX Advanced Snail 96 Mucin Power Essence](https://www.seoulsister.com/products/09dabfa8-b373-4006-9bbc-2393fb2743db): the list we hold is built"
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "examples: a non-Korean product in a post about Korean labels; generic links",
+      "old": "- [SoonJung pH 5.6 Cleansing Milk](https://www.seoulsister.com/products) by Etude: this one does contain things from those families. Reading its verified list, there's [caprylic/capric triglyceride](https://www.seoulsister.com/ingredients) (one of the usually-fine ones) but also Helianthus Annuus (sunflower) seed oil, which is a plant oil and exactly the kind of entry an avoid-list flags. Worth noting it's a cleanser, so it's on your skin briefly and rinses off, which some people weigh differently than a leave-on.\n- [Squalane Cleanser](https://www.seoulsister.com/products) by The Ordinary: the standout here is squalane at over 26%, which is on the usually-fine list, plus caprylic/capric triglyceride and coco-caprylate/caprate. It also carries sucrose stearate and sucrose laurate, which are fatty-acid esters. So even this one isn't a blanket \"nothing to see,\" it's a \"here's what's on it, you decide.\"\n\nSee the pattern? The snail essence happens to come up clean on the families we're checking. The two cleansers each have entries worth a second look.",
+      "new": "- [Beauty of Joseon Glow Serum: Propolis + Niacinamide](https://www.seoulsister.com/products/e9e4db3a-e589-44a5-a2de-a7edf43f0629): the list we hold includes tamanu seed oil (Calophyllum inophyllum), a plant oil, and polyglyceryl-10 laurate, an ester of lauric acid. Both are the kind of entry an avoid-list flags.\n- [Illiyoon Ceramide Ato Concentrate Cream](https://www.seoulsister.com/products/aeb68155-76a8-47aa-8255-967475237633): a rich cream, and its list shows it. Stearic, palmitic and myristic acid all appear by name, along with polysorbate 20 and soybean and canola oils.\n- [Etude SoonJung pH 5.6 Cleansing Milk](https://www.seoulsister.com/products/15aec0bf-1ac7-4119-9d19-f9993e13ca26): caprylic/capric triglyceride (one of the usually-fine ones) sits beside sunflower seed oil, a plant oil an avoid-list flags. It is a cleanser, so it rinses off, which some people weigh differently than a leave-on.\n\nSee the pattern? The snail essence happens to come up clean on the families we're checking. The other three each have entries worth a second look."
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "self-ruling-out could delay a diagnosis",
+      "old": "If your bumps have blackheads, vary in size, and respond at all to normal acne care, you're probably not dealing with Malassezia, and swapping to an avoid-list routine won't do much.",
+      "new": "If your bumps have blackheads, vary in size, and respond to normal acne care, ordinary acne is the likelier story, and an avoid-list routine probably won't change much. If you can't tell, or it's a mix, that's a question for a doctor."
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "link pointed at a different post; first-person authorship claim",
+      "old": "and I wrote the whole thing up separately in [Did COSRX Snail Mucin Break You Out? Here's Why](https://www.seoulsister.com/blog/why-does-my-skincare-keep-making-my-skin-worse).",
+      "new": "and that is covered separately in [Did COSRX Snail Mucin Break You Out? Here's Why](https://www.seoulsister.com/blog/did-cosrx-snail-mucin-break-you-out-heres-why)."
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "Yuri: promised automatic checking and remembering; free week is for first-time members",
+      "old": "Checking every product in a routine against your personal avoid-list, every time you add something new, gets old fast. That's the kind of grunt work Yuri handles on Seoul Sister: tell her what you're avoiding and she'll check a product's full ingredient list against it, and remember it for the next product you're curious about. You can start a free account from the [homepage](https://www.seoulsister.com) and the first week's free with no card, which is plenty of time to run your whole shelf.",
+      "new": "Doing it for every product on your shelf gets old. On Seoul Sister you can tell Yuri what you're avoiding and ask her to check a product against it. She reads the full ingredient list we hold, or the label if you send her a photo of the back. You can start a free account from the [homepage](https://www.seoulsister.com), and a first-time member's first week is free with no card."
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "over-the-counter antifungal washes exist",
+      "old": "not proof it clears or prevents fungal acne, which no over-the-counter product does.",
+      "new": "not proof it clears or prevents fungal acne; no essence or moisturizer does that."
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "'the only way to know for sure' overstated; visible text differed from the schema",
+      "old": "Because they overlap, the only way to know for sure is a dermatologist, who can confirm it.",
+      "new": "Because they overlap, a doctor, ideally a dermatologist, is the one who can tell them apart."
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "FAQ: 'support that treatment' as fact; 'cream'; any doctor",
+      "old": "No. Malassezia folliculitis needs a diagnosis and an antifungal from a dermatologist, and skincare choices support that treatment rather than replace it. Avoiding the ingredient families Malassezia feeds on in a lab is a sensible precaution during a flare, but no essence, serum, or cream treats or cures the condition on its own.",
+      "new": "No. Malassezia folliculitis needs a diagnosis and an antifungal from a doctor, and skincare choices sit alongside that treatment, not in place of it. Avoiding the ingredient families Malassezia feeds on in a lab is a sensible precaution during a flare, but no cosmetic essence, serum, or moisturizer treats or cures the condition."
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "visible FAQ differed from the schema; first person",
+      "old": "This one is genuinely disputed and I won't rule either way.",
+      "new": "This one is genuinely disputed."
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "Bottom Line: same ester wording",
+      "old": "Scan for plant oils, named fatty acids, their esters, and polysorbates",
+      "new": "Scan for plant oils, named fatty acids, esters of those fatty acids, and polysorbates"
+    },
+    {
+      "slug": "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean",
+      "field": "content",
+      "finding": "Bottom Line: any doctor",
+      "old": "a dermatologist and an antifungal come first, skincare second.",
+      "new": "a doctor's diagnosis comes first, skincare second."
+    }
+  ],
+  "fingerprints": {
+    "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean": {
+      "content": {
+        "md5_before": "78758776bd45f9e72c2877befabe7b79",
+        "md5_after": "dca4cbafc757008305f9775ba1c32a7c"
+      }
+    }
+  },
+  "excerpt_after": {
+    "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean": "Snail mucin keeps coming up in fungal acne threads, so this post reads the full COSRX ingredient list instead of answering from reputation. Here's what's on it, what fungal acne actually is, and how to read any Korean label for yourself."
+  },
+  "faq_schema_after": {
+    "is-snail-mucin-fungal-acne-safe-how-to-read-any-korean": [
+      {
+        "question": "Is COSRX snail mucin fungal acne safe?",
+        "answer": "By the common screening rules, nothing on the ingredient list Seoul Sister holds for COSRX Advanced Snail 96 Mucin Power Essence falls into the plant-oil, fatty-acid, or polysorbate families people avoid for Malassezia. The list is built on snail secretion filtrate, betaine, and humectants. That's a label observation and a reasonable precaution, not proof it clears or prevents fungal acne; no essence or moisturizer does that."
+      },
+      {
+        "question": "How do I know if I have fungal acne or regular acne?",
+        "answer": "Fungal acne (Malassezia folliculitis) tends to show up as small, same-sized, itchy bumps on the forehead, chest, back, or shoulders, with no blackheads, that haven't improved on normal acne treatment. Regular acne varies in size, often includes blackheads and whiteheads, and usually responds at least somewhat to acne care. Because they overlap, a doctor, ideally a dermatologist, is the one who can tell them apart."
+      },
+      {
+        "question": "Can skincare alone clear fungal acne?",
+        "answer": "No. Malassezia folliculitis needs a diagnosis and an antifungal from a doctor, and skincare choices sit alongside that treatment, not in place of it. Avoiding the ingredient families Malassezia feeds on in a lab is a sensible precaution during a flare, but no cosmetic essence, serum, or moisturizer treats or cures the condition."
+      },
+      {
+        "question": "Are ferment ingredients like galactomyces fungal acne safe?",
+        "answer": "This one is genuinely disputed. Some people with Malassezia folliculitis avoid ferments like galactomyces as a precaution, while others use them without issue, and there's no clinical trial settling it. If you're in an active flare and want to play it safe, it's reasonable to skip them until you see how your skin behaves."
+      }
+    ]
+  }
+}
