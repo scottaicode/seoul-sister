@@ -1,0 +1,140 @@
+{
+  "made_at": "2026-11-18",
+  "made_by": "a Seoul Sister session",
+  "note": "Pairs for one post, published Nov 18 2026 (Pacific). Apply IN ORDER to the body (LGAAS: content). Each old occurs exactly once at the point it is applied. Ingredient facts and Olive Young figures were read from ss_products / ss_product_ingredients on Nov 18 2026. faq_schema is replaced whole with faq_schema_after. A second-model review (Opus, refute brief) ran on the first version of these pairs on Nov 18 2026 and found 11 defects; this version folds all of them in and has not itself been reviewed by a second model.",
+  "replacements": [
+    {
+      "slug": "best-korean-cleanser-for-every-skin-type-and-how-to-tell",
+      "field": "content",
+      "finding": "Quick Answer: \"fragrance-free\" stronger than the record; midday oil stated as a sign of a harsh cleanser",
+      "old": "and a fragrance-free low-pH formula for sensitive. If your skin feels tight, squeaky, or stings after washing, or if you're oilier by midday, your cleanser is too harsh and it's working against you.",
+      "new": "and a low-pH formula with no added fragrance for sensitive. If your skin feels tight, squeaky, or stings after washing, your cleanser is likely too harsh for you."
+    },
+    {
+      "slug": "best-korean-cleanser-for-every-skin-type-and-how-to-tell",
+      "field": "content",
+      "finding": "the oil-cleanse mention had no link to the companion post",
+      "old": "you oil cleanse first, and we covered that separately.",
+      "new": "you oil cleanse first, and we covered that in [the cleansing-oil post](https://www.seoulsister.com/blog/best-korean-cleansing-oils-for-every-skin-type-2026)."
+    },
+    {
+      "slug": "best-korean-cleanser-for-every-skin-type-and-how-to-tell",
+      "field": "content",
+      "finding": "oil glands \"overcompensate\" stated as fact",
+      "old": "When you strip those lipids, two things happen: your skin loses moisture and tightens up, and your oil glands often overcompensate by pumping out more sebum. That's the midday grease you're fighting. You're not oily because you're not cleaning enough. You might be oily because you're cleaning too hard.",
+      "new": "When you strip those lipids, your skin loses moisture and tightens up. Some people also notice more shine by midday after a harsh wash. The evidence that oil glands \"overcompensate\" is thin, so treat that as a pattern to test on your own skin, not a law. Either way, washing harder is not the fix for midday oil."
+    },
+    {
+      "slug": "best-korean-cleanser-for-every-skin-type-and-how-to-tell",
+      "field": "content",
+      "finding": "alkalinity given as the cause of foam; recovery and \"without that disruption\" overstated",
+      "old": "A lot of traditional foaming cleansers run alkaline, up around pH 9 or 10, because that's what makes them foam aggressively. Washing at that pH disrupts your acid mantle and takes hours to recover from. A low-pH cleanser (roughly 5 to 6) cleans without that disruption.",
+      "new": "A lot of traditional foaming cleansers, especially soap-based ones, run alkaline, up around pH 9 or 10. Washing at that pH disrupts your acid mantle, and skin can take a few hours to return to normal. A low-pH cleanser (roughly 5 to 6) cleans with much less of that disruption."
+    },
+    {
+      "slug": "best-korean-cleanser-for-every-skin-type-and-how-to-tell",
+      "field": "content",
+      "finding": "example surfactant was an emulsifier in the pick that contains it",
+      "old": "amino-acid-based surfactants like sodium cocoyl glycinate or sodium stearoyl glutamate, clean well",
+      "new": "amino-acid-based surfactants like sodium cocoyl glycinate or sodium lauroyl glutamate, clean well"
+    },
+    {
+      "slug": "best-korean-cleanser-for-every-skin-type-and-how-to-tell",
+      "field": "content",
+      "finding": "first-person verification claim",
+      "old": "That's the whole reason I pick these from the full INCI and not from the product name, because",
+      "new": "That's the whole reason these picks come from the full INCI and not from the product name, because"
+    },
+    {
+      "slug": "best-korean-cleanser-for-every-skin-type-and-how-to-tell",
+      "field": "content",
+      "finding": "dry pick: rating from 3 reviews, generic link, \"haven't read the list\" though we hold it",
+      "old": "The [ma:nyo Pure Soybean Cleansing Milk](https://www.seoulsister.com/products) is a milk-texture cleanser built around soybean extract, and milk cleansers in general are good for dry and mature skin because they lean on emollients rather than aggressive foaming. It holds a 5 out of 5 rating on Olive Young. One honest note: I haven't read this one's full INCI line by line here, so if fragrance is a dealbreaker for you, check the full list on the product page before you commit.",
+      "new": "The [ma:nyo Pure Soybean Cleansing Milk](https://www.seoulsister.com/products/91cee97d-d921-4f7b-b959-55f8f54596a4) is a milk-texture cleanser, and milk cleansers suit dry skin because they lean on emollients instead of foam. Its list backs that up: an emollient ester and sunflower seed oil near the top do the cleansing, with ceramides, cholesterol and panthenol behind them. The soybean extract in the name is there at 100ppm, so it is the emollients doing the work, not the soy. The list we hold shows no added fragrance. The 200ml set listing, which has the same ingredient list on our record, holds 4.7 across 40 reviews on Olive Young."
+    },
+    {
+      "slug": "best-korean-cleanser-for-every-skin-type-and-how-to-tell",
+      "field": "content",
+      "finding": "oily and combination skin had no pick",
+      "old": "**Oily and combination skin: a low-pH gel or foam, but gently.** For oily and combo skin, the move is a low-pH water-based cleanser that controls oil without triggering the overproduction cycle I described above. This is also the one place a lightly foaming gel makes sense, because combo skin can handle a bit more cleansing in the T-zone. I'm not going to name a specific gel here that I haven't verified the ingredients on, because naming a plausible-sounding product from memory is exactly how people end up with a cleanser that's harsher than the one they're replacing. If your skin is oily, sensitive, and acne-prone all at once",
+      "new": "**Oily skin: a low-pH gel that cleans without the squeak.** The [Haruharu Wonder Black Rice Moisture 5.5 Soft Cleansing Gel](https://www.seoulsister.com/products/6ac3c9f3-430f-470c-8ad5-4851717d3c4c) puts its pH in the name. Its main cleanser is coco-betaine, a mild amphoteric surfactant, with glycerin second on the list. Further down, side by side, sit an amino-acid surfactant (potassium cocoyl glycinate) and a soap (potassium cocoate). It also carries several plant extracts, including Japanese pepper and usnea lichen, which is worth knowing if botanicals bother you. The list we hold shows no added fragrance. It holds 4.7 across 377 reviews on Olive Young.\n\n**Combination skin: a light foam built on amino-acid surfactants.** The [Torriden Dive In Low Molecular Hyaluronic Acid Cleansing Foam](https://www.seoulsister.com/products/cceb1b8b-b39d-4b53-84b3-94549bf1712a) uses sodium cocoyl glycinate and sodium lauroyl glutamate, the gentler family described above, right after water and glycerin, with panthenol and allantoin behind them. A foam like this suits skin that is oily in the T-zone and drier on the cheeks. We don't hold a pH figure for it, so this pick rests on its surfactants. The list shows no added fragrance, but it does include witch hazel and chamomile extracts, which is worth knowing if botanicals bother you. It holds 4.7 across 1,158 reviews on Olive Young.\n\nIf your skin is oily, sensitive, and acne-prone all at once"
+    },
+    {
+      "slug": "best-korean-cleanser-for-every-skin-type-and-how-to-tell",
+      "field": "content",
+      "finding": "sensitive pick: generic link, first-person claim, emulsifier called a surfactant, availability",
+      "old": "For sensitive skin, the [Etude SoonJung pH 5.6 Cleansing Milk](https://www.seoulsister.com/products) is the one I'd point to, and I can say that with confidence because I've read its full ingredient list. It's built on glycerin, caprylic/capric triglyceride, and sunflower seed oil for gentle cleansing, with panthenol for soothing and sodium stearoyl glutamate as a mild amino-acid surfactant. The pH is right there in the name at 5.6, which is exactly where you want to be. That lineup is about as low-drama as a cleanser gets.",
+      "new": "For sensitive skin, the [Etude SoonJung pH 5.6 Cleansing Milk](https://www.seoulsister.com/products/15aec0bf-1ac7-4119-9d19-f9993e13ca26) is the pick, chosen from its full ingredient list. It's built on glycerin, caprylic/capric triglyceride, and sunflower seed oil for gentle cleansing, with panthenol further down. The pH is right there in the name at 5.6, close to skin's own. That lineup is about as low-drama as a cleanser gets, and the list shows no added fragrance. One caution: at our last check, on October 15, Olive Young Global no longer listed it, so it may take some looking."
+    },
+    {
+      "slug": "best-korean-cleanser-for-every-skin-type-and-how-to-tell",
+      "field": "content",
+      "finding": "Bioderma: not Korean, \"5 out of 5\" with zero reviews on record, list not read",
+      "old": "**Barely-there sensitive or reactive days: a no-rinse micellar option.** On days when even a gentle milk feels like too much, or when you want a second cleanse without running water, [Bioderma Sensibio H2O](https://www.seoulsister.com/products) is a micellar water that lifts grime and makeup without rinsing. It's not Korean, but it earns its spot in a lot of sensitive-skin routines and it holds a 5 out of 5 on Olive Young. The brand describes it as fragrance-free; I'd still skim the full list on the product page if you react to anything specific, since I haven't read every line of it here.\n\n",
+      "new": ""
+    },
+    {
+      "slug": "best-korean-cleanser-for-every-skin-type-and-how-to-tell",
+      "field": "content",
+      "finding": "free week is for first-time members",
+      "old": "(the first week is free, no card)",
+      "new": "(a first-time member's first week is free, no card)"
+    },
+    {
+      "slug": "best-korean-cleanser-for-every-skin-type-and-how-to-tell",
+      "field": "content",
+      "finding": "FAQ list: no oily or combination pick; Bioderma; Etude line overstated panthenol and the glutamate",
+      "old": "- **Oily and combination skin:** a low-pH gel or lightly foaming cleanser that controls oil without stripping and triggering more of it.\n- **Sensitive skin:** Etude SoonJung pH 5.6 Cleansing Milk, built on glycerin, panthenol, and a mild amino-acid surfactant at a skin-friendly pH.\n- **Reactive or no-rinse days:** Bioderma Sensibio H2O micellar water, which cleanses without rinsing.",
+      "new": "- **Oily skin:** Haruharu Wonder Black Rice Moisture 5.5 Soft Cleansing Gel, a pH 5.5 gel built mainly on coco-betaine, a mild surfactant.\n- **Combination skin:** Torriden Dive In Low Molecular Hyaluronic Acid Cleansing Foam, a light foam built on two amino-acid surfactants.\n- **Sensitive skin:** Etude SoonJung pH 5.6 Cleansing Milk, a gentle milk built on glycerin and light oils, with panthenol, at a skin-friendly pH."
+    },
+    {
+      "slug": "best-korean-cleanser-for-every-skin-type-and-how-to-tell",
+      "field": "content",
+      "finding": "FAQ: midday oil and \"overproduce\" stated as fact",
+      "old": "Your cleanser is too harsh if your skin feels tight, squeaky, or stings right after you rinse, or if you're noticeably oilier by midday than you used to be. Those are signs it's stripping your barrier lipids, which both dehydrates your skin and pushes your oil glands to overproduce, so the \"clean\" feeling is actually a warning, not a win.",
+      "new": "Your cleanser is likely too harsh if your skin feels tight, squeaky, or stings right after you rinse. Those are signs it's stripping your barrier lipids, so the \"clean\" feeling is actually a warning, not a win. If you are also oilier by midday, a gentler cleanser is worth testing, though that link is less certain."
+    },
+    {
+      "slug": "best-korean-cleanser-for-every-skin-type-and-how-to-tell",
+      "field": "content",
+      "finding": "FAQ: \"that same range\" did not match; \"better for most people\" stronger than the evidence",
+      "old": "Low-pH cleansers are genuinely better for most people, not just marketing. Healthy skin is slightly acidic around pH 4.7 to 5.5, and washing with a cleanser at that same range (roughly 5 to 6) cleans effectively without disrupting your acid mantle, which highly alkaline foaming cleansers do.",
+      "new": "Low pH is a real advantage, not just marketing. Healthy skin is slightly acidic, around pH 4.7 to 5.5, and a cleanser close to that, roughly pH 5 to 6, is gentler on your acid mantle than a highly alkaline one."
+    },
+    {
+      "slug": "best-korean-cleanser-for-every-skin-type-and-how-to-tell",
+      "field": "content",
+      "finding": "Bottom Line: pH is not on an ingredient list; midday oil as a sign",
+      "old": "with a low pH and a mild surfactant you confirmed by reading the actual ingredient list instead of the front label. If your skin is tight after washing or oilier by midday, that's your sign the current one is working against you",
+      "new": "with a low pH and a mild surfactant you confirmed on the label and the ingredient list, not the front of the bottle. If your skin is tight after washing, that's your sign the current one is working against you"
+    }
+  ],
+  "fingerprints": {
+    "best-korean-cleanser-for-every-skin-type-and-how-to-tell": {
+      "content": {
+        "md5_before": "bcdcc8d546c7d6e787834c773567b81d",
+        "md5_after": "c1f093e78e8f933aec112e2477bd6b5d"
+      }
+    }
+  },
+  "faq_schema_after": {
+    "best-korean-cleanser-for-every-skin-type-and-how-to-tell": [
+      {
+        "question": "What is the best Korean cleanser for each skin type?",
+        "answer": "The best Korean cleanser for each skin type is a water-based second cleanse matched to your needs: ma:nyo Pure Soybean Cleansing Milk for dry skin; Haruharu Wonder Black Rice Moisture 5.5 Soft Cleansing Gel for oily skin; Torriden Dive In Low Molecular Hyaluronic Acid Cleansing Foam for combination skin; and Etude SoonJung pH 5.6 Cleansing Milk for sensitive skin."
+      },
+      {
+        "question": "How do I know if my cleanser is too harsh?",
+        "answer": "Your cleanser is likely too harsh if your skin feels tight, squeaky, or stings right after you rinse. Those are signs it's stripping your barrier lipids, so the 'clean' feeling is a warning, not a win. If you are also oilier by midday, a gentler cleanser is worth testing, though that link is less certain."
+      },
+      {
+        "question": "Is a low-pH cleanser really better, or is that just marketing?",
+        "answer": "Low pH is a real advantage, not just marketing. Healthy skin is slightly acidic, around pH 4.7 to 5.5, and a cleanser close to that, roughly pH 5 to 6, is gentler on your acid mantle than a highly alkaline one."
+      },
+      {
+        "question": "What's the difference between the best Korean face wash and the best Korean facial cleanser?",
+        "answer": "There's no real difference. 'Korean face wash' and 'Korean facial cleanser' are different phrasings for the same water-based cleansing step. What matters is the formula, pH and surfactant type, not the name a brand prints on the front."
+      }
+    ]
+  }
+}
