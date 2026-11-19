@@ -1,0 +1,113 @@
+{
+  "made_at": "2026-11-18",
+  "made_by": "an LGAAS session",
+  "work_orders": [
+    "LGAAS-WORK-ORDER-CLEANSING-OIL-POST.md (Nov 18 2026)",
+    "LGAAS-WORK-ORDER-BLOG-SEEDED-REVIEW-FIGURES.md (Nov 14 2026, this post only)"
+  ],
+  "note": "Pairs for one post. Apply IN ORDER to the `content` (Seoul Sister: `body`) string. Each `old` occurs exactly once in the content as stored in LGAAS on Nov 18 2026, which was byte-identical to ss_content_posts.body that day (15,705 chars). Fingerprints are md5 of the content before and after all pairs. If an `old` count is not 1 or an md5 does not match, stop and report. faq_schema, title, excerpt and meta fields are not changed. Ingredient facts were read from ss_products.ingredients_raw and ss_product_ingredients on Nov 18 2026. Second-model review (Opus, refute brief) ran on the first 12 pairs on Nov 18 2026; 8 pairs were rewritten after it and the Amazon pair was added. The rewritten text was not re-reviewed by a second model. REVISED in a Seoul Sister session on Nov 18 2026 after a second-model review (Opus, refute brief) of the final text: pairs 2, 3, 4, 5, 6, 7, 8 and 13 were rewritten (the oily reader is told no pick matches the table without fragrance; the two picks sold only at Olive Young Global say so; the membership sentence no longer freezes a price; the one review figure and the comedogenic-rating argument were removed). The v2 text has not itself been reviewed by a second model. Apply v2 to BOTH copies; the LGAAS copy currently holds v1.",
+  "replacements": [
+    {
+      "slug": "best-korean-cleansing-oils-for-every-skin-type-2026",
+      "field": "content",
+      "finding": "1 (section opener)",
+      "old": "These are pulled from our catalog and filtered for review volume, because a 5-star rating from nine people tells you nothing.",
+      "new": "These picks are chosen on what each product's ingredient list in our catalog shows: what the base is, and whether fragrance is on the list. Where a pick lists fragrance, or its base is not one from the table above, it says so. Formulas get changed, and not every pick is carried by a store that ships to the US, so read the product page before you buy."
+    },
+    {
+      "slug": "best-korean-cleansing-oils-for-every-skin-type-2026",
+      "field": "content",
+      "finding": "1 + 2 (Anua: keep the real figure, drop \"Heartleaf-based\", disclose fragrance)",
+      "old": "**Oily or acne-prone: Anua Heartleaf Pore Control Cleansing Oil**, sold as a double set, 4.7 stars across roughly 5,200 reviews. Heartleaf-based and formulated specifically for congestion, and it emulsifies cleanly, which is the failure point most people actually hit.",
+      "new": "**Oily or acne-prone: [Anua Heartleaf Pore Control Cleansing Oil](https://www.seoulsister.com/products/1a82a32c-2dad-4bce-ac49-8dc7c582b4c0)**, with a caveat. Read the list before the name: heartleaf extract is 18th of 22 ingredients. The base is ethylhexyl palmitate, an ester, followed by two emulsifiers and caprylic/capric triglyceride. That is not a plant-oil base from the table above: sunflower and grape seed oil are on the list, but 7th and 11th, alongside macadamia, olive and jojoba oil. It also lists added fragrance, 6th. We did not find an oil in our catalog whose list leads with grape seed, sunflower or safflower, has no fragrance, and is carried by a store that ships to the US. If fragrance is not a problem for you, this is the closest. If it is, ask Yuri to check a specific bottle against the table."
+    },
+    {
+      "slug": "best-korean-cleansing-oils-for-every-skin-type-2026",
+      "field": "content",
+      "finding": "1 (Beauty of Joseon: remove count, give the formula reason)",
+      "old": "**Dry or dehydrated: Beauty of Joseon Ginseng Cleansing Oil**, roughly 6,800 reviews. Rich enough to leave skin comfortable rather than squeaky, which is what dry skin needs from the first cleanse.",
+      "new": "**Dry or dehydrated: [Beauty of Joseon Ginseng Cleansing Oil](https://www.seoulsister.com/products/e4006247-7120-48de-8dab-f29fdd09dd82)**. Soybean oil comes first on the ingredient list. Soybean is not in the table above; olive oil, which the table matches to dry skin, is fourth, after an ester and an emulsifier. No fragrance or essential oil is on its ingredient list, though it does carry a long run of plant extracts."
+    },
+    {
+      "slug": "best-korean-cleansing-oils-for-every-skin-type-2026",
+      "field": "content",
+      "finding": "1 + 2 (sensitive pick: Klairs lists Parfum, replaced)",
+      "old": "**Sensitive: Klairs Gentle Black Deep Cleansing Oil**, 4.6 stars across roughly 4,800 reviews. Built around a low-irritation formula, from a brand whose whole range is aimed at reactive skin.",
+      "new": "**Sensitive: [Haruharu Wonder Black Rice Moisture Deep Cleansing Oil](https://www.seoulsister.com/products/7bdb9817-836e-4b59-bd17-b96d57dad203)**. Its ingredient list is nine items long, in this order: rice bran oil, caprylic/capric triglyceride, sunflower oil, olive oil, one emulsifier, jojoba oil, macadamia oil, tocopherol and ethylhexylglycerin. No fragrance, essential oil or fragrance allergen is on it. Rice bran is the table's dry-skin oil; jojoba, which the sensitive row names, is sixth. Our catalog lists it only at Olive Young Global, which our records show does not ship to the US. If you were considering Klairs Gentle Black Deep Cleansing Oil for sensitive skin, its list includes fragrance (Parfum), so skip it if fragrance is what your skin reacts to."
+    },
+    {
+      "slug": "best-korean-cleansing-oils-for-every-skin-type-2026",
+      "field": "content",
+      "finding": "1 + 2 (The Face Shop: remove count, \"cheapest\", \"well-reviewed\", \"light enough\"; combination pick replaced)",
+      "old": "**Budget pick: The Face Shop Rice Water Bright Light Cleansing Oil**, roughly 7,200 reviews. The cheapest genuinely well-reviewed option in the catalog, and light enough for combination skin.",
+      "new": "**Combination: [Purito Seoul From Green Cleansing Oil](https://www.seoulsister.com/products/35d36fc4-924f-4cdd-9910-11504d45d894)**. Its ingredient list runs olive oil, caprylic/capric triglyceride, sunflower oil, an emulsifier and jojoba oil, with sweet almond and grape seed oil further down. The table above matches sunflower, jojoba and light olive blends to combination skin. This one is olive first, so it sits at the richer end of that row. No fragrance, essential oil or fragrance allergen is on that list. Our catalog lists it only at Olive Young Global, which our records show does not ship to the US. If you were considering The Face Shop Rice Water Bright Light Cleansing Oil, its list starts with isopropyl myristate, an ester and not a plant oil from the table, and it includes fragrance (Parfum) along with four fragrance allergens, limonene and linalool among them. The word \"Light\" in its name is not a reason to choose it for breakout-prone or reactive skin."
+    },
+    {
+      "slug": "best-korean-cleansing-oils-for-every-skin-type-2026",
+      "field": "content",
+      "finding": "1 + 2 (Banila: remove count and \"most-reviewed\", say every version is fragranced, drop the name-based \"Purifying if oily\")",
+      "old": "**If you prefer a balm to an oil: Banila Co Clean It Zero Cleansing Balm Original**, roughly 18,200 reviews, which makes it the single most-reviewed cleanser in our entire catalog. Balms are less likely to end up down the sink and travel better. The Purifying version is the one to choose if you are oily.",
+      "new": "**If you prefer a balm to an oil: [Banila Co Clean It Zero Cleansing Balm Original](https://www.seoulsister.com/products/457bc739-647b-4f9e-b367-9d210d14762f)**. Balms are less likely to end up down the sink and travel better. The first ingredients are esters, with synthetic wax to set it, not a plant oil. The Original and the Purifying version both list added fragrance, and so does the Pore Clarifying version, which also contains tea tree leaf oil, so none of them is the choice for skin that reacts to fragrance."
+    },
+    {
+      "slug": "best-korean-cleansing-oils-for-every-skin-type-2026",
+      "field": "content",
+      "finding": "3 (Yuri account sentence; wording is signupStartsLine(null) from seoul-sister/src/lib/offers.ts, verbatim)",
+      "old": "If you're stuck on a label, ask Yuri. She's free to start with a free account, and can talk you through what's actually in the bottle.",
+      "new": "If you're stuck on a label, ask Yuri, who can talk you through what's actually in the bottle. She comes with a Seoul Sister membership, and the [pricing section](https://www.seoulsister.com/#pricing) shows the current free week and price."
+    },
+    {
+      "slug": "best-korean-cleansing-oils-for-every-skin-type-2026",
+      "field": "content",
+      "finding": "3 (ingredient count: landing page figure)",
+      "old": "detailed profiles for 8,200+ ingredients",
+      "new": "entries for 14,900+ ingredients"
+    },
+    {
+      "slug": "best-korean-cleansing-oils-for-every-skin-type-2026",
+      "field": "content",
+      "finding": "3 (unsourced 60 to 80 percent)",
+      "old": "The base oil typically makes up 60 to 80 percent of a cleansing oil formula, so it's doing most of the work.",
+      "new": "Ingredients above 1 percent are listed from the largest share of the formula to the smallest (below that, they can appear in any order), so the base, whether a plant oil, a mineral oil or an ester, sits at or near the top and is doing most of the work."
+    },
+    {
+      "slug": "best-korean-cleansing-oils-for-every-skin-type-2026",
+      "field": "content",
+      "finding": "price rule, fixed on contact (not in the work order findings)",
+      "old": "you might be paying $30 for a counterfeit",
+      "new": "you might be paying full price for a counterfeit"
+    },
+    {
+      "slug": "best-korean-cleansing-oils-for-every-skin-type-2026",
+      "field": "content",
+      "finding": "price rule, fixed on contact (not in the work order findings)",
+      "old": "The same cleansing oil that retails for roughly $12 in a Korean drugstore can show up on a U.S. Marketplace for $35 with no real explanation",
+      "new": "The same cleansing oil can cost far more on a U.S. marketplace than it does in a Korean drugstore, with no real explanation"
+    },
+    {
+      "slug": "best-korean-cleansing-oils-for-every-skin-type-2026",
+      "field": "content",
+      "finding": "store rule, fixed on contact (not in the work order findings): Amazon may not be named",
+      "old": "And the one you *can* find on Amazon has reviews split between",
+      "new": "And the one you *can* find easily has reviews split between"
+    },
+    {
+      "slug": "best-korean-cleansing-oils-for-every-skin-type-2026",
+      "field": "content",
+      "finding": "4 (FAQ H3, inserted as the first item of the FAQ section; names the corrected picks)",
+      "old": "## Frequently Asked Questions\n\n**Can I use a Korean cleansing oil if I don't wear makeup?**",
+      "new": "## Frequently Asked Questions\n\n### What is the best Korean cleansing oil for each skin type?\n\n- **Dry skin:** Beauty of Joseon Ginseng Cleansing Oil. Soybean oil first, olive oil fourth, no fragrance on its ingredient list.\n- **Oily skin:** no oil in our catalog matches the table's oily row without fragrance from a store that ships to the US. The closest is Anua Heartleaf Pore Control Cleansing Oil, carried by Olive Young US: an ester base, and it lists fragrance.\n- **Combination skin:** Purito Seoul From Green Cleansing Oil. Olive, sunflower and jojoba oils, no fragrance on its ingredient list. Listed only at Olive Young Global, which our records show does not ship to the US.\n- **Sensitive skin:** Haruharu Wonder Black Rice Moisture Deep Cleansing Oil. Nine ingredients, no fragrance among them. Listed only at Olive Young Global, which our records show does not ship to the US.\n\nThe reasons for each, and where a pick falls short of the table, are under \"Grounded picks by skin type\" above.\n\n**Can I use a Korean cleansing oil if I don't wear makeup?**"
+    }
+  ],
+  "fingerprints": {
+    "best-korean-cleansing-oils-for-every-skin-type-2026": {
+      "content": {
+        "md5_before": "6b22fcfd22b2dda48f6e0612e4c633a1",
+        "md5_after": "24939c516b3279c97a679e6844e8a3ed",
+        "chars_before": 15705,
+        "chars_after": 19487
+      }
+    }
+  },
+  "version": 2
+}
