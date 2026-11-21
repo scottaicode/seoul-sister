@@ -152,7 +152,7 @@ The LGAAS session carried out its work order the same day (LGAAS commits `f8859b
 
 Checked by fetching the live pages, about two minutes after the production build went Ready:
 
-- The homepage HTML contains "Create my free account", "Free account. Start with Yuri." and Yuri's closed greeting, and no longer contains "No signup", the reply box placeholder or the "Free preview" badge.
+- The homepage HTML contains "Create my free account", "New members: first week free, no card." (until Nov 20 2026: "Free account. Start with Yuri.") and Yuri's closed greeting, and no longer contains "No signup", the reply box placeholder or the "Free preview" badge.
 - `POST /api/widget/chat` returns 429 with `{"limitReached":true,"chatClosed":true}`.
 - `/llms.txt`, a blog post, a best-of page and the product list all carry the new access wording, and none carries "no account" or "no signup".
 

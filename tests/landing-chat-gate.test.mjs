@@ -80,12 +80,18 @@ test('every access sentence, exactly, in both modes', async () => {
     [
       'free to start with an account',
       'Free to start with an account.',
-      'Free account. Start with Yuri.',
+      'New members: first week free, no card.',
       'Talking to Yuri starts with a free account.',
       'Start with Yuri',
       'Talking to Yuri now starts with a free account.',
     ]
   )
+  // The badge is an offer, so it is held to the facts that make it true, and it
+  // says who the offer is for: an anonymous visitor may already have had a week.
+  assert.match(closed.heroBadge(), /^New members: /)
+  const pricing = read('src/lib/pricing.ts')
+  assert.match(pricing, /^\s+trial_days: 7,$/m, '"First week free" is true only while the free period is 7 days')
+  assert.match(pricing, /^\s+trial_requires_card: false,$/m, '"No card needed" is true only while the free week needs no card')
   const open = await loadLandingChat('open')
   assert.deepEqual(
     [open.yuriAccessPhrase(), open.yuriAccessSentence(), open.heroBadge(), open.heroFootnote(12), open.talkToYuriLabel()],

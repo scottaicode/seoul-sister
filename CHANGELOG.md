@@ -4,6 +4,18 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.66.6 — The top badge names the offer (Nov 20 2026)
+
+**Why.** After v11.66.4 and v11.66.5 the top of the phone page said "free account" three times and nothing told a visitor this is a paid membership with a free first week. The owner asked whether it should say "free trial" instead, and asked for one wording to be picked.
+
+**Change.** The badge above the headline reads **"New members: first week free, no card."** It read "Free account. Start with Yuri." One line, at every width. "Week", not "trial": the app's own word since Nov 15.
+
+**Left alone on purpose.** The button still says "Create my free account", which is what the press always does, including for someone who has used their week. "Free account" elsewhere (blog and product pages, emails, Yuri's greeting) describes the step correctly and was not swept. No dollar figure was added at the top: Bailey had just removed one, and a fixed price is wrong for someone holding a creator code.
+
+**Second-model review: run (Opus 5.5, told to refute). Ship after fixes.** My first wording was "First week free. No card needed." It found that this would have been the only free-week sentence in the app with no "new members": the rule in `offers.ts` is that each such sentence is true for everyone who can read it, and an anonymous visitor may already have had a week. The qualifier was added. It confirmed nothing else reuses the badge and that page metadata makes no conflicting claim. The reworded badge was not reviewed again.
+
+**Known.** The badge is tied by a test to the free period being 7 days and needing no card. It does not follow the emergency stop `NO_CARD_TRIAL_ENABLED=false`; like the rest of the copy it would lag while that is set. "First week free" implies a price without stating one; on a phone the figure is on the sign-up form and the pricing card. `public/sw.js` cache name is v65.
+
 ## v11.66.5 — The price box in Yuri's card is desktop only (Nov 20 2026)
 
 **Bailey, on her iPhone after v11.66.4:** with the card's button gone, the box under Yuri's greeting held only the sentence "For a new member, creating an account starts your free week: 7 days, no card. After that it is $9.99/mo...". She circled it and wrote "Erase". (Her photo is also the first sight of v11.66.4 on a real iPhone: one bar, no in-page buttons.)

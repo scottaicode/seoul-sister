@@ -36,9 +36,24 @@ export function yuriAccessSentence(open: boolean = LANDING_CHAT_OPEN): string {
   return open ? 'Free, no signup.' : 'Free to start with an account.'
 }
 
-/** The hero badge above the headline. */
+/**
+ * The hero badge above the headline.
+ *
+ * Closed: it names the offer, not the account (Nov 20 2026). It used to read
+ * "Free account. Start with Yuri.", and once the price sentence left the phone
+ * layout the top of the page said "free account" three times and nothing that
+ * told a visitor this is a paid membership with a free first week.
+ *
+ * "New members" is not decoration. Every free-week sentence in the app says who
+ * gets it (see the rule above the path helpers in offers.ts): an inbox that has
+ * had a free week does not get another, and this badge is read by people whose
+ * history we cannot know. It is true only while the free period is 7 days and
+ * needs no card (src/lib/pricing.ts); tests/landing-chat-gate.test.mjs holds it
+ * to that. It does NOT follow the emergency stop NO_CARD_TRIAL_ENABLED=false
+ * (src/lib/trial.ts): like the rest of the copy, it would lag while that is set.
+ */
 export function heroBadge(open: boolean = LANDING_CHAT_OPEN): string {
-  return open ? 'Free to talk to. No signup.' : 'Free account. Start with Yuri.'
+  return open ? 'Free to talk to. No signup.' : 'New members: first week free, no card.'
 }
 
 /** The small line under the hero buttons and under the final call to action. */
