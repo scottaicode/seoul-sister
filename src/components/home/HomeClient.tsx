@@ -16,6 +16,8 @@ import OfferSavedLine from '@/components/widget/OfferSavedLine'
 import InstallBanner from '@/components/pwa/InstallBanner'
 import SignedInRedirect from '@/components/auth/SignedInRedirect'
 import { MAX_FREE_MESSAGES } from '@/lib/utils/widget-session'
+import { supabase } from '@/lib/supabase'
+import { trackEvent, DemoEvent } from '@/lib/analytics'
 import { LANDING_CHAT_OPEN, gatedSignupHref, heroBadge, heroFootnote, talkToYuriLabel, yuriAccessSentence } from '@/lib/landing-chat'
 
 const fadeUp = {
@@ -91,23 +93,42 @@ const navLinks = [
 
 export default function HomeClient() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  // Mobile-only: reveal the sticky "Ask Yuri" bar once the visitor scrolls past
-  // the hero. Without this the bar shipped permanently hidden (translate-y-full,
-  // never toggled), so a mobile visitor who scrolled past the buried widget had
-  // no one-tap route back to the input. Reveal after ~1 viewport of scroll.
-  const [showStickyCTA, setShowStickyCTA] = useState(false)
+  // The bar pinned to the bottom of the screen below desktop width (lg).
+  //
+  // Closed chat: it is THE sign-up button there. The buttons in the page are not
+  // shown below lg (Bailey, Nov 16 2026: "there's just a lot of create your free
+  // account... do we need all the others then?", and again Nov 20 with each one
+  // circled and marked "Erase"). It is on screen from the top of the page to the
+  // footer, for a visitor this browser holds no sign-in for. It waits for that
+  // check: this page is the installed app's start address, and a member must not
+  // be shown "Create my free account" while being sent on to the app, or at all
+  // when a link brought them here on purpose (#pricing).
+  //
+  // Open chat: unchanged. It appears past the first screen, only while no other
+  // sign-up link is on screen, and scrolls back to the chat.
+  const [openChatBarShown, setOpenChatBarShown] = useState(false)
+  const [signedOut, setSignedOut] = useState(false)
+  // Where this visitor arrived from (blog, tiktok, ...), as the Yuri card works
+  // it out, so a phone sign-up still records it (signup_from = gate_<source>).
+  const [arrivalSource, setArrivalSource] = useState<string | null>(null)
+  const showStickyCTA = LANDING_CHAT_OPEN ? openChatBarShown : signedOut
   useEffect(() => {
-    // Shown once past the first screen, and only while no other sign-up button
-    // is on screen: two of the same button, one above the other, read as
-    // clutter (Bailey, Nov 16 2026: "there's just a lot of create your free
-    // account... do we need all the others then?").
+    let cancelled = false
+    supabase.auth.getSession()
+      .then(({ data }) => { if (!cancelled) setSignedOut(!data.session) })
+      // Storage unreadable: nobody is signed in as far as this page can tell.
+      .catch(() => { if (!cancelled) setSignedOut(true) })
+    return () => { cancelled = true }
+  }, [])
+  useEffect(() => {
+    if (!LANDING_CHAT_OPEN) return
     const onScroll = () => {
       const others = Array.from(document.querySelectorAll<HTMLElement>('a[href^="/register"]:not([data-sticky-signup])'))
       const oneInView = others.some((el) => {
         const r = el.getBoundingClientRect()
         return r.width > 0 && r.bottom > 0 && r.top < window.innerHeight
       })
-      setShowStickyCTA(window.scrollY > window.innerHeight * 0.9 && !oneInView)
+      setOpenChatBarShown(window.scrollY > window.innerHeight * 0.9 && !oneInView)
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     onScroll()
@@ -115,7 +136,7 @@ export default function HomeClient() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-seoul-dark font-sans">
+    <div className={`min-h-screen bg-seoul-dark font-sans${LANDING_CHAT_OPEN ? '' : ' pb-[calc(72px+env(safe-area-inset-bottom))] lg:pb-0'}`}>
 
       {/* A signed-in visitor gets sent to the app instead of being shown the
           signup pitch. This page is the PWA's start_url, so without it every
@@ -162,9 +183,10 @@ export default function HomeClient() {
           <div className="flex items-center gap-3">
             {/* Shown from sm, except at md where the six links share the row
                 and it does not fit (not rendered in a browser; check it).
-                Phones get it as the first item of the menu below; the hero
-                carries the same button below lg. */}
-            <Link href={signupHref('nav')} className="hidden sm:inline-flex md:hidden lg:inline-flex glass-button-primary text-sm py-2 px-5 whitespace-nowrap">
+                Phones get it as the first item of the menu below. Closed
+                chat: below lg the bar at the bottom of the screen is the one
+                sign-up button, so this one is desktop only. */}
+            <Link href={signupHref('nav')} className={`${LANDING_CHAT_OPEN ? 'hidden sm:inline-flex md:hidden lg:inline-flex' : 'hidden lg:inline-flex'} glass-button-primary text-sm py-2 px-5 whitespace-nowrap`}>
               {SIGNUP_LABEL}
             </Link>
             <button
@@ -277,16 +299,10 @@ export default function HomeClient() {
             </motion.div>
 
             <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-3">
-              {/* Closed landing chat, on a phone: the sign-up card sits two
-                  screens down, below this column, so the first button a
-                  visitor reaches is the sign-up itself. Desktop keeps "View
-                  Plans" because the card and its button are beside it. */}
-              {!LANDING_CHAT_OPEN && (
-                <Link href={gatedSignupHref('hero_button', '')} className="lg:hidden glass-button-primary text-sm py-3 px-6">
-                  Create my free account
-                </Link>
-              )}
-              <Link href="#pricing" className={`${LANDING_CHAT_OPEN ? '' : 'hidden lg:inline-flex '}glass-button-primary text-sm py-3 px-6`}>
+              {/* No sign-up button here. On a phone the bar at the bottom of
+                  the screen is the sign-up; on desktop the card beside this
+                  column and the nav both have one. */}
+              <Link href="#pricing" className="glass-button-primary text-sm py-3 px-6">
                 View Plans
               </Link>
               <Link href="#features" className="dark-button-outline text-sm py-3 px-6">
@@ -305,13 +321,13 @@ export default function HomeClient() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.6 }}
           >
-            <TryYuriSection variant="hero" />
+            <TryYuriSection variant="hero" onArrivalSource={setArrivalSource} />
             <OfferSavedLine />
           </motion.div>
         </div>
 
-        {/* Mobile sticky CTA bar — appears on scroll past hero */}
-        <div className={`lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-seoul-dark/95 backdrop-blur-md border-t border-gold/20 p-3 transition-transform duration-300 ${showStickyCTA ? 'translate-y-0' : 'translate-y-full'}`} id="mobile-sticky-cta">
+        {/* Mobile sign-up bar. Closed chat: always on screen. Open chat: past the hero. */}
+        <div className={`lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-seoul-dark/95 backdrop-blur-md border-t border-gold/20 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] transition-transform duration-300 ${showStickyCTA ? 'translate-y-0' : 'translate-y-full'}`} id="mobile-sticky-cta">
           {LANDING_CHAT_OPEN ? (
             <button
               onClick={() => {
@@ -324,7 +340,12 @@ export default function HomeClient() {
           ) : (
             // Closed: scrolling to a card whose only action is this same
             // button was one tap too many.
-            <Link href={gatedSignupHref('sticky', '')} data-sticky-signup className="glass-button-primary w-full text-sm py-3 block text-center">
+            <Link
+              href={gatedSignupHref(arrivalSource || 'sticky', '')}
+              data-sticky-signup
+              onClick={() => trackEvent(DemoEvent.gateSignupClick, { source: arrivalSource || 'unknown', has_question: new URLSearchParams(window.location.search).has('ask'), position: 'bar' })}
+              className="glass-button-primary w-full text-sm py-3 block text-center"
+            >
               Create my free account
             </Link>
           )}
@@ -522,7 +543,7 @@ export default function HomeClient() {
           <h2 className="font-display font-bold text-3xl md:text-4xl text-white mb-4">
             Your Skin Deserves Intelligence
           </h2>
-          <p className="text-white/40 text-base md:text-lg mb-8 leading-relaxed">
+          <p className={`text-white/40 text-base md:text-lg ${LANDING_CHAT_OPEN ? 'mb-8' : 'mb-2 lg:mb-8'} leading-relaxed`}>
             Tell Yuri about your skin and what is on your shelf. She will tell you what is working, what is not, and what is worth your money.
           </p>
           {/* Two exits, honestly labeled (July 19 2026): the caption promised a
@@ -533,7 +554,7 @@ export default function HomeClient() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               href={signupHref('final_cta')}
-              className="inline-flex items-center gap-2 glass-button-primary text-base py-3.5 px-10"
+              className={`${LANDING_CHAT_OPEN ? 'inline-flex' : 'hidden lg:inline-flex'} items-center gap-2 glass-button-primary text-base py-3.5 px-10`}
             >
               {SIGNUP_LABEL} <ArrowRight className="w-4 h-4" />
             </Link>

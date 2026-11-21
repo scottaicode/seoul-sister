@@ -15,6 +15,10 @@ interface PricingCardsProps {
 }
 
 export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
+  // Closed chat, signed out, below desktop width (phones and tablets): the bar
+  // at the bottom of the landing page is the sign-up button, so this card does
+  // not repeat it there.
+  const phoneBarIsTheButton = !isAuthenticated && !LANDING_CHAT_OPEN
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -87,7 +91,7 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
         <button
           onClick={handleCheckout}
           disabled={loading}
-          className="glass-button-primary w-full text-center text-sm py-3 disabled:opacity-50"
+          className={`${phoneBarIsTheButton ? 'hidden lg:block ' : ''}glass-button-primary w-full text-center text-sm py-3 disabled:opacity-50`}
         >
           {loading ? (
             <Loader2 className="w-4 h-4 animate-spin mx-auto" />
@@ -99,7 +103,7 @@ export default function PricingCards({ isAuthenticated }: PricingCardsProps) {
         </button>
 
         {/* The card says "Free for 7 days"; this button only creates an account. */}
-        {!isAuthenticated && <p className="text-center text-xs text-white/60 mt-3">{lines.accountNote}</p>}
+        {!isAuthenticated && <p className={`${phoneBarIsTheButton ? 'hidden lg:block ' : ''}text-center text-xs text-white/60 mt-3`}>{lines.accountNote}</p>}
         {checkoutError && <p className="text-center text-xs text-rose-300 mt-3" role="alert">{checkoutError}</p>}
         {LANDING_CHAT_OPEN && (
           <p className="text-center text-xs text-white/50 mt-3">

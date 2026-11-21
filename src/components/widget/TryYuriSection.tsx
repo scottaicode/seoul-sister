@@ -171,9 +171,15 @@ function demoVariantLabel(script: DemoMessage[]): 'owner' | 'beginner' {
 interface TryYuriSectionProps {
   /** "hero" renders as embedded widget card; default renders as full-width section */
   variant?: 'hero' | 'section'
+  /**
+   * Told once where this visitor arrived from (the same value the closed card's
+   * own sign-up button carries), so the landing page's phone sign-up bar can
+   * carry it too. null when nothing identifies the arrival.
+   */
+  onArrivalSource?: (source: string | null) => void
 }
 
-export default function TryYuriSection({ variant = 'section' }: TryYuriSectionProps) {
+export default function TryYuriSection({ variant = 'section', onArrivalSource }: TryYuriSectionProps) {
   // The saved creator code as it applies to this person (see useSavedOffer).
   const savedOffer = useSavedOffer()
   const offerCodeRef = useRef<string | null>(null)
@@ -481,6 +487,9 @@ export default function TryYuriSection({ variant = 'section' }: TryYuriSectionPr
   // closed-mode sign-up link carries the source that effect recorded.
   useEffect(() => {
     setArrivalSource(sourceRef.current)
+    onArrivalSource?.(sourceRef.current)
+    // Runs once on arrival; the callback is a state setter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ---- RESTORE a conversation a reload wiped (Aug 18 2026) -----------------

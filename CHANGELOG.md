@@ -4,6 +4,29 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.66.4 — One sign-up button on a phone (Nov 20 2026)
+
+**Bailey's feedback, for the second time.** On a phone the landing page had five "Create my free account" buttons: the top of the page, Yuri's card, the pricing card, the final section, and a bar at the bottom that appeared after scrolling. On Nov 16 she asked "do we need all the others then?"; on Nov 20 she sent four screenshots with each in-page button circled and marked "Erase".
+
+**Change (below desktop width, closed chat only).**
+- The bar at the bottom of the screen is the one sign-up button, on screen from the top of the page to the footer.
+- The top-of-page button is removed. The buttons in Yuri's card, the pricing card, the final section and the nav are not shown below desktop width.
+- Yuri's card still states what creating an account starts and what it costs.
+- Desktop is unchanged (four buttons). The open-chat behaviour is unchanged.
+
+**What the numbers said first.** Of the five stranger sign-ups since Nov 13, three came from the top-of-page phone button, one from the bar, one from the nav, none from the card, the pricing card or the final section. Erasing all four as drawn would have left the first screen with no sign-up, so the bar was made permanent instead of scroll-triggered. Five sign-ups cannot say whether this changes the rate.
+
+**Second-model review: run (Opus 5.5, told to refute). Ship after fixes. All fixed here:**
+- *A phone sign-up would have lost where the visitor came from* (every one tagged `gate_sticky`). The bar now carries the same arrival source the card's button did.
+- *Phone sign-up clicks would have stopped reaching GA4.* The bar now sends the same event, with `position: 'bar'`.
+- *A signed-in member would have been shown "Create my free account"*, on every launch of the installed app until the redirect ran, and for as long as they stayed when a `#pricing` link brought them. The bar now waits until the browser is known to hold no sign-in.
+- *Six wrong versions passed the first tests.* The test now pins each piece whole and lists every sign-up link and gold button on the page; fourteen wrong versions, its six among them, fail. The fixes were not reviewed again.
+- It also caught that my change had altered the open chat's bar; that is put back.
+
+**Checked in a real browser** (`scripts/count-landing-signup-buttons.cjs`, new): at 390, 700 and 900 pixels wide exactly one sign-up control is rendered and it is on screen at the top, middle and bottom of the page; at 1280 there are four. Run against the local build before shipping and against production after.
+
+**Not verified.** A real iPhone: the browser check is desktop Chrome at phone size. The bar adds room for the iPhone home indicator (`env(safe-area-inset-bottom)`), untested on a device. The bar as seen by a signed-in member was reasoned from the code, not watched. `public/sw.js` cache name is v63.
+
 ## v11.66.3 — A creator code is typed; the TikTok link no longer carries one (Nov 20 2026)
 
 **Bailey's decision.** Since Nov 10 her bio link (`/tt`) added `code=BAILEY`, so everyone who tapped it got 50% off the first paid month and the "code saved" message without asking. Bailey met it herself twice (Nov 16, and on a test sign-up Nov 18: her browser had opened the link on Nov 14). The discount is now only for someone who types a code.

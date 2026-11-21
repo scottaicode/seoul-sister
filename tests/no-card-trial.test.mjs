@@ -831,7 +831,7 @@ test('offer codes: the checkout stops if Stripe cannot confirm the code, and the
   const hookBody = hook.slice(hook.indexOf('export function useSavedOffer')).replace(/\n\s*\/\/[^\n]*/g, '').replace(/\s+/g, ' ').trim()
   assert.equal(sha('sha256').update(hookBody).digest('hex'), '58da4587a782f5cd4e2e1fa2f575243dc0eaa335d93a9bff02ac907ee0bbf879')
   assert.equal(sha('sha256').update(hook.split('\n').filter((l) => l.startsWith('import ')).join('\n')).digest('hex'), 'bef8127d6c2ae957642a0258fde4e1a625c1c4f31a659a3fe050be93c4fbd98f')
-  assert.match(read('src/components/home/HomeClient.tsx'), /<TryYuriSection variant="hero" \/>\s*<OfferSavedLine \/>/)
+  assert.match(read('src/components/home/HomeClient.tsx'), /<TryYuriSection variant="hero" onArrivalSource=\{setArrivalSource\} \/>\s*<OfferSavedLine \/>/)
   assert.match(block, /else if \(resolved\.state === 'ended'\) \{[\s\S]{0,260}return NextResponse\.json\(\{ error: offerEndedLine\(resolved\.code\), offer_ended: true \}, \{ status: 409 \}\)/, 'a code that closed stops the checkout and says so')
   assert.doesNotMatch(checkout, /error: message \}/, 'raw Stripe errors are not shown to customers')
   assert.match(subscribe, /\.\.\.\(offerCode \? \{ offer_code: offerCode \} : \{\}\)/, 'the remembered code is sent even if the page could not ask about it')
@@ -1224,7 +1224,7 @@ test('pricing card: the free week leads and the price is stated; the allowance l
   assert.doesNotMatch(card, /lines\.cta\b/, 'the public card must not offer to start the free week: its button creates an account')
   // And the whole card file by fingerprint: an added line ("No card is ever
   // needed.") or a changed button label passed every assertion above in review.
-  assert.equal(sha('sha256').update(card).digest('hex'), '813fb4bc368d719852696bcb9ab165ef366cb035ab514167c52df7ef4f0df9a0')
+  assert.equal(sha('sha256').update(card).digest('hex'), '9c94c560287539601c419ad5c04352bcb868882eb9816f1baafbbf62a1034327')
 
   // The allowance is NOT on the pricing card or the membership page (owner
   // decision, Nov 11 2026: the "79 messages" month was the co-owner testing;

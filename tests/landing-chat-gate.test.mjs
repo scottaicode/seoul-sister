@@ -366,7 +366,7 @@ test('the closed hero: only real, approved conversations may be labelled real', 
   // example published with an invented approval. Publishing a real example, or
   // changing one word of the hero, means a second-model review and then a new
   // fingerprint here.
-  assert.equal(sha256(intro), 'f273b4012e4a0116e81fe254abd96591b127045d615b6b0d9e708daaf0377d3d', 'GatedYuriIntro.tsx changed')
+  assert.equal(sha256(intro), 'ae2de1e3406304afec16a51c049792574503f6d253d73bcad342ddd9a51b1929', 'GatedYuriIntro.tsx changed')
   assert.equal(sha256(content), 'b20d58dd7614ee56d931b3b1b4aff66586de0e9b8c0c477892d7f5dea9ceeb63', 'src/content/yuri-example.ts changed')
   assert.ok(intro.includes('  const example = REAL_YURI_EXAMPLE ?? fallbackExample\n'))
   // The fallback keeps the label that says it is an example.
@@ -377,7 +377,7 @@ test('the closed hero: only real, approved conversations may be labelled real', 
   // Display and navigation only: no fetch, no model, no generated text.
   assert.doesNotMatch(intro, /fetch\(|anthropic|useEffect|dangerouslySetInnerHTML/i)
   // The price line is the shared, already-reviewed one.
-  assert.ok(intro.includes('<p className="text-xs text-white/50 mt-2">{widgetMembershipLine(percentOff)}</p>'))
+  assert.ok(intro.includes('<p className="text-xs text-white/50 lg:mt-2">{widgetMembershipLine(percentOff)}</p>'))
   assert.doesNotMatch(intro, /\$\d|PRICING\./, 'the closed hero states a price of its own')
 })
 
@@ -483,18 +483,23 @@ test('closed, on a phone: sign-up is one tap away and the sign-up card has no sc
   // and inner scroll, which clipped Yuri's greeting under the card header; the
   // sticky bar scrolled to a card whose only action was the same button; and
   // the first button in the page was "View Plans".
+  // Nov 20 2026 (Bailey, each in-page button circled "Erase"): below desktop
+  // width the bar at the bottom of the screen is the ONE sign-up button, always
+  // shown; the hero column has no sign-up button of its own.
   const widget = read('src/components/widget/TryYuriSection.tsx')
   assert.ok(widget.includes("        style={chatClosed && !showLive ? undefined : { minHeight: '520px', maxHeight: '640px' }}\n"))
   const home = read('src/components/home/HomeClient.tsx')
-  assert.ok(home.includes(`              {!LANDING_CHAT_OPEN && (
-                <Link href={gatedSignupHref('hero_button', '')} className="lg:hidden glass-button-primary text-sm py-3 px-6">
-                  Create my free account
-                </Link>
-              )}
-              <Link href="#pricing" className={\`\${LANDING_CHAT_OPEN ? '' : 'hidden lg:inline-flex '}glass-button-primary text-sm py-3 px-6\`}>
+  assert.ok(home.includes(`              <Link href="#pricing" className="glass-button-primary text-sm py-3 px-6">
                 View Plans
               </Link>`))
-  assert.ok(home.includes(`            <Link href={gatedSignupHref('sticky', '')} data-sticky-signup className="glass-button-primary w-full text-sm py-3 block text-center">
+  assert.equal(home.includes("gatedSignupHref('hero_button'"), false, 'the hero column has no sign-up button')
+  assert.ok(home.includes("  const showStickyCTA = LANDING_CHAT_OPEN ? openChatBarShown : signedOut\n"), 'closed: the bar is on screen from the top, for a visitor with no sign-in')
+  assert.ok(home.includes(`            <Link
+              href={gatedSignupHref(arrivalSource || 'sticky', '')}
+              data-sticky-signup
+              onClick={() => trackEvent(DemoEvent.gateSignupClick, { source: arrivalSource || 'unknown', has_question: new URLSearchParams(window.location.search).has('ask'), position: 'bar' })}
+              className="glass-button-primary w-full text-sm py-3 block text-center"
+            >
               Create my free account
             </Link>`))
   // Open mode keeps the old sticky button, which scrolls to the chat.
@@ -509,7 +514,6 @@ test('closed, on a phone: sign-up is one tap away and the sign-up card has no sc
             </button>
           ) : (`))
   const m = await loadLandingChat(undefined)
-  assert.equal(m.gatedSignupHref('hero_button', ''), '/register?plan=monthly&from=gate_hero_button')
   assert.equal(m.gatedSignupHref('sticky', ''), '/register?plan=monthly&from=gate_sticky')
 })
 

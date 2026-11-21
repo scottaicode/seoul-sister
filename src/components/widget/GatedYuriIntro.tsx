@@ -62,11 +62,13 @@ export default function GatedYuriIntro({ question, source, percentOff, fallbackE
         <Link
           href={href}
           onClick={() => trackGateClick(source, Boolean(question))}
-          className="inline-flex items-center gap-1.5 glass-button-primary text-sm py-2.5 px-6"
+          className="hidden lg:inline-flex items-center gap-1.5 glass-button-primary text-sm py-2.5 px-6"
         >
           Create my free account <ArrowRight className="w-3.5 h-3.5" />
         </Link>
-        <p className="text-xs text-white/50 mt-2">{widgetMembershipLine(percentOff)}</p>
+        {/* Below desktop width the button is the bar at the bottom of the screen
+            (HomeClient); what it starts and what it costs is still said here. */}
+        <p className="text-xs text-white/50 lg:mt-2">{widgetMembershipLine(percentOff)}</p>
       </div>
 
       <div className="pt-3 mt-1 border-t border-white/10">

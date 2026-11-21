@@ -286,9 +286,67 @@ test('wiring: the mark is made only once the account exists, and the start is fo
   assert.ok(page.includes("window.dispatchEvent(new Event('ss:trial-changed'))"))
 })
 
-test('the landing page shows one sign-up button at a time on a phone', () => {
+test('closed world: below desktop width the landing page has ONE sign-up button, the bar, always shown', () => {
+  // Bailey, Nov 16 2026: "there's just a lot of create your free account... do we
+  // need all the others then?" The first answer hid the bar while another button
+  // was on screen. Nov 20 she circled each in-page button and wrote "Erase".
+  //
+  // NOT EXECUTED here: this pins the source. The rendered count is checked in a
+  // real browser by scripts/count-landing-signup-buttons.cjs. A second-model
+  // review got six wrong versions past the first form of this test (the bar on
+  // scroll again, a hardcoded /register link, a /subscribe link, `hidden` on the
+  // bar, the menu link at every width, a margin cancelling the padding), so each
+  // thing below is pinned whole or counted closed-world.
   const home = read('src/components/home/HomeClient.tsx')
-  assert.ok(home.includes(`const others = Array.from(document.querySelectorAll<HTMLElement>('a[href^="/register"]:not([data-sticky-signup])'))`))
-  assert.ok(home.includes('      setShowStickyCTA(window.scrollY > window.innerHeight * 0.9 && !oneInView)\n'))
-  assert.ok(home.includes("<Link href={gatedSignupHref('sticky', '')} data-sticky-signup "))
+  const card = read('src/components/pricing/PricingCards.tsx')
+  const intro = read('src/components/widget/GatedYuriIntro.tsx')
+  const count = (s, needle) => s.split(needle).length - 1
+
+  // WHEN the bar shows. Closed: for a visitor with no sign-in, with no scroll rule.
+  assert.ok(home.includes("  const showStickyCTA = LANDING_CHAT_OPEN ? openChatBarShown : signedOut\n"))
+  assert.equal(count(home, 'showStickyCTA'), 2, 'defined once, used once')
+  assert.equal(count(home, 'setSignedOut('), 2, 'set from the session read, and from its failure')
+  assert.ok(home.includes("      .then(({ data }) => { if (!cancelled) setSignedOut(!data.session) })\n"))
+  assert.ok(home.includes("    if (!LANDING_CHAT_OPEN) return\n"), 'the scroll rule belongs to the open chat only')
+  // The bar's own element, whole: below lg, fixed to the bottom, moved only by showStickyCTA.
+  assert.ok(home.includes("<div className={`lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-seoul-dark/95 backdrop-blur-md border-t border-gold/20 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] transition-transform duration-300 ${showStickyCTA ? 'translate-y-0' : 'translate-y-full'}`} id=\"mobile-sticky-cta\">"))
+  // The page leaves room for it, and nothing else on the root line takes that room back.
+  assert.ok(home.includes("    <div className={`min-h-screen bg-seoul-dark font-sans${LANDING_CHAT_OPEN ? '' : ' pb-[calc(72px+env(safe-area-inset-bottom))] lg:pb-0'}`}>\n"))
+
+  // WHICH sign-up links exist. Every one goes through a helper; none is written by hand.
+  const calls = [...home.matchAll(/(gatedSignupHref|signupHref)\(([^)]*)\)/g)].map((m) => `${m[1]}(${m[2]})`)
+  assert.deepEqual(calls, [
+    "gatedSignupHref(source, '')",          // signupHref's own definition
+    "signupHref('nav')",
+    "signupHref('menu')",
+    "gatedSignupHref(arrivalSource || 'sticky', '')",
+    "signupHref('final_cta')",
+  ])
+  // Every quoted sign-up or membership address in the file: signupHref's open-chat
+  // address, and the open chat's selector for other buttons. No link is written by hand.
+  assert.deepEqual([...home.matchAll(/['"`]\/(?:register|subscribe)[^'"`]*['"`]/g)].map((m) => m[0]), ["'/register'", '"/register"'])
+  assert.equal(count(home, 'data-sticky-signup'), 2, 'the bar, and that selector')
+  // Every primary (gold) button on the page, in order, with what shows it below lg.
+  const gold = [...home.matchAll(/^.*glass-button-primary.*$/gm)].map((m) => m[0].trim())
+  assert.deepEqual(gold, [
+    "<Link href={signupHref('nav')} className={`${LANDING_CHAT_OPEN ? 'hidden sm:inline-flex md:hidden lg:inline-flex' : 'hidden lg:inline-flex'} glass-button-primary text-sm py-2 px-5 whitespace-nowrap`}>",
+    'className="sm:hidden mb-2 glass-button-primary text-sm py-2.5 px-3 text-center"',   // inside the menu a visitor opens
+    '<Link href="#pricing" className="glass-button-primary text-sm py-3 px-6">',          // View Plans: not a sign-up
+    'className="glass-button-primary w-full text-sm py-3"',                               // open chat's bar button
+    'className="glass-button-primary w-full text-sm py-3 block text-center"',             // the bar
+    "className={`${LANDING_CHAT_OPEN ? 'inline-flex' : 'hidden lg:inline-flex'} items-center gap-2 glass-button-primary text-base py-3.5 px-10`}",
+  ])
+  // The bar keeps what the card's button recorded: where they came from, and the click.
+  assert.ok(home.includes('            <TryYuriSection variant="hero" onArrivalSource={setArrivalSource} />\n'))
+  assert.ok(home.includes("onClick={() => trackEvent(DemoEvent.gateSignupClick, { source: arrivalSource || 'unknown', has_question: new URLSearchParams(window.location.search).has('ask'), position: 'bar' })}"))
+  const widget = read('src/components/widget/TryYuriSection.tsx')
+  assert.ok(widget.includes("    setArrivalSource(sourceRef.current)\n    onArrivalSource?.(sourceRef.current)\n"))
+
+  // The pricing card's button and the note that refers to it: desktop only for a signed-out visitor.
+  assert.ok(card.includes("  const phoneBarIsTheButton = !isAuthenticated && !LANDING_CHAT_OPEN\n"))
+  assert.ok(card.includes("className={`${phoneBarIsTheButton ? 'hidden lg:block ' : ''}glass-button-primary w-full text-center text-sm py-3 disabled:opacity-50`}"))
+  assert.ok(card.includes("{!isAuthenticated && <p className={`${phoneBarIsTheButton ? 'hidden lg:block ' : ''}text-center text-xs text-white/60 mt-3`}>{lines.accountNote}</p>}"))
+  // Yuri's card: its button is desktop only; what it starts and costs is still said at every width.
+  assert.ok(intro.includes('          className="hidden lg:inline-flex items-center gap-1.5 glass-button-primary text-sm py-2.5 px-6"\n'))
+  assert.ok(intro.includes('        <p className="text-xs text-white/50 lg:mt-2">{widgetMembershipLine(percentOff)}</p>\n'))
 })
