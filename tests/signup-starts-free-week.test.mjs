@@ -352,8 +352,16 @@ test('closed world: below desktop width the landing page has ONE sign-up button,
   // The box comes LAST in the card, after the example. Between Yuri's greeting and the example it sat
   // in the middle of what reads as one chat (Bailey, Nov 20 2026: "why in middle?").
   const at = (needle) => { const i = intro.indexOf(needle); assert.ok(i > 0, needle); return i }
-  assert.ok(at('I give my') < at('{example.label}') && at('{example.label}') < at('{example.messages.map(') && at('{example.messages.map(') < at('<div className="hidden lg:block bg-gold/5'), 'greeting, example, then the sign-up box')
-  assert.ok(at("{question && (") < at('{example.label}'), "a visitor's own carried question stays next to Yuri's greeting")
+  assert.ok(at('I give my') < at('>{exampleTag}</p>') && at('>{exampleTag}</p>') < at('{example.messages.map(') && at('{example.messages.map(') < at('<div className="hidden lg:block bg-gold/5'), 'greeting, example, then the sign-up box')
+  assert.ok(at("{question && (") < at('>{exampleTag}</p>'), "a visitor's own carried question stays next to Yuri's greeting")
+  // The word that says it is an example comes BEFORE the exchange; only the description may follow it.
+  assert.ok(at('>{exampleTag}</p>') < at('{example.messages.map(') && at('{example.messages.map(') < at('{exampleCaption}</p>'))
+  assert.ok(intro.includes("  const exampleTag = colon > 0 ? example.label.slice(0, colon) : example.label\n"), 'a label with no colon is shown whole, above')
+  assert.ok(intro.includes("  const exampleCaption = colon > 0 ? example.label.slice(colon + 2) : ''\n"))
+  assert.equal(intro.split('{exampleTag}').length - 1, 1)
+  assert.equal(intro.split('example.label').length - 1, 4, 'the label is only ever split in those three lines, never dropped or replaced')
+  // Both illustrative labels start with the word, so it is what lands above the exchange.
+  assert.match(read('src/components/widget/TryYuriSection.tsx'), /\? 'Example: a new member’s first session with Yuri'\s*: 'Example: Yuri with a subscriber she’s known for months',/)
   // Closed world: that line is the ONLY thing in the card that hides anything, by any means.
   const HIDES = /\b(hidden|invisible|sr-only|opacity-0|collapse|display:\s*["']?none|visibility)\b/g
   assert.deepEqual(intro.match(HIDES), ['hidden'], 'one switch for the whole box; the sentence cannot be hidden at every width another way')

@@ -31,6 +31,14 @@ function trackGateClick(source: string | null, hasQuestion: boolean): void {
  */
 export default function GatedYuriIntro({ question, source, percentOff, fallbackExample }: GatedYuriIntroProps) {
   const example = REAL_YURI_EXAMPLE ?? fallbackExample
+  // "Example: a new member's first session with Yuri" is shown in two parts: the
+  // word before the colon ABOVE the exchange, so a visitor knows it is an example
+  // before reading it, and the description as a caption under it (Bailey, Nov 20
+  // 2026: the full line in capitals cut the card in half). A label with no colon,
+  // which is what a real, approved conversation carries, is shown whole, above.
+  const colon = example.label.indexOf(': ')
+  const exampleTag = colon > 0 ? example.label.slice(0, colon) : example.label
+  const exampleCaption = colon > 0 ? example.label.slice(colon + 2) : ''
   const href = gatedSignupHref(source, question)
 
   return (
@@ -58,8 +66,10 @@ export default function GatedYuriIntro({ question, source, percentOff, fallbackE
         </div>
       )}
 
-      <div className="pt-3 mt-1 border-t border-white/10">
-        <p className="text-[10px] uppercase tracking-wider text-white/35 mb-2">{example.label}</p>
+      {/* Framed, so it reads as a sample set into the card and not as the next
+          lines of a live chat. */}
+      <div className="rounded-2xl border border-dashed border-white/15 p-3">
+        <p className="text-[10px] uppercase tracking-wider text-white/45 mb-2">{exampleTag}</p>
         <div className="space-y-3 opacity-80">
           {example.messages.map((m, i) => (
             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -84,6 +94,9 @@ export default function GatedYuriIntro({ question, source, percentOff, fallbackE
             </div>
           ))}
         </div>
+        {exampleCaption && (
+          <p className="text-[11px] text-white/45 mt-2 text-center first-letter:uppercase">{exampleCaption}</p>
+        )}
       </div>
 
       {/* Last in the card, after the example. It used to sit between Yuri's

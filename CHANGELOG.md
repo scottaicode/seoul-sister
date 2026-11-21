@@ -4,6 +4,18 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.66.8 — The example in Yuri's card: one word above, the description below (Nov 20 2026)
+
+**Bailey** circled the line "EXAMPLE: A NEW MEMBER'S FIRST SESSION WITH YURI" and asked for it to go to the bottom of the exchange: a full-width line in capitals cut the card in half.
+
+**Change.** The label is shown in two parts. The word "Example" sits above the exchange, small; the description ("A new member's first session with Yuri") is a caption under it. The exchange has a faint dashed frame, so it reads as a sample set into the card. The divider line is gone. Same words as before, at every width.
+
+**Why not the whole line at the bottom.** The word that says it is an example has to be read before the exchange. Without it the card reads as one live chat (Yuri greets, a visitor's bubble appears, Yuri answers) and the visitor learns it was scripted afterwards. Testers were confused by an unmarked demo before, which is why the marker exists. A test now fails if the word is moved after the exchange. A label with no colon, which a real approved conversation would carry, is shown whole, above.
+
+**Checked in a real browser on the local build**, phone and desktop: "Example", the two bubbles, then the caption; on desktop the sign-up button under it is still on the first screen (bottom edge at 692 of 800 pixels).
+
+**No second-model review was run.** No sentence was added, removed or reworded; the same label is split and placed. The card's fingerprint was updated. `public/sw.js` cache name is v67.
+
 ## v11.66.7 — The sign-up box sits at the bottom of Yuri's card (Nov 20 2026)
 
 **Bailey: "why in middle?"** In Yuri's card the sign-up box (button and price sentence) sat between her greeting and the example exchange, so a button interrupted what reads as one conversation.

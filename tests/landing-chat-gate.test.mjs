@@ -372,7 +372,7 @@ test('the closed hero: only real, approved conversations may be labelled real', 
   // example published with an invented approval. Publishing a real example, or
   // changing one word of the hero, means a second-model review and then a new
   // fingerprint here.
-  assert.equal(sha256(intro), '2b31a9a1075f72976bd50740c3f65492e9c5a3d78fe7dbba0d9034b1b927500e', 'GatedYuriIntro.tsx changed')
+  assert.equal(sha256(intro), 'b8ec399ddae9ba2c667967d054788e69ea08556f110108852c49f0a42df5e8c3', 'GatedYuriIntro.tsx changed')
   assert.equal(sha256(content), 'b20d58dd7614ee56d931b3b1b4aff66586de0e9b8c0c477892d7f5dea9ceeb63', 'src/content/yuri-example.ts changed')
   assert.ok(intro.includes('  const example = REAL_YURI_EXAMPLE ?? fallbackExample\n'))
   // The fallback keeps the label that says it is an example.
