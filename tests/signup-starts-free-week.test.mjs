@@ -349,6 +349,11 @@ test('closed world: below desktop width the landing page has ONE sign-up button,
   // Yuri's card: the box holding its button and the price sentence is desktop only, as one piece
   // (Bailey, Nov 20 2026: the sentence circled and marked "Erase" once the button was gone).
   assert.ok(intro.includes('      <div className="hidden lg:block bg-gold/5 rounded-2xl p-4 border border-gold/20 text-center">\n'))
+  // The box comes LAST in the card, after the example. Between Yuri's greeting and the example it sat
+  // in the middle of what reads as one chat (Bailey, Nov 20 2026: "why in middle?").
+  const at = (needle) => { const i = intro.indexOf(needle); assert.ok(i > 0, needle); return i }
+  assert.ok(at('I give my') < at('{example.label}') && at('{example.label}') < at('{example.messages.map(') && at('{example.messages.map(') < at('<div className="hidden lg:block bg-gold/5'), 'greeting, example, then the sign-up box')
+  assert.ok(at("{question && (") < at('{example.label}'), "a visitor's own carried question stays next to Yuri's greeting")
   // Closed world: that line is the ONLY thing in the card that hides anything, by any means.
   const HIDES = /\b(hidden|invisible|sr-only|opacity-0|collapse|display:\s*["']?none|visibility)\b/g
   assert.deepEqual(intro.match(HIDES), ['hidden'], 'one switch for the whole box; the sentence cannot be hidden at every width another way')

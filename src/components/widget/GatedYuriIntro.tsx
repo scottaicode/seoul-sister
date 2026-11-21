@@ -58,21 +58,6 @@ export default function GatedYuriIntro({ question, source, percentOff, fallbackE
         </div>
       )}
 
-      {/* Desktop only. Below desktop width the sign-up button is the bar at the
-          bottom of the screen (HomeClient), and this box is not shown at all
-          (Bailey, Nov 20 2026). What the account starts and costs is stated on
-          the sign-up page, before anyone creates one, and on the pricing card. */}
-      <div className="hidden lg:block bg-gold/5 rounded-2xl p-4 border border-gold/20 text-center">
-        <Link
-          href={href}
-          onClick={() => trackGateClick(source, Boolean(question))}
-          className="inline-flex items-center gap-1.5 glass-button-primary text-sm py-2.5 px-6"
-        >
-          Create my free account <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
-        <p className="text-xs text-white/50 mt-2">{widgetMembershipLine(percentOff)}</p>
-      </div>
-
       <div className="pt-3 mt-1 border-t border-white/10">
         <p className="text-[10px] uppercase tracking-wider text-white/35 mb-2">{example.label}</p>
         <div className="space-y-3 opacity-80">
@@ -91,13 +76,33 @@ export default function GatedYuriIntro({ question, source, percentOff, fallbackE
                     <p className="font-semibold text-gold">Yuri</p>
                   </div>
                 )}
-                {/* The illustrative example is clamped so the greeting and the
-                    button stay on screen on a phone; a real one is shown whole. */}
+                {/* The illustrative example is clamped so the card stays short
+                    (on desktop the button under it stays in view); a real one
+                    is shown whole. */}
                 <p className={REAL_YURI_EXAMPLE ? undefined : 'line-clamp-3'}>{m.text}</p>
               </div>
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Last in the card, after the example. It used to sit between Yuri's
+          greeting and the example, in the middle of what reads as one chat
+          (Bailey, Nov 20 2026: "why in middle?"). The card now reads top to
+          bottom: Yuri, what a session looks like, then how to start.
+          Desktop only. Below desktop width the sign-up button is the bar at the
+          bottom of the screen (HomeClient), and this box is not shown at all
+          (Bailey, Nov 20 2026). What the account starts and costs is stated on
+          the sign-up page, before anyone creates one, and on the pricing card. */}
+      <div className="hidden lg:block bg-gold/5 rounded-2xl p-4 border border-gold/20 text-center">
+        <Link
+          href={href}
+          onClick={() => trackGateClick(source, Boolean(question))}
+          className="inline-flex items-center gap-1.5 glass-button-primary text-sm py-2.5 px-6"
+        >
+          Create my free account <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+        <p className="text-xs text-white/50 mt-2">{widgetMembershipLine(percentOff)}</p>
       </div>
     </div>
   )

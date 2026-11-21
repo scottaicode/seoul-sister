@@ -4,6 +4,18 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.66.7 — The sign-up box sits at the bottom of Yuri's card (Nov 20 2026)
+
+**Bailey: "why in middle?"** In Yuri's card the sign-up box (button and price sentence) sat between her greeting and the example exchange, so a button interrupted what reads as one conversation.
+
+**Change.** The box is the last thing in the card. The card reads top to bottom: Yuri's greeting, what a session looks like, then how to start. Seen on desktop only, since the box is not shown below desktop width (v11.66.5). No wording changed.
+
+**Checked in a real browser on the local build.** At 1280x800 and 1440x900 the order is example then button then price sentence, and the button is on the first screen (its bottom edge at 674 pixels). With a carried question the note stays under Yuri's greeting and the button is still on screen. A phone shows no box, as before.
+
+**No second-model review was run.** The blocks were reordered and one code comment corrected; no sentence a visitor reads was added, removed or reworded. The card's fingerprint was updated for the reorder. `public/sw.js` cache name is v66.
+
+**Still open from the same feedback, not changed here:** the "Code BAILEY is saved" line persisting in Bailey's own browser (a decision is pending on honouring only typed codes), and the example's label, which she circled and which must stay while the example is illustrative.
+
 ## v11.66.6 — The top badge names the offer (Nov 20 2026)
 
 **Why.** After v11.66.4 and v11.66.5 the top of the phone page said "free account" three times and nothing told a visitor this is a paid membership with a free first week. The owner asked whether it should say "free trial" instead, and asked for one wording to be picked.
