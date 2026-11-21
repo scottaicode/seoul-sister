@@ -4,6 +4,23 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.66.3 — A creator code is typed; the TikTok link no longer carries one (Nov 20 2026)
+
+**Bailey's decision.** Since Nov 10 her bio link (`/tt`) added `code=BAILEY`, so everyone who tapped it got 50% off the first paid month and the "code saved" message without asking. Bailey met it herself twice (Nov 16, and on a test sign-up Nov 18: her browser had opened the link on Nov 14). The discount is now only for someone who types a code.
+
+**Change.**
+- `/tt` redirects with its TikTok tracking and no code. `tests/creator-code-is-typed.test.mjs` loads the real config and runs the real capture function: no redirect or rewrite may carry a code, an arrival from the link must leave nothing saved, and only `offers.ts` may write the saved code.
+- **HOLIDAYGLOW** is a second code on the same Stripe coupon as BAILEY: 50% off the first paid month, first 50 people, ends Jan 1 2027 at 11:59 PM Pacific. Made in Stripe (`promo_1Ue3OwE3bY1JvxExkRRieIwp`); no app change was needed. The app's own lookup returns it as active, in either letter case.
+- BAILEY is unchanged: first 50 people, no end date. One of its 50 was used by Bailey's own test sign-up.
+
+**Not changed.** A browser that picked up BAILEY from the link before today keeps it for up to 30 days. Any address with `?code=` is still remembered, so a shared link with a code in it still works; the only thing of ours that sends one is the emails to a lead who already had a code, and no lead has one today (0 rows). The app still never says how many uses are left or when a code ends; the end date is Stripe's and Bailey's to state.
+
+**Second-model review: run (Opus 5.5, told to refute). Ship after fixes.** It found no customer-facing falsehood and confirmed a typed code survives both email and Google sign-up and reaches the Stripe subscription. It walked around the first guard three ways (the code built by concatenation, built in a template literal, and seeded in the browser from `from=tt_ss`), and found this entry and the CLAUDE.md line overstating. The guard was rewritten to run the real config and function; seven wrong versions, its three among them, now fail. The rewrite was not reviewed again. A source file that hid both the code and the storage key by splitting the strings would still pass.
+
+**Known, accepted.** The sign-up page caches a code's answer for five minutes. Someone who loads it in the last minutes of Jan 1 2027 Pacific can be shown $4.99 for HOLIDAYGLOW, then have the start refused as "offer ended" and be sent to the membership page, which clears the code. They can start there at the normal price.
+
+**Not verified.** No real redemption of HOLIDAYGLOW was made (it would spend one of the 50). That Stripe applies the one-month coupon to the first invoice after the free week has not been seen on a real invoice for any code. The "Have a code?" link on the sign-up page is small; nobody has checked how findable it is on a phone.
+
 ## v11.66.2 — Finishing setup sends the routine request (Nov 19 2026)
 
 **What happened.** The first two strangers to finish the setup chat (accounts `9b2f1271` on Nov 17 and `7ab342fb` on Nov 19, both from the cleansing-oil post) have no member chat and no routine. After Yuri's wrap-up a member still had to press "Finish setup" and then press Send on a prefilled message. The database cannot say which press each one skipped, and both may simply have left with the answer they came for.

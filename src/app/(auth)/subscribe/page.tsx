@@ -65,7 +65,7 @@ export default function SubscribePage() {
     setHadTrial(t.had_trial === true)
     setNetworkCap(t.network_cap === true)
   }
-  // A creator code remembered by this browser (e.g. BAILEY from her link), and
+  // A creator code remembered by this browser (typed earlier, or from an address that carried one), and
   // what Stripe says about it. The line is shown only when Stripe answered; if
   // it could not be asked, the page says nothing about the code.
   const [offerCode, setOfferCode] = useState<string | null>(null)

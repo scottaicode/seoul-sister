@@ -146,10 +146,11 @@ const nextConfig = {
     return [
       {
         source: '/tt',
-        // code=BAILEY (Nov 10 2026): Bailey's own link applies her offer without
-        // anyone typing it. src/lib/offers.ts remembers it; Stripe decides
-        // whether it is still open.
-        destination: '/?utm_source=tiktok&utm_medium=bio&from=tt_ss&code=BAILEY',
+        // No code on this link (Bailey's decision, Nov 20 2026). From Nov 10 it
+        // carried code=BAILEY, so everyone who tapped her bio link got 50% off
+        // without asking, Bailey included, twice. A creator code is now only
+        // ever typed: on the sign-up page or in the free-week notice.
+        destination: '/?utm_source=tiktok&utm_medium=bio&from=tt_ss',
         permanent: false,
       },
       {

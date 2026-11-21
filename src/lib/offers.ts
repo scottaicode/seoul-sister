@@ -7,6 +7,11 @@ import { PRICING } from '@/lib/pricing'
  * first 50 people, with no end date. The free week stays 7 days for everyone;
  * a code never lengthens it.
  *
+ * Nov 20 2026, Bailey's decision: a code is TYPED. Her TikTok link (`/tt`) no
+ * longer carries one. HOLIDAYGLOW is a second code on the same coupon (first
+ * 50 people, ends Jan 1 2027 11:59 PM Pacific, set in Stripe). A new code needs
+ * no change here: any code Stripe confirms as a creator offer works.
+ *
  * What makes each word true:
  *   - "50% off the first paid month": a Stripe coupon (percent_off, duration
  *     `repeating`, 1 month) applied when the subscription is created. A `once`
@@ -27,8 +32,8 @@ export const OFFER_SAVED_AT_KEY = 'ss_offer_code_at'
  * A code used to be kept for ever. Bailey opened the site weeks after testing
  * her own link and found "Code BAILEY saved" and a $4.99 price she had not
  * asked for (Nov 16 2026). Thirty days covers someone who watches a video and
- * comes back later; after that the browser forgets it and the link, or typing
- * the code, brings it back.
+ * comes back later; after that the browser forgets it and typing the code
+ * brings it back. (Her link carried the code then; since Nov 20 2026 it does not.)
  */
 export const OFFER_KEEP_DAYS = 30
 

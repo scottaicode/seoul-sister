@@ -839,8 +839,11 @@ test('offer codes: the checkout stops if Stripe cannot confirm the code, and the
   assert.match(subscribe, /if \(o\.state !== 'active'\) \{\s*clearOfferCode\(\)\s*setOfferCode\(null\)/)
   assert.match(subscribe, /if \(o\.state === 'active' \|\| o\.state === 'ended'\) setOfferLine\(o\.line \?\? null\)/)
   assert.match(subscribe, /console\.error\('\[subscribe\] offer lookup unavailable; saying nothing about the code'\)/)
-  // Bailey's own link applies her code; a code is remembered on every page load.
-  assert.match(read('next.config.js'), /destination: '\/\?utm_source=tiktok&utm_medium=bio&from=tt_ss&code=BAILEY'/)
+  // Bailey's link carries NO code (her decision, Nov 20 2026): a creator code is typed, never handed out by a link.
+  assert.match(read('next.config.js'), /destination: '\/\?utm_source=tiktok&utm_medium=bio&from=tt_ss',/)
+  // Closed world: no redirect in the config hands out any code, whatever it is called.
+  assert.deepEqual([...read('next.config.js').matchAll(/destination:\s*['"`]([^'"`]*)['"`]/g)].map((m) => m[1]).filter((d) => /[?&]code=/i.test(d)), [])
+  // A code in an address is still remembered on every page load (emails to a lead who had one use it).
   assert.match(read('src/contexts/AuthContext.tsx'), /captureAttribution\(\)\s*captureOfferCode\(\)/)
   // The endpoint never reports how many are left.
   assert.doesNotMatch(read('src/app/api/offer/route.ts') + read('src/components/widget/OfferSavedLine.tsx'), /times_redeemed|max_redemptions|remaining/)

@@ -3,7 +3,7 @@
 import { useSavedOffer } from '@/lib/use-saved-offer'
 
 /**
- * Tells someone who arrived with a creator code (e.g. Bailey's link) that the
+ * Tells someone who arrived with a creator code in the address (an emailed link) that the
  * code was kept, as soon as they land (Nov 10 2026). Without it the first sign
  * of the code was the membership page, several steps later.
  *
