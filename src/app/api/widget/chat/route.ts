@@ -785,7 +785,7 @@ export async function POST(request: NextRequest) {
           ? ` The previous message in this conversation was at ${prevIso}.`
           : ''
 
-    // A creator code the visitor arrived with, as Stripe describes it right now.
+    // A creator code this browser holds (typed, since Nov 20 2026), as Stripe describes it right now.
     const offerFact = await offerFactLine(parsed.offer_code)
     // A code Stripe has just confirmed as an open creator offer is kept on the
     // lead's row, so the emails sent to them carry it to whichever browser

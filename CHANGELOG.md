@@ -4,6 +4,25 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.66.10 — A saved code counts only if it was typed (Nov 20 2026)
+
+**What Bailey saw.** The sign-up form quoted "$4.99 for your first paid month (50% off)" to her when she had typed no code. It was the third time that day: earlier the landing page told her "Code BAILEY is saved in this browser", including after she cleared her browser.
+
+**Cause.** A code was saved in the browser two ways: by typing it, or by opening any address carrying `?code=`. Her TikTok link added one until v11.66.3, and a browser kept it 30 days. An old tab or back-button page whose address still carried the code saved it again on every load. That last step is my reading of her report; I could not see her phone.
+
+**Fix. This completes her rule from v11.66.3: the discount and its message are for someone who types a code.**
+- Nothing reads a code from an address. `captureOfferCode` is gone.
+- A typed code is saved with a mark (`ss_offer_code_typed`). A saved code without the mark is not a saved code: it is forgotten the first time it is read. Her phone needs no clearing.
+- A typed code still works as before: it shows the discount, survives a reload and Google sign-in, and reaches the Stripe subscription.
+
+**Who loses something.** A visitor who tapped the old link since Oct 21 and was shown "code saved" is no longer given the discount unless they type the code. So is anyone who typed a code before today and has not yet signed up: the two cannot be told apart in the browser. On Nov 20 no free week, subscription or lead held a code (0 rows each), and nobody has paid with one.
+
+**Second-model review: run (Opus 5.5, told to refute). Ship after fixes.** It traced every route by which a typed code reaches Stripe and found none broken. It found a one-line way back to the old behaviour that every test missed (the sign-up page handing the address's `?code=` to the typed-code check), a comment that said every unmarked code came from an address, and stale comments. The tests now list every caller of that check and every reader of a `code` parameter closed-world; six wrong versions fail. Comments corrected. Not reviewed again.
+
+**Reproduced in a real browser on the local build.** With BAILEY left over and an address still carrying the code, the sign-up form reads "$9.99/month", shows no code message and the leftover is gone. Typing `holidayglow` gives $4.99, and it is still there after a reload.
+
+**Left in place, on purpose.** Emails to a lead still append `&code=` to their links and the widget still records a code on a lead's row. Both are dead: the chat is closed, no lead holds a code, and the site ignores the parameter. Removing them touches the email fingerprints and belongs in its own change. `public/sw.js` cache name is v69.
+
 ## v11.66.9 — Two sign-up buttons on desktop: the top and the bottom (Nov 20 2026)
 
 **Bailey, on desktop:** too many "Create my free account" buttons; only the one at the top and the one at the bottom should stay.

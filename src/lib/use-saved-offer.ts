@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { captureOfferCode, getOfferCode, clearOfferCode, resolveSavedOffer, readMemberPlan, askOfferOnce, NO_SAVED_OFFER, type SavedOffer } from '@/lib/offers'
+import { getOfferCode, clearOfferCode, resolveSavedOffer, readMemberPlan, askOfferOnce, NO_SAVED_OFFER, type SavedOffer } from '@/lib/offers'
 
 /**
  * The creator code this browser remembers, as it applies to the person looking
@@ -12,8 +12,8 @@ import { captureOfferCode, getOfferCode, clearOfferCode, resolveSavedOffer, read
  * so the three cannot disagree. The rules are in resolveSavedOffer; how the
  * plan and the code are read is in readMemberPlan and askOfferOnce.
  *
- * The words and the percentage come from Stripe through /api/offer, never from
- * the URL.
+ * The code is one the person typed (offers.ts keeps no other kind). The words
+ * and the percentage come from Stripe through /api/offer.
  */
 export function useSavedOffer(): SavedOffer {
   const { user, loading } = useAuth()
@@ -22,8 +22,6 @@ export function useSavedOffer(): SavedOffer {
 
   useEffect(() => {
     let live = true
-    // Child effects run before AuthContext's, so read the URL here too.
-    captureOfferCode()
     setOffer(NO_SAVED_OFFER)
     // Who is looking is not known until the session has been read.
     if (loading) return

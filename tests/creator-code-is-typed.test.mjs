@@ -65,55 +65,88 @@ test('EXECUTED: no redirect or rewrite in the real config hands out a code', asy
   assert.equal(readdirSync(join(root, 'src')).some((f) => /^middleware\.(ts|js|mjs)$/.test(f)), false)
 })
 
-test('EXECUTED: arriving from the TikTok link saves no code; a code in the address still does', async () => {
+test('EXECUTED: no address saves a code, and a code an address left behind earlier is forgotten', async () => {
   const cfg = await loadConfig()
   const tt = (await cfg.redirects()).find((r) => r.source === '/tt')
   const offers = await loadOffers()
+  assert.equal(offers.captureOfferCode, undefined, 'nothing reads a code from an address any more')
   const saved = globalThis.window
   try {
-    // Exactly what the link lands on.
-    const arrival = fakeWindow(tt.destination.slice(tt.destination.indexOf('?')))
-    globalThis.window = arrival
-    offers.captureOfferCode()
-    assert.equal(arrival.m.size, 0, 'the TikTok link must leave no code in the browser')
-    assert.equal(offers.getOfferCode(), null)
-    // Other tracking-only arrivals leave nothing either.
-    for (const q of ['?from=tt_ss', '?utm_source=tiktok', '?from=gate_hero_button', '?utm_source=instagram&utm_medium=bio&from=ig_ss', '']) {
+    // Whatever the address says, opening the page leaves nothing saved and reports no code.
+    for (const q of [tt.destination.slice(tt.destination.indexOf('?')), '?code=BAILEY', '?from=recap&code=holidayglow', '?utm_source=tiktok&utm_medium=bio&from=tt_ss&code=BAILEY', '']) {
       const w = fakeWindow(q); globalThis.window = w
-      offers.captureOfferCode()
+      assert.equal(offers.getOfferCode(), null, q)
       assert.equal(w.m.size, 0, q)
     }
-    // The mechanism itself is intact: a code in the address is kept (our lead emails use it).
-    const coded = fakeWindow('?from=recap&code=holidayglow'); globalThis.window = coded
-    offers.captureOfferCode()
-    assert.equal(coded.m.get(offers.OFFER_STORAGE_KEY), 'HOLIDAYGLOW')
+    // Bailey's phone, Nov 20 2026: BAILEY saved by her old link, never typed. The first read forgets it.
+    const hers = fakeWindow('?utm_source=tiktok&utm_medium=bio&from=tt_ss&code=BAILEY')
+    hers.m.set(offers.OFFER_STORAGE_KEY, 'BAILEY'); hers.m.set(offers.OFFER_SAVED_AT_KEY, String(Date.now()))
+    globalThis.window = hers
+    assert.equal(offers.getOfferCode(), null)
+    assert.equal(hers.m.size, 0)
+    assert.equal(offers.getOfferCode(), null, 'and reloading the same address does not bring it back')
+    // Typing it is what saves it, and that survives a reload at any address.
+    const typed = fakeWindow(''); globalThis.window = typed
+    assert.equal(offers.rememberOfferCode('holidayglow'), true)
+    assert.equal(typed.m.get(offers.OFFER_STORAGE_KEY), 'HOLIDAYGLOW')
+    assert.equal(typed.m.get(offers.OFFER_TYPED_KEY), '1')
     assert.equal(offers.getOfferCode(), 'HOLIDAYGLOW')
+    // Forgetting it forgets the mark too.
+    offers.clearOfferCode()
+    assert.equal(typed.m.size, 0)
+    assert.equal(offers.getOfferCode(), null)
   } finally {
     globalThis.window = saved
   }
 })
 
-test('closed world: across all of src, the saved code is written in two places, both from what the person brought', () => {
+test('closed world: across all of src, the saved code is written in ONE place, from what the person typed', () => {
   const files = []
   const walk = (dir) => { for (const e of readdirSync(join(root, dir), { withFileTypes: true })) { const p = dir + '/' + e.name; if (e.isDirectory()) walk(p); else if (/\.(ts|tsx|js|mjs)$/.test(e.name)) files.push(p) } }
   walk('src')
   assert.ok(files.length > 300, 'the walk must see the app')
-  // Only offers.ts names the storage key, by constant or by its text.
+  // Only offers.ts names the storage keys, by constant or by their text.
   assert.deepEqual(files.filter((f) => /ss_offer_code/.test(read(f))), ['src/lib/offers.ts'])
   const offers = read('src/lib/offers.ts')
-  assert.equal(offers.split('setItem(OFFER_STORAGE_KEY').length - 1, 2)
-  // capture: the value comes from the address's own `code` parameter and nothing else.
-  assert.ok(offers.includes(
-    "    const code = normalizeOfferCode(new URLSearchParams(window.location.search).get('code'))\n" +
-    "    if (code) {\n" +
-    "      window.localStorage.setItem(OFFER_STORAGE_KEY, code)\n"
-  ))
-  // remember: the value is what the person typed.
+  assert.equal(offers.split('setItem(OFFER_STORAGE_KEY').length - 1, 1)
+  assert.equal(offers.split('setItem(OFFER_TYPED_KEY').length - 1, 1)
+  // The one writer, whole: the value is what the person typed, and the mark is set with it.
   assert.ok(offers.includes(
     "    const code = normalizeOfferCode(raw)\n" +
     "    if (!code) return false\n" +
-    "    window.localStorage.setItem(OFFER_STORAGE_KEY, code)\n"
+    "    window.localStorage.setItem(OFFER_STORAGE_KEY, code)\n" +
+    "    window.localStorage.setItem(OFFER_SAVED_AT_KEY, String(Date.now()))\n" +
+    "    window.localStorage.setItem(OFFER_TYPED_KEY, '1')\n" +
+    "    return window.localStorage.getItem(OFFER_STORAGE_KEY) === code && window.localStorage.getItem(OFFER_TYPED_KEY) === '1'\n"
   ))
+  // The reader refuses a code with no mark before it does anything else with it.
+  assert.ok(offers.includes(
+    "  const code = normalizeOfferCode(store.getItem(OFFER_STORAGE_KEY))\n" +
+    "  if (!code) return null\n" +
+    "  if (store.getItem(OFFER_TYPED_KEY) !== '1') {\n" +
+    "    store.removeItem(OFFER_STORAGE_KEY)\n" +
+    "    store.removeItem(OFFER_SAVED_AT_KEY)\n" +
+    "    store.removeItem(OFFER_TYPED_KEY)\n" +
+    "    return null\n" +
+    "  }\n"
+  ))
+  // Nothing in offers.ts reads the address at all, and rememberOfferCode is called only where a person typed.
+  assert.doesNotMatch(offers, /location\.search|URLSearchParams|location\.href/)
+  const callers = files.filter((f) => f !== 'src/lib/offers.ts' && /rememberOfferCode/.test(read(f)))
+  assert.deepEqual(callers.sort(), ['src/app/(auth)/subscribe/page.tsx', 'src/lib/typed-code.ts'])
+  // The check-and-save for a typed code is called from one place, the sign-up form's own Apply
+  // button, with what is in the code box. (A review fed it the address's ?code= from an effect on
+  // that page, which would have saved a code nobody typed, with the typed mark on it.)
+  const typedCallers = files.filter((f) => f !== 'src/lib/typed-code.ts' && /checkTypedCode\(/.test(read(f)))
+  assert.deepEqual(typedCallers, ['src/app/(auth)/register/page.tsx'])
+  const register = read('src/app/(auth)/register/page.tsx')
+  assert.equal(register.split('checkTypedCode(').length - 1, 1)
+  // `raw` is what the code box hands its Apply handler, and nothing else.
+  assert.ok(register.includes('          <CodeField\n            className="mb-6 text-center"\n            onApply={async (raw) => {\n              const r = await checkTypedCode(raw)\n'))
+  // No page or component reads a `code` parameter out of an address. The one reader in src is the
+  // public lookup endpoint, which answers a question about a code and saves nothing.
+  const readers = files.filter((f) => /\.get\(\s*['"`]code['"`]\s*\)|searchParams\.code\b|\[['"`]code['"`]\]/.test(read(f)))
+  assert.deepEqual(readers, ['src/app/api/offer/route.ts'])
   // No source file holds a creator code as a value it could apply by default.
   for (const f of files) {
     const hits = [...read(f).matchAll(/^(?!\s*(\/\/|\*|\/\*)).*['"`](BAILEY|HOLIDAYGLOW)['"`]/gm)].map((m) => m[0].trim())

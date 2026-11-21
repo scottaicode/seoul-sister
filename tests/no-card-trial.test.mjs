@@ -823,14 +823,14 @@ test('offer codes: the checkout stops if Stripe cannot confirm the code, and the
   // The hook only wires real readers into resolveSavedOffer. Its whole effect is pinned.
   const effect = hook.slice(hook.indexOf('  useEffect(() => {'), hook.indexOf('  return offer'))
   assert.equal(effect.replace(/\n\s*\/\/[^\n]*/g, '').replace(/\s+/g, ' ').trim(),
-    "useEffect(() => { let live = true captureOfferCode() setOffer(NO_SAVED_OFFER) if (loading) return resolveSavedOffer({ code: getOfferCode(), signedIn: userId !== null, readPlan: () => readMemberPlan(supabase, userId as string), askOffer: (code) => askOfferOnce(code, (url) => fetch(url)), forget: clearOfferCode, onUpdate: (o) => { if (live) setOffer(o) }, }).catch((err) => console.error('[offer] could not check the saved code:', err)) return () => { live = false } }, [userId, loading])")
+    "useEffect(() => { let live = true setOffer(NO_SAVED_OFFER) if (loading) return resolveSavedOffer({ code: getOfferCode(), signedIn: userId !== null, readPlan: () => readMemberPlan(supabase, userId as string), askOffer: (code) => askOfferOnce(code, (url) => fetch(url)), forget: clearOfferCode, onUpdate: (o) => { if (live) setOffer(o) }, }).catch((err) => console.error('[offer] could not check the saved code:', err)) return () => { live = false } }, [userId, loading])")
   assert.match(hook, /const \{ user, loading \} = useAuth\(\)\n  const userId = user\?\.id \?\? null\n/)
   // The whole hook, comments aside, by fingerprint: a wrong return statement
   // or initial state outside the effect passed every other assertion here
   // (second-model review). Any edit needs a review and a new fingerprint.
   const hookBody = hook.slice(hook.indexOf('export function useSavedOffer')).replace(/\n\s*\/\/[^\n]*/g, '').replace(/\s+/g, ' ').trim()
-  assert.equal(sha('sha256').update(hookBody).digest('hex'), '58da4587a782f5cd4e2e1fa2f575243dc0eaa335d93a9bff02ac907ee0bbf879')
-  assert.equal(sha('sha256').update(hook.split('\n').filter((l) => l.startsWith('import ')).join('\n')).digest('hex'), 'bef8127d6c2ae957642a0258fde4e1a625c1c4f31a659a3fe050be93c4fbd98f')
+  assert.equal(sha('sha256').update(hookBody).digest('hex'), '040505d16df34d72cd3975ba2380ed720bcb7bb4ec918e78f15e534f1e9cb143')
+  assert.equal(sha('sha256').update(hook.split('\n').filter((l) => l.startsWith('import ')).join('\n')).digest('hex'), '1e68b057e079dcb65f24978c6296679b2120d4d1de4fd99b9e6c3df5c779a8dc')
   assert.match(read('src/components/home/HomeClient.tsx'), /<TryYuriSection variant="hero" onArrivalSource=\{setArrivalSource\} \/>\s*<OfferSavedLine \/>/)
   assert.match(block, /else if \(resolved\.state === 'ended'\) \{[\s\S]{0,260}return NextResponse\.json\(\{ error: offerEndedLine\(resolved\.code\), offer_ended: true \}, \{ status: 409 \}\)/, 'a code that closed stops the checkout and says so')
   assert.doesNotMatch(checkout, /error: message \}/, 'raw Stripe errors are not shown to customers')
@@ -843,8 +843,8 @@ test('offer codes: the checkout stops if Stripe cannot confirm the code, and the
   assert.match(read('next.config.js'), /destination: '\/\?utm_source=tiktok&utm_medium=bio&from=tt_ss',/)
   // Closed world: no redirect in the config hands out any code, whatever it is called.
   assert.deepEqual([...read('next.config.js').matchAll(/destination:\s*['"`]([^'"`]*)['"`]/g)].map((m) => m[1]).filter((d) => /[?&]code=/i.test(d)), [])
-  // A code in an address is still remembered on every page load (emails to a lead who had one use it).
-  assert.match(read('src/contexts/AuthContext.tsx'), /captureAttribution\(\)\s*captureOfferCode\(\)/)
+  // Nothing reads a code from an address any more (Nov 20 2026): a code is typed.
+  assert.doesNotMatch(read('src/contexts/AuthContext.tsx') + read('src/lib/use-saved-offer.ts') + read('src/lib/offers.ts'), /captureOfferCode/)
   // The endpoint never reports how many are left.
   assert.doesNotMatch(read('src/app/api/offer/route.ts') + read('src/components/widget/OfferSavedLine.tsx'), /times_redeemed|max_redemptions|remaining/)
   assert.match(read('src/app/api/offer/route.ts'), /return NextResponse\.json\(offerResponse\(offer\)\)/)

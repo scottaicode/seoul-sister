@@ -147,9 +147,10 @@ const nextConfig = {
       {
         source: '/tt',
         // No code on this link (Bailey's decision, Nov 20 2026). From Nov 10 it
-        // carried code=BAILEY, so everyone who tapped her bio link got 50% off
-        // without asking, Bailey included, twice. A creator code is now only
-        // ever typed: on the sign-up page or in the free-week notice.
+        // carried code=BAILEY, so everyone who tapped her bio link was handed
+        // the code and shown the discounted price without asking; Bailey met it
+        // herself several times. (Nobody paid with it.) A creator code is now
+        // only ever typed: on the sign-up page or in the free-week notice.
         destination: '/?utm_source=tiktok&utm_medium=bio&from=tt_ss',
         permanent: false,
       },

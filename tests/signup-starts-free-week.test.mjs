@@ -233,21 +233,37 @@ test('executed: who is started at sign-up, and what a reload says to someone who
   assert.equal(a.readStartNote('u1', broken), null)
 })
 
-test('executed: a saved code is kept thirty days, a code saved before dates were kept starts its thirty days now', async () => {
+test('executed: a TYPED code is kept thirty days; a saved code that was not typed is forgotten on first read', async () => {
   const { offers: o } = await load()
   const DAY = 24 * 60 * 60 * 1000
   const T = 1_800_000_000_000
   assert.equal(o.OFFER_KEEP_DAYS, 30)
-  const fresh = store({ [o.OFFER_STORAGE_KEY]: 'bailey', [o.OFFER_SAVED_AT_KEY]: String(T) })
+  assert.equal(o.OFFER_TYPED_KEY, 'ss_offer_code_typed')
+  const typed = (extra = {}) => store({ [o.OFFER_STORAGE_KEY]: 'bailey', [o.OFFER_TYPED_KEY]: '1', ...extra })
+  const fresh = typed({ [o.OFFER_SAVED_AT_KEY]: String(T) })
   assert.equal(o.readSavedOffer(fresh, T + 29 * DAY), 'BAILEY')
   assert.equal(o.readSavedOffer(fresh, T + 31 * DAY), null)
-  assert.equal(fresh.map.size, 0, 'forgotten, with its date')
-  const legacy = store({ [o.OFFER_STORAGE_KEY]: 'BAILEY' })
-  assert.equal(o.readSavedOffer(legacy, T), 'BAILEY')
-  assert.equal(legacy.map.get(o.OFFER_SAVED_AT_KEY), String(T))
-  assert.equal(o.readSavedOffer(legacy, T + 31 * DAY), null)
+  assert.equal(fresh.map.size, 0, 'forgotten, with its date and its mark')
+  // Typed, but saved before dates were kept: its thirty days start at the first read.
+  const undated = typed()
+  assert.equal(o.readSavedOffer(undated, T), 'BAILEY')
+  assert.equal(undated.map.get(o.OFFER_SAVED_AT_KEY), String(T))
+  assert.equal(o.readSavedOffer(undated, T + 31 * DAY), null)
+  // NOT typed: what an address used to leave behind (Bailey's own phone, Nov 20 2026). Gone at
+  // the first read, whether a day old or a minute, and it stays gone.
+  for (const leftover of [
+    { [o.OFFER_STORAGE_KEY]: 'BAILEY' },
+    { [o.OFFER_STORAGE_KEY]: 'BAILEY', [o.OFFER_SAVED_AT_KEY]: String(T) },
+    { [o.OFFER_STORAGE_KEY]: 'HOLIDAYGLOW', [o.OFFER_SAVED_AT_KEY]: String(T), [o.OFFER_TYPED_KEY]: '0' },
+    { [o.OFFER_STORAGE_KEY]: 'BAILEY', [o.OFFER_TYPED_KEY]: 'true' },
+  ]) {
+    const s = store(leftover)
+    assert.equal(o.readSavedOffer(s, T + 60_000), null, JSON.stringify(leftover))
+    assert.equal(s.map.size, 0, 'forgotten entirely')
+    assert.equal(o.readSavedOffer(s, T + 120_000), null)
+  }
   assert.equal(o.readSavedOffer(store(), T), null)
-  assert.equal(o.readSavedOffer(store({ [o.OFFER_STORAGE_KEY]: 'not a code!' }), T), null)
+  assert.equal(o.readSavedOffer(store({ [o.OFFER_STORAGE_KEY]: 'not a code!', [o.OFFER_TYPED_KEY]: '1' }), T), null)
   assert.equal(o.offerSavedLine('BAILEY', 50), 'Code BAILEY is saved in this browser: 50% off your first paid month.')
 })
 

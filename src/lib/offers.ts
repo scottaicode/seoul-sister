@@ -44,23 +44,19 @@ export function normalizeOfferCode(raw: string | null | undefined): string | nul
 }
 
 /**
- * Remember a code that arrived in the URL (`?code=BAILEY`). The LATEST code
- * wins: someone who followed one creator's link and later another's gets the
- * one they clicked last. Never throws.
+ * Set beside a saved code when the person TYPED it. A saved code without this
+ * mark is not a saved code.
+ *
+ * Bailey's rule (Nov 20 2026): the discount, and the message about it, are for
+ * someone who types a code. Until that day a code was also saved from any
+ * address carrying `?code=` (her TikTok link added one), and a browser kept it
+ * for 30 days. On Nov 20 she was shown "Code BAILEY is saved" and $4.99 on the
+ * sign-up form three times without typing anything, the last after clearing her
+ * browser: an old tab's address still carried the code and saved it again on
+ * every load. Nothing is read from an address now, and a code saved before the
+ * mark existed is forgotten the first time it is read.
  */
-export function captureOfferCode(): void {
-  if (typeof window === 'undefined') return
-  try {
-    const code = normalizeOfferCode(new URLSearchParams(window.location.search).get('code'))
-    if (code) {
-      window.localStorage.setItem(OFFER_STORAGE_KEY, code)
-      window.localStorage.setItem(OFFER_SAVED_AT_KEY, String(Date.now()))
-    }
-  } catch {
-    // localStorage can throw (private mode). A code is a convenience: the same
-    // code can still be typed on the Stripe page.
-  }
-}
+export const OFFER_TYPED_KEY = 'ss_offer_code_typed'
 
 /**
  * Remember a code the person typed, once Stripe has confirmed it. Never
@@ -75,7 +71,8 @@ export function rememberOfferCode(raw: string): boolean {
     if (!code) return false
     window.localStorage.setItem(OFFER_STORAGE_KEY, code)
     window.localStorage.setItem(OFFER_SAVED_AT_KEY, String(Date.now()))
-    return window.localStorage.getItem(OFFER_STORAGE_KEY) === code
+    window.localStorage.setItem(OFFER_TYPED_KEY, '1')
+    return window.localStorage.getItem(OFFER_STORAGE_KEY) === code && window.localStorage.getItem(OFFER_TYPED_KEY) === '1'
   } catch {
     // Storage blocked (private mode). On the membership page the code is still
     // sent with that page's button; on the sign-up page the caller says so.
@@ -94,13 +91,22 @@ export function getOfferCode(): string | null {
 }
 
 /**
- * The saved code if it is still within OFFER_KEEP_DAYS, else null (and it is
- * forgotten). A code saved before the date was recorded starts its thirty days
- * at the first read. Pure but for the store it is handed; exported for tests.
+ * The saved code if it carries the typed mark and is still within
+ * OFFER_KEEP_DAYS, else null (and it is forgotten). A code with no mark was
+ * saved before Nov 20 2026, from an address or by typing: the two cannot be
+ * told apart, so both are forgotten here and a person who did type theirs
+ * types it again. (No account or free week held a code on that day.) Pure but for the store it is
+ * handed; exported for tests.
  */
 export function readSavedOffer(store: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>, now: number): string | null {
   const code = normalizeOfferCode(store.getItem(OFFER_STORAGE_KEY))
   if (!code) return null
+  if (store.getItem(OFFER_TYPED_KEY) !== '1') {
+    store.removeItem(OFFER_STORAGE_KEY)
+    store.removeItem(OFFER_SAVED_AT_KEY)
+    store.removeItem(OFFER_TYPED_KEY)
+    return null
+  }
   const savedAt = Number(store.getItem(OFFER_SAVED_AT_KEY))
   if (!Number.isFinite(savedAt) || savedAt <= 0) {
     store.setItem(OFFER_SAVED_AT_KEY, String(now))
@@ -109,6 +115,7 @@ export function readSavedOffer(store: Pick<Storage, 'getItem' | 'setItem' | 'rem
   if (now - savedAt > OFFER_KEEP_DAYS * 24 * 60 * 60 * 1000) {
     store.removeItem(OFFER_STORAGE_KEY)
     store.removeItem(OFFER_SAVED_AT_KEY)
+    store.removeItem(OFFER_TYPED_KEY)
     return null
   }
   return code
@@ -120,6 +127,7 @@ export function clearOfferCode(): void {
   try {
     window.localStorage.removeItem(OFFER_STORAGE_KEY)
     window.localStorage.removeItem(OFFER_SAVED_AT_KEY)
+    window.localStorage.removeItem(OFFER_TYPED_KEY)
   } catch {
     // Nothing to clean up if storage is unavailable.
   }

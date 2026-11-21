@@ -51,8 +51,11 @@ export interface NurtureEmailOptions {
    */
   resumeRemaining?: number | null
   /**
-   * The creator code the lead arrived with. Added to this email's own links
-   * to the site so the discount follows the lead to any browser.
+   * A creator code recorded for the lead while the open chat ran. It is still
+   * added to this email's links, but since Nov 20 2026 the site saves a code
+   * only when it is typed, so the parameter does nothing on arrival. No lead
+   * holds one (0 rows that day). Remove it with its plumbing; do not make the
+   * site read it again (tests/creator-code-is-typed.test.mjs).
    */
   offerCode?: string | null
 }

@@ -75,9 +75,10 @@ export interface RecapLink {
    */
   accountLine?: AccountLineKind
   /**
-   * The creator code this lead arrived with, or null. Added to the account
-   * link so the discount follows the lead to whichever browser opens the
-   * email. (The button's own `url` is built with it by widgetEmailLink.)
+   * A creator code recorded for this lead while the open chat ran, or null.
+   * Still added to the account link (and to the button's `url` by
+   * widgetEmailLink), but since Nov 20 2026 the site saves a code only when it
+   * is typed, so the parameter does nothing on arrival. No lead holds one.
    */
   offerCode?: string | null
 }

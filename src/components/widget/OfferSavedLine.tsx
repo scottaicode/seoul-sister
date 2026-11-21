@@ -3,9 +3,9 @@
 import { useSavedOffer } from '@/lib/use-saved-offer'
 
 /**
- * Tells someone who arrived with a creator code in the address (an emailed link) that the
- * code was kept, as soon as they land (Nov 10 2026). Without it the first sign
- * of the code was the membership page, several steps later.
+ * Tells someone who typed a creator code earlier in this browser that it is
+ * still kept, when they come back to the landing page. (Until Nov 20 2026 a
+ * code could arrive in an address; it is only ever typed now.)
  *
  * What it says, and to whom, is decided in useSavedOffer: the words come from
  * Stripe, and a signed-in member is told nothing. It never says how many uses
