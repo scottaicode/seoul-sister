@@ -18,6 +18,7 @@ import SignedInRedirect from '@/components/auth/SignedInRedirect'
 import { MAX_FREE_MESSAGES } from '@/lib/utils/widget-session'
 import { supabase } from '@/lib/supabase'
 import { trackEvent, DemoEvent } from '@/lib/analytics'
+import { recordSignupPress } from '@/lib/signup-press'
 import { LANDING_CHAT_OPEN, gatedSignupHref, gateButtonTag, isCarryingQuestion, heroBadge, heroFootnote, talkToYuriLabel, yuriAccessSentence } from '@/lib/landing-chat'
 
 const fadeUp = {
@@ -125,6 +126,8 @@ export default function HomeClient() {
   // (the companion to signup_from, never the measure: GA4 is bot-inflated).
   const trackSignupClick = (button: string) => {
     if (LANDING_CHAT_OPEN) return
+    // Our own count first (ss_signup_presses): the one that crawlers do not inflate.
+    recordSignupPress(button, arrivalSource)
     // The question is taken out of the address bar on arrival and held on the
     // device (TryYuriSection), so that is where "did they come with one" is read.
     trackEvent(DemoEvent.gateSignupClick, { source: arrivalSource || 'unknown', has_question: isCarryingQuestion(window.localStorage), position: button })

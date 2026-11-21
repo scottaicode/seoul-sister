@@ -347,6 +347,8 @@ test('closed world: the landing page has two sign-up buttons at any width, one a
   assert.ok(home.includes(
     "  const trackSignupClick = (button: string) => {\n" +
     "    if (LANDING_CHAT_OPEN) return\n" +
+    "    // Our own count first (ss_signup_presses): the one that crawlers do not inflate.\n" +
+    "    recordSignupPress(button, arrivalSource)\n" +
     "    // The question is taken out of the address bar on arrival and held on the\n" +
     "    // device (TryYuriSection), so that is where \"did they come with one\" is read.\n" +
     "    trackEvent(DemoEvent.gateSignupClick, { source: arrivalSource || 'unknown', has_question: isCarryingQuestion(window.localStorage), position: button })\n" +
@@ -408,6 +410,7 @@ test('closed world: the landing page has two sign-up buttons at any width, one a
   assert.doesNotMatch(intro, /<Link|<a |<button|href=|onClick|widgetMembershipLine|gatedSignupHref|trackEvent|glass-button|\$\{?PRICING|9\.99/)
   assert.deepEqual([...intro.matchAll(/^import [^\n]*$/gm)].map((m) => m[0]), [
     "import { Sparkles } from 'lucide-react'",
+    "import { CARRIED_QUESTION_NOTE } from '@/lib/landing-chat'",
     "import { REAL_YURI_EXAMPLE, type YuriExampleMessage } from '@/content/yuri-example'",
   ])
   // Its order: Yuri's greeting, a visitor's own carried question, then the example.

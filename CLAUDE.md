@@ -375,6 +375,7 @@ ss_widget_visitors          - Persistent anonymous visitor identity with AI memo
 ss_widget_sessions          - Per-conversation session tracking (specialist domains, intent signals, message counts)
 ss_widget_messages          - Full message storage with tool call JSONB logging
 ss_widget_intent_signals    - Consumer intent signal detection (15 signals across 4 categories)
+ss_signup_presses           - One row per press of a sign-up button on the landing page or a blog post (button, arrival channel, page). Counts only: no account, address, browser id or IP. See LANDING-CHAT-GATE.md
 ```
 
 #### Intelligence & Learning
@@ -583,7 +584,7 @@ Automatic via Vercel on push to `main` branch.
 ---
 
 **Created**: February 2026
-**Current version**: 11.66.10 (November 20 2026). One line only: every release's detail goes in `CHANGELOG.md`, never here.
+**Current version**: 11.66.11 (November 21 2026). One line only: every release's detail goes in `CHANGELOG.md`, never here.
 **AI Advisor**: Yuri (유리) — "Glass"
 
 **Full version history**: See `CHANGELOG.md` (repo root). The detailed, dated changelog — every version from v3.0.0 through the current release — lives there, not in this file. Per the project's documentation standard: CLAUDE.md is for current architecture and how the system works NOW; CHANGELOG.md is for what changed and when. When shipping a feature, update the relevant architecture section here and put the detailed entry in CHANGELOG.md.

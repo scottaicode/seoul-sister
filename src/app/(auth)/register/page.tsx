@@ -14,7 +14,7 @@ import { signupEmailRejection } from '@/lib/utils/email-normalize'
 import { adoptPreviewForSignup } from '@/lib/utils/widget-session'
 import { takeSignupResumeToken, claimPreviewForSignup, settleWithin } from '@/lib/widget/signup-link'
 import { supabase } from '@/lib/supabase'
-import { stashCarriedQuestion, rememberSignupFrom } from '@/lib/landing-chat'
+import { stashCarriedQuestion, rememberSignupFrom, peekCarriedQuestion, CARRIED_QUESTION_NOTE } from '@/lib/landing-chat'
 import {
   AuthCaptcha,
   requireCaptchaToken,
@@ -79,16 +79,23 @@ export default function RegisterPage() {
   // Arriving from the closed landing chat with a question (`?ask=`): hold it on
   // this device so it is in the setup chat's box, ready for them to send, and
   // take their words out of the address bar. See src/lib/landing-chat.ts.
+  // The question they arrived with, shown back to them on this form so they
+  // know it was kept (Nov 21 2026: a blog post's "Ask Yuri" button now comes
+  // straight here). It is read from where it is held, never from the address,
+  // so what is shown is exactly what will be in the setup chat's box.
+  const [carriedQuestion, setCarriedQuestion] = useState('')
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search)
       // Which link brought them here, for the account row (signup_from).
       rememberSignupFrom(window.sessionStorage, params.get('from'))
-      if (!params.has('ask')) return
-      stashCarriedQuestion(window.localStorage, params.get('ask'), Date.now())
-      params.delete('ask')
-      const qs = params.toString()
-      window.history.replaceState(window.history.state, '', `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`)
+      if (params.has('ask')) {
+        stashCarriedQuestion(window.localStorage, params.get('ask'), Date.now())
+        params.delete('ask')
+        const qs = params.toString()
+        window.history.replaceState(window.history.state, '', `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`)
+      }
+      setCarriedQuestion(peekCarriedQuestion(window.localStorage, Date.now()))
     } catch (err) {
       console.warn('[register] carried question not kept:', err)
     }
@@ -222,6 +229,15 @@ export default function RegisterPage() {
             had started her free week; placed inside the email form it was
             never read by someone using Google). Wording and price: offers.ts. */}
         <p className="text-white/70 text-sm leading-relaxed mb-3">{registerFootnote(typedPercent ?? savedOffer.percentOff)}</p>
+        {/* Their own question, if they came with one, and what happens to it. */}
+        {carriedQuestion && (
+          <div className="mb-4 flex flex-col items-end gap-1">
+            <div className="max-w-[90%] rounded-2xl px-4 py-3 text-sm leading-relaxed bg-gradient-to-br from-gold to-gold-light text-seoul-dark">
+              {carriedQuestion}
+            </div>
+            <p className="text-[11px] text-white/55 text-right">{CARRIED_QUESTION_NOTE}</p>
+          </div>
+        )}
         {/* Someone who heard a creator's code and came here directly, not by the
             creator's link. Closed until asked for. Not shown once a code is on. */}
         {(typedPercent ?? savedOffer.percentOff) == null ? (

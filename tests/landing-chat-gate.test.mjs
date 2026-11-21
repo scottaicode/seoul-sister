@@ -372,7 +372,7 @@ test('the closed hero: only real, approved conversations may be labelled real', 
   // example published with an invented approval. Publishing a real example, or
   // changing one word of the hero, means a second-model review and then a new
   // fingerprint here.
-  assert.equal(sha256(intro), 'e0e7d8a3ba6ba129e64d7ede5f3c3abcb811cdd11fa596be0ab0d27b78d8b522', 'GatedYuriIntro.tsx changed')
+  assert.equal(sha256(intro), '99b5b22b031b637700e26deee2b63e2e0c2b196c602578e4f5f204457983de39', 'GatedYuriIntro.tsx changed')
   assert.equal(sha256(content), 'b20d58dd7614ee56d931b3b1b4aff66586de0e9b8c0c477892d7f5dea9ceeb63', 'src/content/yuri-example.ts changed')
   assert.ok(intro.includes('  const example = REAL_YURI_EXAMPLE ?? fallbackExample\n'))
   // The fallback keeps the label that says it is an example.
@@ -389,7 +389,12 @@ test('the closed hero: only real, approved conversations may be labelled real', 
 
 test('sign-up keeps the question and takes it out of the address bar; the setup chat only prefills it', () => {
   const register = read('src/app/(auth)/register/page.tsx')
-  assert.ok(register.includes("      stashCarriedQuestion(window.localStorage, params.get('ask'), Date.now())\n      params.delete('ask')\n"))
+  assert.ok(register.includes("        stashCarriedQuestion(window.localStorage, params.get('ask'), Date.now())\n        params.delete('ask')\n"))
+  // The form shows the question back from where it is HELD, not from the address, so what is shown
+  // is what will be waiting in the setup chat (Nov 21 2026: blog buttons come straight to this form).
+  assert.ok(register.includes("      setCarriedQuestion(peekCarriedQuestion(window.localStorage, Date.now()))\n"))
+  assert.equal(register.split('setCarriedQuestion(').length - 1, 1)
+  assert.ok(register.includes('            <p className="text-[11px] text-white/55 text-right">{CARRIED_QUESTION_NOTE}</p>\n'))
   const onboarding = read('src/app/(app)/onboarding/page.tsx')
   // The whole effect, and every use of the value. (Review, Nov 13 2026: a line
   // added inside the effect that sent the question through a renamed variable

@@ -1,6 +1,7 @@
 'use client'
 
 import { Sparkles } from 'lucide-react'
+import { CARRIED_QUESTION_NOTE } from '@/lib/landing-chat'
 import { REAL_YURI_EXAMPLE, type YuriExampleMessage } from '@/content/yuri-example'
 
 interface GatedYuriIntroProps {
@@ -51,9 +52,7 @@ export default function GatedYuriIntro({ question, fallbackExample }: GatedYuriI
           <div className="max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed bg-gradient-to-br from-gold to-gold-light text-seoul-dark">
             {question}
           </div>
-          <p className="text-[11px] text-white/45">
-            Create your account on this device and this question will be waiting in the box, ready to send.
-          </p>
+          <p className="text-[11px] text-white/45">{CARRIED_QUESTION_NOTE}</p>
         </div>
       )}
 

@@ -4,6 +4,27 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.66.11 — Blog buttons go straight to sign-up, and sign-up presses are counted (Nov 21 2026)
+
+**What the numbers showed.** Google Analytics reported 3,358 sessions for Nov 13-21 at a 10-second average, across 2,006 landing pages, against 5 real accounts: it counts crawlers. Real readers were on about ten blog posts (roughly 300 sessions, one to two minutes each). Nothing of ours recorded the step between reading a page and creating an account.
+
+**1. Blog buttons skip the landing page.** A post's "Ask Yuri" buttons sent a signed-out reader to the landing page, where a second press was needed to reach the sign-up form. Both blog readers who signed up that week were recorded pressing a landing-page button. Now, with the chat closed, those buttons go straight to the form with the post's question carried (`gate_blog_cta`, `gate_blog_inline`). The form shows the question back, as text read from where it is held, with the sentence the landing card already used ("Create your account on this device and this question will be waiting in the box, ready to send."). With the chat open, or for a signed-in reader, the buttons go where they went before. The links to the form are `nofollow`.
+
+**2. Sign-up presses are counted (`ss_signup_presses`).** One row per press of the landing page's four buttons and a post's two: the button, a channel name for the arrival, and the page. Sent with `sendBeacon` so it survives the navigation. `POST /api/funnel/press` is the one writer; a failed write answers 500, so an empty table can only mean nobody pressed.
+
+**Second-model review: run (Opus 5.5, told to refute). Ship after fixes. What it changed:**
+- *The first version could have stored personal data.* It only cleaned characters, so a personalised `utm_source` (a name and mail domain) would have been kept as the arrival. Every stored value now comes from a fixed list: six buttons, a list of channel names (anything else is `other`, another site's link is `referrer`), and a path that is `/` or one blog post.
+- *It would have added a raw IP address to the rate-limit table,* which keeps its keys. The limit is now keyed on a short one-way key.
+- *It was open to anyone.* Requests from another site are refused (`Sec-Fetch-Site`, `Origin`), the body is capped at 600 bytes, and only the six button names are accepted. This keeps other sites and casual scripts out; it does not make the count tamper-proof.
+- *My note on how to read the table was wrong:* an account with no press before it is normal (links elsewhere, a direct visit, a new tab, a blocker). The note now says what is and is not counted.
+- *Five wrong versions passed the tests.* They now run the helper, the real endpoint and the browser function; twelve wrong versions fail. Not reviewed again.
+
+**Found by the review, not fixed here.** `ss_rate_limits` holds raw IP addresses for other endpoints with nothing scheduled to delete them: 2,536 rows on Nov 21, 2,468 already expired, the oldest from March. The cleanup function exists and nothing calls it. This predates this change and is the owner's call (it deletes rows).
+
+**Known.** Which post a blog sign-up came from is on the press row and on the account's first-landing page, no longer in the link. The label "Ask Yuri, free:" on a post's inline button now leads to a sign-up form; the wording was left as it was. `/register` is still indexable and in the sitemap. Product, ingredient and best-of pages still send "Ask Yuri" to the landing page.
+
+**Not verified.** No row written by a real visitor's press exists yet. Safari's handling of a JSON beacon, and whether ad-block lists match the endpoint's address, were not checked. `public/sw.js` cache name is v70.
+
 ## v11.66.10 — A saved code counts only if it was typed (Nov 20 2026)
 
 **What Bailey saw.** The sign-up form quoted "$4.99 for your first paid month (50% off)" to her when she had typed no code. It was the third time that day: earlier the landing page told her "Code BAILEY is saved in this browser", including after she cleared her browser.

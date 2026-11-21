@@ -104,6 +104,23 @@ export function stashCarriedQuestion(store: AskStore, raw: string | null | undef
   }
 }
 
+/** Said beside a visitor's own question wherever it is shown before sign-up. */
+export const CARRIED_QUESTION_NOTE = 'Create your account on this device and this question will be waiting in the box, ready to send.'
+
+/** The held question without taking it, for showing it on the sign-up form. '' when absent, stale or malformed. */
+export function peekCarriedQuestion(store: AskStore | null | undefined, now: number): string {
+  try {
+    const raw = store?.getItem(ASK_KEY)
+    if (!raw) return ''
+    const parsed = JSON.parse(raw) as { q?: unknown; at?: unknown }
+    if (typeof parsed.q !== 'string' || typeof parsed.at !== 'number') return ''
+    if (now - parsed.at > ASK_MAX_AGE_MS || now < parsed.at) return ''
+    return cleanCarriedQuestion(parsed.q)
+  } catch {
+    return ''
+  }
+}
+
 /** Whether a question is being held for sign-up. Reads only; never throws. */
 export function isCarryingQuestion(store: AskStore | null | undefined): boolean {
   try {

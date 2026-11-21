@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { buildBlogPrefill, blogCtaHref, shownOpener } from './blog-prefill'
 import { trackEvent, BlogEvent } from '@/lib/analytics'
-import { LANDING_CHAT_OPEN } from '@/lib/landing-chat'
+import { LANDING_CHAT_OPEN, gatedSignupHref, gateButtonTag } from '@/lib/landing-chat'
+import { recordSignupPress } from '@/lib/signup-press'
 
 interface BlogYuriCtaProps {
   title?: string | null
@@ -48,7 +49,12 @@ export default function BlogYuriCta({ title, category, primaryKeyword, feederPat
   // referrer as a fallback, but a referrer is a claim the BROWSER controls
   // (rel="noreferrer", a referrer-policy change, an in-app webview) while a
   // param is one we control. Belt and braces — either alone would work today.
-  const href = blogCtaHref(prefill, !!user, feederPath)
+  // Closed chat, signed out: straight to the sign-up form with the question
+  // carried (Nov 21 2026). It used to go to the landing page, where the reader
+  // had to press a second button to reach the same form: both blog readers who
+  // signed up that week were recorded pressing a landing-page button, not this
+  // one. The form shows their question and says it will be waiting.
+  const href = LANDING_CHAT_OPEN || user ? blogCtaHref(prefill, !!user, feederPath) : gatedSignupHref(gateButtonTag('blog', 'cta'), prefill)
   const own = shownOpener(yuriOpener, !!user)
 
   return (
@@ -68,7 +74,8 @@ export default function BlogYuriCta({ title, category, primaryKeyword, feederPat
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
             href={href}
-            onClick={() => trackEvent(BlogEvent.ctaClick, { placement: 'hero_cta', authed: !!user })}
+            rel={LANDING_CHAT_OPEN || user ? undefined : 'nofollow'}
+            onClick={() => { trackEvent(BlogEvent.ctaClick, { placement: 'hero_cta', authed: !!user }); if (!user && !LANDING_CHAT_OPEN) recordSignupPress('blog_cta', 'blog') }}
             className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-amber-500 text-black font-medium hover:bg-amber-400 transition-colors"
           >
             <Sparkles className="w-4 h-4" />

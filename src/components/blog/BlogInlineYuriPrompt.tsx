@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { buildBlogPrefill, blogCtaHref, shownOpener } from './blog-prefill'
 import { trackEvent, BlogEvent } from '@/lib/analytics'
+import { LANDING_CHAT_OPEN, gatedSignupHref, gateButtonTag } from '@/lib/landing-chat'
+import { recordSignupPress } from '@/lib/signup-press'
 
 interface BlogInlineYuriPromptProps {
   title?: string | null
@@ -57,12 +59,18 @@ export default function BlogInlineYuriPrompt({ title, category, primaryKeyword, 
   // the click promises nothing the conversation won't open with. Signed-in
   // readers go to /yuri, which ignores the prefill, so they keep the generic line.
   const own = shownOpener(yuriOpener, !!user)
-  const href = blogCtaHref(prefill, !!user, feederPath)
+  // Closed chat, signed out: straight to the sign-up form with the question
+  // carried (Nov 21 2026). It used to go to the landing page, where the reader
+  // had to press a second button to reach the same form: both blog readers who
+  // signed up that week were recorded pressing a landing-page button, not this
+  // one. The form shows their question and says it will be waiting.
+  const href = LANDING_CHAT_OPEN || user ? blogCtaHref(prefill, !!user, feederPath) : gatedSignupHref(gateButtonTag('blog', 'inline'), prefill)
 
   return (
     <Link
       href={href}
-      onClick={() => trackEvent(BlogEvent.ctaClick, { placement: 'inline_prompt', authed: !!user })}
+      rel={LANDING_CHAT_OPEN || user ? undefined : 'nofollow'}
+      onClick={() => { trackEvent(BlogEvent.ctaClick, { placement: 'inline_prompt', authed: !!user }); if (!user && !LANDING_CHAT_OPEN) recordSignupPress('blog_inline', 'blog') }}
       className="my-10 flex items-center justify-between gap-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 cursor-pointer hover:bg-amber-500/15 hover:border-amber-500/40 transition-colors"
     >
       <div className="flex items-center gap-3">
