@@ -104,6 +104,15 @@ export function stashCarriedQuestion(store: AskStore, raw: string | null | undef
   }
 }
 
+/** Whether a question is being held for sign-up. Reads only; never throws. */
+export function isCarryingQuestion(store: AskStore | null | undefined): boolean {
+  try {
+    return Boolean(store?.getItem(ASK_KEY))
+  } catch {
+    return false
+  }
+}
+
 /** Read the held question once and remove it. '' when absent, stale or malformed. */
 export function takeCarriedQuestion(store: AskStore, now: number): string {
   let raw: string | null = null
@@ -184,6 +193,22 @@ export function readSignupFrom(store: AskStore | null | undefined): string | und
   } catch {
     return undefined
   }
+}
+
+/**
+ * The tag for one of the landing page's own sign-up buttons: where the visitor
+ * arrived from AND which button they pressed, `<arrival>_<button>` (blog_nav,
+ * tiktok_bar, landing_final_cta), or the button alone when nothing identifies
+ * the arrival. gatedSignupHref puts `gate_` in front.
+ *
+ * The arrival is cut to 30 characters so the button always survives the
+ * 40-character limit in gatedSignupHref (a referrer host can be long, and a
+ * tag ending in `_fin` names no button). An arrival with no letter or digit in
+ * it is treated as none, so the tag is never `gate__nav`.
+ */
+export function gateButtonTag(arrival: string | null | undefined, button: string): string {
+  const where = (arrival ?? '').replace(/[^a-z0-9_]/gi, '').replace(/^_+|_+$/g, '').slice(0, 30).replace(/_+$/, '')
+  return where ? `${where}_${button}` : button
 }
 
 /** The sign-up link from the closed hero, carrying where they came from and what they asked. */

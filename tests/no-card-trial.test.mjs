@@ -1224,7 +1224,7 @@ test('pricing card: the free week leads and the price is stated; the allowance l
   assert.doesNotMatch(card, /lines\.cta\b/, 'the public card must not offer to start the free week: its button creates an account')
   // And the whole card file by fingerprint: an added line ("No card is ever
   // needed.") or a changed button label passed every assertion above in review.
-  assert.equal(sha('sha256').update(card).digest('hex'), '9c94c560287539601c419ad5c04352bcb868882eb9816f1baafbbf62a1034327')
+  assert.equal(sha('sha256').update(card).digest('hex'), '9d9b9c36efcd064064bffdb3a3edd2bc994813b4d851bd1a3602016e3491da1b')
 
   // The allowance is NOT on the pricing card or the membership page (owner
   // decision, Nov 11 2026: the "79 messages" month was the co-owner testing;

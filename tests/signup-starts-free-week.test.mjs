@@ -286,17 +286,20 @@ test('wiring: the mark is made only once the account exists, and the start is fo
   assert.ok(page.includes("window.dispatchEvent(new Event('ss:trial-changed'))"))
 })
 
-test('closed world: below desktop width the landing page has ONE sign-up button, the bar, always shown', () => {
+test('closed world: the landing page has two sign-up buttons at any width, one always on screen and one at the end', () => {
   // Bailey, Nov 16 2026: "there's just a lot of create your free account... do we
-  // need all the others then?" The first answer hid the bar while another button
-  // was on screen. Nov 20 she circled each in-page button and wrote "Erase".
+  // need all the others then?" Nov 20, on her phone, each in-page button circled
+  // "Erase"; then on desktop: "the one at the top and the one at the bottom".
+  //   phone/tablet (below lg): the bar pinned to the bottom, always on screen.
+  //   desktop (lg and up):     the nav button, always on screen, and one in the final section.
+  // Yuri's card and the pricing card have NO sign-up button and Yuri's card states no price.
   //
   // NOT EXECUTED here: this pins the source. The rendered count is checked in a
-  // real browser by scripts/count-landing-signup-buttons.cjs. A second-model
-  // review got six wrong versions past the first form of this test (the bar on
-  // scroll again, a hardcoded /register link, a /subscribe link, `hidden` on the
-  // bar, the menu link at every width, a margin cancelling the padding), so each
-  // thing below is pinned whole or counted closed-world.
+  // real browser by scripts/count-landing-signup-buttons.cjs. Reviews got wrong
+  // versions past earlier forms of this test (the bar on scroll again, a
+  // hardcoded /register link, a /subscribe link, `hidden` on the bar, the menu
+  // link at every width, a margin cancelling the padding), so each thing below
+  // is pinned whole or counted closed-world.
   const home = read('src/components/home/HomeClient.tsx')
   const card = read('src/components/pricing/PricingCards.tsx')
   const intro = read('src/components/widget/GatedYuriIntro.tsx')
@@ -313,65 +316,102 @@ test('closed world: below desktop width the landing page has ONE sign-up button,
   // The page leaves room for it, and nothing else on the root line takes that room back.
   assert.ok(home.includes("    <div className={`min-h-screen bg-seoul-dark font-sans${LANDING_CHAT_OPEN ? '' : ' pb-[calc(72px+env(safe-area-inset-bottom))] lg:pb-0'}`}>\n"))
 
-  // WHICH sign-up links exist. Every one goes through a helper; none is written by hand.
+  // WHICH sign-up links exist. Every one goes through the one helper; none is written by hand.
   const calls = [...home.matchAll(/(gatedSignupHref|signupHref)\(([^)]*)\)/g)].map((m) => `${m[1]}(${m[2]})`)
   assert.deepEqual(calls, [
-    "gatedSignupHref(source, '')",          // signupHref's own definition
-    "signupHref('nav')",
-    "signupHref('menu')",
-    "gatedSignupHref(arrivalSource || 'sticky', '')",
-    "signupHref('final_cta')",
+    "gatedSignupHref(gateButtonTag(arrival, button)",   // the helper's own body
+    "signupHref('nav', arrivalSource)",
+    "signupHref('menu', arrivalSource)",
+    "signupHref('bar', arrivalSource)",
+    "signupHref('final_cta', arrivalSource)",
   ])
+  // Each of the four counts its press, by the same name it records.
+  assert.deepEqual([...home.matchAll(/trackSignupClick\('([a-z_]+)'\)/g)].map((m) => m[1]), ['nav', 'menu', 'bar', 'final_cta'])
+  // The counter, whole: it counts in closed mode (the guard is the open chat's), and nothing sits between the guard and the event.
+  assert.ok(home.includes(
+    "  const trackSignupClick = (button: string) => {\n" +
+    "    if (LANDING_CHAT_OPEN) return\n" +
+    "    // The question is taken out of the address bar on arrival and held on the\n" +
+    "    // device (TryYuriSection), so that is where \"did they come with one\" is read.\n" +
+    "    trackEvent(DemoEvent.gateSignupClick, { source: arrivalSource || 'unknown', has_question: isCarryingQuestion(window.localStorage), position: button })\n" +
+    "  }\n"
+  ))
+  // The helper, whole: both parts are passed on, with no default that could drop the arrival.
+  assert.ok(home.includes(
+    "const signupHref = (button: string, arrival: string | null) =>\n" +
+    "  LANDING_CHAT_OPEN ? '/register' : gatedSignupHref(gateButtonTag(arrival, button), '')\n"
+  ))
+  // DESKTOP: the nav stays on screen as the page scrolls, and its button is shown from lg up, as one block.
+  assert.ok(home.includes('      <nav className="sticky top-0 z-40 bg-seoul-dark/80 backdrop-blur-md border-b border-white/5">\n'))
+  assert.equal(count(home, '<nav '), 1)
+  assert.ok(home.includes(
+    "            <Link\n" +
+    "              href={signupHref('nav', arrivalSource)}\n" +
+    "              onClick={() => trackSignupClick('nav')}\n" +
+    "              className={`${LANDING_CHAT_OPEN ? 'hidden sm:inline-flex md:hidden lg:inline-flex' : 'hidden lg:inline-flex'} glass-button-primary text-sm py-2 px-5 whitespace-nowrap`}\n" +
+    "            >\n" +
+    "              {SIGNUP_LABEL}\n" +
+    "            </Link>\n" +
+    "            <button\n"
+  ))
+  // The line above that block is the row it sits in, not something that could hide it.
+  assert.match(home, /<div className="flex items-center gap-3">\n(?:\s*(?:\{\/\*|[^<{]).*\n)*?\s*<Link\n\s*href=\{signupHref\('nav', arrivalSource\)\}/)
+  // The other three, each with its own press counted.
+  assert.ok(home.includes("                  href={signupHref('menu', arrivalSource)}\n                  onClick={() => { trackSignupClick('menu'); setMobileMenuOpen(false) }}\n"))
+  assert.ok(home.includes("              href={signupHref('bar', arrivalSource)}\n              data-sticky-signup\n              onClick={() => trackSignupClick('bar')}\n"))
+  assert.ok(home.includes("              href={signupHref('final_cta', arrivalSource)}\n              onClick={() => trackSignupClick('final_cta')}\n"))
   // Every quoted sign-up or membership address in the file: signupHref's open-chat
   // address, and the open chat's selector for other buttons. No link is written by hand.
   assert.deepEqual([...home.matchAll(/['"`]\/(?:register|subscribe)[^'"`]*['"`]/g)].map((m) => m[0]), ["'/register'", '"/register"'])
   assert.equal(count(home, 'data-sticky-signup'), 2, 'the bar, and that selector')
-  // Every primary (gold) button on the page, in order, with what shows it below lg.
+  // Every primary (gold) button on the page, in order, with what shows it at each width.
   const gold = [...home.matchAll(/^.*glass-button-primary.*$/gm)].map((m) => m[0].trim())
   assert.deepEqual(gold, [
-    "<Link href={signupHref('nav')} className={`${LANDING_CHAT_OPEN ? 'hidden sm:inline-flex md:hidden lg:inline-flex' : 'hidden lg:inline-flex'} glass-button-primary text-sm py-2 px-5 whitespace-nowrap`}>",
+    "className={`${LANDING_CHAT_OPEN ? 'hidden sm:inline-flex md:hidden lg:inline-flex' : 'hidden lg:inline-flex'} glass-button-primary text-sm py-2 px-5 whitespace-nowrap`}",   // nav: desktop only when closed
     'className="sm:hidden mb-2 glass-button-primary text-sm py-2.5 px-3 text-center"',   // inside the menu a visitor opens
     '<Link href="#pricing" className="glass-button-primary text-sm py-3 px-6">',          // View Plans: not a sign-up
     'className="glass-button-primary w-full text-sm py-3"',                               // open chat's bar button
     'className="glass-button-primary w-full text-sm py-3 block text-center"',             // the bar
-    "className={`${LANDING_CHAT_OPEN ? 'inline-flex' : 'hidden lg:inline-flex'} items-center gap-2 glass-button-primary text-base py-3.5 px-10`}",
+    "className={`${LANDING_CHAT_OPEN ? 'inline-flex' : 'hidden lg:inline-flex'} items-center gap-2 glass-button-primary text-base py-3.5 px-10`}",   // final section: desktop only when closed
   ])
-  // The bar keeps what the card's button recorded: where they came from, and the click.
+  // The buttons learn where the visitor arrived from, from the Yuri card.
   assert.ok(home.includes('            <TryYuriSection variant="hero" onArrivalSource={setArrivalSource} />\n'))
-  assert.ok(home.includes("onClick={() => trackEvent(DemoEvent.gateSignupClick, { source: arrivalSource || 'unknown', has_question: new URLSearchParams(window.location.search).has('ask'), position: 'bar' })}"))
   const widget = read('src/components/widget/TryYuriSection.tsx')
   assert.ok(widget.includes("    setArrivalSource(sourceRef.current)\n    onArrivalSource?.(sourceRef.current)\n"))
 
-  // The pricing card's button and the note that refers to it: desktop only for a signed-out visitor.
-  assert.ok(card.includes("  const phoneBarIsTheButton = !isAuthenticated && !LANDING_CHAT_OPEN\n"))
-  assert.ok(card.includes("className={`${phoneBarIsTheButton ? 'hidden lg:block ' : ''}glass-button-primary w-full text-center text-sm py-3 disabled:opacity-50`}"))
-  assert.ok(card.includes("{!isAuthenticated && <p className={`${phoneBarIsTheButton ? 'hidden lg:block ' : ''}text-center text-xs text-white/60 mt-3`}>{lines.accountNote}</p>}"))
-  // Yuri's card: the box holding its button and the price sentence is desktop only, as one piece
-  // (Bailey, Nov 20 2026: the sentence circled and marked "Erase" once the button was gone).
-  assert.ok(intro.includes('      <div className="hidden lg:block bg-gold/5 rounded-2xl p-4 border border-gold/20 text-center">\n'))
-  // The box comes LAST in the card, after the example. Between Yuri's greeting and the example it sat
-  // in the middle of what reads as one chat (Bailey, Nov 20 2026: "why in middle?").
+  // The pricing card: no button and no note under it for a signed-out visitor while the chat is closed.
+  assert.ok(card.includes("  const signupIsElsewhere = !isAuthenticated && !LANDING_CHAT_OPEN\n"))
+  assert.ok(card.includes("        {!signupIsElsewhere && (\n          <button\n            onClick={handleCheckout}\n"))
+  assert.ok(card.includes('        {!isAuthenticated && !signupIsElsewhere && <p className="text-center text-xs text-white/60 mt-3">{lines.accountNote}</p>}'))
+  assert.equal(count(card, '<button'), 1)
+  // It still states the free week and the price: those lines are not behind the switch.
+  for (const line of ['{lines.headline}', '{lines.noCard}', '{lines.after}', '{lines.who}']) assert.equal(count(card, line), 1, line)
+  assert.equal(count(card, 'signupIsElsewhere'), 3)
+
+  // Yuri's card: no link, no button, no price, no click handler. Closed world.
+  assert.doesNotMatch(intro, /<Link|<a |<button|href=|onClick|widgetMembershipLine|gatedSignupHref|trackEvent|glass-button|\$\{?PRICING|9\.99/)
+  assert.deepEqual([...intro.matchAll(/^import [^\n]*$/gm)].map((m) => m[0]), [
+    "import { Sparkles } from 'lucide-react'",
+    "import { REAL_YURI_EXAMPLE, type YuriExampleMessage } from '@/content/yuri-example'",
+  ])
+  // Its order: Yuri's greeting, a visitor's own carried question, then the example.
   const at = (needle) => { const i = intro.indexOf(needle); assert.ok(i > 0, needle); return i }
-  assert.ok(at('I give my') < at('>{exampleTag}</p>') && at('>{exampleTag}</p>') < at('{example.messages.map(') && at('{example.messages.map(') < at('<div className="hidden lg:block bg-gold/5'), 'greeting, example, then the sign-up box')
-  assert.ok(at("{question && (") < at('>{exampleTag}</p>'), "a visitor's own carried question stays next to Yuri's greeting")
+  assert.ok(at('I give my') < at('{question && (') && at('{question && (') < at('>{exampleTag}</p>'))
   // The word that says it is an example comes BEFORE the exchange; only the description may follow it.
   assert.ok(at('>{exampleTag}</p>') < at('{example.messages.map(') && at('{example.messages.map(') < at('{exampleCaption}</p>'))
   assert.ok(intro.includes("  const exampleTag = colon > 0 ? example.label.slice(0, colon) : example.label\n"), 'a label with no colon is shown whole, above')
   assert.ok(intro.includes("  const exampleCaption = colon > 0 ? example.label.slice(colon + 2) : ''\n"))
-  assert.equal(intro.split('{exampleTag}').length - 1, 1)
-  assert.equal(intro.split('example.label').length - 1, 4, 'the label is only ever split in those three lines, never dropped or replaced')
-  // Both illustrative labels start with the word, so it is what lands above the exchange.
-  assert.match(read('src/components/widget/TryYuriSection.tsx'), /\? 'Example: a new member’s first session with Yuri'\s*: 'Example: Yuri with a subscriber she’s known for months',/)
-  // Closed world: that line is the ONLY thing in the card that hides anything, by any means.
+  assert.equal(count(intro, '{exampleTag}'), 1)
+  assert.equal(count(intro, 'example.label'), 4, 'the label is only ever split in those three lines, never dropped or replaced')
+  assert.match(widget, /\? 'Example: a new member’s first session with Yuri'\s*: 'Example: Yuri with a subscriber she’s known for months',/)
+  // Nothing in the card hides anything, by any means.
   const HIDES = /\b(hidden|invisible|sr-only|opacity-0|collapse|display:\s*["']?none|visibility)\b/g
-  assert.deepEqual(intro.match(HIDES), ['hidden'], 'one switch for the whole box; the sentence cannot be hidden at every width another way')
-  assert.equal(intro.split('widgetMembershipLine(percentOff)').length - 1, 1)
-  // What an account starts and costs is still said before anyone creates one: on the sign-up form itself.
+  assert.equal(intro.match(HIDES), null)
+
+  // What an account starts and costs is said before anyone creates one: on the sign-up form itself,
+  // and nothing on that page hides anything, at any width, by any means.
   const register = read('src/app/(auth)/register/page.tsx')
   assert.ok(register.includes('<p className="text-white/70 text-sm leading-relaxed mb-3">{registerFootnote(typedPercent ?? savedOffer.percentOff)}</p>'))
-  // Closed world: nothing on the sign-up page hides anything, at any width, by any means. (A review
-  // put a `hidden sm:block` wrapper a few lines above the sentence and the first form of this passed.)
   assert.equal(register.match(HIDES), null, 'the sign-up page must not hide any of its content')
-  assert.equal(register.split('{registerFootnote(').length - 1, 1)
-  // NOT EXECUTED here. scripts/count-landing-signup-buttons.cjs looks at the rendered pages.
+  assert.equal(count(register, '{registerFootnote('), 1)
 })

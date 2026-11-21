@@ -4,6 +4,29 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.66.9 — Two sign-up buttons on desktop: the top and the bottom (Nov 20 2026)
+
+**Bailey, on desktop:** too many "Create my free account" buttons; only the one at the top and the one at the bottom should stay.
+
+**Change.**
+- Desktop now has two: the nav button, which stays on screen as the page scrolls, and the one in the final section. That is the same design as the phone, where the bottom bar is always on screen.
+- Yuri's card has no button and states no price, at any width: her greeting and the framed example only.
+- The pricing card has no button for a signed-out visitor. It still states the free week, "No card needed to start" and the price.
+- Phones and tablets are unchanged.
+
+**Tracking.** Each sign-up from the landing page records both where the visitor arrived from and which button they pressed: `gate_<arrival>_<button>` (`gate_blog_nav`, `gate_tiktok_bar`, `gate_landing_final_cta`). Before, the page's buttons recorded only one of the two. Every button also sends the GA4 click event with its position. See `LANDING-CHAT-GATE.md` for how to split the tag in a query.
+
+**What it costs.** No button produced a sign-up from Yuri's card (0 of 5 strangers), and none can be traced to the pricing card, so the data does not defend them. The pricing card is still where a visitor has just read the price, and it now has nothing to press in it; the nav button is on screen but away from where they are looking. With the sentence gone from Yuri's card, the first screen states no price on desktop either: the badge says "first week free", the pricing section has the figure, and the sign-up form states it before an account exists. A visitor with a saved creator code is told the code is saved, but sees the discounted price first on the sign-up form.
+
+**Second-model review: run (Opus 5.5, told to refute). Ship after fixes; the copy held, the defects were in tagging, tests and docs. All fixed here:**
+- A long arrival (a referrer host) would have cut the button off the tag (`..._fin`). The tag is now built by `gateButtonTag`, which keeps the button whole; a source with no letter or digit is treated as none, so no `gate__nav`.
+- The click event's "came with a question" flag read the address bar, which is cleared on arrival, so it was always false. It now reads whether a question is being held on the device.
+- Five wrong versions passed the tests (the nav no longer sticky, its button hidden on desktop, the arrival dropped, the click counter disabled two ways). The nav, the helper and the counter are now pinned whole and the tag is executed; thirteen wrong versions fail without relying on a file fingerprint.
+- A comment claimed a signed-in visitor still gets "Subscribe" on the pricing card; the landing page never tells the card who is signed in. Corrected. The runbook's tag list was stale. Rewritten.
+The fixes were not reviewed again.
+
+**Checked in a real browser on the local build.** One button at 390, 700 and 900 pixels; two at 1280, with the nav button on screen at the top, middle and bottom of the page. `public/sw.js` cache name is v68.
+
 ## v11.66.8 — The example in Yuri's card: one word above, the description below (Nov 20 2026)
 
 **Bailey** circled the line "EXAMPLE: A NEW MEMBER'S FIRST SESSION WITH YURI" and asked for it to go to the bottom of the exchange: a full-width line in capitals cut the card in half.

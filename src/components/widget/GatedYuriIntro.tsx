@@ -1,35 +1,27 @@
 'use client'
 
-import Link from 'next/link'
-import { Sparkles, ArrowRight } from 'lucide-react'
-import { gatedSignupHref } from '@/lib/landing-chat'
-import { trackEvent, DemoEvent } from '@/lib/analytics'
-import { widgetMembershipLine } from '@/lib/offers'
+import { Sparkles } from 'lucide-react'
 import { REAL_YURI_EXAMPLE, type YuriExampleMessage } from '@/content/yuri-example'
 
 interface GatedYuriIntroProps {
   /** The question a feeder page ("Ask Yuri about this product") sent them here with, or ''. */
   question: string
-  /** Where they arrived from (blog, product, tiktok, ...), for the sign-up link. */
-  source: string | null
-  /** A confirmed creator code's percent off, so the price line is the one they will pay. */
-  percentOff: number | null | undefined
   /** The illustrative example used until a real, approved one exists. */
   fallbackExample: { label: string; messages: YuriExampleMessage[] }
 }
 
-/** A sign-up click from the closed hero, counted in GA4 beside the account rows. */
-function trackGateClick(source: string | null, hasQuestion: boolean): void {
-  trackEvent(DemoEvent.gateSignupClick, { source: source || 'unknown', has_question: hasQuestion })
-}
-
 /**
  * What the hero shows while the landing chat is closed (src/lib/landing-chat.ts):
- * who Yuri is, the visitor's own question if they came with one, one way
- * forward, and an example of her at work. Display and navigation only; nothing
- * here is generated and nothing recommends a product.
+ * who Yuri is, the visitor's own question if they came with one, and an example
+ * of her at work. Display only; nothing here is generated and nothing
+ * recommends a product.
+ *
+ * It has NO sign-up button and states no price (Nov 20 2026, Bailey). The
+ * landing page's sign-up is the nav button on desktop and the bottom bar on a
+ * phone, both always on screen (HomeClient). What an account starts and costs
+ * is said on the sign-up form, before one exists, and on the pricing card.
  */
-export default function GatedYuriIntro({ question, source, percentOff, fallbackExample }: GatedYuriIntroProps) {
+export default function GatedYuriIntro({ question, fallbackExample }: GatedYuriIntroProps) {
   const example = REAL_YURI_EXAMPLE ?? fallbackExample
   // "Example: a new member's first session with Yuri" is shown in two parts: the
   // word before the colon ABOVE the exchange, so a visitor knows it is an example
@@ -39,7 +31,6 @@ export default function GatedYuriIntro({ question, source, percentOff, fallbackE
   const colon = example.label.indexOf(': ')
   const exampleTag = colon > 0 ? example.label.slice(0, colon) : example.label
   const exampleCaption = colon > 0 ? example.label.slice(colon + 2) : ''
-  const href = gatedSignupHref(source, question)
 
   return (
     <div className="p-4 space-y-3">
@@ -86,9 +77,8 @@ export default function GatedYuriIntro({ question, source, percentOff, fallbackE
                     <p className="font-semibold text-gold">Yuri</p>
                   </div>
                 )}
-                {/* The illustrative example is clamped so the card stays short
-                    (on desktop the button under it stays in view); a real one
-                    is shown whole. */}
+                {/* The illustrative example is clamped so the card stays short;
+                    a real one is shown whole. */}
                 <p className={REAL_YURI_EXAMPLE ? undefined : 'line-clamp-3'}>{m.text}</p>
               </div>
             </div>
@@ -97,25 +87,6 @@ export default function GatedYuriIntro({ question, source, percentOff, fallbackE
         {exampleCaption && (
           <p className="text-[11px] text-white/45 mt-2 text-center first-letter:uppercase">{exampleCaption}</p>
         )}
-      </div>
-
-      {/* Last in the card, after the example. It used to sit between Yuri's
-          greeting and the example, in the middle of what reads as one chat
-          (Bailey, Nov 20 2026: "why in middle?"). The card now reads top to
-          bottom: Yuri, what a session looks like, then how to start.
-          Desktop only. Below desktop width the sign-up button is the bar at the
-          bottom of the screen (HomeClient), and this box is not shown at all
-          (Bailey, Nov 20 2026). What the account starts and costs is stated on
-          the sign-up page, before anyone creates one, and on the pricing card. */}
-      <div className="hidden lg:block bg-gold/5 rounded-2xl p-4 border border-gold/20 text-center">
-        <Link
-          href={href}
-          onClick={() => trackGateClick(source, Boolean(question))}
-          className="inline-flex items-center gap-1.5 glass-button-primary text-sm py-2.5 px-6"
-        >
-          Create my free account <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
-        <p className="text-xs text-white/50 mt-2">{widgetMembershipLine(percentOff)}</p>
       </div>
     </div>
   )

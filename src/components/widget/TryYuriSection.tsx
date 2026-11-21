@@ -1013,8 +1013,6 @@ export default function TryYuriSection({ variant = 'section', onArrivalSource }:
         {!showLive && chatClosed && (
           <GatedYuriIntro
             question={input.trim()}
-            source={arrivalSource}
-            percentOff={savedOffer.percentOff}
             fallbackExample={{
               label:
                 demoScript === DEMO_BEGINNER

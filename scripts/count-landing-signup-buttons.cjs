@@ -3,8 +3,9 @@
  * in a real browser, at a phone width and a desktop width.
  *
  * Nov 20 2026: below desktop width the page should render exactly ONE, the bar
- * pinned to the bottom, and it should be on screen at the top of the page, in
- * the middle and at the footer. The node tests pin the source; this is the
+ * pinned to the bottom, on screen at the top of the page, in the middle and at
+ * the footer. On desktop exactly TWO: the nav button, on screen at all three
+ * places, and the one in the final section. The node tests pin the source; this is the
  * check that it renders that way.
  *
  *   node scripts/count-landing-signup-buttons.cjs                      # production
@@ -12,7 +13,7 @@
  *
  * Needs Google Chrome installed (uses playwright-core with the Chrome channel).
  * Exits 1 if a phone or tablet width shows anything but one, or desktop anything
- * but four. Checked as a signed-out visitor with the menu closed: the menu a
+ * but two. Checked as a signed-out visitor with the menu closed: the menu a
  * visitor opens has its own sign-up link at the narrowest widths, and a signed-in
  * member is shown no bar at all. Neither is exercised here.
  */
@@ -24,7 +25,7 @@ const base = (process.argv[2] || 'https://www.seoulsister.com').replace(/\/$/, '
 const seen = () => [...document.querySelectorAll('a[href^="/register"], a[href^="/subscribe"], button, a')]
   .filter((e) => /^\/(register|subscribe)/.test(e.getAttribute('href') || '') || /create (my|your|a) (free )?account|start (my|your) free week|sign up/i.test(e.textContent || ''))
   .filter((e) => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden' })
-  .map((e) => { const r = e.getBoundingClientRect(); return { bar: e.hasAttribute('data-sticky-signup'), onScreen: r.top < innerHeight && r.bottom > 0, href: e.getAttribute('href') } })
+  .map((e) => { const r = e.getBoundingClientRect(); return { bar: e.hasAttribute('data-sticky-signup'), nav: !!e.closest('nav'), onScreen: r.top < innerHeight && r.bottom > 0, href: e.getAttribute('href') } })
 
 ;(async () => {
   const browser = await chromium.launch({ channel: 'chrome', headless: true })
@@ -38,18 +39,19 @@ const seen = () => [...document.querySelectorAll('a[href^="/register"], a[href^=
       await page.evaluate((w) => window.scrollTo(0, w === 'top' ? 0 : w === 'middle' ? document.body.scrollHeight / 2 : document.body.scrollHeight), where)
       await page.waitForTimeout(500)
       const list = await page.evaluate(seen)
-      rows.push({ where, rendered: list.length, onScreen: list.filter((x) => x.onScreen).length, barOnScreen: list.some((x) => x.bar && x.onScreen) })
+      rows.push({ where, rendered: list.length, onScreen: list.filter((x) => x.onScreen).length, barOnScreen: list.some((x) => x.bar && x.onScreen), navOnScreen: list.some((x) => x.nav && x.onScreen) })
     }
     const wide = width >= 1024
-    // Desktop has four: nav, Yuri's card, the pricing card, the final section.
-    const ok = wide ? rows.every((r) => r.rendered === 4) : rows.every((r) => r.rendered === 1 && r.onScreen === 1 && r.barOnScreen)
+    // Desktop has two: the nav button, always on screen, and the final section's.
+    const navAlways = rows.every((r) => r.navOnScreen)
+    const ok = wide ? rows.every((r) => r.rendered === 2) && navAlways : rows.every((r) => r.rendered === 1 && r.onScreen === 1 && r.barOnScreen)
     if (!ok) bad++
     console.log(`${ok ? 'OK  ' : 'FAIL'} ${name} (${width}px): ` + rows.map((r) => `${r.where} rendered=${r.rendered} onScreen=${r.onScreen}`).join(' | '))
     await page.close()
   }
-  // What an account starts and costs. On the landing page the sentence in Yuri's
-  // card is desktop only; on the sign-up form it must be readable at every width,
-  // because that is where a phone visitor is told before creating an account.
+  // What an account starts and costs. Yuri's card on the landing page no longer
+  // carries the sentence at any width; on the sign-up form it must be readable at
+  // every width, because that is where a visitor is told before creating an account.
   const costShown = () => [...document.querySelectorAll('p')].filter((e) => /free week: \d+ days, no card/.test(e.textContent || ''))
     .some((e) => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && Number(s.opacity) > 0.2 && r.left >= 0 && r.right <= innerWidth + 1 })
   for (const [name, width] of [['phone', 390], ['tablet', 900], ['desktop', 1280]]) {
@@ -60,7 +62,7 @@ const seen = () => [...document.querySelectorAll('a[href^="/register"], a[href^=
     await page.goto(base + '/register?plan=monthly', { waitUntil: 'domcontentloaded' })
     await page.waitForTimeout(3500)
     const onSignup = await page.evaluate(costShown)
-    const ok = onSignup && onLanding === (width >= 1024)
+    const ok = onSignup && onLanding === false
     if (!ok) bad++
     console.log(`${ok ? 'OK  ' : 'FAIL'} ${name} (${width}px): cost sentence on sign-up form=${onSignup} | in Yuri's card=${onLanding}`)
     await page.close()

@@ -18,7 +18,7 @@ import SignedInRedirect from '@/components/auth/SignedInRedirect'
 import { MAX_FREE_MESSAGES } from '@/lib/utils/widget-session'
 import { supabase } from '@/lib/supabase'
 import { trackEvent, DemoEvent } from '@/lib/analytics'
-import { LANDING_CHAT_OPEN, gatedSignupHref, heroBadge, heroFootnote, talkToYuriLabel, yuriAccessSentence } from '@/lib/landing-chat'
+import { LANDING_CHAT_OPEN, gatedSignupHref, gateButtonTag, isCarryingQuestion, heroBadge, heroFootnote, talkToYuriLabel, yuriAccessSentence } from '@/lib/landing-chat'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -80,7 +80,16 @@ const steps = [
 // The one label for every button that leads to sign-up, matching the hero.
 const SIGNUP_LABEL = 'Create my free account'
 /** Sign-up link. Tagged `gate_<source>` only while the landing chat is closed, which is what the tag means. */
-const signupHref = (source: string) => (LANDING_CHAT_OPEN ? '/register' : gatedSignupHref(source, ''))
+/**
+ * The sign-up link for one of this page's buttons. Closed chat: the account
+ * records BOTH where the visitor arrived from and which button they pressed
+ * (signup_from = gate_<arrival>_<button>, e.g. gate_blog_nav, gate_tiktok_bar),
+ * or the button alone when nothing identifies the arrival (gateButtonTag in
+ * landing-chat.ts). Until Nov 20 2026 the page's own buttons recorded only the
+ * button, and the arrival was lost.
+ */
+const signupHref = (button: string, arrival: string | null) =>
+  LANDING_CHAT_OPEN ? '/register' : gatedSignupHref(gateButtonTag(arrival, button), '')
 
 const navLinks = [
   { label: 'Features', href: '#features' },
@@ -112,6 +121,14 @@ export default function HomeClient() {
   // it out, so a phone sign-up still records it (signup_from = gate_<source>).
   const [arrivalSource, setArrivalSource] = useState<string | null>(null)
   const showStickyCTA = LANDING_CHAT_OPEN ? openChatBarShown : signedOut
+  // Every sign-up press on this page, counted in GA4 beside the account rows
+  // (the companion to signup_from, never the measure: GA4 is bot-inflated).
+  const trackSignupClick = (button: string) => {
+    if (LANDING_CHAT_OPEN) return
+    // The question is taken out of the address bar on arrival and held on the
+    // device (TryYuriSection), so that is where "did they come with one" is read.
+    trackEvent(DemoEvent.gateSignupClick, { source: arrivalSource || 'unknown', has_question: isCarryingQuestion(window.localStorage), position: button })
+  }
   useEffect(() => {
     let cancelled = false
     supabase.auth.getSession()
@@ -185,8 +202,15 @@ export default function HomeClient() {
                 and it does not fit (not rendered in a browser; check it).
                 Phones get it as the first item of the menu below. Closed
                 chat: below lg the bar at the bottom of the screen is the one
-                sign-up button, so this one is desktop only. */}
-            <Link href={signupHref('nav')} className={`${LANDING_CHAT_OPEN ? 'hidden sm:inline-flex md:hidden lg:inline-flex' : 'hidden lg:inline-flex'} glass-button-primary text-sm py-2 px-5 whitespace-nowrap`}>
+                sign-up button, so this one is desktop only. On desktop it is
+                THE sign-up button: it stays on screen as the page scrolls, and
+                the only other one is at the end of the page (Bailey, Nov 20
+                2026: "the one at the top and the one at the bottom"). */}
+            <Link
+              href={signupHref('nav', arrivalSource)}
+              onClick={() => trackSignupClick('nav')}
+              className={`${LANDING_CHAT_OPEN ? 'hidden sm:inline-flex md:hidden lg:inline-flex' : 'hidden lg:inline-flex'} glass-button-primary text-sm py-2 px-5 whitespace-nowrap`}
+            >
               {SIGNUP_LABEL}
             </Link>
             <button
@@ -216,8 +240,8 @@ export default function HomeClient() {
             >
               <div className="px-4 py-3 flex flex-col gap-1">
                 <Link
-                  href={signupHref('menu')}
-                  onClick={() => setMobileMenuOpen(false)}
+                  href={signupHref('menu', arrivalSource)}
+                  onClick={() => { trackSignupClick('menu'); setMobileMenuOpen(false) }}
                   className="sm:hidden mb-2 glass-button-primary text-sm py-2.5 px-3 text-center"
                 >
                   {SIGNUP_LABEL}
@@ -341,9 +365,9 @@ export default function HomeClient() {
             // Closed: scrolling to a card whose only action is this same
             // button was one tap too many.
             <Link
-              href={gatedSignupHref(arrivalSource || 'sticky', '')}
+              href={signupHref('bar', arrivalSource)}
               data-sticky-signup
-              onClick={() => trackEvent(DemoEvent.gateSignupClick, { source: arrivalSource || 'unknown', has_question: new URLSearchParams(window.location.search).has('ask'), position: 'bar' })}
+              onClick={() => trackSignupClick('bar')}
               className="glass-button-primary w-full text-sm py-3 block text-center"
             >
               Create my free account
@@ -553,7 +577,8 @@ export default function HomeClient() {
               same anchor the mobile prefill flow uses). */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
-              href={signupHref('final_cta')}
+              href={signupHref('final_cta', arrivalSource)}
+              onClick={() => trackSignupClick('final_cta')}
               className={`${LANDING_CHAT_OPEN ? 'inline-flex' : 'hidden lg:inline-flex'} items-center gap-2 glass-button-primary text-base py-3.5 px-10`}
             >
               {SIGNUP_LABEL} <ArrowRight className="w-4 h-4" />

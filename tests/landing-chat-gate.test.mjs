@@ -372,7 +372,7 @@ test('the closed hero: only real, approved conversations may be labelled real', 
   // example published with an invented approval. Publishing a real example, or
   // changing one word of the hero, means a second-model review and then a new
   // fingerprint here.
-  assert.equal(sha256(intro), 'b8ec399ddae9ba2c667967d054788e69ea08556f110108852c49f0a42df5e8c3', 'GatedYuriIntro.tsx changed')
+  assert.equal(sha256(intro), 'e0e7d8a3ba6ba129e64d7ede5f3c3abcb811cdd11fa596be0ab0d27b78d8b522', 'GatedYuriIntro.tsx changed')
   assert.equal(sha256(content), 'b20d58dd7614ee56d931b3b1b4aff66586de0e9b8c0c477892d7f5dea9ceeb63', 'src/content/yuri-example.ts changed')
   assert.ok(intro.includes('  const example = REAL_YURI_EXAMPLE ?? fallbackExample\n'))
   // The fallback keeps the label that says it is an example.
@@ -382,9 +382,9 @@ test('the closed hero: only real, approved conversations may be labelled real', 
   assert.match(call, /\? 'Example: a new member’s first session with Yuri'\s*: 'Example: Yuri with a subscriber she’s known for months',/)
   // Display and navigation only: no fetch, no model, no generated text.
   assert.doesNotMatch(intro, /fetch\(|anthropic|useEffect|dangerouslySetInnerHTML/i)
-  // The price line is the shared, already-reviewed one.
-  assert.ok(intro.includes('<p className="text-xs text-white/50 mt-2">{widgetMembershipLine(percentOff)}</p>'))
-  assert.doesNotMatch(intro, /\$\d|PRICING\./, 'the closed hero states a price of its own')
+  // The card states no price at all (Nov 20 2026): the shared, reviewed sentence is on the sign-up
+  // form and the pricing card. It must not grow a price of its own.
+  assert.doesNotMatch(intro, /widgetMembershipLine|\$\d|PRICING\./, 'the closed hero states a price')
 })
 
 test('sign-up keeps the question and takes it out of the address bar; the setup chat only prefills it', () => {
@@ -501,9 +501,9 @@ test('closed, on a phone: sign-up is one tap away and the sign-up card has no sc
   assert.equal(home.includes("gatedSignupHref('hero_button'"), false, 'the hero column has no sign-up button')
   assert.ok(home.includes("  const showStickyCTA = LANDING_CHAT_OPEN ? openChatBarShown : signedOut\n"), 'closed: the bar is on screen from the top, for a visitor with no sign-in')
   assert.ok(home.includes(`            <Link
-              href={gatedSignupHref(arrivalSource || 'sticky', '')}
+              href={signupHref('bar', arrivalSource)}
               data-sticky-signup
-              onClick={() => trackEvent(DemoEvent.gateSignupClick, { source: arrivalSource || 'unknown', has_question: new URLSearchParams(window.location.search).has('ask'), position: 'bar' })}
+              onClick={() => trackSignupClick('bar')}
               className="glass-button-primary w-full text-sm py-3 block text-center"
             >
               Create my free account
@@ -520,7 +520,41 @@ test('closed, on a phone: sign-up is one tap away and the sign-up card has no sc
             </button>
           ) : (`))
   const m = await loadLandingChat(undefined)
-  assert.equal(m.gatedSignupHref('sticky', ''), '/register?plan=monthly&from=gate_sticky')
+  // The account records where they arrived from AND which button: gate_<arrival>_<button>.
+  assert.equal(m.gatedSignupHref('blog_bar', ''), '/register?plan=monthly&from=gate_blog_bar')
+  assert.equal(m.gatedSignupHref('tiktok_nav', ''), '/register?plan=monthly&from=gate_tiktok_nav')
+  assert.equal(m.gatedSignupHref('bar', ''), '/register?plan=monthly&from=gate_bar', 'nothing identifies the arrival: the button alone')
+  assert.equal(m.cleanSignupFrom('gate_landing_final_cta'), 'gate_landing_final_cta', 'the sign-up page keeps a two-part tag')
+  assert.ok(home.includes("  LANDING_CHAT_OPEN ? '/register' : gatedSignupHref(gateButtonTag(arrival, button), '')\n"))
+  // EXECUTED: the tag itself.
+  assert.equal(m.gateButtonTag('blog', 'nav'), 'blog_nav')
+  assert.equal(m.gateButtonTag('tiktok', 'bar'), 'tiktok_bar')
+  assert.equal(m.gateButtonTag(null, 'nav'), 'nav')
+  assert.equal(m.gateButtonTag('', 'final_cta'), 'final_cta')
+  // A source with no letter or digit is no source: never `gate__nav`.
+  for (const junk of ['-', '...', '___', ' ', '%%%']) assert.equal(m.gateButtonTag(junk, 'nav'), 'nav', JSON.stringify(junk))
+  assert.equal(m.gateButtonTag('_blog_', 'nav'), 'blog_nav')
+  // A long arrival never pushes the button off the end, through the whole link and what the sign-up page keeps.
+  const long = 'ref_' + 'a'.repeat(32)
+  for (const button of ['nav', 'menu', 'bar', 'final_cta']) {
+    const href = m.gatedSignupHref(m.gateButtonTag(long, button), '')
+    const from = new URLSearchParams(href.split('?')[1]).get('from')
+    assert.ok(from.endsWith('_' + button), `${from} lost its button`)
+    assert.equal(m.cleanSignupFrom(from), from, 'the sign-up page keeps it whole')
+    assert.ok(from.length <= 60)
+  }
+  assert.equal(m.gatedSignupHref(m.gateButtonTag('utm' + 'x'.repeat(80), 'final_cta'), '').endsWith('_final_cta'), true)
+  // EXECUTED: whether a question is being held, without taking it.
+  const mem = new Map()
+  const store = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, v), removeItem: (k) => mem.delete(k) }
+  assert.equal(m.isCarryingQuestion(store), false)
+  m.stashCarriedQuestion(store, 'Which oil?', 1_800_000_000_000)
+  assert.equal(m.isCarryingQuestion(store), true)
+  assert.equal(m.isCarryingQuestion(store), true, 'reading does not take it')
+  assert.equal(m.takeCarriedQuestion(store, 1_800_000_001_000), 'Which oil?')
+  assert.equal(m.isCarryingQuestion(store), false)
+  assert.equal(m.isCarryingQuestion(null), false)
+  assert.equal(m.isCarryingQuestion({ getItem() { throw new Error('blocked') } }), false)
 })
 
 // Nov 14 2026: the owner arrived from a blog post with a question, signed up
@@ -551,5 +585,5 @@ test('a question shown on the closed landing page is held for any sign-up path',
   // The header and page-bottom buttons still carry no question in their links,
   // which is why the panel must hold it.
   const home = read('src/components/home/HomeClient.tsx')
-  assert.ok(home.includes("gatedSignupHref(source, '')"))
+  assert.ok(home.includes("gatedSignupHref(gateButtonTag(arrival, button), '')"))
 })
