@@ -47,6 +47,24 @@ const seen = () => [...document.querySelectorAll('a[href^="/register"], a[href^=
     console.log(`${ok ? 'OK  ' : 'FAIL'} ${name} (${width}px): ` + rows.map((r) => `${r.where} rendered=${r.rendered} onScreen=${r.onScreen}`).join(' | '))
     await page.close()
   }
+  // What an account starts and costs. On the landing page the sentence in Yuri's
+  // card is desktop only; on the sign-up form it must be readable at every width,
+  // because that is where a phone visitor is told before creating an account.
+  const costShown = () => [...document.querySelectorAll('p')].filter((e) => /free week: \d+ days, no card/.test(e.textContent || ''))
+    .some((e) => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && Number(s.opacity) > 0.2 && r.left >= 0 && r.right <= innerWidth + 1 })
+  for (const [name, width] of [['phone', 390], ['tablet', 900], ['desktop', 1280]]) {
+    const page = await (await browser.newContext({ viewport: { width, height: 800 } })).newPage()
+    await page.goto(base + '/', { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(3500)
+    const onLanding = await page.evaluate(costShown)
+    await page.goto(base + '/register?plan=monthly', { waitUntil: 'domcontentloaded' })
+    await page.waitForTimeout(3500)
+    const onSignup = await page.evaluate(costShown)
+    const ok = onSignup && onLanding === (width >= 1024)
+    if (!ok) bad++
+    console.log(`${ok ? 'OK  ' : 'FAIL'} ${name} (${width}px): cost sentence on sign-up form=${onSignup} | in Yuri's card=${onLanding}`)
+    await page.close()
+  }
   await browser.close()
   process.exit(bad ? 1 : 0)
 })().catch((e) => { console.error(e.message); process.exit(1) })

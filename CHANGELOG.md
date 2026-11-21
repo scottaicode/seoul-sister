@@ -4,6 +4,20 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.66.5 — The price box in Yuri's card is desktop only (Nov 20 2026)
+
+**Bailey, on her iPhone after v11.66.4:** with the card's button gone, the box under Yuri's greeting held only the sentence "For a new member, creating an account starts your free week: 7 days, no card. After that it is $9.99/mo...". She circled it and wrote "Erase". (Her photo is also the first sight of v11.66.4 on a real iPhone: one bar, no in-page buttons.)
+
+**Change.** The whole box (button and sentence) is not shown below desktop width. Desktop keeps it, where the button is still in the card and the sentence explains it.
+
+**Why this is not hiding the price.** A phone visitor is told what an account starts and what it costs on the sign-up form itself, under the heading and above both the Google and the email way of signing up, before an account exists. Nothing can be charged without a card. The pricing card on the landing page states it too. What is true and should be known: on a phone, the landing page no longer shows a price near the top, so someone can tap the bar without having seen one there.
+
+**Second-model review: run (Opus 5.5, told to refute). Ship after fixes, tests only.** It confirmed the claim above on every route into sign-up, and that a saved creator code is still stated on the landing page and the form. It hid the form's sentence with a wrapper placed a few lines higher than my test looked, and hid the card's sentence in a way only the file fingerprint noticed. Both files are now checked closed-world for anything that hides content; eight wrong versions fail without relying on the fingerprint. Not reviewed again.
+
+**Checked in a real browser.** `scripts/count-landing-signup-buttons.cjs` now also reports whether the cost sentence is readable on the sign-up form (must be, at every width) and in Yuri's card (desktop only).
+
+**Noted, not caused by this.** "Continue with Google" on the sign-in page can create a new account without showing the sentence. It does not start a free week and nothing can be charged from it. `public/sw.js` cache name is v64.
+
 ## v11.66.4 — One sign-up button on a phone (Nov 20 2026)
 
 **Bailey's feedback, for the second time.** On a phone the landing page had five "Create my free account" buttons: the top of the page, Yuri's card, the pricing card, the final section, and a bar at the bottom that appeared after scrolling. On Nov 16 she asked "do we need all the others then?"; on Nov 20 she sent four screenshots with each in-page button circled and marked "Erase".

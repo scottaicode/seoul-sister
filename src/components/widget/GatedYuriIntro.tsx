@@ -58,17 +58,19 @@ export default function GatedYuriIntro({ question, source, percentOff, fallbackE
         </div>
       )}
 
-      <div className="bg-gold/5 rounded-2xl p-4 border border-gold/20 text-center">
+      {/* Desktop only. Below desktop width the sign-up button is the bar at the
+          bottom of the screen (HomeClient), and this box is not shown at all
+          (Bailey, Nov 20 2026). What the account starts and costs is stated on
+          the sign-up page, before anyone creates one, and on the pricing card. */}
+      <div className="hidden lg:block bg-gold/5 rounded-2xl p-4 border border-gold/20 text-center">
         <Link
           href={href}
           onClick={() => trackGateClick(source, Boolean(question))}
-          className="hidden lg:inline-flex items-center gap-1.5 glass-button-primary text-sm py-2.5 px-6"
+          className="inline-flex items-center gap-1.5 glass-button-primary text-sm py-2.5 px-6"
         >
           Create my free account <ArrowRight className="w-3.5 h-3.5" />
         </Link>
-        {/* Below desktop width the button is the bar at the bottom of the screen
-            (HomeClient); what it starts and what it costs is still said here. */}
-        <p className="text-xs text-white/50 lg:mt-2">{widgetMembershipLine(percentOff)}</p>
+        <p className="text-xs text-white/50 mt-2">{widgetMembershipLine(percentOff)}</p>
       </div>
 
       <div className="pt-3 mt-1 border-t border-white/10">

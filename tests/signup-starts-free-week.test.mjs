@@ -346,7 +346,19 @@ test('closed world: below desktop width the landing page has ONE sign-up button,
   assert.ok(card.includes("  const phoneBarIsTheButton = !isAuthenticated && !LANDING_CHAT_OPEN\n"))
   assert.ok(card.includes("className={`${phoneBarIsTheButton ? 'hidden lg:block ' : ''}glass-button-primary w-full text-center text-sm py-3 disabled:opacity-50`}"))
   assert.ok(card.includes("{!isAuthenticated && <p className={`${phoneBarIsTheButton ? 'hidden lg:block ' : ''}text-center text-xs text-white/60 mt-3`}>{lines.accountNote}</p>}"))
-  // Yuri's card: its button is desktop only; what it starts and costs is still said at every width.
-  assert.ok(intro.includes('          className="hidden lg:inline-flex items-center gap-1.5 glass-button-primary text-sm py-2.5 px-6"\n'))
-  assert.ok(intro.includes('        <p className="text-xs text-white/50 lg:mt-2">{widgetMembershipLine(percentOff)}</p>\n'))
+  // Yuri's card: the box holding its button and the price sentence is desktop only, as one piece
+  // (Bailey, Nov 20 2026: the sentence circled and marked "Erase" once the button was gone).
+  assert.ok(intro.includes('      <div className="hidden lg:block bg-gold/5 rounded-2xl p-4 border border-gold/20 text-center">\n'))
+  // Closed world: that line is the ONLY thing in the card that hides anything, by any means.
+  const HIDES = /\b(hidden|invisible|sr-only|opacity-0|collapse|display:\s*["']?none|visibility)\b/g
+  assert.deepEqual(intro.match(HIDES), ['hidden'], 'one switch for the whole box; the sentence cannot be hidden at every width another way')
+  assert.equal(intro.split('widgetMembershipLine(percentOff)').length - 1, 1)
+  // What an account starts and costs is still said before anyone creates one: on the sign-up form itself.
+  const register = read('src/app/(auth)/register/page.tsx')
+  assert.ok(register.includes('<p className="text-white/70 text-sm leading-relaxed mb-3">{registerFootnote(typedPercent ?? savedOffer.percentOff)}</p>'))
+  // Closed world: nothing on the sign-up page hides anything, at any width, by any means. (A review
+  // put a `hidden sm:block` wrapper a few lines above the sentence and the first form of this passed.)
+  assert.equal(register.match(HIDES), null, 'the sign-up page must not hide any of its content')
+  assert.equal(register.split('{registerFootnote(').length - 1, 1)
+  // NOT EXECUTED here. scripts/count-landing-signup-buttons.cjs looks at the rendered pages.
 })
