@@ -243,6 +243,21 @@ test('EXECUTED: a signed-out blog reader goes straight to the sign-up form with 
   for (const [file, placement] of [['src/components/blog/BlogYuriCta.tsx', 'cta'], ['src/components/blog/BlogInlineYuriPrompt.tsx', 'inline']]) {
     assert.ok(read(file).includes(`  const href = LANDING_CHAT_OPEN || user ? blogCtaHref(prefill, !!user, feederPath) : gatedSignupHref(gateButtonTag('blog', '${placement}'), prefill)\n`), file)
   }
+  // The inline button says an account comes first, because the press now lands on a form (Nov 22
+  // 2026: "Ask Yuri, free:" led a reader to expect an answer). The words come from one place.
+  assert.equal(closed.askYuriLabel(), 'Ask Yuri, free to start with an account:')
+  assert.equal(closed.askYuriLabel(), `Ask Yuri, ${closed.yuriAccessPhrase()}:`, 'built from the shared phrase, so the two cannot drift')
+  const inlineSrc = read('src/components/blog/BlogInlineYuriPrompt.tsx')
+  assert.ok(inlineSrc.includes('            <span className="block text-xs font-medium text-amber-300 mb-0.5">{askYuriLabel()}</span>\n'))
+  assert.equal(inlineSrc.split('askYuriLabel()').length - 1, 1)
+  assert.doesNotMatch(inlineSrc.replace(/\/\/[^\n]*|\{\/\*[\s\S]*?\*\/\}/g, ''), /Ask Yuri, free|>\s*Ask Yuri[^<{]*:\s*</, 'the label is not written by hand')
+  // A post with no question of its own to show gets the same notice under its line, for a signed-out reader only.
+  assert.ok(inlineSrc.includes("            {!user && !LANDING_CHAT_OPEN && <span className=\"block text-xs text-amber-300/80 mt-0.5\">{yuriAccessSentence()}</span>}\n"))
+  assert.equal(closed.yuriAccessSentence(), 'Free to start with an account.')
+  // Closed world: the notice appears once in the component, behind that condition. A member never gets it.
+  assert.equal(inlineSrc.split('yuriAccessSentence()').length - 1, 1)
+  // The ingredient page's button also leads to a page that asks for an account, and now says so beside it.
+  assert.ok(read('src/app/ingredients/[slug]/page.tsx').includes('works with your specific skin type, routine, and concerns. {yuriAccessSentence()}\n'))
   // What the sign-up form does with it: holds it, then shows back what it holds.
   const mem = new Map()
   const store = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, v), removeItem: (k) => mem.delete(k) }

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { buildBlogPrefill, blogCtaHref, shownOpener } from './blog-prefill'
 import { trackEvent, BlogEvent } from '@/lib/analytics'
-import { LANDING_CHAT_OPEN, gatedSignupHref, gateButtonTag } from '@/lib/landing-chat'
+import { LANDING_CHAT_OPEN, gatedSignupHref, gateButtonTag, askYuriLabel, yuriAccessSentence } from '@/lib/landing-chat'
 import { recordSignupPress } from '@/lib/signup-press'
 
 interface BlogInlineYuriPromptProps {
@@ -78,11 +78,17 @@ export default function BlogInlineYuriPrompt({ title, category, primaryKeyword, 
         {own ? (
           // Label on its own line so a ~100-char question wraps cleanly at 390px.
           <span className="min-w-0">
-            <span className="block text-xs font-medium text-amber-300 mb-0.5">Ask Yuri, free:</span>
+            <span className="block text-xs font-medium text-amber-300 mb-0.5">{askYuriLabel()}</span>
             <span className="block text-sm md:text-base text-white/90">&ldquo;{own}&rdquo;</span>
           </span>
         ) : (
-          <span className="text-sm md:text-base text-white/90">{getPromptText(category)}</span>
+          // No question of its own to show. A signed-out reader, with the chat
+          // closed, is told where the press leads; a member is not (theirs
+          // opens Yuri).
+          <span className="min-w-0">
+            <span className="block text-sm md:text-base text-white/90">{getPromptText(category)}</span>
+            {!user && !LANDING_CHAT_OPEN && <span className="block text-xs text-amber-300/80 mt-0.5">{yuriAccessSentence()}</span>}
+          </span>
         )}
       </div>
       <ArrowRight className="w-4 h-4 text-amber-400 shrink-0" />

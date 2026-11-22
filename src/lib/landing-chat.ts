@@ -63,6 +63,20 @@ export function heroFootnote(maxFreeMessages: number, open: boolean = LANDING_CH
     : 'Talking to Yuri starts with a free account.'
 }
 
+/**
+ * The small label above a blog post's own question on its inline "Ask Yuri"
+ * button. Closed, that button goes straight to the sign-up form, so the label
+ * says an account comes first: until Nov 22 2026 it read "Ask Yuri, free:" in
+ * both modes, and a reader pressed expecting an answer and met a form.
+ *
+ * Built from yuriAccessPhrase so the two cannot drift. "Free to START" is the
+ * true extent: the account and the setup chat are free, and a membership
+ * follows. A first draft, "with a free account", read as free with no end.
+ */
+export function askYuriLabel(open: boolean = LANDING_CHAT_OPEN): string {
+  return open ? 'Ask Yuri, free:' : `Ask Yuri, ${yuriAccessPhrase(false)}:`
+}
+
 /** The label on a button that leads to Yuri from a public page. */
 export function talkToYuriLabel(open: boolean = LANDING_CHAT_OPEN): string {
   return open ? 'Talk to Yuri Free' : 'Start with Yuri'

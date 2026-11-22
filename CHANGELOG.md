@@ -4,6 +4,20 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.66.12 — A blog post's inline button says an account comes first (Nov 22 2026)
+
+**What the owner saw.** On a blog post he pressed the inline button labelled "Ask Yuri, free:" above a question, expecting to ask it, and landed on the sign-up form, whose first sentence mentions $9.99/month. Nothing false was said, but the button did not warn that an account comes first. Since v11.66.11 that button goes straight to the form, which made the gap sharper. (His press is also the first row in `ss_signup_presses` from a browser other than the test one: `blog_inline`, Nov 22 16:23 UTC. An owner press, not a stranger's.)
+
+**Change.**
+- The label reads **"Ask Yuri, free to start with an account:"** while the chat is closed. It is built from the phrase the site already uses (`yuriAccessPhrase`), so the two cannot drift.
+- A post that shows a generic line with no question of its own adds "Free to start with an account." under it for a signed-out reader. A member's button opens Yuri, so they get no such line.
+- The ingredient page's "Ask Yuri, free" button leads to a page that asks for an account, and was the one such button with nothing beside it saying so. The sentence above it now ends "Free to start with an account."
+- With the chat open the blog label is "Ask Yuri, free:" as before.
+
+**Second-model review: run (Opus 5.5, told to refute). Ship after fixes.** My first wording was "Ask Yuri with a free account:". It read as free with no end, when what is free is the account and the setup chat, with a membership after: "free to start" is the accurate extent, and the project already had the phrase. Adopted. It found the test for "members do not see the notice" did not bind (the notice could be shown to everyone and pass); it now counts the notice once. It named the ingredient page's button as the only other one actually misleading. Not reviewed again.
+
+**Known, left.** Until the session check finishes, a signed-in member sees the signed-out wording on a post for a moment; the link target had the same flash before this. On a 320-pixel phone the label wraps to two lines. `public/sw.js` cache name is v71.
+
 ## v11.66.11 — Blog buttons go straight to sign-up, and sign-up presses are counted (Nov 21 2026)
 
 **What the numbers showed.** Google Analytics reported 3,358 sessions for Nov 13-21 at a 10-second average, across 2,006 landing pages, against 5 real accounts: it counts crawlers. Real readers were on about ten blog posts (roughly 300 sessions, one to two minutes each). Nothing of ours recorded the step between reading a page and creating an account.

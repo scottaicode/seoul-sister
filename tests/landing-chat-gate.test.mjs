@@ -76,8 +76,9 @@ test('closed is the default: only the exact setting "open" opens the chat', asyn
 test('every access sentence, exactly, in both modes', async () => {
   const closed = await loadLandingChat(undefined)
   assert.deepEqual(
-    [closed.yuriAccessPhrase(), closed.yuriAccessSentence(), closed.heroBadge(), closed.heroFootnote(12), closed.talkToYuriLabel(), closed.LANDING_CHAT_CLOSED_ERROR],
+    [closed.askYuriLabel(), closed.yuriAccessPhrase(), closed.yuriAccessSentence(), closed.heroBadge(), closed.heroFootnote(12), closed.talkToYuriLabel(), closed.LANDING_CHAT_CLOSED_ERROR],
     [
+      'Ask Yuri, free to start with an account:',
       'free to start with an account',
       'Free to start with an account.',
       'New members: first week free, no card.',
@@ -94,8 +95,8 @@ test('every access sentence, exactly, in both modes', async () => {
   assert.match(pricing, /^\s+trial_requires_card: false,$/m, '"No card needed" is true only while the free week needs no card')
   const open = await loadLandingChat('open')
   assert.deepEqual(
-    [open.yuriAccessPhrase(), open.yuriAccessSentence(), open.heroBadge(), open.heroFootnote(12), open.talkToYuriLabel()],
-    ['free, no signup', 'Free, no signup.', 'Free to talk to. No signup.', 'Talk to Yuri free. 12 messages, no signup.', 'Talk to Yuri Free']
+    [open.askYuriLabel(), open.yuriAccessPhrase(), open.yuriAccessSentence(), open.heroBadge(), open.heroFootnote(12), open.talkToYuriLabel()],
+    ['Ask Yuri, free:', 'free, no signup', 'Free, no signup.', 'Free to talk to. No signup.', 'Talk to Yuri free. 12 messages, no signup.', 'Talk to Yuri Free']
   )
 })
 
