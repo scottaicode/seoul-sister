@@ -106,7 +106,7 @@ test('the grader does not compare scores made by different scorers', () => {
   assert.equal(v({ photo_quality: { scorer_version: 'x' } }), 1)
   // The gate runs before a delta is ever computed, and writes a grade that is excluded from the rate.
   const gate = grader.indexOf('if (scorerVersionOf(baseline) !== scorerVersionOf(followup)) {')
-  assert.ok(gate > 0 && gate < grader.indexOf('const delta = followup.overall_score - baseline.overall_score'))
+  assert.ok(gate > 0 && gate < grader.indexOf('const change = after.mean - before.mean'))
   assert.match(grader.slice(gate, gate + 400), /writeGrade\(db, nudge\.id, 'insufficient_data', null, baseline\.id, followup\.id,/)
   // The scorer writes the version this reads.
   assert.match(read('src/app/api/skin-score/route.ts'), /scorer_version: GLASS_SKIN_SCORER_VERSION/)

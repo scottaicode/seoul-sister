@@ -4,6 +4,48 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.66.13 — One photo is not a reading: score ranges for Yuri, sittings for the grader (Nov 22 2026)
+
+**What happened.** A member took two Glass Skin photos 26 seconds apart. Clarity read 48 on one and 60 on the other. Yuri told her clarity was "60, up from 52 in October". October's three photos read 68, 58 and 52. Yuri reported what she was shown accurately: for each day she saw every photo's overall score but the five other scores of only the LAST photo.
+
+**Measured.** Every sitting with more than one photo (same member, minutes apart): 7 sittings, 16 photos, 4 members.
+
+| Score | Average gap | Largest |
+|---|---|---|
+| Overall | 2.7 | 6 |
+| Clarity | 6.1 | 16 |
+| Evenness | 4.1 | 10 |
+| Smoothness | 3.7 | 12 |
+| Luminosity | 3.4 | 6 |
+| Hydration | 2.9 | 5 |
+
+It is a small and uneven sample: 6 of the 7 sittings were read by the earlier scorer, 3 came from one member, and several photos were under the confidence the grader accepts. It measures minutes apart, not days. The query: group `ss_glass_skin_scores` by user into runs of photos less than 30 minutes apart, keep runs of two or more, take max minus min of each score.
+
+**1. What Yuri is shown (`src/lib/yuri/memory.ts`).**
+- A day with several photos shows each score as a range across that day's photos ("clarity 48 to 60"). One photo: its own scores, as before.
+- The note under the history states the measured spread, with its sample size, and that differences between days were not measured. It is a fact about the instrument. Nothing tells Yuri what to conclude.
+- When the listed photos were read by both scorers, each day names its scorer and the note says they are two different rulers. That October-to-November comparison was also across scorers.
+- When photos are not all listed, the note says a day at either edge may have had more photos than are shown.
+
+**2. The outcome grader (`src/lib/intelligence/nudge-outcome-grader.ts`).** It compared one photo before with one photo after and called a 4-point change "helped" or "hurt". In 3 of the 7 sittings, two photos taken minutes apart differed by 4 or more. Each side is now the mean of the usable photos in the anchor photo's sitting: within 15 minutes (the longest sitting on record spans 11), same scorer, confidence at or above the floor, the baseline never including a photo taken after the member acted and the follow-up never one from before the 14-day line. The grade is decided on the unrounded difference. No helped/hurt grade had been written before this: all 6 graded rows were `insufficient_data`.
+
+**Second-model review: run (Opus 5.5, told to refute). Ship after fixes.** It recomputed the figures from production and they matched. It then found:
+- *My sentence overstated the evidence.* It said "measured across members... with no change in the skin", from 7 sittings that were mostly the earlier scorer, and would have invited Yuri to read any larger gap between days as real. Reworded to state the sample and what was not measured. I had also written 20 photos; the 7 sittings hold 16.
+- *The guard on "fact, not instruction" did not bind.* It was a list of banned words, and four instructions in other words passed. The sentence is now held whole, so any added clause fails.
+- *Nothing tested that the grader keeps each sitting on its own side of the nudge.* Now executed.
+- *A 30-minute window was wider than any sitting seen.* Now 15.
+- *A day's range could be silently partial,* and *Yuri was never told the two days were read by different scorers.* Both now stated.
+Twenty-four wrong versions, every one of its among them, fail the tests. The fixes were not reviewed again.
+
+**Run on real data.** The real context builder, read-only, on that member's photos now prints "2026-11-22: 2 photos, scorer 2 ... clarity 48 to 60" and "2026-10-05: 3 photos, scorer 1 ... clarity 52 to 68".
+
+**Not verified, and not settled.**
+- How Yuri actually answers with the new text. No conversation was replayed.
+- The noise band of 4 was chosen for single photos. It has not been re-derived for means or for the current scorer: there is one usable current-scorer sitting on record.
+- Noise between days is unmeasured and is at least as large as within a sitting.
+- No real nudge has yet been graded helped or hurt, so the grader's change has no production row.
+- A low-confidence first photo with a clear retake beside it is now graded on the retake, where the grader used to abstain.
+
 ## v11.66.12 — A blog post's inline button says an account comes first (Nov 22 2026)
 
 **What the owner saw.** On a blog post he pressed the inline button labelled "Ask Yuri, free:" above a question, expecting to ask it, and landed on the sign-up form, whose first sentence mentions $9.99/month. Nothing false was said, but the button did not warn that an account comes first. Since v11.66.11 that button goes straight to the form, which made the gap sharper. (His press is also the first row in `ss_signup_presses` from a browser other than the test one: `blog_inline`, Nov 22 16:23 UTC. An owner press, not a stranger's.)

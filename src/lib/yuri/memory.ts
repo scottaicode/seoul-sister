@@ -264,6 +264,76 @@ export interface UserContext {
   glassSkinTotal: number | null
 }
 
+/** The five scores beside the overall one, in the order they are shown. */
+export const GLASS_SKIN_DIMENSIONS = ['luminosity', 'smoothness', 'clarity', 'hydration', 'evenness'] as const
+
+/** "58" when every photo agrees, "48 to 60" otherwise. */
+export function scoreRange(values: number[]): string {
+  const lo = Math.min(...values)
+  const hi = Math.max(...values)
+  return lo === hi ? `${lo}` : `${lo} to ${hi}`
+}
+
+/**
+ * How far scores from ONE sitting have differed, as measured, not as a rule.
+ *
+ * From every sitting with more than one photo on Nov 22 2026: 7 sittings, 16
+ * photos, 4 members. It is a small and uneven sample and says so: 6 of the 7
+ * were read by the earlier scorer, 3 came from one member, and several photos
+ * were below the confidence the grader accepts. It measures photos taken
+ * minutes apart; the difference between two DAYS (other light, other angle) was
+ * not measured and is at least this large. It is a fact about the instrument
+ * for Yuri to weigh; what a difference between two days means is hers to judge.
+ * Re-measure before changing a number (the query is in CHANGELOG v11.66.13).
+ * tests/glass-skin-sitting-noise.test.mjs holds the sentence whole: a clause
+ * added to it, in any words, fails.
+ */
+export const GLASS_SKIN_SITTING_SPREAD_FACT =
+  'In the 7 sittings measured so far (November 2026, 4 members, mostly the earlier scorer), photos taken minutes apart differed on the overall score by about 3 points on average (6 at most); clarity about 6 (16 at most), evenness about 4 (10), smoothness about 4 (12), luminosity about 3 (6), hydration about 3 (5). Differences between days, with different light, were not measured.'
+
+/** Which scorer read a photo, from its photo_quality. Anything without a version is scorer 1. */
+export function glassSkinScorerOf(photoQuality: unknown): number {
+  const v = (photoQuality as { scorer_version?: unknown } | null | undefined)?.scorer_version
+  return typeof v === 'number' && v >= 1 ? v : 1
+}
+
+/**
+ * Shown only when the listed days were read by both scorers. Scorer 1 (photos
+ * before Nov 14 2026) was given the member's profile with the photo; scorer 2
+ * reads the photo alone. The grader refuses to compare across them
+ * (nudge-outcome-grader.ts); Yuri is told which is which, as a fact.
+ */
+export const GLASS_SKIN_TWO_SCORERS_FACT =
+  'Each day says which scorer read it. Scorer 1 (photos before November 14 2026) was given the member\'s profile along with the photo; scorer 2 reads the photo alone. They are two different rulers.'
+
+/**
+ * One day's line in the score history. `shots` is newest first.
+ *
+ * One photo: its five scores. Several: each score as the RANGE across the day's
+ * photos. Showing only the last photo's scores made a difference between two
+ * days look like a change in the skin when it was inside the spread of a single
+ * sitting (Nov 22 2026: "clarity 60, up from 52", when the two days' photos read
+ * 48 and 60 against 68, 58 and 52).
+ *
+ * `showScorer`: the days listed were read by both scorers, so each line names
+ * its own (that October-to-November comparison was also across two scorers).
+ */
+export function glassSkinDayLine(
+  day: string,
+  tag: string,
+  shots: Array<{ overall: number; luminosity: number; smoothness: number; clarity: number; hydration: number; evenness: number; scorer?: number }>,
+  showScorer: boolean = false
+): string {
+  const overalls = [...shots].reverse().map((x) => x.overall).join(', ')
+  const s0 = shots[0]
+  const dims = shots.length > 1
+    ? `across the ${shots.length} photos: ${GLASS_SKIN_DIMENSIONS.map((k) => `${k} ${scoreRange(shots.map((x) => x[k]))}`).join(', ')}`
+    : GLASS_SKIN_DIMENSIONS.map((k) => `${k} ${s0[k]}`).join(', ')
+  const scorers = [...new Set(shots.map((x) => x.scorer ?? 1))].sort()
+  const scorer = showScorer ? `, scorer ${scorers.join(' and ')}` : ''
+  return `- **${day}**${tag}: ${shots.length} photo${shots.length > 1 ? 's' : ''}${scorer}, overall ${overalls}/100 in the order taken (${dims})`
+}
+
 export interface GlassSkinScoreSummary {
   takenAt: string                // ISO timestamp
   takenDate: string              // YYYY-MM-DD
@@ -274,6 +344,8 @@ export interface GlassSkinScoreSummary {
   clarity: number
   hydration: number
   evenness: number
+  /** 1 = read with the member's profile (before Nov 14 2026); 2 = from the photo alone. */
+  scorer: number
 }
 
 export interface LearningContextData {
@@ -495,7 +567,7 @@ export async function loadUserContext(
   // Recent scores plus the very FIRST one: with only the newest 3, a user who
   // uploads three angles in one sitting pushes her baseline out of view and Yuri
   // tells her she has no baseline (real case, Oct 6 2026).
-  const GS_COLS = 'created_at, overall_score, luminosity_score, smoothness_score, clarity_score, hydration_score, evenness_score'
+  const GS_COLS = 'created_at, overall_score, luminosity_score, smoothness_score, clarity_score, hydration_score, evenness_score, photo_quality'
   const glassSkinPromise = loadGlassSkin
     ? Promise.all([
         db.from('ss_glass_skin_scores').select(GS_COLS, { count: 'exact' }).eq('user_id', userId).order('created_at', { ascending: false }).limit(9),
@@ -783,6 +855,7 @@ export async function loadUserContext(
       clarity: Number(row.clarity_score) || 0,
       hydration: Number(row.hydration_score) || 0,
       evenness: Number(row.evenness_score) || 0,
+      scorer: glassSkinScorerOf(row.photo_quality),
     }
   })
 
@@ -1211,18 +1284,20 @@ This is information about THEIR routine, not advice. Some stacking is fine (a ni
     for (const s of sorted) byDay.set(s.takenDate, [...(byDay.get(s.takenDate) ?? []), s])
     const days = [...byDay.keys()]
     const firstDay = days[days.length - 1]
+    // Both scorers among the listed photos: each day names its own.
+    const twoScorers = new Set(sorted.map((x) => x.scorer)).size > 1
     // Render raw dates only, NOT a computed "N days ago" bucket (cache stability).
     const lines = days.map((d, i) => {
       const shots = byDay.get(d)!
       const tag = i === 0 && d !== firstDay ? ' (most recent)' : d === firstDay ? (days.length > 1 ? ' (first)' : ' (first and only day so far)') : ''
-      const s0 = shots[0]
-      const overalls = [...shots].reverse().map((x) => x.overall).join(', ')
-      return `- **${d}**${tag}: ${shots.length} photo${shots.length > 1 ? 's' : ''}, overall ${overalls}/100 in the order taken (latest of the day: luminosity ${s0.luminosity}, smoothness ${s0.smoothness}, clarity ${s0.clarity}, hydration ${s0.hydration}, evenness ${s0.evenness})`
+      return glassSkinDayLine(d, tag, shots, twoScorers)
     })
     const total = context.glassSkinTotal
     const listed = context.glassSkinHistory.length
-    const omitted = total !== null && total > listed ? ` ${total} photos in total; ${total - listed} taken between the first day and the most recent ones are not listed.` : ''
-    const recordNote = `\nDates are the user's local dates. These photos are uploaded on the Glass Skin page (/glass-skin), outside this chat, so the conversation itself may never mention them. This list is read live from that page each turn, so it is more current than any note in your memory about a photo still being pending.${omitted} Several photos on one day are usually one sitting (retakes, angles, light). You see the scores, not the images.`
+    // Only the nine most recent photos and the very first are loaded, so a day at
+    // either edge can be cut: its count, and any range, is of the photos shown.
+    const omitted = total !== null && total > listed ? ` ${total} photos in total; ${total - listed} taken between the first day and the most recent ones are not listed, so the first day and the earliest of the recent days may each have had more photos than are shown here.` : ''
+    const recordNote = `\nDates are the user's local dates. These photos are uploaded on the Glass Skin page (/glass-skin), outside this chat, so the conversation itself may never mention them. This list is read live from that page each turn, so it is more current than any note in your memory about a photo still being pending.${omitted} Several photos on one day are usually one sitting (retakes, angles, light). ${GLASS_SKIN_SITTING_SPREAD_FACT}${twoScorers ? ` ${GLASS_SKIN_TWO_SCORERS_FACT}` : ''} You see the scores, not the images.`
     // The >= 7 gate is real behavior (fires at most once per photo, not a
     // per-render tick), but do NOT embed "${daysAgo} days old" — that number
     // ticks daily and invalidates the cached prefix. The latest score's raw
