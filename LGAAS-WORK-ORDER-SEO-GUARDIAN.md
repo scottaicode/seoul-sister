@@ -27,12 +27,12 @@ When the weekly report contains a `new_content` or `content_refresh` bet:
 1. Scott (or an LGAAS session) opens LGAAS **"+ New Blog"** and uses the **custom topic + context** fields (the established recipe workflow).
 2. **Topic** = the bet's target query cluster, phrased as the bet recommends (e.g. "Korean skincare for post-inflammatory erythema (PIE): complete guide").
 3. **Context** = paste the bet's `reasoning` + `target_queries` list verbatim, PLUS grounding data from the Seoul Sister DB per the standing rule (query `ss_products` / `ss_counterfeit_markers` for any product/brand claims — never let LGAAS invent product facts).
-4. Run the MANDATORY LGAAS review checklist before publish (verify claims vs DB, no Amazon/eBay links, FAQ count ≠ 0, retailer policy: recommend only Olive Young / Soko Glam / iHerb).
+4. Run the MANDATORY LGAAS review checklist before publish (verify claims vs DB, no Amazon/eBay links, FAQ count ≠ 0, retailer policy: for US readers recommend only Olive Young US / Soko Glam / iHerb; Olive Young Global has not shipped to the US since May 29 2026).
 5. Published posts flow to seoulsister.com via the existing blog delivery pipeline (IndexNow pings Bing on ingest automatically).
 
 ## Rules that carry over (do not relearn these)
 
-- **Retailer policy:** never recommend YesStyle/Stylevana/StyleKorean in generated content; recommend-set is Olive Young, Soko Glam, iHerb. Price-as-data is fine.
+- **Retailer policy:** never recommend YesStyle/Stylevana/StyleKorean in generated content; recommend-set for US readers is Olive Young US (us.oliveyoung.com), Soko Glam, iHerb. Olive Young Global stopped shipping to the US on May 29 2026 and is the default only outside the US; Olive Young US does not carry every brand (not Beauty of Joseon), so check the pick against the store. Price-as-data is fine.
 - **No em-dashes** in any social/Reddit copy derived from these bets.
 - **Ground product claims in the Seoul Sister DB** before drafting.
 - **The bet's expected outcome is Seoul Sister's to grade, not LGAAS's to claim.** LGAAS ships the content; the SEO Guardian's Phase 3 grader reads whether position/CTR actually moved. Don't self-report success.

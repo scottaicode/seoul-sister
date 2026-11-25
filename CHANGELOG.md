@@ -4,6 +4,21 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.66.14 — A stripped opener no longer leaves a stray "."; the SEO strategist is told how bets ship and which pages produce sign-ups (Nov 25 2026)
+
+**1. Voice cleanup (`src/lib/yuri/voice-cleanup.ts`).** A new member's setup reply was saved as ". Three things are still missing" (message `3cdfe54e`, Nov 25 07:07 UTC). The rule that removes orphaned leading punctuation ran BEFORE the "Good question" / "Love to hear that" rules that create the orphan, and "!" and "?" were not in its set. Reproduced exactly by running the real function on "Good question. Three things are still missing." Moved the rule after every opener strip and added `!?`. Frequency before the fix: 1 of 170 assistant replies since Oct 1. The member saw the raw stream live; the saved text (what a reload shows and what Yuri reads back) was the broken one. That one row was repaired by hand. Three tests in `tests/voice-cleanup-truncation.test.mjs`, each confirmed to fail on the old code.
+
+**2. SEO strategist (`src/lib/seo/seo-guardian.ts`).** The Nov 22 report asked Scott, again, whether the generator was paraphrasing its bets or not shipping them. A Fable 5.2 review measured it: nothing sends `ss_seo_reports.bets` to LGAAS; a bet ships only through a hand-written work order (the one cleansing-oils H3 that shipped was a hand edit). The prompt said its recommendations "feed a blog-generation pipeline". Now:
+- A "HOW A BET SHIPS" fact replaces that premise, and the not-executed guidance says "never work-ordered" instead of "the pipeline is not executing".
+- Retailer policy: US readers get Olive Young US, Soko Glam, iHerb. Olive Young Global has not shipped to the US since May 29 2026; the Nov 22 bets named a bare "Olive Young". Same fix in `LGAAS-WORK-ORDER-SEO-GUARDIAN.md`.
+- The hardcoded "PIE page is 341 of 1,782 site clicks (19%)" (Sept 15) is gone; on Nov 22 that page was 1.9% of true clicks. The strategist reads the current number from TOP PAGES.
+
+**3. Sign-ups by landing page (`src/lib/seo/page-chats.ts`).** The strategist's only conversion input read `ss_widget_sessions`, which stopped growing when the landing chat closed on Nov 13. It now also gets, per first landing page: new accounts (`ss_user_profiles.landing_path`, excluding `excluded_from_metrics`), free weeks, cards and paid (`ss_trial_starts`), and sign-up presses (`ss_signup_presses`). Paginated and count-checked; a failed fetch reads UNAVAILABLE, never zero. Stored in `computed_facts.pageSignups`. For the Oct 23 to Nov 19 window: the cleansing-oils post, 2 accounts, 2 free weeks, 0 cards, 0 paid; 7 accounts with no page recorded. Tests: `tests/seo-page-signups.test.mjs`.
+
+**Not verified.** No scheduled run has used any of this yet. First: Sunday Nov 29 10:00 UTC; the report should not ask the shipping question, should not name Olive Young Global for US readers, and `computed_facts.pageSignups.ok` should be true.
+
+---
+
 ## v11.66.13 — One photo is not a reading: score ranges for Yuri, sittings for the grader (Nov 22 2026)
 
 **What happened.** A member took two Glass Skin photos 26 seconds apart. Clarity read 48 on one and 60 on the other. Yuri told her clarity was "60, up from 52 in October". October's three photos read 68, 58 and 52. Yuri reported what she was shown accurately: for each day she saw every photo's overall score but the five other scores of only the LAST photo.

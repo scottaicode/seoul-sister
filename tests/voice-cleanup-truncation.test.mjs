@@ -311,3 +311,43 @@ test('the REAL cleanYuriResponse: offers are kept by default and dropped only wh
   assert.equal(cleanYuriResponse(whole), whole)
   assert.equal(cleanYuriResponse(whole, { stripUnfulfillableOffers: true }), whole)
 })
+
+// ---------------------------------------------------------------------------
+// THE NOV 25 2026 REGRESSION — an opener strip left the reply starting with ".".
+// A new member's setup reply was saved as ". Three things are still missing":
+// the leading-punctuation safety net ran BEFORE the "Good question" rule that
+// created the orphan, and "!" / "?" were not in its set.
+// ---------------------------------------------------------------------------
+
+test('a stripped opener never leaves the reply starting with punctuation', () => {
+  const openers = [
+    'Good question', 'Really good question', 'Love to hear that', 'Love that',
+    'So glad to hear that', 'Great question', 'Absolutely', 'Of course', 'Sure thing',
+  ]
+  for (const o of openers) {
+    for (const p of ['.', '!', ',', '?', '']) {
+      const raw = `${o}${p} Three things are still missing.`
+      const out = clean(raw)
+      // Either the opener is removed cleanly, or (where no rule covers that
+      // punctuation) left whole. Never a punctuation fragment at the start.
+      assert.ok(
+        out === 'Three things are still missing.' || out === raw,
+        `"${o}${p}" left: ${JSON.stringify(out)}`
+      )
+      assert.doesNotMatch(out, /^[.,;:!?]/)
+    }
+  }
+})
+
+test('the exact Nov 25 reply is saved whole', () => {
+  const raw = 'Good question. Three things are still missing, and each one changes what I\'d recommend:'
+  assert.equal(clean(raw), 'Three things are still missing, and each one changes what I\'d recommend:')
+})
+
+test('the leading-punctuation safety net is the last strip before whitespace cleanup', () => {
+  const rules = loadRules()
+  const i = rules.findIndex((r) => r.pattern.source.startsWith('^\\s*[.,;:'))
+  assert.ok(i !== -1, 'safety net rule missing')
+  const openerAfter = rules.slice(i + 1).some((r) => r.pattern.source.startsWith('^') && r.replacement === '')
+  assert.ok(!openerAfter, 'an opener-stripping rule runs after the safety net, so its orphan survives')
+})

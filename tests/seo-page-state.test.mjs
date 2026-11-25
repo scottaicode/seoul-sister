@@ -171,5 +171,5 @@ test('WIRING: the strategist prompt includes the block and the stored facts keep
   const g = readFileSync(join(root, 'src', 'lib', 'seo', 'seo-guardian.ts'), 'utf8')
   assert.match(g, /\$\{input\.pageState\}/)
   assert.match(g, /pageState: formatPageStates\(pageStates, today, betsByPage\)/)
-  assert.match(g, /pageChats: pageChatFacts, pageStates \}/)
+  assert.match(g, /pageChats: pageChatFacts, pageSignups: pageSignupFacts, pageStates \}/)
 })

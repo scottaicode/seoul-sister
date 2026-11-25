@@ -45,11 +45,6 @@ const BANNED_PATTERNS: CleanupRule[] = [
   // real sentence.
   { pattern: /^(?:So,?\s*)?(?:Unfortunately,?\s*)?I (?:can't|cannot|am not able to|don't have a way to) (?:help (?:you )?with that|do that|answer that|give you that)(?: (?:directly|specifically|right now|here))?, but /i, replacement: '' },
 
-  // Safety net: if any upstream strip leaves an orphaned leading punctuation
-  // fragment (". ," or "., " or ", "), clean it so a response never opens mid-
-  // punctuation. Capitalize the new first letter.
-  { pattern: /^[\s]*[.,;:]+\s*/, replacement: '' },
-
   // Conversational filler openers (not caught by the "Great question" set)
   // "Ha" / "Haha" as a standalone laugh opener only. Requires a comma or a
   // following sentence-start, so it can't decapitate a real word.
@@ -142,6 +137,18 @@ const BANNED_PATTERNS: CleanupRule[] = [
   // say what separates an offer from a closer; this rule removes only empty
   // closers. The setup chat is the exception (see OFFER_CLOSER below).
   { pattern: /(?<=[^\d\s][.!?])\s*(?:Sound good|Sounds good|Does that sound good|Does that feel doable|Make sense|Does that make sense|Sound like a plan|Ready to (?:dive in|get started))\?\s*$/i, replacement: '' },
+
+  // Safety net: if any strip above leaves an orphaned leading punctuation
+  // fragment (". ", "! ", "., "), clean it so a reply never opens mid-
+  // punctuation; cleanYuriResponse capitalizes the new first letter.
+  //
+  // It MUST stay after every rule that can strip an opener. It used to sit
+  // above the "Good question" / "Love to hear that" rules, so it ran before
+  // the orphan existed: "Good question. Three things are still missing" was
+  // saved as ". Three things are still missing" for a new member's setup chat
+  // (Nov 25 2026), and "Love to hear that! X" as "! X". "!" and "?" were also
+  // missing from the set.
+  { pattern: /^\s*[.,;:!?]+\s*/, replacement: '' },
 
   // Double spaces from removal
   { pattern: /  +/g, replacement: ' ' },

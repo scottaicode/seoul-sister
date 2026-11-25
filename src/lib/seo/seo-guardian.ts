@@ -3,7 +3,7 @@ import { getAnthropicClient, callAnthropicWithRetry } from '@/lib/anthropic'
 import { getAIContext, estimateCost } from '@/lib/ai-config'
 import { logAIUsage } from '@/lib/ai-usage-logger'
 import { getGscConfig, fetchSearchAnalytics, fetchSiteTotals, type GscRow } from './gsc-client'
-import { fetchPageChats, formatPageChats } from './page-chats'
+import { fetchPageChats, formatPageChats, fetchPageSignups, formatPageSignups } from './page-chats'
 import { countBetsByPage, fetchPageStates, formatPageStates, selectPages, type PageState } from './page-state'
 
 // ---------------------------------------------------------------------------
@@ -90,7 +90,9 @@ function aggregateByPage(rows: GscRow[]): Array<{ page: string; clicks: number; 
 
 const STRATEGIST_SYSTEM = `You are the SEO Guardian for seoulsister.com — Seoul Sister, the English-language K-beauty intelligence platform (AI advisor Yuri, 5,900+ product database, 8,200+ ingredient pages, counterfeit-detection data, /best/[category] pages, /blog, /ingredients/[slug]).
 
-Every week you receive real Google Search Console data and produce the weekly SEO strategy report for the owner, Scott. Your report is read by a human and your content recommendations feed a blog-generation pipeline (LGAAS), so be specific and actionable, never generic.
+Every week you receive real Google Search Console data and produce the weekly SEO strategy report for the owner, Scott. Your report is read by a human, so be specific and actionable, never generic.
+
+HOW A BET SHIPS (fact, measured Nov 24 2026): nothing sends your bets to the blog generator (LGAAS) automatically. A bet ships only when a Claude session writes a work order for it by hand and Scott runs it, so most bets never ship, and none is rewritten by a generator on the way. When CURRENT PAGE STATE shows no trace of work you asked for, the cause is that nobody work-ordered it, not that a generator paraphrased it; never ask Scott to diagnose a pipeline. Which bets did ship is in the grades (an 'executed' marker) and in CURRENT PAGE STATE. Because shipping costs a human's time, each bet competes with everything else Scott could do that week; weigh that when you decide how many to propose.
 
 Business context you must respect:
 - Seoul Sister is an intelligence platform, NOT a store. Never propose commerce content.
@@ -101,12 +103,12 @@ Business context you must respect:
   - The DEDICATED page (\`/blog/best-korean-skincare-for-pih-fade-post-acne-dark-spots\`, correct title, correct content) HELD this query at position 9.7-10.1 for a month and earned **2 clicks on 430 impressions (0.47%)**. Google then moved the query to the PIE page, which now carries **1,714 impressions at position 10.4 and 0 clicks**. Both pages, both titles, both at page-1-bottom: essentially zero clicks. A metadata or internal-linking bet cannot recover a query that has never clicked for any page at any title — that experiment has already been run.
   - The impressions do not look like human demand. The "best X" / bare "X" impression ratio for this phrase is **245x** (1,719 vs 7) against a site norm of **0.5-1.7x** across every comparable pair (best korean lip balm 1.0x, best korean eye cream 1.2x, best korean moisturizer 1.7x, best skincare for pie 0.5x). Volume grew ~20x in ten weeks with the position frozen at 10.4-10.7 throughout. Frozen position + zero clicks + a two-order-of-magnitude phrase anomaly is the fingerprint of rank-tracker or AI-surface impressions, not shoppers. Source unproven; the anomaly is measured.
   - Remove that single query and the PIH/dark-spot family is **1.56% CTR** against the PIE family's 2.06% — comparable, not broken. The "PIE converts 17x better" reading was an artifact of this one non-clicking query.
-  **Do not bet on this query again, and do not touch the PIE page to chase it** — that page is 341 of 1,782 site clicks (19%), so a consolidation risks ~114 clicks/month to chase a ceiling of ~8. If you believe the PIH page itself deserves work, aim it at a query with a human click record and say so in \`reasoning\`. This is a fact about one phrase, not a rule against pigmentation content.
-- Retailer policy for any content suggestion: recommend Olive Young, Soko Glam, iHerb only. Never YesStyle, Stylevana, StyleKorean, and no Amazon/eBay links.
+  **Do not bet on this query again, and do not touch the PIE page to chase it** — a consolidation risks that page's own clicks to chase a ceiling of ~8. Read its current clicks from TOP PAGES this week; do not quote a share of site clicks from memory (it was 19% when measured Sept 15 2026 and is far smaller now). If you believe the PIH page itself deserves work, aim it at a query with a human click record and say so in \`reasoning\`. This is a fact about one phrase, not a rule against pigmentation content.
+- Retailer policy for any content suggestion: for US readers, recommend Olive Young US (us.oliveyoung.com), Soko Glam and iHerb. Olive Young Global stopped shipping to the US on May 29 2026, so never name it, or a bare "Olive Young", as a place a US reader can buy; it is the default only for readers outside the US. Olive Young US does not carry every brand (not Beauty of Joseon, for one), so a pick must be checked against the store it is sent to. Never YesStyle, Stylevana, StyleKorean, and no Amazon/eBay links.
 
 HOW TO READ GRADED BETS (the grader is deliberately abstention-heavy):
 - Verdicts are produced by a deterministic instrument, never by an AI. Only 'hit' and 'miss' are evidence about SEO.
-- 'ungradeable_not_executed' means the work never shipped. The theory is UNTESTED, not wrong — never discount a bet type for this, and consider re-proposing it. But when CURRENT PAGE STATE shows a page has carried several bets and still shows no trace of the requested work, the finding is that the content pipeline is not executing, and that belongs in the report to Scott: another bet on the same page tests nothing until the work ships.
+- 'ungradeable_not_executed' means the work never shipped. The theory is UNTESTED, not wrong — never discount a bet type for this, and consider re-proposing it. But when CURRENT PAGE STATE shows a page has carried several bets and still shows no trace of the requested work, the finding is that the work was never work-ordered (see HOW A BET SHIPS), and that belongs in the report to Scott as a plain fact, not a question: another bet on the same page tests nothing until someone ships the work.
 - 'ungradeable_underpowered' is a verdict about how YOU WROTE THE BET, not about what happened: at this site's volume, reaching the threshold you named could not have been told apart from chance, so no outcome could have confirmed it. The gradeability test is whether hitting your stated threshold would itself be statistically significant against the baseline. That is a fact about the instrument, not a restriction on what you may bet on — an ungradeable bet can still be the right call, and you may say so.
 - 'ungradeable_too_soon' / 'ungradeable_no_data' mean the measurement window or the data was not there. No information either way.
 - A bet marked 'execution=partially_executed' had only some of its action shipped; treat its numbers with suspicion.
@@ -158,6 +160,7 @@ function buildUserPrompt(input: {
   priorComparison: string
   priorBets: string
   pageChats: string
+  pageSignups: string
   pageState: string
   today: string
 }): string {
@@ -203,6 +206,8 @@ TOP PAGES (path | clicks | impressions | avg position):
 ${input.pageAggs.slice(0, PAGE_LIMIT).map((p) => `${p.page} | ${p.clicks} | ${p.impressions} | ${p.position}`).join('\n')}
 
 ${input.pageChats}
+
+${input.pageSignups}
 
 ${input.pageState}
 
@@ -377,6 +382,10 @@ export async function runSeoGuardian(db: SupabaseClient): Promise<SeoGuardianRes
   // Same window as the GSC data so the two read side by side.
   const pageChatFacts = await fetchPageChats(db, windowStart, windowEnd)
   if (!pageChatFacts.ok) console.error('[seo-guardian] page chat facts unavailable:', pageChatFacts.error)
+  // Which pages turn readers into accounts, free weeks and payments: the lead
+  // step while the landing chat is closed. Same window as the GSC data.
+  const pageSignupFacts = await fetchPageSignups(db, windowStart, windowEnd)
+  if (!pageSignupFacts.ok) console.error('[seo-guardian] page sign-up facts unavailable:', pageSignupFacts.error)
 
   const priorBetLines: string[] = []
   for (const run of prior ?? []) {
@@ -439,6 +448,7 @@ export async function runSeoGuardian(db: SupabaseClient): Promise<SeoGuardianRes
     priorComparison,
     priorBets,
     pageChats: formatPageChats(pageChatFacts, windowStart, windowEnd),
+    pageSignups: formatPageSignups(pageSignupFacts, windowStart, windowEnd),
     pageState: formatPageStates(pageStates, today, betsByPage),
     today,
   })
@@ -477,7 +487,7 @@ export async function runSeoGuardian(db: SupabaseClient): Promise<SeoGuardianRes
       // Full raw snapshot — required so Phase 3 can grade bets and any bet can
       // be audited against exactly what the strategist saw
       gsc_snapshot: { rows },
-      computed_facts: { totals, strikingDistanceCount: strikingDistance.length, queryCount: queryAggs.length, pageCount: pageAggs.length, pageChats: pageChatFacts, pageStates },
+      computed_facts: { totals, strikingDistanceCount: strikingDistance.length, queryCount: queryAggs.length, pageCount: pageAggs.length, pageChats: pageChatFacts, pageSignups: pageSignupFacts, pageStates },
       report_md: reportMd,
       bets,
       model_used: ctx.model,
