@@ -1395,3 +1395,64 @@ test('guard (executed): a list item that is not text is read as a finding, not c
     for (const flagged of [[7], [false], [0], [{}], [[]], 'start azelaic acid nightly', 'none', { change: 'x' }]) assert.equal(enforceGuard({ ...base, [key]: flagged }, evidence, 'Hi').pass, false, `${key} ${JSON.stringify(flagged)}`)
   }
 })
+
+// ---------------------------------------------------------------------------
+// Saved routines reach the guard as PLAN facts (Nov 24 2026). Earned: a
+// free-week member's day-3 and day-6 notes ("since we put together your
+// starter routine") were blocked as "asserts something they never said"
+// although two routines were saved that day. The guard was never given them.
+// ---------------------------------------------------------------------------
+test('guard record lines (executed): closed-world text, routines only, no affirmative ownership phrase', async () => {
+  const { enforceGuard, guardRecordLines } = await loadGuard()
+  const lines = guardRecordLines([
+    { name: 'Dry Skin Starter AM', routine_type: 'am', created_at: '2026-11-17T19:05:00Z' },
+    { name: '  ', routine_type: 'pm', created_at: '2026-11-17T19:05:00Z' },
+    { name: 'Dry Skin Starter PM', routine_type: null, created_at: null },
+  ])
+  // Closed world: exactly these lines and nothing else. Rewording the tail,
+  // dropping it, or adding an ownership sentence fails here.
+  assert.deepEqual(lines, [
+    'routine on file (2026-11-17): Dry Skin Starter AM (am). Plan only (ownership unknown)',
+    'routine on file (date unknown): Dry Skin Starter PM. Plan only (ownership unknown)',
+  ])
+  assert.equal(guardRecordLines.length, 1, 'takes routines only: open loops are summariser prose about the person')
+
+  const evidence = { userMessages: ['Dry i live in dubai'], recordedDecisions: lines, plan: null }
+  const note = "It's been a couple of days since we put together your starter routine. How is it going?"
+  const planFact = { products_mentioned: [], using_claims: [], verdict: 'pass',
+    asserted_facts: [{ fact: 'A starter routine exists for them', user_quote: 'routine on file (2026-11-17): Dry Skin Starter AM', source: 'record' }] }
+  assert.equal(enforceGuard(planFact, evidence, note).pass, true)
+  assert.equal(enforceGuard(planFact, { ...evidence, recordedDecisions: [] }, note).pass, false, 'old evidence: blocked (the bug)')
+
+  // A usage claim can never be quoted from a routine line (their words only).
+  const usage = { products_mentioned: ['Dry Skin Starter AM'], verdict: 'pass', asserted_facts: [],
+    using_claims: [{ product: 'Dry Skin Starter AM', user_quote: 'routine on file (2026-11-17): Dry Skin Starter AM', quote_stance: 'establishes_current_use', message_asserts_current_use: true }] }
+  assert.equal(enforceGuard(usage, evidence, 'How is the Dry Skin Starter AM treating you?').pass, false)
+  // A fact about the person, sourced 'user', cannot be quoted from a routine line.
+  const person = { products_mentioned: [], using_claims: [], verdict: 'pass', asserted_facts: [{ fact: 'They follow the routine', user_quote: 'routine on file (2026-11-17): Dry Skin Starter AM', source: 'user' }] }
+  assert.equal(enforceGuard(person, evidence, 'Glad it is going well.').pass, false)
+})
+
+test('guard evidence (wiring): routines go to the record only, never to their own words', () => {
+  const src = readFileSync(new URL('../src/lib/proactive/subscriber-checkin.ts', import.meta.url), 'utf8')
+  const i = src.indexOf('export async function loadGuardEvidence')
+  const body = src.slice(i, src.indexOf('\n}\n', i))
+  assert.match(body, /from\('ss_user_routines'\)\.select\('name, routine_type, created_at'\)\.eq\('user_id', userId\)\.eq\('is_active', true\)/)
+  assert.match(body, /if \(routines\.error\) throw/)
+  assert.match(body, /\.\.\.guardRecordLines\(\(routines\.data \?\? \[\]\) as /)
+  // Their own words are built from their messages and nothing else.
+  assert.match(body, /const userMessages = \(\(msgs\.data \?\? \[\]\) as Array<\{ content: string \}>\)\.map\(\(m\) => m\.content\)\.reverse\(\)\n/)
+  assert.equal((body.match(/guardRecordLines\(/g) ?? []).length, 1)
+  assert.match(body, /return \{ userMessages, recordedDecisions, /)
+})
+
+test('guard source facts (executed): the free-week day is a fact on file, and absent when unknown', async () => {
+  const { guardSourceFacts } = await loadGuard()
+  const withWeek = guardSourceFacts({ today: '2026-11-22', freeWeek: { day: 6, startedOn: '2026-11-17' } })
+  assert.deepEqual(withWeek, ["Today's date (their local date): 2026-11-22", 'Their free week started on 2026-11-17; today is day 6 of 7.'])
+  for (const fw of [null, { day: null, startedOn: '2026-11-17' }, { day: 0, startedOn: '2026-11-17' }, { day: 3, startedOn: null }]) {
+    assert.deepEqual(guardSourceFacts({ today: '2026-11-22', freeWeek: fw }), ["Today's date (their local date): 2026-11-22"])
+  }
+  const src = readFileSync(new URL('../src/lib/proactive/subscriber-checkin.ts', import.meta.url), 'utf8')
+  assert.match(src, /freeWeek: trial \? \{ day: trialDayNumber\(trial, s\.timezone, now\), startedOn: /)
+})

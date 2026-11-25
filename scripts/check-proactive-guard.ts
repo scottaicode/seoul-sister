@@ -11,7 +11,7 @@
 import './load-env'
 import { getServiceClient } from '../src/lib/supabase'
 import { loadUserContext } from '../src/lib/yuri/memory'
-import { loadGuardEvidence, guardSourceFacts } from '../src/lib/proactive/subscriber-checkin'
+import { loadGuardEvidence, guardSourceFacts, trialDayNumber } from '../src/lib/proactive/subscriber-checkin'
 import { resolveTemperatureUnit } from '../src/lib/intelligence/temperature-units'
 import { fetchWeeklyForecast, formatForecastFacts } from '../src/lib/intelligence/weather-forecast'
 import { getLocalClock } from '../src/lib/yuri/clock'
@@ -28,7 +28,13 @@ async function main() {
   const forecast = p?.latitude != null && p?.longitude != null
     ? formatForecastFacts(await fetchWeeklyForecast(Number(p.latitude), Number(p.longitude), p.timezone), today, null, resolveTemperatureUnit({ latitude: Number(p.latitude), longitude: Number(p.longitude) }))
     : null
-  const evidence = await loadGuardEvidence(db, userId, ctx.decisionMemory, guardSourceFacts({ today, statedLocation: p?.location_text ?? null, gpsLocation: ctx.locationName, forecast }))
+  // The free-week day, as production computes it (optional AS_OF=<ISO> replays a past day).
+  const { data: t } = await db.from('ss_trial_starts').select('started_at').eq('user_id', userId).order('started_at', { ascending: false }).limit(1).maybeSingle()
+  const asOf = process.env.AS_OF ? Date.parse(process.env.AS_OF) : Date.now()
+  const freeWeek = t?.started_at
+    ? { day: trialDayNumber({ startedAt: t.started_at, endsAt: null }, p?.timezone ?? null, asOf), startedOn: getLocalClock(p?.timezone ?? null, new Date(t.started_at)).isoDate }
+    : null
+  const evidence = await loadGuardEvidence(db, userId, ctx.decisionMemory, guardSourceFacts({ today: process.env.AS_OF ? getLocalClock(p?.timezone ?? null, new Date(asOf)).isoDate : today, statedLocation: p?.location_text ?? null, gpsLocation: ctx.locationName, forecast, freeWeek }))
   const result = await checkProactiveDraft({ message, subject: subject || null, evidence, userId })
   console.log(JSON.stringify({ pass: result.pass, reasons: result.reasons, verifier: result.verifier }, null, 2))
 }

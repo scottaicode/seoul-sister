@@ -91,9 +91,12 @@ export interface VerifierOutput {
 /**
  * The guard's FACTS ON FILE for a check-in: today's local date, where they live
  * (the stated location the judge is shown, plus the GPS-derived name when it
- * differs) and the exact forecast text the judge saw. Pure; nulls are omitted.
+ * differs), the exact forecast text the judge saw, and which day of the free
+ * week today is (computed by code; the writer is told it, and without it the
+ * guard blocked "you're nearly a week in" on day 6, Nov 24 2026). Pure; nulls
+ * are omitted.
  */
-export function guardSourceFacts(f: { today?: string | null; statedLocation?: string | null; gpsLocation?: string | null; forecast?: string | null }): string[] {
+export function guardSourceFacts(f: { today?: string | null; statedLocation?: string | null; gpsLocation?: string | null; forecast?: string | null; freeWeek?: { day: number | null; startedOn: string | null } | null }): string[] {
   const stated = f.statedLocation?.trim() || null
   const gps = f.gpsLocation?.trim() || null
   return [
@@ -101,6 +104,9 @@ export function guardSourceFacts(f: { today?: string | null; statedLocation?: st
     ...(stated ? [`Where they live (they told you): ${stated}`] : []),
     ...(gps && gps !== stated ? [`Where they live (from their location): ${gps}`] : []),
     ...(f.forecast ? [f.forecast] : []),
+    ...(f.freeWeek?.day != null && f.freeWeek.day >= 1 && f.freeWeek.startedOn
+      ? [`Their free week started on ${f.freeWeek.startedOn}; today is day ${f.freeWeek.day} of 7.`]
+      : []),
   ]
 }
 
@@ -157,6 +163,33 @@ export function productNamedIn(productTokens: string[], textTokens: string[]): b
 export function knownProductsInMessage(message: string, known: string[] = []): string[] {
   const words = distinctive(message)
   return known.filter((name) => productNamedIn(distinctive(name), words))
+}
+
+/**
+ * Record lines for the guard: the member's active routines (Nov 24 2026).
+ *
+ * The writer is shown the member's saved routines; the guard was not, so it
+ * blocked true sentences as "asserts something they never said". Measured: a
+ * free-week member's day-3 and day-6 notes ("since we put together your
+ * starter routine") were blocked although two routines were saved that day.
+ *
+ * A routine is a fact about the PLAN, so it may evidence a 'record' fact. It is
+ * never evidence of ownership or use: usage claims are checked against the
+ * member's own words only. Two details are deliberate (second-model review):
+ * - "on file", not "Yuri saved": a member can create and name a routine herself.
+ * - The tail "Plan only (ownership unknown)" contains no affirmative phrase a
+ *   reader could quote as proof of buying or using ("they bought, own or use
+ *   any product" was quotable verbatim in the first version).
+ * Open loops are deliberately NOT included: they are a summariser's prose and
+ * carry facts about the person ("User has dermatologist appointment next
+ * week"), which only the person's own words may evidence. Pure, exported for tests.
+ */
+export function guardRecordLines(
+  routines: Array<{ name?: string | null; routine_type?: string | null; created_at?: string | null }> | null | undefined
+): string[] {
+  return (routines ?? [])
+    .filter((r) => r.name && r.name.trim())
+    .map((r) => `routine on file (${r.created_at ? String(r.created_at).slice(0, 10) : 'date unknown'}): ${r.name!.trim()}${r.routine_type ? ` (${r.routine_type})` : ''}. Plan only (ownership unknown)`)
 }
 
 /**

@@ -4,6 +4,25 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.66.15 — The check-in guard is given the routines and free-week day the writer sees (Nov 24 2026)
+
+**What happened.** Of 8 check-in notes Yuri drafted for free-week members since Nov 10, 6 were blocked by the content guard and 2 were sent. These are the notes meant to bring a member back, and no free-week member has returned after day 1. A blocked row checked against the conversation was TRUE: ria's day-3 and day-6 notes ("since we put together your starter routine", "you're nearly a week in") were blocked as "asserts something they never said", though two routines were saved for her on Nov 17. The writer is shown saved routines and the free-week day; the guard (`loadGuardEvidence`) was given neither.
+
+**Fix (evidence only; no guard rule was loosened).**
+- `guardRecordLines` (`src/lib/proactive/content-guard.ts`) adds each active routine to the record as `routine on file (date): NAME (type). Plan only (ownership unknown)`. A plan fact, never ownership: usage claims are still checked against the member's own words only.
+- `guardSourceFacts` adds `Their free week started on DATE; today is day N of 7.`, computed by code.
+- `scripts/check-proactive-guard.ts` now passes the same free-week fact (and takes `AS_OF=` to replay a past day).
+
+**Second-model review (Fable 5.2), applied before shipping.** The first version also added open loops and said "routine Yuri saved for them ... NOT evidence they bought, own or use any product". The review showed, against the real `enforceGuard`: open-loop summaries are a summariser's prose and carry facts about the person ("User has dermatologist appointment next week"), and the disclaimer's own tail was quotable as proof of buying. Open loops were removed (so a note leaning on an open loop, like ria's stretch test, still blocks; accepted), the wording changed ("on file": members can create routines; a tail with no affirmative phrase), and the tests were rewritten to be closed-world after four wrong versions passed the first ones. The free-week fact was added after the review and was not reviewed.
+
+**Measured with the real guard (three live reads), read-only:** ria's day-6 draft, replayed as of Nov 22: previously blocked, now passes. Two false-premise probes on the same evidence ("now that you've been using your Dry Skin Starter routine every night", "a week on the starter routine and your skin is already less tight") still block, the reader citing "plan only, ownership unknown".
+
+**Not fixed, recorded.** The `NEGATION` regex blocked a member's real "breakouts from sunscreen since I can't wash it well" (ayri, Nov 20); it would be the third hand-tuning of that regex, so it is left. The writer also sees open-loop check-back dates and routine `updated_at`; notes leaning on those can still block. `dam` has no timezone and is skipped by the weekly check-in.
+
+**Not verified.** No scheduled check-in has run under this code. First chance: the new Seoul member's day-3 note (~Nov 27).
+
+---
+
 ## v11.66.14 — A stripped opener no longer leaves a stray "."; the SEO strategist is told how bets ship and which pages produce sign-ups (Nov 25 2026)
 
 **1. Voice cleanup (`src/lib/yuri/voice-cleanup.ts`).** A new member's setup reply was saved as ". Three things are still missing" (message `3cdfe54e`, Nov 25 07:07 UTC). The rule that removes orphaned leading punctuation ran BEFORE the "Good question" / "Love to hear that" rules that create the orphan, and "!" and "?" were not in its set. Reproduced exactly by running the real function on "Good question. Three things are still missing." Moved the rule after every opener strip and added `!?`. Frequency before the fix: 1 of 170 assistant replies since Oct 1. The member saw the raw stream live; the saved text (what a reload shows and what Yuri reads back) was the broken one. That one row was repaired by hand. Three tests in `tests/voice-cleanup-truncation.test.mjs`, each confirmed to fail on the old code.

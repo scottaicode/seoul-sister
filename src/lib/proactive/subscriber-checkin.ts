@@ -27,7 +27,7 @@ import { fetchWeeklyForecast, formatForecastFacts } from '@/lib/intelligence/wea
 import { resolveTemperatureUnit } from '@/lib/intelligence/temperature-units'
 import { buildNudgeSubject } from '@/lib/email/nudge-email'
 import type { DecisionMemory } from '@/lib/yuri/memory'
-import { guardSourceFacts, type GuardEvidence } from './content-guard'
+import { guardSourceFacts, guardRecordLines, type GuardEvidence } from './content-guard'
 import { PRICING } from '@/lib/pricing'
 import {
   localHour,
@@ -502,6 +502,7 @@ export async function judgeSubscriber(
     statedLocation: ((userContext.skinProfile as Record<string, unknown> | null)?.location_text as string | null) ?? null,
     gpsLocation: userContext.locationName,
     forecast: sink.forecast,
+    freeWeek: trial ? { day: trialDayNumber(trial, s.timezone, now), startedOn: getLocalClock(s.timezone, new Date(trial.startedAt)).isoDate } : null,
   })
   const evidence = await loadGuardEvidence(db, s.user_id, userContext.decisionMemory, sourceFacts)
   // True of the service itself, so the guard must not read it as a promise
@@ -539,7 +540,8 @@ export function forecastToRecord(decision: ProactiveDecision['decision'], foreca
 
 /**
  * The content guard's evidence: their OWN words (never Yuri's), recorded
- * decisions/commitments, and the active plan. Throws on a failed read so a
+ * decisions/commitments, the active routines the writer is also shown (as plan
+ * facts, never ownership), and the active plan. Throws on a failed read so a
  * guard never runs against an empty record by accident.
  */
 export { guardSourceFacts } from './content-guard'
@@ -550,7 +552,7 @@ export async function loadGuardEvidence(
   dm: DecisionMemory | null,
   sourceFacts: string[] = []
 ): Promise<GuardEvidence> {
-  const [msgs, phase, shelf] = await Promise.all([
+  const [msgs, phase, shelf, routines] = await Promise.all([
     db
       .from('ss_yuri_messages')
       .select('content, created_at, ss_yuri_conversations!inner(user_id)')
@@ -560,7 +562,10 @@ export async function loadGuardEvidence(
       .limit(200),
     db.from('ss_treatment_phases').select('name, protocol, started_at').eq('user_id', userId).eq('status', 'active').maybeSingle(),
     db.from('ss_user_products').select('custom_name, custom_brand, ss_products(name_en, brand_en)').eq('user_id', userId),
+    // Same rows the writer sees (loadCheckinFacts): active routines only.
+    db.from('ss_user_routines').select('name, routine_type, created_at').eq('user_id', userId).eq('is_active', true),
   ])
+  if (routines.error) throw new Error(`guard evidence (routines) failed: ${routines.error.message}`)
   if (shelf.error) throw new Error(`guard evidence (shelf) failed: ${shelf.error.message}`)
   if (msgs.error) throw new Error(`guard evidence (messages) failed: ${msgs.error.message}`)
   if (phase.error) throw new Error(`guard evidence (phase) failed: ${phase.error.message}`)
@@ -569,6 +574,7 @@ export async function loadGuardEvidence(
     ...(dm?.decisions ?? []).map((d) => `decision (${d.date}): ${d.topic}: ${d.decision}`),
     ...(dm?.commitments ?? []).map((c) => `they said they would (${c.date}): ${c.item}`),
     ...(dm?.preferences ?? []).map((p) => `preference: ${p.topic}: ${p.preference}`),
+    ...guardRecordLines((routines.data ?? []) as Array<{ name: string | null; routine_type: string | null; created_at: string | null }>),
   ]
   const ph = phase.data as { name: string; protocol: unknown; started_at: string | null } | null
   type Row = { custom_name: string | null; custom_brand: string | null; ss_products: { name_en: string | null; brand_en: string | null } | null }
