@@ -1456,3 +1456,110 @@ test('guard source facts (executed): the free-week day is a fact on file, and ab
   const src = readFileSync(new URL('../src/lib/proactive/subscriber-checkin.ts', import.meta.url), 'utf8')
   assert.match(src, /freeWeek: trial \? \{ day: trialDayNumber\(trial, s\.timezone, now\), startedOn: /)
 })
+
+// ---------------------------------------------------------------------------
+// Yuri's own words reach the guard, as evidence ONLY of what she said
+// (Nov 28 2026). Earned: a free-week member's day-3 note ("When we set things
+// up, I suggested beginning with just three basics") was true word for word in
+// Yuri's setup message, and blocked, because the guard saw the member's words
+// and a summary of decisions, never what Yuri said. Replayed on the real
+// evidence: old code blocked 3 of 3, new code passed 4 of 4, and three false
+// notes (an invented suggestion, use of a suggested product, Yuri's retracted
+// barrier guess stated as fact) still blocked.
+// ---------------------------------------------------------------------------
+test('guard (executed): the advisor\'s own words establish what she said, and nothing about the person', async () => {
+  const { enforceGuard, historyToVerifier, splitSentences, withFoundQuotes, SECOND_LOOK_MIN_QUOTE } = await loadGuard()
+  // Real shapes from production advisor messages (Nov 2026), including a guess
+  // she later retracted and her own "we agreed" lines.
+  const SAID = 'Start with three products, then add a fourth.'
+  const GUESS = 'My read is that your barrier is the root of all this.'
+  const RETRACT = 'I said a stressed barrier was the most likely explanation, but that was my guess.'
+  const AGREED = 'The plan we have agreed on is barrier-first, then retinal down the line.'
+  const USE = 'Use it after cleansing every night.'
+  const SAVED = 'Your AM and PM routines are saved to your Routine page.'
+  const evidence = {
+    userMessages: ['which of the five should I use?'],
+    recordedDecisions: [],
+    plan: null,
+    advisorMessages: [`**5. The reasoning in one line:** ${SAID} That isn't because your skin is fragile.`.replace(/\*\*/g, ''), GUESS, RETRACT, AGREED, USE, SAVED, 'Skip the toner.'],
+  }
+  const fact = (f) => ({ products_mentioned: [], using_claims: [], verdict: 'pass', asserted_facts: [f] })
+  const pass = (f, ev = evidence) => enforceGuard(fact(f), ev, '').pass
+
+  // What she said, phrased as her speech, quoted as a whole sentence of hers: established.
+  assert.equal(pass({ fact: 'advisor suggested starting with three products', user_quote: SAID, source: 'advisor' }), true)
+  assert.equal(pass({ fact: 'The advisor said her read was that the barrier is the root', user_quote: GUESS, source: 'advisor' }), true, 'true as a report of her speech')
+  // The old evidence (no advisor words): blocked. This is the bug being fixed.
+  assert.equal(pass({ fact: 'advisor suggested starting with three products', user_quote: SAID, source: 'advisor' }, { ...evidence, advisorMessages: undefined }), false)
+
+  // CLOSED WORLD: none of these may pass on her words, whatever the reader says.
+  for (const [label, f] of [
+    ['a fact about their skin', { fact: 'their barrier is damaged', user_quote: GUESS, source: 'advisor' }],
+    ['a guess lifted out of the sentence that retracts it', { fact: 'advisor said a stressed barrier was the most likely explanation', user_quote: 'a stressed barrier was the most likely explanation', source: 'advisor' }],
+    ['her "we agreed" as their agreement', { fact: 'they agreed to a barrier-first plan', user_quote: AGREED, source: 'advisor' }],
+    ['her "we agreed", phrased as her speech', { fact: 'advisor said they agreed on barrier-first', user_quote: AGREED, source: 'advisor' }],
+    ['a plan, phrased as her speech', { fact: 'advisor suggested the plan of barrier-first', user_quote: AGREED, source: 'advisor' }],
+    ['use, from her instruction', { fact: 'they use the cleanser every night', user_quote: USE, source: 'advisor' }],
+    ['a write, from her claim', { fact: 'their routines are saved', user_quote: SAVED, source: 'advisor' }],
+    ['a stray phrase', { fact: 'advisor said three products', user_quote: 'three products', source: 'advisor' }],
+    ['a clause cut mid-sentence', { fact: 'advisor said then add a fourth', user_quote: 'then add a fourth.', source: 'advisor' }],
+    ['words she did not write', { fact: 'advisor suggested a retinol serum', user_quote: 'Start a retinol serum at night tonight.', source: 'advisor' }],
+    ['the member\'s words offered as hers', { fact: 'advisor asked which of the five to use', user_quote: 'which of the five should I use?', source: 'advisor' }],
+    ['a whole sentence of hers, too short to be a statement', { fact: 'advisor suggested skipping the toner', user_quote: 'Skip the toner.', source: 'advisor' }],
+  ]) assert.equal(pass(f), false, label)
+  assert.ok('three products'.length < SECOND_LOOK_MIN_QUOTE)
+  // Her words are not the member's words, the record, or the facts on file.
+  for (const source of ['user', 'record', 'facts', undefined]) assert.equal(pass({ fact: 'advisor suggested starting with three products', user_quote: SAID, source }), false, String(source))
+  // A usage claim can never be quoted from her words.
+  const usage = { products_mentioned: ['Mixsoon'], verdict: 'pass', asserted_facts: [],
+    using_claims: [{ product: 'Mixsoon', user_quote: USE, quote_stance: 'establishes_current_use', message_asserts_current_use: true }] }
+  assert.equal(enforceGuard(usage, evidence, 'How is the Mixsoon going?').pass, false)
+
+  // The shared-past read: her words count only for a note sentence reporting her own speech.
+  const h = (note, claim, q) => {
+    const sentences = splitSentences(note)
+    const entries = sentences.map((_, i) => (i === 0 ? { n: 1, leans: true, claim, user_quote: q, source: 'advisor' } : { n: i + 1, leans: false }))
+    return enforceGuard(historyToVerifier(entries, sentences).verifier, evidence, '').pass
+  }
+  assert.equal(h('When we set things up, I suggested beginning with three basics. How are your cheeks?', 'advisor suggested starting with three products', SAID), true)
+  assert.equal(h('We agreed on barrier-first. How are your cheeks?', 'advisor said they agreed on barrier-first', AGREED), false, 'a joint decision')
+  assert.equal(h('Did the switch we planned help? Tell me.', 'advisor suggested the switch', SAID), false, 'a plan')
+  assert.equal(h('Since your barrier is the root of it, go gently. Tell me.', 'advisor said the barrier is the root', GUESS), false, 'not a report of her speech')
+  // A question following up on what she suggested may lean on it; a plan or decision in it may not.
+  assert.equal(h('Have you picked any of them up yet? Tell me.', 'advisor suggested starting with three products', SAID), true, 'follow-up question')
+  assert.equal(h('Have you picked up the ones we decided on? Tell me.', 'advisor suggested starting with three products', SAID), false, 'decision in a question')
+  assert.equal(h('I suggested beginning with three basics. How are your cheeks?', 'advisor suggested starting with three products', 'three products'), false, 'short quote')
+  // The second look keeps the source the reader named, and is held to the same shape.
+  const v = fact({ fact: 'they started the cleanser', user_quote: '', source: 'user' })
+  assert.equal(enforceGuard(withFoundQuotes(v, [{ n: 1, user_quote: SAID }], evidence), evidence, '').pass, false)
+  const va = fact({ fact: 'advisor suggested starting with three products', user_quote: '', source: 'advisor' })
+  assert.equal(enforceGuard(withFoundQuotes(va, [{ n: 1, user_quote: SAID }], evidence), evidence, '').pass, true)
+  const vp = fact({ fact: 'their barrier is damaged', user_quote: '', source: 'advisor' })
+  assert.equal(enforceGuard(withFoundQuotes(vp, [{ n: 1, user_quote: GUESS }], evidence), evidence, '').pass, false)
+
+  // Every reader is told the limit, including the second look.
+  const src = read('src', 'lib', 'proactive', 'content-guard.ts')
+  assert.match(src, /Those words establish ONLY that the advisor said it: never what the person has, uses, agreed to, felt or did, never that the two of you agreed or decided anything/)
+  assert.match(src, /The advisor's own words establish only that the advisor said, suggested or asked it; they never establish that the person agreed, bought, started, used, felt or did anything\./)
+  assert.match(src, /which can establish only that the advisor said or suggested something, never that the person agreed, decided, bought, started, used, felt or did anything; copy a whole sentence of hers\)/)
+  assert.match(src, /THE ADVISOR'S OWN EARLIER MESSAGES \(verbatim, oldest first; establish ONLY what the advisor said or suggested, never anything about the person\):\n\$\{evidence\.advisorMessages\?\.length \? evidence\.advisorMessages\.map/)
+})
+
+test('guard evidence (executed): Yuri\'s messages are loaded newest first within a budget, oldest first out', async () => {
+  const { advisorEvidence, ADVISOR_EVIDENCE_MAX_CHARS } = await loadPure(['src', 'lib', 'proactive', 'subscriber-checkin.ts'])
+  assert.deepEqual(advisorEvidence(['newest **bold** words', '  ', 'older']), ['older', 'newest bold words'])
+  const big = 'x'.repeat(ADVISOR_EVIDENCE_MAX_CHARS - 5)
+  // Whole messages only: the budget stops at the first message that does not fit.
+  assert.deepEqual(advisorEvidence(['short one', big, 'oldest']), ['short one'])
+  const src = read('src', 'lib', 'proactive', 'subscriber-checkin.ts')
+  const i = src.indexOf('export async function loadGuardEvidence')
+  const body = src.slice(i, src.indexOf('\n}\n', i))
+  assert.match(body, /\.eq\('role', 'assistant'\)\n\s*\.order\('created_at', \{ ascending: false \}\)\n\s*\.limit\(ADVISOR_EVIDENCE_MAX_MESSAGES\),/)
+  assert.match(src, /export const ADVISOR_EVIDENCE_MAX_MESSAGES = 40\n/)
+  assert.match(body, /if \(advisor\.error\) throw/)
+  // Their own words are still built from their messages and nothing else.
+  assert.match(body, /\.eq\('role', 'user'\)/)
+  assert.match(body, /return \{ userMessages, recordedDecisions, advisorMessages, /)
+  // Corrections reach the record, so a withdrawn guess reads as contradicted.
+  assert.match(body, /\.\.\.\(dm\?\.corrections \?\? \[\]\)\.map\(\(c\) => `correction \(\$\{c\.date\}\): \$\{c\.topic\}: \$\{c\.truth\}`\),/)
+})

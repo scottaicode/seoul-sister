@@ -4,6 +4,23 @@ All notable changes to Seoul Sister are documented here.
 
 ---
 
+## v11.66.16 — The check-in guard can read what Yuri said, and only that (Nov 28 2026)
+
+**What happened.** kmh (the first account from a ChatGPT referral, free week ends Dec 2) had her day-3 check-in blocked on Nov 27. The note said "When we set things up, I suggested beginning with just three basics: a cleanser, a moisturizer and a sunscreen", which is true: Yuri's setup message of Nov 25 08:58 says "Start with three products, then add a fourth" with sunscreen, cleanser and moisturizer ranked essential. The guard's evidence was the member's own words, the decision summary, routines, plan and facts on file, never Yuri's own messages, so "I suggested X" could not be confirmed unless the summariser happened to keep it. Replayed with the real guard: the old code blocked the note 3 of 3.
+
+**Fix.**
+- `loadGuardEvidence` loads Yuri's last 40 messages (40,000-character budget, whole messages, `**` removed) as `advisorMessages`, and adds the member's recorded corrections to the record.
+- New quote source `advisor` (`src/lib/proactive/content-guard.ts`). Code, not the prompt, limits it: the fact must be phrased as advisor speech (`advisorFactShaped`) with no agreement or decision in it; the quote must be a whole clause of hers, at least 20 characters (`wholeAdvisorClause`); in the shared-past read the note's own sentence must report her speech in the first person or be a follow-up question, with no agreement in it (`advisorSentenceShaped`). Usage claims stay member-words only.
+- One example added to the existing "asking WHETHER is not a claim" rule: "If you've started X, how is it?".
+
+**Second-model review (Fable 5.2), applied.** The first version accepted any 20-character advisor quote. The review showed, against the real `enforceGuard`, that a person-fact ("their barrier is damaged"), a guess lifted out of the sentence retracting it, Yuri's own "we agreed" lines, and a write claim all passed, and that four wrong implementations still passed the tests. All of those are now refused by code and covered by executed tests; ten single mutations were applied and nine fail the suite (the tenth, the sentence-level agreement check, is also enforced through the claim text). The revised version was not re-reviewed.
+
+**Measured with the real guard, read-only, on kmh's evidence:** four attacks block (an invented retinol suggestion, use of a suggested cleanser, her retracted barrier guess inside "I said...", "We agreed you'd start with three basics"). The true note now passes some reads and not others (2 of 5 for the version without "still checking prices"; 1 of 2 for the original): the remaining blocks are readers describing the follow-up questions as facts about her rather than as what Yuri said. Every remaining error is a block, not a false send. Tuning stopped there on purpose.
+
+**Not verified.** No scheduled check-in has run on this code. kmh's next scheduled chance is day 6 (Dec 1). Name the row: a `subscriber_checkin` judgment for her with decision `speak`.
+
+---
+
 ## v11.66.15 — The check-in guard is given the routines and free-week day the writer sees (Nov 24 2026)
 
 **What happened.** Of 8 check-in notes Yuri drafted for free-week members since Nov 10, 6 were blocked by the content guard and 2 were sent. These are the notes meant to bring a member back, and no free-week member has returned after day 1. A blocked row checked against the conversation was TRUE: ria's day-3 and day-6 notes ("since we put together your starter routine", "you're nearly a week in") were blocked as "asserts something they never said", though two routines were saved for her on Nov 17. The writer is shown saved routines and the free-week day; the guard (`loadGuardEvidence`) was given neither.

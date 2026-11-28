@@ -24,6 +24,12 @@
  *      accounted for. Any block from either read wins; a missing or unparseable
  *      verdict, or a failed call, blocks (fail closed).
  *
+ * The advisor's own earlier words (Nov 28 2026) may establish only that she
+ * said something, as a whole sentence, for a fact phrased as her speech with
+ * no agreement in it (advisorFactShaped / wholeAdvisorClause). Code cannot tell
+ * whether she later retracted what she said: corrections are given to the
+ * readers as record lines, and catching a retracted guess is their call.
+ *
  * WHAT IT CANNOT DO (honest limit): the deterministic half verifies what the
  * readers report; it cannot see a claim that BOTH readers fail to list, except
  * a named shelf product. Its coverage of hidden premises, life facts and
@@ -39,6 +45,14 @@ export interface GuardEvidence {
   userMessages: string[]
   /** Decisions / commitments / preferences on record, as plain lines. */
   recordedDecisions: string[]
+  /**
+   * The advisor's OWN earlier messages, verbatim (Nov 28 2026). They establish
+   * only what the advisor said or suggested, never anything about the person
+   * (what they bought, use, agreed, felt or did): Yuri's guesses are in here
+   * too. Without them a true "I suggested starting with three basics" was
+   * blocked, because the summary of decisions had not kept that sentence.
+   */
+  advisorMessages?: string[]
   /** Active plan / protocol text, if any. */
   plan: string | null
   /** Product names on record for them (shelf, routine). Used to catch a verifier that OMITS a product. */
@@ -108,6 +122,59 @@ export function guardSourceFacts(f: { today?: string | null; statedLocation?: st
       ? [`Their free week started on ${f.freeWeek.startedOn}; today is day ${f.freeWeek.day} of 7.`]
       : []),
   ]
+}
+
+/** Where a quote may come from. Anything unnamed is their own words. */
+export type QuoteSource = 'user' | 'record' | 'facts' | 'advisor'
+export const quoteSource = (s: unknown): QuoteSource => (s === 'record' || s === 'facts' || s === 'advisor' ? s : 'user')
+
+/**
+ * The ONE thing the advisor's own words may establish: that the advisor said,
+ * suggested or asked something (Nov 28 2026). Checked by code, not left to the
+ * readers' prompts, because her messages hold her guesses ("your barrier is the
+ * root of all this", later retracted) and her own "we agreed" lines. So:
+ *  - the fact must be phrased as advisor speech, with no agreement or decision
+ *    in it (Yuri writing "we agreed" is not the member agreeing);
+ *  - the quote must be a whole clause of hers: it starts at the start of a
+ *    sentence, line or after a colon and runs to the end of a sentence, so a
+ *    guess cannot be lifted out of the sentence that retracts it;
+ *  - in the shared-past read, the note's own sentence must report the
+ *    advisor's speech in the first person ("I suggested ...") or be a question
+ *    that follows up on it ("Have you picked any of them up yet?"), and name
+ *    no agreement or decision. A statement that is not her speech ("since
+ *    your barrier is the root of it") cannot lean on her words.
+ * Pure, exported for tests.
+ */
+const ADVISOR_SPEECH = /^(?:the )?advisor (?:had |has |earlier |previously |already )?(?:said|suggested|recommended|mentioned|asked|told|explained|proposed|advised|wrote|offered)\b/i
+const AGREEMENT = /\b(?:agree|agreed|agreement|decide|decided|decision|plan|planned|committed|settled|chose|chosen)\b/i
+const FIRST_PERSON_SPEECH = /\bI (?:had |have |already )?(?:said|suggested|recommended|mentioned|asked|told|explained|proposed|advised|wrote|offered)\b/i
+
+export function advisorFactShaped(fact: string): boolean {
+  const f = fact.trim()
+  return ADVISOR_SPEECH.test(f) && !AGREEMENT.test(f)
+}
+
+export function advisorSentenceShaped(sentence: string): boolean {
+  const s = sentence.trim()
+  return (FIRST_PERSON_SPEECH.test(s) || s.includes('?')) && !AGREEMENT.test(s)
+}
+
+/** True when the quote is a whole clause of the advisor's (see advisorFactShaped). */
+export function wholeAdvisorClause(advisorCorpus: string, quote: string): boolean {
+  const q = norm(quote).replace(/[.!?]+$/, '').trim()
+  if (q.length < 3) return false
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(?:^|[.!?:\\n]\\s*)${escaped}[.!?]*(?:\\s|$)`, 'u').test(advisorCorpus)
+}
+
+/** The text each source's quotes must be found in, normalized. Pure. */
+export function guardCorpora(evidence: GuardEvidence): Record<QuoteSource, string> {
+  return {
+    user: norm(evidence.userMessages.join('\n')),
+    record: norm([...evidence.recordedDecisions, evidence.plan ?? ''].join('\n')),
+    facts: norm((evidence.sourceFacts ?? []).join('\n')),
+    advisor: norm((evidence.advisorMessages ?? []).join('\n')),
+  }
 }
 
 export interface GuardResult {
@@ -258,13 +325,20 @@ export function enforceGuard(v: VerifierOutput | null, evidence: GuardEvidence, 
   }
   // Facts about the agreed plan may be evidenced by the record; facts about the
   // person only by their own words. Usage claims above are user-words only.
-  const recordCorpus = norm([...evidence.recordedDecisions, evidence.plan ?? ''].join('\n'))
-  const factsCorpus = norm((evidence.sourceFacts ?? []).join('\n'))
+  // The advisor's own words may evidence only what the advisor said, and only
+  // as a whole statement: a stray phrase of Yuri's is not something she said.
+  const corpora = guardCorpora(evidence)
   for (const f of v.asserted_facts ?? []) {
     const fact = f.fact?.trim() || 'a fact about them'
     const quote = f.user_quote?.trim() ?? ''
-    const source = f.source === 'record' ? recordCorpus : f.source === 'facts' ? factsCorpus : corpus
-    if (!quote || !inCorpus(source, norm(quote))) {
+    const src = quoteSource(f.source)
+    if (src === 'advisor') {
+      if (!quote || norm(quote).length < SECOND_LOOK_MIN_QUOTE || !advisorFactShaped(fact) || !wholeAdvisorClause(corpora.advisor, quote)) {
+        reasons.push(`asserts something about them they never said: ${fact} (the advisor's own words establish only a whole sentence she said)`)
+      }
+      continue
+    }
+    if (!quote || !inCorpus(corpora[src], norm(quote))) {
       reasons.push(`asserts something about them they never said: ${fact}`)
     }
   }
@@ -290,10 +364,10 @@ export function enforceGuard(v: VerifierOutput | null, evidence: GuardEvidence, 
 }
 
 /** The asserted facts a reader named without copying any words that establish them. */
-export function unquotedFacts(v: VerifierOutput | null): Array<{ n: number; fact: string; source: 'user' | 'record' | 'facts' }> {
+export function unquotedFacts(v: VerifierOutput | null): Array<{ n: number; fact: string; source: QuoteSource }> {
   return (v?.asserted_facts ?? [])
     .filter((f) => typeof f.fact === 'string' && f.fact.trim() && !f.user_quote?.trim())
-    .map((f, i) => ({ n: i + 1, fact: f.fact!.trim(), source: f.source === 'record' ? 'record' : f.source === 'facts' ? 'facts' : 'user' }))
+    .map((f, i) => ({ n: i + 1, fact: f.fact!.trim(), source: quoteSource(f.source) }))
 }
 
 /** The shortest quote the second look may supply: long enough to be a statement, not a stray phrase. */
@@ -318,11 +392,7 @@ export function withFoundQuotes(
   found: Array<{ n?: unknown; user_quote?: unknown }>,
   evidence: GuardEvidence
 ): VerifierOutput {
-  const corpora = {
-    user: norm(evidence.userMessages.join('\n')),
-    record: norm([...evidence.recordedDecisions, evidence.plan ?? ''].join('\n')),
-    facts: norm((evidence.sourceFacts ?? []).join('\n')),
-  }
+  const corpora = guardCorpora(evidence)
   const byNumber = new Map<number, string>()
   for (const f of Array.isArray(found) ? found : []) {
     if (Number.isInteger(f?.n) && typeof f?.user_quote === 'string' && f.user_quote.trim() && !byNumber.has(f.n as number)) byNumber.set(f.n as number, f.user_quote.trim())
@@ -336,7 +406,7 @@ export function withFoundQuotes(
       n += 1
       const quote = byNumber.get(n)
       if (!quote) return f
-      const corpus = f.source === 'record' ? corpora.record : f.source === 'facts' ? corpora.facts : corpora.user
+      const corpus = corpora[quoteSource(f.source)]
       const q = norm(quote)
       if (q.length < SECOND_LOOK_MIN_QUOTE || !inCorpus(corpus, q) || negatedInContext(corpus, q)) return f
       return { ...f, user_quote: quote }
@@ -346,7 +416,7 @@ export function withFoundQuotes(
 
 const QUOTE_FINDER_SYSTEM = `A checker read a short message an AI skincare advisor wants to send a person, and listed things the message states or presupposes about them. For the facts below it copied no supporting words. Look again, only for those facts.
 
-Each fact is given with the place the checker said its support would be: "user" (THEIR OWN MESSAGES), "record" (RECORDED DECISIONS or ACTIVE PLAN), or "facts" (FACTS ON FILE). Look only there. Copy VERBATIM a whole sentence or clause that by itself establishes the fact as stated. Words that are only about the same topic do not establish a fact, and neither does a sentence that says the opposite. If nothing there establishes it, return an empty quote. An empty quote is the right answer whenever you are unsure.
+Each fact is given with the place the checker said its support would be: "user" (THEIR OWN MESSAGES), "record" (RECORDED DECISIONS or ACTIVE PLAN), "facts" (FACTS ON FILE), or "advisor" (THE ADVISOR'S OWN EARLIER MESSAGES, which can establish only that the advisor said or suggested something, never that the person agreed, decided, bought, started, used, felt or did anything; copy a whole sentence of hers). Look only there. Copy VERBATIM a whole sentence or clause that by itself establishes the fact as stated. Words that are only about the same topic do not establish a fact, and neither does a sentence that says the opposite. If nothing there establishes it, return an empty quote. An empty quote is the right answer whenever you are unsure.
 
 Return STRICT JSON only, one entry per fact, by its number: {"found": [{"n": 1, "user_quote": ""}]}`
 
@@ -413,16 +483,21 @@ export function historyToVerifier(entries: unknown, sentences: string[]): { veri
     if (!e) { unanswered.push(i + 1); return }
     if (e.leans !== true) return
     const quote = typeof e.user_quote === 'string' ? e.user_quote.trim() : ''
-    const source = e.source === 'record' ? 'record' : e.source === 'facts' ? 'facts' : 'user'
+    let source = quoteSource(e.source)
     // A line from the record has to be a whole statement. Their own words are
     // their own words at any length the rest of the guard accepts: a member
     // asked how her skin feels answered "Dry", and a floor of ten characters
     // here blocked a true note that had been sent (replayed Nov 16 2026).
-    const floor = source === 'record' ? SECOND_LOOK_MIN_QUOTE : 0
+    const floor = source === 'record' || source === 'advisor' ? SECOND_LOOK_MIN_QUOTE : 0
+    const claim = typeof e.claim === 'string' && e.claim.trim() ? e.claim.trim() : 'something you two said or agreed'
+    // The advisor's words count here only for a sentence of the note that
+    // reports her own speech; the claim is then checked as advisor speech.
+    const advisorOk = source !== 'advisor' || advisorSentenceShaped(sentence)
+    if (!advisorOk) source = 'user'
     asserted.push({
       // The sentence itself is kept in the reason, so a blocked note says where.
-      fact: `${typeof e.claim === 'string' && e.claim.trim() ? e.claim.trim() : 'something you two said or agreed'} (in: "${sentence}")`,
-      user_quote: norm(quote).length >= floor ? quote : '',
+      fact: `${claim} (in: "${sentence}")`,
+      user_quote: advisorOk && norm(quote).length >= floor ? quote : '',
       source,
     })
   })
@@ -440,9 +515,9 @@ These also do not lean on a shared past: general skincare knowledge, a plain que
 The message is given again at the end, cut into numbered sentences. Return exactly one entry for EVERY number, in order, using those numbers and no others: do not split, join or renumber the sentences. For each:
 - leans: true or false.
 - When true, claim: the earlier event it takes for granted, in a few words, with its specifics (which day, which product, how long).
-- When true, user_quote: a whole sentence or clause copied VERBATIM that establishes that this was said or agreed, and source: "user" if it is from THEIR OWN MESSAGES, "record" if it is from RECORDED DECISIONS or ACTIVE PLAN, "facts" if it is from FACTS ON FILE. Every specific in the claim must be in the words you quote, or follow from a date given there and today's date in FACTS ON FILE. Words that are only about the same topic do not establish it. If nothing establishes it, leave user_quote empty: that is the right answer whenever you are unsure, and an empty quote is what stops an invented memory from being sent.
+- When true, user_quote: a whole sentence or clause copied VERBATIM that establishes that this was said or agreed, and source: "user" if it is from THEIR OWN MESSAGES, "record" if it is from RECORDED DECISIONS or ACTIVE PLAN, "facts" if it is from FACTS ON FILE, "advisor" if it is from THE ADVISOR'S OWN EARLIER MESSAGES. The advisor's own words establish only that the advisor said, suggested or asked it; they never establish that the person agreed, bought, started, used, felt or did anything. When source is "advisor", write the claim as "advisor said ..." or "advisor suggested ...", and copy a whole sentence of hers. Every specific in the claim must be in the words you quote, or follow from a date given there and today's date in FACTS ON FILE. Words that are only about the same topic do not establish it. If nothing establishes it, leave user_quote empty: that is the right answer whenever you are unsure, and an empty quote is what stops an invented memory from being sent.
 
-Return STRICT JSON only: {"sentences": [{"n": 1, "leans": false, "claim": "", "user_quote": "", "source": "user" | "record" | "facts"}]}`
+Return STRICT JSON only: {"sentences": [{"n": 1, "leans": false, "claim": "", "user_quote": "", "source": "user" | "record" | "facts" | "advisor"}]}`
 
 /** Any block wins; reasons are de-duplicated. Exported for tests. */
 export function combineReads(reads: GuardResult[]): GuardResult {
@@ -466,8 +541,8 @@ export function parseVerifier(text: string): VerifierOutput | null {
 
 const OUTPUT_SPEC = `Fill every list (empty arrays are fine):
 0. products_mentioned: EVERY product or brand the message names, for any reason.
-1. using_claims: EVERY product the message treats as something the person currently has, owns, is using, or is "on". This includes claims made through a question's PREMISE: "How's the X treating you?" or "Has X stopped stinging?" presuppose current use and ARE claims. A question that genuinely asks WHETHER ("Did X arrive yet?", "Are you still using X?") is not, and a product the message says they stopped, parked, or put away is not (that is the opposite of a usage claim). If you are unsure whether a mention is a claim, list it with message_asserts_current_use true or false: true when the message's words state or presuppose they use it NOW, false when it only asks whether, says they stopped, or recommends. For each claim, give user_quote: a VERBATIM quote copied exactly from THEIR OWN MESSAGES, and quote_stance: "establishes_current_use" only if that quote says they have or currently use it; otherwise "past_or_stopped", "intent_only" (they said they would buy it), "negative" (it broke them out, they disliked it), or "other". An advisor's recommendation or saved plan is never ownership; leave user_quote empty.
-2. asserted_facts: anything else the message states or presupposes about the person or their life: where they live, their skin, events (a wedding, a trip, a new job), outcomes ("your skin has improved"), symptom changes ("glad the redness calmed down"), feelings. For each give user_quote: VERBATIM words that establish it, copied from THEIR OWN MESSAGES, or, for a fact about the plan you two agreed (what it is, when it started), copied from RECORDED DECISIONS or ACTIVE PLAN, or, for the weather this week where they live or where they live, copied from FACTS ON FILE, with source "user", "record" or "facts". The weather is a fact about the week, not about them: a forecast stated as a forecast ("Tuesday looks humid") is established by a matching FACTS ON FILE line. Something the message says you two discussed or decided ("we talked in July about X") is a fact about the plan: look for it in RECORDED DECISIONS (each line carries its date) and quote that line. A duration ("about a month in") is established by quoting the dated start (a RECORDED DECISIONS line or the ACTIVE PLAN's start date); today's date is in FACTS ON FILE. A duration only says how long since something started; that they actually followed the plan is a separate fact and needs their own words. Empty if nothing establishes it. A conclusion the advisor drew (e.g. "dry cheeks" when they said "a mix") is not established.
+1. using_claims: EVERY product the message treats as something the person currently has, owns, is using, or is "on". This includes claims made through a question's PREMISE: "How's the X treating you?" or "Has X stopped stinging?" presuppose current use and ARE claims. A question that genuinely asks WHETHER ("Did X arrive yet?", "Are you still using X?", "If you've started X, how is it?") is not, and a product the message says they stopped, parked, or put away is not (that is the opposite of a usage claim). If you are unsure whether a mention is a claim, list it with message_asserts_current_use true or false: true when the message's words state or presuppose they use it NOW, false when it only asks whether, says they stopped, or recommends. For each claim, give user_quote: a VERBATIM quote copied exactly from THEIR OWN MESSAGES, and quote_stance: "establishes_current_use" only if that quote says they have or currently use it; otherwise "past_or_stopped", "intent_only" (they said they would buy it), "negative" (it broke them out, they disliked it), or "other". An advisor's recommendation or saved plan is never ownership; leave user_quote empty.
+2. asserted_facts: anything else the message states or presupposes about the person or their life: where they live, their skin, events (a wedding, a trip, a new job), outcomes ("your skin has improved"), symptom changes ("glad the redness calmed down"), feelings. For each give user_quote: VERBATIM words that establish it, copied from THEIR OWN MESSAGES, or, for a fact about the plan you two agreed (what it is, when it started), copied from RECORDED DECISIONS or ACTIVE PLAN, or, for the weather this week where they live or where they live, copied from FACTS ON FILE, with source "user", "record" or "facts". Something the message says the advisor earlier said or suggested ("I suggested starting with a cleanser") may instead be established by copying a whole sentence from THE ADVISOR'S OWN EARLIER MESSAGES, with source "advisor"; write that fact as "advisor said ..." or "advisor suggested ...". Those words establish ONLY that the advisor said it: never what the person has, uses, agreed to, felt or did, never that the two of you agreed or decided anything, and never a fact about their skin or life (the advisor's guesses are in there too). The weather is a fact about the week, not about them: a forecast stated as a forecast ("Tuesday looks humid") is established by a matching FACTS ON FILE line. Something the message says you two discussed or decided ("we talked in July about X") is a fact about the plan: look for it in RECORDED DECISIONS (each line carries its date) and quote that line. A duration ("about a month in") is established by quoting the dated start (a RECORDED DECISIONS line or the ACTIVE PLAN's start date); today's date is in FACTS ON FILE. A duration only says how long since something started; that they actually followed the plan is a separate fact and needs their own words. Empty if nothing establishes it. A conclusion the advisor drew (e.g. "dry cheeks" when they said "a mix") is not established.
 3. promises: a NEW promise about the plan, price, service, features, or a deliverable or service level ("your plan includes...", "I'll review your photos weekly", "you'll hear from me every Monday"), EXCEPT a statement listed under VERIFIED STATEMENTS below. Offering to work something out together when they reply, or mentioning a promise already made, is not a new promise.
 4. pressure: urging them to act or buy now, scarcity, deadlines, or fear of missing out. A plain fact about timing (the weather is changing this month) is not pressure.
 5. medical_reassurance: any statement that a symptom, spot, mole, or reaction is fine, harmless, or nothing to worry about.
@@ -477,7 +552,7 @@ const OUTPUT_SPEC = `Fill every list (empty arrays are fine):
 verdict: "pass" only if every using_claim and asserted_fact has a quote that establishes it and lists 3-8 are all empty; otherwise "block".
 
 Return STRICT JSON only:
-{"products_mentioned": [], "using_claims": [{"product": "", "message_asserts_current_use": true, "user_quote": "", "quote_stance": ""}], "asserted_facts": [{"fact": "", "user_quote": "", "source": "user" | "record" | "facts"}], "promises": [], "pressure": [], "medical_reassurance": [], "contradicted_decisions": [], "routine_changes": [], "harmful_followups": [], "verdict": "pass" | "block", "reason": "<one sentence>"}`
+{"products_mentioned": [], "using_claims": [{"product": "", "message_asserts_current_use": true, "user_quote": "", "quote_stance": ""}], "asserted_facts": [{"fact": "", "user_quote": "", "source": "user" | "record" | "facts" | "advisor"}], "promises": [], "pressure": [], "medical_reassurance": [], "contradicted_decisions": [], "routine_changes": [], "harmful_followups": [], "verdict": "pass" | "block", "reason": "<one sentence>"}`
 
 /**
  * Two genuinely different framings for the two reads (Oct 10 2026): the same
@@ -489,7 +564,7 @@ const VERIFIER_SYSTEM_A = `You check a short message an AI skincare advisor want
 
 ${OUTPUT_SPEC}`
 
-const VERIFIER_SYSTEM_B = `You are the recipient's skeptical friend reading a note an AI skincare advisor is about to send them unprompted. Assume the advisor may have filled gaps in its memory with plausible guesses. Read it as the recipient would, and find every place it would make them think "I never said that", "that isn't true", "that's not what we agreed", or "is this a sales pitch?". Hidden premises inside questions count. Then report what you found using exactly this contract, checking every claim against their own words below:
+const VERIFIER_SYSTEM_B = `You are the recipient's skeptical friend reading a note an AI skincare advisor is about to send them unprompted. Assume the advisor may have filled gaps in its memory with plausible guesses. Read it as the recipient would, and find every place it would make them think "I never said that", "that isn't true", "that's not what we agreed", or "is this a sales pitch?". Hidden premises inside questions count. Then report what you found using exactly this contract, checking every claim against the evidence below (their own words for anything about them):
 
 ${OUTPUT_SPEC}`
 
@@ -513,6 +588,9 @@ ${evidence.recordedDecisions.length ? evidence.recordedDecisions.map((d) => `- $
 
 ACTIVE PLAN:
 ${evidence.plan ?? '(none)'}
+
+THE ADVISOR'S OWN EARLIER MESSAGES (verbatim, oldest first; establish ONLY what the advisor said or suggested, never anything about the person):
+${evidence.advisorMessages?.length ? evidence.advisorMessages.map((m) => `- ${m}`).join('\n') : '(none on record)'}
 
 FACTS ON FILE (true at the source, not their words: the forecast where they live and where they live; the message may rely on these):
 ${evidence.sourceFacts?.length ? evidence.sourceFacts.join('\n') : '(none)'}

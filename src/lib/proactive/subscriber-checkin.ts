@@ -546,13 +546,36 @@ export function forecastToRecord(decision: ProactiveDecision['decision'], foreca
  */
 export { guardSourceFacts } from './content-guard'
 
+/** How much of Yuri's own history the guard reads: newest first, whole messages. */
+export const ADVISOR_EVIDENCE_MAX_MESSAGES = 40
+export const ADVISOR_EVIDENCE_MAX_CHARS = 40000
+
+/**
+ * Yuri's messages (newest first in) as guard evidence (oldest first out):
+ * markdown bold removed so a quote of the plain words matches, and whole
+ * messages kept until the character budget is spent. An older memory past the
+ * budget cannot be confirmed and blocks, which is the safe direction. Pure.
+ */
+export function advisorEvidence(newestFirst: string[]): string[] {
+  const out: string[] = []
+  let used = 0
+  for (const raw of newestFirst) {
+    const text = raw.replace(/\*\*/g, '').trim()
+    if (!text) continue
+    if (used + text.length > ADVISOR_EVIDENCE_MAX_CHARS) break
+    out.push(text)
+    used += text.length
+  }
+  return out.reverse()
+}
+
 export async function loadGuardEvidence(
   db: SupabaseClient,
   userId: string,
   dm: DecisionMemory | null,
   sourceFacts: string[] = []
 ): Promise<GuardEvidence> {
-  const [msgs, phase, shelf, routines] = await Promise.all([
+  const [msgs, advisor, phase, shelf, routines] = await Promise.all([
     db
       .from('ss_yuri_messages')
       .select('content, created_at, ss_yuri_conversations!inner(user_id)')
@@ -560,6 +583,14 @@ export async function loadGuardEvidence(
       .eq('role', 'user')
       .order('created_at', { ascending: false })
       .limit(200),
+    // Yuri's own words, newest first: evidence only of what she said (content-guard.ts).
+    db
+      .from('ss_yuri_messages')
+      .select('content, created_at, ss_yuri_conversations!inner(user_id)')
+      .eq('ss_yuri_conversations.user_id', userId)
+      .eq('role', 'assistant')
+      .order('created_at', { ascending: false })
+      .limit(ADVISOR_EVIDENCE_MAX_MESSAGES),
     db.from('ss_treatment_phases').select('name, protocol, started_at').eq('user_id', userId).eq('status', 'active').maybeSingle(),
     db.from('ss_user_products').select('custom_name, custom_brand, ss_products(name_en, brand_en)').eq('user_id', userId),
     // Same rows the writer sees (loadCheckinFacts): active routines only.
@@ -568,12 +599,16 @@ export async function loadGuardEvidence(
   if (routines.error) throw new Error(`guard evidence (routines) failed: ${routines.error.message}`)
   if (shelf.error) throw new Error(`guard evidence (shelf) failed: ${shelf.error.message}`)
   if (msgs.error) throw new Error(`guard evidence (messages) failed: ${msgs.error.message}`)
+  if (advisor.error) throw new Error(`guard evidence (advisor messages) failed: ${advisor.error.message}`)
   if (phase.error) throw new Error(`guard evidence (phase) failed: ${phase.error.message}`)
   const userMessages = ((msgs.data ?? []) as Array<{ content: string }>).map((m) => m.content).reverse()
   const recordedDecisions = [
     ...(dm?.decisions ?? []).map((d) => `decision (${d.date}): ${d.topic}: ${d.decision}`),
     ...(dm?.commitments ?? []).map((c) => `they said they would (${c.date}): ${c.item}`),
     ...(dm?.preferences ?? []).map((p) => `preference: ${p.topic}: ${p.preference}`),
+    // What they corrected, so a note repeating a guess the advisor withdrew
+    // (her words are evidence of what she SAID) reads as contradicted.
+    ...(dm?.corrections ?? []).map((c) => `correction (${c.date}): ${c.topic}: ${c.truth}`),
     ...guardRecordLines((routines.data ?? []) as Array<{ name: string | null; routine_type: string | null; created_at: string | null }>),
   ]
   const ph = phase.data as { name: string; protocol: unknown; started_at: string | null } | null
@@ -581,7 +616,8 @@ export async function loadGuardEvidence(
   const knownProducts = ((shelf.data ?? []) as unknown as Row[])
     .map((r) => [r.ss_products?.brand_en ?? r.custom_brand, r.ss_products?.name_en ?? r.custom_name].filter(Boolean).join(' '))
     .filter(Boolean)
-  return { userMessages, recordedDecisions, plan: ph ? `${ph.name}${ph.started_at ? ` (started ${ph.started_at.slice(0, 10)})` : ''}: ${JSON.stringify(ph.protocol)}` : null, knownProducts, sourceFacts }
+  const advisorMessages = advisorEvidence(((advisor.data ?? []) as Array<{ content: string | null }>).map((m) => m.content ?? ''))
+  return { userMessages, recordedDecisions, advisorMessages, plan: ph ? `${ph.name}${ph.started_at ? ` (started ${ph.started_at.slice(0, 10)})` : ''}: ${JSON.stringify(ph.protocol)}` : null, knownProducts, sourceFacts }
 }
 
 export { CHECKIN_CAMPAIGN }
